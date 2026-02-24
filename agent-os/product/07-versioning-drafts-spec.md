@@ -5,8 +5,8 @@ This document defines the implementation plan for Vex CMS versioning and draft f
 **Referenced by**: [roadmap.md](./roadmap.md) - Phase 1.6
 
 **Depends on**:
-- [schema-field-system-spec.md](./schema-field-system-spec.md) - Field types and collection configuration
-- [convex-integration-spec.md](./convex-integration-spec.md) - Admin handlers, access control, and hook execution
+- [05-schema-field-system-spec.md](./05-schema-field-system-spec.md) - Field types and collection configuration
+- [06-convex-integration-spec.md](./06-convex-integration-spec.md) - Admin handlers, access control, and hook execution
 
 ---
 

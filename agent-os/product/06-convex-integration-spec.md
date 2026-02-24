@@ -4,7 +4,9 @@ This document defines the implementation plan for Vex CMS Convex integration. It
 
 **Referenced by**: [roadmap.md](./roadmap.md) - Phase 1.5
 
-**Depends on**: [schema-field-system-spec.md](./schema-field-system-spec.md) - Field types, validators, and collection configuration
+**Depends on**: [05-schema-field-system-spec.md](./05-schema-field-system-spec.md) - Field types, validators, and collection configuration
+
+**Testing**: [11-testing-strategy-spec.md](./11-testing-strategy-spec.md) - Convex handler tests with `convex-test`
 
 ---
 
@@ -351,10 +353,12 @@ Creates all admin query and mutation handlers from the Vex config.
 
 #### `buildConvexSchema(config: VexConfig): SchemaDefinition`
 
-Generates Convex schema including indexes from collection configs.
+Generates a runtime Convex schema object from Vex config. This is used internally by the generated `vex.schema.ts` file.
+
+> **Note:** For most use cases, use `generateVexSchema()` (which produces TypeScript source code) via the `vex sync` CLI command. `buildConvexSchema()` is the underlying function that creates the runtime schema definition.
 
 **Must accomplish:**
-- Extract validators from all collections (as defined in schema-field-system-spec.md)
+- Extract validators from all collections (as defined in 05-schema-field-system-spec.md)
 - Add indexes defined in each collection's `indexes` config
 - Add search indexes defined in `searchIndexes` config
 - Auto-create index on `useAsTitle` field if not already indexed
@@ -656,10 +660,89 @@ Generate Convex search index definitions.
 
 ---
 
+### Schema File Management Functions
+
+#### `generateVexSchema(config: VexConfig): string`
+
+Generates the content for `vex.schema.ts` file.
+
+**Must accomplish:**
+- Generate TypeScript source code (not runtime objects)
+- Include header comment warning not to edit
+- Export each collection as a named defineTable() call
+- Include all indexes and search indexes
+- Include validators for all fields
+
+**Edge cases:**
+- Collection with no indexes: just defineTable() with no chained .index() calls
+- Circular relationships: use v.id() with string table name, not import
+
+---
+
+#### `updateUserSchema(config: VexConfig, existingContent: string): UpdateResult`
+
+Parses and updates the user's `schema.ts` file.
+
+**Must accomplish:**
+- Parse existing schema.ts using AST (e.g., ts-morph or @babel/parser)
+- Find existing imports from "./vex.schema"
+- Find existing table names in defineSchema() call
+- Determine which collections are missing
+- Generate updated content with new imports and tables added
+- Preserve all existing user code (custom tables, indexes, comments)
+
+**Returns:**
+```typescript
+interface UpdateResult {
+  // Whether changes are needed
+  hasChanges: boolean;
+
+  // New collections to add
+  newCollections: string[];
+
+  // Updated file content (only if hasChanges is true)
+  updatedContent?: string;
+
+  // Instructions for manual update (if autoUpdateSchema is false)
+  manualInstructions?: string;
+}
+```
+
+**Edge cases:**
+- No schema.ts exists: return template with all collections
+- Parse error: throw with line number and helpful message
+- User uses different import style (named vs namespace): detect and match
+- User has modified table inline (added indexes): preserve modifications
+- User renamed imported table: detect mismatch, warn, don't overwrite
+
+---
+
+#### `detectSchemaConflicts(config: VexConfig, existingContent: string): Conflict[]`
+
+Detects potential conflicts between Vex config and user's schema.ts.
+
+**Must accomplish:**
+- Check for table name conflicts (user table same name as Vex collection)
+- Check for renamed imports (import { posts as blogPosts })
+- Check for missing vex.schema.ts import
+- Return list of conflicts with resolution suggestions
+
+**Returns:**
+```typescript
+interface Conflict {
+  type: "name_collision" | "renamed_import" | "missing_import" | "removed_collection";
+  collection: string;
+  message: string;
+  suggestion: string;
+}
+```
+
+---
+
 ## File Structure
 
 ```
-@vex/convex/
+@vexcms/convex/
 ├── handlers/
 │   ├── index.ts           # createVexHandlers() - main entry
 │   ├── list.ts            # adminList query handler
@@ -678,7 +761,12 @@ Generate Convex search index definitions.
 │   ├── runner.ts          # Hook execution logic
 │   └── types.ts           # Hook context types
 ├── schema/
-│   ├── index.ts           # buildConvexSchema()
+│   ├── index.ts           # Schema exports
+│   ├── build.ts           # buildConvexSchema() - runtime schema object
+│   ├── generate.ts        # generateVexSchema() - creates vex.schema.ts source
+│   ├── sync.ts            # updateUserSchema() - updates schema.ts
+│   ├── parse.ts           # AST parsing utilities
+│   ├── conflicts.ts       # detectSchemaConflicts()
 │   ├── indexes.ts         # Index generation
 │   ├── tables.ts          # Table generation from collections
 │   └── system.ts          # System tables (vex_versions, etc.)
@@ -772,15 +860,137 @@ export const adminUpdate = handlers.adminUpdate;
 export const adminDelete = handlers.adminDelete;
 ```
 
-```typescript
-// convex/schema.ts
-import { buildConvexSchema } from "@vex/convex";
-import vexConfig from "../vex.config";
+### Step 4: Schema Setup (Two-File Approach)
 
-export default buildConvexSchema(vexConfig);
+Vex uses a two-file schema approach to allow automatic updates without overwriting user customizations:
+
+**File 1: `convex/vex.schema.ts`** (Auto-generated by Vex)
+
+```typescript
+// ⚠️ AUTO-GENERATED BY VEX - DO NOT EDIT
+// This file is regenerated when vex.config.ts changes
+// To customize tables, edit convex/schema.ts instead
+
+import { defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export const posts = defineTable({
+  title: v.string(),
+  slug: v.string(),
+  content: v.string(),
+  author: v.id("users"),
+  _status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+})
+  .index("by_slug", ["slug"])
+  .index("by_status", ["_status"]);
+
+export const pages = defineTable({
+  title: v.string(),
+  slug: v.string(),
+  content: v.string(),
+})
+  .index("by_slug", ["slug"]);
+
+// ... other collections from vex.config.ts
 ```
 
-### Step 4: Write Your Own Queries (For Frontend App)
+**File 2: `convex/schema.ts`** (User-owned, auto-updated with setting)
+
+```typescript
+// convex/schema.ts
+import { defineSchema } from "convex/server";
+
+// Vex-managed tables (auto-imported)
+import { posts, pages, media, users } from "./vex.schema";
+
+// Your custom tables
+import { analytics } from "./tables/analytics";
+
+export default defineSchema({
+  // Vex collections
+  posts,
+  pages,
+  media,
+  users,
+
+  // Your custom tables
+  analytics,
+
+  // Or extend Vex tables with additional indexes:
+  // posts: posts.index("by_author_date", ["author", "_creationTime"]),
+});
+```
+
+#### Automatic Schema Updates
+
+Controlled by the `autoUpdateSchema` setting in `vex.config.ts`:
+
+```typescript
+// vex.config.ts
+export default defineConfig({
+  collections: [...],
+  convex: {
+    // When true (default): Vex automatically updates schema.ts
+    // When false: Vex outputs instructions for manual updates
+    autoUpdateSchema: true,
+  }
+});
+```
+
+**When `autoUpdateSchema: true`:**
+
+Running `vex sync` (or on config change with watch mode):
+
+1. **Regenerates `vex.schema.ts`** - Always fully regenerated from vex.config.ts
+2. **Parses existing `schema.ts`** - Uses AST to understand current structure
+3. **Detects new collections** - Compares against vex.config.ts
+4. **Adds missing imports** - Inserts import statements for new collections
+5. **Adds missing tables** - Adds new collections to defineSchema() call
+6. **Preserves user code** - Keeps all existing:
+   - Custom tables and imports
+   - Additional indexes on Vex tables
+   - Comments
+   - Code formatting
+
+**When `autoUpdateSchema: false`:**
+
+Vex outputs instructions instead of modifying files:
+
+```
+New collection "categories" detected. Add to your schema.ts:
+
+  1. Add import:
+     import { categories } from "./vex.schema";
+
+  2. Add to defineSchema():
+     categories,
+```
+
+#### CLI Commands
+
+```bash
+# Regenerate vex.schema.ts and update schema.ts (respects autoUpdateSchema)
+pnpm vex sync
+
+# Force regenerate even if autoUpdateSchema is false
+pnpm vex sync --force
+
+# Watch mode - regenerates on vex.config.ts changes
+pnpm vex sync --watch
+
+# Preview changes without writing
+pnpm vex sync --dry-run
+```
+
+#### Edge Cases
+
+- **First run (no schema.ts exists)**: Creates both files from scratch
+- **User deleted import but kept table**: Re-adds the import
+- **User renamed imported table**: Vex detects and warns, doesn't overwrite
+- **Conflicting table names**: Error with clear message
+- **Parse error in schema.ts**: Error with line number, doesn't modify file
+
+### Step 5: Write Your Own Queries (For Frontend App)
 
 ```typescript
 // convex/posts.ts - Developer's own queries

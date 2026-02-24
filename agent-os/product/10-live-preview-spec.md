@@ -5,8 +5,8 @@ This document defines the implementation plan for Vex CMS live preview functiona
 **Referenced by**: [roadmap.md](./roadmap.md) - Phase 1.9
 
 **Depends on**:
-- [versioning-drafts-spec.md](./versioning-drafts-spec.md) - Draft workflow and autosave (live preview requires drafts enabled)
-- [custom-admin-components-spec.md](./custom-admin-components-spec.md) - Form state management (for save event integration)
+- [07-versioning-drafts-spec.md](./07-versioning-drafts-spec.md) - Draft workflow and autosave (live preview requires drafts enabled)
+- [09-custom-admin-components-spec.md](./09-custom-admin-components-spec.md) - Form state management (for save event integration)
 
 ---
 
@@ -262,7 +262,7 @@ interface VexQueryOptions<TArgs> {
 ### Live Preview Panel Component
 
 ```typescript
-// @vex/admin/components/LivePreviewPanel.tsx
+// @vexcms/admin-next/components/LivePreviewPanel.tsx
 
 interface LivePreviewPanelProps {
   /** Collection configuration */
@@ -438,7 +438,7 @@ React hook for preview pages that refreshes on admin save.
 **Implementation:**
 
 ```typescript
-// @vex/live-preview-react/src/useRefreshOnSave.ts
+// @vexcms/live-preview-react/src/useRefreshOnSave.ts
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -520,7 +520,7 @@ Simple component version for when you don't need the hook return values.
 **Implementation:**
 
 ```typescript
-// @vex/live-preview-react/src/RefreshOnSave.tsx
+// @vexcms/live-preview-react/src/RefreshOnSave.tsx
 "use client";
 
 import { useRefreshOnSave, UseRefreshOnSaveOptions } from "./useRefreshOnSave";
@@ -584,7 +584,7 @@ To allow preview pages to fetch draft content, the optional `vexQuery` wrapper s
 **Implementation:**
 
 ```typescript
-// @vex/convex/helpers/vexQuery.ts
+// @vexcms/convex/helpers/vexQuery.ts
 
 export function vexQuery<TArgs, TReturn>(
   collection: VexCollection<any>,
@@ -736,7 +736,7 @@ export const posts = defineCollection("posts", {
 
 ```typescript
 // app/preview/pages/[id]/page.tsx
-import { RefreshOnSave } from "@vex/live-preview-react";
+import { RefreshOnSave } from "@vexcms/live-preview-react";
 import { getPage } from "@/lib/api";
 import { PageContent } from "@/components/PageContent";
 
@@ -762,7 +762,7 @@ export default async function PagePreview({ params }) {
 // app/preview/posts/[slug]/page.tsx
 "use client";
 
-import { useRefreshOnSave } from "@vex/live-preview-react";
+import { useRefreshOnSave } from "@vexcms/live-preview-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
@@ -856,21 +856,29 @@ Document this requirement in setup guide.
 
 ## File Structure
 
-```
-@vex/admin/
-├── components/
-│   ├── LivePreviewPanel.tsx      # Toggleable side panel with iframe
-│   ├── BreakpointSelector.tsx    # Responsive viewport controls
-│   ├── PreviewToggleButton.tsx   # Toolbar button to show/hide
-│   └── PreviewError.tsx          # Error states
-├── hooks/
-│   ├── usePreviewMessages.ts     # Message listener
-│   ├── useSaveRefresh.ts         # Send refresh on save
-│   └── usePreviewURL.ts          # URL resolution and reload logic
-└── utils/
-    └── previewConfig.ts          # Config resolution helpers
+Live preview components are split between `@vexcms/ui` (shared) and `@vexcms/admin-next` (Next.js specific).
 
-@vex/live-preview-react/
+```
+packages/ui/                       # @vexcms/ui (shared)
+├── src/
+│   ├── live-preview/
+│   │   ├── LivePreviewPanel.tsx  # Toggleable side panel with iframe
+│   │   ├── BreakpointSelector.tsx# Responsive viewport controls
+│   │   ├── PreviewToggleButton.tsx # Toolbar button to show/hide
+│   │   ├── PreviewError.tsx      # Error states
+│   │   └── index.ts
+│   └── hooks/
+│       ├── usePreviewMessages.ts # Message listener (framework-agnostic)
+│       └── usePreviewURL.ts      # URL resolution logic
+
+packages/admin-next/               # @vexcms/admin-next
+├── src/
+│   ├── hooks/
+│   │   └── useSaveRefresh.ts     # Send refresh on save (Next.js specific)
+│   └── utils/
+│       └── previewConfig.ts      # Config resolution helpers
+
+packages/live-preview-react/       # @vexcms/live-preview-react
 ├── src/
 │   ├── index.ts                  # Package exports
 │   ├── useRefreshOnSave.ts       # Main hook
@@ -879,7 +887,7 @@ Document this requirement in setup guide.
 ├── package.json
 └── README.md
 
-@vex/live-preview/
+packages/live-preview/             # @vexcms/live-preview
 ├── src/
 │   ├── index.ts                  # Framework-agnostic exports
 │   ├── subscribe.ts              # Low-level subscription
@@ -889,11 +897,15 @@ Document this requirement in setup guide.
 └── README.md
 ```
 
+**Notes:**
+- `LivePreviewPanel`, `BreakpointSelector` are in `@vexcms/ui` (no framework-specific code)
+- `useSaveRefresh` is in `@vexcms/admin-next` because it integrates with Next.js form state
+
 ---
 
 ## Package Exports
 
-### `@vex/live-preview` (Framework Agnostic)
+### `@vexcms/live-preview` (Framework Agnostic)
 
 ```typescript
 export {
@@ -908,10 +920,10 @@ export {
   type AdminToPreviewMessage,
   type PreviewToAdminMessage,
   type RefreshPayload,
-} from "@vex/live-preview";
+} from "@vexcms/live-preview";
 ```
 
-### `@vex/live-preview-react`
+### `@vexcms/live-preview-react`
 
 ```typescript
 export {
@@ -929,7 +941,7 @@ export {
   type UseRefreshOnSaveOptions,
   type UseRefreshOnSaveResult,
   type RefreshPayload,
-} from "@vex/live-preview-react";
+} from "@vexcms/live-preview-react";
 ```
 
 ---

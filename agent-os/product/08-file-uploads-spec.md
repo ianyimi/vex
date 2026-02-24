@@ -5,8 +5,8 @@ This document defines the implementation plan for Vex CMS file upload functional
 **Referenced by**: [roadmap.md](./roadmap.md) - Phase 1.7
 
 **Depends on**:
-- [schema-field-system-spec.md](./schema-field-system-spec.md) - Field types and schema generation
-- [convex-integration-spec.md](./convex-integration-spec.md) - Admin handlers and access control
+- [05-schema-field-system-spec.md](./05-schema-field-system-spec.md) - Field types and schema generation
+- [06-convex-integration-spec.md](./06-convex-integration-spec.md) - Admin handlers and access control
 
 ---
 
@@ -178,7 +178,7 @@ interface AdminConfig {
 ```typescript
 /**
  * System fields automatically added to upload-enabled collections
- * These are added by buildConvexSchema() when collection.upload.enabled is true
+ * These are added by generateVexSchema() when collection.upload.enabled is true
  */
 interface UploadSystemFields {
   /** Convex storage ID for the file */
@@ -274,11 +274,11 @@ function upload(meta: Omit<UploadFieldMeta, 'type'>): VexField<...> {
 
 ### Upload Collection System Fields
 
-When `buildConvexSchema()` encounters a collection with `upload.enabled: true`, it adds system fields.
+When `generateVexSchema()` encounters a collection with `upload.enabled: true`, it adds system fields to the generated `vex.schema.ts`.
 
 ```typescript
 /**
- * In buildConvexSchema(), for upload collections:
+ * In generateVexSchema(), for upload collections:
  */
 function buildUploadCollectionSchema(collection: VexCollection<any>) {
   const userFields = extractValidators(collection.config.fields);
@@ -302,11 +302,11 @@ function buildUploadCollectionSchema(collection: VexCollection<any>) {
 
 ### Resolving Default Media Collection
 
-At schema build time, upload fields without `relationTo` use the global default.
+At schema generation time, upload fields without `relationTo` use the global default.
 
 ```typescript
 /**
- * In buildConvexSchema(), resolve upload field references:
+ * In generateVexSchema(), resolve upload field references:
  */
 function resolveUploadFieldCollection(
   field: VexField<any, UploadFieldMeta>,

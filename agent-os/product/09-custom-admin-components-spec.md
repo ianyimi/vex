@@ -4,7 +4,7 @@ This document defines the implementation plan for Vex CMS custom admin panel com
 
 **Referenced by**: [roadmap.md](./roadmap.md) - Phase 1.8
 
-**Depends on**: [schema-field-system-spec.md](./schema-field-system-spec.md) - Field types and metadata
+**Depends on**: [05-schema-field-system-spec.md](./05-schema-field-system-spec.md) - Field types and metadata
 
 ---
 
@@ -374,7 +374,7 @@ type UIField = VexField<never, UIFieldMeta>;
 
 ```typescript
 /**
- * @vex/admin/hooks/useField.ts
+ * @vexcms/admin-next/hooks/useField.ts
  *
  * Get and set the value of a form field
  */
@@ -482,7 +482,7 @@ export function useField<TValue = unknown>(
 
 ```typescript
 /**
- * @vex/admin/hooks/useForm.ts
+ * @vexcms/admin-next/hooks/useForm.ts
  *
  * Get form state and methods
  */
@@ -551,7 +551,7 @@ export function useForm(): UseFormReturn {
 
 ```typescript
 /**
- * @vex/admin/hooks/useFormFields.ts
+ * @vexcms/admin-next/hooks/useFormFields.ts
  *
  * Select specific fields from form state (performance optimization)
  */
@@ -603,7 +603,7 @@ const { title, slug } = useFormFields((fields) => ({
 
 ```typescript
 /**
- * @vex/admin/hooks/useAllFormFields.ts
+ * @vexcms/admin-next/hooks/useAllFormFields.ts
  *
  * Get all form fields (use sparingly - re-renders on any field change)
  */
@@ -660,7 +660,7 @@ Each subscribes only to its specific flag, minimizing re-renders.
 
 ```typescript
 /**
- * @vex/admin/components/FormProvider.tsx
+ * @vexcms/admin-next/components/FormProvider.tsx
  *
  * Provides form state context to field components
  */
@@ -806,7 +806,7 @@ export function useFormActions(): FormActions {
 
 ```typescript
 /**
- * @vex/admin/components/FieldPathContext.tsx
+ * @vexcms/admin-next/components/FieldPathContext.tsx
  *
  * Provides current field path for nested field components
  */
@@ -864,7 +864,7 @@ const colorField = text({
 ```typescript
 /**
  * Generated at build time
- * @vex/admin/.generated/componentMap.ts
+ * @vexcms/admin-next/.generated/componentMap.ts
  */
 import ColorField from '~/components/admin/ColorField';
 import IconPicker from '~/components/admin/IconPicker';
@@ -879,7 +879,7 @@ export const componentMap: Record<string, React.ComponentType<FieldComponentProp
 
 ```typescript
 /**
- * @vex/admin/components/RenderField.tsx
+ * @vexcms/admin-next/components/RenderField.tsx
  *
  * Renders a single field with appropriate component
  */
@@ -923,7 +923,7 @@ function RenderField({ path, field, schemaPath }: RenderFieldProps) {
 
 ```typescript
 /**
- * @vex/admin/components/inputs/index.ts
+ * @vexcms/admin-next/components/inputs/index.ts
  *
  * Exportable input primitives for custom field composition
  */
@@ -941,7 +941,7 @@ export { UploadInput } from './UploadInput';
 
 ```typescript
 /**
- * @vex/admin/components/inputs/TextInput.tsx
+ * @vexcms/admin-next/components/inputs/TextInput.tsx
  */
 interface TextInputProps {
   /** Input value */
@@ -1023,9 +1023,9 @@ export function TextInput({
 // ~/components/admin/ColorField.tsx
 'use client';
 
-import { useField } from '@vex/admin';
-import { TextInput } from '@vex/admin/inputs';
-import type { FieldComponentProps } from '@vex/admin';
+import { useField } from '@vexcms/admin-next';
+import { TextInput } from '@vexcms/admin-next/inputs';
+import type { FieldComponentProps } from '@vexcms/admin-next';
 
 export default function ColorField({ path, field }: FieldComponentProps) {
   const { value, setValue, showError, errorMessage, disabled } = useField<string>({ path });
@@ -1077,7 +1077,7 @@ export default function ColorField({ path, field }: FieldComponentProps) {
 
 ```typescript
 /**
- * @vex/core/fields/ui.ts
+ * @vexcms/core/fields/ui.ts
  *
  * UI field factory - creates non-persisted fields
  */
@@ -1112,10 +1112,10 @@ function ui(options: UIFieldOptions): UIField {
 
 ### Schema Generation
 
-UI fields are skipped during Convex schema generation:
+UI fields are skipped during `vex.schema.ts` generation:
 
 ```typescript
-// In buildConvexSchema()
+// In generateVexSchema()
 function extractValidators(fields: Record<string, VexField<any, any>>) {
   const validators: Record<string, Validator> = {};
 
@@ -1172,8 +1172,8 @@ ui({
 // ~/components/admin/WordCount.tsx
 'use client';
 
-import { useFormFields } from '@vex/admin';
-import type { FieldComponentProps } from '@vex/admin';
+import { useFormFields } from '@vexcms/admin-next';
+import type { FieldComponentProps } from '@vexcms/admin-next';
 
 export default function WordCount({ field }: FieldComponentProps) {
   // Watch the content field
@@ -1203,7 +1203,7 @@ export default function WordCount({ field }: FieldComponentProps) {
 
 ```typescript
 // collections/pages.ts
-import { defineCollection, text, blocks } from '@vex/core';
+import { defineCollection, text, blocks } from '@vexcms/core';
 import { pageBlocks } from '../blocks';
 
 export const pages = defineCollection('pages', {
@@ -1240,7 +1240,7 @@ export const pages = defineCollection('pages', {
 
 ```typescript
 // collections/posts.ts
-import { defineCollection, text, textarea, ui } from '@vex/core';
+import { defineCollection, text, textarea, ui } from '@vexcms/core';
 
 export const posts = defineCollection('posts', {
   fields: {
@@ -1280,8 +1280,8 @@ export const posts = defineCollection('posts', {
 // ~/components/admin/SEOPreview.tsx
 'use client';
 
-import { useFormFields, useFormModified } from '@vex/admin';
-import type { FieldComponentProps } from '@vex/admin';
+import { useFormFields, useFormModified } from '@vexcms/admin-next';
+import type { FieldComponentProps } from '@vexcms/admin-next';
 
 export default function SEOPreview({ field }: FieldComponentProps) {
   const { title, metaTitle, metaDescription, slug } = useFormFields((fields) => ({
@@ -1322,71 +1322,109 @@ export default function SEOPreview({ field }: FieldComponentProps) {
 
 ## File Structure
 
-```
-@vex/admin/
-├── hooks/
-│   ├── useField.ts              # Primary field hook
-│   ├── useForm.ts               # Form state hook
-│   ├── useFormFields.ts         # Selector hook
-│   ├── useAllFormFields.ts      # All fields hook
-│   ├── useFormSubmitted.ts      # State flag hooks
-│   ├── useFormProcessing.ts
-│   ├── useFormModified.ts
-│   ├── useFormInitializing.ts
-│   └── index.ts                 # Re-exports
+Form hooks, field components, and input primitives live in `@vexcms/ui` (shared).
+Framework-specific component resolution and routing lives in `@vexcms/admin-next`.
 
-├── components/
-│   ├── FormProvider.tsx         # Form context provider
-│   ├── FieldPathContext.tsx     # Field path context
-│   ├── RenderField.tsx          # Field renderer with component resolution
-│   ├── RenderFields.tsx         # Renders all fields for a collection
+```
+packages/ui/                       # @vexcms/ui (shared React components)
+├── src/
+│   ├── hooks/
+│   │   ├── useField.ts          # Primary field hook
+│   │   ├── useForm.ts           # Form state hook
+│   │   ├── useFormFields.ts     # Selector hook
+│   │   ├── useAllFormFields.ts  # All fields hook
+│   │   ├── useFormSubmitted.ts  # State flag hooks
+│   │   ├── useFormProcessing.ts
+│   │   ├── useFormModified.ts
+│   │   ├── useFormInitializing.ts
+│   │   └── index.ts             # Re-exports
 │   │
-│   ├── inputs/                  # Exportable input primitives
-│   │   ├── TextInput.tsx
-│   │   ├── TextareaInput.tsx
-│   │   ├── NumberInput.tsx
-│   │   ├── SelectInput.tsx
-│   │   ├── CheckboxInput.tsx
-│   │   ├── DateInput.tsx
-│   │   ├── RelationshipInput.tsx
-│   │   ├── UploadInput.tsx
+│   ├── forms/
+│   │   ├── FormProvider.tsx     # Form context provider
+│   │   ├── FieldPathContext.tsx # Field path context
+│   │   ├── RenderField.tsx      # Field renderer
+│   │   ├── RenderFields.tsx     # Renders all fields for a collection
+│   │   │
+│   │   ├── inputs/              # Exportable input primitives
+│   │   │   ├── TextInput.tsx
+│   │   │   ├── TextareaInput.tsx
+│   │   │   ├── NumberInput.tsx
+│   │   │   ├── SelectInput.tsx
+│   │   │   ├── CheckboxInput.tsx
+│   │   │   ├── DateInput.tsx
+│   │   │   ├── RelationshipInput.tsx
+│   │   │   ├── UploadInput.tsx
+│   │   │   └── index.ts
+│   │   │
+│   │   └── fields/              # Built-in field components
+│   │       ├── TextField.tsx
+│   │       ├── NumberField.tsx
+│   │       ├── SelectField.tsx
+│   │       ├── CheckboxField.tsx
+│   │       ├── DateField.tsx
+│   │       ├── RelationshipField.tsx
+│   │       ├── ArrayField.tsx
+│   │       ├── GroupField.tsx
+│   │       ├── BlocksField.tsx
+│   │       ├── UploadField.tsx
+│   │       ├── UIField.tsx
+│   │       └── index.ts
+│   │
+│   ├── primitives/              # shadcn-based UI primitives
+│   │   ├── Button.tsx
+│   │   ├── Card.tsx
+│   │   ├── Input.tsx
+│   │   ├── Select.tsx
+│   │   ├── Checkbox.tsx
 │   │   └── index.ts
 │   │
-│   └── fields/                  # Built-in field components (internal)
-│       ├── TextField.tsx
-│       ├── NumberField.tsx
-│       ├── SelectField.tsx
-│       ├── CheckboxField.tsx
-│       ├── DateField.tsx
-│       ├── RelationshipField.tsx
-│       ├── ArrayField.tsx
-│       ├── GroupField.tsx
-│       ├── BlocksField.tsx
-│       ├── UploadField.tsx
-│       ├── UIField.tsx
-│       └── index.ts
+│   ├── layout/
+│   │   ├── Layout.tsx            # Main admin shell (no routing)
+│   │   ├── Header.tsx           # Top header bar
+│   │   ├── UserMenu.tsx         # User dropdown
+│   │   └── index.ts
+│   │
+│   ├── types/
+│   │   ├── field.ts             # FieldComponentProps, etc.
+│   │   ├── form.ts              # FormState, UseFieldReturn, etc.
+│   │   └── index.ts
+│   │
+│   └── index.ts                 # Public exports
+│
+├── package.json
+├── tsconfig.json
+└── tsup.config.ts
 
-├── .generated/
-│   └── componentMap.ts          # Generated import map for custom components
+packages/admin-next/               # @vexcms/admin-next
+├── src/
+│   ├── components/
+│   │   ├── Sidebar.tsx          # Uses next/link, usePathname
+│   │   └── .generated/
+│   │       └── componentMap.ts  # Generated import map for custom components
+│   │
+│   └── index.ts                 # Re-exports from @vexcms/ui + Next.js specific
+│
+├── package.json
+└── tsconfig.json
 
-├── types/
-│   ├── field.ts                 # FieldComponentProps, etc.
-│   ├── form.ts                  # FormState, UseFieldReturn, etc.
-│   └── index.ts
-
-└── index.ts                     # Public exports
-
-@vex/core/
-├── fields/
-│   └── ui.ts                    # ui() field factory
+packages/core/                     # @vexcms/core (no React)
+├── src/
+│   └── fields/
+│       └── ui.ts                # ui() field factory
 ```
+
+**Notes:**
+- `@vexcms/ui` is pre-built with tsup (users get compiled JS + types)
+- Users can import UI components directly: `import { Button, TextField } from '@vexcms/ui'`
+- `@vexcms/admin-next` re-exports ui components for convenience
+- Custom component resolution (componentMap) is framework-specific (build tooling differs)
 
 ---
 
 ## Package Exports
 
 ```typescript
-// @vex/admin main export
+// @vexcms/ui main export (shared components)
 export {
   // Hooks
   useField,
@@ -1399,22 +1437,25 @@ export {
   useFormInitializing,
   useFormBackgroundProcessing,
 
-  // Components
+  // Form Components
   FormProvider,
   FieldPathProvider,
   RenderField,
   RenderFields,
 
-  // Types
-  type FieldComponentProps,
-  type UseFieldReturn,
-  type UseFormReturn,
-  type FieldState,
-  type FormState,
-} from '@vex/admin';
+  // Layout Components
+  Layout,
+  Header,
+  UserMenu,
 
-// @vex/admin/inputs export (separate entry point)
-export {
+  // Primitives (shadcn-based)
+  Button,
+  Card,
+  Input,
+  Select,
+  Checkbox,
+
+  // Input Primitives
   TextInput,
   TextareaInput,
   NumberInput,
@@ -1423,8 +1464,34 @@ export {
   DateInput,
   RelationshipInput,
   UploadInput,
-} from '@vex/admin/inputs';
+
+  // Field Components
+  TextField,
+  NumberField,
+  SelectField,
+  // ... etc
+
+  // Types
+  type FieldComponentProps,
+  type UseFieldReturn,
+  type UseFormReturn,
+  type FieldState,
+  type FormState,
+} from '@vexcms/ui';
+
+// @vexcms/admin-next re-exports ui + adds Next.js specific
+export {
+  // Re-export everything from @vexcms/ui
+  // Plus Next.js specific:
+  Sidebar,           // Uses next/link
+  createVexAdmin,    // Setup function
+} from '@vexcms/admin-next';
 ```
+
+**Usage:**
+- Import shared components from `@vexcms/ui` directly
+- Import from `@vexcms/admin-next` for convenience (re-exports ui + adds Next.js specific)
+- Users building custom admin views can use `@vexcms/ui` without the full admin package
 
 ---
 

@@ -681,17 +681,23 @@ Top-level config wrapper.
 
 ### Schema Generation Functions
 
-#### `buildConvexSchema(config: VexConfig): SchemaDefinition`
+> **Note:** Schema generation uses a two-file approach. See [06-convex-integration-spec.md](./06-convex-integration-spec.md) for full details on `vex.schema.ts` (auto-generated) and `schema.ts` (user-owned).
 
-Generates Convex schema from Vex config.
+#### `generateVexSchema(config: VexConfig): string`
+
+Generates the content for `convex/vex.schema.ts` file (TypeScript source code, not runtime objects).
 
 **Must accomplish:**
+- Generate TypeScript source code with defineTable() calls
+- Include header comment warning not to edit
+- Export each collection as a named export
+- Include all indexes and search indexes
+- Include validators for all fields
 - Traverse all collections and extract field validators
 - Handle nested structures (array, group, blocks) recursively
 - Add system fields (`_status`, `_version`) for versioned collections
 - Add CMS system tables (`vex_versions`, `vex_globals`)
 - Deduplicate block validators (same block used in multiple places)
-- Return valid input for Convex `defineSchema()`
 
 **Edge cases:**
 - Recursive blocks: blocks field containing reference to parent block type
@@ -699,6 +705,7 @@ Generates Convex schema from Vex config.
 - Optional vs required: wrap optional field validators with `v.optional()`
 - Relationship validation: verify referenced collections exist in config
 - Global storage: store in `vex_globals` table with `slug` field
+- Circular relationships: use v.id() with string table name, not import
 
 ---
 
@@ -830,12 +837,25 @@ Validates a value against field constraints.
 ├── utils.ts              # Utility functions
 └── index.ts              # Main entry point
 
-@vex/convex/
-├── schema.ts             # buildConvexSchema(), schema generation
-├── crud.ts               # CRUD mutation/query generators
+@vexcms/convex/
+├── schema/
+│   ├── generate.ts       # generateVexSchema() - creates vex.schema.ts content
+│   ├── sync.ts           # updateUserSchema() - updates schema.ts
+│   ├── parse.ts          # AST parsing utilities
+│   └── index.ts          # Schema generation exports
+├── handlers/
+│   ├── index.ts          # createVexHandlers() - admin CRUD
+│   └── ...
 ├── hooks.ts              # Hook execution utilities
 ├── access.ts             # Access control utilities
 └── index.ts              # Re-exports
+
+@vexcms/cli/
+├── commands/
+│   ├── sync.ts           # vex sync command
+│   └── init.ts           # vex init command (future)
+├── cli.ts                # Main CLI entry
+└── index.ts
 ```
 
 ---
