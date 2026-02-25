@@ -1,9 +1,9 @@
 {
-  "name": "z3-next",
+  "name": "test-app",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port=3010",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
