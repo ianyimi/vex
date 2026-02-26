@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -19,8 +23,21 @@
       }
     ],
     "paths": {
-      "~/*": ["./src/*"],
-      "@convex/*": ["./convex/*"]
+      "~/*": [
+        "./src/*"
+      ],
+      "@convex/*": [
+        "./convex/*"
+      ],
+      "@vexcms/core": [
+        "../../packages/core/src/index.ts"
+      ],
+      "@vexcms/ui": [
+        "../../packages/ui/src/index.ts"
+      ],
+      "@vexcms/admin-next": [
+        "../../packages/admin-next/src/index.ts"
+      ]
     }
   },
   "include": [
@@ -31,5 +48,7 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

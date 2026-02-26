@@ -14,6 +14,7 @@
   "dependencies": {
     "@vexcms/core": "workspace:*",
     "@vexcms/admin-next": "workspace:*",
+    "@vexcms/ui": "workspace:*",
     "@base-ui/react": "^1.1.0",
     "@convex-dev/better-auth": "^0.10.10",
     "@convex-dev/react-query": "^0.1.0",

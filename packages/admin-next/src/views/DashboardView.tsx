@@ -6,7 +6,7 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ config }: DashboardViewProps) {
-  const basePath = config.admin?.basePath ?? "/admin";
+  const basePath = config.basePath ?? "/admin";
 
   return (
     <div className="p-6">

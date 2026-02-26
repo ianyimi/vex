@@ -115,6 +115,7 @@ const combinedProps = mergeProps(propsFromParent, localProps);
 - **Consistent Naming**: Follow shadcn naming conventions (`DialogTrigger`, `DialogContent`, etc.)
 - **State Management**: Keep state local; lift only when needed by multiple components
 - **Minimal Props**: If a component needs many props, consider composition or splitting
+- **Visual Verification**: After implementing or modifying components, use the Playwright MCP to take screenshots and verify the UI is free of visual bugs (see [css.md](./css.md) for details)
 
 ### Related Standards
 

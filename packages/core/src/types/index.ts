@@ -183,8 +183,6 @@ export interface VexCollection<
  * Admin panel configuration
  */
 export interface AdminConfig {
-  /** Base path for admin routes (default: '/admin') */
-  basePath?: string;
   /** Collection slug to use for user authentication */
   user?: string;
   /** Page metadata */
@@ -198,6 +196,7 @@ export interface AdminConfig {
  * Top-level Vex CMS configuration
  */
 export interface VexConfig {
+  basePath: string;
   /** Array of collection definitions */
   collections: VexCollection<any>[];
   /** Admin panel configuration */

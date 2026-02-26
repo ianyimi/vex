@@ -2,6 +2,9 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@source "../../node_modules/@vexcms/ui/dist/**/*.js";
+@source "../../node_modules/@vexcms/admin-next/dist/**/*.js";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -66,6 +69,15 @@
   --input: 90% 0.003 240;
   --ring: 10% 0.003 240;
   --radius: 0.5rem;
+
+  --sidebar: 98% 0 0;
+  --sidebar-foreground: 3.9% 0.006 240;
+  --sidebar-primary: 10% 0.003 240;
+  --sidebar-primary-foreground: 98% 0 0;
+  --sidebar-accent: 95.9% 0.002 240;
+  --sidebar-accent-foreground: 10% 0.003 240;
+  --sidebar-border: 90% 0.003 240;
+  --sidebar-ring: 10% 0.003 240;
 }
 
 @layer base {

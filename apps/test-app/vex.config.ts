@@ -4,11 +4,11 @@ import { categories, posts, users } from "~/vexcms/collections"
 
 export default defineConfig({
   admin: {
-    basePath: "/admin",
     meta: {
       titleSuffix: " | Vex CMS",
     },
   },
+  basePath: "/admin",
   collections: [posts, users, categories],
 })
 

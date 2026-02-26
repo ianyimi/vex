@@ -123,6 +123,32 @@ Use `next-themes` for dark mode with Tailwind's `dark:` variant:
 <div className="bg-white dark:bg-slate-900" />
 ```
 
+### Monorepo @source Configuration (Tailwind v4)
+
+When scanning external workspace packages for Tailwind class names, **always use explicit glob patterns** in `@source` directives. Bare directory paths fail silently with Turbopack + pnpm symlinks:
+
+```css
+/* BAD - fails silently, responsive variants won't be generated */
+@source "../../node_modules/@vexcms/ui/dist"
+
+/* GOOD - explicit glob works reliably */
+@source "../../node_modules/@vexcms/ui/dist/**/*.js";
+```
+
+Symptoms of broken `@source`: elements with responsive classes like `hidden md:block` stay invisible, no `@media` rules in generated CSS.
+
+### Visual Verification with Playwright MCP
+
+A Playwright MCP server is available during development for visual UI verification. **Always use it after making UI/CSS changes** to confirm components render correctly:
+
+1. Navigate to the page: `browser_navigate` to `localhost:3010/...`
+2. Inspect structure: `browser_snapshot` for accessibility tree
+3. Verify visually: `browser_take_screenshot` to confirm appearance
+4. Test interactions: `browser_click` to verify click handlers, toggles, etc.
+5. Check console: `browser_console_messages` for JS errors
+
+Use `browser_evaluate` to inspect computed styles when debugging CSS issues. Use `browser_resize` to test responsive breakpoints.
+
 ### Best Practices
 
 - **Use design tokens**: Reference `--background`, `--primary`, etc. instead of hardcoded colors
@@ -131,6 +157,7 @@ Use `next-themes` for dark mode with Tailwind's `dark:` variant:
 - **Consistent spacing**: Use Tailwind's spacing scale (`p-4`, `gap-2`, `mt-6`)
 - **Responsive prefixes**: Use `sm:`, `md:`, `lg:` for responsive styles
 - **Keep specificity low**: Utility classes have low specificity by design
+- **Verify UI visually**: Use the Playwright MCP to screenshot and verify UI after changes
 
 ### Animation
 

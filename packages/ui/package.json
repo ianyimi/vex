@@ -13,6 +13,7 @@
   "files": [
     "dist"
   ],
+  "source": "./dist/**/*.js",
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -20,7 +21,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@vexcms/core": "workspace:*"
+    "@base-ui/react": "1.2.0",
+    "@vexcms/core": "workspace:*",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "lucide-react": "0.575.0",
+    "tailwind-merge": "3.5.0"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
