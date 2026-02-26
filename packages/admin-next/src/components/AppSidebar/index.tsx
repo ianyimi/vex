@@ -1,6 +1,6 @@
 "use client";
 
-import { NavMain } from "./nav-main";
+import { NavSection } from "./nav-section";
 import { NavProjects } from "./nav-projects";
 import { NavUser, NavUserData } from "./nav-user";
 import { TeamSwitcher } from "./team-switcher";
@@ -79,9 +79,46 @@ export function AppSidebar({
         });
       }
     });
+
+    const globals: CollectionNavItem[] = config.globals
+      .filter((g) => !g.config.admin?.group)
+      .map((g) => ({
+        title: g.config.fields[g.config.admin?.useAsTitle ?? g.slug],
+        url: `${config.basePath}/${g.slug}`,
+        slug: g.slug,
+      }));
+
+    const globalGroups: CollectionNavGroup[] = [];
+    config.globals.forEach((g) => {
+      if (!g.config.admin?.group) return;
+      const index = collectionGroups.findIndex(
+        (gg) => gg.title === g.config.admin!.group,
+      );
+      if (index < 0) {
+        globalGroups.push({
+          title: g.config.admin!.group,
+          items: [
+            {
+              title: g.slug,
+              url: `${config.basePath}/${g.slug}`,
+              slug: g.slug,
+            },
+          ],
+        });
+      } else {
+        globalGroups[index].items.push({
+          title: g.slug,
+          url: `${config.basePath}/${g.slug}`,
+          slug: g.slug,
+        });
+      }
+    });
+
     return {
       collections,
-      groups: collectionGroups,
+      collectionGroups,
+      globals,
+      globalGroups,
     };
   }, [config.collections]);
 
@@ -91,8 +128,10 @@ export function AppSidebar({
       {/*   <TeamSwitcher teams={data.teams} /> */}
       {/* </SidebarHeader> */}
       <SidebarContent>
-        <NavMain items={nav.groups} />
-        {/* <NavProjects projects={data.projects} /> */}
+        <NavSection title="Collections" items={nav.collectionGroups} />
+        {(!config.admin.sidebar.hideGlobals || config.globals.length > 0) && (
+          <NavSection title="Globals" items={nav.globalGroups} />
+        )}
       </SidebarContent>
       {user && (
         <SidebarFooter>

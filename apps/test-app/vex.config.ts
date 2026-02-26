@@ -5,8 +5,13 @@ import { categories, posts, users } from "~/vexcms/collections"
 export default defineConfig({
   admin: {
     meta: {
+      favicon: "/favicon/favicon.ico",
       titleSuffix: " | Vex CMS",
     },
+    sidebar: {
+      hideGlobals: true,
+    },
+    user: "users",
   },
   basePath: "/admin",
   collections: [posts, users, categories],

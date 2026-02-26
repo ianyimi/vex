@@ -16,9 +16,8 @@ import {
 import { ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
 
-export function NavMain({
-  items,
-}: {
+interface NavSectionProps {
+  title: string;
   items: {
     title: string;
     icon?: React.ReactNode;
@@ -28,10 +27,12 @@ export function NavMain({
       url: string;
     }[];
   }[];
-}) {
+}
+
+export function NavSection({ title, items }: NavSectionProps) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Collections</SidebarGroupLabel>
+      <SidebarGroupLabel>{title}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <Collapsible

@@ -26,6 +26,11 @@ export type {
   // Config types
   VexConfig,
   AdminConfig,
+  // Config input types
+  VexConfigInput,
+  AdminConfigInput,
+  AdminMetaInput,
+  AdminSidebarInput,
   // Field options
   TextFieldOptions,
   NumberFieldOptions,
