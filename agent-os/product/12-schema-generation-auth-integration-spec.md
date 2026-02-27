@@ -6,7 +6,7 @@ This document defines the implementation plan for Vex CMS schema generation from
 
 **Depends on**: [05-schema-field-system-spec.md](./05-schema-field-system-spec.md) - Field types and collection configuration
 
-**Supersedes (partially)**: [04-auth-adapter-spec.md](./04-auth-adapter-spec.md) - Replaces the abstract AuthAdapter interface with a concrete `betterAuth()` config slot; [06-convex-integration-spec.md](./06-convex-integration-spec.md) - Replaces schema generation sections
+**Supersedes (partially)**: [04-auth-adapter-spec.md](./04-auth-adapter-spec.md) - Replaces the abstract AuthAdapter interface with a concrete `vexBetterAuth()` config slot; [06-convex-integration-spec.md](./06-convex-integration-spec.md) - Replaces schema generation sections
 
 **Testing**: [11-testing-strategy-spec.md](./11-testing-strategy-spec.md) - Unit tests in `packages/core`
 
@@ -16,12 +16,13 @@ This document defines the implementation plan for Vex CMS schema generation from
 
 1. **Zero Convex dependency in core** — Schema generation outputs strings (`"v.string()"`) not runtime validators. `@vexcms/core` stays dependency-free.
 2. **Colocated field logic** — Each field type lives in its own subfolder with `config.ts` (user-facing builder) and `schema.ts` (validator string generator) side by side.
-3. **Auth as top-level config** — `auth` is a first-class slot on `VexConfig`, not a plugin. The `betterAuth()` function returns a typed auth adapter object.
-4. **Slug safety** — All table slugs (user collections, globals, auth tables, system tables) are validated for uniqueness before schema generation, with source-aware error messages.
-5. **Test-first** — Tests are written before implementations. Tests are colocated with the code they test inside `packages/core/src/`.
-6. **String codegen** — `generateVexSchema()` produces the full TypeScript source for `convex/vex.schema.ts`. No AST library needed for generation (only for `updateUserSchema`, which is out of scope for this spec).
-7. **Flexible indexes** — Users can declare indexes per-field (`index: "by_slug"`) or per-collection (`indexes: [...]`). Both produce `.index()` calls on the generated `defineTable()`.
-8. **User-extensible schema** — The generated `vex.schema.ts` exports named table definitions. Users import them in their own `schema.ts` and can chain additional `.index()`, `.searchIndex()`, or other Convex methods before passing to `defineSchema()`.
+3. **Auth as top-level config** — `auth` is a first-class slot on `VexConfig`, not a plugin. The `vexBetterAuth()` function accepts the full better-auth config and returns a typed auth adapter object.
+4. **Single source of truth for auth** — `@vexcms/better-auth` accepts the same `BetterAuthOptions` config users pass to `betterAuth()`. Users maintain one auth config, not three. The Vex package introspects it for schema generation, including `v.id()` on relationship fields.
+5. **Slug safety** — All table slugs (user collections, globals, auth tables, system tables) are validated for uniqueness before schema generation, with source-aware error messages.
+6. **Test-first** — Tests are written before implementations. Tests are colocated with the code they test inside `packages/core/src/`.
+7. **String codegen** — `generateVexSchema()` produces the full TypeScript source for the schema file. Output path is configurable via `schema.outputPath` (default: `"convex/vex.schema.ts"`). No AST library needed for generation.
+8. **Flexible indexes** — Users can declare indexes per-field (`index: "by_slug"`), per-collection (`indexes: [...]`), or they're auto-generated for `admin.useAsTitle` fields. All produce `.index()` calls on the generated `defineTable()`.
+9. **User-extensible schema** — The generated schema file exports named table definitions. Users import them in their own `schema.ts` and can chain additional `.index()`, `.searchIndex()`, or other Convex methods before passing to `defineSchema()`.
 
 ---
 
@@ -97,14 +98,13 @@ packages/core/src/
 ```
 packages/better-auth/                 # @vexcms/better-auth
 ├── src/
-│   ├── index.ts                      # betterAuth() factory
-│   ├── tables.ts                     # base auth table definitions
-│   ├── userFields.ts                 # base user fields
-│   └── plugins/
+│   ├── index.ts                      # vexBetterAuth(config) factory
+│   └── extract/
 │       ├── index.ts                  # re-exports
-│       ├── admin.ts                  # admin() plugin
-│       └── apiKey.ts                 # apiKey() plugin
-├── package.json
+│       ├── userFields.ts             # extractUserFields() + BASE_USER_FIELDS
+│       ├── tables.ts                 # extractTables() + buildBaseTables()
+│       └── plugins.ts                # extractPlugins() — maps better-auth plugins to VexAuthPlugins
+├── package.json                      # peerDependencies: better-auth, @vexcms/core
 ├── tsconfig.json
 └── tsup.config.ts
 ```
@@ -119,7 +119,7 @@ The `index` property is added to `BaseFieldMeta` (so it's available on all field
 
 Add `index` to `BaseFieldMeta`:
 
-```typescript
+````typescript
 /** Base metadata shared by all field types. */
 export interface BaseFieldMeta {
   /** The field type identifier. */
@@ -148,18 +148,27 @@ export interface BaseFieldMeta {
    */
   index?: string;
 }
-```
+````
 
-Add `index` to every field options interface (`TextFieldOptions`, `NumberFieldOptions`, `CheckboxFieldOptions`, `SelectFieldOptions`):
+Add a new `BaseFieldOptions` interface that all field options extend (parallel to `BaseFieldMeta`). This DRYs up the shared properties (`label`, `description`, `required`, `index`, `admin`) instead of duplicating them in every field options type:
 
-```typescript
-export interface TextFieldOptions {
+````typescript
+/**
+ * Base options shared by all field builders.
+ * Each specific field options interface extends this.
+ */
+export interface BaseFieldOptions {
+  /** Display label for the field. */
   label?: string;
+  /** Description text shown below the field. */
   description?: string;
+  /**
+   * Whether this field is required.
+   *
+   * Default: `false`
+   */
   required?: boolean;
-  defaultValue?: string;
-  minLength?: number;
-  maxLength?: number;
+  /** Admin UI configuration for this field. */
   admin?: FieldAdminConfig;
   /**
    * Create a database index on this field.
@@ -168,20 +177,43 @@ export interface TextFieldOptions {
    * @example
    * ```ts
    * slug: text({ index: "by_slug", required: true })
+   * // Generates: .index("by_slug", ["slug"])
    * ```
    */
   index?: string;
 }
 
-// Same pattern for NumberFieldOptions, CheckboxFieldOptions, SelectFieldOptions
-// — each gets an `index?: string` property.
-```
+// All field options now extend BaseFieldOptions:
+
+export interface TextFieldOptions extends BaseFieldOptions {
+  defaultValue?: string;
+  minLength?: number;
+  maxLength?: number;
+}
+
+export interface NumberFieldOptions extends BaseFieldOptions {
+  defaultValue?: number;
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
+export interface CheckboxFieldOptions extends BaseFieldOptions {
+  defaultValue?: boolean;
+}
+
+export interface SelectFieldOptions<T extends string> extends BaseFieldOptions {
+  options: readonly SelectOption<T>[];
+  defaultValue?: T;
+  hasMany?: boolean;
+}
+````
 
 **Changes to `packages/core/src/types/collections.ts`**:
 
 Add `IndexConfig` and `indexes` to `CollectionConfig`:
 
-```typescript
+````typescript
 /**
  * Index definition for a collection.
  * Compound indexes include multiple fields — order matters.
@@ -192,7 +224,10 @@ Add `IndexConfig` and `indexes` to `CollectionConfig`:
  * without requiring a type argument.
  */
 export interface IndexConfig<
-  TFields extends Record<string, VexField<any, any>> = Record<string, VexField<any, any>>,
+  TFields extends Record<string, VexField<any, any>> = Record<
+    string,
+    VexField<any, any>
+  >,
 > {
   /**
    * Index name (must be unique within the collection).
@@ -237,11 +272,11 @@ export interface CollectionConfig<
    *     { name: "bad", fields: ["nonexistent"] },                      // Type error!
    *   ],
    * })
-   * ```
+   *
    */
   indexes?: IndexConfig<TFields>[];
 }
-```
+````
 
 ---
 
@@ -260,12 +295,13 @@ import type { VexField, BaseFieldMeta } from "../types";
  * A field definition for auth infrastructure tables.
  * Uses validator strings since these tables are not user-configurable
  * through the Vex field system — they come from the auth provider.
+ *
+ * Optionality is encoded directly in the validator string itself
+ * (e.g., `"v.optional(v.string())"` vs `"v.string()"`).
  */
 export interface AuthFieldDefinition {
   /** Convex validator string, e.g. "v.string()", "v.optional(v.boolean())" */
   validator: string;
-  /** Whether this field is optional in the schema */
-  optional?: boolean;
 }
 
 /**
@@ -316,15 +352,15 @@ export interface VexAuthPlugin {
 }
 
 // =============================================================================
-// AUTH ADAPTER (returned by betterAuth())
+// AUTH ADAPTER (returned by vexBetterAuth())
 // =============================================================================
 
 /**
  * The auth adapter object stored in `VexConfig.auth`.
- * Returned by auth factory functions like `betterAuth()`.
+ * Returned by auth factory functions like `vexBetterAuth()`.
  *
  * This is NOT an abstract interface for multiple providers.
- * It's the concrete shape that `betterAuth()` returns.
+ * It's the concrete shape that `vexBetterAuth()` returns.
  * If a second auth provider is needed later, generalize this type then.
  */
 export interface VexAuthAdapter {
@@ -380,7 +416,29 @@ export type {
 // ADD this import at the top
 import type { VexAuthAdapter } from "../auth/types";
 
-// MODIFY VexConfig — add auth field
+/** Schema generation configuration. */
+export interface SchemaConfig {
+  /**
+   * Output path for the generated schema file, relative to project root.
+   *
+   * Default: `"convex/vex.schema.ts"`
+   */
+  outputPath: string;
+}
+
+/** Schema generation configuration input (all fields optional). */
+export interface SchemaConfigInput {
+  /**
+   * Output path for the generated schema file, relative to project root.
+   * Can change the filename (e.g., `"convex/generated-schema.ts"`) or
+   * the directory (e.g., `"src/convex/vex.schema.ts"`).
+   *
+   * Default: `"convex/vex.schema.ts"`
+   */
+  outputPath?: string;
+}
+
+// MODIFY VexConfig — add auth and schema fields
 export interface VexConfig {
   basePath: string;
   collections: VexCollection<any>[];
@@ -388,16 +446,20 @@ export interface VexConfig {
   admin: AdminConfig;
   /** Auth adapter configuration. Returns auth tables and user fields for schema generation. */
   auth?: VexAuthAdapter;
+  /** Schema generation configuration. */
+  schema: SchemaConfig;
 }
 
-// MODIFY VexConfigInput — add auth field
+// MODIFY VexConfigInput — add auth and schema fields
 export interface VexConfigInput {
   basePath?: string;
   collections?: VexCollection<any>[];
   globals?: VexGlobal<any>[];
   admin?: AdminConfigInput;
-  /** Auth adapter configuration (e.g., betterAuth({ ... })). */
+  /** Auth adapter configuration (e.g., vexBetterAuth(authConfig)). */
   auth?: VexAuthAdapter;
+  /** Schema generation configuration. */
+  schema?: SchemaConfigInput;
 }
 ```
 
@@ -690,15 +752,18 @@ export interface ResolvedIndex {
 }
 
 /**
- * Collects all indexes for a collection from two sources:
+ * Collects all indexes for a collection from three sources:
  * 1. Per-field `index` property on individual fields
  * 2. Collection-level `indexes` array on the collection config
+ * 3. Auto-generated index for `admin.useAsTitle` field (for fast admin panel title queries)
  *
  * Goal: Walk all fields in the collection, extract any `index` property from
  * field metadata, convert to ResolvedIndex format, then merge with
- * collection-level indexes. Deduplicate by index name — if a per-field
- * index and a collection-level index have the same name, the collection-level
- * definition wins (it's more explicit).
+ * collection-level indexes. If `admin.useAsTitle` is set and the referenced
+ * field doesn't already have an index (per-field or collection-level),
+ * auto-create one named `"by_<fieldName>"`. Deduplicate by index name — if a
+ * per-field index and a collection-level index have the same name, the
+ * collection-level definition wins (it's more explicit).
  *
  * @param collection - The collection to extract indexes from
  * @returns Array of resolved indexes, deduplicated by name
@@ -710,8 +775,13 @@ export interface ResolvedIndex {
  * - Multiple fields with same index name: error — two fields can't claim the same index name
  * - Collection-level index referencing non-existent field: warn but don't error (field may come from auth merge)
  * - Empty index name string on a field: skip (treat as no index)
+ * - admin.useAsTitle field already has an explicit index: don't duplicate, use the existing one
+ * - admin.useAsTitle field has no index: auto-create { name: "by_<fieldName>", fields: ["<fieldName>"] }
+ * - admin.useAsTitle is undefined: no auto-index generated
  */
-export function collectIndexes(collection: VexCollection<any>): ResolvedIndex[] {
+export function collectIndexes(
+  collection: VexCollection<any>,
+): ResolvedIndex[] {
   // TODO: implement
   throw new Error("Not implemented");
 }
@@ -721,7 +791,11 @@ export function collectIndexes(collection: VexCollection<any>): ResolvedIndex[] 
 
 ```typescript
 import type { VexField, BaseFieldMeta } from "../types";
-import type { VexAuthAdapter, AuthFieldDefinition, AuthTableDefinition } from "../auth/types";
+import type {
+  VexAuthAdapter,
+  AuthFieldDefinition,
+  AuthTableDefinition,
+} from "../auth/types";
 import type { VexCollection } from "../types";
 
 /**
@@ -797,9 +871,10 @@ export function mergeAuthFields(
  * - Plugin tableExtension references non-existent table: throw descriptive error
  * - Empty plugins array: return base tables unchanged
  */
-export function resolveAuthAdapter(
-  authAdapter: VexAuthAdapter,
-): { tables: AuthTableDefinition[]; userFields: Record<string, AuthFieldDefinition> } {
+export function resolveAuthAdapter(authAdapter: VexAuthAdapter): {
+  tables: AuthTableDefinition[];
+  userFields: Record<string, AuthFieldDefinition>;
+} {
   // TODO: implement
   throw new Error("Not implemented");
 }
@@ -807,7 +882,7 @@ export function resolveAuthAdapter(
 
 **File: `packages/core/src/schema/slugs.ts`**
 
-```typescript
+````typescript
 // =============================================================================
 // SLUG REGISTRY — tracks table slugs and their sources for conflict detection
 // =============================================================================
@@ -922,15 +997,17 @@ export class SlugRegistry {
  * - No globals: skip global registration
  * - Auth userCollection not found in collections: throw descriptive error
  */
-export function buildSlugRegistry(config: import("../types").VexConfig): SlugRegistry {
+export function buildSlugRegistry(
+  config: import("../types").VexConfig,
+): SlugRegistry {
   // TODO: implement
   throw new Error("Not implemented");
 }
-```
+````
 
 **File: `packages/core/src/schema/generate.ts`**
 
-```typescript
+````typescript
 import type { VexConfig } from "../types";
 
 /**
@@ -1004,7 +1081,7 @@ export function generateVexSchema(config: VexConfig): string {
   // TODO: implement
   throw new Error("Not implemented");
 }
-```
+````
 
 **File: `packages/core/src/schema/index.ts`**
 
@@ -1015,15 +1092,8 @@ export { mergeAuthFields, resolveAuthAdapter } from "./merge";
 export type { MergedFieldsResult } from "./merge";
 export { collectIndexes } from "./indexes";
 export type { ResolvedIndex } from "./indexes";
-export {
-  SlugRegistry,
-  buildSlugRegistry,
-} from "./slugs";
-export type {
-  SlugSource,
-  SlugRegistration,
-  SlugConflict,
-} from "./slugs";
+export { SlugRegistry, buildSlugRegistry } from "./slugs";
+export type { SlugSource, SlugRegistration, SlugConflict } from "./slugs";
 ```
 
 ---
@@ -1081,7 +1151,11 @@ export type {
   AdminConfigInput,
   AdminMetaInput,
   AdminSidebarInput,
+  // Schema config types
+  SchemaConfig,
+  SchemaConfigInput,
   // Field options
+  BaseFieldOptions,
   TextFieldOptions,
   NumberFieldOptions,
   CheckboxFieldOptions,
@@ -1169,7 +1243,12 @@ describe("numberToValidatorString", () => {
   });
 
   it("returns v.float64() regardless of min/max/step", () => {
-    const meta: NumberFieldMeta = { type: "number", min: 0, max: 100, step: 0.01 };
+    const meta: NumberFieldMeta = {
+      type: "number",
+      min: 0,
+      max: 100,
+      step: 0.01,
+    };
     expect(numberToValidatorString(meta)).toBe("v.float64()");
   });
 
@@ -1430,9 +1509,7 @@ describe("collectIndexes", () => {
       },
     });
     const indexes = collectIndexes(posts);
-    expect(indexes).toEqual([
-      { name: "by_slug", fields: ["slug"] },
-    ]);
+    expect(indexes).toEqual([{ name: "by_slug", fields: ["slug"] }]);
   });
 
   it("collects per-field indexes from multiple fields", () => {
@@ -1454,9 +1531,7 @@ describe("collectIndexes", () => {
         author: text({ required: true }),
         createdAt: number({ required: true }),
       },
-      indexes: [
-        { name: "by_author_date", fields: ["author", "createdAt"] },
-      ],
+      indexes: [{ name: "by_author_date", fields: ["author", "createdAt"] }],
     });
     const indexes = collectIndexes(posts);
     expect(indexes).toEqual([
@@ -1471,14 +1546,15 @@ describe("collectIndexes", () => {
         author: text({ required: true }),
         createdAt: number({ required: true }),
       },
-      indexes: [
-        { name: "by_author_date", fields: ["author", "createdAt"] },
-      ],
+      indexes: [{ name: "by_author_date", fields: ["author", "createdAt"] }],
     });
     const indexes = collectIndexes(posts);
     expect(indexes).toHaveLength(2);
     expect(indexes).toContainEqual({ name: "by_slug", fields: ["slug"] });
-    expect(indexes).toContainEqual({ name: "by_author_date", fields: ["author", "createdAt"] });
+    expect(indexes).toContainEqual({
+      name: "by_author_date",
+      fields: ["author", "createdAt"],
+    });
   });
 
   it("collection-level index wins on name collision with per-field index", () => {
@@ -1530,9 +1606,96 @@ describe("collectIndexes", () => {
       },
     });
     const indexes = collectIndexes(posts);
-    expect(indexes).toEqual([
-      { name: "by_status", fields: ["status"] },
-    ]);
+    expect(indexes).toEqual([{ name: "by_status", fields: ["status"] }]);
+  });
+
+  describe("auto-index for admin.useAsTitle", () => {
+    it("auto-creates index for useAsTitle field when no index exists", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text({ required: true }),
+          body: text(),
+        },
+        admin: {
+          useAsTitle: "title",
+        },
+      });
+      const indexes = collectIndexes(posts);
+      expect(indexes).toEqual([{ name: "by_title", fields: ["title"] }]);
+    });
+
+    it("does not duplicate when useAsTitle field already has a per-field index", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text({ required: true, index: "by_title" }),
+          body: text(),
+        },
+        admin: {
+          useAsTitle: "title",
+        },
+      });
+      const indexes = collectIndexes(posts);
+      expect(indexes).toHaveLength(1);
+      expect(indexes[0]).toEqual({ name: "by_title", fields: ["title"] });
+    });
+
+    it("does not duplicate when useAsTitle field is covered by a collection-level index", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text({ required: true }),
+          body: text(),
+        },
+        indexes: [{ name: "by_title", fields: ["title"] }],
+        admin: {
+          useAsTitle: "title",
+        },
+      });
+      const indexes = collectIndexes(posts);
+      expect(indexes).toHaveLength(1);
+    });
+
+    it("does not create auto-index when useAsTitle is not set", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text({ required: true }),
+        },
+      });
+      expect(collectIndexes(posts)).toEqual([]);
+    });
+
+    it("coexists with other indexes", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text({ required: true }),
+          slug: text({ required: true, index: "by_slug" }),
+        },
+        admin: {
+          useAsTitle: "title",
+        },
+      });
+      const indexes = collectIndexes(posts);
+      expect(indexes).toHaveLength(2);
+      expect(indexes).toContainEqual({ name: "by_slug", fields: ["slug"] });
+      expect(indexes).toContainEqual({ name: "by_title", fields: ["title"] });
+    });
+
+    it("skips auto-index if auto-generated name collides with existing index", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text({ required: true }),
+          slug: text({ required: true }),
+        },
+        // Explicit index named "by_title" that indexes slug, not title
+        indexes: [{ name: "by_title", fields: ["slug"] }],
+        admin: {
+          useAsTitle: "title",
+        },
+      });
+      const indexes = collectIndexes(posts);
+      // The explicit "by_title" wins — no auto-index added
+      expect(indexes).toHaveLength(1);
+      expect(indexes[0]).toEqual({ name: "by_title", fields: ["slug"] });
+    });
   });
 });
 ```
@@ -2104,14 +2267,14 @@ describe("generateVexSchema", () => {
           author: text({ required: true }),
           createdAt: number({ required: true }),
         },
-        indexes: [
-          { name: "by_author_date", fields: ["author", "createdAt"] },
-        ],
+        indexes: [{ name: "by_author_date", fields: ["author", "createdAt"] }],
       });
       const config = defineConfig({ collections: [posts] });
       const output = generateVexSchema(config);
 
-      expect(output).toContain('.index("by_author_date", ["author", "createdAt"])');
+      expect(output).toContain(
+        '.index("by_author_date", ["author", "createdAt"])',
+      );
     });
 
     it("generates both per-field and collection-level indexes", () => {
@@ -2121,15 +2284,15 @@ describe("generateVexSchema", () => {
           author: text({ required: true }),
           createdAt: number({ required: true }),
         },
-        indexes: [
-          { name: "by_author_date", fields: ["author", "createdAt"] },
-        ],
+        indexes: [{ name: "by_author_date", fields: ["author", "createdAt"] }],
       });
       const config = defineConfig({ collections: [posts] });
       const output = generateVexSchema(config);
 
       expect(output).toContain('.index("by_slug", ["slug"])');
-      expect(output).toContain('.index("by_author_date", ["author", "createdAt"])');
+      expect(output).toContain(
+        '.index("by_author_date", ["author", "createdAt"])',
+      );
     });
 
     it("does not generate .index() when no indexes defined", () => {
@@ -2142,6 +2305,22 @@ describe("generateVexSchema", () => {
       const output = generateVexSchema(config);
 
       expect(output).not.toContain(".index(");
+    });
+
+    it("auto-generates index for admin.useAsTitle field", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text({ required: true }),
+          body: text(),
+        },
+        admin: {
+          useAsTitle: "title",
+        },
+      });
+      const config = defineConfig({ collections: [posts] });
+      const output = generateVexSchema(config);
+
+      expect(output).toContain('.index("by_title", ["title"])');
     });
   });
 
@@ -2171,28 +2350,24 @@ describe("generateVexSchema", () => {
         {
           slug: "account",
           fields: {
-            userId: { validator: "v.string()" },
+            userId: { validator: 'v.id("users")' },
             accountId: { validator: "v.string()" },
             providerId: { validator: "v.string()" },
             createdAt: { validator: "v.float64()" },
             updatedAt: { validator: "v.float64()" },
           },
-          indexes: [
-            { name: "by_userId", fields: ["userId"] },
-          ],
+          indexes: [{ name: "by_userId", fields: ["userId"] }],
         },
         {
           slug: "session",
           fields: {
             token: { validator: "v.string()" },
-            userId: { validator: "v.string()" },
+            userId: { validator: 'v.id("users")' },
             expiresAt: { validator: "v.float64()" },
             createdAt: { validator: "v.float64()" },
             updatedAt: { validator: "v.float64()" },
           },
-          indexes: [
-            { name: "by_token", fields: ["token"] },
-          ],
+          indexes: [{ name: "by_token", fields: ["token"] }],
         },
       ],
       plugins: [],
@@ -2234,6 +2409,18 @@ describe("generateVexSchema", () => {
 
       expect(output).toContain('.index("by_userId", ["userId"])');
       expect(output).toContain('.index("by_token", ["token"])');
+    });
+
+    it("uses v.id() for relationship fields in auth tables", () => {
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: baseAuthAdapter,
+      });
+      const output = generateVexSchema(config);
+
+      // userId on account and session tables should use v.id("users")
+      // (based on the auth adapter's userCollection slug)
+      expect(output).toContain('userId: v.id("users")');
     });
 
     it("applies auth plugin field extensions", () => {
@@ -2402,6 +2589,7 @@ This section describes what each function must accomplish. The actual implementa
 **Goal:** Build a `v.union(v.literal(...), ...)` string from the options array. If `hasMany` is true, wrap the result in `v.array(...)`.
 
 **Steps:**
+
 1. Deduplicate option values
 2. Throw if options array is empty
 3. Escape quote characters in values
@@ -2416,6 +2604,7 @@ This section describes what each function must accomplish. The actual implementa
 **Goal:** Dispatch to the correct per-field validator function based on `field._meta.type`, then wrap in `v.optional(...)` if the field is not required.
 
 **Steps:**
+
 1. Read `field._meta.type`
 2. Switch on type: `"text"` → `textToValidatorString`, `"number"` → `numberToValidatorString`, `"checkbox"` → `checkboxToValidatorString`, `"select"` → `selectToValidatorString`
 3. If type is unrecognized, throw with the type string in the error message
@@ -2427,15 +2616,20 @@ This section describes what each function must accomplish. The actual implementa
 
 ### `collectIndexes`
 
-**Goal:** Gather all indexes for a collection from per-field `index` properties and collection-level `indexes` config. Deduplicate by name.
+**Goal:** Gather all indexes for a collection from per-field `index` properties, collection-level `indexes` config, and the auto-generated `useAsTitle` index. Deduplicate by name.
 
 **Steps:**
+
 1. Walk all fields in `collection.config.fields`
 2. For each field with a non-empty `_meta.index` string, create `{ name: meta.index, fields: [fieldName] }`
 3. Check for duplicate index names among per-field indexes — if two fields claim the same index name, throw
 4. Get collection-level indexes from `collection.config.indexes ?? []`
 5. Merge: collection-level indexes override per-field indexes with the same name
-6. Return the deduplicated array
+6. If `collection.config.admin?.useAsTitle` is set:
+   a. Check if the referenced field already has an index (either per-field or collection-level)
+   b. If no existing index covers that field, auto-create `{ name: "by_<fieldName>", fields: ["<fieldName>"] }`
+   c. If an auto-generated index name collides with an existing one, skip (the explicit one wins)
+7. Return the deduplicated array
 
 ---
 
@@ -2444,6 +2638,7 @@ This section describes what each function must accomplish. The actual implementa
 **Goal:** Group registrations by slug. Return entries where a slug has 2+ registrations.
 
 **Steps:**
+
 1. Build a Map<string, SlugRegistration[]> from all registrations
 2. Filter to entries with length > 1
 3. Return as SlugConflict[]
@@ -2461,6 +2656,7 @@ This section describes what each function must accomplish. The actual implementa
 **Goal:** Create a SlugRegistry and populate it from the full VexConfig.
 
 **Steps:**
+
 1. Create a new SlugRegistry
 2. Register each collection slug as `"user-collection"`
 3. Register each global slug as `"user-global"`
@@ -2477,6 +2673,7 @@ This section describes what each function must accomplish. The actual implementa
 **Goal:** Combine auth-provided userFields with user-defined collection fields for schema generation.
 
 **Steps:**
+
 1. If no auth adapter, convert all user fields to validator strings and return as `userOnly`
 2. Resolve auth adapter (apply plugin userFields)
 3. For each auth userField: if user also defines it → `overlapping`; if not → `authOnly`
@@ -2491,6 +2688,7 @@ This section describes what each function must accomplish. The actual implementa
 **Goal:** Apply all auth plugin contributions to produce the final tables and userFields.
 
 **Steps:**
+
 1. Deep copy base tables and userFields
 2. For each plugin in order:
    a. Merge plugin.userFields into accumulated userFields
@@ -2502,28 +2700,32 @@ This section describes what each function must accomplish. The actual implementa
 
 ### `generateVexSchema`
 
-**Goal:** Produce the complete `vex.schema.ts` TypeScript source string.
+**Goal:** Produce the complete schema TypeScript source string (written to `config.schema.outputPath`).
 
 **Steps:**
+
 1. Build slug registry from config and validate (throws on conflicts)
 2. Resolve auth adapter if present
-3. Build the header (warning comment + imports)
+3. Build the header (warning comment referencing output path + imports)
 4. For each collection:
    a. If this is the auth user collection, use merged fields (auth + user)
    b. Otherwise, convert user fields via `fieldToValidatorString`
-   c. Collect indexes via `collectIndexes()` (for non-auth collections)
+   c. Collect indexes via `collectIndexes()` — includes per-field, collection-level, and auto-generated `useAsTitle` indexes
    d. Generate `export const <slug> = defineTable({ ... })`
    e. Chain `.index(...)` calls for each resolved index
 5. For each auth infrastructure table:
-   a. Generate `export const <slug> = defineTable({ ... })`
+   a. Generate `export const <slug> = defineTable({ ... })` — relationship fields use `v.id()` as provided by the auth adapter
    b. Chain `.index(...)` calls for each index definition
 6. Join all parts with newlines and return
 
 **Edge cases to handle:**
+
 - Empty fields object → `defineTable({})` (valid but unusual)
 - Auth table with no indexes → no `.index()` calls
 - Multiple indexes on one table → chain `.index()` calls
 - Per-field indexes on the auth user collection → collected from the user's field definitions (not from auth fields, which use raw validator strings)
+- Auth table relationship fields → output `v.id("<slug>")` as the validator string (already encoded by the auth adapter)
+- `admin.useAsTitle` on a collection → auto-generates `by_<fieldName>` index if none exists on that field
 
 ---
 
@@ -2534,7 +2736,14 @@ The generated `vex.schema.ts` exports **named table definitions**. Users import 
 ```typescript
 // convex/schema.ts (user-owned)
 import { defineSchema } from "convex/server";
-import { posts, users, account, session, verification, jwks } from "./vex.schema";
+import {
+  posts,
+  users,
+  account,
+  session,
+  verification,
+  jwks,
+} from "./vex.schema";
 
 export default defineSchema({
   // Use as-is
@@ -2565,40 +2774,109 @@ This works because Convex's `defineTable()` returns an object with chainable `.i
 
 This package is out of scope for the `@vexcms/core` tests but is defined here for completeness. It will be implemented as a separate package.
 
-### `betterAuth(options): VexAuthAdapter`
+### Design Principle: Single Source of Truth
 
-**Factory function that returns a VexAuthAdapter.**
+The `@vexcms/better-auth` package accepts the **same better-auth config** that users pass to `betterAuth()` from the `better-auth` library. This means:
+
+1. Users maintain their auth config in **one place** (not three: server plugin + client plugin + vex config)
+2. The Vex package **introspects** the config to extract: table slugs (`modelName`), plugins, `additionalFields`
+3. Relationship fields (e.g., `userId` on account/session) use `v.id("<collectionSlug>")` based on the actual `modelName` values from the config
+4. When users add/remove/modify better-auth plugins, the Vex schema updates automatically
+
+### `vexBetterAuth(config): VexAuthAdapter`
+
+**Factory function that accepts a better-auth config and returns a VexAuthAdapter.**
+
+The function reads the better-auth config to determine:
+- Table slugs from `user.modelName`, `session.modelName`, `account.modelName`, `verification.modelName`
+- User additional fields from `user.additionalFields`
+- Which plugins are active and what fields/tables they contribute
 
 ```typescript
 // packages/better-auth/src/index.ts
-import type { VexAuthAdapter, VexAuthPlugin } from "@vexcms/core";
-import { BASE_USER_FIELDS } from "./userFields";
-import { BASE_TABLES } from "./tables";
+import type { BetterAuthOptions } from "better-auth";
+import type { VexAuthAdapter } from "@vexcms/core";
+import { extractUserFields } from "./extract/userFields";
+import { extractTables } from "./extract/tables";
+import { extractPlugins } from "./extract/plugins";
 
-export interface BetterAuthOptions {
-  /** Which collection slug represents the user table */
-  userCollection: string;
-  /** Better-auth sub-plugins to activate */
-  plugins?: VexAuthPlugin[];
-}
+/**
+ * Create a VexAuthAdapter from a better-auth config.
+ *
+ * Accepts the exact same config object you pass to `betterAuth()`.
+ * Introspects the config to extract table definitions, field schemas,
+ * and plugin contributions for Convex schema generation.
+ *
+ * @param config - The better-auth configuration object
+ * @returns A VexAuthAdapter for use in `defineConfig({ auth: ... })`
+ *
+ * Goal: Read the better-auth config and produce a VexAuthAdapter that
+ * accurately reflects all tables, fields, indexes, and plugin contributions.
+ * Uses v.id("<slug>") for relationship fields based on actual modelName values.
+ *
+ * Edge cases:
+ * - No plugins: return base tables + user fields only
+ * - Custom modelName: use the custom slug for v.id() references
+ * - additionalFields on user: merge into userFields
+ * - Plugin adds new table: include in tables array
+ * - Plugin extends existing table: include in plugins[].tableExtensions
+ */
+export function vexBetterAuth(config: BetterAuthOptions): VexAuthAdapter {
+  // Read model names (with better-auth defaults)
+  const userSlug = config.user?.modelName ?? "user";
+  const sessionSlug = config.session?.modelName ?? "session";
+  const accountSlug = config.account?.modelName ?? "account";
+  const verificationSlug = config.verification?.modelName ?? "verification";
 
-export function betterAuth(options: BetterAuthOptions): VexAuthAdapter {
   return {
     name: "better-auth",
-    userCollection: options.userCollection,
-    userFields: { ...BASE_USER_FIELDS },
-    tables: [...BASE_TABLES],
-    plugins: options.plugins ?? [],
+    userCollection: userSlug,
+    userFields: extractUserFields(config),
+    tables: extractTables(config, {
+      userSlug,
+      sessionSlug,
+      accountSlug,
+      verificationSlug,
+    }),
+    plugins: extractPlugins(config.plugins ?? []),
   };
 }
 ```
 
-### Base user fields
+### Extract user fields
 
 ```typescript
-// packages/better-auth/src/userFields.ts
+// packages/better-auth/src/extract/userFields.ts
+import type { BetterAuthOptions } from "better-auth";
 import type { AuthFieldDefinition } from "@vexcms/core";
 
+/**
+ * Extract user fields from the better-auth config.
+ *
+ * Combines the base user fields (name, email, emailVerified, etc.)
+ * with any `user.additionalFields` from the config.
+ *
+ * Goal: Produce a complete map of all fields on the user table.
+ * For additionalFields, map better-auth field types to Convex validators:
+ *   - "string" → "v.string()" or "v.optional(v.string())"
+ *   - "number" → "v.float64()" or "v.optional(v.float64())"
+ *   - "boolean" → "v.boolean()" or "v.optional(v.boolean())"
+ *   - "string[]" → "v.array(v.string())" etc.
+ * Use `required` flag on additionalField to determine v.optional() wrapping.
+ *
+ * Edge cases:
+ * - No additionalFields: return base fields only
+ * - additionalField overrides a base field name: additionalField wins
+ * - Unknown type string: throw with descriptive error
+ */
+export function extractUserFields(
+  config: BetterAuthOptions,
+): Record<string, AuthFieldDefinition> {
+  // TODO: implement
+  throw new Error("Not implemented");
+}
+
+/** Base user fields that better-auth always creates. */
 export const BASE_USER_FIELDS: Record<string, AuthFieldDefinition> = {
   name: { validator: "v.string()" },
   email: { validator: "v.string()" },
@@ -2607,110 +2885,168 @@ export const BASE_USER_FIELDS: Record<string, AuthFieldDefinition> = {
   username: { validator: "v.optional(v.union(v.null(), v.string()))" },
   displayUsername: { validator: "v.optional(v.union(v.null(), v.string()))" },
   phoneNumber: { validator: "v.optional(v.union(v.null(), v.string()))" },
-  phoneNumberVerified: { validator: "v.optional(v.union(v.null(), v.boolean()))" },
+  phoneNumberVerified: {
+    validator: "v.optional(v.union(v.null(), v.boolean()))",
+  },
   isAnonymous: { validator: "v.optional(v.union(v.null(), v.boolean()))" },
-  twoFactorEnabled: { validator: "v.optional(v.union(v.null(), v.boolean()))" },
-  userId: { validator: "v.optional(v.union(v.null(), v.string()))" },
+  twoFactorEnabled: {
+    validator: "v.optional(v.union(v.null(), v.boolean()))",
+  },
   createdAt: { validator: "v.float64()" },
   updatedAt: { validator: "v.float64()" },
 };
 ```
 
-### Base tables
+### Extract tables
 
 ```typescript
-// packages/better-auth/src/tables.ts
+// packages/better-auth/src/extract/tables.ts
+import type { BetterAuthOptions } from "better-auth";
 import type { AuthTableDefinition } from "@vexcms/core";
 
-export const BASE_TABLES: AuthTableDefinition[] = [
-  {
-    slug: "account",
-    fields: {
-      accessToken: { validator: "v.optional(v.string())" },
-      accessTokenExpiresAt: { validator: "v.optional(v.float64())" },
-      accountId: { validator: "v.string()" },
-      createdAt: { validator: "v.float64()" },
-      idToken: { validator: "v.optional(v.string())" },
-      password: { validator: "v.optional(v.string())" },
-      providerId: { validator: "v.string()" },
-      refreshToken: { validator: "v.optional(v.string())" },
-      refreshTokenExpiresAt: { validator: "v.optional(v.float64())" },
-      scope: { validator: "v.optional(v.string())" },
-      updatedAt: { validator: "v.float64()" },
-      userId: { validator: "v.string()" },
-    },
-    indexes: [
-      { name: "by_userId", fields: ["userId"] },
-      { name: "by_accountId", fields: ["accountId"] },
-    ],
-  },
-  {
-    slug: "session",
-    fields: {
-      createdAt: { validator: "v.float64()" },
-      expiresAt: { validator: "v.float64()" },
-      ipAddress: { validator: "v.optional(v.string())" },
-      token: { validator: "v.string()" },
-      updatedAt: { validator: "v.float64()" },
-      userAgent: { validator: "v.optional(v.string())" },
-      userId: { validator: "v.string()" },
-    },
-    indexes: [
-      { name: "by_token", fields: ["token"] },
-    ],
-  },
-  {
-    slug: "verification",
-    fields: {
-      createdAt: { validator: "v.float64()" },
-      expiresAt: { validator: "v.float64()" },
-      identifier: { validator: "v.string()" },
-      updatedAt: { validator: "v.float64()" },
-      value: { validator: "v.string()" },
-    },
-    indexes: [
-      { name: "by_identifier", fields: ["identifier"] },
-      { name: "by_expiresAt", fields: ["expiresAt"] },
-    ],
-  },
-  {
-    slug: "jwks",
-    fields: {
-      createdAt: { validator: "v.float64()" },
-      privateKey: { validator: "v.optional(v.string())" },
-      publicKey: { validator: "v.string()" },
-    },
-  },
-];
-```
-
-### Admin plugin
-
-```typescript
-// packages/better-auth/src/plugins/admin.ts
-import type { VexAuthPlugin } from "@vexcms/core";
-
-export interface AdminPluginOptions {
-  adminRoles?: string[];
-  defaultRole?: string;
+interface TableSlugs {
+  userSlug: string;
+  sessionSlug: string;
+  accountSlug: string;
+  verificationSlug: string;
 }
 
-export function admin(options?: AdminPluginOptions): VexAuthPlugin {
-  return {
-    name: "admin",
-    userFields: {
-      banned: { validator: "v.optional(v.boolean())" },
-      banExpires: { validator: "v.optional(v.float64())" },
-      banReason: { validator: "v.optional(v.string())" },
-      role: { validator: "v.array(v.string())" },
+/**
+ * Extract auth infrastructure tables from the better-auth config.
+ *
+ * Uses the actual modelName slugs to generate v.id() references
+ * on relationship fields (e.g., userId on account → v.id("user")).
+ *
+ * Goal: Build the table definitions for account, session, verification,
+ * and jwks tables. Relationship fields use v.id("<slug>") so that
+ * Convex enforces referential integrity.
+ *
+ * Edge cases:
+ * - Custom modelNames: v.id() uses the custom slug, not the default
+ * - jwks table has no configurable modelName: always "jwks"
+ */
+export function extractTables(
+  config: BetterAuthOptions,
+  slugs: TableSlugs,
+): AuthTableDefinition[] {
+  // TODO: implement
+  throw new Error("Not implemented");
+}
+
+/**
+ * Build the base tables using v.id() for relationship fields.
+ *
+ * Example: account table's userId field becomes:
+ *   { validator: "v.id(\"user\")" }  when userSlug is "user"
+ *   { validator: "v.id(\"users\")" } when userSlug is "users"
+ */
+export function buildBaseTables(slugs: TableSlugs): AuthTableDefinition[] {
+  return [
+    {
+      slug: slugs.accountSlug,
+      fields: {
+        accessToken: { validator: "v.optional(v.string())" },
+        accessTokenExpiresAt: { validator: "v.optional(v.float64())" },
+        accountId: { validator: "v.string()" },
+        createdAt: { validator: "v.float64()" },
+        idToken: { validator: "v.optional(v.string())" },
+        password: { validator: "v.optional(v.string())" },
+        providerId: { validator: "v.string()" },
+        refreshToken: { validator: "v.optional(v.string())" },
+        refreshTokenExpiresAt: { validator: "v.optional(v.float64())" },
+        scope: { validator: "v.optional(v.string())" },
+        updatedAt: { validator: "v.float64()" },
+        userId: { validator: `v.id("${slugs.userSlug}")` },
+      },
+      indexes: [
+        { name: "by_userId", fields: ["userId"] },
+        { name: "by_accountId", fields: ["accountId"] },
+      ],
     },
-    tableExtensions: {
-      session: {
-        impersonatedBy: { validator: "v.optional(v.string())" },
+    {
+      slug: slugs.sessionSlug,
+      fields: {
+        createdAt: { validator: "v.float64()" },
+        expiresAt: { validator: "v.float64()" },
+        ipAddress: { validator: "v.optional(v.string())" },
+        token: { validator: "v.string()" },
+        updatedAt: { validator: "v.float64()" },
+        userAgent: { validator: "v.optional(v.string())" },
+        userId: { validator: `v.id("${slugs.userSlug}")` },
+      },
+      indexes: [{ name: "by_token", fields: ["token"] }],
+    },
+    {
+      slug: slugs.verificationSlug,
+      fields: {
+        createdAt: { validator: "v.float64()" },
+        expiresAt: { validator: "v.float64()" },
+        identifier: { validator: "v.string()" },
+        updatedAt: { validator: "v.float64()" },
+        value: { validator: "v.string()" },
+      },
+      indexes: [
+        { name: "by_identifier", fields: ["identifier"] },
+        { name: "by_expiresAt", fields: ["expiresAt"] },
+      ],
+    },
+    {
+      slug: "jwks",
+      fields: {
+        createdAt: { validator: "v.float64()" },
+        privateKey: { validator: "v.optional(v.string())" },
+        publicKey: { validator: "v.string()" },
       },
     },
-  };
+  ];
 }
+```
+
+### Extract plugins
+
+```typescript
+// packages/better-auth/src/extract/plugins.ts
+import type { VexAuthPlugin } from "@vexcms/core";
+
+/**
+ * Extract VexAuthPlugin contributions from better-auth plugin instances.
+ *
+ * Goal: Iterate over the active better-auth plugins and, for each known
+ * plugin type (admin, apiKey, twoFactor, etc.), produce a VexAuthPlugin
+ * with the correct userFields, tables, and tableExtensions.
+ *
+ * The function inspects each plugin's `id` property to determine which
+ * Vex schema contributions it makes. Unknown plugins are skipped with
+ * a console.warn (they may not affect the schema).
+ *
+ * Edge cases:
+ * - Unknown plugin id: warn and skip (no schema impact)
+ * - Admin plugin: adds banned, banExpires, banReason, role to user; impersonatedBy to session
+ * - API key plugin: adds api_key table
+ * - Two-factor plugin: adds twoFactor fields to user, twoFactor table
+ * - Empty plugins array: return empty array
+ */
+export function extractPlugins(plugins: any[]): VexAuthPlugin[] {
+  // TODO: implement
+  throw new Error("Not implemented");
+}
+```
+
+### Package structure
+
+```
+packages/better-auth/                 # @vexcms/better-auth
+├── src/
+│   ├── index.ts                      # vexBetterAuth() factory
+│   ├── extract/
+│   │   ├── userFields.ts             # extractUserFields() + BASE_USER_FIELDS
+│   │   ├── tables.ts                 # extractTables() + buildBaseTables()
+│   │   └── plugins.ts                # extractPlugins() — maps better-auth plugins to VexAuthPlugins
+│   └── extract/
+│       └── index.ts                  # re-exports
+├── package.json                      # peerDependencies: better-auth, @vexcms/core
+├── tsconfig.json
+└── tsup.config.ts
 ```
 
 ---
@@ -2740,7 +3076,7 @@ export const posts = defineCollection("posts", {
     author: text({ label: "Author", required: true }),
     publishedAt: number({ label: "Published At" }),
   },
-  // Compound indexes go here
+  // Compound indexes go here — type-checked against field names
   indexes: [
     { name: "by_author_status", fields: ["author", "status"] },
     { name: "by_status_published", fields: ["status", "publishedAt"] },
@@ -2748,29 +3084,73 @@ export const posts = defineCollection("posts", {
   labels: { singular: "Post", plural: "Posts" },
   admin: {
     group: "Content",
-    useAsTitle: "title",
+    useAsTitle: "title", // auto-creates "by_title" index if not already defined
     defaultColumns: ["title", "status", "featured"],
   },
 });
 ```
 
-And the full `vex.config.ts`:
+The auth setup is defined once and shared between better-auth and Vex:
 
 ```typescript
+// src/auth/config.ts (shared auth config — single source of truth)
+import type { BetterAuthOptions } from "better-auth";
+import { admin } from "better-auth/plugins";
+
+export const authConfig: BetterAuthOptions = {
+  emailAndPassword: { enabled: true },
+  user: {
+    modelName: "user",
+    additionalFields: {
+      role: {
+        type: "string[]",
+        defaultValue: ["user"],
+        required: true,
+      },
+    },
+  },
+  session: { modelName: "session" },
+  account: { modelName: "account" },
+  verification: { modelName: "verification" },
+  plugins: [
+    admin({ adminRoles: ["admin"], defaultRole: "user" }),
+  ],
+};
+```
+
+```typescript
+// convex/auth/index.ts (server — uses the shared config)
+import { betterAuth } from "better-auth";
+import { convexAdapter } from "./adapter";
+import { authConfig } from "../../src/auth/config";
+
+export const createAuth = (ctx) =>
+  betterAuth({
+    ...authConfig,
+    database: convexAdapter(ctx, schema),
+    secret: process.env.BETTER_AUTH_SECRET,
+    baseURL: process.env.SITE_URL,
+    trustedOrigins: [process.env.SITE_URL!],
+  });
+```
+
+```typescript
+// vex.config.ts (Vex — also uses the shared config)
 import { defineConfig } from "@vexcms/core";
-import { betterAuth } from "@vexcms/better-auth";
-import { admin } from "@vexcms/better-auth/plugins";
+import { vexBetterAuth } from "@vexcms/better-auth";
+import { authConfig } from "./src/auth/config";
 import { posts, users, categories } from "./collections";
 
 export default defineConfig({
   collections: [posts, users, categories],
 
-  auth: betterAuth({
-    userCollection: "users",
-    plugins: [
-      admin({ adminRoles: ["admin"], defaultRole: "user" }),
-    ],
-  }),
+  // Pass the same config — Vex introspects it for schema generation
+  auth: vexBetterAuth(authConfig),
+
+  schema: {
+    // Optional: override output path (default: "convex/vex.schema.ts")
+    // outputPath: "convex/generated/vex.schema.ts",
+  },
 
   admin: {
     user: "users",
@@ -2779,9 +3159,17 @@ export default defineConfig({
 });
 ```
 
+With this setup:
+- Users maintain their auth config in **one file** (`src/auth/config.ts`)
+- The server uses it with `betterAuth()` (adding runtime-only options like `database`, `secret`)
+- Vex uses it with `vexBetterAuth()` to introspect tables, fields, and plugins for schema generation
+- Adding/removing a better-auth plugin automatically updates the Vex schema
+- Relationship fields use `v.id("user")` based on the actual `modelName` from the config
+
 The generated `vex.schema.ts` will include:
-- All collection tables with per-field and collection-level indexes
-- Auth infrastructure tables (account, session, verification, jwks) with their indexes
+
+- All collection tables with per-field, collection-level, and auto-generated `useAsTitle` indexes
+- Auth infrastructure tables (account, session, verification, jwks) with `v.id()` relationship fields and their indexes
 - Auth plugin extensions (admin fields on users, impersonatedBy on session)
 
 And the user's `schema.ts` can extend any table with additional Convex config.
@@ -2797,9 +3185,9 @@ All tests in `packages/core/src/`:
 - [ ] `fields/checkbox/schema.test.ts` — checkbox validator generation
 - [ ] `fields/select/schema.test.ts` — select validator generation (single, multi, empty, dedupe, escape)
 - [ ] `schema/extract.test.ts` — dispatcher with required/optional wrapping, index ignored
-- [ ] `schema/indexes.test.ts` — per-field indexes, collection-level indexes, dedup, collision detection
+- [ ] `schema/indexes.test.ts` — per-field indexes, collection-level indexes, dedup, collision detection, useAsTitle auto-index
 - [ ] `schema/slugs.test.ts` — slug registry, conflict detection, buildSlugRegistry
 - [ ] `schema/merge.test.ts` — auth field merging, plugin resolution
-- [ ] `schema/generate.test.ts` — full schema generation with indexes, auth, various configs
+- [ ] `schema/generate.test.ts` — full schema generation with indexes (including useAsTitle auto-index), auth (with v.id() relationship fields), various configs
 
 Run with: `pnpm --filter @vexcms/core test`
