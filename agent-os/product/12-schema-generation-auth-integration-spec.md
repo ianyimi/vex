@@ -45,38 +45,59 @@ After this spec is implemented, `packages/core/src/` will look like:
 ```
 packages/core/src/
 ├── index.ts                          # Main entry — re-exports everything
+├── errors/
+│   ├── index.ts                      # re-exports all error types
+│   └── errors.ts                     # VexError base + subclasses
 ├── config/
 │   ├── defineCollection.ts           # existing (unchanged)
-│   ├── defineConfig.ts               # MODIFIED — add auth slot, slug validation
+│   ├── defineConfig.ts               # MODIFIED — auth required, schema config, slug validation
 │   └── defineGlobal.ts               # existing (unchanged)
 ├── fields/
 │   ├── index.ts                      # re-exports all field builders + validators
 │   ├── text/
-│   │   ├── index.ts                  # re-exports config + schema
+│   │   ├── index.ts                  # re-exports config + schema + admin/
 │   │   ├── config.ts                 # text() builder (moved from fields/text.ts)
 │   │   ├── schema.ts                 # textToValidatorString()
-│   │   └── schema.test.ts            # tests for text validator generation
+│   │   ├── schema.test.ts            # tests for text validator generation
+│   │   └── admin/
+│   │       ├── index.ts              # re-exports input + zod
+│   │       ├── input.ts              # TextFieldInput component (stub — next spec)
+│   │       └── zod.ts                # textFieldZodSchema() (stub — next spec)
 │   ├── number/
 │   │   ├── index.ts
 │   │   ├── config.ts                 # number() builder (moved)
 │   │   ├── schema.ts                 # numberToValidatorString()
-│   │   └── schema.test.ts
+│   │   ├── schema.test.ts
+│   │   └── admin/
+│   │       ├── index.ts              # re-exports input + zod
+│   │       ├── input.ts              # NumberFieldInput component (stub — next spec)
+│   │       └── zod.ts                # numberFieldZodSchema() (stub — next spec)
 │   ├── checkbox/
 │   │   ├── index.ts
 │   │   ├── config.ts                 # checkbox() builder (moved)
 │   │   ├── schema.ts                 # checkboxToValidatorString()
-│   │   └── schema.test.ts
+│   │   ├── schema.test.ts
+│   │   └── admin/
+│   │       ├── index.ts              # re-exports input + zod
+│   │       ├── input.ts              # CheckboxFieldInput component (stub — next spec)
+│   │       └── zod.ts                # checkboxFieldZodSchema() (stub — next spec)
 │   └── select/
 │       ├── index.ts
 │       ├── config.ts                 # select() builder (moved)
 │       ├── schema.ts                 # selectToValidatorString()
-│       └── schema.test.ts
+│       ├── schema.test.ts
+│       └── admin/
+│           ├── index.ts              # re-exports input + zod
+│           ├── input.ts              # SelectFieldInput component (stub — next spec)
+│           └── zod.ts                # selectFieldZodSchema() (stub — next spec)
 ├── schema/
 │   ├── index.ts                      # re-exports generate, extract, merge, slugs, indexes
 │   ├── generate.ts                   # generateVexSchema(config) → string
 │   ├── generate.test.ts              # tests for full schema generation
 │   ├── extract.ts                    # fieldToValidatorString() dispatcher
 │   ├── extract.test.ts               # tests for the dispatcher
+│   ├── validate.ts                   # validateFieldConfig() — shared field validation util
+│   ├── validate.test.ts              # tests for field validation
 │   ├── indexes.ts                    # collectIndexes() — gathers per-field + collection-level indexes
 │   ├── indexes.test.ts               # tests for index collection and dedup
 │   ├── merge.ts                      # mergeAuthFields()
@@ -103,7 +124,7 @@ packages/better-auth/                 # @vexcms/better-auth
 │       ├── index.ts                  # re-exports
 │       ├── userFields.ts             # extractUserFields() + BASE_USER_FIELDS
 │       ├── tables.ts                 # extractTables() + buildBaseTables()
-│       └── plugins.ts                # extractPlugins() — maps better-auth plugins to VexAuthPlugins
+│       └── plugins.ts                # resolvePluginContributions() — resolves plugin fields/tables internally
 ├── package.json                      # peerDependencies: better-auth, @vexcms/core
 ├── tsconfig.json
 └── tsup.config.ts
@@ -246,6 +267,23 @@ export interface CollectionConfig<
   TFields extends Record<string, VexField<any, any>>,
 > {
   fields: TFields;
+  /**
+   * Override the Convex table name for this collection.
+   * By default, the collection's slug is used as the table name.
+   * Use this when you want a different table name in the database
+   * than the slug used in admin panel URLs.
+   *
+   * @example
+   * ```ts
+   * defineCollection("blog_posts", {
+   *   tableName: "posts", // Convex table is "posts", admin URL uses "blog_posts"
+   *   fields: { ... },
+   * })
+   * ```
+   *
+   * Default: the collection slug
+   */
+  tableName?: string;
   labels?: {
     singular?: string;
     plural?: string;
@@ -329,35 +367,17 @@ export interface AuthTableDefinition {
 }
 
 // =============================================================================
-// AUTH PLUGIN (sub-plugins like admin(), apiKey())
-// =============================================================================
-
-/**
- * An auth sub-plugin that contributes additional fields or tables.
- * For example, the better-auth `admin()` plugin adds `banned`, `role`
- * fields to the user table and `impersonatedBy` to sessions.
- */
-export interface VexAuthPlugin {
-  /** Plugin identifier (e.g., "admin", "api-key", "two-factor") */
-  name: string;
-  /** Additional fields to merge into the user collection */
-  userFields?: Record<string, AuthFieldDefinition>;
-  /** Additional auth infrastructure tables */
-  tables?: AuthTableDefinition[];
-  /**
-   * Field modifications to existing auth tables.
-   * Key is the table slug, value is a record of field name → definition.
-   */
-  tableExtensions?: Record<string, Record<string, AuthFieldDefinition>>;
-}
-
-// =============================================================================
 // AUTH ADAPTER (returned by vexBetterAuth())
 // =============================================================================
 
 /**
  * The auth adapter object stored in `VexConfig.auth`.
- * Returned by auth factory functions like `vexBetterAuth()`.
+ * Returned by `vexBetterAuth()`.
+ *
+ * This is the **fully resolved** output — all plugin contributions
+ * (additional user fields, table extensions, extra tables) have already
+ * been applied by `vexBetterAuth()` before this object is created.
+ * Core never needs to know about auth sub-plugins.
  *
  * This is NOT an abstract interface for multiple providers.
  * It's the concrete shape that `vexBetterAuth()` returns.
@@ -374,23 +394,20 @@ export interface VexAuthAdapter {
   userCollection: string;
 
   /**
-   * Fields that the auth provider adds to the user collection.
-   * These are the "base" user fields from the auth provider.
+   * All fields that the auth provider adds to the user collection.
+   * Already includes contributions from all active auth plugins
+   * (e.g., admin plugin's `banned`, `role` fields).
    * Uses validator strings, not VexField, because they're schema-only.
    */
   userFields: Record<string, AuthFieldDefinition>;
 
   /**
-   * Auth infrastructure tables (account, session, verification, jwks, etc.).
+   * All auth infrastructure tables (account, session, verification, jwks, etc.).
+   * Already includes plugin-contributed tables and field extensions
+   * (e.g., admin plugin's `impersonatedBy` on session).
    * These are added to vex.schema.ts but NOT shown in the admin sidebar.
    */
   tables: AuthTableDefinition[];
-
-  /**
-   * Active auth sub-plugins.
-   * Each plugin can contribute additional userFields, tables, or tableExtensions.
-   */
-  plugins: VexAuthPlugin[];
 }
 ```
 
@@ -401,16 +418,95 @@ export type {
   AuthFieldDefinition,
   AuthIndexDefinition,
   AuthTableDefinition,
-  VexAuthPlugin,
   VexAuthAdapter,
 } from "./types";
 ```
 
 ---
 
+### Custom Error Types
+
+**File: `packages/core/src/errors/errors.ts`**
+
+```typescript
+/**
+ * Base error class for all Vex CMS errors.
+ * Provides consistent error formatting with a [vex] prefix.
+ */
+export class VexError extends Error {
+  constructor(message: string) {
+    super(`[vex] ${message}`);
+    this.name = "VexError";
+  }
+}
+
+/**
+ * Thrown when a duplicate table slug is detected during schema generation.
+ * Includes both registrations so the user can identify the conflict.
+ */
+export class VexSlugConflictError extends VexError {
+  constructor(
+    public readonly slug: string,
+    public readonly existingSource: string,
+    public readonly existingLocation: string,
+    public readonly newSource: string,
+    public readonly newLocation: string,
+  ) {
+    super(
+      `Duplicate table slug "${slug}":\n` +
+      `  - ${existingSource}: ${existingLocation}\n` +
+      `  - ${newSource}: ${newLocation}\n` +
+      `Rename one of these to resolve the conflict.`,
+    );
+    this.name = "VexSlugConflictError";
+  }
+}
+
+/**
+ * Thrown when a field fails validation during schema generation.
+ * For example: required field with no defaultValue, or wrong defaultValue type.
+ */
+export class VexFieldValidationError extends VexError {
+  constructor(
+    public readonly collectionSlug: string,
+    public readonly fieldName: string,
+    public readonly detail: string,
+  ) {
+    super(
+      `Field "${fieldName}" in collection "${collectionSlug}": ${detail}`,
+    );
+    this.name = "VexFieldValidationError";
+  }
+}
+
+/**
+ * Thrown when auth configuration is invalid.
+ * For example: userCollection not found in collections.
+ */
+export class VexAuthConfigError extends VexError {
+  constructor(detail: string) {
+    super(`Auth configuration error: ${detail}`);
+    this.name = "VexAuthConfigError";
+  }
+}
+```
+
+**File: `packages/core/src/errors/index.ts`**
+
+```typescript
+export {
+  VexError,
+  VexSlugConflictError,
+  VexFieldValidationError,
+  VexAuthConfigError,
+} from "./errors";
+```
+
+---
+
 ### Modified Config Types
 
-**Changes to `packages/core/src/types/index.ts`** — add `auth?` to `VexConfig` and `VexConfigInput`:
+**Changes to `packages/core/src/types/index.ts`** — auth is required, add schema config:
 
 ```typescript
 // ADD this import at the top
@@ -438,26 +534,29 @@ export interface SchemaConfigInput {
   outputPath?: string;
 }
 
-// MODIFY VexConfig — add auth and schema fields
+// MODIFY VexConfig — add auth (required) and schema fields
 export interface VexConfig {
   basePath: string;
   collections: VexCollection<any>[];
   globals: VexGlobal<any>[];
   admin: AdminConfig;
-  /** Auth adapter configuration. Returns auth tables and user fields for schema generation. */
-  auth?: VexAuthAdapter;
+  /** Auth adapter — required. Use `vexBetterAuth(authConfig)` to create. */
+  auth: VexAuthAdapter;
   /** Schema generation configuration. */
   schema: SchemaConfig;
 }
 
-// MODIFY VexConfigInput — add auth and schema fields
+// MODIFY VexConfigInput — auth is required, schema is optional
 export interface VexConfigInput {
   basePath?: string;
   collections?: VexCollection<any>[];
   globals?: VexGlobal<any>[];
   admin?: AdminConfigInput;
-  /** Auth adapter configuration (e.g., vexBetterAuth(authConfig)). */
-  auth?: VexAuthAdapter;
+  /**
+   * Auth adapter — **required**. Pass `vexBetterAuth(authConfig)`.
+   * Vex requires auth configuration to generate the schema.
+   */
+  auth: VexAuthAdapter;
   /** Schema generation configuration. */
   schema?: SchemaConfigInput;
 }
@@ -482,19 +581,25 @@ import type { TextFieldMeta } from "../../types";
 
 /**
  * Converts text field metadata to a Convex validator string.
+ * Calls validateFieldConfig() to check required/defaultValue, then wraps in v.optional() if needed.
  *
- * @returns `"v.string()"` — always. Optional wrapping is handled by the caller.
+ * @returns `"v.string()"` or `"v.optional(v.string())"`
  *
- * Goal: Return the inner validator string for a text field.
+ * Goal: Validate config, then return the validator string for a text field.
  * minLength/maxLength are runtime validation concerns, not schema constraints.
  *
  * Edge cases:
- * - No options provided: still returns "v.string()"
- * - minLength/maxLength have no effect on the validator (Convex has no string length validators)
+ * - required=true + no defaultValue: throws VexFieldValidationError
+ * - required=true + defaultValue is not a string: throws VexFieldValidationError
  * - index property has no effect on the validator (handled by index collection)
  */
-export function textToValidatorString(meta: TextFieldMeta): string {
-  // TODO: implement
+export function textToValidatorString(
+  meta: TextFieldMeta,
+  collectionSlug: string,
+  fieldName: string,
+): string {
+  // TODO: implement — call validateFieldConfig(meta, collectionSlug, fieldName, "string")
+  // then return wrapOptional("v.string()", result.isOptional)
   throw new Error("Not implemented");
 }
 ```
@@ -506,18 +611,25 @@ import type { NumberFieldMeta } from "../../types";
 
 /**
  * Converts number field metadata to a Convex validator string.
+ * Calls validateFieldConfig() to check required/defaultValue, then wraps in v.optional() if needed.
  *
- * @returns `"v.float64()"` — always. Convex uses float64 for all numbers.
+ * @returns `"v.float64()"` or `"v.optional(v.float64())"`
  *
- * Goal: Return the inner validator string for a number field.
+ * Goal: Validate config, then return the validator string for a number field.
  * min/max/step are runtime validation concerns.
  *
  * Edge cases:
- * - No options: still returns "v.float64()"
+ * - required=true + no defaultValue: throws VexFieldValidationError
+ * - required=true + defaultValue is not a number: throws VexFieldValidationError
  * - Integer-only fields: no Convex integer validator, still float64
  */
-export function numberToValidatorString(meta: NumberFieldMeta): string {
-  // TODO: implement
+export function numberToValidatorString(
+  meta: NumberFieldMeta,
+  collectionSlug: string,
+  fieldName: string,
+): string {
+  // TODO: implement — call validateFieldConfig(meta, collectionSlug, fieldName, "number")
+  // then return wrapOptional("v.float64()", result.isOptional)
   throw new Error("Not implemented");
 }
 ```
@@ -529,17 +641,23 @@ import type { CheckboxFieldMeta } from "../../types";
 
 /**
  * Converts checkbox field metadata to a Convex validator string.
+ * Calls validateFieldConfig() to check required/defaultValue, then wraps in v.optional() if needed.
  *
- * @returns `"v.boolean()"` — always.
+ * @returns `"v.boolean()"` or `"v.optional(v.boolean())"`
  *
- * Goal: Return the inner validator string for a checkbox field.
+ * Goal: Validate config, then return the validator string for a checkbox field.
  *
  * Edge cases:
- * - Checkbox is never truly "required" in the HTML sense (it's always true/false)
- * - defaultValue has no effect on the validator
+ * - required=true + no defaultValue: throws VexFieldValidationError
+ * - required=true + defaultValue is not a boolean: throws VexFieldValidationError
  */
-export function checkboxToValidatorString(meta: CheckboxFieldMeta): string {
-  // TODO: implement
+export function checkboxToValidatorString(
+  meta: CheckboxFieldMeta,
+  collectionSlug: string,
+  fieldName: string,
+): string {
+  // TODO: implement — call validateFieldConfig(meta, collectionSlug, fieldName, "boolean")
+  // then return wrapOptional("v.boolean()", result.isOptional)
   throw new Error("Not implemented");
 }
 ```
@@ -551,22 +669,30 @@ import type { SelectFieldMeta } from "../../types";
 
 /**
  * Converts select field metadata to a Convex validator string.
+ * Calls validateFieldConfig() to check required/defaultValue, then wraps in v.optional() if needed.
  *
- * @returns One of:
+ * @returns One of (each may be wrapped in v.optional()):
  * - Single select: `'v.union(v.literal("draft"), v.literal("published"))'`
  * - Multi select (hasMany): `'v.array(v.union(v.literal("draft"), v.literal("published")))'`
  *
- * Goal: Build a union of literal validators from the options array.
- * If hasMany is true, wrap the union in v.array().
+ * Goal: Validate config (including that defaultValue is one of the option values),
+ * then build a union of literal validators. If hasMany is true, wrap in v.array().
  *
  * Edge cases:
+ * - required=true + no defaultValue: throws VexFieldValidationError
+ * - required=true + defaultValue not in option values: throws VexFieldValidationError
  * - Single option: `v.union(v.literal("only"))` — Convex accepts single-arg union
- * - Empty options array: should throw — caller should validate before calling
+ * - Empty options array: should throw
  * - Duplicate option values: deduplicate before generating literals
- * - Options with special characters in values: values are string literals, escape quotes
+ * - Options with special characters in values: escape quotes
  */
-export function selectToValidatorString(meta: SelectFieldMeta<string>): string {
-  // TODO: implement
+export function selectToValidatorString(
+  meta: SelectFieldMeta<string>,
+  collectionSlug: string,
+  fieldName: string,
+): string {
+  // TODO: implement — for select, validateFieldConfig uses special "select" type
+  // and checks defaultValue against the options array values
   throw new Error("Not implemented");
 }
 ```
@@ -575,13 +701,14 @@ export function selectToValidatorString(meta: SelectFieldMeta<string>): string {
 
 ### Per-Field Index Files
 
-Each field subfolder re-exports both the config builder and the schema function.
+Each field subfolder re-exports the config builder, schema function, and admin component.
 
 **File: `packages/core/src/fields/text/index.ts`**
 
 ```typescript
 export { text } from "./config";
 export { textToValidatorString } from "./schema";
+// export { TextFieldInput, textFieldZodSchema } from "./admin"; // uncomment when admin spec is implemented
 ```
 
 **File: `packages/core/src/fields/text/config.ts`**
@@ -688,6 +815,166 @@ export function select<T extends string = string>(
 }
 ```
 
+### Per-Field Admin Subfolders (Stubs)
+
+Each field subfolder contains an `admin/` directory with two concerns:
+
+1. **`input.ts`** — React component that renders the form input for this field type in the admin panel
+2. **`zod.ts`** — Function that produces a Zod schema fragment for this field type, used by TanStack Form for client-side validation
+
+These are **stubs** — the full implementation is covered in the next spec (admin form generation).
+
+The admin input components read the field's `_meta` to determine rendering behavior:
+- `admin.hidden` → don't render
+- `admin.readOnly` → render as disabled
+- `admin.position` → "main" or "sidebar" placement
+- `admin.width` → "full" or "half" width
+- `admin.placeholder` → input placeholder text
+- `admin.description` → helper text below input
+
+The zod schema functions read the field's `_meta` to produce the correct validation:
+- `required` → `z.string()` vs `z.string().optional()`
+- `minLength` / `maxLength` → `z.string().min(n).max(n)`
+- `min` / `max` → `z.number().min(n).max(n)`
+- `options` → `z.enum([...])` for select fields
+
+A dynamic form renderer in the admin panel will iterate over a collection's fields config, call each field's zod function to build a combined schema, and render the matching input component. TanStack Form handles state management and validation; Convex mutations handle persistence.
+
+**File: `packages/core/src/fields/text/admin/index.ts`** (stub)
+
+```typescript
+// export { TextFieldInput } from "./input";
+// export { textFieldZodSchema } from "./zod";
+```
+
+**File: `packages/core/src/fields/text/admin/input.ts`** (stub)
+
+```typescript
+// Text field admin input component.
+// Renders a text input (single line) or textarea (if configured).
+// Respects: label, placeholder, description, readOnly, hidden, width, position.
+// Validates: minLength, maxLength at the form level.
+// Implementation in next spec.
+```
+
+**File: `packages/core/src/fields/text/admin/zod.ts`** (stub)
+
+```typescript
+// import type { TextFieldMeta } from "../../../types";
+// import { z } from "zod";
+//
+// Produces a Zod schema for a text field based on its _meta.
+//
+// Examples:
+//   required, minLength: 1, maxLength: 200  → z.string().min(1).max(200)
+//   optional, no constraints                → z.string().optional()
+//   required, no constraints                → z.string()
+//
+// Implementation in next spec.
+```
+
+**File: `packages/core/src/fields/number/admin/index.ts`** (stub)
+
+```typescript
+// export { NumberFieldInput } from "./input";
+// export { numberFieldZodSchema } from "./zod";
+```
+
+**File: `packages/core/src/fields/number/admin/input.ts`** (stub)
+
+```typescript
+// Number field admin input component.
+// Renders a numeric input with optional step/min/max constraints.
+// Respects: label, placeholder, description, readOnly, hidden, width, position.
+// Validates: min, max, step at the form level.
+// Implementation in next spec.
+```
+
+**File: `packages/core/src/fields/number/admin/zod.ts`** (stub)
+
+```typescript
+// import type { NumberFieldMeta } from "../../../types";
+// import { z } from "zod";
+//
+// Produces a Zod schema for a number field based on its _meta.
+//
+// Examples:
+//   required, min: 0, max: 100  → z.number().min(0).max(100)
+//   optional, step: 0.01        → z.number().optional()
+//   required, no constraints    → z.number()
+//
+// Implementation in next spec.
+```
+
+**File: `packages/core/src/fields/checkbox/admin/index.ts`** (stub)
+
+```typescript
+// export { CheckboxFieldInput } from "./input";
+// export { checkboxFieldZodSchema } from "./zod";
+```
+
+**File: `packages/core/src/fields/checkbox/admin/input.ts`** (stub)
+
+```typescript
+// Checkbox field admin input component.
+// Renders a toggle/checkbox control.
+// Respects: label, description, readOnly, hidden, width, position.
+// Implementation in next spec.
+```
+
+**File: `packages/core/src/fields/checkbox/admin/zod.ts`** (stub)
+
+```typescript
+// import type { CheckboxFieldMeta } from "../../../types";
+// import { z } from "zod";
+//
+// Produces a Zod schema for a checkbox field based on its _meta.
+//
+// Examples:
+//   required (always has default)  → z.boolean()
+//   optional                       → z.boolean().optional()
+//
+// Implementation in next spec.
+```
+
+**File: `packages/core/src/fields/select/admin/index.ts`** (stub)
+
+```typescript
+// export { SelectFieldInput } from "./input";
+// export { selectFieldZodSchema } from "./zod";
+```
+
+**File: `packages/core/src/fields/select/admin/input.ts`** (stub)
+
+```typescript
+// Select field admin input component.
+// Renders a dropdown (single) or multi-select (hasMany) control.
+// Options come from the field's _meta.options array.
+// Respects: label, description, readOnly, hidden, width, position.
+// Implementation in next spec.
+```
+
+**File: `packages/core/src/fields/select/admin/zod.ts`** (stub)
+
+```typescript
+// import type { SelectFieldMeta } from "../../../types";
+// import { z } from "zod";
+//
+// Produces a Zod schema for a select field based on its _meta.
+//
+// Examples:
+//   required, single-select   → z.enum(["draft", "published"])
+//   optional, single-select   → z.enum(["draft", "published"]).optional()
+//   required, hasMany          → z.array(z.enum(["tag1", "tag2"]))
+//   optional, hasMany          → z.array(z.enum(["tag1", "tag2"])).optional()
+//
+// If defaultValue is set, validated against options in validateFieldConfig.
+//
+// Implementation in next spec.
+```
+
+---
+
 **Updated `packages/core/src/fields/index.ts`**
 
 ```typescript
@@ -708,6 +995,61 @@ export { selectToValidatorString } from "./select";
 
 ### Schema Functions
 
+**File: `packages/core/src/schema/validate.ts`**
+
+```typescript
+import type { BaseFieldMeta } from "../types";
+import { VexFieldValidationError } from "../errors";
+
+/**
+ * Validation result for a field's config.
+ * Used by per-field validator functions to determine optional wrapping.
+ */
+export interface FieldValidationResult {
+  /** Whether the field should be wrapped in v.optional() */
+  isOptional: boolean;
+}
+
+/**
+ * Validates a field's configuration and determines if it should be optional.
+ * Called by each per-field validator function before generating the validator string.
+ *
+ * Checks:
+ * 1. If required=true and defaultValue is undefined → throw VexFieldValidationError
+ * 2. If defaultValue is provided, verify it matches the expected type → throw VexFieldValidationError
+ *
+ * @param meta - The field metadata to validate
+ * @param collectionSlug - The collection slug (for error messages)
+ * @param fieldName - The field name (for error messages)
+ * @param expectedType - The expected typeof for defaultValue (e.g., "string", "number", "boolean")
+ * @returns FieldValidationResult with isOptional flag
+ *
+ * Edge cases:
+ * - required=true, no defaultValue: throw
+ * - required=true, defaultValue present and correct type: isOptional=false
+ * - required=false or undefined: isOptional=true
+ * - defaultValue wrong type: throw regardless of required
+ * - Select fields: expectedType validation is handled differently (checked against option values)
+ */
+export function validateFieldConfig(
+  meta: BaseFieldMeta & { defaultValue?: unknown },
+  collectionSlug: string,
+  fieldName: string,
+  expectedType: string,
+): FieldValidationResult {
+  // TODO: implement
+  throw new Error("Not implemented");
+}
+
+/**
+ * Wraps a validator string in v.optional() if the field is optional.
+ * Convenience helper used after validateFieldConfig().
+ */
+export function wrapOptional(validator: string, isOptional: boolean): string {
+  return isOptional ? `v.optional(${validator})` : validator;
+}
+```
+
 **File: `packages/core/src/schema/extract.ts`**
 
 ```typescript
@@ -717,20 +1059,26 @@ import type { VexField, BaseFieldMeta } from "../types";
  * Converts a VexField to its Convex validator string representation.
  * Dispatches to the appropriate per-field validator function based on `_meta.type`.
  *
- * If the field is not required (required is falsy or undefined), wraps
- * the validator in `v.optional(...)`.
+ * Each per-field function handles its own validation (via validateFieldConfig())
+ * and its own v.optional() wrapping. This dispatcher just routes by type.
  *
  * Goal: Central dispatcher that maps field type → validator string.
  * This function is called by generateVexSchema() for each field in each collection.
  *
+ * @param field - The VexField to convert
+ * @param collectionSlug - The collection slug (passed through for error messages)
+ * @param fieldName - The field name (passed through for error messages)
+ *
  * Edge cases:
  * - Unknown field type: throw with descriptive error including the type string
- * - required=true: return raw validator, no v.optional() wrapper
- * - required=false or required=undefined: wrap in v.optional()
- * - Checkbox fields: always optional unless explicitly required (booleans default to undefined in Convex)
  * - index property on _meta: ignored here — handled by collectIndexes()
+ * - Validation (required/defaultValue) is handled inside each per-field function
  */
-export function fieldToValidatorString(field: VexField<any, any>): string {
+export function fieldToValidatorString(
+  field: VexField<any, any>,
+  collectionSlug: string,
+  fieldName: string,
+): string {
   // TODO: implement
   throw new Error("Not implemented");
 }
@@ -794,7 +1142,6 @@ import type { VexField, BaseFieldMeta } from "../types";
 import type {
   VexAuthAdapter,
   AuthFieldDefinition,
-  AuthTableDefinition,
 } from "../auth/types";
 import type { VexCollection } from "../types";
 
@@ -831,50 +1178,26 @@ export interface MergedFieldsResult {
 /**
  * Merges auth-provided user fields with a user-defined collection's fields.
  *
+ * The auth adapter's userFields are already fully resolved (all plugin
+ * contributions applied by vexBetterAuth() before this is called).
+ *
  * Goal: Combine the auth adapter's userFields (which define the database schema)
  * with the user's collection fields (which define admin UI behavior).
  * For schema generation, auth validators take precedence on overlapping fields.
  * For admin UI, the user's field metadata takes precedence.
  *
- * @param authAdapter - The auth adapter with userFields and plugin contributions
+ * @param authAdapter - The auth adapter with fully resolved userFields
  * @param collection - The user's collection that maps to the user table
  * @returns Merged fields result with source tracking
  *
  * Edge cases:
- * - No auth adapter: return user fields converted to validator strings
  * - Auth field conflicts with user field: auth validator wins (it controls the DB shape)
- * - Auth plugin adds field that user also defines: same merge — auth validator wins
  * - User defines field auth doesn't know about (e.g., "postCount"): added as user-only
- * - Multiple auth plugins adding same field: last plugin wins (plugins applied in order)
  */
 export function mergeAuthFields(
-  authAdapter: VexAuthAdapter | undefined,
+  authAdapter: VexAuthAdapter,
   collection: VexCollection<any>,
 ): MergedFieldsResult {
-  // TODO: implement
-  throw new Error("Not implemented");
-}
-
-/**
- * Resolves all auth infrastructure tables, applying plugin extensions.
- *
- * Goal: Start with the base auth tables, then for each plugin:
- * - Add any new tables from the plugin
- * - Merge any tableExtensions into existing tables
- * - Add any userFields from the plugin into the adapter's userFields
- *
- * @param authAdapter - The auth adapter to resolve
- * @returns Fully resolved tables and userFields
- *
- * Edge cases:
- * - Plugin adds table with same slug as base table: merge fields, don't duplicate
- * - Plugin tableExtension references non-existent table: throw descriptive error
- * - Empty plugins array: return base tables unchanged
- */
-export function resolveAuthAdapter(authAdapter: VexAuthAdapter): {
-  tables: AuthTableDefinition[];
-  userFields: Record<string, AuthFieldDefinition>;
-} {
   // TODO: implement
   throw new Error("Not implemented");
 }
@@ -883,8 +1206,10 @@ export function resolveAuthAdapter(authAdapter: VexAuthAdapter): {
 **File: `packages/core/src/schema/slugs.ts`**
 
 ````typescript
+import { VexSlugConflictError, VexAuthConfigError } from "../errors";
+
 // =============================================================================
-// SLUG REGISTRY — tracks table slugs and their sources for conflict detection
+// SLUG REGISTRY — tracks table slugs and validates uniqueness on register
 // =============================================================================
 
 /**
@@ -894,7 +1219,6 @@ export type SlugSource =
   | "user-collection"
   | "user-global"
   | "auth-table"
-  | "auth-user-collection"
   | "system";
 
 /**
@@ -908,75 +1232,41 @@ export interface SlugRegistration {
 }
 
 /**
- * A detected slug collision.
- */
-export interface SlugConflict {
-  slug: string;
-  registrations: SlugRegistration[];
-}
-
-/**
  * Registry that collects all table slugs and validates uniqueness.
+ * Throws immediately on duplicate — fail fast during schema generation.
  */
 export class SlugRegistry {
-  private registrations: SlugRegistration[] = [];
+  private registrations = new Map<string, SlugRegistration>();
 
   /**
    * Register a slug with its source.
-   */
-  register(slug: string, source: SlugSource, location: string): void {
-    this.registrations.push({ slug, source, location });
-  }
-
-  /**
-   * Find all slug collisions.
-   * A collision is when two or more registrations share the same slug.
-   *
-   * @returns Array of conflicts. Empty array means no collisions.
-   */
-  findConflicts(): SlugConflict[] {
-    // TODO: implement
-    throw new Error("Not implemented");
-  }
-
-  /**
-   * Validate that no slugs collide. Throws if conflicts are found.
-   *
-   * Goal: Check all registered slugs for duplicates. If any exist,
-   * throw an error with a message listing each conflict, showing the
-   * slug name and all sources that registered it.
-   *
-   * Error format example:
-   * ```
-   * [vex] Duplicate table slugs detected:
-   *
-   *   "account" is defined in multiple places:
-   *     - auth-table: @vexcms/better-auth (account table)
-   *     - user-collection: src/vexcms/collections/account.ts
-   *
-   *   "user" is defined in multiple places:
-   *     - auth-user-collection: @vexcms/better-auth (user table mapped to "users" collection)
-   *     - user-collection: src/vexcms/collections/user.ts
-   * ```
+   * Throws VexSlugConflictError immediately if the slug is already registered.
    *
    * Edge cases:
-   * - No registrations: no error
-   * - All unique: no error
-   * - The auth userCollection slug should NOT conflict with the user collection slug
-   *   because they ARE the same table (the auth maps onto the user's collection)
+   * - The auth userCollection slug should NOT be registered separately
+   *   because it maps onto an existing user collection (same slug)
    * - System table prefixed with "vex_" should not conflict with user tables
    *   because defineCollection already warns about "vex_" prefix
    */
-  validate(): void {
-    // TODO: implement
-    throw new Error("Not implemented");
+  register(slug: string, source: SlugSource, location: string): void {
+    const existing = this.registrations.get(slug);
+    if (existing) {
+      throw new VexSlugConflictError(
+        slug,
+        existing.source,
+        existing.location,
+        source,
+        location,
+      );
+    }
+    this.registrations.set(slug, { slug, source, location });
   }
 
   /**
    * Get all registered slugs.
    */
   getAll(): SlugRegistration[] {
-    return [...this.registrations];
+    return [...this.registrations.values()];
   }
 }
 
@@ -989,13 +1279,14 @@ export class SlugRegistry {
  * 3. Auth infrastructure tables (source: "auth-table")
  * 4. System tables like vex_globals (source: "system")
  *
+ * Each register() call throws immediately on duplicate slug.
+ *
  * Note: The auth adapter's userCollection is NOT registered separately
  * because it maps onto an existing user collection (same slug).
  *
  * Edge cases:
- * - No auth adapter: skip auth table registration
  * - No globals: skip global registration
- * - Auth userCollection not found in collections: throw descriptive error
+ * - Auth userCollection not found in collections: throw VexAuthConfigError
  */
 export function buildSlugRegistry(
   config: import("../types").VexConfig,
@@ -1088,12 +1379,14 @@ export function generateVexSchema(config: VexConfig): string {
 ```typescript
 export { generateVexSchema } from "./generate";
 export { fieldToValidatorString } from "./extract";
-export { mergeAuthFields, resolveAuthAdapter } from "./merge";
+export { validateFieldConfig, wrapOptional } from "./validate";
+export type { FieldValidationResult } from "./validate";
+export { mergeAuthFields } from "./merge";
 export type { MergedFieldsResult } from "./merge";
 export { collectIndexes } from "./indexes";
 export type { ResolvedIndex } from "./indexes";
 export { SlugRegistry, buildSlugRegistry } from "./slugs";
-export type { SlugSource, SlugRegistration, SlugConflict } from "./slugs";
+export type { SlugSource, SlugRegistration } from "./slugs";
 ```
 
 ---
@@ -1115,7 +1408,7 @@ export { select } from "./fields/select";
 // Schema generation
 export { generateVexSchema } from "./schema";
 export { fieldToValidatorString } from "./schema";
-export { mergeAuthFields, resolveAuthAdapter } from "./schema";
+export { mergeAuthFields } from "./schema";
 export { collectIndexes } from "./schema";
 export { SlugRegistry, buildSlugRegistry } from "./schema";
 
@@ -1165,7 +1458,6 @@ export type {
 // Auth types
 export type {
   VexAuthAdapter,
-  VexAuthPlugin,
   AuthTableDefinition,
   AuthFieldDefinition,
   AuthIndexDefinition,
@@ -1177,8 +1469,15 @@ export type {
   ResolvedIndex,
   SlugSource,
   SlugRegistration,
-  SlugConflict,
 } from "./schema";
+
+// Error types
+export {
+  VexError,
+  VexSlugConflictError,
+  VexFieldValidationError,
+  VexAuthConfigError,
+} from "./errors";
 ```
 
 ---
@@ -1197,19 +1496,19 @@ import { textToValidatorString } from "./schema";
 import type { TextFieldMeta } from "../../types";
 
 describe("textToValidatorString", () => {
-  it("returns v.string() for a basic text field", () => {
+  it("returns v.string() for a required text field", () => {
+    const meta: TextFieldMeta = { type: "text", required: true, defaultValue: "x" };
+    expect(textToValidatorString(meta, "posts", "title")).toBe("v.string()");
+  });
+
+  it("returns v.optional(v.string()) for an optional text field", () => {
     const meta: TextFieldMeta = { type: "text" };
-    expect(textToValidatorString(meta)).toBe("v.string()");
+    expect(textToValidatorString(meta, "posts", "subtitle")).toBe("v.optional(v.string())");
   });
 
-  it("returns v.string() regardless of minLength/maxLength", () => {
+  it("returns v.optional(v.string()) regardless of minLength/maxLength", () => {
     const meta: TextFieldMeta = { type: "text", minLength: 1, maxLength: 200 };
-    expect(textToValidatorString(meta)).toBe("v.string()");
-  });
-
-  it("returns v.string() regardless of defaultValue", () => {
-    const meta: TextFieldMeta = { type: "text", defaultValue: "hello" };
-    expect(textToValidatorString(meta)).toBe("v.string()");
+    expect(textToValidatorString(meta, "posts", "excerpt")).toBe("v.optional(v.string())");
   });
 
   it("returns v.string() with full options including index", () => {
@@ -1224,7 +1523,17 @@ describe("textToValidatorString", () => {
       index: "by_title",
     };
     // index does not affect the validator string
-    expect(textToValidatorString(meta)).toBe("v.string()");
+    expect(textToValidatorString(meta, "posts", "title")).toBe("v.string()");
+  });
+
+  it("throws when required with no defaultValue", () => {
+    const meta: TextFieldMeta = { type: "text", required: true };
+    expect(() => textToValidatorString(meta, "posts", "title")).toThrow("title");
+  });
+
+  it("throws when defaultValue is wrong type", () => {
+    const meta: TextFieldMeta = { type: "text", required: true, defaultValue: 42 as any };
+    expect(() => textToValidatorString(meta, "posts", "title")).toThrow("title");
   });
 });
 ```
@@ -1237,24 +1546,34 @@ import { numberToValidatorString } from "./schema";
 import type { NumberFieldMeta } from "../../types";
 
 describe("numberToValidatorString", () => {
-  it("returns v.float64() for a basic number field", () => {
-    const meta: NumberFieldMeta = { type: "number" };
-    expect(numberToValidatorString(meta)).toBe("v.float64()");
+  it("returns v.float64() for a required number field", () => {
+    const meta: NumberFieldMeta = { type: "number", required: true, defaultValue: 0 };
+    expect(numberToValidatorString(meta, "items", "count")).toBe("v.float64()");
   });
 
-  it("returns v.float64() regardless of min/max/step", () => {
+  it("returns v.optional(v.float64()) for an optional number field", () => {
+    const meta: NumberFieldMeta = { type: "number" };
+    expect(numberToValidatorString(meta, "items", "count")).toBe("v.optional(v.float64())");
+  });
+
+  it("returns v.optional(v.float64()) regardless of min/max/step", () => {
     const meta: NumberFieldMeta = {
       type: "number",
       min: 0,
       max: 100,
       step: 0.01,
     };
-    expect(numberToValidatorString(meta)).toBe("v.float64()");
+    expect(numberToValidatorString(meta, "items", "price")).toBe("v.optional(v.float64())");
   });
 
-  it("returns v.float64() with defaultValue", () => {
-    const meta: NumberFieldMeta = { type: "number", defaultValue: 42 };
-    expect(numberToValidatorString(meta)).toBe("v.float64()");
+  it("throws when required with no defaultValue", () => {
+    const meta: NumberFieldMeta = { type: "number", required: true };
+    expect(() => numberToValidatorString(meta, "items", "count")).toThrow("count");
+  });
+
+  it("throws when defaultValue is wrong type", () => {
+    const meta: NumberFieldMeta = { type: "number", required: true, defaultValue: "ten" as any };
+    expect(() => numberToValidatorString(meta, "items", "count")).toThrow("count");
   });
 });
 ```
@@ -1267,14 +1586,24 @@ import { checkboxToValidatorString } from "./schema";
 import type { CheckboxFieldMeta } from "../../types";
 
 describe("checkboxToValidatorString", () => {
-  it("returns v.boolean() for a basic checkbox", () => {
+  it("returns v.optional(v.boolean()) for an optional checkbox", () => {
     const meta: CheckboxFieldMeta = { type: "checkbox" };
-    expect(checkboxToValidatorString(meta)).toBe("v.boolean()");
+    expect(checkboxToValidatorString(meta, "posts", "featured")).toBe("v.optional(v.boolean())");
   });
 
-  it("returns v.boolean() with defaultValue", () => {
-    const meta: CheckboxFieldMeta = { type: "checkbox", defaultValue: true };
-    expect(checkboxToValidatorString(meta)).toBe("v.boolean()");
+  it("returns v.boolean() for a required checkbox with defaultValue", () => {
+    const meta: CheckboxFieldMeta = { type: "checkbox", required: true, defaultValue: true };
+    expect(checkboxToValidatorString(meta, "posts", "featured")).toBe("v.boolean()");
+  });
+
+  it("throws when required with no defaultValue", () => {
+    const meta: CheckboxFieldMeta = { type: "checkbox", required: true };
+    expect(() => checkboxToValidatorString(meta, "posts", "featured")).toThrow("featured");
+  });
+
+  it("throws when defaultValue is wrong type", () => {
+    const meta: CheckboxFieldMeta = { type: "checkbox", required: true, defaultValue: "yes" as any };
+    expect(() => checkboxToValidatorString(meta, "posts", "featured")).toThrow("featured");
   });
 });
 ```
@@ -1287,7 +1616,7 @@ import { selectToValidatorString } from "./schema";
 import type { SelectFieldMeta } from "../../types";
 
 describe("selectToValidatorString", () => {
-  it("returns union of literals for single-select", () => {
+  it("returns optional union of literals for single-select", () => {
     const meta: SelectFieldMeta<string> = {
       type: "select",
       options: [
@@ -1295,7 +1624,22 @@ describe("selectToValidatorString", () => {
         { value: "published", label: "Published" },
       ],
     };
-    expect(selectToValidatorString(meta)).toBe(
+    expect(selectToValidatorString(meta, "posts", "status")).toBe(
+      'v.optional(v.union(v.literal("draft"), v.literal("published")))',
+    );
+  });
+
+  it("returns required union when required with defaultValue", () => {
+    const meta: SelectFieldMeta<string> = {
+      type: "select",
+      required: true,
+      defaultValue: "draft",
+      options: [
+        { value: "draft", label: "Draft" },
+        { value: "published", label: "Published" },
+      ],
+    };
+    expect(selectToValidatorString(meta, "posts", "status")).toBe(
       'v.union(v.literal("draft"), v.literal("published"))',
     );
   });
@@ -1309,8 +1653,8 @@ describe("selectToValidatorString", () => {
         { value: "tag2", label: "Tag 2" },
       ],
     };
-    expect(selectToValidatorString(meta)).toBe(
-      'v.array(v.union(v.literal("tag1"), v.literal("tag2")))',
+    expect(selectToValidatorString(meta, "posts", "tags")).toBe(
+      'v.optional(v.array(v.union(v.literal("tag1"), v.literal("tag2"))))',
     );
   });
 
@@ -1319,7 +1663,9 @@ describe("selectToValidatorString", () => {
       type: "select",
       options: [{ value: "only", label: "Only Option" }],
     };
-    expect(selectToValidatorString(meta)).toBe('v.union(v.literal("only"))');
+    expect(selectToValidatorString(meta, "posts", "status")).toBe(
+      'v.optional(v.union(v.literal("only")))',
+    );
   });
 
   it("throws on empty options", () => {
@@ -1327,7 +1673,7 @@ describe("selectToValidatorString", () => {
       type: "select",
       options: [],
     };
-    expect(() => selectToValidatorString(meta)).toThrow();
+    expect(() => selectToValidatorString(meta, "posts", "status")).toThrow();
   });
 
   it("deduplicates option values", () => {
@@ -1339,8 +1685,8 @@ describe("selectToValidatorString", () => {
         { value: "b", label: "B" },
       ],
     };
-    expect(selectToValidatorString(meta)).toBe(
-      'v.union(v.literal("a"), v.literal("b"))',
+    expect(selectToValidatorString(meta, "posts", "status")).toBe(
+      'v.optional(v.union(v.literal("a"), v.literal("b")))',
     );
   });
 
@@ -1349,7 +1695,7 @@ describe("selectToValidatorString", () => {
       type: "select",
       options: [{ value: 'it\'s "fine"', label: "Quoted" }],
     };
-    const result = selectToValidatorString(meta);
+    const result = selectToValidatorString(meta, "posts", "status");
     // The value should be properly escaped in the output string
     expect(result).toContain("v.literal(");
     // Should not break the generated TypeScript
@@ -1366,9 +1712,34 @@ describe("selectToValidatorString", () => {
       ],
     };
     // hasMany: false should NOT wrap in v.array()
-    expect(selectToValidatorString(meta)).toBe(
-      'v.union(v.literal("a"), v.literal("b"))',
+    expect(selectToValidatorString(meta, "posts", "status")).toBe(
+      'v.optional(v.union(v.literal("a"), v.literal("b")))',
     );
+  });
+
+  it("throws when required with no defaultValue", () => {
+    const meta: SelectFieldMeta<string> = {
+      type: "select",
+      required: true,
+      options: [
+        { value: "a", label: "A" },
+        { value: "b", label: "B" },
+      ],
+    };
+    expect(() => selectToValidatorString(meta, "posts", "status")).toThrow("status");
+  });
+
+  it("throws when defaultValue is not in options", () => {
+    const meta: SelectFieldMeta<string> = {
+      type: "select",
+      required: true,
+      defaultValue: "nonexistent",
+      options: [
+        { value: "a", label: "A" },
+        { value: "b", label: "B" },
+      ],
+    };
+    expect(() => selectToValidatorString(meta, "posts", "status")).toThrow("status");
   });
 });
 ```
@@ -1389,25 +1760,26 @@ import { select } from "../fields/select";
 
 describe("fieldToValidatorString", () => {
   describe("required fields (no v.optional wrapper)", () => {
-    it("text field with required: true", () => {
-      const field = text({ required: true });
-      expect(fieldToValidatorString(field)).toBe("v.string()");
+    it("text field with required: true and defaultValue", () => {
+      const field = text({ required: true, defaultValue: "Untitled" });
+      expect(fieldToValidatorString(field, "posts", "title")).toBe("v.string()");
     });
 
-    it("number field with required: true", () => {
-      const field = number({ required: true });
-      expect(fieldToValidatorString(field)).toBe("v.float64()");
+    it("number field with required: true and defaultValue", () => {
+      const field = number({ required: true, defaultValue: 0 });
+      expect(fieldToValidatorString(field, "items", "count")).toBe("v.float64()");
     });
 
-    it("select field with required: true", () => {
+    it("select field with required: true and defaultValue", () => {
       const field = select({
         required: true,
+        defaultValue: "a",
         options: [
           { value: "a", label: "A" },
           { value: "b", label: "B" },
         ],
       });
-      expect(fieldToValidatorString(field)).toBe(
+      expect(fieldToValidatorString(field, "posts", "status")).toBe(
         'v.union(v.literal("a"), v.literal("b"))',
       );
     });
@@ -1416,29 +1788,37 @@ describe("fieldToValidatorString", () => {
   describe("optional fields (wrapped in v.optional)", () => {
     it("text field with no required option", () => {
       const field = text();
-      expect(fieldToValidatorString(field)).toBe("v.optional(v.string())");
+      expect(fieldToValidatorString(field, "posts", "subtitle")).toBe(
+        "v.optional(v.string())",
+      );
     });
 
     it("text field with required: false", () => {
       const field = text({ required: false });
-      expect(fieldToValidatorString(field)).toBe("v.optional(v.string())");
+      expect(fieldToValidatorString(field, "posts", "subtitle")).toBe(
+        "v.optional(v.string())",
+      );
     });
 
     it("number field without required", () => {
       const field = number({ min: 0 });
-      expect(fieldToValidatorString(field)).toBe("v.optional(v.float64())");
+      expect(fieldToValidatorString(field, "items", "price")).toBe(
+        "v.optional(v.float64())",
+      );
     });
 
     it("checkbox field without required", () => {
       const field = checkbox();
-      expect(fieldToValidatorString(field)).toBe("v.optional(v.boolean())");
+      expect(fieldToValidatorString(field, "posts", "featured")).toBe(
+        "v.optional(v.boolean())",
+      );
     });
 
     it("select field without required", () => {
       const field = select({
         options: [{ value: "x", label: "X" }],
       });
-      expect(fieldToValidatorString(field)).toBe(
+      expect(fieldToValidatorString(field, "posts", "status")).toBe(
         'v.optional(v.union(v.literal("x")))',
       );
     });
@@ -1451,7 +1831,7 @@ describe("fieldToValidatorString", () => {
           { value: "b", label: "B" },
         ],
       });
-      expect(fieldToValidatorString(field)).toBe(
+      expect(fieldToValidatorString(field, "posts", "tags")).toBe(
         'v.optional(v.array(v.union(v.literal("a"), v.literal("b"))))',
       );
     });
@@ -1459,8 +1839,8 @@ describe("fieldToValidatorString", () => {
 
   describe("index property does not affect validator", () => {
     it("text field with index still returns same validator", () => {
-      const field = text({ required: true, index: "by_title" });
-      expect(fieldToValidatorString(field)).toBe("v.string()");
+      const field = text({ required: true, defaultValue: "x", index: "by_title" });
+      expect(fieldToValidatorString(field, "posts", "title")).toBe("v.string()");
     });
   });
 
@@ -1470,7 +1850,9 @@ describe("fieldToValidatorString", () => {
         _type: "",
         _meta: { type: "unknown_type" },
       } as any;
-      expect(() => fieldToValidatorString(field)).toThrow("unknown_type");
+      expect(() => fieldToValidatorString(field, "posts", "mystery")).toThrow(
+        "unknown_type",
+      );
     });
   });
 });
@@ -1702,6 +2084,199 @@ describe("collectIndexes", () => {
 
 ---
 
+### Field Validation Tests
+
+**File: `packages/core/src/schema/validate.test.ts`**
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { validateFieldConfig, wrapOptional } from "./validate";
+import { VexFieldValidationError } from "../errors";
+
+describe("validateFieldConfig", () => {
+  describe("optional fields", () => {
+    it("returns isOptional: true when required is undefined", () => {
+      const result = validateFieldConfig(
+        { type: "text" },
+        "posts",
+        "title",
+        "string",
+      );
+      expect(result.isOptional).toBe(true);
+    });
+
+    it("returns isOptional: true when required is false", () => {
+      const result = validateFieldConfig(
+        { type: "text", required: false },
+        "posts",
+        "title",
+        "string",
+      );
+      expect(result.isOptional).toBe(true);
+    });
+
+    it("allows optional fields without defaultValue", () => {
+      expect(() =>
+        validateFieldConfig({ type: "text" }, "posts", "title", "string"),
+      ).not.toThrow();
+    });
+  });
+
+  describe("required fields", () => {
+    it("returns isOptional: false when required is true with defaultValue", () => {
+      const result = validateFieldConfig(
+        { type: "text", required: true, defaultValue: "hello" },
+        "posts",
+        "title",
+        "string",
+      );
+      expect(result.isOptional).toBe(false);
+    });
+
+    it("throws VexFieldValidationError when required with no defaultValue", () => {
+      expect(() =>
+        validateFieldConfig(
+          { type: "text", required: true },
+          "posts",
+          "title",
+          "string",
+        ),
+      ).toThrow(VexFieldValidationError);
+    });
+
+    it("error message includes collection slug and field name", () => {
+      try {
+        validateFieldConfig(
+          { type: "text", required: true },
+          "posts",
+          "title",
+          "string",
+        );
+        expect.unreachable("Should have thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(VexFieldValidationError);
+        const err = e as VexFieldValidationError;
+        expect(err.collectionSlug).toBe("posts");
+        expect(err.fieldName).toBe("title");
+        expect(err.message).toContain("title");
+        expect(err.message).toContain("posts");
+      }
+    });
+  });
+
+  describe("defaultValue type checking", () => {
+    it("accepts string defaultValue for string expectedType", () => {
+      expect(() =>
+        validateFieldConfig(
+          { type: "text", required: true, defaultValue: "hello" },
+          "posts",
+          "title",
+          "string",
+        ),
+      ).not.toThrow();
+    });
+
+    it("throws when defaultValue is number but expectedType is string", () => {
+      expect(() =>
+        validateFieldConfig(
+          { type: "text", required: true, defaultValue: 42 },
+          "posts",
+          "title",
+          "string",
+        ),
+      ).toThrow(VexFieldValidationError);
+    });
+
+    it("accepts number defaultValue for number expectedType", () => {
+      expect(() =>
+        validateFieldConfig(
+          { type: "number", required: true, defaultValue: 0 },
+          "items",
+          "count",
+          "number",
+        ),
+      ).not.toThrow();
+    });
+
+    it("throws when defaultValue is string but expectedType is number", () => {
+      expect(() =>
+        validateFieldConfig(
+          { type: "number", required: true, defaultValue: "ten" },
+          "items",
+          "count",
+          "number",
+        ),
+      ).toThrow(VexFieldValidationError);
+    });
+
+    it("accepts boolean defaultValue for boolean expectedType", () => {
+      expect(() =>
+        validateFieldConfig(
+          { type: "checkbox", required: true, defaultValue: false },
+          "posts",
+          "featured",
+          "boolean",
+        ),
+      ).not.toThrow();
+    });
+
+    it("throws when defaultValue is string but expectedType is boolean", () => {
+      expect(() =>
+        validateFieldConfig(
+          { type: "checkbox", required: true, defaultValue: "yes" },
+          "posts",
+          "featured",
+          "boolean",
+        ),
+      ).toThrow(VexFieldValidationError);
+    });
+
+    it("skips type checking for select expectedType (handled by select validator)", () => {
+      // select validator checks defaultValue against option values, not typeof
+      expect(() =>
+        validateFieldConfig(
+          { type: "select", required: true, defaultValue: "draft" },
+          "posts",
+          "status",
+          "select",
+        ),
+      ).not.toThrow();
+    });
+
+    it("does not type-check defaultValue on optional fields", () => {
+      // Optional field with wrong type defaultValue — still allowed
+      // (the defaultValue may not be used, and TypeScript would catch this)
+      expect(() =>
+        validateFieldConfig(
+          { type: "text", defaultValue: 42 },
+          "posts",
+          "title",
+          "string",
+        ),
+      ).not.toThrow();
+    });
+  });
+});
+
+describe("wrapOptional", () => {
+  it("wraps validator when isOptional is true", () => {
+    expect(wrapOptional("v.string()", true)).toBe("v.optional(v.string())");
+  });
+
+  it("returns validator unchanged when isOptional is false", () => {
+    expect(wrapOptional("v.string()", false)).toBe("v.string()");
+  });
+
+  it("wraps complex validators", () => {
+    expect(wrapOptional('v.union(v.literal("a"), v.literal("b"))', true)).toBe(
+      'v.optional(v.union(v.literal("a"), v.literal("b")))',
+    );
+  });
+});
+```
+
+---
+
 ### Slug Registry Tests
 
 **File: `packages/core/src/schema/slugs.test.ts`**
@@ -1712,83 +2287,99 @@ import { SlugRegistry, buildSlugRegistry } from "./slugs";
 import { defineCollection } from "../config/defineCollection";
 import { defineConfig } from "../config/defineConfig";
 import { text } from "../fields/text";
-import { number } from "../fields/number";
 import type { VexAuthAdapter } from "../auth/types";
+import { VexSlugConflictError } from "../errors";
+
+// Minimal auth adapter for tests that don't focus on auth
+const minimalAuth: VexAuthAdapter = {
+  name: "better-auth",
+  userCollection: "users",
+  userFields: {},
+  tables: [],
+};
 
 describe("SlugRegistry", () => {
-  it("reports no conflicts when all slugs are unique", () => {
+  it("registers unique slugs without throwing", () => {
     const registry = new SlugRegistry();
     registry.register("posts", "user-collection", "collections/posts.ts");
     registry.register("users", "user-collection", "collections/users.ts");
     registry.register("account", "auth-table", "@vexcms/better-auth");
 
-    expect(registry.findConflicts()).toEqual([]);
+    expect(registry.getAll()).toHaveLength(3);
   });
 
-  it("detects duplicate slugs", () => {
+  it("throws VexSlugConflictError immediately on duplicate slug", () => {
     const registry = new SlugRegistry();
     registry.register("account", "user-collection", "collections/account.ts");
-    registry.register("account", "auth-table", "@vexcms/better-auth");
 
-    const conflicts = registry.findConflicts();
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0].slug).toBe("account");
-    expect(conflicts[0].registrations).toHaveLength(2);
+    expect(() =>
+      registry.register("account", "auth-table", "@vexcms/better-auth"),
+    ).toThrow(VexSlugConflictError);
   });
 
-  it("detects multiple conflicts", () => {
+  it("includes both sources in error message", () => {
     const registry = new SlugRegistry();
     registry.register("account", "user-collection", "collections/account.ts");
-    registry.register("account", "auth-table", "@vexcms/better-auth");
-    registry.register("session", "user-collection", "collections/session.ts");
-    registry.register("session", "auth-table", "@vexcms/better-auth");
 
-    const conflicts = registry.findConflicts();
-    expect(conflicts).toHaveLength(2);
+    try {
+      registry.register("account", "auth-table", "@vexcms/better-auth");
+      expect.unreachable("Should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(VexSlugConflictError);
+      const err = e as VexSlugConflictError;
+      expect(err.slug).toBe("account");
+      expect(err.existingSource).toBe("user-collection");
+      expect(err.existingLocation).toBe("collections/account.ts");
+      expect(err.newSource).toBe("auth-table");
+      expect(err.newLocation).toBe("@vexcms/better-auth");
+      expect(err.message).toContain("Duplicate");
+      expect(err.message).toContain("account");
+    }
   });
 
-  it("validate() throws with descriptive error on conflicts", () => {
+  it("throws on the first duplicate, not the second", () => {
     const registry = new SlugRegistry();
     registry.register("account", "user-collection", "collections/account.ts");
-    registry.register("account", "auth-table", "@vexcms/better-auth");
 
-    expect(() => registry.validate()).toThrow("account");
-    expect(() => registry.validate()).toThrow("Duplicate");
+    // First duplicate throws
+    expect(() =>
+      registry.register("account", "auth-table", "@vexcms/better-auth"),
+    ).toThrow("account");
+
+    // "session" is still registrable since it's unique
+    expect(() =>
+      registry.register("session", "auth-table", "@vexcms/better-auth"),
+    ).not.toThrow();
   });
 
-  it("validate() does not throw when all slugs are unique", () => {
-    const registry = new SlugRegistry();
-    registry.register("posts", "user-collection", "collections/posts.ts");
-    registry.register("account", "auth-table", "@vexcms/better-auth");
-
-    expect(() => registry.validate()).not.toThrow();
-  });
-
-  it("validate() does not throw on empty registry", () => {
-    const registry = new SlugRegistry();
-    expect(() => registry.validate()).not.toThrow();
-  });
-
-  it("getAll() returns all registrations", () => {
+  it("getAll() returns all successful registrations", () => {
     const registry = new SlugRegistry();
     registry.register("posts", "user-collection", "collections/posts.ts");
     registry.register("users", "user-collection", "collections/users.ts");
 
     expect(registry.getAll()).toHaveLength(2);
   });
+
+  it("getAll() returns empty array for empty registry", () => {
+    const registry = new SlugRegistry();
+    expect(registry.getAll()).toEqual([]);
+  });
 });
 
 describe("buildSlugRegistry", () => {
   const posts = defineCollection("posts", {
-    fields: { title: text({ required: true }) },
+    fields: { title: text() },
   });
 
   const users = defineCollection("users", {
-    fields: { name: text({ required: true }) },
+    fields: { name: text() },
   });
 
   it("registers user collection slugs", () => {
-    const config = defineConfig({ collections: [posts, users] });
+    const config = defineConfig({
+      collections: [posts, users],
+      auth: minimalAuth,
+    });
     const registry = buildSlugRegistry(config);
     const all = registry.getAll();
 
@@ -1796,7 +2387,7 @@ describe("buildSlugRegistry", () => {
     expect(all.find((r) => r.slug === "users")?.source).toBe("user-collection");
   });
 
-  it("registers auth table slugs when auth is configured", () => {
+  it("registers auth table slugs", () => {
     const authAdapter: VexAuthAdapter = {
       name: "better-auth",
       userCollection: "users",
@@ -1804,14 +2395,13 @@ describe("buildSlugRegistry", () => {
       tables: [
         {
           slug: "account",
-          fields: { userId: { validator: "v.string()" } },
+          fields: { userId: { validator: 'v.id("users")' } },
         },
         {
           slug: "session",
           fields: { token: { validator: "v.string()" } },
         },
       ],
-      plugins: [],
     };
 
     const config = defineConfig({
@@ -1826,17 +2416,9 @@ describe("buildSlugRegistry", () => {
   });
 
   it("does NOT register auth userCollection as a separate slug", () => {
-    const authAdapter: VexAuthAdapter = {
-      name: "better-auth",
-      userCollection: "users",
-      userFields: {},
-      tables: [],
-      plugins: [],
-    };
-
     const config = defineConfig({
       collections: [posts, users],
-      auth: authAdapter,
+      auth: minimalAuth,
     });
     const registry = buildSlugRegistry(config);
     const all = registry.getAll();
@@ -1853,7 +2435,6 @@ describe("buildSlugRegistry", () => {
       userCollection: "nonexistent",
       userFields: {},
       tables: [],
-      plugins: [],
     };
 
     const config = defineConfig({
@@ -1864,9 +2445,9 @@ describe("buildSlugRegistry", () => {
     expect(() => buildSlugRegistry(config)).toThrow("nonexistent");
   });
 
-  it("detects collision between user collection and auth table", () => {
+  it("throws immediately when user collection slug collides with auth table slug", () => {
     const account = defineCollection("account", {
-      fields: { name: text({ required: true }) },
+      fields: { name: text() },
     });
 
     const authAdapter: VexAuthAdapter = {
@@ -1876,21 +2457,35 @@ describe("buildSlugRegistry", () => {
       tables: [
         {
           slug: "account",
-          fields: { userId: { validator: "v.string()" } },
+          fields: { userId: { validator: 'v.id("users")' } },
         },
       ],
-      plugins: [],
     };
 
     const config = defineConfig({
       collections: [posts, users, account],
       auth: authAdapter,
     });
-    const registry = buildSlugRegistry(config);
-    const conflicts = registry.findConflicts();
 
-    expect(conflicts).toHaveLength(1);
-    expect(conflicts[0].slug).toBe("account");
+    expect(() => buildSlugRegistry(config)).toThrow(VexSlugConflictError);
+  });
+
+  it("uses tableName for slug registration when provided", () => {
+    const articles = defineCollection("articles", {
+      fields: { title: text() },
+      tableName: "blog_articles",
+    });
+
+    const config = defineConfig({
+      collections: [articles, users],
+      auth: minimalAuth,
+    });
+    const registry = buildSlugRegistry(config);
+    const all = registry.getAll();
+
+    // tableName is used as the slug for the registry, not the collection slug
+    expect(all.find((r) => r.slug === "blog_articles")).toBeDefined();
+    expect(all.find((r) => r.slug === "articles")).toBeUndefined();
   });
 });
 ```
@@ -1903,18 +2498,18 @@ describe("buildSlugRegistry", () => {
 
 ```typescript
 import { describe, it, expect } from "vitest";
-import { mergeAuthFields, resolveAuthAdapter } from "./merge";
+import { mergeAuthFields } from "./merge";
 import { defineCollection } from "../config/defineCollection";
 import { text } from "../fields/text";
 import { number } from "../fields/number";
 import { select } from "../fields/select";
-import type { VexAuthAdapter, VexAuthPlugin } from "../auth/types";
+import type { VexAuthAdapter } from "../auth/types";
 
 describe("mergeAuthFields", () => {
   const users = defineCollection("users", {
     fields: {
-      name: text({ label: "Name", required: true }),
-      email: text({ label: "Email", required: true }),
+      name: text({ label: "Name" }),
+      email: text({ label: "Email" }),
       postCount: number({ label: "Post Count", admin: { readOnly: true } }),
       role: select({
         label: "Role",
@@ -1924,17 +2519,6 @@ describe("mergeAuthFields", () => {
         ],
       }),
     },
-  });
-
-  it("returns only user fields when no auth adapter", () => {
-    const result = mergeAuthFields(undefined, users);
-
-    expect(result.userOnly).toContain("name");
-    expect(result.userOnly).toContain("email");
-    expect(result.userOnly).toContain("postCount");
-    expect(result.userOnly).toContain("role");
-    expect(result.authOnly).toEqual([]);
-    expect(result.overlapping).toEqual([]);
   });
 
   it("merges auth fields with user fields", () => {
@@ -1949,7 +2533,6 @@ describe("mergeAuthFields", () => {
         updatedAt: { validator: "v.float64()" },
       },
       tables: [],
-      plugins: [],
     };
 
     const result = mergeAuthFields(authAdapter, users);
@@ -1984,7 +2567,6 @@ describe("mergeAuthFields", () => {
         email: { validator: "v.string()" },
       },
       tables: [],
-      plugins: [],
     };
 
     const result = mergeAuthFields(authAdapter, users);
@@ -1993,7 +2575,7 @@ describe("mergeAuthFields", () => {
     expect(result.fields["email"]).toBe("v.string()");
   });
 
-  it("includes auth plugin userFields", () => {
+  it("user-only fields converted via fieldToValidatorString", () => {
     const authAdapter: VexAuthAdapter = {
       name: "better-auth",
       userCollection: "users",
@@ -2001,148 +2583,60 @@ describe("mergeAuthFields", () => {
         email: { validator: "v.string()" },
       },
       tables: [],
-      plugins: [
-        {
-          name: "admin",
-          userFields: {
-            banned: { validator: "v.optional(v.boolean())" },
-            banReason: { validator: "v.optional(v.string())" },
-          },
-        },
-      ],
     };
 
     const result = mergeAuthFields(authAdapter, users);
 
-    expect(result.authOnly).toContain("banned");
-    expect(result.authOnly).toContain("banReason");
-    expect(result.fields["banned"]).toBe("v.optional(v.boolean())");
-  });
-});
-
-describe("resolveAuthAdapter", () => {
-  it("returns base tables unchanged when no plugins", () => {
-    const adapter: VexAuthAdapter = {
-      name: "better-auth",
-      userCollection: "users",
-      userFields: { email: { validator: "v.string()" } },
-      tables: [
-        {
-          slug: "account",
-          fields: { userId: { validator: "v.string()" } },
-        },
-      ],
-      plugins: [],
-    };
-
-    const result = resolveAuthAdapter(adapter);
-    expect(result.tables).toHaveLength(1);
-    expect(result.tables[0].slug).toBe("account");
+    // postCount is user-only, number field without required → optional
+    expect(result.fields["postCount"]).toBe("v.optional(v.float64())");
+    // role is user-only, select field without required → optional union
+    expect(result.fields["role"]).toContain("v.optional(");
   });
 
-  it("adds plugin tables", () => {
-    const adapter: VexAuthAdapter = {
+  it("handles auth adapter with no userFields", () => {
+    const authAdapter: VexAuthAdapter = {
       name: "better-auth",
       userCollection: "users",
       userFields: {},
-      tables: [
-        { slug: "account", fields: { userId: { validator: "v.string()" } } },
-      ],
-      plugins: [
-        {
-          name: "api-key",
-          tables: [
-            { slug: "api_key", fields: { key: { validator: "v.string()" } } },
-          ],
-        },
-      ],
+      tables: [],
     };
 
-    const result = resolveAuthAdapter(adapter);
-    expect(result.tables).toHaveLength(2);
-    expect(result.tables.find((t) => t.slug === "api_key")).toBeDefined();
+    const result = mergeAuthFields(authAdapter, users);
+
+    // All fields are user-only
+    expect(result.userOnly).toContain("name");
+    expect(result.userOnly).toContain("email");
+    expect(result.userOnly).toContain("postCount");
+    expect(result.userOnly).toContain("role");
+    expect(result.authOnly).toEqual([]);
+    expect(result.overlapping).toEqual([]);
   });
 
-  it("applies plugin tableExtensions to existing tables", () => {
-    const adapter: VexAuthAdapter = {
-      name: "better-auth",
-      userCollection: "users",
-      userFields: {},
-      tables: [
-        {
-          slug: "session",
-          fields: {
-            token: { validator: "v.string()" },
-            userId: { validator: "v.string()" },
-          },
-        },
-      ],
-      plugins: [
-        {
-          name: "admin",
-          tableExtensions: {
-            session: {
-              impersonatedBy: { validator: "v.optional(v.string())" },
-            },
-          },
-        },
-      ],
-    };
+  it("handles fully auth-driven user collection (no user-defined fields overlap)", () => {
+    const minimalUsers = defineCollection("users", {
+      fields: {
+        postCount: number({ admin: { readOnly: true } }),
+      },
+    });
 
-    const result = resolveAuthAdapter(adapter);
-    const session = result.tables.find((t) => t.slug === "session");
-    expect(session?.fields["impersonatedBy"]).toBeDefined();
-    expect(session?.fields["impersonatedBy"].validator).toBe(
-      "v.optional(v.string())",
-    );
-    // Original fields still present
-    expect(session?.fields["token"]).toBeDefined();
-  });
-
-  it("merges plugin userFields into adapter userFields", () => {
-    const adapter: VexAuthAdapter = {
+    const authAdapter: VexAuthAdapter = {
       name: "better-auth",
       userCollection: "users",
       userFields: {
+        name: { validator: "v.string()" },
         email: { validator: "v.string()" },
+        createdAt: { validator: "v.float64()" },
       },
       tables: [],
-      plugins: [
-        {
-          name: "admin",
-          userFields: {
-            banned: { validator: "v.optional(v.boolean())" },
-            role: { validator: "v.array(v.string())" },
-          },
-        },
-      ],
     };
 
-    const result = resolveAuthAdapter(adapter);
-    expect(result.userFields["email"]).toBeDefined();
-    expect(result.userFields["banned"]).toBeDefined();
-    expect(result.userFields["role"]).toBeDefined();
-  });
+    const result = mergeAuthFields(authAdapter, minimalUsers);
 
-  it("throws when plugin extends non-existent table", () => {
-    const adapter: VexAuthAdapter = {
-      name: "better-auth",
-      userCollection: "users",
-      userFields: {},
-      tables: [],
-      plugins: [
-        {
-          name: "bad-plugin",
-          tableExtensions: {
-            nonexistent: {
-              field: { validator: "v.string()" },
-            },
-          },
-        },
-      ],
-    };
-
-    expect(() => resolveAuthAdapter(adapter)).toThrow("nonexistent");
+    expect(result.authOnly).toContain("name");
+    expect(result.authOnly).toContain("email");
+    expect(result.authOnly).toContain("createdAt");
+    expect(result.userOnly).toContain("postCount");
+    expect(result.overlapping).toEqual([]);
   });
 });
 ```
@@ -2163,18 +2657,38 @@ import { number } from "../fields/number";
 import { checkbox } from "../fields/checkbox";
 import { select } from "../fields/select";
 import type { VexAuthAdapter } from "../auth/types";
+import { VexSlugConflictError } from "../errors";
+
+// Minimal auth adapter used by tests that don't focus on auth behavior
+const minimalAuth: VexAuthAdapter = {
+  name: "better-auth",
+  userCollection: "users",
+  userFields: {},
+  tables: [],
+};
+
+// Shared users collection for tests that need auth
+const users = defineCollection("users", {
+  fields: { name: text() },
+});
 
 describe("generateVexSchema", () => {
   describe("header and imports", () => {
     it("includes auto-generated warning comment", () => {
-      const config = defineConfig({ collections: [] });
+      const config = defineConfig({
+        collections: [users],
+        auth: minimalAuth,
+      });
       const output = generateVexSchema(config);
       expect(output).toContain("AUTO-GENERATED");
       expect(output).toContain("DO NOT EDIT");
     });
 
     it("includes convex imports", () => {
-      const config = defineConfig({ collections: [] });
+      const config = defineConfig({
+        collections: [users],
+        auth: minimalAuth,
+      });
       const output = generateVexSchema(config);
       expect(output).toContain('import { defineTable } from "convex/server"');
       expect(output).toContain('import { v } from "convex/values"');
@@ -2185,11 +2699,14 @@ describe("generateVexSchema", () => {
     it("generates a simple collection with text fields", () => {
       const posts = defineCollection("posts", {
         fields: {
-          title: text({ required: true }),
+          title: text({ required: true, defaultValue: "Untitled" }),
           slug: text(),
         },
       });
-      const config = defineConfig({ collections: [posts] });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
       const output = generateVexSchema(config);
 
       expect(output).toContain("export const posts = defineTable({");
@@ -2200,11 +2717,12 @@ describe("generateVexSchema", () => {
     it("generates a collection with all field types", () => {
       const items = defineCollection("items", {
         fields: {
-          name: text({ required: true }),
-          count: number({ required: true }),
+          name: text({ required: true, defaultValue: "" }),
+          count: number({ required: true, defaultValue: 0 }),
           active: checkbox(),
           status: select({
             required: true,
+            defaultValue: "open",
             options: [
               { value: "open", label: "Open" },
               { value: "closed", label: "Closed" },
@@ -2212,7 +2730,10 @@ describe("generateVexSchema", () => {
           }),
         },
       });
-      const config = defineConfig({ collections: [items] });
+      const config = defineConfig({
+        collections: [items, users],
+        auth: minimalAuth,
+      });
       const output = generateVexSchema(config);
 
       expect(output).toContain("name: v.string()");
@@ -2225,25 +2746,61 @@ describe("generateVexSchema", () => {
 
     it("generates multiple collections", () => {
       const posts = defineCollection("posts", {
-        fields: { title: text({ required: true }) },
+        fields: { title: text() },
       });
       const categories = defineCollection("categories", {
-        fields: { name: text({ required: true }) },
+        fields: { name: text() },
       });
-      const config = defineConfig({ collections: [posts, categories] });
+      const config = defineConfig({
+        collections: [posts, categories, users],
+        auth: minimalAuth,
+      });
       const output = generateVexSchema(config);
 
       expect(output).toContain("export const posts = defineTable({");
       expect(output).toContain("export const categories = defineTable({");
     });
 
-    it("handles empty collections array", () => {
-      const config = defineConfig({ collections: [] });
+    it("handles only the users collection (no additional collections)", () => {
+      const config = defineConfig({
+        collections: [users],
+        auth: minimalAuth,
+      });
       const output = generateVexSchema(config);
 
-      // Should still have header and imports, just no table exports
+      // Should have header, imports, and the users table
       expect(output).toContain("AUTO-GENERATED");
-      expect(output).not.toContain("export const");
+      expect(output).toContain("export const users = defineTable({");
+    });
+  });
+
+  describe("tableName", () => {
+    it("uses tableName instead of slug for the export name", () => {
+      const articles = defineCollection("articles", {
+        fields: { title: text() },
+        tableName: "blog_articles",
+      });
+      const config = defineConfig({
+        collections: [articles, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema(config);
+
+      expect(output).toContain("export const blog_articles = defineTable({");
+      expect(output).not.toContain("export const articles = defineTable({");
+    });
+
+    it("defaults to slug when tableName is not set", () => {
+      const posts = defineCollection("posts", {
+        fields: { title: text() },
+      });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema(config);
+
+      expect(output).toContain("export const posts = defineTable({");
     });
   });
 
@@ -2251,11 +2808,14 @@ describe("generateVexSchema", () => {
     it("generates per-field indexes as chained .index() calls", () => {
       const posts = defineCollection("posts", {
         fields: {
-          title: text({ required: true }),
-          slug: text({ required: true, index: "by_slug" }),
+          title: text(),
+          slug: text({ index: "by_slug" }),
         },
       });
-      const config = defineConfig({ collections: [posts] });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
       const output = generateVexSchema(config);
 
       expect(output).toContain('.index("by_slug", ["slug"])');
@@ -2264,12 +2824,15 @@ describe("generateVexSchema", () => {
     it("generates collection-level compound indexes", () => {
       const posts = defineCollection("posts", {
         fields: {
-          author: text({ required: true }),
-          createdAt: number({ required: true }),
+          author: text(),
+          createdAt: number(),
         },
         indexes: [{ name: "by_author_date", fields: ["author", "createdAt"] }],
       });
-      const config = defineConfig({ collections: [posts] });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
       const output = generateVexSchema(config);
 
       expect(output).toContain(
@@ -2280,13 +2843,16 @@ describe("generateVexSchema", () => {
     it("generates both per-field and collection-level indexes", () => {
       const posts = defineCollection("posts", {
         fields: {
-          slug: text({ required: true, index: "by_slug" }),
-          author: text({ required: true }),
-          createdAt: number({ required: true }),
+          slug: text({ index: "by_slug" }),
+          author: text(),
+          createdAt: number(),
         },
         indexes: [{ name: "by_author_date", fields: ["author", "createdAt"] }],
       });
-      const config = defineConfig({ collections: [posts] });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
       const output = generateVexSchema(config);
 
       expect(output).toContain('.index("by_slug", ["slug"])');
@@ -2298,26 +2864,34 @@ describe("generateVexSchema", () => {
     it("does not generate .index() when no indexes defined", () => {
       const posts = defineCollection("posts", {
         fields: {
-          title: text({ required: true }),
+          title: text(),
         },
       });
-      const config = defineConfig({ collections: [posts] });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
       const output = generateVexSchema(config);
 
-      expect(output).not.toContain(".index(");
+      // posts table should not have .index() — users table may depending on auth
+      const postsSection = output.split("export const users")[0];
+      expect(postsSection).not.toContain(".index(");
     });
 
     it("auto-generates index for admin.useAsTitle field", () => {
       const posts = defineCollection("posts", {
         fields: {
-          title: text({ required: true }),
+          title: text(),
           body: text(),
         },
         admin: {
           useAsTitle: "title",
         },
       });
-      const config = defineConfig({ collections: [posts] });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
       const output = generateVexSchema(config);
 
       expect(output).toContain('.index("by_title", ["title"])');
@@ -2325,15 +2899,8 @@ describe("generateVexSchema", () => {
   });
 
   describe("auth integration", () => {
-    const users = defineCollection("users", {
-      fields: {
-        name: text({ required: true }),
-        postCount: number({ admin: { readOnly: true } }),
-      },
-    });
-
     const posts = defineCollection("posts", {
-      fields: { title: text({ required: true }) },
+      fields: { title: text() },
     });
 
     const baseAuthAdapter: VexAuthAdapter = {
@@ -2370,7 +2937,6 @@ describe("generateVexSchema", () => {
           indexes: [{ name: "by_token", fields: ["token"] }],
         },
       ],
-      plugins: [],
     };
 
     it("merges auth fields into the user collection", () => {
@@ -2386,7 +2952,7 @@ describe("generateVexSchema", () => {
       expect(output).toContain("createdAt: v.float64()");
 
       // User-only fields also present
-      expect(output).toContain("postCount:");
+      expect(output).toContain("name:");
     });
 
     it("generates auth infrastructure tables", () => {
@@ -2423,47 +2989,38 @@ describe("generateVexSchema", () => {
       expect(output).toContain('userId: v.id("users")');
     });
 
-    it("applies auth plugin field extensions", () => {
-      const authWithAdmin: VexAuthAdapter = {
+    it("includes additional auth userFields (e.g., admin plugin fields)", () => {
+      // vexBetterAuth() resolves all plugin contributions before returning
+      // the adapter, so the adapter's userFields already include plugin fields
+      const authWithAdminFields: VexAuthAdapter = {
         ...baseAuthAdapter,
-        plugins: [
-          {
-            name: "admin",
-            userFields: {
-              banned: { validator: "v.optional(v.boolean())" },
-              role: { validator: "v.array(v.string())" },
-            },
-            tableExtensions: {
-              session: {
-                impersonatedBy: { validator: "v.optional(v.string())" },
-              },
-            },
-          },
+        userFields: {
+          ...baseAuthAdapter.userFields,
+          banned: { validator: "v.optional(v.boolean())" },
+          role: { validator: "v.array(v.string())" },
+        },
+        tables: [
+          ...baseAuthAdapter.tables,
+          // Auth adapter may include additional tables resolved from plugins
         ],
       };
 
       const config = defineConfig({
         collections: [posts, users],
-        auth: authWithAdmin,
+        auth: authWithAdminFields,
       });
       const output = generateVexSchema(config);
 
-      // Plugin user fields should appear in users table
+      // Additional user fields appear in the users table
       expect(output).toContain("banned: v.optional(v.boolean())");
       expect(output).toContain("role: v.array(v.string())");
-
-      // Plugin table extension should appear in session table
-      expect(output).toContain("impersonatedBy: v.optional(v.string())");
     });
   });
 
   describe("slug validation", () => {
     it("throws when user collection slug conflicts with auth table slug", () => {
       const account = defineCollection("account", {
-        fields: { name: text({ required: true }) },
-      });
-      const users = defineCollection("users", {
-        fields: { name: text({ required: true }) },
+        fields: { name: text() },
       });
 
       const authAdapter: VexAuthAdapter = {
@@ -2471,9 +3028,8 @@ describe("generateVexSchema", () => {
         userCollection: "users",
         userFields: {},
         tables: [
-          { slug: "account", fields: { userId: { validator: "v.string()" } } },
+          { slug: "account", fields: { userId: { validator: 'v.id("users")' } } },
         ],
-        plugins: [],
       };
 
       const config = defineConfig({
@@ -2481,12 +3037,12 @@ describe("generateVexSchema", () => {
         auth: authAdapter,
       });
 
-      expect(() => generateVexSchema(config)).toThrow("account");
+      expect(() => generateVexSchema(config)).toThrow(VexSlugConflictError);
     });
 
     it("throws when auth userCollection is not found in collections", () => {
       const posts = defineCollection("posts", {
-        fields: { title: text({ required: true }) },
+        fields: { title: text() },
       });
 
       const authAdapter: VexAuthAdapter = {
@@ -2494,7 +3050,6 @@ describe("generateVexSchema", () => {
         userCollection: "users",
         userFields: {},
         tables: [],
-        plugins: [],
       };
 
       const config = defineConfig({
@@ -2510,12 +3065,13 @@ describe("generateVexSchema", () => {
     it("generates valid TypeScript (no syntax errors in structure)", () => {
       const posts = defineCollection("posts", {
         fields: {
-          title: text({ required: true }),
+          title: text({ required: true, defaultValue: "Untitled" }),
           slug: text({ index: "by_slug" }),
           views: number(),
           featured: checkbox(),
           status: select({
             required: true,
+            defaultValue: "draft",
             options: [
               { value: "draft", label: "Draft" },
               { value: "published", label: "Published" },
@@ -2523,12 +3079,11 @@ describe("generateVexSchema", () => {
           }),
         },
       });
-      const config = defineConfig({ collections: [posts] });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
       const output = generateVexSchema(config);
-
-      // Basic structural checks
-      const exportCount = (output.match(/export const /g) || []).length;
-      expect(exportCount).toBe(1); // One collection
 
       // Opening and closing braces should be balanced
       const openBraces = (output.match(/\{/g) || []).length;
@@ -2544,10 +3099,13 @@ describe("generateVexSchema", () => {
     it("uses consistent indentation", () => {
       const posts = defineCollection("posts", {
         fields: {
-          title: text({ required: true }),
+          title: text(),
         },
       });
-      const config = defineConfig({ collections: [posts] });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
       const output = generateVexSchema(config);
 
       // Fields inside defineTable should be indented
@@ -2566,51 +3124,66 @@ describe("generateVexSchema", () => {
 
 This section describes what each function must accomplish. The actual implementations are left for the developer, guided by the tests in Phase B.
 
+### `validateFieldConfig`
+
+**Goal:** Validate a field's required/defaultValue configuration. Throw `VexFieldValidationError` if invalid. Return `{ isOptional }` for the caller to use with `wrapOptional()`.
+
+**Steps:**
+
+1. If `required=true` and `defaultValue` is undefined → throw `VexFieldValidationError`
+2. If `defaultValue` is provided and `expectedType !== "select"`:
+   - Check `typeof defaultValue === expectedType` → throw if mismatch
+3. If `expectedType === "select"`: special handling in the select validator (check defaultValue against option values)
+4. Return `{ isOptional: !meta.required }`
+
+---
+
 ### `textToValidatorString`
 
-**Goal:** Return `"v.string()"`. Always. Text field metadata (minLength, maxLength, defaultValue, index) does not affect the Convex validator.
+**Goal:** Call `validateFieldConfig(meta, collectionSlug, fieldName, "string")`, then return `wrapOptional("v.string()", result.isOptional)`. minLength/maxLength are runtime validation, not schema.
 
 ---
 
 ### `numberToValidatorString`
 
-**Goal:** Return `"v.float64()"`. Always. Convex stores all numbers as 64-bit floats. Number field metadata (min, max, step) does not affect the Convex validator.
+**Goal:** Call `validateFieldConfig(meta, collectionSlug, fieldName, "number")`, then return `wrapOptional("v.float64()", result.isOptional)`. min/max/step are runtime validation, not schema.
 
 ---
 
 ### `checkboxToValidatorString`
 
-**Goal:** Return `"v.boolean()"`. Always. Boolean metadata (defaultValue) does not affect the Convex validator.
+**Goal:** Call `validateFieldConfig(meta, collectionSlug, fieldName, "boolean")`, then return `wrapOptional("v.boolean()", result.isOptional)`.
 
 ---
 
 ### `selectToValidatorString`
 
-**Goal:** Build a `v.union(v.literal(...), ...)` string from the options array. If `hasMany` is true, wrap the result in `v.array(...)`.
+**Goal:** Validate config (including that defaultValue is one of the option values), build a union of literal validators, wrap in `v.array()` if `hasMany`.
 
 **Steps:**
 
-1. Deduplicate option values
-2. Throw if options array is empty
-3. Escape quote characters in values
-4. Build `v.literal("value")` for each unique value
-5. Join with `v.union(...)`
-6. If `hasMany`, wrap in `v.array(...)`
+1. Call `validateFieldConfig(meta, collectionSlug, fieldName, "select")` for required check
+2. If defaultValue is provided, check it's in the options values array → throw if not
+3. Deduplicate option values
+4. Throw if options array is empty
+5. Escape quote characters in values
+6. Build `v.literal("value")` for each unique value
+7. Join with `v.union(...)`
+8. If `hasMany`, wrap in `v.array(...)`
+9. Call `wrapOptional()` with result
 
 ---
 
 ### `fieldToValidatorString`
 
-**Goal:** Dispatch to the correct per-field validator function based on `field._meta.type`, then wrap in `v.optional(...)` if the field is not required.
+**Goal:** Dispatch to the correct per-field validator function based on `field._meta.type`. Each per-field function handles its own validation and optional wrapping.
 
 **Steps:**
 
 1. Read `field._meta.type`
-2. Switch on type: `"text"` → `textToValidatorString`, `"number"` → `numberToValidatorString`, `"checkbox"` → `checkboxToValidatorString`, `"select"` → `selectToValidatorString`
+2. Switch on type: `"text"` → `textToValidatorString(meta, collectionSlug, fieldName)`, etc.
 3. If type is unrecognized, throw with the type string in the error message
-4. If `field._meta.required` is truthy, return the raw validator string
-5. Otherwise, wrap in `v.optional(...)`
-6. The `index` property on `_meta` is intentionally ignored — handled by `collectIndexes()`
+4. The `index` property on `_meta` is intentionally ignored — handled by `collectIndexes()`
 
 ---
 
@@ -2633,68 +3206,37 @@ This section describes what each function must accomplish. The actual implementa
 
 ---
 
-### `SlugRegistry.findConflicts`
+### `SlugRegistry.register`
 
-**Goal:** Group registrations by slug. Return entries where a slug has 2+ registrations.
-
-**Steps:**
-
-1. Build a Map<string, SlugRegistration[]> from all registrations
-2. Filter to entries with length > 1
-3. Return as SlugConflict[]
-
----
-
-### `SlugRegistry.validate`
-
-**Goal:** Call `findConflicts()`. If any conflicts exist, throw an error with a formatted message listing each conflict's slug and all its sources.
+**Goal:** Register a slug. Throw `VexSlugConflictError` immediately if the slug is already registered. This ensures schema generation fails fast at the exact point of conflict, with both the existing and new registration details in the error message.
 
 ---
 
 ### `buildSlugRegistry`
 
-**Goal:** Create a SlugRegistry and populate it from the full VexConfig.
+**Goal:** Create a SlugRegistry and populate it from the full VexConfig. Each `register()` call throws immediately on duplicate slug.
 
 **Steps:**
 
 1. Create a new SlugRegistry
-2. Register each collection slug as `"user-collection"`
-3. Register each global slug as `"user-global"`
-4. If auth is configured:
-   a. Verify `auth.userCollection` exists in collections (throw if not)
-   b. Resolve auth adapter (apply plugins)
-   c. Register each resolved auth table slug as `"auth-table"`
-5. Return the registry
+2. Register each collection's `tableName ?? slug` as `"user-collection"` (throws on duplicate)
+3. Register each global slug as `"user-global"` (throws on duplicate)
+4. Verify `auth.userCollection` exists in collections (throw if not)
+5. Register each auth table slug as `"auth-table"` (throws on duplicate)
+6. Return the registry
 
 ---
 
 ### `mergeAuthFields`
 
-**Goal:** Combine auth-provided userFields with user-defined collection fields for schema generation.
+**Goal:** Combine auth-provided userFields with user-defined collection fields for schema generation. The auth adapter is already fully resolved (no plugin resolution needed here).
 
 **Steps:**
 
-1. If no auth adapter, convert all user fields to validator strings and return as `userOnly`
-2. Resolve auth adapter (apply plugin userFields)
-3. For each auth userField: if user also defines it → `overlapping`; if not → `authOnly`
-4. For each user field: if auth doesn't define it → `userOnly`
-5. Build merged fields map: auth fields first (as raw validator strings), then user-only fields (converted via `fieldToValidatorString`)
-6. For overlapping fields, use the auth validator string
-
----
-
-### `resolveAuthAdapter`
-
-**Goal:** Apply all auth plugin contributions to produce the final tables and userFields.
-
-**Steps:**
-
-1. Deep copy base tables and userFields
-2. For each plugin in order:
-   a. Merge plugin.userFields into accumulated userFields
-   b. Add plugin.tables to accumulated tables
-   c. For each tableExtension, find the matching table and merge fields (throw if table not found)
-3. Return resolved tables and userFields
+1. For each auth userField: if user also defines it → `overlapping`; if not → `authOnly`
+2. For each user field: if auth doesn't define it → `userOnly`
+3. Build merged fields map: auth fields first (as raw validator strings), then user-only fields (converted via `fieldToValidatorString`)
+4. For overlapping fields, use the auth validator string
 
 ---
 
@@ -2704,14 +3246,14 @@ This section describes what each function must accomplish. The actual implementa
 
 **Steps:**
 
-1. Build slug registry from config and validate (throws on conflicts)
-2. Resolve auth adapter if present
+1. Build slug registry from config (throws immediately on duplicate slug)
+2. Auth adapter is already fully resolved (vexBetterAuth() handled plugin resolution)
 3. Build the header (warning comment referencing output path + imports)
 4. For each collection:
    a. If this is the auth user collection, use merged fields (auth + user)
    b. Otherwise, convert user fields via `fieldToValidatorString`
    c. Collect indexes via `collectIndexes()` — includes per-field, collection-level, and auto-generated `useAsTitle` indexes
-   d. Generate `export const <slug> = defineTable({ ... })`
+   d. Generate `export const <tableName ?? slug> = defineTable({ ... })`
    e. Chain `.index(...)` calls for each resolved index
 5. For each auth infrastructure table:
    a. Generate `export const <slug> = defineTable({ ... })` — relationship fields use `v.id()` as provided by the auth adapter
@@ -2798,7 +3340,7 @@ import type { BetterAuthOptions } from "better-auth";
 import type { VexAuthAdapter } from "@vexcms/core";
 import { extractUserFields } from "./extract/userFields";
 import { extractTables } from "./extract/tables";
-import { extractPlugins } from "./extract/plugins";
+import { resolvePluginContributions } from "./extract/plugins";
 
 /**
  * Create a VexAuthAdapter from a better-auth config.
@@ -2815,11 +3357,11 @@ import { extractPlugins } from "./extract/plugins";
  * Uses v.id("<slug>") for relationship fields based on actual modelName values.
  *
  * Edge cases:
- * - No plugins: return base tables + user fields only
+ * - No plugins in config: return base tables + user fields only
  * - Custom modelName: use the custom slug for v.id() references
  * - additionalFields on user: merge into userFields
- * - Plugin adds new table: include in tables array
- * - Plugin extends existing table: include in plugins[].tableExtensions
+ * - Plugin adds new table: resolved into tables array
+ * - Plugin extends existing table: fields merged into the table's fields
  */
 export function vexBetterAuth(config: BetterAuthOptions): VexAuthAdapter {
   // Read model names (with better-auth defaults)
@@ -2828,17 +3370,24 @@ export function vexBetterAuth(config: BetterAuthOptions): VexAuthAdapter {
   const accountSlug = config.account?.modelName ?? "account";
   const verificationSlug = config.verification?.modelName ?? "verification";
 
+  const tableSlugs = { userSlug, sessionSlug, accountSlug, verificationSlug };
+
+  // Extract base fields and tables, then resolve plugin contributions
+  // internally. The returned adapter is fully resolved — no plugins field.
+  const baseUserFields = extractUserFields(config);
+  const baseTables = extractTables(config, tableSlugs);
+  const { userFields, tables } = resolvePluginContributions(
+    config.plugins ?? [],
+    baseUserFields,
+    baseTables,
+    tableSlugs,
+  );
+
   return {
     name: "better-auth",
     userCollection: userSlug,
-    userFields: extractUserFields(config),
-    tables: extractTables(config, {
-      userSlug,
-      sessionSlug,
-      accountSlug,
-      verificationSlug,
-    }),
-    plugins: extractPlugins(config.plugins ?? []),
+    userFields,
+    tables,
   };
 }
 ```
@@ -3006,17 +3555,33 @@ export function buildBaseTables(slugs: TableSlugs): AuthTableDefinition[] {
 
 ```typescript
 // packages/better-auth/src/extract/plugins.ts
-import type { VexAuthPlugin } from "@vexcms/core";
+import type { AuthFieldDefinition, AuthTableDefinition } from "@vexcms/core";
+
+interface TableSlugs {
+  userSlug: string;
+  sessionSlug: string;
+  accountSlug: string;
+  verificationSlug: string;
+}
+
+interface ResolvedContributions {
+  userFields: Record<string, AuthFieldDefinition>;
+  tables: AuthTableDefinition[];
+}
 
 /**
- * Extract VexAuthPlugin contributions from better-auth plugin instances.
+ * Resolve plugin contributions into the base userFields and tables.
+ *
+ * This function is called internally by vexBetterAuth() — plugin resolution
+ * is fully contained within the @vexcms/better-auth package. The VexAuthAdapter
+ * returned to core has no plugins field; it's already fully resolved.
  *
  * Goal: Iterate over the active better-auth plugins and, for each known
- * plugin type (admin, apiKey, twoFactor, etc.), produce a VexAuthPlugin
- * with the correct userFields, tables, and tableExtensions.
+ * plugin type (admin, apiKey, twoFactor, etc.), merge their field and table
+ * contributions into the base userFields and tables.
  *
  * The function inspects each plugin's `id` property to determine which
- * Vex schema contributions it makes. Unknown plugins are skipped with
+ * schema contributions it makes. Unknown plugins are skipped with
  * a console.warn (they may not affect the schema).
  *
  * Edge cases:
@@ -3024,9 +3589,16 @@ import type { VexAuthPlugin } from "@vexcms/core";
  * - Admin plugin: adds banned, banExpires, banReason, role to user; impersonatedBy to session
  * - API key plugin: adds api_key table
  * - Two-factor plugin: adds twoFactor fields to user, twoFactor table
- * - Empty plugins array: return empty array
+ * - Empty plugins array: return base fields/tables unchanged
+ * - Plugin extends existing table: merge fields into that table
+ * - Plugin adds new table: append to tables array
  */
-export function extractPlugins(plugins: any[]): VexAuthPlugin[] {
+export function resolvePluginContributions(
+  plugins: any[],
+  baseUserFields: Record<string, AuthFieldDefinition>,
+  baseTables: AuthTableDefinition[],
+  slugs: TableSlugs,
+): ResolvedContributions {
   // TODO: implement
   throw new Error("Not implemented");
 }
@@ -3038,12 +3610,11 @@ export function extractPlugins(plugins: any[]): VexAuthPlugin[] {
 packages/better-auth/                 # @vexcms/better-auth
 ├── src/
 │   ├── index.ts                      # vexBetterAuth() factory
-│   ├── extract/
-│   │   ├── userFields.ts             # extractUserFields() + BASE_USER_FIELDS
-│   │   ├── tables.ts                 # extractTables() + buildBaseTables()
-│   │   └── plugins.ts                # extractPlugins() — maps better-auth plugins to VexAuthPlugins
 │   └── extract/
-│       └── index.ts                  # re-exports
+│       ├── index.ts                  # re-exports
+│       ├── userFields.ts             # extractUserFields() + BASE_USER_FIELDS
+│       ├── tables.ts                 # extractTables() + buildBaseTables()
+│       └── plugins.ts                # resolvePluginContributions() — resolves plugins internally
 ├── package.json                      # peerDependencies: better-auth, @vexcms/core
 ├── tsconfig.json
 └── tsup.config.ts
@@ -3061,11 +3632,12 @@ import { defineCollection, text, number, select, checkbox } from "@vexcms/core";
 
 export const posts = defineCollection("posts", {
   fields: {
-    title: text({ label: "Title", required: true }),
-    slug: text({ label: "Slug", required: true, index: "by_slug" }),
+    title: text({ label: "Title", required: true, defaultValue: "Untitled" }),
+    slug: text({ label: "Slug", required: true, defaultValue: "", index: "by_slug" }),
     status: select({
       label: "Status",
       required: true,
+      defaultValue: "draft",
       index: "by_status",
       options: [
         { value: "draft", label: "Draft" },
@@ -3073,7 +3645,7 @@ export const posts = defineCollection("posts", {
       ],
     }),
     featured: checkbox({ label: "Featured" }),
-    author: text({ label: "Author", required: true }),
+    author: text({ label: "Author", required: true, defaultValue: "" }),
     publishedAt: number({ label: "Published At" }),
   },
   // Compound indexes go here — type-checked against field names
