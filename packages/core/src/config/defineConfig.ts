@@ -1,6 +1,6 @@
 import type { VexConfig, VexConfigInput } from "../types";
 
-export const BASE_VEX_CONFIG: VexConfig = {
+export const BASE_VEX_CONFIG: Omit<VexConfig, "auth"> = {
   basePath: "/admin",
   globals: [],
   collections: [],
@@ -13,6 +13,9 @@ export const BASE_VEX_CONFIG: VexConfig = {
     sidebar: {
       hideGlobals: false,
     },
+  },
+  schema: {
+    outputPath: "/convex/vex.schema.ts",
   },
 };
 
@@ -31,6 +34,10 @@ export function defineConfig(vexConfig: VexConfigInput): VexConfig {
         ...BASE_VEX_CONFIG.admin.sidebar,
         ...vexConfig.admin?.sidebar,
       },
+    },
+    schema: {
+      ...BASE_VEX_CONFIG.schema,
+      ...vexConfig.schema,
     },
   };
 

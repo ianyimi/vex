@@ -66,6 +66,47 @@ export interface BaseFieldMeta {
   required?: boolean;
   /** Admin UI configuration for this field. */
   admin?: FieldAdminConfig;
+  /**
+   * Create a database index on this field.
+   * The string value becomes the index name in Convex.
+   *
+   * @example
+   * ```ts
+   * slug: text({ index: "by_slug", required: true })
+   * // Generates: .index("by_slug", ["slug"])
+   * ```
+   */
+  index?: string;
+}
+
+/**
+ * Base options shared by all field builders.
+ * Each specific field options interface extends this.
+ */
+export interface BaseFieldOptions {
+  /** Display label for the field. */
+  label?: string;
+  /** Description text shown below the field. */
+  description?: string;
+  /**
+   * Whether this field is required.
+   *
+   * Default: `false`
+   */
+  required?: boolean;
+  /** Admin UI configuration for this field. */
+  admin?: FieldAdminConfig;
+  /**
+   * Create a database index on this field.
+   * The string value becomes the index name in Convex.
+   *
+   * @example
+   * ```ts
+   * slug: text({ index: "by_slug", required: true })
+   * // Generates: .index("by_slug", ["slug"])
+   * ```
+   */
+  index?: string;
 }
 
 /** Text field metadata. */
@@ -87,25 +128,13 @@ export interface TextFieldMeta extends BaseFieldMeta {
  * text({ label: "Title", required: true, maxLength: 200 })
  * ```
  */
-export interface TextFieldOptions {
-  /** Display label for the field. */
-  label?: string;
-  /** Description text shown below the field. */
-  description?: string;
-  /**
-   * Whether this field is required.
-   *
-   * Default: `false`
-   */
-  required?: boolean;
+export interface TextFieldOptions extends BaseFieldOptions {
   /** Default value for new documents. */
   defaultValue?: string;
   /** Minimum character length. */
   minLength?: number;
   /** Maximum character length. */
   maxLength?: number;
-  /** Admin UI configuration for this field. */
-  admin?: FieldAdminConfig;
 }
 
 /** Number field metadata. */
@@ -129,17 +158,7 @@ export interface NumberFieldMeta extends BaseFieldMeta {
  * number({ label: "Price", min: 0, step: 0.01 })
  * ```
  */
-export interface NumberFieldOptions {
-  /** Display label for the field. */
-  label?: string;
-  /** Description text shown below the field. */
-  description?: string;
-  /**
-   * Whether this field is required.
-   *
-   * Default: `false`
-   */
-  required?: boolean;
+export interface NumberFieldOptions extends BaseFieldOptions {
   /** Default value for new documents. */
   defaultValue?: number;
   /** Minimum allowed value. */
@@ -148,8 +167,6 @@ export interface NumberFieldOptions {
   max?: number;
   /** Step increment for the input. */
   step?: number;
-  /** Admin UI configuration for this field. */
-  admin?: FieldAdminConfig;
 }
 
 /** Checkbox field metadata. */
@@ -167,19 +184,13 @@ export interface CheckboxFieldMeta extends BaseFieldMeta {
  * checkbox({ label: "Published", defaultValue: false })
  * ```
  */
-export interface CheckboxFieldOptions {
-  /** Display label for the field. */
-  label?: string;
-  /** Description text shown below the field. */
-  description?: string;
+export interface CheckboxFieldOptions extends BaseFieldOptions {
   /**
    * Default value for new documents.
    *
    * Default: `false`
    */
   defaultValue?: boolean;
-  /** Admin UI configuration for this field. */
-  admin?: FieldAdminConfig;
 }
 
 /**
@@ -224,17 +235,7 @@ export interface SelectFieldMeta<
  * })
  * ```
  */
-export interface SelectFieldOptions<T extends string> {
-  /** Display label for the field. */
-  label?: string;
-  /** Description text shown below the field. */
-  description?: string;
-  /**
-   * Whether this field is required.
-   *
-   * Default: `false`
-   */
-  required?: boolean;
+export interface SelectFieldOptions<T extends string> extends BaseFieldOptions {
   /** The available options for this select field. */
   options: readonly SelectOption<T>[];
   /** Default value for new documents. Must match one of the option values. */
@@ -245,8 +246,6 @@ export interface SelectFieldOptions<T extends string> {
    * Default: `false`
    */
   hasMany?: boolean;
-  /** Admin UI configuration for this field. */
-  admin?: FieldAdminConfig;
 }
 
 /** Union of all field metadata types. */

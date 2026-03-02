@@ -3,10 +3,9 @@ import { SidebarTrigger } from "@vexcms/ui"
 
 import config from "~/../vex.config"
 import { getCurrentUser } from "~/auth/serverUtils"
-import { type User } from "~/db/types"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const user = (await getCurrentUser()) as User
+  const user = await getCurrentUser()
   return (
     <Layout
       config={config}

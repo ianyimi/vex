@@ -1,12 +1,9 @@
 {
-  "extends": "@vexcms/tsconfig/react-library.json",
+  "extends": "@vexcms/tsconfig/base.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
     "paths": {
-      "@vexcms/ui": [
-        "../../packages/ui/src/index.ts"
-      ],
       "@vexcms/core": [
         "../../packages/core/src/index.ts"
       ]

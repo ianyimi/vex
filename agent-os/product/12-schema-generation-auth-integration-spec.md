@@ -28,11 +28,25 @@ This document defines the implementation plan for Vex CMS schema generation from
 
 ## Implementation Order
 
-This spec is structured for test-first development:
+This spec is structured for test-first development across two stages. Stage 1 focuses on core types and per-field validators, then jumps to the `@vexcms/better-auth` package so the `auth` field on `VexConfigInput` passes compile-time validation. Stage 2 returns to core to build the schema generation pipeline.
 
-1. **Phase A** — Create interfaces, types, and function stubs (full code provided)
-2. **Phase B** — Write comprehensive tests against the stubs (full test code provided)
-3. **Phase C** — Implement the function bodies (summaries + edge cases provided, bodies left empty)
+### Stage 1: Types, Subfolder Restructure, and Auth Package
+
+1. **Phase A.1** — Core types and interfaces: error types, auth types, field type modifications (`BaseFieldOptions`, `BaseFieldMeta.index`, `IndexConfig`), config type modifications (`VexConfig.auth` required, `SchemaConfig`, `CollectionConfig.tableName`) ✅
+2. **Phase A.2** — Per-field subfolder restructure: move field builders to `config.ts`, create `schema.ts` stubs, create `admin/` subfolder stubs ✅
+3. **Phase D** — `@vexcms/better-auth` package: implement `vexBetterAuth()`, `extractUserFields()`, `extractTables()`, `resolvePluginContributions()`. This unblocks the `auth` field in `defineConfig()` so the full config compiles.
+
+### Stage 2: Per-Field Validators and Schema Generation (resume after Stage 1)
+
+4. **Phase B.1** — Per-field validator tests (`text/schema.test.ts`, `number/schema.test.ts`, etc.) and `validate.test.ts`
+5. **Phase C.1** — Implement per-field validators (`textToValidatorString`, etc.), `validateFieldConfig`, `wrapOptional`
+6. **Phase A.3** — Schema generation stubs: `fieldToValidatorString` dispatcher, `collectIndexes`, `SlugRegistry`, `mergeAuthFields`, `generateVexSchema`
+7. **Phase B.2** — Schema generation tests: `extract.test.ts`, `indexes.test.ts`, `slugs.test.ts`, `merge.test.ts`, `generate.test.ts`
+8. **Phase C.2** — Implement schema generation functions
+
+### Phases reference (original structure preserved below)
+
+The Phase A / B / C sections below contain all code for both stages. Use the stage ordering above to determine what to implement when.
 
 ---
 
@@ -454,9 +468,9 @@ export class VexSlugConflictError extends VexError {
   ) {
     super(
       `Duplicate table slug "${slug}":\n` +
-      `  - ${existingSource}: ${existingLocation}\n` +
-      `  - ${newSource}: ${newLocation}\n` +
-      `Rename one of these to resolve the conflict.`,
+        `  - ${existingSource}: ${existingLocation}\n` +
+        `  - ${newSource}: ${newLocation}\n` +
+        `Rename one of these to resolve the conflict.`,
     );
     this.name = "VexSlugConflictError";
   }
@@ -472,9 +486,7 @@ export class VexFieldValidationError extends VexError {
     public readonly fieldName: string,
     public readonly detail: string,
   ) {
-    super(
-      `Field "${fieldName}" in collection "${collectionSlug}": ${detail}`,
-    );
+    super(`Field "${fieldName}" in collection "${collectionSlug}": ${detail}`);
     this.name = "VexFieldValidationError";
   }
 }
@@ -567,6 +579,15 @@ Also re-export the new collection type:
 ```typescript
 export type { IndexConfig } from "./collections";
 ```
+
+---
+
+TODO: Continue from here
+
+> **PAUSE POINT:** Before continuing below, implement the `@vexcms/better-auth` package by following
+> **[Spec 13 — Better Auth Package](./13-better-auth-package-spec.md)**.
+> This gives you a working `vexBetterAuth()` function so the `auth` field in `vex.config.ts` compiles.
+> Return here after spec 13 is complete.
 
 ---
 
@@ -825,6 +846,7 @@ Each field subfolder contains an `admin/` directory with two concerns:
 These are **stubs** — the full implementation is covered in the next spec (admin form generation).
 
 The admin input components read the field's `_meta` to determine rendering behavior:
+
 - `admin.hidden` → don't render
 - `admin.readOnly` → render as disabled
 - `admin.position` → "main" or "sidebar" placement
@@ -833,6 +855,7 @@ The admin input components read the field's `_meta` to determine rendering behav
 - `admin.description` → helper text below input
 
 The zod schema functions read the field's `_meta` to produce the correct validation:
+
 - `required` → `z.string()` vs `z.string().optional()`
 - `minLength` / `maxLength` → `z.string().min(n).max(n)`
 - `min` / `max` → `z.number().min(n).max(n)`
@@ -1139,10 +1162,7 @@ export function collectIndexes(
 
 ```typescript
 import type { VexField, BaseFieldMeta } from "../types";
-import type {
-  VexAuthAdapter,
-  AuthFieldDefinition,
-} from "../auth/types";
+import type { VexAuthAdapter, AuthFieldDefinition } from "../auth/types";
 import type { VexCollection } from "../types";
 
 /**
@@ -1205,7 +1225,7 @@ export function mergeAuthFields(
 
 **File: `packages/core/src/schema/slugs.ts`**
 
-````typescript
+```typescript
 import { VexSlugConflictError, VexAuthConfigError } from "../errors";
 
 // =============================================================================
@@ -1294,7 +1314,7 @@ export function buildSlugRegistry(
   // TODO: implement
   throw new Error("Not implemented");
 }
-````
+```
 
 **File: `packages/core/src/schema/generate.ts`**
 
@@ -1497,18 +1517,26 @@ import type { TextFieldMeta } from "../../types";
 
 describe("textToValidatorString", () => {
   it("returns v.string() for a required text field", () => {
-    const meta: TextFieldMeta = { type: "text", required: true, defaultValue: "x" };
+    const meta: TextFieldMeta = {
+      type: "text",
+      required: true,
+      defaultValue: "x",
+    };
     expect(textToValidatorString(meta, "posts", "title")).toBe("v.string()");
   });
 
   it("returns v.optional(v.string()) for an optional text field", () => {
     const meta: TextFieldMeta = { type: "text" };
-    expect(textToValidatorString(meta, "posts", "subtitle")).toBe("v.optional(v.string())");
+    expect(textToValidatorString(meta, "posts", "subtitle")).toBe(
+      "v.optional(v.string())",
+    );
   });
 
   it("returns v.optional(v.string()) regardless of minLength/maxLength", () => {
     const meta: TextFieldMeta = { type: "text", minLength: 1, maxLength: 200 };
-    expect(textToValidatorString(meta, "posts", "excerpt")).toBe("v.optional(v.string())");
+    expect(textToValidatorString(meta, "posts", "excerpt")).toBe(
+      "v.optional(v.string())",
+    );
   });
 
   it("returns v.string() with full options including index", () => {
@@ -1528,12 +1556,20 @@ describe("textToValidatorString", () => {
 
   it("throws when required with no defaultValue", () => {
     const meta: TextFieldMeta = { type: "text", required: true };
-    expect(() => textToValidatorString(meta, "posts", "title")).toThrow("title");
+    expect(() => textToValidatorString(meta, "posts", "title")).toThrow(
+      "title",
+    );
   });
 
   it("throws when defaultValue is wrong type", () => {
-    const meta: TextFieldMeta = { type: "text", required: true, defaultValue: 42 as any };
-    expect(() => textToValidatorString(meta, "posts", "title")).toThrow("title");
+    const meta: TextFieldMeta = {
+      type: "text",
+      required: true,
+      defaultValue: 42 as any,
+    };
+    expect(() => textToValidatorString(meta, "posts", "title")).toThrow(
+      "title",
+    );
   });
 });
 ```
@@ -1547,13 +1583,19 @@ import type { NumberFieldMeta } from "../../types";
 
 describe("numberToValidatorString", () => {
   it("returns v.float64() for a required number field", () => {
-    const meta: NumberFieldMeta = { type: "number", required: true, defaultValue: 0 };
+    const meta: NumberFieldMeta = {
+      type: "number",
+      required: true,
+      defaultValue: 0,
+    };
     expect(numberToValidatorString(meta, "items", "count")).toBe("v.float64()");
   });
 
   it("returns v.optional(v.float64()) for an optional number field", () => {
     const meta: NumberFieldMeta = { type: "number" };
-    expect(numberToValidatorString(meta, "items", "count")).toBe("v.optional(v.float64())");
+    expect(numberToValidatorString(meta, "items", "count")).toBe(
+      "v.optional(v.float64())",
+    );
   });
 
   it("returns v.optional(v.float64()) regardless of min/max/step", () => {
@@ -1563,17 +1605,27 @@ describe("numberToValidatorString", () => {
       max: 100,
       step: 0.01,
     };
-    expect(numberToValidatorString(meta, "items", "price")).toBe("v.optional(v.float64())");
+    expect(numberToValidatorString(meta, "items", "price")).toBe(
+      "v.optional(v.float64())",
+    );
   });
 
   it("throws when required with no defaultValue", () => {
     const meta: NumberFieldMeta = { type: "number", required: true };
-    expect(() => numberToValidatorString(meta, "items", "count")).toThrow("count");
+    expect(() => numberToValidatorString(meta, "items", "count")).toThrow(
+      "count",
+    );
   });
 
   it("throws when defaultValue is wrong type", () => {
-    const meta: NumberFieldMeta = { type: "number", required: true, defaultValue: "ten" as any };
-    expect(() => numberToValidatorString(meta, "items", "count")).toThrow("count");
+    const meta: NumberFieldMeta = {
+      type: "number",
+      required: true,
+      defaultValue: "ten" as any,
+    };
+    expect(() => numberToValidatorString(meta, "items", "count")).toThrow(
+      "count",
+    );
   });
 });
 ```
@@ -1588,22 +1640,38 @@ import type { CheckboxFieldMeta } from "../../types";
 describe("checkboxToValidatorString", () => {
   it("returns v.optional(v.boolean()) for an optional checkbox", () => {
     const meta: CheckboxFieldMeta = { type: "checkbox" };
-    expect(checkboxToValidatorString(meta, "posts", "featured")).toBe("v.optional(v.boolean())");
+    expect(checkboxToValidatorString(meta, "posts", "featured")).toBe(
+      "v.optional(v.boolean())",
+    );
   });
 
   it("returns v.boolean() for a required checkbox with defaultValue", () => {
-    const meta: CheckboxFieldMeta = { type: "checkbox", required: true, defaultValue: true };
-    expect(checkboxToValidatorString(meta, "posts", "featured")).toBe("v.boolean()");
+    const meta: CheckboxFieldMeta = {
+      type: "checkbox",
+      required: true,
+      defaultValue: true,
+    };
+    expect(checkboxToValidatorString(meta, "posts", "featured")).toBe(
+      "v.boolean()",
+    );
   });
 
   it("throws when required with no defaultValue", () => {
     const meta: CheckboxFieldMeta = { type: "checkbox", required: true };
-    expect(() => checkboxToValidatorString(meta, "posts", "featured")).toThrow("featured");
+    expect(() => checkboxToValidatorString(meta, "posts", "featured")).toThrow(
+      "featured",
+    );
   });
 
   it("throws when defaultValue is wrong type", () => {
-    const meta: CheckboxFieldMeta = { type: "checkbox", required: true, defaultValue: "yes" as any };
-    expect(() => checkboxToValidatorString(meta, "posts", "featured")).toThrow("featured");
+    const meta: CheckboxFieldMeta = {
+      type: "checkbox",
+      required: true,
+      defaultValue: "yes" as any,
+    };
+    expect(() => checkboxToValidatorString(meta, "posts", "featured")).toThrow(
+      "featured",
+    );
   });
 });
 ```
@@ -1726,7 +1794,9 @@ describe("selectToValidatorString", () => {
         { value: "b", label: "B" },
       ],
     };
-    expect(() => selectToValidatorString(meta, "posts", "status")).toThrow("status");
+    expect(() => selectToValidatorString(meta, "posts", "status")).toThrow(
+      "status",
+    );
   });
 
   it("throws when defaultValue is not in options", () => {
@@ -1739,7 +1809,9 @@ describe("selectToValidatorString", () => {
         { value: "b", label: "B" },
       ],
     };
-    expect(() => selectToValidatorString(meta, "posts", "status")).toThrow("status");
+    expect(() => selectToValidatorString(meta, "posts", "status")).toThrow(
+      "status",
+    );
   });
 });
 ```
@@ -1762,12 +1834,16 @@ describe("fieldToValidatorString", () => {
   describe("required fields (no v.optional wrapper)", () => {
     it("text field with required: true and defaultValue", () => {
       const field = text({ required: true, defaultValue: "Untitled" });
-      expect(fieldToValidatorString(field, "posts", "title")).toBe("v.string()");
+      expect(fieldToValidatorString(field, "posts", "title")).toBe(
+        "v.string()",
+      );
     });
 
     it("number field with required: true and defaultValue", () => {
       const field = number({ required: true, defaultValue: 0 });
-      expect(fieldToValidatorString(field, "items", "count")).toBe("v.float64()");
+      expect(fieldToValidatorString(field, "items", "count")).toBe(
+        "v.float64()",
+      );
     });
 
     it("select field with required: true and defaultValue", () => {
@@ -1839,8 +1915,14 @@ describe("fieldToValidatorString", () => {
 
   describe("index property does not affect validator", () => {
     it("text field with index still returns same validator", () => {
-      const field = text({ required: true, defaultValue: "x", index: "by_title" });
-      expect(fieldToValidatorString(field, "posts", "title")).toBe("v.string()");
+      const field = text({
+        required: true,
+        defaultValue: "x",
+        index: "by_title",
+      });
+      expect(fieldToValidatorString(field, "posts", "title")).toBe(
+        "v.string()",
+      );
     });
   });
 
@@ -3028,7 +3110,10 @@ describe("generateVexSchema", () => {
         userCollection: "users",
         userFields: {},
         tables: [
-          { slug: "account", fields: { userId: { validator: 'v.id("users")' } } },
+          {
+            slug: "account",
+            fields: { userId: { validator: 'v.id("users")' } },
+          },
         ],
       };
 
@@ -3330,6 +3415,7 @@ The `@vexcms/better-auth` package accepts the **same better-auth config** that u
 **Factory function that accepts a better-auth config and returns a VexAuthAdapter.**
 
 The function reads the better-auth config to determine:
+
 - Table slugs from `user.modelName`, `session.modelName`, `account.modelName`, `verification.modelName`
 - User additional fields from `user.additionalFields`
 - Which plugins are active and what fields/tables they contribute
@@ -3633,7 +3719,12 @@ import { defineCollection, text, number, select, checkbox } from "@vexcms/core";
 export const posts = defineCollection("posts", {
   fields: {
     title: text({ label: "Title", required: true, defaultValue: "Untitled" }),
-    slug: text({ label: "Slug", required: true, defaultValue: "", index: "by_slug" }),
+    slug: text({
+      label: "Slug",
+      required: true,
+      defaultValue: "",
+      index: "by_slug",
+    }),
     status: select({
       label: "Status",
       required: true,
@@ -3684,9 +3775,7 @@ export const authConfig: BetterAuthOptions = {
   session: { modelName: "session" },
   account: { modelName: "account" },
   verification: { modelName: "verification" },
-  plugins: [
-    admin({ adminRoles: ["admin"], defaultRole: "user" }),
-  ],
+  plugins: [admin({ adminRoles: ["admin"], defaultRole: "user" })],
 };
 ```
 
@@ -3732,6 +3821,7 @@ export default defineConfig({
 ```
 
 With this setup:
+
 - Users maintain their auth config in **one file** (`src/auth/config.ts`)
 - The server uses it with `betterAuth()` (adding runtime-only options like `database`, `secret`)
 - Vex uses it with `vexBetterAuth()` to introspect tables, fields, and plugins for schema generation

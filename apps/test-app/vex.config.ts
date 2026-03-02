@@ -1,3 +1,5 @@
+import { betterAuthOptions } from "@convex/auth/options"
+import { vexBetterAuth } from "@vexcms/better-auth"
 import { defineConfig } from "@vexcms/core"
 
 import { categories, posts, users } from "~/vexcms/collections"
@@ -13,6 +15,7 @@ export default defineConfig({
     },
     user: "users",
   },
+  auth: vexBetterAuth({ config: betterAuthOptions }),
   basePath: "/admin",
   collections: [posts, users, categories],
 })

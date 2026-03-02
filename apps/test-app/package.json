@@ -12,9 +12,6 @@
     "secret:create": "openssl rand -base64 32 | tr -d '\\n' | tee /dev/stderr | pbcopy && echo '\\n✓ Secret copied to clipboard'"
   },
   "dependencies": {
-    "@vexcms/core": "workspace:*",
-    "@vexcms/admin-next": "workspace:*",
-    "@vexcms/ui": "workspace:*",
     "@base-ui/react": "^1.1.0",
     "@convex-dev/better-auth": "^0.10.10",
     "@convex-dev/react-query": "^0.1.0",
@@ -22,7 +19,11 @@
     "@t3-oss/env-nextjs": "^0.13.10",
     "@tanstack/react-form": "^1.27.7",
     "@tanstack/react-query": "^5.90.17",
-    "better-auth": "^1.4.9",
+    "@vexcms/admin-next": "workspace:*",
+    "@vexcms/better-auth": "workspace:*",
+    "@vexcms/core": "workspace:*",
+    "@vexcms/ui": "workspace:*",
+    "better-auth": "catalog:",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.31.5",

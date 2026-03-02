@@ -46,6 +46,34 @@ export interface CollectionAdminConfig<
 }
 
 /**
+ * Index definition for a collection.
+ * Compound indexes include multiple fields — order matters.
+ *
+ * Generic over `TFields` so that the `fields` array is type-checked
+ * against actual field names in the collection. The default generic
+ * parameter allows standalone usage (e.g., in `collectIndexes` internals)
+ * without requiring a type argument.
+ */
+export interface IndexConfig<
+  TFields extends Record<string, VexField<any, any>> = Record<
+    string,
+    VexField<any, any>
+  >,
+> {
+  /**
+   * Index name (must be unique within the collection).
+   * Convention: `"by_<field>"` for single-field, `"by_<field1>_<field2>"` for compound.
+   */
+  name: string;
+  /**
+   * Field names to include in the index. Order matters for compound indexes.
+   * Each field name must be a key in the collection's `fields` record.
+   * Type-checked at compile time — invalid field names produce a type error.
+   */
+  fields: (keyof TFields & string)[];
+}
+
+/**
  * Configuration passed to `defineCollection`.
  * Defines the fields, labels, and admin behavior for a collection.
  */
@@ -73,6 +101,30 @@ export interface CollectionConfig<
    * Controls sidebar grouping, icons, list columns, and permissions.
    */
   admin?: CollectionAdminConfig<TFields>;
+  /**
+   * Database indexes for this collection.
+   * Use this for compound indexes that span multiple fields.
+   * For single-field indexes, prefer using `index` on the field directly.
+   *
+   * The `fields` array is type-checked: only field names defined in this
+   * collection's `fields` record are accepted.
+   *
+   * @example
+   * ```ts
+   * defineCollection("posts", {
+   *   fields: {
+   *     title: text(),
+   *     author: text(),
+   *     createdAt: number(),
+   *   },
+   *   indexes: [
+   *     { name: "by_author_date", fields: ["author", "createdAt"] },  // OK
+   *     { name: "bad", fields: ["nonexistent"] },                      // Type error!
+   *   ],
+   * })
+   *
+   */
+  indexes?: IndexConfig<TFields>[];
 }
 
 /**

@@ -20,3 +20,5 @@ catalog:
   # Testing - Playwright 1.58.x
   playwright: "^1.58.0"
   "@playwright/test": "^1.58.0"
+  # Auth
+  better-auth: ">=1.4.9 <1.5.0"

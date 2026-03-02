@@ -37,6 +37,9 @@
       ],
       "@vexcms/admin-next": [
         "../../packages/admin-next/src/index.ts"
+      ],
+      "@vexcms/better-auth": [
+        "../../packages/better-auth/src/index.ts"
       ]
     }
   },

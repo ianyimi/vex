@@ -23,6 +23,15 @@ export type {
   VexCollection,
   CollectionConfig,
   CollectionAdminConfig,
+  // Global types
+  VexGlobal,
+  GlobalConfig,
+  GlobalAdminConfig,
+  // auth types
+  VexAuthAdapter,
+  AuthTableDefinition,
+  AuthFieldDefinition,
+  AuthIndexDefinition,
   // Config types
   VexConfig,
   AdminConfig,

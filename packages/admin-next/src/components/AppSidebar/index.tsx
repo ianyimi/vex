@@ -1,28 +1,28 @@
 "use client";
 
 import { NavSection } from "./nav-section";
-import { NavProjects } from "./nav-projects";
+// import { NavProjects } from "./nav-projects";
 import { NavUser, NavUserData } from "./nav-user";
-import { TeamSwitcher } from "./team-switcher";
+// import { TeamSwitcher } from "./team-switcher";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarHeader,
+  // SidebarHeader,
   SidebarRail,
 } from "@vexcms/ui";
-import {
-  GalleryVerticalEndIcon,
-  AudioLinesIcon,
-  TerminalIcon,
-  TerminalSquareIcon,
-  BotIcon,
-  BookOpenIcon,
-  Settings2Icon,
-  FrameIcon,
-  PieChartIcon,
-  MapIcon,
-} from "lucide-react";
+// import {
+//   GalleryVerticalEndIcon,
+//   AudioLinesIcon,
+//   TerminalIcon,
+//   TerminalSquareIcon,
+//   BotIcon,
+//   BookOpenIcon,
+//   Settings2Icon,
+//   FrameIcon,
+//   PieChartIcon,
+//   MapIcon,
+// } from "lucide-react";
 import { VexConfig } from "@vexcms/core";
 import { ComponentProps, ReactNode, useMemo } from "react";
 
