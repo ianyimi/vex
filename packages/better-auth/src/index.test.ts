@@ -3,7 +3,7 @@ import { vexBetterAuth } from "./index";
 
 describe("vexBetterAuth", () => {
   it("returns correct adapter shape", () => {
-    const adapter = vexBetterAuth({ config: {} });
+    const adapter = vexBetterAuth();
     expect(adapter.name).toBe("better-auth");
     expect(adapter.userCollection).toBe("user");
     // no extra keys on the adapter
@@ -16,9 +16,7 @@ describe("vexBetterAuth", () => {
   });
 
   it("uses default slugs when no modelNames provided", () => {
-    const adapter = vexBetterAuth({
-      config: {},
-    });
+    const adapter = vexBetterAuth();
     expect(adapter.userCollection).toBe("user");
   });
 

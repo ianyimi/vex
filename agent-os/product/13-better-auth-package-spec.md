@@ -175,10 +175,10 @@ After filling in these files, run `pnpm install` from the workspace root to link
 
 Set up the public API so the package can be imported and used in `vex.config.ts` immediately. Start with a hardcoded return value — the internals get extracted into separate functions in later steps.
 
-- [ ] Create `packages/better-auth/src/types.ts`
-- [ ] Create `packages/better-auth/src/index.ts` with `vexBetterAuth()` returning hardcoded adapter
-- [ ] Verify `pnpm --filter @vexcms/better-auth build` succeeds
-- [ ] Verify `vex.config.ts` in test app compiles with `auth: vexBetterAuth({...})`
+- [x] Create `packages/better-auth/src/types.ts`
+- [x] Create `packages/better-auth/src/index.ts` with `vexBetterAuth()` returning hardcoded adapter
+- [x] Verify `pnpm --filter @vexcms/better-auth build` succeeds
+- [x] Verify `vex.config.ts` in test app compiles with `auth: vexBetterAuth({...})`
 
 **File: `packages/better-auth/src/types.ts`**
 
@@ -271,8 +271,8 @@ After this step, build the package and add `auth: vexBetterAuth({...})` to `apps
 
 Set up the integration test file now so `pnpm --filter @vexcms/better-auth test` works from this point forward. Start with the tests that can pass against the hardcoded return, then add more tests in Step 8 after all internals are implemented.
 
-- [ ] Create `packages/better-auth/src/index.test.ts` with initial tests
-- [ ] Verify `pnpm --filter @vexcms/better-auth test` runs (some tests will be skipped/failing — that's expected)
+- [x] Create `packages/better-auth/src/index.test.ts` with initial tests
+- [x] Verify `pnpm --filter @vexcms/better-auth test` runs (some tests will be skipped/failing — that's expected)
 
 **File: `packages/better-auth/src/index.test.ts`**
 
