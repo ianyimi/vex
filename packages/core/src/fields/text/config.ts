@@ -1,4 +1,4 @@
-import { TextFieldMeta, TextFieldOptions, VexField } from "../types";
+import { TextFieldMeta, TextFieldOptions, VexField } from "../../types";
 
 export function text(
   options?: TextFieldOptions,

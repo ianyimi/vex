@@ -1,4 +1,4 @@
-import { NumberFieldMeta, NumberFieldOptions, VexField } from "../types";
+import { NumberFieldMeta, NumberFieldOptions, VexField } from "../../types";
 
 export function number(
   options?: NumberFieldOptions,

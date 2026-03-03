@@ -78,7 +78,10 @@ export interface IndexConfig<
  * Defines the fields, labels, and admin behavior for a collection.
  */
 export interface CollectionConfig<
-  TFields extends Record<string, VexField<any, any>>,
+  TFields extends Record<string, VexField<any, any>> = Record<
+    string,
+    VexField<any, any>
+  >,
 > {
   /**
    * The fields that make up documents in this collection.
@@ -132,7 +135,10 @@ export interface CollectionConfig<
  * Created by `defineCollection()`.
  */
 export interface VexCollection<
-  TFields extends Record<string, VexField<any, any>>,
+  TFields extends Record<string, VexField<any, any>> = Record<
+    string,
+    VexField<any, any>
+  >,
 > {
   /** The collection identifier, used in URLs and the database. */
   readonly slug: string;

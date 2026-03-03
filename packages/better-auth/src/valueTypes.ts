@@ -14,7 +14,7 @@ import type { DBFieldAttribute } from "better-auth";
  * @returns The Convex validator string (e.g., "v.string()", "v.optional(v.number())")
  * @throws VexAuthConfigError if the type is not recognized
  */
-export function betterAuthTypeToValidator({
+export function betterAuthTypeToValueType({
   type,
   required = false,
   references,

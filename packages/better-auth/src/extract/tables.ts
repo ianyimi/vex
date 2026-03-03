@@ -5,7 +5,7 @@ import type {
 } from "@vexcms/core";
 import type { BetterAuthOptions, DBFieldAttribute } from "better-auth";
 import { getAuthTables } from "better-auth/db";
-import { betterAuthTypeToValidator } from "../validators";
+import { betterAuthTypeToValueType } from "../valueTypes";
 
 /**
  * Converts a Record of better-auth DBFieldAttributes into Convex AuthFieldDefinitions.
@@ -17,7 +17,7 @@ function convertFields(
   const validators: Record<string, AuthFieldDefinition> = {};
   for (const [fieldName, attribute] of Object.entries(fields)) {
     if (fieldName === "id") continue;
-    const validator = betterAuthTypeToValidator({
+    const validator = betterAuthTypeToValueType({
       type: attribute.type,
       required: attribute.required ?? false,
       references: attribute.references,

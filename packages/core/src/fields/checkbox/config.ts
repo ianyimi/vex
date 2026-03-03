@@ -1,4 +1,4 @@
-import { CheckboxFieldMeta, CheckboxFieldOptions, VexField } from "../types";
+import { CheckboxFieldMeta, CheckboxFieldOptions, VexField } from "../../types";
 
 export function checkbox(
   options?: CheckboxFieldOptions,

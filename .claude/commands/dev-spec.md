@@ -22,6 +22,56 @@ This spec format bridges AI assistance and developer ownership:
 
 This is the primary source of tech debt in specs — code gets written "for later" and never cleaned up. The scoping questions in Phase 1 and Phase 3 exist specifically to draw a hard boundary around what's in vs out. When in doubt, leave it out. A future spec can add it with full context.
 
+## CRITICAL: No Empty Stub Files
+
+**Never scaffold directories or files that contain only placeholder content, stubs for future specs, or no meaningful code.** If a file won't have real, functioning code by the end of this spec, don't create it.
+
+- Do NOT create `admin/` folders with stub components for a future spec
+- Do NOT create `input.ts` files that just say `// Implementation in next spec`
+- Do NOT create re-export index files for modules that don't exist yet
+- Do NOT add directories to the "Target Directory Structure" if their contents are all stubs
+
+Every file in the spec must either (a) contain working code that's used by this spec or (b) contain a guided function stub with `throw new Error("Not implemented")` that WILL be implemented in this spec. Files that exist solely to "reserve" a spot for future work create file bloat and confuse the developer about what's actually functional.
+
+## CRITICAL: Tests in Same Step as Implementation
+
+**Never create a separate "Tests" phase or section. Every test file appears in the same step as the implementation it tests.** The developer should never have to implement a function in one section and then scroll to a different section to find its tests.
+
+- Step N implements `foo.ts` → Step N also includes `foo.test.ts`
+- The test code block appears immediately after the implementation code block
+- The step's checkbox list includes both: `- [ ] Create foo.ts` and `- [ ] Create foo.test.ts`
+- Never group all tests at the end of the spec in a "Phase B: Tests" or "Testing" section
+
+## CRITICAL: Single Object Parameters
+
+**All functions take a single typed `props` object instead of multiple positional parameters.** This gives the developer named parameters with full LSP autocomplete, eliminates parameter ordering issues, and makes call sites self-documenting.
+
+```typescript
+// ❌ WRONG — positional params
+export function mergeFields(
+  authTable: AuthTableDefinition,
+  collection: VexCollection<any>,
+  slug: string,
+): MergedResult { ... }
+
+// ✅ RIGHT — single props object
+export function mergeFields(props: {
+  authTable: AuthTableDefinition;
+  collection: VexCollection<any>;
+  slug: string;
+}): MergedResult {
+  const { authTable, collection, slug } = props;
+  ...
+}
+```
+
+**Rules:**
+- The parameter name is always `props` (not `opts`, `args`, `options`, etc.)
+- Destructure `props` as the first line of the function body
+- The type is declared inline on the parameter (not as a separate named type, unless the same shape is reused by 3+ functions)
+- Class constructors and error class constructors may use positional params
+- Callback functions passed to `.map()`, `.filter()`, etc. use positional params (they're not standalone functions)
+
 ## Mandatory: Use AskUserQuestion Tool
 
 **Always use the `AskUserQuestion` tool when asking the user anything during this process.** Never ask questions via plain text output. Every question in Phase 1 (scope), Phase 3 (edge cases), and Phase 5 (review) MUST go through AskUserQuestion so the user gets a structured prompt they can respond to clearly.
@@ -117,6 +167,25 @@ Create the spec document at the path the user specifies (or suggest one based on
 5. **Last step is final integration** — expand tests, add re-exports, verify full build, update consuming code.
 
 **The rule: after completing any step, the developer should be able to run `build` and `test` and see progress.** Never structure a spec where the developer builds 5 files in isolation and then has to wire them all together at the end hoping it works.
+
+#### Dependency Ordering
+
+**If function A calls function B, then B's step MUST come before A's step.** The developer should never encounter a function stub that calls another function that hasn't been introduced yet. Build from leaves to root:
+
+- Utility/helper functions first (they have no internal dependencies)
+- Functions that call those utilities next
+- Orchestration/entry-point functions last (they call everything)
+
+Example: If `textToValueTypeString()` calls `processFieldValueTypeOptions()`, then the step for `processFieldValueTypeOptions` must come BEFORE the step for `textToValueTypeString`.
+
+#### Test File Colocation
+
+**Test files go in the same step as the function they test, and live next to the code they test in the file system.** Do NOT collect all tests into a separate "Tests" section at the end of the spec.
+
+- `src/valueTypes/processAdminOptions.ts` → `src/valueTypes/processAdminOptions.test.ts` (same directory)
+- `src/fields/text/schemaValueType.ts` → `src/fields/text/schemaValueType.test.ts` (same subdirectory)
+- Each step shows the implementation file AND its test file together
+- The developer implements and tests in one pass, not in two separate phases
 
 #### Task Checkboxes
 
@@ -229,11 +298,45 @@ These appear inline within each step — not in separate sections.
 - Functions with complex conditional logic
 - Anything where the developer's judgment and context matters
 
-For guided stubs, provide inline with the step:
-- The exact function signature with types
-- A `throw new Error("Not implemented")` body
-- A JSDoc comment summarizing purpose
-- Directly below the code block: purpose, algorithm notes, edge cases, constraints
+For guided stubs, the implementation guidance goes **inside the function body as numbered pseudo-code comments**, NOT below the code block. This lets the developer copy-paste the entire function and fill in the real code right where the comments are. The format is:
+
+```typescript
+export function myFunction(props: {
+  input: string;
+  collectionSlug: string;
+}): Result {
+  // TODO: implement
+  //
+  // 1. Destructure: const { input, collectionSlug } = props;
+  //
+  // 2. First step — what to do and why
+  //    → what this returns or produces
+  //    → conditions that cause errors (throw XError if ...)
+  //
+  // 3. Second step — next action
+  //    a. Sub-step if branching logic
+  //    b. Another sub-step
+  //
+  // 4. Return the result
+  //
+  // Edge cases:
+  // - Edge case 1: what happens and how to handle it
+  // - Edge case 2: what happens and how to handle it
+  throw new Error("Not implemented");
+}
+```
+
+**Guided stub requirements:**
+- Start with `// TODO: implement` on the first comment line
+- Use numbered steps (1, 2, 3...) for the algorithm
+- Use lettered sub-steps (a, b, c...) for branching within a step
+- Use `→` arrows to show what each step produces or throws
+- Include an `// Edge cases:` section at the end when there are non-obvious cases
+- End with `throw new Error("Not implemented")` so the code compiles but fails at runtime
+- The JSDoc above the function covers the public contract (params, returns, purpose)
+- The inline comments cover the implementation algorithm (how to build it)
+
+**Do NOT put implementation guidance below the code block** — it must be inside the function body so the developer has everything in one copy-pasteable unit.
 
 **Never include:**
 - Interface fields that no function in this spec reads, writes, or tests
@@ -290,7 +393,9 @@ Review the spec and let me know if anything needs adjustment.
 - **Edge cases are explicit.** Don't leave the developer guessing. List every edge case you found during Phase 3.
 - **No hand-waving.** If a function needs to produce specific output, show what that output looks like in a test. If a type has constraints, document them in JSDoc.
 - **Respect the codebase.** Match existing conventions for naming, file organization, and patterns. Don't introduce new conventions without flagging it.
-- **Implementation order matters.** Structure the spec so each step builds on the last. The developer should never have to jump around.
+- **Implementation order matters.** Structure the spec so each step builds on the last. The developer should never have to jump around. Dependencies come before dependents — if function A calls function B, B's step comes first.
 - **Testable at every step.** After completing any step, `build` and `test` must work. Start from the entry point with hardcoded values, then progressively swap in real implementations. Never make the developer build 5 files before they can test anything.
 - **Task checkboxes in every step.** Each step has `- [ ]` checkboxes for every file and verification action. The developer tracks progress directly in the spec file.
 - **Scope is a feature.** A tight spec that covers its scope completely is better than a broad spec that covers everything partially. Defer aggressively to future specs.
+- **Pseudo-code lives in the function body.** Implementation guidance for guided stubs goes inside the function as numbered comments, not below the code block. The developer copy-pastes the whole function and writes code where the comments are. The `throw new Error("Not implemented")` at the end ensures it compiles but fails at runtime until implemented.
+- **Tests live next to code.** Test files are colocated with the source files they test, in the same directory. Each step in the spec includes both the implementation file and its test file together — the developer never has to jump to a separate "Tests" section.

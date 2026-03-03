@@ -1,4 +1,4 @@
-import { SelectFieldMeta, SelectFieldOptions, VexField } from "../types";
+import { SelectFieldMeta, SelectFieldOptions, VexField } from "../../types";
 
 export function select<T extends string = string>(
   options: SelectFieldOptions<T> & { hasMany: true },
