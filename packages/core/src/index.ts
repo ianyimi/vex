@@ -6,6 +6,7 @@ export { text } from "./fields/text";
 export { number } from "./fields/number";
 export { checkbox } from "./fields/checkbox";
 export { select } from "./fields/select";
+export * from "./errors";
 
 // Types
 export type {

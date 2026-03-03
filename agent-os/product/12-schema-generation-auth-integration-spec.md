@@ -34,13 +34,13 @@ This spec is structured for test-first development across two stages. Stage 1 fo
 
 1. **Phase A.1** — Core types and interfaces: error types, auth types, field type modifications (`BaseFieldOptions`, `BaseFieldMeta.index`, `IndexConfig`), config type modifications (`VexConfig.auth` required, `SchemaConfig`, `CollectionConfig.tableName`) ✅
 2. **Phase A.2** — Per-field subfolder restructure: move field builders to `config.ts`, create `schema.ts` stubs, create `admin/` subfolder stubs ✅
-3. **Phase D** — `@vexcms/better-auth` package: implement `vexBetterAuth()`, `extractUserFields()`, `extractTables()`, `resolvePluginContributions()`. This unblocks the `auth` field in `defineConfig()` so the full config compiles.
+3. **Phase D** — `@vexcms/better-auth` package: implement `vexBetterAuth()`, `extractAuthTables()`, `betterAuthTypeToValidator()`. This unblocks the `auth` field in `defineConfig()` so the full config compiles.
 
 ### Stage 2: Per-Field Validators and Schema Generation (resume after Stage 1)
 
 4. **Phase B.1** — Per-field validator tests (`text/schema.test.ts`, `number/schema.test.ts`, etc.) and `validate.test.ts`
 5. **Phase C.1** — Implement per-field validators (`textToValidatorString`, etc.), `validateFieldConfig`, `wrapOptional`
-6. **Phase A.3** — Schema generation stubs: `fieldToValidatorString` dispatcher, `collectIndexes`, `SlugRegistry`, `mergeAuthFields`, `generateVexSchema`
+6. **Phase A.3** — Schema generation stubs: `fieldToValidatorString` dispatcher, `collectIndexes`, `SlugRegistry`, `mergeAuthTableWithCollection`, `generateVexSchema`
 7. **Phase B.2** — Schema generation tests: `extract.test.ts`, `indexes.test.ts`, `slugs.test.ts`, `merge.test.ts`, `generate.test.ts`
 8. **Phase C.2** — Implement schema generation functions
 
@@ -114,7 +114,7 @@ packages/core/src/
 │   ├── validate.test.ts              # tests for field validation
 │   ├── indexes.ts                    # collectIndexes() — gathers per-field + collection-level indexes
 │   ├── indexes.test.ts               # tests for index collection and dedup
-│   ├── merge.ts                      # mergeAuthFields()
+│   ├── merge.ts                      # mergeAuthTableWithCollection()
 │   ├── merge.test.ts                 # tests for field merge logic
 │   ├── slugs.ts                      # SlugRegistry, validateSlugs()
 │   └── slugs.test.ts                 # tests for slug collision detection
@@ -131,17 +131,20 @@ packages/core/src/
 ### Separate package (out of scope for core, defined here for reference)
 
 ```
-packages/better-auth/                 # @vexcms/better-auth
+packages/better-auth/
 ├── src/
-│   ├── index.ts                      # vexBetterAuth(config) factory
+│   ├── index.ts                      # vexBetterAuth() factory + re-exports
+│   ├── index.test.ts                 # integration tests
+│   ├── types.ts                      # Re-exports core auth types
+│   ├── validators.ts                 # betterAuthTypeToValidator()
+│   ├── validators.test.ts            # unit tests for validator mapping
 │   └── extract/
-│       ├── index.ts                  # re-exports
-│       ├── userFields.ts             # extractUserFields() + BASE_USER_FIELDS
-│       ├── tables.ts                 # extractTables() + buildBaseTables()
-│       └── plugins.ts                # resolvePluginContributions() — resolves plugin fields/tables internally
-├── package.json                      # peerDependencies: better-auth, @vexcms/core
+│       ├── tables.ts                 # extractAuthTables() — uses getAuthTables()
+│       └── tables.test.ts            # tests for extractAuthTables()
+├── package.json
 ├── tsconfig.json
-└── tsup.config.ts
+├── tsup.config.ts
+└── vitest.config.ts
 ```
 
 ---
@@ -367,9 +370,11 @@ export interface AuthIndexDefinition {
 }
 
 /**
- * Defines an auth infrastructure table (e.g., account, session).
- * These tables are NOT admin-managed collections — they don't appear
- * in the sidebar or have CRUD views. They only exist in the schema.
+ * Defines an auth table (e.g., user, account, session, verification).
+ * By default these tables are schema-only (not shown in the admin sidebar).
+ * However, if a user defines a collection with a matching slug, the auth
+ * table's fields are merged with the collection's fields, and the collection
+ * appears in the admin UI as configured by the user.
  */
 export interface AuthTableDefinition {
   /** Table slug (e.g., "account", "session") */
@@ -402,24 +407,16 @@ export interface VexAuthAdapter {
   readonly name: string;
 
   /**
-   * Which collection slug represents the user table.
-   * This collection's fields will be merged with auth-provided user fields.
-   */
-  userCollection: string;
-
-  /**
-   * All fields that the auth provider adds to the user collection.
-   * Already includes contributions from all active auth plugins
-   * (e.g., admin plugin's `banned`, `role` fields).
-   * Uses validator strings, not VexField, because they're schema-only.
-   */
-  userFields: Record<string, AuthFieldDefinition>;
-
-  /**
-   * All auth infrastructure tables (account, session, verification, jwks, etc.).
-   * Already includes plugin-contributed tables and field extensions
-   * (e.g., admin plugin's `impersonatedBy` on session).
-   * These are added to vex.schema.ts but NOT shown in the admin sidebar.
+   * All auth tables — including the user table, account, session,
+   * verification, jwks, and any plugin-contributed tables.
+   * Already includes all plugin contributions (additional fields,
+   * table extensions, extra tables) resolved by `vexBetterAuth()`.
+   *
+   * During schema generation, core checks each auth table's slug
+   * against user-defined collections. If a match is found, the auth
+   * table's fields are merged with the collection's fields (auth
+   * validators win for schema, user admin config wins for UI).
+   * Auth tables with no matching collection are generated as-is.
    */
   tables: AuthTableDefinition[];
 }
@@ -493,7 +490,7 @@ export class VexFieldValidationError extends VexError {
 
 /**
  * Thrown when auth configuration is invalid.
- * For example: userCollection not found in collections.
+ * For example: auth table merge conflict or invalid auth table definition.
  */
 export class VexAuthConfigError extends VexError {
   constructor(detail: string) {
@@ -1162,11 +1159,11 @@ export function collectIndexes(
 
 ```typescript
 import type { VexField, BaseFieldMeta } from "../types";
-import type { VexAuthAdapter, AuthFieldDefinition } from "../auth/types";
+import type { AuthTableDefinition, AuthFieldDefinition } from "../auth/types";
 import type { VexCollection } from "../types";
 
 /**
- * Result of merging auth fields with a user collection.
+ * Result of merging auth table fields with a user collection.
  * Contains both the merged validator strings for schema generation
  * and metadata about which fields came from where.
  */
@@ -1179,13 +1176,13 @@ export interface MergedFieldsResult {
   fields: Record<string, string>;
 
   /**
-   * Fields that exist in both auth and user config.
+   * Fields that exist in both auth table and user config.
    * The auth validator wins for schema gen; user admin config wins for UI.
    */
   overlapping: string[];
 
   /**
-   * Fields that only exist in the auth config (not in user's collection).
+   * Fields that only exist in the auth table (not in user's collection).
    */
   authOnly: string[];
 
@@ -1196,26 +1193,27 @@ export interface MergedFieldsResult {
 }
 
 /**
- * Merges auth-provided user fields with a user-defined collection's fields.
+ * Merges an auth table's fields with a user-defined collection's fields.
  *
- * The auth adapter's userFields are already fully resolved (all plugin
- * contributions applied by vexBetterAuth() before this is called).
+ * This works for ANY auth table that has a matching user-defined collection
+ * (matched by slug). The auth table's fields are already fully resolved
+ * (all plugin contributions applied by vexBetterAuth() before this is called).
  *
- * Goal: Combine the auth adapter's userFields (which define the database schema)
+ * Goal: Combine the auth table's fields (which define the database schema)
  * with the user's collection fields (which define admin UI behavior).
  * For schema generation, auth validators take precedence on overlapping fields.
  * For admin UI, the user's field metadata takes precedence.
  *
- * @param authAdapter - The auth adapter with fully resolved userFields
- * @param collection - The user's collection that maps to the user table
+ * @param authTable - The auth table definition with fully resolved fields
+ * @param collection - The user's collection that matches this auth table by slug
  * @returns Merged fields result with source tracking
  *
  * Edge cases:
  * - Auth field conflicts with user field: auth validator wins (it controls the DB shape)
  * - User defines field auth doesn't know about (e.g., "postCount"): added as user-only
  */
-export function mergeAuthFields(
-  authAdapter: VexAuthAdapter,
+export function mergeAuthTableWithCollection(
+  authTable: AuthTableDefinition,
   collection: VexCollection<any>,
 ): MergedFieldsResult {
   // TODO: implement
@@ -1260,17 +1258,35 @@ export class SlugRegistry {
 
   /**
    * Register a slug with its source.
-   * Throws VexSlugConflictError immediately if the slug is already registered.
+   * Throws VexSlugConflictError immediately if the slug is already registered,
+   * UNLESS an auth table slug overlaps with a user collection slug — this is
+   * expected behavior indicating the user wants to customize that auth table's
+   * admin UI. In that case, the user collection's registration takes precedence
+   * (it was registered first as "user-collection") and the auth table is
+   * silently skipped in the registry. The merge happens during schema generation.
    *
    * Edge cases:
-   * - The auth userCollection slug should NOT be registered separately
-   *   because it maps onto an existing user collection (same slug)
+   * - Auth table slug matches user collection slug: NOT a conflict — skip
+   *   registration (user collection already registered, merge happens later)
    * - System table prefixed with "vex_" should not conflict with user tables
    *   because defineCollection already warns about "vex_" prefix
    */
   register(slug: string, source: SlugSource, location: string): void {
     const existing = this.registrations.get(slug);
     if (existing) {
+      // Auth table overlapping with user collection is expected — it means
+      // the user wants to customize that auth table. The user collection
+      // registration takes precedence; merge happens during schema generation.
+      if (
+        (existing.source === "user-collection" && source === "auth-table") ||
+        (existing.source === "auth-table" && source === "user-collection")
+      ) {
+        // Keep the user-collection registration, skip the auth-table one
+        if (source === "user-collection") {
+          this.registrations.set(slug, { slug, source, location });
+        }
+        return;
+      }
       throw new VexSlugConflictError(
         slug,
         existing.source,
@@ -1296,17 +1312,18 @@ export class SlugRegistry {
  * Registers slugs from:
  * 1. User collections (source: "user-collection")
  * 2. User globals (source: "user-global")
- * 3. Auth infrastructure tables (source: "auth-table")
+ * 3. Auth tables (source: "auth-table") — including the user table
  * 4. System tables like vex_globals (source: "system")
  *
- * Each register() call throws immediately on duplicate slug.
- *
- * Note: The auth adapter's userCollection is NOT registered separately
- * because it maps onto an existing user collection (same slug).
+ * Each register() call throws immediately on duplicate slug, except
+ * when an auth table slug matches a user collection slug — this is
+ * expected behavior indicating the user wants to customize that auth
+ * table's admin UI. The merge happens during schema generation.
  *
  * Edge cases:
  * - No globals: skip global registration
- * - Auth userCollection not found in collections: throw VexAuthConfigError
+ * - Auth table slug matches user collection slug: NOT a conflict —
+ *   the user collection registration takes precedence, merge happens later
  */
 export function buildSlugRegistry(
   config: import("../types").VexConfig,
@@ -1325,13 +1342,16 @@ import type { VexConfig } from "../types";
  * Generates the full TypeScript source content for `convex/vex.schema.ts`.
  *
  * This is the main entry point for schema generation. It:
- * 1. Validates all slugs are unique (via SlugRegistry)
- * 2. Merges auth fields into the user collection (if auth configured)
- * 3. Resolves auth plugin contributions (additional tables, field extensions)
+ * 1. Validates all slugs are unique (via SlugRegistry) — auth table slugs
+ *    that overlap with user collection slugs are expected (merge, not conflict)
+ * 2. For each auth table, checks if a matching user collection exists (by slug):
+ *    a. If yes: merges auth table fields with collection fields (auth validators
+ *       win for schema, user admin config wins for UI)
+ *    b. If no matching collection: generates the auth table as-is
+ * 3. User collections that don't match any auth table: generates from collection fields only
  * 4. Collects indexes from per-field `index` properties and collection-level `indexes`
- * 5. Generates defineTable() calls for each collection with chained .index() calls
- * 6. Generates defineTable() calls for auth infrastructure tables with their indexes
- * 7. Generates defineTable() calls for system tables (vex_globals if globals exist)
+ * 5. Generates defineTable() calls for each table with chained .index() calls
+ * 6. Generates defineTable() calls for system tables (vex_globals if globals exist)
  *
  * The output is a complete, valid TypeScript file that can be written to disk.
  * Users import these named exports in their own `schema.ts` and can chain
@@ -1356,8 +1376,15 @@ import type { VexConfig } from "../types";
  * })
  *   .index("by_slug", ["slug"]);
  *
+ * export const user = defineTable({
+ *   name: v.string(),
+ *   email: v.string(),
+ *   emailVerified: v.boolean(),
+ *   ...
+ * });
+ *
  * export const account = defineTable({
- *   userId: v.string(),
+ *   userId: v.id("user"),
  *   ...
  * })
  *   .index("by_userId", ["userId"]);
@@ -1365,21 +1392,23 @@ import type { VexConfig } from "../types";
  *
  * User's schema.ts can then extend:
  * ```typescript
- * import { posts, account, users } from "./vex.schema";
+ * import { posts, account, user } from "./vex.schema";
  * import { defineSchema } from "convex/server";
  *
  * export default defineSchema({
  *   posts: posts.index("by_author_date", ["author", "_creationTime"]),
  *   account,
- *   users,
+ *   user,
  *   // custom tables...
  * });
  * ```
  *
  * Edge cases:
- * - Empty collections + no auth: generate file with only the header comment and imports
+ * - Empty collections + no auth tables: generate file with only the header comment and imports
  * - Collection with no fields: generate `defineTable({})` (valid but unusual)
  * - Auth adapter with no tables: skip auth table section
+ * - Auth table matches user collection: merge fields (auth validators win)
+ * - Auth table with no matching collection: generate as standalone table
  * - Globals configured: add vex_globals system table
  * - No globals: skip vex_globals table
  * - Field with quotes in select option values: escape properly in literals
@@ -1401,7 +1430,7 @@ export { generateVexSchema } from "./generate";
 export { fieldToValidatorString } from "./extract";
 export { validateFieldConfig, wrapOptional } from "./validate";
 export type { FieldValidationResult } from "./validate";
-export { mergeAuthFields } from "./merge";
+export { mergeAuthTableWithCollection } from "./merge";
 export type { MergedFieldsResult } from "./merge";
 export { collectIndexes } from "./indexes";
 export type { ResolvedIndex } from "./indexes";
@@ -1428,7 +1457,7 @@ export { select } from "./fields/select";
 // Schema generation
 export { generateVexSchema } from "./schema";
 export { fieldToValidatorString } from "./schema";
-export { mergeAuthFields } from "./schema";
+export { mergeAuthTableWithCollection } from "./schema";
 export { collectIndexes } from "./schema";
 export { SlugRegistry, buildSlugRegistry } from "./schema";
 
@@ -2375,8 +2404,6 @@ import { VexSlugConflictError } from "../errors";
 // Minimal auth adapter for tests that don't focus on auth
 const minimalAuth: VexAuthAdapter = {
   name: "better-auth",
-  userCollection: "users",
-  userFields: {},
   tables: [],
 };
 
@@ -2390,48 +2417,49 @@ describe("SlugRegistry", () => {
     expect(registry.getAll()).toHaveLength(3);
   });
 
-  it("throws VexSlugConflictError immediately on duplicate slug", () => {
+  it("allows auth table slug to overlap with user collection slug (merge)", () => {
     const registry = new SlugRegistry();
-    registry.register("account", "user-collection", "collections/account.ts");
+    registry.register("user", "user-collection", "collections/user.ts");
 
+    // Auth table "user" overlapping with user collection "user" is expected
+    // — this means the user wants to customize the auth table's admin UI
     expect(() =>
-      registry.register("account", "auth-table", "@vexcms/better-auth"),
+      registry.register("user", "auth-table", "@vexcms/better-auth"),
+    ).not.toThrow();
+
+    // The user-collection registration should take precedence
+    const all = registry.getAll();
+    const userRegistrations = all.filter((r) => r.slug === "user");
+    expect(userRegistrations).toHaveLength(1);
+    expect(userRegistrations[0].source).toBe("user-collection");
+  });
+
+  it("throws VexSlugConflictError on non-auth/collection duplicate", () => {
+    const registry = new SlugRegistry();
+    registry.register("data", "user-collection", "collections/data.ts");
+
+    // Two user collections with same slug: real conflict
+    expect(() =>
+      registry.register("data", "user-collection", "collections/data2.ts"),
     ).toThrow(VexSlugConflictError);
   });
 
-  it("includes both sources in error message", () => {
+  it("includes both sources in error message for real conflicts", () => {
     const registry = new SlugRegistry();
-    registry.register("account", "user-collection", "collections/account.ts");
+    registry.register("data", "user-global", "globals/data.ts");
 
     try {
-      registry.register("account", "auth-table", "@vexcms/better-auth");
+      registry.register("data", "auth-table", "@vexcms/better-auth");
       expect.unreachable("Should have thrown");
     } catch (e) {
       expect(e).toBeInstanceOf(VexSlugConflictError);
       const err = e as VexSlugConflictError;
-      expect(err.slug).toBe("account");
-      expect(err.existingSource).toBe("user-collection");
-      expect(err.existingLocation).toBe("collections/account.ts");
+      expect(err.slug).toBe("data");
+      expect(err.existingSource).toBe("user-global");
       expect(err.newSource).toBe("auth-table");
-      expect(err.newLocation).toBe("@vexcms/better-auth");
       expect(err.message).toContain("Duplicate");
-      expect(err.message).toContain("account");
+      expect(err.message).toContain("data");
     }
-  });
-
-  it("throws on the first duplicate, not the second", () => {
-    const registry = new SlugRegistry();
-    registry.register("account", "user-collection", "collections/account.ts");
-
-    // First duplicate throws
-    expect(() =>
-      registry.register("account", "auth-table", "@vexcms/better-auth"),
-    ).toThrow("account");
-
-    // "session" is still registrable since it's unique
-    expect(() =>
-      registry.register("session", "auth-table", "@vexcms/better-auth"),
-    ).not.toThrow();
   });
 
   it("getAll() returns all successful registrations", () => {
@@ -2472,8 +2500,6 @@ describe("buildSlugRegistry", () => {
   it("registers auth table slugs", () => {
     const authAdapter: VexAuthAdapter = {
       name: "better-auth",
-      userCollection: "users",
-      userFields: {},
       tables: [
         {
           slug: "account",
@@ -2497,46 +2523,17 @@ describe("buildSlugRegistry", () => {
     expect(all.find((r) => r.slug === "session")?.source).toBe("auth-table");
   });
 
-  it("does NOT register auth userCollection as a separate slug", () => {
-    const config = defineConfig({
-      collections: [posts, users],
-      auth: minimalAuth,
-    });
-    const registry = buildSlugRegistry(config);
-    const all = registry.getAll();
-
-    // "users" should appear once (from user-collection), not twice
-    const usersRegistrations = all.filter((r) => r.slug === "users");
-    expect(usersRegistrations).toHaveLength(1);
-    expect(usersRegistrations[0].source).toBe("user-collection");
-  });
-
-  it("throws when auth userCollection is not in collections", () => {
+  it("allows auth table slug to overlap with user collection slug (for merge)", () => {
     const authAdapter: VexAuthAdapter = {
       name: "better-auth",
-      userCollection: "nonexistent",
-      userFields: {},
-      tables: [],
-    };
-
-    const config = defineConfig({
-      collections: [posts],
-      auth: authAdapter,
-    });
-
-    expect(() => buildSlugRegistry(config)).toThrow("nonexistent");
-  });
-
-  it("throws immediately when user collection slug collides with auth table slug", () => {
-    const account = defineCollection("account", {
-      fields: { name: text() },
-    });
-
-    const authAdapter: VexAuthAdapter = {
-      name: "better-auth",
-      userCollection: "users",
-      userFields: {},
       tables: [
+        {
+          slug: "users",
+          fields: {
+            name: { validator: "v.string()" },
+            email: { validator: "v.string()" },
+          },
+        },
         {
           slug: "account",
           fields: { userId: { validator: 'v.id("users")' } },
@@ -2545,11 +2542,19 @@ describe("buildSlugRegistry", () => {
     };
 
     const config = defineConfig({
-      collections: [posts, users, account],
+      collections: [posts, users],
       auth: authAdapter,
     });
 
-    expect(() => buildSlugRegistry(config)).toThrow(VexSlugConflictError);
+    // Should NOT throw — auth table "users" overlapping with user collection
+    // "users" means the user wants to customize the auth user table
+    const registry = buildSlugRegistry(config);
+    const all = registry.getAll();
+
+    // "users" should appear once, registered as "user-collection"
+    const usersRegistrations = all.filter((r) => r.slug === "users");
+    expect(usersRegistrations).toHaveLength(1);
+    expect(usersRegistrations[0].source).toBe("user-collection");
   });
 
   it("uses tableName for slug registration when provided", () => {
@@ -2580,14 +2585,14 @@ describe("buildSlugRegistry", () => {
 
 ```typescript
 import { describe, it, expect } from "vitest";
-import { mergeAuthFields } from "./merge";
+import { mergeAuthTableWithCollection } from "./merge";
 import { defineCollection } from "../config/defineCollection";
 import { text } from "../fields/text";
 import { number } from "../fields/number";
 import { select } from "../fields/select";
-import type { VexAuthAdapter } from "../auth/types";
+import type { AuthTableDefinition } from "../auth/types";
 
-describe("mergeAuthFields", () => {
+describe("mergeAuthTableWithCollection", () => {
   const users = defineCollection("users", {
     fields: {
       name: text({ label: "Name" }),
@@ -2603,21 +2608,19 @@ describe("mergeAuthFields", () => {
     },
   });
 
-  it("merges auth fields with user fields", () => {
-    const authAdapter: VexAuthAdapter = {
-      name: "better-auth",
-      userCollection: "users",
-      userFields: {
+  it("merges auth table fields with user collection fields", () => {
+    const authTable: AuthTableDefinition = {
+      slug: "users",
+      fields: {
         name: { validator: "v.string()" },
         email: { validator: "v.string()" },
         emailVerified: { validator: "v.boolean()" },
         createdAt: { validator: "v.float64()" },
         updatedAt: { validator: "v.float64()" },
       },
-      tables: [],
     };
 
-    const result = mergeAuthFields(authAdapter, users);
+    const result = mergeAuthTableWithCollection(authTable, users);
 
     // Auth-provided fields that user also defines
     expect(result.overlapping).toContain("name");
@@ -2642,32 +2645,28 @@ describe("mergeAuthFields", () => {
   });
 
   it("auth validator wins on overlapping fields", () => {
-    const authAdapter: VexAuthAdapter = {
-      name: "better-auth",
-      userCollection: "users",
-      userFields: {
+    const authTable: AuthTableDefinition = {
+      slug: "users",
+      fields: {
         email: { validator: "v.string()" },
       },
-      tables: [],
     };
 
-    const result = mergeAuthFields(authAdapter, users);
+    const result = mergeAuthTableWithCollection(authTable, users);
 
     // The auth validator should win for schema generation
     expect(result.fields["email"]).toBe("v.string()");
   });
 
   it("user-only fields converted via fieldToValidatorString", () => {
-    const authAdapter: VexAuthAdapter = {
-      name: "better-auth",
-      userCollection: "users",
-      userFields: {
+    const authTable: AuthTableDefinition = {
+      slug: "users",
+      fields: {
         email: { validator: "v.string()" },
       },
-      tables: [],
     };
 
-    const result = mergeAuthFields(authAdapter, users);
+    const result = mergeAuthTableWithCollection(authTable, users);
 
     // postCount is user-only, number field without required → optional
     expect(result.fields["postCount"]).toBe("v.optional(v.float64())");
@@ -2675,15 +2674,13 @@ describe("mergeAuthFields", () => {
     expect(result.fields["role"]).toContain("v.optional(");
   });
 
-  it("handles auth adapter with no userFields", () => {
-    const authAdapter: VexAuthAdapter = {
-      name: "better-auth",
-      userCollection: "users",
-      userFields: {},
-      tables: [],
+  it("handles auth table with no fields", () => {
+    const authTable: AuthTableDefinition = {
+      slug: "users",
+      fields: {},
     };
 
-    const result = mergeAuthFields(authAdapter, users);
+    const result = mergeAuthTableWithCollection(authTable, users);
 
     // All fields are user-only
     expect(result.userOnly).toContain("name");
@@ -2694,25 +2691,23 @@ describe("mergeAuthFields", () => {
     expect(result.overlapping).toEqual([]);
   });
 
-  it("handles fully auth-driven user collection (no user-defined fields overlap)", () => {
+  it("handles fully auth-driven collection (no user-defined fields overlap)", () => {
     const minimalUsers = defineCollection("users", {
       fields: {
         postCount: number({ admin: { readOnly: true } }),
       },
     });
 
-    const authAdapter: VexAuthAdapter = {
-      name: "better-auth",
-      userCollection: "users",
-      userFields: {
+    const authTable: AuthTableDefinition = {
+      slug: "users",
+      fields: {
         name: { validator: "v.string()" },
         email: { validator: "v.string()" },
         createdAt: { validator: "v.float64()" },
       },
-      tables: [],
     };
 
-    const result = mergeAuthFields(authAdapter, minimalUsers);
+    const result = mergeAuthTableWithCollection(authTable, minimalUsers);
 
     expect(result.authOnly).toContain("name");
     expect(result.authOnly).toContain("email");
@@ -2744,8 +2739,6 @@ import { VexSlugConflictError } from "../errors";
 // Minimal auth adapter used by tests that don't focus on auth behavior
 const minimalAuth: VexAuthAdapter = {
   name: "better-auth",
-  userCollection: "users",
-  userFields: {},
   tables: [],
 };
 
@@ -2987,15 +2980,17 @@ describe("generateVexSchema", () => {
 
     const baseAuthAdapter: VexAuthAdapter = {
       name: "better-auth",
-      userCollection: "users",
-      userFields: {
-        name: { validator: "v.string()" },
-        email: { validator: "v.string()" },
-        emailVerified: { validator: "v.boolean()" },
-        createdAt: { validator: "v.float64()" },
-        updatedAt: { validator: "v.float64()" },
-      },
       tables: [
+        {
+          slug: "users",
+          fields: {
+            name: { validator: "v.string()" },
+            email: { validator: "v.string()" },
+            emailVerified: { validator: "v.boolean()" },
+            createdAt: { validator: "v.float64()" },
+            updatedAt: { validator: "v.float64()" },
+          },
+        },
         {
           slug: "account",
           fields: {
@@ -3021,14 +3016,14 @@ describe("generateVexSchema", () => {
       ],
     };
 
-    it("merges auth fields into the user collection", () => {
+    it("merges auth user table fields into matching user collection", () => {
       const config = defineConfig({
         collections: [posts, users],
         auth: baseAuthAdapter,
       });
       const output = generateVexSchema(config);
 
-      // Auth-provided fields appear in the users table
+      // Auth-provided fields appear in the users table (from auth tables array)
       expect(output).toContain("email: v.string()");
       expect(output).toContain("emailVerified: v.boolean()");
       expect(output).toContain("createdAt: v.float64()");
@@ -3067,23 +3062,25 @@ describe("generateVexSchema", () => {
       const output = generateVexSchema(config);
 
       // userId on account and session tables should use v.id("users")
-      // (based on the auth adapter's userCollection slug)
+      // (based on the user table's slug in the auth tables array)
       expect(output).toContain('userId: v.id("users")');
     });
 
-    it("includes additional auth userFields (e.g., admin plugin fields)", () => {
+    it("includes admin plugin fields in the user auth table", () => {
       // vexBetterAuth() resolves all plugin contributions before returning
-      // the adapter, so the adapter's userFields already include plugin fields
+      // the adapter, so the user table in auth.tables already includes plugin fields
       const authWithAdminFields: VexAuthAdapter = {
-        ...baseAuthAdapter,
-        userFields: {
-          ...baseAuthAdapter.userFields,
-          banned: { validator: "v.optional(v.boolean())" },
-          role: { validator: "v.array(v.string())" },
-        },
+        name: "better-auth",
         tables: [
-          ...baseAuthAdapter.tables,
-          // Auth adapter may include additional tables resolved from plugins
+          {
+            slug: "users",
+            fields: {
+              ...baseAuthAdapter.tables[0].fields,
+              banned: { validator: "v.optional(v.boolean())" },
+              role: { validator: "v.array(v.string())" },
+            },
+          },
+          ...baseAuthAdapter.tables.slice(1),
         ],
       };
 
@@ -3100,15 +3097,15 @@ describe("generateVexSchema", () => {
   });
 
   describe("slug validation", () => {
-    it("throws when user collection slug conflicts with auth table slug", () => {
+    it("allows auth table slug to overlap with user collection slug (merge)", () => {
+      // User defines an "account" collection and auth also has an "account" table
+      // — this means the user wants to customize the account table's admin UI
       const account = defineCollection("account", {
-        fields: { name: text() },
+        fields: { displayName: text() },
       });
 
       const authAdapter: VexAuthAdapter = {
         name: "better-auth",
-        userCollection: "users",
-        userFields: {},
         tables: [
           {
             slug: "account",
@@ -3122,27 +3119,29 @@ describe("generateVexSchema", () => {
         auth: authAdapter,
       });
 
-      expect(() => generateVexSchema(config)).toThrow(VexSlugConflictError);
+      // Should NOT throw — the overlap triggers a merge
+      const output = generateVexSchema(config);
+      expect(output).toContain("export const account = defineTable({");
+      // Auth field merged in
+      expect(output).toContain('userId: v.id("users")');
+      // User field also present
+      expect(output).toContain("displayName:");
     });
 
-    it("throws when auth userCollection is not found in collections", () => {
-      const posts = defineCollection("posts", {
+    it("throws when two user collections have the same slug", () => {
+      const posts1 = defineCollection("posts", {
         fields: { title: text() },
       });
-
-      const authAdapter: VexAuthAdapter = {
-        name: "better-auth",
-        userCollection: "users",
-        userFields: {},
-        tables: [],
-      };
-
-      const config = defineConfig({
-        collections: [posts],
-        auth: authAdapter,
+      const posts2 = defineCollection("posts", {
+        fields: { name: text() },
       });
 
-      expect(() => generateVexSchema(config)).toThrow("users");
+      const config = defineConfig({
+        collections: [posts1, posts2, users],
+        auth: minimalAuth,
+      });
+
+      expect(() => generateVexSchema(config)).toThrow(VexSlugConflictError);
     });
   });
 
@@ -3299,29 +3298,28 @@ This section describes what each function must accomplish. The actual implementa
 
 ### `buildSlugRegistry`
 
-**Goal:** Create a SlugRegistry and populate it from the full VexConfig. Each `register()` call throws immediately on duplicate slug.
+**Goal:** Create a SlugRegistry and populate it from the full VexConfig. Each `register()` call throws immediately on duplicate slug, except auth table slugs that overlap with user collection slugs (this is expected merge behavior).
 
 **Steps:**
 
 1. Create a new SlugRegistry
 2. Register each collection's `tableName ?? slug` as `"user-collection"` (throws on duplicate)
 3. Register each global slug as `"user-global"` (throws on duplicate)
-4. Verify `auth.userCollection` exists in collections (throw if not)
-5. Register each auth table slug as `"auth-table"` (throws on duplicate)
-6. Return the registry
+4. Register each auth table slug as `"auth-table"` — if an auth table slug matches a user collection slug, the registry allows it (the user collection registration takes precedence; merge happens during schema generation)
+5. Return the registry
 
 ---
 
-### `mergeAuthFields`
+### `mergeAuthTableWithCollection`
 
-**Goal:** Combine auth-provided userFields with user-defined collection fields for schema generation. The auth adapter is already fully resolved (no plugin resolution needed here).
+**Goal:** Combine an auth table's fields with a user-defined collection's fields for schema generation. The auth table is already fully resolved (no plugin resolution needed here). This works for ANY auth table that has a matching user collection (matched by slug), not just the user table.
 
 **Steps:**
 
-1. For each auth userField: if user also defines it → `overlapping`; if not → `authOnly`
-2. For each user field: if auth doesn't define it → `userOnly`
-3. Build merged fields map: auth fields first (as raw validator strings), then user-only fields (converted via `fieldToValidatorString`)
-4. For overlapping fields, use the auth validator string
+1. For each auth table field: if user also defines it → `overlapping`; if not → `authOnly`
+2. For each user field: if auth table doesn't define it → `userOnly`
+3. Build merged fields map: auth table fields first (as raw validator strings), then user-only fields (converted via `fieldToValidatorString`)
+4. For overlapping fields, use the auth table's validator string
 
 ---
 
@@ -3331,28 +3329,32 @@ This section describes what each function must accomplish. The actual implementa
 
 **Steps:**
 
-1. Build slug registry from config (throws immediately on duplicate slug)
+1. Build slug registry from config (throws immediately on duplicate slug; auth table slugs overlapping with user collection slugs are allowed — merge)
 2. Auth adapter is already fully resolved (vexBetterAuth() handled plugin resolution)
 3. Build the header (warning comment referencing output path + imports)
-4. For each collection:
-   a. If this is the auth user collection, use merged fields (auth + user)
-   b. Otherwise, convert user fields via `fieldToValidatorString`
-   c. Collect indexes via `collectIndexes()` — includes per-field, collection-level, and auto-generated `useAsTitle` indexes
-   d. Generate `export const <tableName ?? slug> = defineTable({ ... })`
-   e. Chain `.index(...)` calls for each resolved index
-5. For each auth infrastructure table:
+4. Build a set of auth table slugs for lookup
+5. For each user collection:
+   a. Check if a matching auth table exists (by slug)
+   b. If yes: merge auth table fields with collection fields via `mergeAuthTableWithCollection()` (auth validators win for schema, user admin config wins for UI)
+   c. If no matching auth table: convert user fields via `fieldToValidatorString`
+   d. Collect indexes via `collectIndexes()` — includes per-field, collection-level, and auto-generated `useAsTitle` indexes
+   e. Generate `export const <tableName ?? slug> = defineTable({ ... })`
+   f. Chain `.index(...)` calls for each resolved index (including auth table indexes if merged)
+6. For each auth table that does NOT have a matching user collection:
    a. Generate `export const <slug> = defineTable({ ... })` — relationship fields use `v.id()` as provided by the auth adapter
    b. Chain `.index(...)` calls for each index definition
-6. Join all parts with newlines and return
+7. Join all parts with newlines and return
 
 **Edge cases to handle:**
 
 - Empty fields object → `defineTable({})` (valid but unusual)
 - Auth table with no indexes → no `.index()` calls
 - Multiple indexes on one table → chain `.index()` calls
-- Per-field indexes on the auth user collection → collected from the user's field definitions (not from auth fields, which use raw validator strings)
+- Auth table merged with user collection → indexes from both the auth table and the collection's `collectIndexes()` are combined
+- Per-field indexes on user collection fields → collected from the user's field definitions (not from auth fields, which use raw validator strings)
 - Auth table relationship fields → output `v.id("<slug>")` as the validator string (already encoded by the auth adapter)
 - `admin.useAsTitle` on a collection → auto-generates `by_<fieldName>` index if none exists on that field
+- Auth table with no matching user collection → generated as standalone table (no admin UI customization)
 
 ---
 
@@ -3406,7 +3408,7 @@ This package is out of scope for the `@vexcms/core` tests but is defined here fo
 The `@vexcms/better-auth` package accepts the **same better-auth config** that users pass to `betterAuth()` from the `better-auth` library. This means:
 
 1. Users maintain their auth config in **one place** (not three: server plugin + client plugin + vex config)
-2. The Vex package **introspects** the config to extract: table slugs (`modelName`), plugins, `additionalFields`
+2. The Vex package uses `getAuthTables()` from `better-auth/db` to extract all tables uniformly — including the user table
 3. Relationship fields (e.g., `userId` on account/session) use `v.id("<collectionSlug>")` based on the actual `modelName` values from the config
 4. When users add/remove/modify better-auth plugins, the Vex schema updates automatically
 
@@ -3414,277 +3416,122 @@ The `@vexcms/better-auth` package accepts the **same better-auth config** that u
 
 **Factory function that accepts a better-auth config and returns a VexAuthAdapter.**
 
-The function reads the better-auth config to determine:
+The function uses `getAuthTables()` from `better-auth/db` to get all auth tables (including the user table) in a uniform format, then converts them to `AuthTableDefinition[]` with Convex validator strings.
 
-- Table slugs from `user.modelName`, `session.modelName`, `account.modelName`, `verification.modelName`
-- User additional fields from `user.additionalFields`
-- Which plugins are active and what fields/tables they contribute
+All tables — including `user`, `account`, `session`, `verification`, `jwks`, and any plugin-contributed tables — are returned in a flat `tables` array. Core's schema generator handles merging any user-defined collection configs on top of matching auth tables.
 
 ```typescript
 // packages/better-auth/src/index.ts
 import type { BetterAuthOptions } from "better-auth";
 import type { VexAuthAdapter } from "@vexcms/core";
-import { extractUserFields } from "./extract/userFields";
-import { extractTables } from "./extract/tables";
-import { resolvePluginContributions } from "./extract/plugins";
+import { extractAuthTables } from "./extract/tables";
 
 /**
  * Create a VexAuthAdapter from a better-auth config.
  *
  * Accepts the exact same config object you pass to `betterAuth()`.
- * Introspects the config to extract table definitions, field schemas,
- * and plugin contributions for Convex schema generation.
+ * Uses `getAuthTables()` from `better-auth/db` to introspect all tables
+ * uniformly, then converts field types to Convex validator strings.
+ *
+ * All tables (user, account, session, verification, jwks, plugin tables)
+ * are returned in a flat `tables` array. Core handles merging with
+ * user-defined collections when slugs match.
  *
  * @param config - The better-auth configuration object
  * @returns A VexAuthAdapter for use in `defineConfig({ auth: ... })`
  *
- * Goal: Read the better-auth config and produce a VexAuthAdapter that
- * accurately reflects all tables, fields, indexes, and plugin contributions.
- * Uses v.id("<slug>") for relationship fields based on actual modelName values.
- *
  * Edge cases:
- * - No plugins in config: return base tables + user fields only
- * - Custom modelName: use the custom slug for v.id() references
- * - additionalFields on user: merge into userFields
- * - Plugin adds new table: resolved into tables array
- * - Plugin extends existing table: fields merged into the table's fields
+ * - No plugins in config: return base tables only (user, account, session, verification, jwks)
+ * - Custom modelName: uses the custom slug in the table definition and for v.id() references
+ * - Plugin adds new table: included in the tables array
+ * - Plugin extends existing table with new fields: fields merged into that table
  */
 export function vexBetterAuth(config: BetterAuthOptions): VexAuthAdapter {
-  // Read model names (with better-auth defaults)
-  const userSlug = config.user?.modelName ?? "user";
-  const sessionSlug = config.session?.modelName ?? "session";
-  const accountSlug = config.account?.modelName ?? "account";
-  const verificationSlug = config.verification?.modelName ?? "verification";
-
-  const tableSlugs = { userSlug, sessionSlug, accountSlug, verificationSlug };
-
-  // Extract base fields and tables, then resolve plugin contributions
-  // internally. The returned adapter is fully resolved — no plugins field.
-  const baseUserFields = extractUserFields(config);
-  const baseTables = extractTables(config, tableSlugs);
-  const { userFields, tables } = resolvePluginContributions(
-    config.plugins ?? [],
-    baseUserFields,
-    baseTables,
-    tableSlugs,
-  );
+  const tables = extractAuthTables(config);
 
   return {
     name: "better-auth",
-    userCollection: userSlug,
-    userFields,
     tables,
   };
 }
+
+// Re-export core auth types for convenience
+export type { VexAuthAdapter, AuthTableDefinition, AuthFieldDefinition } from "@vexcms/core";
 ```
 
-### Extract user fields
-
-```typescript
-// packages/better-auth/src/extract/userFields.ts
-import type { BetterAuthOptions } from "better-auth";
-import type { AuthFieldDefinition } from "@vexcms/core";
-
-/**
- * Extract user fields from the better-auth config.
- *
- * Combines the base user fields (name, email, emailVerified, etc.)
- * with any `user.additionalFields` from the config.
- *
- * Goal: Produce a complete map of all fields on the user table.
- * For additionalFields, map better-auth field types to Convex validators:
- *   - "string" → "v.string()" or "v.optional(v.string())"
- *   - "number" → "v.float64()" or "v.optional(v.float64())"
- *   - "boolean" → "v.boolean()" or "v.optional(v.boolean())"
- *   - "string[]" → "v.array(v.string())" etc.
- * Use `required` flag on additionalField to determine v.optional() wrapping.
- *
- * Edge cases:
- * - No additionalFields: return base fields only
- * - additionalField overrides a base field name: additionalField wins
- * - Unknown type string: throw with descriptive error
- */
-export function extractUserFields(
-  config: BetterAuthOptions,
-): Record<string, AuthFieldDefinition> {
-  // TODO: implement
-  throw new Error("Not implemented");
-}
-
-/** Base user fields that better-auth always creates. */
-export const BASE_USER_FIELDS: Record<string, AuthFieldDefinition> = {
-  name: { validator: "v.string()" },
-  email: { validator: "v.string()" },
-  emailVerified: { validator: "v.boolean()" },
-  image: { validator: "v.optional(v.string())" },
-  username: { validator: "v.optional(v.union(v.null(), v.string()))" },
-  displayUsername: { validator: "v.optional(v.union(v.null(), v.string()))" },
-  phoneNumber: { validator: "v.optional(v.union(v.null(), v.string()))" },
-  phoneNumberVerified: {
-    validator: "v.optional(v.union(v.null(), v.boolean()))",
-  },
-  isAnonymous: { validator: "v.optional(v.union(v.null(), v.boolean()))" },
-  twoFactorEnabled: {
-    validator: "v.optional(v.union(v.null(), v.boolean()))",
-  },
-  createdAt: { validator: "v.float64()" },
-  updatedAt: { validator: "v.float64()" },
-};
-```
-
-### Extract tables
+### Extract auth tables
 
 ```typescript
 // packages/better-auth/src/extract/tables.ts
 import type { BetterAuthOptions } from "better-auth";
 import type { AuthTableDefinition } from "@vexcms/core";
-
-interface TableSlugs {
-  userSlug: string;
-  sessionSlug: string;
-  accountSlug: string;
-  verificationSlug: string;
-}
+import { betterAuthTypeToValidator } from "../validators";
 
 /**
- * Extract auth infrastructure tables from the better-auth config.
+ * Extract all auth tables from the better-auth config using `getAuthTables()`.
  *
- * Uses the actual modelName slugs to generate v.id() references
- * on relationship fields (e.g., userId on account → v.id("user")).
+ * Uses better-auth's built-in `getAuthTables()` API to get a uniform
+ * representation of all tables (user, account, session, verification, jwks,
+ * and any plugin-contributed tables). Converts each table's field types
+ * to Convex validator strings.
  *
- * Goal: Build the table definitions for account, session, verification,
- * and jwks tables. Relationship fields use v.id("<slug>") so that
- * Convex enforces referential integrity.
+ * This replaces the previous approach of separately extracting user fields,
+ * base tables, and plugin contributions. `getAuthTables()` handles all of
+ * that internally and returns a fully resolved table map.
+ *
+ * @param config - The better-auth configuration object
+ * @returns Array of AuthTableDefinition for all auth tables
  *
  * Edge cases:
- * - Custom modelNames: v.id() uses the custom slug, not the default
- * - jwks table has no configurable modelName: always "jwks"
+ * - Custom modelNames: reflected in the table slug
+ * - Plugin tables: included automatically by getAuthTables()
+ * - Relationship fields: converted to v.id("<slug>") based on references
+ * - Unknown field types: throw with descriptive error
  */
-export function extractTables(
+export function extractAuthTables(
   config: BetterAuthOptions,
-  slugs: TableSlugs,
 ): AuthTableDefinition[] {
-  // TODO: implement
+  // TODO: implement — use getAuthTables() from "better-auth/db"
+  // and betterAuthTypeToValidator() to convert field types
   throw new Error("Not implemented");
-}
-
-/**
- * Build the base tables using v.id() for relationship fields.
- *
- * Example: account table's userId field becomes:
- *   { validator: "v.id(\"user\")" }  when userSlug is "user"
- *   { validator: "v.id(\"users\")" } when userSlug is "users"
- */
-export function buildBaseTables(slugs: TableSlugs): AuthTableDefinition[] {
-  return [
-    {
-      slug: slugs.accountSlug,
-      fields: {
-        accessToken: { validator: "v.optional(v.string())" },
-        accessTokenExpiresAt: { validator: "v.optional(v.float64())" },
-        accountId: { validator: "v.string()" },
-        createdAt: { validator: "v.float64()" },
-        idToken: { validator: "v.optional(v.string())" },
-        password: { validator: "v.optional(v.string())" },
-        providerId: { validator: "v.string()" },
-        refreshToken: { validator: "v.optional(v.string())" },
-        refreshTokenExpiresAt: { validator: "v.optional(v.float64())" },
-        scope: { validator: "v.optional(v.string())" },
-        updatedAt: { validator: "v.float64()" },
-        userId: { validator: `v.id("${slugs.userSlug}")` },
-      },
-      indexes: [
-        { name: "by_userId", fields: ["userId"] },
-        { name: "by_accountId", fields: ["accountId"] },
-      ],
-    },
-    {
-      slug: slugs.sessionSlug,
-      fields: {
-        createdAt: { validator: "v.float64()" },
-        expiresAt: { validator: "v.float64()" },
-        ipAddress: { validator: "v.optional(v.string())" },
-        token: { validator: "v.string()" },
-        updatedAt: { validator: "v.float64()" },
-        userAgent: { validator: "v.optional(v.string())" },
-        userId: { validator: `v.id("${slugs.userSlug}")` },
-      },
-      indexes: [{ name: "by_token", fields: ["token"] }],
-    },
-    {
-      slug: slugs.verificationSlug,
-      fields: {
-        createdAt: { validator: "v.float64()" },
-        expiresAt: { validator: "v.float64()" },
-        identifier: { validator: "v.string()" },
-        updatedAt: { validator: "v.float64()" },
-        value: { validator: "v.string()" },
-      },
-      indexes: [
-        { name: "by_identifier", fields: ["identifier"] },
-        { name: "by_expiresAt", fields: ["expiresAt"] },
-      ],
-    },
-    {
-      slug: "jwks",
-      fields: {
-        createdAt: { validator: "v.float64()" },
-        privateKey: { validator: "v.optional(v.string())" },
-        publicKey: { validator: "v.string()" },
-      },
-    },
-  ];
 }
 ```
 
-### Extract plugins
+### Validator mapping
 
 ```typescript
-// packages/better-auth/src/extract/plugins.ts
-import type { AuthFieldDefinition, AuthTableDefinition } from "@vexcms/core";
-
-interface TableSlugs {
-  userSlug: string;
-  sessionSlug: string;
-  accountSlug: string;
-  verificationSlug: string;
-}
-
-interface ResolvedContributions {
-  userFields: Record<string, AuthFieldDefinition>;
-  tables: AuthTableDefinition[];
-}
+// packages/better-auth/src/validators.ts
+import type { AuthFieldDefinition } from "@vexcms/core";
 
 /**
- * Resolve plugin contributions into the base userFields and tables.
+ * Maps a better-auth field type string to a Convex validator string.
  *
- * This function is called internally by vexBetterAuth() — plugin resolution
- * is fully contained within the @vexcms/better-auth package. The VexAuthAdapter
- * returned to core has no plugins field; it's already fully resolved.
+ * better-auth uses type strings like "string", "number", "boolean",
+ * "string[]", "date", etc. This function converts them to the
+ * corresponding Convex validator string representation.
  *
- * Goal: Iterate over the active better-auth plugins and, for each known
- * plugin type (admin, apiKey, twoFactor, etc.), merge their field and table
- * contributions into the base userFields and tables.
+ * @param type - The better-auth field type (e.g., "string", "number", "boolean", "date")
+ * @param required - Whether the field is required (determines v.optional() wrapping)
+ * @param references - Optional table reference for relationship fields (produces v.id())
+ * @returns Convex validator string (e.g., "v.string()", "v.optional(v.float64())")
  *
- * The function inspects each plugin's `id` property to determine which
- * schema contributions it makes. Unknown plugins are skipped with
- * a console.warn (they may not affect the schema).
+ * Type mappings:
+ * - "string" → "v.string()" / "v.optional(v.string())"
+ * - "number" → "v.float64()" / "v.optional(v.float64())"
+ * - "boolean" → "v.boolean()" / "v.optional(v.boolean())"
+ * - "date" → "v.float64()" / "v.optional(v.float64())" (stored as epoch ms)
+ * - "string[]" → "v.array(v.string())" / "v.optional(v.array(v.string()))"
+ * - references provided → "v.id(\"<table>\")" / "v.optional(v.id(\"<table>\"))"
  *
  * Edge cases:
- * - Unknown plugin id: warn and skip (no schema impact)
- * - Admin plugin: adds banned, banExpires, banReason, role to user; impersonatedBy to session
- * - API key plugin: adds api_key table
- * - Two-factor plugin: adds twoFactor fields to user, twoFactor table
- * - Empty plugins array: return base fields/tables unchanged
- * - Plugin extends existing table: merge fields into that table
- * - Plugin adds new table: append to tables array
+ * - Unknown type string: throw with descriptive error
+ * - Nullable fields: use v.optional() wrapping
  */
-export function resolvePluginContributions(
-  plugins: any[],
-  baseUserFields: Record<string, AuthFieldDefinition>,
-  baseTables: AuthTableDefinition[],
-  slugs: TableSlugs,
-): ResolvedContributions {
+export function betterAuthTypeToValidator(
+  type: string,
+  required: boolean,
+  references?: { model: string },
+): string {
   // TODO: implement
   throw new Error("Not implemented");
 }
@@ -3693,17 +3540,20 @@ export function resolvePluginContributions(
 ### Package structure
 
 ```
-packages/better-auth/                 # @vexcms/better-auth
+packages/better-auth/
 ├── src/
-│   ├── index.ts                      # vexBetterAuth() factory
+│   ├── index.ts                      # vexBetterAuth() factory + re-exports
+│   ├── index.test.ts                 # integration tests
+│   ├── types.ts                      # Re-exports core auth types
+│   ├── validators.ts                 # betterAuthTypeToValidator()
+│   ├── validators.test.ts            # unit tests for validator mapping
 │   └── extract/
-│       ├── index.ts                  # re-exports
-│       ├── userFields.ts             # extractUserFields() + BASE_USER_FIELDS
-│       ├── tables.ts                 # extractTables() + buildBaseTables()
-│       └── plugins.ts                # resolvePluginContributions() — resolves plugins internally
-├── package.json                      # peerDependencies: better-auth, @vexcms/core
+│       ├── tables.ts                 # extractAuthTables() — uses getAuthTables()
+│       └── tables.test.ts            # tests for extractAuthTables()
+├── package.json
 ├── tsconfig.json
-└── tsup.config.ts
+├── tsup.config.ts
+└── vitest.config.ts
 ```
 
 ---
@@ -3849,7 +3699,7 @@ All tests in `packages/core/src/`:
 - [ ] `schema/extract.test.ts` — dispatcher with required/optional wrapping, index ignored
 - [ ] `schema/indexes.test.ts` — per-field indexes, collection-level indexes, dedup, collision detection, useAsTitle auto-index
 - [ ] `schema/slugs.test.ts` — slug registry, conflict detection, buildSlugRegistry
-- [ ] `schema/merge.test.ts` — auth field merging, plugin resolution
+- [ ] `schema/merge.test.ts` — auth table merging with user collections
 - [ ] `schema/generate.test.ts` — full schema generation with indexes (including useAsTitle auto-index), auth (with v.id() relationship fields), various configs
 
 Run with: `pnpm --filter @vexcms/core test`

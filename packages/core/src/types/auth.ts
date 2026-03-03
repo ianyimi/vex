@@ -52,33 +52,20 @@ export interface AuthTableDefinition {
  * been applied by `vexBetterAuth()` before this object is created.
  * Core never needs to know about auth sub-plugins.
  *
- * This is NOT an abstract interface for multiple providers.
- * It's the concrete shape that `vexBetterAuth()` returns.
- * If a second auth provider is needed later, generalize this type then.
+ * All auth tables (user, session, account, verification, plugin tables)
+ * are returned uniformly in the `tables` array. The user table is NOT
+ * special-cased — core's schema generator merges any user-defined
+ * collection configs on top of all auth tables equally.
  */
 export interface VexAuthAdapter {
   /** Auth provider identifier (e.g., "better-auth") */
   readonly name: string;
 
   /**
-   * Which collection slug represents the user table.
-   * This collection's fields will be merged with auth-provided user fields.
-   */
-  userCollection: string;
-
-  /**
-   * All fields that the auth provider adds to the user collection.
-   * Already includes contributions from all active auth plugins
-   * (e.g., admin plugin's `banned`, `role` fields).
-   * Uses validator strings, not VexField, because they're schema-only.
-   */
-  userFields: Record<string, AuthFieldDefinition>;
-
-  /**
-   * All auth infrastructure tables (account, session, verification, jwks, etc.).
-   * Already includes plugin-contributed tables and field extensions
-   * (e.g., admin plugin's `impersonatedBy` on session).
-   * These are added to vex.schema.ts but NOT shown in the admin sidebar.
+   * All auth tables (user, session, account, verification, plugin tables, etc.).
+   * Already includes plugin-contributed tables and field extensions.
+   * Core's schema generator uses these as the base, then merges any
+   * user-defined collection configs on top for admin UI customization.
    */
   tables: AuthTableDefinition[];
 }
