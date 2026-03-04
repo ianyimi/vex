@@ -51,7 +51,7 @@ describe("textToValueTypeString", () => {
       defaultValue: "Untitled",
       index: "by_title",
     };
-    // index does not affect the validator string
+    // index does not affect the valueType string
     expect(
       textToValueTypeString({
         meta,

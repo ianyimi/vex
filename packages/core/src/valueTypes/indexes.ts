@@ -4,17 +4,8 @@ import type {
   IndexConfig,
   VexField,
   BaseFieldMeta,
+  ResolvedIndex,
 } from "../types";
-
-/**
- * A resolved index ready for code generation.
- */
-export interface ResolvedIndex {
-  /** Index name (e.g., "by_slug") */
-  name: string;
-  /** Field names included in the index */
-  fields: string[];
-}
 
 /**
  * Collects all indexes for a collection from three sources:

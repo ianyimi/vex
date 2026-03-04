@@ -48,7 +48,7 @@ export const getSessionWithUser = query({
         userId: session.userId,
       },
       user: {
-        id: user.userId ?? user._id,
+        id: user._id,
         name: user.name,
         email: user.email,
         emailVerified: user.emailVerified,

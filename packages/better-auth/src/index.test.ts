@@ -14,8 +14,8 @@ describe("vexBetterAuth", () => {
     const adapter = vexBetterAuth();
     const user = adapter.tables.find((t) => t.slug === "user")!;
     expect(user).toBeDefined();
-    expect(user.fields.name).toEqual({ validator: "v.string()" });
-    expect(user.fields.email).toEqual({ validator: "v.string()" });
+    expect(user.fields.name).toEqual({ valueType: "v.string()" });
+    expect(user.fields.email).toEqual({ valueType: "v.string()" });
   });
 
   it("returns infrastructure tables (session, account, verification)", () => {
@@ -39,10 +39,10 @@ describe("vexBetterAuth", () => {
     expect(user).toBeDefined();
 
     const session = adapter.tables.find((t) => t.slug === "sessions")!;
-    expect(session.fields.userId).toEqual({ validator: 'v.id("users")' });
+    expect(session.fields.userId).toEqual({ valueType: 'v.id("users")' });
 
     const account = adapter.tables.find((t) => t.slug === "accounts")!;
-    expect(account.fields.userId).toEqual({ validator: 'v.id("users")' });
+    expect(account.fields.userId).toEqual({ valueType: 'v.id("users")' });
   });
 
   it("admin plugin adds user fields and session impersonatedBy", () => {
@@ -93,9 +93,9 @@ describe("vexBetterAuth", () => {
 
     // v.id() references use "user"
     const session = adapter.tables.find((t) => t.slug === "session")!;
-    expect(session.fields.userId).toEqual({ validator: 'v.id("user")' });
+    expect(session.fields.userId).toEqual({ valueType: 'v.id("user")' });
 
     const account = adapter.tables.find((t) => t.slug === "account")!;
-    expect(account.fields.userId).toEqual({ validator: 'v.id("user")' });
+    expect(account.fields.userId).toEqual({ valueType: 'v.id("user")' });
   });
 });

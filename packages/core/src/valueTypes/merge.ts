@@ -5,20 +5,20 @@ import { fieldToValueType } from "./extract";
 
 /**
  * Result of merging auth table fields with a user collection.
- * Contains both the merged validator strings for schema generation
+ * Contains both the merged valueType strings for schema generation
  * and metadata about which fields came from where.
  */
 export interface MergedFieldsResult {
   /**
    * The final field map for schema generation.
-   * Key is field name, value is validator string (e.g., "v.string()").
+   * Key is field name, value is valueType string (e.g., "v.string()").
    * Includes auth-provided fields + user-defined fields.
    */
   fields: Record<string, string>;
 
   /**
    * Fields that exist in both auth table and user config.
-   * The auth validator wins for schema gen; user admin config wins for UI.
+   * The auth valueType wins for schema gen; user admin config wins for UI.
    */
   overlapping: string[];
 
@@ -42,7 +42,7 @@ export interface MergedFieldsResult {
  *
  * Goal: Combine the auth table's fields (which define the database schema)
  * with the user's collection fields (which define admin UI behavior).
- * For schema generation, auth validators take precedence on overlapping fields.
+ * For schema generation, auth valueTypes take precedence on overlapping fields.
  * For admin UI, the user's field metadata takes precedence.
  *
  * @param authTable - The auth table definition with fully resolved fields
@@ -50,7 +50,7 @@ export interface MergedFieldsResult {
  * @returns Merged fields result with source tracking
  *
  * Edge cases:
- * - Auth field conflicts with user field: auth validator wins (it controls the DB shape)
+ * - Auth field conflicts with user field: auth valueType wins (it controls the DB shape)
  * - User defines field auth doesn't know about (e.g., "postCount"): added as user-only
  */
 export function mergeAuthTableWithCollection(props: {
@@ -69,7 +69,7 @@ export function mergeAuthTableWithCollection(props: {
   );
 
   for (const fieldSlug of authFieldSlugs) {
-    fields[fieldSlug] = authTable.fields[fieldSlug].validator;
+    fields[fieldSlug] = authTable.fields[fieldSlug].valueType;
     if (userFields.find((field) => field[0] === fieldSlug)) {
       overlapping.push(fieldSlug);
     } else {

@@ -3,7 +3,7 @@ import { VexFieldValidationError } from "../errors";
 
 /**
  * Validates a field's configuration and determines if it should be optional.
- * Called by each per-field validator function before generating the validator string.
+ * Called by each per-field valueType function before generating the valueType string.
  *
  * Checks:
  * 1. If required=true and defaultValue is undefined → throw VexFieldValidationError

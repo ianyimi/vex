@@ -1,5 +1,7 @@
 export { defineConfig } from "./config/defineConfig";
 export { defineCollection } from "./config/defineCollection";
+export { generateVexSchema } from "./valueTypes/generate";
+export { extendTable } from "./schema/extendTable";
 
 // Fields
 export { text } from "./fields/text";
@@ -32,7 +34,7 @@ export type {
   VexAuthAdapter,
   AuthTableDefinition,
   AuthFieldDefinition,
-  AuthIndexDefinition,
+  ResolvedIndex as AuthIndexDefinition,
   // Config types
   VexConfig,
   AdminConfig,

@@ -88,8 +88,8 @@ describe("fieldToValueType", () => {
     });
   });
 
-  describe("index property does not affect validator", () => {
-    it("text field with index still returns same validator", () => {
+  describe("index property does not affect valueType", () => {
+    it("text field with index still returns same valueType", () => {
       const field = text({
         required: true,
         defaultValue: "x",

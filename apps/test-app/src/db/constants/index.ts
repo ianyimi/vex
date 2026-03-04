@@ -7,7 +7,9 @@ export const TABLE_SLUG_SESSIONS = "session" as const
 export const TABLE_SLUG_VERIFICATIONS = "verification" as const
 export const TABLE_SLUG_JWKS = "jwks" as const
 
-export const COLLECTION_SLUG_MEDIA = "media" as const
+export const TABLE_SLUG_MEDIA = "media" as const
+export const TABLE_SLUG_POSTS = "posts" as const
+export const TABLE_SLUG_CATEGORIES = "categories" as const
 
 export const AUTH_PROVIDERS = {
   apple: "apple",

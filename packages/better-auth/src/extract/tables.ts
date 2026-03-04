@@ -14,17 +14,17 @@ import { betterAuthTypeToValueType } from "../valueTypes";
 function convertFields(
   fields: Record<string, DBFieldAttribute>,
 ): Record<string, AuthFieldDefinition> {
-  const validators: Record<string, AuthFieldDefinition> = {};
+  const valueTypes: Record<string, AuthFieldDefinition> = {};
   for (const [fieldName, attribute] of Object.entries(fields)) {
     if (fieldName === "id") continue;
-    const validator = betterAuthTypeToValueType({
+    const valueType = betterAuthTypeToValueType({
       type: attribute.type,
       required: attribute.required ?? false,
       references: attribute.references,
     });
-    validators[fieldName] = { validator };
+    valueTypes[fieldName] = { valueType };
   }
-  return validators;
+  return valueTypes;
 }
 
 /**

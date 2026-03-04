@@ -4,24 +4,24 @@
 
 /**
  * A field definition for auth infrastructure tables.
- * Uses validator strings since these tables are not user-configurable
+ * Uses valueType strings since these tables are not user-configurable
  * through the Vex field system — they come from the auth provider.
  *
- * Optionality is encoded directly in the validator string itself
+ * Optionality is encoded directly in the valueType string itself
  * (e.g., `"v.optional(v.string())"` vs `"v.string()"`).
  */
 export interface AuthFieldDefinition {
-  /** Convex validator string, e.g. "v.string()", "v.optional(v.boolean())" */
-  validator: string;
+  /** Convex valueType string, e.g. "v.string()", "v.optional(v.boolean())" */
+  valueType: string;
 }
 
 /**
- * An index definition for auth infrastructure tables.
+ * A resolved index ready for code generation.
  */
-export interface AuthIndexDefinition {
-  /** Index name (must be unique within the table) */
+export interface ResolvedIndex {
+  /** Index name (e.g., "by_slug") */
   name: string;
-  /** Field names to index (order matters for compound indexes) */
+  /** Field names included in the index */
   fields: string[];
 }
 
@@ -33,10 +33,10 @@ export interface AuthIndexDefinition {
 export interface AuthTableDefinition {
   /** Table slug (e.g., "account", "session") */
   slug: string;
-  /** Field definitions using validator strings */
+  /** Field definitions using valueType strings */
   fields: Record<string, AuthFieldDefinition>;
   /** Database indexes */
-  indexes?: AuthIndexDefinition[];
+  indexes?: ResolvedIndex[];
 }
 
 // =============================================================================

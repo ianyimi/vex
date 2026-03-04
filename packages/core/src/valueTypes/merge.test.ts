@@ -26,11 +26,11 @@ describe("mergeAuthTableWithCollection", () => {
     const authTable: AuthTableDefinition = {
       slug: "users",
       fields: {
-        name: { validator: "v.string()" },
-        email: { validator: "v.string()" },
-        emailVerified: { validator: "v.boolean()" },
-        createdAt: { validator: "v.number()" },
-        updatedAt: { validator: "v.number()" },
+        name: { valueType: "v.string()" },
+        email: { valueType: "v.string()" },
+        emailVerified: { valueType: "v.boolean()" },
+        createdAt: { valueType: "v.number()" },
+        updatedAt: { valueType: "v.number()" },
       },
     };
 
@@ -61,11 +61,11 @@ describe("mergeAuthTableWithCollection", () => {
     expect(Object.keys(result.fields)).toContain("role");
   });
 
-  it("auth validator wins on overlapping fields", () => {
+  it("auth valueType wins on overlapping fields", () => {
     const authTable: AuthTableDefinition = {
       slug: "users",
       fields: {
-        email: { validator: "v.string()" },
+        email: { valueType: "v.string()" },
       },
     };
 
@@ -74,7 +74,7 @@ describe("mergeAuthTableWithCollection", () => {
       collection: users,
     });
 
-    // The auth validator should win for schema generation
+    // The auth valueType should win for schema generation
     expect(result.fields["email"]).toBe("v.string()");
   });
 
@@ -82,7 +82,7 @@ describe("mergeAuthTableWithCollection", () => {
     const authTable: AuthTableDefinition = {
       slug: "users",
       fields: {
-        email: { validator: "v.string()" },
+        email: { valueType: "v.string()" },
       },
     };
 
@@ -127,9 +127,9 @@ describe("mergeAuthTableWithCollection", () => {
     const authTable: AuthTableDefinition = {
       slug: "users",
       fields: {
-        name: { validator: "v.string()" },
-        email: { validator: "v.string()" },
-        createdAt: { validator: "v.number()" },
+        name: { valueType: "v.string()" },
+        email: { valueType: "v.string()" },
+        createdAt: { valueType: "v.number()" },
       },
     };
 

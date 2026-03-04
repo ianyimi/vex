@@ -20,9 +20,9 @@ export interface VexConfig {
   /** Base URL path for the admin panel */
   basePath: string;
   /** Array of collection definitions */
-  collections: VexCollection<any>[];
+  collections: VexCollection[];
   /** Array of global definitions */
-  globals: VexGlobal<any>[];
+  globals: VexGlobal[];
   /** Admin panel configuration */
   admin: AdminConfig;
   /** Auth adapter — required. Use `vexBetterAuth(authConfig)` to create. */

@@ -9,14 +9,14 @@ describe("extractAuthTables", () => {
       const tables = extractAuthTables({});
       const user = tables.find((t) => t.slug === "user")!;
       expect(user).toBeDefined();
-      expect(user.fields.name).toEqual({ validator: "v.string()" });
-      expect(user.fields.email).toEqual({ validator: "v.string()" });
-      expect(user.fields.emailVerified).toEqual({ validator: "v.boolean()" });
+      expect(user.fields.name).toEqual({ valueType: "v.string()" });
+      expect(user.fields.email).toEqual({ valueType: "v.string()" });
+      expect(user.fields.emailVerified).toEqual({ valueType: "v.boolean()" });
       expect(user.fields.image).toEqual({
-        validator: "v.optional(v.string())",
+        valueType: "v.optional(v.string())",
       });
-      expect(user.fields.createdAt).toEqual({ validator: "v.number()" });
-      expect(user.fields.updatedAt).toEqual({ validator: "v.number()" });
+      expect(user.fields.createdAt).toEqual({ valueType: "v.number()" });
+      expect(user.fields.updatedAt).toEqual({ valueType: "v.number()" });
     });
 
     it("does not include 'id' in any table fields", () => {
@@ -38,21 +38,21 @@ describe("extractAuthTables", () => {
     it("session table has userId as v.id() referencing user", () => {
       const tables = extractAuthTables({});
       const session = tables.find((t) => t.slug === "session")!;
-      expect(session.fields.userId).toEqual({ validator: 'v.id("user")' });
+      expect(session.fields.userId).toEqual({ valueType: 'v.id("user")' });
     });
 
     it("account table has userId as v.id() referencing user", () => {
       const tables = extractAuthTables({});
       const account = tables.find((t) => t.slug === "account")!;
-      expect(account.fields.userId).toEqual({ validator: 'v.id("user")' });
+      expect(account.fields.userId).toEqual({ valueType: 'v.id("user")' });
     });
 
     it("session table has date fields as v.number()", () => {
       const tables = extractAuthTables({});
       const session = tables.find((t) => t.slug === "session")!;
-      expect(session.fields.expiresAt).toEqual({ validator: "v.number()" });
-      expect(session.fields.createdAt).toEqual({ validator: "v.number()" });
-      expect(session.fields.updatedAt).toEqual({ validator: "v.number()" });
+      expect(session.fields.expiresAt).toEqual({ valueType: "v.number()" });
+      expect(session.fields.createdAt).toEqual({ valueType: "v.number()" });
+      expect(session.fields.updatedAt).toEqual({ valueType: "v.number()" });
     });
 
     it("session table does not include 'id' field", () => {
@@ -106,10 +106,10 @@ describe("extractAuthTables", () => {
 
       // references in other tables point to custom slug
       const session = tables.find((t) => t.slug === "session")!;
-      expect(session.fields.userId).toEqual({ validator: 'v.id("users")' });
+      expect(session.fields.userId).toEqual({ valueType: 'v.id("users")' });
 
       const account = tables.find((t) => t.slug === "account")!;
-      expect(account.fields.userId).toEqual({ validator: 'v.id("users")' });
+      expect(account.fields.userId).toEqual({ valueType: 'v.id("users")' });
     });
 
     it("uses custom session modelName as table slug", () => {
@@ -139,9 +139,9 @@ describe("extractAuthTables", () => {
         },
       });
       const user = tables.find((t) => t.slug === "user")!;
-      expect(user.fields.bio).toEqual({ validator: "v.string()" });
+      expect(user.fields.bio).toEqual({ valueType: "v.string()" });
       // base fields still present
-      expect(user.fields.name).toEqual({ validator: "v.string()" });
+      expect(user.fields.name).toEqual({ valueType: "v.string()" });
     });
 
     it("additionalField with required: false wraps in v.optional()", () => {
@@ -154,7 +154,7 @@ describe("extractAuthTables", () => {
       });
       const user = tables.find((t) => t.slug === "user")!;
       expect(user.fields.nickname).toEqual({
-        validator: "v.optional(v.string())",
+        valueType: "v.optional(v.string())",
       });
     });
 
@@ -172,7 +172,7 @@ describe("extractAuthTables", () => {
       });
       const user = tables.find((t) => t.slug === "user")!;
       expect(user.fields.orgId).toEqual({
-        validator: 'v.id("organization")',
+        valueType: 'v.id("organization")',
       });
     });
   });
@@ -204,7 +204,7 @@ describe("extractAuthTables", () => {
       const session = tables.find((t) => t.slug === "session")!;
       // better-auth stores impersonatedBy as a plain string, not a typed reference
       expect(session.fields.impersonatedBy).toEqual({
-        validator: "v.optional(v.string())",
+        valueType: "v.optional(v.string())",
       });
     });
   });
@@ -236,7 +236,7 @@ describe("extractAuthTables", () => {
       });
       const session = tables.find((t) => t.slug === "session")!;
       expect(session.fields.device).toEqual({
-        validator: "v.optional(v.string())",
+        valueType: "v.optional(v.string())",
       });
     });
   });
@@ -252,7 +252,7 @@ describe("extractAuthTables", () => {
       });
       const account = tables.find((t) => t.slug === "account")!;
       expect(account.fields.metadata).toEqual({
-        validator: "v.optional(v.any())",
+        valueType: "v.optional(v.any())",
       });
     });
   });

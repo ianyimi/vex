@@ -49,7 +49,7 @@ export function AppSidebar({
     const collections: CollectionNavItem[] = config.collections
       .filter((c) => !c.config.admin?.group)
       .map((c) => ({
-        title: c.config.fields[c.config.admin?.useAsTitle ?? c.slug],
+        title: (c.config.admin?.useAsTitle as string) ?? c.slug,
         url: `${config.basePath}/${c.slug}`,
         slug: c.slug,
       }));
@@ -83,7 +83,7 @@ export function AppSidebar({
     const globals: CollectionNavItem[] = config.globals
       .filter((g) => !g.config.admin?.group)
       .map((g) => ({
-        title: g.config.fields[g.config.admin?.useAsTitle ?? g.slug],
+        title: (g.config.admin?.useAsTitle as string) ?? g.slug,
         url: `${config.basePath}/${g.slug}`,
         slug: g.slug,
       }));

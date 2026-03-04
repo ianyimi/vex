@@ -50,7 +50,10 @@ export interface GlobalAdminConfig<
  * Defines the fields, label, and admin behavior for a global.
  */
 export interface GlobalConfig<
-  TFields extends Record<string, VexField<any, any>>,
+  TFields extends Record<string, VexField<any, any>> = Record<
+    string,
+    VexField<any, any>
+  >,
 > {
   /**
    * The fields that make up this global document.
@@ -64,6 +67,11 @@ export interface GlobalConfig<
    */
   label?: string;
   /**
+   * The name of the table generated for this global in the
+   * generated vex schema file. Defaults to the global slug
+   */
+  tableName?: string;
+  /**
    * Admin UI configuration for this global.
    * Controls sidebar grouping, icons, and permissions.
    */
@@ -74,7 +82,12 @@ export interface GlobalConfig<
  * A defined global with inferred document type.
  * Created by `defineGlobal()`.
  */
-export interface VexGlobal<TFields extends Record<string, VexField<any, any>>> {
+export interface VexGlobal<
+  TFields extends Record<string, VexField<any, any>> = Record<
+    string,
+    VexField<any, any>
+  >,
+> {
   /** The global identifier, used in URLs and the database. */
   readonly slug: string;
   /** The full global configuration. */

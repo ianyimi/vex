@@ -8,7 +8,7 @@ import { NUMBER_VALUETYPE } from "../constants";
  * @returns `"v.number()"` or `"v.optional(v.number())"`
  *
  * min/max/step are runtime validation concerns, not schema constraints.
- * Convex has no integer validator — always v.number().
+ * Convex has no integer valueType — always v.number().
  */
 export function numberToValueTypeString(props: {
   meta: NumberFieldMeta;

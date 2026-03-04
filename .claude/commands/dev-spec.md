@@ -44,33 +44,53 @@ Every file in the spec must either (a) contain working code that's used by this 
 
 ## CRITICAL: Single Object Parameters
 
-**All functions take a single typed `props` object instead of multiple positional parameters.** This gives the developer named parameters with full LSP autocomplete, eliminates parameter ordering issues, and makes call sites self-documenting.
+**All functions AND class methods take a single typed `props` object instead of multiple positional parameters.** This gives the developer named parameters with full LSP autocomplete, eliminates parameter ordering issues, and makes call sites self-documenting.
 
 ```typescript
-// ❌ WRONG — positional params
+// ❌ WRONG — positional params on a function
 export function mergeFields(
   authTable: AuthTableDefinition,
   collection: VexCollection<any>,
   slug: string,
 ): MergedResult { ... }
 
-// ✅ RIGHT — single props object
+// ✅ RIGHT — single props object on a function
 export function mergeFields(props: {
   authTable: AuthTableDefinition;
   collection: VexCollection<any>;
   slug: string;
 }): MergedResult {
-  const { authTable, collection, slug } = props;
+  // Access via props.authTable, props.collection, props.slug
+  // Do NOT destructure — keeps it clear which values came from props
+  // vs which were defined locally in the function body
   ...
+}
+
+// ❌ WRONG — positional params on a class method
+class Registry {
+  register(slug: string, source: SlugSource, location: string): void { ... }
+}
+
+// ✅ RIGHT — single props object on a class method
+class Registry {
+  register(props: { slug: string; source: SlugSource; location: string }): void {
+    // Access via props.slug, props.source, props.location
+    ...
+  }
 }
 ```
 
 **Rules:**
 - The parameter name is always `props` (not `opts`, `args`, `options`, etc.)
-- Destructure `props` as the first line of the function body
+- Prefer accessing fields via `props.fieldName` when the function body also defines local variables — this keeps it clear which values came from the caller vs which were defined locally
+- Destructuring `const { ... } = props` is allowed when the function body has no locally-defined variables (i.e., everything in scope came from props)
+- When in doubt, use `props.fieldName` — it's always safe
 - The type is declared inline on the parameter (not as a separate named type, unless the same shape is reused by 3+ functions)
+- This applies to standalone functions, exported functions, AND class methods
 - Class constructors and error class constructors may use positional params
+- Zero-param or single-param methods (e.g., `getAll()`, `has(key)`) don't need a props wrapper
 - Callback functions passed to `.map()`, `.filter()`, etc. use positional params (they're not standalone functions)
+- JSDoc must document each field on the props object using `@param props.fieldName` notation
 
 ## Mandatory: Use AskUserQuestion Tool
 
@@ -307,17 +327,15 @@ export function myFunction(props: {
 }): Result {
   // TODO: implement
   //
-  // 1. Destructure: const { input, collectionSlug } = props;
-  //
-  // 2. First step — what to do and why
+  // 1. First step — what to do and why (access via props.input, props.collectionSlug)
   //    → what this returns or produces
   //    → conditions that cause errors (throw XError if ...)
   //
-  // 3. Second step — next action
+  // 2. Second step — next action
   //    a. Sub-step if branching logic
   //    b. Another sub-step
   //
-  // 4. Return the result
+  // 3. Return the result
   //
   // Edge cases:
   // - Edge case 1: what happens and how to handle it

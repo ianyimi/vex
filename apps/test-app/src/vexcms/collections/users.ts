@@ -1,6 +1,8 @@
 import { defineCollection, number, select, text } from "@vexcms/core"
 
-export const users = defineCollection("users", {
+import { TABLE_SLUG_USERS } from "~/db/constants"
+
+export const users = defineCollection(TABLE_SLUG_USERS, {
   admin: {
     group: "Admin",
     useAsTitle: "name",

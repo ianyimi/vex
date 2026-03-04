@@ -49,7 +49,7 @@ This spec is structured for test-first development across two stages. Stage 1 fo
   - [x] Verify build passes
 - [x] **Phase D** — `@vexcms/better-auth` package (see [spec 13](./13-better-auth-package-spec.md))
   - [x] Package scaffolding (`package.json`, `tsconfig.json`, `tsup.config.ts`, `vitest.config.ts`)
-  - [x] `betterAuthTypeToValidator()` + unit tests
+  - [x] `betterAuthTypeToValueType()` + unit tests
   - [x] `extractAuthTables()` using `getAuthTables()` from `better-auth/db` + tests
   - [x] `vexBetterAuth()` entry point + integration tests
   - [x] Build succeeds, test app compiles with `auth: vexBetterAuth({...})`
@@ -175,8 +175,8 @@ packages/better-auth/
 │   ├── index.ts                      # vexBetterAuth() factory + re-exports
 │   ├── index.test.ts                 # integration tests
 │   ├── types.ts                      # Re-exports core auth types
-│   ├── validators.ts                 # betterAuthTypeToValidator()
-│   ├── validators.test.ts            # unit tests for validator mapping
+│   ├── valueTypes.ts                 # betterAuthTypeToValueType()
+│   ├── valueTypes.test.ts            # unit tests for value type mapping
 │   └── extract/
 │       ├── tables.ts                 # extractAuthTables() — uses getAuthTables()
 │       └── tables.test.ts            # tests for extractAuthTables()
@@ -671,21 +671,35 @@ describe("textToValueTypeString", () => {
       required: true,
       defaultValue: "x",
     };
-    expect(textToValueTypeString({ meta, collectionSlug: "posts", fieldName: "title" })).toBe("v.string()");
+    expect(
+      textToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "title",
+      }),
+    ).toBe("v.string()");
   });
 
   it("returns v.optional(v.string()) for an optional text field", () => {
     const meta: TextFieldMeta = { type: "text" };
-    expect(textToValueTypeString({ meta, collectionSlug: "posts", fieldName: "subtitle" })).toBe(
-      "v.optional(v.string())",
-    );
+    expect(
+      textToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "subtitle",
+      }),
+    ).toBe("v.optional(v.string())");
   });
 
   it("returns v.optional(v.string()) regardless of minLength/maxLength", () => {
     const meta: TextFieldMeta = { type: "text", minLength: 1, maxLength: 200 };
-    expect(textToValueTypeString({ meta, collectionSlug: "posts", fieldName: "excerpt" })).toBe(
-      "v.optional(v.string())",
-    );
+    expect(
+      textToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "excerpt",
+      }),
+    ).toBe("v.optional(v.string())");
   });
 
   it("returns v.string() with full options including index", () => {
@@ -700,14 +714,24 @@ describe("textToValueTypeString", () => {
       index: "by_title",
     };
     // index does not affect the validator string
-    expect(textToValueTypeString({ meta, collectionSlug: "posts", fieldName: "title" })).toBe("v.string()");
+    expect(
+      textToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "title",
+      }),
+    ).toBe("v.string()");
   });
 
   it("throws when required with no defaultValue", () => {
     const meta: TextFieldMeta = { type: "text", required: true };
-    expect(() => textToValueTypeString({ meta, collectionSlug: "posts", fieldName: "title" })).toThrow(
-      "title",
-    );
+    expect(() =>
+      textToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "title",
+      }),
+    ).toThrow("title");
   });
 
   it("throws when defaultValue is wrong type", () => {
@@ -716,9 +740,13 @@ describe("textToValueTypeString", () => {
       required: true,
       defaultValue: 42 as any,
     };
-    expect(() => textToValueTypeString({ meta, collectionSlug: "posts", fieldName: "title" })).toThrow(
-      "title",
-    );
+    expect(() =>
+      textToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "title",
+      }),
+    ).toThrow("title");
   });
 });
 ```
@@ -767,14 +795,24 @@ describe("numberToValueTypeString", () => {
       required: true,
       defaultValue: 0,
     };
-    expect(numberToValueTypeString({ meta, collectionSlug: "items", fieldName: "count" })).toBe("v.number()");
+    expect(
+      numberToValueTypeString({
+        meta,
+        collectionSlug: "items",
+        fieldName: "count",
+      }),
+    ).toBe("v.number()");
   });
 
   it("returns v.optional(v.number()) for an optional number field", () => {
     const meta: NumberFieldMeta = { type: "number" };
-    expect(numberToValueTypeString({ meta, collectionSlug: "items", fieldName: "count" })).toBe(
-      "v.optional(v.number())",
-    );
+    expect(
+      numberToValueTypeString({
+        meta,
+        collectionSlug: "items",
+        fieldName: "count",
+      }),
+    ).toBe("v.optional(v.number())");
   });
 
   it("returns v.optional(v.number()) regardless of min/max/step", () => {
@@ -784,16 +822,24 @@ describe("numberToValueTypeString", () => {
       max: 100,
       step: 0.01,
     };
-    expect(numberToValueTypeString({ meta, collectionSlug: "items", fieldName: "price" })).toBe(
-      "v.optional(v.number())",
-    );
+    expect(
+      numberToValueTypeString({
+        meta,
+        collectionSlug: "items",
+        fieldName: "price",
+      }),
+    ).toBe("v.optional(v.number())");
   });
 
   it("throws when required with no defaultValue", () => {
     const meta: NumberFieldMeta = { type: "number", required: true };
-    expect(() => numberToValueTypeString({ meta, collectionSlug: "items", fieldName: "count" })).toThrow(
-      "count",
-    );
+    expect(() =>
+      numberToValueTypeString({
+        meta,
+        collectionSlug: "items",
+        fieldName: "count",
+      }),
+    ).toThrow("count");
   });
 
   it("throws when defaultValue is wrong type", () => {
@@ -802,9 +848,13 @@ describe("numberToValueTypeString", () => {
       required: true,
       defaultValue: "ten" as any,
     };
-    expect(() => numberToValueTypeString({ meta, collectionSlug: "items", fieldName: "count" })).toThrow(
-      "count",
-    );
+    expect(() =>
+      numberToValueTypeString({
+        meta,
+        collectionSlug: "items",
+        fieldName: "count",
+      }),
+    ).toThrow("count");
   });
 });
 ```
@@ -846,9 +896,13 @@ import type { CheckboxFieldMeta } from "../../types";
 describe("checkboxToValueTypeString", () => {
   it("returns v.optional(v.boolean()) for an optional checkbox", () => {
     const meta: CheckboxFieldMeta = { type: "checkbox" };
-    expect(checkboxToValueTypeString({ meta, collectionSlug: "posts", fieldName: "featured" })).toBe(
-      "v.optional(v.boolean())",
-    );
+    expect(
+      checkboxToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "featured",
+      }),
+    ).toBe("v.optional(v.boolean())");
   });
 
   it("returns v.boolean() for a required checkbox with defaultValue", () => {
@@ -857,16 +911,24 @@ describe("checkboxToValueTypeString", () => {
       required: true,
       defaultValue: true,
     };
-    expect(checkboxToValueTypeString({ meta, collectionSlug: "posts", fieldName: "featured" })).toBe(
-      "v.boolean()",
-    );
+    expect(
+      checkboxToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "featured",
+      }),
+    ).toBe("v.boolean()");
   });
 
   it("throws when required with no defaultValue", () => {
     const meta: CheckboxFieldMeta = { type: "checkbox", required: true };
-    expect(() => checkboxToValueTypeString({ meta, collectionSlug: "posts", fieldName: "featured" })).toThrow(
-      "featured",
-    );
+    expect(() =>
+      checkboxToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "featured",
+      }),
+    ).toThrow("featured");
   });
 
   it("throws when defaultValue is wrong type", () => {
@@ -875,9 +937,13 @@ describe("checkboxToValueTypeString", () => {
       required: true,
       defaultValue: "yes" as any,
     };
-    expect(() => checkboxToValueTypeString({ meta, collectionSlug: "posts", fieldName: "featured" })).toThrow(
-      "featured",
-    );
+    expect(() =>
+      checkboxToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "featured",
+      }),
+    ).toThrow("featured");
   });
 });
 ```
@@ -906,7 +972,6 @@ export function selectToValueTypeString(props: {
   collectionSlug: string;
   fieldName: string;
 }): string {
-  const { meta, collectionSlug, fieldName } = props;
   const literals = meta.options.map((o) => `v.literal("${o.value}")`).join(",");
   if (meta.hasMany) {
     return processFieldValueTypeOptions({
@@ -943,9 +1008,13 @@ describe("selectToValueTypeString", () => {
         { value: "published", label: "Published" },
       ],
     };
-    expect(selectToValueTypeString({ meta, collectionSlug: "posts", fieldName: "status" })).toBe(
-      'v.optional(v.union(v.literal("draft"),v.literal("published")))',
-    );
+    expect(
+      selectToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "status",
+      }),
+    ).toBe('v.optional(v.union(v.literal("draft"),v.literal("published")))');
   });
 
   it("returns required union when required with defaultValue", () => {
@@ -958,9 +1027,13 @@ describe("selectToValueTypeString", () => {
         { value: "published", label: "Published" },
       ],
     };
-    expect(selectToValueTypeString({ meta, collectionSlug: "posts", fieldName: "status" })).toBe(
-      'v.union(v.literal("draft"),v.literal("published"))',
-    );
+    expect(
+      selectToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "status",
+      }),
+    ).toBe('v.union(v.literal("draft"),v.literal("published"))');
   });
 
   it("wraps in v.array() for multi-select (hasMany) — no v.union() wrapper", () => {
@@ -973,9 +1046,13 @@ describe("selectToValueTypeString", () => {
       ],
     };
     // hasMany wraps literals directly in v.array(), no v.union()
-    expect(selectToValueTypeString({ meta, collectionSlug: "posts", fieldName: "tags" })).toBe(
-      'v.optional(v.array(v.literal("tag1"),v.literal("tag2")))',
-    );
+    expect(
+      selectToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "tags",
+      }),
+    ).toBe('v.optional(v.array(v.literal("tag1"),v.literal("tag2")))');
   });
 
   it("handles single option", () => {
@@ -983,9 +1060,13 @@ describe("selectToValueTypeString", () => {
       type: "select",
       options: [{ value: "only", label: "Only Option" }],
     };
-    expect(selectToValueTypeString({ meta, collectionSlug: "posts", fieldName: "status" })).toBe(
-      'v.optional(v.union(v.literal("only")))',
-    );
+    expect(
+      selectToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "status",
+      }),
+    ).toBe('v.optional(v.union(v.literal("only")))');
   });
 
   // TODO: Implementation does not yet validate empty options — add when implemented
@@ -1007,9 +1088,13 @@ describe("selectToValueTypeString", () => {
       ],
     };
     // hasMany: false should NOT wrap in v.array()
-    expect(selectToValueTypeString({ meta, collectionSlug: "posts", fieldName: "status" })).toBe(
-      'v.optional(v.union(v.literal("a"),v.literal("b")))',
-    );
+    expect(
+      selectToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "status",
+      }),
+    ).toBe('v.optional(v.union(v.literal("a"),v.literal("b")))');
   });
 
   it("throws when required with no defaultValue", () => {
@@ -1021,15 +1106,20 @@ describe("selectToValueTypeString", () => {
         { value: "b", label: "B" },
       ],
     };
-    expect(() => selectToValueTypeString({ meta, collectionSlug: "posts", fieldName: "status" })).toThrow(
-      "status",
-    );
+    expect(() =>
+      selectToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "status",
+      }),
+    ).toThrow("status");
   });
 
   // TODO: Implementation does not yet validate defaultValue against options — add when implemented
   it.todo("throws when defaultValue is not in options");
 });
 ```
+
 ---
 
 ### Per-Field Index Files
@@ -1205,25 +1295,24 @@ export function processFieldValueTypeOptions(props: {
   expectedType: string;
   valueType: string;
 }): string {
-  const { meta, collectionSlug, fieldName, expectedType, valueType } = props;
-  if (!meta.required) {
-    return `v.optional(${valueType})`;
+  if (!props.meta.required) {
+    return `v.optional(${props.valueType})`;
   } else {
-    if (!meta.defaultValue) {
+    if (!props.meta.defaultValue) {
       throw new VexFieldValidationError(
-        collectionSlug,
-        fieldName,
+        props.collectionSlug,
+        props.fieldName,
         "No default Value Provided",
       );
     }
-    if (!(typeof meta.defaultValue === expectedType)) {
+    if (!(typeof props.meta.defaultValue === props.expectedType)) {
       throw new VexFieldValidationError(
-        collectionSlug,
-        fieldName,
-        `Invalid defaultValue Provided. Expected: ${expectedType}, Received: ${typeof meta.defaultValue}`,
+        props.collectionSlug,
+        props.fieldName,
+        `Invalid defaultValue Provided. Expected: ${props.expectedType}, Received: ${typeof props.meta.defaultValue}`,
       );
     }
-    return valueType;
+    return props.valueType;
   }
 }
 ```
@@ -1383,21 +1472,36 @@ export function fieldToValueType(props: {
   collectionSlug: string;
   fieldName: string;
 }): string {
-  const { field, collectionSlug, fieldName } = props;
-  switch (field._meta.type) {
+  switch (props.field._meta.type) {
     case "text":
-      return textToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+      return textToValueTypeString({
+        meta: props.field._meta,
+        collectionSlug: props.collectionSlug,
+        fieldName: props.fieldName,
+      });
     case "number":
-      return numberToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+      return numberToValueTypeString({
+        meta: props.field._meta,
+        collectionSlug: props.collectionSlug,
+        fieldName: props.fieldName,
+      });
     case "checkbox":
-      return checkboxToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+      return checkboxToValueTypeString({
+        meta: props.field._meta,
+        collectionSlug: props.collectionSlug,
+        fieldName: props.fieldName,
+      });
     case "select":
-      return selectToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+      return selectToValueTypeString({
+        meta: props.field._meta,
+        collectionSlug: props.collectionSlug,
+        fieldName: props.fieldName,
+      });
     default:
       throw new VexFieldValidationError(
-        collectionSlug,
-        fieldName,
-        `Unknown Field Type: ${field._meta.type}`,
+        props.collectionSlug,
+        props.fieldName,
+        `Unknown Field Type: ${props.field._meta.type}`,
       );
   }
 }
@@ -1417,16 +1521,24 @@ describe("fieldToValueType", () => {
   describe("required fields (no v.optional wrapper)", () => {
     it("text field with required: true and defaultValue", () => {
       const field = text({ required: true, defaultValue: "Untitled" });
-      expect(fieldToValueType({ field, collectionSlug: "posts", fieldName: "title" })).toBe(
-        "v.string()",
-      );
+      expect(
+        fieldToValueType({
+          field,
+          collectionSlug: "posts",
+          fieldName: "title",
+        }),
+      ).toBe("v.string()");
     });
 
     it("number field with required: true and defaultValue", () => {
       const field = number({ required: true, defaultValue: 0 });
-      expect(fieldToValueType({ field, collectionSlug: "items", fieldName: "count" })).toBe(
-        "v.number()",
-      );
+      expect(
+        fieldToValueType({
+          field,
+          collectionSlug: "items",
+          fieldName: "count",
+        }),
+      ).toBe("v.number()");
     });
 
     it("select field with required: true and defaultValue", () => {
@@ -1438,48 +1550,72 @@ describe("fieldToValueType", () => {
           { value: "b", label: "B" },
         ],
       });
-      expect(fieldToValueType({ field, collectionSlug: "posts", fieldName: "status" })).toBe(
-        'v.union(v.literal("a"),v.literal("b"))',
-      );
+      expect(
+        fieldToValueType({
+          field,
+          collectionSlug: "posts",
+          fieldName: "status",
+        }),
+      ).toBe('v.union(v.literal("a"),v.literal("b"))');
     });
   });
 
   describe("optional fields (wrapped in v.optional)", () => {
     it("text field with no required option", () => {
       const field = text();
-      expect(fieldToValueType({ field, collectionSlug: "posts", fieldName: "subtitle" })).toBe(
-        "v.optional(v.string())",
-      );
+      expect(
+        fieldToValueType({
+          field,
+          collectionSlug: "posts",
+          fieldName: "subtitle",
+        }),
+      ).toBe("v.optional(v.string())");
     });
 
     it("text field with required: false", () => {
       const field = text({ required: false });
-      expect(fieldToValueType({ field, collectionSlug: "posts", fieldName: "subtitle" })).toBe(
-        "v.optional(v.string())",
-      );
+      expect(
+        fieldToValueType({
+          field,
+          collectionSlug: "posts",
+          fieldName: "subtitle",
+        }),
+      ).toBe("v.optional(v.string())");
     });
 
     it("number field without required", () => {
       const field = number({ min: 0 });
-      expect(fieldToValueType({ field, collectionSlug: "items", fieldName: "price" })).toBe(
-        "v.optional(v.number())",
-      );
+      expect(
+        fieldToValueType({
+          field,
+          collectionSlug: "items",
+          fieldName: "price",
+        }),
+      ).toBe("v.optional(v.number())");
     });
 
     it("checkbox field without required", () => {
       const field = checkbox();
-      expect(fieldToValueType({ field, collectionSlug: "posts", fieldName: "featured" })).toBe(
-        "v.optional(v.boolean())",
-      );
+      expect(
+        fieldToValueType({
+          field,
+          collectionSlug: "posts",
+          fieldName: "featured",
+        }),
+      ).toBe("v.optional(v.boolean())");
     });
 
     it("select field without required", () => {
       const field = select({
         options: [{ value: "x", label: "X" }],
       });
-      expect(fieldToValueType({ field, collectionSlug: "posts", fieldName: "status" })).toBe(
-        'v.optional(v.union(v.literal("x")))',
-      );
+      expect(
+        fieldToValueType({
+          field,
+          collectionSlug: "posts",
+          fieldName: "status",
+        }),
+      ).toBe('v.optional(v.union(v.literal("x")))');
     });
 
     it("multi-select field without required", () => {
@@ -1490,9 +1626,9 @@ describe("fieldToValueType", () => {
           { value: "b", label: "B" },
         ],
       });
-      expect(fieldToValueType({ field, collectionSlug: "posts", fieldName: "tags" })).toBe(
-        'v.optional(v.array(v.literal("a"),v.literal("b")))',
-      );
+      expect(
+        fieldToValueType({ field, collectionSlug: "posts", fieldName: "tags" }),
+      ).toBe('v.optional(v.array(v.literal("a"),v.literal("b")))');
     });
   });
 
@@ -1503,9 +1639,13 @@ describe("fieldToValueType", () => {
         defaultValue: "x",
         index: "by_title",
       });
-      expect(fieldToValueType({ field, collectionSlug: "posts", fieldName: "title" })).toBe(
-        "v.string()",
-      );
+      expect(
+        fieldToValueType({
+          field,
+          collectionSlug: "posts",
+          fieldName: "title",
+        }),
+      ).toBe("v.string()");
     });
   });
 
@@ -1515,9 +1655,13 @@ describe("fieldToValueType", () => {
         _type: "",
         _meta: { type: "unknown_type" },
       } as any;
-      expect(() => fieldToValueType({ field, collectionSlug: "posts", fieldName: "mystery" })).toThrow(
-        "unknown_type",
-      );
+      expect(() =>
+        fieldToValueType({
+          field,
+          collectionSlug: "posts",
+          fieldName: "mystery",
+        }),
+      ).toThrow("unknown_type");
     });
   });
 });
@@ -1570,15 +1714,16 @@ export interface ResolvedIndex {
 export function collectIndexes(props: {
   collection: VexCollection;
 }): ResolvedIndex[] {
-  const { collection } = props;
   const fieldIndexes = new Map<string, ResolvedIndex>();
 
-  for (const [fieldKey, field] of Object.entries(collection.config.fields)) {
+  for (const [fieldKey, field] of Object.entries(
+    props.collection.config.fields,
+  )) {
     const indexName = field._meta.index;
     if (indexName) {
       if (fieldIndexes.has(indexName)) {
         throw new VexFieldValidationError(
-          collection.slug,
+          props.collection.slug,
           fieldKey,
           `Duplicate Indexes detected: ${indexName}`,
         );
@@ -1587,12 +1732,12 @@ export function collectIndexes(props: {
     }
   }
 
-  collection.config.indexes?.forEach((index) => {
+  props.collection.config.indexes?.forEach((index) => {
     if (fieldIndexes.has(index.name)) return;
     fieldIndexes.set(index.name, { name: index.name, fields: index.fields });
   });
 
-  const useAsTitle = collection.config.admin?.useAsTitle;
+  const useAsTitle = props.collection.config.admin?.useAsTitle;
   if (useAsTitle) {
     const autoName = `by_${useAsTitle}`;
     if (!fieldIndexes.has(autoName)) {
@@ -1887,7 +2032,7 @@ export function mergeAuthTableWithCollection(props: {
 }): MergedFieldsResult {
   // TODO: implement
   //
-  // 1. Destructure: const { authTable, collection } = props;
+  // 1. Access authTable via props.authTable, collection via props.collection
   //
   // 2. Initialize result containers:
   //    - fields: Record<string, string> = {}
@@ -2053,8 +2198,6 @@ describe("mergeAuthTableWithCollection", () => {
 });
 ```
 
-TODO: Continue from here
-
 **File: `packages/core/src/valueTypes/slugs.ts`**
 
 ```typescript
@@ -2099,37 +2242,54 @@ export class SlugRegistry {
    * (it was registered first as "user-collection") and the auth table is
    * silently skipped in the registry. The merge happens during schema generation.
    *
+   * @param props.slug - The table slug to register
+   * @param props.source - Where this slug comes from (e.g., "user-collection", "auth-table")
+   * @param props.location - Human-readable location for error messages (e.g., `collection "posts"`)
+   *
    * Edge cases:
    * - Auth table slug matches user collection slug: NOT a conflict — skip
    *   registration (user collection already registered, merge happens later)
    * - System table prefixed with "vex_" should not conflict with user tables
    *   because defineCollection already warns about "vex_" prefix
    */
-  register(slug: string, source: SlugSource, location: string): void {
-    const existing = this.registrations.get(slug);
+  register(props: {
+    slug: string;
+    source: SlugSource;
+    location: string;
+  }): void {
+    const existing = this.registrations.get(props.slug);
     if (existing) {
       // Auth table overlapping with user collection is expected — it means
       // the user wants to customize that auth table. The user collection
       // registration takes precedence; merge happens during schema generation.
       if (
-        (existing.source === "user-collection" && source === "auth-table") ||
-        (existing.source === "auth-table" && source === "user-collection")
+        (existing.source === "user-collection" &&
+          props.source === "auth-table") ||
+        (existing.source === "auth-table" && props.source === "user-collection")
       ) {
         // Keep the user-collection registration, skip the auth-table one
-        if (source === "user-collection") {
-          this.registrations.set(slug, { slug, source, location });
+        if (props.source === "user-collection") {
+          this.registrations.set(props.slug, {
+            slug: props.slug,
+            source: props.source,
+            location: props.location,
+          });
         }
         return;
       }
       throw new VexSlugConflictError(
-        slug,
+        props.slug,
         existing.source,
         existing.location,
-        source,
-        location,
+        props.source,
+        props.location,
       );
     }
-    this.registrations.set(slug, { slug, source, location });
+    this.registrations.set(props.slug, {
+      slug: props.slug,
+      source: props.source,
+      location: props.location,
+    });
   }
 
   /**
@@ -2164,30 +2324,30 @@ export function buildSlugRegistry(props: {
 }): SlugRegistry {
   // TODO: implement
   //
-  // 1. Destructure: const { config } = props;
+  // 1. Access config via props.config
   //
   // 2. Create registry = new SlugRegistry()
   //
   // 3. Register user collections:
   //    for each collection in config.collections:
   //      slug = collection.config.tableName ?? collection.slug
-  //      registry.register(slug, "user-collection", `collection "${collection.slug}"`)
+  //      registry.register({ slug, source: "user-collection", location: `collection "${collection.slug}"` })
   //      → throws VexSlugConflictError if duplicate among collections/globals
   //
   // 3. Register user globals (if config.globals exists):
   //    for each global in config.globals:
-  //      registry.register(global.slug, "user-global", `global "${global.slug}"`)
+  //      registry.register({ slug: global.slug, source: "user-global", location: `global "${global.slug}"` })
   //      → throws VexSlugConflictError if duplicate with collections or other globals
   //
   // 4. Register auth tables:
   //    for each table in config.auth.tables:
-  //      registry.register(table.slug, "auth-table", `auth table "${table.slug}"`)
+  //      registry.register({ slug: table.slug, source: "auth-table", location: `auth table "${table.slug}"` })
   //      → if table.slug matches a user collection → NOT a conflict (skip, merge later)
   //      → if table.slug matches anything else → throws VexSlugConflictError
   //
   // 5. Register system tables:
   //    if config.globals?.length > 0:
-  //      registry.register("vex_globals", "system", "Vex system table")
+  //      registry.register({ slug: "vex_globals", source: "system", location: "Vex system table" })
   //
   // 6. Return registry
   throw new Error("Not implemented");
@@ -2214,21 +2374,41 @@ const minimalAuth: VexAuthAdapter = {
 describe("SlugRegistry", () => {
   it("registers unique slugs without throwing", () => {
     const registry = new SlugRegistry();
-    registry.register("posts", "user-collection", "collections/posts.ts");
-    registry.register("users", "user-collection", "collections/users.ts");
-    registry.register("account", "auth-table", "@vexcms/better-auth");
+    registry.register({
+      slug: "posts",
+      source: "user-collection",
+      location: "collections/posts.ts",
+    });
+    registry.register({
+      slug: "users",
+      source: "user-collection",
+      location: "collections/users.ts",
+    });
+    registry.register({
+      slug: "account",
+      source: "auth-table",
+      location: "@vexcms/better-auth",
+    });
 
     expect(registry.getAll()).toHaveLength(3);
   });
 
   it("allows auth table slug to overlap with user collection slug (merge)", () => {
     const registry = new SlugRegistry();
-    registry.register("user", "user-collection", "collections/user.ts");
+    registry.register({
+      slug: "user",
+      source: "user-collection",
+      location: "collections/user.ts",
+    });
 
     // Auth table "user" overlapping with user collection "user" is expected
     // — this means the user wants to customize the auth table's admin UI
     expect(() =>
-      registry.register("user", "auth-table", "@vexcms/better-auth"),
+      registry.register({
+        slug: "user",
+        source: "auth-table",
+        location: "@vexcms/better-auth",
+      }),
     ).not.toThrow();
 
     // The user-collection registration should take precedence
@@ -2240,20 +2420,36 @@ describe("SlugRegistry", () => {
 
   it("throws VexSlugConflictError on non-auth/collection duplicate", () => {
     const registry = new SlugRegistry();
-    registry.register("data", "user-collection", "collections/data.ts");
+    registry.register({
+      slug: "data",
+      source: "user-collection",
+      location: "collections/data.ts",
+    });
 
     // Two user collections with same slug: real conflict
     expect(() =>
-      registry.register("data", "user-collection", "collections/data2.ts"),
+      registry.register({
+        slug: "data",
+        source: "user-collection",
+        location: "collections/data2.ts",
+      }),
     ).toThrow(VexSlugConflictError);
   });
 
   it("includes both sources in error message for real conflicts", () => {
     const registry = new SlugRegistry();
-    registry.register("data", "user-global", "globals/data.ts");
+    registry.register({
+      slug: "data",
+      source: "user-global",
+      location: "globals/data.ts",
+    });
 
     try {
-      registry.register("data", "auth-table", "@vexcms/better-auth");
+      registry.register({
+        slug: "data",
+        source: "auth-table",
+        location: "@vexcms/better-auth",
+      });
       expect.unreachable("Should have thrown");
     } catch (e) {
       expect(e).toBeInstanceOf(VexSlugConflictError);
@@ -2268,8 +2464,16 @@ describe("SlugRegistry", () => {
 
   it("getAll() returns all successful registrations", () => {
     const registry = new SlugRegistry();
-    registry.register("posts", "user-collection", "collections/posts.ts");
-    registry.register("users", "user-collection", "collections/users.ts");
+    registry.register({
+      slug: "posts",
+      source: "user-collection",
+      location: "collections/posts.ts",
+    });
+    registry.register({
+      slug: "users",
+      source: "user-collection",
+      location: "collections/users.ts",
+    });
 
     expect(registry.getAll()).toHaveLength(2);
   });
@@ -2294,7 +2498,7 @@ describe("buildSlugRegistry", () => {
       collections: [posts, users],
       auth: minimalAuth,
     });
-    const registry = buildSlugRegistry(config);
+    const registry = buildSlugRegistry({ config });
     const all = registry.getAll();
 
     expect(all.find((r) => r.slug === "posts")?.source).toBe("user-collection");
@@ -2320,7 +2524,7 @@ describe("buildSlugRegistry", () => {
       collections: [posts, users],
       auth: authAdapter,
     });
-    const registry = buildSlugRegistry(config);
+    const registry = buildSlugRegistry({ config });
     const all = registry.getAll();
 
     expect(all.find((r) => r.slug === "account")?.source).toBe("auth-table");
@@ -2352,7 +2556,7 @@ describe("buildSlugRegistry", () => {
 
     // Should NOT throw — auth table "users" overlapping with user collection
     // "users" means the user wants to customize the auth user table
-    const registry = buildSlugRegistry(config);
+    const registry = buildSlugRegistry({ config });
     const all = registry.getAll();
 
     // "users" should appear once, registered as "user-collection"
@@ -2371,7 +2575,7 @@ describe("buildSlugRegistry", () => {
       collections: [articles, users],
       auth: minimalAuth,
     });
-    const registry = buildSlugRegistry(config);
+    const registry = buildSlugRegistry({ config });
     const all = registry.getAll();
 
     // tableName is used as the slug for the registry, not the collection slug
@@ -2465,12 +2669,10 @@ import type { VexConfig } from "../types";
  * - Auth table indexes: appear as chained .index() calls on auth tables
  * - Duplicate index names within a collection: error at generation time
  */
-export function generateVexSchema(props: {
-  config: VexConfig;
-}): string {
+export function generateVexSchema(props: { config: VexConfig }): string {
   // TODO: implement
   //
-  // 1. Destructure: const { config } = props;
+  // 1. Access config via props.config
   //
   // 2. Build slug registry: buildSlugRegistry({ config })
   //    → throws immediately on duplicate slug (except auth+collection overlap)
@@ -3220,7 +3422,7 @@ export type {
 // packages/better-auth/src/extract/tables.ts
 import type { BetterAuthOptions } from "better-auth";
 import type { AuthTableDefinition } from "@vexcms/core";
-import { betterAuthTypeToValidator } from "../validators";
+import { betterAuthTypeToValueType } from "../valueTypes";
 
 /**
  * Extract all auth tables from the better-auth config using `getAuthTables()`.
@@ -3260,10 +3462,10 @@ export function extractAuthTables(
 }
 ```
 
-### Validator mapping
+### Value type mapping
 
 ```typescript
-// packages/better-auth/src/validators.ts
+// packages/better-auth/src/valueTypes.ts
 import type { AuthFieldDefinition } from "@vexcms/core";
 
 /**
@@ -3273,9 +3475,9 @@ import type { AuthFieldDefinition } from "@vexcms/core";
  * "string[]", "date", etc. This function converts them to the
  * corresponding Convex validator string representation.
  *
- * @param type - The better-auth field type (e.g., "string", "number", "boolean", "date")
- * @param required - Whether the field is required (determines v.optional() wrapping)
- * @param references - Optional table reference for relationship fields (produces v.id())
+ * @param props.type - The better-auth field type (e.g., "string", "number", "boolean", "date")
+ * @param props.required - Whether the field is required (determines v.optional() wrapping)
+ * @param props.references - Optional table reference for relationship fields (produces v.id())
  * @returns Convex validator string (e.g., "v.string()", "v.optional(v.number())")
  *
  * Type mappings:
@@ -3290,21 +3492,21 @@ import type { AuthFieldDefinition } from "@vexcms/core";
  * - Unknown type string: throw with descriptive error
  * - Nullable fields: use v.optional() wrapping
  */
-export function betterAuthTypeToValidator(
-  type: string,
-  required: boolean,
-  references?: { model: string },
-): string {
+export function betterAuthTypeToValueType(props: {
+  type: string;
+  required: boolean;
+  references?: { model: string };
+}): string {
   // TODO: implement
-  // 1. If references defined → validator = `v.id("${references.model}")`
-  // 2. Else if Array.isArray(type) → validator = "v.string()" (enum)
-  // 3. Else switch on type:
+  // 1. If props.references defined → validator = `v.id("${props.references.model}")`
+  // 2. Else if Array.isArray(props.type) → validator = "v.string()" (enum)
+  // 3. Else switch on props.type:
   //    "string" → "v.string()", "number" → "v.number()",
   //    "boolean" → "v.boolean()", "date" → "v.number()",
   //    "json" → "v.any()", "string[]" → "v.array(v.string())",
   //    "number[]" → "v.array(v.number())"
   //    default → throw
-  // 4. If !required → wrap: `v.optional(${validator})`
+  // 4. If !props.required → wrap: `v.optional(${validator})`
   // 5. Return validator
   throw new Error("Not implemented");
 }
@@ -3318,8 +3520,8 @@ packages/better-auth/
 │   ├── index.ts                      # vexBetterAuth() factory + re-exports
 │   ├── index.test.ts                 # integration tests
 │   ├── types.ts                      # Re-exports core auth types
-│   ├── validators.ts                 # betterAuthTypeToValidator()
-│   ├── validators.test.ts            # unit tests for validator mapping
+│   ├── valueTypes.ts                 # betterAuthTypeToValueType()
+│   ├── valueTypes.test.ts            # unit tests for value type mapping
 │   └── extract/
 │       ├── tables.ts                 # extractAuthTables() — uses getAuthTables()
 │       └── tables.test.ts            # tests for extractAuthTables()

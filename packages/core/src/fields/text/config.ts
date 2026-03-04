@@ -7,6 +7,7 @@ export function text(
     _type: "",
     _meta: {
       type: "text",
+      defaultValue: "",
       ...options,
     },
   };

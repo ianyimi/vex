@@ -90,6 +90,11 @@ export interface CollectionConfig<
    */
   fields: TFields;
   /**
+   * The name of the table generated for this collection in the
+   * generated vex schema file. Defaults to the collection slug
+   */
+  tableName?: string;
+  /**
    * Display labels for the collection in the admin UI.
    * If not provided, labels are derived from the collection slug.
    */
