@@ -27,7 +27,6 @@ export const user = defineTable({
   banReason: v.optional(v.string()),
   banExpires: v.optional(v.number()),
   postCount: v.optional(v.number()),
-  username: v.optional(v.string()),
 })
   .index("by_name", ["name"])
   .index("by_email", ["email"])

@@ -1,7 +1,5 @@
-import type { ChildProcess } from "node:child_process";
-
-import { resolveDevCommand, spawnDevServer } from "../lib/devServer.js";
 import { generateAndWrite, getOutputPath } from "../lib/generateSchema.js";
+import { killConvexDev, startConvexDev, waitForDeploy } from "../lib/convexProcess.js";
 import { loadConfig } from "../lib/loadConfig.js";
 import { logger } from "../lib/logger.js";
 import { resolveConfigPath } from "../lib/resolveConfigPath.js";
@@ -10,7 +8,6 @@ import { createWatcher } from "../lib/watcher.js";
 
 export interface DevOptions {
   once?: boolean;
-  run?: string;
 }
 
 export async function devCommand(options: DevOptions = {}) {
@@ -29,20 +26,18 @@ export async function devCommand(options: DevOptions = {}) {
     logger.info("Schema up to date (no changes)");
   }
 
-  // If --once, just generate and exit
-  if (options.once) return;
-
-  // Spawn the dev server (if configured)
-  let devServerProcess: ChildProcess | undefined;
-  const devCmd = resolveDevCommand({
-    runFlag: options.run,
-    configDevCommand: config.devCommand,
-    cwd,
-  });
-
-  if (devCmd) {
-    devServerProcess = spawnDevServer(devCmd, cwd);
+  // If --once, push schema standalone (no long-running process) and exit
+  if (options.once) {
+    const ok = await waitForDeploy(cwd);
+    if (!ok) {
+      logger.error("Schema push failed");
+      process.exit(1);
+    }
+    return;
   }
+
+  // Start convex dev — this is the core of `vex dev`
+  const convexDev = startConvexDev(cwd);
 
   // Trace the import tree
   let watchedPaths = traceImports(configPath, outputPath);
@@ -92,7 +87,7 @@ export async function devCommand(options: DevOptions = {}) {
     }
   }
 
-  watcher.on("change", (changedPath) => {
+  watcher.on("all", (_event, changedPath) => {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       debounceTimer = null;
@@ -106,9 +101,7 @@ export async function devCommand(options: DevOptions = {}) {
   const shutdown = async () => {
     logger.info("Shutting down...");
     if (debounceTimer) clearTimeout(debounceTimer);
-    if (devServerProcess && !devServerProcess.killed) {
-      devServerProcess.kill("SIGTERM");
-    }
+    killConvexDev();
     await watcher.close();
     process.exit(0);
   };

@@ -1,19 +1,26 @@
 import { watch, type FSWatcher } from "chokidar";
 
 export interface Watcher {
-  on(event: "change", cb: (path: string) => void): void;
+  on(event: "change" | "add" | "unlink", cb: (path: string) => void): void;
+  on(event: "all", cb: (eventName: string, path: string) => void): void;
   updatePaths(newPaths: string[]): void;
   close(): Promise<void>;
 }
 
 export function createWatcher(paths: string[]): Watcher {
   const currentPaths = new Set(paths);
+  const unlinked = new Set<string>();
 
   const watcher: FSWatcher = watch([...currentPaths], {
     ignoreInitial: true,
     awaitWriteFinish: {
       stabilityThreshold: 50,
     },
+  });
+
+  // Track unlinked files so updatePaths can re-add them
+  watcher.on("unlink", (p) => {
+    unlinked.add(p);
   });
 
   return {
@@ -24,11 +31,12 @@ export function createWatcher(paths: string[]): Watcher {
     updatePaths(newPaths: string[]) {
       const newSet = new Set(newPaths);
 
-      // Add newly discovered paths
       for (const p of newSet) {
-        if (!currentPaths.has(p)) {
+        if (!currentPaths.has(p) || unlinked.has(p)) {
+          // New path, or was unlinked and needs re-watching
           watcher.add(p);
           currentPaths.add(p);
+          unlinked.delete(p);
         }
       }
 
@@ -37,6 +45,7 @@ export function createWatcher(paths: string[]): Watcher {
         if (!newSet.has(p)) {
           watcher.unwatch(p);
           currentPaths.delete(p);
+          unlinked.delete(p);
         }
       }
     },

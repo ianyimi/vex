@@ -27,7 +27,8 @@
     "jiti": "^2.4.0"
   },
   "peerDependencies": {
-    "@vexcms/core": "workspace:*"
+    "@vexcms/core": "workspace:*",
+    "convex": ">=1.0.0"
   },
   "devDependencies": {
     "@vexcms/core": "workspace:*",

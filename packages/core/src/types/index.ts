@@ -29,11 +29,6 @@ export interface VexConfig {
   auth: VexAuthAdapter;
   /** Schema generation config */
   schema: SchemaConfig;
-  /**
-   * Shell command to run alongside `vex dev` (e.g. `"next dev --port=3010"`).
-   * If not set, `vex dev` auto-detects from `package.json` `scripts.dev`.
-   */
-  devCommand?: string;
 }
 
 // =============================================================================
@@ -91,11 +86,4 @@ export interface VexConfigInput {
    * ```
    */
   schema?: SchemaConfigInput;
-  /**
-   * Shell command to run alongside `vex dev` (e.g. `"next dev --port=3010"`).
-   *
-   * Priority: `--run` CLI flag > this option > `package.json` `scripts.dev`.
-   * If none are set, `vex dev` only watches and regenerates the schema.
-   */
-  devCommand?: string;
 }

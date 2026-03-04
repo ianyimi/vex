@@ -10,6 +10,14 @@ export { checkbox } from "./fields/checkbox";
 export { select } from "./fields/select";
 export * from "./errors";
 
+// Migrations
+export {
+  diffSchema,
+  makeFieldsOptional,
+  addRemovedFieldsAsOptional,
+  planMigration,
+} from "./migrations";
+
 // Types
 export type {
   // Field types
@@ -49,3 +57,10 @@ export type {
   CheckboxFieldOptions,
   SelectFieldOptions,
 } from "./types";
+
+export type {
+  SchemaFieldInfo,
+  RemovedFieldInfo,
+  SchemaDiff,
+  MigrationOp,
+} from "./migrations";

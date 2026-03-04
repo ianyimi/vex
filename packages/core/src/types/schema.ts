@@ -6,6 +6,13 @@ export interface SchemaConfig {
    * Default: `"convex/vex.schema.ts"`
    */
   outputPath: string;
+  /**
+   * Automatically backfill existing documents when a new required field
+   * with a `defaultValue` is added.
+   *
+   * Default: `true`
+   */
+  autoMigrate: boolean;
 }
 
 /** Schema generation configuration input (all fields optional). */
@@ -18,4 +25,11 @@ export interface SchemaConfigInput {
    * Default: `"convex/vex.schema.ts"`
    */
   outputPath?: string;
+  /**
+   * Automatically backfill existing documents when a new required field
+   * with a `defaultValue` is added.
+   *
+   * Default: `true`
+   */
+  autoMigrate?: boolean;
 }

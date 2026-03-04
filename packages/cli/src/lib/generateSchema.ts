@@ -2,9 +2,18 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import type { VexConfig } from "@vexcms/core";
-import { generateVexSchema } from "@vexcms/core";
+import {
+  generateVexSchema,
+  diffSchema,
+  makeFieldsOptional,
+  addRemovedFieldsAsOptional,
+  planMigration,
+} from "@vexcms/core";
 
+import { waitForDeploy } from "./convexProcess.js";
 import { logger } from "./logger.js";
+import { executeMigration, executeFieldRemoval } from "./migrate.js";
+import { resolveConvexUrl } from "./resolveConvexUrl.js";
 
 export interface GenerateResult {
   /** Whether the file was actually written (false = unchanged, skipped) */
@@ -19,21 +28,127 @@ export async function generateAndWrite(
   const vexSchemaPath = resolve(cwd, outputRelPath.replace(/^\//, ""));
   const convexSchemaPath = resolve(cwd, "convex/schema.ts");
 
-  // Generate the schema content
+  // Generate the final schema content
   const content = generateVexSchema({ config });
 
+  // Format content before comparison so Prettier-formatted files match correctly
+  const finalSchema = await formatString(content, vexSchemaPath);
+
   // Compare with existing file — skip write if unchanged
-  if (existsSync(vexSchemaPath)) {
-    const existing = readFileSync(vexSchemaPath, "utf-8");
-    if (existing === content) {
-      return { written: false };
+  const existing = existsSync(vexSchemaPath)
+    ? readFileSync(vexSchemaPath, "utf-8")
+    : "";
+
+  if (existing === finalSchema) {
+    return { written: false };
+  }
+
+  // Auto-migrate if enabled
+  let migrationOk = true;
+
+  if (config.schema.autoMigrate && existing) {
+    const diff = diffSchema(existing, finalSchema);
+    const convexUrl = resolveConvexUrl(cwd);
+
+    const fieldsToMakeOptional = diff.needsMigration.filter(
+      (f) => !f.isOptional,
+    );
+    const hasAdditions = diff.needsMigration.length > 0;
+    const hasRemovals = diff.removedFields.length > 0;
+
+    if ((hasAdditions || hasRemovals) && convexUrl) {
+      try {
+        // Phase 1: Build and deploy an interim schema that Convex can accept.
+        // - New required fields → made optional (so existing docs pass validation)
+        // - Removed fields → re-added as optional (so docs with the field still pass)
+        let interim = finalSchema;
+
+        if (fieldsToMakeOptional.length > 0) {
+          interim = makeFieldsOptional(interim, fieldsToMakeOptional);
+        }
+        if (hasRemovals) {
+          interim = addRemovedFieldsAsOptional(interim, diff.removedFields);
+        }
+
+        // Write the interim schema (may be same as final if only adding optional fields)
+        const formattedInterim = await formatString(interim, vexSchemaPath);
+        writeFileSync(vexSchemaPath, formattedInterim, "utf-8");
+
+        if (interim !== finalSchema) {
+          const desc: string[] = [];
+          if (fieldsToMakeOptional.length > 0) {
+            desc.push(
+              `added as optional: ${fieldsToMakeOptional.map((f) => `${f.table}.${f.field}`).join(", ")}`,
+            );
+          }
+          if (hasRemovals) {
+            desc.push(
+              `kept as optional: ${diff.removedFields.map((f) => `${f.table}.${f.field}`).join(", ")}`,
+            );
+          }
+          logger.info(`Wrote interim schema — ${desc.join("; ")}`);
+        } else {
+          logger.info("Wrote schema with new fields");
+        }
+
+        // Wait for convex dev to deploy the schema
+        const deployed = await waitForDeploy(cwd);
+        if (!deployed) {
+          migrationOk = false;
+          throw new Error("Failed to deploy schema");
+        }
+
+        // Phase 2a: Remove fields from documents
+        if (hasRemovals) {
+          await executeFieldRemoval({ convexUrl, fields: diff.removedFields });
+        }
+
+        // Phase 2b: Backfill new fields with default values
+        if (hasAdditions) {
+          const ops = planMigration({ diff, config });
+          if (ops.length > 0) {
+            await executeMigration({ convexUrl, operations: ops });
+          }
+        }
+
+        // Phase 3: If interim differs from final, write the final schema
+        // and wait for deployment again
+        if (interim !== finalSchema) {
+          writeFileSync(vexSchemaPath, finalSchema, "utf-8");
+          logger.info("Wrote final schema (fields now required)");
+
+          const finalDeployed = await waitForDeploy(cwd);
+          if (!finalDeployed) {
+            logger.warn("Final schema deployment failed — interim left in place");
+            migrationOk = false;
+          }
+        }
+      } catch (err) {
+        migrationOk = false;
+        logger.warn("autoMigrate: migration failed");
+        logger.error("Migration error", err);
+      }
+    } else if ((hasAdditions || hasRemovals) && !convexUrl) {
+      logger.warn("autoMigrate: no Convex URL found, skipping migration");
     }
   }
 
-  writeFileSync(vexSchemaPath, content, "utf-8");
-
-  // Try to format with prettier
-  await formatWithPrettier(vexSchemaPath, cwd);
+  if (!migrationOk) {
+    logger.warn(
+      "Skipped writing final schema — interim schema left in place until migration succeeds",
+    );
+  } else {
+    // Write the final schema if it hasn't been written already by the migration flow.
+    // The migration flow writes the file itself (interim then final), so we only
+    // need to write here for non-migration cases (autoMigrate off, no existing file,
+    // or no fields needing migration).
+    const current = existsSync(vexSchemaPath)
+      ? readFileSync(vexSchemaPath, "utf-8")
+      : "";
+    if (current !== finalSchema) {
+      writeFileSync(vexSchemaPath, finalSchema, "utf-8");
+    }
+  }
 
   // Check if schema.ts needs updating
   checkSchemaImports(convexSchemaPath, content, outputRelPath);
@@ -41,27 +156,20 @@ export async function generateAndWrite(
   return { written: true };
 }
 
-async function formatWithPrettier(filePath: string, cwd: string) {
+/**
+ * Format a string with Prettier (if available). Returns the original
+ * string unchanged when Prettier is not installed or fails.
+ */
+async function formatString(
+  source: string,
+  filepath: string,
+): Promise<string> {
   try {
     const prettier = await import("prettier");
-    const source = readFileSync(filePath, "utf-8");
-    const options = (await prettier.resolveConfig(filePath)) ?? {};
-    const formatted = await prettier.format(source, {
-      ...options,
-      filepath: filePath,
-    });
-    writeFileSync(filePath, formatted, "utf-8");
+    const options = (await prettier.resolveConfig(filepath)) ?? {};
+    return await prettier.format(source, { ...options, filepath });
   } catch {
-    // Prettier not available or failed — try npx fallback
-    try {
-      const { execSync } = await import("node:child_process");
-      execSync(`npx prettier --write "${filePath}"`, {
-        cwd,
-        stdio: "ignore",
-      });
-    } catch {
-      // Formatting not available — skip silently
-    }
+    return source;
   }
 }
 

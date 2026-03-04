@@ -16,6 +16,7 @@ export const BASE_VEX_CONFIG: Omit<VexConfig, "auth"> = {
   },
   schema: {
     outputPath: "/convex/vex.schema.ts",
+    autoMigrate: true,
   },
 };
 

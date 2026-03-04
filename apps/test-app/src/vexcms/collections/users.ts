@@ -38,9 +38,6 @@ export const users = defineCollection(TABLE_SLUG_USERS, {
       ],
       required: true,
     }),
-    username: text({
-      label: "Username",
-    }),
   },
   labels: {
     plural: "Users",
