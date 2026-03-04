@@ -1,11 +1,14 @@
 {
-  "name": "@vexcms/core",
+  "name": "@vexcms/cli",
   "version": "0.0.0",
   "type": "module",
+  "bin": {
+    "vex": "./dist/index.js"
+  },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "main": "./dist/index.js",
@@ -17,16 +20,20 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "clean": "rm -rf dist",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.0",
+    "jiti": "^2.4.0"
+  },
+  "peerDependencies": {
+    "@vexcms/core": "workspace:*"
   },
   "devDependencies": {
-    "convex": "^1.31.5",
+    "@vexcms/core": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",
     "tsup": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   },
   "publishConfig": {
     "access": "public"

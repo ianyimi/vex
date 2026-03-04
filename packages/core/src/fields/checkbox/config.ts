@@ -7,6 +7,7 @@ export function checkbox(
     _type: false,
     _meta: {
       type: "checkbox",
+      defaultValue: false,
       ...options,
     },
   };

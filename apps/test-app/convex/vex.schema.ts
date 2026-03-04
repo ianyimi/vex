@@ -11,21 +11,23 @@ export const posts = defineTable({
   slug: v.string(),
   featured: v.optional(v.boolean()),
   status: v.union(v.literal("draft"), v.literal("published"), v.literal("archived")),
+  subtitle: v.string(),
   title: v.string(),
 }).index("by_title", ["title"])
 
 export const user = defineTable({
   name: v.string(),
-  banExpires: v.optional(v.number()),
-  banned: v.optional(v.boolean()),
-  banReason: v.optional(v.string()),
-  createdAt: v.number(),
   email: v.string(),
   emailVerified: v.boolean(),
   image: v.optional(v.string()),
-  postCount: v.optional(v.number()),
-  role: v.array(v.string()),
+  createdAt: v.number(),
   updatedAt: v.number(),
+  role: v.array(v.string()),
+  banned: v.optional(v.boolean()),
+  banReason: v.optional(v.string()),
+  banExpires: v.optional(v.number()),
+  postCount: v.optional(v.number()),
+  username: v.optional(v.string()),
 })
   .index("by_name", ["name"])
   .index("by_email", ["email"])
@@ -41,62 +43,62 @@ export const categories = defineTable({
  **/
 
 export const session = defineTable({
-  createdAt: v.number(),
   expiresAt: v.number(),
-  impersonatedBy: v.optional(v.string()),
-  ipAddress: v.optional(v.string()),
   token: v.string(),
+  createdAt: v.number(),
   updatedAt: v.number(),
+  ipAddress: v.optional(v.string()),
   userAgent: v.optional(v.string()),
   userId: v.id("user"),
+  impersonatedBy: v.optional(v.string()),
 })
   .index("by_token", ["token"])
   .index("by_userId", ["userId"])
 
 export const account = defineTable({
-  accessToken: v.optional(v.string()),
-  accessTokenExpiresAt: v.optional(v.number()),
   accountId: v.string(),
-  createdAt: v.number(),
-  idToken: v.optional(v.string()),
-  password: v.optional(v.string()),
   providerId: v.string(),
+  userId: v.id("user"),
+  accessToken: v.optional(v.string()),
   refreshToken: v.optional(v.string()),
+  idToken: v.optional(v.string()),
+  accessTokenExpiresAt: v.optional(v.number()),
   refreshTokenExpiresAt: v.optional(v.number()),
   scope: v.optional(v.string()),
+  password: v.optional(v.string()),
+  createdAt: v.number(),
   updatedAt: v.number(),
-  userId: v.id("user"),
 }).index("by_userId", ["userId"])
 
 export const verification = defineTable({
-  createdAt: v.number(),
-  expiresAt: v.number(),
   identifier: v.string(),
-  updatedAt: v.number(),
   value: v.string(),
+  expiresAt: v.number(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
 }).index("by_identifier", ["identifier"])
 
 export const apikey = defineTable({
   name: v.optional(v.string()),
-  createdAt: v.number(),
-  enabled: v.optional(v.boolean()),
-  expiresAt: v.optional(v.number()),
-  key: v.string(),
-  lastRefillAt: v.optional(v.number()),
-  lastRequest: v.optional(v.number()),
-  metadata: v.optional(v.string()),
-  permissions: v.optional(v.string()),
-  prefix: v.optional(v.string()),
-  rateLimitEnabled: v.optional(v.boolean()),
-  rateLimitMax: v.optional(v.number()),
-  rateLimitTimeWindow: v.optional(v.number()),
-  refillAmount: v.optional(v.number()),
-  refillInterval: v.optional(v.number()),
-  remaining: v.optional(v.number()),
-  requestCount: v.optional(v.number()),
   start: v.optional(v.string()),
-  updatedAt: v.number(),
+  prefix: v.optional(v.string()),
+  key: v.string(),
   userId: v.id("user"),
+  refillInterval: v.optional(v.number()),
+  refillAmount: v.optional(v.number()),
+  lastRefillAt: v.optional(v.number()),
+  enabled: v.optional(v.boolean()),
+  rateLimitEnabled: v.optional(v.boolean()),
+  rateLimitTimeWindow: v.optional(v.number()),
+  rateLimitMax: v.optional(v.number()),
+  requestCount: v.optional(v.number()),
+  remaining: v.optional(v.number()),
+  lastRequest: v.optional(v.number()),
+  expiresAt: v.optional(v.number()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  permissions: v.optional(v.string()),
+  metadata: v.optional(v.string()),
 })
   .index("by_key", ["key"])
   .index("by_userId", ["userId"])

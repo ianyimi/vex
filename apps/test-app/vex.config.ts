@@ -18,6 +18,7 @@ export default defineConfig({
   auth: vexBetterAuth({ config: betterAuthOptions }),
   basePath: "/admin",
   collections: [posts, users, categories],
+  devCommand: "next dev --port=3010",
 })
 
 export type Category = typeof categories._docType

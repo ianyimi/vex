@@ -28,6 +28,11 @@ export const posts = defineCollection("posts", {
       ],
       required: true,
     }),
+    subtitle: text({
+      label: "Subtitle",
+      maxLength: 200,
+      required: true,
+    }),
     title: text({
       label: "Title",
       maxLength: 200,

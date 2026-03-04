@@ -1,4 +1,4 @@
-import { defineCollection, number, select, text } from "@vexcms/core"
+import { checkbox, defineCollection, number, select, text } from "@vexcms/core"
 
 import { TABLE_SLUG_USERS } from "~/db/constants"
 
@@ -14,6 +14,10 @@ export const users = defineCollection(TABLE_SLUG_USERS, {
     }),
     email: text({
       label: "Email",
+      required: true,
+    }),
+    emailVerified: checkbox({
+      label: "Email Verified",
       required: true,
     }),
     postCount: number({
@@ -33,6 +37,9 @@ export const users = defineCollection(TABLE_SLUG_USERS, {
         { label: "Author", value: "author" },
       ],
       required: true,
+    }),
+    username: text({
+      label: "Username",
     }),
   },
   labels: {
