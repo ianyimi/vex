@@ -1,4 +1,6 @@
 import { execSync, spawn, type ChildProcess } from "node:child_process";
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { logger } from "./logger.js";
 
 /** Singleton state for the managed convex dev child process. */
@@ -15,16 +17,48 @@ const DEPLOY_SUCCESS_RE = /functions ready|successfully deployed/i;
 const DEPLOY_FAILURE_RE =
   /schema validation error|error:|✗|unable to push|invalid schema/i;
 
+interface PackageManager { cmd: string; args: string[] }
+
+const LOCK_FILES: Array<{ file: string; pm: PackageManager }> = [
+  { file: "pnpm-lock.yaml", pm: { cmd: "pnpm", args: ["exec"] } },
+  { file: "yarn.lock", pm: { cmd: "yarn", args: [] } },
+  { file: "bun.lockb", pm: { cmd: "bunx", args: [] } },
+  { file: "bun.lock", pm: { cmd: "bunx", args: [] } },
+  { file: "package-lock.json", pm: { cmd: "npx", args: [] } },
+];
+
 /**
- * Spawn `npx convex dev` with piped stdout/stderr so we can detect
+ * Detect the package manager. Checks lock files in `cwd` first, then
+ * walks up the directory tree. Falls back to npx if nothing is found.
+ */
+function detectPackageManager(cwd: string): PackageManager {
+  let dir = resolve(cwd);
+  const root = dirname(dir) === dir ? dir : undefined;
+
+  while (true) {
+    for (const { file, pm } of LOCK_FILES) {
+      if (existsSync(resolve(dir, file))) return pm;
+    }
+    const parent = dirname(dir);
+    if (parent === dir || dir === root) break;
+    dir = parent;
+  }
+
+  return { cmd: "npx", args: [] };
+}
+
+/**
+ * Spawn `convex dev` with piped stdout/stderr so we can detect
  * deployment events. Output is forwarded to the console.
  */
 export function startConvexDev(cwd: string): ChildProcess {
-  logger.info("Starting convex dev...");
+  const pm = detectPackageManager(cwd);
+  const fullArgs = [...pm.args, "convex", "dev"];
 
-  const child = spawn("npx", ["convex", "dev"], {
+  logger.info(`Starting convex dev (${pm.cmd})...`);
+
+  const child = spawn(pm.cmd, fullArgs, {
     cwd,
-    shell: true,
     stdio: ["inherit", "pipe", "pipe"],
   });
 
@@ -80,7 +114,7 @@ export function startConvexDev(cwd: string): ChildProcess {
  * Wait for the running `convex dev` process to complete its next deployment.
  *
  * Returns `true` if deployment succeeded, `false` if it failed or timed out.
- * If no convex dev process is running, falls back to `convex dev --once`.
+ * If no convex dev process is running, falls back to running `convex dev --once`.
  */
 export function waitForDeploy(
   cwd: string,
@@ -125,13 +159,16 @@ export function killConvexDev(): void {
 }
 
 /**
- * Standalone push using `npx convex dev --once`.
+ * Standalone push using `convex dev --once`.
  * Used when no convex dev process is running (--once mode, migrate command).
  */
 function pushSchemaStandalone(cwd: string): boolean {
+  const pm = detectPackageManager(cwd);
+  const cmd = [pm.cmd, ...pm.args, "convex", "dev", "--once", "--typecheck", "disable", "--codegen", "disable"].join(" ");
+
   logger.info("Pushing schema to Convex...");
   try {
-    execSync("npx convex dev --once --typecheck disable --codegen disable", {
+    execSync(cmd, {
       cwd,
       stdio: "pipe",
       timeout: 60_000,

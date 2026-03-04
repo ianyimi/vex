@@ -1,15 +1,15 @@
 import { defineConfig } from "tsup";
 
-export default defineConfig({
+export default defineConfig(({ watch }) => ({
   entry: ["src/index.ts"],
   format: ["esm"],
   tsconfig: "tsconfig.build.json",
   dts: true,
   sourcemap: true,
-  clean: true,
+  clean: !watch,
   external: ["react", "react-dom", "next"],
   banner: {
     // Preserve "use client" directives in output
     js: '"use client";',
   },
-});
+}));
