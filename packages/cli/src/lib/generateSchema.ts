@@ -20,9 +20,15 @@ export interface GenerateResult {
   written: boolean;
 }
 
+export interface GenerateOptions {
+  /** Override the push function used to deploy schema to Convex. */
+  pushSchema?: (cwd: string) => boolean | Promise<boolean>;
+}
+
 export async function generateAndWrite(
   config: VexConfig,
   cwd: string,
+  options?: GenerateOptions,
 ): Promise<GenerateResult> {
   const outputRelPath = config.schema.outputPath; // e.g. "/convex/vex.schema.ts"
   const vexSchemaPath = resolve(cwd, outputRelPath.replace(/^\//, ""));
@@ -91,8 +97,9 @@ export async function generateAndWrite(
           logger.info("Wrote schema with new fields");
         }
 
-        // Wait for convex dev to deploy the schema
-        const deployed = await waitForDeploy(cwd);
+        // Push schema to Convex (uses running convex dev or standalone push)
+        const pushFn = options?.pushSchema ?? ((c: string) => waitForDeploy(c));
+        const deployed = await pushFn(cwd);
         if (!deployed) {
           migrationOk = false;
           throw new Error("Failed to deploy schema");
@@ -117,7 +124,7 @@ export async function generateAndWrite(
           writeFileSync(vexSchemaPath, finalSchema, "utf-8");
           logger.info("Wrote final schema (fields now required)");
 
-          const finalDeployed = await waitForDeploy(cwd);
+          const finalDeployed = await pushFn(cwd);
           if (!finalDeployed) {
             logger.warn("Final schema deployment failed — interim left in place");
             migrationOk = false;

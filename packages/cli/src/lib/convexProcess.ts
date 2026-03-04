@@ -159,28 +159,39 @@ export function killConvexDev(): void {
 }
 
 /**
- * Standalone push using `convex dev --once`.
- * Used when no convex dev process is running (--once mode, migrate command).
+ * Standalone push using `convex dev --once` or `convex deploy`.
+ * Used when no convex dev process is running (--once mode, deploy, migrate).
  */
 function pushSchemaStandalone(cwd: string): boolean {
-  const pm = detectPackageManager(cwd);
-  const cmd = [pm.cmd, ...pm.args, "convex", "dev", "--once", "--typecheck", "disable", "--codegen", "disable"].join(" ");
+  return runConvexCommand(cwd, ["dev", "--once", "--typecheck", "disable", "--codegen", "disable"]);
+}
 
-  logger.info("Pushing schema to Convex...");
+/**
+ * Run `convex deploy` to push to production.
+ */
+export function deployToProduction(cwd: string): boolean {
+  return runConvexCommand(cwd, ["deploy"]);
+}
+
+function runConvexCommand(cwd: string, convexArgs: string[]): boolean {
+  const pm = detectPackageManager(cwd);
+  const cmd = [pm.cmd, ...pm.args, "convex", ...convexArgs].join(" ");
+
+  logger.info(`Running: ${cmd}`);
   try {
     execSync(cmd, {
       cwd,
-      stdio: "pipe",
-      timeout: 60_000,
+      stdio: "inherit",
+      timeout: 120_000,
     });
-    logger.success("Schema pushed successfully");
+    logger.success("Convex command succeeded");
     return true;
   } catch (err) {
     const output =
       err && typeof err === "object" && "stderr" in err
         ? String((err as any).stderr).slice(0, 300)
         : "";
-    logger.warn(`Schema push failed${output ? `: ${output}` : ""}`);
+    logger.warn(`Convex command failed${output ? `: ${output}` : ""}`);
     return false;
   }
 }
