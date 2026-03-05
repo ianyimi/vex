@@ -7,6 +7,12 @@ import { v } from "convex/values"
  * USER COLLECTIONS
  **/
 
+export const articles = defineTable({
+  name: v.string(),
+  slug: v.string(),
+  index: v.optional(v.number()),
+}).index("by_name", ["name"])
+
 export const posts = defineTable({
   slug: v.string(),
   featured: v.optional(v.boolean()),

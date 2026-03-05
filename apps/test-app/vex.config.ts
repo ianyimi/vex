@@ -2,7 +2,7 @@ import { betterAuthOptions } from "@convex/auth/options"
 import { vexBetterAuth } from "@vexcms/better-auth"
 import { defineConfig } from "@vexcms/core"
 
-import { categories, posts, users } from "~/vexcms/collections"
+import { articles, categories, posts, users } from "~/vexcms/collections"
 
 export default defineConfig({
   admin: {
@@ -17,7 +17,7 @@ export default defineConfig({
   },
   auth: vexBetterAuth({ config: betterAuthOptions }),
   basePath: "/admin",
-  collections: [posts, users, categories],
+  collections: [articles, posts, users, categories],
 })
 
 export type Category = typeof categories._docType

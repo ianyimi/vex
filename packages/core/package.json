@@ -21,8 +21,11 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
+  "peerDependencies": {
+    "convex": "catalog:"
+  },
   "devDependencies": {
-    "convex": "^1.31.5",
+    "convex": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
     "tsup": "catalog:",
     "typescript": "catalog:",

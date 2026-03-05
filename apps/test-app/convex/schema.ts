@@ -20,7 +20,6 @@ export default defineSchema({
     additionalFields: {
       test: v.string(),
     },
-    defineTable,
     table: posts,
   })
     .index("by_status", ["status"])
