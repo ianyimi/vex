@@ -13,6 +13,17 @@ export interface SchemaConfig {
    * Default: `true`
    */
   autoMigrate: boolean;
+  /**
+   * Automatically remove table entries from `schema.ts` when collections
+   * or globals are removed from `vex.config.ts`.
+   *
+   * Only removes simple entries (bare `exportName,` lines). Entries using
+   * `extendTable()`, constant keys, or other custom patterns are left
+   * untouched with a warning.
+   *
+   * Default: `false`
+   */
+  autoRemove: boolean;
 }
 
 /** Schema generation configuration input (all fields optional). */
@@ -32,4 +43,15 @@ export interface SchemaConfigInput {
    * Default: `true`
    */
   autoMigrate?: boolean;
+  /**
+   * Automatically remove table entries from `schema.ts` when collections
+   * or globals are removed from `vex.config.ts`.
+   *
+   * Only removes simple entries (bare `exportName,` lines). Entries using
+   * `extendTable()`, constant keys, or other custom patterns are left
+   * untouched with a warning.
+   *
+   * Default: `false`
+   */
+  autoRemove?: boolean;
 }

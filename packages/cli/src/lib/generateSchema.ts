@@ -46,6 +46,8 @@ export async function generateAndWrite(
     : "";
 
   if (existing === finalSchema) {
+    // vex.schema.ts unchanged, but schema.ts may still need syncing
+    syncSchemaImports(convexSchemaPath, content, outputRelPath, config);
     return { written: false };
   }
 
@@ -157,8 +159,8 @@ export async function generateAndWrite(
     }
   }
 
-  // Check if schema.ts needs updating
-  checkSchemaImports(convexSchemaPath, content, outputRelPath);
+  // Sync schema.ts imports with vex.schema.ts exports
+  syncSchemaImports(convexSchemaPath, content, outputRelPath, config, existing);
 
   return { written: true };
 }
@@ -180,13 +182,15 @@ async function formatString(
   }
 }
 
-function checkSchemaImports(
+function syncSchemaImports(
   schemaPath: string,
   vexContent: string,
   outputRelPath: string,
+  config: VexConfig,
+  previousVexContent?: string,
 ) {
   const exportNames = [...vexContent.matchAll(/^export const (\w+)/gm)].map(
-    (m) => m[1],
+    (m) => m[1]!,
   );
 
   if (exportNames.length === 0) return;
@@ -194,6 +198,7 @@ function checkSchemaImports(
   const vexImportPath =
     "./" + outputRelPath.replace(/^\/convex\//, "").replace(/\.ts$/, "");
 
+  // No existing schema.ts — create one from scratch
   if (!existsSync(schemaPath)) {
     const content = [
       'import { defineSchema } from "convex/server";',
@@ -213,22 +218,175 @@ function checkSchemaImports(
     return;
   }
 
-  const schemaContent = readFileSync(schemaPath, "utf-8");
-  const missing = exportNames.filter(
-    (name) => !schemaContent.includes(name!),
-  );
+  let schemaContent = readFileSync(schemaPath, "utf-8");
+
+  // --- Auto-add missing exports ---
+  const missing = exportNames.filter((name) => !schemaContent.includes(name));
 
   if (missing.length > 0) {
-    logger.warn(
-      `New tables not yet in your schema.ts: ${missing.join(", ")}`,
-    );
-    logger.info(
-      `  Add to import: import { ..., ${missing.join(", ")} } from "${vexImportPath}";`,
-    );
-    logger.info(
-      `  Add to defineSchema: ${missing.map((n) => `${n},`).join(" ")}`,
+    schemaContent = addToImport(schemaContent, missing, vexImportPath);
+    schemaContent = addToDefineSchema(schemaContent, missing);
+    logger.success(`Added to schema.ts: ${missing.join(", ")}`);
+  }
+
+  // --- Auto-remove stale exports ---
+  if (config.schema.autoRemove && previousVexContent) {
+    const oldExports = [
+      ...previousVexContent.matchAll(/^export const (\w+)/gm),
+    ].map((m) => m[1]!);
+    const newExportSet = new Set(exportNames);
+    const removed = oldExports.filter((name) => !newExportSet.has(name));
+
+    if (removed.length > 0) {
+      for (const name of removed) {
+        const simpleEntryPattern = new RegExp(
+          `^[ \\t]*${name}\\s*,?[ \\t]*$`,
+          "m",
+        );
+        const aliasEntryPattern = new RegExp(
+          `^[ \\t]*${name}\\s*:\\s*${name}\\s*,?[ \\t]*$`,
+          "m",
+        );
+
+        const isSimple =
+          simpleEntryPattern.test(schemaContent) ||
+          aliasEntryPattern.test(schemaContent);
+
+        if (!isSimple) {
+          logger.warn(
+            `Cannot auto-remove "${name}" from schema.ts — uses a custom pattern. Remove it manually.`,
+          );
+          continue;
+        }
+
+        schemaContent = removeFromImport(schemaContent, name, vexImportPath);
+        // Remove the entry line from defineSchema
+        schemaContent = schemaContent.replace(simpleEntryPattern, "");
+        schemaContent = schemaContent.replace(aliasEntryPattern, "");
+        // Clean up any resulting blank lines (collapse double blanks)
+        schemaContent = schemaContent.replace(/\n{3,}/g, "\n\n");
+        logger.success(`Removed from schema.ts: ${name}`);
+      }
+    }
+  }
+
+  // Write back if changed
+  const currentContent = readFileSync(schemaPath, "utf-8");
+  if (schemaContent !== currentContent) {
+    writeFileSync(schemaPath, schemaContent, "utf-8");
+  }
+}
+
+/**
+ * Add `names` to the vex import statement in schema.ts.
+ * Handles both single-line and multi-line import formats.
+ */
+function addToImport(
+  content: string,
+  names: string[],
+  importPath: string,
+): string {
+  const escapedPath = importPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // Match multi-line import: import {\n  ...\n} from "path"
+  const multiLineRe = new RegExp(
+    `(import\\s*\\{)([^}]*)(\\}\\s*from\\s*["']${escapedPath}["'])`,
+    "s",
+  );
+  const multiMatch = content.match(multiLineRe);
+
+  if (multiMatch) {
+    const existingBlock = multiMatch[2]!;
+    // Check if it's actually multi-line
+    if (existingBlock.includes("\n")) {
+      // Multi-line: insert new names before the closing brace
+      const newEntries = names.map((n) => `  ${n},\n`).join("");
+      return content.replace(
+        multiLineRe,
+        `$1${existingBlock}${newEntries}$3`,
+      );
+    }
+    // Single-line: add names to the list
+    const trimmed = existingBlock.trim().replace(/,\s*$/, "");
+    const allNames = trimmed ? `${trimmed}, ${names.join(", ")}` : names.join(", ");
+    // Switch to multi-line if many imports
+    if (allNames.split(",").length > 3) {
+      const items = allNames
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const block =
+        "\n" + items.map((n) => `  ${n},`).join("\n") + "\n";
+      return content.replace(multiLineRe, `$1${block}$3`);
+    }
+    return content.replace(multiLineRe, `$1 ${allNames} $3`);
+  }
+
+  // No existing import — add one after the last import line
+  const lastImportIdx = content.lastIndexOf("import ");
+  if (lastImportIdx !== -1) {
+    const lineEnd = content.indexOf("\n", lastImportIdx);
+    const insertPos = lineEnd !== -1 ? lineEnd + 1 : content.length;
+    const importLine = `import { ${names.join(", ")} } from "${importPath}";\n`;
+    return content.slice(0, insertPos) + importLine + content.slice(insertPos);
+  }
+
+  // Fallback: prepend
+  return `import { ${names.join(", ")} } from "${importPath}";\n` + content;
+}
+
+/**
+ * Insert `names` as entries into the `defineSchema({...})` block.
+ */
+function addToDefineSchema(content: string, names: string[]): string {
+  const defineIdx = content.indexOf("defineSchema({");
+  if (defineIdx === -1) return content;
+
+  const insertPos = content.indexOf("{", defineIdx) + 1;
+  const entries = "\n" + names.map((n) => `  ${n},`).join("\n");
+  return content.slice(0, insertPos) + entries + content.slice(insertPos);
+}
+
+/**
+ * Remove a single `name` from the vex import statement.
+ */
+function removeFromImport(
+  content: string,
+  name: string,
+  importPath: string,
+): string {
+  const escapedPath = importPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const importRe = new RegExp(
+    `(import\\s*\\{)([^}]*)(\\}\\s*from\\s*["']${escapedPath}["'])`,
+    "s",
+  );
+  const match = content.match(importRe);
+  if (!match) return content;
+
+  const existingBlock = match[2]!;
+  // Remove the name from the imports list
+  const items = existingBlock
+    .split(/,/)
+    .map((s) => s.trim())
+    .filter((s) => s && s !== name);
+
+  if (items.length === 0) {
+    // Remove the entire import line
+    return content.replace(
+      new RegExp(
+        `import\\s*\\{[^}]*\\}\\s*from\\s*["']${escapedPath}["'];?\\s*\\n?`,
+        "s",
+      ),
+      "",
     );
   }
+
+  // Rebuild: multi-line if >3 items, else single-line
+  if (items.length > 3) {
+    const block = "\n" + items.map((n) => `  ${n},`).join("\n") + "\n";
+    return content.replace(importRe, `$1${block}$3`);
+  }
+  return content.replace(importRe, `$1 ${items.join(", ")} $3`);
 }
 
 /** Returns the resolved output path for the vex schema file. */

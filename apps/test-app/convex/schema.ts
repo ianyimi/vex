@@ -4,6 +4,7 @@ import { v } from "convex/values"
 
 import {
   TABLE_SLUG_ACCOUNTS,
+  TABLE_SLUG_ARTICLES,
   TABLE_SLUG_CATEGORIES,
   TABLE_SLUG_JWKS,
   TABLE_SLUG_POSTS,
@@ -12,9 +13,20 @@ import {
   TABLE_SLUG_VERIFICATIONS,
 } from "~/db/constants"
 
-import { account, categories, posts, session, user, verification } from "./vex.schema"
+import {
+  account,
+  apikey,
+  articles,
+  categories,
+  posts,
+  session,
+  user,
+  verification,
+} from "./vex.schema"
 
 export default defineSchema({
+  apikey,
+  [TABLE_SLUG_ARTICLES]: articles,
   [TABLE_SLUG_CATEGORIES]: categories,
   [TABLE_SLUG_POSTS]: extendTable({
     additionalFields: {

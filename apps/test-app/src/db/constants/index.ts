@@ -10,6 +10,7 @@ export const TABLE_SLUG_JWKS = "jwks" as const
 export const TABLE_SLUG_MEDIA = "media" as const
 export const TABLE_SLUG_POSTS = "posts" as const
 export const TABLE_SLUG_CATEGORIES = "categories" as const
+export const TABLE_SLUG_ARTICLES = "articles" as const
 
 export const AUTH_PROVIDERS = {
   apple: "apple",
