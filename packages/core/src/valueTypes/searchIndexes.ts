@@ -36,7 +36,7 @@ import type {
  * - searchField must be the field key the searchIndex is defined on (for per-field)
  */
 export function collectSearchIndexes<
-  TFields extends Record<string, VexField<any, any>>,
+  TFields extends Record<string, VexField>,
 >(props: { collection: VexCollection<TFields> }): ResolvedSearchIndex[] {
   const { collection } = props;
   const searchIndexes = new Map<string, ResolvedSearchIndex>();

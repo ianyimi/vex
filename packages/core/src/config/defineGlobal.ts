@@ -26,7 +26,7 @@ import type {
  * // Metadata = { title: string; status: "ok" | "err" }
  */
 export function defineGlobal<
-  TFields extends Record<string, VexField<any, any>>,
+  TFields extends Record<string, VexField>,
 >(slug: string, config: GlobalConfig<TFields>): VexGlobal<TFields> {
   if (process.env.NODE_ENV !== "production") {
     if (!/^[a-z][a-z0-9_]*$/.test(slug)) {

@@ -9,7 +9,7 @@ import { checkbox } from "../fields/checkbox";
 import { select } from "../fields/select";
 import type { VexAuthAdapter } from "../types";
 
-const minimalAuth: VexAuthAdapter = { name: "better-auth", tables: [] };
+const minimalAuth: VexAuthAdapter = { name: "better-auth", collections: [] };
 
 function field(table: string, fieldName: string, valueType: string): SchemaFieldInfo {
   return { table, field: fieldName, valueType, isOptional: false };
@@ -200,14 +200,13 @@ describe("planMigration", () => {
 
     const authAdapter: VexAuthAdapter = {
       name: "better-auth",
-      tables: [
-        {
-          slug: "users",
+      collections: [
+        defineCollection("users", {
           fields: {
-            email: { valueType: "v.string()" },
-            emailVerified: { valueType: "v.boolean()" },
+            email: text({ required: true, defaultValue: "" }),
+            emailVerified: checkbox({ required: true, defaultValue: false }),
           },
-        },
+        }),
       ],
     };
 

@@ -17,6 +17,13 @@ export async function listDocuments<DataModel extends GenericDataModel>(props: {
   return docs
 }
 
+export async function countDocuments<DataModel extends GenericDataModel>(props: {
+  ctx: GenericQueryCtx<DataModel>
+  args: { collectionSlug: TableNamesInDataModel<DataModel> }
+}): Promise<number> {
+  return await props.ctx.db.query(props.args.collectionSlug).count()
+}
+
 export async function searchDocuments<DataModel extends GenericDataModel>(props: {
   args: {
     collectionSlug: TableNamesInDataModel<DataModel>

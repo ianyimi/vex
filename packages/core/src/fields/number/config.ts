@@ -1,8 +1,8 @@
-import { NumberFieldMeta, NumberFieldOptions, VexField } from "../../types";
+import { NumberFieldMeta, NumberFieldOptions, GenericVexField } from "../../types";
 
 export function number(
   options?: NumberFieldOptions,
-): VexField<number, NumberFieldMeta> {
+): GenericVexField<number, NumberFieldMeta> {
   return {
     _type: 0,
     _meta: {

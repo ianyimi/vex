@@ -9,7 +9,7 @@ import { VexSlugConflictError } from "../errors";
 // Minimal auth adapter for tests that don't focus on auth
 const minimalAuth: VexAuthAdapter = {
   name: "better-auth",
-  tables: [],
+  collections: [],
 };
 
 describe("SlugRegistry", () => {

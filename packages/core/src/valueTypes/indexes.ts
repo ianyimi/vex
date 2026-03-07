@@ -36,7 +36,7 @@ import type {
  * - admin.useAsTitle is undefined: no auto-index generated
  */
 export function collectIndexes<
-  TFields extends Record<string, VexField<any, any>>,
+  TFields extends Record<string, VexField>,
 >(props: { collection: VexCollection<TFields> }): ResolvedIndex[] {
   const { collection } = props;
   const fieldIndexes = new Map<string, ResolvedIndex>();

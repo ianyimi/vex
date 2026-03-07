@@ -1,13 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { mergeAuthTableWithCollection } from "./merge";
+import { mergeAuthCollectionWithUserCollection } from "./merge";
 import { defineCollection } from "../config/defineCollection";
 import { text } from "../fields/text";
 import { number } from "../fields/number";
 import { select } from "../fields/select";
-import type { AuthTableDefinition } from "../types";
+import { date } from "../fields/date";
+import { checkbox } from "../fields/checkbox";
 
-describe("mergeAuthTableWithCollection", () => {
-  const users = defineCollection("users", {
+describe("mergeAuthCollectionWithUserCollection", () => {
+  const userCollection = defineCollection("users", {
     fields: {
       name: text({ label: "Name" }),
       email: text({ label: "Email" }),
@@ -22,33 +23,29 @@ describe("mergeAuthTableWithCollection", () => {
     },
   });
 
-  it("merges auth table fields with user collection fields", () => {
-    const authTable: AuthTableDefinition = {
-      slug: "users",
+  it("merges auth collection fields with user collection fields", () => {
+    const authCollection = defineCollection("users", {
       fields: {
-        name: { valueType: "v.string()" },
-        email: { valueType: "v.string()" },
-        emailVerified: { valueType: "v.boolean()" },
-        createdAt: { valueType: "v.number()" },
-        updatedAt: { valueType: "v.number()" },
+        name: text({ required: true, defaultValue: "" }),
+        email: text({ required: true, defaultValue: "" }),
+        emailVerified: checkbox({ required: true, defaultValue: false }),
+        createdAt: date({ required: true, defaultValue: 0 }),
+        updatedAt: date({ required: true, defaultValue: 0 }),
       },
-    };
-
-    const result = mergeAuthTableWithCollection({
-      authTable,
-      collection: users,
     });
 
-    // Auth-provided fields that user also defines
+    const result = mergeAuthCollectionWithUserCollection({
+      authCollection,
+      userCollection,
+    });
+
     expect(result.overlapping).toContain("name");
     expect(result.overlapping).toContain("email");
 
-    // Auth-only fields (user doesn't define these)
     expect(result.authOnly).toContain("emailVerified");
     expect(result.authOnly).toContain("createdAt");
     expect(result.authOnly).toContain("updatedAt");
 
-    // User-only fields (auth doesn't provide these)
     expect(result.userOnly).toContain("postCount");
     expect(result.userOnly).toContain("role");
 
@@ -61,54 +58,51 @@ describe("mergeAuthTableWithCollection", () => {
     expect(Object.keys(result.fields)).toContain("role");
   });
 
-  it("auth valueType wins on overlapping fields", () => {
-    const authTable: AuthTableDefinition = {
-      slug: "users",
+  it("auth VexField wins on overlapping fields for schema", () => {
+    const authCollection = defineCollection("users", {
       fields: {
-        email: { valueType: "v.string()" },
+        email: text({ required: true, defaultValue: "" }),
       },
-    };
-
-    const result = mergeAuthTableWithCollection({
-      authTable,
-      collection: users,
     });
 
-    // The auth valueType should win for schema generation
-    expect(result.fields["email"]).toBe("v.string()");
-  });
-
-  it("user-only fields converted via fieldToValueType", () => {
-    const authTable: AuthTableDefinition = {
-      slug: "users",
-      fields: {
-        email: { valueType: "v.string()" },
-      },
-    };
-
-    const result = mergeAuthTableWithCollection({
-      authTable,
-      collection: users,
+    const result = mergeAuthCollectionWithUserCollection({
+      authCollection,
+      userCollection,
     });
 
-    // postCount is user-only, number field without required → optional
-    expect(result.fields["postCount"]).toBe("v.optional(v.number())");
-    // role is user-only, select field without required → optional union
-    expect(result.fields["role"]).toContain("v.optional(");
+    // The auth VexField's type should be preserved
+    const emailField = result.fields["email"];
+    expect(emailField._meta.type).toBe("text");
+    expect(emailField._meta.required).toBe(true);
   });
 
-  it("handles auth table with no fields", () => {
-    const authTable: AuthTableDefinition = {
-      slug: "users",
+  it("preserves user admin config on overlapping fields", () => {
+    const authCollection = defineCollection("users", {
+      fields: {
+        email: text({ required: true, defaultValue: "" }),
+      },
+    });
+
+    const result = mergeAuthCollectionWithUserCollection({
+      authCollection,
+      userCollection,
+    });
+
+    // User's label should be preserved
+    const emailField = result.fields["email"];
+    expect(emailField._meta.label).toBe("Email");
+  });
+
+  it("handles auth collection with no fields", () => {
+    const authCollection = defineCollection("users", {
       fields: {},
-    };
-
-    const result = mergeAuthTableWithCollection({
-      authTable,
-      collection: users,
     });
 
-    // All fields are user-only
+    const result = mergeAuthCollectionWithUserCollection({
+      authCollection,
+      userCollection,
+    });
+
     expect(result.userOnly).toContain("name");
     expect(result.userOnly).toContain("email");
     expect(result.userOnly).toContain("postCount");
@@ -124,18 +118,17 @@ describe("mergeAuthTableWithCollection", () => {
       },
     });
 
-    const authTable: AuthTableDefinition = {
-      slug: "users",
+    const authCollection = defineCollection("users", {
       fields: {
-        name: { valueType: "v.string()" },
-        email: { valueType: "v.string()" },
-        createdAt: { valueType: "v.number()" },
+        name: text({ required: true, defaultValue: "" }),
+        email: text({ required: true, defaultValue: "" }),
+        createdAt: date({ required: true, defaultValue: 0 }),
       },
-    };
+    });
 
-    const result = mergeAuthTableWithCollection({
-      authTable,
-      collection: minimalUsers,
+    const result = mergeAuthCollectionWithUserCollection({
+      authCollection,
+      userCollection: minimalUsers,
     });
 
     expect(result.authOnly).toContain("name");

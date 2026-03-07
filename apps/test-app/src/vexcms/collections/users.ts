@@ -1,4 +1,4 @@
-import { defineCollection, number, select, text } from "@vexcms/core"
+import { defineCollection, imageUrl, number, select, text } from "@vexcms/core"
 
 import { TABLE_SLUG_USERS } from "~/db/constants"
 import { auth } from "~/vexcms/auth"
@@ -14,6 +14,9 @@ export const users = defineCollection(TABLE_SLUG_USERS, {
     name: text({
       label: "Name",
       required: true,
+    }),
+    image: imageUrl({
+      label: "Image",
     }),
     postCount: number({
       admin: {

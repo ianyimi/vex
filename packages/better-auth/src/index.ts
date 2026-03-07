@@ -1,6 +1,6 @@
-import type { AuthTableDefinition, VexAuthAdapter } from "@vexcms/core";
+import type { VexAuthAdapter } from "@vexcms/core";
 import type { BetterAuthOptions } from "better-auth";
-import { extractAuthTables } from "./extract/tables";
+import { extractAuthCollections } from "./extract/collections";
 
 interface VexBetterAuthOptions {
   config?: BetterAuthOptions;
@@ -47,22 +47,24 @@ type VerificationFields =
   | "createdAt"
   | "updatedAt";
 
-// The typed tables tuple — slug + field keys are preserved as literals.
-// Plugin-added fields don't get autocomplete but work at runtime.
-type BetterAuthTables = [
-  AuthTableDefinition<"user", UserFields>,
-  AuthTableDefinition<"session", SessionFields>,
-  AuthTableDefinition<"account", AccountFields>,
-  AuthTableDefinition<"verification", VerificationFields>,
-  ...AuthTableDefinition[],
-];
+/**
+ * Type-level map from collection slug to field key union.
+ * Base fields are always present; plugin-added fields work at runtime
+ * but don't get autocomplete.
+ */
+type BetterAuthFieldKeyMap = {
+  user: UserFields;
+  session: SessionFields;
+  account: AccountFields;
+  verification: VerificationFields;
+};
 
 /**
  * The typed adapter returned by `vexBetterAuth()`.
- * Table slugs and base field keys are preserved as string literals
+ * Base field keys are preserved as string literals
  * for autocomplete in `defineCollection`.
  */
-export type BetterAuthAdapter = VexAuthAdapter<BetterAuthTables>;
+export type BetterAuthAdapter = VexAuthAdapter<BetterAuthFieldKeyMap>;
 
 /**
  * Creates a VexAuthAdapter from a BetterAuthOptions config.
@@ -86,10 +88,10 @@ export type BetterAuthAdapter = VexAuthAdapter<BetterAuthTables>;
  * ```
  */
 export function vexBetterAuth(props?: VexBetterAuthOptions): BetterAuthAdapter {
-  const tables = extractAuthTables(props?.config ?? {});
+  const collections = extractAuthCollections(props?.config ?? {});
 
   return {
     name: "better-auth",
-    tables,
+    collections,
   } as BetterAuthAdapter;
 }

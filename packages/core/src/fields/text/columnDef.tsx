@@ -21,5 +21,6 @@ export function textColumnDef(props: {
   return {
     accessorKey: props.fieldKey,
     header: props.meta.label ?? toTitleCase(props.fieldKey),
+    meta: { align: props.meta.admin?.cellAlignment ?? "left" },
   };
 }

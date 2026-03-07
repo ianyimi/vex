@@ -138,11 +138,11 @@ export function buildSlugRegistry(props: { config: VexConfig }): SlugRegistry {
     });
   }
 
-  for (const table of props.config.auth.tables) {
+  for (const collection of props.config.auth.collections) {
     registry.register({
-      slug: table.slug,
+      slug: collection.slug,
       source: SLUG_SOURCES.authTable,
-      location: `Auth Table ${table.slug}`,
+      location: `Auth Table ${collection.slug}`,
     });
   }
 

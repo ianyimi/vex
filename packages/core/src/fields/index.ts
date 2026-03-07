@@ -2,3 +2,8 @@ export { text } from "./text";
 export { number } from "./number";
 export { checkbox } from "./checkbox";
 export { select } from "./select";
+export { date } from "./date";
+export { imageUrl } from "./imageUrl";
+export { relationship } from "./relationship";
+export { json } from "./json";
+export { array } from "./array";

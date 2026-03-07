@@ -10,6 +10,11 @@ export { text } from "./fields/text";
 export { number } from "./fields/number";
 export { checkbox } from "./fields/checkbox";
 export { select } from "./fields/select";
+export { date } from "./fields/date";
+export { imageUrl } from "./fields/imageUrl";
+export { relationship } from "./fields/relationship";
+export { json } from "./fields/json";
+export { array } from "./fields/array";
 export * from "./errors";
 
 // Migrations
@@ -23,6 +28,7 @@ export {
 // Types
 export type {
   // Field types
+  GenericVexField,
   VexField,
   BaseFieldMeta,
   TextFieldMeta,
@@ -30,6 +36,11 @@ export type {
   CheckboxFieldMeta,
   SelectFieldMeta,
   SelectOption,
+  DateFieldMeta,
+  ImageUrlFieldMeta,
+  RelationshipFieldMeta,
+  JsonFieldMeta,
+  ArrayFieldMeta,
   InferFieldType,
   InferFieldsType,
   // Collection types
@@ -42,10 +53,9 @@ export type {
   GlobalAdminConfig,
   // auth types
   VexAuthAdapter,
-  AuthTableDefinition,
-  AuthFieldDefinition,
+  AuthCollectionFieldKeys,
   AuthTableFieldKeys,
-  ResolvedIndex as AuthIndexDefinition,
+  ResolvedIndex,
   // Config types
   VexConfig,
   AdminConfig,
@@ -59,6 +69,11 @@ export type {
   NumberFieldOptions,
   CheckboxFieldOptions,
   SelectFieldOptions,
+  DateFieldOptions,
+  ImageUrlFieldOptions,
+  RelationshipFieldOptions,
+  JsonFieldOptions,
+  ArrayFieldOptions,
   // Indexes
   SearchIndexConfig,
   ResolvedSearchIndex,

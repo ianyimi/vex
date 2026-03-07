@@ -4,6 +4,7 @@ import { TABLE_SLUG_ARTICLES } from "~/db/constants"
 
 export const articles = defineCollection(TABLE_SLUG_ARTICLES, {
   admin: {
+    defaultColumns: ["name", "index", "slug"],
     group: "Content",
     useAsTitle: "name",
   },

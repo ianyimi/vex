@@ -5,10 +5,6 @@ import { toTitleCase } from "../../utils";
 /**
  * Builds a ColumnDef for a number field.
  *
- * @param props.fieldKey - The field name (used as accessorKey)
- * @param props.meta - The number field metadata
- * @returns A ColumnDef for the number field
- *
  * Behavior:
  * - accessorKey: props.fieldKey
  * - header: props.meta.label ?? toTitleCase(props.fieldKey)
@@ -21,5 +17,6 @@ export function numberColumnDef(props: {
   return {
     accessorKey: props.fieldKey,
     header: props.meta.label ?? toTitleCase(props.fieldKey),
+    meta: { align: props.meta.admin?.cellAlignment ?? "right" },
   };
 }

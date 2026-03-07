@@ -1,91 +1,121 @@
 import type { VexField } from "../types";
-import type { AuthTableDefinition } from "../types";
 import type { VexCollection } from "../types";
-import { fieldToValueType } from "./extract";
+import type { ResolvedIndex, ResolvedSearchIndex } from "../types";
 
 /**
- * Result of merging auth table fields with a user collection.
- * Contains both the merged valueType strings for schema generation
- * and metadata about which fields came from where.
+ * Result of merging an auth collection with a user collection.
+ * Contains merged VexFields and metadata about field sources.
  */
-export interface MergedFieldsResult {
+export interface MergedCollectionResult {
   /**
-   * The final field map for schema generation.
-   * Key is field name, value is valueType string (e.g., "v.string()").
-   * Includes auth-provided fields + user-defined fields.
+   * The final merged field map.
+   * Key is field name, value is the VexField object.
+   * Auth fields win for schema generation; user admin config is preserved.
    */
-  fields: Record<string, string>;
+  fields: Record<string, VexField>;
+
+  /** Indexes from both auth and user collections (deduplicated by name). */
+  indexes: ResolvedIndex[];
+
+  /** Search indexes from the user collection. */
+  searchIndexes: ResolvedSearchIndex[];
 
   /**
-   * Fields that exist in both auth table and user config.
-   * The auth valueType wins for schema gen; user admin config wins for UI.
+   * Fields that exist in both auth collection and user config.
+   * The auth VexField wins for schema gen; user admin config wins for UI.
    */
   overlapping: string[];
 
-  /**
-   * Fields that only exist in the auth table (not in user's collection).
-   */
+  /** Fields that only exist in the auth collection (not in user's collection). */
   authOnly: string[];
 
-  /**
-   * Fields that only exist in the user's collection (not from auth).
-   */
+  /** Fields that only exist in the user's collection (not from auth). */
   userOnly: string[];
 }
 
 /**
- * Merges an auth table's fields with a user-defined collection's fields.
+ * Merges an auth collection's fields with a user-defined collection's fields.
  *
- * This works for ANY auth table that has a matching user-defined collection
- * (matched by slug). The auth table's fields are already fully resolved
- * (all plugin contributions applied by vexBetterAuth() before this is called).
+ * Both sides are now VexField records. For overlapping fields, the auth
+ * VexField's schema properties are used (it controls the DB shape), but
+ * the user's admin config (label, hidden, etc.) is preserved by copying
+ * admin-related metadata from the user's field onto the auth field.
  *
- * Goal: Combine the auth table's fields (which define the database schema)
- * with the user's collection fields (which define admin UI behavior).
- * For schema generation, auth valueTypes take precedence on overlapping fields.
- * For admin UI, the user's field metadata takes precedence.
- *
- * @param authTable - The auth table definition with fully resolved fields
- * @param collection - The user's collection that matches this auth table by slug
- * @returns Merged fields result with source tracking
- *
- * Edge cases:
- * - Auth field conflicts with user field: auth valueType wins (it controls the DB shape)
- * - User defines field auth doesn't know about (e.g., "postCount"): added as user-only
+ * @param authCollection - The auth collection with fully resolved fields
+ * @param userCollection - The user's collection that matches this auth table by slug
+ * @returns Merged collection result with combined fields and source tracking
  */
-export function mergeAuthTableWithCollection(props: {
-  authTable: AuthTableDefinition;
-  collection: VexCollection<any>;
-}): MergedFieldsResult {
-  const { authTable, collection } = props;
-  const fields: Record<string, string> = {};
+export function mergeAuthCollectionWithUserCollection(props: {
+  authCollection: VexCollection<any>;
+  userCollection: VexCollection<any>;
+}): MergedCollectionResult {
+  const { authCollection, userCollection } = props;
+  const fields: Record<string, VexField> = {};
   const overlapping: string[] = [];
   const authOnly: string[] = [];
   const userOnly: string[] = [];
 
-  const authFieldSlugs = Object.keys(authTable.fields);
-  const userFields: [string, VexField][] = Object.entries(
-    collection.config.fields,
-  );
+  const authFields = authCollection.config.fields;
+  const userFields = userCollection.config.fields;
+  const authFieldKeys = Object.keys(authFields);
+  const userFieldKeys = Object.keys(userFields);
 
-  for (const fieldSlug of authFieldSlugs) {
-    fields[fieldSlug] = authTable.fields[fieldSlug].valueType;
-    if (userFields.find((field) => field[0] === fieldSlug)) {
-      overlapping.push(fieldSlug);
+  // Process auth fields
+  for (const fieldKey of authFieldKeys) {
+    if (userFieldKeys.includes(fieldKey)) {
+      overlapping.push(fieldKey);
+      // Auth field wins for schema, but preserve user's admin config
+      const authField = authFields[fieldKey];
+      const userField = userFields[fieldKey];
+      fields[fieldKey] = {
+        ...authField,
+        _meta: {
+          ...authField._meta,
+          // Preserve user's admin-facing metadata
+          ...(userField._meta.label !== undefined && { label: userField._meta.label }),
+          ...(userField._meta.description !== undefined && { description: userField._meta.description }),
+          ...(userField._meta.admin !== undefined && { admin: userField._meta.admin }),
+        },
+      };
     } else {
-      authOnly.push(fieldSlug);
+      authOnly.push(fieldKey);
+      fields[fieldKey] = authFields[fieldKey];
     }
   }
 
-  for (const [fieldSlug, field] of userFields) {
-    if (authFieldSlugs.includes(fieldSlug)) continue;
-    userOnly.push(fieldSlug);
-    fields[fieldSlug] = fieldToValueType({
-      field,
-      collectionSlug: collection.slug,
-      fieldName: fieldSlug,
-    });
+  // Process user-only fields
+  for (const fieldKey of userFieldKeys) {
+    if (authFieldKeys.includes(fieldKey)) continue;
+    userOnly.push(fieldKey);
+    fields[fieldKey] = userFields[fieldKey];
   }
 
-  return { fields, overlapping, authOnly, userOnly };
+  // Merge indexes (auth indexes first, user indexes added if name doesn't conflict)
+  const indexes: ResolvedIndex[] = [];
+  const indexNames = new Set<string>();
+
+  // Auth collection indexes (from collection-level)
+  for (const idx of authCollection.config.indexes ?? []) {
+    indexes.push({ name: idx.name, fields: idx.fields as string[] });
+    indexNames.add(idx.name);
+  }
+
+  // User collection indexes
+  for (const idx of userCollection.config.indexes ?? []) {
+    if (!indexNames.has(idx.name)) {
+      indexes.push({ name: idx.name, fields: idx.fields as string[] });
+      indexNames.add(idx.name);
+    }
+  }
+
+  // Search indexes from user collection
+  const searchIndexes: ResolvedSearchIndex[] = (
+    userCollection.config.searchIndexes ?? []
+  ).map((si) => ({
+    name: si.name,
+    searchField: si.searchField as string,
+    filterFields: (si.filterFields ?? []) as string[],
+  }));
+
+  return { fields, indexes, searchIndexes, overlapping, authOnly, userOnly };
 }

@@ -34,7 +34,7 @@ import type {
  */
 export function defineCollection<
   TSlug extends string,
-  TFields extends Record<string, VexField<any, any>>,
+  TFields extends Record<string, VexField>,
   TAuth extends VexAuthAdapter<any> | undefined = undefined,
 >(
   slug: TSlug,

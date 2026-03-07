@@ -13,7 +13,7 @@ describe("generateColumns", () => {
         title: text({ required: true }),
       },
     });
-    const columns = generateColumns(posts);
+    const columns = generateColumns({ collection: posts });
     expect(columns[0]).toHaveProperty("accessorKey", "_id");
     expect(columns[0]).toHaveProperty("header", "ID");
   });
@@ -34,7 +34,7 @@ describe("generateColumns", () => {
         }),
       },
     });
-    const columns = generateColumns(items);
+    const columns = generateColumns({ collection: items });
 
     // _id + 4 fields
     expect(columns).toHaveLength(5);
@@ -45,7 +45,7 @@ describe("generateColumns", () => {
     expect(columns[4]).toHaveProperty("accessorKey", "status");
   });
 
-  it("respects defaultColumns — only shows specified fields", () => {
+  it("respects defaultColumns — only shows specified fields (no _id unless listed)", () => {
     const posts = defineCollection("posts", {
       fields: {
         title: text({ required: true }),
@@ -57,13 +57,12 @@ describe("generateColumns", () => {
         defaultColumns: ["title", "featured"],
       },
     });
-    const columns = generateColumns(posts);
+    const columns = generateColumns({ collection: posts });
 
-    // _id + title + featured
-    expect(columns).toHaveLength(3);
-    expect(columns[0]).toHaveProperty("accessorKey", "_id");
-    expect(columns[1]).toHaveProperty("accessorKey", "title");
-    expect(columns[2]).toHaveProperty("accessorKey", "featured");
+    // title + featured (no _id — not in defaultColumns)
+    expect(columns).toHaveLength(2);
+    expect(columns[0]).toHaveProperty("accessorKey", "title");
+    expect(columns[1]).toHaveProperty("accessorKey", "featured");
   });
 
   it("skips hidden fields", () => {
@@ -73,7 +72,7 @@ describe("generateColumns", () => {
         internalId: text({ admin: { hidden: true } }),
       },
     });
-    const columns = generateColumns(posts);
+    const columns = generateColumns({ collection: posts });
 
     // _id + title (internalId skipped)
     expect(columns).toHaveLength(2);
@@ -92,10 +91,10 @@ describe("generateColumns", () => {
         defaultColumns: ["title", "secret"],
       },
     });
-    const columns = generateColumns(posts);
+    const columns = generateColumns({ collection: posts });
 
-    // _id + title (secret is hidden, skipped)
-    expect(columns).toHaveLength(2);
+    // title only (secret is hidden, skipped; no _id since not in defaultColumns)
+    expect(columns).toHaveLength(1);
   });
 
   it("produces fallback column for defaultColumns entries referencing non-existent fields", () => {
@@ -108,14 +107,32 @@ describe("generateColumns", () => {
         defaultColumns: ["title", "nonexistent"],
       },
     });
-    const columns = generateColumns(posts);
+    const columns = generateColumns({ collection: posts });
 
-    // _id + title + nonexistent (fallback column)
-    expect(columns).toHaveLength(3);
-    expect(columns[2]).toMatchObject({
+    // title + nonexistent (fallback column; no _id since not in defaultColumns)
+    expect(columns).toHaveLength(2);
+    expect(columns[1]).toMatchObject({
       accessorKey: "nonexistent",
       header: "Nonexistent",
     });
+  });
+
+  it("includes _id when explicitly listed in defaultColumns", () => {
+    const posts = defineCollection("posts", {
+      fields: {
+        title: text({ required: true }),
+        slug: text(),
+      },
+      admin: {
+        // @ts-expect-error — _id type union not yet wired via auth
+        defaultColumns: ["_id", "title"],
+      },
+    });
+    const columns = generateColumns({ collection: posts });
+
+    expect(columns).toHaveLength(2);
+    expect(columns[0]).toHaveProperty("accessorKey", "_id");
+    expect(columns[1]).toHaveProperty("accessorKey", "title");
   });
 
   it("marks useAsTitle column with meta.isTitle", () => {
@@ -128,7 +145,7 @@ describe("generateColumns", () => {
         useAsTitle: "title",
       },
     });
-    const columns = generateColumns(posts);
+    const columns = generateColumns({ collection: posts });
     const titleCol = columns.find((c: any) => c.accessorKey === "title");
 
     expect(titleCol).toBeDefined();
@@ -139,7 +156,7 @@ describe("generateColumns", () => {
     const empty = defineCollection("empty", {
       fields: {},
     });
-    const columns = generateColumns(empty);
+    const columns = generateColumns({ collection: empty });
     expect(columns).toHaveLength(1);
     expect(columns[0]).toHaveProperty("accessorKey", "_id");
   });
@@ -150,7 +167,7 @@ describe("generateColumns", () => {
         title: text({ required: true }),
       },
     });
-    const columns = generateColumns(posts);
+    const columns = generateColumns({ collection: posts });
     const withIsTitle = columns.filter((c) => (c.meta as any)?.isTitle);
     expect(withIsTitle).toHaveLength(0);
   });
@@ -162,7 +179,7 @@ describe("generateColumns", () => {
         custom: { _type: "", _meta: { type: "json" as any } } as any,
       },
     });
-    const columns = generateColumns(weird);
+    const columns = generateColumns({ collection: weird });
 
     // _id + title + custom (fallback)
     expect(columns).toHaveLength(3);

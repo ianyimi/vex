@@ -1,8 +1,8 @@
-import { CheckboxFieldMeta, CheckboxFieldOptions, VexField } from "../../types";
+import { CheckboxFieldMeta, CheckboxFieldOptions, GenericVexField } from "../../types";
 
 export function checkbox(
   options?: CheckboxFieldOptions,
-): VexField<boolean, CheckboxFieldMeta> {
+): GenericVexField<boolean, CheckboxFieldMeta> {
   return {
     _type: false,
     _meta: {

@@ -2,6 +2,9 @@
 // FIELD TYPES
 // =============================================================================
 
+/** Content alignment for data table cells. */
+export type Alignment = "left" | "right" | "center";
+
 /**
  * Admin panel configuration for individual fields.
  * Controls visibility, layout, and input behavior in the admin UI.
@@ -48,6 +51,10 @@ export interface FieldAdminConfig {
    * Use for additional context or formatting hints.
    */
   description?: string;
+  /**
+   * Content alignment in data table cells. 'left' | 'right' | 'center'
+   */
+  cellAlignment?: Alignment;
 }
 
 /** Base metadata shared by all field types. */
@@ -290,18 +297,153 @@ export interface SelectFieldOptions<T extends string> extends BaseFieldOptions {
   hasMany?: boolean;
 }
 
-/** Union of all field metadata types. */
+/** Date field metadata. Stores epoch milliseconds. */
+export interface DateFieldMeta extends BaseFieldMeta {
+  readonly type: "date";
+  /** Default value for new documents (epoch ms). */
+  defaultValue?: number;
+}
+
+/**
+ * Options for the `date()` field builder.
+ *
+ * @example
+ * ```
+ * date({ label: "Created At", required: true, defaultValue: 0 })
+ * ```
+ */
+export interface DateFieldOptions extends BaseFieldOptions {
+  /** Default value for new documents (epoch ms). */
+  defaultValue?: number;
+}
+
+/** Image URL field metadata. Stores a URL string, renders as thumbnail. */
+export interface ImageUrlFieldMeta extends BaseFieldMeta {
+  readonly type: "imageUrl";
+  /** Default value for new documents. */
+  defaultValue?: string;
+  /** Width (px) of the image */
+  width?: number;
+  /** Height (px) of the image */
+  height?: number;
+}
+
+/**
+ * Options for the `imageUrl()` field builder.
+ *
+ * @example
+ * ```
+ * imageUrl({ label: "Avatar" })
+ * ```
+ */
+export interface ImageUrlFieldOptions extends BaseFieldOptions {
+  /** Default value for new documents. */
+  defaultValue?: string;
+  /** Width (px) of the image */
+  width?: number;
+  /** Height (px) of the image */
+  height?: number;
+}
+
+/** Relationship field metadata. References another table via `v.id()`. */
+export interface RelationshipFieldMeta extends BaseFieldMeta {
+  readonly type: "relationship";
+  /** Target table name. */
+  to: string;
+  /**
+   * Allow multiple references.
+   *
+   * Default: `false`
+   */
+  hasMany?: boolean;
+}
+
+/**
+ * Options for the `relationship()` field builder.
+ *
+ * @example
+ * ```
+ * relationship({ to: "users", required: true })
+ * relationship({ to: "tags", hasMany: true })
+ * ```
+ */
+export interface RelationshipFieldOptions extends BaseFieldOptions {
+  /** Target table name. */
+  to: string;
+  /**
+   * Allow multiple references.
+   *
+   * Default: `false`
+   */
+  hasMany?: boolean;
+}
+
+/** JSON field metadata. Stores arbitrary data via `v.any()`. */
+export interface JsonFieldMeta extends BaseFieldMeta {
+  readonly type: "json";
+}
+
+/**
+ * Options for the `json()` field builder.
+ *
+ * @example
+ * ```
+ * json({ label: "Metadata" })
+ * ```
+ */
+export interface JsonFieldOptions extends BaseFieldOptions { }
+
+/** Array field metadata. Wraps an inner field in `v.array()`. */
+export interface ArrayFieldMeta extends BaseFieldMeta {
+  readonly type: "array";
+  /** The inner field type for array elements. */
+  field: VexField;
+  /** Minimum number of items. */
+  min?: number;
+  /** Maximum number of items. */
+  max?: number;
+}
+
+/**
+ * Options for the `array()` field builder.
+ *
+ * @example
+ * ```
+ * array({ field: text(), min: 1, max: 10 })
+ * ```
+ */
+export interface ArrayFieldOptions extends BaseFieldOptions {
+  /** The inner field type for array elements. */
+  field: VexField;
+  /** Minimum number of items. */
+  min?: number;
+  /** Maximum number of items. */
+  max?: number;
+}
+
+/** Union of all field metadata types. Discriminated on `type`. */
 export type FieldMeta =
   | TextFieldMeta
   | NumberFieldMeta
   | CheckboxFieldMeta
-  | SelectFieldMeta<string>;
+  | SelectFieldMeta<string>
+  | DateFieldMeta
+  | ImageUrlFieldMeta
+  | RelationshipFieldMeta
+  | JsonFieldMeta
+  | ArrayFieldMeta;
 
 /**
- * A VexField combines metadata with type information.
+ * Generic field definition interface. Combines metadata with type information.
  * The generic `T` represents the TypeScript type this field resolves to.
+ *
+ * Used by field builders to return specifically-typed fields,
+ * and as the constraint for generic type parameters.
+ *
+ * For consuming code that switches on `_meta.type`, use `VexField` instead
+ * (the discriminated union) which provides automatic type narrowing.
  */
-export interface VexField<
+export interface GenericVexField<
   T = unknown,
   TMeta extends BaseFieldMeta = BaseFieldMeta,
 > {
@@ -309,10 +451,39 @@ export interface VexField<
   readonly _meta: TMeta;
 }
 
-/** Extract the TypeScript type from a VexField. */
-export type InferFieldType<F> = F extends VexField<infer T, any> ? T : never;
+/**
+ * Discriminated union of all concrete field variants.
+ * Switch on `field._meta.type` to narrow the meta type automatically.
+ *
+ * @example
+ * ```ts
+ * function handle(field: VexField) {
+ *   switch (field._meta.type) {
+ *     case "text":
+ *       field._meta.maxLength; // TextFieldMeta ✓
+ *       break;
+ *     case "select":
+ *       field._meta.options;   // SelectFieldMeta ✓
+ *       break;
+ *   }
+ * }
+ * ```
+ */
+export type VexField =
+  | GenericVexField<string, TextFieldMeta>
+  | GenericVexField<number, NumberFieldMeta>
+  | GenericVexField<boolean, CheckboxFieldMeta>
+  | GenericVexField<string, SelectFieldMeta<string>>
+  | GenericVexField<number, DateFieldMeta>
+  | GenericVexField<string, ImageUrlFieldMeta>
+  | GenericVexField<string, RelationshipFieldMeta>
+  | GenericVexField<unknown, JsonFieldMeta>
+  | GenericVexField<unknown[], ArrayFieldMeta>;
+
+/** Extract the TypeScript type from a GenericVexField. */
+export type InferFieldType<F> = F extends GenericVexField<infer T, any> ? T : never;
 
 /** Extract types from a record of fields into a document shape. */
-export type InferFieldsType<F extends Record<string, VexField<any, any>>> = {
+export type InferFieldsType<F extends Record<string, VexField>> = {
   [K in keyof F]: InferFieldType<F[K]>;
 };

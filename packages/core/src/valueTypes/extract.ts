@@ -3,6 +3,11 @@ import { checkboxToValueTypeString } from "../fields/checkbox";
 import { numberToValueTypeString } from "../fields/number";
 import { selectToValueTypeString } from "../fields/select";
 import { textToValueTypeString } from "../fields/text";
+import { dateToValueTypeString } from "../fields/date";
+import { imageUrlToValueTypeString } from "../fields/imageUrl";
+import { relationshipToValueTypeString } from "../fields/relationship";
+import { jsonToValueTypeString } from "../fields/json";
+import { arrayToValueTypeString } from "../fields/array";
 import type { VexField } from "../types";
 
 /**
@@ -17,7 +22,7 @@ import type { VexField } from "../types";
  * - index property on _meta: ignored here — handled by collectIndexes()
  */
 export function fieldToValueType(props: {
-  field: VexField<any, any>;
+  field: VexField;
   collectionSlug: string;
   fieldName: string;
 }): string {
@@ -31,11 +36,26 @@ export function fieldToValueType(props: {
       return checkboxToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
     case "select":
       return selectToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+    case "date":
+      return dateToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+    case "imageUrl":
+      return imageUrlToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+    case "relationship":
+      return relationshipToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+    case "json":
+      return jsonToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+    case "array":
+      return arrayToValueTypeString({
+        meta: field._meta,
+        collectionSlug,
+        fieldName,
+        resolveInnerField: fieldToValueType,
+      });
     default:
       throw new VexFieldValidationError(
         collectionSlug,
         fieldName,
-        `Unknown Field Type: ${field._meta.type}`,
+        `Unknown Field Type: ${(field._meta as any).type}`,
       );
   }
 }

@@ -23,6 +23,16 @@ export const listDocuments = query({
   },
 })
 
+export const countDocuments = query({
+  args: { collectionSlug: v.string() },
+  handler: async (ctx, { collectionSlug }) => {
+    return await Collections.countDocuments<DataModel>({
+      ctx,
+      args: { collectionSlug: collectionSlug as TableNamesInDataModel<DataModel> },
+    })
+  },
+})
+
 export const searchDocuments = query({
   args: {
     collectionSlug: v.string(),

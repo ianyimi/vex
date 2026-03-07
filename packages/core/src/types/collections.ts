@@ -10,7 +10,7 @@ import type { VexAuthAdapter } from "./auth";
  * Controls how the collection appears and behaves in the admin panel.
  */
 export interface CollectionAdminConfig<
-  TFields extends Record<string, VexField<any, any>>,
+  TFields extends Record<string, VexField>,
   TAuthFieldKeys extends string = never,
 > {
   /**
@@ -31,10 +31,12 @@ export interface CollectionAdminConfig<
   useAsTitle?: keyof TFields | TAuthFieldKeys;
   /**
    * Field keys to show as default columns in the list view.
-   * If not set, all fields are shown.
+   * If not set, all fields are shown (with `_id` first).
+   * When set, only the specified fields are shown — `_id` is only
+   * included if explicitly listed.
    * When `auth` is provided, auth field keys (e.g. `"email"`) are also accepted.
    */
-  defaultColumns?: (keyof TFields | TAuthFieldKeys)[];
+  defaultColumns?: ("_id" | keyof TFields | TAuthFieldKeys)[];
   /**
    * Disable the "Create New" button in the admin list view.
    *
@@ -59,10 +61,7 @@ export interface CollectionAdminConfig<
  * without requiring a type argument.
  */
 export interface IndexConfig<
-  TFields extends Record<string, VexField<any, any>> = Record<
-    string,
-    VexField<any, any>
-  >,
+  TFields extends Record<string, VexField> = Record<string, VexField>,
 > {
   /**
    * Index name (must be unique within the collection).
@@ -98,10 +97,7 @@ export interface IndexConfig<
  *
  */
 export interface SearchIndexConfig<
-  TFields extends Record<string, VexField<any, any>> = Record<
-    string,
-    VexField<any, any>
-  >,
+  TFields extends Record<string, VexField> = Record<string, VexField>,
 > {
   /**
    * Search index name (must be unique within the collection).
@@ -125,10 +121,7 @@ export interface SearchIndexConfig<
  * Defines the fields, labels, and admin behavior for a collection.
  */
 export interface CollectionConfig<
-  TFields extends Record<string, VexField<any, any>> = Record<
-    string,
-    VexField<any, any>
-  >,
+  TFields extends Record<string, VexField> = Record<string, VexField>,
   TAuthFieldKeys extends string = never,
 > {
   /**
@@ -204,10 +197,7 @@ export interface CollectionConfig<
  * Created by `defineCollection()`.
  */
 export interface VexCollection<
-  TFields extends Record<string, VexField<any, any>> = Record<
-    string,
-    VexField<any, any>
-  >,
+  TFields extends Record<string, VexField> = Record<string, VexField>,
   TAuthFieldKeys extends string = never,
 > {
   /** The collection identifier, used in URLs and the database. */

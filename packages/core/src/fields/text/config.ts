@@ -1,8 +1,8 @@
-import { TextFieldMeta, TextFieldOptions, VexField } from "../../types";
+import { TextFieldMeta, TextFieldOptions, GenericVexField } from "../../types";
 
 export function text(
   options?: TextFieldOptions,
-): VexField<string, TextFieldMeta> {
+): GenericVexField<string, TextFieldMeta> {
   return {
     _type: "",
     _meta: {

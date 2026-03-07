@@ -3,7 +3,7 @@ const MINOR_WORDS = new Set([
   "an",
   "and",
   "as",
-  "at",
+  // "at",
   "but",
   "by",
   "for",

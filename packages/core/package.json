@@ -23,10 +23,12 @@
   },
   "peerDependencies": {
     "convex": "catalog:",
+    "react": ">=18.0.0",
     "@tanstack/react-table": "catalog:"
   },
   "devDependencies": {
     "convex": "catalog:",
+    "react": "catalog:",
     "@tanstack/react-table": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
     "tsup": "catalog:",

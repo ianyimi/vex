@@ -9,7 +9,7 @@ import { InferFieldsType, VexField } from "./fields";
  * Controls how the global appears and behaves in the admin panel.
  */
 export interface GlobalAdminConfig<
-  TFields extends Record<string, VexField<any, any>>,
+  TFields extends Record<string, VexField>,
 > {
   /**
    * Group this global under a heading in the sidebar.
@@ -50,9 +50,9 @@ export interface GlobalAdminConfig<
  * Defines the fields, label, and admin behavior for a global.
  */
 export interface GlobalConfig<
-  TFields extends Record<string, VexField<any, any>> = Record<
+  TFields extends Record<string, VexField> = Record<
     string,
-    VexField<any, any>
+    VexField
   >,
 > {
   /**
@@ -83,9 +83,9 @@ export interface GlobalConfig<
  * Created by `defineGlobal()`.
  */
 export interface VexGlobal<
-  TFields extends Record<string, VexField<any, any>> = Record<
+  TFields extends Record<string, VexField> = Record<
     string,
-    VexField<any, any>
+    VexField
   >,
 > {
   /** The global identifier, used in URLs and the database. */

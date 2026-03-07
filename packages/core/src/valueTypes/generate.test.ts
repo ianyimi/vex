@@ -6,13 +6,18 @@ import { text } from "../fields/text";
 import { number } from "../fields/number";
 import { checkbox } from "../fields/checkbox";
 import { select } from "../fields/select";
+import { date } from "../fields/date";
+import { relationship } from "../fields/relationship";
+import { json } from "../fields/json";
+import { array } from "../fields/array";
+import { imageUrl } from "../fields/imageUrl";
 import type { VexAuthAdapter } from "../types";
 import { VexSlugConflictError } from "../errors";
 
 // Minimal auth adapter used by tests that don't focus on auth behavior
 const minimalAuth: VexAuthAdapter = {
   name: "better-auth",
-  tables: [],
+  collections: [],
 };
 
 // Shared users collection for tests that need auth
@@ -116,9 +121,112 @@ describe("generateVexSchema", () => {
       });
       const output = generateVexSchema({ config });
 
-      // Should have header, imports, and the users table
       expect(output).toContain("AUTO-GENERATED");
       expect(output).toContain("export const users = defineTable({");
+    });
+  });
+
+  describe("new field types", () => {
+    it("generates date field as v.number()", () => {
+      const events = defineCollection("events", {
+        fields: {
+          startDate: date({ required: true, defaultValue: 0 }),
+          endDate: date(),
+        },
+      });
+      const config = defineConfig({
+        collections: [events, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema({ config });
+
+      expect(output).toContain("startDate: v.number()");
+      expect(output).toContain("endDate: v.optional(v.number())");
+    });
+
+    it("generates imageUrl field as v.string()", () => {
+      const profiles = defineCollection("profiles", {
+        fields: {
+          avatar: imageUrl({ required: true, defaultValue: "" }),
+          banner: imageUrl(),
+        },
+      });
+      const config = defineConfig({
+        collections: [profiles, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema({ config });
+
+      expect(output).toContain("avatar: v.string()");
+      expect(output).toContain("banner: v.optional(v.string())");
+    });
+
+    it("generates relationship field as v.id()", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          author: relationship({ to: "users", required: true }),
+          reviewer: relationship({ to: "users" }),
+        },
+      });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema({ config });
+
+      expect(output).toContain('author: v.id("users")');
+      expect(output).toContain('reviewer: v.optional(v.id("users"))');
+    });
+
+    it("generates hasMany relationship as v.array(v.id())", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          tags: relationship({ to: "tags", hasMany: true, required: true }),
+          optionalTags: relationship({ to: "tags", hasMany: true }),
+        },
+      });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema({ config });
+
+      expect(output).toContain('tags: v.array(v.id("tags"))');
+      expect(output).toContain('optionalTags: v.optional(v.array(v.id("tags")))');
+    });
+
+    it("generates json field as v.any()", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          metadata: json({ required: true }),
+          extra: json(),
+        },
+      });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema({ config });
+
+      expect(output).toContain("metadata: v.any()");
+      expect(output).toContain("extra: v.optional(v.any())");
+    });
+
+    it("generates array field wrapping inner type", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          tags: array({ field: text(), required: true }),
+          scores: array({ field: number() }),
+        },
+      });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema({ config });
+
+      expect(output).toContain("tags: v.array(v.string())");
+      expect(output).toContain("scores: v.optional(v.array(v.number()))");
     });
   });
 
@@ -221,7 +329,6 @@ describe("generateVexSchema", () => {
       });
       const output = generateVexSchema({ config });
 
-      // posts table should not have .index() — users table may depending on auth
       const postsSection = output.split("export const users")[0];
       expect(postsSection).not.toContain(".index(");
     });
@@ -253,50 +360,47 @@ describe("generateVexSchema", () => {
 
     const baseAuthAdapter: VexAuthAdapter = {
       name: "better-auth",
-      tables: [
-        {
-          slug: "users",
+      collections: [
+        defineCollection("users", {
           fields: {
-            name: { valueType: "v.string()" },
-            email: { valueType: "v.string()" },
-            emailVerified: { valueType: "v.boolean()" },
-            createdAt: { valueType: "v.number()" },
-            updatedAt: { valueType: "v.number()" },
+            name: text({ required: true, defaultValue: "" }),
+            email: text({ required: true, defaultValue: "" }),
+            emailVerified: checkbox({ required: true, defaultValue: false }),
+            createdAt: date({ required: true, defaultValue: 0 }),
+            updatedAt: date({ required: true, defaultValue: 0 }),
           },
-        },
-        {
-          slug: "account",
+        }),
+        defineCollection("account", {
           fields: {
-            userId: { valueType: 'v.id("users")' },
-            accountId: { valueType: "v.string()" },
-            providerId: { valueType: "v.string()" },
-            createdAt: { valueType: "v.number()" },
-            updatedAt: { valueType: "v.number()" },
+            userId: relationship({ to: "users", required: true }),
+            accountId: text({ required: true, defaultValue: "" }),
+            providerId: text({ required: true, defaultValue: "" }),
+            createdAt: date({ required: true, defaultValue: 0 }),
+            updatedAt: date({ required: true, defaultValue: 0 }),
           },
           indexes: [{ name: "by_userId", fields: ["userId"] }],
-        },
-        {
-          slug: "session",
+        }),
+        defineCollection("session", {
           fields: {
-            token: { valueType: "v.string()" },
-            userId: { valueType: 'v.id("users")' },
-            expiresAt: { valueType: "v.number()" },
-            createdAt: { valueType: "v.number()" },
-            updatedAt: { valueType: "v.number()" },
+            token: text({ required: true, defaultValue: "" }),
+            userId: relationship({ to: "users", required: true }),
+            expiresAt: date({ required: true, defaultValue: 0 }),
+            createdAt: date({ required: true, defaultValue: 0 }),
+            updatedAt: date({ required: true, defaultValue: 0 }),
           },
           indexes: [{ name: "by_token", fields: ["token"] }],
-        },
+        }),
       ],
     };
 
-    it("merges auth user table fields into matching user collection", () => {
+    it("merges auth user collection fields into matching user collection", () => {
       const config = defineConfig({
         collections: [posts, users],
         auth: baseAuthAdapter,
       });
       const output = generateVexSchema({ config });
 
-      // Auth-provided fields appear in the users table (from auth tables array)
+      // Auth-provided fields appear in the users table
       expect(output).toContain("email: v.string()");
       expect(output).toContain("emailVerified: v.boolean()");
       expect(output).toContain("createdAt: v.number()");
@@ -334,26 +438,21 @@ describe("generateVexSchema", () => {
       });
       const output = generateVexSchema({ config });
 
-      // userId on account and session tables should use v.id("users")
-      // (based on the user table's slug in the auth tables array)
       expect(output).toContain('userId: v.id("users")');
     });
 
-    it("includes admin plugin fields in the user auth table", () => {
-      // vexBetterAuth() resolves all plugin contributions before returning
-      // the adapter, so the user table in auth.tables already includes plugin fields
+    it("includes admin plugin fields in the user auth collection", () => {
       const authWithAdminFields: VexAuthAdapter = {
         name: "better-auth",
-        tables: [
-          {
-            slug: "users",
+        collections: [
+          defineCollection("users", {
             fields: {
-              ...baseAuthAdapter.tables[0].fields,
-              banned: { valueType: "v.optional(v.boolean())" },
-              role: { valueType: "v.array(v.string())" },
+              ...baseAuthAdapter.collections[0].config.fields,
+              banned: checkbox(),
+              role: array({ field: text(), required: true }),
             },
-          },
-          ...baseAuthAdapter.tables.slice(1),
+          }),
+          ...baseAuthAdapter.collections.slice(1),
         ],
       };
 
@@ -370,20 +469,19 @@ describe("generateVexSchema", () => {
   });
 
   describe("slug validation", () => {
-    it("allows auth table slug to overlap with user collection slug (merge)", () => {
-      // User defines an "account" collection and auth also has an "account" table
-      // — this means the user wants to customize the account table's admin UI
+    it("allows auth collection slug to overlap with user collection slug (merge)", () => {
       const account = defineCollection("account", {
         fields: { displayName: text() },
       });
 
       const authAdapter: VexAuthAdapter = {
         name: "better-auth",
-        tables: [
-          {
-            slug: "account",
-            fields: { userId: { valueType: 'v.id("users")' } },
-          },
+        collections: [
+          defineCollection("account", {
+            fields: {
+              userId: relationship({ to: "users", required: true }),
+            },
+          }),
         ],
       };
 
@@ -392,12 +490,9 @@ describe("generateVexSchema", () => {
         auth: authAdapter,
       });
 
-      // Should NOT throw — the overlap triggers a merge
       const output = generateVexSchema({ config });
       expect(output).toContain("export const account = defineTable({");
-      // Auth field merged in
       expect(output).toContain('userId: v.id("users")');
-      // User field also present
       expect(output).toContain("displayName:");
     });
 
@@ -442,12 +537,10 @@ describe("generateVexSchema", () => {
       });
       const output = generateVexSchema({ config });
 
-      // Opening and closing braces should be balanced
       const openBraces = (output.match(/\{/g) || []).length;
       const closeBraces = (output.match(/\}/g) || []).length;
       expect(openBraces).toBe(closeBraces);
 
-      // Opening and closing parens should be balanced
       const openParens = (output.match(/\(/g) || []).length;
       const closeParens = (output.match(/\)/g) || []).length;
       expect(openParens).toBe(closeParens);
@@ -465,7 +558,6 @@ describe("generateVexSchema", () => {
       });
       const output = generateVexSchema({ config });
 
-      // Fields inside defineTable should be indented
       const lines = output.split("\n");
       const titleLine = lines.find((l) => l.includes("title:"));
       expect(titleLine).toBeDefined();

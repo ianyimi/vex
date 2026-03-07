@@ -31,7 +31,7 @@ export default defineSchema({
   [TABLE_SLUG_CATEGORIES]: categories,
   [TABLE_SLUG_POSTS]: extendTable({
     additionalFields: {
-      test: v.string(),
+      test: v.optional(v.string()),
     },
     table: posts,
   })

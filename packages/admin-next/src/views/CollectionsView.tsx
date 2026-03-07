@@ -30,12 +30,21 @@ export default function CollectionsView({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const columns = useMemo(() => generateColumns(collection), [collection]);
+  const columns = useMemo(() => generateColumns({ collection, auth: config.auth }), [collection, config.auth]);
 
   const useAsTitle = collection.config.admin?.useAsTitle as string | undefined;
   const searchAvailable = !!useAsTitle;
   const searchIndexName = useAsTitle ? `search_${useAsTitle}` : undefined;
   const isSearching = searchAvailable && debouncedSearch.trim().length > 0;
+
+  // Total document count (reactive, separate from paginated query)
+  const countQuery = useQuery({
+    ...convexQuery(anyApi.vex.collections.countDocuments, {
+      collectionSlug: collection.slug,
+    }),
+    enabled: !isSearching,
+  });
+  const totalCount = countQuery.data as number | undefined;
 
   // Paginated list mode
   const {
@@ -86,7 +95,11 @@ export default function CollectionsView({
 
   const isLoading = isSearching ? searchQuery.isPending : listLoading;
   const searchLoading = isSearching && searchQuery.isFetching;
-  const documentCount = documents.length;
+
+  // Display count: use totalCount for list mode, documents.length for search
+  const displayCount = isSearching
+    ? documents.length
+    : totalCount;
 
   return (
     <div className="p-6">
@@ -99,8 +112,10 @@ export default function CollectionsView({
             {isLoading
               ? "Loading..."
               : isSearching
-                ? `${documentCount} result(s)`
-                : `${documentCount} document(s)`}
+                ? `${displayCount} result(s)`
+                : displayCount != null
+                  ? `${displayCount.toLocaleString()} document(s)`
+                  : "Loading..."}
           </p>
         </div>
       </div>
@@ -125,12 +140,11 @@ export default function CollectionsView({
         basePath={config.basePath}
         collectionSlug={collection.slug}
         emptyMessage={isSearching ? "No matching documents." : "No documents yet."}
-        onLoadMore={() => {
-          if (canLoadMore) loadMore(initialFetchSize);
-        }}
         canLoadMore={canLoadMore}
         pageSize={pageSize}
+        pageIndex={pageIndex}
         onPageChange={setPageIndex}
+        totalCount={isSearching ? undefined : totalCount}
       />
     </div>
   );

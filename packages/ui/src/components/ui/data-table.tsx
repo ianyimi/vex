@@ -6,6 +6,7 @@ import {
   getPaginationRowModel,
   useReactTable,
   type ColumnDef,
+  type PaginationState,
 } from "@tanstack/react-table";
 
 import {
@@ -16,6 +17,34 @@ import {
   TableHeader,
   TableRow,
 } from "./table";
+import { cn } from "../../styles/utils";
+
+import React from "react";
+
+function getAlign(meta: unknown): string | undefined {
+  return (meta as any)?.align;
+}
+
+function AlignWrapper({
+  align,
+  children,
+}: {
+  align: string | undefined;
+  children: React.ReactNode;
+}) {
+  if (!align || align === "left") return <>{children}</>;
+  return (
+    <div
+      className={cn(
+        "flex w-full",
+        align === "center" && "justify-center",
+        align === "right" && "justify-end",
+      )}
+    >
+      {children}
+    </div>
+  );
+}
 
 interface DataTableProps<TData> {
   columns: ColumnDef<TData, unknown>[];
@@ -26,14 +55,16 @@ interface DataTableProps<TData> {
   collectionSlug?: string;
   /** Render when the table has no data */
   emptyMessage?: string;
-  /** Callback to load more data (called by parent, not DataTable itself) */
-  onLoadMore?: () => void;
   /** Whether more data can be loaded from the server */
   canLoadMore?: boolean;
   /** Number of rows per page. Defaults to 10. */
   pageSize?: number;
+  /** Controlled page index (0-based) */
+  pageIndex?: number;
   /** Callback fired when the page index changes */
   onPageChange?: (pageIndex: number) => void;
+  /** Total document count from the server (enables accurate page count) */
+  totalCount?: number;
 }
 
 function DataTable<TData extends Record<string, unknown>>({
@@ -44,32 +75,48 @@ function DataTable<TData extends Record<string, unknown>>({
   emptyMessage = "No results.",
   canLoadMore,
   pageSize = 10,
+  pageIndex: controlledPageIndex,
   onPageChange,
+  totalCount,
 }: DataTableProps<TData>) {
+  const pagination: PaginationState = {
+    pageIndex: controlledPageIndex ?? 0,
+    pageSize,
+  };
+
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: {
-        pageSize,
-      },
+    autoResetPageIndex: false,
+    state: {
+      pagination,
+    },
+    onPaginationChange: (updater) => {
+      const next = typeof updater === "function" ? updater(pagination) : updater;
+      onPageChange?.(next.pageIndex);
     },
   });
 
-  const pageCount = table.getPageCount();
-  const currentPage = table.getState().pagination.pageIndex + 1;
+  const totalPageCount =
+    totalCount != null
+      ? Math.ceil(totalCount / pageSize)
+      : table.getPageCount();
+  const currentPage = pagination.pageIndex + 1;
 
   const handlePreviousPage = () => {
     table.previousPage();
-    onPageChange?.(table.getState().pagination.pageIndex - 1);
   };
 
   const handleNextPage = () => {
     table.nextPage();
-    onPageChange?.(table.getState().pagination.pageIndex + 1);
   };
+
+  const isNextDisabled =
+    totalCount != null
+      ? currentPage >= totalPageCount
+      : !table.getCanNextPage() && !canLoadMore;
 
   return (
     <div data-slot="data-table" className="space-y-4">
@@ -80,12 +127,14 @@ function DataTable<TData extends Record<string, unknown>>({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
+                    {header.isPlaceholder ? null : (
+                      <AlignWrapper align={getAlign(header.column.columnDef.meta)}>
+                        {flexRender(
                           header.column.columnDef.header,
                           header.getContext(),
                         )}
+                      </AlignWrapper>
+                    )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -96,8 +145,9 @@ function DataTable<TData extends Record<string, unknown>>({
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => {
-                    const isTitle = (cell.column.columnDef.meta as any)
-                      ?.isTitle;
+                    const meta = cell.column.columnDef.meta as any;
+                    const isTitle = meta?.isTitle;
+                    const align = getAlign(meta);
                     const cellValue = flexRender(
                       cell.column.columnDef.cell,
                       cell.getContext(),
@@ -108,17 +158,25 @@ function DataTable<TData extends Record<string, unknown>>({
                       const href = `${basePath}/${collectionSlug}/${docId}`;
                       return (
                         <TableCell key={cell.id}>
-                          <a
-                            href={href}
-                            className="font-medium text-primary underline-offset-4 hover:underline"
-                          >
-                            {cellValue}
-                          </a>
+                          <AlignWrapper align={align}>
+                            <a
+                              href={href}
+                              className="font-medium text-primary underline-offset-4 hover:underline"
+                            >
+                              {cellValue}
+                            </a>
+                          </AlignWrapper>
                         </TableCell>
                       );
                     }
 
-                    return <TableCell key={cell.id}>{cellValue}</TableCell>;
+                    return (
+                      <TableCell key={cell.id}>
+                        <AlignWrapper align={align}>
+                          {cellValue}
+                        </AlignWrapper>
+                      </TableCell>
+                    );
                   })}
                 </TableRow>
               ))
@@ -139,7 +197,7 @@ function DataTable<TData extends Record<string, unknown>>({
       {data.length > 0 && (
         <div className="flex items-center justify-between px-2">
           <p className="text-sm text-muted-foreground">
-            Page {currentPage} of {pageCount}
+            Page {currentPage} of {totalPageCount}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -154,7 +212,7 @@ function DataTable<TData extends Record<string, unknown>>({
               type="button"
               className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
               onClick={handleNextPage}
-              disabled={!table.getCanNextPage() && !canLoadMore}
+              disabled={isNextDisabled}
             >
               Next
             </button>

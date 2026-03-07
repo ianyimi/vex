@@ -1,39 +1,29 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { VexCollection, VexField, BaseFieldMeta } from "../types";
+import type { VexAuthAdapter, VexCollection, VexField } from "../types";
 import { textColumnDef } from "../fields/text/columnDef";
 import { numberColumnDef } from "../fields/number/columnDef";
 import { checkboxColumnDef } from "../fields/checkbox/columnDef";
 import { selectColumnDef } from "../fields/select/columnDef";
+import { dateColumnDef } from "../fields/date/columnDef";
+import { imageUrlColumnDef } from "../fields/imageUrl/columnDef";
+import { relationshipColumnDef } from "../fields/relationship/columnDef";
+import { jsonColumnDef } from "../fields/json/columnDef";
+import { arrayColumnDef } from "../fields/array/columnDef";
 import { toTitleCase } from "../utils";
 
 /**
  * Generates an array of ColumnDef objects from a VexCollection's field configs.
  *
- * @param collection - The collection to generate columns for
+ * @param props.collection - The collection to generate columns for
+ * @param props.auth - Optional auth adapter. When provided, auth fields (e.g. createdAt)
+ *   get proper columnDef dispatch instead of falling back to plain text columns.
  * @returns Array of ColumnDef objects for use with @tanstack/react-table
- *
- * Behavior:
- * 1. Always include an `_id` column first (accessorKey: "_id", header: "ID")
- * 2. If `admin.defaultColumns` is set, only include those fields (in order) + _id
- * 3. If `admin.defaultColumns` is not set, include all fields
- * 4. Skip fields where `admin.hidden` is true
- * 5. Dispatch to the correct per-field-type column builder based on field._meta.type
- * 6. For unknown field types: produce a fallback column that renders
- *    `String(value)` truncated to 50 characters (do not crash)
- * 7. If `admin.useAsTitle` is set, mark that column with meta.isTitle = true
- *    (the DataTable component uses this to render the cell as a link)
- *
- * Edge cases:
- * - Unknown field type: produce fallback column with String(value) truncated to 50 chars
- * - Empty fields object: return only the _id column
- * - defaultColumns references a non-existent field: produce fallback column
- * - defaultColumns references a hidden field: skip it
  */
-export function generateColumns<
-  TFields extends Record<string, VexField<any, any>>,
->(
-  collection: VexCollection<TFields>,
-): ColumnDef<Record<string, unknown>>[] {
+export function generateColumns(props: {
+  collection: VexCollection;
+  auth?: VexAuthAdapter;
+}): ColumnDef<Record<string, unknown>>[] {
+  const { collection, auth } = props;
   const columns: ColumnDef<Record<string, unknown>>[] = [];
   const useAsTitle = collection.config.admin?.useAsTitle as string | undefined;
   const defaultColumns = collection.config.admin?.defaultColumns as
@@ -41,52 +31,101 @@ export function generateColumns<
     | undefined;
   const fields = collection.config.fields;
 
-  columns.push({ accessorKey: "_id", header: "ID" });
+  // Build a lookup of auth fields for this collection's slug
+  const authFields: Record<string, VexField> = {};
+  if (auth) {
+    const authCollection = auth.collections.find(
+      (c: VexCollection) => c.slug === collection.slug,
+    );
+    if (authCollection) {
+      for (const [k, v] of Object.entries(authCollection.config.fields) as [
+        string,
+        VexField,
+      ][]) {
+        authFields[k] = v;
+      }
+    }
+  }
 
-  const fieldKeys = defaultColumns ?? Object.keys(fields);
+  if (defaultColumns) {
+    for (const fieldKey of defaultColumns) {
+      if (fieldKey === "_id") {
+        columns.push({ accessorKey: "_id", header: "ID" });
+        continue;
+      }
 
-  for (const fieldKey of fieldKeys) {
-    const field = fields[fieldKey];
+      const field = (fields[fieldKey] ?? authFields[fieldKey]) as
+        | VexField
+        | undefined;
 
-    // Auth-only field (e.g. "email") — not in collection fields but valid
-    // from the auth adapter. Produce a fallback text column.
-    if (!field) {
-      columns.push({ accessorKey: fieldKey, header: toTitleCase(fieldKey) });
-      continue;
+      if (!field) {
+        columns.push({ accessorKey: fieldKey, header: toTitleCase(fieldKey) });
+        continue;
+      }
+
+      if (field._meta.admin?.hidden) continue;
+
+      let col = buildColumnDef(fieldKey, field);
+
+      if (useAsTitle && fieldKey === useAsTitle) {
+        col.meta = { ...col.meta, isTitle: true };
+      }
+
+      columns.push(col);
+    }
+  } else {
+    columns.push({ accessorKey: "_id", header: "ID" });
+
+    // Collect all field keys: user fields first, then auth-only fields
+    const allFieldKeys = new Set(Object.keys(fields));
+    for (const k of Object.keys(authFields)) {
+      allFieldKeys.add(k);
     }
 
-    const meta = field._meta as BaseFieldMeta;
-    if (meta.admin?.hidden) continue;
+    for (const fieldKey of allFieldKeys) {
+      const field = (fields[fieldKey] ?? authFields[fieldKey]) as VexField;
+      if (field._meta.admin?.hidden) continue;
 
-    let col: ColumnDef<Record<string, unknown>>;
+      let col = buildColumnDef(fieldKey, field);
 
-    switch (meta.type) {
-      case "text":
-        col = textColumnDef({ fieldKey, meta: field._meta as any });
-        break;
-      case "number":
-        col = numberColumnDef({ fieldKey, meta: field._meta as any });
-        break;
-      case "checkbox":
-        col = checkboxColumnDef({ fieldKey, meta: field._meta as any });
-        break;
-      case "select":
-        col = selectColumnDef({ fieldKey, meta: field._meta as any });
-        break;
-      default:
-        col = {
-          accessorKey: fieldKey,
-          header: toTitleCase(fieldKey),
-        };
-        break;
+      if (useAsTitle && fieldKey === useAsTitle) {
+        col.meta = { ...col.meta, isTitle: true };
+      }
+
+      columns.push(col);
     }
-
-    if (useAsTitle && fieldKey === useAsTitle) {
-      col.meta = { ...col.meta, isTitle: true };
-    }
-
-    columns.push(col);
   }
 
   return columns;
+}
+
+function buildColumnDef(
+  fieldKey: string,
+  field: VexField,
+): ColumnDef<Record<string, unknown>> {
+  switch (field._meta.type) {
+    case "text":
+      return textColumnDef({ fieldKey, meta: field._meta });
+    case "number":
+      return numberColumnDef({ fieldKey, meta: field._meta });
+    case "checkbox":
+      return checkboxColumnDef({ fieldKey, meta: field._meta });
+    case "select":
+      return selectColumnDef({ fieldKey, meta: field._meta });
+    case "date":
+      return dateColumnDef({ fieldKey, meta: field._meta });
+    case "imageUrl":
+      return imageUrlColumnDef({ fieldKey, meta: field._meta });
+    case "relationship":
+      return relationshipColumnDef({ fieldKey, meta: field._meta });
+    case "json":
+      return jsonColumnDef({ fieldKey, meta: field._meta });
+    case "array":
+      return arrayColumnDef({ fieldKey, meta: field._meta });
+    default:
+      return {
+        accessorKey: fieldKey,
+        header: toTitleCase(fieldKey),
+      };
+  }
 }
