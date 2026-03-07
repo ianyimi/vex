@@ -1,6 +1,8 @@
 import type {
+  AuthTableFieldKeys,
   CollectionConfig,
   InferFieldsType,
+  VexAuthAdapter,
   VexCollection,
   VexField,
 } from "../types";
@@ -21,13 +23,29 @@ import type {
  *   },
  * });
  *
- * // Type inference works:
- * type Post = typeof posts._docType;
- * // Post = { title: string; status: "draft" | "published" }
+ * // With auth field autocomplete:
+ * const users = defineCollection('user', {
+ *   auth,  // pass your auth adapter
+ *   fields: { name: text(), role: select({ ... }) },
+ *   admin: {
+ *     defaultColumns: ['name', 'email'],  // 'email' autocompletes from auth
+ *   },
+ * });
  */
 export function defineCollection<
+  TSlug extends string,
   TFields extends Record<string, VexField<any, any>>,
->(slug: string, config: CollectionConfig<TFields>): VexCollection<TFields> {
+  TAuth extends VexAuthAdapter<any> | undefined = undefined,
+>(
+  slug: TSlug,
+  config: CollectionConfig<
+    TFields,
+    TAuth extends VexAuthAdapter<any> ? AuthTableFieldKeys<TAuth, TSlug> : never
+  > & { auth?: TAuth },
+): VexCollection<
+  TFields,
+  TAuth extends VexAuthAdapter<any> ? AuthTableFieldKeys<TAuth, TSlug> : never
+> {
   if (process.env.NODE_ENV !== "production") {
     if (!/^[a-z][a-z0-9_]*$/.test(slug)) {
       console.warn(

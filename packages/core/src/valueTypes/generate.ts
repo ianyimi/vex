@@ -1,6 +1,7 @@
-import type { ResolvedIndex, VexConfig } from "../types";
+import type { ResolvedIndex, ResolvedSearchIndex, VexConfig } from "../types";
 import { fieldToValueType } from "./extract";
 import { collectIndexes } from "./indexes";
+import { collectSearchIndexes } from "./searchIndexes";
 import { mergeAuthTableWithCollection } from "./merge";
 import { buildSlugRegistry } from "./slugs";
 
@@ -104,6 +105,9 @@ export function generateVexSchema(props: { config: VexConfig }): string {
     const authTable = authTableMap.get(collection.slug);
     const fields: { name: string; valueType: string }[] = [];
     const indexes: ResolvedIndex[] = collectIndexes({ collection });
+    const searchIndexes: ResolvedSearchIndex[] = collectSearchIndexes({
+      collection,
+    });
 
     if (authTable) {
       mergedAuthSlugs.add(authTable.slug);
@@ -141,6 +145,15 @@ export function generateVexSchema(props: { config: VexConfig }): string {
     for (const i of indexes) {
       const fieldList = i.fields.map((f) => `"${f}"`).join(", ");
       lines.push(`  .index("${i.name}", [${fieldList}])`);
+    }
+    for (const si of searchIndexes) {
+      const filterList =
+        si.filterFields.length > 0
+          ? `, filterFields: [${si.filterFields.map((f) => `"${f}"`).join(", ")}]`
+          : "";
+      lines.push(
+        `  .searchIndex("${si.name}", { searchField: "${si.searchField}"${filterList} })`,
+      );
     }
   }
 
@@ -187,6 +200,7 @@ export function generateVexSchema(props: { config: VexConfig }): string {
       lines.push(`  ${f.name}: ${f.valueType},`);
     }
     lines.push("})");
+    // TODO: are these necessary for globals?
     for (const i of indexes) {
       const fieldList = i.fields.map((f) => `"${f}"`).join(", ");
       lines.push(`  .index("${i.name}", [${fieldList}])`);

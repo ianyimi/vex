@@ -3,6 +3,8 @@
 import type { VexConfig } from "@vexcms/core";
 import { DashboardView } from "../views/DashboardView";
 import { NotFoundView } from "../views/NotFoundView";
+import CollectionsView from "../views/CollectionsView";
+import CollectionEditView from "../views/CollectionEditView";
 
 interface AdminPageProps {
   config: VexConfig;
@@ -10,7 +12,7 @@ interface AdminPageProps {
 }
 
 export function AdminPage({ config, path = [] }: AdminPageProps) {
-  const [collectionSlug, documentId] = path;
+  const [collectionSlug, documentID] = path;
 
   // Dashboard
   if (!collectionSlug) {
@@ -23,18 +25,15 @@ export function AdminPage({ config, path = [] }: AdminPageProps) {
     return <NotFoundView />;
   }
 
-  // TODO: Implement collection list and document edit views
-  // For now, show a placeholder
+  if (!documentID) {
+    return <CollectionsView config={config} collection={collection} />;
+  }
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold">
-        {collection.config.labels?.plural ?? collection.slug}
-      </h1>
-      <p className="mt-2 text-muted-foreground">
-        {documentId
-          ? `Editing document: ${documentId}`
-          : "Collection list view coming soon"}
-      </p>
-    </div>
+    <CollectionEditView
+      config={config}
+      collection={collection}
+      documentID={documentID}
+    />
   );
 }

@@ -1,20 +1,23 @@
-import type { Metadata } from "next";
+import type { Metadata } from "next"
 
-import "./globals.css";
+import ClientProviders from "~/components/providers/client"
+import ServerProviders from "~/components/providers/server"
+
+import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Vex CMS Test App",
   description: "Test application for Vex CMS development",
-};
+  title: "Vex CMS Test App",
+}
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <ServerProviders>
+        <ClientProviders>
+          <body className="antialiased">{children}</body>
+        </ClientProviders>
+      </ServerProviders>
     </html>
-  );
+  )
 }

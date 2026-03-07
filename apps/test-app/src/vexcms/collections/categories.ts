@@ -1,6 +1,8 @@
 import { defineCollection, number, text } from "@vexcms/core"
 
-export const categories = defineCollection("categories", {
+import { TABLE_SLUG_CATEGORIES } from "~/db/constants"
+
+export const categories = defineCollection(TABLE_SLUG_CATEGORIES, {
   admin: {
     group: "Content",
     useAsTitle: "name",

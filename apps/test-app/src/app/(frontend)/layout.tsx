@@ -3,9 +3,6 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono, Inter } from "next/font/google"
 import Head from "next/head"
 
-import ClientProviders from "~/components/providers/client"
-import ServerProviders from "~/components/providers/server"
-
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
 const geistSans = Geist({
@@ -36,12 +33,8 @@ export default function RootLayout({
         <link href="/favicons/favicon.ico" rel="shortcut icon" type="image/x-icon" />
       </Head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ServerProviders>
-          <ClientProviders>
-            {children}
-            {auth}
-          </ClientProviders>
-        </ServerProviders>
+        {children}
+        {auth}
       </body>
     </html>
   )

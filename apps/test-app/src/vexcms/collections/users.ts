@@ -1,23 +1,18 @@
-import { checkbox, defineCollection, number, select, text } from "@vexcms/core"
+import { defineCollection, number, select, text } from "@vexcms/core"
 
 import { TABLE_SLUG_USERS } from "~/db/constants"
+import { auth } from "~/vexcms/auth"
 
 export const users = defineCollection(TABLE_SLUG_USERS, {
   admin: {
+    defaultColumns: ["name", "email", "createdAt", "image", "role"],
     group: "Admin",
     useAsTitle: "name",
   },
+  auth,
   fields: {
     name: text({
       label: "Name",
-      required: true,
-    }),
-    email: text({
-      label: "Email",
-      required: true,
-    }),
-    emailVerified: checkbox({
-      label: "Email Verified",
       required: true,
     }),
     postCount: number({

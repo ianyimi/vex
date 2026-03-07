@@ -11,7 +11,9 @@ export const articles = defineTable({
   name: v.string(),
   slug: v.string(),
   index: v.optional(v.number()),
-}).index("by_name", ["name"])
+})
+  .index("by_name", ["name"])
+  .searchIndex("search_name", { searchField: "name" })
 
 export const posts = defineTable({
   slug: v.string(),
@@ -19,7 +21,9 @@ export const posts = defineTable({
   status: v.union(v.literal("draft"), v.literal("published"), v.literal("archived")),
   subtitle: v.string(),
   title: v.string(),
-}).index("by_title", ["title"])
+})
+  .index("by_title", ["title"])
+  .searchIndex("search_title", { searchField: "title" })
 
 export const user = defineTable({
   name: v.string(),
@@ -32,16 +36,20 @@ export const user = defineTable({
   banned: v.optional(v.boolean()),
   banReason: v.optional(v.string()),
   banExpires: v.optional(v.number()),
+  userId: v.optional(v.string()),
   postCount: v.optional(v.number()),
 })
   .index("by_name", ["name"])
   .index("by_email", ["email"])
+  .searchIndex("search_name", { searchField: "name" })
 
 export const categories = defineTable({
   name: v.string(),
   slug: v.string(),
   sortOrder: v.optional(v.number()),
-}).index("by_name", ["name"])
+})
+  .index("by_name", ["name"])
+  .searchIndex("search_name", { searchField: "name" })
 
 /**
  * AUTH TABLES
@@ -107,3 +115,10 @@ export const apikey = defineTable({
 })
   .index("by_key", ["key"])
   .index("by_userId", ["userId"])
+
+export const jwks = defineTable({
+  publicKey: v.string(),
+  privateKey: v.string(),
+  createdAt: v.number(),
+  expiresAt: v.optional(v.number()),
+})

@@ -1,4 +1,5 @@
 export * from "./avatar";
+export * from "./data-table";
 export * from "./breadcrumb";
 export * from "./button";
 export * from "./collapsible";

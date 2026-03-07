@@ -1,6 +1,8 @@
 import { checkbox, defineCollection, select, text } from "@vexcms/core"
 
-export const posts = defineCollection("posts", {
+import { TABLE_SLUG_POSTS } from "~/db/constants"
+
+export const posts = defineCollection(TABLE_SLUG_POSTS, {
   admin: {
     defaultColumns: ["title", "status", "featured"],
     group: "Content",

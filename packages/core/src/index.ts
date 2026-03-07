@@ -2,6 +2,8 @@ export { defineConfig } from "./config/defineConfig";
 export { defineCollection } from "./config/defineCollection";
 export { generateVexSchema } from "./valueTypes/generate";
 export { extendTable } from "./schema/extendTable";
+export { generateColumns } from "./columns";
+export { toTitleCase } from "./utils";
 
 // Fields
 export { text } from "./fields/text";
@@ -42,6 +44,7 @@ export type {
   VexAuthAdapter,
   AuthTableDefinition,
   AuthFieldDefinition,
+  AuthTableFieldKeys,
   ResolvedIndex as AuthIndexDefinition,
   // Config types
   VexConfig,
@@ -56,6 +59,9 @@ export type {
   NumberFieldOptions,
   CheckboxFieldOptions,
   SelectFieldOptions,
+  // Indexes
+  SearchIndexConfig,
+  ResolvedSearchIndex,
 } from "./types";
 
 export type {

@@ -1,5 +1,5 @@
 import { extendTable } from "@vexcms/core"
-import { defineSchema, defineTable } from "convex/server"
+import { defineSchema } from "convex/server"
 import { v } from "convex/values"
 
 import {
@@ -18,6 +18,7 @@ import {
   apikey,
   articles,
   categories,
+  jwks,
   posts,
   session,
   user,
@@ -43,9 +44,5 @@ export default defineSchema({
 
   [TABLE_SLUG_VERIFICATIONS]: verification,
 
-  [TABLE_SLUG_JWKS]: defineTable({
-    createdAt: v.number(),
-    privateKey: v.optional(v.string()),
-    publicKey: v.string(),
-  }),
+  [TABLE_SLUG_JWKS]: jwks,
 })

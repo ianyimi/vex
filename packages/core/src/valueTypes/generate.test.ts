@@ -472,4 +472,138 @@ describe("generateVexSchema", () => {
       expect(titleLine!.startsWith("  ")).toBe(true);
     });
   });
+
+  describe("search index generation", () => {
+    it("generates per-field search index as chained .searchIndex() call", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text({
+            searchIndex: { name: "search_title", filterFields: [] },
+          }),
+          body: text(),
+        },
+      });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema({ config });
+
+      expect(output).toContain(
+        '.searchIndex("search_title", { searchField: "title" })',
+      );
+    });
+
+    it("generates search index with filterFields", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text({
+            searchIndex: {
+              name: "search_title",
+              filterFields: ["status"],
+            },
+          }),
+          status: select({
+            required: true,
+            defaultValue: "draft",
+            options: [
+              { value: "draft", label: "Draft" },
+              { value: "published", label: "Published" },
+            ],
+          }),
+        },
+      });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema({ config });
+
+      expect(output).toContain(
+        '.searchIndex("search_title", { searchField: "title", filterFields: ["status"] })',
+      );
+    });
+
+    it("generates collection-level search indexes", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text(),
+          author: text(),
+        },
+        searchIndexes: [
+          {
+            name: "search_title",
+            searchField: "title",
+            filterFields: ["author"],
+          },
+        ],
+      });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema({ config });
+
+      expect(output).toContain(
+        '.searchIndex("search_title", { searchField: "title", filterFields: ["author"] })',
+      );
+    });
+
+    it("auto-generates search index for admin.useAsTitle", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text(),
+          body: text(),
+        },
+        admin: {
+          useAsTitle: "title",
+        },
+      });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema({ config });
+
+      expect(output).toContain(
+        '.searchIndex("search_title", { searchField: "title" })',
+      );
+    });
+
+    it("generates both .index() and .searchIndex() on the same table", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text({ index: "by_title" }),
+          body: text(),
+        },
+        searchIndexes: [{ name: "search_title", searchField: "title" }],
+      });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema({ config });
+
+      expect(output).toContain('.index("by_title", ["title"])');
+      expect(output).toContain(
+        '.searchIndex("search_title", { searchField: "title" })',
+      );
+    });
+
+    it("does not generate .searchIndex() when no search indexes defined", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text(),
+        },
+      });
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+      });
+      const output = generateVexSchema({ config });
+
+      const postsSection = output.split("export const users")[0];
+      expect(postsSection).not.toContain(".searchIndex(");
+    });
+  });
 });

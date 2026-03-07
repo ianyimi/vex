@@ -22,10 +22,12 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "convex": "catalog:"
+    "convex": "catalog:",
+    "@tanstack/react-table": "catalog:"
   },
   "devDependencies": {
     "convex": "catalog:",
+    "@tanstack/react-table": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
     "tsup": "catalog:",
     "typescript": "catalog:",

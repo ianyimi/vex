@@ -2,7 +2,8 @@
 // COLLECTION TYPES
 // =============================================================================
 
-import { VexField, InferFieldsType } from "..";
+import type { VexField, InferFieldsType } from "..";
+import type { VexAuthAdapter } from "./auth";
 
 /**
  * Admin UI configuration for a collection.
@@ -10,6 +11,7 @@ import { VexField, InferFieldsType } from "..";
  */
 export interface CollectionAdminConfig<
   TFields extends Record<string, VexField<any, any>>,
+  TAuthFieldKeys extends string = never,
 > {
   /**
    * Group this collection under a heading in the sidebar.
@@ -23,14 +25,16 @@ export interface CollectionAdminConfig<
   icon?: string;
   /**
    * Field key to use as the document title in list views.
-   * Should reference a text-like field from the collection's fields.
+   * Should reference a text-like field from the collection's fields,
+   * or an auth field key when `auth` is provided.
    */
-  useAsTitle?: keyof TFields;
+  useAsTitle?: keyof TFields | TAuthFieldKeys;
   /**
    * Field keys to show as default columns in the list view.
    * If not set, all fields are shown.
+   * When `auth` is provided, auth field keys (e.g. `"email"`) are also accepted.
    */
-  defaultColumns?: (keyof TFields)[];
+  defaultColumns?: (keyof TFields | TAuthFieldKeys)[];
   /**
    * Disable the "Create New" button in the admin list view.
    *
@@ -74,6 +78,49 @@ export interface IndexConfig<
 }
 
 /**
+ * Search index definition for a collection.
+ * Enables full-text search on a field with optional filter fields.
+ *
+ * Generic over `TFields` so that `searchField` and `filterFields` are type-checked
+ * against actual field names in the collection.
+ *
+ * @example
+ * defineCollection("posts", {
+ *   fields: {
+ *     title: text(),
+ *     author: text(),
+ *     status: select({ options: [...] }),
+ *   },
+ *   searchIndexes: [
+ *     { name: "search_title", searchField: "title", filterFields: ["author", "status"] },
+ *   ],
+ * })
+ *
+ */
+export interface SearchIndexConfig<
+  TFields extends Record<string, VexField<any, any>> = Record<
+    string,
+    VexField<any, any>
+  >,
+> {
+  /**
+   * Search index name (must be unique within the collection).
+   * Convention: `"search_<field>"`.
+   */
+  name: string;
+  /**
+   * The field to perform full-text search on.
+   * Must be a text (string) field in the collection.
+   */
+  searchField: keyof TFields & string;
+  /**
+   * Optional fields to filter search results by.
+   * Each field name must be a key in the collection's `fields` record.
+   */
+  filterFields?: (keyof TFields & string)[];
+}
+
+/**
  * Configuration passed to `defineCollection`.
  * Defines the fields, labels, and admin behavior for a collection.
  */
@@ -82,6 +129,7 @@ export interface CollectionConfig<
     string,
     VexField<any, any>
   >,
+  TAuthFieldKeys extends string = never,
 > {
   /**
    * The fields that make up documents in this collection.
@@ -105,10 +153,16 @@ export interface CollectionConfig<
     plural?: string;
   };
   /**
+   * Auth adapter instance — pass the same object used in `defineConfig`.
+   * When provided, auth field keys (e.g. `"email"`) become available
+   * for `defaultColumns` and `useAsTitle` autocomplete.
+   */
+  auth?: VexAuthAdapter<any>;
+  /**
    * Admin UI configuration for this collection.
    * Controls sidebar grouping, icons, list columns, and permissions.
    */
-  admin?: CollectionAdminConfig<TFields>;
+  admin?: CollectionAdminConfig<TFields, TAuthFieldKeys>;
   /**
    * Database indexes for this collection.
    * Use this for compound indexes that span multiple fields.
@@ -133,6 +187,16 @@ export interface CollectionConfig<
    *
    */
   indexes?: IndexConfig<TFields>[];
+  /**
+   * Search indexes for full-text search on this collection.
+   * Each search index targets a single text field with optional filter fields.
+   *
+   * @example
+   * searchIndexes: [
+   *   { name: "search_title", searchField: "title", filterFields: ["status"] },
+   * ]
+   */
+  searchIndexes?: SearchIndexConfig<TFields>[];
 }
 
 /**
@@ -144,11 +208,12 @@ export interface VexCollection<
     string,
     VexField<any, any>
   >,
+  TAuthFieldKeys extends string = never,
 > {
   /** The collection identifier, used in URLs and the database. */
   readonly slug: string;
   /** The full collection configuration. */
-  readonly config: CollectionConfig<TFields>;
+  readonly config: CollectionConfig<TFields, TAuthFieldKeys>;
   /**
    * Type helper — use `typeof collection._docType` to get the
    * inferred document shape for this collection.

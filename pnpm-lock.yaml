@@ -6,6 +6,15 @@ settings:
 
 catalogs:
   default:
+    '@convex-dev/react-query':
+      specifier: ^0.1.0
+      version: 0.1.0
+    '@tanstack/react-query':
+      specifier: ^5.90.17
+      version: 5.90.21
+    '@tanstack/react-table':
+      specifier: 8.21.3
+      version: 8.21.3
     '@types/react':
       specifier: ^19.2.0
       version: 19.2.14
@@ -66,7 +75,7 @@ importers:
         specifier: ^0.10.10
         version: 0.10.11(b3fb5929fac71d5bc0a4c7e2f26e6314)
       '@convex-dev/react-query':
-        specifier: ^0.1.0
+        specifier: 'catalog:'
         version: 0.1.0(@tanstack/react-query@5.90.21(react@19.2.4))(convex@1.32.0(react@19.2.4))
       '@daveyplate/better-auth-ui':
         specifier: ^3.3.15
@@ -78,7 +87,7 @@ importers:
         specifier: ^1.27.7
         version: 1.28.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@tanstack/react-query':
-        specifier: ^5.90.17
+        specifier: 'catalog:'
         version: 5.90.21(react@19.2.4)
       '@vexcms/admin-next':
         specifier: workspace:*
@@ -195,13 +204,25 @@ importers:
 
   packages/admin-next:
     dependencies:
+      '@convex-dev/react-query':
+        specifier: 'catalog:'
+        version: 0.1.0(@tanstack/react-query@5.90.21(react@19.2.4))(convex@1.32.0(react@19.2.4))
+      '@tanstack/react-query':
+        specifier: 'catalog:'
+        version: 5.90.21(react@19.2.4)
       '@vexcms/core':
         specifier: workspace:*
         version: link:../core
       '@vexcms/ui':
         specifier: workspace:*
         version: link:../ui
+      convex:
+        specifier: 'catalog:'
+        version: 1.32.0(react@19.2.4)
     devDependencies:
+      '@tanstack/react-table':
+        specifier: 'catalog:'
+        version: 8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.14
@@ -275,6 +296,9 @@ importers:
 
   packages/core:
     devDependencies:
+      '@tanstack/react-table':
+        specifier: 'catalog:'
+        version: 8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@vexcms/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
@@ -298,6 +322,9 @@ importers:
       '@base-ui/react':
         specifier: 1.2.0
         version: 1.2.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@tanstack/react-table':
+        specifier: 'catalog:'
+        version: 8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@vexcms/core':
         specifier: workspace:*
         version: link:../core
@@ -2573,11 +2600,22 @@ packages:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
+  '@tanstack/react-table@8.21.3':
+    resolution: {integrity: sha512-5nNMTSETP4ykGegmVkhjcS8tTLW6Vl4axfEGQN3v0zdHYbK4UfoqfPChclTrJ4EoK9QynqAu9oUf8VEmrpZ5Ww==}
+    engines: {node: '>=12'}
+    peerDependencies:
+      react: '>=16.8'
+      react-dom: '>=16.8'
+
   '@tanstack/store@0.6.0':
     resolution: {integrity: sha512-+m2OBglsjXcLmmKOX6/9v8BDOCtyxhMmZLsRUDswOOSdIIR9mvv6i0XNKsmTh3AlYU8c1mRcodC8/Vyf+69VlQ==}
 
   '@tanstack/store@0.8.1':
     resolution: {integrity: sha512-PtOisLjUZPz5VyPRSCGjNOlwTvabdTBQ2K80DpVL1chGVr35WRxfeavAPdNq6pm/t7F8GhoR2qtmkkqtCEtHYw==}
+
+  '@tanstack/table-core@8.21.3':
+    resolution: {integrity: sha512-ldZXEhOBb8Is7xLs01fR3YEc3DERiz5silj8tnGkFZytt1abEvl/GhUmCE0PMLaMPTa3Jk4HbKmRlHmu+gCftg==}
+    engines: {node: '>=12'}
 
   '@triplit/client@1.0.50':
     resolution: {integrity: sha512-3vjXTSdDQ3fzLDrewCK7elkAQc7CiDg0eZEOZInQbVMFRiakdieO5C2voSnNjSepIYHxDxFSBllgg32QsNpL9Q==}
@@ -8193,9 +8231,17 @@ snapshots:
       react-dom: 19.2.4(react@19.2.4)
       use-sync-external-store: 1.6.0(react@19.2.4)
 
+  '@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      '@tanstack/table-core': 8.21.3
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+
   '@tanstack/store@0.6.0': {}
 
   '@tanstack/store@0.8.1': {}
+
+  '@tanstack/table-core@8.21.3': {}
 
   '@triplit/client@1.0.50(typescript@5.9.3)':
     dependencies:

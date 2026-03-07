@@ -77,6 +77,27 @@ export interface BaseFieldMeta {
    * ```
    */
   index?: string;
+  /**
+   * Create a full-text search index on this field.
+   * The field this is defined on becomes the `searchField`.
+   *
+   * @example
+   * ```ts
+   * title: text({
+   *   searchIndex: { name: "search_title", filterFields: ["status", "author"] },
+   * })
+   * // Generates: .searchIndex("search_title", { searchField: "title", filterFields: ["status", "author"] })
+   * ```
+   */
+  searchIndex?: {
+    /** Search index name (must be unique within the collection). */
+    name: string;
+    /**
+     * Fields to filter search results by.
+     * String array — validated at runtime against collection field names.
+     */
+    filterFields: string[];
+  };
 }
 
 /**
@@ -107,6 +128,27 @@ export interface BaseFieldOptions {
    * ```
    */
   index?: string;
+  /**
+   * Create a full-text search index on this field.
+   * The field this is defined on becomes the `searchField`.
+   *
+   * @example
+   * ```ts
+   * title: text({
+   *   searchIndex: { name: "search_title", filterFields: ["status", "author"] },
+   * })
+   * // Generates: .searchIndex("search_title", { searchField: "title", filterFields: ["status", "author"] })
+   * ```
+   */
+  searchIndex?: {
+    /** Search index name (must be unique within the collection). */
+    name: string;
+    /**
+     * Fields to filter search results by.
+     * String array — validated at runtime against collection field names.
+     */
+    filterFields: string[];
+  };
 }
 
 /** Text field metadata. */
