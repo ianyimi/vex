@@ -1,4 +1,4 @@
-import { VexCollection } from "./collections";
+import { AnyVexCollection } from "./collections";
 import { VexGlobal } from "./globals";
 import type { VexAuthAdapter } from "./auth";
 import { AdminConfig, AdminConfigInput } from "./admin";
@@ -20,7 +20,7 @@ export interface VexConfig {
   /** Base URL path for the admin panel */
   basePath: string;
   /** Array of collection definitions */
-  collections: VexCollection[];
+  collections: AnyVexCollection[];
   /** Array of global definitions */
   globals: VexGlobal[];
   /** Admin panel configuration */
@@ -51,7 +51,7 @@ export interface VexConfigInput {
    *
    * Default: []
    */
-  collections?: VexCollection<any>[];
+  collections?: AnyVexCollection[];
   /**
    * Array of global definitions created with `defineCollection`.
    *

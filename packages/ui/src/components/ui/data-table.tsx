@@ -10,7 +10,6 @@ import {
 } from "@tanstack/react-table";
 
 import {
-  Table,
   TableBody,
   TableCell,
   TableHead,
@@ -18,6 +17,7 @@ import {
   TableRow,
 } from "./table";
 import { cn } from "../../styles/utils";
+import { Pagination, PageSizeSelector } from "./pagination";
 
 import React from "react";
 
@@ -63,8 +63,15 @@ interface DataTableProps<TData> {
   pageIndex?: number;
   /** Callback fired when the page index changes */
   onPageChange?: (pageIndex: number) => void;
+  /** Callback fired when the page size changes */
+  onPageSizeChange?: (pageSize: number) => void;
   /** Total document count from the server (enables accurate page count) */
   totalCount?: number;
+  /**
+   * Custom link component for client-side navigation (e.g., Next.js Link).
+   * Falls back to a plain <a> tag if not provided.
+   */
+  linkComponent?: React.ComponentType<{ href: string; className?: string; children: React.ReactNode }>;
 }
 
 function DataTable<TData extends Record<string, unknown>>({
@@ -77,7 +84,9 @@ function DataTable<TData extends Record<string, unknown>>({
   pageSize = 10,
   pageIndex: controlledPageIndex,
   onPageChange,
+  onPageSizeChange,
   totalCount,
+  linkComponent: LinkComponent,
 }: DataTableProps<TData>) {
   const pagination: PaginationState = {
     pageIndex: controlledPageIndex ?? 0,
@@ -105,24 +114,11 @@ function DataTable<TData extends Record<string, unknown>>({
       : table.getPageCount();
   const currentPage = pagination.pageIndex + 1;
 
-  const handlePreviousPage = () => {
-    table.previousPage();
-  };
-
-  const handleNextPage = () => {
-    table.nextPage();
-  };
-
-  const isNextDisabled =
-    totalCount != null
-      ? currentPage >= totalPageCount
-      : !table.getCanNextPage() && !canLoadMore;
-
   return (
-    <div data-slot="data-table" className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
+    <div data-slot="data-table" className="flex flex-col gap-4 min-h-0">
+      <div className="rounded-md border min-h-0 flex-1 overflow-auto">
+        <table className="w-full caption-bottom text-sm table-fixed">
+          <TableHeader className="sticky top-0 z-10 bg-background">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
@@ -156,15 +152,17 @@ function DataTable<TData extends Record<string, unknown>>({
                     if (isTitle && basePath && collectionSlug) {
                       const docId = row.original._id as string;
                       const href = `${basePath}/${collectionSlug}/${docId}`;
+                      const linkClassName = "font-medium text-primary underline-offset-4 hover:underline truncate block";
+                      const Link = LinkComponent ?? "a";
                       return (
                         <TableCell key={cell.id}>
                           <AlignWrapper align={align}>
-                            <a
+                            <Link
                               href={href}
-                              className="font-medium text-primary underline-offset-4 hover:underline"
+                              className={linkClassName}
                             >
                               {cellValue}
-                            </a>
+                            </Link>
                           </AlignWrapper>
                         </TableCell>
                       );
@@ -173,7 +171,9 @@ function DataTable<TData extends Record<string, unknown>>({
                     return (
                       <TableCell key={cell.id}>
                         <AlignWrapper align={align}>
-                          {cellValue}
+                          <span className="truncate block">
+                            {cellValue}
+                          </span>
                         </AlignWrapper>
                       </TableCell>
                     );
@@ -191,31 +191,25 @@ function DataTable<TData extends Record<string, unknown>>({
               </TableRow>
             )}
           </TableBody>
-        </Table>
+        </table>
       </div>
 
       {data.length > 0 && (
-        <div className="flex items-center justify-between px-2">
-          <p className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPageCount}
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-              onClick={handlePreviousPage}
-              disabled={!table.getCanPreviousPage()}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-              onClick={handleNextPage}
-              disabled={isNextDisabled}
-            >
-              Next
-            </button>
+        <div className="flex items-center px-2 shrink-0">
+          <div className="flex-1" />
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPageCount}
+            onPageChange={(zeroIndexed) => onPageChange?.(zeroIndexed)}
+            canLoadMore={canLoadMore}
+          />
+          <div className="flex-1 flex justify-end">
+            {onPageSizeChange && (
+              <PageSizeSelector
+                pageSize={pageSize}
+                onPageSizeChange={onPageSizeChange}
+              />
+            )}
           </div>
         </div>
       )}

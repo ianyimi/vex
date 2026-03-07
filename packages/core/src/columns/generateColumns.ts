@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { VexAuthAdapter, VexCollection, VexField } from "../types";
+import type { VexAuthAdapter, AnyVexCollection, VexField } from "../types";
 import { textColumnDef } from "../fields/text/columnDef";
 import { numberColumnDef } from "../fields/number/columnDef";
 import { checkboxColumnDef } from "../fields/checkbox/columnDef";
@@ -20,7 +20,7 @@ import { toTitleCase } from "../utils";
  * @returns Array of ColumnDef objects for use with @tanstack/react-table
  */
 export function generateColumns(props: {
-  collection: VexCollection;
+  collection: AnyVexCollection;
   auth?: VexAuthAdapter;
 }): ColumnDef<Record<string, unknown>>[] {
   const { collection, auth } = props;
@@ -35,7 +35,7 @@ export function generateColumns(props: {
   const authFields: Record<string, VexField> = {};
   if (auth) {
     const authCollection = auth.collections.find(
-      (c: VexCollection) => c.slug === collection.slug,
+      (c: AnyVexCollection) => c.slug === collection.slug,
     );
     if (authCollection) {
       for (const [k, v] of Object.entries(authCollection.config.fields) as [

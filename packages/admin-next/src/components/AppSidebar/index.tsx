@@ -46,16 +46,23 @@ export function AppSidebar({
   ...props
 }: { config: VexConfig; user?: NavUserData } & ComponentProps<typeof Sidebar>) {
   const nav = useMemo(() => {
-    const collections: CollectionNavItem[] = config.collections
+    // Combine user collections + auth-only collections (no duplicates)
+    const userSlugs = new Set(config.collections.map((c) => c.slug));
+    const allCollections = [
+      ...config.collections,
+      ...(config.auth?.collections.filter((c) => !userSlugs.has(c.slug)) ?? []),
+    ];
+
+    const collections: CollectionNavItem[] = allCollections
       .filter((c) => !c.config.admin?.group)
       .map((c) => ({
-        title: (c.config.admin?.useAsTitle as string) ?? c.slug,
+        title: c.config.labels?.plural ?? c.slug,
         url: `${config.basePath}/${c.slug}`,
         slug: c.slug,
       }));
 
     const collectionGroups: CollectionNavGroup[] = [];
-    config.collections.forEach((c) => {
+    allCollections.forEach((c) => {
       if (!c.config.admin?.group) return;
       const index = collectionGroups.findIndex(
         (cg) => cg.title === c.config.admin!.group,
@@ -65,7 +72,7 @@ export function AppSidebar({
           title: c.config.admin!.group,
           items: [
             {
-              title: c.slug,
+              title: c.config.labels?.plural ?? c.slug,
               url: `${config.basePath}/${c.slug}`,
               slug: c.slug,
             },
@@ -73,7 +80,7 @@ export function AppSidebar({
         });
       } else {
         collectionGroups[index].items.push({
-          title: c.slug,
+          title: c.config.labels?.plural ?? c.slug,
           url: `${config.basePath}/${c.slug}`,
           slug: c.slug,
         });
@@ -120,7 +127,7 @@ export function AppSidebar({
       globals,
       globalGroups,
     };
-  }, [config.collections]);
+  }, [config.collections, config.auth?.collections]);
 
   return (
     <Sidebar collapsible="icon" {...props}>

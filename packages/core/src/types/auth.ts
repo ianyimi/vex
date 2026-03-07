@@ -1,4 +1,4 @@
-import type { VexCollection } from "./collections";
+import type { AnyVexCollection } from "./collections";
 
 // =============================================================================
 // AUTH INDEX TYPES
@@ -68,7 +68,7 @@ export interface VexAuthAdapter<
    * Core's schema generator uses these as the base, then merges any
    * user-defined collection configs on top for admin UI customization.
    */
-  collections: VexCollection[];
+  collections: AnyVexCollection[];
 
   /**
    * Phantom property — never set at runtime.

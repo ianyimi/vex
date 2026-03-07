@@ -10,7 +10,7 @@ import type { VexAuthAdapter } from "./auth";
  * Controls how the collection appears and behaves in the admin panel.
  */
 export interface CollectionAdminConfig<
-  TFields extends Record<string, VexField>,
+  TFields extends Record<string, VexField> = Record<string, VexField>,
   TAuthFieldKeys extends string = never,
 > {
   /**
@@ -62,6 +62,7 @@ export interface CollectionAdminConfig<
  */
 export interface IndexConfig<
   TFields extends Record<string, VexField> = Record<string, VexField>,
+  TAuthFieldKeys extends string = never,
 > {
   /**
    * Index name (must be unique within the collection).
@@ -71,9 +72,10 @@ export interface IndexConfig<
   /**
    * Field names to include in the index. Order matters for compound indexes.
    * Each field name must be a key in the collection's `fields` record.
+   * When `auth` is provided, auth field keys are also accepted.
    * Type-checked at compile time — invalid field names produce a type error.
    */
-  fields: (keyof TFields & string)[];
+  fields: (keyof TFields & string | TAuthFieldKeys)[];
 }
 
 /**
@@ -98,6 +100,7 @@ export interface IndexConfig<
  */
 export interface SearchIndexConfig<
   TFields extends Record<string, VexField> = Record<string, VexField>,
+  TAuthFieldKeys extends string = never,
 > {
   /**
    * Search index name (must be unique within the collection).
@@ -107,13 +110,15 @@ export interface SearchIndexConfig<
   /**
    * The field to perform full-text search on.
    * Must be a text (string) field in the collection.
+   * When `auth` is provided, auth field keys are also accepted.
    */
-  searchField: keyof TFields & string;
+  searchField: keyof TFields & string | TAuthFieldKeys;
   /**
    * Optional fields to filter search results by.
    * Each field name must be a key in the collection's `fields` record.
+   * When `auth` is provided, auth field keys are also accepted.
    */
-  filterFields?: (keyof TFields & string)[];
+  filterFields?: (keyof TFields & string | TAuthFieldKeys)[];
 }
 
 /**
@@ -179,7 +184,7 @@ export interface CollectionConfig<
    * })
    *
    */
-  indexes?: IndexConfig<TFields>[];
+  indexes?: IndexConfig<TFields, TAuthFieldKeys>[];
   /**
    * Search indexes for full-text search on this collection.
    * Each search index targets a single text field with optional filter fields.
@@ -189,12 +194,16 @@ export interface CollectionConfig<
    *   { name: "search_title", searchField: "title", filterFields: ["status"] },
    * ]
    */
-  searchIndexes?: SearchIndexConfig<TFields>[];
+  searchIndexes?: SearchIndexConfig<TFields, TAuthFieldKeys>[];
 }
 
 /**
  * A defined collection with inferred document type.
  * Created by `defineCollection()`.
+ *
+ * The generic parameters provide type-safe autocomplete at `defineCollection`
+ * call sites. When stored in arrays (e.g., `VexConfig.collections`), use
+ * `AnyVexCollection` to avoid invariance issues with heterogeneous collections.
  */
 export interface VexCollection<
   TFields extends Record<string, VexField> = Record<string, VexField>,
@@ -210,3 +219,13 @@ export interface VexCollection<
    */
   readonly _docType: InferFieldsType<TFields>;
 }
+
+/**
+ * A VexCollection with erased generics, suitable for heterogeneous arrays.
+ * Use this when you need to store multiple collections with different field
+ * types in the same array (e.g., `VexConfig.collections`).
+ *
+ * Individual collection constants retain their full generic types for
+ * type-safe `_docType` inference and autocomplete at `defineCollection`.
+ */
+export type AnyVexCollection = VexCollection<any, any>;

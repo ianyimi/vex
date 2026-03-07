@@ -1,7 +1,6 @@
 import { VexFieldValidationError } from "../errors";
 import type {
-  VexCollection,
-  IndexConfig,
+  AnyVexCollection,
   VexField,
   BaseFieldMeta,
   ResolvedIndex,
@@ -35,13 +34,11 @@ import type {
  * - admin.useAsTitle field has no index: auto-create { name: "by_<fieldName>", fields: ["<fieldName>"] }
  * - admin.useAsTitle is undefined: no auto-index generated
  */
-export function collectIndexes<
-  TFields extends Record<string, VexField>,
->(props: { collection: VexCollection<TFields> }): ResolvedIndex[] {
+export function collectIndexes(props: { collection: AnyVexCollection }): ResolvedIndex[] {
   const { collection } = props;
   const fieldIndexes = new Map<string, ResolvedIndex>();
 
-  for (const [fieldKey, field] of Object.entries(collection.config.fields)) {
+  for (const [fieldKey, field] of Object.entries(collection.config.fields) as [string, VexField][]) {
     const indexName = (field._meta as BaseFieldMeta).index;
     if (indexName) {
       if (fieldIndexes.has(indexName)) {

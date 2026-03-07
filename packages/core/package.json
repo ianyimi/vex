@@ -21,6 +21,9 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
+  "dependencies": {
+    "zod": "^3.24.0"
+  },
   "peerDependencies": {
     "convex": "catalog:",
     "react": ">=18.0.0",

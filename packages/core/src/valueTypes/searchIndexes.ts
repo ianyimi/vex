@@ -1,10 +1,11 @@
 import { VexFieldValidationError } from "../errors";
 import type {
-  VexCollection,
+  AnyVexCollection,
   VexField,
   BaseFieldMeta,
   ResolvedSearchIndex,
 } from "../types";
+
 
 /**
  * Collects all search indexes for a collection from three sources:
@@ -35,13 +36,11 @@ import type {
  * - admin.useAsTitle is undefined: no auto search index generated
  * - searchField must be the field key the searchIndex is defined on (for per-field)
  */
-export function collectSearchIndexes<
-  TFields extends Record<string, VexField>,
->(props: { collection: VexCollection<TFields> }): ResolvedSearchIndex[] {
+export function collectSearchIndexes(props: { collection: AnyVexCollection }): ResolvedSearchIndex[] {
   const { collection } = props;
   const searchIndexes = new Map<string, ResolvedSearchIndex>();
 
-  for (const [fieldKey, field] of Object.entries(collection.config.fields)) {
+  for (const [fieldKey, field] of Object.entries(collection.config.fields) as [string, VexField][]) {
     const searchIndex = (field._meta as BaseFieldMeta).searchIndex;
     if (searchIndex && searchIndex.name) {
       if (searchIndexes.has(searchIndex.name)) {

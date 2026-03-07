@@ -20,6 +20,12 @@ export default defineConfig({
     "tailwind-merge",
     // Workspace packages
     "@vexcms/core",
+    // Form
+    "@tanstack/react-form",
+    "zod",
+    // Date picker
+    "react-day-picker",
+    "date-fns",
   ],
   banner: {
     js: '"use client";',

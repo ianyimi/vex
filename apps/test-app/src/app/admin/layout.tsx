@@ -12,7 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       user={user ? { name: user.name, avatar: user.image, email: user.email } : undefined}
     >
       <SidebarTrigger />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex flex-col flex-1 overflow-hidden">{children}</main>
     </Layout>
   )
 }

@@ -18,6 +18,9 @@ export const articles = defineCollection(TABLE_SLUG_ARTICLES, {
       required: true,
     }),
     index: number({
+      admin: {
+        cellAlignment: "center",
+      },
       defaultValue: 0,
       label: "Index",
     }),

@@ -81,7 +81,7 @@ export function generateVexSchema(props: { config: VexConfig }): string {
     } else {
       for (const [fieldName, field] of Object.entries(
         collection.config.fields,
-      )) {
+      ) as [string, VexField][]) {
         fields.push({
           name: fieldName,
           valueType: fieldToValueType({

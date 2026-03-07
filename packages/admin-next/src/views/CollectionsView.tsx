@@ -1,28 +1,60 @@
 "use client";
 
 import { useState, useRef, useMemo, useEffect } from "react";
-import type { VexCollection, VexConfig } from "@vexcms/core";
+import type { AnyVexCollection, VexConfig } from "@vexcms/core";
 import { generateColumns } from "@vexcms/core";
 import { DataTable, Input } from "@vexcms/ui";
+import Link from "next/link";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useConvexPaginatedQuery, convexQuery } from "@convex-dev/react-query";
 import { anyApi } from "convex/server";
+import { useQueryState, parseAsIndex, parseAsStringLiteral } from "nuqs";
 import { usePaginationLoader } from "../hooks/usePaginationLoader";
 
-const DEFAULT_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+const PAGE_SIZE_STRINGS = PAGE_SIZE_OPTIONS.map(String) as unknown as readonly [
+  "10",
+  "25",
+  "50",
+  "100",
+];
+const STORAGE_KEY = "vex-page-size";
+
+function getStoredPageSize(): string {
+  if (typeof window === "undefined") return "10";
+  return localStorage.getItem(STORAGE_KEY) ?? "10";
+}
 
 export default function CollectionsView({
   config,
   collection,
 }: {
   config: VexConfig;
-  collection: VexCollection;
+  collection: AnyVexCollection;
 }) {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [pageIndex, setPageIndex] = useQueryState(
+    "page",
+    parseAsIndex.withDefault(0),
+  );
+  const [searchTerm, setSearchTerm] = useQueryState("q", { defaultValue: "" });
+  const [pageSizeStr, setPageSizeStr] = useQueryState(
+    "size",
+    parseAsStringLiteral(PAGE_SIZE_STRINGS).withDefault(
+      getStoredPageSize() as (typeof PAGE_SIZE_STRINGS)[number],
+    ),
+  );
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [pageIndex, setPageIndex] = useState(0);
-  const pageSize = DEFAULT_PAGE_SIZE;
+
+  const pageSize = Number(pageSizeStr);
   const initialFetchSize = Math.max(50, pageSize * 5);
+
+  const handlePageSizeChange = (newSize: number) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, String(newSize));
+    }
+    setPageSizeStr(String(newSize) as (typeof PAGE_SIZE_STRINGS)[number]);
+    setPageIndex(0);
+  };
 
   // Debounce search input
   useEffect(() => {
@@ -30,7 +62,10 @@ export default function CollectionsView({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const columns = useMemo(() => generateColumns({ collection, auth: config.auth }), [collection, config.auth]);
+  const columns = useMemo(
+    () => generateColumns({ collection, auth: config.auth }),
+    [collection, config.auth],
+  );
 
   const useAsTitle = collection.config.admin?.useAsTitle as string | undefined;
   const searchAvailable = !!useAsTitle;
@@ -73,7 +108,8 @@ export default function CollectionsView({
   const lastSearchResults = useRef<Record<string, unknown>[]>([]);
 
   const documents = isSearching
-    ? (searchQuery.data as Record<string, unknown>[] ?? lastSearchResults.current)
+    ? ((searchQuery.data as Record<string, unknown>[]) ??
+      lastSearchResults.current)
     : (listResults ?? []);
 
   if (isSearching && searchQuery.data) {
@@ -97,13 +133,11 @@ export default function CollectionsView({
   const searchLoading = isSearching && searchQuery.isFetching;
 
   // Display count: use totalCount for list mode, documents.length for search
-  const displayCount = isSearching
-    ? documents.length
-    : totalCount;
+  const displayCount = isSearching ? documents.length : totalCount;
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="flex flex-col p-6 h-[calc(100vh-theme(spacing.16))] min-h-0">
+      <div className="flex items-center justify-between mb-6 shrink-0">
         <div>
           <h1 className="text-2xl font-bold">
             {collection.config.labels?.plural ?? collection.slug}
@@ -121,7 +155,7 @@ export default function CollectionsView({
       </div>
 
       {searchAvailable && (
-        <div className="mb-4 max-w-sm">
+        <div className="mb-4 max-w-sm shrink-0">
           <Input
             placeholder={`Search by ${useAsTitle}...`}
             value={searchTerm}
@@ -139,12 +173,16 @@ export default function CollectionsView({
         data={documents as Record<string, unknown>[]}
         basePath={config.basePath}
         collectionSlug={collection.slug}
-        emptyMessage={isSearching ? "No matching documents." : "No documents yet."}
+        emptyMessage={
+          isSearching ? "No matching documents." : "No documents yet."
+        }
         canLoadMore={canLoadMore}
         pageSize={pageSize}
         pageIndex={pageIndex}
         onPageChange={setPageIndex}
+        onPageSizeChange={handlePageSizeChange}
         totalCount={isSearching ? undefined : totalCount}
+        linkComponent={Link}
       />
     </div>
   );

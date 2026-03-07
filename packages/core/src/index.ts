@@ -3,7 +3,9 @@ export { defineCollection } from "./config/defineCollection";
 export { generateVexSchema } from "./valueTypes/generate";
 export { extendTable } from "./schema/extendTable";
 export { generateColumns } from "./columns";
+export { mergeAuthCollectionWithUserCollection } from "./valueTypes/merge";
 export { toTitleCase } from "./utils";
+export { generateFormSchema, fieldMetaToZod } from "./formSchema/generateFormSchema";
 
 // Fields
 export { text } from "./fields/text";
@@ -43,8 +45,11 @@ export type {
   ArrayFieldMeta,
   InferFieldType,
   InferFieldsType,
+  // Field admin config
+  FieldAdminConfig,
   // Collection types
   VexCollection,
+  AnyVexCollection,
   CollectionConfig,
   CollectionAdminConfig,
   // Global types
@@ -78,6 +83,8 @@ export type {
   SearchIndexConfig,
   ResolvedSearchIndex,
 } from "./types";
+
+export type { MergedCollectionResult } from "./valueTypes/merge";
 
 export type {
   SchemaFieldInfo,

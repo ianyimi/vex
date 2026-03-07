@@ -1,5 +1,5 @@
 import type { VexField } from "../types";
-import type { VexCollection } from "../types";
+import type { AnyVexCollection } from "../types";
 import type { ResolvedIndex, ResolvedSearchIndex } from "../types";
 
 /**
@@ -46,8 +46,8 @@ export interface MergedCollectionResult {
  * @returns Merged collection result with combined fields and source tracking
  */
 export function mergeAuthCollectionWithUserCollection(props: {
-  authCollection: VexCollection<any>;
-  userCollection: VexCollection<any>;
+  authCollection: AnyVexCollection;
+  userCollection: AnyVexCollection;
 }): MergedCollectionResult {
   const { authCollection, userCollection } = props;
   const fields: Record<string, VexField> = {};
@@ -64,17 +64,18 @@ export function mergeAuthCollectionWithUserCollection(props: {
   for (const fieldKey of authFieldKeys) {
     if (userFieldKeys.includes(fieldKey)) {
       overlapping.push(fieldKey);
-      // Auth field wins for schema, but preserve user's admin config
+      // Auth field wins for schema, but user field wins for rendering.
+      // Use user's field as base so type, label, admin, etc. are preserved,
+      // then layer auth's schema-relevant props (required, defaultValue).
       const authField = authFields[fieldKey];
       const userField = userFields[fieldKey];
       fields[fieldKey] = {
-        ...authField,
+        ...userField,
         _meta: {
-          ...authField._meta,
-          // Preserve user's admin-facing metadata
-          ...(userField._meta.label !== undefined && { label: userField._meta.label }),
-          ...(userField._meta.description !== undefined && { description: userField._meta.description }),
-          ...(userField._meta.admin !== undefined && { admin: userField._meta.admin }),
+          ...userField._meta,
+          // Auth controls schema-relevant properties
+          required: authField._meta.required,
+          ...(authField._meta.defaultValue !== undefined && { defaultValue: authField._meta.defaultValue }),
         },
       };
     } else {
