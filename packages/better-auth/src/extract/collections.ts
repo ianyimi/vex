@@ -3,6 +3,7 @@ import {
   text,
   number,
   checkbox,
+  select,
   date,
   json,
   array,
@@ -97,10 +98,14 @@ function convertToVexFields(
     }
 
     if (Array.isArray(attribute.type)) {
-      // Enum array → collapse to text (stored as string)
-      vexFields[fieldName] = text({
+      // Enum array → select field with the enum values as options
+      vexFields[fieldName] = select({
+        options: attribute.type.map((val: string) => ({
+          label: val.charAt(0).toUpperCase() + val.slice(1),
+          value: val,
+        })),
         required,
-        ...(required && { defaultValue: "" }),
+        ...(required && { defaultValue: attribute.type[0] }),
         admin,
       });
       continue;

@@ -21,11 +21,14 @@ export function imageUrlColumnDef(props: {
     cell: (info) => {
       const value = info.getValue();
       if (!value || typeof value !== "string") return "";
+      const size = props.meta.width ?? 28;
       return (
         <img
           src={value}
-          width={props.meta.width ?? 32}
-          height={props.meta.height ?? 32}
+          width={size}
+          height={props.meta.height ?? size}
+          className="rounded-full object-cover"
+          style={{ width: size, height: props.meta.height ?? size }}
         />
       );
     },

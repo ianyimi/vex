@@ -28,6 +28,7 @@ export const users = defineCollection(TABLE_SLUG_USERS, {
     }),
     role: select({
       defaultValue: "author",
+      hasMany: true,
       label: "Role",
       options: [
         { label: "Admin", value: "admin" },

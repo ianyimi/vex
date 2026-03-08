@@ -9,9 +9,9 @@ export function AdminLayout({
   children,
 }: { config: VexConfig; user?: NavUserData } & ComponentPropsWithRef<"div">) {
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-svh overflow-hidden">
       <AppSidebar config={config} user={user} />
-      <SidebarInset>{children}</SidebarInset>
+      <SidebarInset className="overflow-y-hidden">{children}</SidebarInset>
     </SidebarProvider>
   );
 }

@@ -2,22 +2,22 @@
 
 import type { SelectFieldMeta } from "@vexcms/core";
 import { toTitleCase } from "@vexcms/core";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "../../ui/select";
 import { Label } from "../../ui/label";
+import {
+  MultiSelect,
+  MultiSelectTrigger,
+  MultiSelectValue,
+  MultiSelectContent,
+  MultiSelectItem,
+} from "../../ui/multi-select";
 
-interface SelectFieldProps {
+interface MultiSelectFieldProps {
   field: any;
   meta: SelectFieldMeta;
   name: string;
 }
 
-function SelectField({ field, meta, name }: SelectFieldProps) {
+function MultiSelectField({ field, meta, name }: MultiSelectFieldProps) {
   const label = meta.label ?? toTitleCase(name);
   const description = meta.admin?.description ?? meta.description;
   const errors: unknown[] = field.state.meta.errors ?? [];
@@ -28,23 +28,21 @@ function SelectField({ field, meta, name }: SelectFieldProps) {
         {label}
         {meta.required && <span className="text-destructive ml-1">*</span>}
       </Label>
-      <Select
-        value={field.state.value ?? null}
-        onValueChange={(val) => field.handleChange(val)}
-        disabled={meta.admin?.readOnly}
-        items={meta.options}
+      <MultiSelect
+        values={Array.isArray(field.state.value) ? field.state.value : []}
+        onValuesChange={(vals) => field.handleChange(vals)}
       >
-        <SelectTrigger id={name}>
-          <SelectValue placeholder={!meta.required ? "Select..." : undefined} />
-        </SelectTrigger>
-        <SelectContent>
+        <MultiSelectTrigger id={name} disabled={meta.admin?.readOnly}>
+          <MultiSelectValue placeholder="Select..." />
+        </MultiSelectTrigger>
+        <MultiSelectContent>
           {meta.options.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
+            <MultiSelectItem key={opt.value} value={opt.value}>
               {opt.label}
-            </SelectItem>
+            </MultiSelectItem>
           ))}
-        </SelectContent>
-      </Select>
+        </MultiSelectContent>
+      </MultiSelect>
       {description && (
         <p className="text-xs text-muted-foreground">{description}</p>
       )}
@@ -52,7 +50,9 @@ function SelectField({ field, meta, name }: SelectFieldProps) {
         <div>
           {errors.map((error: unknown, i: number) => (
             <p key={i} className="text-xs text-destructive">
-              {typeof error === "string" ? error : (error as any)?.message ?? String(error)}
+              {typeof error === "string"
+                ? error
+                : (error as any)?.message ?? String(error)}
             </p>
           ))}
         </div>
@@ -61,4 +61,4 @@ function SelectField({ field, meta, name }: SelectFieldProps) {
   );
 }
 
-export { SelectField };
+export { MultiSelectField };

@@ -71,7 +71,11 @@ interface DataTableProps<TData> {
    * Custom link component for client-side navigation (e.g., Next.js Link).
    * Falls back to a plain <a> tag if not provided.
    */
-  linkComponent?: React.ComponentType<{ href: string; className?: string; children: React.ReactNode }>;
+  linkComponent?: React.ComponentType<{
+    href: string;
+    className?: string;
+    children: React.ReactNode;
+  }>;
 }
 
 function DataTable<TData extends Record<string, unknown>>({
@@ -103,7 +107,8 @@ function DataTable<TData extends Record<string, unknown>>({
       pagination,
     },
     onPaginationChange: (updater) => {
-      const next = typeof updater === "function" ? updater(pagination) : updater;
+      const next =
+        typeof updater === "function" ? updater(pagination) : updater;
       onPageChange?.(next.pageIndex);
     },
   });
@@ -118,13 +123,15 @@ function DataTable<TData extends Record<string, unknown>>({
     <div data-slot="data-table" className="flex flex-col gap-4 min-h-0">
       <div className="rounded-md border min-h-0 flex-1 overflow-auto">
         <table className="w-full caption-bottom text-sm table-fixed">
-          <TableHeader className="sticky top-0 z-10 bg-background">
+          <TableHeader className="sticky top-0 z-10 bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
                     {header.isPlaceholder ? null : (
-                      <AlignWrapper align={getAlign(header.column.columnDef.meta)}>
+                      <AlignWrapper
+                        align={getAlign(header.column.columnDef.meta)}
+                      >
                         {flexRender(
                           header.column.columnDef.header,
                           header.getContext(),
@@ -139,7 +146,7 @@ function DataTable<TData extends Record<string, unknown>>({
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow key={row.id} className="h-12">
                   {row.getVisibleCells().map((cell) => {
                     const meta = cell.column.columnDef.meta as any;
                     const isTitle = meta?.isTitle;
@@ -152,15 +159,13 @@ function DataTable<TData extends Record<string, unknown>>({
                     if (isTitle && basePath && collectionSlug) {
                       const docId = row.original._id as string;
                       const href = `${basePath}/${collectionSlug}/${docId}`;
-                      const linkClassName = "font-medium text-primary underline-offset-4 hover:underline truncate block";
+                      const linkClassName =
+                        "font-medium text-primary underline-offset-4 hover:underline truncate block";
                       const Link = LinkComponent ?? "a";
                       return (
                         <TableCell key={cell.id}>
                           <AlignWrapper align={align}>
-                            <Link
-                              href={href}
-                              className={linkClassName}
-                            >
+                            <Link href={href} className={linkClassName}>
                               {cellValue}
                             </Link>
                           </AlignWrapper>
@@ -171,9 +176,7 @@ function DataTable<TData extends Record<string, unknown>>({
                     return (
                       <TableCell key={cell.id}>
                         <AlignWrapper align={align}>
-                          <span className="truncate block">
-                            {cellValue}
-                          </span>
+                          <span className="truncate block">{cellValue}</span>
                         </AlignWrapper>
                       </TableCell>
                     );

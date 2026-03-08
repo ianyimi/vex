@@ -391,7 +391,7 @@ export interface JsonFieldMeta extends BaseFieldMeta {
  * json({ label: "Metadata" })
  * ```
  */
-export interface JsonFieldOptions extends BaseFieldOptions { }
+export interface JsonFieldOptions extends BaseFieldOptions {}
 
 /** Array field metadata. Wraps an inner field in `v.array()`. */
 export interface ArrayFieldMeta extends BaseFieldMeta {
@@ -474,6 +474,7 @@ export type VexField =
   | GenericVexField<number, NumberFieldMeta>
   | GenericVexField<boolean, CheckboxFieldMeta>
   | GenericVexField<string, SelectFieldMeta<string>>
+  | GenericVexField<string[], SelectFieldMeta<string>>
   | GenericVexField<number, DateFieldMeta>
   | GenericVexField<string, ImageUrlFieldMeta>
   | GenericVexField<string, RelationshipFieldMeta>
@@ -481,7 +482,8 @@ export type VexField =
   | GenericVexField<unknown[], ArrayFieldMeta>;
 
 /** Extract the TypeScript type from a GenericVexField. */
-export type InferFieldType<F> = F extends GenericVexField<infer T, any> ? T : never;
+export type InferFieldType<F> =
+  F extends GenericVexField<infer T, any> ? T : never;
 
 /** Extract types from a record of fields into a document shape. */
 export type InferFieldsType<F extends Record<string, VexField>> = {

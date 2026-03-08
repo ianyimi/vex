@@ -14,6 +14,8 @@ export * from "./label";
 export * from "./popover";
 export * from "./calendar";
 export * from "./date-picker";
+export * from "./select";
 export * from "./select-native";
 export * from "./checkbox-field";
 export * from "./pagination";
+export * from "./multi-select";

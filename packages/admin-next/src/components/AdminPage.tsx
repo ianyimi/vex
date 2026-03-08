@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import type { VexConfig, AnyVexCollection } from "@vexcms/core";
 import { mergeAuthCollectionWithUserCollection } from "@vexcms/core";
 import { DashboardView } from "../views/DashboardView";
@@ -63,7 +64,11 @@ export function AdminPage({ config, path = [] }: AdminPageProps) {
   }
 
   if (!documentID) {
-    return <CollectionsView config={config} collection={collection} />;
+    return (
+      <Suspense fallback={<div className="p-6 text-muted-foreground">Loading...</div>}>
+        <CollectionsView config={config} collection={collection} />
+      </Suspense>
+    );
   }
 
   return (

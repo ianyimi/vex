@@ -3,11 +3,22 @@
 import { useMemo, useState } from "react";
 import type { AnyVexCollection, VexConfig, VexField } from "@vexcms/core";
 import { generateFormSchema } from "@vexcms/core";
-import { AppForm, type FieldEntry } from "@vexcms/ui";
+import {
+  AppForm,
+  type FieldEntry,
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  Button,
+} from "@vexcms/ui";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { anyApi } from "convex/server";
+import Link from "next/link";
 
 export default function CollectionEditView({
   config,
@@ -26,7 +37,10 @@ export default function CollectionEditView({
     }),
   });
 
-  const document = documentQuery.data as Record<string, unknown> | null | undefined;
+  const document = documentQuery.data as
+    | Record<string, unknown>
+    | null
+    | undefined;
 
   // Set up the mutation via Convex's useMutation
   const updateDocument = useMutation(anyApi.vex.collections.updateDocument);
@@ -34,7 +48,10 @@ export default function CollectionEditView({
 
   // Generate Zod schema from collection fields
   const schema = useMemo(
-    () => generateFormSchema({ fields: collection.config.fields as Record<string, VexField> }),
+    () =>
+      generateFormSchema({
+        fields: collection.config.fields as Record<string, VexField>,
+      }),
     [collection],
   );
 
@@ -72,32 +89,70 @@ export default function CollectionEditView({
 
   const isLoading = documentQuery.isPending;
 
+  const useAsTitle = collection.config.admin?.useAsTitle as string | undefined;
+  const documentTitle =
+    useAsTitle && document
+      ? (document[useAsTitle] as string | undefined)
+      : undefined;
+  const pluralLabel = collection.config.labels?.plural ?? collection.slug;
+
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">
-          {collection.config.labels?.singular ?? collection.slug}
-        </h1>
-        <p className="text-sm text-muted-foreground">{documentID}</p>
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="shrink-0 border-b px-6 py-4">
+        <div className="flex justify-between items-center">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink render={<Link href={config.basePath} />}>
+                  Admin
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink
+                  render={
+                    <Link href={`${config.basePath}/${collection.slug}`} />
+                  }
+                >
+                  {pluralLabel}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{documentTitle || documentID}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+          <Button
+            type="submit"
+            form="collection-edit-form"
+            disabled={isSaving || fieldEntries.length === 0}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </div>
       </div>
 
-      {isLoading && <p className="text-muted-foreground">Loading...</p>}
+      <div className="flex-1 overflow-y-auto p-6">
+        {isLoading && <p className="text-muted-foreground">Loading...</p>}
 
-      {!isLoading && document == null && (
-        <p className="text-muted-foreground">Document not found.</p>
-      )}
+        {!isLoading && document == null && (
+          <p className="text-muted-foreground">Document not found.</p>
+        )}
 
-      {!isLoading && document != null && (
-        <div className="max-w-2xl" key={documentID}>
-          <AppForm
-            schema={schema}
-            fieldEntries={fieldEntries}
-            defaultValues={defaultValues}
-            onSubmit={handleSubmit}
-            isSaving={isSaving}
-          />
-        </div>
-      )}
+        {!isLoading && document != null && (
+          <div className="" key={documentID}>
+            <AppForm
+              formId="collection-edit-form"
+              schema={schema}
+              fieldEntries={fieldEntries}
+              defaultValues={defaultValues}
+              onSubmit={handleSubmit}
+              isSaving={isSaving}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

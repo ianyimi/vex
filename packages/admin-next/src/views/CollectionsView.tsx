@@ -3,7 +3,16 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import type { AnyVexCollection, VexConfig } from "@vexcms/core";
 import { generateColumns } from "@vexcms/core";
-import { DataTable, Input } from "@vexcms/ui";
+import {
+  DataTable,
+  Input,
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@vexcms/ui";
 import Link from "next/link";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useConvexPaginatedQuery, convexQuery } from "@convex-dev/react-query";
@@ -135,13 +144,27 @@ export default function CollectionsView({
   // Display count: use totalCount for list mode, documents.length for search
   const displayCount = isSearching ? documents.length : totalCount;
 
+  const pluralLabel = collection.config.labels?.plural ?? collection.slug;
+
   return (
     <div className="flex flex-col p-6 h-[calc(100vh-theme(spacing.16))] min-h-0">
+      <Breadcrumb className="mb-4 shrink-0">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink render={<Link href={config.basePath} />}>
+              Admin
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{pluralLabel}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
       <div className="flex items-center justify-between mb-6 shrink-0">
         <div>
-          <h1 className="text-2xl font-bold">
-            {collection.config.labels?.plural ?? collection.slug}
-          </h1>
+          <h1 className="text-2xl font-bold">{pluralLabel}</h1>
           <p className="text-sm text-muted-foreground">
             {isLoading
               ? "Loading..."
@@ -174,7 +197,9 @@ export default function CollectionsView({
         basePath={config.basePath}
         collectionSlug={collection.slug}
         emptyMessage={
-          isSearching ? "No matching documents." : "No documents yet."
+          isSearching
+            ? "No matching documents."
+            : `No ${collection.config.labels?.plural?.toLowerCase() ?? "documents"} yet.`
         }
         canLoadMore={canLoadMore}
         pageSize={pageSize}

@@ -6,7 +6,6 @@ import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 
 interface TextFieldProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- FieldApi generic is too complex to express here
   field: any;
   meta: TextFieldMeta;
   name: string;
@@ -26,7 +25,9 @@ function TextField({ field, meta, name }: TextFieldProps) {
       <Input
         id={name}
         value={field.state.value ?? ""}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.handleChange(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          field.handleChange(e.target.value)
+        }
         onBlur={field.handleBlur}
         placeholder={meta.admin?.placeholder}
         disabled={meta.admin?.readOnly}
@@ -39,7 +40,9 @@ function TextField({ field, meta, name }: TextFieldProps) {
         <div>
           {errors.map((error: unknown, i: number) => (
             <p key={i} className="text-xs text-destructive">
-              {typeof error === "string" ? error : (error as any)?.message ?? String(error)}
+              {typeof error === "string"
+                ? error
+                : ((error as any)?.message ?? String(error))}
             </p>
           ))}
         </div>

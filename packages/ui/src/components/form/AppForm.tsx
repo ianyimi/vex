@@ -3,7 +3,6 @@
 import { useForm } from "@tanstack/react-form";
 import type { ZodObject, ZodTypeAny } from "zod";
 import type { VexField } from "@vexcms/core";
-import { Button } from "../ui/button";
 import {
   TextField,
   NumberField,
@@ -11,6 +10,7 @@ import {
   SelectField,
   DateField,
   ImageUrlField,
+  MultiSelectField,
 } from "./fields";
 
 interface FieldEntry {
@@ -32,8 +32,8 @@ interface AppFormProps {
    * Return a promise — the form shows a loading state while it resolves.
    */
   onSubmit: (changedFields: Record<string, unknown>) => Promise<void>;
-  /** Whether the form is currently saving */
-  isSaving?: boolean;
+  /** Optional form ID so an external button can submit via form="id" */
+  formId?: string;
 }
 
 function AppForm({
@@ -41,7 +41,7 @@ function AppForm({
   fieldEntries,
   defaultValues,
   onSubmit,
-  isSaving,
+  formId,
 }: AppFormProps) {
   const form = useForm({
     defaultValues: defaultValues as Record<string, any>,
@@ -64,6 +64,7 @@ function AppForm({
 
   return (
     <form
+      id={formId}
       onSubmit={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -94,6 +95,15 @@ function AppForm({
                     />
                   );
                 case "select":
+                  if (meta.hasMany) {
+                    return (
+                      <MultiSelectField
+                        field={field}
+                        meta={meta}
+                        name={entry.name}
+                      />
+                    );
+                  }
                   return (
                     <SelectField field={field} meta={meta} name={entry.name} />
                   );
@@ -115,12 +125,6 @@ function AppForm({
             }}
           </form.Field>
         ))}
-      </div>
-
-      <div className="mt-8">
-        <Button type="submit" disabled={isSaving || fieldEntries.length === 0}>
-          {isSaving ? "Saving..." : "Save"}
-        </Button>
       </div>
     </form>
   );
