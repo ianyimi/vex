@@ -11,12 +11,14 @@ export const listDocuments = query({
   args: {
     collectionSlug: v.string(),
     paginationOpts: paginationOptsValidator,
+    order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
   },
-  handler: async (ctx, { collectionSlug, paginationOpts }) => {
+  handler: async (ctx, { collectionSlug, paginationOpts, order }) => {
     return await Collections.listDocuments<DataModel>({
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         paginationOpts,
+        order,
       },
       ctx,
     })

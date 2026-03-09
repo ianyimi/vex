@@ -67,6 +67,9 @@ interface DataTableProps<TData> {
   onPageSizeChange?: (pageSize: number) => void;
   /** Total document count from the server (enables accurate page count) */
   totalCount?: number;
+  /** Override the displayed page index (0-based) without affecting data slicing.
+   *  Used for bidirectional pagination where the slice index differs from the display page. */
+  displayPageIndex?: number;
   /**
    * Custom link component for client-side navigation (e.g., Next.js Link).
    * Falls back to a plain <a> tag if not provided.
@@ -90,6 +93,7 @@ function DataTable<TData extends Record<string, unknown>>({
   onPageChange,
   onPageSizeChange,
   totalCount,
+  displayPageIndex,
   linkComponent: LinkComponent,
 }: DataTableProps<TData>) {
   const pagination: PaginationState = {
@@ -117,7 +121,7 @@ function DataTable<TData extends Record<string, unknown>>({
     totalCount != null
       ? Math.ceil(totalCount / pageSize)
       : table.getPageCount();
-  const currentPage = pagination.pageIndex + 1;
+  const currentPage = (displayPageIndex ?? pagination.pageIndex) + 1;
 
   return (
     <div data-slot="data-table" className="flex flex-col gap-4 min-h-0">

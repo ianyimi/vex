@@ -15,10 +15,11 @@ import {
 } from "@vexcms/ui";
 import Link from "next/link";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { useConvexPaginatedQuery, convexQuery } from "@convex-dev/react-query";
+import { convexQuery } from "@convex-dev/react-query";
 import { anyApi } from "convex/server";
 import { useQueryState, parseAsIndex, parseAsStringLiteral } from "nuqs";
 import { usePaginationLoader } from "../hooks/usePaginationLoader";
+import { useBidirectionalPagination } from "../hooks/useBidirectionalPagination";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 const PAGE_SIZE_STRINGS = PAGE_SIZE_OPTIONS.map(String) as unknown as readonly [
@@ -90,17 +91,23 @@ export default function CollectionsView({
   });
   const totalCount = countQuery.data as number | undefined;
 
-  // Paginated list mode
+  // Paginated list mode (bidirectional for instant last-page access)
   const {
-    results: listResults,
-    status: paginationStatus,
-    loadMore,
+    documents: listResults,
+    tablePageIndex,
     isLoading: listLoading,
-  } = useConvexPaginatedQuery(
-    anyApi.vex.collections.listDocuments,
-    isSearching ? "skip" : { collectionSlug: collection.slug },
-    { initialNumItems: initialFetchSize },
-  );
+    canLoadMore,
+    loadMore,
+    totalLoaded,
+    handlePageChange,
+  } = useBidirectionalPagination({
+    collectionSlug: collection.slug,
+    initialFetchSize,
+    pageSize,
+    pageIndex,
+    totalCount,
+    isSearching,
+  });
 
   // Search mode
   const searchQuery = useQuery({
@@ -125,12 +132,10 @@ export default function CollectionsView({
     lastSearchResults.current = searchQuery.data as Record<string, unknown>[];
   }
 
-  const canLoadMore = !isSearching && paginationStatus === "CanLoadMore";
-
   usePaginationLoader({
-    pageIndex,
+    pageIndex: tablePageIndex,
     pageSize,
-    totalLoaded: documents.length,
+    totalLoaded: isSearching ? documents.length : totalLoaded,
     loadMore: (n) => {
       if (canLoadMore) loadMore(n);
     },
@@ -203,8 +208,12 @@ export default function CollectionsView({
         }
         canLoadMore={canLoadMore}
         pageSize={pageSize}
-        pageIndex={pageIndex}
-        onPageChange={setPageIndex}
+        pageIndex={isSearching ? pageIndex : tablePageIndex}
+        displayPageIndex={isSearching ? undefined : pageIndex}
+        onPageChange={(page: number) => {
+          const resolved = handlePageChange(page);
+          setPageIndex(resolved);
+        }}
         onPageSizeChange={handlePageSizeChange}
         totalCount={isSearching ? undefined : totalCount}
         linkComponent={Link}

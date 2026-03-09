@@ -10,11 +10,15 @@ export async function listDocuments<DataModel extends GenericDataModel>(props: {
   args: {
     collectionSlug: TableNamesInDataModel<DataModel>
     paginationOpts: PaginationOptions
+    order?: "asc" | "desc"
   }
   ctx: GenericQueryCtx<DataModel>
 }) {
   const { args, ctx } = props
-  const docs = await ctx.db.query(args.collectionSlug).paginate(args.paginationOpts)
+  const q = args.order === "desc"
+    ? ctx.db.query(args.collectionSlug).order("desc")
+    : ctx.db.query(args.collectionSlug)
+  const docs = await q.paginate(args.paginationOpts)
   return docs
 }
 
