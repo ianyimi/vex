@@ -148,7 +148,6 @@ export default function CollectionEditView({
               fieldEntries={fieldEntries}
               defaultValues={defaultValues}
               onSubmit={handleSubmit}
-              isSaving={isSaving}
             />
           </div>
         )}
