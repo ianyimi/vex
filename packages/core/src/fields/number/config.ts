@@ -7,6 +7,7 @@ export function number(
     _type: 0,
     _meta: {
       type: "number",
+      defaultValue: options?.required ? 0 : undefined,
       ...options,
     },
   };

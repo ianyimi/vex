@@ -1,10 +1,9 @@
+import { processFieldValueTypeOptions } from "../../valueTypes/processAdminOptions";
 import type { JsonFieldMeta } from "../../types";
 import { JSON_VALUETYPE } from "../constants";
 
 /**
  * Converts json field metadata to a Convex value type string.
- *
- * Does NOT use processFieldValueTypeOptions — json has its own optionality logic.
  *
  * @returns
  * - required: `"v.any()"`
@@ -15,8 +14,12 @@ export function jsonToValueTypeString(props: {
   collectionSlug: string;
   fieldName: string;
 }): string {
-  if (!props.meta.required) {
-    return `v.optional(${JSON_VALUETYPE})`;
-  }
-  return JSON_VALUETYPE;
+  return processFieldValueTypeOptions({
+    meta: props.meta,
+    collectionSlug: props.collectionSlug,
+    fieldName: props.fieldName,
+    expectedType: "object",
+    valueType: JSON_VALUETYPE,
+    skipDefaultValidation: true,
+  });
 }

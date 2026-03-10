@@ -1,3 +1,4 @@
+import { processFieldValueTypeOptions } from "../../valueTypes/processAdminOptions";
 import type { ArrayFieldMeta, VexField } from "../../types";
 
 /**
@@ -26,6 +27,13 @@ export function arrayToValueTypeString(props: {
   // Strip v.optional() from inner — array wrapping handles optionality
   const unwrapped = innerValueType.replace(/^v\.optional\((.+)\)$/, "$1");
   const arrayType = `v.array(${unwrapped})`;
-  if (!props.meta.required) return `v.optional(${arrayType})`;
-  return arrayType;
+
+  return processFieldValueTypeOptions({
+    meta: props.meta,
+    collectionSlug: props.collectionSlug,
+    fieldName: props.fieldName,
+    expectedType: "object",
+    valueType: arrayType,
+    skipDefaultValidation: true,
+  });
 }

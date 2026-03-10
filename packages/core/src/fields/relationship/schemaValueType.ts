@@ -1,12 +1,12 @@
+import { processFieldValueTypeOptions } from "../../valueTypes/processAdminOptions";
 import type { RelationshipFieldMeta } from "../../types";
 
 /**
  * Converts relationship field metadata to a Convex value type string.
  *
- * Does NOT use processFieldValueTypeOptions — has custom logic for v.id().
- *
  * @returns
- * - hasMany: `v.array(v.id("tableName"))`
+ * - hasMany + required: `v.array(v.id("tableName"))`
+ * - hasMany + !required: `v.optional(v.array(v.id("tableName")))`
  * - !hasMany + required: `v.id("tableName")`
  * - !hasMany + !required: `v.optional(v.id("tableName"))`
  */
@@ -15,15 +15,15 @@ export function relationshipToValueTypeString(props: {
   collectionSlug: string;
   fieldName: string;
 }): string {
-  const { meta } = props;
-  const idType = `v.id("${meta.to}")`;
+  const idType = `v.id("${props.meta.to}")`;
+  const baseValueType = props.meta.hasMany ? `v.array(${idType})` : idType;
 
-  if (meta.hasMany) {
-    const arrayType = `v.array(${idType})`;
-    if (!meta.required) return `v.optional(${arrayType})`;
-    return arrayType;
-  }
-
-  if (!meta.required) return `v.optional(${idType})`;
-  return idType;
+  return processFieldValueTypeOptions({
+    meta: props.meta,
+    collectionSlug: props.collectionSlug,
+    fieldName: props.fieldName,
+    expectedType: "string",
+    valueType: baseValueType,
+    skipDefaultValidation: true,
+  });
 }

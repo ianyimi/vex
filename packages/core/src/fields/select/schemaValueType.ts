@@ -19,21 +19,23 @@ export function selectToValueTypeString(props: {
   collectionSlug: string;
   fieldName: string;
 }): string {
-  const { meta, collectionSlug, fieldName } = props;
-  const literals = meta.options.map((o) => `v.literal("${o.value}")`).join(",");
-  if (meta.hasMany) {
+  const literals = props.meta.options.map((o) => `v.literal("${o.value}")`).join(",");
+
+  if (props.meta.hasMany) {
     return processFieldValueTypeOptions({
-      collectionSlug,
-      fieldName,
-      meta,
+      meta: props.meta,
+      collectionSlug: props.collectionSlug,
+      fieldName: props.fieldName,
       expectedType: "object",
       valueType: `v.array(${literals})`,
+      skipDefaultValidation: true,
     });
   }
+
   return processFieldValueTypeOptions({
-    collectionSlug,
-    fieldName,
-    meta,
+    meta: props.meta,
+    collectionSlug: props.collectionSlug,
+    fieldName: props.fieldName,
     expectedType: "string",
     valueType: `v.union(${literals})`,
   });
