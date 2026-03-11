@@ -23,7 +23,7 @@ import {
 //   PieChartIcon,
 //   MapIcon,
 // } from "lucide-react";
-import { VexConfig } from "@vexcms/core";
+import { ClientVexConfig } from "@vexcms/core";
 import { ComponentProps, ReactNode, useMemo } from "react";
 
 type CollectionNavItem = {
@@ -44,13 +44,14 @@ export function AppSidebar({
   config,
   user,
   ...props
-}: { config: VexConfig; user?: NavUserData } & ComponentProps<typeof Sidebar>) {
+}: { config: ClientVexConfig; user?: NavUserData } & ComponentProps<typeof Sidebar>) {
   const nav = useMemo(() => {
-    // Combine user collections + auth-only collections (no duplicates)
+    // Combine user collections + auth-only collections + media collections (no duplicates)
     const userSlugs = new Set(config.collections.map((c) => c.slug));
     const allCollections = [
       ...config.collections,
       ...(config.auth?.collections.filter((c) => !userSlugs.has(c.slug)) ?? []),
+      ...(config.media?.collections.filter((c) => !userSlugs.has(c.slug)) ?? []),
     ];
 
     const collections: CollectionNavItem[] = allCollections

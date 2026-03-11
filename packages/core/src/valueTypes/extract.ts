@@ -7,6 +7,7 @@ import { dateToValueTypeString } from "../fields/date";
 import { imageUrlToValueTypeString } from "../fields/imageUrl";
 import { relationshipToValueTypeString } from "../fields/relationship";
 import { jsonToValueTypeString } from "../fields/json";
+import { uploadToValueTypeString } from "../fields/media";
 import { arrayToValueTypeString } from "../fields/array";
 import type { VexField } from "../types";
 
@@ -42,6 +43,8 @@ export function fieldToValueType(props: {
       return imageUrlToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
     case "relationship":
       return relationshipToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+    case "upload":
+      return uploadToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
     case "json":
       return jsonToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
     case "array":

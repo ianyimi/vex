@@ -124,3 +124,102 @@ describe("SlugRegistry", () => {
     expect(registry.getAll()).toEqual([]);
   });
 });
+
+const users = defineCollection("users", {
+  fields: { name: text() },
+});
+
+const mockStorageAdapter = {
+  name: "test",
+  storageIdValueType: "v.string()",
+  getUploadUrl: async () => "",
+  getUrl: async () => "",
+  deleteFile: async () => {},
+};
+
+describe("media collection slugs", () => {
+  it("registers media collection slugs", () => {
+    const mediaImages = defineCollection("images", {
+      fields: { storageId: text() },
+    });
+
+    const config = defineConfig({
+      collections: [users],
+      auth: minimalAuth,
+      media: {
+        collections: [mediaImages],
+        storageAdapter: mockStorageAdapter,
+      },
+    });
+
+    const registry = buildSlugRegistry({ config });
+    const slugs = registry.getAll().map((r) => r.slug);
+    expect(slugs).toContain("images");
+  });
+
+  it("throws when media collection slug conflicts with user collection slug", () => {
+    const userImages = defineCollection("images", {
+      fields: { title: text() },
+    });
+    const mediaImages = defineCollection("images", {
+      fields: { storageId: text() },
+    });
+
+    const config = defineConfig({
+      collections: [userImages, users],
+      auth: minimalAuth,
+      media: {
+        collections: [mediaImages],
+        storageAdapter: mockStorageAdapter,
+      },
+    });
+
+    expect(() => buildSlugRegistry({ config })).toThrow(VexSlugConflictError);
+  });
+
+  it("throws when media collection slug conflicts with auth table slug", () => {
+    const mediaSession = defineCollection("session", {
+      fields: { storageId: text() },
+    });
+
+    const authAdapter: VexAuthAdapter = {
+      name: "better-auth",
+      collections: [
+        defineCollection("session", {
+          fields: { token: text({ required: true, defaultValue: "" }) },
+        }),
+      ],
+    };
+
+    const config = defineConfig({
+      collections: [users],
+      auth: authAdapter,
+      media: {
+        collections: [mediaSession],
+        storageAdapter: mockStorageAdapter,
+      },
+    });
+
+    expect(() => buildSlugRegistry({ config })).toThrow(VexSlugConflictError);
+  });
+
+  it("allows media collections when no conflicts exist", () => {
+    const mediaImages = defineCollection("images", {
+      fields: { storageId: text() },
+    });
+    const mediaDocuments = defineCollection("documents", {
+      fields: { storageId: text() },
+    });
+
+    const config = defineConfig({
+      collections: [users],
+      auth: minimalAuth,
+      media: {
+        collections: [mediaImages, mediaDocuments],
+        storageAdapter: mockStorageAdapter,
+      },
+    });
+
+    expect(() => buildSlugRegistry({ config })).not.toThrow();
+  });
+});

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { generateFormSchema, fieldMetaToZod } from "./generateFormSchema";
-import { text, number, checkbox, select, date, imageUrl } from "../fields";
+import { text, number, checkbox, select, date, imageUrl, upload } from "../fields";
 
 describe("fieldMetaToZod", () => {
   it("generates z.string() for text field", () => {
@@ -83,6 +83,24 @@ describe("fieldMetaToZod", () => {
     expect(schema.safeParse("https://example.com/img.png").success).toBe(true);
     expect(schema.safeParse("").success).toBe(true);
     expect(schema.safeParse(123).success).toBe(false);
+  });
+
+  it("generates z.string() for upload field", () => {
+    const schema = generateFormSchema({
+      fields: { cover: upload({ to: "images", required: true }) },
+    });
+    expect(schema.safeParse({ cover: "abc123" }).success).toBe(true);
+  });
+
+  it("generates z.array(z.string()) for hasMany upload field", () => {
+    const schema = generateFormSchema({
+      fields: {
+        gallery: upload({ to: "images", hasMany: true, required: true }),
+      },
+    });
+    expect(schema.safeParse({ gallery: ["abc123", "def456"] }).success).toBe(
+      true,
+    );
   });
 });
 

@@ -4,6 +4,7 @@ import { text } from "../fields/text";
 import { number } from "../fields/number";
 import { checkbox } from "../fields/checkbox";
 import { select } from "../fields/select";
+import { upload } from "../fields/media";
 
 describe("fieldToValueType", () => {
   describe("required fields (no v.optional wrapper)", () => {
@@ -98,6 +99,38 @@ describe("fieldToValueType", () => {
       expect(fieldToValueType({ field, collectionSlug: "posts", fieldName: "title" })).toBe(
         "v.string()",
       );
+    });
+  });
+
+  describe("upload fields", () => {
+    it("converts upload field to v.id()", () => {
+      expect(
+        fieldToValueType({
+          field: upload({ to: "images", required: true }),
+          collectionSlug: "posts",
+          fieldName: "cover",
+        }),
+      ).toBe('v.id("images")');
+    });
+
+    it("converts optional upload field to v.optional(v.id())", () => {
+      expect(
+        fieldToValueType({
+          field: upload({ to: "images" }),
+          collectionSlug: "posts",
+          fieldName: "cover",
+        }),
+      ).toBe('v.optional(v.id("images"))');
+    });
+
+    it("converts hasMany upload field to v.array(v.id())", () => {
+      expect(
+        fieldToValueType({
+          field: upload({ to: "images", hasMany: true, required: true }),
+          collectionSlug: "posts",
+          fieldName: "gallery",
+        }),
+      ).toBe('v.array(v.id("images"))');
     });
   });
 

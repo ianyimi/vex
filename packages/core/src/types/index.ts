@@ -3,6 +3,7 @@ import { VexGlobal } from "./globals";
 import type { VexAuthAdapter } from "./auth";
 import { AdminConfig, AdminConfigInput } from "./admin";
 import { SchemaConfig, SchemaConfigInput } from "./schema";
+import type { MediaConfig, MediaConfigInput, ClientMediaConfig } from "./media";
 
 export * from "./fields";
 export * from "./collections";
@@ -10,6 +11,7 @@ export * from "./globals";
 export * from "./auth";
 export * from "./admin";
 export * from "./schema";
+export * from "./media";
 
 // =============================================================================
 // CONFIG TYPES
@@ -29,6 +31,25 @@ export interface VexConfig {
   auth: VexAuthAdapter;
   /** Schema generation config */
   schema: SchemaConfig;
+  /** Media collection configuration */
+  media?: MediaConfig;
+}
+
+/**
+ * Client-safe version of VexConfig with all non-serializable values stripped.
+ * Use this when passing config across RSC serialization boundaries
+ * (e.g., from a server component to a client component).
+ *
+ * Created via `sanitizeConfigForClient(config)`.
+ */
+export interface ClientVexConfig {
+  basePath: string;
+  collections: AnyVexCollection[];
+  globals: VexGlobal[];
+  admin: AdminConfig;
+  auth: VexAuthAdapter;
+  schema: SchemaConfig;
+  media?: ClientMediaConfig;
 }
 
 // =============================================================================
@@ -86,4 +107,9 @@ export interface VexConfigInput {
    * ```
    */
   schema?: SchemaConfigInput;
+  /**
+   * Media collection configuration.
+   * Requires a storage adapter when collections are provided.
+   */
+  media?: MediaConfigInput;
 }

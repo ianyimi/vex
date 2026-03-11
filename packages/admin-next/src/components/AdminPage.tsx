@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import type { VexConfig, AnyVexCollection } from "@vexcms/core";
+import type { ClientVexConfig, AnyVexCollection } from "@vexcms/core";
 import { mergeAuthCollectionWithUserCollection } from "@vexcms/core";
 import { DashboardView } from "../views/DashboardView";
 import { NotFoundView } from "../views/NotFoundView";
@@ -14,7 +14,7 @@ import CollectionEditView from "../views/CollectionEditView";
  * If only an auth collection exists (no user override), returns it as-is.
  */
 function resolveCollection(
-  config: VexConfig,
+  config: ClientVexConfig,
   slug: string,
 ): AnyVexCollection | undefined {
   const userCollection = config.collections.find((c) => c.slug === slug);
@@ -40,12 +40,18 @@ function resolveCollection(
     return authCollection;
   }
 
+  // Media collection
+  const mediaCollection = config.media?.collections.find((c) => c.slug === slug);
+  if (mediaCollection) {
+    return mediaCollection;
+  }
+
   // User-only collection (no auth involvement)
   return userCollection;
 }
 
 interface AdminPageProps {
-  config: VexConfig;
+  config: ClientVexConfig;
   path?: string[];
 }
 

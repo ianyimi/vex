@@ -1,13 +1,13 @@
 import { SidebarInset, SidebarProvider } from "@vexcms/ui";
 import { AppSidebar, NavUserData } from "./AppSidebar";
 import { ComponentPropsWithRef } from "react";
-import { VexConfig } from "@vexcms/core";
+import { ClientVexConfig } from "@vexcms/core";
 
 export function AdminLayout({
   config,
   user,
   children,
-}: { config: VexConfig; user?: NavUserData } & ComponentPropsWithRef<"div">) {
+}: { config: ClientVexConfig; user?: NavUserData } & ComponentPropsWithRef<"div">) {
   return (
     <SidebarProvider className="h-svh overflow-hidden">
       <AppSidebar config={config} user={user} />

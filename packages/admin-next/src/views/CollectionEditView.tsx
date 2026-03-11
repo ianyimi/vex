@@ -1,7 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { AnyVexCollection, VexConfig, VexField } from "@vexcms/core";
+import { useMemo, useState, useCallback } from "react";
+import type {
+  AnyVexCollection,
+  ClientVexConfig,
+  VexField,
+  UploadFieldMeta,
+} from "@vexcms/core";
 import { generateFormSchema } from "@vexcms/core";
 import {
   AppForm,
@@ -13,6 +18,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
   Button,
+  CreateMediaModal,
 } from "@vexcms/ui";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
@@ -20,6 +26,7 @@ import { useMutation } from "convex/react";
 import { anyApi } from "convex/server";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryState } from "nuqs";
 import { Trash2 } from "lucide-react";
 import { DeleteDocumentDialog } from "../components/DeleteDocumentDialog";
 
@@ -28,7 +35,7 @@ export default function CollectionEditView({
   collection,
   documentID,
 }: {
-  config: VexConfig;
+  config: ClientVexConfig;
   collection: AnyVexCollection;
   documentID: string;
 }) {
@@ -49,8 +56,55 @@ export default function CollectionEditView({
 
   // Set up the mutation via Convex's useMutation
   const updateDocument = useMutation(anyApi.vex.collections.updateDocument);
+  const generateUploadUrl = useMutation(
+    anyApi.vex.collections.generateUploadUrl,
+  );
+  const createMediaDocument = useMutation(
+    anyApi.vex.collections.createMediaDocument,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  // Media upload modal state
+  const [newMediaSlug, setNewMediaSlug] = useQueryState("newMedia");
+  const [pendingUploadFieldName, setPendingUploadFieldName] = useState<
+    string | null
+  >(null);
+  // Store a ref to the form so we can set upload field values after upload
+  const [uploadedMediaIds, setUploadedMediaIds] = useState<
+    Record<string, string>
+  >({});
+
+  const handleOpenUploadModal = useCallback(
+    (fieldName: string, collectionSlug: string) => {
+      setPendingUploadFieldName(fieldName);
+      setNewMediaSlug(collectionSlug);
+    },
+    [setNewMediaSlug],
+  );
+
+  const handleUploadComplete = useCallback(
+    (documentId: string) => {
+      if (pendingUploadFieldName) {
+        setUploadedMediaIds((prev) => ({
+          ...prev,
+          [pendingUploadFieldName]: documentId,
+        }));
+      }
+      setNewMediaSlug(null);
+      setPendingUploadFieldName(null);
+    },
+    [pendingUploadFieldName, setNewMediaSlug],
+  );
+
+  // Find the upload field meta for the current modal (for accept/maxSize)
+  const currentUploadFieldMeta = useMemo(() => {
+    if (!pendingUploadFieldName) return null;
+    const fields = collection.config.fields as Record<string, VexField>;
+    const field = fields[pendingUploadFieldName];
+    if (field?._meta.type === "upload") return field._meta as UploadFieldMeta;
+    return null;
+  }, [pendingUploadFieldName, collection]);
 
   const disableDelete = collection.config.admin?.disableDelete ?? false;
 
@@ -169,10 +223,29 @@ export default function CollectionEditView({
               fieldEntries={fieldEntries}
               defaultValues={defaultValues}
               onSubmit={handleSubmit}
+              onOpenUploadModal={handleOpenUploadModal}
             />
           </div>
         )}
       </div>
+
+      {newMediaSlug && (
+        <CreateMediaModal
+          open={!!newMediaSlug}
+          onClose={() => {
+            setNewMediaSlug(null);
+            setPendingUploadFieldName(null);
+          }}
+          collectionSlug={newMediaSlug}
+          accept={currentUploadFieldMeta?.accept}
+          maxSize={currentUploadFieldMeta?.maxSize}
+          onUploadComplete={handleUploadComplete}
+          generateUploadUrl={async () => await generateUploadUrl()}
+          createMediaDocument={async (props) =>
+            await createMediaDocument(props)
+          }
+        />
+      )}
 
       {!disableDelete && document && (
         <DeleteDocumentDialog

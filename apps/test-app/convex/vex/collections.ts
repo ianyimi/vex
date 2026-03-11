@@ -157,3 +157,57 @@ export const searchDocuments = query({
     })
   },
 })
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl()
+  },
+})
+
+export const createMediaDocument = mutation({
+  args: {
+    collectionSlug: v.string(),
+    fields: v.any(),
+  },
+  handler: async (ctx, { collectionSlug, fields }) => {
+    return await Collections.createMediaDocument<DataModel>({
+      ctx,
+      args: {
+        collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
+        fields: fields as Record<string, unknown>,
+      },
+    })
+  },
+})
+
+export const paginatedSearchDocuments = query({
+  args: {
+    collectionSlug: v.string(),
+    searchIndexName: v.string(),
+    searchField: v.string(),
+    query: v.string(),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (
+    ctx,
+    {
+      collectionSlug,
+      searchIndexName,
+      searchField,
+      query: searchQuery,
+      paginationOpts,
+    },
+  ) => {
+    return await Collections.paginatedSearchDocuments<DataModel>({
+      args: {
+        collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
+        searchIndexName,
+        searchField,
+        query: searchQuery,
+        paginationOpts,
+      },
+      ctx,
+    })
+  },
+})

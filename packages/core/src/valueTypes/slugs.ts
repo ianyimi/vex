@@ -12,6 +12,7 @@ export const SLUG_SOURCES = {
   userCollection: "user-collection",
   userGlobal: "user-global",
   authTable: "auth-table",
+  mediaCollection: "media-collection",
   system: "system",
 } as const;
 export type SlugSource = (typeof SLUG_SOURCES)[keyof typeof SLUG_SOURCES];
@@ -128,6 +129,17 @@ export function buildSlugRegistry(props: { config: VexConfig }): SlugRegistry {
       source: SLUG_SOURCES.userCollection,
       location: `Collection ${collection.slug}`,
     });
+  }
+
+  // Register media collection slugs
+  if (props.config.media) {
+    for (const collection of props.config.media.collections) {
+      registry.register({
+        slug: collection.slug,
+        source: SLUG_SOURCES.mediaCollection,
+        location: `Media Collection ${collection.slug}`,
+      });
+    }
   }
 
   for (const global of props.config.globals) {

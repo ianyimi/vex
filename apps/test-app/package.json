@@ -24,6 +24,7 @@
     "@vexcms/better-auth": "workspace:*",
     "@vexcms/core": "workspace:*",
     "@vexcms/ui": "workspace:*",
+    "@vexcms/file-storage-convex": "workspace:*",
     "better-auth": "catalog:",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

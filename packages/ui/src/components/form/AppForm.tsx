@@ -11,7 +11,19 @@ import {
   DateField,
   ImageUrlField,
   MultiSelectField,
+  UploadField,
 } from "./fields";
+import type { MediaDocument } from "../ui/media-picker";
+
+interface MediaPickerState {
+  results: MediaDocument[];
+  searchTerm: string;
+  setSearchTerm: (s: string) => void;
+  canLoadMore: boolean;
+  loadMore: () => void;
+  isLoading: boolean;
+  selectedMedia: MediaDocument | null;
+}
 
 interface FieldEntry {
   /** Field key name (e.g., "title", "status") */
@@ -34,6 +46,10 @@ interface AppFormProps {
   onSubmit: (changedFields: Record<string, unknown>) => Promise<void>;
   /** Optional form ID so an external button can submit via form="id" */
   formId?: string;
+  /** Map of fieldName → MediaPickerState for upload fields */
+  uploadFieldStates?: Record<string, MediaPickerState>;
+  /** Called when an upload field's "Upload new" button is clicked */
+  onOpenUploadModal?: (fieldName: string, collectionSlug: string) => void;
 }
 
 function AppForm({
@@ -42,6 +58,8 @@ function AppForm({
   defaultValues,
   onSubmit,
   formId,
+  uploadFieldStates,
+  onOpenUploadModal,
 }: AppFormProps) {
   const form = useForm({
     defaultValues: defaultValues as Record<string, any>,
@@ -119,6 +137,26 @@ function AppForm({
                       name={entry.name}
                     />
                   );
+                case "upload": {
+                  const pickerState = uploadFieldStates?.[entry.name];
+                  return (
+                    <UploadField
+                      field={field}
+                      meta={meta}
+                      name={entry.name}
+                      mediaResults={pickerState?.results ?? []}
+                      searchTerm={pickerState?.searchTerm ?? ""}
+                      onSearchChange={pickerState?.setSearchTerm ?? (() => {})}
+                      canLoadMore={pickerState?.canLoadMore ?? false}
+                      onLoadMore={pickerState?.loadMore ?? (() => {})}
+                      isLoading={pickerState?.isLoading ?? false}
+                      onUploadNew={() =>
+                        onOpenUploadModal?.(entry.name, meta.to)
+                      }
+                      selectedMedia={pickerState?.selectedMedia}
+                    />
+                  );
+                }
                 default:
                   return null;
               }
@@ -130,4 +168,4 @@ function AppForm({
   );
 }
 
-export { AppForm, type AppFormProps, type FieldEntry };
+export { AppForm, type AppFormProps, type FieldEntry, type MediaPickerState };

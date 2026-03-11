@@ -40,6 +40,9 @@
       ],
       "@vexcms/better-auth": [
         "../../packages/better-auth/src/index.ts"
+      ],
+      "@vexcms/file-storage-convex": [
+        "../../packages/file-storage-convex/src/index.ts"
       ]
     }
   },

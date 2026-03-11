@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import type { AnyVexCollection, VexConfig } from "@vexcms/core";
+import type { AnyVexCollection, ClientVexConfig } from "@vexcms/core";
 import { generateColumns } from "@vexcms/core";
 import {
   DataTable,
@@ -54,7 +54,7 @@ export default function CollectionsView({
   config,
   collection,
 }: {
-  config: VexConfig;
+  config: ClientVexConfig;
   collection: AnyVexCollection;
 }) {
   const router = useRouter();

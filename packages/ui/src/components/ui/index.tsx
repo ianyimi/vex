@@ -20,3 +20,6 @@ export * from "./checkbox-field";
 export * from "./pagination";
 export * from "./multi-select";
 export * from "./dialog";
+export * from "./media-picker";
+export * from "./upload-dropzone";
+export * from "./create-media-modal";

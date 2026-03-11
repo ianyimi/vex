@@ -5,5 +5,6 @@ export { select } from "./select";
 export { date } from "./date";
 export { imageUrl } from "./imageUrl";
 export { relationship } from "./relationship";
+export { upload } from "./media";
 export { json } from "./json";
 export { array } from "./array";

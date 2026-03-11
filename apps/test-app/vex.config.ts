@@ -1,7 +1,8 @@
 import { defineConfig } from "@vexcms/core"
+import { convexFileStorage } from "@vexcms/file-storage-convex"
 
-import { articles, categories, posts, users } from "~/vexcms/collections"
 import { auth } from "~/vexcms/auth"
+import { articles, categories, media, posts, users } from "~/vexcms/collections"
 
 export default defineConfig({
   admin: {
@@ -17,6 +18,10 @@ export default defineConfig({
   auth,
   basePath: "/admin",
   collections: [articles, posts, users, categories],
+  media: {
+    collections: [media],
+    storageAdapter: convexFileStorage(),
+  },
 })
 
 export type Category = typeof categories._docType

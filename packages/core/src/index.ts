@@ -1,5 +1,7 @@
 export { defineConfig } from "./config/defineConfig";
+export { sanitizeConfigForClient } from "./config/sanitizeConfig";
 export { defineCollection } from "./config/defineCollection";
+export { defineMediaCollection } from "./config/defineMediaCollection";
 export { generateVexSchema } from "./valueTypes/generate";
 export { extendTable } from "./schema/extendTable";
 export { generateColumns } from "./columns";
@@ -16,6 +18,7 @@ export { select } from "./fields/select";
 export { date } from "./fields/date";
 export { imageUrl } from "./fields/imageUrl";
 export { relationship } from "./fields/relationship";
+export { upload } from "./fields/media";
 export { json } from "./fields/json";
 export { array } from "./fields/array";
 export * from "./errors";
@@ -42,6 +45,8 @@ export type {
   DateFieldMeta,
   ImageUrlFieldMeta,
   RelationshipFieldMeta,
+  UploadFieldMeta,
+  UploadFieldOptions,
   JsonFieldMeta,
   ArrayFieldMeta,
   InferFieldType,
@@ -64,6 +69,7 @@ export type {
   ResolvedIndex,
   // Config types
   VexConfig,
+  ClientVexConfig,
   AdminConfig,
   // Config input types
   VexConfigInput,
@@ -80,10 +86,21 @@ export type {
   RelationshipFieldOptions,
   JsonFieldOptions,
   ArrayFieldOptions,
+  // Media types
+  FileStorageAdapter,
+  MediaCollectionConfig,
+  MediaConfig,
+  ClientMediaConfig,
+  MediaConfigInput,
+  LockedMediaField,
+  OverridableMediaField,
+  DefaultMediaFieldKeys,
   // Indexes
   SearchIndexConfig,
   ResolvedSearchIndex,
 } from "./types";
+
+export { LOCKED_MEDIA_FIELDS, OVERRIDABLE_MEDIA_FIELDS } from "./types/media";
 
 export type { MergedCollectionResult } from "./valueTypes/merge";
 

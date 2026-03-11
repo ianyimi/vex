@@ -392,6 +392,66 @@ export interface RelationshipFieldOptions extends BaseFieldOptions {
   hasMany?: boolean;
 }
 
+/**
+ * Upload field metadata. References a media collection document via `v.id()`.
+ * The admin UI renders a media picker with search + an upload button.
+ */
+export interface UploadFieldMeta extends BaseFieldMeta {
+  readonly type: "upload";
+  /** Target media collection slug. */
+  to: string;
+  /**
+   * Allow multiple media references.
+   *
+   * Default: `false`
+   */
+  hasMany?: boolean;
+  /**
+   * Accepted MIME types for file uploads.
+   * Supports exact types ("image/png") and wildcards ("image/*").
+   * When not set, all file types are accepted.
+   *
+   * @example ["image/*"] — images only
+   * @example ["image/png", "image/jpeg"] — specific image formats
+   * @example ["application/pdf", "image/*"] — PDFs and all images
+   */
+  accept?: string[];
+  /**
+   * Maximum file size in bytes for uploads.
+   * When not set, no size limit is enforced (beyond storage provider limits).
+   *
+   * @example 5 * 1024 * 1024 — 5 MB
+   */
+  maxSize?: number;
+}
+
+/**
+ * Options for the `upload()` field builder.
+ *
+ * @example
+ * upload({ to: "images", required: true })
+ * upload({ to: "images", hasMany: true, accept: ["image/*"], maxSize: 5 * 1024 * 1024 })
+ */
+export interface UploadFieldOptions extends BaseFieldOptions {
+  /** Target media collection slug. */
+  to: string;
+  /**
+   * Allow multiple media references.
+   *
+   * Default: `false`
+   */
+  hasMany?: boolean;
+  /**
+   * Accepted MIME types for file uploads.
+   * Supports exact types and wildcards.
+   */
+  accept?: string[];
+  /**
+   * Maximum file size in bytes for uploads.
+   */
+  maxSize?: number;
+}
+
 /** JSON field metadata. Stores arbitrary data via `v.any()`. */
 export interface JsonFieldMeta extends BaseFieldMeta {
   readonly type: "json";
@@ -448,6 +508,7 @@ export type FieldMeta =
   | DateFieldMeta
   | ImageUrlFieldMeta
   | RelationshipFieldMeta
+  | UploadFieldMeta
   | JsonFieldMeta
   | ArrayFieldMeta;
 
@@ -496,6 +557,8 @@ export type VexField =
   | GenericVexField<number, DateFieldMeta>
   | GenericVexField<string, ImageUrlFieldMeta>
   | GenericVexField<string, RelationshipFieldMeta>
+  | GenericVexField<string, UploadFieldMeta>
+  | GenericVexField<string[], UploadFieldMeta>
   | GenericVexField<unknown, JsonFieldMeta>
   | GenericVexField<unknown[], ArrayFieldMeta>;
 

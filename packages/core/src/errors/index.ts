@@ -56,3 +56,13 @@ export class VexAuthConfigError extends VexError {
     this.name = "VexAuthConfigError";
   }
 }
+
+/**
+ * Thrown when media configuration is invalid.
+ */
+export class VexMediaConfigError extends VexError {
+  constructor(detail: string) {
+    super(`Media configuration error: ${detail}`);
+    this.name = "VexMediaConfigError";
+  }
+}

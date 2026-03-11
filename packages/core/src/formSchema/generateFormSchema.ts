@@ -78,6 +78,13 @@ export function fieldMetaToZod(props: { meta: FieldMeta }): ZodTypeAny {
       return z.string();
     }
 
+    case "upload": {
+      if (props.meta.hasMany) {
+        return z.array(z.string());
+      }
+      return z.string();
+    }
+
     case "json":
       return z.any();
 

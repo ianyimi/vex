@@ -79,14 +79,14 @@ export function CreateDocumentDialog(props: CreateDocumentDialogProps) {
       }}
     >
       <DialogContent
-        className="w-[90vw] h-[90vh] max-w-[90vw] max-h-[90vh] flex flex-col"
+        className="w-[90vw] md:w-[70vw] lg:w-[50vw] max-h-[90vh] flex flex-col"
         showCloseButton
       >
         <DialogHeader>
           <DialogTitle>Create {singularLabel}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6" key={props.open ? "open" : "closed"}>
+        <div className="min-h-0 flex-1 overflow-y-auto p-6" key={props.open ? "open" : "closed"}>
           <AppForm
             formId="create-document-form"
             schema={schema}

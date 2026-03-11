@@ -116,6 +116,62 @@ export function generateVexSchema(props: { config: VexConfig }): string {
     }
   }
 
+  // --- MEDIA COLLECTIONS ---
+  if (config.media && config.media.collections.length > 0) {
+    lines.push("", "/**", " * MEDIA COLLECTIONS", " **/");
+
+    for (const mediaCollection of config.media.collections) {
+      const fields: { name: string; valueType: string }[] = [];
+      const indexes: ResolvedIndex[] = collectIndexes({ collection: mediaCollection });
+      const searchIndexes: ResolvedSearchIndex[] = collectSearchIndexes({
+        collection: mediaCollection,
+      });
+
+      for (const [fieldName, field] of Object.entries(
+        mediaCollection.config.fields,
+      ) as [string, VexField][]) {
+        if (fieldName === "storageId") {
+          // Use adapter's storageIdValueType instead of fieldToValueType
+          fields.push({
+            name: fieldName,
+            valueType: config.media.storageAdapter.storageIdValueType,
+          });
+        } else {
+          fields.push({
+            name: fieldName,
+            valueType: fieldToValueType({
+              fieldName,
+              field,
+              collectionSlug: mediaCollection.slug,
+            }),
+          });
+        }
+      }
+
+      lines.push(
+        "",
+        `export const ${mediaCollection.config.tableName ?? mediaCollection.slug} = defineTable({`,
+      );
+      for (const f of fields) {
+        lines.push(`  ${f.name}: ${f.valueType},`);
+      }
+      lines.push("})");
+      for (const i of indexes) {
+        const fieldList = i.fields.map((f) => `"${f}"`).join(", ");
+        lines.push(`  .index("${i.name}", [${fieldList}])`);
+      }
+      for (const si of searchIndexes) {
+        const filterList =
+          si.filterFields.length > 0
+            ? `, filterFields: [${si.filterFields.map((f) => `"${f}"`).join(", ")}]`
+            : "";
+        lines.push(
+          `  .searchIndex("${si.name}", { searchField: "${si.searchField}"${filterList} })`,
+        );
+      }
+    }
+  }
+
   const unmergedAuthCollections = config.auth.collections.filter(
     (c) => !mergedAuthSlugs.has(c.slug),
   );

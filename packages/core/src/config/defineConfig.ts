@@ -1,4 +1,5 @@
 import type { VexConfig, VexConfigInput } from "../types";
+import { VexMediaConfigError } from "../errors";
 
 export const BASE_VEX_CONFIG: Omit<VexConfig, "auth"> = {
   basePath: "/admin",
@@ -42,6 +43,21 @@ export function defineConfig(vexConfig: VexConfigInput): VexConfig {
       ...vexConfig.schema,
     },
   };
+
+  // Handle media config
+  if (vexConfig.media) {
+    if (vexConfig.media.collections.length === 0) {
+      config.media = undefined;
+    } else if (!vexConfig.media.storageAdapter) {
+      throw new VexMediaConfigError(
+        "media.storageAdapter is required when media.collections is non-empty",
+      );
+    } else {
+      config.media = vexConfig.media;
+    }
+  } else {
+    config.media = undefined;
+  }
 
   if (process.env.NODE_ENV !== "production") {
     const slugs = config.collections.concat(config.globals).map((c) => c.slug);

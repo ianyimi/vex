@@ -1,8 +1,8 @@
 import Link from "next/link";
-import type { VexConfig } from "@vexcms/core";
+import type { ClientVexConfig } from "@vexcms/core";
 
 interface DashboardViewProps {
-  config: VexConfig;
+  config: ClientVexConfig;
 }
 
 export function DashboardView({ config }: DashboardViewProps) {

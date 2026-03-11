@@ -11,6 +11,7 @@ import { relationship } from "../fields/relationship";
 import { json } from "../fields/json";
 import { array } from "../fields/array";
 import { imageUrl } from "../fields/imageUrl";
+import { upload } from "../fields/media";
 import type { VexAuthAdapter } from "../types";
 import { VexSlugConflictError } from "../errors";
 
@@ -696,6 +697,143 @@ describe("generateVexSchema", () => {
 
       const postsSection = output.split("export const users")[0];
       expect(postsSection).not.toContain(".searchIndex(");
+    });
+  });
+
+  describe("media collection generation", () => {
+    const mockStorageAdapter = {
+      name: "test",
+      storageIdValueType: "v.string()",
+      getUploadUrl: async () => "",
+      getUrl: async () => "",
+      deleteFile: async () => {},
+    };
+
+    const convexStorageAdapter = {
+      name: "convex",
+      storageIdValueType: 'v.id("_storage")',
+      getUploadUrl: async () => "",
+      getUrl: async () => "",
+      deleteFile: async () => "",
+    };
+
+    it("generates media collections under MEDIA COLLECTIONS comment block", () => {
+      const images = defineCollection("images", {
+        fields: {
+          storageId: text({ required: true, defaultValue: "" }),
+          filename: text({ required: true, defaultValue: "" }),
+          mimeType: text({ required: true, defaultValue: "" }),
+          size: number({ required: true, defaultValue: 0 }),
+          url: text({ required: true, defaultValue: "" }),
+          alt: text(),
+          width: number(),
+          height: number(),
+        },
+      });
+
+      const config = defineConfig({
+        collections: [users],
+        auth: minimalAuth,
+        media: { collections: [images], storageAdapter: mockStorageAdapter },
+      });
+
+      const output = generateVexSchema({ config });
+      expect(output).toContain("MEDIA COLLECTIONS");
+      expect(output).toContain("export const images = defineTable({");
+      expect(output).toContain("storageId: v.string()");
+    });
+
+    it("uses adapter storageIdValueType for storageId field (Convex)", () => {
+      const images = defineCollection("images", {
+        fields: {
+          storageId: text({ required: true, defaultValue: "" }),
+          filename: text({ required: true, defaultValue: "" }),
+          mimeType: text({ required: true, defaultValue: "" }),
+          size: number({ required: true, defaultValue: 0 }),
+          url: text({ required: true, defaultValue: "" }),
+          alt: text(),
+          width: number(),
+          height: number(),
+        },
+      });
+
+      const config = defineConfig({
+        collections: [users],
+        auth: minimalAuth,
+        media: { collections: [images], storageAdapter: convexStorageAdapter },
+      });
+
+      const output = generateVexSchema({ config });
+      expect(output).toContain('storageId: v.id("_storage")');
+      expect(output).toContain("filename: v.string()");
+      expect(output).toContain("mimeType: v.string()");
+    });
+
+    it("generates by_mimeType index on media collections", () => {
+      const images = defineCollection("images", {
+        fields: {
+          storageId: text({ required: true, defaultValue: "" }),
+          mimeType: text({
+            required: true,
+            defaultValue: "",
+            index: "by_mimeType",
+          }),
+          filename: text({ required: true, defaultValue: "" }),
+          size: number({ required: true, defaultValue: 0 }),
+          url: text({ required: true, defaultValue: "" }),
+          alt: text(),
+          width: number(),
+          height: number(),
+        },
+      });
+
+      const config = defineConfig({
+        collections: [users],
+        auth: minimalAuth,
+        media: { collections: [images], storageAdapter: mockStorageAdapter },
+      });
+
+      const output = generateVexSchema({ config });
+      expect(output).toContain('.index("by_mimeType", ["mimeType"])');
+    });
+
+    it("does not generate MEDIA COLLECTIONS block when no media config", () => {
+      const config = defineConfig({ collections: [users], auth: minimalAuth });
+      const output = generateVexSchema({ config });
+      expect(output).not.toContain("MEDIA COLLECTIONS");
+    });
+
+    it("generates upload() field references in user collections", () => {
+      const posts = defineCollection("posts", {
+        fields: {
+          title: text(),
+          cover: upload({ to: "images", required: true }),
+          gallery: upload({ to: "images", hasMany: true }),
+        },
+      });
+
+      const images = defineCollection("images", {
+        fields: {
+          storageId: text({ required: true, defaultValue: "" }),
+          mimeType: text({ required: true, defaultValue: "" }),
+          filename: text({ required: true, defaultValue: "" }),
+          size: number({ required: true, defaultValue: 0 }),
+          url: text({ required: true, defaultValue: "" }),
+          alt: text(),
+          width: number(),
+          height: number(),
+        },
+      });
+
+      const config = defineConfig({
+        collections: [posts, users],
+        auth: minimalAuth,
+        media: { collections: [images], storageAdapter: mockStorageAdapter },
+      });
+
+      const output = generateVexSchema({ config });
+      expect(output).toContain('cover: v.id("images")');
+      expect(output).toContain('gallery: v.optional(v.array(v.id("images")))');
     });
   });
 });

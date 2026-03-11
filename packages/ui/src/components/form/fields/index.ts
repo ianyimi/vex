@@ -5,3 +5,4 @@ export { SelectField } from "./SelectField";
 export { MultiSelectField } from "./MultiSelectField";
 export { DateField } from "./DateField";
 export { ImageUrlField } from "./ImageUrlField";
+export { UploadField } from "./UploadField";
