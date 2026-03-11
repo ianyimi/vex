@@ -116,6 +116,8 @@ interface DataTableProps<TData> {
   rowSelection?: RowSelectionState;
   /** Callback when row selection changes. */
   onRowSelectionChange?: (selection: RowSelectionState) => void;
+  /** Whether the data is currently loading. Shows a loading message instead of the empty message. */
+  isLoading?: boolean;
 }
 
 function DataTable<TData extends Record<string, unknown>>({
@@ -135,6 +137,7 @@ function DataTable<TData extends Record<string, unknown>>({
   enableRowSelection = false,
   rowSelection: controlledRowSelection,
   onRowSelectionChange,
+  isLoading = false,
 }: DataTableProps<TData>) {
   const pagination: PaginationState = {
     pageIndex: controlledPageIndex ?? 0,
@@ -235,10 +238,11 @@ function DataTable<TData extends Record<string, unknown>>({
                       );
                     }
 
+                    const noTruncate = meta?.noTruncate;
                     return (
                       <TableCell key={cell.id}>
                         <AlignWrapper align={align}>
-                          <span className="truncate block">{cellValue}</span>
+                          {noTruncate ? cellValue : <span className="truncate block">{cellValue}</span>}
                         </AlignWrapper>
                       </TableCell>
                     );
@@ -251,7 +255,7 @@ function DataTable<TData extends Record<string, unknown>>({
                   colSpan={allColumns.length}
                   className="h-24 text-center"
                 >
-                  {emptyMessage}
+                  {isLoading ? "Loading..." : emptyMessage}
                 </TableCell>
               </TableRow>
             )}

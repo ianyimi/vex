@@ -6,6 +6,7 @@ import { mutation, query } from "@convex/_generated/server"
 import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 
+
 import { generateFormSchema } from "@vexcms/core"
 import type { VexField } from "@vexcms/core"
 import config from "../../vex.config"
@@ -19,7 +20,7 @@ export const listDocuments = query({
     order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
   },
   handler: async (ctx, { collectionSlug, paginationOpts, order }) => {
-    return await Collections.listDocuments<DataModel>({
+    const result = await Collections.listDocuments<DataModel>({
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         paginationOpts,
@@ -27,6 +28,17 @@ export const listDocuments = query({
       },
       ctx,
     })
+    // Resolve missing URLs from storageId for media documents
+    const resolvedPage = await Promise.all(
+      result.page.map(async (doc: any) => {
+        if (doc.storageId && (!doc.url || doc.url === "")) {
+          const url = await ctx.storage.getUrl(doc.storageId)
+          if (url) return { ...doc, url }
+        }
+        return doc
+      }),
+    )
+    return { ...result, page: resolvedPage }
   },
 })
 
@@ -46,13 +58,19 @@ export const getDocument = query({
     documentId: v.string(),
   },
   handler: async (ctx, { collectionSlug, documentId }) => {
-    return await Collections.getDocument<DataModel>({
+    const doc = await Collections.getDocument<DataModel>({
       ctx,
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         documentId,
       },
     })
+    // Resolve missing URL from storageId for media documents
+    if (doc && (doc as any).storageId && (!(doc as any).url || (doc as any).url === "")) {
+      const url = await ctx.storage.getUrl((doc as any).storageId)
+      if (url) return { ...doc, url }
+    }
+    return doc
   },
 })
 
@@ -63,12 +81,18 @@ export const updateDocument = mutation({
     fields: v.any(),
   },
   handler: async (ctx, { collectionSlug, documentId, fields }) => {
+    const f = fields as Record<string, unknown>
+    // Resolve the file URL from storageId when replacing a media file
+    if (f.storageId && f.url === "") {
+      const url = await ctx.storage.getUrl(f.storageId as any)
+      if (url) f.url = url
+    }
     return await Collections.updateDocument<DataModel>({
       ctx,
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         documentId,
-        fields: fields as Record<string, unknown>,
+        fields: f,
       },
     })
   },
@@ -146,7 +170,7 @@ export const searchDocuments = query({
     query: v.string(),
   },
   handler: async (ctx, { collectionSlug, searchIndexName, searchField, query: searchQuery }) => {
-    return await Collections.searchDocuments<DataModel>({
+    const docs = await Collections.searchDocuments<DataModel>({
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         searchIndexName,
@@ -155,59 +179,16 @@ export const searchDocuments = query({
       },
       ctx,
     })
+    // Resolve missing URLs from storageId for media documents
+    return Promise.all(
+      docs.map(async (doc: any) => {
+        if (doc.storageId && (!doc.url || doc.url === "")) {
+          const url = await ctx.storage.getUrl(doc.storageId)
+          if (url) return { ...doc, url }
+        }
+        return doc
+      }),
+    )
   },
 })
 
-export const generateUploadUrl = mutation({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.storage.generateUploadUrl()
-  },
-})
-
-export const createMediaDocument = mutation({
-  args: {
-    collectionSlug: v.string(),
-    fields: v.any(),
-  },
-  handler: async (ctx, { collectionSlug, fields }) => {
-    return await Collections.createMediaDocument<DataModel>({
-      ctx,
-      args: {
-        collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
-        fields: fields as Record<string, unknown>,
-      },
-    })
-  },
-})
-
-export const paginatedSearchDocuments = query({
-  args: {
-    collectionSlug: v.string(),
-    searchIndexName: v.string(),
-    searchField: v.string(),
-    query: v.string(),
-    paginationOpts: paginationOptsValidator,
-  },
-  handler: async (
-    ctx,
-    {
-      collectionSlug,
-      searchIndexName,
-      searchField,
-      query: searchQuery,
-      paginationOpts,
-    },
-  ) => {
-    return await Collections.paginatedSearchDocuments<DataModel>({
-      args: {
-        collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
-        searchIndexName,
-        searchField,
-        query: searchQuery,
-        paginationOpts,
-      },
-      ctx,
-    })
-  },
-})

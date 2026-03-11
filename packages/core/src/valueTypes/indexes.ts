@@ -57,7 +57,7 @@ export function collectIndexes(props: { collection: AnyVexCollection }): Resolve
   });
 
   const useAsTitle = collection.config.admin?.useAsTitle as string;
-  if (useAsTitle) {
+  if (useAsTitle && useAsTitle !== "_id") {
     const autoName = `by_${useAsTitle}`;
     if (!fieldIndexes.has(autoName)) {
       fieldIndexes.set(autoName, { name: autoName, fields: [useAsTitle] });

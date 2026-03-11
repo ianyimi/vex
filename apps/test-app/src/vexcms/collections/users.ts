@@ -34,6 +34,7 @@ export const users = defineCollection(TABLE_SLUG_USERS, {
         { label: "Admin", value: "admin" },
         { label: "Editor", value: "editor" },
         { label: "Author", value: "author" },
+        { label: "User", value: "user" },
       ],
       required: true,
     }),

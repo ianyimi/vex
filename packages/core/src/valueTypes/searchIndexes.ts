@@ -67,7 +67,7 @@ export function collectSearchIndexes(props: { collection: AnyVexCollection }): R
   });
 
   const useAsTitle = collection.config.admin?.useAsTitle as string;
-  if (useAsTitle) {
+  if (useAsTitle && useAsTitle !== "_id") {
     const autoName = `search_${useAsTitle}`;
     const alreadyCovered = Array.from(searchIndexes.values()).some(
       (si) => si.searchField === useAsTitle,

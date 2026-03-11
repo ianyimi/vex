@@ -23,9 +23,11 @@ import {
   session,
   user,
   verification,
+  media,
 } from "./vex.schema"
 
 export default defineSchema({
+  media,
   apikey,
   [TABLE_SLUG_ARTICLES]: articles,
   [TABLE_SLUG_CATEGORIES]: categories,

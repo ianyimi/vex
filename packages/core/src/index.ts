@@ -1,5 +1,6 @@
 export { defineConfig } from "./config/defineConfig";
 export { sanitizeConfigForClient } from "./config/sanitizeConfig";
+export { isMediaCollection } from "./config/isMediaCollection";
 export { defineCollection } from "./config/defineCollection";
 export { defineMediaCollection } from "./config/defineMediaCollection";
 export { generateVexSchema } from "./valueTypes/generate";

@@ -31,7 +31,7 @@ export function useMediaPicker(props: {
 
   const { results, status, loadMore, isLoading } = usePaginatedQuery(
     props.enabled
-      ? anyApi.vex.collections.paginatedSearchDocuments
+      ? anyApi.vex.media.paginatedSearchDocuments
       : ("skip" as any),
     props.enabled
       ? {

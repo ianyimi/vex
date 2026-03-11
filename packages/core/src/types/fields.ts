@@ -432,9 +432,9 @@ export interface UploadFieldMeta extends BaseFieldMeta {
  * upload({ to: "images", required: true })
  * upload({ to: "images", hasMany: true, accept: ["image/*"], maxSize: 5 * 1024 * 1024 })
  */
-export interface UploadFieldOptions extends BaseFieldOptions {
+export interface UploadFieldOptions<TSlug extends string = string> extends BaseFieldOptions {
   /** Target media collection slug. */
-  to: string;
+  to: TSlug;
   /**
    * Allow multiple media references.
    *

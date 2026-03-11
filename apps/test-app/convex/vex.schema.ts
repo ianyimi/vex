@@ -10,6 +10,7 @@ import { v } from "convex/values"
 export const articles = defineTable({
   name: v.string(),
   slug: v.string(),
+  banner: v.optional(v.id("media")),
   index: v.optional(v.number()),
 })
   .index("by_name", ["name"])
@@ -32,7 +33,9 @@ export const user = defineTable({
   image: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
-  role: v.array(v.string()),
+  role: v.array(
+    v.union(v.literal("admin"), v.literal("editor"), v.literal("author"), v.literal("user"))
+  ),
   banned: v.optional(v.boolean()),
   banReason: v.optional(v.string()),
   banExpires: v.optional(v.number()),
@@ -50,6 +53,24 @@ export const categories = defineTable({
 })
   .index("by_name", ["name"])
   .searchIndex("search_name", { searchField: "name" })
+
+/**
+ * MEDIA COLLECTIONS
+ **/
+
+export const media = defineTable({
+  storageId: v.id("_storage"),
+  filename: v.string(),
+  mimeType: v.string(),
+  size: v.number(),
+  url: v.string(),
+  alt: v.optional(v.string()),
+  width: v.optional(v.number()),
+  height: v.optional(v.number()),
+})
+  .index("by_mimeType", ["mimeType"])
+  .index("by_filename", ["filename"])
+  .searchIndex("search_filename", { searchField: "filename" })
 
 /**
  * AUTH TABLES

@@ -50,6 +50,18 @@ interface AppFormProps {
   uploadFieldStates?: Record<string, MediaPickerState>;
   /** Called when an upload field's "Upload new" button is clicked */
   onOpenUploadModal?: (fieldName: string, collectionSlug: string) => void;
+  /**
+   * Custom renderer for upload fields.
+   * When provided, this is used instead of the built-in UploadField component.
+   * Allows the parent to wrap each upload field with its own hook-based state.
+   */
+  renderUploadField?: (props: {
+    field: any;
+    meta: any;
+    name: string;
+    onUploadNew: () => void;
+    defaultValue: unknown;
+  }) => React.ReactNode;
 }
 
 function AppForm({
@@ -60,6 +72,7 @@ function AppForm({
   formId,
   uploadFieldStates,
   onOpenUploadModal,
+  renderUploadField,
 }: AppFormProps) {
   const form = useForm({
     defaultValues: defaultValues as Record<string, any>,
@@ -138,6 +151,19 @@ function AppForm({
                     />
                   );
                 case "upload": {
+                  const uploadNew = () =>
+                    onOpenUploadModal?.(entry.name, meta.to);
+
+                  if (renderUploadField) {
+                    return renderUploadField({
+                      field,
+                      meta,
+                      name: entry.name,
+                      onUploadNew: uploadNew,
+                      defaultValue: defaultValues[entry.name],
+                    });
+                  }
+
                   const pickerState = uploadFieldStates?.[entry.name];
                   return (
                     <UploadField
@@ -150,9 +176,7 @@ function AppForm({
                       canLoadMore={pickerState?.canLoadMore ?? false}
                       onLoadMore={pickerState?.loadMore ?? (() => {})}
                       isLoading={pickerState?.isLoading ?? false}
-                      onUploadNew={() =>
-                        onOpenUploadModal?.(entry.name, meta.to)
-                      }
+                      onUploadNew={uploadNew}
                       selectedMedia={pickerState?.selectedMedia}
                     />
                   );

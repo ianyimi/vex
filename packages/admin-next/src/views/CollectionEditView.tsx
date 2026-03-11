@@ -29,6 +29,7 @@ import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { Trash2 } from "lucide-react";
 import { DeleteDocumentDialog } from "../components/DeleteDocumentDialog";
+import { UploadFieldWrapper } from "../components/UploadFieldWrapper";
 
 export default function CollectionEditView({
   config,
@@ -57,10 +58,10 @@ export default function CollectionEditView({
   // Set up the mutation via Convex's useMutation
   const updateDocument = useMutation(anyApi.vex.collections.updateDocument);
   const generateUploadUrl = useMutation(
-    anyApi.vex.collections.generateUploadUrl,
+    anyApi.vex.media.generateUploadUrl,
   );
   const createMediaDocument = useMutation(
-    anyApi.vex.collections.createMediaDocument,
+    anyApi.vex.media.createMediaDocument,
   );
   const [isSaving, setIsSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -224,6 +225,17 @@ export default function CollectionEditView({
               defaultValues={defaultValues}
               onSubmit={handleSubmit}
               onOpenUploadModal={handleOpenUploadModal}
+              renderUploadField={(uploadProps) => (
+                <UploadFieldWrapper
+                  field={uploadProps.field}
+                  meta={uploadProps.meta}
+                  name={uploadProps.name}
+                  onUploadNew={uploadProps.onUploadNew}
+                  uploadedMediaId={uploadedMediaIds[uploadProps.name]}
+                  basePath={config.basePath}
+                  initialValue={uploadProps.defaultValue as string | undefined}
+                />
+              )}
             />
           </div>
         )}

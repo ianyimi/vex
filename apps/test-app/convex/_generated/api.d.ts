@@ -19,8 +19,10 @@ import type * as auth_plugins_index from "../auth/plugins/index.js";
 import type * as auth_sessions from "../auth/sessions.js";
 import type * as http from "../http.js";
 import type * as vex_collections from "../vex/collections.js";
+import type * as vex_media from "../vex/media.js";
 import type * as vex_migrate from "../vex/migrate.js";
 import type * as vex_model_collections from "../vex/model/collections.js";
+import type * as vex_model_media from "../vex/model/media.js";
 
 import type {
   ApiFromModules,
@@ -40,8 +42,10 @@ declare const fullApi: ApiFromModules<{
   "auth/sessions": typeof auth_sessions;
   http: typeof http;
   "vex/collections": typeof vex_collections;
+  "vex/media": typeof vex_media;
   "vex/migrate": typeof vex_migrate;
   "vex/model/collections": typeof vex_model_collections;
+  "vex/model/media": typeof vex_model_media;
 }>;
 
 /**

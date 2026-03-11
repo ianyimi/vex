@@ -2,7 +2,7 @@
 
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import type { AnyVexCollection, ClientVexConfig } from "@vexcms/core";
-import { generateColumns } from "@vexcms/core";
+import { LOCKED_MEDIA_FIELDS, OVERRIDABLE_MEDIA_FIELDS } from "@vexcms/core";
 import {
   DataTable,
   Input,
@@ -13,6 +13,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
   Button,
+  FilePreview,
 } from "@vexcms/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,13 +30,12 @@ import { Plus, Trash2 } from "lucide-react";
 import type { RowSelectionState, ColumnDef } from "@tanstack/react-table";
 import { usePaginationLoader } from "../hooks/usePaginationLoader";
 import { useBidirectionalPagination } from "../hooks/useBidirectionalPagination";
-import { CreateDocumentDialog } from "../components/CreateDocumentDialog";
+import { CreateMediaDialog } from "../components/CreateMediaDialog";
 import {
   DeleteDocumentDialog,
   type DocumentForDeletion,
 } from "../components/DeleteDocumentDialog";
 import { RowActionsMenu } from "../components/RowActionsMenu";
-import { UploadCellPreview } from "../components/UploadCellPreview";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 const PAGE_SIZE_STRINGS = PAGE_SIZE_OPTIONS.map(String) as unknown as readonly [
@@ -46,12 +46,25 @@ const PAGE_SIZE_STRINGS = PAGE_SIZE_OPTIONS.map(String) as unknown as readonly [
 ];
 const STORAGE_KEY = "vex-page-size";
 
+const STANDARD_MEDIA_FIELDS = new Set([
+  ...LOCKED_MEDIA_FIELDS,
+  ...OVERRIDABLE_MEDIA_FIELDS,
+]);
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
 function getStoredPageSize(): string {
   if (typeof window === "undefined") return "10";
   return localStorage.getItem(STORAGE_KEY) ?? "10";
 }
 
-export default function CollectionsView({
+export default function MediaCollectionsView({
   config,
   collection,
 }: {
@@ -59,6 +72,7 @@ export default function CollectionsView({
   collection: AnyVexCollection;
 }) {
   const router = useRouter();
+  const thumbnailSize = (collection.config.admin as any)?.thumbnailSize ?? 40;
 
   const [pageIndex, setPageIndex] = useQueryState(
     "page",
@@ -72,23 +86,15 @@ export default function CollectionsView({
     ),
   );
   const [debouncedSearch, setDebouncedSearch] = useState("");
-
-  // Create modal — driven by URL param
   const [createNew, setCreateNew] = useQueryState(
     "createNew",
     parseAsBoolean.withDefault(false),
   );
-
-  // Delete modal — driven by URL param
   const [deleteOpen, setDeleteOpen] = useQueryState(
     "delete",
     parseAsBoolean.withDefault(false),
   );
-
-  // Row selection state
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-
-  // Documents staged for deletion
   const [docsToDelete, setDocsToDelete] = useState<DocumentForDeletion[]>([]);
 
   const pageSize = Number(pageSizeStr);
@@ -102,35 +108,10 @@ export default function CollectionsView({
     setPageIndex(0);
   };
 
-  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
-
-  const columns = useMemo(() => {
-    const cols = generateColumns({ collection, auth: config.auth });
-    return cols.map((col) => {
-      const meta = col.meta as Record<string, unknown> | undefined;
-      if (meta?.type === "upload" && typeof meta.to === "string") {
-        const targetSlug = meta.to;
-        return {
-          ...col,
-          cell: (info: any) => {
-            const value = info.getValue();
-            if (!value || typeof value !== "string") return "";
-            return (
-              <UploadCellPreview
-                mediaId={value}
-                collectionSlug={targetSlug}
-              />
-            );
-          },
-        };
-      }
-      return col;
-    });
-  }, [collection, config.auth]);
 
   const useAsTitle = collection.config.admin?.useAsTitle as string | undefined;
   const disableDelete = collection.config.admin?.disableDelete ?? false;
@@ -139,7 +120,68 @@ export default function CollectionsView({
   const searchIndexName = useAsTitle ? `search_${useAsTitle}` : undefined;
   const isSearching = searchAvailable && debouncedSearch.trim().length > 0;
 
-  // Total document count (reactive, separate from paginated query)
+  // Build media-specific columns
+  const columns: ColumnDef<Record<string, unknown>>[] = useMemo(() => {
+    const cols: ColumnDef<Record<string, unknown>>[] = [];
+
+    // Preview thumbnail column
+    cols.push({
+      id: "preview",
+      header: "Preview",
+      size: thumbnailSize + 16,
+      meta: { noTruncate: true },
+      enableSorting: false,
+      cell: ({ row }) => {
+        const doc = row.original;
+        return (
+          <FilePreview
+            url={doc.url as string}
+            mimeType={(doc.mimeType as string) || "application/octet-stream"}
+            alt={(doc.filename as string) || ""}
+            size={thumbnailSize}
+          />
+        );
+      },
+    });
+
+    // Filename column (title link)
+    cols.push({
+      accessorKey: "filename",
+      header: "Filename",
+      meta: { isTitle: true },
+    });
+
+    // Type column
+    cols.push({
+      accessorKey: "mimeType",
+      header: "Type",
+    });
+
+    // Size column with formatted bytes
+    cols.push({
+      accessorKey: "size",
+      header: "Size",
+      cell: (info) => {
+        const value = info.getValue();
+        if (typeof value !== "number") return "";
+        return formatBytes(value);
+      },
+    });
+
+    // Custom fields (non-standard, non-hidden)
+    const fields = collection.config.fields as Record<string, any>;
+    for (const [name, field] of Object.entries(fields)) {
+      if (STANDARD_MEDIA_FIELDS.has(name)) continue;
+      if (field._meta?.admin?.hidden) continue;
+      cols.push({
+        accessorKey: name,
+        header: field._meta?.label ?? name,
+      });
+    }
+
+    return cols;
+  }, [collection, thumbnailSize]);
+
   const countQuery = useQuery({
     ...convexQuery(anyApi.vex.collections.countDocuments, {
       collectionSlug: collection.slug,
@@ -148,7 +190,6 @@ export default function CollectionsView({
   });
   const totalCount = countQuery.data as number | undefined;
 
-  // Paginated list mode (bidirectional for instant last-page access)
   const {
     documents: listResults,
     tablePageIndex,
@@ -166,7 +207,6 @@ export default function CollectionsView({
     isSearching,
   });
 
-  // Search mode
   const searchQuery = useQuery({
     ...convexQuery(anyApi.vex.collections.searchDocuments, {
       collectionSlug: collection.slug,
@@ -202,14 +242,11 @@ export default function CollectionsView({
 
   const isLoading = isSearching ? searchQuery.isPending : listLoading;
   const searchLoading = isSearching && searchQuery.isFetching;
-
-  // Display count: use totalCount for list mode, documents.length for search
   const displayCount = isSearching ? documents.length : totalCount;
-
   const pluralLabel = collection.config.labels?.plural ?? collection.slug;
   const singularLabel = collection.config.labels?.singular ?? collection.slug;
 
-  // Build actions column
+  // Actions column
   const columnsWithActions: ColumnDef<Record<string, unknown>, unknown>[] =
     useMemo(() => {
       const actionsColumn: ColumnDef<Record<string, unknown>, unknown> = {
@@ -221,9 +258,7 @@ export default function CollectionsView({
         cell: ({ row }) => {
           const doc = row.original;
           const docId = doc._id as string;
-          const docTitle = useAsTitle
-            ? (doc[useAsTitle] as string | undefined)
-            : undefined;
+          const docTitle = (doc.filename as string) || undefined;
 
           return (
             <RowActionsMenu
@@ -241,16 +276,8 @@ export default function CollectionsView({
       };
 
       return [...columns, actionsColumn];
-    }, [
-      columns,
-      collection.slug,
-      config.basePath,
-      disableDelete,
-      useAsTitle,
-      router,
-    ]);
+    }, [columns, collection.slug, config.basePath, disableDelete, router]);
 
-  // Build DocumentForDeletion array from selected rows
   const getSelectedDocuments = useCallback((): DocumentForDeletion[] => {
     const selectedIndices = Object.keys(rowSelection).filter(
       (k) => rowSelection[k],
@@ -259,10 +286,10 @@ export default function CollectionsView({
       const doc = documents[Number(idx)];
       return {
         _id: doc._id as string,
-        title: useAsTitle ? (doc[useAsTitle] as string | undefined) : undefined,
+        title: (doc.filename as string) || undefined,
       };
     });
-  }, [rowSelection, documents, useAsTitle]);
+  }, [rowSelection, documents]);
 
   const selectedCount = Object.keys(rowSelection).filter(
     (k) => rowSelection[k],
@@ -314,7 +341,7 @@ export default function CollectionsView({
           {!disableCreate && (
             <Button size="sm" onClick={() => setCreateNew(true)}>
               <Plus className="h-4 w-4" />
-              Create {singularLabel}
+              Upload {singularLabel}
             </Button>
           )}
         </div>
@@ -341,8 +368,8 @@ export default function CollectionsView({
         collectionSlug={collection.slug}
         emptyMessage={
           isSearching
-            ? "No matching documents."
-            : `No ${collection.config.labels?.plural?.toLowerCase() ?? "documents"} yet.`
+            ? "No matching media."
+            : `No ${pluralLabel.toLowerCase()} yet.`
         }
         canLoadMore={canLoadMore}
         pageSize={pageSize}
@@ -361,9 +388,8 @@ export default function CollectionsView({
         isLoading={isLoading}
       />
 
-      {/* Create Document Dialog */}
       {!disableCreate && (
-        <CreateDocumentDialog
+        <CreateMediaDialog
           open={createNew}
           onClose={() => setCreateNew(false)}
           collection={collection}
@@ -374,7 +400,6 @@ export default function CollectionsView({
         />
       )}
 
-      {/* Delete Document Dialog */}
       {!disableDelete && (
         <DeleteDocumentDialog
           open={deleteOpen}

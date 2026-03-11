@@ -1,10 +1,10 @@
-import { defineCollection, number, text } from "@vexcms/core"
+import { defineCollection, number, text, upload } from "@vexcms/core"
 
-import { TABLE_SLUG_ARTICLES } from "~/db/constants"
+import { TABLE_SLUG_ARTICLES, TABLE_SLUG_MEDIA } from "~/db/constants"
 
 export const articles = defineCollection(TABLE_SLUG_ARTICLES, {
   admin: {
-    defaultColumns: ["name", "index", "slug"],
+    defaultColumns: ["name", "index", "slug", "banner"],
     group: "Content",
     useAsTitle: "name",
   },
@@ -16,6 +16,9 @@ export const articles = defineCollection(TABLE_SLUG_ARTICLES, {
     slug: text({
       label: "Slug",
       required: true,
+    }),
+    banner: upload({
+      to: TABLE_SLUG_MEDIA,
     }),
     index: number({
       admin: {

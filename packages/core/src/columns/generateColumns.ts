@@ -9,6 +9,7 @@ import { imageUrlColumnDef } from "../fields/imageUrl/columnDef";
 import { relationshipColumnDef } from "../fields/relationship/columnDef";
 import { jsonColumnDef } from "../fields/json/columnDef";
 import { arrayColumnDef } from "../fields/array/columnDef";
+import { uploadColumnDef } from "../fields/media/columnDef";
 import { toTitleCase } from "../utils";
 
 /**
@@ -122,6 +123,8 @@ function buildColumnDef(
       return jsonColumnDef({ fieldKey, meta: field._meta });
     case "array":
       return arrayColumnDef({ fieldKey, meta: field._meta });
+    case "upload":
+      return uploadColumnDef({ fieldKey, meta: field._meta });
     default:
       return {
         accessorKey: fieldKey,

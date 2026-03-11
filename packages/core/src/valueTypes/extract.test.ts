@@ -84,7 +84,7 @@ describe("fieldToValueType", () => {
         ],
       });
       expect(fieldToValueType({ field, collectionSlug: "posts", fieldName: "tags" })).toBe(
-        'v.optional(v.array(v.literal("a"),v.literal("b")))',
+        'v.optional(v.array(v.union(v.literal("a"),v.literal("b"))))',
       );
     });
   });

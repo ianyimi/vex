@@ -23,3 +23,4 @@ export * from "./dialog";
 export * from "./media-picker";
 export * from "./upload-dropzone";
 export * from "./create-media-modal";
+export * from "./file-preview";

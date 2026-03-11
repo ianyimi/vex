@@ -4,16 +4,16 @@ import type {
   GenericVexField,
 } from "../../types";
 
-export function upload(
-  options: UploadFieldOptions & { hasMany: true },
+export function upload<TSlug extends string>(
+  options: UploadFieldOptions<TSlug> & { hasMany: true },
 ): GenericVexField<string[], UploadFieldMeta>;
 
-export function upload(
-  options: UploadFieldOptions & { hasMany?: false },
+export function upload<TSlug extends string>(
+  options: UploadFieldOptions<TSlug> & { hasMany?: false },
 ): GenericVexField<string, UploadFieldMeta>;
 
-export function upload(
-  options: UploadFieldOptions,
+export function upload<TSlug extends string>(
+  options: UploadFieldOptions<TSlug>,
 ): GenericVexField<string | string[], UploadFieldMeta> {
   return {
     _type: options.hasMany ? [] : "",

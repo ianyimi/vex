@@ -6,7 +6,7 @@ import type { SelectFieldMeta } from "../../types";
  *
  * @returns One of (each may be wrapped in v.optional()):
  * - Single select: `'v.union(v.literal("draft"),v.literal("published"))'`
- * - Multi select (hasMany): `'v.array(v.literal("draft"),v.literal("published"))'`
+ * - Multi select (hasMany): `'v.array(v.union(v.literal("draft"),v.literal("published")))'`
  *
  * Edge cases:
  * - Single option: `v.union(v.literal("only"))` — Convex accepts single-arg union
@@ -27,7 +27,9 @@ export function selectToValueTypeString(props: {
       collectionSlug: props.collectionSlug,
       fieldName: props.fieldName,
       expectedType: "object",
-      valueType: `v.array(${literals})`,
+      valueType: props.meta.options.length === 1
+        ? `v.array(${literals})`
+        : `v.array(v.union(${literals}))`,
       skipDefaultValidation: true,
     });
   }

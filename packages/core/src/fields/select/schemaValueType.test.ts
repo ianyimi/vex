@@ -39,7 +39,7 @@ describe("selectToValueTypeString", () => {
     ).toBe('v.union(v.literal("draft"),v.literal("published"))');
   });
 
-  it("wraps in v.array() for multi-select (hasMany) — no v.union() wrapper", () => {
+  it("wraps in v.array(v.union()) for multi-select (hasMany) with multiple options", () => {
     const meta: SelectFieldMeta<string> = {
       type: "select",
       hasMany: true,
@@ -48,14 +48,30 @@ describe("selectToValueTypeString", () => {
         { value: "tag2", label: "Tag 2" },
       ],
     };
-    // hasMany wraps literals directly in v.array(), no v.union()
     expect(
       selectToValueTypeString({
         meta,
         collectionSlug: "posts",
         fieldName: "tags",
       }),
-    ).toBe('v.optional(v.array(v.literal("tag1"),v.literal("tag2")))');
+    ).toBe('v.optional(v.array(v.union(v.literal("tag1"),v.literal("tag2"))))');
+  });
+
+  it("wraps in v.array() without v.union() for hasMany with single option", () => {
+    const meta: SelectFieldMeta<string> = {
+      type: "select",
+      hasMany: true,
+      options: [
+        { value: "only", label: "Only" },
+      ],
+    };
+    expect(
+      selectToValueTypeString({
+        meta,
+        collectionSlug: "posts",
+        fieldName: "tags",
+      }),
+    ).toBe('v.optional(v.array(v.literal("only")))');
   });
 
   it("handles single option", () => {

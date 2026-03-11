@@ -2,11 +2,13 @@
 
 import { Suspense } from "react";
 import type { ClientVexConfig, AnyVexCollection } from "@vexcms/core";
-import { mergeAuthCollectionWithUserCollection } from "@vexcms/core";
+import { mergeAuthCollectionWithUserCollection, isMediaCollection } from "@vexcms/core";
 import { DashboardView } from "../views/DashboardView";
 import { NotFoundView } from "../views/NotFoundView";
 import CollectionsView from "../views/CollectionsView";
 import CollectionEditView from "../views/CollectionEditView";
+import MediaCollectionsView from "../views/MediaCollectionsView";
+import MediaCollectionEditView from "../views/MediaCollectionEditView";
 
 /**
  * Resolves a collection by slug, merging auth fields when the slug
@@ -21,7 +23,6 @@ function resolveCollection(
   const authCollection = config.auth?.collections.find((c) => c.slug === slug);
 
   if (userCollection && authCollection) {
-    // Merge: auth fields + user admin config
     const merged = mergeAuthCollectionWithUserCollection({
       authCollection,
       userCollection,
@@ -35,18 +36,15 @@ function resolveCollection(
     } as AnyVexCollection;
   }
 
-  // Auth-only collection (no user override)
   if (authCollection) {
     return authCollection;
   }
 
-  // Media collection
   const mediaCollection = config.media?.collections.find((c) => c.slug === slug);
   if (mediaCollection) {
     return mediaCollection;
   }
 
-  // User-only collection (no auth involvement)
   return userCollection;
 }
 
@@ -58,22 +56,39 @@ interface AdminPageProps {
 export function AdminPage({ config, path = [] }: AdminPageProps) {
   const [collectionSlug, documentID] = path;
 
-  // Dashboard
   if (!collectionSlug) {
     return <DashboardView config={config} />;
   }
 
-  // Find collection (merges auth + user fields when applicable)
   const collection = resolveCollection(config, collectionSlug);
   if (!collection) {
     return <NotFoundView />;
   }
 
+  const isMedia = isMediaCollection({ collection, config });
+
   if (!documentID) {
+    if (isMedia) {
+      return (
+        <Suspense fallback={<div className="p-6 text-muted-foreground">Loading...</div>}>
+          <MediaCollectionsView config={config} collection={collection} />
+        </Suspense>
+      );
+    }
     return (
       <Suspense fallback={<div className="p-6 text-muted-foreground">Loading...</div>}>
         <CollectionsView config={config} collection={collection} />
       </Suspense>
+    );
+  }
+
+  if (isMedia) {
+    return (
+      <MediaCollectionEditView
+        config={config}
+        collection={collection}
+        documentID={documentID}
+      />
     );
   }
 
