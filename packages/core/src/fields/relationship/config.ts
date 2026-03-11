@@ -16,6 +16,7 @@ export function relationship(
     _meta: {
       type: "relationship",
       ...options,
+      formDefaultValue: options.hasMany ? [] : "",
     },
   };
 }

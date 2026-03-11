@@ -163,6 +163,8 @@ export interface TextFieldMeta extends BaseFieldMeta {
   readonly type: "text";
   /** Default value for new documents. */
   defaultValue?: string;
+  /** Zero-value used as the initial form value when creating a new document. */
+  formDefaultValue: string;
   /** Minimum character length. */
   minLength?: number;
   /** Maximum character length. */
@@ -191,6 +193,8 @@ export interface NumberFieldMeta extends BaseFieldMeta {
   readonly type: "number";
   /** Default value for new documents. */
   defaultValue?: number;
+  /** Zero-value used as the initial form value when creating a new document. */
+  formDefaultValue: number;
   /** Minimum allowed value. */
   min?: number;
   /** Maximum allowed value. */
@@ -223,6 +227,8 @@ export interface CheckboxFieldMeta extends BaseFieldMeta {
   readonly type: "checkbox";
   /** Default value for new documents. */
   defaultValue?: boolean;
+  /** Zero-value used as the initial form value when creating a new document. */
+  formDefaultValue: boolean;
 }
 
 /**
@@ -261,6 +267,8 @@ export interface SelectFieldMeta<
   options: readonly SelectOption<T>[];
   /** Default value for new documents. */
   defaultValue?: T;
+  /** Zero-value used as the initial form value when creating a new document. */
+  formDefaultValue: T | T[];
   /**
    * Allow selecting multiple values.
    *
@@ -302,6 +310,8 @@ export interface DateFieldMeta extends BaseFieldMeta {
   readonly type: "date";
   /** Default value for new documents (epoch ms). */
   defaultValue?: number;
+  /** Zero-value used as the initial form value when creating a new document. */
+  formDefaultValue: number;
 }
 
 /**
@@ -322,6 +332,8 @@ export interface ImageUrlFieldMeta extends BaseFieldMeta {
   readonly type: "imageUrl";
   /** Default value for new documents. */
   defaultValue?: string;
+  /** Zero-value used as the initial form value when creating a new document. */
+  formDefaultValue: string;
   /** Width (px) of the image */
   width?: number;
   /** Height (px) of the image */
@@ -356,6 +368,8 @@ export interface RelationshipFieldMeta extends BaseFieldMeta {
    * Default: `false`
    */
   hasMany?: boolean;
+  /** Zero-value used as the initial form value when creating a new document. */
+  formDefaultValue: string | string[];
 }
 
 /**
@@ -381,6 +395,8 @@ export interface RelationshipFieldOptions extends BaseFieldOptions {
 /** JSON field metadata. Stores arbitrary data via `v.any()`. */
 export interface JsonFieldMeta extends BaseFieldMeta {
   readonly type: "json";
+  /** Zero-value used as the initial form value when creating a new document. */
+  formDefaultValue: Record<string, unknown>;
 }
 
 /**
@@ -402,6 +418,8 @@ export interface ArrayFieldMeta extends BaseFieldMeta {
   min?: number;
   /** Maximum number of items. */
   max?: number;
+  /** Zero-value used as the initial form value when creating a new document. */
+  formDefaultValue: unknown[];
 }
 
 /**

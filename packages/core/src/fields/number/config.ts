@@ -9,6 +9,7 @@ export function number(
       type: "number",
       defaultValue: options?.required ? 0 : undefined,
       ...options,
+      formDefaultValue: options?.defaultValue ?? 0,
     },
   };
 }

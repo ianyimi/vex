@@ -6,6 +6,7 @@ export { generateColumns } from "./columns";
 export { mergeAuthCollectionWithUserCollection } from "./valueTypes/merge";
 export { toTitleCase } from "./utils";
 export { generateFormSchema, fieldMetaToZod } from "./formSchema/generateFormSchema";
+export { generateFormDefaultValues } from "./formSchema/generateFormDefaultValues";
 
 // Fields
 export { text } from "./fields/text";

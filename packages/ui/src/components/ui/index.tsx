@@ -19,3 +19,4 @@ export * from "./select-native";
 export * from "./checkbox-field";
 export * from "./pagination";
 export * from "./multi-select";
+export * from "./dialog";

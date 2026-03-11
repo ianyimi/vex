@@ -9,6 +9,7 @@ export function imageUrl(
       type: "imageUrl",
       defaultValue: options?.required ? "" : undefined,
       ...options,
+      formDefaultValue: options?.defaultValue ?? "",
     },
   };
 }

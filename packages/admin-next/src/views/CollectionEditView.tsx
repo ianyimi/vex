@@ -19,6 +19,9 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
 import { anyApi } from "convex/server";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
+import { DeleteDocumentDialog } from "../components/DeleteDocumentDialog";
 
 export default function CollectionEditView({
   config,
@@ -29,6 +32,8 @@ export default function CollectionEditView({
   collection: AnyVexCollection;
   documentID: string;
 }) {
+  const router = useRouter();
+
   // Fetch the document reactively
   const documentQuery = useQuery({
     ...convexQuery(anyApi.vex.collections.getDocument, {
@@ -45,6 +50,9 @@ export default function CollectionEditView({
   // Set up the mutation via Convex's useMutation
   const updateDocument = useMutation(anyApi.vex.collections.updateDocument);
   const [isSaving, setIsSaving] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const disableDelete = collection.config.admin?.disableDelete ?? false;
 
   // Generate Zod schema from collection fields
   const schema = useMemo(
@@ -95,6 +103,7 @@ export default function CollectionEditView({
       ? (document[useAsTitle] as string | undefined)
       : undefined;
   const pluralLabel = collection.config.labels?.plural ?? collection.slug;
+  const singularLabel = collection.config.labels?.singular ?? collection.slug;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -123,13 +132,25 @@ export default function CollectionEditView({
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <Button
-            type="submit"
-            form="collection-edit-form"
-            disabled={isSaving || fieldEntries.length === 0}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
+          <div className="flex items-center gap-2">
+            {!disableDelete && document && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            )}
+            <Button
+              type="submit"
+              form="collection-edit-form"
+              disabled={isSaving || fieldEntries.length === 0}
+            >
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -152,6 +173,23 @@ export default function CollectionEditView({
           </div>
         )}
       </div>
+
+      {!disableDelete && document && (
+        <DeleteDocumentDialog
+          open={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          documents={[{
+            _id: documentID,
+            title: documentTitle,
+          }]}
+          collectionSlug={collection.slug}
+          singularLabel={singularLabel}
+          pluralLabel={pluralLabel}
+          onDeleted={() => {
+            router.push(`${config.basePath}/${collection.slug}`);
+          }}
+        />
+      )}
     </div>
   );
 }

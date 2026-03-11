@@ -9,6 +9,7 @@ export function text(
       type: "text",
       defaultValue: options?.required ? "" : undefined,
       ...options,
+      formDefaultValue: options?.defaultValue ?? "",
     },
   };
 }

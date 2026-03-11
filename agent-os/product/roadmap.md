@@ -203,13 +203,14 @@ These are two distinct features that compose together:
 | Admin list views  | ✅ Done | Paginated tables, full-text search, column generation, bidirectional pagination                   |
 | Admin edit forms  | ✅ Done | Auto-generated Zod validation, field components, partial patch on save                            |
 | Better Auth       | ✅ Done | Auth table extraction, user/session/account tables, admin plugin                                  |
-| Testing           | ✅ Done | 227 tests passing (field types, schema diffing, migration planning, form generation)              |
+| Create/delete     | ✅ Done | createDocument (Zod validated), deleteDocument, bulkDelete, admin UI (modals, row selection)      |
+| Testing           | ✅ Done | 233 tests passing (field types, schema diffing, migration planning, form generation, defaults)    |
 
 ### What's Missing for MVP
 
 | Area                          | Status       | Gap                                                                                    |
 | ----------------------------- | ------------ | -------------------------------------------------------------------------------------- |
-| Create/delete mutations       | ❌ Not built | Admin panel is read/update only — cannot create or delete documents                    |
+| Create/delete mutations       | ✅ Done      | createDocument, deleteDocument, bulkDelete, create/delete modals, row selection         |
 | Media / uploads               | ❌ Not built | No `upload()` field type, no file upload handlers, no media library UI                 |
 | Drafts / versioning           | ❌ Not built | No `_draftSnapshot`, no `vex_versions` table, no publish workflow                      |
 | RBAC enforcement              | ❌ Not built | Auth exists but no permission checks in query/mutation handlers                        |
@@ -229,6 +230,7 @@ Spec 00 — Monorepo Setup                               ✅
 Spec 01 — Testing Infrastructure                        ✅
 Spec 05 — Schema Field System (10 field types)          ✅
 Spec 06 — Convex Integration (list, get, update, search) ✅ partial
+Spec 06b — Create & Delete Mutations                    ✅
 Spec 11 — Testing Strategy                              ✅
 Spec 12 — Admin Data Table                              ✅
 Spec 13 — Better Auth Package                           ✅
@@ -410,8 +412,8 @@ Phase 5.5 — Documentation site
 ## Summary Timeline
 
 ```
-DONE        Specs 00, 01, 05, 06 (partial), 11, 12, 13, 14 (partial)
-            Schema gen, field types, admin list/edit (read/update only), auth, CLI
+DONE        Specs 00, 01, 05, 06 (partial), 06b, 11, 12, 13, 14 (partial)
+            Schema gen, field types, admin CRUD (create/read/update/delete), auth, CLI
 
 PHASE 1     Spec 06b (Create/Delete) → Spec 15 (Media) → Spec 07 (Drafts) → Spec 16 (RBAC)
   MVP       The minimum for a usable CMS. Cannot ship without all four.
@@ -446,6 +448,7 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 04     | Auth Adapter                       | ✅                                     |
 | 05     | Schema Field System                | ✅                                     |
 | 06     | Convex Integration                 | ✅ partial (needs create/delete)       |
+| 06b    | Create & Delete Mutations          | ✅                                     |
 | 07     | Versioning & Drafts                | Phase 1                                |
 | 08     | File Uploads                       | Superseded by Spec 15                  |
 | 09     | Custom Admin Components            | Phase 2 (registration system)          |

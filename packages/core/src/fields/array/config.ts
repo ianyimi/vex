@@ -8,6 +8,7 @@ export function array(
     _meta: {
       type: "array",
       ...options,
+      formDefaultValue: [],
     },
   };
 }

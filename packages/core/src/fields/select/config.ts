@@ -16,6 +16,7 @@ export function select<T extends string = string>(
     _meta: {
       type: "select",
       ...options,
+      formDefaultValue: options.defaultValue ?? (options.hasMany ? [] : ("" as T)),
     },
   };
 }

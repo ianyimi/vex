@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import type { AnyVexCollection, VexConfig } from "@vexcms/core";
 import { generateColumns } from "@vexcms/core";
 import {
@@ -12,14 +12,29 @@ import {
   BreadcrumbLink,
   BreadcrumbPage,
   BreadcrumbSeparator,
+  Button,
 } from "@vexcms/ui";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { anyApi } from "convex/server";
-import { useQueryState, parseAsIndex, parseAsStringLiteral } from "nuqs";
+import {
+  useQueryState,
+  parseAsIndex,
+  parseAsStringLiteral,
+  parseAsBoolean,
+} from "nuqs";
+import { Plus, Trash2 } from "lucide-react";
+import type { RowSelectionState, ColumnDef } from "@tanstack/react-table";
 import { usePaginationLoader } from "../hooks/usePaginationLoader";
 import { useBidirectionalPagination } from "../hooks/useBidirectionalPagination";
+import { CreateDocumentDialog } from "../components/CreateDocumentDialog";
+import {
+  DeleteDocumentDialog,
+  type DocumentForDeletion,
+} from "../components/DeleteDocumentDialog";
+import { RowActionsMenu } from "../components/RowActionsMenu";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 const PAGE_SIZE_STRINGS = PAGE_SIZE_OPTIONS.map(String) as unknown as readonly [
@@ -42,6 +57,8 @@ export default function CollectionsView({
   config: VexConfig;
   collection: AnyVexCollection;
 }) {
+  const router = useRouter();
+
   const [pageIndex, setPageIndex] = useQueryState(
     "page",
     parseAsIndex.withDefault(0),
@@ -54,6 +71,24 @@ export default function CollectionsView({
     ),
   );
   const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Create modal — driven by URL param
+  const [createNew, setCreateNew] = useQueryState(
+    "createNew",
+    parseAsBoolean.withDefault(false),
+  );
+
+  // Delete modal — driven by URL param
+  const [deleteOpen, setDeleteOpen] = useQueryState(
+    "delete",
+    parseAsBoolean.withDefault(false),
+  );
+
+  // Row selection state
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  // Documents staged for deletion
+  const [docsToDelete, setDocsToDelete] = useState<DocumentForDeletion[]>([]);
 
   const pageSize = Number(pageSizeStr);
   const initialFetchSize = Math.max(50, pageSize * 5);
@@ -78,6 +113,8 @@ export default function CollectionsView({
   );
 
   const useAsTitle = collection.config.admin?.useAsTitle as string | undefined;
+  const disableDelete = collection.config.admin?.disableDelete ?? false;
+  const disableCreate = collection.config.admin?.disableCreate ?? false;
   const searchAvailable = !!useAsTitle;
   const searchIndexName = useAsTitle ? `search_${useAsTitle}` : undefined;
   const isSearching = searchAvailable && debouncedSearch.trim().length > 0;
@@ -150,6 +187,66 @@ export default function CollectionsView({
   const displayCount = isSearching ? documents.length : totalCount;
 
   const pluralLabel = collection.config.labels?.plural ?? collection.slug;
+  const singularLabel = collection.config.labels?.singular ?? collection.slug;
+
+  // Build actions column
+  const columnsWithActions: ColumnDef<Record<string, unknown>, unknown>[] =
+    useMemo(() => {
+      const actionsColumn: ColumnDef<Record<string, unknown>, unknown> = {
+        id: "actions",
+        header: "Actions",
+        size: 50,
+        enableSorting: false,
+        enableHiding: false,
+        cell: ({ row }) => {
+          const doc = row.original;
+          const docId = doc._id as string;
+          const docTitle = useAsTitle
+            ? (doc[useAsTitle] as string | undefined)
+            : undefined;
+
+          return (
+            <RowActionsMenu
+              onEdit={() => {
+                router.push(`${config.basePath}/${collection.slug}/${docId}`);
+              }}
+              onDelete={() => {
+                setDocsToDelete([{ _id: docId, title: docTitle }]);
+                setDeleteOpen(true);
+              }}
+              disableDelete={disableDelete}
+            />
+          );
+        },
+      };
+
+      return [...columns, actionsColumn];
+    }, [
+      columns,
+      collection.slug,
+      config.basePath,
+      disableDelete,
+      useAsTitle,
+      router,
+    ]);
+
+  // Build DocumentForDeletion array from selected rows
+  const getSelectedDocuments = useCallback((): DocumentForDeletion[] => {
+    const selectedIndices = Object.keys(rowSelection).filter(
+      (k) => rowSelection[k],
+    );
+    return selectedIndices.map((idx) => {
+      const doc = documents[Number(idx)];
+      return {
+        _id: doc._id as string,
+        title: useAsTitle ? (doc[useAsTitle] as string | undefined) : undefined,
+      };
+    });
+  }, [rowSelection, documents, useAsTitle]);
+
+  const selectedCount = Object.keys(rowSelection).filter(
+    (k) => rowSelection[k],
+  ).length;
 
   return (
     <div className="flex flex-col p-6 h-[calc(100vh-theme(spacing.16))] min-h-0">
@@ -180,6 +277,27 @@ export default function CollectionsView({
                   : "Loading..."}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          {!disableDelete && selectedCount > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                setDocsToDelete(getSelectedDocuments());
+                setDeleteOpen(true);
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete ({selectedCount})
+            </Button>
+          )}
+          {!disableCreate && (
+            <Button size="sm" onClick={() => setCreateNew(true)}>
+              <Plus className="h-4 w-4" />
+              Create {singularLabel}
+            </Button>
+          )}
+        </div>
       </div>
 
       {searchAvailable && (
@@ -197,7 +315,7 @@ export default function CollectionsView({
       )}
 
       <DataTable
-        columns={columns}
+        columns={columnsWithActions}
         data={documents as Record<string, unknown>[]}
         basePath={config.basePath}
         collectionSlug={collection.slug}
@@ -217,7 +335,42 @@ export default function CollectionsView({
         onPageSizeChange={handlePageSizeChange}
         totalCount={isSearching ? undefined : totalCount}
         linkComponent={Link}
+        enableRowSelection={!disableDelete}
+        rowSelection={rowSelection}
+        onRowSelectionChange={setRowSelection}
       />
+
+      {/* Create Document Dialog */}
+      {!disableCreate && (
+        <CreateDocumentDialog
+          open={createNew}
+          onClose={() => setCreateNew(false)}
+          collection={collection}
+          onCreated={({ documentId }) => {
+            setCreateNew(false);
+            router.push(`${config.basePath}/${collection.slug}/${documentId}`);
+          }}
+        />
+      )}
+
+      {/* Delete Document Dialog */}
+      {!disableDelete && (
+        <DeleteDocumentDialog
+          open={deleteOpen}
+          onClose={() => {
+            setDeleteOpen(false);
+            setDocsToDelete([]);
+          }}
+          documents={docsToDelete}
+          collectionSlug={collection.slug}
+          singularLabel={singularLabel}
+          pluralLabel={pluralLabel}
+          onDeleted={() => {
+            setRowSelection({});
+            setDocsToDelete([]);
+          }}
+        />
+      )}
     </div>
   );
 }

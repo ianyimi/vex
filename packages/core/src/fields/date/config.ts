@@ -9,6 +9,7 @@ export function date(
       type: "date",
       defaultValue: options?.required ? 0 : undefined,
       ...options,
+      formDefaultValue: options?.defaultValue ?? 0,
     },
   };
 }

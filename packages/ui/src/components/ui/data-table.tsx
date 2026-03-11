@@ -7,6 +7,7 @@ import {
   useReactTable,
   type ColumnDef,
   type PaginationState,
+  type RowSelectionState,
 } from "@tanstack/react-table";
 
 import {
@@ -18,6 +19,7 @@ import {
 } from "./table";
 import { cn } from "../../styles/utils";
 import { Pagination, PageSizeSelector } from "./pagination";
+import { CheckboxField } from "./checkbox-field";
 
 import React from "react";
 
@@ -44,6 +46,35 @@ function AlignWrapper({
       {children}
     </div>
   );
+}
+
+function selectColumn<TData>(): ColumnDef<TData, unknown> {
+  return {
+    id: "select",
+    header: ({ table }) => (
+      <CheckboxField
+        checked={table.getIsAllPageRowsSelected()}
+        ref={(el) => {
+          if (el) {
+            el.indeterminate = table.getIsSomePageRowsSelected();
+          }
+        }}
+        onChange={table.getToggleAllPageRowsSelectedHandler()}
+        aria-label="Select all"
+      />
+    ),
+    cell: ({ row }) => (
+      <CheckboxField
+        checked={row.getIsSelected()}
+        onChange={row.getToggleSelectedHandler()}
+        aria-label="Select row"
+      />
+    ),
+    size: 40,
+    meta: { align: "center" },
+    enableSorting: false,
+    enableHiding: false,
+  };
 }
 
 interface DataTableProps<TData> {
@@ -79,6 +110,12 @@ interface DataTableProps<TData> {
     className?: string;
     children: React.ReactNode;
   }>;
+  /** Enable row selection with checkboxes. Default: false. */
+  enableRowSelection?: boolean;
+  /** Controlled row selection state. Keys are row indices, values are booleans. */
+  rowSelection?: RowSelectionState;
+  /** Callback when row selection changes. */
+  onRowSelectionChange?: (selection: RowSelectionState) => void;
 }
 
 function DataTable<TData extends Record<string, unknown>>({
@@ -95,25 +132,40 @@ function DataTable<TData extends Record<string, unknown>>({
   totalCount,
   displayPageIndex,
   linkComponent: LinkComponent,
+  enableRowSelection = false,
+  rowSelection: controlledRowSelection,
+  onRowSelectionChange,
 }: DataTableProps<TData>) {
   const pagination: PaginationState = {
     pageIndex: controlledPageIndex ?? 0,
     pageSize,
   };
 
+  const [internalRowSelection, setInternalRowSelection] = React.useState<RowSelectionState>({});
+  const rowSelection = controlledRowSelection ?? internalRowSelection;
+  const handleRowSelectionChange = onRowSelectionChange ?? setInternalRowSelection;
+
+  const allColumns = enableRowSelection ? [selectColumn<TData>(), ...columns] : columns;
+
   const table = useReactTable({
     data,
-    columns,
+    columns: allColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     autoResetPageIndex: false,
+    enableRowSelection,
     state: {
       pagination,
+      rowSelection,
     },
     onPaginationChange: (updater) => {
       const next =
         typeof updater === "function" ? updater(pagination) : updater;
       onPageChange?.(next.pageIndex);
+    },
+    onRowSelectionChange: (updater) => {
+      const next = typeof updater === "function" ? updater(rowSelection) : updater;
+      handleRowSelectionChange(next);
     },
   });
 
@@ -130,8 +182,13 @@ function DataTable<TData extends Record<string, unknown>>({
           <TableHeader className="sticky top-0 z-10 bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                {headerGroup.headers.map((header) => {
+                  const colSize = header.column.columnDef.size;
+                  return (
+                  <TableHead
+                    key={header.id}
+                    style={colSize != null ? { width: colSize } : undefined}
+                  >
                     {header.isPlaceholder ? null : (
                       <AlignWrapper
                         align={getAlign(header.column.columnDef.meta)}
@@ -143,7 +200,8 @@ function DataTable<TData extends Record<string, unknown>>({
                       </AlignWrapper>
                     )}
                   </TableHead>
-                ))}
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>
@@ -190,7 +248,7 @@ function DataTable<TData extends Record<string, unknown>>({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={allColumns.length}
                   className="h-24 text-center"
                 >
                   {emptyMessage}
@@ -203,7 +261,13 @@ function DataTable<TData extends Record<string, unknown>>({
 
       {data.length > 0 && (
         <div className="flex items-center px-2 shrink-0">
-          <div className="flex-1" />
+          <div className="flex-1 text-sm text-muted-foreground">
+            {enableRowSelection && Object.keys(rowSelection).length > 0 && (
+              <span>
+                {Object.keys(rowSelection).length} of {data.length} row(s) selected
+              </span>
+            )}
+          </div>
           <Pagination
             currentPage={currentPage}
             totalPages={totalPageCount}

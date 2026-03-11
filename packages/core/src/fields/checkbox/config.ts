@@ -9,6 +9,7 @@ export function checkbox(
       type: "checkbox",
       defaultValue: options?.required ? false : undefined,
       ...options,
+      formDefaultValue: options?.defaultValue ?? false,
     },
   };
 }

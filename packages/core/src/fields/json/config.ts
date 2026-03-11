@@ -8,6 +8,7 @@ export function json(
     _meta: {
       type: "json",
       ...options,
+      formDefaultValue: {},
     },
   };
 }
