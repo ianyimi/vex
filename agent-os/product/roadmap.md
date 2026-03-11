@@ -1,526 +1,470 @@
-# Product Roadmap
+# Monetization Strategy & Feature Roadmap (v2)
 
-## Phase 0: Project Setup
+## Competitive Context
 
-Infrastructure and scaffolding before feature development.
+**Vex CMS** is a Convex-native headless CMS — PayloadCMS rebuilt from the ground up for Convex's real-time, serverless architecture with full TypeScript type safety.
 
-### Build Order
+**Comparable product**: [BaseHub](https://basehub.com/) — headless CMS with Git-like content branching, $12/user/month, built on NeonDB (Postgres). Their core differentiator is content branching. Our advantage: **real-time reactivity is free and built-in via Convex**. BaseHub has to engineer live collaboration on top of Postgres; we get it for nothing.
 
-```
-Step 0.1: Monorepo Setup          → pnpm, Turborepo, package scaffolding
-Step 0.2: Testing Infrastructure  → Vitest, Playwright, convex-test
-Step 0.3: CI/Publishing           → semantic-release, GitHub Actions
-Step 0.4: Example Project         → apps/blog with Next.js + Convex
-Step 0.5: Admin Layout + Auth      → Next.js admin, Better Auth adapter
-```
+**Key references:**
 
----
-
-### 0.1 Monorepo Setup
-
-> **Implementation Spec**: [00-monorepo-setup-spec.md](./00-monorepo-setup-spec.md)
-
-- [ ] Initialize pnpm workspace
-- [ ] Configure Turborepo (turbo.json)
-- [ ] Create folder structure (apps/, packages/)
-- [ ] Set up shared TypeScript config (@vexcms/tsconfig)
-- [ ] Set up shared ESLint config (@vexcms/eslint-config)
-- [ ] Initialize all package.json files with @vexcms/* namespace
-- [ ] Configure tsup for package builds
-- [ ] Verify `pnpm build` and `pnpm dev` work
+- [BaseHub pricing & features](https://basehub.com/)
+- [Payload CMS](https://payloadcms.com/) — primary inspiration, MIT licensed
+- [Payload richtext-lexical package](https://github.com/payloadcms/payload/tree/main/packages/richtext-lexical) — Lexical 0.41.0, model our `richtext()` field after this
+- [Convex Stack directory](https://convex.dev/components) — distribution option post-feature-complete
 
 ---
 
-### 0.2 Testing Infrastructure
+## License Strategy
 
-> **Implementation Spec**: [01-testing-infrastructure-spec.md](./01-testing-infrastructure-spec.md)
-> **Testing Strategy**: [11-testing-strategy-spec.md](./11-testing-strategy-spec.md)
+**MIT license for all core packages.** This is the developer acquisition flywheel — the more people self-host, the more brand grows.
 
-- [ ] Install and configure Vitest workspace
-- [ ] Set up convex-test for Convex function testing
-- [ ] Configure Vitest for each package
-- [ ] Install Playwright
-- [ ] Create apps/admin-test harness for component tests
-- [ ] Configure Playwright for apps/blog E2E tests
-- [ ] Create test fixtures for authentication
-- [ ] Add axe-core for accessibility testing
+Enterprise features ship as separate packages under **BSL (Business Source License)** or a commercial license. Source is visible but requires a paid license for commercial use above a threshold.
 
----
+Comparable OSS monetization models:
 
-### 0.3 CI/Publishing
-
-> **Implementation Spec**: [02-ci-publishing-spec.md](./02-ci-publishing-spec.md)
-
-- [ ] Install multi-semantic-release
-- [ ] Configure conventional commits
-- [ ] Create .github/workflows/ci.yml (lint, test, build)
-- [ ] Create .github/workflows/release.yml (publish to npm)
-- [ ] Set up NPM_TOKEN secret
-- [ ] Configure branch protection rules
-- [ ] Test release with dry-run
+- [Payload CMS](https://github.com/payloadcms/payload) — MIT core → Payload Cloud hosting
+- [Ghost](https://github.com/TryGhost/Ghost) — MIT → Ghost Pro hosting
+- [Strapi](https://github.com/strapi/strapi) — MIT → Strapi Cloud + enterprise
+- [Sanity](https://www.sanity.io/pricing) — free tier → API usage billing
+- [Cal.com](https://github.com/calcom/cal.com) — AGPL → enterprise commercial license
+- [Posthog](https://github.com/PostHog/posthog) — MIT/EE split — MIT core, paid EE features in same repo
 
 ---
 
-### 0.4 Example Project
+## Monetization Model
 
-- [ ] Create apps/blog with Next.js App Router
-- [ ] Set up Convex in apps/blog
-- [ ] Add vex.config.ts with full Phase 1 collections
-- [ ] Configure workspace dependencies to local packages
-- [ ] Verify app runs with `pnpm --filter blog dev`
+### Tier 1 — MIT Core (Free Forever)
 
----
+Everything in the MVP and Phase 2 stays free in npm packages:
 
-### 0.5 Admin Layout + Auth
+- All field types (text, number, select, date, relationship, array, group, blocks, upload, richtext)
+- Collections, globals, defineConfig
+- Admin panel (self-hosted, Next.js)
+- CLI + schema generation + auto-migration
+- Create, read, update, delete operations
+- Media collections + file uploads (Convex storage)
+- Draft/publish workflow + version history
+- RBAC enforcement (document-level and field-level permissions)
+- Rich text editor (Lexical)
+- Live preview
+- Auth integration (Better Auth)
+- Custom admin components (useField, useForm, component registration)
+- Team management UI
+- API key management
+- Content scheduling
+- Audit log (basic)
+- Hooks system (collection + field lifecycle hooks)
 
-> **Implementation Specs**:
-> - [03-admin-shell-spec.md](./03-admin-shell-spec.md)
-> - [04-auth-adapter-spec.md](./04-auth-adapter-spec.md)
+### Tier 2 — @vexcms/enterprise (Paid Packages, BSL)
 
-- [ ] Define AuthAdapter interface in @vexcms/core
-- [ ] Implement createBetterAuthAdapter in @vexcms/admin
-- [ ] Create admin layout (Layout, Sidebar, Header)
-- [ ] Create auth pages (sign-in, sign-up)
-- [ ] Create auth middleware
-- [ ] Set up createVexAdmin function
-- [ ] Test auth flow end-to-end
+Gated features that enterprises require and will pay for:
 
----
+| Package                           | Feature                                                     | Why It's Paid                                   |
+| --------------------------------- | ----------------------------------------------------------- | ----------------------------------------------- |
+| `@vexcms/enterprise-environments` | Project-level content branching (staging/production)        | Core competitive moat, BaseHub charges for this |
+| `@vexcms/enterprise-sso`          | SAML/OIDC SSO, IdP group → role mapping                     | Enterprise security requirement                 |
+| `@vexcms/enterprise-workflows`    | Review/approval workflows, required sign-off before publish | Compliance & editorial governance               |
+| `@vexcms/enterprise-audit`        | Full audit log with retention, export, compliance reports   | SOC2/HIPAA requirement                          |
+| `@vexcms/enterprise-localization` | i18n field variants, locale-aware versioning                | Agencies pay per-project for this               |
 
-## Phase 1: Core Foundation (MVP)
+Pricing model: **flat annual license per company** (not per-seat). $500-2000/yr range. Standard for OSS enterprise packages.
 
-The minimum needed to use this CMS in a real project.
+### Tier 3 — Convex Partnership
 
-### Build Order
+Every Vex install requires a Convex account. As Vex grows, it drives meaningful Convex signups. Leverage options:
 
-```
-Step 1.0: Config Structure        → defineConfig, defineCollection, defineGlobal, defineBlock
-Step 1.1: Basic Fields            → text, number, checkbox, select, date, email, textarea
-Step 1.2: Complex Fields          → relationship, array, group, blocks
-Step 1.3: Convex Integration      → Schema generation, admin handlers, indexes
-Step 1.4: Hooks System            → beforeCreate, afterUpdate, etc.
-Step 1.5: Access Control          → RBAC, permissions matrix, field-level access
-Step 1.6: Versioning & Drafts     → Draft/publish workflow, version history
-Step 1.7: File Uploads            → Upload collections, media library, storage adapters
-Step 1.8: Custom Admin Components → useField, useForm, UI fields, component overrides
-Step 1.9: Live Preview            → Iframe preview, postMessage, refresh on save
-Step 1.10: Admin Panel (Next.js)  → Full admin UI consuming all above features
-```
+1. **Affiliate/referral revenue** — revenue share on Convex plan upgrades from Vex users
+2. **Sponsored development** — Convex funds Vex dev time as a showcase project
+3. **Convex Stack listing** — featured in Convex ecosystem as a full project template, drives organic installs
+4. **Acquisition/hire path** — traction-based, Vex is the best marketing for Convex's value prop
 
----
+### Tier 4 — Support & Services
 
-### 1.0 Config Structure
+Once agencies and startups depend on the project:
 
-> **Reference**: [vex.config.example.ts](./vex.config.example.ts) - Complete Phase 1 target config
+- $500-2000/mo priority support subscriptions
+- Custom implementation consulting
+- White-label admin panel licensing for agencies
 
-- [ ] `defineConfig()` - Main configuration wrapper
-- [ ] `defineCollection()` - Collection definition with typed fields
-- [ ] `defineGlobal()` - Singleton global definition
-- [ ] `defineBlock()` - Block definition for blocks field
-- [ ] `VexConfig` type with all Phase 1 options
-- [ ] Type exports for document inference (`collection._docType`)
+### Tier 5 — GitHub Sponsors / OSS Grants
 
-This step establishes the config structure that all other steps fill in.
+Once public with traction:
 
----
-
-### 1.1 Basic Field Types
-
-> **Implementation Spec**: [05-schema-field-system-spec.md](./05-schema-field-system-spec.md)
-
-- [ ] `text()` - Single-line text input, wraps `v.string()`
-- [ ] `textarea()` - Multi-line text input
-- [ ] `number()` - Numeric input, wraps `v.number()`
-- [ ] `checkbox()` - Boolean toggle, wraps `v.boolean()`
-- [ ] `select()` - Dropdown with typed options, wraps `v.union(v.literal(...))`
-- [ ] `date()` - Date/time picker, wraps `v.number()` (timestamp)
-- [ ] `email()` - Email input with validation
-- [ ] Field metadata: `label`, `description`, `required`, `defaultValue`
-- [ ] Admin config: `hidden`, `readOnly`, `position`, `width`, `condition`
-- [ ] `VexField` branded type with `_validator` and `_meta`
+- [GitHub Sponsors](https://github.com/sponsors)
+- [Open Collective](https://opencollective.com/)
+- Ecosystem grants: Vercel, Netlify, and others fund OSS in their ecosystem
 
 ---
 
-### 1.2 Complex Field Types
+## Enterprise Package Setup — Git Submodule
 
-> **Implementation Spec**: [05-schema-field-system-spec.md](./05-schema-field-system-spec.md)
+`packages/enterprise` must be set up as a git submodule pointing to a separate private repo. This keeps enterprise source code out of the public MIT repo's git history entirely.
 
-- [ ] `relationship()` - Reference to other documents, wraps `v.id(collectionName)`
-  - `to`: Target collection name
-  - `hasMany`: Single vs array of references
-- [ ] `array()` - Repeatable field groups, wraps `v.array(v.object(...))`
-  - `fields`: Nested field definitions
-  - `minRows`, `maxRows`: Row constraints
-- [ ] `group()` - Non-repeating nested fields, wraps `v.object(...)`
-  - `fields`: Nested field definitions
-- [ ] `blocks()` - Flexible content, wraps `v.array(v.union(...))`
-  - `blocks`: Array of block definitions
-  - Each block adds `blockType` discriminator
-- [ ] `InferFieldType<F>` - Extract TypeScript type from field
-- [ ] `InferBlocksType<B>` - Extract union type from blocks array
-
----
-
-### 1.3 Convex Integration
-
-> **Implementation Spec**: [06-convex-integration-spec.md](./06-convex-integration-spec.md)
-
-**Schema Generation (Two-File Approach):**
-- [ ] `generateVexSchema(config)` - Generate `vex.schema.ts` content
-  - Extract validators from all collections
-  - Handle nested structures recursively
-  - Add system tables (`vex_versions`, `vex_globals`)
-- [ ] `updateUserSchema(config, existingContent)` - Update `schema.ts` with AST parsing
-  - Detect missing collections
-  - Add imports and table definitions
-  - Preserve user customizations
-- [ ] `detectSchemaConflicts(config, existingContent)` - Validate schema compatibility
-- [ ] Index generation from `collection.indexes` config
-- [ ] Search index generation from `collection.searchIndexes` config
-
-**CLI Commands (`@vexcms/cli`):**
-- [ ] `vex sync` - Regenerate vex.schema.ts, update schema.ts
-- [ ] `vex sync --watch` - Watch mode for development
-- [ ] `vex sync --dry-run` - Preview changes without writing
-- [ ] `vex sync --force` - Force update even if autoUpdateSchema is false
-- [ ] `convex.autoUpdateSchema` config option (default: true)
-
-**Admin Handlers:**
-- [ ] `createVexHandlers(config)` - Generate admin query/mutation handlers
-- [ ] Admin queries: `adminList`, `adminSearch`, `adminGetById`
-- [ ] Admin mutations: `adminCreate`, `adminUpdate`, `adminDelete`
-- [ ] Pagination, sorting, filtering in list query
-- [ ] Real-time subscriptions via standard Convex reactivity
-
----
-
-### 1.4 Hooks System
-
-> **Implementation Spec**: [06-convex-integration-spec.md](./06-convex-integration-spec.md)
-
-- [ ] Collection hooks in admin mutations:
-  - `beforeCreate` - Modify data before insert
-  - `afterCreate` - Run after insert (notifications, etc.)
-  - `beforeUpdate` - Modify data before patch
-  - `afterUpdate` - Run after patch
-  - `beforeDelete` - Can abort deletion
-  - `afterDelete` - Cleanup, cascade deletes
-- [ ] Hook context: `{ data, originalDoc, user, operation, db }`
-- [ ] Hook execution order and error handling
-- [ ] Field-level hooks: `beforeChange`, `afterRead`
-- [ ] Global hooks (same pattern as collections)
-
----
-
-### 1.5 Access Control
-
-> **Implementation Spec**: [06-convex-integration-spec.md](./06-convex-integration-spec.md)
-
-- [ ] Document-level access functions: `create`, `read`, `update`, `delete`
-- [ ] Access function signature: `({ user, doc, data }) => boolean`
-- [ ] Field-level access: `read`, `update` per field
-- [ ] `definePermissions<TRoles, TCollections>()` - Typed RBAC matrix
-- [ ] `checkAccess(config, ctx, collection, action, doc)` - Permission check
-- [ ] `accessControl` config in `defineConfig`:
-  - `roles`: Role name array
-  - `getUserRole`: Extract role from user document
-  - `permissions`: RBAC matrix
-  - `defaultPermission`: Fallback behavior
-- [ ] Row-level access in list queries (post-fetch filtering)
-
----
-
-### 1.6 Versioning & Drafts
-
-> **Implementation Spec**: [07-versioning-drafts-spec.md](./07-versioning-drafts-spec.md)
-
-- [ ] Version system fields on versioned collections:
-  - `_status`: `"draft"` | `"published"`
-  - `_version`: Incrementing version number
-  - `_draftSnapshot`: Pending draft content (null if none)
-  - `_hasDraft`: Boolean for efficient queries
-  - `_publishedAt`: Last publish timestamp
-- [ ] `vex_versions` table with indexes by collection/document
-- [ ] Admin mutations:
-  - `adminSaveDraft` - Save draft without publishing
-  - `adminAutosave` - Coalesced autosave (updates existing autosave record)
-  - `adminPublish` - Publish current draft
-  - `adminUnpublish` - Revert to draft status
-  - `adminRevertToPublished` - Discard pending draft
-  - `adminRestoreVersion` - Restore from history
-- [ ] Version queries: `adminListVersions`, `adminGetVersion`
-- [ ] Version cleanup with `maxPerDoc` config
-- [ ] Globals versioning with same pattern
-
----
-
-### 1.7 File Uploads
-
-> **Implementation Spec**: [08-file-uploads-spec.md](./08-file-uploads-spec.md)
-
-- [ ] Upload-enabled collections: `upload.enabled: true`
-  - `accept`: Allowed MIME types
-  - `maxSize`: File size limit
-  - `storage`: Storage adapter
-- [ ] System fields for upload collections:
-  - `_storageId`, `_filename`, `_mimeType`, `_size`, `_width`, `_height`
-- [ ] `upload()` field type with `relationTo` for explicit collection reference
-- [ ] Admin upload mutations:
-  - `adminGenerateUploadUrl` - Get signed upload URL
-  - `adminCreateMedia` - Create document after upload
-  - `adminDeleteMedia` - Delete file and document
-- [ ] Admin upload queries: `adminListMedia`, `adminGetMediaUrl`
-- [ ] Client-side upload utility (framework-agnostic)
-- [ ] Per-field MIME type and size restrictions
-- [ ] Storage adapter interface (Convex default)
-
----
-
-### 1.8 Custom Admin Components
-
-> **Implementation Spec**: [09-custom-admin-components-spec.md](./09-custom-admin-components-spec.md)
-
-- [ ] Form state with Legend State + TanStack Form
-- [ ] `useField({ path })` hook - Read/write field values
-- [ ] `useForm()` hook - Form state, submission, validation
-- [ ] `useFormFields(selector)` hook - Select specific fields (perf)
-- [ ] State flag hooks: `useFormSubmitted`, `useFormModified`, `useFormProcessing`
-- [ ] `FormProvider` component with context
-- [ ] `FieldPathContext` for nested field components
-- [ ] Field component override via `admin.components.Field` (import path strings)
-- [ ] Build-time component resolution and import map generation
-- [ ] Exportable input primitives: `TextInput`, `SelectInput`, `NumberInput`, etc.
-- [ ] `ui()` field type - Non-persisted display/action fields
-
----
-
-### 1.9 Live Preview
-
-> **Implementation Spec**: [10-live-preview-spec.md](./10-live-preview-spec.md)
-
-- [ ] `livePreview` config per collection:
-  - `url`: String or function returning preview URL
-  - `breakpoints`: Viewport size presets
-  - `reloadOnFields`: Fields that trigger URL recomputation
-- [ ] `LivePreviewPanel` component - Toggleable side panel with iframe
-- [ ] `BreakpointSelector` component - Viewport size controls
-- [ ] postMessage protocol:
-  - `vex-live-preview:init` - Admin sends document context
-  - `vex-live-preview:refresh` - Admin signals save complete
-  - `vex-live-preview:ready` - Frontend acknowledges
-- [ ] `@vexcms/live-preview-react` package:
-  - `useRefreshOnSave()` hook
-  - `RefreshOnSave` component
-- [ ] Origin validation from `admin.allowedOrigins`
-- [ ] Draft content queries with `_vexIncludeDraft` flag
-
----
-
-### 1.10 Admin Panel (Next.js)
-
-- [ ] Better Auth integration for authentication
-- [ ] Admin layout with sidebar navigation
-- [ ] Collection list view:
-  - TanStack Table with pagination, sorting, filtering
-  - Bulk actions (delete, publish)
-  - Search
-- [ ] Document create/edit forms:
-  - Auto-generated from collection schema
-  - Field components for all field types
-  - Sidebar vs main panel positioning
-  - Conditional field visibility
-- [ ] Field components:
-  - `TextField`, `NumberField`, `CheckboxField`, `SelectField`, `DateField`
-  - `RelationshipField` with search picker
-  - `ArrayField` with add/remove/reorder
-  - `GroupField` with collapsible sections
-  - `BlocksField` with block type selector
-  - `UploadField` with media library picker
-  - `UIField` for non-persisted fields
-- [ ] Media library:
-  - Grid view with thumbnails
-  - Upload modal with drag-drop
-  - File type filtering
-- [ ] Draft/publish workflow:
-  - Status indicator
-  - Save Draft / Publish buttons
-  - Version history panel
-  - Restore version
-- [ ] Live preview panel:
-  - Toggle visibility
-  - Breakpoint selector
-  - Refresh on save
-- [ ] Globals management
-- [ ] Responsive layout
-
----
-
-## Package Structure
-
-```
-vex/
-├── apps/
-│   ├── blog/                    # Full example project
-│   └── admin-test/              # Isolated component test harness
-│
-├── packages/
-│   ├── core/                    # @vexcms/core (types, schema, config - no React)
-│   ├── ui/                      # @vexcms/ui (shared React components)
-│   ├── convex/                  # @vexcms/convex
-│   ├── client/                  # @vexcms/client
-│   ├── admin-next/              # @vexcms/admin-next (Phase 1)
-│   ├── admin-tanstack-start/    # @vexcms/admin-tanstack-start (Phase 4)
-│   ├── live-preview-react/      # @vexcms/live-preview-react
-│   ├── tsconfig/                # @vexcms/tsconfig (internal)
-│   └── eslint-config/           # @vexcms/eslint-config (internal)
-│
-├── turbo.json
-├── pnpm-workspace.yaml
-└── package.json
+```bash
+# one-time setup: add the private repo as a submodule
+git submodule add git@github.com:you/vexcms-enterprise.git packages/enterprise
+git commit -m "chore: add enterprise package as git submodule"
 ```
 
-**Package Responsibilities:**
-- `@vexcms/core` — Types, schema, config (no React dependency)
-- `@vexcms/ui` — Shared React components: primitives (shadcn-based), form fields (TanStack Form), hooks (Legend State), layout (Layout, Header)
-- `@vexcms/admin-next` — Next.js routing, server components, data fetching
-- `@vexcms/admin-tanstack-start` — TanStack Start routing, createServerFn, data fetching
+After this, `packages/enterprise` in the public repo is just a pointer to a commit hash — no source code visible.
+
+**Local dev (full access):**
+
+```bash
+git clone --recurse-submodules git@github.com:you/vexcms.git
+# packages/enterprise is fully populated, pnpm workspace links it normally
+```
+
+**Public contributors cloning the MIT repo:**
+
+```bash
+git clone https://github.com/you/vexcms
+# packages/enterprise directory is empty — no error, no enterprise code exposed
+```
+
+**Keeping the submodule in sync:**
+
+```bash
+# after making changes inside packages/enterprise
+cd packages/enterprise
+git add . && git commit -m "feat: ..."
+git push origin main
+
+# back in root repo, update the submodule pointer
+cd ../..
+git add packages/enterprise
+git commit -m "chore: update enterprise submodule"
+```
+
+**pnpm workspace** — no special handling needed. Add to `pnpm-workspace.yaml` as normal:
+
+```yaml
+packages:
+  - "packages/*" # picks up packages/enterprise automatically when populated
+  - "apps/*"
+```
+
+**CI** — enterprise builds run with separate credentials scoped to the private repo. Public CI (GitHub Actions on the MIT repo) simply skips the enterprise package when the submodule is not populated.
 
 ---
 
-## Phase 2: Enhanced Editing
+## Rich Text Editor
 
-Features that improve the content editing experience.
+**Payload 4.0 uses Lexical** (Meta's editor framework). Package: [`@payloadcms/richtext-lexical`](https://github.com/payloadcms/payload/tree/main/packages/richtext-lexical) — Lexical 0.41.0.
 
-### 2.1 Rich Text Editor
-- [ ] Evaluate Lexical vs TipTap
-- [ ] `richText` field type
-- [ ] Basic formatting (bold, italic, headings, lists, links)
-- [ ] Embed blocks (images, videos)
-- [ ] Serialization to HTML/JSON
+Model the `richtext()` field directly after their implementation:
 
----
-
-## Phase 3: Advanced Features
-
-Features for larger teams and complex use cases.
-
-### 3.1 Localization (i18n)
-- [ ] Locale configuration in CMS config
-- [ ] `localized: true` option per field
-- [ ] Locale switcher in admin panel
-- [ ] Fallback locale support
-- [ ] Per-document locale filtering in queries
-
-### 3.2 Form Builder
-- [ ] Dynamic form collection
-- [ ] Form field types: text, email, textarea, select, checkbox
-- [ ] Form submission storage
-- [ ] Email notifications on submit
-- [ ] Embed forms in frontend
-
-### 3.3 Plugin System
-- [ ] Plugin interface (config -> modified config)
-- [ ] Hook into admin panel components
-- [ ] Register custom field types
-- [ ] Example plugins: SEO, sitemap, redirects
-
-### 3.4 REST API (Optional)
-- [ ] Express/Hono adapter for REST endpoints
-- [ ] Hooks still fire on REST operations
-- [ ] Useful for external service integrations
+- Same serialization patterns (JSON storage in Convex)
+- Same plugin architecture
+- Same React integration
+- Add HTML/RSC rendering utilities (`@vexcms/richtext-lexical/html`, `/rsc`)
+- Block embeds link to the existing `blocks()` field system
 
 ---
 
-## Phase 4: Ecosystem
+## Document Versioning vs Project-Level Environments
 
-### 4.1 TanStack Start Support
-- [ ] `@vexcms/admin-tanstack-start` package (separate from Next.js admin)
-- [ ] `@vexcms/live-preview` (framework-agnostic)
-- [ ] Same features as Next.js admin, using idiomatic TanStack patterns
-- [ ] TanStack Router integration
-- [ ] `createServerFn` for data fetching and mutations
+These are two distinct features that compose together:
 
-### 4.2 Additional Storage Adapters
-- [ ] `@vexcms/storage-s3`
-- [ ] `@vexcms/storage-r2` (Cloudflare R2)
-- [ ] `@vexcms/storage-vercel-blob`
+**Document-level versioning (Spec 07, MIT core)** is the draft/publish workflow. An editor saves a draft, previews it, publishes it. Every CMS has this — it's table-stakes. Documents have `_status` (draft/published), `_draftSnapshot` for pending edits, and version history in `vex_versions`.
 
-### 4.3 Additional Auth Adapters
-- [ ] `@vexcms/auth-clerk`
-- [ ] `@vexcms/auth-authjs`
-- [ ] Convex database adapter for Better Auth
+**Project-level environments (Spec 21, enterprise)** is content branching — staging vs production. A team makes changes in staging, reviews the diff, promotes atomically to production. This is the enterprise moat — BaseHub charges for it, nothing in the Convex ecosystem competes.
 
-### 4.4 Documentation & Community
-- [ ] Documentation site
-- [ ] Migration guide from Payload CMS
-- [ ] Example projects
-- [ ] Contributing guidelines
+**How they compose:** Documents have draft/published status _within_ an environment. A staging environment has its own drafts and published docs. "Promote staging → production" copies the published state of staging into production.
+
+**Design constraint for Spec 07:** Don't hardcode assumptions that there's only one "published" state. Add an optional `environmentId` parameter to publish/query functions so the API surface doesn't break when environments land in Spec 21.
 
 ---
 
-## Excluded (Not Planned)
+## Why Certain Features Were Deprioritized
 
-These Payload features are intentionally excluded:
+**TypeSafe Content SDK** — Not needed. Vex is Convex-native; users write Convex queries directly against typed generated tables. The CLI's generated `vex.schema.ts` already gives full type safety. Only relevant if supporting non-Convex backends (not planned).
 
-- **GraphQL API**: Convex queries/mutations are sufficient; GraphQL adds complexity without benefit
-- **Database adapters**: Convex-only by design; this is a Convex-native CMS
-- **Built-in deployment**: Users deploy their own Next.js + Convex apps
+**Webhooks** — Not needed for core use case. Convex is real-time push — publish a document and changes propagate instantly to all subscribers with no build step. Webhooks would only matter for external integrations (Slack, Zapier), which is a low-priority nice-to-have.
+
+**REST API** — Not needed. Convex queries/mutations are sufficient. If someone needs REST, they can write a Convex HTTP action. Building a REST adapter layer adds complexity without serving the Convex-native value prop.
+
+**Convex Component Packaging** — The Convex Components data isolation model prevents joining Vex-managed tables with app tables in a single query. This kills the core value prop. The better-auth component hit the same wall. Distribution via **Convex Stack** (full project template) gives discoverability without the isolation penalty.
+
+**Web Hosting** — Not charging for hosting. Revenue comes from enterprise packages, Convex partnership, and support contracts instead.
 
 ---
 
-## Spec Dependencies
+## Current Project State
+
+### What's Built
+
+| Area              | Status  | Details                                                                                           |
+| ----------------- | ------- | ------------------------------------------------------------------------------------------------- |
+| Field types       | ✅ Done | 10 types: text, number, checkbox, select, date, imageUrl, relationship, json, array, multi-select |
+| Schema generation | ✅ Done | Full codegen with auto-migration, diffing, Prettier formatting                                    |
+| CLI               | ✅ Done | `vex dev` (watch + generate), `vex deploy` (migrate + deploy)                                     |
+| Admin list views  | ✅ Done | Paginated tables, full-text search, column generation, bidirectional pagination                   |
+| Admin edit forms  | ✅ Done | Auto-generated Zod validation, field components, partial patch on save                            |
+| Better Auth       | ✅ Done | Auth table extraction, user/session/account tables, admin plugin                                  |
+| Testing           | ✅ Done | 227 tests passing (field types, schema diffing, migration planning, form generation)              |
+
+### What's Missing for MVP
+
+| Area                          | Status       | Gap                                                                                    |
+| ----------------------------- | ------------ | -------------------------------------------------------------------------------------- |
+| Create/delete mutations       | ❌ Not built | Admin panel is read/update only — cannot create or delete documents                    |
+| Media / uploads               | ❌ Not built | No `upload()` field type, no file upload handlers, no media library UI                 |
+| Drafts / versioning           | ❌ Not built | No `_draftSnapshot`, no `vex_versions` table, no publish workflow                      |
+| RBAC enforcement              | ❌ Not built | Auth exists but no permission checks in query/mutation handlers                        |
+| Rich text                     | ❌ Not built | No `richtext()` field type — without this, Vex is a structured-data tool, not a CMS    |
+| Live preview                  | ❌ Not built | No preview iframe, no postMessage protocol, no draft preview                           |
+| Hooks                         | ❌ Not built | No beforeCreate/afterUpdate lifecycle hooks                                            |
+| Custom component registration | ❌ Not built | useField/useForm exist in edit form, but no `admin.components.Field` path registration |
+
+---
+
+## Full Spec & Feature Build Order
+
+### Phase 0 — Already Implemented
 
 ```
-Phase 0 (Setup)
-├── 00-monorepo-setup-spec.md (0.1)
-│       │
-│       ▼
-├── 01-testing-infrastructure-spec.md (0.2)
-│       │
-│       ▼
-├── 02-ci-publishing-spec.md (0.3)
-│       │
-│       ▼
-└── 03-admin-shell-spec.md + 04-auth-adapter-spec.md (0.5)
+Spec 00 — Monorepo Setup                               ✅
+Spec 01 — Testing Infrastructure                        ✅
+Spec 05 — Schema Field System (10 field types)          ✅
+Spec 06 — Convex Integration (list, get, update, search) ✅ partial
+Spec 11 — Testing Strategy                              ✅
+Spec 12 — Admin Data Table                              ✅
+Spec 13 — Better Auth Package                           ✅
+Spec 14 — Collection Edit Form                          ✅ partial
+```
 
-Phase 1 (Features)
-├── 05-schema-field-system-spec.md (1.0, 1.1, 1.2)
-│       │
-│       ▼
-├── 06-convex-integration-spec.md (1.3, 1.4, 1.5)
-│       │
-│   ┌───┴───┐
-│   ▼       ▼
-├── 07-versioning-drafts-spec.md (1.6)
-│   │
-│   │   08-file-uploads-spec.md (1.7)
-│   │       │
-│   └───┬───┘
-│       ▼
-├── 09-custom-admin-components-spec.md (1.8)
-│       │
-│       ▼
-├── 10-live-preview-spec.md (1.9)
-│       │
-│       ▼
-└── Admin Panel (1.10)
+### Phase 1 — Core MVP (must ship before anyone uses this)
+
+A content editor expects all of these on day one. Nothing here is optional.
+
+```
+Spec 06b — Create & Delete Mutations
+  - adminCreate mutation with server-side Zod validation
+  - adminDelete mutation with cascade options
+  - Bulk delete support
+  - Wire into admin panel (create button, delete action on list/edit views)
+  - This is the most critical gap — the admin panel cannot create documents today
+
+Spec 15 — Media Collections
+  - defineMediaCollection() with auto-injected fields (storageId, filename, mimeType, size, etc.)
+  - upload() field type storing v.id("media_collection_slug") references
+  - FileStorageAdapter interface, @vexcms/file-storage-convex default implementation
+  - Admin UI: media library grid, upload dropzone, media picker popover
+  - Per-field MIME type and size restrictions
+
+Spec 07 — Versioning & Drafts
+  - _status (draft/published), _draftSnapshot, _version, _hasDraft, _publishedAt
+  - vex_versions table with indexes by collection/document
+  - adminSaveDraft, adminPublish, adminUnpublish, adminRestoreVersion mutations
+  - Autosave with coalesced version records
+  - Version history panel in admin
+  - IMPORTANT: Add optional environmentId parameter to publish/query functions
+    so the API doesn't break when Spec 21 (environments) lands
+
+Spec 16 — RBAC / Access Permissions
+  - defineAccess() builder with type-safe permission matrix
+  - hasPermission() runtime resolver
+  - Document-level permissions (CRUD per collection per role)
+  - Field-level permissions (allowlist per action)
+  - Enforce in all admin query/mutation handlers
+  - Multi-role OR resolution
+```
+
+### Phase 2 — Competitive Product (makes Vex worth choosing over alternatives)
+
+```
+Spec 17 — Rich Text Field (Lexical)
+  - richtext() field type
+  - Model after @payloadcms/richtext-lexical (Lexical 0.41.0)
+  - Basic formatting: bold, italic, headings, lists, links, inline images
+  - Serialize to JSON (stored in Convex)
+  - @vexcms/richtext-lexical/html + /rsc rendering utilities
+  - Block embed support (integrates with blocks() field)
+  - Without rich text, Vex is a structured-data tool, not a CMS
+
+Spec 10 — Live Preview
+  - livePreview config per collection (url, breakpoints, reloadOnFields)
+  - LivePreviewPanel component with iframe
+  - postMessage protocol (init, refresh, ready)
+  - @vexcms/live-preview-react package (useRefreshOnSave hook)
+  - Origin validation
+  - Draft content queries with _vexIncludeDraft flag
+  - Pairs with Spec 07 — preview draft content before publishing
+
+Spec 09b — Custom Component Registration
+  - admin.components.Field path strings on field config
+  - Build-time component resolution and componentMap.ts generation
+  - ui() field type for non-persisted display/action fields
+  - Note: useField/useForm hooks already work in edit forms (Spec 14)
+  - This spec adds the registration and resolution system on top
+
+Spec 18 — Team Management UI
+  - Invite users by email (email send via Convex action)
+  - Role assignment during invite flow
+  - Pending invite table with revoke support
+  - User management table in admin panel
+  - Needed before more than one person uses the CMS
+```
+
+### Phase 3 — Pre-Enterprise Polish (ship before charging money)
+
+```
+Spec 19 — API Key Management
+  - Generate read-only API tokens per project
+  - Keys stored hashed in Convex, shown once on creation
+  - Used for headless content fetching without full auth session
+  - Rate limiting config per key (v2)
+
+Spec 20 — Content Scheduling
+  - publishAt timestamp on versioned collections
+  - Convex scheduled function polls + auto-publishes
+  - "Schedule" button in admin alongside Save Draft / Publish
+  - Cancel/reschedule support
+
+Spec 22 — Audit Log (basic MIT version)
+  - vex_audit_log table: who, collection, doc, action, diff, timestamp
+  - Written on every adminCreate/Update/Delete/Publish mutation
+  - Audit log viewer in admin (filter by user/collection/date)
+  - Basic version ships MIT; advanced retention/export/compliance is enterprise
+
+Spec XX — Hooks System
+  - Collection hooks: beforeCreate, afterCreate, beforeUpdate, afterUpdate, beforeDelete, afterDelete
+  - Hook context: { data, originalDoc, user, operation, db }
+  - Field-level hooks: beforeChange, afterRead
+  - Global hooks (same pattern as collections)
+  - Deferred to here because hooks are an extension point, not a core feature
+  - Nobody evaluates a CMS on hooks — they evaluate on content editing, publishing, and permissions
+  - Hooks can be added without breaking changes (additive API)
+```
+
+### Phase 4 — Enterprise Features (revenue generation)
+
+```
+Spec 21 — Project-Level Environments              ← PRIMARY ENTERPRISE MOAT
+  - _environmentId field on all Vex-managed documents
+  - vex_environments table (production, staging, development)
+  - Environment switcher in admin header
+  - "Promote staging → production" atomic mutation
+  - Diff view showing changeset between environments
+  - Full rollback of content state to any environment snapshot
+  - Composes with Spec 07: documents have draft/published status WITHIN an environment
+  - Nothing else in the Convex ecosystem does this
+
+Spec 26 — SSO / SAML                              [enterprise, @vexcms/enterprise-sso]
+  - SAML/OIDC provider configuration
+  - Maps IdP groups to Vex roles
+  - Enterprise login blocker — most large companies require this
+
+Spec 27 — Review / Approval Workflows             [enterprise, pairs with Spec 21]
+  - "Submit for review" action on staging environment
+  - Reviewer role can approve/reject changesets
+  - Approval required before promote to production
+  - Notification system (email on review events)
+
+Spec 22b — Enterprise Audit                        [enterprise, @vexcms/enterprise-audit]
+  - Full audit log with configurable retention policies
+  - Export to CSV/JSON
+  - Compliance reports (SOC2, HIPAA)
+  - Scheduled cleanup of old records
+
+Spec 23 — Localization (i18n)                      [enterprise, @vexcms/enterprise-localization]
+  - localized: true per field
+  - Locale switcher in admin panel
+  - Fallback locale support
+  - Per-locale version history
+```
+
+### Phase 5 — Ecosystem
+
+```
+Spec 24 — Form Builder
+  - defineFormCollection() builder
+  - Field types: text, email, textarea, select, checkbox
+  - Submission storage in Convex
+  - Email notifications via Convex actions
+  - Frontend embed utilities
+
+Spec 25 — Plugin System
+  - Plugin interface: (config) => config
+  - Register custom field types
+  - Hook into admin panel components
+  - Example plugins: SEO, sitemap, redirects
+
+Spec 02 — CI/Publishing
+  - semantic-release for npm packages
+  - GitHub Actions CI (lint, test, build)
+  - Release workflow (publish to npm)
+  - Branch protection rules
+
+Phase 5.1 — TanStack Start admin
+Phase 5.2 — Storage Adapters (S3, R2, Vercel Blob)
+Phase 5.3 — Auth Adapters (Clerk, Auth.js)
+Phase 5.4 — create-vexcms CLI (scaffold new projects)
+Phase 5.5 — Documentation site
 ```
 
 ---
 
-## All Specs Reference
+## Summary Timeline
 
-| Spec | Phase | Steps |
-|------|-------|-------|
-| [00-monorepo-setup-spec.md](./00-monorepo-setup-spec.md) | 0 | 0.1 |
-| [01-testing-infrastructure-spec.md](./01-testing-infrastructure-spec.md) | 0 | 0.2 |
-| [02-ci-publishing-spec.md](./02-ci-publishing-spec.md) | 0 | 0.3 |
-| [03-admin-shell-spec.md](./03-admin-shell-spec.md) | 0 | 0.5 |
-| [04-auth-adapter-spec.md](./04-auth-adapter-spec.md) | 0 | 0.5 |
-| [05-schema-field-system-spec.md](./05-schema-field-system-spec.md) | 1 | 1.0, 1.1, 1.2 |
-| [06-convex-integration-spec.md](./06-convex-integration-spec.md) | 1 | 1.3, 1.4, 1.5 |
-| [07-versioning-drafts-spec.md](./07-versioning-drafts-spec.md) | 1 | 1.6 |
-| [08-file-uploads-spec.md](./08-file-uploads-spec.md) | 1 | 1.7 |
-| [09-custom-admin-components-spec.md](./09-custom-admin-components-spec.md) | 1 | 1.8 |
-| [10-live-preview-spec.md](./10-live-preview-spec.md) | 1 | 1.9 |
-| [vex.config.example.ts](./vex.config.example.ts) | 1 | Reference |
+```
+DONE        Specs 00, 01, 05, 06 (partial), 11, 12, 13, 14 (partial)
+            Schema gen, field types, admin list/edit (read/update only), auth, CLI
+
+PHASE 1     Spec 06b (Create/Delete) → Spec 15 (Media) → Spec 07 (Drafts) → Spec 16 (RBAC)
+  MVP       The minimum for a usable CMS. Cannot ship without all four.
+
+PHASE 2     Spec 17 (Lexical) → Spec 10 (Live Preview) → Spec 09b (Custom Components) → Spec 18 (Teams)
+  PRODUCT   Makes Vex competitive. Rich text is the biggest unlock.
+
+PHASE 3     Spec 19 (API Keys) → Spec 20 (Scheduling) → Spec 22 (Audit Log) → Spec XX (Hooks)
+  POLISH    Quality-of-life before enterprise. Hooks land here, not in MVP.
+
+PHASE 4     Spec 21 (Environments) → Spec 26 (SSO) → Spec 27 (Reviews) → Spec 22b (Audit) → Spec 23 (i18n)
+  REVENUE   Enterprise packages. Environments is the highest-value feature.
+
+PHASE 5     Spec 24 (Forms) → Spec 25 (Plugins) → Spec 02 (CI) → TanStack, adapters, docs
+  ECOSYSTEM Long tail growth.
+```
+
+Specs 21 (Environments) and 26 (SSO) are where enterprise monetization lives — those become the `@vexcms/enterprise-*` packages. Everything else stays MIT. Spec 21 is the highest-value feature: it justifies a commercial license, nothing in the Convex ecosystem competes with it, and it maps directly to how engineering teams think about deployment workflows.
+
+---
+
+## Spec Numbering Housekeeping
+
+The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (admin data table and schema generation auth integration). The following numbering should be adopted going forward:
+
+| Number | Spec                               | Status                                 |
+| ------ | ---------------------------------- | -------------------------------------- |
+| 00     | Monorepo Setup                     | ✅                                     |
+| 01     | Testing Infrastructure             | ✅                                     |
+| 02     | CI/Publishing                      | Deferred to Phase 5                    |
+| 03     | Admin Shell                        | ✅                                     |
+| 04     | Auth Adapter                       | ✅                                     |
+| 05     | Schema Field System                | ✅                                     |
+| 06     | Convex Integration                 | ✅ partial (needs create/delete)       |
+| 07     | Versioning & Drafts                | Phase 1                                |
+| 08     | File Uploads                       | Superseded by Spec 15                  |
+| 09     | Custom Admin Components            | Phase 2 (registration system)          |
+| 10     | Live Preview                       | Phase 2                                |
+| 11     | Testing Strategy                   | ✅                                     |
+| 12a    | Admin Data Table                   | ✅                                     |
+| 12b    | Schema Generation Auth Integration | ✅                                     |
+| 13     | Better Auth Package                | ✅                                     |
+| 14     | Collection Edit Form               | ✅ partial                             |
+| 15     | Media Collections                  | Phase 1                                |
+| 16     | RBAC / Access Permissions          | Phase 1                                |
+| 17     | Rich Text (Lexical)                | Phase 2                                |
+| 18     | Team Management UI                 | Phase 2                                |
+| 19     | API Key Management                 | Phase 3                                |
+| 20     | Content Scheduling                 | Phase 3                                |
+| 21     | Project-Level Environments         | Phase 4 (enterprise)                   |
+| 22     | Audit Log                          | Phase 3 (basic) / Phase 4 (enterprise) |
+| 23     | Localization (i18n)                | Phase 4 (enterprise)                   |
+| 24     | Form Builder                       | Phase 5                                |
+| 25     | Plugin System                      | Phase 5                                |
+| 26     | SSO / SAML                         | Phase 4 (enterprise)                   |
+| 27     | Review / Approval Workflows        | Phase 4 (enterprise)                   |

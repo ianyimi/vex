@@ -17,6 +17,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "clean": "rm -rf dist",
+    "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@vexcms/core": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
     "better-auth": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",

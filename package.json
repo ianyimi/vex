@@ -8,6 +8,7 @@
     "dev:vex": "pnpm --filter test-app exec vex dev",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "coverage": "turbo run coverage",
     "test:e2e": "turbo run test:e2e",
     "clean": "turbo run clean && rm -rf node_modules"
   },

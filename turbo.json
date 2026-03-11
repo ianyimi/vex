@@ -37,6 +37,14 @@
         "playwright-report/**"
       ]
     },
+    "coverage": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "coverage/**"
+      ]
+    },
     "clean": {
       "cache": false
     }

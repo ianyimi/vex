@@ -2,35 +2,40 @@
 
 A modern, type-safe headless CMS built natively on [Convex](https://convex.dev). Vex provides PayloadCMS-familiar patterns with improved type inference, real-time reactivity, and zero database configuration.
 
+**MIT Licensed. Free forever.**
+
 ## Why Vex?
 
 - **Convex-native**: No translation layer or code generation. Your schema _is_ the database schema.
 - **Full type safety**: Field defaults, options, relationships, and hooks are all type-checked at compile time.
-- **Real-time by default**: Convex's reactive subscriptions power live updates across admin panel and frontend.
+- **Real-time by default**: Convex's reactive subscriptions power live updates across the admin panel and frontend — no polling, no webhooks, no rebuild triggers.
 - **PayloadCMS-familiar DX**: If you know Payload, you'll feel at home. Same patterns, better types.
-- **Framework-agnostic frontend**: Initially supports Next.js admin panel, with TanStack Start planned.
+- **Self-hosted**: You own your data and your admin panel. No vendor lock-in beyond Convex.
 
-## Architecture
+## Features
 
-Vex is structured as a set of packages that work together:
+### Schema & Field System
 
-```
-@vex/core          - Schema definitions, field factories, config
-@vex/convex        - Convex handlers, schema generation, access control
-@vex/admin         - React admin panel components and hooks
-@vex/client        - Client utilities (upload, etc.)
-@vex/live-preview  - Framework-agnostic live preview utilities
-@vex/live-preview-react - React hooks for live preview
-```
+Define content types with a rich, fully typed field system:
 
-## Core Concepts
-
-### Collections
-
-Collections define your content types. Each collection has fields, hooks, access control, and optional features like versioning and uploads.
+| Field          | Description                                |
+| -------------- | ------------------------------------------ |
+| `text`         | Single-line text input                     |
+| `textarea`     | Multi-line text                            |
+| `number`       | Numeric input                              |
+| `checkbox`     | Boolean toggle                             |
+| `select`       | Dropdown with options                      |
+| `date`         | Date/time picker                           |
+| `relationship` | Reference to other documents               |
+| `array`        | Repeatable field groups                    |
+| `group`        | Non-repeating nested fields                |
+| `blocks`       | Flexible content with multiple block types |
+| `upload`       | File/media reference                       |
+| `richtext`     | Rich text editor (Lexical)                 |
+| `ui`           | Non-persisted display/action field         |
 
 ```typescript
-import { defineCollection, text, relationship, blocks } from "@vex/core";
+import { defineCollection, text, relationship, blocks } from "@vexcms/core";
 
 export const posts = defineCollection("posts", {
   fields: {
@@ -62,7 +67,7 @@ export const posts = defineCollection("posts", {
 Singletons for site-wide settings like headers, footers, and navigation.
 
 ```typescript
-import { defineGlobal, text, array } from "@vex/core";
+import { defineGlobal, text, array, upload } from "@vexcms/core";
 
 export const header = defineGlobal("header", {
   fields: {
@@ -77,145 +82,58 @@ export const header = defineGlobal("header", {
 });
 ```
 
-### Field Types
+### CLI & Auto-Migration
 
-| Field          | Description                                |
-| -------------- | ------------------------------------------ |
-| `text`         | Single-line text input                     |
-| `textarea`     | Multi-line text                            |
-| `number`       | Numeric input                              |
-| `checkbox`     | Boolean toggle                             |
-| `select`       | Dropdown with options                      |
-| `date`         | Date/time picker                           |
-| `relationship` | Reference to other documents               |
-| `array`        | Repeatable field groups                    |
-| `group`        | Non-repeating nested fields                |
-| `blocks`       | Flexible content with multiple block types |
-| `upload`       | File/media reference                       |
-| `ui`           | Non-persisted display/action field         |
+The Vex CLI watches your config, generates Convex schema, diffs changes, and runs migrations automatically.
 
-## Key Features
+- `vex dev` — watch mode with schema generation and auto-migration
+- `vex deploy` — production migration and deploy
 
-### Draft/Publish Workflow
+### Admin Panel
 
-Documents support a draft/publish workflow. Edits are saved to a draft snapshot while the published content remains unchanged.
+A self-hosted Next.js admin panel with:
 
-```typescript
-// Collection config
-versions: {
-  drafts: true,
-  autosave: { interval: 2000 },
-  maxPerDoc: 100,
-}
-```
+- Paginated data tables with full-text search
+- Auto-generated edit forms with Zod validation
+- Media library with upload dropzone and media picker
+- Version history panel with restore support
+- Team management and user roles
+- Audit log viewer
 
-- Draft edits stored in `_draftSnapshot` field
-- Published content in main document fields
-- Full version history in `vex_versions` table
-- Restore to any previous version
+### CRUD Operations
 
-### File Uploads
+Full create, read, update, and delete support with server-side validation, cascade delete options, and bulk operations.
 
-Upload-enabled collections store files with automatic metadata extraction.
+### Media Collections & File Uploads
+
+Upload-enabled collections with automatic metadata extraction and per-field MIME type / size restrictions.
 
 ```typescript
-// Media collection
-export const media = defineCollection('media', {
+export const media = defineCollection("media", {
   upload: {
     enabled: true,
-    accept: ['image/*', 'video/*', 'application/pdf'],
+    accept: ["image/*", "video/*", "application/pdf"],
     maxSize: 20 * 1024 * 1024,
   },
   fields: {
-    alt: text({ label: 'Alt Text', required: true }),
+    alt: text({ label: "Alt Text", required: true }),
   },
 });
-
-// Using in another collection
-featuredImage: upload({
-  relationTo: 'media',
-  accept: ['image/*'],
-}),
 ```
 
-### Custom Admin Components
+### Draft/Publish Workflow & Version History
 
-Build custom field components using familiar hooks.
+Documents support a full draft/publish lifecycle. Edits are saved to a draft snapshot while the published content remains unchanged.
 
-```typescript
-// ~/components/admin/ColorField.tsx
-'use client';
-
-import { useField } from '@vex/admin';
-import { TextInput } from '@vex/admin/inputs';
-
-export default function ColorField({ path, field }) {
-  const { value, setValue, showError, disabled } = useField({ path });
-
-  return (
-    <div className="flex gap-2">
-      <div
-        className="w-10 h-10 rounded border"
-        style={{ backgroundColor: value }}
-      />
-      <TextInput value={value} onChange={setValue} disabled={disabled} />
-    </div>
-  );
-}
-
-// Field config
-primaryColor: text({
-  admin: {
-    components: {
-      Field: '~/components/admin/ColorField',
-    },
-  },
-}),
-```
-
-Available hooks:
-
-- `useField` - Read/write field values
-- `useForm` - Form state and submission
-- `useFormFields` - Select specific fields (performance)
-- `useFormSubmitted`, `useFormModified`, etc.
-
-### Live Preview
-
-Real-time preview of draft content as you edit.
-
-```typescript
-// Collection config
-livePreview: {
-  url: (doc) => `/preview/posts/${doc.slug}`,
-  breakpoints: [
-    { label: 'Mobile', width: 375, height: 667 },
-    { label: 'Desktop', width: 1280, height: 800 },
-  ],
-}
-
-// Frontend preview page
-import { useRefreshOnSave } from '@vex/live-preview-react';
-
-export default function PostPreview({ params }) {
-  useRefreshOnSave({ allowedOrigins: ['https://admin.example.com'] });
-
-  // Convex query automatically refetches on refresh
-  const post = useQuery(api.posts.getById, {
-    id: params.id,
-    _vexIncludeDraft: true
-  });
-
-  return <PostContent post={post} />;
-}
-```
+- Draft edits stored in `_draftSnapshot`
+- Full version history with restore to any previous version
+- Autosave with coalesced version records
 
 ### Access Control (RBAC)
 
-Type-safe role-based permissions with full LSP support.
+Type-safe role-based permissions at both the document and field level.
 
 ```typescript
-// permissions.ts
 export const permissions = definePermissions<UserRole, VexCollections>()({
   admin: {
     posts: { create: true, read: true, update: true, delete: true },
@@ -234,48 +152,130 @@ export const permissions = definePermissions<UserRole, VexCollections>()({
 });
 ```
 
-## Implementation Specs
+### Rich Text Editor (Lexical)
 
-Detailed implementation specifications for each feature:
+A rich text field powered by Meta's Lexical editor framework:
 
-| Spec                                                                 | Description                                           | Dependencies                         |
-| -------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------ |
-| [schema-field-system-spec.md](./schema-field-system-spec.md)         | Field types, validators, collection/global config     | None (foundation)                    |
-| [convex-integration-spec.md](./convex-integration-spec.md)           | Admin handlers, RBAC, hooks execution                 | Schema spec                          |
-| [versioning-drafts-spec.md](./versioning-drafts-spec.md)             | Draft workflow, version history, autosave             | Schema + Convex specs                |
-| [file-uploads-spec.md](./file-uploads-spec.md)                       | Upload collections, media library, storage adapters   | Schema + Convex specs                |
-| [custom-admin-components-spec.md](./custom-admin-components-spec.md) | Hooks API, component registration, UI fields          | Schema spec                          |
-| [live-preview-spec.md](./live-preview-spec.md)                       | Preview iframe, postMessage protocol, refresh on save | Versioning + Custom Components specs |
+- Bold, italic, headings, lists, links, inline images
+- Block embed support (integrates with the `blocks()` field)
+- JSON serialization stored in Convex
+- HTML and RSC rendering utilities (`@vexcms/richtext-lexical/html`, `/rsc`)
 
-See [roadmap.md](./roadmap.md) for the full implementation plan and priority order.
+### Live Preview
+
+Real-time preview of draft content as you edit, with responsive breakpoints and postMessage-based refresh.
+
+```typescript
+// Collection config
+livePreview: {
+  url: (doc) => `/preview/posts/${doc.slug}`,
+  breakpoints: [
+    { label: "Mobile", width: 375, height: 667 },
+    { label: "Desktop", width: 1280, height: 800 },
+  ],
+}
+
+// Frontend preview page
+import { useRefreshOnSave } from "@vexcms/live-preview-react";
+
+export default function PostPreview({ params }) {
+  useRefreshOnSave({ allowedOrigins: ["https://admin.example.com"] });
+  const post = useQuery(api.posts.getById, { id: params.id, _vexIncludeDraft: true });
+  return <PostContent post={post} />;
+}
+```
+
+### Custom Admin Components
+
+Build custom field components using familiar hooks. Register them by path in your field config.
+
+```typescript
+// ~/components/admin/ColorField.tsx
+"use client";
+import { useField } from "@vexcms/admin";
+
+export default function ColorField({ path, field }) {
+  const { value, setValue, showError, disabled } = useField({ path });
+  return (
+    <div className="flex gap-2">
+      <div className="w-10 h-10 rounded border" style={{ backgroundColor: value }} />
+      <input value={value} onChange={(e) => setValue(e.target.value)} disabled={disabled} />
+    </div>
+  );
+}
+
+// Field config
+primaryColor: text({
+  admin: { components: { Field: "~/components/admin/ColorField" } },
+}),
+```
+
+Available hooks: `useField`, `useForm`, `useFormFields`, `useFormSubmitted`, `useFormModified`
+
+### Authentication (Better Auth)
+
+Built-in auth integration with [Better Auth](https://better-auth.com). User, session, and account tables are extracted into your Convex schema automatically.
+
+### Team Management
+
+- Invite users by email with role assignment
+- Pending invite table with revoke support
+- User management table in the admin panel
+
+### API Key Management
+
+- Generate read-only API tokens for headless content fetching
+- Keys stored hashed, shown once on creation
+- Rate limiting config per key
+
+### Content Scheduling
+
+- Set a `publishAt` timestamp on versioned documents
+- Automatic publishing via Convex scheduled functions
+- Schedule, cancel, and reschedule from the admin panel
+
+### Audit Log
+
+- Tracks who did what, to which document, and when
+- Written on every create, update, delete, and publish operation
+- Filterable by user, collection, and date
+
+### Hooks System
+
+Lifecycle hooks for collections and fields:
+
+- **Collection hooks**: `beforeCreate`, `afterCreate`, `beforeUpdate`, `afterUpdate`, `beforeDelete`, `afterDelete`
+- **Field hooks**: `beforeChange`, `afterRead`
+- Hook context includes `data`, `originalDoc`, `user`, `operation`, and `db`
+
+## Architecture
+
+```
+@vexcms/core              Schema definitions, field factories, config (no Convex dependency)
+@vexcms/cli               CLI with schema generation, auto-migration, and deploy
+@vexcms/admin             React admin panel components and hooks (Next.js)
+@vexcms/richtext-lexical   Rich text field with Lexical editor
+@vexcms/live-preview-react React hooks for live preview
+```
 
 ## Tech Stack
 
-- **Database**: [Convex](https://convex.dev) - Real-time serverless database
-- **Admin Panel**: [Next.js](https://nextjs.org) (App Router) - Initially, TanStack Start later
-- **Authentication**: [Better Auth](https://better-auth.com) - Modern auth library
-- **Form State**: [Legend State](https://legendapp.com/open-source/state/) - Fine-grained reactivity
-- **Form Validation**: [TanStack Form](https://tanstack.com/form) - Type-safe form handling
-- **UI Components**: [shadcn/ui](https://ui.shadcn.com) - Tailwind CSS components
+- **Database**: [Convex](https://convex.dev) — real-time serverless database
+- **Admin Panel**: [Next.js](https://nextjs.org) (App Router)
+- **Authentication**: [Better Auth](https://better-auth.com)
+- **Rich Text**: [Lexical](https://lexical.dev) (Meta's editor framework)
+- **Form State**: [Legend State](https://legendapp.com/open-source/state/)
+- **Form Validation**: [TanStack Form](https://tanstack.com/form)
+- **UI Components**: [shadcn/ui](https://ui.shadcn.com)
 
 ## Design Principles
 
-1. **Type safety first** - No runtime surprises. If it compiles, it works.
-2. **Convex-native** - Leverage Convex's strengths (real-time, serverless, type generation).
-3. **Familiar patterns** - PayloadCMS users should feel at home.
-4. **Minimal footprint** - Don't ship what you don't use.
-5. **Progressive complexity** - Simple things are simple, complex things are possible.
-
-## What Vex Is Not
-
-- **Not a database adapter** - Convex only, by design
-- **Not a GraphQL API** - Convex queries/mutations are sufficient
-- **Not a deployment platform** - You deploy your own Next.js + Convex app
-
-## Project Status
-
-Vex is currently in the design and specification phase. See [roadmap.md](./roadmap.md) for implementation progress.
+1. **Type safety first** — if it compiles, it works.
+2. **Convex-native** — leverage real-time reactivity, serverless functions, and type generation.
+3. **Familiar patterns** — PayloadCMS users should feel at home.
+4. **Minimal footprint** — don't ship what you don't use.
+5. **Progressive complexity** — simple things are simple, complex things are possible.
 
 ## License
 
-TBD
+MIT
