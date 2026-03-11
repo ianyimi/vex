@@ -277,14 +277,16 @@ Spec 16 — RBAC / Access Permissions
 ### Phase 2 — Competitive Product (makes Vex worth choosing over alternatives)
 
 ```
-Spec 17 — Rich Text Field (Lexical)
-  - richtext() field type
-  - Model after @payloadcms/richtext-lexical (Lexical 0.41.0)
-  - Basic formatting: bold, italic, headings, lists, links, inline images
-  - Serialize to JSON (stored in Convex)
-  - @vexcms/richtext-lexical/html + /rsc rendering utilities
-  - Block embed support (integrates with blocks() field)
+Spec 17 — Rich Text Field (Plate)
+  - richtext() field type in @vexcms/core, @vexcms/richtext package
+  - Plate editor (Slate.js, React-native) with shadcn/ui components
+  - Basic formatting: bold, italic, headings, lists, links, code, images, blockquotes
+  - JSON storage in Convex (v.any(), Plate node array)
+  - @vexcms/richtext/editor (admin) + @vexcms/richtext/render (frontend, PlateStatic)
+  - Custom blocks: defineBlock() with editor + render React components
+  - Phase: 17a (core editor + renderer) → 17b (custom block system)
   - Without rich text, Vex is a structured-data tool, not a CMS
+  - See: agent-os/product/specs/17-richtext/notes.md
 
 Spec 10 — Live Preview
   - livePreview config per collection (url, breakpoints, reloadOnFields)
@@ -460,7 +462,7 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 14     | Collection Edit Form               | ✅ partial                             |
 | 15     | Media Collections                  | Phase 1                                |
 | 16     | RBAC / Access Permissions          | Phase 1                                |
-| 17     | Rich Text (Lexical)                | Phase 2                                |
+| 17     | Rich Text (Plate)                  | Phase 2                                |
 | 18     | Team Management UI                 | Phase 2                                |
 | 19     | API Key Management                 | Phase 3                                |
 | 20     | Content Scheduling                 | Phase 3                                |
