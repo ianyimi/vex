@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { ArrayFieldMeta } from "../../types";
+import type { ArrayFieldDef } from "../../types";
 import { toTitleCase } from "../../utils";
 
 /**
@@ -7,17 +7,17 @@ import { toTitleCase } from "../../utils";
  *
  * Behavior:
  * - accessorKey: props.fieldKey
- * - header: props.meta.label ?? toTitleCase(props.fieldKey)
+ * - header: props.field.label ?? toTitleCase(props.fieldKey)
  * - cell: shows item count — "no items", "1 item", "3 items"
  */
 export function arrayColumnDef(props: {
   fieldKey: string;
-  meta: ArrayFieldMeta;
+  field: ArrayFieldDef;
 }): ColumnDef<Record<string, unknown>> {
   return {
     accessorKey: props.fieldKey,
-    header: props.meta.label ?? toTitleCase(props.fieldKey),
-    meta: { align: props.meta.admin?.cellAlignment ?? "left" },
+    header: props.field.label ?? toTitleCase(props.fieldKey),
+    meta: { align: props.field.admin?.cellAlignment ?? "left" },
     cell: (info) => {
       const value = info.getValue();
       if (!Array.isArray(value) || value.length === 0) return "no items";

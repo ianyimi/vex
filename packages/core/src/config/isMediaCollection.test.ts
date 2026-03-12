@@ -1,13 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { isMediaCollection } from "./isMediaCollection";
-import { defineMediaCollection } from "./defineMediaCollection";
-import { defineCollection } from "./defineCollection";
+import { defineCollection, defineMediaCollection } from "./defineCollection";
 import { text } from "../fields/text";
 
 describe("isMediaCollection", () => {
-  const mediaImages = defineMediaCollection("images");
-  const mediaDocuments = defineMediaCollection("documents");
-  const posts = defineCollection("posts", {
+  const mediaImages = defineMediaCollection({ slug: "images" });
+  const mediaDocuments = defineMediaCollection({ slug: "documents" });
+  const posts = defineCollection({ slug: "posts",
     fields: { title: text({ required: true, defaultValue: "" }) },
   });
 

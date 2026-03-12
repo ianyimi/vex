@@ -1,15 +1,15 @@
 // =============================================================================
-// GLOBAL TYPES
+// GLOBAL TYPES — Object-based configuration
 // =============================================================================
 
-import { InferFieldsType, VexField } from "./fields";
+import type { VexField, InferFieldsType } from "./fields";
 
 /**
  * Admin UI configuration for a global.
  * Controls how the global appears and behaves in the admin panel.
  */
 export interface GlobalAdminConfig<
-  TFields extends Record<string, VexField>,
+  TFields extends Record<string, VexField> = Record<string, VexField>,
 > {
   /**
    * Group this global under a heading in the sidebar.
@@ -46,19 +46,27 @@ export interface GlobalAdminConfig<
 }
 
 /**
- * Configuration passed to `defineGlobal`.
- * Defines the fields, label, and admin behavior for a global.
+ * A global definition. Users create these as plain objects
+ * with `as const satisfies VexGlobal`.
+ *
+ * @example
+ * ```ts
+ * const siteSettings = {
+ *   slug: "site_settings",
+ *   label: "Site Settings",
+ *   fields: {
+ *     siteName: { type: "text", label: "Site Name", required: true },
+ *   },
+ * } as const satisfies VexGlobal;
+ * ```
  */
-export interface GlobalConfig<
-  TFields extends Record<string, VexField> = Record<
-    string,
-    VexField
-  >,
+export interface VexGlobal<
+  TFields extends Record<string, VexField> = Record<string, VexField>,
 > {
+  /** The global identifier, used in URLs and the database. */
+  readonly slug: string;
   /**
    * The fields that make up this global document.
-   * Each key becomes a field name, and the value defines
-   * its type and validation (e.g. `text()`, `number()`, `select()`).
    */
   fields: TFields;
   /**
@@ -68,7 +76,7 @@ export interface GlobalConfig<
   label?: string;
   /**
    * The name of the table generated for this global in the
-   * generated vex schema file. Defaults to the global slug
+   * generated vex schema file. Defaults to the global slug.
    */
   tableName?: string;
   /**
@@ -76,25 +84,9 @@ export interface GlobalConfig<
    * Controls sidebar grouping, icons, and permissions.
    */
   admin?: GlobalAdminConfig<TFields>;
-}
-
-/**
- * A defined global with inferred document type.
- * Created by `defineGlobal()`.
- */
-export interface VexGlobal<
-  TFields extends Record<string, VexField> = Record<
-    string,
-    VexField
-  >,
-> {
-  /** The global identifier, used in URLs and the database. */
-  readonly slug: string;
-  /** The full global configuration. */
-  readonly config: GlobalConfig<TFields>;
   /**
    * Type helper — use `typeof global._docType` to get the
    * inferred document shape for this global.
    */
-  readonly _docType: InferFieldsType<TFields>;
+  readonly _docType?: InferFieldsType<TFields>;
 }

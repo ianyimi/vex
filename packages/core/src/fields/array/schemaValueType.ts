@@ -1,8 +1,8 @@
 import { processFieldValueTypeOptions } from "../../valueTypes/processAdminOptions";
-import type { ArrayFieldMeta, VexField } from "../../types";
+import type { ArrayFieldDef, VexField } from "../../types";
 
 /**
- * Converts array field metadata to a Convex value type string.
+ * Converts array field definition to a Convex value type string.
  *
  * Uses callback injection to resolve the inner field type,
  * avoiding circular imports with fieldToValueType.
@@ -10,7 +10,7 @@ import type { ArrayFieldMeta, VexField } from "../../types";
  * @returns e.g. `"v.array(v.string())"` or `"v.optional(v.array(v.string()))"`
  */
 export function arrayToValueTypeString(props: {
-  meta: ArrayFieldMeta;
+  field: ArrayFieldDef;
   collectionSlug: string;
   fieldName: string;
   resolveInnerField: (props: {
@@ -20,7 +20,7 @@ export function arrayToValueTypeString(props: {
   }) => string;
 }): string {
   const innerValueType = props.resolveInnerField({
-    field: props.meta.field,
+    field: props.field.field,
     collectionSlug: props.collectionSlug,
     fieldName: `${props.fieldName}[]`,
   });
@@ -29,7 +29,7 @@ export function arrayToValueTypeString(props: {
   const arrayType = `v.array(${unwrapped})`;
 
   return processFieldValueTypeOptions({
-    meta: props.meta,
+    field: props.field,
     collectionSlug: props.collectionSlug,
     fieldName: props.fieldName,
     expectedType: "object",

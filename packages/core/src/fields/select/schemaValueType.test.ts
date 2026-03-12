@@ -1,19 +1,17 @@
 import { describe, it, expect } from "vitest";
 import { selectToValueTypeString } from "./schemaValueType";
-import type { SelectFieldMeta } from "../../types";
+import { select } from ".";
 
 describe("selectToValueTypeString", () => {
   it("returns optional union of literals for single-select", () => {
-    const meta: SelectFieldMeta<string> = {
-      type: "select",
-      options: [
-        { value: "draft", label: "Draft" },
-        { value: "published", label: "Published" },
-      ],
-    };
     expect(
       selectToValueTypeString({
-        meta,
+        field: select({
+          options: [
+            { value: "draft", label: "Draft" },
+            { value: "published", label: "Published" },
+          ],
+        }),
         collectionSlug: "posts",
         fieldName: "status",
       }),
@@ -21,18 +19,16 @@ describe("selectToValueTypeString", () => {
   });
 
   it("returns required union when required with defaultValue", () => {
-    const meta: SelectFieldMeta<string> = {
-      type: "select",
-      required: true,
-      defaultValue: "draft",
-      options: [
-        { value: "draft", label: "Draft" },
-        { value: "published", label: "Published" },
-      ],
-    };
     expect(
       selectToValueTypeString({
-        meta,
+        field: select({
+          required: true,
+          defaultValue: "draft",
+          options: [
+            { value: "draft", label: "Draft" },
+            { value: "published", label: "Published" },
+          ],
+        }),
         collectionSlug: "posts",
         fieldName: "status",
       }),
@@ -40,17 +36,15 @@ describe("selectToValueTypeString", () => {
   });
 
   it("wraps in v.array(v.union()) for multi-select (hasMany) with multiple options", () => {
-    const meta: SelectFieldMeta<string> = {
-      type: "select",
-      hasMany: true,
-      options: [
-        { value: "tag1", label: "Tag 1" },
-        { value: "tag2", label: "Tag 2" },
-      ],
-    };
     expect(
       selectToValueTypeString({
-        meta,
+        field: select({
+          hasMany: true,
+          options: [
+            { value: "tag1", label: "Tag 1" },
+            { value: "tag2", label: "Tag 2" },
+          ],
+        }),
         collectionSlug: "posts",
         fieldName: "tags",
       }),
@@ -58,16 +52,14 @@ describe("selectToValueTypeString", () => {
   });
 
   it("wraps in v.array() without v.union() for hasMany with single option", () => {
-    const meta: SelectFieldMeta<string> = {
-      type: "select",
-      hasMany: true,
-      options: [
-        { value: "only", label: "Only" },
-      ],
-    };
     expect(
       selectToValueTypeString({
-        meta,
+        field: select({
+          hasMany: true,
+          options: [
+            { value: "only", label: "Only" },
+          ],
+        }),
         collectionSlug: "posts",
         fieldName: "tags",
       }),
@@ -75,13 +67,11 @@ describe("selectToValueTypeString", () => {
   });
 
   it("handles single option", () => {
-    const meta: SelectFieldMeta<string> = {
-      type: "select",
-      options: [{ value: "only", label: "Only Option" }],
-    };
     expect(
       selectToValueTypeString({
-        meta,
+        field: select({
+          options: [{ value: "only", label: "Only Option" }],
+        }),
         collectionSlug: "posts",
         fieldName: "status",
       }),
@@ -98,18 +88,16 @@ describe("selectToValueTypeString", () => {
   it.todo("escapes quotes in option values");
 
   it("handles hasMany: false explicitly", () => {
-    const meta: SelectFieldMeta<string> = {
-      type: "select",
-      hasMany: false,
-      options: [
-        { value: "a", label: "A" },
-        { value: "b", label: "B" },
-      ],
-    };
     // hasMany: false should NOT wrap in v.array()
     expect(
       selectToValueTypeString({
-        meta,
+        field: select({
+          hasMany: false,
+          options: [
+            { value: "a", label: "A" },
+            { value: "b", label: "B" },
+          ],
+        }),
         collectionSlug: "posts",
         fieldName: "status",
       }),
@@ -117,17 +105,15 @@ describe("selectToValueTypeString", () => {
   });
 
   it("throws when required with no defaultValue", () => {
-    const meta: SelectFieldMeta<string> = {
-      type: "select",
-      required: true,
-      options: [
-        { value: "a", label: "A" },
-        { value: "b", label: "B" },
-      ],
-    };
     expect(() =>
       selectToValueTypeString({
-        meta,
+        field: select({
+          required: true,
+          options: [
+            { value: "a", label: "A" },
+            { value: "b", label: "B" },
+          ],
+        }),
         collectionSlug: "posts",
         fieldName: "status",
       }),

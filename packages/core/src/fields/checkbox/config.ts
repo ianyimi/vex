@@ -1,15 +1,11 @@
-import { CheckboxFieldMeta, CheckboxFieldOptions, GenericVexField } from "../../types";
+import type { CheckboxFieldDef } from "../../types";
 
-export function checkbox(
-  options?: CheckboxFieldOptions,
-): GenericVexField<boolean, CheckboxFieldMeta> {
+export function checkbox(options?: Omit<CheckboxFieldDef, "type">): CheckboxFieldDef {
   return {
-    _type: false,
-    _meta: {
-      type: "checkbox",
-      defaultValue: options?.required ? false : undefined,
-      ...options,
-      formDefaultValue: options?.defaultValue ?? false,
-    },
+    type: "checkbox",
+    ...(options?.required && options?.defaultValue === undefined
+      ? { defaultValue: false }
+      : {}),
+    ...options,
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import type { ClientVexConfig, AnyVexCollection } from "@vexcms/core";
+import type { ClientVexConfig, VexCollection } from "@vexcms/core";
 import { mergeAuthCollectionWithUserCollection, isMediaCollection } from "@vexcms/core";
 import { DashboardView } from "../views/DashboardView";
 import { NotFoundView } from "../views/NotFoundView";
@@ -18,7 +18,7 @@ import MediaCollectionEditView from "../views/MediaCollectionEditView";
 function resolveCollection(
   config: ClientVexConfig,
   slug: string,
-): AnyVexCollection | undefined {
+): VexCollection | undefined {
   const userCollection = config.collections.find((c) => c.slug === slug);
   const authCollection = config.auth?.collections.find((c) => c.slug === slug);
 
@@ -28,12 +28,9 @@ function resolveCollection(
       userCollection,
     });
     return {
-      slug: userCollection.slug,
-      config: {
-        ...userCollection.config,
-        fields: merged.fields,
-      },
-    } as AnyVexCollection;
+      ...userCollection,
+      fields: merged.fields,
+    } as VexCollection;
   }
 
   if (authCollection) {
@@ -85,6 +82,7 @@ export function AdminPage({ config, path = [] }: AdminPageProps) {
   if (isMedia) {
     return (
       <MediaCollectionEditView
+        key={documentID}
         config={config}
         collection={collection}
         documentID={documentID}
@@ -94,6 +92,7 @@ export function AdminPage({ config, path = [] }: AdminPageProps) {
 
   return (
     <CollectionEditView
+      key={documentID}
       config={config}
       collection={collection}
       documentID={documentID}

@@ -1,20 +1,20 @@
 "use client";
 
 import * as React from "react";
-import type { ImageUrlFieldMeta } from "@vexcms/core";
+import type { ImageUrlFieldDef } from "@vexcms/core";
 import { toTitleCase } from "@vexcms/core";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 
 interface ImageUrlFieldProps {
   field: any;
-  meta: ImageUrlFieldMeta;
+  fieldDef: ImageUrlFieldDef;
   name: string;
 }
 
-function ImageUrlField({ field, meta, name }: ImageUrlFieldProps) {
-  const label = meta.label ?? toTitleCase(name);
-  const description = meta.admin?.description ?? meta.description;
+function ImageUrlField({ field, fieldDef, name }: ImageUrlFieldProps) {
+  const label = fieldDef.label ?? toTitleCase(name);
+  const description = fieldDef.admin?.description ?? fieldDef.description;
   const errors: unknown[] = field.state.meta.errors ?? [];
   const value = (field.state.value as string) ?? "";
   const [imgError, setImgError] = React.useState(false);
@@ -27,7 +27,7 @@ function ImageUrlField({ field, meta, name }: ImageUrlFieldProps) {
     <div className="space-y-2">
       <Label htmlFor={name}>
         {label}
-        {meta.required && <span className="text-destructive ml-1">*</span>}
+        {fieldDef.required && <span className="text-destructive ml-1">*</span>}
       </Label>
       <Input
         id={name}
@@ -35,8 +35,8 @@ function ImageUrlField({ field, meta, name }: ImageUrlFieldProps) {
         value={value}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.handleChange(e.target.value)}
         onBlur={field.handleBlur}
-        placeholder={meta.admin?.placeholder ?? "https://..."}
-        disabled={meta.admin?.readOnly}
+        placeholder={fieldDef.admin?.placeholder ?? "https://..."}
+        disabled={fieldDef.admin?.readOnly}
       />
       {value && !imgError && (
         <img

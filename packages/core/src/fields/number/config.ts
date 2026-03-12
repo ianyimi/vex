@@ -1,15 +1,11 @@
-import { NumberFieldMeta, NumberFieldOptions, GenericVexField } from "../../types";
+import type { NumberFieldDef } from "../../types";
 
-export function number(
-  options?: NumberFieldOptions,
-): GenericVexField<number, NumberFieldMeta> {
+export function number(options?: Omit<NumberFieldDef, "type">): NumberFieldDef {
   return {
-    _type: 0,
-    _meta: {
-      type: "number",
-      defaultValue: options?.required ? 0 : undefined,
-      ...options,
-      formDefaultValue: options?.defaultValue ?? 0,
-    },
+    type: "number",
+    ...(options?.required && options?.defaultValue === undefined
+      ? { defaultValue: 0 }
+      : {}),
+    ...options,
   };
 }

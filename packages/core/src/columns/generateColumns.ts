@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { VexAuthAdapter, AnyVexCollection, VexField } from "../types";
+import type { VexAuthAdapter, VexCollection, VexField } from "../types";
 import { textColumnDef } from "../fields/text/columnDef";
 import { numberColumnDef } from "../fields/number/columnDef";
 import { checkboxColumnDef } from "../fields/checkbox/columnDef";
@@ -21,25 +21,25 @@ import { toTitleCase } from "../utils";
  * @returns Array of ColumnDef objects for use with @tanstack/react-table
  */
 export function generateColumns(props: {
-  collection: AnyVexCollection;
+  collection: VexCollection;
   auth?: VexAuthAdapter;
 }): ColumnDef<Record<string, unknown>>[] {
   const { collection, auth } = props;
   const columns: ColumnDef<Record<string, unknown>>[] = [];
-  const useAsTitle = collection.config.admin?.useAsTitle as string | undefined;
-  const defaultColumns = collection.config.admin?.defaultColumns as
+  const useAsTitle = collection.admin?.useAsTitle as string | undefined;
+  const defaultColumns = collection.admin?.defaultColumns as
     | string[]
     | undefined;
-  const fields = collection.config.fields;
+  const fields = collection.fields;
 
   // Build a lookup of auth fields for this collection's slug
   const authFields: Record<string, VexField> = {};
   if (auth) {
     const authCollection = auth.collections.find(
-      (c: AnyVexCollection) => c.slug === collection.slug,
+      (c: VexCollection) => c.slug === collection.slug,
     );
     if (authCollection) {
-      for (const [k, v] of Object.entries(authCollection.config.fields) as [
+      for (const [k, v] of Object.entries(authCollection.fields) as [
         string,
         VexField,
       ][]) {
@@ -64,7 +64,7 @@ export function generateColumns(props: {
         continue;
       }
 
-      if (field._meta.admin?.hidden) continue;
+      if (field.admin?.hidden) continue;
 
       let col = buildColumnDef(fieldKey, field);
 
@@ -85,7 +85,7 @@ export function generateColumns(props: {
 
     for (const fieldKey of allFieldKeys) {
       const field = (fields[fieldKey] ?? authFields[fieldKey]) as VexField;
-      if (field._meta.admin?.hidden) continue;
+      if (field.admin?.hidden) continue;
 
       let col = buildColumnDef(fieldKey, field);
 
@@ -104,27 +104,27 @@ function buildColumnDef(
   fieldKey: string,
   field: VexField,
 ): ColumnDef<Record<string, unknown>> {
-  switch (field._meta.type) {
+  switch (field.type) {
     case "text":
-      return textColumnDef({ fieldKey, meta: field._meta });
+      return textColumnDef({ fieldKey, field });
     case "number":
-      return numberColumnDef({ fieldKey, meta: field._meta });
+      return numberColumnDef({ fieldKey, field });
     case "checkbox":
-      return checkboxColumnDef({ fieldKey, meta: field._meta });
+      return checkboxColumnDef({ fieldKey, field });
     case "select":
-      return selectColumnDef({ fieldKey, meta: field._meta });
+      return selectColumnDef({ fieldKey, field });
     case "date":
-      return dateColumnDef({ fieldKey, meta: field._meta });
+      return dateColumnDef({ fieldKey, field });
     case "imageUrl":
-      return imageUrlColumnDef({ fieldKey, meta: field._meta });
+      return imageUrlColumnDef({ fieldKey, field });
     case "relationship":
-      return relationshipColumnDef({ fieldKey, meta: field._meta });
+      return relationshipColumnDef({ fieldKey, field });
     case "json":
-      return jsonColumnDef({ fieldKey, meta: field._meta });
+      return jsonColumnDef({ fieldKey, field });
     case "array":
-      return arrayColumnDef({ fieldKey, meta: field._meta });
+      return arrayColumnDef({ fieldKey, field });
     case "upload":
-      return uploadColumnDef({ fieldKey, meta: field._meta });
+      return uploadColumnDef({ fieldKey, field });
     default:
       return {
         accessorKey: fieldKey,

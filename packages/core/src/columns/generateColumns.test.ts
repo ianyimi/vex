@@ -8,7 +8,7 @@ import { select } from "../fields/select";
 
 describe("generateColumns", () => {
   it("always includes _id column as first column", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ required: true }),
       },
@@ -19,7 +19,7 @@ describe("generateColumns", () => {
   });
 
   it("generates columns for all field types", () => {
-    const items = defineCollection("items", {
+    const items = defineCollection({ slug: "items",
       fields: {
         name: text({ required: true, label: "Name" }),
         count: number({ label: "Count" }),
@@ -46,7 +46,7 @@ describe("generateColumns", () => {
   });
 
   it("respects defaultColumns — only shows specified fields (no _id unless listed)", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ required: true }),
         slug: text(),
@@ -66,7 +66,7 @@ describe("generateColumns", () => {
   });
 
   it("skips hidden fields", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ required: true }),
         internalId: text({ admin: { hidden: true } }),
@@ -82,7 +82,7 @@ describe("generateColumns", () => {
   });
 
   it("skips defaultColumns entries that reference hidden fields", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ required: true }),
         secret: text({ admin: { hidden: true } }),
@@ -98,7 +98,7 @@ describe("generateColumns", () => {
   });
 
   it("produces fallback column for defaultColumns entries referencing non-existent fields", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ required: true }),
       },
@@ -118,13 +118,12 @@ describe("generateColumns", () => {
   });
 
   it("includes _id when explicitly listed in defaultColumns", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ required: true }),
         slug: text(),
       },
       admin: {
-        // @ts-expect-error — _id type union not yet wired via auth
         defaultColumns: ["_id", "title"],
       },
     });
@@ -136,7 +135,7 @@ describe("generateColumns", () => {
   });
 
   it("marks useAsTitle column with meta.isTitle", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ required: true }),
         body: text(),
@@ -153,7 +152,7 @@ describe("generateColumns", () => {
   });
 
   it("returns only _id column when fields object is empty", () => {
-    const empty = defineCollection("empty", {
+    const empty = defineCollection({ slug: "empty",
       fields: {},
     });
     const columns = generateColumns({ collection: empty });
@@ -162,7 +161,7 @@ describe("generateColumns", () => {
   });
 
   it("does not mark any column as isTitle when useAsTitle is not set", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ required: true }),
       },
@@ -173,10 +172,10 @@ describe("generateColumns", () => {
   });
 
   it("produces a fallback column for unknown field types", () => {
-    const weird = defineCollection("weird", {
+    const weird = defineCollection({ slug: "weird",
       fields: {
         title: text({ required: true }),
-        custom: { _type: "", _meta: { type: "json" as any } } as any,
+        custom: { type: "json" } as any,
       },
     });
     const columns = generateColumns({ collection: weird });

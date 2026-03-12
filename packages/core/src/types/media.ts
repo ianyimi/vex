@@ -1,5 +1,5 @@
 import type { VexField } from "./fields";
-import type { AnyVexCollection, CollectionAdminConfig } from "./collections";
+import type { VexCollection, CollectionAdminConfig } from "./collections";
 
 /**
  * Interface that file storage plugins must implement.
@@ -65,7 +65,7 @@ export const OVERRIDABLE_MEDIA_FIELDS = [
 export type OverridableMediaField = (typeof OVERRIDABLE_MEDIA_FIELDS)[number];
 
 /**
- * Keys of all default media fields auto-injected by `defineMediaCollection()`.
+ * Keys of all default media fields auto-injected by `defineConfig()`.
  * Used as extra autocomplete keys in `CollectionAdminConfig` so that
  * `useAsTitle`, `defaultColumns`, etc. suggest both user fields and preset fields.
  */
@@ -74,13 +74,17 @@ export type DefaultMediaFieldKeys =
   | OverridableMediaField;
 
 /**
- * Configuration for a media collection.
+ * A media collection definition. Users create these as plain objects.
+ * Default media fields (storageId, filename, mimeType, size, url, alt, width, height)
+ * are injected automatically by `defineConfig()`.
+ *
  * The `fields` record contains ONLY user-defined additional fields or overrides
- * of overridable defaults. Locked fields are auto-injected by `defineMediaCollection()`.
+ * of overridable defaults (url, alt, width, height).
  */
-export interface MediaCollectionConfig<
-  TFields extends Record<string, VexField> = Record<never, VexField>,
+export interface VexMediaCollection<
+  TFields extends Record<string, VexField> = any,
 > {
+  readonly slug: string;
   fields?: TFields;
   tableName?: string;
   labels?: { singular?: string; plural?: string };
@@ -88,10 +92,58 @@ export interface MediaCollectionConfig<
 }
 
 /**
+ * Default media fields injected into every media collection by defineConfig().
+ * Returns a fresh record each call to avoid mutation across collections.
+ */
+export function getDefaultMediaFields(): Record<string, VexField> {
+  return {
+    storageId: {
+      type: "text",
+      required: true,
+      defaultValue: "",
+      label: "Storage ID",
+      admin: { hidden: true },
+    },
+    filename: {
+      type: "text",
+      required: true,
+      defaultValue: "",
+      label: "Filename",
+      admin: { readOnly: true },
+    },
+    mimeType: {
+      type: "text",
+      required: true,
+      defaultValue: "",
+      label: "MIME Type",
+      index: "by_mimeType",
+      admin: { readOnly: true },
+    },
+    size: {
+      type: "number",
+      required: true,
+      defaultValue: 0,
+      label: "File Size (bytes)",
+      admin: { readOnly: true },
+    },
+    url: {
+      type: "text",
+      required: true,
+      defaultValue: "",
+      label: "URL",
+      admin: { readOnly: true },
+    },
+    alt: { type: "text", label: "Alt Text" },
+    width: { type: "number", label: "Width (px)" },
+    height: { type: "number", label: "Height (px)" },
+  };
+}
+
+/**
  * The resolved media configuration on VexConfig.
  */
 export interface MediaConfig {
-  collections: AnyVexCollection[];
+  collections: VexCollection[];
   storageAdapter: FileStorageAdapter;
 }
 
@@ -100,13 +152,13 @@ export interface MediaConfig {
  * Used when passing config across RSC serialization boundaries (e.g., to client components).
  */
 export interface ClientMediaConfig {
-  collections: AnyVexCollection[];
+  collections: VexCollection[];
 }
 
 /**
  * Input shape for the `media` field on VexConfigInput.
  */
 export interface MediaConfigInput {
-  collections: AnyVexCollection[];
+  collections: VexMediaCollection[];
   storageAdapter: FileStorageAdapter;
 }

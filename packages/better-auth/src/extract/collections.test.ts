@@ -11,24 +11,24 @@ describe("extractAuthCollections", () => {
       expect(user).toBeDefined();
 
       // Check field types
-      expect(user.config.fields.name._meta.type).toBe("text");
-      expect(user.config.fields.name._meta.required).toBe(true);
-      expect(user.config.fields.email._meta.type).toBe("text");
-      expect(user.config.fields.email._meta.required).toBe(true);
-      expect(user.config.fields.emailVerified._meta.type).toBe("checkbox");
-      expect(user.config.fields.emailVerified._meta.required).toBe(true);
-      expect(user.config.fields.image._meta.type).toBe("text");
-      expect(user.config.fields.image._meta.required).toBeFalsy();
-      expect(user.config.fields.createdAt._meta.type).toBe("date");
-      expect(user.config.fields.createdAt._meta.required).toBe(true);
-      expect(user.config.fields.updatedAt._meta.type).toBe("date");
-      expect(user.config.fields.updatedAt._meta.required).toBe(true);
+      expect(user.fields.name.type).toBe("text");
+      expect(user.fields.name.required).toBe(true);
+      expect(user.fields.email.type).toBe("text");
+      expect(user.fields.email.required).toBe(true);
+      expect(user.fields.emailVerified.type).toBe("checkbox");
+      expect(user.fields.emailVerified.required).toBe(true);
+      expect(user.fields.image.type).toBe("text");
+      expect(user.fields.image.required).toBeFalsy();
+      expect(user.fields.createdAt.type).toBe("date");
+      expect(user.fields.createdAt.required).toBe(true);
+      expect(user.fields.updatedAt.type).toBe("date");
+      expect(user.fields.updatedAt.required).toBe(true);
     });
 
     it("does not include 'id' in any collection fields", () => {
       const collections = extractAuthCollections({});
       for (const collection of collections) {
-        expect(collection.config.fields.id).toBeUndefined();
+        expect(collection.fields.id).toBeUndefined();
       }
     });
 
@@ -44,34 +44,34 @@ describe("extractAuthCollections", () => {
     it("session collection has userId as relationship to user", () => {
       const collections = extractAuthCollections({});
       const session = collections.find((c) => c.slug === "session")!;
-      expect(session.config.fields.userId._meta.type).toBe("relationship");
-      expect(session.config.fields.userId._meta.to).toBe("user");
-      expect(session.config.fields.userId._meta.required).toBe(true);
+      expect(session.fields.userId.type).toBe("relationship");
+      expect(session.fields.userId.to).toBe("user");
+      expect(session.fields.userId.required).toBe(true);
     });
 
     it("account collection has userId as relationship to user", () => {
       const collections = extractAuthCollections({});
       const account = collections.find((c) => c.slug === "account")!;
-      expect(account.config.fields.userId._meta.type).toBe("relationship");
-      expect(account.config.fields.userId._meta.to).toBe("user");
+      expect(account.fields.userId.type).toBe("relationship");
+      expect(account.fields.userId.to).toBe("user");
     });
 
     it("session collection has date fields as date type", () => {
       const collections = extractAuthCollections({});
       const session = collections.find((c) => c.slug === "session")!;
-      expect(session.config.fields.expiresAt._meta.type).toBe("date");
-      expect(session.config.fields.createdAt._meta.type).toBe("date");
-      expect(session.config.fields.updatedAt._meta.type).toBe("date");
+      expect(session.fields.expiresAt.type).toBe("date");
+      expect(session.fields.createdAt.type).toBe("date");
+      expect(session.fields.updatedAt.type).toBe("date");
     });
 
     it("session collection has indexes for token and userId", () => {
       const collections = extractAuthCollections({});
       const session = collections.find((c) => c.slug === "session")!;
-      expect(session.config.indexes).toContainEqual({
+      expect(session.indexes).toContainEqual({
         name: "by_token",
         fields: ["token"],
       });
-      expect(session.config.indexes).toContainEqual({
+      expect(session.indexes).toContainEqual({
         name: "by_userId",
         fields: ["userId"],
       });
@@ -88,10 +88,10 @@ describe("extractAuthCollections", () => {
       expect(collections.find((c) => c.slug === "user")).toBeUndefined();
 
       const session = collections.find((c) => c.slug === "session")!;
-      expect(session.config.fields.userId._meta.to).toBe("users");
+      expect(session.fields.userId.to).toBe("users");
 
       const account = collections.find((c) => c.slug === "account")!;
-      expect(account.config.fields.userId._meta.to).toBe("users");
+      expect(account.fields.userId.to).toBe("users");
     });
   });
 
@@ -105,10 +105,10 @@ describe("extractAuthCollections", () => {
         },
       });
       const user = collections.find((c) => c.slug === "user")!;
-      expect(user.config.fields.bio._meta.type).toBe("text");
-      expect(user.config.fields.bio._meta.required).toBe(true);
+      expect(user.fields.bio.type).toBe("text");
+      expect(user.fields.bio.required).toBe(true);
       // base fields still present
-      expect(user.config.fields.name).toBeDefined();
+      expect(user.fields.name).toBeDefined();
     });
 
     it("additionalField with required: false creates optional field", () => {
@@ -120,8 +120,8 @@ describe("extractAuthCollections", () => {
         },
       });
       const user = collections.find((c) => c.slug === "user")!;
-      expect(user.config.fields.nickname._meta.type).toBe("text");
-      expect(user.config.fields.nickname._meta.required).toBeFalsy();
+      expect(user.fields.nickname.type).toBe("text");
+      expect(user.fields.nickname.required).toBeFalsy();
     });
 
     it("additionalField can reference another table", () => {
@@ -137,8 +137,8 @@ describe("extractAuthCollections", () => {
         },
       });
       const user = collections.find((c) => c.slug === "user")!;
-      expect(user.config.fields.orgId._meta.type).toBe("relationship");
-      expect(user.config.fields.orgId._meta.to).toBe("organization");
+      expect(user.fields.orgId.type).toBe("relationship");
+      expect(user.fields.orgId.to).toBe("organization");
     });
   });
 
@@ -148,8 +148,8 @@ describe("extractAuthCollections", () => {
         plugins: [admin()],
       });
       const user = collections.find((c) => c.slug === "user")!;
-      expect(user.config.fields.role).toBeDefined();
-      expect(user.config.fields.banned).toBeDefined();
+      expect(user.fields.role).toBeDefined();
+      expect(user.fields.banned).toBeDefined();
     });
 
     it("admin plugin adds impersonatedBy to session collection", () => {
@@ -157,7 +157,7 @@ describe("extractAuthCollections", () => {
         plugins: [admin()],
       });
       const session = collections.find((c) => c.slug === "session")!;
-      expect(session.config.fields.impersonatedBy).toBeDefined();
+      expect(session.fields.impersonatedBy).toBeDefined();
     });
   });
 
@@ -170,8 +170,8 @@ describe("extractAuthCollections", () => {
       expect(withPlugin.length).toBe(without.length);
       const userWith = withPlugin.find((c) => c.slug === "user")!;
       const userWithout = without.find((c) => c.slug === "user")!;
-      expect(Object.keys(userWith.config.fields).length).toBe(
-        Object.keys(userWithout.config.fields).length,
+      expect(Object.keys(userWith.fields).length).toBe(
+        Object.keys(userWithout.fields).length,
       );
     });
   });
@@ -186,7 +186,7 @@ describe("extractAuthCollections", () => {
         },
       });
       const account = collections.find((c) => c.slug === "account")!;
-      expect(account.config.fields.metadata._meta.type).toBe("json");
+      expect(account.fields.metadata.type).toBe("json");
     });
 
     it("maps string[] additionalField to array VexField", () => {
@@ -198,8 +198,8 @@ describe("extractAuthCollections", () => {
         },
       });
       const user = collections.find((c) => c.slug === "user")!;
-      expect(user.config.fields.role._meta.type).toBe("array");
-      expect(user.config.fields.role._meta.field._meta.type).toBe("text");
+      expect(user.fields.role.type).toBe("array");
+      expect(user.fields.role.field.type).toBe("text");
     });
   });
 });

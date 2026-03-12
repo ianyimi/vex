@@ -15,9 +15,9 @@ export function DashboardView({ config }: DashboardViewProps) {
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {config.collections.map((collection) => {
-          const fieldCount = Object.keys(collection.config.fields).length;
+          const fieldCount = Object.keys(collection.fields).length;
           const label =
-            collection.config.labels?.plural ??
+            collection.labels?.plural ??
             collection.slug.charAt(0).toUpperCase() + collection.slug.slice(1);
 
           return (

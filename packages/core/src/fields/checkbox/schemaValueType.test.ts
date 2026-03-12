@@ -1,13 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { checkboxToValueTypeString } from "./schemaValueType";
-import type { CheckboxFieldMeta } from "../../types";
+import { checkbox } from ".";
 
 describe("checkboxToValueTypeString", () => {
   it("returns v.optional(v.boolean()) for an optional checkbox", () => {
-    const meta: CheckboxFieldMeta = { type: "checkbox" };
     expect(
       checkboxToValueTypeString({
-        meta,
+        field: checkbox(),
         collectionSlug: "posts",
         fieldName: "featured",
       }),
@@ -15,40 +14,29 @@ describe("checkboxToValueTypeString", () => {
   });
 
   it("returns v.boolean() for a required checkbox with defaultValue", () => {
-    const meta: CheckboxFieldMeta = {
-      type: "checkbox",
-      required: true,
-      defaultValue: true,
-    };
     expect(
       checkboxToValueTypeString({
-        meta,
+        field: checkbox({ required: true, defaultValue: true }),
         collectionSlug: "posts",
         fieldName: "featured",
       }),
     ).toBe("v.boolean()");
   });
 
-  it("throws when required with no defaultValue", () => {
-    const meta: CheckboxFieldMeta = { type: "checkbox", required: true };
-    expect(() =>
+  it("auto-provides defaultValue when required with no explicit defaultValue", () => {
+    expect(
       checkboxToValueTypeString({
-        meta,
+        field: checkbox({ required: true }),
         collectionSlug: "posts",
         fieldName: "featured",
       }),
-    ).toThrow("featured");
+    ).toBe("v.boolean()");
   });
 
   it("throws when defaultValue is wrong type", () => {
-    const meta: CheckboxFieldMeta = {
-      type: "checkbox",
-      required: true,
-      defaultValue: "yes" as any,
-    };
     expect(() =>
       checkboxToValueTypeString({
-        meta,
+        field: checkbox({ required: true, defaultValue: "yes" as any }),
         collectionSlug: "posts",
         fieldName: "featured",
       }),

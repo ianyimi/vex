@@ -13,14 +13,10 @@ import type { VexField } from "../types";
 
 /**
  * Converts a VexField to its Convex value type string representation.
- * Dispatches to the appropriate per-field function based on `_meta.type`.
+ * Dispatches to the appropriate per-field function based on `type`.
  *
  * Each per-field function handles its own validation (via processFieldValueTypeOptions())
  * and its own v.optional() wrapping. This dispatcher just routes by type.
- *
- * Edge cases:
- * - Unknown field type: throw with descriptive error including the type string
- * - index property on _meta: ignored here — handled by collectIndexes()
  */
 export function fieldToValueType(props: {
   field: VexField;
@@ -28,28 +24,28 @@ export function fieldToValueType(props: {
   fieldName: string;
 }): string {
   const { field, collectionSlug, fieldName } = props;
-  switch (field._meta.type) {
+  switch (field.type) {
     case "text":
-      return textToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+      return textToValueTypeString({ field, collectionSlug, fieldName });
     case "number":
-      return numberToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+      return numberToValueTypeString({ field, collectionSlug, fieldName });
     case "checkbox":
-      return checkboxToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+      return checkboxToValueTypeString({ field, collectionSlug, fieldName });
     case "select":
-      return selectToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+      return selectToValueTypeString({ field, collectionSlug, fieldName });
     case "date":
-      return dateToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+      return dateToValueTypeString({ field, collectionSlug, fieldName });
     case "imageUrl":
-      return imageUrlToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+      return imageUrlToValueTypeString({ field, collectionSlug, fieldName });
     case "relationship":
-      return relationshipToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+      return relationshipToValueTypeString({ field, collectionSlug, fieldName });
     case "upload":
-      return uploadToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+      return uploadToValueTypeString({ field, collectionSlug, fieldName });
     case "json":
-      return jsonToValueTypeString({ meta: field._meta, collectionSlug, fieldName });
+      return jsonToValueTypeString({ field, collectionSlug, fieldName });
     case "array":
       return arrayToValueTypeString({
-        meta: field._meta,
+        field,
         collectionSlug,
         fieldName,
         resolveInnerField: fieldToValueType,
@@ -58,7 +54,7 @@ export function fieldToValueType(props: {
       throw new VexFieldValidationError(
         collectionSlug,
         fieldName,
-        `Unknown Field Type: ${(field._meta as any).type}`,
+        `Unknown Field Type: ${(field as any).type}`,
       );
   }
 }

@@ -1,22 +1,13 @@
-import { SelectFieldMeta, SelectFieldOptions, GenericVexField } from "../../types";
+import type { SelectFieldDef, SelectFieldSingle, SelectFieldMany } from "../../types";
 
 export function select<T extends string = string>(
-  options: SelectFieldOptions<T> & { hasMany: true },
-): GenericVexField<T[], SelectFieldMeta<T>>;
-
+  options: Omit<SelectFieldMany<T>, "type">,
+): SelectFieldDef<T>;
 export function select<T extends string = string>(
-  options: SelectFieldOptions<T> & { hasMany?: false },
-): GenericVexField<T, SelectFieldMeta<T>>;
-
+  options: Omit<SelectFieldSingle<T>, "type">,
+): SelectFieldDef<T>;
 export function select<T extends string = string>(
-  options: SelectFieldOptions<T>,
-): GenericVexField<T | T[], SelectFieldMeta> {
-  return {
-    _type: options.hasMany ? [] : ("" as T),
-    _meta: {
-      type: "select",
-      ...options,
-      formDefaultValue: options.defaultValue ?? (options.hasMany ? [] : ("" as T)),
-    },
-  };
+  options: Omit<SelectFieldSingle<T>, "type"> | Omit<SelectFieldMany<T>, "type">,
+): SelectFieldDef<T> {
+  return { type: "select", ...options } as SelectFieldDef<T>;
 }

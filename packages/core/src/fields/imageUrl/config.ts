@@ -1,15 +1,11 @@
-import { ImageUrlFieldMeta, ImageUrlFieldOptions, GenericVexField } from "../../types";
+import type { ImageUrlFieldDef } from "../../types";
 
-export function imageUrl(
-  options?: ImageUrlFieldOptions,
-): GenericVexField<string, ImageUrlFieldMeta> {
+export function imageUrl(options?: Omit<ImageUrlFieldDef, "type">): ImageUrlFieldDef {
   return {
-    _type: "",
-    _meta: {
-      type: "imageUrl",
-      defaultValue: options?.required ? "" : undefined,
-      ...options,
-      formDefaultValue: options?.defaultValue ?? "",
-    },
+    type: "imageUrl",
+    ...(options?.required && options?.defaultValue === undefined
+      ? { defaultValue: "" }
+      : {}),
+    ...options,
   };
 }

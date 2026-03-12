@@ -1,2 +1,2 @@
-export { upload } from "./config";
+export * from "./config";
 export { uploadToValueTypeString } from "./schemaValueType";

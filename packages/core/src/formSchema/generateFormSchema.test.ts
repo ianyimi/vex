@@ -5,14 +5,14 @@ import { text, number, checkbox, select, date, imageUrl, upload } from "../field
 describe("fieldMetaToZod", () => {
   it("generates z.string() for text field", () => {
     const field = text({ required: true });
-    const schema = fieldMetaToZod({ meta: field._meta });
+    const schema = fieldMetaToZod({ field });
     expect(schema.safeParse("hello").success).toBe(true);
     expect(schema.safeParse(123).success).toBe(false);
   });
 
   it("applies minLength/maxLength for text field", () => {
     const field = text({ minLength: 2, maxLength: 5 });
-    const schema = fieldMetaToZod({ meta: field._meta });
+    const schema = fieldMetaToZod({ field });
     expect(schema.safeParse("a").success).toBe(false);
     expect(schema.safeParse("ab").success).toBe(true);
     expect(schema.safeParse("abcde").success).toBe(true);
@@ -21,14 +21,14 @@ describe("fieldMetaToZod", () => {
 
   it("generates z.number() for number field", () => {
     const field = number();
-    const schema = fieldMetaToZod({ meta: field._meta });
+    const schema = fieldMetaToZod({ field });
     expect(schema.safeParse(42).success).toBe(true);
     expect(schema.safeParse("42").success).toBe(false);
   });
 
   it("applies min/max for number field", () => {
     const field = number({ min: 0, max: 100 });
-    const schema = fieldMetaToZod({ meta: field._meta });
+    const schema = fieldMetaToZod({ field });
     expect(schema.safeParse(-1).success).toBe(false);
     expect(schema.safeParse(0).success).toBe(true);
     expect(schema.safeParse(100).success).toBe(true);
@@ -37,7 +37,7 @@ describe("fieldMetaToZod", () => {
 
   it("generates z.boolean() for checkbox field", () => {
     const field = checkbox();
-    const schema = fieldMetaToZod({ meta: field._meta });
+    const schema = fieldMetaToZod({ field });
     expect(schema.safeParse(true).success).toBe(true);
     expect(schema.safeParse(false).success).toBe(true);
     expect(schema.safeParse("true").success).toBe(false);
@@ -50,7 +50,7 @@ describe("fieldMetaToZod", () => {
         { label: "Published", value: "published" },
       ],
     });
-    const schema = fieldMetaToZod({ meta: field._meta });
+    const schema = fieldMetaToZod({ field });
     expect(schema.safeParse("draft").success).toBe(true);
     expect(schema.safeParse("published").success).toBe(true);
     expect(schema.safeParse("invalid").success).toBe(false);
@@ -64,7 +64,7 @@ describe("fieldMetaToZod", () => {
       ],
       hasMany: true,
     });
-    const schema = fieldMetaToZod({ meta: field._meta });
+    const schema = fieldMetaToZod({ field });
     expect(schema.safeParse(["a", "b"]).success).toBe(true);
     expect(schema.safeParse(["a", "invalid"]).success).toBe(false);
     expect(schema.safeParse("a").success).toBe(false);
@@ -72,14 +72,14 @@ describe("fieldMetaToZod", () => {
 
   it("generates z.number() for date field (epoch ms)", () => {
     const field = date();
-    const schema = fieldMetaToZod({ meta: field._meta });
+    const schema = fieldMetaToZod({ field });
     expect(schema.safeParse(Date.now()).success).toBe(true);
     expect(schema.safeParse("2024-01-01").success).toBe(false);
   });
 
   it("generates z.string().url() or empty for imageUrl field", () => {
     const field = imageUrl();
-    const schema = fieldMetaToZod({ meta: field._meta });
+    const schema = fieldMetaToZod({ field });
     expect(schema.safeParse("https://example.com/img.png").success).toBe(true);
     expect(schema.safeParse("").success).toBe(true);
     expect(schema.safeParse(123).success).toBe(false);

@@ -1,23 +1,20 @@
 import { describe, it, expect } from "vitest";
 import { checkboxColumnDef } from "./columnDef";
-import type { CheckboxFieldMeta } from "../../types";
+import { checkbox } from ".";
 
 describe("checkboxColumnDef", () => {
   it("uses fieldKey as accessorKey", () => {
-    const meta: CheckboxFieldMeta = { type: "checkbox" };
-    const col = checkboxColumnDef({ fieldKey: "featured", meta });
+    const col = checkboxColumnDef({ fieldKey: "featured", field: checkbox() });
     expect(col).toHaveProperty("accessorKey", "featured");
   });
 
-  it("uses meta.label as header when provided", () => {
-    const meta: CheckboxFieldMeta = { type: "checkbox", label: "Is Featured" };
-    const col = checkboxColumnDef({ fieldKey: "featured", meta });
+  it("uses field.label as header when provided", () => {
+    const col = checkboxColumnDef({ fieldKey: "featured", field: checkbox({ label: "Is Featured" }) });
     expect(col).toHaveProperty("header", "Is Featured");
   });
 
   it("capitalizes fieldKey as header fallback", () => {
-    const meta: CheckboxFieldMeta = { type: "checkbox" };
-    const col = checkboxColumnDef({ fieldKey: "active", meta });
+    const col = checkboxColumnDef({ fieldKey: "active", field: checkbox() });
     expect(col).toHaveProperty("header", "Active");
   });
 });

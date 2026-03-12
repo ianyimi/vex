@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback } from "react";
-import type { AnyVexCollection, ClientVexConfig, VexField } from "@vexcms/core";
+import type { VexCollection, ClientVexConfig, VexField } from "@vexcms/core";
 import { LOCKED_MEDIA_FIELDS, OVERRIDABLE_MEDIA_FIELDS } from "@vexcms/core";
 import {
   Button,
@@ -52,7 +52,7 @@ async function extractImageDimensions(
 
 export default function MediaCollectionEditView(props: {
   config: ClientVexConfig;
-  collection: AnyVexCollection;
+  collection: VexCollection;
   documentID: string;
 }) {
   const router = useRouter();
@@ -83,60 +83,53 @@ export default function MediaCollectionEditView(props: {
     size: number;
   } | null>(null);
   const [urlStorageId, setUrlStorageId] = useState<string | null>(null);
-  const [filename, setFilename] = useState("");
-  const [altText, setAltText] = useState("");
-  const [width, setWidth] = useState<number | undefined>(undefined);
-  const [height, setHeight] = useState<number | undefined>(undefined);
-  const [customValues, setCustomValues] = useState<Record<string, unknown>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+
+  // Local edits — track only fields the user has explicitly changed.
+  // Unedited fields fall through to the live document values.
+  const [localEdits, setLocalEdits] = useState<Record<string, unknown>>({});
 
   const urlToFile = useUrlToFile({
-    maxSize: (props.collection.config as any).maxSize ?? 25 * 1024 * 1024,
+    maxSize: (props.collection as any).maxSize ?? 25 * 1024 * 1024,
   });
 
-  const disableDelete = props.collection.config.admin?.disableDelete ?? false;
+  const disableDelete = props.collection.admin?.disableDelete ?? false;
 
   // Custom fields
   const customFields = useMemo(() => {
-    const fields = props.collection.config.fields as Record<string, VexField>;
+    const fields = props.collection.fields as Record<string, VexField>;
     return Object.entries(fields)
       .filter(([name, field]) => {
         if (STANDARD_MEDIA_FIELDS.has(name)) return false;
-        if (field._meta.admin?.hidden) return false;
+        if (field.admin?.hidden) return false;
         return true;
       })
       .map(([name, field]) => ({ name, field }));
   }, [props.collection]);
 
-  // Initialize from document
-  useEffect(() => {
-    if (document && !initialized) {
-      setFilename((document.filename as string) || "");
-      setAltText((document.alt as string) || "");
-      setWidth(document.width as number | undefined);
-      setHeight(document.height as number | undefined);
-      const cv: Record<string, unknown> = {};
-      for (const { name } of customFields) {
-        cv[name] = document[name];
-      }
-      setCustomValues(cv);
-      setInitialized(true);
+  // Derive current field values: local edits take priority over document values.
+  // This avoids the useEffect init/reset dance that caused blank renders.
+  const filename = "filename" in localEdits
+    ? (localEdits.filename as string)
+    : (document?.filename as string) || "";
+  const altText = "alt" in localEdits
+    ? (localEdits.alt as string)
+    : (document?.alt as string) || "";
+  const width = "width" in localEdits
+    ? (localEdits.width as number | undefined)
+    : (document?.width as number | undefined);
+  const height = "height" in localEdits
+    ? (localEdits.height as number | undefined)
+    : (document?.height as number | undefined);
+  const customValues = useMemo(() => {
+    const cv: Record<string, unknown> = {};
+    for (const { name } of customFields) {
+      cv[name] = name in localEdits ? localEdits[name] : document?.[name];
     }
-  }, [document, initialized, customFields]);
-
-  // Reset initialized when document ID changes
-  useEffect(() => {
-    setInitialized(false);
-    setPendingFile(null);
-    setPendingPreviewUrl(null);
-    setPendingMeta(null);
-    setUrlStorageId(null);
-    setError(null);
-    urlToFile.clear();
-  }, [props.documentID]);
+    return cv;
+  }, [customFields, localEdits, document]);
 
   // When URL fetch succeeds
   useEffect(() => {
@@ -168,8 +161,7 @@ export default function MediaCollectionEditView(props: {
 
       const dims = await extractImageDimensions(file);
       if (dims) {
-        setWidth(dims.width);
-        setHeight(dims.height);
+        setLocalEdits((prev) => ({ ...prev, width: dims.width, height: dims.height }));
       }
     },
     [urlToFile],
@@ -248,7 +240,8 @@ export default function MediaCollectionEditView(props: {
         fields: changedFields,
       });
 
-      // Clear pending state
+      // Clear pending state — document will update via live query
+      setLocalEdits({});
       setPendingFile(null);
       if (pendingPreviewUrl) URL.revokeObjectURL(pendingPreviewUrl);
       setPendingPreviewUrl(null);
@@ -264,22 +257,21 @@ export default function MediaCollectionEditView(props: {
 
   const isLoading = documentQuery.isPending;
   const hasPendingFile = !!pendingFile || !!urlStorageId;
-  const pluralLabel = props.collection.config.labels?.plural ?? props.collection.slug;
+  const pluralLabel = props.collection.labels?.plural ?? props.collection.slug;
   const singularLabel =
-    props.collection.config.labels?.singular ?? props.collection.slug;
+    props.collection.labels?.singular ?? props.collection.slug;
   const documentTitle = document
     ? (document.filename as string) || props.documentID
     : props.documentID;
 
-  const currentFile =
-    document && initialized
-      ? {
-          filename: document.filename as string,
-          mimeType: document.mimeType as string,
-          size: document.size as number,
-          url: document.url as string,
-        }
-      : null;
+  const currentFile = document
+    ? {
+        filename: document.filename as string,
+        mimeType: document.mimeType as string,
+        size: document.size as number,
+        url: document.url as string,
+      }
+    : null;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -340,7 +332,7 @@ export default function MediaCollectionEditView(props: {
           <p className="text-muted-foreground">Document not found.</p>
         )}
 
-        {!isLoading && document != null && initialized && (
+        {!isLoading && document != null && (
           <div className="space-y-6 max-w-3xl" key={props.documentID}>
             <MediaFileSection
               layout="side-by-side"
@@ -352,8 +344,8 @@ export default function MediaCollectionEditView(props: {
               onFileSelect={handleFileSelect}
               onClearPendingFile={handleClearFile}
               urlToFile={urlToFile}
-              accept={(props.collection.config as any).accept}
-              maxSize={(props.collection.config as any).maxSize}
+              accept={(props.collection as any).accept}
+              maxSize={(props.collection as any).maxSize}
               disabled={isSaving}
             />
 
@@ -363,7 +355,7 @@ export default function MediaCollectionEditView(props: {
                 id="edit-filename"
                 value={filename}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFilename(e.target.value)
+                  setLocalEdits((prev) => ({ ...prev, filename: e.target.value }))
                 }
                 disabled={isSaving}
               />
@@ -375,7 +367,7 @@ export default function MediaCollectionEditView(props: {
                 id="edit-alt"
                 value={altText}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setAltText(e.target.value)
+                  setLocalEdits((prev) => ({ ...prev, alt: e.target.value }))
                 }
                 placeholder="Describe this file for accessibility"
                 disabled={isSaving}
@@ -390,9 +382,10 @@ export default function MediaCollectionEditView(props: {
                   type="number"
                   value={width ?? ""}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setWidth(
-                      e.target.value ? Number(e.target.value) : undefined,
-                    )
+                    setLocalEdits((prev) => ({
+                      ...prev,
+                      width: e.target.value ? Number(e.target.value) : undefined,
+                    }))
                   }
                   disabled={isSaving}
                 />
@@ -404,9 +397,10 @@ export default function MediaCollectionEditView(props: {
                   type="number"
                   value={height ?? ""}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setHeight(
-                      e.target.value ? Number(e.target.value) : undefined,
-                    )
+                    setLocalEdits((prev) => ({
+                      ...prev,
+                      height: e.target.value ? Number(e.target.value) : undefined,
+                    }))
                   }
                   disabled={isSaving}
                 />
@@ -416,13 +410,13 @@ export default function MediaCollectionEditView(props: {
             {customFields.map(({ name, field }) => (
               <div key={name} className="space-y-2">
                 <Label htmlFor={`edit-${name}`}>
-                  {field._meta.label ?? name}
+                  {field.label ?? name}
                 </Label>
                 <Input
                   id={`edit-${name}`}
                   value={(customValues[name] as string) ?? ""}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setCustomValues((prev) => ({
+                    setLocalEdits((prev) => ({
                       ...prev,
                       [name]: e.target.value,
                     }))

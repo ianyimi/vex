@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { generateVexSchema } from "./generate";
-import { defineCollection } from "../config/defineCollection";
+import { defineCollection, defineMediaCollection } from "../config/defineCollection";
 import { defineConfig } from "../config/defineConfig";
 import { text } from "../fields/text";
 import { number } from "../fields/number";
@@ -22,7 +22,7 @@ const minimalAuth: VexAuthAdapter = {
 };
 
 // Shared users collection for tests that need auth
-const users = defineCollection("users", {
+const users = defineCollection({ slug: "users",
   fields: { name: text() },
 });
 
@@ -51,7 +51,7 @@ describe("generateVexSchema", () => {
 
   describe("basic collection generation", () => {
     it("generates a simple collection with text fields", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text({ required: true, defaultValue: "Untitled" }),
           slug: text(),
@@ -69,7 +69,7 @@ describe("generateVexSchema", () => {
     });
 
     it("generates a collection with all field types", () => {
-      const items = defineCollection("items", {
+      const items = defineCollection({ slug: "items",
         fields: {
           name: text({ required: true, defaultValue: "" }),
           count: number({ required: true, defaultValue: 0 }),
@@ -99,10 +99,10 @@ describe("generateVexSchema", () => {
     });
 
     it("generates multiple collections", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: { title: text() },
       });
-      const categories = defineCollection("categories", {
+      const categories = defineCollection({ slug: "categories",
         fields: { name: text() },
       });
       const config = defineConfig({
@@ -129,7 +129,7 @@ describe("generateVexSchema", () => {
 
   describe("new field types", () => {
     it("generates date field as v.number()", () => {
-      const events = defineCollection("events", {
+      const events = defineCollection({ slug: "events",
         fields: {
           startDate: date({ required: true, defaultValue: 0 }),
           endDate: date(),
@@ -146,7 +146,7 @@ describe("generateVexSchema", () => {
     });
 
     it("generates imageUrl field as v.string()", () => {
-      const profiles = defineCollection("profiles", {
+      const profiles = defineCollection({ slug: "profiles",
         fields: {
           avatar: imageUrl({ required: true, defaultValue: "" }),
           banner: imageUrl(),
@@ -163,7 +163,7 @@ describe("generateVexSchema", () => {
     });
 
     it("generates relationship field as v.id()", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           author: relationship({ to: "users", required: true }),
           reviewer: relationship({ to: "users" }),
@@ -180,7 +180,7 @@ describe("generateVexSchema", () => {
     });
 
     it("generates hasMany relationship as v.array(v.id())", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           tags: relationship({ to: "tags", hasMany: true, required: true }),
           optionalTags: relationship({ to: "tags", hasMany: true }),
@@ -197,7 +197,7 @@ describe("generateVexSchema", () => {
     });
 
     it("generates json field as v.any()", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           metadata: json({ required: true }),
           extra: json(),
@@ -214,7 +214,7 @@ describe("generateVexSchema", () => {
     });
 
     it("generates array field wrapping inner type", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           tags: array({ field: text(), required: true }),
           scores: array({ field: number() }),
@@ -233,7 +233,7 @@ describe("generateVexSchema", () => {
 
   describe("tableName", () => {
     it("uses tableName instead of slug for the export name", () => {
-      const articles = defineCollection("articles", {
+      const articles = defineCollection({ slug: "articles",
         fields: { title: text() },
         tableName: "blog_articles",
       });
@@ -248,7 +248,7 @@ describe("generateVexSchema", () => {
     });
 
     it("defaults to slug when tableName is not set", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: { title: text() },
       });
       const config = defineConfig({
@@ -263,7 +263,7 @@ describe("generateVexSchema", () => {
 
   describe("index generation", () => {
     it("generates per-field indexes as chained .index() calls", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text(),
           slug: text({ index: "by_slug" }),
@@ -279,7 +279,7 @@ describe("generateVexSchema", () => {
     });
 
     it("generates collection-level compound indexes", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           author: text(),
           createdAt: number(),
@@ -298,7 +298,7 @@ describe("generateVexSchema", () => {
     });
 
     it("generates both per-field and collection-level indexes", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           slug: text({ index: "by_slug" }),
           author: text(),
@@ -319,7 +319,7 @@ describe("generateVexSchema", () => {
     });
 
     it("does not generate .index() when no indexes defined", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text(),
         },
@@ -335,7 +335,7 @@ describe("generateVexSchema", () => {
     });
 
     it("auto-generates index for admin.useAsTitle field", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text(),
           body: text(),
@@ -355,14 +355,14 @@ describe("generateVexSchema", () => {
   });
 
   describe("auth integration", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: { title: text() },
     });
 
     const baseAuthAdapter: VexAuthAdapter = {
       name: "better-auth",
       collections: [
-        defineCollection("users", {
+        defineCollection({ slug: "users",
           fields: {
             name: text({ required: true, defaultValue: "" }),
             email: text({ required: true, defaultValue: "" }),
@@ -371,7 +371,7 @@ describe("generateVexSchema", () => {
             updatedAt: date({ required: true, defaultValue: 0 }),
           },
         }),
-        defineCollection("account", {
+        defineCollection({ slug: "account",
           fields: {
             userId: relationship({ to: "users", required: true }),
             accountId: text({ required: true, defaultValue: "" }),
@@ -381,7 +381,7 @@ describe("generateVexSchema", () => {
           },
           indexes: [{ name: "by_userId", fields: ["userId"] }],
         }),
-        defineCollection("session", {
+        defineCollection({ slug: "session",
           fields: {
             token: text({ required: true, defaultValue: "" }),
             userId: relationship({ to: "users", required: true }),
@@ -446,9 +446,9 @@ describe("generateVexSchema", () => {
       const authWithAdminFields: VexAuthAdapter = {
         name: "better-auth",
         collections: [
-          defineCollection("users", {
+          defineCollection({ slug: "users",
             fields: {
-              ...baseAuthAdapter.collections[0].config.fields,
+              ...baseAuthAdapter.collections[0].fields,
               banned: checkbox(),
               role: array({ field: text(), required: true }),
             },
@@ -471,14 +471,14 @@ describe("generateVexSchema", () => {
 
   describe("slug validation", () => {
     it("allows auth collection slug to overlap with user collection slug (merge)", () => {
-      const account = defineCollection("account", {
+      const account = defineCollection({ slug: "account",
         fields: { displayName: text() },
       });
 
       const authAdapter: VexAuthAdapter = {
         name: "better-auth",
         collections: [
-          defineCollection("account", {
+          defineCollection({ slug: "account",
             fields: {
               userId: relationship({ to: "users", required: true }),
             },
@@ -498,10 +498,10 @@ describe("generateVexSchema", () => {
     });
 
     it("throws when two user collections have the same slug", () => {
-      const posts1 = defineCollection("posts", {
+      const posts1 = defineCollection({ slug: "posts",
         fields: { title: text() },
       });
-      const posts2 = defineCollection("posts", {
+      const posts2 = defineCollection({ slug: "posts",
         fields: { name: text() },
       });
 
@@ -516,7 +516,7 @@ describe("generateVexSchema", () => {
 
   describe("output formatting", () => {
     it("generates valid TypeScript (no syntax errors in structure)", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text({ required: true, defaultValue: "Untitled" }),
           slug: text({ index: "by_slug" }),
@@ -548,7 +548,7 @@ describe("generateVexSchema", () => {
     });
 
     it("uses consistent indentation", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text(),
         },
@@ -568,7 +568,7 @@ describe("generateVexSchema", () => {
 
   describe("search index generation", () => {
     it("generates per-field search index as chained .searchIndex() call", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text({
             searchIndex: { name: "search_title", filterFields: [] },
@@ -588,7 +588,7 @@ describe("generateVexSchema", () => {
     });
 
     it("generates search index with filterFields", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text({
             searchIndex: {
@@ -618,7 +618,7 @@ describe("generateVexSchema", () => {
     });
 
     it("generates collection-level search indexes", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text(),
           author: text(),
@@ -643,7 +643,7 @@ describe("generateVexSchema", () => {
     });
 
     it("auto-generates search index for admin.useAsTitle", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text(),
           body: text(),
@@ -664,7 +664,7 @@ describe("generateVexSchema", () => {
     });
 
     it("generates both .index() and .searchIndex() on the same table", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text({ index: "by_title" }),
           body: text(),
@@ -684,7 +684,7 @@ describe("generateVexSchema", () => {
     });
 
     it("does not generate .searchIndex() when no search indexes defined", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text(),
         },
@@ -714,11 +714,11 @@ describe("generateVexSchema", () => {
       storageIdValueType: 'v.id("_storage")',
       getUploadUrl: async () => "",
       getUrl: async () => "",
-      deleteFile: async () => "",
+      deleteFile: async () => {},
     };
 
     it("generates media collections under MEDIA COLLECTIONS comment block", () => {
-      const images = defineCollection("images", {
+      const images = defineMediaCollection({ slug: "images",
         fields: {
           storageId: text({ required: true, defaultValue: "" }),
           filename: text({ required: true, defaultValue: "" }),
@@ -744,7 +744,7 @@ describe("generateVexSchema", () => {
     });
 
     it("uses adapter storageIdValueType for storageId field (Convex)", () => {
-      const images = defineCollection("images", {
+      const images = defineMediaCollection({ slug: "images",
         fields: {
           storageId: text({ required: true, defaultValue: "" }),
           filename: text({ required: true, defaultValue: "" }),
@@ -770,7 +770,7 @@ describe("generateVexSchema", () => {
     });
 
     it("generates by_mimeType index on media collections", () => {
-      const images = defineCollection("images", {
+      const images = defineMediaCollection({ slug: "images",
         fields: {
           storageId: text({ required: true, defaultValue: "" }),
           mimeType: text({
@@ -804,7 +804,7 @@ describe("generateVexSchema", () => {
     });
 
     it("generates upload() field references in user collections", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text(),
           cover: upload({ to: "images", required: true }),
@@ -812,7 +812,7 @@ describe("generateVexSchema", () => {
         },
       });
 
-      const images = defineCollection("images", {
+      const images = defineMediaCollection({ slug: "images",
         fields: {
           storageId: text({ required: true, defaultValue: "" }),
           mimeType: text({ required: true, defaultValue: "" }),

@@ -55,25 +55,25 @@ export function AppSidebar({
     ];
 
     const collections: CollectionNavItem[] = allCollections
-      .filter((c) => !c.config.admin?.group)
+      .filter((c) => !c.admin?.group)
       .map((c) => ({
-        title: c.config.labels?.plural ?? c.slug,
+        title: c.labels?.plural ?? c.slug,
         url: `${config.basePath}/${c.slug}`,
         slug: c.slug,
       }));
 
     const collectionGroups: CollectionNavGroup[] = [];
     allCollections.forEach((c) => {
-      if (!c.config.admin?.group) return;
+      if (!c.admin?.group) return;
       const index = collectionGroups.findIndex(
-        (cg) => cg.title === c.config.admin!.group,
+        (cg) => cg.title === c.admin!.group,
       );
       if (index < 0) {
         collectionGroups.push({
-          title: c.config.admin!.group,
+          title: c.admin!.group,
           items: [
             {
-              title: c.config.labels?.plural ?? c.slug,
+              title: c.labels?.plural ?? c.slug,
               url: `${config.basePath}/${c.slug}`,
               slug: c.slug,
             },
@@ -81,7 +81,7 @@ export function AppSidebar({
         });
       } else {
         collectionGroups[index].items.push({
-          title: c.config.labels?.plural ?? c.slug,
+          title: c.labels?.plural ?? c.slug,
           url: `${config.basePath}/${c.slug}`,
           slug: c.slug,
         });
@@ -89,22 +89,22 @@ export function AppSidebar({
     });
 
     const globals: CollectionNavItem[] = config.globals
-      .filter((g) => !g.config.admin?.group)
+      .filter((g) => !g.admin?.group)
       .map((g) => ({
-        title: (g.config.admin?.useAsTitle as string) ?? g.slug,
+        title: (g.admin?.useAsTitle as string) ?? g.slug,
         url: `${config.basePath}/${g.slug}`,
         slug: g.slug,
       }));
 
     const globalGroups: CollectionNavGroup[] = [];
     config.globals.forEach((g) => {
-      if (!g.config.admin?.group) return;
+      if (!g.admin?.group) return;
       const index = collectionGroups.findIndex(
-        (gg) => gg.title === g.config.admin!.group,
+        (gg) => gg.title === g.admin!.group,
       );
       if (index < 0) {
         globalGroups.push({
-          title: g.config.admin!.group,
+          title: g.admin!.group,
           items: [
             {
               title: g.slug,

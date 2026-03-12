@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import type { AnyVexCollection, ClientVexConfig } from "@vexcms/core";
+import type { VexCollection, ClientVexConfig } from "@vexcms/core";
 import { LOCKED_MEDIA_FIELDS, OVERRIDABLE_MEDIA_FIELDS } from "@vexcms/core";
 import {
   DataTable,
@@ -69,10 +69,10 @@ export default function MediaCollectionsView({
   collection,
 }: {
   config: ClientVexConfig;
-  collection: AnyVexCollection;
+  collection: VexCollection;
 }) {
   const router = useRouter();
-  const thumbnailSize = (collection.config.admin as any)?.thumbnailSize ?? 40;
+  const thumbnailSize = (collection.admin as any)?.thumbnailSize ?? 40;
 
   const [pageIndex, setPageIndex] = useQueryState(
     "page",
@@ -113,9 +113,9 @@ export default function MediaCollectionsView({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const useAsTitle = collection.config.admin?.useAsTitle as string | undefined;
-  const disableDelete = collection.config.admin?.disableDelete ?? false;
-  const disableCreate = collection.config.admin?.disableCreate ?? false;
+  const useAsTitle = collection.admin?.useAsTitle as string | undefined;
+  const disableDelete = collection.admin?.disableDelete ?? false;
+  const disableCreate = collection.admin?.disableCreate ?? false;
   const searchAvailable = !!useAsTitle;
   const searchIndexName = useAsTitle ? `search_${useAsTitle}` : undefined;
   const isSearching = searchAvailable && debouncedSearch.trim().length > 0;
@@ -139,6 +139,7 @@ export default function MediaCollectionsView({
             mimeType={(doc.mimeType as string) || "application/octet-stream"}
             alt={(doc.filename as string) || ""}
             size={thumbnailSize}
+            className="ml-1.5"
           />
         );
       },
@@ -169,13 +170,14 @@ export default function MediaCollectionsView({
     });
 
     // Custom fields (non-standard, non-hidden)
-    const fields = collection.config.fields as Record<string, any>;
+    const fields = collection.fields as Record<string, any>;
     for (const [name, field] of Object.entries(fields)) {
+      // @ts-expect-error must check string name vs strictly typed media fields
       if (STANDARD_MEDIA_FIELDS.has(name)) continue;
-      if (field._meta?.admin?.hidden) continue;
+      if (field.admin?.hidden) continue;
       cols.push({
         accessorKey: name,
-        header: field._meta?.label ?? name,
+        header: field.label ?? name,
       });
     }
 
@@ -243,8 +245,8 @@ export default function MediaCollectionsView({
   const isLoading = isSearching ? searchQuery.isPending : listLoading;
   const searchLoading = isSearching && searchQuery.isFetching;
   const displayCount = isSearching ? documents.length : totalCount;
-  const pluralLabel = collection.config.labels?.plural ?? collection.slug;
-  const singularLabel = collection.config.labels?.singular ?? collection.slug;
+  const pluralLabel = collection.labels?.plural ?? collection.slug;
+  const singularLabel = collection.labels?.singular ?? collection.slug;
 
   // Actions column
   const columnsWithActions: ColumnDef<Record<string, unknown>, unknown>[] =
@@ -270,6 +272,7 @@ export default function MediaCollectionsView({
                 setDeleteOpen(true);
               }}
               disableDelete={disableDelete}
+              className="ml-1.5"
             />
           );
         },

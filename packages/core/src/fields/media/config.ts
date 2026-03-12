@@ -1,25 +1,13 @@
-import type {
-  UploadFieldMeta,
-  UploadFieldOptions,
-  GenericVexField,
-} from "../../types";
+import type { UploadFieldDef, UploadFieldSingle, UploadFieldMany } from "../../types";
 
-export function upload<TSlug extends string>(
-  options: UploadFieldOptions<TSlug> & { hasMany: true },
-): GenericVexField<string[], UploadFieldMeta>;
-
-export function upload<TSlug extends string>(
-  options: UploadFieldOptions<TSlug> & { hasMany?: false },
-): GenericVexField<string, UploadFieldMeta>;
-
-export function upload<TSlug extends string>(
-  options: UploadFieldOptions<TSlug>,
-): GenericVexField<string | string[], UploadFieldMeta> {
-  return {
-    _type: options.hasMany ? [] : "",
-    _meta: {
-      type: "upload",
-      ...options,
-    },
-  };
+export function upload(
+  options: Omit<UploadFieldMany, "type">,
+): UploadFieldDef;
+export function upload(
+  options: Omit<UploadFieldSingle, "type">,
+): UploadFieldDef;
+export function upload(
+  options: Omit<UploadFieldSingle, "type"> | Omit<UploadFieldMany, "type">,
+): UploadFieldDef {
+  return { type: "upload", ...options } as UploadFieldDef;
 }

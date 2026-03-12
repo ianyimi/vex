@@ -1,15 +1,11 @@
-import { TextFieldMeta, TextFieldOptions, GenericVexField } from "../../types";
+import type { TextFieldDef } from "../../types";
 
-export function text(
-  options?: TextFieldOptions,
-): GenericVexField<string, TextFieldMeta> {
+export function text(options?: Omit<TextFieldDef, "type">): TextFieldDef {
   return {
-    _type: "",
-    _meta: {
-      type: "text",
-      defaultValue: options?.required ? "" : undefined,
-      ...options,
-      formDefaultValue: options?.defaultValue ?? "",
-    },
+    type: "text",
+    ...(options?.required && options?.defaultValue === undefined
+      ? { defaultValue: "" }
+      : {}),
+    ...options,
   };
 }

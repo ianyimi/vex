@@ -1,23 +1,20 @@
 import { describe, it, expect } from "vitest";
 import { relationshipColumnDef } from "./columnDef";
-import type { RelationshipFieldMeta } from "../../types";
+import { relationship } from ".";
 
 describe("relationshipColumnDef", () => {
   it("uses fieldKey as accessorKey", () => {
-    const meta: RelationshipFieldMeta = { type: "relationship", to: "users" };
-    const col = relationshipColumnDef({ fieldKey: "author", meta });
+    const col = relationshipColumnDef({ fieldKey: "author", field: relationship({ to: "users" }) });
     expect(col).toHaveProperty("accessorKey", "author");
   });
 
-  it("uses meta.label as header when provided", () => {
-    const meta: RelationshipFieldMeta = { type: "relationship", to: "users", label: "Author" };
-    const col = relationshipColumnDef({ fieldKey: "author", meta });
+  it("uses field.label as header when provided", () => {
+    const col = relationshipColumnDef({ fieldKey: "author", field: relationship({ to: "users", label: "Author" }) });
     expect(col).toHaveProperty("header", "Author");
   });
 
   it("includes relationship metadata", () => {
-    const meta: RelationshipFieldMeta = { type: "relationship", to: "users" };
-    const col = relationshipColumnDef({ fieldKey: "author", meta });
+    const col = relationshipColumnDef({ fieldKey: "author", field: relationship({ to: "users" }) });
     expect(col.meta).toEqual({ type: "relationship", to: "users", align: "left" });
   });
 });

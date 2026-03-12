@@ -1,22 +1,19 @@
 import { processFieldValueTypeOptions } from "../../valueTypes/processAdminOptions";
-import type { NumberFieldMeta } from "../../types";
+import type { NumberFieldDef } from "../../types";
 import { NUMBER_VALUETYPE } from "../constants";
 
 /**
- * Converts number field metadata to a Convex value type string.
+ * Converts number field definition to a Convex value type string.
  *
  * @returns `"v.number()"` or `"v.optional(v.number())"`
- *
- * min/max/step are runtime validation concerns, not schema constraints.
- * Convex has no integer valueType — always v.number().
  */
 export function numberToValueTypeString(props: {
-  meta: NumberFieldMeta;
+  field: NumberFieldDef;
   collectionSlug: string;
   fieldName: string;
 }): string {
   return processFieldValueTypeOptions({
-    meta: props.meta,
+    field: props.field,
     collectionSlug: props.collectionSlug,
     fieldName: props.fieldName,
     expectedType: "number",

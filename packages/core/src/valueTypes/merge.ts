@@ -1,5 +1,5 @@
 import type { VexField } from "../types";
-import type { AnyVexCollection } from "../types";
+import type { VexCollection } from "../types";
 import type { ResolvedIndex, ResolvedSearchIndex } from "../types";
 
 /**
@@ -36,7 +36,7 @@ export interface MergedCollectionResult {
 /**
  * Merges an auth collection's fields with a user-defined collection's fields.
  *
- * Both sides are now VexField records. For overlapping fields, the auth
+ * Both sides are VexField records. For overlapping fields, the auth
  * VexField's schema properties are used (it controls the DB shape), but
  * the user's admin config (label, hidden, etc.) is preserved by copying
  * admin-related metadata from the user's field onto the auth field.
@@ -46,8 +46,8 @@ export interface MergedCollectionResult {
  * @returns Merged collection result with combined fields and source tracking
  */
 export function mergeAuthCollectionWithUserCollection(props: {
-  authCollection: AnyVexCollection;
-  userCollection: AnyVexCollection;
+  authCollection: VexCollection;
+  userCollection: VexCollection;
 }): MergedCollectionResult {
   const { authCollection, userCollection } = props;
   const fields: Record<string, VexField> = {};
@@ -55,8 +55,8 @@ export function mergeAuthCollectionWithUserCollection(props: {
   const authOnly: string[] = [];
   const userOnly: string[] = [];
 
-  const authFields = authCollection.config.fields;
-  const userFields = userCollection.config.fields;
+  const authFields = authCollection.fields;
+  const userFields = userCollection.fields;
   const authFieldKeys = Object.keys(authFields);
   const userFieldKeys = Object.keys(userFields);
 
@@ -71,13 +71,9 @@ export function mergeAuthCollectionWithUserCollection(props: {
       const userField = userFields[fieldKey];
       fields[fieldKey] = {
         ...userField,
-        _meta: {
-          ...userField._meta,
-          // Auth controls schema-relevant properties
-          required: authField._meta.required,
-          ...(authField._meta.defaultValue !== undefined && { defaultValue: authField._meta.defaultValue }),
-        },
-      };
+        required: authField.required,
+        ...((authField as any).defaultValue !== undefined && { defaultValue: (authField as any).defaultValue }),
+      } as VexField;
     } else {
       authOnly.push(fieldKey);
       fields[fieldKey] = authFields[fieldKey];
@@ -96,13 +92,13 @@ export function mergeAuthCollectionWithUserCollection(props: {
   const indexNames = new Set<string>();
 
   // Auth collection indexes (from collection-level)
-  for (const idx of authCollection.config.indexes ?? []) {
+  for (const idx of authCollection.indexes ?? []) {
     indexes.push({ name: idx.name, fields: idx.fields as string[] });
     indexNames.add(idx.name);
   }
 
   // User collection indexes
-  for (const idx of userCollection.config.indexes ?? []) {
+  for (const idx of userCollection.indexes ?? []) {
     if (!indexNames.has(idx.name)) {
       indexes.push({ name: idx.name, fields: idx.fields as string[] });
       indexNames.add(idx.name);
@@ -111,7 +107,7 @@ export function mergeAuthCollectionWithUserCollection(props: {
 
   // Search indexes from user collection
   const searchIndexes: ResolvedSearchIndex[] = (
-    userCollection.config.searchIndexes ?? []
+    userCollection.searchIndexes ?? []
   ).map((si) => ({
     name: si.name,
     searchField: si.searchField as string,

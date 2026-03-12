@@ -136,10 +136,7 @@ describe("fieldToValueType", () => {
 
   describe("error cases", () => {
     it("throws on unknown field type", () => {
-      const field = {
-        _type: "",
-        _meta: { type: "unknown_type" },
-      } as any;
+      const field = { type: "unknown_type" } as any;
       expect(() => fieldToValueType({ field, collectionSlug: "posts", fieldName: "mystery" })).toThrow(
         "unknown_type",
       );

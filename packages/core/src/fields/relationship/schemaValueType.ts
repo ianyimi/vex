@@ -1,8 +1,8 @@
 import { processFieldValueTypeOptions } from "../../valueTypes/processAdminOptions";
-import type { RelationshipFieldMeta } from "../../types";
+import type { RelationshipFieldDef } from "../../types";
 
 /**
- * Converts relationship field metadata to a Convex value type string.
+ * Converts relationship field definition to a Convex value type string.
  *
  * @returns
  * - hasMany + required: `v.array(v.id("tableName"))`
@@ -11,15 +11,15 @@ import type { RelationshipFieldMeta } from "../../types";
  * - !hasMany + !required: `v.optional(v.id("tableName"))`
  */
 export function relationshipToValueTypeString(props: {
-  meta: RelationshipFieldMeta;
+  field: RelationshipFieldDef;
   collectionSlug: string;
   fieldName: string;
 }): string {
-  const idType = `v.id("${props.meta.to}")`;
-  const baseValueType = props.meta.hasMany ? `v.array(${idType})` : idType;
+  const idType = `v.id("${props.field.to}")`;
+  const baseValueType = props.field.hasMany ? `v.array(${idType})` : idType;
 
   return processFieldValueTypeOptions({
-    meta: props.meta,
+    field: props.field,
     collectionSlug: props.collectionSlug,
     fieldName: props.fieldName,
     expectedType: "string",

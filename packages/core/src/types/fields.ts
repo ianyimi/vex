@@ -1,9 +1,13 @@
 // =============================================================================
-// FIELD TYPES
+// FIELD TYPES — Object-based configuration
 // =============================================================================
 
 /** Content alignment for data table cells. */
 export type Alignment = "left" | "right" | "center";
+export type Labels = {
+  singular: string;
+  plural: string;
+};
 
 /**
  * Admin panel configuration for individual fields.
@@ -57,129 +61,70 @@ export interface FieldAdminConfig {
   cellAlignment?: Alignment;
 }
 
-/** Base metadata shared by all field types. */
-export interface BaseFieldMeta {
-  /** The field type identifier. */
-  readonly type: string;
+// =============================================================================
+// BASE FIELD PROPERTIES (shared by all field types)
+// =============================================================================
+
+/**
+ * Properties shared by all field types.
+ * Each concrete field type extends this with its `type` discriminant
+ * and type-specific options.
+ */
+interface BaseField {
+  /** Description text shown below the field. */
+  description?: string;
+  /**
+   * Whether this field is required.
+   *
+   * Default: `false`
+   */
+  required?: boolean;
+  /** Admin UI configuration for this field. */
+  admin?: FieldAdminConfig;
+  /**
+   * Create a database index on this field.
+   * The string value becomes the index name in Convex.
+   *
+   * @example
+   * ```ts
+   * slug: { type: "text", index: "by_slug", required: true }
+   * // Generates: .index("by_slug", ["slug"])
+   * ```
+   */
+  index?: string;
+  /**
+   * Create a full-text search index on this field.
+   * The field this is defined on becomes the `searchField`.
+   *
+   * @example
+   * ```ts
+   * title: {
+   *   type: "text",
+   *   searchIndex: { name: "search_title", filterFields: ["status", "author"] },
+   * }
+   * // Generates: .searchIndex("search_title", { searchField: "title", filterFields: ["status", "author"] })
+   * ```
+   */
+  searchIndex?: {
+    /** Search index name (must be unique within the collection). */
+    name: string;
+    /**
+     * Fields to filter search results by.
+     * String array — validated at runtime against collection field names.
+     */
+    filterFields: string[];
+  };
+}
+
+// =============================================================================
+// CONCRETE FIELD TYPES
+// =============================================================================
+
+/** Text field definition. */
+export interface TextFieldDef extends BaseField {
+  readonly type: "text";
   /** Display label for the field in the admin form. */
   label?: string;
-  /** Description text shown below the field. */
-  description?: string;
-  /**
-   * Whether this field is required.
-   *
-   * Default: `false`
-   */
-  required?: boolean;
-  /** Admin UI configuration for this field. */
-  admin?: FieldAdminConfig;
-  /**
-   * Create a database index on this field.
-   * The string value becomes the index name in Convex.
-   *
-   * @example
-   * ```ts
-   * slug: text({ index: "by_slug", required: true })
-   * // Generates: .index("by_slug", ["slug"])
-   * ```
-   */
-  index?: string;
-  /**
-   * Create a full-text search index on this field.
-   * The field this is defined on becomes the `searchField`.
-   *
-   * @example
-   * ```ts
-   * title: text({
-   *   searchIndex: { name: "search_title", filterFields: ["status", "author"] },
-   * })
-   * // Generates: .searchIndex("search_title", { searchField: "title", filterFields: ["status", "author"] })
-   * ```
-   */
-  searchIndex?: {
-    /** Search index name (must be unique within the collection). */
-    name: string;
-    /**
-     * Fields to filter search results by.
-     * String array — validated at runtime against collection field names.
-     */
-    filterFields: string[];
-  };
-}
-
-/**
- * Base options shared by all field builders.
- * Each specific field options interface extends this.
- */
-export interface BaseFieldOptions {
-  /** Display label for the field. */
-  label?: string;
-  /** Description text shown below the field. */
-  description?: string;
-  /**
-   * Whether this field is required.
-   *
-   * Default: `false`
-   */
-  required?: boolean;
-  /** Admin UI configuration for this field. */
-  admin?: FieldAdminConfig;
-  /**
-   * Create a database index on this field.
-   * The string value becomes the index name in Convex.
-   *
-   * @example
-   * ```ts
-   * slug: text({ index: "by_slug", required: true })
-   * // Generates: .index("by_slug", ["slug"])
-   * ```
-   */
-  index?: string;
-  /**
-   * Create a full-text search index on this field.
-   * The field this is defined on becomes the `searchField`.
-   *
-   * @example
-   * ```ts
-   * title: text({
-   *   searchIndex: { name: "search_title", filterFields: ["status", "author"] },
-   * })
-   * // Generates: .searchIndex("search_title", { searchField: "title", filterFields: ["status", "author"] })
-   * ```
-   */
-  searchIndex?: {
-    /** Search index name (must be unique within the collection). */
-    name: string;
-    /**
-     * Fields to filter search results by.
-     * String array — validated at runtime against collection field names.
-     */
-    filterFields: string[];
-  };
-}
-
-/** Text field metadata. */
-export interface TextFieldMeta extends BaseFieldMeta {
-  readonly type: "text";
-  /** Default value for new documents. */
-  defaultValue?: string;
-  /** Zero-value used as the initial form value when creating a new document. */
-  formDefaultValue: string;
-  /** Minimum character length. */
-  minLength?: number;
-  /** Maximum character length. */
-  maxLength?: number;
-}
-
-/**
- * Options for the `text()` field builder.
- *
- * @example
- * ```
- * text({ label: "Title", required: true, maxLength: 200 })
- * ```
- */
-export interface TextFieldOptions extends BaseFieldOptions {
   /** Default value for new documents. */
   defaultValue?: string;
   /** Minimum character length. */
@@ -188,30 +133,11 @@ export interface TextFieldOptions extends BaseFieldOptions {
   maxLength?: number;
 }
 
-/** Number field metadata. */
-export interface NumberFieldMeta extends BaseFieldMeta {
+/** Number field definition. */
+export interface NumberFieldDef extends BaseField {
   readonly type: "number";
-  /** Default value for new documents. */
-  defaultValue?: number;
-  /** Zero-value used as the initial form value when creating a new document. */
-  formDefaultValue: number;
-  /** Minimum allowed value. */
-  min?: number;
-  /** Maximum allowed value. */
-  max?: number;
-  /** Step increment for the input. */
-  step?: number;
-}
-
-/**
- * Options for the `number()` field builder.
- *
- * @example
- * ```
- * number({ label: "Price", min: 0, step: 0.01 })
- * ```
- */
-export interface NumberFieldOptions extends BaseFieldOptions {
+  /** Display label for the field in the admin form. */
+  label?: string;
   /** Default value for new documents. */
   defaultValue?: number;
   /** Minimum allowed value. */
@@ -222,29 +148,12 @@ export interface NumberFieldOptions extends BaseFieldOptions {
   step?: number;
 }
 
-/** Checkbox field metadata. */
-export interface CheckboxFieldMeta extends BaseFieldMeta {
+/** Checkbox field definition. */
+export interface CheckboxFieldDef extends BaseField {
   readonly type: "checkbox";
+  /** Display label for the field in the admin form. */
+  label?: string;
   /** Default value for new documents. */
-  defaultValue?: boolean;
-  /** Zero-value used as the initial form value when creating a new document. */
-  formDefaultValue: boolean;
-}
-
-/**
- * Options for the `checkbox()` field builder.
- *
- * @example
- * ```
- * checkbox({ label: "Published", defaultValue: false })
- * ```
- */
-export interface CheckboxFieldOptions extends BaseFieldOptions {
-  /**
-   * Default value for new documents.
-   *
-   * Default: `false`
-   */
   defaultValue?: boolean;
 }
 
@@ -258,97 +167,49 @@ export interface SelectOption<T extends string = string> {
   readonly label: string;
 }
 
-/** Select field metadata with typed options. */
-export interface SelectFieldMeta<
-  T extends string = string,
-> extends BaseFieldMeta {
+/** Select field — single value variant. */
+export interface SelectFieldSingle<T extends string = string> extends BaseField {
   readonly type: "select";
   /** The available options for this select field. */
   options: readonly SelectOption<T>[];
   /** Default value for new documents. */
   defaultValue?: T;
-  /** Zero-value used as the initial form value when creating a new document. */
-  formDefaultValue: T | T[];
-  /**
-   * Allow selecting multiple values.
-   *
-   * Default: `false`
-   */
-  hasMany?: boolean;
+  /** Display label for the field in the admin form. */
+  label?: string;
+  hasMany?: false;
 }
 
-/**
- * Options for the `select()` field builder.
- *
- * @example
- * ```
- * select({
- *   label: "Status",
- *   options: [
- *     { label: "Draft", value: "draft" },
- *     { label: "Published", value: "published" },
- *   ],
- *   defaultValue: "draft",
- * })
- * ```
- */
-export interface SelectFieldOptions<T extends string> extends BaseFieldOptions {
+/** Select field — multi-value variant. */
+export interface SelectFieldMany<T extends string = string> extends BaseField {
+  readonly type: "select";
   /** The available options for this select field. */
   options: readonly SelectOption<T>[];
-  /** Default value for new documents. Must match one of the option values. */
+  /** Default value for new documents. */
   defaultValue?: T;
-  /**
-   * Allow selecting multiple values.
-   *
-   * Default: `false`
-   */
-  hasMany?: boolean;
+  /** Display labels for the field (singular/plural). */
+  labels?: Labels;
+  hasMany: true;
 }
 
-/** Date field metadata. Stores epoch milliseconds. */
-export interface DateFieldMeta extends BaseFieldMeta {
+/** Select field definition with typed options. Discriminated on `hasMany`. */
+export type SelectFieldDef<T extends string = string> =
+  | SelectFieldSingle<T>
+  | SelectFieldMany<T>;
+
+/** Date field definition. Stores epoch milliseconds. */
+export interface DateFieldDef extends BaseField {
   readonly type: "date";
-  /** Default value for new documents (epoch ms). */
-  defaultValue?: number;
-  /** Zero-value used as the initial form value when creating a new document. */
-  formDefaultValue: number;
-}
-
-/**
- * Options for the `date()` field builder.
- *
- * @example
- * ```
- * date({ label: "Created At", required: true, defaultValue: 0 })
- * ```
- */
-export interface DateFieldOptions extends BaseFieldOptions {
+  /** Display label for the field in the admin form. */
+  label?: string;
   /** Default value for new documents (epoch ms). */
   defaultValue?: number;
 }
 
-/** Image URL field metadata. Stores a URL string, renders as thumbnail. */
-export interface ImageUrlFieldMeta extends BaseFieldMeta {
+/** Image URL field definition. Stores a URL string, renders as thumbnail. */
+export interface ImageUrlFieldDef extends BaseField {
   readonly type: "imageUrl";
-  /** Default value for new documents. */
-  defaultValue?: string;
-  /** Zero-value used as the initial form value when creating a new document. */
-  formDefaultValue: string;
-  /** Width (px) of the image */
-  width?: number;
-  /** Height (px) of the image */
-  height?: number;
-}
-
-/**
- * Options for the `imageUrl()` field builder.
- *
- * @example
- * ```
- * imageUrl({ label: "Avatar" })
- * ```
- */
-export interface ImageUrlFieldOptions extends BaseFieldOptions {
+  /** Display label for the field in the admin form. */
+  label?: string;
   /** Default value for new documents. */
   defaultValue?: string;
   /** Width (px) of the image */
@@ -357,140 +218,81 @@ export interface ImageUrlFieldOptions extends BaseFieldOptions {
   height?: number;
 }
 
-/** Relationship field metadata. References another table via `v.id()`. */
-export interface RelationshipFieldMeta extends BaseFieldMeta {
+/** Relationship field — single reference variant. */
+export interface RelationshipFieldSingle extends BaseField {
   readonly type: "relationship";
   /** Target table name. */
   to: string;
-  /**
-   * Allow multiple references.
-   *
-   * Default: `false`
-   */
-  hasMany?: boolean;
-  /** Zero-value used as the initial form value when creating a new document. */
-  formDefaultValue: string | string[];
+  /** Display label for the field in the admin form. */
+  label?: string;
+  hasMany?: false;
 }
 
-/**
- * Options for the `relationship()` field builder.
- *
- * @example
- * ```
- * relationship({ to: "users", required: true })
- * relationship({ to: "tags", hasMany: true })
- * ```
- */
-export interface RelationshipFieldOptions extends BaseFieldOptions {
+/** Relationship field — multi-reference variant. */
+export interface RelationshipFieldMany extends BaseField {
+  readonly type: "relationship";
   /** Target table name. */
   to: string;
-  /**
-   * Allow multiple references.
-   *
-   * Default: `false`
-   */
-  hasMany?: boolean;
+  /** Display labels for the field (singular/plural). */
+  labels?: Labels;
+  hasMany: true;
 }
 
-/**
- * Upload field metadata. References a media collection document via `v.id()`.
- * The admin UI renders a media picker with search + an upload button.
- */
-export interface UploadFieldMeta extends BaseFieldMeta {
+/** Relationship field definition. Discriminated on `hasMany`. */
+export type RelationshipFieldDef = RelationshipFieldSingle | RelationshipFieldMany;
+
+/** Shared upload field properties. */
+interface UploadFieldBase extends BaseField {
   readonly type: "upload";
   /** Target media collection slug. */
   to: string;
   /**
-   * Allow multiple media references.
-   *
-   * Default: `false`
-   */
-  hasMany?: boolean;
-  /**
    * Accepted MIME types for file uploads.
    * Supports exact types ("image/png") and wildcards ("image/*").
    * When not set, all file types are accepted.
-   *
-   * @example ["image/*"] — images only
-   * @example ["image/png", "image/jpeg"] — specific image formats
-   * @example ["application/pdf", "image/*"] — PDFs and all images
    */
   accept?: string[];
   /**
    * Maximum file size in bytes for uploads.
    * When not set, no size limit is enforced (beyond storage provider limits).
-   *
-   * @example 5 * 1024 * 1024 — 5 MB
    */
   maxSize?: number;
+}
+
+/** Upload field — single reference variant. */
+export interface UploadFieldSingle extends UploadFieldBase {
+  /** Display label for the field in the admin form. */
+  label?: string;
+  hasMany?: false;
+}
+
+/** Upload field — multi-reference variant. */
+export interface UploadFieldMany extends UploadFieldBase {
+  /** Display labels for the field (singular/plural). */
+  labels?: Labels;
+  hasMany: true;
 }
 
 /**
- * Options for the `upload()` field builder.
- *
- * @example
- * upload({ to: "images", required: true })
- * upload({ to: "images", hasMany: true, accept: ["image/*"], maxSize: 5 * 1024 * 1024 })
+ * Upload field definition. References a media collection document via `v.id()`.
+ * Discriminated on `hasMany`.
  */
-export interface UploadFieldOptions<TSlug extends string = string> extends BaseFieldOptions {
-  /** Target media collection slug. */
-  to: TSlug;
-  /**
-   * Allow multiple media references.
-   *
-   * Default: `false`
-   */
-  hasMany?: boolean;
-  /**
-   * Accepted MIME types for file uploads.
-   * Supports exact types and wildcards.
-   */
-  accept?: string[];
-  /**
-   * Maximum file size in bytes for uploads.
-   */
-  maxSize?: number;
-}
+export type UploadFieldDef = UploadFieldSingle | UploadFieldMany;
 
-/** JSON field metadata. Stores arbitrary data via `v.any()`. */
-export interface JsonFieldMeta extends BaseFieldMeta {
+/** JSON field definition. Stores arbitrary data via `v.any()`. */
+export interface JsonFieldDef extends BaseField {
   readonly type: "json";
-  /** Zero-value used as the initial form value when creating a new document. */
-  formDefaultValue: Record<string, unknown>;
+  /** Display label for the field in the admin form. */
+  label?: string;
 }
 
-/**
- * Options for the `json()` field builder.
- *
- * @example
- * ```
- * json({ label: "Metadata" })
- * ```
- */
-export interface JsonFieldOptions extends BaseFieldOptions {}
-
-/** Array field metadata. Wraps an inner field in `v.array()`. */
-export interface ArrayFieldMeta extends BaseFieldMeta {
+/** Array field definition. Wraps an inner field in `v.array()`. */
+export interface ArrayFieldDef extends BaseField {
   readonly type: "array";
-  /** The inner field type for array elements. */
-  field: VexField;
-  /** Minimum number of items. */
-  min?: number;
-  /** Maximum number of items. */
-  max?: number;
-  /** Zero-value used as the initial form value when creating a new document. */
-  formDefaultValue: unknown[];
-}
-
-/**
- * Options for the `array()` field builder.
- *
- * @example
- * ```
- * array({ field: text(), min: 1, max: 10 })
- * ```
- */
-export interface ArrayFieldOptions extends BaseFieldOptions {
+  /** Display label for the field in the admin form. */
+  label?: string;
+  /** Display labels for the field (singular/plural). */
+  labels?: Labels;
   /** The inner field type for array elements. */
   field: VexField;
   /** Minimum number of items. */
@@ -499,74 +301,99 @@ export interface ArrayFieldOptions extends BaseFieldOptions {
   max?: number;
 }
 
-/** Union of all field metadata types. Discriminated on `type`. */
-export type FieldMeta =
-  | TextFieldMeta
-  | NumberFieldMeta
-  | CheckboxFieldMeta
-  | SelectFieldMeta<string>
-  | DateFieldMeta
-  | ImageUrlFieldMeta
-  | RelationshipFieldMeta
-  | UploadFieldMeta
-  | JsonFieldMeta
-  | ArrayFieldMeta;
+// =============================================================================
+// UTILITY TYPES
+// =============================================================================
 
 /**
- * Generic field definition interface. Combines metadata with type information.
- * The generic `T` represents the TypeScript type this field resolves to.
- *
- * Used by field builders to return specifically-typed fields,
- * and as the constraint for generic type parameters.
- *
- * For consuming code that switches on `_meta.type`, use `VexField` instead
- * (the discriminated union) which provides automatic type narrowing.
+ * Distributive version of `Omit` that preserves union branches.
+ * Standard `Omit` collapses unions; this applies `Omit` to each branch individually.
  */
-export interface GenericVexField<
-  T = unknown,
-  TMeta extends BaseFieldMeta = BaseFieldMeta,
-> {
-  readonly _type: T;
-  readonly _meta: TMeta;
-}
+export type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+  ? Omit<T, K>
+  : never;
+
+// =============================================================================
+// DISCRIMINATED UNION
+// =============================================================================
 
 /**
- * Discriminated union of all concrete field variants.
- * Switch on `field._meta.type` to narrow the meta type automatically.
+ * Discriminated union of all field types. Switch on `field.type` to narrow.
  *
  * @example
  * ```ts
  * function handle(field: VexField) {
- *   switch (field._meta.type) {
+ *   switch (field.type) {
  *     case "text":
- *       field._meta.maxLength; // TextFieldMeta ✓
+ *       field.maxLength; // TextFieldDef ✓
  *       break;
  *     case "select":
- *       field._meta.options;   // SelectFieldMeta ✓
+ *       field.options;   // SelectFieldDef ✓
  *       break;
  *   }
  * }
  * ```
  */
 export type VexField =
-  | GenericVexField<string, TextFieldMeta>
-  | GenericVexField<number, NumberFieldMeta>
-  | GenericVexField<boolean, CheckboxFieldMeta>
-  | GenericVexField<string, SelectFieldMeta<string>>
-  | GenericVexField<string[], SelectFieldMeta<string>>
-  | GenericVexField<number, DateFieldMeta>
-  | GenericVexField<string, ImageUrlFieldMeta>
-  | GenericVexField<string, RelationshipFieldMeta>
-  | GenericVexField<string, UploadFieldMeta>
-  | GenericVexField<string[], UploadFieldMeta>
-  | GenericVexField<unknown, JsonFieldMeta>
-  | GenericVexField<unknown[], ArrayFieldMeta>;
+  | TextFieldDef
+  | NumberFieldDef
+  | CheckboxFieldDef
+  | SelectFieldDef<string>
+  | DateFieldDef
+  | ImageUrlFieldDef
+  | RelationshipFieldDef
+  | UploadFieldDef
+  | JsonFieldDef
+  | ArrayFieldDef;
 
-/** Extract the TypeScript type from a GenericVexField. */
-export type InferFieldType<F> =
-  F extends GenericVexField<infer T, any> ? T : never;
+// =============================================================================
+// TYPE INFERENCE
+// =============================================================================
 
-/** Extract types from a record of fields into a document shape. */
+/**
+ * Infer the TypeScript value type from a VexField.
+ * Uses the `type` discriminant and field options to determine the type.
+ */
+export type InferFieldType<F extends VexField> = F extends { type: "text" }
+  ? string
+  : F extends { type: "number" }
+    ? number
+    : F extends { type: "checkbox" }
+      ? boolean
+      : F extends { type: "select"; hasMany: true }
+        ? string[]
+        : F extends { type: "select" }
+          ? string
+          : F extends { type: "date" }
+            ? number
+            : F extends { type: "imageUrl" }
+              ? string
+              : F extends { type: "relationship"; hasMany: true }
+                ? string[]
+                : F extends { type: "relationship" }
+                  ? string
+                  : F extends { type: "upload"; hasMany: true }
+                    ? string[]
+                    : F extends { type: "upload" }
+                      ? string
+                      : F extends { type: "json" }
+                        ? unknown
+                        : F extends { type: "array" }
+                          ? unknown[]
+                          : never;
+
+/**
+ * Infer the document type from a record of fields.
+ *
+ * @example
+ * ```ts
+ * type Doc = InferFieldsType<{
+ *   title: { type: "text"; required: true };
+ *   count: { type: "number" };
+ * }>;
+ * // { title: string; count: number }
+ * ```
+ */
 export type InferFieldsType<F extends Record<string, VexField>> = {
-  [K in keyof F]: InferFieldType<F[K]>;
+  [K in keyof F]: InferFieldType<F[K] & VexField>;
 };

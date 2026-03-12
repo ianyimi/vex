@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { JsonFieldMeta } from "../../types";
+import type { JsonFieldDef } from "../../types";
 import { toTitleCase } from "../../utils";
 
 /**
@@ -7,17 +7,17 @@ import { toTitleCase } from "../../utils";
  *
  * Behavior:
  * - accessorKey: props.fieldKey
- * - header: props.meta.label ?? toTitleCase(props.fieldKey)
+ * - header: props.field.label ?? toTitleCase(props.fieldKey)
  * - cell: shows truncated JSON preview
  */
 export function jsonColumnDef(props: {
   fieldKey: string;
-  meta: JsonFieldMeta;
+  field: JsonFieldDef;
 }): ColumnDef<Record<string, unknown>> {
   return {
     accessorKey: props.fieldKey,
-    header: props.meta.label ?? toTitleCase(props.fieldKey),
-    meta: { align: props.meta.admin?.cellAlignment ?? "left" },
+    header: props.field.label ?? toTitleCase(props.fieldKey),
+    meta: { align: props.field.admin?.cellAlignment ?? "left" },
     cell: (info) => {
       const value = info.getValue();
       if (value == null) return "";

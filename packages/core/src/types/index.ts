@@ -1,4 +1,4 @@
-import { AnyVexCollection } from "./collections";
+import { VexCollection } from "./collections";
 import { VexGlobal } from "./globals";
 import type { VexAuthAdapter } from "./auth";
 import { AdminConfig, AdminConfigInput } from "./admin";
@@ -22,7 +22,7 @@ export interface VexConfig {
   /** Base URL path for the admin panel */
   basePath: string;
   /** Array of collection definitions */
-  collections: AnyVexCollection[];
+  collections: VexCollection[];
   /** Array of global definitions */
   globals: VexGlobal[];
   /** Admin panel configuration */
@@ -44,7 +44,7 @@ export interface VexConfig {
  */
 export interface ClientVexConfig {
   basePath: string;
-  collections: AnyVexCollection[];
+  collections: VexCollection[];
   globals: VexGlobal[];
   admin: AdminConfig;
   auth: VexAuthAdapter;
@@ -68,29 +68,19 @@ export interface VexConfigInput {
    */
   basePath?: string;
   /**
-   * Array of collection definitions created with `defineCollection`.
+   * Array of collection definitions.
    *
    * Default: []
    */
-  collections?: AnyVexCollection[];
+  collections?: VexCollection[];
   /**
-   * Array of global definitions created with `defineCollection`.
+   * Array of global definitions.
    *
    * Default: []
    */
   globals?: VexGlobal<any>[];
   /**
    * Admin panel configuration.
-   *
-   * Default:
-   * ```
-   * user: "users"
-   * meta:
-   *   titleSuffix: "| Admin"
-   *   favicon:     "/favicon.ico"
-   * sidebar:
-   *   hideGlobals: false
-   * ```
    */
   admin?: AdminConfigInput;
   /**
@@ -100,11 +90,6 @@ export interface VexConfigInput {
   auth: VexAuthAdapter;
   /**
    * Schema generation configuration.
-   *
-   * Default:
-   * ```
-   * outputPath: "convex/vex.schema.ts"
-   * ```
    */
   schema?: SchemaConfigInput;
   /**

@@ -1,19 +1,19 @@
 "use client";
 
-import type { CheckboxFieldMeta } from "@vexcms/core";
+import type { CheckboxFieldDef } from "@vexcms/core";
 import { toTitleCase } from "@vexcms/core";
 import { CheckboxField as CheckboxInput } from "../../ui/checkbox-field";
 import { Label } from "../../ui/label";
 
 interface CheckboxFieldFormProps {
   field: any;
-  meta: CheckboxFieldMeta;
+  fieldDef: CheckboxFieldDef;
   name: string;
 }
 
-function CheckboxFieldForm({ field, meta, name }: CheckboxFieldFormProps) {
-  const label = meta.label ?? toTitleCase(name);
-  const description = meta.admin?.description ?? meta.description;
+function CheckboxFieldForm({ field, fieldDef, name }: CheckboxFieldFormProps) {
+  const label = fieldDef.label ?? toTitleCase(name);
+  const description = fieldDef.admin?.description ?? fieldDef.description;
   const errors: unknown[] = field.state.meta.errors ?? [];
 
   return (
@@ -24,7 +24,7 @@ function CheckboxFieldForm({ field, meta, name }: CheckboxFieldFormProps) {
           checked={field.state.value ?? false}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.handleChange(e.target.checked)}
           onBlur={field.handleBlur}
-          disabled={meta.admin?.readOnly}
+          disabled={fieldDef.admin?.readOnly}
         />
         <Label htmlFor={name}>{label}</Label>
       </div>

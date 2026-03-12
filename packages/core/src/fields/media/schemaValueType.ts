@@ -1,10 +1,8 @@
-import type { UploadFieldMeta } from "../../types";
+import type { UploadFieldDef } from "../../types";
 import { processFieldValueTypeOptions } from "../../valueTypes/processAdminOptions";
 
 /**
- * Converts upload field metadata to a Convex value type string.
- * Uses processFieldValueTypeOptions for required/optional wrapping,
- * same pattern as relationship fields.
+ * Converts upload field definition to a Convex value type string.
  *
  * @returns
  * - hasMany + required: `v.array(v.id("mediaCollectionSlug"))`
@@ -13,15 +11,15 @@ import { processFieldValueTypeOptions } from "../../valueTypes/processAdminOptio
  * - !hasMany + !required: `v.optional(v.id("mediaCollectionSlug"))`
  */
 export function uploadToValueTypeString(props: {
-  meta: UploadFieldMeta;
+  field: UploadFieldDef;
   collectionSlug: string;
   fieldName: string;
 }): string {
-  const idType = `v.id("${props.meta.to}")`;
-  const baseValueType = props.meta.hasMany ? `v.array(${idType})` : idType;
+  const idType = `v.id("${props.field.to}")`;
+  const baseValueType = props.field.hasMany ? `v.array(${idType})` : idType;
 
   return processFieldValueTypeOptions({
-    meta: props.meta,
+    field: props.field,
     collectionSlug: props.collectionSlug,
     fieldName: props.fieldName,
     expectedType: "string",

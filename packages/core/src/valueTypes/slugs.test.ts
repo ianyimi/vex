@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { SlugRegistry, buildSlugRegistry } from "./slugs";
-import { defineCollection } from "../config/defineCollection";
+import { defineCollection, defineMediaCollection } from "../config/defineCollection";
 import { defineConfig } from "../config/defineConfig";
 import { text } from "../fields/text";
 import type { VexAuthAdapter } from "../";
@@ -125,7 +125,7 @@ describe("SlugRegistry", () => {
   });
 });
 
-const users = defineCollection("users", {
+const users = defineCollection({ slug: "users",
   fields: { name: text() },
 });
 
@@ -139,7 +139,7 @@ const mockStorageAdapter = {
 
 describe("media collection slugs", () => {
   it("registers media collection slugs", () => {
-    const mediaImages = defineCollection("images", {
+    const mediaImages = defineMediaCollection({ slug: "images",
       fields: { storageId: text() },
     });
 
@@ -158,10 +158,10 @@ describe("media collection slugs", () => {
   });
 
   it("throws when media collection slug conflicts with user collection slug", () => {
-    const userImages = defineCollection("images", {
+    const userImages = defineCollection({ slug: "images",
       fields: { title: text() },
     });
-    const mediaImages = defineCollection("images", {
+    const mediaImages = defineMediaCollection({ slug: "images",
       fields: { storageId: text() },
     });
 
@@ -178,14 +178,14 @@ describe("media collection slugs", () => {
   });
 
   it("throws when media collection slug conflicts with auth table slug", () => {
-    const mediaSession = defineCollection("session", {
+    const mediaSession = defineMediaCollection({ slug: "session",
       fields: { storageId: text() },
     });
 
     const authAdapter: VexAuthAdapter = {
       name: "better-auth",
       collections: [
-        defineCollection("session", {
+        defineCollection({ slug: "session",
           fields: { token: text({ required: true, defaultValue: "" }) },
         }),
       ],
@@ -204,10 +204,10 @@ describe("media collection slugs", () => {
   });
 
   it("allows media collections when no conflicts exist", () => {
-    const mediaImages = defineCollection("images", {
+    const mediaImages = defineMediaCollection({ slug: "images",
       fields: { storageId: text() },
     });
-    const mediaDocuments = defineCollection("documents", {
+    const mediaDocuments = defineMediaCollection({ slug: "documents",
       fields: { storageId: text() },
     });
 

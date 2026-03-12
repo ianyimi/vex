@@ -1,26 +1,26 @@
 "use client";
 
-import type { NumberFieldMeta } from "@vexcms/core";
+import type { NumberFieldDef } from "@vexcms/core";
 import { toTitleCase } from "@vexcms/core";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 
 interface NumberFieldProps {
   field: any;
-  meta: NumberFieldMeta;
+  fieldDef: NumberFieldDef;
   name: string;
 }
 
-function NumberField({ field, meta, name }: NumberFieldProps) {
-  const label = meta.label ?? toTitleCase(name);
-  const description = meta.admin?.description ?? meta.description;
+function NumberField({ field, fieldDef, name }: NumberFieldProps) {
+  const label = fieldDef.label ?? toTitleCase(name);
+  const description = fieldDef.admin?.description ?? fieldDef.description;
   const errors: unknown[] = field.state.meta.errors ?? [];
 
   return (
     <div className="space-y-2">
       <Label htmlFor={name}>
         {label}
-        {meta.required && <span className="text-destructive ml-1">*</span>}
+        {fieldDef.required && <span className="text-destructive ml-1">*</span>}
       </Label>
       <Input
         id={name}
@@ -38,11 +38,11 @@ function NumberField({ field, meta, name }: NumberFieldProps) {
           }
         }}
         onBlur={field.handleBlur}
-        min={meta.min}
-        max={meta.max}
-        step={meta.step}
-        disabled={meta.admin?.readOnly}
-        placeholder={meta.admin?.placeholder}
+        min={fieldDef.min}
+        max={fieldDef.max}
+        step={fieldDef.step}
+        disabled={fieldDef.admin?.readOnly}
+        placeholder={fieldDef.admin?.placeholder}
       />
       {description && (
         <p className="text-xs text-muted-foreground">{description}</p>

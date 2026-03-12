@@ -80,7 +80,7 @@ export function generateVexSchema(props: { config: VexConfig }): string {
       }
     } else {
       for (const [fieldName, field] of Object.entries(
-        collection.config.fields,
+        collection.fields,
       ) as [string, VexField][]) {
         fields.push({
           name: fieldName,
@@ -95,7 +95,7 @@ export function generateVexSchema(props: { config: VexConfig }): string {
 
     lines.push(
       "",
-      `export const ${collection.config.tableName ?? collection.slug} = defineTable({`,
+      `export const ${collection.tableName ?? collection.slug} = defineTable({`,
     );
     for (const f of fields) {
       lines.push(`  ${f.name}: ${f.valueType},`);
@@ -128,7 +128,7 @@ export function generateVexSchema(props: { config: VexConfig }): string {
       });
 
       for (const [fieldName, field] of Object.entries(
-        mediaCollection.config.fields,
+        mediaCollection.fields,
       ) as [string, VexField][]) {
         if (fieldName === "storageId") {
           // Use adapter's storageIdValueType instead of fieldToValueType
@@ -150,7 +150,7 @@ export function generateVexSchema(props: { config: VexConfig }): string {
 
       lines.push(
         "",
-        `export const ${mediaCollection.config.tableName ?? mediaCollection.slug} = defineTable({`,
+        `export const ${mediaCollection.tableName ?? mediaCollection.slug} = defineTable({`,
       );
       for (const f of fields) {
         lines.push(`  ${f.name}: ${f.valueType},`);
@@ -186,9 +186,9 @@ export function generateVexSchema(props: { config: VexConfig }): string {
     });
     lines.push(
       "",
-      `export const ${authCollection.config.tableName ?? authCollection.slug} = defineTable({`,
+      `export const ${authCollection.tableName ?? authCollection.slug} = defineTable({`,
     );
-    for (const [name, field] of Object.entries(authCollection.config.fields) as [string, VexField][]) {
+    for (const [name, field] of Object.entries(authCollection.fields) as [string, VexField][]) {
       lines.push(
         `  ${name}: ${fieldToValueType({
           field,
@@ -207,7 +207,7 @@ export function generateVexSchema(props: { config: VexConfig }): string {
   for (const global of config.globals) {
     const fields: { name: string; valueType: string }[] = [];
     const indexes: ResolvedIndex[] = collectIndexes({ collection: global });
-    for (const [fieldName, field] of Object.entries(global.config.fields)) {
+    for (const [fieldName, field] of Object.entries(global.fields)) {
       fields.push({
         name: fieldName,
         valueType: fieldToValueType({
@@ -220,7 +220,7 @@ export function generateVexSchema(props: { config: VexConfig }): string {
 
     lines.push(
       "",
-      `export const ${global.config.tableName ?? global.slug} = defineTable({`,
+      `export const ${global.tableName ?? global.slug} = defineTable({`,
     );
     for (const f of fields) {
       lines.push(`  ${f.name}: ${f.valueType},`);

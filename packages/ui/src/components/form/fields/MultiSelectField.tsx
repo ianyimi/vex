@@ -1,6 +1,6 @@
 "use client";
 
-import type { SelectFieldMeta } from "@vexcms/core";
+import type { SelectFieldDef } from "@vexcms/core";
 import { toTitleCase } from "@vexcms/core";
 import { Label } from "../../ui/label";
 import {
@@ -13,30 +13,30 @@ import {
 
 interface MultiSelectFieldProps {
   field: any;
-  meta: SelectFieldMeta;
+  fieldDef: SelectFieldDef;
   name: string;
 }
 
-function MultiSelectField({ field, meta, name }: MultiSelectFieldProps) {
-  const label = meta.label ?? toTitleCase(name);
-  const description = meta.admin?.description ?? meta.description;
+function MultiSelectField({ field, fieldDef, name }: MultiSelectFieldProps) {
+  const label = (fieldDef.hasMany ? fieldDef.labels?.singular : fieldDef.label) ?? toTitleCase(name);
+  const description = fieldDef.admin?.description ?? fieldDef.description;
   const errors: unknown[] = field.state.meta.errors ?? [];
 
   return (
     <div className="space-y-2">
       <Label htmlFor={name}>
         {label}
-        {meta.required && <span className="text-destructive ml-1">*</span>}
+        {fieldDef.required && <span className="text-destructive ml-1">*</span>}
       </Label>
       <MultiSelect
         values={Array.isArray(field.state.value) ? field.state.value : []}
         onValuesChange={(vals) => field.handleChange(vals)}
       >
-        <MultiSelectTrigger id={name} disabled={meta.admin?.readOnly}>
+        <MultiSelectTrigger id={name} disabled={fieldDef.admin?.readOnly}>
           <MultiSelectValue placeholder="Select..." />
         </MultiSelectTrigger>
         <MultiSelectContent>
-          {meta.options.map((opt) => (
+          {fieldDef.options.map((opt) => (
             <MultiSelectItem key={opt.value} value={opt.value}>
               {opt.label}
             </MultiSelectItem>

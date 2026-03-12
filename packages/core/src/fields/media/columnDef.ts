@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { UploadFieldMeta } from "../../types";
+import type { UploadFieldDef } from "../../types";
 import { toTitleCase } from "../../utils";
 
 /**
@@ -13,14 +13,14 @@ import { toTitleCase } from "../../utils";
  */
 export function uploadColumnDef(props: {
   fieldKey: string;
-  meta: UploadFieldMeta;
+  field: UploadFieldDef;
 }): ColumnDef<Record<string, unknown>> {
   return {
     accessorKey: props.fieldKey,
-    header: props.meta.label ?? toTitleCase(props.fieldKey),
+    header: (props.field.hasMany ? props.field.labels?.singular : props.field.label) ?? toTitleCase(props.fieldKey),
     meta: {
       type: "upload",
-      to: props.meta.to,
+      to: props.field.to,
       noTruncate: true,
     },
     cell: (info) => {

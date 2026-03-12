@@ -1,17 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { textToValueTypeString } from "./schemaValueType";
-import type { TextFieldMeta } from "../../types";
+import { text } from ".";
 
 describe("textToValueTypeString", () => {
   it("returns v.string() for a required text field", () => {
-    const meta: TextFieldMeta = {
-      type: "text",
-      required: true,
-      defaultValue: "x",
-    };
     expect(
       textToValueTypeString({
-        meta,
+        field: text({ required: true, defaultValue: "x" }),
         collectionSlug: "posts",
         fieldName: "title",
       }),
@@ -19,10 +14,9 @@ describe("textToValueTypeString", () => {
   });
 
   it("returns v.optional(v.string()) for an optional text field", () => {
-    const meta: TextFieldMeta = { type: "text" };
     expect(
       textToValueTypeString({
-        meta,
+        field: text(),
         collectionSlug: "posts",
         fieldName: "subtitle",
       }),
@@ -30,10 +24,9 @@ describe("textToValueTypeString", () => {
   });
 
   it("returns v.optional(v.string()) regardless of minLength/maxLength", () => {
-    const meta: TextFieldMeta = { type: "text", minLength: 1, maxLength: 200 };
     expect(
       textToValueTypeString({
-        meta,
+        field: text({ minLength: 1, maxLength: 200 }),
         collectionSlug: "posts",
         fieldName: "excerpt",
       }),
@@ -41,46 +34,38 @@ describe("textToValueTypeString", () => {
   });
 
   it("returns v.string() with full options including index", () => {
-    const meta: TextFieldMeta = {
-      type: "text",
-      label: "Title",
-      description: "The post title",
-      required: true,
-      minLength: 1,
-      maxLength: 200,
-      defaultValue: "Untitled",
-      index: "by_title",
-    };
     // index does not affect the valueType string
     expect(
       textToValueTypeString({
-        meta,
+        field: text({
+          label: "Title",
+          description: "The post title",
+          required: true,
+          minLength: 1,
+          maxLength: 200,
+          defaultValue: "Untitled",
+          index: "by_title",
+        }),
         collectionSlug: "posts",
         fieldName: "title",
       }),
     ).toBe("v.string()");
   });
 
-  it("throws when required with no defaultValue", () => {
-    const meta: TextFieldMeta = { type: "text", required: true };
-    expect(() =>
+  it("auto-provides defaultValue when required with no explicit defaultValue", () => {
+    expect(
       textToValueTypeString({
-        meta,
+        field: text({ required: true }),
         collectionSlug: "posts",
         fieldName: "title",
       }),
-    ).toThrow("title");
+    ).toBe("v.string()");
   });
 
   it("throws when defaultValue is wrong type", () => {
-    const meta: TextFieldMeta = {
-      type: "text",
-      required: true,
-      defaultValue: 42 as any,
-    };
     expect(() =>
       textToValueTypeString({
-        meta,
+        field: text({ required: true, defaultValue: 42 as any }),
         collectionSlug: "posts",
         fieldName: "title",
       }),

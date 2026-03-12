@@ -94,7 +94,7 @@ describe("generateFormDefaultValues", () => {
     const result = generateFormDefaultValues({
       fields: {
         categories: select({
-          label: "Categories",
+          labels: { singular: "Category", plural: "Categories" },
           options: [{ label: "A", value: "a" }],
           hasMany: true,
         }),

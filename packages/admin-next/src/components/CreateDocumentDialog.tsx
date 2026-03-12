@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { AnyVexCollection, VexField } from "@vexcms/core";
+import type { VexCollection, VexField } from "@vexcms/core";
 import { generateFormSchema, generateFormDefaultValues } from "@vexcms/core";
 import {
   Dialog,
@@ -18,7 +18,7 @@ import { anyApi } from "convex/server";
 interface CreateDocumentDialogProps {
   open: boolean;
   onClose: () => void;
-  collection: AnyVexCollection;
+  collection: VexCollection;
   onCreated: (props: { documentId: string }) => void;
 }
 
@@ -29,7 +29,7 @@ export function CreateDocumentDialog(props: CreateDocumentDialogProps) {
   const schema = useMemo(
     () =>
       generateFormSchema({
-        fields: props.collection.config.fields as Record<string, VexField>,
+        fields: props.collection.fields as Record<string, VexField>,
       }),
     [props.collection],
   );
@@ -37,7 +37,7 @@ export function CreateDocumentDialog(props: CreateDocumentDialogProps) {
   const defaultValues = useMemo(
     () =>
       generateFormDefaultValues({
-        fields: props.collection.config.fields as Record<string, VexField>,
+        fields: props.collection.fields as Record<string, VexField>,
       }),
     [props.collection],
   );
@@ -45,15 +45,15 @@ export function CreateDocumentDialog(props: CreateDocumentDialogProps) {
   const fieldEntries: FieldEntry[] = useMemo(
     () =>
       Object.entries(
-        props.collection.config.fields as Record<string, VexField>,
+        props.collection.fields as Record<string, VexField>,
       )
-        .filter(([, field]) => !field._meta.admin?.hidden)
+        .filter(([, field]) => !field.admin?.hidden)
         .map(([name, field]) => ({ name, field })),
     [props.collection],
   );
 
   const singularLabel =
-    props.collection.config.labels?.singular ?? props.collection.slug;
+    props.collection.labels?.singular ?? props.collection.slug;
 
   const handleSubmit = async (changedFields: Record<string, unknown>) => {
     setIsCreating(true);

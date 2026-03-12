@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback } from "react";
-import type { AnyVexCollection, VexField } from "@vexcms/core";
+import type { VexCollection, VexField } from "@vexcms/core";
 import { LOCKED_MEDIA_FIELDS, OVERRIDABLE_MEDIA_FIELDS } from "@vexcms/core";
 import {
   Dialog,
@@ -21,7 +21,7 @@ import { MediaFileSection } from "./MediaFileSection";
 interface CreateMediaDialogProps {
   open: boolean;
   onClose: () => void;
-  collection: AnyVexCollection;
+  collection: VexCollection;
   onCreated: (props: { documentId: string }) => void;
 }
 
@@ -70,7 +70,7 @@ export function CreateMediaDialog(props: CreateMediaDialogProps) {
   const [urlStorageId, setUrlStorageId] = useState<string | null>(null);
 
   const urlToFile = useUrlToFile({
-    maxSize: (props.collection.config as any).maxSize ?? 25 * 1024 * 1024,
+    maxSize: (props.collection as any).maxSize ?? 25 * 1024 * 1024,
   });
 
   const generateUploadUrl = useMutation(anyApi.vex.media.generateUploadUrl);
@@ -78,11 +78,11 @@ export function CreateMediaDialog(props: CreateMediaDialogProps) {
 
   // Custom fields (not standard media fields, not hidden)
   const customFields = useMemo(() => {
-    const fields = props.collection.config.fields as Record<string, VexField>;
+    const fields = props.collection.fields as Record<string, VexField>;
     return Object.entries(fields)
       .filter(([name, field]) => {
         if (STANDARD_MEDIA_FIELDS.has(name)) return false;
-        if (field._meta.admin?.hidden) return false;
+        if (field.admin?.hidden) return false;
         return true;
       })
       .map(([name, field]) => ({ name, field }));
@@ -211,7 +211,7 @@ export function CreateMediaDialog(props: CreateMediaDialogProps) {
 
   const hasFile = !!pendingFile || !!urlStorageId;
   const singularLabel =
-    props.collection.config.labels?.singular ?? props.collection.slug;
+    props.collection.labels?.singular ?? props.collection.slug;
 
   return (
     <Dialog
@@ -242,8 +242,8 @@ export function CreateMediaDialog(props: CreateMediaDialogProps) {
             onFileSelect={handleFileSelect}
             onClearPendingFile={handleClearFile}
             urlToFile={urlToFile}
-            accept={(props.collection.config as any).accept}
-            maxSize={(props.collection.config as any).maxSize}
+            accept={(props.collection as any).accept}
+            maxSize={(props.collection as any).maxSize}
             disabled={isCreating}
           />
 
@@ -304,7 +304,7 @@ export function CreateMediaDialog(props: CreateMediaDialogProps) {
           {customFields.map(({ name, field }) => (
             <div key={name} className="space-y-2">
               <Label htmlFor={`media-${name}`}>
-                {field._meta.label ?? name}
+                {field.label ?? name}
               </Label>
               <Input
                 id={`media-${name}`}

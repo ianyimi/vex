@@ -4,7 +4,7 @@
 
 import type { SchemaDiff } from "./diffSchema";
 import type { VexConfig } from "../types";
-import type { BaseFieldMeta } from "../types/fields";
+import type { VexField } from "../types/fields";
 
 export interface MigrationOp {
   /** The table name (as exported in the schema). */
@@ -21,7 +21,7 @@ export interface MigrationOp {
  *
  * Fields are matched by looking up the collection whose table name
  * (or slug) matches the diff's table, then finding the field's
- * `_meta.defaultValue`.
+ * `defaultValue`.
  *
  * Auth-only fields (fields that come from the auth adapter, not from
  * user-defined collections) are skipped — auth manages its own data.
@@ -35,18 +35,17 @@ export function planMigration(props: {
   if (diff.needsMigration.length === 0) return [];
 
   // Build a lookup: table export name → collection fields
-  // The schema generator uses `collection.slug` as the table export name
   const tableFieldsMap = new Map<
     string,
-    Record<string, { _meta: BaseFieldMeta }>
+    Record<string, VexField>
   >();
 
   for (const collection of config.collections) {
-    tableFieldsMap.set(collection.slug, collection.config.fields);
+    tableFieldsMap.set(collection.slug, collection.fields);
   }
 
   for (const global of config.globals) {
-    tableFieldsMap.set(global.slug, global.config.fields);
+    tableFieldsMap.set(global.slug, global.fields);
   }
 
   const ops: MigrationOp[] = [];
@@ -59,18 +58,18 @@ export function planMigration(props: {
       continue;
     }
 
-    const field = collectionFields[fieldInfo.field];
+    const field = collectionFields[fieldInfo.field] as VexField | undefined;
     if (!field) {
       // Field not found in collection config — likely an auth-managed field
       continue;
     }
 
-    const meta = field._meta as BaseFieldMeta & { defaultValue?: unknown };
-    if (!meta.required) {
+    if (!field.required) {
       // Only migrate required fields — optional fields don't need backfill
       continue;
     }
-    if (meta.defaultValue === undefined) {
+    const defaultValue = (field as any).defaultValue;
+    if (defaultValue === undefined) {
       // No defaultValue — skip (required fields enforce defaultValue at config time)
       continue;
     }
@@ -78,7 +77,7 @@ export function planMigration(props: {
     ops.push({
       table: fieldInfo.table,
       field: fieldInfo.field,
-      defaultValue: meta.defaultValue,
+      defaultValue,
     });
   }
 

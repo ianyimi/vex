@@ -1,72 +1,102 @@
-import type {
-  AuthTableFieldKeys,
-  CollectionConfig,
-  InferFieldsType,
-  VexAuthAdapter,
-  VexCollection,
-  VexField,
-} from "../types";
+import type { VexField, VexCollection } from "../types";
+import type { VexAuthAdapter, AuthCollectionFieldKeys } from "../types/auth";
+import type { CollectionAdminConfig, IndexConfig, SearchIndexConfig } from "../types/collections";
+import type { VexMediaCollection, DefaultMediaFieldKeys } from "../types/media";
 
 /**
- * Define a collection with typed fields.
+ * Creates a VexCollection with full LSP autocomplete on field names,
+ * `admin.useAsTitle`, `admin.defaultColumns`, index fields, etc.
  *
- * @param slug - The collection identifier (used in URLs and database)
- * @param config - Collection configuration including fields and admin options
- * @returns A VexCollection with inferred document type
+ * When `auth` is provided, auth field keys (e.g. "email", "createdAt") are
+ * also included in autocomplete for admin config and indexes.
  *
  * @example
- * const posts = defineCollection('posts', {
- *   labels: { singular: 'Post', plural: 'Posts' },
+ * ```ts
+ * // Without auth — autocomplete for own fields
+ * export const posts = defineCollection({
+ *   slug: "posts",
  *   fields: {
- *     title: text({ label: 'Title', required: true }),
- *     status: select({ options: [...] }),
+ *     title: { type: "text", required: true },
+ *     status: { type: "select", options: [...] },
  *   },
+ *   admin: { useAsTitle: "title" }, // autocomplete: "title" | "status"
  * });
  *
- * // With auth field autocomplete:
- * const users = defineCollection('user', {
- *   auth,  // pass your auth adapter
- *   fields: { name: text(), role: select({ ... }) },
+ * // With auth — autocomplete for own fields + auth fields
+ * export const users = defineCollection({
+ *   slug: "users",
+ *   auth,
+ *   fields: {
+ *     name: { type: "text", required: true },
+ *     role: { type: "select", options: [...] },
+ *   },
  *   admin: {
- *     defaultColumns: ['name', 'email'],  // 'email' autocompletes from auth
+ *     useAsTitle: "name",                    // autocomplete: "name" | "role" | "email" | "createdAt" | ...
+ *     defaultColumns: ["name", "email"],     // same autocomplete
  *   },
  * });
+ * ```
  */
 export function defineCollection<
-  TSlug extends string,
   TFields extends Record<string, VexField>,
   TAuth extends VexAuthAdapter<any> | undefined = undefined,
->(
-  slug: TSlug,
-  config: CollectionConfig<
+  TSlug extends string = string,
+>(props: {
+  readonly slug: TSlug;
+  fields: TFields;
+  auth?: TAuth;
+  tableName?: string;
+  labels?: { singular?: string; plural?: string };
+  admin?: CollectionAdminConfig<
     TFields,
-    TAuth extends VexAuthAdapter<any> ? AuthTableFieldKeys<TAuth, TSlug> : never
-  > & { auth?: TAuth },
-): VexCollection<
+    TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never
+  >;
+  indexes?: IndexConfig<
+    TFields,
+    TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never
+  >[];
+  searchIndexes?: SearchIndexConfig<
+    TFields,
+    TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never
+  >[];
+}): VexCollection<
   TFields,
-  TAuth extends VexAuthAdapter<any> ? AuthTableFieldKeys<TAuth, TSlug> : never
+  TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never
 > {
-  if (process.env.NODE_ENV !== "production") {
-    if (!/^[a-z][a-z0-9_]*$/.test(slug)) {
-      console.warn(
-        `[vex] Collection slug "${slug}" should be lowercase alphanumeric with underscores, starting with a letter`,
-      );
-    }
+  const { auth: _auth, ...rest } = props;
+  return rest as VexCollection<
+    TFields,
+    TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never
+  >;
+}
 
-    if (slug.startsWith("vex_")) {
-      console.warn(
-        `[vex] Collection slug "${slug}" uses reserved prefix "vex_"`,
-      );
-    }
-
-    if (Object.keys(config.fields).length === 0) {
-      console.warn(`[vex] Collection "${slug}" has no fields defined`);
-    }
-  }
-
-  return {
-    slug,
-    config,
-    _docType: {} as InferFieldsType<TFields>,
-  };
+/**
+ * Creates a VexMediaCollection with full LSP autocomplete on field names
+ * and `admin.useAsTitle`, `admin.defaultColumns`, etc.
+ *
+ * Default media fields (storageId, filename, mimeType, size, url, alt, width, height)
+ * are injected automatically by `defineConfig()` — only define additional or
+ * overridden fields here.
+ *
+ * @example
+ * ```ts
+ * export const media = defineMediaCollection({
+ *   slug: "media",
+ *   fields: {
+ *     caption: { type: "text" },
+ *   },
+ *   admin: { useAsTitle: "filename" }, // autocomplete: "caption" | default media field keys
+ * });
+ * ```
+ */
+export function defineMediaCollection<
+  TFields extends Record<string, VexField> = Record<never, VexField>,
+>(props: {
+  readonly slug: string;
+  fields?: TFields;
+  tableName?: string;
+  labels?: { singular?: string; plural?: string };
+  admin?: CollectionAdminConfig<TFields, DefaultMediaFieldKeys>;
+}): VexMediaCollection<TFields> {
+  return props as VexMediaCollection<TFields>;
 }

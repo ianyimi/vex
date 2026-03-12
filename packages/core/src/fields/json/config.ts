@@ -1,14 +1,8 @@
-import { JsonFieldMeta, JsonFieldOptions, GenericVexField } from "../../types";
+import type { JsonFieldDef } from "../../types";
 
-export function json(
-  options?: JsonFieldOptions,
-): GenericVexField<unknown, JsonFieldMeta> {
+export function json(options?: Omit<JsonFieldDef, "type">): JsonFieldDef {
   return {
-    _type: undefined as unknown,
-    _meta: {
-      type: "json",
-      ...options,
-      formDefaultValue: {},
-    },
+    type: "json",
+    ...options,
   };
 }

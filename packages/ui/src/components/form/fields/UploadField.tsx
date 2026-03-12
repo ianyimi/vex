@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { UploadFieldMeta } from "@vexcms/core";
+import type { UploadFieldDef } from "@vexcms/core";
 import { toTitleCase } from "@vexcms/core";
 import { Label } from "../../ui/label";
 import { MediaPicker, type MediaDocument } from "../../ui/media-picker";
@@ -9,7 +9,7 @@ import { FilePreview } from "../../ui/file-preview";
 
 interface UploadFieldProps {
   field: any;
-  meta: UploadFieldMeta;
+  fieldDef: UploadFieldDef;
   name: string;
   /** Paginated media documents from useMediaPicker */
   mediaResults: MediaDocument[];
@@ -39,7 +39,7 @@ interface UploadFieldProps {
 
 function UploadField({
   field,
-  meta,
+  fieldDef,
   name,
   mediaResults,
   searchTerm,
@@ -52,15 +52,24 @@ function UploadField({
   mediaEditHref,
   linkComponent: LinkComponent,
 }: UploadFieldProps) {
-  const label = meta.label ?? toTitleCase(name);
-  const description = meta.admin?.description ?? meta.description;
+  const label = (fieldDef.hasMany ? fieldDef.labels?.singular : fieldDef.label) ?? toTitleCase(name);
+  const description = fieldDef.admin?.description ?? fieldDef.description;
   const errors: unknown[] = field.state.meta.errors ?? [];
+
+  // Track popover open state so we can disable the preview Link while open.
+  // Base UI's popover dismisses on pointerdown, but the click event from that
+  // same interaction can propagate to the Link — causing unintended navigation.
+  // Disabling pointer-events on the Link while the popover is open prevents this entirely.
+  const [pickerOpen, setPickerOpen] = React.useState(false);
+  const handlePickerOpenChange = React.useCallback((open: boolean) => {
+    setPickerOpen(open);
+  }, []);
 
   return (
     <div className="space-y-2">
       <Label htmlFor={name}>
         {label}
-        {meta.required && <span className="text-destructive ml-1">*</span>}
+        {fieldDef.required && <span className="text-destructive ml-1">*</span>}
       </Label>
 
       <MediaPicker
@@ -73,8 +82,9 @@ function UploadField({
         onLoadMore={onLoadMore}
         isLoading={isLoading}
         onUploadNew={onUploadNew}
-        disabled={meta.admin?.readOnly}
+        disabled={fieldDef.admin?.readOnly}
         selectedLabel={selectedMedia?.filename}
+        onOpenChange={handlePickerOpenChange}
       />
 
       {selectedMedia && (() => {
@@ -94,7 +104,14 @@ function UploadField({
 
         if (mediaEditHref) {
           const Link = LinkComponent ?? "a";
-          return <Link href={mediaEditHref}>{preview}</Link>;
+          return (
+            <Link
+              href={mediaEditHref}
+              className={pickerOpen ? "pointer-events-none" : undefined}
+            >
+              {preview}
+            </Link>
+          );
         }
         return preview;
       })()}

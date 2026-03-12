@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { ComponentPropsWithRef, useState } from "react";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Button, Popover, PopoverTrigger, PopoverContent } from "@vexcms/ui";
 
-interface RowActionsMenuProps {
+interface RowActionsMenuProps extends ComponentPropsWithRef<"button"> {
   /** Callback to navigate to the edit view for this document */
   onEdit: () => void;
   /** Callback to trigger the delete modal for this document */
@@ -13,13 +13,18 @@ interface RowActionsMenuProps {
   disableDelete?: boolean;
 }
 
-export function RowActionsMenu(props: RowActionsMenuProps) {
+export function RowActionsMenu({
+  onEdit,
+  onDelete,
+  disableDelete,
+  ...divProps
+}: RowActionsMenuProps) {
   const [open, setOpen] = useState(false);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={<Button variant="ghost" size="icon-sm" />}
+        render={<Button variant="ghost" size="icon-sm" {...divProps} />}
       >
         <MoreHorizontal className="h-4 w-4" />
         <span className="sr-only">Actions</span>
@@ -30,19 +35,19 @@ export function RowActionsMenu(props: RowActionsMenuProps) {
           className="w-full justify-start gap-2 h-8 px-2 text-sm"
           onClick={() => {
             setOpen(false);
-            props.onEdit();
+            onEdit();
           }}
         >
           <Pencil className="h-4 w-4" />
           Edit
         </Button>
-        {!props.disableDelete && (
+        {!disableDelete && (
           <Button
             variant="ghost"
             className="w-full justify-start gap-2 h-8 px-2 text-sm text-destructive hover:text-destructive"
             onClick={() => {
               setOpen(false);
-              props.onDelete();
+              onDelete();
             }}
           >
             <Trash2 className="h-4 w-4" />

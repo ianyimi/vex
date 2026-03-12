@@ -1,17 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { uploadToValueTypeString } from "./schemaValueType";
-import type { UploadFieldMeta } from "../../types";
+import { upload } from ".";
 
 describe("uploadToValueTypeString", () => {
   it("returns v.id() for a required single upload reference", () => {
-    const meta: UploadFieldMeta = {
-      type: "upload",
-      to: "images",
-      required: true,
-    };
     expect(
       uploadToValueTypeString({
-        meta,
+        field: upload({ to: "images", required: true }),
         collectionSlug: "posts",
         fieldName: "cover",
       }),
@@ -19,13 +14,9 @@ describe("uploadToValueTypeString", () => {
   });
 
   it("returns v.optional(v.id()) for an optional single upload reference", () => {
-    const meta: UploadFieldMeta = {
-      type: "upload",
-      to: "images",
-    };
     expect(
       uploadToValueTypeString({
-        meta,
+        field: upload({ to: "images" }),
         collectionSlug: "posts",
         fieldName: "cover",
       }),
@@ -33,15 +24,9 @@ describe("uploadToValueTypeString", () => {
   });
 
   it("returns v.array(v.id()) for a required hasMany upload reference", () => {
-    const meta: UploadFieldMeta = {
-      type: "upload",
-      to: "images",
-      hasMany: true,
-      required: true,
-    };
     expect(
       uploadToValueTypeString({
-        meta,
+        field: upload({ to: "images", hasMany: true, required: true }),
         collectionSlug: "posts",
         fieldName: "gallery",
       }),
@@ -49,14 +34,9 @@ describe("uploadToValueTypeString", () => {
   });
 
   it("returns v.optional(v.array(v.id())) for an optional hasMany upload reference", () => {
-    const meta: UploadFieldMeta = {
-      type: "upload",
-      to: "images",
-      hasMany: true,
-    };
     expect(
       uploadToValueTypeString({
-        meta,
+        field: upload({ to: "images", hasMany: true }),
         collectionSlug: "posts",
         fieldName: "gallery",
       }),
@@ -64,14 +44,9 @@ describe("uploadToValueTypeString", () => {
   });
 
   it("uses the correct media collection slug in v.id()", () => {
-    const meta: UploadFieldMeta = {
-      type: "upload",
-      to: "documents",
-      required: true,
-    };
     expect(
       uploadToValueTypeString({
-        meta,
+        field: upload({ to: "documents", required: true }),
         collectionSlug: "articles",
         fieldName: "attachment",
       }),
@@ -79,16 +54,9 @@ describe("uploadToValueTypeString", () => {
   });
 
   it("ignores accept and maxSize for schema generation", () => {
-    const meta: UploadFieldMeta = {
-      type: "upload",
-      to: "images",
-      required: true,
-      accept: ["image/*"],
-      maxSize: 5 * 1024 * 1024,
-    };
     expect(
       uploadToValueTypeString({
-        meta,
+        field: upload({ to: "images", required: true, accept: ["image/*"], maxSize: 5 * 1024 * 1024 }),
         collectionSlug: "posts",
         fieldName: "cover",
       }),

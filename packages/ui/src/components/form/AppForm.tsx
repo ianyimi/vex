@@ -57,7 +57,7 @@ interface AppFormProps {
    */
   renderUploadField?: (props: {
     field: any;
-    meta: any;
+    fieldDef: any;
     name: string;
     onUploadNew: () => void;
     defaultValue: unknown;
@@ -106,58 +106,58 @@ function AppForm({
         {fieldEntries.map((entry) => (
           <form.Field key={entry.name} name={entry.name}>
             {(field) => {
-              const meta = entry.field._meta;
+              const fieldDef = entry.field;
 
-              switch (meta.type) {
+              switch (fieldDef.type) {
                 case "text":
                   return (
-                    <TextField field={field} meta={meta} name={entry.name} />
+                    <TextField field={field} fieldDef={fieldDef} name={entry.name} />
                   );
                 case "number":
                   return (
-                    <NumberField field={field} meta={meta} name={entry.name} />
+                    <NumberField field={field} fieldDef={fieldDef} name={entry.name} />
                   );
                 case "checkbox":
                   return (
                     <CheckboxFieldForm
                       field={field}
-                      meta={meta}
+                      fieldDef={fieldDef}
                       name={entry.name}
                     />
                   );
                 case "select":
-                  if (meta.hasMany) {
+                  if (fieldDef.hasMany) {
                     return (
                       <MultiSelectField
                         field={field}
-                        meta={meta}
+                        fieldDef={fieldDef}
                         name={entry.name}
                       />
                     );
                   }
                   return (
-                    <SelectField field={field} meta={meta} name={entry.name} />
+                    <SelectField field={field} fieldDef={fieldDef} name={entry.name} />
                   );
                 case "date":
                   return (
-                    <DateField field={field} meta={meta} name={entry.name} />
+                    <DateField field={field} fieldDef={fieldDef} name={entry.name} />
                   );
                 case "imageUrl":
                   return (
                     <ImageUrlField
                       field={field}
-                      meta={meta}
+                      fieldDef={fieldDef}
                       name={entry.name}
                     />
                   );
                 case "upload": {
                   const uploadNew = () =>
-                    onOpenUploadModal?.(entry.name, meta.to);
+                    onOpenUploadModal?.(entry.name, fieldDef.to);
 
                   if (renderUploadField) {
                     return renderUploadField({
                       field,
-                      meta,
+                      fieldDef,
                       name: entry.name,
                       onUploadNew: uploadNew,
                       defaultValue: defaultValues[entry.name],
@@ -168,7 +168,7 @@ function AppForm({
                   return (
                     <UploadField
                       field={field}
-                      meta={meta}
+                      fieldDef={fieldDef}
                       name={entry.name}
                       mediaResults={pickerState?.results ?? []}
                       searchTerm={pickerState?.searchTerm ?? ""}

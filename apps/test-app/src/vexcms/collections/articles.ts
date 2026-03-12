@@ -1,8 +1,9 @@
-import { defineCollection, number, text, upload } from "@vexcms/core"
+import { defineCollection, text, upload, number } from "@vexcms/core"
 
 import { TABLE_SLUG_ARTICLES, TABLE_SLUG_MEDIA } from "~/db/constants"
 
-export const articles = defineCollection(TABLE_SLUG_ARTICLES, {
+export const articles = defineCollection({
+  slug: TABLE_SLUG_ARTICLES,
   admin: {
     defaultColumns: ["name", "index", "slug", "banner"],
     group: "Content",

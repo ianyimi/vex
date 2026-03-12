@@ -1,12 +1,12 @@
 import { z, type ZodTypeAny } from "zod";
-import type { VexField, FieldMeta } from "../types";
+import type { VexField } from "../types";
 
 /**
  * Generate a Zod schema from a collection's field definitions.
  * Used by both the client-side form (for validation on submit)
  * and the server-side mutation (for payload validation).
  *
- * @param props.fields - Record of field name → VexField from the collection config
+ * @param props.fields - Record of field name → VexField from the collection
  * @returns A z.object() schema matching the collection's editable fields
  */
 export function generateFormSchema(props: {
@@ -15,11 +15,11 @@ export function generateFormSchema(props: {
   const shape: Record<string, ZodTypeAny> = {};
 
   for (const [fieldName, field] of Object.entries(props.fields)) {
-    if (field._meta.admin?.hidden) continue;
+    if (field.admin?.hidden) continue;
 
-    let validator = fieldMetaToZod({ meta: field._meta as FieldMeta });
+    let validator = fieldMetaToZod({ field });
 
-    if (!field._meta.required) {
+    if (!field.required) {
       validator = validator.optional();
     }
 
@@ -30,25 +30,25 @@ export function generateFormSchema(props: {
 }
 
 /**
- * Convert a single field's metadata to its Zod validator.
+ * Convert a single field to its Zod validator.
  * Does NOT handle optional wrapping — that's done by the caller.
  *
- * @param props.meta - The field metadata (discriminated on `type`)
+ * @param props.field - The field definition (discriminated on `type`)
  * @returns The base Zod type for this field (always required)
  */
-export function fieldMetaToZod(props: { meta: FieldMeta }): ZodTypeAny {
-  switch (props.meta.type) {
+export function fieldMetaToZod(props: { field: VexField }): ZodTypeAny {
+  switch (props.field.type) {
     case "text": {
       let schema = z.string();
-      if (props.meta.minLength != null) schema = schema.min(props.meta.minLength);
-      if (props.meta.maxLength != null) schema = schema.max(props.meta.maxLength);
+      if (props.field.minLength != null) schema = schema.min(props.field.minLength);
+      if (props.field.maxLength != null) schema = schema.max(props.field.maxLength);
       return schema;
     }
 
     case "number": {
       let schema = z.number();
-      if (props.meta.min != null) schema = schema.min(props.meta.min);
-      if (props.meta.max != null) schema = schema.max(props.meta.max);
+      if (props.field.min != null) schema = schema.min(props.field.min);
+      if (props.field.max != null) schema = schema.max(props.field.max);
       return schema;
     }
 
@@ -56,10 +56,10 @@ export function fieldMetaToZod(props: { meta: FieldMeta }): ZodTypeAny {
       return z.boolean();
 
     case "select": {
-      const values = props.meta.options.map((o) => o.value);
+      const values = props.field.options.map((o) => o.value);
       if (values.length === 0) return z.string();
       const enumSchema = z.enum(values as [string, ...string[]]);
-      if (props.meta.hasMany) {
+      if (props.field.hasMany) {
         return z.array(enumSchema);
       }
       return enumSchema;
@@ -72,14 +72,14 @@ export function fieldMetaToZod(props: { meta: FieldMeta }): ZodTypeAny {
       return z.string().url().or(z.literal(""));
 
     case "relationship": {
-      if (props.meta.hasMany) {
+      if (props.field.hasMany) {
         return z.array(z.string());
       }
       return z.string();
     }
 
     case "upload": {
-      if (props.meta.hasMany) {
+      if (props.field.hasMany) {
         return z.array(z.string());
       }
       return z.string();
@@ -89,9 +89,9 @@ export function fieldMetaToZod(props: { meta: FieldMeta }): ZodTypeAny {
       return z.any();
 
     case "array": {
-      let schema = z.array(fieldMetaToZod({ meta: props.meta.field._meta as FieldMeta }));
-      if (props.meta.min != null) schema = schema.min(props.meta.min);
-      if (props.meta.max != null) schema = schema.max(props.meta.max);
+      let schema = z.array(fieldMetaToZod({ field: props.field.field }));
+      if (props.field.min != null) schema = schema.min(props.field.min);
+      if (props.field.max != null) schema = schema.max(props.field.max);
       return schema;
     }
 

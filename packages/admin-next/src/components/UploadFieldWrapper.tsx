@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { UploadFieldMeta } from "@vexcms/core";
+import type { UploadFieldDef } from "@vexcms/core";
 import { UploadField } from "@vexcms/ui";
 import Link from "next/link";
 import { useMediaPickerState } from "../hooks/useMediaPickers";
@@ -12,7 +12,7 @@ import { useMediaPickerState } from "../hooks/useMediaPickers";
  */
 export function UploadFieldWrapper(props: {
   field: any;
-  meta: UploadFieldMeta;
+  fieldDef: UploadFieldDef;
   name: string;
   onUploadNew: () => void;
   /** When set, automatically updates the field value (set after upload completes). */
@@ -38,7 +38,7 @@ export function UploadFieldWrapper(props: {
   }, [props.uploadedMediaId, props.field]);
 
   const pickerState = useMediaPickerState({
-    collectionSlug: props.meta.to,
+    collectionSlug: props.fieldDef.to,
     searchField: "filename",
     searchIndexName: "search_filename",
     selectedId: props.uploadedMediaId || selectedId,
@@ -47,13 +47,13 @@ export function UploadFieldWrapper(props: {
   const currentId = props.uploadedMediaId || selectedId;
   const mediaEditHref =
     currentId && props.basePath
-      ? `${props.basePath}/${props.meta.to}/${currentId}`
+      ? `${props.basePath}/${props.fieldDef.to}/${currentId}`
       : undefined;
 
   return (
     <UploadField
       field={props.field}
-      meta={props.meta}
+      fieldDef={props.fieldDef}
       name={props.name}
       mediaResults={pickerState.results}
       searchTerm={pickerState.searchTerm}

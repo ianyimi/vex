@@ -1,9 +1,8 @@
 // =============================================================================
-// COLLECTION TYPES
+// COLLECTION TYPES — Object-based configuration
 // =============================================================================
 
-import type { VexField, InferFieldsType } from "..";
-import type { VexAuthAdapter } from "./auth";
+import type { VexField, InferFieldsType } from "./fields";
 
 /**
  * Admin UI configuration for a collection.
@@ -11,7 +10,7 @@ import type { VexAuthAdapter } from "./auth";
  */
 export interface CollectionAdminConfig<
   TFields extends Record<string, VexField> = Record<string, VexField>,
-  TAuthFieldKeys extends string = never,
+  TExtraKeys extends string = never,
 > {
   /**
    * Group this collection under a heading in the sidebar.
@@ -28,7 +27,7 @@ export interface CollectionAdminConfig<
    * Should reference a text-like field from the collection's fields,
    * or an auth field key when `auth` is provided.
    */
-  useAsTitle?: keyof TFields | TAuthFieldKeys;
+  useAsTitle?: keyof TFields | TExtraKeys;
   /**
    * Field keys to show as default columns in the list view.
    * If not set, all fields are shown (with `_id` first).
@@ -36,7 +35,7 @@ export interface CollectionAdminConfig<
    * included if explicitly listed.
    * When `auth` is provided, auth field keys (e.g. `"email"`) are also accepted.
    */
-  defaultColumns?: ("_id" | keyof TFields | TAuthFieldKeys)[];
+  defaultColumns?: ("_id" | keyof TFields | TExtraKeys)[];
   /**
    * Disable the "Create New" button in the admin list view.
    *
@@ -54,15 +53,10 @@ export interface CollectionAdminConfig<
 /**
  * Index definition for a collection.
  * Compound indexes include multiple fields — order matters.
- *
- * Generic over `TFields` so that the `fields` array is type-checked
- * against actual field names in the collection. The default generic
- * parameter allows standalone usage (e.g., in `collectIndexes` internals)
- * without requiring a type argument.
  */
 export interface IndexConfig<
   TFields extends Record<string, VexField> = Record<string, VexField>,
-  TAuthFieldKeys extends string = never,
+  TExtraKeys extends string = never,
 > {
   /**
    * Index name (must be unique within the collection).
@@ -71,36 +65,17 @@ export interface IndexConfig<
   name: string;
   /**
    * Field names to include in the index. Order matters for compound indexes.
-   * Each field name must be a key in the collection's `fields` record.
-   * When `auth` is provided, auth field keys are also accepted.
-   * Type-checked at compile time — invalid field names produce a type error.
    */
-  fields: (keyof TFields & string | TAuthFieldKeys)[];
+  fields: (keyof TFields & string | TExtraKeys)[];
 }
 
 /**
  * Search index definition for a collection.
  * Enables full-text search on a field with optional filter fields.
- *
- * Generic over `TFields` so that `searchField` and `filterFields` are type-checked
- * against actual field names in the collection.
- *
- * @example
- * defineCollection("posts", {
- *   fields: {
- *     title: text(),
- *     author: text(),
- *     status: select({ options: [...] }),
- *   },
- *   searchIndexes: [
- *     { name: "search_title", searchField: "title", filterFields: ["author", "status"] },
- *   ],
- * })
- *
  */
 export interface SearchIndexConfig<
   TFields extends Record<string, VexField> = Record<string, VexField>,
-  TAuthFieldKeys extends string = never,
+  TExtraKeys extends string = never,
 > {
   /**
    * Search index name (must be unique within the collection).
@@ -109,35 +84,43 @@ export interface SearchIndexConfig<
   name: string;
   /**
    * The field to perform full-text search on.
-   * Must be a text (string) field in the collection.
-   * When `auth` is provided, auth field keys are also accepted.
    */
-  searchField: keyof TFields & string | TAuthFieldKeys;
+  searchField: keyof TFields & string | TExtraKeys;
   /**
    * Optional fields to filter search results by.
-   * Each field name must be a key in the collection's `fields` record.
-   * When `auth` is provided, auth field keys are also accepted.
    */
-  filterFields?: (keyof TFields & string | TAuthFieldKeys)[];
+  filterFields?: (keyof TFields & string | TExtraKeys)[];
 }
 
 /**
- * Configuration passed to `defineCollection`.
- * Defines the fields, labels, and admin behavior for a collection.
+ * A collection definition. Users create these as plain objects
+ * with `as const satisfies VexCollection`.
+ *
+ * @example
+ * ```ts
+ * const posts = {
+ *   slug: "posts",
+ *   fields: {
+ *     title: { type: "text", label: "Title", required: true },
+ *   },
+ * } as const satisfies VexCollection;
+ * ```
  */
-export interface CollectionConfig<
-  TFields extends Record<string, VexField> = Record<string, VexField>,
-  TAuthFieldKeys extends string = never,
+export interface VexCollection<
+  TFields extends Record<string, any> = any,
+  TExtraKeys extends string = string,
 > {
+  /** The collection identifier, used in URLs and the database. */
+  readonly slug: string;
   /**
    * The fields that make up documents in this collection.
    * Each key becomes a field name, and the value defines
-   * its type and validation (e.g. `text()`, `number()`, `select()`).
+   * its type (e.g. `{ type: "text" }`, `{ type: "number" }`, `{ type: "select", ... }`).
    */
   fields: TFields;
   /**
    * The name of the table generated for this collection in the
-   * generated vex schema file. Defaults to the collection slug
+   * generated vex schema file. Defaults to the collection slug.
    */
   tableName?: string;
   /**
@@ -151,81 +134,29 @@ export interface CollectionConfig<
     plural?: string;
   };
   /**
-   * Auth adapter instance — pass the same object used in `defineConfig`.
-   * When provided, auth field keys (e.g. `"email"`) become available
-   * for `defaultColumns` and `useAsTitle` autocomplete.
-   */
-  auth?: VexAuthAdapter<any>;
-  /**
    * Admin UI configuration for this collection.
    * Controls sidebar grouping, icons, list columns, and permissions.
    */
-  admin?: CollectionAdminConfig<TFields, TAuthFieldKeys>;
+  admin?: CollectionAdminConfig<TFields, TExtraKeys>;
   /**
    * Database indexes for this collection.
-   * Use this for compound indexes that span multiple fields.
-   * For single-field indexes, prefer using `index` on the field directly.
-   *
-   * The `fields` array is type-checked: only field names defined in this
-   * collection's `fields` record are accepted.
-   *
-   * @example
-   * ```ts
-   * defineCollection("posts", {
-   *   fields: {
-   *     title: text(),
-   *     author: text(),
-   *     createdAt: number(),
-   *   },
-   *   indexes: [
-   *     { name: "by_author_date", fields: ["author", "createdAt"] },  // OK
-   *     { name: "bad", fields: ["nonexistent"] },                      // Type error!
-   *   ],
-   * })
-   *
    */
-  indexes?: IndexConfig<TFields, TAuthFieldKeys>[];
+  indexes?: IndexConfig<TFields, TExtraKeys>[];
   /**
    * Search indexes for full-text search on this collection.
-   * Each search index targets a single text field with optional filter fields.
-   *
-   * @example
-   * searchIndexes: [
-   *   { name: "search_title", searchField: "title", filterFields: ["status"] },
-   * ]
    */
-  searchIndexes?: SearchIndexConfig<TFields, TAuthFieldKeys>[];
-}
-
-/**
- * A defined collection with inferred document type.
- * Created by `defineCollection()`.
- *
- * The generic parameters provide type-safe autocomplete at `defineCollection`
- * call sites. When stored in arrays (e.g., `VexConfig.collections`), use
- * `AnyVexCollection` to avoid invariance issues with heterogeneous collections.
- */
-export interface VexCollection<
-  TFields extends Record<string, VexField> = Record<string, VexField>,
-  TAuthFieldKeys extends string = never,
-> {
-  /** The collection identifier, used in URLs and the database. */
-  readonly slug: string;
-  /** The full collection configuration. */
-  readonly config: CollectionConfig<TFields, TAuthFieldKeys>;
+  searchIndexes?: SearchIndexConfig<TFields, TExtraKeys>[];
   /**
    * Type helper — use `typeof collection._docType` to get the
    * inferred document shape for this collection.
    */
-  readonly _docType: InferFieldsType<TFields>;
+  readonly _docType?: InferFieldsType<TFields>;
 }
 
 /**
  * A VexCollection with erased generics, suitable for heterogeneous arrays.
- * Use this when you need to store multiple collections with different field
- * types in the same array (e.g., `VexConfig.collections`).
  *
- * Individual collection constants retain their full generic types for
- * type-safe `_docType` inference and autocomplete at `defineCollection`.
+ * @deprecated Use `VexCollection` instead — its default generics accept the
+ * same values. This alias is kept only for backwards compatibility.
  */
 export type AnyVexCollection = VexCollection<any, any>;

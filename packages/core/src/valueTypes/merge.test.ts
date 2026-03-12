@@ -8,7 +8,7 @@ import { date } from "../fields/date";
 import { checkbox } from "../fields/checkbox";
 
 describe("mergeAuthCollectionWithUserCollection", () => {
-  const userCollection = defineCollection("users", {
+  const userCollection = defineCollection({ slug: "users",
     fields: {
       name: text({ label: "Name" }),
       email: text({ label: "Email" }),
@@ -24,7 +24,7 @@ describe("mergeAuthCollectionWithUserCollection", () => {
   });
 
   it("merges auth collection fields with user collection fields", () => {
-    const authCollection = defineCollection("users", {
+    const authCollection = defineCollection({ slug: "users",
       fields: {
         name: text({ required: true, defaultValue: "" }),
         email: text({ required: true, defaultValue: "" }),
@@ -59,7 +59,7 @@ describe("mergeAuthCollectionWithUserCollection", () => {
   });
 
   it("auth VexField wins on overlapping fields for schema", () => {
-    const authCollection = defineCollection("users", {
+    const authCollection = defineCollection({ slug: "users",
       fields: {
         email: text({ required: true, defaultValue: "" }),
       },
@@ -72,12 +72,12 @@ describe("mergeAuthCollectionWithUserCollection", () => {
 
     // The auth VexField's type should be preserved
     const emailField = result.fields["email"];
-    expect(emailField._meta.type).toBe("text");
-    expect(emailField._meta.required).toBe(true);
+    expect(emailField.type).toBe("text");
+    expect(emailField.required).toBe(true);
   });
 
   it("preserves user admin config on overlapping fields", () => {
-    const authCollection = defineCollection("users", {
+    const authCollection = defineCollection({ slug: "users",
       fields: {
         email: text({ required: true, defaultValue: "" }),
       },
@@ -90,11 +90,11 @@ describe("mergeAuthCollectionWithUserCollection", () => {
 
     // User's label should be preserved
     const emailField = result.fields["email"];
-    expect(emailField._meta.label).toBe("Email");
+    expect((emailField as { label?: string }).label).toBe("Email");
   });
 
   it("handles auth collection with no fields", () => {
-    const authCollection = defineCollection("users", {
+    const authCollection = defineCollection({ slug: "users",
       fields: {},
     });
 
@@ -112,13 +112,13 @@ describe("mergeAuthCollectionWithUserCollection", () => {
   });
 
   it("handles fully auth-driven collection (no user-defined fields overlap)", () => {
-    const minimalUsers = defineCollection("users", {
+    const minimalUsers = defineCollection({ slug: "users",
       fields: {
         postCount: number({ admin: { readOnly: true } }),
       },
     });
 
-    const authCollection = defineCollection("users", {
+    const authCollection = defineCollection({ slug: "users",
       fields: {
         name: text({ required: true, defaultValue: "" }),
         email: text({ required: true, defaultValue: "" }),

@@ -1,4 +1,4 @@
-import { VexSlugConflictError, VexAuthConfigError } from "../errors";
+import { VexSlugConflictError } from "../errors";
 import type { VexConfig } from "../types";
 
 // =============================================================================

@@ -1,22 +1,13 @@
-import { RelationshipFieldMeta, RelationshipFieldOptions, GenericVexField } from "../../types";
+import type { RelationshipFieldDef, RelationshipFieldSingle, RelationshipFieldMany } from "../../types";
 
 export function relationship(
-  options: RelationshipFieldOptions & { hasMany: true },
-): GenericVexField<string[], RelationshipFieldMeta>;
-
+  options: Omit<RelationshipFieldMany, "type">,
+): RelationshipFieldDef;
 export function relationship(
-  options: RelationshipFieldOptions & { hasMany?: false },
-): GenericVexField<string, RelationshipFieldMeta>;
-
+  options: Omit<RelationshipFieldSingle, "type">,
+): RelationshipFieldDef;
 export function relationship(
-  options: RelationshipFieldOptions,
-): GenericVexField<string | string[], RelationshipFieldMeta> {
-  return {
-    _type: options.hasMany ? [] : "",
-    _meta: {
-      type: "relationship",
-      ...options,
-      formDefaultValue: options.hasMany ? [] : "",
-    },
-  };
+  options: Omit<RelationshipFieldSingle, "type"> | Omit<RelationshipFieldMany, "type">,
+): RelationshipFieldDef {
+  return { type: "relationship", ...options } as RelationshipFieldDef;
 }

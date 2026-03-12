@@ -1,6 +1,6 @@
 "use client";
 
-import type { VexField, UploadFieldMeta } from "@vexcms/core";
+import type { VexField, UploadFieldDef } from "@vexcms/core";
 import type { MediaPickerState } from "@vexcms/ui";
 import { useMediaPicker } from "./useMediaPicker";
 import { useQuery } from "@tanstack/react-query";
@@ -22,11 +22,11 @@ export function getUploadFields(
 ): UploadFieldInfo[] {
   const result: UploadFieldInfo[] = [];
   for (const [name, field] of Object.entries(fields)) {
-    if (field._meta.type === "upload") {
-      const meta = field._meta as UploadFieldMeta;
+    if (field.type === "upload") {
+      const def = field as UploadFieldDef;
       result.push({
         fieldName: name,
-        collectionSlug: meta.to,
+        collectionSlug: def.to,
         searchField: "filename",
         searchIndexName: "search_filename",
       });

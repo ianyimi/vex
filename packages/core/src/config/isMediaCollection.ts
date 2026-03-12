@@ -1,8 +1,10 @@
-import type { AnyVexCollection } from "../types";
+interface HasSlug {
+  readonly slug: string;
+}
 
 interface ConfigWithMedia {
   media?: {
-    collections: AnyVexCollection[];
+    collections: HasSlug[];
   };
 }
 
@@ -17,7 +19,7 @@ interface ConfigWithMedia {
  * @returns true if the collection's slug matches a media collection slug
  */
 export function isMediaCollection(props: {
-  collection: AnyVexCollection;
+  collection: HasSlug;
   config: ConfigWithMedia;
 }): boolean {
   if (!props.config.media?.collections) return false;

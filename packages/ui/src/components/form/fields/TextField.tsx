@@ -1,26 +1,26 @@
 "use client";
 
-import type { TextFieldMeta } from "@vexcms/core";
+import type { TextFieldDef } from "@vexcms/core";
 import { toTitleCase } from "@vexcms/core";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 
 interface TextFieldProps {
   field: any;
-  meta: TextFieldMeta;
+  fieldDef: TextFieldDef;
   name: string;
 }
 
-function TextField({ field, meta, name }: TextFieldProps) {
-  const label = meta.label ?? toTitleCase(name);
-  const description = meta.admin?.description ?? meta.description;
+function TextField({ field, fieldDef, name }: TextFieldProps) {
+  const label = fieldDef.label ?? toTitleCase(name);
+  const description = fieldDef.admin?.description ?? fieldDef.description;
   const errors: unknown[] = field.state.meta.errors ?? [];
 
   return (
     <div className="space-y-2">
       <Label htmlFor={name}>
         {label}
-        {meta.required && <span className="text-destructive ml-1">*</span>}
+        {fieldDef.required && <span className="text-destructive ml-1">*</span>}
       </Label>
       <Input
         id={name}
@@ -29,9 +29,9 @@ function TextField({ field, meta, name }: TextFieldProps) {
           field.handleChange(e.target.value)
         }
         onBlur={field.handleBlur}
-        placeholder={meta.admin?.placeholder}
-        disabled={meta.admin?.readOnly}
-        maxLength={meta.maxLength}
+        placeholder={fieldDef.admin?.placeholder}
+        disabled={fieldDef.admin?.readOnly}
+        maxLength={fieldDef.maxLength}
       />
       {description && (
         <p className="text-xs text-muted-foreground">{description}</p>

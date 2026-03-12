@@ -1,8 +1,7 @@
 export { defineConfig } from "./config/defineConfig";
+export { defineCollection, defineMediaCollection } from "./config/defineCollection";
 export { sanitizeConfigForClient } from "./config/sanitizeConfig";
 export { isMediaCollection } from "./config/isMediaCollection";
-export { defineCollection } from "./config/defineCollection";
-export { defineMediaCollection } from "./config/defineMediaCollection";
 export { generateVexSchema } from "./valueTypes/generate";
 export { extendTable } from "./schema/extendTable";
 export { generateColumns } from "./columns";
@@ -11,7 +10,7 @@ export { toTitleCase } from "./utils";
 export { generateFormSchema, fieldMetaToZod } from "./formSchema/generateFormSchema";
 export { generateFormDefaultValues } from "./formSchema/generateFormDefaultValues";
 
-// Fields
+// Field helpers
 export { text } from "./fields/text";
 export { number } from "./fields/number";
 export { checkbox } from "./fields/checkbox";
@@ -22,6 +21,7 @@ export { relationship } from "./fields/relationship";
 export { upload } from "./fields/media";
 export { json } from "./fields/json";
 export { array } from "./fields/array";
+
 export * from "./errors";
 
 // Migrations
@@ -35,39 +35,38 @@ export {
 // Types
 export type {
   // Field types
-  GenericVexField,
   VexField,
-  BaseFieldMeta,
-  TextFieldMeta,
-  NumberFieldMeta,
-  CheckboxFieldMeta,
-  SelectFieldMeta,
+  TextFieldDef,
+  NumberFieldDef,
+  CheckboxFieldDef,
+  SelectFieldDef,
   SelectOption,
-  DateFieldMeta,
-  ImageUrlFieldMeta,
-  RelationshipFieldMeta,
-  UploadFieldMeta,
-  UploadFieldOptions,
-  JsonFieldMeta,
-  ArrayFieldMeta,
+  DateFieldDef,
+  ImageUrlFieldDef,
+  RelationshipFieldDef,
+  UploadFieldDef,
+  JsonFieldDef,
+  ArrayFieldDef,
   InferFieldType,
   InferFieldsType,
   // Field admin config
   FieldAdminConfig,
+  DistributiveOmit,
   // Collection types
   VexCollection,
   AnyVexCollection,
-  CollectionConfig,
   CollectionAdminConfig,
+  IndexConfig,
+  SearchIndexConfig,
   // Global types
   VexGlobal,
-  GlobalConfig,
   GlobalAdminConfig,
   // auth types
   VexAuthAdapter,
   AuthCollectionFieldKeys,
   AuthTableFieldKeys,
   ResolvedIndex,
+  ResolvedSearchIndex,
   // Config types
   VexConfig,
   ClientVexConfig,
@@ -77,28 +76,15 @@ export type {
   AdminConfigInput,
   AdminMetaInput,
   AdminSidebarInput,
-  // Field options
-  TextFieldOptions,
-  NumberFieldOptions,
-  CheckboxFieldOptions,
-  SelectFieldOptions,
-  DateFieldOptions,
-  ImageUrlFieldOptions,
-  RelationshipFieldOptions,
-  JsonFieldOptions,
-  ArrayFieldOptions,
   // Media types
+  VexMediaCollection,
   FileStorageAdapter,
-  MediaCollectionConfig,
   MediaConfig,
   ClientMediaConfig,
   MediaConfigInput,
   LockedMediaField,
   OverridableMediaField,
   DefaultMediaFieldKeys,
-  // Indexes
-  SearchIndexConfig,
-  ResolvedSearchIndex,
 } from "./types";
 
 export { LOCKED_MEDIA_FIELDS, OVERRIDABLE_MEDIA_FIELDS } from "./types/media";

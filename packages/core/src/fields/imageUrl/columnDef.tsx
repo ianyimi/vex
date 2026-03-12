@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { ImageUrlFieldMeta } from "../../types";
+import type { ImageUrlFieldDef } from "../../types";
 import { toTitleCase } from "../../utils";
 
 /**
@@ -7,28 +7,28 @@ import { toTitleCase } from "../../utils";
  *
  * Behavior:
  * - accessorKey: props.fieldKey
- * - header: props.meta.label ?? toTitleCase(props.fieldKey)
+ * - header: props.field.label ?? toTitleCase(props.fieldKey)
  * - cell: renders an <img> thumbnail
  */
 export function imageUrlColumnDef(props: {
   fieldKey: string;
-  meta: ImageUrlFieldMeta;
+  field: ImageUrlFieldDef;
 }): ColumnDef<Record<string, unknown>> {
   return {
     accessorKey: props.fieldKey,
-    header: props.meta.label ?? toTitleCase(props.fieldKey),
-    meta: { align: props.meta.admin?.cellAlignment ?? "center" },
+    header: props.field.label ?? toTitleCase(props.fieldKey),
+    meta: { align: props.field.admin?.cellAlignment ?? "center" },
     cell: (info) => {
       const value = info.getValue();
       if (!value || typeof value !== "string") return "";
-      const size = props.meta.width ?? 28;
+      const size = props.field.width ?? 28;
       return (
         <img
           src={value}
           width={size}
-          height={props.meta.height ?? size}
+          height={props.field.height ?? size}
           className="rounded-full object-cover"
-          style={{ width: size, height: props.meta.height ?? size }}
+          style={{ width: size, height: props.field.height ?? size }}
         />
       );
     },

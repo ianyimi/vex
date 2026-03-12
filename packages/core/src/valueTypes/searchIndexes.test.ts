@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { collectSearchIndexes } from "./searchIndexes";
 import { defineCollection } from "../config/defineCollection";
 import { text } from "../fields/text";
-import { number } from "../fields/number";
+
 import { select } from "../fields/select";
 
 describe("collectSearchIndexes", () => {
   it("returns empty array when no search indexes are defined", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ required: true }),
         body: text(),
@@ -17,7 +17,7 @@ describe("collectSearchIndexes", () => {
   });
 
   it("collects per-field search index from a single field", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({
           required: true,
@@ -33,7 +33,7 @@ describe("collectSearchIndexes", () => {
   });
 
   it("collects per-field search index with filterFields", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({
           required: true,
@@ -55,7 +55,7 @@ describe("collectSearchIndexes", () => {
   });
 
   it("collects collection-level search indexes", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ required: true }),
         author: text(),
@@ -75,7 +75,7 @@ describe("collectSearchIndexes", () => {
   });
 
   it("collection-level wins on name collision with per-field search index", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({
           required: true,
@@ -101,7 +101,7 @@ describe("collectSearchIndexes", () => {
   });
 
   it("throws when two different fields claim the same search index name", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({
           required: true,
@@ -118,7 +118,7 @@ describe("collectSearchIndexes", () => {
   });
 
   it("skips fields with empty string search index name", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({
           required: true,
@@ -130,7 +130,7 @@ describe("collectSearchIndexes", () => {
   });
 
   it("merges per-field and collection-level search indexes", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({
           required: true,
@@ -159,7 +159,7 @@ describe("collectSearchIndexes", () => {
 
   describe("auto search index for admin.useAsTitle", () => {
     it("auto-creates search index for useAsTitle field when no search index exists", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text({ required: true }),
           body: text(),
@@ -175,7 +175,7 @@ describe("collectSearchIndexes", () => {
     });
 
     it("does not duplicate when useAsTitle field already has a per-field search index", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text({
             required: true,
@@ -200,7 +200,7 @@ describe("collectSearchIndexes", () => {
     });
 
     it("does not duplicate when useAsTitle field is covered by a collection-level search index", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text({ required: true }),
           body: text(),
@@ -215,7 +215,7 @@ describe("collectSearchIndexes", () => {
     });
 
     it("does not create auto search index when useAsTitle is not set", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text({ required: true }),
         },
@@ -224,7 +224,7 @@ describe("collectSearchIndexes", () => {
     });
 
     it("coexists with other search indexes", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text({ required: true }),
           body: text({
@@ -250,7 +250,7 @@ describe("collectSearchIndexes", () => {
     });
 
     it("does not auto-create if another search index already covers the useAsTitle field", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text({ required: true }),
           status: select({
@@ -276,7 +276,7 @@ describe("collectSearchIndexes", () => {
     });
 
     it("skips auto search index if auto-generated name collides with existing index", () => {
-      const posts = defineCollection("posts", {
+      const posts = defineCollection({ slug: "posts",
         fields: {
           title: text({ required: true }),
           body: text(),

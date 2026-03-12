@@ -1,13 +1,4 @@
 import {
-  defineCollection,
-  text,
-  number,
-  checkbox,
-  select,
-  date,
-  json,
-  array,
-  relationship,
   VexAuthConfigError,
 } from "@vexcms/core";
 import type {
@@ -88,74 +79,84 @@ function convertToVexFields(
     const admin = resolveFieldAdminConfig(tableSlug, fieldName);
 
     if (attribute.references) {
-      // Relationship field — references another table
-      vexFields[fieldName] = relationship({
+      vexFields[fieldName] = {
+        type: "relationship",
         to: attribute.references.model,
         required,
-        admin,
-      });
+        ...(admin && { admin }),
+      };
       continue;
     }
 
     if (Array.isArray(attribute.type)) {
-      // Enum array → select field with the enum values as options
-      vexFields[fieldName] = select({
+      vexFields[fieldName] = {
+        type: "select",
         options: attribute.type.map((val: string) => ({
           label: val.charAt(0).toUpperCase() + val.slice(1),
           value: val,
         })),
         required,
         ...(required && { defaultValue: attribute.type[0] }),
-        admin,
-      });
+        ...(admin && { admin }),
+      };
       continue;
     }
 
     switch (attribute.type) {
       case "string":
-        vexFields[fieldName] = text({
+        vexFields[fieldName] = {
+          type: "text",
           required,
           ...(required && { defaultValue: "" }),
-          admin,
-        });
+          ...(admin && { admin }),
+        };
         break;
       case "number":
-        vexFields[fieldName] = number({
+        vexFields[fieldName] = {
+          type: "number",
           required,
           ...(required && { defaultValue: 0 }),
-          admin,
-        });
+          ...(admin && { admin }),
+        };
         break;
       case "boolean":
-        vexFields[fieldName] = checkbox({
+        vexFields[fieldName] = {
+          type: "checkbox",
           required,
           ...(required && { defaultValue: false }),
-          admin,
-        });
+          ...(admin && { admin }),
+        };
         break;
       case "date":
-        vexFields[fieldName] = date({
+        vexFields[fieldName] = {
+          type: "date",
           required,
           ...(required && { defaultValue: 0 }),
-          admin,
-        });
+          ...(admin && { admin }),
+        };
         break;
       case "json":
-        vexFields[fieldName] = json({ required, admin });
+        vexFields[fieldName] = {
+          type: "json",
+          required,
+          ...(admin && { admin }),
+        };
         break;
       case "string[]":
-        vexFields[fieldName] = array({
-          field: text(),
+        vexFields[fieldName] = {
+          type: "array",
+          field: { type: "text" },
           required,
-          admin,
-        });
+          ...(admin && { admin }),
+        };
         break;
       case "number[]":
-        vexFields[fieldName] = array({
-          field: number(),
+        vexFields[fieldName] = {
+          type: "array",
+          field: { type: "number" },
           required,
-          admin,
-        });
+          ...(admin && { admin }),
+        };
         break;
       default:
         throw new VexAuthConfigError(
@@ -209,21 +210,19 @@ export function extractAuthCollections(
     const fields = convertToVexFields(slug, tableDef.fields);
     const indexes = extractIndexes(tableDef.fields);
     const labels = COLLECTION_LABELS[slug];
-
     const defaultColumns = DEFAULT_COLUMNS[slug];
 
-    collections.push(
-      defineCollection(slug, {
-        fields,
-        ...(labels ? { labels } : {}),
-        ...(indexes.length > 0 ? { indexes } : {}),
-        admin: {
-          group: "Auth",
-          useAsTitle: "_id",
-          ...(defaultColumns ? { defaultColumns } : {}),
-        },
-      }),
-    );
+    collections.push({
+      slug,
+      fields,
+      ...(labels ? { labels } : {}),
+      ...(indexes.length > 0 ? { indexes } : {}),
+      admin: {
+        group: "Auth",
+        useAsTitle: "_id",
+        ...(defaultColumns ? { defaultColumns } : {}),
+      },
+    });
   }
 
   return collections;

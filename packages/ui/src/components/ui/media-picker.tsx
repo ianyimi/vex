@@ -40,6 +40,8 @@ interface MediaPickerProps {
   disabled?: boolean;
   /** Display label for the selected media (filename) */
   selectedLabel?: string;
+  /** Called when the popover open state changes */
+  onOpenChange?: (open: boolean) => void;
 }
 
 function MediaPicker(props: MediaPickerProps) {
@@ -55,7 +57,7 @@ function MediaPicker(props: MediaPickerProps) {
   }, [props.canLoadMore, props.isLoading, props.onLoadMore]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(v) => { setOpen(v); props.onOpenChange?.(v); }}>
       <PopoverTrigger
         disabled={props.disabled}
         className="inline-flex items-center justify-between w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"

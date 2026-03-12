@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import type { AnyVexCollection, ClientVexConfig } from "@vexcms/core";
+import type { VexCollection, ClientVexConfig } from "@vexcms/core";
 import { generateColumns } from "@vexcms/core";
 import {
   DataTable,
@@ -56,7 +56,7 @@ export default function CollectionsView({
   collection,
 }: {
   config: ClientVexConfig;
-  collection: AnyVexCollection;
+  collection: VexCollection;
 }) {
   const router = useRouter();
 
@@ -120,10 +120,7 @@ export default function CollectionsView({
             const value = info.getValue();
             if (!value || typeof value !== "string") return "";
             return (
-              <UploadCellPreview
-                mediaId={value}
-                collectionSlug={targetSlug}
-              />
+              <UploadCellPreview mediaId={value} collectionSlug={targetSlug} />
             );
           },
         };
@@ -132,9 +129,9 @@ export default function CollectionsView({
     });
   }, [collection, config.auth]);
 
-  const useAsTitle = collection.config.admin?.useAsTitle as string | undefined;
-  const disableDelete = collection.config.admin?.disableDelete ?? false;
-  const disableCreate = collection.config.admin?.disableCreate ?? false;
+  const useAsTitle = collection.admin?.useAsTitle as string | undefined;
+  const disableDelete = collection.admin?.disableDelete ?? false;
+  const disableCreate = collection.admin?.disableCreate ?? false;
   const searchAvailable = !!useAsTitle;
   const searchIndexName = useAsTitle ? `search_${useAsTitle}` : undefined;
   const isSearching = searchAvailable && debouncedSearch.trim().length > 0;
@@ -206,15 +203,15 @@ export default function CollectionsView({
   // Display count: use totalCount for list mode, documents.length for search
   const displayCount = isSearching ? documents.length : totalCount;
 
-  const pluralLabel = collection.config.labels?.plural ?? collection.slug;
-  const singularLabel = collection.config.labels?.singular ?? collection.slug;
+  const pluralLabel = collection.labels?.plural ?? collection.slug;
+  const singularLabel = collection.labels?.singular ?? collection.slug;
 
   // Build actions column
   const columnsWithActions: ColumnDef<Record<string, unknown>, unknown>[] =
     useMemo(() => {
       const actionsColumn: ColumnDef<Record<string, unknown>, unknown> = {
         id: "actions",
-        header: "Actions",
+        header: () => <div className="text-center w-full">Actions</div>,
         size: 50,
         enableSorting: false,
         enableHiding: false,
@@ -235,6 +232,7 @@ export default function CollectionsView({
                 setDeleteOpen(true);
               }}
               disableDelete={disableDelete}
+              className="w-full grid place-items-center"
             />
           );
         },
@@ -342,7 +340,7 @@ export default function CollectionsView({
         emptyMessage={
           isSearching
             ? "No matching documents."
-            : `No ${collection.config.labels?.plural?.toLowerCase() ?? "documents"} yet.`
+            : `No ${collection.labels?.plural?.toLowerCase() ?? "documents"} yet.`
         }
         canLoadMore={canLoadMore}
         pageSize={pageSize}

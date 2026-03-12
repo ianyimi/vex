@@ -1,19 +1,19 @@
 "use client";
 
-import type { DateFieldMeta } from "@vexcms/core";
+import type { DateFieldDef } from "@vexcms/core";
 import { toTitleCase } from "@vexcms/core";
 import { DatePicker } from "../../ui/date-picker";
 import { Label } from "../../ui/label";
 
 interface DateFieldProps {
   field: any;
-  meta: DateFieldMeta;
+  fieldDef: DateFieldDef;
   name: string;
 }
 
-function DateField({ field, meta, name }: DateFieldProps) {
-  const label = meta.label ?? toTitleCase(name);
-  const description = meta.admin?.description ?? meta.description;
+function DateField({ field, fieldDef, name }: DateFieldProps) {
+  const label = fieldDef.label ?? toTitleCase(name);
+  const description = fieldDef.admin?.description ?? fieldDef.description;
   const errors: unknown[] = field.state.meta.errors ?? [];
 
   const value = field.state.value;
@@ -23,14 +23,14 @@ function DateField({ field, meta, name }: DateFieldProps) {
     <div className="space-y-2">
       <Label htmlFor={name}>
         {label}
-        {meta.required && <span className="text-destructive ml-1">*</span>}
+        {fieldDef.required && <span className="text-destructive ml-1">*</span>}
       </Label>
       <DatePicker
         value={dateValue}
         onChange={(date) => {
           field.handleChange(date ? date.getTime() : undefined);
         }}
-        disabled={meta.admin?.readOnly}
+        disabled={fieldDef.admin?.readOnly}
       />
       {description && (
         <p className="text-xs text-muted-foreground">{description}</p>

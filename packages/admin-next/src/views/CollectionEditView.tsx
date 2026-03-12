@@ -2,10 +2,10 @@
 
 import { useMemo, useState, useCallback } from "react";
 import type {
-  AnyVexCollection,
+  VexCollection,
   ClientVexConfig,
   VexField,
-  UploadFieldMeta,
+  UploadFieldDef,
 } from "@vexcms/core";
 import { generateFormSchema } from "@vexcms/core";
 import {
@@ -37,7 +37,7 @@ export default function CollectionEditView({
   documentID,
 }: {
   config: ClientVexConfig;
-  collection: AnyVexCollection;
+  collection: VexCollection;
   documentID: string;
 }) {
   const router = useRouter();
@@ -98,22 +98,22 @@ export default function CollectionEditView({
     [pendingUploadFieldName, setNewMediaSlug],
   );
 
-  // Find the upload field meta for the current modal (for accept/maxSize)
-  const currentUploadFieldMeta = useMemo(() => {
+  // Find the upload field def for the current modal (for accept/maxSize)
+  const currentUploadFieldDef = useMemo(() => {
     if (!pendingUploadFieldName) return null;
-    const fields = collection.config.fields as Record<string, VexField>;
+    const fields = collection.fields as Record<string, VexField>;
     const field = fields[pendingUploadFieldName];
-    if (field?._meta.type === "upload") return field._meta as UploadFieldMeta;
+    if (field?.type === "upload") return field as UploadFieldDef;
     return null;
   }, [pendingUploadFieldName, collection]);
 
-  const disableDelete = collection.config.admin?.disableDelete ?? false;
+  const disableDelete = collection.admin?.disableDelete ?? false;
 
   // Generate Zod schema from collection fields
   const schema = useMemo(
     () =>
       generateFormSchema({
-        fields: collection.config.fields as Record<string, VexField>,
+        fields: collection.fields as Record<string, VexField>,
       }),
     [collection],
   );
@@ -121,8 +121,8 @@ export default function CollectionEditView({
   // Build field entries (excluding hidden fields)
   const fieldEntries: FieldEntry[] = useMemo(
     () =>
-      Object.entries(collection.config.fields as Record<string, VexField>)
-        .filter(([, field]) => !field._meta.admin?.hidden)
+      Object.entries(collection.fields as Record<string, VexField>)
+        .filter(([, field]) => !field.admin?.hidden)
         .map(([name, field]) => ({ name, field })),
     [collection],
   );
@@ -152,13 +152,13 @@ export default function CollectionEditView({
 
   const isLoading = documentQuery.isPending;
 
-  const useAsTitle = collection.config.admin?.useAsTitle as string | undefined;
+  const useAsTitle = collection.admin?.useAsTitle as string | undefined;
   const documentTitle =
     useAsTitle && document
       ? (document[useAsTitle] as string | undefined)
       : undefined;
-  const pluralLabel = collection.config.labels?.plural ?? collection.slug;
-  const singularLabel = collection.config.labels?.singular ?? collection.slug;
+  const pluralLabel = collection.labels?.plural ?? collection.slug;
+  const singularLabel = collection.labels?.singular ?? collection.slug;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -228,7 +228,7 @@ export default function CollectionEditView({
               renderUploadField={(uploadProps) => (
                 <UploadFieldWrapper
                   field={uploadProps.field}
-                  meta={uploadProps.meta}
+                  fieldDef={uploadProps.fieldDef}
                   name={uploadProps.name}
                   onUploadNew={uploadProps.onUploadNew}
                   uploadedMediaId={uploadedMediaIds[uploadProps.name]}
@@ -249,8 +249,8 @@ export default function CollectionEditView({
             setPendingUploadFieldName(null);
           }}
           collectionSlug={newMediaSlug}
-          accept={currentUploadFieldMeta?.accept}
-          maxSize={currentUploadFieldMeta?.maxSize}
+          accept={currentUploadFieldDef?.accept}
+          maxSize={currentUploadFieldDef?.maxSize}
           onUploadComplete={handleUploadComplete}
           generateUploadUrl={async () => await generateUploadUrl()}
           createMediaDocument={async (props) =>

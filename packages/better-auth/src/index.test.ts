@@ -14,8 +14,8 @@ describe("vexBetterAuth", () => {
     const adapter = vexBetterAuth();
     const user = adapter.collections.find((c) => c.slug === "user")!;
     expect(user).toBeDefined();
-    expect(user.config.fields.name._meta.type).toBe("text");
-    expect(user.config.fields.email._meta.type).toBe("text");
+    expect(user.fields.name.type).toBe("text");
+    expect(user.fields.email.type).toBe("text");
   });
 
   it("returns infrastructure collections (session, account, verification)", () => {
@@ -38,10 +38,10 @@ describe("vexBetterAuth", () => {
     expect(user).toBeDefined();
 
     const session = adapter.collections.find((c) => c.slug === "sessions")!;
-    expect(session.config.fields.userId._meta.to).toBe("users");
+    expect(session.fields.userId.to).toBe("users");
 
     const account = adapter.collections.find((c) => c.slug === "accounts")!;
-    expect(account.config.fields.userId._meta.to).toBe("users");
+    expect(account.fields.userId.to).toBe("users");
   });
 
   it("admin plugin adds user fields and session impersonatedBy", () => {
@@ -49,11 +49,11 @@ describe("vexBetterAuth", () => {
       config: { plugins: [admin()] },
     });
     const user = adapter.collections.find((c) => c.slug === "user")!;
-    expect(user.config.fields.role).toBeDefined();
-    expect(user.config.fields.banned).toBeDefined();
+    expect(user.fields.role).toBeDefined();
+    expect(user.fields.banned).toBeDefined();
 
     const session = adapter.collections.find((c) => c.slug === "session")!;
-    expect(session.config.fields.impersonatedBy).toBeDefined();
+    expect(session.fields.impersonatedBy).toBeDefined();
   });
 
   it("next-cookies plugin has no schema effect", () => {
@@ -86,15 +86,15 @@ describe("vexBetterAuth", () => {
     expect(adapter.name).toBe("better-auth");
 
     const user = adapter.collections.find((c) => c.slug === "user")!;
-    expect(user.config.fields.role).toBeDefined();
-    expect(user.config.fields.banned).toBeDefined();
+    expect(user.fields.role).toBeDefined();
+    expect(user.fields.banned).toBeDefined();
 
     const session = adapter.collections.find((c) => c.slug === "session")!;
-    expect(session.config.fields.userId._meta.type).toBe("relationship");
-    expect(session.config.fields.userId._meta.to).toBe("user");
+    expect(session.fields.userId.type).toBe("relationship");
+    expect(session.fields.userId.to).toBe("user");
 
     const account = adapter.collections.find((c) => c.slug === "account")!;
-    expect(account.config.fields.userId._meta.type).toBe("relationship");
-    expect(account.config.fields.userId._meta.to).toBe("user");
+    expect(account.fields.userId.type).toBe("relationship");
+    expect(account.fields.userId.to).toBe("user");
   });
 });

@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { NumberFieldMeta } from "../../types";
+import type { NumberFieldDef } from "../../types";
 import { toTitleCase } from "../../utils";
 
 /**
@@ -7,16 +7,16 @@ import { toTitleCase } from "../../utils";
  *
  * Behavior:
  * - accessorKey: props.fieldKey
- * - header: props.meta.label ?? toTitleCase(props.fieldKey)
+ * - header: props.field.label ?? toTitleCase(props.fieldKey)
  * - cell: render the number directly
  */
 export function numberColumnDef(props: {
   fieldKey: string;
-  meta: NumberFieldMeta;
+  field: NumberFieldDef;
 }): ColumnDef<Record<string, unknown>> {
   return {
     accessorKey: props.fieldKey,
-    header: props.meta.label ?? toTitleCase(props.fieldKey),
-    meta: { align: props.meta.admin?.cellAlignment ?? "right" },
+    header: props.field.label ?? toTitleCase(props.fieldKey),
+    meta: { align: props.field.admin?.cellAlignment ?? "right" },
   };
 }

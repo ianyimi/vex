@@ -25,7 +25,7 @@ function emptyDiff(): SchemaDiff {
 
 describe("planMigration", () => {
   it("maps diff fields to config defaultValues correctly", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ required: true, defaultValue: "Untitled" }),
         slug: text(),
@@ -39,7 +39,9 @@ describe("planMigration", () => {
 
     const diff: SchemaDiff = {
       addedRequired: [field("posts", "title", "v.string()")],
+      addedOptional: [],
       newRequired: [],
+      removedFields: [],
       needsMigration: [field("posts", "title", "v.string()")],
     };
 
@@ -58,7 +60,9 @@ describe("planMigration", () => {
 
     const diff: SchemaDiff = {
       addedRequired: [field("account", "scope", "v.string()")],
+      addedOptional: [],
       newRequired: [],
+      removedFields: [],
       needsMigration: [field("account", "scope", "v.string()")],
     };
 
@@ -68,7 +72,7 @@ describe("planMigration", () => {
   });
 
   it("handles text field defaultValue (string)", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         displayName: text({ required: true, defaultValue: "Anonymous" }),
       },
@@ -81,7 +85,9 @@ describe("planMigration", () => {
 
     const diff: SchemaDiff = {
       addedRequired: [field("posts", "displayName", "v.string()")],
+      addedOptional: [],
       newRequired: [],
+      removedFields: [],
       needsMigration: [field("posts", "displayName", "v.string()")],
     };
 
@@ -93,7 +99,7 @@ describe("planMigration", () => {
   });
 
   it("handles number field defaultValue", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         views: number({ required: true, defaultValue: 0 }),
       },
@@ -106,7 +112,9 @@ describe("planMigration", () => {
 
     const diff: SchemaDiff = {
       addedRequired: [field("posts", "views", "v.number()")],
+      addedOptional: [],
       newRequired: [],
+      removedFields: [],
       needsMigration: [field("posts", "views", "v.number()")],
     };
 
@@ -118,7 +126,7 @@ describe("planMigration", () => {
   });
 
   it("handles checkbox field defaultValue (boolean)", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         featured: checkbox({ required: true, defaultValue: false }),
       },
@@ -131,7 +139,9 @@ describe("planMigration", () => {
 
     const diff: SchemaDiff = {
       addedRequired: [field("posts", "featured", "v.boolean()")],
+      addedOptional: [],
       newRequired: [],
+      removedFields: [],
       needsMigration: [field("posts", "featured", "v.boolean()")],
     };
 
@@ -143,7 +153,7 @@ describe("planMigration", () => {
   });
 
   it("handles select field defaultValue (string)", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         status: select({
           required: true,
@@ -165,7 +175,9 @@ describe("planMigration", () => {
       addedRequired: [
         field("posts", "status", 'v.union(v.literal("draft"),v.literal("published"))'),
       ],
+      addedOptional: [],
       newRequired: [],
+      removedFields: [],
       needsMigration: [
         field("posts", "status", 'v.union(v.literal("draft"),v.literal("published"))'),
       ],
@@ -192,7 +204,7 @@ describe("planMigration", () => {
   });
 
   it("handles merged auth+user collection (user-defined field gets migrated, auth field skipped)", () => {
-    const users = defineCollection("users", {
+    const users = defineCollection({ slug: "users",
       fields: {
         displayName: text({ required: true, defaultValue: "User" }),
       },
@@ -201,7 +213,7 @@ describe("planMigration", () => {
     const authAdapter: VexAuthAdapter = {
       name: "better-auth",
       collections: [
-        defineCollection("users", {
+        defineCollection({ slug: "users",
           fields: {
             email: text({ required: true, defaultValue: "" }),
             emailVerified: checkbox({ required: true, defaultValue: false }),
@@ -220,7 +232,9 @@ describe("planMigration", () => {
         field("users", "displayName", "v.string()"),
         field("users", "email", "v.string()"),
       ],
+      addedOptional: [],
       newRequired: [],
+      removedFields: [],
       needsMigration: [
         field("users", "displayName", "v.string()"),
         field("users", "email", "v.string()"),
@@ -237,7 +251,7 @@ describe("planMigration", () => {
   });
 
   it("skips field in diff that is not found in collection config", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ required: true, defaultValue: "Untitled" }),
       },
@@ -253,7 +267,9 @@ describe("planMigration", () => {
         field("posts", "title", "v.string()"),
         field("posts", "unknownField", "v.string()"),
       ],
+      addedOptional: [],
       newRequired: [],
+      removedFields: [],
       needsMigration: [
         field("posts", "title", "v.string()"),
         field("posts", "unknownField", "v.string()"),
@@ -269,7 +285,7 @@ describe("planMigration", () => {
   });
 
   it("skips optional field (required not set)", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text(),
       },
@@ -295,7 +311,7 @@ describe("planMigration", () => {
   });
 
   it("skips optional field even with explicit defaultValue", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ defaultValue: "hello" }),
       },
@@ -321,14 +337,14 @@ describe("planMigration", () => {
   });
 
   it("handles multiple fields across multiple tables", () => {
-    const posts = defineCollection("posts", {
+    const posts = defineCollection({ slug: "posts",
       fields: {
         title: text({ required: true, defaultValue: "Untitled" }),
         views: number({ required: true, defaultValue: 0 }),
       },
     });
 
-    const categories = defineCollection("categories", {
+    const categories = defineCollection({ slug: "categories",
       fields: {
         name: text({ required: true, defaultValue: "Uncategorized" }),
       },
@@ -345,7 +361,9 @@ describe("planMigration", () => {
         field("posts", "views", "v.number()"),
         field("categories", "name", "v.string()"),
       ],
+      addedOptional: [],
       newRequired: [],
+      removedFields: [],
       needsMigration: [
         field("posts", "title", "v.string()"),
         field("posts", "views", "v.number()"),
