@@ -11,8 +11,8 @@ import { VexAccessError } from "../errors";
 // Test fixtures
 // ---------------------------------------------------------------------------
 
-const FIELD_KEYS_POSTS = ["title", "slug", "status", "featured"];
-const FIELD_KEYS_CATEGORIES = ["name", "sortOrder"];
+const FIELDS_POSTS = ["title", "slug", "status", "featured"];
+const FIELDS_CATEGORIES = ["name", "sortOrder"];
 
 const mockUser = { _id: "user1", name: "Test User", role: ["editor"] };
 const mockOrg = { _id: "org1", name: "Acme Corp", plan: "pro" };
@@ -111,238 +111,338 @@ const orgAccess: VexAccessConfig = {
   },
 };
 
+/** Access config with boolean resource-level permissions. */
+const booleanResourceAccess: VexAccessConfig = {
+  roles: ["admin", "blocked"],
+  userCollection: "users",
+  permissions: {
+    admin: {
+      posts: true,
+      categories: true,
+    },
+    blocked: {
+      posts: false,
+      categories: false,
+    },
+  },
+};
+
 // ---------------------------------------------------------------------------
 // resolvePermissionCheck
 // ---------------------------------------------------------------------------
 
 describe("resolvePermissionCheck", () => {
-  it("returns all-true when check is undefined (permissive default)", () => {
-    const result = resolvePermissionCheck({
-      check: undefined,
-      fieldKeys: FIELD_KEYS_POSTS,
-      data: {},
-      user: mockUser,
+  describe("without fields (boolean mode)", () => {
+    it("returns true when check is undefined (permissive default)", () => {
+      const result = resolvePermissionCheck({
+        check: undefined,
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toBe(true);
     });
 
-    expect(result).toEqual({
-      title: true,
-      slug: true,
-      status: true,
-      featured: true,
-    });
-  });
-
-  it("returns all-true when check is boolean true", () => {
-    const result = resolvePermissionCheck({
-      check: true,
-      fieldKeys: FIELD_KEYS_POSTS,
-      data: {},
-      user: mockUser,
+    it("returns true when check is boolean true", () => {
+      const result = resolvePermissionCheck({
+        check: true,
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toBe(true);
     });
 
-    expect(result).toEqual({
-      title: true,
-      slug: true,
-      status: true,
-      featured: true,
-    });
-  });
-
-  it("returns all-false when check is boolean false", () => {
-    const result = resolvePermissionCheck({
-      check: false,
-      fieldKeys: FIELD_KEYS_POSTS,
-      data: {},
-      user: mockUser,
+    it("returns false when check is boolean false", () => {
+      const result = resolvePermissionCheck({
+        check: false,
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toBe(false);
     });
 
-    expect(result).toEqual({
-      title: false,
-      slug: false,
-      status: false,
-      featured: false,
-    });
-  });
-
-  it("returns allowlist when check uses allow mode", () => {
-    const result = resolvePermissionCheck({
-      check: { mode: "allow", fields: ["title", "status"] },
-      fieldKeys: FIELD_KEYS_POSTS,
-      data: {},
-      user: mockUser,
+    it("returns true for allow mode with fields (some fields allowed)", () => {
+      const result = resolvePermissionCheck({
+        check: { mode: "allow", fields: ["title", "status"] },
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toBe(true);
     });
 
-    expect(result).toEqual({
-      title: true,
-      slug: false,
-      status: true,
-      featured: false,
-    });
-  });
-
-  it("returns denylist when check uses deny mode", () => {
-    const result = resolvePermissionCheck({
-      check: { mode: "deny", fields: ["slug"] },
-      fieldKeys: FIELD_KEYS_POSTS,
-      data: {},
-      user: mockUser,
+    it("returns false for allow mode with empty fields", () => {
+      const result = resolvePermissionCheck({
+        check: { mode: "allow", fields: [] },
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toBe(false);
     });
 
-    expect(result).toEqual({
-      title: true,
-      slug: false,
-      status: true,
-      featured: true,
-    });
-  });
-
-  it("allow mode with empty fields array denies all", () => {
-    const result = resolvePermissionCheck({
-      check: { mode: "allow", fields: [] },
-      fieldKeys: FIELD_KEYS_POSTS,
-      data: {},
-      user: mockUser,
+    it("returns true for deny mode with empty fields (nothing denied)", () => {
+      const result = resolvePermissionCheck({
+        check: { mode: "deny", fields: [] },
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toBe(true);
     });
 
-    expect(result).toEqual({
-      title: false,
-      slug: false,
-      status: false,
-      featured: false,
+    it("returns false for deny mode with fields (some fields denied)", () => {
+      const result = resolvePermissionCheck({
+        check: { mode: "deny", fields: ["slug"] },
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toBe(false);
+    });
+
+    it("calls function check and returns boolean result", () => {
+      const check = ({ data, user }: { data: any; user: any }) => {
+        return user._id === data.authorId;
+      };
+
+      expect(resolvePermissionCheck({
+        check,
+        data: { authorId: "user1" },
+        user: mockUser,
+      })).toBe(true);
+
+      expect(resolvePermissionCheck({
+        check,
+        data: { authorId: "other" },
+        user: mockUser,
+      })).toBe(false);
     });
   });
 
-  it("deny mode with empty fields array allows all", () => {
-    const result = resolvePermissionCheck({
-      check: { mode: "deny", fields: [] },
-      fieldKeys: FIELD_KEYS_POSTS,
-      data: {},
-      user: mockUser,
+  describe("with fields (field map mode)", () => {
+    it("returns all-true when check is undefined (permissive default)", () => {
+      const result = resolvePermissionCheck({
+        check: undefined,
+        fields: FIELDS_POSTS,
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: true,
+        status: true,
+        featured: true,
+      });
     });
 
-    expect(result).toEqual({
-      title: true,
-      slug: true,
-      status: true,
-      featured: true,
-    });
-  });
-
-  it("calls function check with data and user", () => {
-    const check = ({ data, user }: { data: any; user: any }) => {
-      return user._id === data.authorId;
-    };
-
-    const resultOwner = resolvePermissionCheck({
-      check,
-      fieldKeys: FIELD_KEYS_POSTS,
-      data: { authorId: "user1" },
-      user: mockUser,
+    it("returns all-true when check is boolean true", () => {
+      const result = resolvePermissionCheck({
+        check: true,
+        fields: FIELDS_POSTS,
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: true,
+        status: true,
+        featured: true,
+      });
     });
 
-    expect(resultOwner).toEqual({
-      title: true,
-      slug: true,
-      status: true,
-      featured: true,
+    it("returns all-false when check is boolean false", () => {
+      const result = resolvePermissionCheck({
+        check: false,
+        fields: FIELDS_POSTS,
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toEqual({
+        title: false,
+        slug: false,
+        status: false,
+        featured: false,
+      });
     });
 
-    const resultNonOwner = resolvePermissionCheck({
-      check,
-      fieldKeys: FIELD_KEYS_POSTS,
-      data: { authorId: "other" },
-      user: mockUser,
+    it("returns allowlist when check uses allow mode", () => {
+      const result = resolvePermissionCheck({
+        check: { mode: "allow", fields: ["title", "status"] },
+        fields: FIELDS_POSTS,
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: false,
+        status: true,
+        featured: false,
+      });
     });
 
-    expect(resultNonOwner).toEqual({
-      title: false,
-      slug: false,
-      status: false,
-      featured: false,
-    });
-  });
-
-  it("calls function check with organization when provided", () => {
-    const check = ({ data, organization }: { data: any; user: any; organization: any }) => {
-      return data.orgId === organization._id;
-    };
-
-    const resultMatch = resolvePermissionCheck({
-      check,
-      fieldKeys: FIELD_KEYS_POSTS,
-      data: { orgId: "org1" },
-      user: mockUser,
-      organization: mockOrg,
+    it("returns denylist when check uses deny mode", () => {
+      const result = resolvePermissionCheck({
+        check: { mode: "deny", fields: ["slug"] },
+        fields: FIELDS_POSTS,
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: false,
+        status: true,
+        featured: true,
+      });
     });
 
-    expect(resultMatch).toEqual({
-      title: true,
-      slug: true,
-      status: true,
-      featured: true,
+    it("allow mode with empty fields array denies all", () => {
+      const result = resolvePermissionCheck({
+        check: { mode: "allow", fields: [] },
+        fields: FIELDS_POSTS,
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toEqual({
+        title: false,
+        slug: false,
+        status: false,
+        featured: false,
+      });
     });
 
-    const resultNoMatch = resolvePermissionCheck({
-      check,
-      fieldKeys: FIELD_KEYS_POSTS,
-      data: { orgId: "org999" },
-      user: mockUser,
-      organization: mockOrg,
+    it("deny mode with empty fields array allows all", () => {
+      const result = resolvePermissionCheck({
+        check: { mode: "deny", fields: [] },
+        fields: FIELDS_POSTS,
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: true,
+        status: true,
+        featured: true,
+      });
     });
 
-    expect(resultNoMatch).toEqual({
-      title: false,
-      slug: false,
-      status: false,
-      featured: false,
-    });
-  });
+    it("calls function check with data and user", () => {
+      const check = ({ data, user }: { data: any; user: any }) => {
+        return user._id === data.authorId;
+      };
 
-  it("handles function returning allow mode object", () => {
-    const check = () => ({ mode: "allow" as const, fields: ["title", "slug"] });
+      const resultOwner = resolvePermissionCheck({
+        check,
+        fields: FIELDS_POSTS,
+        data: { authorId: "user1" },
+        user: mockUser,
+      });
+      expect(resultOwner).toEqual({
+        title: true,
+        slug: true,
+        status: true,
+        featured: true,
+      });
 
-    const result = resolvePermissionCheck({
-      check,
-      fieldKeys: FIELD_KEYS_POSTS,
-      data: {},
-      user: mockUser,
-    });
-
-    expect(result).toEqual({
-      title: true,
-      slug: true,
-      status: false,
-      featured: false,
-    });
-  });
-
-  it("handles function returning deny mode object", () => {
-    const check = () => ({ mode: "deny" as const, fields: ["featured"] });
-
-    const result = resolvePermissionCheck({
-      check,
-      fieldKeys: FIELD_KEYS_POSTS,
-      data: {},
-      user: mockUser,
+      const resultNonOwner = resolvePermissionCheck({
+        check,
+        fields: FIELDS_POSTS,
+        data: { authorId: "other" },
+        user: mockUser,
+      });
+      expect(resultNonOwner).toEqual({
+        title: false,
+        slug: false,
+        status: false,
+        featured: false,
+      });
     });
 
-    expect(result).toEqual({
-      title: true,
-      slug: true,
-      status: true,
-      featured: false,
-    });
-  });
+    it("calls function check with organization when provided", () => {
+      const check = ({ data, organization }: { data: any; user: any; organization: any }) => {
+        return data.orgId === organization._id;
+      };
 
-  it("returns empty object for empty fieldKeys", () => {
-    const result = resolvePermissionCheck({
-      check: true,
-      fieldKeys: [],
-      data: {},
-      user: mockUser,
+      const resultMatch = resolvePermissionCheck({
+        check,
+        fields: FIELDS_POSTS,
+        data: { orgId: "org1" },
+        user: mockUser,
+        organization: mockOrg,
+      });
+      expect(resultMatch).toEqual({
+        title: true,
+        slug: true,
+        status: true,
+        featured: true,
+      });
+
+      const resultNoMatch = resolvePermissionCheck({
+        check,
+        fields: FIELDS_POSTS,
+        data: { orgId: "org999" },
+        user: mockUser,
+        organization: mockOrg,
+      });
+      expect(resultNoMatch).toEqual({
+        title: false,
+        slug: false,
+        status: false,
+        featured: false,
+      });
     });
 
-    expect(result).toEqual({});
+    it("handles function returning allow mode object", () => {
+      const check = () => ({ mode: "allow" as const, fields: ["title", "slug"] });
+
+      const result = resolvePermissionCheck({
+        check,
+        fields: FIELDS_POSTS,
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: true,
+        status: false,
+        featured: false,
+      });
+    });
+
+    it("handles function returning deny mode object", () => {
+      const check = () => ({ mode: "deny" as const, fields: ["featured"] });
+
+      const result = resolvePermissionCheck({
+        check,
+        fields: FIELDS_POSTS,
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: true,
+        status: true,
+        featured: false,
+      });
+    });
+
+    it("returns empty object for empty fields", () => {
+      const result = resolvePermissionCheck({
+        check: true,
+        fields: [],
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toEqual({});
+    });
+
+    it("checks only requested fields (subset of all fields)", () => {
+      const result = resolvePermissionCheck({
+        check: { mode: "allow", fields: ["title", "status"] },
+        fields: ["title", "featured"],
+        data: {},
+        user: mockUser,
+      });
+      expect(result).toEqual({
+        title: true,
+        featured: false,
+      });
+    });
   });
 });
 
@@ -351,84 +451,110 @@ describe("resolvePermissionCheck", () => {
 // ---------------------------------------------------------------------------
 
 describe("mergeRolePermissions", () => {
-  it("uses OR logic across role permission maps", () => {
-    const result = mergeRolePermissions({
-      permissionMaps: [
-        { title: true, slug: false, status: false, featured: false },
-        { title: false, slug: false, status: true, featured: false },
-      ],
-      fieldKeys: FIELD_KEYS_POSTS,
+  describe("without fields (boolean mode)", () => {
+    it("returns true for empty results", () => {
+      const result = mergeRolePermissions({ results: [] });
+      expect(result).toBe(true);
     });
 
-    expect(result).toEqual({
-      title: true,
-      slug: false,
-      status: true,
-      featured: false,
+    it("uses OR logic across boolean results", () => {
+      expect(mergeRolePermissions({ results: [true, false] })).toBe(true);
+      expect(mergeRolePermissions({ results: [false, false] })).toBe(false);
+      expect(mergeRolePermissions({ results: [true, true] })).toBe(true);
     });
   });
 
-  it("returns all-true for empty permissionMaps", () => {
-    const result = mergeRolePermissions({
-      permissionMaps: [],
-      fieldKeys: FIELD_KEYS_POSTS,
+  describe("with fields (field map mode)", () => {
+    it("uses OR logic across role permission maps", () => {
+      const result = mergeRolePermissions({
+        results: [
+          { title: true, slug: false, status: false, featured: false },
+          { title: false, slug: false, status: true, featured: false },
+        ],
+        fields: FIELDS_POSTS,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: false,
+        status: true,
+        featured: false,
+      });
     });
 
-    expect(result).toEqual({
-      title: true,
-      slug: true,
-      status: true,
-      featured: true,
-    });
-  });
-
-  it("handles single role map", () => {
-    const result = mergeRolePermissions({
-      permissionMaps: [
-        { title: true, slug: false, status: true, featured: false },
-      ],
-      fieldKeys: FIELD_KEYS_POSTS,
+    it("returns all-true for empty results", () => {
+      const result = mergeRolePermissions({
+        results: [],
+        fields: FIELDS_POSTS,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: true,
+        status: true,
+        featured: true,
+      });
     });
 
-    expect(result).toEqual({
-      title: true,
-      slug: false,
-      status: true,
-      featured: false,
-    });
-  });
-
-  it("treats missing fields in a map as false", () => {
-    const result = mergeRolePermissions({
-      permissionMaps: [
-        { title: true },
-        { slug: true },
-      ],
-      fieldKeys: FIELD_KEYS_POSTS,
+    it("handles single role map", () => {
+      const result = mergeRolePermissions({
+        results: [
+          { title: true, slug: false, status: true, featured: false },
+        ],
+        fields: FIELDS_POSTS,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: false,
+        status: true,
+        featured: false,
+      });
     });
 
-    expect(result).toEqual({
-      title: true,
-      slug: true,
-      status: false,
-      featured: false,
+    it("mixes boolean and field map results with OR logic", () => {
+      const result = mergeRolePermissions({
+        results: [
+          true,
+          { title: false, slug: false, status: false, featured: false },
+        ],
+        fields: FIELDS_POSTS,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: true,
+        status: true,
+        featured: true,
+      });
     });
-  });
 
-  it("allow wins over deny across roles", () => {
-    const result = mergeRolePermissions({
-      permissionMaps: [
-        { title: true, slug: false, status: false, featured: false },
-        { title: false, slug: true, status: false, featured: false },
-      ],
-      fieldKeys: FIELD_KEYS_POSTS,
+    it("boolean false does not override field map allow", () => {
+      const result = mergeRolePermissions({
+        results: [
+          false,
+          { title: true, slug: false, status: false, featured: false },
+        ],
+        fields: FIELDS_POSTS,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: false,
+        status: false,
+        featured: false,
+      });
     });
 
-    expect(result).toEqual({
-      title: true,
-      slug: true,
-      status: false,
-      featured: false,
+    it("allow wins over deny across roles", () => {
+      const result = mergeRolePermissions({
+        results: [
+          { title: true, slug: false, status: false, featured: false },
+          { title: false, slug: true, status: false, featured: false },
+        ],
+        fields: FIELDS_POSTS,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: true,
+        status: false,
+        featured: false,
+      });
     });
   });
 });
@@ -439,36 +565,32 @@ describe("mergeRolePermissions", () => {
 
 describe("hasPermission", () => {
   describe("permissive defaults", () => {
-    it("returns all-true when access is undefined", () => {
+    it("returns true when access is undefined (no fields)", () => {
       const result = hasPermission({
         access: undefined,
         user: mockUser,
         userRoles: ["editor"],
         resource: "posts",
         action: "read",
-        fieldKeys: FIELD_KEYS_POSTS,
       });
+      expect(result).toBe(true);
+    });
 
+    it("returns all-true map when access is undefined (with fields)", () => {
+      const result = hasPermission({
+        access: undefined,
+        user: mockUser,
+        userRoles: ["editor"],
+        resource: "posts",
+        action: "read",
+        fields: FIELDS_POSTS,
+      });
       expect(result).toEqual({
         title: true,
         slug: true,
         status: true,
         featured: true,
       });
-    });
-
-    it("returns true for specific field when access is undefined", () => {
-      const result = hasPermission({
-        access: undefined,
-        user: mockUser,
-        userRoles: ["editor"],
-        resource: "posts",
-        action: "read",
-        fieldKeys: FIELD_KEYS_POSTS,
-        field: "title",
-      });
-
-      expect(result).toBe(true);
     });
 
     it("returns all-true when resource has no permissions entry for any role", () => {
@@ -478,9 +600,8 @@ describe("hasPermission", () => {
         userRoles: ["viewer"],
         resource: "categories",
         action: "read",
-        fieldKeys: FIELD_KEYS_CATEGORIES,
+        fields: FIELDS_CATEGORIES,
       });
-
       expect(result).toEqual({
         name: true,
         sortOrder: true,
@@ -489,16 +610,84 @@ describe("hasPermission", () => {
   });
 
   describe("deny all", () => {
-    it("returns all-false when userRoles is empty", () => {
+    it("returns false when userRoles is empty (no fields)", () => {
       const result = hasPermission({
         access: testAccess,
         user: mockUser,
         userRoles: [],
         resource: "posts",
         action: "read",
-        fieldKeys: FIELD_KEYS_POSTS,
       });
+      expect(result).toBe(false);
+    });
 
+    it("returns all-false when userRoles is empty (with fields)", () => {
+      const result = hasPermission({
+        access: testAccess,
+        user: mockUser,
+        userRoles: [],
+        resource: "posts",
+        action: "read",
+        fields: FIELDS_POSTS,
+      });
+      expect(result).toEqual({
+        title: false,
+        slug: false,
+        status: false,
+        featured: false,
+      });
+    });
+  });
+
+  describe("boolean permissions", () => {
+    it("admin gets true for all actions on posts (no fields)", () => {
+      const result = hasPermission({
+        access: testAccess,
+        user: mockUser,
+        userRoles: ["admin"],
+        resource: "posts",
+        action: "update",
+      });
+      expect(result).toBe(true);
+    });
+
+    it("admin gets all-true map for all actions on posts (with fields)", () => {
+      const result = hasPermission({
+        access: testAccess,
+        user: mockUser,
+        userRoles: ["admin"],
+        resource: "posts",
+        action: "update",
+        fields: FIELDS_POSTS,
+      });
+      expect(result).toEqual({
+        title: true,
+        slug: true,
+        status: true,
+        featured: true,
+      });
+    });
+
+    it("editor gets false for delete on posts (delete: false)", () => {
+      const result = hasPermission({
+        access: testAccess,
+        user: mockUser,
+        userRoles: ["editor"],
+        resource: "posts",
+        action: "delete",
+      });
+      expect(result).toBe(false);
+    });
+
+    it("editor gets all-false map for delete on posts (with fields)", () => {
+      const result = hasPermission({
+        access: testAccess,
+        user: mockUser,
+        userRoles: ["editor"],
+        resource: "posts",
+        action: "delete",
+        fields: FIELDS_POSTS,
+      });
       expect(result).toEqual({
         title: false,
         slug: false,
@@ -507,50 +696,50 @@ describe("hasPermission", () => {
       });
     });
 
-    it("returns false for specific field when userRoles is empty", () => {
-      const result = hasPermission({
-        access: testAccess,
-        user: mockUser,
-        userRoles: [],
-        resource: "posts",
-        action: "read",
-        fieldKeys: FIELD_KEYS_POSTS,
-        field: "title",
-      });
-
-      expect(result).toBe(false);
-    });
-  });
-
-  describe("boolean permissions", () => {
-    it("admin gets all-true for all actions on posts", () => {
-      const result = hasPermission({
-        access: testAccess,
-        user: mockUser,
-        userRoles: ["admin"],
-        resource: "posts",
-        action: "update",
-        fieldKeys: FIELD_KEYS_POSTS,
-      });
-
-      expect(result).toEqual({
-        title: true,
-        slug: true,
-        status: true,
-        featured: true,
-      });
-    });
-
-    it("viewer gets all-true for delete on posts (no delete defined → permissive)", () => {
+    it("viewer gets true for undefined action (permissive default, no fields)", () => {
       const result = hasPermission({
         access: testAccess,
         user: mockUser,
         userRoles: ["viewer"],
         resource: "posts",
         action: "delete",
-        fieldKeys: FIELD_KEYS_POSTS,
       });
+      expect(result).toBe(true);
+    });
+  });
 
+  describe("boolean resource-level permissions", () => {
+    it("admin with resource: true gets true for any action", () => {
+      const result = hasPermission({
+        access: booleanResourceAccess,
+        user: mockUser,
+        userRoles: ["admin"],
+        resource: "posts",
+        action: "delete",
+      });
+      expect(result).toBe(true);
+    });
+
+    it("blocked with resource: false gets false for any action", () => {
+      const result = hasPermission({
+        access: booleanResourceAccess,
+        user: mockUser,
+        userRoles: ["blocked"],
+        resource: "posts",
+        action: "read",
+      });
+      expect(result).toBe(false);
+    });
+
+    it("resource: true with fields returns all-true map", () => {
+      const result = hasPermission({
+        access: booleanResourceAccess,
+        user: mockUser,
+        userRoles: ["admin"],
+        resource: "posts",
+        action: "update",
+        fields: FIELDS_POSTS,
+      });
       expect(result).toEqual({
         title: true,
         slug: true,
@@ -559,16 +748,15 @@ describe("hasPermission", () => {
       });
     });
 
-    it("editor gets all-false for delete on posts (delete: false)", () => {
+    it("resource: false with fields returns all-false map", () => {
       const result = hasPermission({
-        access: testAccess,
+        access: booleanResourceAccess,
         user: mockUser,
-        userRoles: ["editor"],
+        userRoles: ["blocked"],
         resource: "posts",
-        action: "delete",
-        fieldKeys: FIELD_KEYS_POSTS,
+        action: "update",
+        fields: FIELDS_POSTS,
       });
-
       expect(result).toEqual({
         title: false,
         slug: false,
@@ -579,16 +767,15 @@ describe("hasPermission", () => {
   });
 
   describe("allow mode permissions", () => {
-    it("editor gets only allowed fields for update on posts", () => {
+    it("editor gets field map for update on posts", () => {
       const result = hasPermission({
         access: testAccess,
         user: mockUser,
         userRoles: ["editor"],
         resource: "posts",
         action: "update",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
       });
-
       expect(result).toEqual({
         title: true,
         slug: false,
@@ -597,52 +784,61 @@ describe("hasPermission", () => {
       });
     });
 
-    it("returns boolean for specific allowed field", () => {
+    it("checks only requested fields (subset)", () => {
       const result = hasPermission({
         access: testAccess,
         user: mockUser,
         userRoles: ["editor"],
         resource: "posts",
         action: "update",
-        fieldKeys: FIELD_KEYS_POSTS,
-        field: "title",
+        fields: ["title", "slug"],
       });
-
-      expect(result).toBe(true);
+      expect(result).toEqual({
+        title: true,
+        slug: false,
+      });
     });
 
-    it("returns boolean for specific denied field", () => {
+    it("editor without fields returns true for update (allow mode has fields)", () => {
       const result = hasPermission({
         access: testAccess,
         user: mockUser,
         userRoles: ["editor"],
         resource: "posts",
         action: "update",
-        fieldKeys: FIELD_KEYS_POSTS,
-        field: "slug",
       });
-
-      expect(result).toBe(false);
+      // allow mode with fields ["title", "status"] → some fields allowed → true
+      expect(result).toBe(true);
     });
   });
 
   describe("deny mode permissions", () => {
-    it("editor gets all fields except denied ones for update", () => {
+    it("editor gets all fields except denied ones for update (with fields)", () => {
       const result = hasPermission({
         access: denyModeAccess,
         user: mockUser,
         userRoles: ["editor"],
         resource: "posts",
         action: "update",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
       });
-
       expect(result).toEqual({
         title: true,
         slug: false,
         status: true,
         featured: true,
       });
+    });
+
+    it("deny mode without fields returns false (some fields denied)", () => {
+      const result = hasPermission({
+        access: denyModeAccess,
+        user: mockUser,
+        userRoles: ["editor"],
+        resource: "posts",
+        action: "update",
+      });
+      expect(result).toBe(false);
     });
   });
 
@@ -654,10 +850,9 @@ describe("hasPermission", () => {
         userRoles: ["editor"],
         resource: "posts",
         action: "update",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
         data: { authorId: "user1" },
       });
-
       expect(result).toEqual({
         title: true,
         slug: true,
@@ -673,10 +868,9 @@ describe("hasPermission", () => {
         userRoles: ["editor"],
         resource: "posts",
         action: "update",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
         data: { authorId: "other" },
       });
-
       expect(result).toEqual({
         title: true,
         slug: false,
@@ -685,17 +879,16 @@ describe("hasPermission", () => {
       });
     });
 
-    it("resolves function returning boolean for delete", () => {
+    it("resolves function returning boolean for delete (with fields)", () => {
       const resultOwner = hasPermission({
         access: dynamicAccess,
         user: mockUser,
         userRoles: ["editor"],
         resource: "posts",
         action: "delete",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
         data: { authorId: "user1" },
       });
-
       expect(resultOwner).toEqual({
         title: true,
         slug: true,
@@ -709,16 +902,35 @@ describe("hasPermission", () => {
         userRoles: ["editor"],
         resource: "posts",
         action: "delete",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
         data: { authorId: "other" },
       });
-
       expect(resultNonOwner).toEqual({
         title: false,
         slug: false,
         status: false,
         featured: false,
       });
+    });
+
+    it("resolves function returning boolean for delete (no fields)", () => {
+      expect(hasPermission({
+        access: dynamicAccess,
+        user: mockUser,
+        userRoles: ["editor"],
+        resource: "posts",
+        action: "delete",
+        data: { authorId: "user1" },
+      })).toBe(true);
+
+      expect(hasPermission({
+        access: dynamicAccess,
+        user: mockUser,
+        userRoles: ["editor"],
+        resource: "posts",
+        action: "delete",
+        data: { authorId: "other" },
+      })).toBe(false);
     });
   });
 
@@ -730,11 +942,10 @@ describe("hasPermission", () => {
         userRoles: ["member"],
         resource: "posts",
         action: "read",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
         data: { orgId: "org1" },
         organization: mockOrg,
       });
-
       expect(result).toEqual({
         title: true,
         slug: true,
@@ -750,11 +961,10 @@ describe("hasPermission", () => {
         userRoles: ["member"],
         resource: "posts",
         action: "read",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
         data: { orgId: "org999" },
         organization: mockOrg,
       });
-
       expect(result).toEqual({
         title: false,
         slug: false,
@@ -770,11 +980,10 @@ describe("hasPermission", () => {
         userRoles: ["member"],
         resource: "posts",
         action: "update",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
         data: { orgId: "org1" },
         organization: mockOrg,
       });
-
       expect(result).toEqual({
         title: true,
         slug: false,
@@ -790,11 +999,10 @@ describe("hasPermission", () => {
         userRoles: ["member"],
         resource: "posts",
         action: "update",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
         data: { orgId: "org999" },
         organization: mockOrg,
       });
-
       expect(result).toEqual({
         title: false,
         slug: false,
@@ -802,20 +1010,41 @@ describe("hasPermission", () => {
         featured: false,
       });
     });
+
+    it("resolves org check without fields (boolean mode)", () => {
+      expect(hasPermission({
+        access: orgAccess,
+        user: mockUser,
+        userRoles: ["member"],
+        resource: "posts",
+        action: "read",
+        data: { orgId: "org1" },
+        organization: mockOrg,
+      })).toBe(true);
+
+      expect(hasPermission({
+        access: orgAccess,
+        user: mockUser,
+        userRoles: ["member"],
+        resource: "posts",
+        action: "read",
+        data: { orgId: "org999" },
+        organization: mockOrg,
+      })).toBe(false);
+    });
   });
 
   describe("multi-role merge (OR logic)", () => {
-    it("merges permissions from multiple roles", () => {
+    it("merges permissions from multiple roles (with fields)", () => {
       const result = hasPermission({
         access: testAccess,
         user: mockUser,
         userRoles: ["editor", "viewer"],
         resource: "posts",
         action: "update",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
       });
-
-      // viewer has no update defined → permissive default → all true
+      // viewer has no update defined → permissive default (true)
       // merged with editor's partial → OR → all true
       expect(result).toEqual({
         title: true,
@@ -849,9 +1078,8 @@ describe("hasPermission", () => {
         userRoles: ["role_a", "role_b"],
         resource: "posts",
         action: "update",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
       });
-
       expect(result).toEqual({
         title: true,
         slug: true,
@@ -860,7 +1088,7 @@ describe("hasPermission", () => {
       });
     });
 
-    it("allow wins over deny across roles", () => {
+    it("allow wins over deny across roles (with fields)", () => {
       const mixedAccess: VexAccessConfig = {
         roles: ["role_allow", "role_deny"],
         userCollection: "users",
@@ -884,9 +1112,8 @@ describe("hasPermission", () => {
         userRoles: ["role_allow", "role_deny"],
         resource: "posts",
         action: "update",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
       });
-
       // role_allow: title=true, slug=false, status=false, featured=false
       // role_deny:  title=false, slug=true, status=true, featured=true
       // OR merge:   title=true, slug=true, status=true, featured=true
@@ -905,10 +1132,9 @@ describe("hasPermission", () => {
         userRoles: ["unknown_role"],
         resource: "posts",
         action: "read",
-        fieldKeys: FIELD_KEYS_POSTS,
+        fields: FIELDS_POSTS,
       });
-
-      // unknown role is not in access.roles → filtered out → no known roles → deny all
+      // unknown role → filtered out → no known roles → deny all
       expect(result).toEqual({
         title: false,
         slug: false,
@@ -916,63 +1142,28 @@ describe("hasPermission", () => {
         featured: false,
       });
     });
-  });
 
-  describe("field param overload", () => {
-    it("returns boolean true for allowed field", () => {
+    it("unknown roles without fields returns false", () => {
       const result = hasPermission({
         access: testAccess,
         user: mockUser,
-        userRoles: ["admin"],
+        userRoles: ["unknown_role"],
         resource: "posts",
         action: "read",
-        fieldKeys: FIELD_KEYS_POSTS,
-        field: "title",
       });
-
-      expect(result).toBe(true);
-    });
-
-    it("returns boolean false for denied field", () => {
-      const result = hasPermission({
-        access: testAccess,
-        user: mockUser,
-        userRoles: ["editor"],
-        resource: "posts",
-        action: "update",
-        fieldKeys: FIELD_KEYS_POSTS,
-        field: "featured",
-      });
-
-      expect(result).toBe(false);
-    });
-
-    it("returns false for unknown field", () => {
-      const result = hasPermission({
-        access: testAccess,
-        user: mockUser,
-        userRoles: ["admin"],
-        resource: "posts",
-        action: "read",
-        fieldKeys: FIELD_KEYS_POSTS,
-        field: "nonexistent",
-      });
-
       expect(result).toBe(false);
     });
   });
 
   describe("throwOnDenied", () => {
-    it("throws VexAccessError when field is denied and throwOnDenied is true", () => {
+    it("throws VexAccessError when action denied and throwOnDenied is true (no fields)", () => {
       expect(() =>
         hasPermission({
           access: testAccess,
           user: mockUser,
           userRoles: ["editor"],
           resource: "posts",
-          action: "update",
-          fieldKeys: FIELD_KEYS_POSTS,
-          field: "slug",
+          action: "delete",
           throwOnDenied: true,
         }),
       ).toThrow(VexAccessError);
@@ -985,9 +1176,26 @@ describe("hasPermission", () => {
           user: mockUser,
           userRoles: ["editor"],
           resource: "posts",
+          action: "delete",
+          throwOnDenied: true,
+        });
+        expect.fail("should have thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(VexAccessError);
+        expect((e as VexAccessError).resource).toBe("posts");
+        expect((e as VexAccessError).action).toBe("delete");
+      }
+    });
+
+    it("throws VexAccessError when a specific field is denied (with fields)", () => {
+      try {
+        hasPermission({
+          access: testAccess,
+          user: mockUser,
+          userRoles: ["editor"],
+          resource: "posts",
           action: "update",
-          fieldKeys: FIELD_KEYS_POSTS,
-          field: "slug",
+          fields: FIELDS_POSTS,
           throwOnDenied: true,
         });
         expect.fail("should have thrown");
@@ -995,25 +1203,12 @@ describe("hasPermission", () => {
         expect(e).toBeInstanceOf(VexAccessError);
         expect((e as VexAccessError).resource).toBe("posts");
         expect((e as VexAccessError).action).toBe("update");
+        // Should identify the first denied field
         expect((e as VexAccessError).field).toBe("slug");
       }
     });
 
-    it("throws VexAccessError when any field is denied in field map mode", () => {
-      expect(() =>
-        hasPermission({
-          access: testAccess,
-          user: mockUser,
-          userRoles: ["editor"],
-          resource: "posts",
-          action: "update",
-          fieldKeys: FIELD_KEYS_POSTS,
-          throwOnDenied: true,
-        }),
-      ).toThrow(VexAccessError);
-    });
-
-    it("does not throw when all fields are allowed", () => {
+    it("does not throw when all allowed (no fields)", () => {
       expect(() =>
         hasPermission({
           access: testAccess,
@@ -1021,22 +1216,20 @@ describe("hasPermission", () => {
           userRoles: ["admin"],
           resource: "posts",
           action: "update",
-          fieldKeys: FIELD_KEYS_POSTS,
           throwOnDenied: true,
         }),
       ).not.toThrow();
     });
 
-    it("does not throw when specific field is allowed", () => {
+    it("does not throw when all fields allowed", () => {
       expect(() =>
         hasPermission({
           access: testAccess,
           user: mockUser,
-          userRoles: ["editor"],
+          userRoles: ["admin"],
           resource: "posts",
           action: "update",
-          fieldKeys: FIELD_KEYS_POSTS,
-          field: "title",
+          fields: FIELDS_POSTS,
           throwOnDenied: true,
         }),
       ).not.toThrow();
@@ -1050,7 +1243,6 @@ describe("hasPermission", () => {
           userRoles: [],
           resource: "posts",
           action: "read",
-          fieldKeys: FIELD_KEYS_POSTS,
           throwOnDenied: true,
         }),
       ).toThrow(VexAccessError);
@@ -1063,9 +1255,7 @@ describe("hasPermission", () => {
           user: mockUser,
           userRoles: ["editor"],
           resource: "posts",
-          action: "update",
-          fieldKeys: FIELD_KEYS_POSTS,
-          field: "slug",
+          action: "delete",
           throwOnDenied: false,
         }),
       ).not.toThrow();
