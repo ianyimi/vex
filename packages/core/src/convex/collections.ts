@@ -6,11 +6,18 @@ import { mutation, query } from "@convex/_generated/server"
 import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 
-import { generateFormSchema } from "@vexcms/core"
-import type { VexField } from "@vexcms/core"
+import { findCollectionBySlug } from "@vexcms/core"
 import config from "../../vex.config"
 
 import * as Collections from "./model/collections"
+
+function requireCollection(slug: string) {
+  const match = findCollectionBySlug({ slug, config })
+  if (!match) {
+    throw new ConvexError(`Collection not found: ${slug}`)
+  }
+  return match
+}
 
 export const listDocuments = query({
   args: {
@@ -18,12 +25,12 @@ export const listDocuments = query({
     paginationOpts: paginationOptsValidator,
     order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
   },
-  handler: async (ctx, { collectionSlug, paginationOpts, order }) => {
+  handler: async (ctx, args) => {
     return await Collections.listDocuments<DataModel>({
       args: {
-        collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
-        paginationOpts,
-        order,
+        collectionSlug: args.collectionSlug as TableNamesInDataModel<DataModel>,
+        paginationOpts: args.paginationOpts,
+        order: args.order,
       },
       ctx,
     })
@@ -63,12 +70,15 @@ export const updateDocument = mutation({
     fields: v.any(),
   },
   handler: async (ctx, { collectionSlug, documentId, fields }) => {
+    const match = requireCollection(collectionSlug)
+
     return await Collections.updateDocument<DataModel>({
       ctx,
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         documentId,
         fields: fields as Record<string, unknown>,
+        collectionFields: match.fields,
       },
     })
   },
@@ -80,28 +90,15 @@ export const createDocument = mutation({
     fields: v.any(),
   },
   handler: async (ctx, { collectionSlug, fields }) => {
-    const collection = config.collections.find((c) => c.slug === collectionSlug)
-    if (!collection) {
-      throw new ConvexError(`Collection not found: ${collectionSlug}`)
-    }
-
-    const schema = generateFormSchema({
-      fields: collection.fields as Record<string, VexField>,
-    })
-
-    const result = schema.safeParse(fields)
-    if (!result.success) {
-      throw new ConvexError({
-        message: "Validation failed",
-        errors: result.error.flatten(),
-      })
-    }
+    const match = requireCollection(collectionSlug)
 
     return await Collections.createDocument<DataModel>({
       ctx,
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
-        fields: result.data as Record<string, unknown>,
+        fields: fields as Record<string, unknown>,
+        collectionFields: match.fields,
+        kind: match.kind,
       },
     })
   },
@@ -112,15 +109,16 @@ export const deleteDocument = mutation({
     collectionSlug: v.string(),
     documentId: v.string(),
   },
-  handler: async (ctx, { documentId }) => {
-    const existing = await ctx.db.get(documentId as any)
-    if (!existing) {
-      throw new ConvexError("Document not found")
-    }
+  handler: async (ctx, { collectionSlug, documentId }) => {
+    const match = requireCollection(collectionSlug)
 
     await Collections.deleteDocument<DataModel>({
       ctx,
-      args: { documentId },
+      args: {
+        collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
+        documentId,
+        kind: match.kind,
+      },
     })
   },
 })

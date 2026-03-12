@@ -2,6 +2,7 @@ export { defineConfig } from "./config/defineConfig";
 export { defineCollection, defineMediaCollection } from "./config/defineCollection";
 export { sanitizeConfigForClient } from "./config/sanitizeConfig";
 export { isMediaCollection } from "./config/isMediaCollection";
+export { findCollectionBySlug, getAllCollections } from "./config/findCollectionBySlug";
 export { generateVexSchema } from "./valueTypes/generate";
 export { extendTable } from "./schema/extendTable";
 export { generateColumns } from "./columns";
@@ -90,6 +91,11 @@ export type {
 export { LOCKED_MEDIA_FIELDS, OVERRIDABLE_MEDIA_FIELDS } from "./types/media";
 
 export type { MergedCollectionResult } from "./valueTypes/merge";
+
+export type {
+  CollectionKind,
+  ResolvedCollectionMatch,
+} from "./config/findCollectionBySlug";
 
 export type {
   SchemaFieldInfo,

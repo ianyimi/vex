@@ -6,12 +6,18 @@ import { mutation, query } from "@convex/_generated/server"
 import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 
-
-import { generateFormSchema } from "@vexcms/core"
-import type { VexField } from "@vexcms/core"
+import { findCollectionBySlug } from "@vexcms/core"
 import config from "../../vex.config"
 
 import * as Collections from "./model/collections"
+
+function requireCollection(slug: string) {
+  const match = findCollectionBySlug({ slug, config })
+  if (!match) {
+    throw new ConvexError(`Collection not found: ${slug}`)
+  }
+  return match
+}
 
 export const listDocuments = query({
   args: {
@@ -19,26 +25,15 @@ export const listDocuments = query({
     paginationOpts: paginationOptsValidator,
     order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
   },
-  handler: async (ctx, { collectionSlug, paginationOpts, order }) => {
-    const result = await Collections.listDocuments<DataModel>({
+  handler: async (ctx, args) => {
+    return await Collections.listDocuments<DataModel>({
       args: {
-        collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
-        paginationOpts,
-        order,
+        collectionSlug: args.collectionSlug as TableNamesInDataModel<DataModel>,
+        paginationOpts: args.paginationOpts,
+        order: args.order,
       },
       ctx,
     })
-    // Resolve missing URLs from storageId for media documents
-    const resolvedPage = await Promise.all(
-      result.page.map(async (doc: any) => {
-        if (doc.storageId && (!doc.url || doc.url === "")) {
-          const url = await ctx.storage.getUrl(doc.storageId)
-          if (url) return { ...doc, url }
-        }
-        return doc
-      }),
-    )
-    return { ...result, page: resolvedPage }
   },
 })
 
@@ -58,19 +53,13 @@ export const getDocument = query({
     documentId: v.string(),
   },
   handler: async (ctx, { collectionSlug, documentId }) => {
-    const doc = await Collections.getDocument<DataModel>({
+    return await Collections.getDocument<DataModel>({
       ctx,
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         documentId,
       },
     })
-    // Resolve missing URL from storageId for media documents
-    if (doc && (doc as any).storageId && (!(doc as any).url || (doc as any).url === "")) {
-      const url = await ctx.storage.getUrl((doc as any).storageId)
-      if (url) return { ...doc, url }
-    }
-    return doc
   },
 })
 
@@ -81,18 +70,15 @@ export const updateDocument = mutation({
     fields: v.any(),
   },
   handler: async (ctx, { collectionSlug, documentId, fields }) => {
-    const f = fields as Record<string, unknown>
-    // Resolve the file URL from storageId when replacing a media file
-    if (f.storageId && f.url === "") {
-      const url = await ctx.storage.getUrl(f.storageId as any)
-      if (url) f.url = url
-    }
+    const match = requireCollection(collectionSlug)
+
     return await Collections.updateDocument<DataModel>({
       ctx,
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         documentId,
-        fields: f,
+        fields: fields as Record<string, unknown>,
+        collectionFields: match.fields,
       },
     })
   },
@@ -104,28 +90,15 @@ export const createDocument = mutation({
     fields: v.any(),
   },
   handler: async (ctx, { collectionSlug, fields }) => {
-    const collection = config.collections.find((c) => c.slug === collectionSlug)
-    if (!collection) {
-      throw new ConvexError(`Collection not found: ${collectionSlug}`)
-    }
-
-    const schema = generateFormSchema({
-      fields: collection.fields as Record<string, VexField>,
-    })
-
-    const result = schema.safeParse(fields)
-    if (!result.success) {
-      throw new ConvexError({
-        message: "Validation failed",
-        errors: result.error.flatten(),
-      })
-    }
+    const match = requireCollection(collectionSlug)
 
     return await Collections.createDocument<DataModel>({
       ctx,
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
-        fields: result.data as Record<string, unknown>,
+        fields: fields as Record<string, unknown>,
+        collectionFields: match.fields,
+        kind: match.kind,
       },
     })
   },
@@ -136,15 +109,16 @@ export const deleteDocument = mutation({
     collectionSlug: v.string(),
     documentId: v.string(),
   },
-  handler: async (ctx, { documentId }) => {
-    const existing = await ctx.db.get(documentId as any)
-    if (!existing) {
-      throw new ConvexError("Document not found")
-    }
+  handler: async (ctx, { collectionSlug, documentId }) => {
+    const match = requireCollection(collectionSlug)
 
     await Collections.deleteDocument<DataModel>({
       ctx,
-      args: { documentId },
+      args: {
+        collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
+        documentId,
+        kind: match.kind,
+      },
     })
   },
 })
@@ -170,7 +144,7 @@ export const searchDocuments = query({
     query: v.string(),
   },
   handler: async (ctx, { collectionSlug, searchIndexName, searchField, query: searchQuery }) => {
-    const docs = await Collections.searchDocuments<DataModel>({
+    return await Collections.searchDocuments<DataModel>({
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         searchIndexName,
@@ -179,16 +153,5 @@ export const searchDocuments = query({
       },
       ctx,
     })
-    // Resolve missing URLs from storageId for media documents
-    return Promise.all(
-      docs.map(async (doc: any) => {
-        if (doc.storageId && (!doc.url || doc.url === "")) {
-          const url = await ctx.storage.getUrl(doc.storageId)
-          if (url) return { ...doc, url }
-        }
-        return doc
-      }),
-    )
   },
 })
-

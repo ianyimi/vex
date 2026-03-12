@@ -2,36 +2,46 @@
 
 ## Overview
 
-Add a type-safe RBAC (Role-Based Access Control) permissions system to `@vexcms/core`. Users define roles, map them to field-level CRUD permissions per resource (collection or global), and attach the result to `vex.config.ts`. A `hasPermission` function resolves permissions at runtime for use in the admin panel or server-side guards.
+Add a type-safe RBAC (Role-Based Access Control) permissions system to `@vexcms/core`. Users define roles, map them to field-level CRUD permissions per resource (collection, media collection, or global), and attach the result to `vex.config.ts`. A `hasPermission` function resolves permissions at runtime for use in admin panel enforcement or server-side guards.
 
 ## Design Decisions
 
-1. **All four actions (create, read, update, delete) support field-level granularity.** Each permission check can return `boolean` (applies to all fields) or `Partial<Record<fieldKey, true>>` (allowlist — unlisted fields default to `false`).
+1. **All four actions (create, read, update, delete) support field-level granularity.** Each permission check can return `boolean` (applies to all fields) or a `{ mode, fields }` object for allowlist/denylist semantics.
 
-2. **Dynamic permission callbacks** receive `({ data, user })` context, matching the test-app pattern. The `user` type is inferred from the user collection passed to `defineAccess`.
+2. **Field permission results use an explicit mode flag.** Callbacks return one of:
+   - `boolean` — allow or deny all fields uniformly
+   - `{ mode: 'allow', fields: FieldKey[] }` — only listed fields are allowed; unlisted are denied
+   - `{ mode: 'deny', fields: FieldKey[] }` — listed fields are denied; unlisted are allowed
 
-3. **`defineAccess` is a builder function** (like `defineCollection`) that exists purely for TypeScript inference. It accepts `collections`, `globals`, `roles`, `userCollection`, and `permissions`. The function body returns the input unchanged.
+3. **Dynamic permission callbacks** receive `({ data, user, organization })` context. The `user` type is inferred from the user collection (with optional explicit override). The `organization` type is inferred from the org collection when provided.
 
-4. **`defineConfig` also supports inline access** by making it generic over the collections/globals arrays. Users choose between inline (zero duplication) or standalone `defineAccess` (separate file, re-pass collections).
+4. **`defineAccess` is a builder function** (like `defineCollection`) that exists purely for TypeScript inference. It accepts `resources`, `roles`, `userCollection`, and `permissions`. An optional `orgCollection` + `userOrgField` pair enables organization context in callbacks.
 
-5. **Multi-role resolution uses OR logic.** If a user has roles `['editor', 'author']` and either role grants a field, that field is allowed.
+5. **`resources` restricts the permission matrix.** When provided, only those collection/global slugs are valid in the permissions object. When omitted, all collections and globals in the config are available. Resources not mentioned in the permissions object get permissive defaults.
 
-6. **Permissive default.** If no access config is defined, or a resource has no permissions entry, `hasPermission` returns all-true.
+6. **`userCollection` and `orgCollection` are separate from `resources`.** They identify which collections provide the user and org types for callback inference, but they are not themselves permission resources (unless also included in `resources`).
 
-7. **`hasPermission` has two overloads** for read/update/create/delete:
+7. **Multi-role resolution uses OR logic.** If a user has roles `['editor', 'author']` and either role grants a field, that field is allowed. Allow always wins over deny in cross-role merges.
+
+8. **Permissive default.** If no access config is defined, or a resource/action has no permissions entry, `hasPermission` returns all-true.
+
+9. **`hasPermission` has two overloads:**
    - Without `field` param → returns `Record<fieldKey, boolean>` (full field map)
    - With `field` param → returns `boolean` (single field check)
 
-8. **`access` lives at the top level** of `VexConfig` alongside `auth`, not nested inside it.
+10. **`hasPermission` is a pure, synchronous function.** The caller is responsible for resolving the user and organization objects before calling. This keeps it usable on both server and client.
+
+11. **`access` lives at the top level** of `VexConfig` alongside `auth`, not nested inside it.
+
+12. **Org collection and user org field are coupled.** If `orgCollection` is provided, `userOrgField` is required (and vice versa). The `userOrgField` identifies which field on the user collection relates to the org collection.
 
 ## Out of Scope
 
-- Admin panel UI integration (consuming permissions to hide/show fields)
+- Per-collection `access` config on `VexCollection`
+- Per-field `access` config on field definitions
+- Admin panel UI integration (consuming permissions to hide/show fields — next spec)
 - Server-side Convex mutation/query guards (will use `hasPermission` in a future spec)
-- Media collection support (media collection type doesn't exist yet)
 - Block field / array field sub-item permission granularity
-- Denylist mode (`Record<fieldKey, false>`)
-- `VexConfig.auth` restructuring (`auth.adapter` / `auth.access`)
 
 ## Target Directory Structure
 
@@ -41,12 +51,14 @@ packages/core/src/
 │   ├── types.ts              # VexAccessConfig, PermissionCheck, FieldPermissionResult types
 │   ├── defineAccess.ts        # defineAccess() builder function
 │   ├── defineAccess.test.ts   # Tests for defineAccess + type validation
-│   ├── hasPermission.ts       # hasPermission() runtime resolver
+│   ├── hasPermission.ts       # hasPermission() + resolvePermissionCheck + mergeRolePermissions
 │   └── hasPermission.test.ts  # Tests for hasPermission runtime logic
 ├── config/
-│   └── defineConfig.ts        # Modified — add access field, make generic for inline access
+│   └── defineConfig.ts        # Modified — pass through access field
 ├── types/
 │   └── index.ts               # Modified — add access to VexConfig / VexConfigInput
+├── errors/
+│   └── index.ts               # Modified — add VexAccessConfigError
 └── index.ts                   # Modified — export new access types and functions
 ```
 
@@ -54,14 +66,15 @@ packages/core/src/
 
 1. **Step 1: Access types** — Core type definitions. After this step, types compile and can be imported.
 2. **Step 2: `defineAccess` builder + tests** — Builder function with full type inference. Tests verify type safety and runtime passthrough.
-3. **Step 3: `hasPermission` function + tests** — Runtime permission resolution with all overloads. Tests cover boolean returns, partial records, dynamic callbacks, multi-role merge, and edge cases.
-4. **Step 4: Config integration + exports** — Add `access` field to `VexConfig`/`VexConfigInput`, make `defineConfig` generic for inline access, update `index.ts` exports. Verify test-app compiles.
+3. **Step 3: `hasPermission` function + tests** — Runtime permission resolution with all overloads. Tests cover boolean returns, mode objects, dynamic callbacks, multi-role merge, and edge cases.
+4. **Step 4: Config integration + exports** — Add `access` field to `VexConfig`/`VexConfigInput`, pass through in `defineConfig`, update `index.ts` exports. Verify test-app compiles.
 
 ---
 
 ## Step 1: Access Types
 
 - [ ] Create `packages/core/src/access/types.ts`
+- [ ] Add `VexAccessConfigError` to `packages/core/src/errors/index.ts`
 - [ ] Run `pnpm --filter @vexcms/core build` to verify compilation
 
 ### `File: packages/core/src/access/types.ts`
@@ -77,25 +90,23 @@ import type { VexGlobal } from "../types/globals";
 // =============================================================================
 
 /**
- * Extract the slug literal type from a VexCollection.
+ * Extract the slug literal type from a VexCollection or VexGlobal.
  *
  * @example
  * type S = ExtractSlug<typeof posts>; // "posts"
  */
-export type ExtractSlug<T> = T extends VexCollection<any, any>
-  ? T["slug"]
-  : T extends VexGlobal<any>
-    ? T["slug"]
-    : never;
+export type ExtractSlug<T> = T extends { slug: infer S extends string }
+  ? S
+  : never;
 
 /**
- * Extract field keys from a VexCollection, including auth field keys.
+ * Extract field keys from a VexCollection (including auth extra keys) or VexGlobal.
  *
  * @example
  * type K = ExtractFieldKeys<typeof posts>; // "title" | "slug" | "status" | "featured"
  */
-export type ExtractFieldKeys<T> = T extends VexCollection<infer TFields, infer TAuthKeys>
-  ? (keyof TFields & string) | (TAuthKeys & string)
+export type ExtractFieldKeys<T> = T extends VexCollection<infer TFields, infer TExtraKeys>
+  ? (keyof TFields & string) | (TExtraKeys & string)
   : T extends VexGlobal<infer TFields>
     ? keyof TFields & string
     : never;
@@ -124,6 +135,14 @@ export type LookupBySlug<
     : LookupBySlug<Tail, TSlug>
   : never;
 
+/**
+ * Extract all slugs from a tuple of resources.
+ */
+export type ExtractSlugs<TResources extends readonly any[]> =
+  TResources extends readonly [infer Head, ...infer Tail]
+    ? ExtractSlug<Head> | ExtractSlugs<Tail>
+    : never;
+
 // =============================================================================
 // PERMISSION RESULT TYPES
 // =============================================================================
@@ -131,27 +150,44 @@ export type LookupBySlug<
 /**
  * The return type for a permission check on a resource.
  * - `boolean` — applies uniformly to all fields (true = all allowed, false = all denied)
- * - `Partial<Record<FieldKey, true>>` — allowlist mode: listed fields are allowed, unlisted default to false
+ * - `{ mode: 'allow', fields: FieldKey[] }` — only listed fields are allowed; unlisted are denied
+ * - `{ mode: 'deny', fields: FieldKey[] }` — listed fields are denied; unlisted are allowed
  */
 export type FieldPermissionResult<TFieldKeys extends string> =
   | boolean
-  | Partial<Record<TFieldKeys, true>>;
+  | { mode: "allow"; fields: TFieldKeys[] }
+  | { mode: "deny"; fields: TFieldKeys[] };
 
 /**
  * A permission check can be a static value or a dynamic function.
- * Dynamic functions receive the document data and user for context-aware checks.
+ * Dynamic functions receive document data, user, and optional organization for
+ * context-aware checks.
  *
  * @typeParam TFieldKeys - Union of field key strings for this resource
  * @typeParam TDocType - The document type for this resource
- * @typeParam TUser - The user type (inferred from user collection)
+ * @typeParam TUser - The user type (inferred from user collection or explicit override)
+ * @typeParam TOrg - The organization type (inferred from org collection, or never)
  */
 export type PermissionCheck<
   TFieldKeys extends string,
   TDocType = Record<string, any>,
   TUser = Record<string, any>,
+  TOrg = never,
 > =
   | FieldPermissionResult<TFieldKeys>
-  | ((props: { data: TDocType; user: TUser }) => FieldPermissionResult<TFieldKeys>);
+  | ((props: PermissionCallbackProps<TDocType, TUser, TOrg>) => FieldPermissionResult<TFieldKeys>);
+
+/**
+ * Props passed to dynamic permission check callbacks.
+ * When TOrg is `never`, the `organization` field is omitted entirely.
+ */
+export type PermissionCallbackProps<
+  TDocType = Record<string, any>,
+  TUser = Record<string, any>,
+  TOrg = never,
+> = [TOrg] extends [never]
+  ? { data: TDocType; user: TUser }
+  : { data: TDocType; user: TUser; organization: TOrg };
 
 // =============================================================================
 // ACCESS ACTION TYPES
@@ -168,8 +204,9 @@ export type ResourcePermissions<
   TFieldKeys extends string,
   TDocType = Record<string, any>,
   TUser = Record<string, any>,
+  TOrg = never,
 > = Partial<{
-  [Action in AccessAction]: PermissionCheck<TFieldKeys, TDocType, TUser>;
+  [Action in AccessAction]: PermissionCheck<TFieldKeys, TDocType, TUser, TOrg>;
 }>;
 
 // =============================================================================
@@ -181,76 +218,140 @@ export type ResourcePermissions<
  * Each role maps to a partial record of resources, each mapping to action permissions.
  *
  * @typeParam TRoles - Union of role string literals (e.g., "admin" | "editor")
- * @typeParam TCollections - Tuple of VexCollection types
- * @typeParam TGlobals - Tuple of VexGlobal types
+ * @typeParam TResources - Tuple of VexCollection / VexGlobal types that are valid resources
  * @typeParam TUser - The user document type
+ * @typeParam TOrg - The organization document type (never if no org)
  */
 export type RolesWithPermissions<
   TRoles extends string,
-  TCollections extends readonly any[],
-  TGlobals extends readonly any[],
+  TResources extends readonly any[],
   TUser = Record<string, any>,
+  TOrg = never,
 > = Record<
   TRoles,
-  Partial<
-    {
-      [Slug in ExtractSlug<TCollections[number]>]: ResourcePermissions<
-        ExtractFieldKeys<LookupBySlug<TCollections, Slug>>,
-        ExtractDocType<LookupBySlug<TCollections, Slug>>,
-        TUser
-      >;
-    } & {
-      [Slug in ExtractSlug<TGlobals[number]>]: ResourcePermissions<
-        ExtractFieldKeys<LookupBySlug<TGlobals, Slug>>,
-        ExtractDocType<LookupBySlug<TGlobals, Slug>>,
-        TUser
-      >;
-    }
-  >
+  Partial<{
+    [Slug in ExtractSlugs<TResources>]: ResourcePermissions<
+      ExtractFieldKeys<LookupBySlug<TResources, Slug>>,
+      ExtractDocType<LookupBySlug<TResources, Slug>>,
+      TUser,
+      TOrg
+    >;
+  }>
 >;
 
 // =============================================================================
-// ACCESS CONFIG
+// ACCESS CONFIG INPUT (for defineAccess)
 // =============================================================================
 
 /**
- * Input shape for `defineAccess()`.
+ * Input shape for `defineAccess()` WITHOUT organization support.
  * Carries generics for full type inference of roles, resources, and field keys.
  */
-export interface VexAccessInput<
+export interface VexAccessInputBase<
   TRoles extends readonly string[],
-  TCollections extends readonly any[],
-  TGlobals extends readonly any[],
-  TUserSlug extends string,
+  TResources extends readonly any[],
+  TUserCollection extends { slug: string },
+  TUser,
 > {
   /** Array of role name strings. Use `as const` for literal type inference. */
   roles: TRoles;
 
-  /** The collections that become resources in the permission matrix. */
-  collections: TCollections;
-
-  /** The globals that become resources in the permission matrix. */
-  globals?: TGlobals;
+  /**
+   * The resources (collections, media collections, globals) that become entries
+   * in the permission matrix. When omitted, all collections and globals in the
+   * config are available — but type inference only works for explicitly listed resources.
+   */
+  resources?: TResources;
 
   /**
-   * Slug of the user collection. Used to infer the user type for
-   * dynamic permission callbacks `({ data, user })`.
-   * Must match a slug in the `collections` array.
+   * The user collection. Used to infer the user type for dynamic permission
+   * callbacks `({ data, user })`. Must be a collection created with `defineCollection`.
    */
-  userCollection: TUserSlug;
+  userCollection: TUserCollection;
+
+  /**
+   * Optional explicit user type override. When provided, this type is used
+   * for the `user` param in permission callbacks instead of inferring from
+   * the user collection's fields.
+   */
+  userType?: TUser;
 
   /** The role-to-resource-to-action permission matrix. */
   permissions: RolesWithPermissions<
     TRoles[number] & string,
-    TCollections,
-    TGlobals extends readonly any[] ? TGlobals : [],
-    ExtractDocType<LookupBySlug<TCollections, TUserSlug>>
+    TResources,
+    TUser extends undefined ? ExtractDocType<TUserCollection> : NonNullable<TUser>,
+    never
   >;
 }
 
 /**
+ * Input shape for `defineAccess()` WITH organization support.
+ * Extends the base input with org collection and user org field.
+ */
+export interface VexAccessInputWithOrg<
+  TRoles extends readonly string[],
+  TResources extends readonly any[],
+  TUserCollection extends { slug: string },
+  TUser,
+  TOrgCollection extends { slug: string },
+  TOrg,
+> {
+  roles: TRoles;
+  resources?: TResources;
+  userCollection: TUserCollection;
+  userType?: TUser;
+
+  /**
+   * The organization collection. Used to infer the organization type for
+   * dynamic permission callbacks `({ data, user, organization })`.
+   */
+  orgCollection: TOrgCollection;
+
+  /**
+   * Optional explicit organization type override. When provided, this type is
+   * used for the `organization` param in callbacks instead of inferring from
+   * the org collection's fields.
+   */
+  orgType?: TOrg;
+
+  /**
+   * The field key on the user collection that relates to the organization collection.
+   * Used at runtime by callers to resolve the organization from the user object.
+   * Must be a field key on the user collection.
+   */
+  userOrgField: ExtractFieldKeys<TUserCollection>;
+
+  permissions: RolesWithPermissions<
+    TRoles[number] & string,
+    TResources,
+    TUser extends undefined ? ExtractDocType<TUserCollection> : NonNullable<TUser>,
+    TOrg extends undefined ? ExtractDocType<TOrgCollection> : NonNullable<TOrg>
+  >;
+}
+
+/**
+ * Union of both input shapes. TypeScript will narrow based on presence of `orgCollection`.
+ */
+export type VexAccessInput<
+  TRoles extends readonly string[],
+  TResources extends readonly any[],
+  TUserCollection extends { slug: string },
+  TUser = undefined,
+  TOrgCollection extends { slug: string } = never,
+  TOrg = undefined,
+> = [TOrgCollection] extends [never]
+  ? VexAccessInputBase<TRoles, TResources, TUserCollection, TUser>
+  : VexAccessInputWithOrg<TRoles, TResources, TUserCollection, TUser, TOrgCollection, TOrg>;
+
+// =============================================================================
+// RESOLVED ACCESS CONFIG (stored on VexConfig)
+// =============================================================================
+
+/**
  * Resolved access config stored on `VexConfig.access`.
  * Type-erased version for storage in the config object.
+ * Use `hasPermission()` for type-safe runtime access.
  */
 export interface VexAccessConfig {
   /** The role name strings. */
@@ -260,17 +361,46 @@ export interface VexAccessConfig {
   userCollection: string;
 
   /**
+   * Slug of the organization collection, if org support is enabled.
+   */
+  orgCollection?: string;
+
+  /**
+   * The field key on the user collection that relates to the org collection.
+   * Present only when orgCollection is set.
+   */
+  userOrgField?: string;
+
+  /**
    * The permission matrix.
    * Type-erased to `Record<string, ...>` for runtime consumption.
    * Use `hasPermission()` for type-safe access.
    */
   permissions: Record<
     string, // role
-    Record<
-      string, // resource slug
-      Partial<Record<AccessAction, PermissionCheck<string, any, any>>>
-    > | undefined
+    | Record<
+        string, // resource slug
+        Partial<Record<AccessAction, PermissionCheck<string, any, any, any>>>
+      >
+    | undefined
   >;
+}
+```
+
+### `File: packages/core/src/errors/index.ts` (modify)
+
+Add `VexAccessConfigError` after the existing `VexMediaConfigError`.
+
+```typescript
+/**
+ * Thrown when access configuration is invalid.
+ * For example: orgCollection provided without userOrgField.
+ */
+export class VexAccessConfigError extends VexError {
+  constructor(detail: string) {
+    super(`Access configuration error: ${detail}`);
+    this.name = "VexAccessConfigError";
+  }
 }
 ```
 
@@ -284,33 +414,39 @@ export interface VexAccessConfig {
 
 ### `File: packages/core/src/access/defineAccess.ts`
 
-Thin identity function that returns its input. Exists purely for TypeScript generic inference so that `permissions` gets full autocomplete on roles, resource slugs, and field keys.
+Thin identity function that returns its input cast to `VexAccessConfig`. Exists purely for TypeScript generic inference so that `permissions` gets full autocomplete on roles, resource slugs, and field keys.
 
 ```typescript
-import type { VexAccessInput, VexAccessConfig } from "./types";
+import type { VexAccessConfig } from "./types";
+import { VexAccessConfigError } from "../errors";
 
 /**
  * Define access permissions for the Vex CMS admin panel.
  *
  * This is a builder function (like `defineCollection`) that provides full
- * TypeScript inference for roles, resource slugs, field keys, and user type.
- * The function body returns the input unchanged — it exists for type inference only.
+ * TypeScript inference for roles, resource slugs, field keys, user type,
+ * and organization type.
+ *
+ * The function validates configuration in non-production and returns a
+ * `VexAccessConfig` for passing to `defineConfig({ access: ... })`.
  *
  * @param props.roles - Array of role name strings. Use `as const` for literal inference.
- * @param props.collections - The collections array (same one passed to `defineConfig`).
- * @param props.globals - Optional globals array.
- * @param props.userCollection - Slug of the user collection (for user type inference in callbacks).
+ * @param props.resources - Optional array of collections/globals that are valid permission resources.
+ * @param props.userCollection - The user collection (for user type inference in callbacks).
+ * @param props.userType - Optional explicit user type override.
+ * @param props.orgCollection - Optional organization collection (for org type inference).
+ * @param props.orgType - Optional explicit organization type override.
+ * @param props.userOrgField - Required when orgCollection is set. Field on user collection referencing the org.
  * @param props.permissions - The role × resource × action permission matrix.
  * @returns A `VexAccessConfig` for passing to `defineConfig({ access: ... })`.
  *
  * @example
  * ```ts
- * import { allCollections } from './collections';
- *
- * export const access = defineAccess({
+ * // Without organization
+ * const access = defineAccess({
  *   roles: ['admin', 'editor', 'author'] as const,
- *   collections: allCollections,
- *   userCollection: 'user',
+ *   resources: [posts, users, categories] as const,
+ *   userCollection: users,
  *   permissions: {
  *     admin: {
  *       posts: { create: true, read: true, update: true, delete: true },
@@ -319,7 +455,7 @@ import type { VexAccessInput, VexAccessConfig } from "./types";
  *       posts: {
  *         create: true,
  *         read: true,
- *         update: ({ data, user }) => ({ title: true, status: true }),
+ *         update: ({ data, user }) => ({ mode: 'allow', fields: ['title', 'status'] }),
  *         delete: false,
  *       },
  *     },
@@ -327,8 +463,27 @@ import type { VexAccessInput, VexAccessConfig } from "./types";
  *       posts: {
  *         create: true,
  *         read: true,
- *         update: ({ data, user }) => ({ title: true }),
+ *         update: ({ data, user }) => ({ mode: 'allow', fields: ['title'] }),
  *         delete: ({ data, user }) => user._id === data.authorId,
+ *       },
+ *     },
+ *   },
+ * });
+ *
+ * // With organization
+ * const access = defineAccess({
+ *   roles: ['admin', 'member'] as const,
+ *   resources: [posts, users] as const,
+ *   userCollection: users,
+ *   orgCollection: organizations,
+ *   userOrgField: 'orgId',
+ *   permissions: {
+ *     admin: {
+ *       posts: { create: true, read: true, update: true, delete: true },
+ *     },
+ *     member: {
+ *       posts: {
+ *         read: ({ data, user, organization }) => data.orgId === organization._id,
  *       },
  *     },
  *   },
@@ -337,37 +492,61 @@ import type { VexAccessInput, VexAccessConfig } from "./types";
  */
 export function defineAccess<
   const TRoles extends readonly string[],
-  const TCollections extends readonly any[],
-  const TGlobals extends readonly any[],
-  const TUserSlug extends string,
+  const TResources extends readonly any[],
+  const TUserCollection extends { slug: string },
+  TUser = undefined,
+  const TOrgCollection extends { slug: string } = never,
+  TOrg = undefined,
 >(
-  props: VexAccessInput<TRoles, TCollections, TGlobals, TUserSlug>,
+  props: {
+    roles: TRoles;
+    resources?: TResources;
+    userCollection: TUserCollection;
+    userType?: TUser;
+    permissions: any;
+  } & (
+    | { orgCollection?: never; orgType?: never; userOrgField?: never }
+    | { orgCollection: TOrgCollection; orgType?: TOrg; userOrgField: string }
+  ),
 ): VexAccessConfig {
   // TODO: implement
   //
-  // 1. In non-production, validate that userCollection slug exists in the
-  //    collections array (find by props.userCollection matching collection.slug)
-  //    → console.warn if not found
+  // 1. Validate org config coupling:
+  //    → If props.orgCollection is provided but props.userOrgField is not
+  //      → throw VexAccessConfigError("orgCollection requires userOrgField")
+  //    → If props.userOrgField is provided but props.orgCollection is not
+  //      → throw VexAccessConfigError("userOrgField requires orgCollection")
   //
-  // 2. In non-production, validate that all resource slugs in permissions
-  //    match a collection or global slug
-  //    → console.warn for unknown resource slugs
+  // 2. In non-production (process.env.NODE_ENV !== "production"), validate:
+  //    a. That props.userCollection has a slug property
+  //       → console.warn if not: `[vex] defineAccess: userCollection must have a slug`
+  //    b. If props.resources is provided, validate that all resource slugs in
+  //       props.permissions match a slug in the resources array
+  //       → console.warn for unknown resource slugs:
+  //         `[vex] defineAccess: permission resource "${slug}" not found in resources`
+  //    c. Validate that all role keys in props.permissions match entries in the roles array
+  //       → console.warn for unknown roles:
+  //         `[vex] defineAccess: permission role "${role}" not in roles array`
+  //    d. If props.orgCollection is provided, validate it has a slug property
+  //       → console.warn if not
+  //    e. If props.userOrgField is provided and props.userCollection has fields,
+  //       validate that userOrgField exists in userCollection.fields
+  //       → console.warn if not found:
+  //         `[vex] defineAccess: userOrgField "${field}" not found in user collection fields`
   //
-  // 3. In non-production, validate that all role keys in permissions
-  //    match entries in the roles array
-  //    → console.warn for unknown roles
-  //
-  // 4. Return the config as VexAccessConfig:
+  // 3. Return the VexAccessConfig:
   //    {
   //      roles: props.roles,
-  //      userCollection: props.userCollection,
+  //      userCollection: props.userCollection.slug,
+  //      orgCollection: props.orgCollection?.slug,
+  //      userOrgField: props.userOrgField,
   //      permissions: props.permissions (cast to the erased type),
   //    }
   //
   // Edge cases:
-  // - Empty roles array → valid but permissions object should be empty
-  // - Empty collections array → valid but no resources to assign permissions to
-  // - globals is undefined → treat as empty array for validation
+  // - Empty roles array → valid, permissions object should be empty `{}`
+  // - Empty resources array → valid, no resources to assign permissions to
+  // - resources is undefined → valid, all config resources will be available at runtime
   throw new Error("Not implemented");
 }
 ```
@@ -378,17 +557,19 @@ export function defineAccess<
 import { describe, it, expect, vi } from "vitest";
 import { defineAccess } from "./defineAccess";
 import { defineCollection } from "../config/defineCollection";
-import { defineGlobal } from "../config/defineGlobal";
 import { text } from "../fields/text";
 import { number } from "../fields/number";
 import { select } from "../fields/select";
 import { checkbox } from "../fields/checkbox";
+import { relationship } from "../fields/relationship";
+import { VexAccessConfigError } from "../errors";
 
 // ---------------------------------------------------------------------------
 // Test fixtures
 // ---------------------------------------------------------------------------
 
-const posts = defineCollection("posts", {
+const posts = defineCollection({
+  slug: "posts",
   fields: {
     title: text({ label: "Title", required: true }),
     slug: text({ label: "Slug", required: true }),
@@ -404,7 +585,8 @@ const posts = defineCollection("posts", {
   labels: { plural: "Posts", singular: "Post" },
 });
 
-const users = defineCollection("user", {
+const users = defineCollection({
+  slug: "users",
   fields: {
     name: text({ label: "Name", required: true }),
     role: select({
@@ -416,27 +598,34 @@ const users = defineCollection("user", {
       required: true,
     }),
     postCount: number({ label: "Post Count" }),
+    orgId: relationship({ label: "Organization", to: "organizations" }),
   },
   labels: { plural: "Users", singular: "User" },
 });
 
-const categories = defineCollection("categories", {
+const categories = defineCollection({
+  slug: "categories",
   fields: {
     name: text({ label: "Name", required: true }),
     sortOrder: number({ label: "Sort Order" }),
   },
 });
 
-const siteSettings = defineGlobal("site_settings", {
-  label: "Site Settings",
+const organizations = defineCollection({
+  slug: "organizations",
   fields: {
-    siteName: text({ label: "Site Name", required: true }),
-    maintenance: checkbox({ label: "Maintenance Mode" }),
+    name: text({ label: "Name", required: true }),
+    plan: select({
+      label: "Plan",
+      options: [
+        { label: "Free", value: "free" },
+        { label: "Pro", value: "pro" },
+      ],
+    }),
   },
 });
 
-const allCollections = [posts, users, categories] as const;
-const allGlobals = [siteSettings] as const;
+const allResources = [posts, users, categories] as const;
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -446,8 +635,8 @@ describe("defineAccess", () => {
   it("returns a VexAccessConfig with roles, userCollection, and permissions", () => {
     const access = defineAccess({
       roles: ["admin", "editor"] as const,
-      collections: allCollections,
-      userCollection: "user",
+      resources: allResources,
+      userCollection: users,
       permissions: {
         admin: {
           posts: {
@@ -461,7 +650,7 @@ describe("defineAccess", () => {
           posts: {
             create: true,
             read: true,
-            update: { title: true, status: true },
+            update: { mode: "allow", fields: ["title", "status"] },
             delete: false,
           },
         },
@@ -469,7 +658,7 @@ describe("defineAccess", () => {
     });
 
     expect(access.roles).toEqual(["admin", "editor"]);
-    expect(access.userCollection).toBe("user");
+    expect(access.userCollection).toBe("users");
     expect(access.permissions).toBeDefined();
     expect(access.permissions["admin"]).toBeDefined();
     expect(access.permissions["editor"]).toBeDefined();
@@ -478,8 +667,8 @@ describe("defineAccess", () => {
   it("accepts boolean permission values", () => {
     const access = defineAccess({
       roles: ["admin"] as const,
-      collections: allCollections,
-      userCollection: "user",
+      resources: allResources,
+      userCollection: users,
       permissions: {
         admin: {
           posts: {
@@ -495,36 +684,55 @@ describe("defineAccess", () => {
     expect(access.permissions["admin"]?.["posts"]?.create).toBe(true);
   });
 
-  it("accepts partial Record<fieldKey, true> permission values", () => {
+  it("accepts allow mode with fields array", () => {
     const access = defineAccess({
       roles: ["editor"] as const,
-      collections: allCollections,
-      userCollection: "user",
+      resources: allResources,
+      userCollection: users,
       permissions: {
         editor: {
           posts: {
-            read: { title: true, slug: true },
-            update: { title: true },
+            read: true,
+            update: { mode: "allow", fields: ["title", "slug"] },
           },
         },
       },
     });
 
-    const readPerm = access.permissions["editor"]?.["posts"]?.read;
-    expect(readPerm).toEqual({ title: true, slug: true });
+    const updatePerm = access.permissions["editor"]?.["posts"]?.update;
+    expect(updatePerm).toEqual({ mode: "allow", fields: ["title", "slug"] });
+  });
+
+  it("accepts deny mode with fields array", () => {
+    const access = defineAccess({
+      roles: ["editor"] as const,
+      resources: allResources,
+      userCollection: users,
+      permissions: {
+        editor: {
+          posts: {
+            read: true,
+            update: { mode: "deny", fields: ["slug"] },
+          },
+        },
+      },
+    });
+
+    const updatePerm = access.permissions["editor"]?.["posts"]?.update;
+    expect(updatePerm).toEqual({ mode: "deny", fields: ["slug"] });
   });
 
   it("accepts dynamic function permission checks", () => {
     const access = defineAccess({
       roles: ["editor"] as const,
-      collections: allCollections,
-      userCollection: "user",
+      resources: allResources,
+      userCollection: users,
       permissions: {
         editor: {
           posts: {
             update: ({ data, user }) => {
-              // user type should be inferred from the "user" collection
-              return { title: true };
+              // user type should be inferred from the "users" collection
+              return { mode: "allow", fields: ["title"] as const };
             },
             delete: ({ data, user }) => {
               return false;
@@ -538,30 +746,11 @@ describe("defineAccess", () => {
     expect(typeof updatePerm).toBe("function");
   });
 
-  it("supports globals as resources", () => {
-    const access = defineAccess({
-      roles: ["admin"] as const,
-      collections: allCollections,
-      globals: allGlobals,
-      userCollection: "user",
-      permissions: {
-        admin: {
-          site_settings: {
-            read: true,
-            update: { siteName: true },
-          },
-        },
-      },
-    });
-
-    expect(access.permissions["admin"]?.["site_settings"]?.read).toBe(true);
-  });
-
   it("allows partial resource coverage per role", () => {
     const access = defineAccess({
       roles: ["admin", "viewer"] as const,
-      collections: allCollections,
-      userCollection: "user",
+      resources: allResources,
+      userCollection: users,
       permissions: {
         admin: {
           posts: { create: true, read: true, update: true, delete: true },
@@ -581,13 +770,13 @@ describe("defineAccess", () => {
   it("allows partial action coverage per resource", () => {
     const access = defineAccess({
       roles: ["editor"] as const,
-      collections: allCollections,
-      userCollection: "user",
+      resources: allResources,
+      userCollection: users,
       permissions: {
         editor: {
           posts: {
             read: true,
-            update: { title: true },
+            update: { mode: "allow", fields: ["title"] },
             // create and delete not mentioned → permissive default
           },
         },
@@ -597,26 +786,94 @@ describe("defineAccess", () => {
     expect(access.permissions["editor"]?.["posts"]?.create).toBeUndefined();
   });
 
-  it("warns in non-production when userCollection slug is not in collections", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "development";
-
-    defineAccess({
+  it("works without explicit resources (all collections available)", () => {
+    const access = defineAccess({
       roles: ["admin"] as const,
-      collections: allCollections,
-      userCollection: "nonexistent" as any,
+      userCollection: users,
       permissions: {
         admin: {},
       },
     });
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("nonexistent"),
-    );
+    expect(access.roles).toEqual(["admin"]);
+    expect(access.userCollection).toBe("users");
+  });
 
-    process.env.NODE_ENV = originalEnv;
-    warnSpy.mockRestore();
+  describe("organization support", () => {
+    it("accepts orgCollection and userOrgField together", () => {
+      const access = defineAccess({
+        roles: ["admin", "member"] as const,
+        resources: [posts, users] as const,
+        userCollection: users,
+        orgCollection: organizations,
+        userOrgField: "orgId",
+        permissions: {
+          admin: {
+            posts: { create: true, read: true, update: true, delete: true },
+          },
+          member: {
+            posts: {
+              read: ({ data, user, organization }) => {
+                // organization type should be inferred from org collection
+                return true;
+              },
+            },
+          },
+        },
+      });
+
+      expect(access.orgCollection).toBe("organizations");
+      expect(access.userOrgField).toBe("orgId");
+    });
+  });
+
+  describe("dev-mode warnings", () => {
+    it("warns when permission resource slug is not in resources", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = "development";
+
+      defineAccess({
+        roles: ["admin"] as const,
+        resources: [posts] as const,
+        userCollection: users,
+        permissions: {
+          admin: {
+            nonexistent: { read: true },
+          },
+        } as any,
+      });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("nonexistent"),
+      );
+
+      process.env.NODE_ENV = originalEnv;
+      warnSpy.mockRestore();
+    });
+
+    it("warns when permission role is not in roles array", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = "development";
+
+      defineAccess({
+        roles: ["admin"] as const,
+        resources: allResources,
+        userCollection: users,
+        permissions: {
+          admin: {},
+          unknown_role: { posts: { read: true } },
+        } as any,
+      });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("unknown_role"),
+      );
+
+      process.env.NODE_ENV = originalEnv;
+      warnSpy.mockRestore();
+    });
   });
 });
 ```
@@ -634,7 +891,7 @@ describe("defineAccess", () => {
 Runtime permission resolver. Takes a `VexAccessConfig`, a user (with roles), a resource slug, and an action, and returns the resolved field permission map or a single boolean.
 
 ```typescript
-import type { AccessAction, VexAccessConfig, PermissionCheck } from "./types";
+import type { AccessAction, VexAccessConfig, PermissionCheck, FieldPermissionResult } from "./types";
 
 /**
  * The result of resolving field permissions for a resource action.
@@ -643,20 +900,22 @@ import type { AccessAction, VexAccessConfig, PermissionCheck } from "./types";
 export type ResolvedFieldPermissions = Record<string, boolean>;
 
 /**
- * Resolve a permission check value (boolean, partial record, or function)
+ * Resolve a permission check value (boolean, mode object, or function)
  * into a full `Record<fieldKey, boolean>` for a given resource.
  *
  * @param props.check - The permission check value to resolve
  * @param props.fieldKeys - All field keys for this resource
  * @param props.data - The document data (for dynamic checks)
  * @param props.user - The user object (for dynamic checks)
+ * @param props.organization - Optional organization object (for dynamic checks)
  * @returns Full field permission map where every field has an explicit boolean
  */
 export function resolvePermissionCheck(props: {
-  check: PermissionCheck<string, any, any> | undefined;
+  check: PermissionCheck<string, any, any, any> | undefined;
   fieldKeys: string[];
   data: Record<string, any>;
   user: Record<string, any>;
+  organization?: Record<string, any>;
 }): ResolvedFieldPermissions {
   // TODO: implement
   //
@@ -664,28 +923,35 @@ export function resolvePermissionCheck(props: {
   //    (permissive default for missing actions)
   //    → Object.fromEntries(props.fieldKeys.map(k => [k, true]))
   //
-  // 2. If props.check is a function → call it with { data: props.data, user: props.user }
-  //    → result is either boolean or Partial<Record<fieldKey, true>>
+  // 2. If props.check is a function → call it with:
+  //    - If props.organization is defined: { data: props.data, user: props.user, organization: props.organization }
+  //    - Else: { data: props.data, user: props.user }
+  //    → result is boolean or { mode, fields } object
   //    → recurse or handle inline (go to step 3 or 4 with the result)
   //
   // 3. If the resolved value is a boolean:
   //    → return Object.fromEntries(props.fieldKeys.map(k => [k, resolvedBoolean]))
   //
-  // 4. If the resolved value is an object (Partial<Record<fieldKey, true>>):
-  //    → return Object.fromEntries(props.fieldKeys.map(k => [k, k in resolved && resolved[k] === true]))
-  //    → fields present in the record with value `true` → true
-  //    → all other fields → false (allowlist mode)
+  // 4. If the resolved value is a { mode, fields } object:
+  //    a. If mode === "allow":
+  //       → return Object.fromEntries(props.fieldKeys.map(k => [k, fields.includes(k)]))
+  //       → fields present in the array → true, all other fields → false
+  //    b. If mode === "deny":
+  //       → return Object.fromEntries(props.fieldKeys.map(k => [k, !fields.includes(k)]))
+  //       → fields present in the array → false, all other fields → true
   //
   // Edge cases:
   // - Function throws → let it propagate (caller decides error handling)
   // - Function returns undefined → treat as false (deny all)
   // - Empty fieldKeys array → return empty object
+  // - Empty fields array in mode object → "allow" with empty = deny all, "deny" with empty = allow all
   throw new Error("Not implemented");
 }
 
 /**
  * Merge field permission maps from multiple roles using OR logic.
  * If any role grants access to a field, that field is allowed.
+ * Allow always wins over deny in cross-role merges.
  *
  * @param props.permissionMaps - Array of resolved field permission maps (one per role)
  * @param props.fieldKeys - All field keys for this resource
@@ -698,8 +964,8 @@ export function mergeRolePermissions(props: {
   // TODO: implement
   //
   // 1. If props.permissionMaps is empty → return all-true map
-  //    (no roles = permissive default, but this shouldn't happen
-  //     since empty roles on user → deny all is handled by caller)
+  //    (no roles = permissive default; in practice this means no known roles
+  //     contributed, which is handled by caller returning deny-all for unknown roles)
   //
   // 2. For each field in props.fieldKeys:
   //    → result[field] = props.permissionMaps.some(map => map[field] === true)
@@ -716,16 +982,17 @@ export function mergeRolePermissions(props: {
 /**
  * Check permissions for a user on a resource action.
  *
- * Overload 1: Without `field` param → returns `Record<fieldKey, boolean>`
- * Overload 2: With `field` param → returns `boolean` for that specific field
+ * Without `field` param → returns `Record<fieldKey, boolean>` (full field map)
+ * With `field` param → returns `boolean` for that specific field
  *
  * @param props.access - The VexAccessConfig from defineAccess
- * @param props.user - The user object. Must have a property matching the roles (looked up by access.roles context).
+ * @param props.user - The user object
  * @param props.userRoles - The user's role(s) as a string array (e.g., `["admin"]` or `["editor", "author"]`)
  * @param props.resource - The resource slug (collection or global slug)
  * @param props.action - The CRUD action to check
  * @param props.fieldKeys - All field keys for this resource (required for resolution)
  * @param props.data - Document data for dynamic permission checks. Defaults to `{}`.
+ * @param props.organization - Optional organization object for org-aware permission checks.
  * @param props.field - Optional specific field to check. When provided, returns boolean instead of Record.
  * @returns `Record<string, boolean>` when field is omitted, `boolean` when field is provided
  */
@@ -737,6 +1004,7 @@ export function hasPermission(props: {
   action: AccessAction;
   fieldKeys: string[];
   data?: Record<string, any>;
+  organization?: Record<string, any>;
   field?: string;
 }): ResolvedFieldPermissions | boolean {
   // TODO: implement
@@ -749,34 +1017,41 @@ export function hasPermission(props: {
   //    a. If props.field is provided → return false
   //    b. Else → return all-false map from props.fieldKeys
   //
-  // 3. For each role in props.userRoles:
+  // 3. Filter props.userRoles to only include roles that exist in props.access.roles
+  //    → unknownRoles are skipped silently
+  //    → if ALL roles are unknown after filtering → deny all (same as step 2)
+  //
+  // 4. For each known role in the filtered roles:
   //    a. Look up props.access.permissions[role]
-  //    b. If undefined → this role has no permissions defined → skip (will be handled by merge)
-  //       Actually: if a role has NO resource entry, it should contribute an all-true map
-  //       (permissive default for undefined resources)
-  //       Wait — re-read: "permissive default" means if NO access config exists, all-true.
-  //       But if access config exists and a role has no entry for a resource, that role
-  //       contributes nothing for that resource (other roles may still grant access).
-  //       If NO role has an entry for the resource → all-true (permissive default).
+  //    b. If undefined → this role has no permissions object → skip
+  //       (contributes nothing; if NO role contributes, we get an empty
+  //        permissionMaps array → mergeRolePermissions returns all-true)
   //    c. Look up rolePermissions[props.resource]
   //    d. If undefined → this role has no permissions for this resource
-  //       → contribute an all-true map (permissive for this role on this resource)
+  //       → contribute an all-true map (permissive default for missing resource)
   //    e. Look up resourcePermissions[props.action]
-  //    f. Call resolvePermissionCheck({ check, fieldKeys: props.fieldKeys, data: props.data ?? {}, user: props.user })
+  //    f. Call resolvePermissionCheck({
+  //         check,
+  //         fieldKeys: props.fieldKeys,
+  //         data: props.data ?? {},
+  //         user: props.user,
+  //         organization: props.organization,
+  //       })
   //    g. Collect the resolved map
   //
-  // 4. Merge all role maps with mergeRolePermissions({ permissionMaps, fieldKeys: props.fieldKeys })
+  // 5. Merge all collected maps with mergeRolePermissions({ permissionMaps, fieldKeys: props.fieldKeys })
   //
-  // 5. If props.field is provided:
+  // 6. If props.field is provided:
   //    → return merged[props.field] ?? false
   //
-  // 6. Else → return the merged map
+  // 7. Else → return the merged map
   //
   // Edge cases:
   // - Role in userRoles not in access.roles → skip (no permissions for unknown roles)
-  // - Resource slug not in any role's permissions → all-true for all roles that don't mention it
+  // - Resource slug not in any role's permissions → all-true for each role that doesn't mention it
   // - Field not in fieldKeys → won't appear in result map; if asked via props.field → false
   // - data is undefined → default to {} for function calls
+  // - organization is undefined → passed through as-is to resolvePermissionCheck
   throw new Error("Not implemented");
 }
 ```
@@ -801,11 +1076,12 @@ const FIELD_KEYS_CATEGORIES = ["name", "sortOrder"];
 
 const mockUser = { _id: "user1", name: "Test User", role: ["editor"] };
 const mockOtherUser = { _id: "user2", name: "Other User", role: ["editor"] };
+const mockOrg = { _id: "org1", name: "Acme Corp", plan: "pro" };
 
 /** A fully-populated access config for testing. */
 const testAccess: VexAccessConfig = {
   roles: ["admin", "editor", "viewer"],
-  userCollection: "user",
+  userCollection: "users",
   permissions: {
     admin: {
       posts: {
@@ -825,12 +1101,12 @@ const testAccess: VexAccessConfig = {
       posts: {
         create: true,
         read: true,
-        update: { title: true, status: true },
+        update: { mode: "allow", fields: ["title", "status"] },
         delete: false,
       },
       categories: {
         read: true,
-        update: { name: true },
+        update: { mode: "allow", fields: ["name"] },
       },
     },
     viewer: {
@@ -841,21 +1117,55 @@ const testAccess: VexAccessConfig = {
   },
 };
 
+/** Access config with deny mode. */
+const denyModeAccess: VexAccessConfig = {
+  roles: ["editor"],
+  userCollection: "users",
+  permissions: {
+    editor: {
+      posts: {
+        update: { mode: "deny", fields: ["slug"] },
+      },
+    },
+  },
+};
+
 /** Access config with dynamic function checks. */
 const dynamicAccess: VexAccessConfig = {
   roles: ["editor"],
-  userCollection: "user",
+  userCollection: "users",
   permissions: {
     editor: {
       posts: {
         update: ({ data, user }: { data: any; user: any }) => {
           if (user._id === data.authorId) {
-            return { title: true, status: true, slug: true, featured: true };
+            return { mode: "allow", fields: ["title", "status", "slug", "featured"] };
           }
-          return { title: true };
+          return { mode: "allow", fields: ["title"] };
         },
         delete: ({ data, user }: { data: any; user: any }) => {
           return user._id === data.authorId;
+        },
+      },
+    },
+  },
+};
+
+/** Access config with organization-aware checks. */
+const orgAccess: VexAccessConfig = {
+  roles: ["member"],
+  userCollection: "users",
+  orgCollection: "organizations",
+  userOrgField: "orgId",
+  permissions: {
+    member: {
+      posts: {
+        read: ({ data, user, organization }: { data: any; user: any; organization: any }) => {
+          return data.orgId === organization._id;
+        },
+        update: ({ data, user, organization }: { data: any; user: any; organization: any }) => {
+          if (data.orgId !== organization._id) return false;
+          return { mode: "allow", fields: ["title", "status"] };
         },
       },
     },
@@ -915,9 +1225,9 @@ describe("resolvePermissionCheck", () => {
     });
   });
 
-  it("returns allowlist when check is a partial record", () => {
+  it("returns allowlist when check uses allow mode", () => {
     const result = resolvePermissionCheck({
-      check: { title: true, status: true },
+      check: { mode: "allow", fields: ["title", "status"] },
       fieldKeys: FIELD_KEYS_POSTS,
       data: {},
       user: mockUser,
@@ -928,6 +1238,54 @@ describe("resolvePermissionCheck", () => {
       slug: false,
       status: true,
       featured: false,
+    });
+  });
+
+  it("returns denylist when check uses deny mode", () => {
+    const result = resolvePermissionCheck({
+      check: { mode: "deny", fields: ["slug"] },
+      fieldKeys: FIELD_KEYS_POSTS,
+      data: {},
+      user: mockUser,
+    });
+
+    expect(result).toEqual({
+      title: true,
+      slug: false,
+      status: true,
+      featured: true,
+    });
+  });
+
+  it("allow mode with empty fields array denies all", () => {
+    const result = resolvePermissionCheck({
+      check: { mode: "allow", fields: [] },
+      fieldKeys: FIELD_KEYS_POSTS,
+      data: {},
+      user: mockUser,
+    });
+
+    expect(result).toEqual({
+      title: false,
+      slug: false,
+      status: false,
+      featured: false,
+    });
+  });
+
+  it("deny mode with empty fields array allows all", () => {
+    const result = resolvePermissionCheck({
+      check: { mode: "deny", fields: [] },
+      fieldKeys: FIELD_KEYS_POSTS,
+      data: {},
+      user: mockUser,
+    });
+
+    expect(result).toEqual({
+      title: true,
+      slug: true,
+      status: true,
+      featured: true,
     });
   });
 
@@ -965,8 +1323,44 @@ describe("resolvePermissionCheck", () => {
     });
   });
 
-  it("handles function returning partial record", () => {
-    const check = () => ({ title: true, slug: true });
+  it("calls function check with organization when provided", () => {
+    const check = ({ data, user, organization }: { data: any; user: any; organization: any }) => {
+      return data.orgId === organization._id;
+    };
+
+    const resultMatch = resolvePermissionCheck({
+      check,
+      fieldKeys: FIELD_KEYS_POSTS,
+      data: { orgId: "org1" },
+      user: mockUser,
+      organization: mockOrg,
+    });
+
+    expect(resultMatch).toEqual({
+      title: true,
+      slug: true,
+      status: true,
+      featured: true,
+    });
+
+    const resultNoMatch = resolvePermissionCheck({
+      check,
+      fieldKeys: FIELD_KEYS_POSTS,
+      data: { orgId: "org999" },
+      user: mockUser,
+      organization: mockOrg,
+    });
+
+    expect(resultNoMatch).toEqual({
+      title: false,
+      slug: false,
+      status: false,
+      featured: false,
+    });
+  });
+
+  it("handles function returning allow mode object", () => {
+    const check = () => ({ mode: "allow" as const, fields: ["title", "slug"] });
 
     const result = resolvePermissionCheck({
       check,
@@ -979,6 +1373,24 @@ describe("resolvePermissionCheck", () => {
       title: true,
       slug: true,
       status: false,
+      featured: false,
+    });
+  });
+
+  it("handles function returning deny mode object", () => {
+    const check = () => ({ mode: "deny" as const, fields: ["featured"] });
+
+    const result = resolvePermissionCheck({
+      check,
+      fieldKeys: FIELD_KEYS_POSTS,
+      data: {},
+      user: mockUser,
+    });
+
+    expect(result).toEqual({
+      title: true,
+      slug: true,
+      status: true,
       featured: false,
     });
   });
@@ -1052,6 +1464,24 @@ describe("mergeRolePermissions", () => {
       permissionMaps: [
         { title: true },
         { slug: true },
+      ],
+      fieldKeys: FIELD_KEYS_POSTS,
+    });
+
+    expect(result).toEqual({
+      title: true,
+      slug: true,
+      status: false,
+      featured: false,
+    });
+  });
+
+  it("allow wins over deny across roles", () => {
+    // Role A allows title, Role B denies title → title is allowed (OR logic)
+    const result = mergeRolePermissions({
+      permissionMaps: [
+        { title: true, slug: false, status: false, featured: false },
+        { title: false, slug: true, status: false, featured: false },
       ],
       fieldKeys: FIELD_KEYS_POSTS,
     });
@@ -1174,7 +1604,7 @@ describe("hasPermission", () => {
       });
     });
 
-    it("viewer gets all-false for delete on posts (no delete defined)", () => {
+    it("viewer gets all-true for delete on posts (no delete defined → permissive)", () => {
       const result = hasPermission({
         access: testAccess,
         user: mockUser,
@@ -1212,7 +1642,7 @@ describe("hasPermission", () => {
     });
   });
 
-  describe("partial record permissions (allowlist)", () => {
+  describe("allow mode permissions", () => {
     it("editor gets only allowed fields for update on posts", () => {
       const result = hasPermission({
         access: testAccess,
@@ -1257,6 +1687,26 @@ describe("hasPermission", () => {
       });
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe("deny mode permissions", () => {
+    it("editor gets all fields except denied ones for update", () => {
+      const result = hasPermission({
+        access: denyModeAccess,
+        user: mockUser,
+        userRoles: ["editor"],
+        resource: "posts",
+        action: "update",
+        fieldKeys: FIELD_KEYS_POSTS,
+      });
+
+      expect(result).toEqual({
+        title: true,
+        slug: false,
+        status: true,
+        featured: true,
+      });
     });
   });
 
@@ -1336,9 +1786,91 @@ describe("hasPermission", () => {
     });
   });
 
+  describe("organization-aware permissions", () => {
+    it("resolves function check with matching org", () => {
+      const result = hasPermission({
+        access: orgAccess,
+        user: mockUser,
+        userRoles: ["member"],
+        resource: "posts",
+        action: "read",
+        fieldKeys: FIELD_KEYS_POSTS,
+        data: { orgId: "org1" },
+        organization: mockOrg,
+      });
+
+      expect(result).toEqual({
+        title: true,
+        slug: true,
+        status: true,
+        featured: true,
+      });
+    });
+
+    it("resolves function check with non-matching org", () => {
+      const result = hasPermission({
+        access: orgAccess,
+        user: mockUser,
+        userRoles: ["member"],
+        resource: "posts",
+        action: "read",
+        fieldKeys: FIELD_KEYS_POSTS,
+        data: { orgId: "org999" },
+        organization: mockOrg,
+      });
+
+      expect(result).toEqual({
+        title: false,
+        slug: false,
+        status: false,
+        featured: false,
+      });
+    });
+
+    it("resolves function returning mode object with org check", () => {
+      const result = hasPermission({
+        access: orgAccess,
+        user: mockUser,
+        userRoles: ["member"],
+        resource: "posts",
+        action: "update",
+        fieldKeys: FIELD_KEYS_POSTS,
+        data: { orgId: "org1" },
+        organization: mockOrg,
+      });
+
+      expect(result).toEqual({
+        title: true,
+        slug: false,
+        status: true,
+        featured: false,
+      });
+    });
+
+    it("resolves function returning false when org doesn't match", () => {
+      const result = hasPermission({
+        access: orgAccess,
+        user: mockUser,
+        userRoles: ["member"],
+        resource: "posts",
+        action: "update",
+        fieldKeys: FIELD_KEYS_POSTS,
+        data: { orgId: "org999" },
+        organization: mockOrg,
+      });
+
+      expect(result).toEqual({
+        title: false,
+        slug: false,
+        status: false,
+        featured: false,
+      });
+    });
+  });
+
   describe("multi-role merge (OR logic)", () => {
     it("merges permissions from multiple roles", () => {
-      // editor: posts.update = { title: true, status: true }
+      // editor: posts.update = { mode: "allow", fields: ["title", "status"] }
       // viewer: posts has no update → permissive default (all-true)
       // OR merge: all-true wins
       const result = hasPermission({
@@ -1361,19 +1893,18 @@ describe("hasPermission", () => {
     });
 
     it("merges when both roles have restrictive permissions", () => {
-      // Create access where both roles are restrictive
       const restrictiveAccess: VexAccessConfig = {
         roles: ["role_a", "role_b"],
-        userCollection: "user",
+        userCollection: "users",
         permissions: {
           role_a: {
             posts: {
-              update: { title: true, slug: true },
+              update: { mode: "allow", fields: ["title", "slug"] },
             },
           },
           role_b: {
             posts: {
-              update: { status: true, featured: true },
+              update: { mode: "allow", fields: ["status", "featured"] },
             },
           },
         },
@@ -1397,6 +1928,44 @@ describe("hasPermission", () => {
       });
     });
 
+    it("allow wins over deny across roles", () => {
+      const mixedAccess: VexAccessConfig = {
+        roles: ["role_allow", "role_deny"],
+        userCollection: "users",
+        permissions: {
+          role_allow: {
+            posts: {
+              update: { mode: "allow", fields: ["title"] },
+            },
+          },
+          role_deny: {
+            posts: {
+              update: { mode: "deny", fields: ["title"] },
+            },
+          },
+        },
+      };
+
+      const result = hasPermission({
+        access: mixedAccess,
+        user: mockUser,
+        userRoles: ["role_allow", "role_deny"],
+        resource: "posts",
+        action: "update",
+        fieldKeys: FIELD_KEYS_POSTS,
+      });
+
+      // role_allow: title=true, slug=false, status=false, featured=false
+      // role_deny:  title=false, slug=true, status=true, featured=true
+      // OR merge:   title=true, slug=true, status=true, featured=true
+      expect(result).toEqual({
+        title: true,
+        slug: true,
+        status: true,
+        featured: true,
+      });
+    });
+
     it("unknown roles in userRoles are skipped", () => {
       const result = hasPermission({
         access: testAccess,
@@ -1407,15 +1976,12 @@ describe("hasPermission", () => {
         fieldKeys: FIELD_KEYS_POSTS,
       });
 
-      // unknown role has no permissions entry → no maps to merge → all-true (permissive)
-      // Wait: this is a case where the role IS in userRoles but NOT in access.permissions.
-      // Since we skip unknown roles, permissionMaps will be empty → mergeRolePermissions
-      // returns all-true. This is the permissive default.
+      // unknown role is not in access.roles → filtered out → no known roles → deny all
       expect(result).toEqual({
-        title: true,
-        slug: true,
-        status: true,
-        featured: true,
+        title: false,
+        slug: false,
+        status: false,
+        featured: false,
       });
     });
   });
@@ -1471,7 +2037,7 @@ describe("hasPermission", () => {
 ## Step 4: Config Integration + Exports
 
 - [ ] Modify `packages/core/src/types/index.ts` — add `access` to `VexConfig` and `VexConfigInput`
-- [ ] Modify `packages/core/src/config/defineConfig.ts` — make generic for inline access, pass through access field
+- [ ] Modify `packages/core/src/config/defineConfig.ts` — pass through access field
 - [ ] Modify `packages/core/src/index.ts` — export `defineAccess`, `hasPermission`, and access types
 - [ ] Run `pnpm --filter @vexcms/core build`
 - [ ] Run `pnpm --filter @vexcms/core test`
@@ -1486,13 +2052,13 @@ Add `access` field to both `VexConfig` and `VexConfigInput`.
 import type { VexAccessConfig } from "../access/types";
 ```
 
-**Add to `VexConfig` interface (after `schema: SchemaConfig;`):**
+**Add to `VexConfig` interface (after `media?: MediaConfig;`):**
 ```typescript
   /** RBAC access permissions config. Optional — if not set, all actions are allowed. */
   access?: VexAccessConfig;
 ```
 
-**Add to `VexConfigInput` interface (after `schema?: SchemaConfigInput;`):**
+**Add to `VexConfigInput` interface (after `media?: MediaConfigInput;`):**
 ```typescript
   /**
    * RBAC access permissions configuration.
@@ -1507,7 +2073,7 @@ import type { VexAccessConfig } from "../access/types";
 
 Pass through the `access` field from input to resolved config.
 
-**Add to the `config` object construction (after `schema: { ... },`):**
+**Add to the `config` object construction (after the `schema` spread):**
 ```typescript
     access: vexConfig.access,
 ```
@@ -1516,25 +2082,32 @@ Pass through the `access` field from input to resolved config.
 
 Add exports for the new access module.
 
-**Add function exports (after the `defineConfig` export):**
+**Add function exports (alongside the other function exports like `defineConfig`):**
 ```typescript
 export { defineAccess } from "./access/defineAccess";
 export { hasPermission } from "./access/hasPermission";
 ```
 
-**Add type exports (in the type export block, after the config input types):**
+**Add type exports (in the type export section):**
 ```typescript
-  // Access types
+export type {
   VexAccessConfig,
   VexAccessInput,
   AccessAction,
   FieldPermissionResult,
   PermissionCheck,
+  PermissionCallbackProps,
   RolesWithPermissions,
-  ResolvedFieldPermissions,
-```
+  ResourcePermissions,
+  ExtractSlug,
+  ExtractFieldKeys,
+  ExtractDocType,
+  LookupBySlug,
+  ExtractSlugs,
+} from "./access/types";
 
-Note: `VexAccessConfig` and `VexAccessInput` come from `"./access/types"`. `ResolvedFieldPermissions` comes from `"./access/hasPermission"`. Add appropriate import sources.
+export type { ResolvedFieldPermissions } from "./access/hasPermission";
+```
 
 ---
 
@@ -1544,15 +2117,21 @@ Note: `VexAccessConfig` and `VexAccessInput` come from `"./access/types"`. `Reso
 - [ ] `pnpm --filter @vexcms/core test` passes all existing tests + new access tests
 - [ ] `defineAccess` provides full LSP autocomplete for:
   - Role names (from `roles` array)
-  - Resource slugs (from `collections` and `globals` arrays)
-  - Field keys per resource in permission return types
+  - Resource slugs (from `resources` array when provided)
+  - Field keys per resource in permission return types (allow/deny fields arrays)
   - User type in `({ data, user })` callbacks (inferred from `userCollection`)
+  - Organization type in `({ data, user, organization })` callbacks (inferred from `orgCollection`)
 - [ ] `hasPermission` correctly resolves:
   - Boolean permissions → all-true or all-false field map
-  - Partial record permissions → allowlist with unlisted = false
-  - Function permissions → called with data/user context
-  - Multi-role OR merge
+  - Allow mode permissions → allowlist with unlisted = false
+  - Deny mode permissions → denylist with unlisted = true
+  - Function permissions → called with data/user/organization context
+  - Multi-role OR merge (allow always wins)
   - Permissive defaults for undefined access/resources/actions
   - `field` param overload returning single boolean
+- [ ] Organization support works:
+  - `orgCollection` + `userOrgField` are both required when either is provided
+  - Organization object flows through to permission callbacks
+  - Callbacks receive typed `organization` param when org is configured
 - [ ] `VexConfig.access` is optional and backward-compatible (existing configs without `access` still work)
 - [ ] Test-app still compiles without changes
