@@ -26,7 +26,7 @@ import { useUrlToFile } from "../hooks/useUrlToFile";
 import { MediaFileSection } from "../components/MediaFileSection";
 import { DeleteDocumentDialog } from "../components/DeleteDocumentDialog";
 
-const STANDARD_MEDIA_FIELDS = new Set([
+const STANDARD_MEDIA_FIELDS: Set<string> = new Set([
   ...LOCKED_MEDIA_FIELDS,
   ...OVERRIDABLE_MEDIA_FIELDS,
 ]);
@@ -410,7 +410,7 @@ export default function MediaCollectionEditView(props: {
             {customFields.map(({ name, field }) => (
               <div key={name} className="space-y-2">
                 <Label htmlFor={`edit-${name}`}>
-                  {field.label ?? name}
+                  {"label" in field && field.label ? field.label : name}
                 </Label>
                 <Input
                   id={`edit-${name}`}

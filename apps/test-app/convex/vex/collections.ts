@@ -110,7 +110,7 @@ export const createDocument = mutation({
     }
 
     const schema = generateFormSchema({
-      fields: collection.config.fields as Record<string, VexField>,
+      fields: collection.fields as Record<string, VexField>,
     })
 
     const result = schema.safeParse(fields)

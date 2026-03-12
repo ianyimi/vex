@@ -56,7 +56,7 @@ export function useMediaPicker(props: {
     results: (results ?? []) as Record<string, unknown>[],
     status,
     loadMore: handleLoadMore,
-    isLoading: isLoading || status === "LoadingFirstPage",
+    isLoading,
     canLoadMore: status === "CanLoadMore",
   };
 }

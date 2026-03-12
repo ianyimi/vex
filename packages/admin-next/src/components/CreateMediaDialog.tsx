@@ -25,7 +25,7 @@ interface CreateMediaDialogProps {
   onCreated: (props: { documentId: string }) => void;
 }
 
-const STANDARD_MEDIA_FIELDS = new Set([
+const STANDARD_MEDIA_FIELDS: Set<string> = new Set([
   ...LOCKED_MEDIA_FIELDS,
   ...OVERRIDABLE_MEDIA_FIELDS,
 ]);
@@ -304,7 +304,7 @@ export function CreateMediaDialog(props: CreateMediaDialogProps) {
           {customFields.map(({ name, field }) => (
             <div key={name} className="space-y-2">
               <Label htmlFor={`media-${name}`}>
-                {field.label ?? name}
+                {"label" in field && field.label ? field.label : name}
               </Label>
               <Input
                 id={`media-${name}`}

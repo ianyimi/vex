@@ -37,7 +37,7 @@ export async function devCommand(options: DevOptions = {}) {
   }
 
   // Start convex dev — this is the core of `vex dev`
-  const convexDev = startConvexDev(cwd);
+  startConvexDev(cwd);
 
   // Trace the import tree
   let watchedPaths = traceImports(configPath, outputPath);

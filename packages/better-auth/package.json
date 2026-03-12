@@ -18,7 +18,7 @@
     "dev": "tsup --watch",
     "clean": "rm -rf dist",
     "coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "test": "vitest run",
     "test:watch": "vitest"
   },
