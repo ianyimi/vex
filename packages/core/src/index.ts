@@ -1,5 +1,7 @@
 export { defineConfig } from "./config/defineConfig";
 export { defineCollection, defineMediaCollection } from "./config/defineCollection";
+export { defineAccess } from "./access/defineAccess";
+export { hasPermission } from "./access/hasPermission";
 export { sanitizeConfigForClient } from "./config/sanitizeConfig";
 export { isMediaCollection } from "./config/isMediaCollection";
 export { findCollectionBySlug, getAllCollections } from "./config/findCollectionBySlug";
@@ -87,6 +89,26 @@ export type {
   OverridableMediaField,
   DefaultMediaFieldKeys,
 } from "./types";
+
+export type {
+  VexAccessConfig,
+  VexAccessInput,
+  VexAccessInputBase,
+  VexAccessInputWithOrg,
+  AccessAction,
+  FieldPermissionResult,
+  PermissionCheck,
+  PermissionCallbackProps,
+  RolesWithPermissions,
+  ResourcePermissions,
+  ExtractSlug,
+  ExtractFieldKeys,
+  ExtractDocType,
+  LookupBySlug,
+  ExtractSlugs,
+} from "./access/types";
+
+export type { ResolvedFieldPermissions } from "./access/hasPermission";
 
 export { LOCKED_MEDIA_FIELDS, OVERRIDABLE_MEDIA_FIELDS } from "./types/media";
 

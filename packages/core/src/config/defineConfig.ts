@@ -85,6 +85,7 @@ export function defineConfig(vexConfig: VexConfigInput): VexConfig {
       ...BASE_VEX_CONFIG.schema,
       ...vexConfig.schema,
     },
+    access: vexConfig.access,
   };
 
   // Handle media config

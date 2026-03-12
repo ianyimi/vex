@@ -4,6 +4,7 @@ import type { VexAuthAdapter } from "./auth";
 import { AdminConfig, AdminConfigInput } from "./admin";
 import { SchemaConfig, SchemaConfigInput } from "./schema";
 import type { MediaConfig, MediaConfigInput, ClientMediaConfig } from "./media";
+import type { VexAccessConfig } from "../access/types";
 
 export * from "./fields";
 export * from "./collections";
@@ -33,6 +34,8 @@ export interface VexConfig {
   schema: SchemaConfig;
   /** Media collection configuration */
   media?: MediaConfig;
+  /** RBAC access permissions config. Optional — if not set, all actions are allowed. */
+  access?: VexAccessConfig;
 }
 
 /**
@@ -97,4 +100,11 @@ export interface VexConfigInput {
    * Requires a storage adapter when collections are provided.
    */
   media?: MediaConfigInput;
+  /**
+   * RBAC access permissions configuration.
+   * Created with `defineAccess()` or defined inline.
+   *
+   * If not set, the admin panel allows all actions on all fields (permissive default).
+   */
+  access?: VexAccessConfig;
 }

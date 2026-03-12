@@ -109,9 +109,10 @@ export interface SearchIndexConfig<
 export interface VexCollection<
   TFields extends Record<string, any> = any,
   TExtraKeys extends string = string,
+  TSlug extends string = string,
 > {
   /** The collection identifier, used in URLs and the database. */
-  readonly slug: string;
+  readonly slug: TSlug;
   /**
    * The fields that make up documents in this collection.
    * Each key becomes a field name, and the value defines

@@ -61,12 +61,14 @@ export function defineCollection<
   >[];
 }): VexCollection<
   TFields,
-  TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never
+  TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never,
+  TSlug
 > {
   const { auth: _auth, ...rest } = props;
   return rest as VexCollection<
     TFields,
-    TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never
+    TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never,
+    TSlug
   >;
 }
 
@@ -91,12 +93,13 @@ export function defineCollection<
  */
 export function defineMediaCollection<
   TFields extends Record<string, VexField> = Record<never, VexField>,
+  TSlug extends string = string,
 >(props: {
-  readonly slug: string;
+  readonly slug: TSlug;
   fields?: TFields;
   tableName?: string;
   labels?: { singular?: string; plural?: string };
   admin?: CollectionAdminConfig<TFields, DefaultMediaFieldKeys>;
-}): VexMediaCollection<TFields> {
-  return props as VexMediaCollection<TFields>;
+}): VexMediaCollection<TFields, TSlug> {
+  return props as VexMediaCollection<TFields, TSlug>;
 }

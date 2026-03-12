@@ -1,14 +1,12 @@
 import type { DataModel } from "@convex/_generated/dataModel"
 import type { TableNamesInDataModel } from "convex/server"
 
-import { ConvexError } from "convex/values"
 import { mutation, query } from "@convex/_generated/server"
-import { paginationOptsValidator } from "convex/server"
-import { v } from "convex/values"
-
 import { findCollectionBySlug } from "@vexcms/core"
-import config from "../../vex.config"
+import { paginationOptsValidator } from "convex/server"
+import { ConvexError, v } from "convex/values"
 
+import config from "../../vex.config"
 import * as Collections from "./model/collections"
 
 function requireCollection(slug: string) {
@@ -22,15 +20,15 @@ function requireCollection(slug: string) {
 export const listDocuments = query({
   args: {
     collectionSlug: v.string(),
-    paginationOpts: paginationOptsValidator,
     order: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     return await Collections.listDocuments<DataModel>({
       args: {
         collectionSlug: args.collectionSlug as TableNamesInDataModel<DataModel>,
-        paginationOpts: args.paginationOpts,
         order: args.order,
+        paginationOpts: args.paginationOpts,
       },
       ctx,
     })
@@ -41,8 +39,8 @@ export const countDocuments = query({
   args: { collectionSlug: v.string() },
   handler: async (ctx, { collectionSlug }) => {
     return await Collections.countDocuments<DataModel>({
-      ctx,
       args: { collectionSlug: collectionSlug as TableNamesInDataModel<DataModel> },
+      ctx,
     })
   },
 })
@@ -54,11 +52,11 @@ export const getDocument = query({
   },
   handler: async (ctx, { collectionSlug, documentId }) => {
     return await Collections.getDocument<DataModel>({
-      ctx,
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         documentId,
       },
+      ctx,
     })
   },
 })
@@ -73,13 +71,13 @@ export const updateDocument = mutation({
     const match = requireCollection(collectionSlug)
 
     return await Collections.updateDocument<DataModel>({
-      ctx,
       args: {
+        collectionFields: match.fields,
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         documentId,
         fields: fields as Record<string, unknown>,
-        collectionFields: match.fields,
       },
+      ctx,
     })
   },
 })
@@ -93,13 +91,13 @@ export const createDocument = mutation({
     const match = requireCollection(collectionSlug)
 
     return await Collections.createDocument<DataModel>({
-      ctx,
       args: {
+        collectionFields: match.fields,
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         fields: fields as Record<string, unknown>,
-        collectionFields: match.fields,
         kind: match.kind,
       },
+      ctx,
     })
   },
 })
@@ -113,12 +111,12 @@ export const deleteDocument = mutation({
     const match = requireCollection(collectionSlug)
 
     await Collections.deleteDocument<DataModel>({
-      ctx,
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         documentId,
         kind: match.kind,
       },
+      ctx,
     })
   },
 })
@@ -130,8 +128,8 @@ export const bulkDeleteDocuments = mutation({
   },
   handler: async (ctx, { documentIds }) => {
     return await Collections.bulkDeleteDocuments<DataModel>({
-      ctx,
       args: { documentIds },
+      ctx,
     })
   },
 })
@@ -139,17 +137,17 @@ export const bulkDeleteDocuments = mutation({
 export const searchDocuments = query({
   args: {
     collectionSlug: v.string(),
-    searchIndexName: v.string(),
-    searchField: v.string(),
     query: v.string(),
+    searchField: v.string(),
+    searchIndexName: v.string(),
   },
-  handler: async (ctx, { collectionSlug, searchIndexName, searchField, query: searchQuery }) => {
+  handler: async (ctx, { collectionSlug, query: searchQuery, searchField, searchIndexName }) => {
     return await Collections.searchDocuments<DataModel>({
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
-        searchIndexName,
-        searchField,
         query: searchQuery,
+        searchField,
+        searchIndexName,
       },
       ctx,
     })

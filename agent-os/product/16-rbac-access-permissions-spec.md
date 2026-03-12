@@ -35,6 +35,8 @@ Add a type-safe RBAC (Role-Based Access Control) permissions system to `@vexcms/
 
 12. **Org collection and user org field are coupled.** If `orgCollection` is provided, `userOrgField` is required (and vice versa). The `userOrgField` identifies which field on the user collection relates to the org collection.
 
+13. **`hasPermission` supports a `throwOnDenied` flag.** When `true`, `hasPermission` throws a `VexAccessError` instead of returning `false` or an all-false field map. This is useful in server-side guards (Convex mutations/queries) where you want to halt execution on denied access. When `false` (default), it returns normally.
+
 ## Out of Scope
 
 - Per-collection `access` config on `VexCollection`
@@ -58,7 +60,7 @@ packages/core/src/
 ├── types/
 │   └── index.ts               # Modified — add access to VexConfig / VexConfigInput
 ├── errors/
-│   └── index.ts               # Modified — add VexAccessConfigError
+│   └── index.ts               # Modified — add VexAccessConfigError, VexAccessError
 └── index.ts                   # Modified — export new access types and functions
 ```
 
@@ -74,7 +76,7 @@ packages/core/src/
 ## Step 1: Access Types
 
 - [ ] Create `packages/core/src/access/types.ts`
-- [ ] Add `VexAccessConfigError` to `packages/core/src/errors/index.ts`
+- [ ] Add `VexAccessConfigError` and `VexAccessError` to `packages/core/src/errors/index.ts`
 - [ ] Run `pnpm --filter @vexcms/core build` to verify compilation
 
 ### `File: packages/core/src/access/types.ts`
@@ -389,7 +391,7 @@ export interface VexAccessConfig {
 
 ### `File: packages/core/src/errors/index.ts` (modify)
 
-Add `VexAccessConfigError` after the existing `VexMediaConfigError`.
+Add `VexAccessConfigError` and `VexAccessError` after the existing `VexMediaConfigError`.
 
 ```typescript
 /**
@@ -400,6 +402,27 @@ export class VexAccessConfigError extends VexError {
   constructor(detail: string) {
     super(`Access configuration error: ${detail}`);
     this.name = "VexAccessConfigError";
+  }
+}
+
+/**
+ * Thrown by `hasPermission` when `throwOnDenied` is true and the user
+ * does not have permission for the requested action.
+ *
+ * Contains structured context about the denied access attempt so callers
+ * can log, surface to users, or handle programmatically.
+ */
+export class VexAccessError extends VexError {
+  constructor(
+    public readonly resource: string,
+    public readonly action: string,
+    public readonly field?: string,
+  ) {
+    const target = field
+      ? `field "${field}" on resource "${resource}"`
+      : `resource "${resource}"`;
+    super(`Access denied: ${action} on ${target}`);
+    this.name = "VexAccessError";
   }
 }
 ```
@@ -892,6 +915,7 @@ Runtime permission resolver. Takes a `VexAccessConfig`, a user (with roles), a r
 
 ```typescript
 import type { AccessAction, VexAccessConfig, PermissionCheck, FieldPermissionResult } from "./types";
+import { VexAccessError } from "../errors";
 
 /**
  * The result of resolving field permissions for a resource action.
@@ -994,7 +1018,9 @@ export function mergeRolePermissions(props: {
  * @param props.data - Document data for dynamic permission checks. Defaults to `{}`.
  * @param props.organization - Optional organization object for org-aware permission checks.
  * @param props.field - Optional specific field to check. When provided, returns boolean instead of Record.
+ * @param props.throwOnDenied - When true, throws VexAccessError instead of returning false/all-false. Default: false.
  * @returns `Record<string, boolean>` when field is omitted, `boolean` when field is provided
+ * @throws {VexAccessError} When `throwOnDenied` is true and any field is denied (field map mode) or the specific field is denied (single field mode)
  */
 export function hasPermission(props: {
   access: VexAccessConfig | undefined;
@@ -1006,6 +1032,7 @@ export function hasPermission(props: {
   data?: Record<string, any>;
   organization?: Record<string, any>;
   field?: string;
+  throwOnDenied?: boolean;
 }): ResolvedFieldPermissions | boolean {
   // TODO: implement
   //
@@ -1014,6 +1041,7 @@ export function hasPermission(props: {
   //    b. Else → return all-true map from props.fieldKeys
   //
   // 2. If props.userRoles is empty → deny all
+  //    → if props.throwOnDenied → throw new VexAccessError(props.resource, props.action, props.field)
   //    a. If props.field is provided → return false
   //    b. Else → return all-false map from props.fieldKeys
   //
@@ -1042,9 +1070,15 @@ export function hasPermission(props: {
   // 5. Merge all collected maps with mergeRolePermissions({ permissionMaps, fieldKeys: props.fieldKeys })
   //
   // 6. If props.field is provided:
-  //    → return merged[props.field] ?? false
+  //    → result = merged[props.field] ?? false
+  //    → if props.throwOnDenied && result === false
+  //      → throw new VexAccessError(props.resource, props.action, props.field)
+  //    → return result
   //
-  // 7. Else → return the merged map
+  // 7. Else:
+  //    → if props.throwOnDenied && Object.values(merged).some(v => v === false)
+  //      → throw new VexAccessError(props.resource, props.action)
+  //    → return the merged map
   //
   // Edge cases:
   // - Role in userRoles not in access.roles → skip (no permissions for unknown roles)
@@ -1052,6 +1086,8 @@ export function hasPermission(props: {
   // - Field not in fieldKeys → won't appear in result map; if asked via props.field → false
   // - data is undefined → default to {} for function calls
   // - organization is undefined → passed through as-is to resolvePermissionCheck
+  // - throwOnDenied with empty userRoles → throws VexAccessError (deny-all path)
+  // - throwOnDenied with all-true result → does not throw, returns normally
   throw new Error("Not implemented");
 }
 ```
@@ -1066,6 +1102,7 @@ import {
   mergeRolePermissions,
 } from "./hasPermission";
 import type { VexAccessConfig } from "./types";
+import { VexAccessError } from "../errors";
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -2027,6 +2064,116 @@ describe("hasPermission", () => {
       });
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe("throwOnDenied", () => {
+    it("throws VexAccessError when field is denied and throwOnDenied is true", () => {
+      expect(() =>
+        hasPermission({
+          access: testAccess,
+          user: mockUser,
+          userRoles: ["editor"],
+          resource: "posts",
+          action: "update",
+          fieldKeys: FIELD_KEYS_POSTS,
+          field: "slug",
+          throwOnDenied: true,
+        }),
+      ).toThrow(VexAccessError);
+    });
+
+    it("throws VexAccessError with resource and action context", () => {
+      try {
+        hasPermission({
+          access: testAccess,
+          user: mockUser,
+          userRoles: ["editor"],
+          resource: "posts",
+          action: "update",
+          fieldKeys: FIELD_KEYS_POSTS,
+          field: "slug",
+          throwOnDenied: true,
+        });
+        expect.fail("should have thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(VexAccessError);
+        expect((e as VexAccessError).resource).toBe("posts");
+        expect((e as VexAccessError).action).toBe("update");
+        expect((e as VexAccessError).field).toBe("slug");
+      }
+    });
+
+    it("throws VexAccessError when any field is denied in field map mode", () => {
+      expect(() =>
+        hasPermission({
+          access: testAccess,
+          user: mockUser,
+          userRoles: ["editor"],
+          resource: "posts",
+          action: "update",
+          fieldKeys: FIELD_KEYS_POSTS,
+          throwOnDenied: true,
+        }),
+      ).toThrow(VexAccessError);
+    });
+
+    it("does not throw when all fields are allowed", () => {
+      expect(() =>
+        hasPermission({
+          access: testAccess,
+          user: mockUser,
+          userRoles: ["admin"],
+          resource: "posts",
+          action: "update",
+          fieldKeys: FIELD_KEYS_POSTS,
+          throwOnDenied: true,
+        }),
+      ).not.toThrow();
+    });
+
+    it("does not throw when specific field is allowed", () => {
+      expect(() =>
+        hasPermission({
+          access: testAccess,
+          user: mockUser,
+          userRoles: ["editor"],
+          resource: "posts",
+          action: "update",
+          fieldKeys: FIELD_KEYS_POSTS,
+          field: "title",
+          throwOnDenied: true,
+        }),
+      ).not.toThrow();
+    });
+
+    it("throws when userRoles is empty and throwOnDenied is true", () => {
+      expect(() =>
+        hasPermission({
+          access: testAccess,
+          user: mockUser,
+          userRoles: [],
+          resource: "posts",
+          action: "read",
+          fieldKeys: FIELD_KEYS_POSTS,
+          throwOnDenied: true,
+        }),
+      ).toThrow(VexAccessError);
+    });
+
+    it("does not throw when throwOnDenied is false (default)", () => {
+      expect(() =>
+        hasPermission({
+          access: testAccess,
+          user: mockUser,
+          userRoles: ["editor"],
+          resource: "posts",
+          action: "update",
+          fieldKeys: FIELD_KEYS_POSTS,
+          field: "slug",
+          throwOnDenied: false,
+        }),
+      ).not.toThrow();
     });
   });
 });

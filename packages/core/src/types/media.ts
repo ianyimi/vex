@@ -83,8 +83,9 @@ export type DefaultMediaFieldKeys =
  */
 export interface VexMediaCollection<
   TFields extends Record<string, VexField> = any,
+  TSlug extends string = string,
 > {
-  readonly slug: string;
+  readonly slug: TSlug;
   fields?: TFields;
   tableName?: string;
   labels?: { singular?: string; plural?: string };

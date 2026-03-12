@@ -66,3 +66,35 @@ export class VexMediaConfigError extends VexError {
     this.name = "VexMediaConfigError";
   }
 }
+
+/**
+ * Thrown when access configuration is invalid.
+ * For example: orgCollection provided without userOrgField.
+ */
+export class VexAccessConfigError extends VexError {
+  constructor(detail: string) {
+    super(`Access configuration error: ${detail}`);
+    this.name = "VexAccessConfigError";
+  }
+}
+
+/**
+ * Thrown by `hasPermission` when `throwOnDenied` is true and the user
+ * does not have permission for the requested action.
+ *
+ * Contains structured context about the denied access attempt so callers
+ * can log, surface to users, or handle programmatically.
+ */
+export class VexAccessError extends VexError {
+  constructor(
+    public readonly resource: string,
+    public readonly action: string,
+    public readonly field?: string,
+  ) {
+    const target = field
+      ? `field "${field}" on resource "${resource}"`
+      : `resource "${resource}"`;
+    super(`Access denied: ${action} on ${target}`);
+    this.name = "VexAccessError";
+  }
+}
