@@ -22,6 +22,7 @@ interface MediaPickerState {
   canLoadMore: boolean;
   loadMore: () => void;
   isLoading: boolean;
+  isSearching?: boolean;
   selectedMedia: MediaDocument | null;
 }
 
@@ -30,6 +31,8 @@ interface FieldEntry {
   name: string;
   /** The VexField definition */
   field: VexField;
+  /** Whether this field is read-only (e.g., user lacks update permission) */
+  readOnly?: boolean;
 }
 
 interface AppFormProps {
@@ -107,18 +110,24 @@ function AppForm({
           <form.Field key={entry.name} name={entry.name}>
             {(field) => {
               const fieldDef = entry.field;
+              const readOnlyWrapper = (node: React.ReactNode) =>
+                entry.readOnly ? (
+                  <div className="opacity-60 pointer-events-none" aria-disabled="true">
+                    {node}
+                  </div>
+                ) : node;
 
               switch (fieldDef.type) {
                 case "text":
-                  return (
+                  return readOnlyWrapper(
                     <TextField field={field} fieldDef={fieldDef} name={entry.name} />
                   );
                 case "number":
-                  return (
+                  return readOnlyWrapper(
                     <NumberField field={field} fieldDef={fieldDef} name={entry.name} />
                   );
                 case "checkbox":
-                  return (
+                  return readOnlyWrapper(
                     <CheckboxFieldForm
                       field={field}
                       fieldDef={fieldDef}
@@ -127,7 +136,7 @@ function AppForm({
                   );
                 case "select":
                   if (fieldDef.hasMany) {
-                    return (
+                    return readOnlyWrapper(
                       <MultiSelectField
                         field={field}
                         fieldDef={fieldDef}
@@ -135,15 +144,15 @@ function AppForm({
                       />
                     );
                   }
-                  return (
+                  return readOnlyWrapper(
                     <SelectField field={field} fieldDef={fieldDef} name={entry.name} />
                   );
                 case "date":
-                  return (
+                  return readOnlyWrapper(
                     <DateField field={field} fieldDef={fieldDef} name={entry.name} />
                   );
                 case "imageUrl":
-                  return (
+                  return readOnlyWrapper(
                     <ImageUrlField
                       field={field}
                       fieldDef={fieldDef}
@@ -155,17 +164,17 @@ function AppForm({
                     onOpenUploadModal?.(entry.name, fieldDef.to);
 
                   if (renderUploadField) {
-                    return renderUploadField({
+                    return readOnlyWrapper(renderUploadField({
                       field,
                       fieldDef,
                       name: entry.name,
                       onUploadNew: uploadNew,
                       defaultValue: defaultValues[entry.name],
-                    });
+                    }));
                   }
 
                   const pickerState = uploadFieldStates?.[entry.name];
-                  return (
+                  return readOnlyWrapper(
                     <UploadField
                       field={field}
                       fieldDef={fieldDef}

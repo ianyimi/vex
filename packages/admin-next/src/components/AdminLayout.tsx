@@ -1,17 +1,29 @@
-import { SidebarInset, SidebarProvider } from "@vexcms/ui";
-import { AppSidebar, NavUserData } from "./AppSidebar";
-import { ComponentPropsWithRef } from "react";
-import { ClientVexConfig } from "@vexcms/core";
+import type { ClientVexConfig, VexAccessConfig } from "@vexcms/core";
+import type { ComponentPropsWithRef } from "react";
+import type { PermissionUser } from "../context/PermissionContext";
+import type { NavUserData } from "./AppSidebar";
+import { AdminLayoutClient } from "./AdminLayoutClient";
 
 export function AdminLayout({
   config,
   user,
+  permissionUser,
+  access,
   children,
-}: { config: ClientVexConfig; user?: NavUserData } & ComponentPropsWithRef<"div">) {
+}: {
+  config: ClientVexConfig;
+  user?: NavUserData;
+  permissionUser?: PermissionUser;
+  access?: VexAccessConfig;
+} & ComponentPropsWithRef<"div">) {
   return (
-    <SidebarProvider className="h-svh overflow-hidden">
-      <AppSidebar config={config} user={user} />
-      <SidebarInset className="overflow-y-hidden">{children}</SidebarInset>
-    </SidebarProvider>
+    <AdminLayoutClient
+      config={config}
+      user={user}
+      permissionUser={permissionUser}
+      access={access}
+    >
+      {children}
+    </AdminLayoutClient>
   );
 }

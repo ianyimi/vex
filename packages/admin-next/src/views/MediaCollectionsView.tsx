@@ -36,6 +36,7 @@ import {
   type DocumentForDeletion,
 } from "../components/DeleteDocumentDialog";
 import { RowActionsMenu } from "../components/RowActionsMenu";
+import { usePermissions } from "../hooks/usePermissions";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 const PAGE_SIZE_STRINGS = PAGE_SIZE_OPTIONS.map(String) as unknown as readonly [
@@ -113,9 +114,12 @@ export default function MediaCollectionsView({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Permission checks
+  const perms = usePermissions({ resource: collection.slug });
+
   const useAsTitle = collection.admin?.useAsTitle as string | undefined;
-  const disableDelete = collection.admin?.disableDelete ?? false;
-  const disableCreate = collection.admin?.disableCreate ?? false;
+  const disableDelete = (collection.admin?.disableDelete ?? false) || !perms.delete.allowed;
+  const disableCreate = (collection.admin?.disableCreate ?? false) || !perms.create.allowed;
   const searchAvailable = !!useAsTitle;
   const searchIndexName = useAsTitle ? `search_${useAsTitle}` : undefined;
   const isSearching = searchAvailable && debouncedSearch.trim().length > 0;
@@ -272,6 +276,7 @@ export default function MediaCollectionsView({
                 setDeleteOpen(true);
               }}
               disableDelete={disableDelete}
+              disableEdit={!perms.update.allowed}
               className="ml-1.5"
             />
           );

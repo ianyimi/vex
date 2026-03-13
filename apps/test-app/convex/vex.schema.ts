@@ -34,7 +34,13 @@ export const user = defineTable({
   createdAt: v.number(),
   updatedAt: v.number(),
   role: v.array(
-    v.union(v.literal("admin"), v.literal("editor"), v.literal("author"), v.literal("user"))
+    v.union(
+      v.literal("admin"),
+      v.literal("editor"),
+      v.literal("author"),
+      v.literal("member"),
+      v.literal("user")
+    )
   ),
   banned: v.optional(v.boolean()),
   banReason: v.optional(v.string()),

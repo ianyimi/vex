@@ -23,8 +23,9 @@ import {
 //   PieChartIcon,
 //   MapIcon,
 // } from "lucide-react";
-import { ClientVexConfig } from "@vexcms/core";
+import { ClientVexConfig, hasPermission } from "@vexcms/core";
 import { ComponentProps, ReactNode, useMemo } from "react";
+import { usePermissionContext } from "../../context/PermissionContext";
 
 type CollectionNavItem = {
   title: string;
@@ -40,11 +41,28 @@ type CollectionNavGroup = {
 
 export { type NavUserData } from "./nav-user";
 
+import type { PermissionUser } from "../../context/PermissionContext";
+
 export function AppSidebar({
   config,
   user,
+  onImpersonate,
+  impersonatableUsers,
   ...props
-}: { config: ClientVexConfig; user?: NavUserData } & ComponentProps<typeof Sidebar>) {
+}: {
+  config: ClientVexConfig;
+  user?: NavUserData;
+  onImpersonate?: (target: PermissionUser) => void;
+  impersonatableUsers?: PermissionUser[];
+} & ComponentProps<typeof Sidebar>) {
+  // Try to get permission context — may not exist if no access config
+  let permissionContext: ReturnType<typeof usePermissionContext> | null = null;
+  try {
+    permissionContext = usePermissionContext();
+  } catch {
+    // No permission provider — show all collections (permissive default)
+  }
+
   const nav = useMemo(() => {
     // Combine user collections + auth-only collections + media collections (no duplicates)
     const userSlugs = new Set(config.collections.map((c) => c.slug));
@@ -54,7 +72,21 @@ export function AppSidebar({
       ...(config.media?.collections.filter((c) => !userSlugs.has(c.slug)) ?? []),
     ];
 
-    const collections: CollectionNavItem[] = allCollections
+    // Filter collections by read access (no fields needed — just overall boolean)
+    const accessibleCollections = permissionContext?.access
+      ? allCollections.filter((c) => {
+          const readAllowed = hasPermission({
+            access: permissionContext!.access,
+            user: { _id: permissionContext!.user.id },
+            userRoles: permissionContext!.user.roles,
+            resource: c.slug,
+            action: "read",
+          });
+          return readAllowed === true;
+        })
+      : allCollections;
+
+    const collections: CollectionNavItem[] = accessibleCollections
       .filter((c) => !c.admin?.group)
       .map((c) => ({
         title: c.labels?.plural ?? c.slug,
@@ -63,7 +95,7 @@ export function AppSidebar({
       }));
 
     const collectionGroups: CollectionNavGroup[] = [];
-    allCollections.forEach((c) => {
+    accessibleCollections.forEach((c) => {
       if (!c.admin?.group) return;
       const index = collectionGroups.findIndex(
         (cg) => cg.title === c.admin!.group,
@@ -128,7 +160,7 @@ export function AppSidebar({
       globals,
       globalGroups,
     };
-  }, [config.collections, config.auth?.collections]);
+  }, [config.collections, config.auth?.collections, config.media?.collections, config.globals, config.basePath, permissionContext]);
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -143,7 +175,7 @@ export function AppSidebar({
       </SidebarContent>
       {user && (
         <SidebarFooter>
-          <NavUser user={user} />
+          <NavUser user={user} onImpersonate={onImpersonate} impersonatableUsers={impersonatableUsers} />
         </SidebarFooter>
       )}
       <SidebarRail />

@@ -267,6 +267,61 @@ describe("defineAccess", () => {
     });
   });
 
+  describe("adminRoles", () => {
+    it("defaults adminRoles to all roles when not specified", () => {
+      const access = defineAccess({
+        roles: ["admin", "editor"] as const,
+        resources: allResources,
+        userCollection: users,
+        permissions: {
+          admin: {},
+          editor: {},
+        },
+      });
+
+      expect(access.adminRoles).toEqual(["admin", "editor"]);
+    });
+
+    it("accepts explicit adminRoles subset", () => {
+      const access = defineAccess({
+        roles: ["admin", "editor", "viewer"] as const,
+        resources: allResources,
+        userCollection: users,
+        adminRoles: ["admin"],
+        permissions: {
+          admin: {},
+          editor: {},
+          viewer: {},
+        },
+      });
+
+      expect(access.adminRoles).toEqual(["admin"]);
+    });
+
+    it("warns when adminRole is not in roles array (dev mode)", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = "development";
+
+      defineAccess({
+        roles: ["admin"] as const,
+        resources: allResources,
+        userCollection: users,
+        adminRoles: ["nonexistent"] as any,
+        permissions: {
+          admin: {},
+        },
+      });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("nonexistent"),
+      );
+
+      process.env.NODE_ENV = originalEnv;
+      warnSpy.mockRestore();
+    });
+  });
+
   describe("dev-mode warnings", () => {
     it("warns when permission resource slug is not in resources", () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});

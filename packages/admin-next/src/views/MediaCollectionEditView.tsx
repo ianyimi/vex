@@ -25,6 +25,7 @@ import { AlertCircle } from "lucide-react";
 import { useUrlToFile } from "../hooks/useUrlToFile";
 import { MediaFileSection } from "../components/MediaFileSection";
 import { DeleteDocumentDialog } from "../components/DeleteDocumentDialog";
+import { usePermissions } from "../hooks/usePermissions";
 
 const STANDARD_MEDIA_FIELDS: Set<string> = new Set([
   ...LOCKED_MEDIA_FIELDS,
@@ -95,7 +96,13 @@ export default function MediaCollectionEditView(props: {
     maxSize: (props.collection as any).maxSize ?? 25 * 1024 * 1024,
   });
 
-  const disableDelete = props.collection.admin?.disableDelete ?? false;
+  // Permission checks
+  const perms = usePermissions({
+    resource: props.collection.slug,
+    data: document ?? undefined,
+  });
+
+  const disableDelete = (props.collection.admin?.disableDelete ?? false) || !perms.delete.allowed;
 
   // Custom fields
   const customFields = useMemo(() => {
@@ -317,7 +324,7 @@ export default function MediaCollectionEditView(props: {
             )}
             <Button
               onClick={handleSave}
-              disabled={isSaving || !document}
+              disabled={isSaving || !document || !perms.update.allowed}
             >
               {isSaving ? "Saving..." : "Save"}
             </Button>

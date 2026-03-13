@@ -184,6 +184,12 @@ export interface VexAccessInputBase<
   roles: TRoles;
 
   /**
+   * Roles that can access the admin panel and impersonate other users.
+   * Must be a subset of `roles`. Defaults to all roles if not specified.
+   */
+  adminRoles?: readonly (TRoles[number] & string)[];
+
+  /**
    * The resources (collections, media collections, globals) that become entries
    * in the permission matrix. When omitted, all collections and globals in the
    * config are available — but type inference only works for explicitly listed resources.
@@ -225,6 +231,11 @@ export interface VexAccessInputWithOrg<
   TOrg,
 > {
   roles: TRoles;
+  /**
+   * Roles that can access the admin panel and impersonate other users.
+   * Must be a subset of `roles`. Defaults to all roles if not specified.
+   */
+  adminRoles?: readonly (TRoles[number] & string)[];
   resources?: TResources;
   userCollection: TUserCollection;
   userType?: TUser;
@@ -283,6 +294,9 @@ export type VexAccessInput<
 export interface VexAccessConfig {
   /** The role name strings. */
   roles: readonly string[];
+
+  /** Roles that can access the admin panel and impersonate. */
+  adminRoles: readonly string[];
 
   /** Slug of the user collection. */
   userCollection: string;

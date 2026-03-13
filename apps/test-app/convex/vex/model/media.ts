@@ -20,9 +20,13 @@ export async function createMediaDocument<DataModel extends GenericDataModel>(pr
 }): Promise<string> {
   const f = { ...props.args.fields }
 
+  // Extract system fields that bypass form schema validation
+  const storageId = f.storageId
+  delete f.storageId
+
   // Resolve the file URL from storageId before inserting
-  if (f.storageId && (!f.url || f.url === "")) {
-    const url = await props.ctx.storage.getUrl(f.storageId as any)
+  if (storageId && (!f.url || f.url === "")) {
+    const url = await props.ctx.storage.getUrl(storageId as any)
     if (url) f.url = url
   }
 
@@ -38,8 +42,21 @@ export async function createMediaDocument<DataModel extends GenericDataModel>(pr
     })
   }
 
-  const id = await props.ctx.db.insert(props.args.collectionSlug as any, result.data as any)
+  // Re-attach storageId for the DB insert
+  const data = { ...result.data, ...(storageId ? { storageId } : {}) } as any
+  const id = await props.ctx.db.insert(props.args.collectionSlug as any, data)
   return id as string
+}
+
+async function resolveStorageUrl(
+  ctx: { storage: { getUrl: (id: any) => Promise<string | null> } },
+  doc: any,
+) {
+  if (doc?.storageId) {
+    const url = await ctx.storage.getUrl(doc.storageId)
+    if (url) return { ...doc, url }
+  }
+  return doc
 }
 
 export async function paginatedSearchDocuments<DataModel extends GenericDataModel>(props: {
@@ -54,11 +71,17 @@ export async function paginatedSearchDocuments<DataModel extends GenericDataMode
 }) {
   const { args, ctx } = props
 
+  let result
   if (args.query === "") {
-    return await ctx.db.query(args.collectionSlug).paginate(args.paginationOpts)
+    result = await ctx.db.query(args.collectionSlug).paginate(args.paginationOpts)
+  } else {
+    result = await (ctx.db.query(args.collectionSlug))
+      .withSearchIndex(args.searchIndexName, (q) => q.search(args.searchField, args.query))
+      .paginate(args.paginationOpts)
   }
 
-  return await (ctx.db.query(args.collectionSlug))
-    .withSearchIndex(args.searchIndexName, (q) => q.search(args.searchField, args.query))
-    .paginate(args.paginationOpts)
+  const resolvedPage = await Promise.all(
+    result.page.map((doc: any) => resolveStorageUrl(ctx, doc)),
+  )
+  return { ...result, page: resolvedPage }
 }

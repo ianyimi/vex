@@ -11,7 +11,7 @@ import { getAuthTables } from "better-auth/db";
 
 /** Fields that are editable per auth table. Everything else is read-only. */
 const EDITABLE_FIELDS: Record<string, Set<string>> = {
-  user: new Set(["name", "image"]),
+  user: new Set(["name", "image", "role", "banned", "banReason", "banExpires"]),
 };
 
 /** Fields that should be hidden from the admin panel (sensitive data). */

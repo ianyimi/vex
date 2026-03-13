@@ -1,15 +1,72 @@
 import type { DataModel } from "@convex/_generated/dataModel"
-import type { TableNamesInDataModel } from "convex/server"
+import type { GenericQueryCtx, TableNamesInDataModel } from "convex/server"
 
 import { ConvexError } from "convex/values"
 import { mutation, query, action } from "@convex/_generated/server"
 import { paginationOptsValidator } from "convex/server"
 import { v } from "convex/values"
 
-import { findCollectionBySlug } from "@vexcms/core"
+import { findCollectionBySlug, hasPermission } from "@vexcms/core"
+import { TABLE_SLUG_USERS } from "~/db/constants"
 import config from "../../vex.config"
+import { access } from "../../src/vexcms/access"
 
 import * as Media from "./model/media"
+
+async function getUser(ctx: GenericQueryCtx<DataModel>) {
+  const identity = await ctx.auth.getUserIdentity()
+  if (!identity?.email) return null
+
+  const user = await ctx.db
+    .query(TABLE_SLUG_USERS)
+    .withIndex("by_email", (q) => q.eq("email", identity.email!))
+    .first()
+
+  if (!user) return null
+
+  return {
+    user: user as Record<string, unknown>,
+    roles: (user.role as string[]) ?? [],
+  }
+}
+
+async function requireUser(ctx: GenericQueryCtx<DataModel>) {
+  const result = await getUser(ctx)
+  if (!result) {
+    throw new ConvexError("Not authenticated")
+  }
+  return result
+}
+
+function checkPermission(props: Parameters<typeof hasPermission>[0]) {
+  const result = hasPermission(props)
+  const denied =
+    result === false ||
+    (typeof result === "object" && !Object.values(result).some(Boolean))
+
+  if (denied) {
+    const grantingRoles: string[] = []
+    if (props.access) {
+      for (const role of props.access.roles) {
+        const check = hasPermission({ ...props, userRoles: [role] })
+        const allowed =
+          check === true ||
+          (typeof check === "object" && Object.values(check).some(Boolean))
+        if (allowed) grantingRoles.push(role)
+      }
+    }
+
+    const rolesHint =
+      grantingRoles.length > 0
+        ? ` Requires one of: ${grantingRoles.join(", ")}`
+        : ""
+    throw new ConvexError(
+      `Access denied: "${props.action}" on "${props.resource}".${rolesHint}`,
+    )
+  }
+
+  return result
+}
 
 export const generateUploadUrl = mutation({
   args: {},
@@ -28,6 +85,17 @@ export const createMediaDocument = mutation({
     if (!match) {
       throw new ConvexError(`Collection not found: ${collectionSlug}`)
     }
+
+    const { user, roles } = await requireUser(ctx)
+
+    checkPermission({
+      access,
+      user,
+      userRoles: roles,
+      resource: collectionSlug,
+      action: "create",
+      data: fields as Record<string, unknown>,
+    })
 
     return await Media.createMediaDocument<DataModel>({
       ctx,
@@ -49,7 +117,7 @@ export const paginatedSearchDocuments = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, { collectionSlug, searchIndexName, searchField, query: searchQuery, paginationOpts }) => {
-    return await Media.paginatedSearchDocuments<DataModel>({
+    const result = await Media.paginatedSearchDocuments<DataModel>({
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         searchIndexName,
@@ -59,6 +127,24 @@ export const paginatedSearchDocuments = query({
       },
       ctx,
     })
+
+    // Filter by read permission if user is authenticated
+    const auth = await getUser(ctx)
+    if (!auth) return result
+
+    const filteredPage = result.page.filter((doc: Record<string, unknown>) => {
+      const readAllowed = hasPermission({
+        access,
+        user: auth.user,
+        userRoles: auth.roles,
+        resource: collectionSlug,
+        action: "read",
+        data: doc,
+      })
+      return readAllowed === true
+    })
+
+    return { ...result, page: filteredPage }
   },
 })
 

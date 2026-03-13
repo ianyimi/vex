@@ -21,8 +21,10 @@ interface UploadFieldProps {
   canLoadMore: boolean;
   /** Load more results */
   onLoadMore: () => void;
-  /** Whether results are loading */
+  /** Whether initial results are loading */
   isLoading: boolean;
+  /** Whether a search query is in-flight */
+  isSearching?: boolean;
   /** Called to open the upload modal */
   onUploadNew: () => void;
   /** The currently selected media document (for display) */
@@ -47,6 +49,7 @@ function UploadField({
   canLoadMore,
   onLoadMore,
   isLoading,
+  isSearching,
   onUploadNew,
   selectedMedia,
   mediaEditHref,
@@ -81,6 +84,7 @@ function UploadField({
         canLoadMore={canLoadMore}
         onLoadMore={onLoadMore}
         isLoading={isLoading}
+        isSearching={isSearching}
         onUploadNew={onUploadNew}
         disabled={fieldDef.admin?.readOnly}
         selectedLabel={selectedMedia?.filename}

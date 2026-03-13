@@ -30,8 +30,10 @@ interface MediaPickerProps {
   canLoadMore: boolean;
   /** Load more results */
   onLoadMore: () => void;
-  /** Whether results are loading */
+  /** Whether initial results are loading (no previous results to show) */
   isLoading: boolean;
+  /** Whether a search query is in-flight (shows spinner in input) */
+  isSearching?: boolean;
   /** Placeholder text for search input */
   searchPlaceholder?: string;
   /** Called when "Upload new" button is clicked */
@@ -78,6 +80,7 @@ function MediaPicker(props: MediaPickerProps) {
               }
               placeholder={props.searchPlaceholder ?? "Search media..."}
               className="pl-8 h-9"
+              loading={props.isSearching}
             />
           </div>
         </div>

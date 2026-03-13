@@ -20,6 +20,7 @@ const mockOrg = { _id: "org1", name: "Acme Corp", plan: "pro" };
 /** A fully-populated access config for testing. */
 const testAccess: VexAccessConfig = {
   roles: ["admin", "editor", "viewer"],
+  adminRoles: ["admin", "editor", "viewer"],
   userCollection: "users",
   permissions: {
     admin: {
@@ -59,6 +60,7 @@ const testAccess: VexAccessConfig = {
 /** Access config with deny mode. */
 const denyModeAccess: VexAccessConfig = {
   roles: ["editor"],
+  adminRoles: ["editor"],
   userCollection: "users",
   permissions: {
     editor: {
@@ -72,6 +74,7 @@ const denyModeAccess: VexAccessConfig = {
 /** Access config with dynamic function checks. */
 const dynamicAccess: VexAccessConfig = {
   roles: ["editor"],
+  adminRoles: ["editor"],
   userCollection: "users",
   permissions: {
     editor: {
@@ -93,6 +96,7 @@ const dynamicAccess: VexAccessConfig = {
 /** Access config with organization-aware checks. */
 const orgAccess: VexAccessConfig = {
   roles: ["member"],
+  adminRoles: ["member"],
   userCollection: "users",
   orgCollection: "organizations",
   userOrgField: "orgId",
@@ -114,6 +118,7 @@ const orgAccess: VexAccessConfig = {
 /** Access config with boolean resource-level permissions. */
 const booleanResourceAccess: VexAccessConfig = {
   roles: ["admin", "blocked"],
+  adminRoles: ["admin"],
   userCollection: "users",
   permissions: {
     admin: {
@@ -1057,6 +1062,7 @@ describe("hasPermission", () => {
     it("merges when both roles have restrictive permissions", () => {
       const restrictiveAccess: VexAccessConfig = {
         roles: ["role_a", "role_b"],
+        adminRoles: ["role_a", "role_b"],
         userCollection: "users",
         permissions: {
           role_a: {
@@ -1091,6 +1097,7 @@ describe("hasPermission", () => {
     it("allow wins over deny across roles (with fields)", () => {
       const mixedAccess: VexAccessConfig = {
         roles: ["role_allow", "role_deny"],
+        adminRoles: ["role_allow", "role_deny"],
         userCollection: "users",
         permissions: {
           role_allow: {

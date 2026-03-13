@@ -30,6 +30,7 @@ import { useQueryState } from "nuqs";
 import { Trash2 } from "lucide-react";
 import { DeleteDocumentDialog } from "../components/DeleteDocumentDialog";
 import { UploadFieldWrapper } from "../components/UploadFieldWrapper";
+import { usePermissions } from "../hooks/usePermissions";
 
 export default function CollectionEditView({
   config,
@@ -107,7 +108,15 @@ export default function CollectionEditView({
     return null;
   }, [pendingUploadFieldName, collection]);
 
-  const disableDelete = collection.admin?.disableDelete ?? false;
+  // Permission checks
+  const fieldKeys = Object.keys(collection.fields as Record<string, VexField>);
+  const perms = usePermissions({
+    resource: collection.slug,
+    fields: fieldKeys,
+    data: document ?? undefined,
+  });
+
+  const disableDelete = (collection.admin?.disableDelete ?? false) || !perms.delete.allowed;
 
   // Generate Zod schema from collection fields
   const schema = useMemo(
@@ -118,13 +127,21 @@ export default function CollectionEditView({
     [collection],
   );
 
-  // Build field entries (excluding hidden fields)
+  // Build field entries (excluding hidden fields and fields user can't read)
   const fieldEntries: FieldEntry[] = useMemo(
     () =>
       Object.entries(collection.fields as Record<string, VexField>)
-        .filter(([, field]) => !field.admin?.hidden)
-        .map(([name, field]) => ({ name, field })),
-    [collection],
+        .filter(([name, field]) => {
+          if (field.admin?.hidden) return false;
+          if (!perms.read.isFieldAllowed(name)) return false;
+          return true;
+        })
+        .map(([name, field]) => ({
+          name,
+          field,
+          readOnly: !perms.update.isFieldAllowed(name),
+        })),
+    [collection, perms.read, perms.update],
   );
 
   // Build default values from the fetched document
@@ -201,7 +218,7 @@ export default function CollectionEditView({
             <Button
               type="submit"
               form="collection-edit-form"
-              disabled={isSaving || fieldEntries.length === 0}
+              disabled={isSaving || fieldEntries.length === 0 || !perms.update.allowed}
             >
               {isSaving ? "Saving..." : "Save"}
             </Button>

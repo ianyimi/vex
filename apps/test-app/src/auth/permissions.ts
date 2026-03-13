@@ -45,6 +45,22 @@ const ROLES = {
       update: true,
     },
   },
+  [USER_ROLES.editor]: {
+    [TABLE_SLUG_USERS]: {
+      read: true,
+    },
+  },
+  [USER_ROLES.author]: {
+    [TABLE_SLUG_USERS]: {
+      read: ({ data: targetUser, user }) => user._id === targetUser._id,
+      update: ({ data: targetUser, user }) => user._id === targetUser._id,
+    },
+  },
+  [USER_ROLES.member]: {
+    [TABLE_SLUG_USERS]: {
+      read: ({ data: targetUser, user }) => user._id === targetUser._id,
+    },
+  },
   [USER_ROLES.user]: {
     [TABLE_SLUG_USERS]: {
       create: false,

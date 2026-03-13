@@ -23,7 +23,11 @@ import {
   CreditCardIcon,
   BellIcon,
   LogOutIcon,
+  UserIcon,
+  CheckIcon,
 } from "lucide-react";
+import { usePermissionContext } from "../../context/PermissionContext";
+import type { PermissionUser } from "../../context/PermissionContext";
 
 export interface NavUserData {
   name: string;
@@ -31,8 +35,32 @@ export interface NavUserData {
   avatar?: string;
 }
 
-export function NavUser({ user }: { user: NavUserData }) {
+export function NavUser({
+  user,
+  onImpersonate,
+  impersonatableUsers,
+}: {
+  user: NavUserData;
+  onImpersonate?: (target: PermissionUser) => void;
+  impersonatableUsers?: PermissionUser[];
+}) {
   const { isMobile } = useSidebar();
+
+  // Try to get permission context for impersonation state
+  let canImpersonate = false;
+  let currentImpersonatedId: string | undefined;
+  try {
+    const ctx = usePermissionContext();
+    canImpersonate = ctx.canImpersonate;
+    currentImpersonatedId = ctx.impersonation.active
+      ? ctx.impersonation.impersonatedUser?.id
+      : undefined;
+  } catch {
+    // No permission provider
+  }
+
+  const showImpersonation = canImpersonate && onImpersonate && impersonatableUsers && impersonatableUsers.length > 0;
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -55,7 +83,7 @@ export function NavUser({ user }: { user: NavUserData }) {
             <ChevronsUpDownIcon className="ml-auto size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="min-w-56 rounded-lg"
+            className="min-w-56 rounded-lg max-h-[400px] overflow-y-auto"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
@@ -98,6 +126,31 @@ export function NavUser({ user }: { user: NavUserData }) {
                 Notifications
               </DropdownMenuItem>
             </DropdownMenuGroup>
+            {showImpersonation && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Impersonate User</DropdownMenuLabel>
+                  {impersonatableUsers.map((target) => (
+                    <DropdownMenuItem
+                      key={target.id}
+                      onClick={() => onImpersonate(target)}
+                    >
+                      <UserIcon className="h-3 w-3" />
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <span className="truncate text-sm">{target.name}</span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {target.roles.join(", ")}
+                        </span>
+                      </div>
+                      {currentImpersonatedId === target.id && (
+                        <CheckIcon className="h-3 w-3 ml-auto text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              </>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <LogOutIcon />

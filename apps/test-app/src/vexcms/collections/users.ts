@@ -38,6 +38,7 @@ export const users = defineCollection({
         { label: "Admin", value: "admin" },
         { label: "Editor", value: "editor" },
         { label: "Author", value: "author" },
+        { label: "Member", value: "member" },
         { label: "User", value: "user" },
       ],
       required: true,

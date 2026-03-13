@@ -85,6 +85,7 @@ export function useMediaPickerState(props: {
     canLoadMore: picker.canLoadMore,
     loadMore: picker.loadMore,
     isLoading: picker.isLoading,
+    isSearching: picker.isSearching,
     selectedMedia,
   };
 }

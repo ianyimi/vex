@@ -61,6 +61,7 @@ export function UploadFieldWrapper(props: {
       canLoadMore={pickerState.canLoadMore}
       onLoadMore={pickerState.loadMore}
       isLoading={pickerState.isLoading}
+      isSearching={pickerState.isSearching}
       onUploadNew={props.onUploadNew}
       selectedMedia={pickerState.selectedMedia}
       mediaEditHref={mediaEditHref}

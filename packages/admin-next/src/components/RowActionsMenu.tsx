@@ -11,12 +11,15 @@ interface RowActionsMenuProps extends ComponentPropsWithRef<"button"> {
   onDelete: () => void;
   /** Whether delete is disabled (e.g., disableDelete flag on collection) */
   disableDelete?: boolean;
+  /** Whether edit is disabled (e.g., no update permission) */
+  disableEdit?: boolean;
 }
 
 export function RowActionsMenu({
   onEdit,
   onDelete,
   disableDelete,
+  disableEdit,
   ...divProps
 }: RowActionsMenuProps) {
   const [open, setOpen] = useState(false);
@@ -30,17 +33,19 @@ export function RowActionsMenu({
         <span className="sr-only">Actions</span>
       </PopoverTrigger>
       <PopoverContent align="end" className="p-1 w-40">
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-2 h-8 px-2 text-sm"
-          onClick={() => {
-            setOpen(false);
-            onEdit();
-          }}
-        >
-          <Pencil className="h-4 w-4" />
-          Edit
-        </Button>
+        {!disableEdit && (
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-2 h-8 px-2 text-sm"
+            onClick={() => {
+              setOpen(false);
+              onEdit();
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+            Edit
+          </Button>
+        )}
         {!disableDelete && (
           <Button
             variant="ghost"

@@ -36,6 +36,7 @@ import {
 } from "../components/DeleteDocumentDialog";
 import { RowActionsMenu } from "../components/RowActionsMenu";
 import { UploadCellPreview } from "../components/UploadCellPreview";
+import { usePermissions } from "../hooks/usePermissions";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 const PAGE_SIZE_STRINGS = PAGE_SIZE_OPTIONS.map(String) as unknown as readonly [
@@ -129,9 +130,12 @@ export default function CollectionsView({
     });
   }, [collection, config.auth]);
 
+  // Permission checks
+  const perms = usePermissions({ resource: collection.slug });
+
   const useAsTitle = collection.admin?.useAsTitle as string | undefined;
-  const disableDelete = collection.admin?.disableDelete ?? false;
-  const disableCreate = collection.admin?.disableCreate ?? false;
+  const disableDelete = (collection.admin?.disableDelete ?? false) || !perms.delete.allowed;
+  const disableCreate = (collection.admin?.disableCreate ?? false) || !perms.create.allowed;
   const searchAvailable = !!useAsTitle;
   const searchIndexName = useAsTitle ? `search_${useAsTitle}` : undefined;
   const isSearching = searchAvailable && debouncedSearch.trim().length > 0;
@@ -232,6 +236,7 @@ export default function CollectionsView({
                 setDeleteOpen(true);
               }}
               disableDelete={disableDelete}
+              disableEdit={!perms.update.allowed}
               className="w-full grid place-items-center"
             />
           );
@@ -244,6 +249,8 @@ export default function CollectionsView({
       collection.slug,
       config.basePath,
       disableDelete,
+      disableCreate,
+      perms.update.allowed,
       useAsTitle,
       router,
     ]);

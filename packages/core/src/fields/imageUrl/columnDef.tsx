@@ -8,7 +8,7 @@ import { toTitleCase } from "../../utils";
  * Behavior:
  * - accessorKey: props.fieldKey
  * - header: props.field.label ?? toTitleCase(props.fieldKey)
- * - cell: renders an <img> thumbnail
+ * - cell: renders an <img> thumbnail with fallback on error
  */
 export function imageUrlColumnDef(props: {
   fieldKey: string;
@@ -22,13 +22,20 @@ export function imageUrlColumnDef(props: {
       const value = info.getValue();
       if (!value || typeof value !== "string") return "";
       const size = props.field.width ?? 28;
+      const height = props.field.height ?? size;
       return (
         <img
           src={value}
+          alt=""
           width={size}
-          height={props.field.height ?? size}
-          className="rounded-full object-cover"
-          style={{ width: size, height: props.field.height ?? size }}
+          height={height}
+          className="rounded-full object-cover bg-muted"
+          style={{ width: size, height }}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            (e.currentTarget as any).style.display = "none";
+          }}
         />
       );
     },

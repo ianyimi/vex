@@ -48,6 +48,7 @@ export function defineAccess<
 // Implementation
 export function defineAccess(props: {
   roles: readonly string[];
+  adminRoles?: readonly string[];
   resources?: readonly any[];
   userCollection: { slug: string; fields?: Record<string, any> };
   userType?: unknown;
@@ -63,6 +64,9 @@ export function defineAccess(props: {
   if (props.userOrgField && !props.orgCollection) {
     throw new VexAccessConfigError("userOrgField requires orgCollection");
   }
+
+  // Default adminRoles to all roles if not specified
+  const adminRoles = props.adminRoles ?? props.roles;
 
   if (process.env.NODE_ENV !== "production") {
     // Validate userCollection has a slug
@@ -103,6 +107,18 @@ export function defineAccess(props: {
       }
     }
 
+    // Validate adminRoles are a subset of roles
+    if (props.adminRoles) {
+      const rolesSetForAdmin = new Set(props.roles);
+      for (const adminRole of props.adminRoles) {
+        if (!rolesSetForAdmin.has(adminRole)) {
+          console.warn(
+            `[vex] defineAccess: adminRole "${adminRole}" not found in roles array`,
+          );
+        }
+      }
+    }
+
     // Validate userOrgField exists in user collection fields
     if (props.userOrgField && props.userCollection?.fields) {
       if (!(props.userOrgField in props.userCollection.fields)) {
@@ -115,6 +131,7 @@ export function defineAccess(props: {
 
   return {
     roles: props.roles,
+    adminRoles,
     userCollection: props.userCollection.slug,
     orgCollection: props.orgCollection?.slug,
     userOrgField: props.userOrgField,

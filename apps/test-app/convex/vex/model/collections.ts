@@ -14,7 +14,7 @@ async function resolveStorageUrl(
   ctx: { storage: { getUrl: (id: any) => Promise<string | null> } },
   doc: any,
 ) {
-  if (doc?.storageId && (!doc.url || doc.url === "")) {
+  if (doc?.storageId) {
     const url = await ctx.storage.getUrl(doc.storageId)
     if (url) return { ...doc, url }
   }
