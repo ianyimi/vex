@@ -179,15 +179,20 @@ export default function CollectionsView({
     placeholderData: keepPreviousData,
   });
 
-  const lastSearchResults = useRef<Record<string, unknown>[]>([]);
+  const lastDocuments = useRef<Record<string, unknown>[]>([]);
 
-  const documents = isSearching
-    ? ((searchQuery.data as Record<string, unknown>[]) ??
-      lastSearchResults.current)
-    : (listResults ?? []);
+  const rawDocuments = isSearching
+    ? (searchQuery.data as Record<string, unknown>[] | undefined)
+    : listResults;
 
-  if (isSearching && searchQuery.data) {
-    lastSearchResults.current = searchQuery.data as Record<string, unknown>[];
+  // Show previous results while data is loading; show new data (even if empty) once loaded
+  const dataReady = isSearching
+    ? !searchQuery.isFetching && searchQuery.data != null
+    : !listLoading && rawDocuments != null;
+  const documents = dataReady ? (rawDocuments ?? []) : lastDocuments.current;
+
+  if (dataReady && rawDocuments && rawDocuments.length > 0) {
+    lastDocuments.current = rawDocuments;
   }
 
   usePaginationLoader({
@@ -201,8 +206,10 @@ export default function CollectionsView({
     batchSize: initialFetchSize,
   });
 
-  const isLoading = isSearching ? searchQuery.isPending : listLoading;
-  const searchLoading = isSearching && searchQuery.isFetching;
+  // Only show table-level loading on initial page load (no data at all yet)
+  const isLoading = !isSearching && listLoading && lastDocuments.current.length === 0;
+  // Show spinner in search input whenever a search query is in-flight
+  const searchLoading = isSearching && (searchQuery.isFetching || searchTerm !== debouncedSearch);
 
   // Display count: use totalCount for list mode, documents.length for search
   const displayCount = isSearching ? documents.length : totalCount;
