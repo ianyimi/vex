@@ -8,9 +8,13 @@ function makeConfig(overrides: Partial<VexConfig> = {}): VexConfig {
     basePath: "/admin",
     collections: [],
     globals: [],
-    admin: { meta: {}, sidebar: {}, user: undefined },
+    admin: {
+      meta: { titleSuffix: "| Admin", favicon: "/favicon.ico" },
+      sidebar: { hideGlobals: false },
+      user: "users",
+    },
     auth: { collections: [], type: "betterAuth" as any } as any,
-    schema: { output: "convex/vex.schema.ts" },
+    schema: { outputPath: "convex/vex.schema.ts", autoMigrate: true, autoRemove: false },
     ...overrides,
   };
 }
