@@ -24,6 +24,8 @@ import type * as vex_media from "../vex/media.js";
 import type * as vex_migrate from "../vex/migrate.js";
 import type * as vex_model_collections from "../vex/model/collections.js";
 import type * as vex_model_media from "../vex/model/media.js";
+import type * as vex_model_versions from "../vex/model/versions.js";
+import type * as vex_versions from "../vex/versions.js";
 
 import type {
   ApiFromModules,
@@ -48,6 +50,8 @@ declare const fullApi: ApiFromModules<{
   "vex/migrate": typeof vex_migrate;
   "vex/model/collections": typeof vex_model_collections;
   "vex/model/media": typeof vex_model_media;
+  "vex/model/versions": typeof vex_model_versions;
+  "vex/versions": typeof vex_versions;
 }>;
 
 /**

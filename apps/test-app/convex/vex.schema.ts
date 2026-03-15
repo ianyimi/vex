@@ -12,6 +12,9 @@ export const articles = defineTable({
   slug: v.string(),
   banner: v.optional(v.id("media")),
   index: v.optional(v.number()),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+  vex_version: v.optional(v.number()),
+  vex_publishedAt: v.optional(v.number()),
 })
   .index("by_name", ["name"])
   .searchIndex("search_name", { searchField: "name" })
@@ -22,6 +25,7 @@ export const posts = defineTable({
   status: v.union(v.literal("draft"), v.literal("published"), v.literal("archived")),
   subtitle: v.string(),
   title: v.string(),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
 })
   .index("by_title", ["title"])
   .searchIndex("search_title", { searchField: "title" })
@@ -47,6 +51,7 @@ export const user = defineTable({
   banExpires: v.optional(v.number()),
   userId: v.optional(v.string()),
   postCount: v.optional(v.number()),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
 })
   .index("by_name", ["name"])
   .index("by_email", ["email"])
@@ -56,6 +61,7 @@ export const categories = defineTable({
   name: v.string(),
   slug: v.string(),
   sortOrder: v.optional(v.number()),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
 })
   .index("by_name", ["name"])
   .searchIndex("search_name", { searchField: "name" })
@@ -149,3 +155,24 @@ export const jwks = defineTable({
   createdAt: v.number(),
   expiresAt: v.optional(v.number()),
 })
+
+/**
+ * VEX SYSTEM TABLES
+ **/
+
+export const vex_versions = defineTable({
+  collection: v.string(),
+  documentId: v.string(),
+  version: v.number(),
+  status: v.union(v.literal("draft"), v.literal("published"), v.literal("autosave")),
+  snapshot: v.any(),
+  createdAt: v.number(),
+  createdBy: v.optional(v.string()),
+  isAutosave: v.boolean(),
+  restoredFrom: v.optional(v.number()),
+})
+  .index("by_document", ["collection", "documentId"])
+  .index("by_document_version", ["collection", "documentId", "version"])
+  .index("by_document_latest", ["collection", "documentId", "createdAt"])
+  .index("by_document_status", ["collection", "documentId", "status"])
+  .index("by_autosave", ["collection", "documentId", "isAutosave"])

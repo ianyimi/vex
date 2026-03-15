@@ -2,7 +2,9 @@ import { generateAndWrite, getOutputPath } from "../lib/generateSchema.js";
 import { killConvexDev, startConvexDev, waitForDeploy } from "../lib/convexProcess.js";
 import { loadConfig } from "../lib/loadConfig.js";
 import { logger } from "../lib/logger.js";
+import { backfillVersionStatus } from "../lib/migrate.js";
 import { resolveConfigPath } from "../lib/resolveConfigPath.js";
+import { resolveConvexUrl } from "../lib/resolveConvexUrl.js";
 import { traceImports } from "../lib/traceImports.js";
 import { createWatcher } from "../lib/watcher.js";
 
@@ -38,6 +40,21 @@ export async function devCommand(options: DevOptions = {}) {
 
   // Start convex dev — this is the core of `vex dev`
   startConvexDev(cwd);
+
+  // Wait for the first deployment, then run version backfill if needed.
+  // This runs in the background so it doesn't block the watcher setup.
+  const hasVersioning = config.collections.some((c) => c.versions?.drafts);
+  if (hasVersioning) {
+    waitForDeploy(cwd).then(async (deployed) => {
+      if (!deployed) return;
+      const convexUrl = resolveConvexUrl(cwd);
+      if (convexUrl) {
+        await backfillVersionStatus({ convexUrl, config });
+      }
+    }).catch(() => {
+      // Silently ignore — backfill will run on next schema change
+    });
+  }
 
   // Trace the import tree
   let watchedPaths = traceImports(configPath, outputPath);

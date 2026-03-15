@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import type {
   VexCollection,
   ClientVexConfig,
@@ -28,8 +28,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { Trash2 } from "lucide-react";
+import { DEFAULT_AUTOSAVE_INTERVAL } from "@vexcms/core";
 import { DeleteDocumentDialog } from "../components/DeleteDocumentDialog";
 import { UploadFieldWrapper } from "../components/UploadFieldWrapper";
+import { StatusBadge } from "../components/StatusBadge";
+import { VersionHistoryDropdown } from "../components/VersionHistoryDropdown";
+import { useAutosave } from "../hooks/useAutosave";
 import { usePermissions } from "../hooks/usePermissions";
 
 export default function CollectionEditView({
@@ -42,13 +46,19 @@ export default function CollectionEditView({
   documentID: string;
 }) {
   const router = useRouter();
+  const isVersioned = !!collection.versions?.drafts;
 
   // Fetch the document reactively
   const documentQuery = useQuery({
-    ...convexQuery(anyApi.vex.collections.getDocument, {
-      collectionSlug: collection.slug,
-      documentId: documentID,
-    }),
+    ...convexQuery(
+      isVersioned
+        ? anyApi.vex.versions.getDocumentForEdit
+        : anyApi.vex.collections.getDocument,
+      {
+        collectionSlug: collection.slug,
+        documentId: documentID,
+      },
+    ),
   });
 
   const document = documentQuery.data as
@@ -64,8 +74,23 @@ export default function CollectionEditView({
   const createMediaDocument = useMutation(
     anyApi.vex.media.createMediaDocument,
   );
+  const saveDraftMutation = useMutation(anyApi.vex.versions.saveDraft);
+  const publishMutation = useMutation(anyApi.vex.versions.publish);
+  const unpublishMutation = useMutation(anyApi.vex.versions.unpublish);
+
   const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  // Ref to get current form values for publish
+  const getFormValuesRef = useRef<(() => Record<string, unknown>) | null>(null);
+  const [isFormDirty, setIsFormDirty] = useState(false);
+
+  // Restored version state — when a user picks a version from history,
+  // we store its snapshot here to override the form's default values.
+  // The user must then explicitly "Save Draft" to persist it.
+  const [restoredSnapshot, setRestoredSnapshot] = useState<Record<string, unknown> | null>(null);
+  const [restoredFromVersion, setRestoredFromVersion] = useState<number | null>(null);
 
   // Media upload modal state
   const [newMediaSlug, setNewMediaSlug] = useQueryState("newMedia");
@@ -144,28 +169,92 @@ export default function CollectionEditView({
     [collection, perms.read, perms.update],
   );
 
-  // Build default values from the fetched document
+  // Build default values from the fetched document or restored snapshot
   const defaultValues = useMemo(() => {
-    if (!document) return {};
+    const source = restoredSnapshot ?? document;
+    if (!source) return {};
     const values: Record<string, unknown> = {};
     for (const entry of fieldEntries) {
-      values[entry.name] = document[entry.name];
+      values[entry.name] = source[entry.name];
     }
     return values;
-  }, [document, fieldEntries]);
+  }, [document, fieldEntries, restoredSnapshot]);
 
   const handleSubmit = async (changedFields: Record<string, unknown>) => {
     setIsSaving(true);
     try {
-      await updateDocument({
-        collectionSlug: collection.slug,
-        documentId: documentID,
-        fields: changedFields,
-      });
+      if (isVersioned) {
+        await saveDraftMutation({
+          collectionSlug: collection.slug,
+          documentId: documentID,
+          fields: changedFields,
+          restoredFrom: restoredFromVersion ?? undefined,
+        });
+        // Clear restored state — the reactive getDocumentForEdit query
+        // will update with the new version's snapshot
+        if (restoredFromVersion !== null) {
+          setRestoredSnapshot(null);
+          setRestoredFromVersion(null);
+        }
+      } else {
+        await updateDocument({
+          collectionSlug: collection.slug,
+          documentId: documentID,
+          fields: changedFields,
+        });
+      }
     } finally {
       setIsSaving(false);
     }
   };
+
+  const handlePublish = async () => {
+    setIsPublishing(true);
+    try {
+      // Send current form values so publish captures any unsaved changes
+      const currentFields = getFormValuesRef.current?.() ?? undefined;
+      await publishMutation({
+        collectionSlug: collection.slug,
+        documentId: documentID,
+        fields: currentFields,
+      });
+      if (restoredFromVersion !== null) {
+        setRestoredSnapshot(null);
+        setRestoredFromVersion(null);
+      }
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleUnpublish = async () => {
+    setIsPublishing(true);
+    try {
+      await unpublishMutation({
+        collectionSlug: collection.slug,
+        documentId: documentID,
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  // Autosave configuration
+  const autosaveConfig = collection.versions?.autosave;
+  const autosaveEnabled = isVersioned && !!autosaveConfig && !!document;
+  const autosaveInterval =
+    typeof autosaveConfig === "object" ? autosaveConfig.interval : DEFAULT_AUTOSAVE_INTERVAL;
+
+  useAutosave({
+    collectionSlug: collection.slug,
+    documentId: documentID,
+    enabled: autosaveEnabled,
+    interval: autosaveInterval,
+    getChangedFields: () => {
+      // Stub — implement based on AppForm's dirty state API
+      return null;
+    },
+  });
 
   const isLoading = documentQuery.isPending;
 
@@ -205,6 +294,9 @@ export default function CollectionEditView({
             </BreadcrumbList>
           </Breadcrumb>
           <div className="flex items-center gap-2">
+            {isVersioned && document && typeof document.vex_status === "string" && (
+              <StatusBadge status={document.vex_status} />
+            )}
             {!disableDelete && document && (
               <Button
                 variant="destructive"
@@ -215,13 +307,61 @@ export default function CollectionEditView({
                 Delete
               </Button>
             )}
-            <Button
-              type="submit"
-              form="collection-edit-form"
-              disabled={isSaving || fieldEntries.length === 0 || !perms.update.allowed}
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
+
+            {isVersioned ? (
+              <>
+                <VersionHistoryDropdown
+                  collectionSlug={collection.slug}
+                  documentId={documentID}
+                  currentVersion={
+                    restoredFromVersion ??
+                    (typeof document?.vex_version === "number" ? document.vex_version : undefined)
+                  }
+                  onRestore={(snapshot, versionNum) => {
+                    setRestoredSnapshot(snapshot);
+                    setRestoredFromVersion(versionNum);
+                  }}
+                />
+                <Button
+                  type="submit"
+                  form="collection-edit-form"
+                  variant="outline"
+                  size="sm"
+                  disabled={isSaving || !perms.update.allowed}
+                >
+                  {isSaving ? "Saving..." : "Save Draft"}
+                </Button>
+                {document && document.vex_status === "published" ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleUnpublish}
+                    disabled={isPublishing}
+                  >
+                    {isPublishing ? "..." : "Unpublish"}
+                  </Button>
+                ) : null}
+                <Button
+                  size="sm"
+                  onClick={handlePublish}
+                  disabled={
+                    isPublishing ||
+                    !perms.update.allowed ||
+                    (document?.vex_status === "published" && !isFormDirty && restoredFromVersion === null)
+                  }
+                >
+                  {isPublishing ? "Publishing..." : "Publish"}
+                </Button>
+              </>
+            ) : (
+              <Button
+                type="submit"
+                form="collection-edit-form"
+                disabled={isSaving || fieldEntries.length === 0 || !perms.update.allowed}
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -234,13 +374,16 @@ export default function CollectionEditView({
         )}
 
         {!isLoading && document != null && (
-          <div className="" key={documentID}>
+          <div className="" key={`${documentID}-${restoredFromVersion ?? "latest"}`}>
             <AppForm
               formId="collection-edit-form"
               schema={schema}
               fieldEntries={fieldEntries}
               defaultValues={defaultValues}
               onSubmit={handleSubmit}
+              submitAllFields={isVersioned}
+              getValuesRef={isVersioned ? getFormValuesRef : undefined}
+              onDirtyChange={isVersioned ? setIsFormDirty : undefined}
               onOpenUploadModal={handleOpenUploadModal}
               renderUploadField={(uploadProps) => (
                 <UploadFieldWrapper

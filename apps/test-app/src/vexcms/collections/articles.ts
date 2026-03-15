@@ -1,4 +1,4 @@
-import { defineCollection, text, upload, number } from "@vexcms/core"
+import { defineCollection, number, text, upload } from "@vexcms/core"
 
 import { TABLE_SLUG_ARTICLES, TABLE_SLUG_MEDIA } from "~/db/constants"
 
@@ -32,5 +32,10 @@ export const articles = defineCollection({
   labels: {
     plural: "Articles",
     singular: "Article",
+  },
+  versions: {
+    autosave: true,
+    drafts: true,
+    maxPerDoc: 50,
   },
 })

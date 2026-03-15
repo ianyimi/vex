@@ -100,6 +100,12 @@ export function generateVexSchema(props: { config: VexConfig }): string {
     for (const f of fields) {
       lines.push(`  ${f.name}: ${f.valueType},`);
     }
+    // vex_status on all user collections — defaults to "published"
+    lines.push(`  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),`);
+    if (collection.versions?.drafts) {
+      lines.push(`  vex_version: v.optional(v.number()),`);
+      lines.push(`  vex_publishedAt: v.optional(v.number()),`);
+    }
     lines.push("})");
     for (const i of indexes) {
       const fieldList = i.fields.map((f) => `"${f}"`).join(", ");
@@ -230,6 +236,29 @@ export function generateVexSchema(props: { config: VexConfig }): string {
       const fieldList = i.fields.map((f) => `"${f}"`).join(", ");
       lines.push(`  .index("${i.name}", [${fieldList}])`);
     }
+  }
+
+  // Always generate vex_versions so removing versioning from a collection
+  // doesn't break schema.ts imports that reference vex_versions.
+  {
+    lines.push("", "/**", " * VEX SYSTEM TABLES", " **/");
+    lines.push("");
+    lines.push("export const vex_versions = defineTable({");
+    lines.push("  collection: v.string(),");
+    lines.push("  documentId: v.string(),");
+    lines.push("  version: v.number(),");
+    lines.push(`  status: v.union(v.literal("draft"), v.literal("published"), v.literal("autosave")),`);
+    lines.push("  snapshot: v.any(),");
+    lines.push("  createdAt: v.number(),");
+    lines.push("  createdBy: v.optional(v.string()),");
+    lines.push("  isAutosave: v.boolean(),");
+    lines.push("  restoredFrom: v.optional(v.number()),");
+    lines.push("})");
+    lines.push(`  .index("by_document", ["collection", "documentId"])`);
+    lines.push(`  .index("by_document_version", ["collection", "documentId", "version"])`);
+    lines.push(`  .index("by_document_latest", ["collection", "documentId", "createdAt"])`);
+    lines.push(`  .index("by_document_status", ["collection", "documentId", "status"])`);
+    lines.push(`  .index("by_autosave", ["collection", "documentId", "isAutosave"])`);
   }
 
   return lines.join("\n") + "\n";

@@ -12,7 +12,7 @@ import {
 
 import { waitForDeploy } from "./convexProcess.js";
 import { logger } from "./logger.js";
-import { executeMigration, executeFieldRemoval } from "./migrate.js";
+import { executeMigration, executeFieldRemoval, backfillVersionStatus } from "./migrate.js";
 import { resolveConvexUrl } from "./resolveConvexUrl.js";
 
 export interface GenerateResult {
@@ -161,6 +161,22 @@ export async function generateAndWrite(
 
   // Sync schema.ts imports with vex.schema.ts exports
   syncSchemaImports(convexSchemaPath, content, outputRelPath, config, existing);
+
+  // Backfill vex_status on versioned collections after schema is deployed.
+  // The mutation only patches documents missing vex_status, so this is safe
+  // to run on every schema push — most runs patch 0 documents.
+  const hasVersioning = config.collections.some((c) => c.versions?.drafts);
+  if (hasVersioning) {
+    const convexUrl = resolveConvexUrl(cwd);
+    if (convexUrl) {
+      // Wait for the schema to be deployed before calling the mutation
+      const pushFn = options?.pushSchema ?? ((c: string) => waitForDeploy(c));
+      const deployed = await pushFn(cwd);
+      if (deployed) {
+        await backfillVersionStatus({ convexUrl, config });
+      }
+    }
+  }
 
   return { written: true };
 }

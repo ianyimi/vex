@@ -53,11 +53,12 @@ export function useMediaPickerState(props: {
   });
 
   const selectedDocQuery = useQuery({
-    ...convexQuery(anyApi.vex.collections.getDocument, {
-      collectionSlug: props.collectionSlug,
-      documentId: props.selectedId ?? "",
-    }),
-    enabled: !!props.selectedId,
+    ...convexQuery(
+      anyApi.vex.collections.getDocument,
+      props.selectedId
+        ? { collectionSlug: props.collectionSlug, documentId: props.selectedId }
+        : "skip",
+    ),
   });
 
   const selectedDoc = selectedDocQuery.data as Record<string, unknown> | null | undefined;

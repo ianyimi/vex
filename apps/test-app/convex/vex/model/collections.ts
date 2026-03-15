@@ -121,7 +121,12 @@ export async function createDocument<DataModel extends GenericDataModel>(props: 
     })
   }
 
-  const id = await props.ctx.db.insert(props.args.collectionSlug as any, result.data as any)
+  const data = result.data as Record<string, unknown>
+  // Default vex_status to "published" for all user collections
+  if (!data.vex_status) {
+    data.vex_status = "published"
+  }
+  const id = await props.ctx.db.insert(props.args.collectionSlug as any, data as any)
   return id as string
 }
 

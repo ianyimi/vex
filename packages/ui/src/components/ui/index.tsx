@@ -1,4 +1,5 @@
 export * from "./avatar";
+export * from "./badge";
 export * from "./data-table";
 export * from "./breadcrumb";
 export * from "./button";

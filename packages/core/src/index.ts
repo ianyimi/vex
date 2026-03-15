@@ -25,6 +25,8 @@ export { upload } from "./fields/media";
 export { json } from "./fields/json";
 export { array } from "./fields/array";
 
+export * from "./versioning";
+
 export * from "./errors";
 
 // Migrations
@@ -61,6 +63,7 @@ export type {
   CollectionAdminConfig,
   IndexConfig,
   SearchIndexConfig,
+  VersionsConfig,
   // Global types
   VexGlobal,
   GlobalAdminConfig,

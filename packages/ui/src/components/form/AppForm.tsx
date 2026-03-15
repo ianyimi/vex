@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { useForm } from "@tanstack/react-form";
 import type { ZodObject, ZodTypeAny } from "zod";
 import type { VexField } from "@vexcms/core";
@@ -43,10 +44,16 @@ interface AppFormProps {
   /** Current document values (used as default/initial values) */
   defaultValues: Record<string, unknown>;
   /**
-   * Called on valid form submit with only the changed fields.
+   * Called on valid form submit with only the changed fields
+   * (or all fields when `submitAllFields` is true).
    * Return a promise — the form shows a loading state while it resolves.
    */
-  onSubmit: (changedFields: Record<string, unknown>) => Promise<void>;
+  onSubmit: (fields: Record<string, unknown>) => Promise<void>;
+  /**
+   * When true, submit sends all field values instead of only changed ones.
+   * Use this for versioned collections where full snapshots are needed.
+   */
+  submitAllFields?: boolean;
   /** Optional form ID so an external button can submit via form="id" */
   formId?: string;
   /** Map of fieldName → MediaPickerState for upload fields */
@@ -65,6 +72,49 @@ interface AppFormProps {
     onUploadNew: () => void;
     defaultValue: unknown;
   }) => React.ReactNode;
+  /**
+   * Ref callback that receives a function to get current form values.
+   * Use this to read form state without triggering a submit.
+   */
+  getValuesRef?: React.MutableRefObject<(() => Record<string, unknown>) | null>;
+  /**
+   * Called whenever the form's dirty state changes.
+   * A form is dirty when any field value differs from its default value.
+   */
+  onDirtyChange?: (isDirty: boolean) => void;
+}
+
+/**
+ * Subscribes to form value changes and calls onDirtyChange when
+ * the dirty state changes. Uses form.Subscribe for reactive updates.
+ */
+function DirtyWatcher({
+  form,
+  fieldEntries,
+  defaultValues,
+  onDirtyChange,
+}: {
+  form: any;
+  fieldEntries: FieldEntry[];
+  defaultValues: Record<string, unknown>;
+  onDirtyChange: (isDirty: boolean) => void;
+}) {
+  const prevDirtyRef = useRef(false);
+  return (
+    <form.Subscribe selector={(state: any) => state.values}>
+      {(values: Record<string, unknown>) => {
+        const isDirty = fieldEntries.some(
+          (entry) => values[entry.name] !== defaultValues[entry.name],
+        );
+        if (isDirty !== prevDirtyRef.current) {
+          prevDirtyRef.current = isDirty;
+          // Defer to avoid setState during render
+          setTimeout(() => onDirtyChange(isDirty), 0);
+        }
+        return null;
+      }}
+    </form.Subscribe>
+  );
 }
 
 function AppForm({
@@ -72,10 +122,13 @@ function AppForm({
   fieldEntries,
   defaultValues,
   onSubmit,
+  submitAllFields,
   formId,
   uploadFieldStates,
   onOpenUploadModal,
   renderUploadField,
+  getValuesRef,
+  onDirtyChange,
 }: AppFormProps) {
   const form = useForm({
     defaultValues: defaultValues as Record<string, any>,
@@ -83,6 +136,14 @@ function AppForm({
       onSubmit: schema,
     },
     onSubmit: async ({ value }) => {
+      if (submitAllFields) {
+        const allFields: Record<string, unknown> = {};
+        for (const entry of fieldEntries) {
+          allFields[entry.name] = value[entry.name];
+        }
+        await onSubmit(allFields);
+        return;
+      }
       const changedFields: Record<string, unknown> = {};
       for (const entry of fieldEntries) {
         const current = value[entry.name];
@@ -96,6 +157,17 @@ function AppForm({
     },
   });
 
+  // Expose a getValues function so the parent can read current form state
+  if (getValuesRef) {
+    getValuesRef.current = () => {
+      const values: Record<string, unknown> = {};
+      for (const entry of fieldEntries) {
+        values[entry.name] = form.state.values[entry.name];
+      }
+      return values;
+    };
+  }
+
   return (
     <form
       id={formId}
@@ -105,6 +177,14 @@ function AppForm({
         form.handleSubmit();
       }}
     >
+      {onDirtyChange && (
+        <DirtyWatcher
+          form={form}
+          fieldEntries={fieldEntries}
+          defaultValues={defaultValues}
+          onDirtyChange={onDirtyChange}
+        />
+      )}
       <div className="space-y-6">
         {fieldEntries.map((entry) => (
           <form.Field key={entry.name} name={entry.name}>

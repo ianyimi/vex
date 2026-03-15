@@ -36,6 +36,7 @@ import {
 } from "../components/DeleteDocumentDialog";
 import { RowActionsMenu } from "../components/RowActionsMenu";
 import { UploadCellPreview } from "../components/UploadCellPreview";
+import { StatusBadge } from "../components/StatusBadge";
 import { usePermissions } from "../hooks/usePermissions";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
@@ -111,6 +112,23 @@ export default function CollectionsView({
 
   const columns = useMemo(() => {
     const cols = generateColumns({ collection, auth: config.auth });
+
+    // Inject _status column for versioned collections
+    if (collection.versions?.drafts) {
+      const statusCol: ColumnDef<Record<string, unknown>, unknown> = {
+        accessorKey: "vex_status",
+        header: "Status",
+        size: 80,
+        enableSorting: false,
+        cell: (info) => {
+          const value = info.getValue() as string | undefined;
+          if (!value) return "";
+          return <StatusBadge status={value} />;
+        },
+      };
+      cols.unshift(statusCol);
+    }
+
     return cols.map((col) => {
       const meta = col.meta as Record<string, unknown> | undefined;
       if (meta?.type === "upload" && typeof meta.to === "string") {

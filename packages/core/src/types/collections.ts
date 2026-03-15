@@ -93,6 +93,43 @@ export interface SearchIndexConfig<
 }
 
 /**
+ * Configuration for versioning and draft/publish workflow on a collection.
+ * When `drafts` is enabled, the admin panel shows Save Draft + Publish
+ * instead of a simple Save button.
+ */
+export interface VersionsConfig {
+  /**
+   * Enable the draft/publish workflow.
+   * When true, new documents start as drafts and must be explicitly published.
+   * The schema gets `_status`, `_version`, and `_publishedAt` fields injected.
+   *
+   * Default: `false`
+   */
+  drafts?: boolean;
+
+  /**
+   * Enable autosave. Requires `drafts: true`.
+   * When `true`, uses a default 2000ms interval.
+   * When an object, specify a custom interval.
+   *
+   * Default: `false`
+   */
+  autosave?: boolean | {
+    /** Interval in milliseconds between autosaves. Default: 2000 */
+    interval: number;
+  };
+
+  /**
+   * Maximum number of versions to keep per document.
+   * Oldest non-published versions are deleted when exceeded.
+   * `0` means unlimited.
+   *
+   * Default: `100`
+   */
+  maxPerDoc?: number;
+}
+
+/**
  * A collection definition. Users create these as plain objects
  * with `as const satisfies VexCollection`.
  *
@@ -147,6 +184,15 @@ export interface VexCollection<
    * Search indexes for full-text search on this collection.
    */
   searchIndexes?: SearchIndexConfig<TFields, TExtraKeys>[];
+  /**
+   * Versioning and draft/publish workflow configuration.
+   * When `versions.drafts` is `true`, the collection gets draft/publish
+   * workflow in the admin panel and version history tracking.
+   *
+   * Only available on user collections (including auth-merged collections).
+   * NOT available on media collections — use VexMediaCollection for those.
+   */
+  versions?: VersionsConfig;
   /**
    * Type helper — use `typeof collection._docType` to get the
    * inferred document shape for this collection.

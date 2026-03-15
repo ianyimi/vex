@@ -1,5 +1,12 @@
-import type { MigrationOp, RemovedFieldInfo } from "@vexcms/core";
+import type { MigrationOp, RemovedFieldInfo, VexConfig } from "@vexcms/core";
 import { logger } from "./logger.js";
+
+export interface BackfillVersionStatusOptions {
+  /** Convex deployment URL. */
+  convexUrl: string;
+  /** VEX config to inspect for versioned collections. */
+  config: VexConfig;
+}
 
 export interface MigrateOptions {
   /** Convex deployment URL. */
@@ -171,6 +178,81 @@ export async function executeFieldRemoval(
           return;
         }
         throw err;
+      }
+    }
+  } finally {
+    client.close?.();
+  }
+}
+
+/**
+ * Backfill `vex_status` on existing documents in versioned collections.
+ *
+ * For each collection with `versions.drafts` enabled, calls
+ * `vex/versions:backfillVersionStatus` which sets `vex_status: "published"`
+ * on documents that don't have the field yet.
+ *
+ * Safe to run on every schema push — the mutation only patches documents
+ * missing `vex_status`, so most runs will patch 0 documents.
+ */
+export async function backfillVersionStatus(
+  options: BackfillVersionStatusOptions,
+): Promise<void> {
+  const { convexUrl, config } = options;
+  const versionedSlugs = config.collections
+    .filter((c) => c.versions?.drafts)
+    .map((c) => c.slug);
+
+  if (versionedSlugs.length === 0) return;
+
+  let client: any;
+  try {
+    client = await getClient(convexUrl);
+  } catch {
+    logger.warn(
+      "Could not import convex/browser — install `convex` to enable version backfill",
+    );
+    return;
+  }
+
+  try {
+    for (const slug of versionedSlugs) {
+      let cursor: string | undefined;
+      let totalPatched = 0;
+
+      try {
+        do {
+          const result: { patched: number; isDone: boolean; cursor: string } =
+            await withTimeout(
+              client.mutation("vex/versions:backfillVersionStatus" as any, {
+                collectionSlug: slug,
+                cursor,
+              }),
+              MUTATION_TIMEOUT_MS,
+            );
+
+          totalPatched += result.patched;
+          cursor = result.cursor;
+
+          if (result.isDone) break;
+        } while (true);
+
+        if (totalPatched > 0) {
+          logger.success(
+            `Backfilled vex_status on ${totalPatched} documents in "${slug}"`,
+          );
+        }
+      } catch (err) {
+        if (
+          err instanceof Error &&
+          err.message.includes("Could not find")
+        ) {
+          logger.warn(
+            `Backfill function not found. Deploy convex/vex/versions.ts to your Convex project first.`,
+          );
+          return;
+        }
+        logger.warn(`Failed to backfill "${slug}": ${err}`);
       }
     }
   } finally {

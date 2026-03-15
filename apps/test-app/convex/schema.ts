@@ -24,6 +24,7 @@ import {
   user,
   verification,
   media,
+  vex_versions,
 } from "./vex.schema"
 
 export default defineSchema({
@@ -47,4 +48,6 @@ export default defineSchema({
   [TABLE_SLUG_VERIFICATIONS]: verification,
 
   [TABLE_SLUG_JWKS]: jwks,
+
+  vex_versions,
 })
