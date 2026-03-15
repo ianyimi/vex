@@ -5,6 +5,13 @@
 import type { VexField, InferFieldsType } from "./fields";
 
 /**
+ * System field keys injected into all user collection schemas.
+ * `vex_status` is always present; `vex_version` and `vex_publishedAt`
+ * are added when `versions.drafts` is enabled.
+ */
+export type VersioningFieldKeys = "vex_status" | "vex_version" | "vex_publishedAt";
+
+/**
  * Admin UI configuration for a collection.
  * Controls how the collection appears and behaves in the admin panel.
  */

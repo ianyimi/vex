@@ -314,12 +314,19 @@ export default function CollectionEditView({
                   collectionSlug={collection.slug}
                   documentId={documentID}
                   currentVersion={
-                    restoredFromVersion ??
-                    (typeof document?.vex_version === "number" ? document.vex_version : undefined)
+                    typeof document?.vex_version === "number" ? document.vex_version : undefined
                   }
+                  activeVersion={restoredFromVersion ?? undefined}
                   onRestore={(snapshot, versionNum) => {
-                    setRestoredSnapshot(snapshot);
-                    setRestoredFromVersion(versionNum);
+                    const docVersion = typeof document?.vex_version === "number" ? document.vex_version : undefined;
+                    if (versionNum === docVersion) {
+                      // Going back to the current version — clear restored state
+                      setRestoredSnapshot(null);
+                      setRestoredFromVersion(null);
+                    } else {
+                      setRestoredSnapshot(snapshot);
+                      setRestoredFromVersion(versionNum);
+                    }
                   }}
                 />
                 <Button

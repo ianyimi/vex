@@ -64,6 +64,7 @@ export type {
   IndexConfig,
   SearchIndexConfig,
   VersionsConfig,
+  VersioningFieldKeys,
   // Global types
   VexGlobal,
   GlobalAdminConfig,

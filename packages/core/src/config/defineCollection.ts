@@ -1,6 +1,6 @@
 import type { VexField, VexCollection } from "../types";
 import type { VexAuthAdapter, AuthCollectionFieldKeys } from "../types/auth";
-import type { CollectionAdminConfig, IndexConfig, SearchIndexConfig, VersionsConfig } from "../types/collections";
+import type { CollectionAdminConfig, IndexConfig, SearchIndexConfig, VersionsConfig, VersioningFieldKeys } from "../types/collections";
 import type { VexMediaCollection, DefaultMediaFieldKeys } from "../types/media";
 
 /**
@@ -49,26 +49,26 @@ export function defineCollection<
   labels?: { singular?: string; plural?: string };
   admin?: CollectionAdminConfig<
     TFields,
-    TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never
+    VersioningFieldKeys | (TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never)
   >;
   indexes?: IndexConfig<
     TFields,
-    TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never
+    VersioningFieldKeys | (TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never)
   >[];
   searchIndexes?: SearchIndexConfig<
     TFields,
-    TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never
+    VersioningFieldKeys | (TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never)
   >[];
   versions?: VersionsConfig;
 }): VexCollection<
   TFields,
-  TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never,
+  VersioningFieldKeys | (TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never),
   TSlug
 > {
   const { auth: _auth, ...rest } = props;
   return rest as VexCollection<
     TFields,
-    TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never,
+    VersioningFieldKeys | (TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never),
     TSlug
   >;
 }

@@ -165,6 +165,8 @@ export interface SelectOption<T extends string = string> {
   readonly value: T;
   /** The display label shown in the dropdown. */
   readonly label: string;
+  /** Optional badge color for the data table. Accepts a hex string (e.g. "#3b82f6"). */
+  readonly badgeColor?: string;
 }
 
 /** Select field — single value variant. */

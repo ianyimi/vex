@@ -24,8 +24,10 @@ import { StatusBadge } from "./StatusBadge";
 interface VersionHistoryDropdownProps {
   collectionSlug: string;
   documentId: string;
-  /** The version number currently loaded in the form */
+  /** The document's actual (latest) version number */
   currentVersion?: number;
+  /** The version currently loaded in the form (when restoring an old version) */
+  activeVersion?: number;
   /** Called with the snapshot from the selected version */
   onRestore?: (snapshot: Record<string, unknown>, versionNum: number) => void;
 }
@@ -54,8 +56,10 @@ export function VersionHistoryDropdown(props: VersionHistoryDropdownProps) {
     restoredFrom: number | null;
   }[];
 
+  const activeVersion = props.activeVersion ?? props.currentVersion;
+
   const handleRestore = async (versionNum: number) => {
-    if (versionNum === props.currentVersion) return;
+    if (versionNum === activeVersion) return;
     setRestoringVersion(versionNum);
     try {
       const result = await (convex as any).query(
@@ -106,10 +110,11 @@ export function VersionHistoryDropdown(props: VersionHistoryDropdownProps) {
           )}
           {versions.map((v) => {
             const isCurrent = v.version === props.currentVersion;
+            const isActive = v.version === activeVersion;
             return (
               <DropdownMenuItem
                 key={v._id}
-                className={`flex items-center justify-between gap-2 cursor-pointer ${isCurrent ? "bg-accent" : ""}`}
+                className={`flex items-center justify-between gap-2 cursor-pointer ${isActive ? "bg-accent" : ""}`}
                 disabled={restoringVersion === v.version}
                 onClick={() => handleRestore(v.version)}
               >
@@ -139,7 +144,7 @@ export function VersionHistoryDropdown(props: VersionHistoryDropdownProps) {
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
-                  {isCurrent ? (
+                  {isActive ? (
                     <Check className="h-3.5 w-3.5 text-primary" />
                   ) : (
                     <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />

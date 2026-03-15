@@ -126,7 +126,16 @@ export default function CollectionsView({
           return <StatusBadge status={value} />;
         },
       };
-      cols.unshift(statusCol);
+      // If vex_status is already in columns (from defaultColumns), replace it
+      // with the badge version; otherwise prepend it.
+      const existingIdx = cols.findIndex(
+        (c) => (c as any).accessorKey === "vex_status",
+      );
+      if (existingIdx !== -1) {
+        cols[existingIdx] = statusCol;
+      } else {
+        cols.unshift(statusCol);
+      }
     }
 
     return cols.map((col) => {
