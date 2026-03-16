@@ -91,6 +91,22 @@ interface AppFormProps {
     field: any;
     fieldDef: any;
     name: string;
+    /** Media picker results from the media collection. */
+    mediaResults?: MediaDocument[];
+    mediaSearchTerm?: string;
+    onMediaSearchChange?: (term: string) => void;
+    mediaCanLoadMore?: boolean;
+    onMediaLoadMore?: () => void;
+    mediaIsLoading?: boolean;
+    /** Opens the upload modal for the media collection. */
+    onUploadNew?: () => void;
+    /** Generates a presigned upload URL for direct file upload. */
+    generateUploadUrl?: () => Promise<string>;
+    /** Creates a media document after upload. Returns the document ID. */
+    createMediaDocument?: (props: {
+      collectionSlug: string;
+      fields: Record<string, unknown>;
+    }) => Promise<string>;
   }) => React.ReactNode;
 }
 

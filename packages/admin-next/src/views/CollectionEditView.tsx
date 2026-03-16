@@ -45,11 +45,7 @@ export default function CollectionEditView({
   config: ClientVexConfig;
   collection: VexCollection;
   documentID: string;
-  renderRichTextField?: (props: {
-    field: any;
-    fieldDef: any;
-    name: string;
-  }) => React.ReactNode;
+  renderRichTextField?: (props: Record<string, any>) => React.ReactNode;
 }) {
   const router = useRouter();
   const isVersioned = !!collection.versions?.drafts;
@@ -136,6 +132,8 @@ export default function CollectionEditView({
     const fields = collection.fields as Record<string, VexField>;
     const field = fields[pendingUploadFieldName];
     if (field?.type === "upload") return field as UploadFieldDef;
+    // For richtext fields with mediaCollection, default to image/* accept
+    if (field?.type === "richtext") return { accept: ["image/*"] } as UploadFieldDef;
     return null;
   }, [pendingUploadFieldName, collection]);
 
@@ -409,7 +407,16 @@ export default function CollectionEditView({
                   initialValue={uploadProps.defaultValue as string | undefined}
                 />
               )}
-              renderRichTextField={renderRichTextField}
+              renderRichTextField={renderRichTextField ? (richtextProps: any) => {
+                return renderRichTextField({
+                  ...richtextProps,
+                  generateUploadUrl: async () => await generateUploadUrl(),
+                  createMediaDocument: async (p: any) => await createMediaDocument(p),
+                  onUploadNew: richtextProps.fieldDef?.mediaCollection
+                    ? () => handleOpenUploadModal(richtextProps.name, richtextProps.fieldDef.mediaCollection)
+                    : undefined,
+                });
+              } : undefined}
             />
           </div>
         )}

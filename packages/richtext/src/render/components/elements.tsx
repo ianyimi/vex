@@ -131,19 +131,40 @@ export function ImageElementStatic(props: SlateElementProps) {
   const element = props.element as {
     url?: string;
     alt?: string;
+    width?: number;
+    align?: "left" | "center" | "right";
   };
+
+  // Float/align goes on the SlateElement wrapper so text wraps around it
+  const wrapperStyle: React.CSSProperties = {
+    ...(element.align === "left" && { float: "left" as const, width: "auto", marginRight: 16, marginBottom: 8, clear: "left" as const }),
+    ...(element.align === "right" && { float: "right" as const, width: "auto", marginLeft: 16, marginBottom: 8, clear: "right" as const }),
+    ...(element.align === "center" && { clear: "both" as const, textAlign: "center" as const }),
+    ...(!element.align && { clear: "both" as const }),
+  };
+
+  const innerStyle: React.CSSProperties = {
+    maxWidth: "100%",
+    margin: "12px 0",
+    width: element.width ? `${element.width}px` : undefined,
+    display: "inline-block",
+    ...(element.align === "center" && { marginLeft: "auto", marginRight: "auto", display: "block" }),
+  };
+
   return (
-    <SlateElement {...props}>
-      <img
-        src={element.url}
-        alt={element.alt || ""}
-        loading="lazy"
-        style={{
-          maxWidth: "100%",
-          borderRadius: 6,
-          margin: "12px 0",
-        }}
-      />
+    <SlateElement {...props} style={wrapperStyle}>
+      <div style={innerStyle}>
+        <img
+          src={element.url}
+          alt={element.alt || ""}
+          loading="lazy"
+          style={{
+            width: "100%",
+            borderRadius: 6,
+            display: "block",
+          }}
+        />
+      </div>
       {props.children}
     </SlateElement>
   );

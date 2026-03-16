@@ -1,5 +1,5 @@
 import type { VexEditorFeature } from "../features/types";
-import { BaseParagraphPlugin } from "platejs";
+import { BaseParagraphPlugin, createSlatePlugin } from "platejs";
 import {
   BoldPlugin,
   ItalicPlugin,
@@ -23,14 +23,20 @@ import {
 import {
   HrElement,
   ImageElement,
+  ImagePlaceholderElement,
   TableElement,
   TableRowElement,
   TableCellElement,
 } from "../components/editorElements";
 
+/** Custom plugin for the image upload placeholder (void element). */
+const ImagePlaceholderPlugin = createSlatePlugin({
+  key: "img_placeholder",
+  node: { type: "img_placeholder", isElement: true, isVoid: true },
+});
+
 /**
- * Maps a VexEditorFeature key to the corresponding Plate React plugin(s).
- * Table/HR/Image plugins use .withComponent() to register custom elements.
+ * Maps a VexEditorFeature key to Plate React plugins.
  */
 const featurePluginMap: Record<string, any[]> = {
   bold: [BoldPlugin],
@@ -43,22 +49,34 @@ const featurePluginMap: Record<string, any[]> = {
   codeBlock: [CodeBlockPlugin, CodeLinePlugin],
   list: [ListPlugin],
   link: [LinkPlugin],
-  image: [ImagePlugin.withComponent(ImageElement)],
-  horizontalRule: [HorizontalRulePlugin.withComponent(HrElement)],
-  table: [
-    TablePlugin.withComponent(TableElement),
-    TableRowPlugin.withComponent(TableRowElement),
-    TableCellPlugin.withComponent(TableCellElement),
-    TableCellHeaderPlugin.withComponent(TableCellElement),
-  ],
+  image: [ImagePlugin],
+  horizontalRule: [HorizontalRulePlugin],
+  table: [TablePlugin, TableRowPlugin, TableCellPlugin, TableCellHeaderPlugin],
 };
 
 /**
- * Given an array of VexEditorFeature objects, returns the corresponding
- * Plate React plugins (always including BaseParagraphPlugin).
+ * Maps plugin keys to custom React components.
+ * Returned separately so they can be passed to createPlateEditor({ override: { components } }).
  */
-export function createPluginsFromFeatures(features: VexEditorFeature[]): any[] {
-  const plugins: any[] = [BaseParagraphPlugin];
+const componentMap: Record<string, any> = {
+  img: ImageElement,
+  hr: HrElement,
+  img_placeholder: ImagePlaceholderElement,
+  table: TableElement,
+  tr: TableRowElement,
+  td: TableCellElement,
+  th: TableCellElement,
+};
+
+/**
+ * Given an array of VexEditorFeature objects, returns the plugins
+ * and component overrides for createPlateEditor.
+ */
+export function createPluginsFromFeatures(features: VexEditorFeature[]): {
+  plugins: any[];
+  components: Record<string, any>;
+} {
+  const plugins: any[] = [BaseParagraphPlugin, ImagePlaceholderPlugin];
 
   for (const feature of features) {
     const mapped = featurePluginMap[feature.key];
@@ -67,5 +85,5 @@ export function createPluginsFromFeatures(features: VexEditorFeature[]): any[] {
     }
   }
 
-  return plugins;
+  return { plugins, components: componentMap };
 }

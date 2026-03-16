@@ -315,6 +315,13 @@ export interface RichTextFieldDef extends BaseField {
    * If not set, uses the global editor from `VexConfig.editor`.
    */
   editor?: VexEditorAdapter;
+  /**
+   * Media collection slug for image uploads.
+   * When set, the editor can pick images from the specified media collection,
+   * and paste/drop image uploads are auto-saved to this collection.
+   * When not set, images can only be inserted by URL.
+   */
+  mediaCollection?: string;
 }
 
 // =============================================================================

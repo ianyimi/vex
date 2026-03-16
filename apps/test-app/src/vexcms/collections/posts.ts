@@ -1,6 +1,6 @@
 import { checkbox, defineCollection, richtext, select, text } from "@vexcms/core"
 
-import { TABLE_SLUG_POSTS } from "~/db/constants"
+import { TABLE_SLUG_MEDIA, TABLE_SLUG_POSTS } from "~/db/constants"
 
 export const posts = defineCollection({
   slug: TABLE_SLUG_POSTS,
@@ -19,6 +19,7 @@ export const posts = defineCollection({
     }),
     content: richtext({
       label: "Content",
+      mediaCollection: TABLE_SLUG_MEDIA,
     }),
     featured: checkbox({
       defaultValue: false,

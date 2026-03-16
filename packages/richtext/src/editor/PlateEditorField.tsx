@@ -1,22 +1,87 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
-import { Plate, PlateContent, createPlateEditor } from "platejs/react";
+import { useMemo, useState, useCallback, useRef, useImperativeHandle, forwardRef } from "react";
+import { Plate, PlateContent, createPlateEditor, useEditorRef } from "platejs/react";
 import type { VexEditorComponentProps, RichTextDocument } from "@vexcms/core";
 import type { VexEditorFeature } from "./features/types";
 import { createPluginsFromFeatures } from "./plugins/createPlugins";
 import { Toolbar } from "./components/Toolbar";
 import { EditorContainer } from "./components/EditorContainer";
 import { ImageUpload } from "./components/image/ImageUpload";
+import { useImageUpload } from "./components/image/useImageUpload";
 import { TableToolbar } from "./components/TableToolbar";
+
+interface MediaDoc {
+  _id: string;
+  filename: string;
+  mimeType: string;
+  url: string;
+  alt?: string;
+}
 
 interface PlateEditorFieldProps extends VexEditorComponentProps {
   features: VexEditorFeature[];
+  mediaResults?: MediaDoc[];
+  mediaSearchTerm?: string;
+  onMediaSearchChange?: (term: string) => void;
+  mediaCanLoadMore?: boolean;
+  onMediaLoadMore?: () => void;
+  mediaIsLoading?: boolean;
+  onUploadNew?: () => void;
+  generateUploadUrl?: () => Promise<string>;
+  createMediaDocument?: (props: {
+    collectionSlug: string;
+    fields: Record<string, unknown>;
+  }) => Promise<string>;
 }
 
 const DEFAULT_VALUE: RichTextDocument = [
   { type: "p", children: [{ text: "" }] },
 ];
+
+/**
+ * Handle for inserting images from outside the Plate context.
+ */
+interface ImageInsertHandle {
+  insertImage: (props: { url: string; alt?: string; mediaId?: string; width?: number; height?: number }) => void;
+}
+
+/**
+ * Child component that lives INSIDE <Plate> and can use useEditorRef().
+ * Exposes an insertImage method via ref.
+ */
+const ImageInsertBridge = forwardRef<ImageInsertHandle>(function ImageInsertBridge(_props, ref) {
+  const editor = useEditorRef();
+
+  useImperativeHandle(ref, () => ({
+    insertImage: (props) => {
+      const imgNode = {
+        type: "img",
+        url: props.url,
+        alt: props.alt || "",
+        mediaId: props.mediaId,
+        width: props.width,
+        height: props.height,
+        children: [{ text: "" }],
+      } as any;
+      const trailingP = { type: "p", children: [{ text: "" }] } as any;
+
+      // Insert at current selection or end of document
+      if (editor.selection) {
+        editor.tf.insertNodes([imgNode, trailingP], { select: true });
+      } else {
+        editor.tf.insertNodes([imgNode, trailingP], {
+          at: [editor.children.length],
+        });
+        // Move selection to the new paragraph
+        const newPath = [editor.children.length - 1, 0];
+        try { editor.tf.select({ path: newPath, offset: 0 }); } catch { /* selection may fail if path is invalid */ }
+      }
+    },
+  }), [editor]);
+
+  return null;
+});
 
 export function PlateEditorField({
   value,
@@ -27,23 +92,33 @@ export function PlateEditorField({
   description,
   name,
   features,
+  mediaCollection,
+  mediaResults,
+  mediaSearchTerm,
+  onMediaSearchChange,
+  mediaCanLoadMore,
+  onMediaLoadMore,
+  mediaIsLoading,
+  onUploadNew,
+  generateUploadUrl,
+  createMediaDocument,
 }: PlateEditorFieldProps) {
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const imageInsertRef = useRef<ImageInsertHandle>(null);
 
-  const plugins = useMemo(
+  const { plugins, components } = useMemo(
     () => createPluginsFromFeatures(features),
     [features]
   );
 
-  const editor = useMemo(
-    () =>
-      createPlateEditor({
-        plugins,
-        value: value && value.length > 0 ? (value as any) : DEFAULT_VALUE,
-      }),
+  const editor = useMemo(() => {
+    return createPlateEditor({
+      plugins,
+      override: { components },
+      value: value && value.length > 0 ? (value as any) : DEFAULT_VALUE,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [plugins]
-  );
+  }, [plugins]);
 
   const handleChange = useCallback(
     ({ value: newValue }: { value: any }) => {
@@ -52,7 +127,76 @@ export function PlateEditorField({
     [onChange]
   );
 
+  const { uploadFile } = useImageUpload({
+    mediaCollection,
+    generateUploadUrl,
+    createMediaDocument,
+  });
+
   const hasImageFeature = features.some((f) => f.key === "image");
+
+  const handleInsertImage = useCallback(
+    (props: { url: string; alt?: string; mediaId?: string; width?: number; height?: number }) => {
+      // Close popover first, then insert on next tick so editor can regain focus
+      setShowImageUpload(false);
+      setTimeout(() => {
+        const editorEl = document.querySelector(
+          '[data-slate-editor="true"]'
+        ) as HTMLElement | null;
+        if (editorEl) editorEl.focus({ preventScroll: true });
+
+        // Use the bridge ref which has access to useEditorRef()
+        imageInsertRef.current?.insertImage(props);
+      }, 50);
+    },
+    []
+  );
+
+  // Paste handler
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      if (!uploadFile) return;
+      const files = Array.from(e.clipboardData.files).filter((f) =>
+        f.type.startsWith("image/")
+      );
+      if (files.length === 0) return;
+      e.preventDefault();
+      for (const file of files) {
+        uploadFile(file).then((result) => {
+          imageInsertRef.current?.insertImage({
+            url: result.url,
+            mediaId: result.mediaId,
+            width: result.width,
+            height: result.height,
+          });
+        }).catch((err) => console.error("Image upload failed:", err));
+      }
+    },
+    [uploadFile]
+  );
+
+  // Drop handler
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      if (!uploadFile) return;
+      const files = Array.from(e.dataTransfer.files).filter((f) =>
+        f.type.startsWith("image/")
+      );
+      if (files.length === 0) return;
+      e.preventDefault();
+      for (const file of files) {
+        uploadFile(file).then((result) => {
+          imageInsertRef.current?.insertImage({
+            url: result.url,
+            mediaId: result.mediaId,
+            width: result.width,
+            height: result.height,
+          });
+        }).catch((err) => console.error("Image upload failed:", err));
+      }
+    },
+    [uploadFile]
+  );
 
   return (
     <EditorContainer label={label} description={description}>
@@ -61,7 +205,10 @@ export function PlateEditorField({
         onValueChange={handleChange}
         readOnly={readOnly}
       >
-        {/* Toolbar — stays fixed at top, outside scrollable area */}
+        {/* Bridge component — lives inside Plate, exposes insert via ref */}
+        <ImageInsertBridge ref={imageInsertRef} />
+
+        {/* Toolbar */}
         {!readOnly && (
           <div
             style={{
@@ -85,7 +232,10 @@ export function PlateEditorField({
                 <span className="vex-tb-wrap">
                   <button
                     type="button"
-                    onClick={() => setShowImageUpload((v) => !v)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setShowImageUpload((v) => !v);
+                    }}
                     style={{
                       background: "transparent",
                       border: "1px solid var(--border)",
@@ -104,25 +254,37 @@ export function PlateEditorField({
               )}
             </div>
             {showImageUpload && (
-              <ImageUpload onClose={() => setShowImageUpload(false)} />
+              <ImageUpload
+                onClose={() => setShowImageUpload(false)}
+                onInsertUrl={handleInsertImage}
+                onInsertMedia={
+                  mediaResults !== undefined
+                    ? handleInsertImage
+                    : undefined
+                }
+                onUploadNew={onUploadNew}
+                mediaResults={mediaResults}
+                mediaSearchTerm={mediaSearchTerm}
+                onMediaSearchChange={onMediaSearchChange}
+                mediaCanLoadMore={mediaCanLoadMore}
+                onMediaLoadMore={onMediaLoadMore}
+                mediaIsLoading={mediaIsLoading}
+              />
             )}
           </div>
         )}
 
-        {/* Table toolbar — shows when cursor is in a table */}
+        {/* Table toolbar */}
         {!readOnly && <TableToolbar />}
 
         {/* Scrollable content area */}
-        <div
-          style={{
-            maxHeight: 500,
-            overflowY: "auto",
-          }}
-        >
+        <div style={{ maxHeight: 500, overflowY: "auto" }}>
           <PlateContent
             aria-label={label || name}
             placeholder={placeholder || "Start writing..."}
             readOnly={readOnly}
+            onPaste={handlePaste}
+            onDrop={handleDrop}
             style={{
               padding: "12px 16px",
               minHeight: 160,

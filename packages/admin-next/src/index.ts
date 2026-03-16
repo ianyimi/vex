@@ -9,3 +9,4 @@ export {
 export { usePermission } from "./hooks/usePermission";
 export { usePermissions } from "./hooks/usePermissions";
 export { ImpersonationBanner } from "./components/ImpersonationBanner";
+export { useMediaPickerState } from "./hooks/useMediaPickers";

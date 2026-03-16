@@ -49,11 +49,7 @@ interface AdminPageProps {
   config: ClientVexConfig;
   path?: string[];
   /** Custom renderer for richtext fields in edit forms. */
-  renderRichTextField?: (props: {
-    field: any;
-    fieldDef: any;
-    name: string;
-  }) => React.ReactNode;
+  renderRichTextField?: (props: Record<string, any>) => React.ReactNode;
 }
 
 export function AdminPage({ config, path = [], renderRichTextField }: AdminPageProps) {
