@@ -88,6 +88,9 @@ export function fieldMetaToZod(props: { field: VexField }): ZodTypeAny {
     case "json":
       return z.any();
 
+    case "richtext":
+      return z.any();
+
     case "array": {
       let schema = z.array(fieldMetaToZod({ field: props.field.field }));
       if (props.field.min != null) schema = schema.min(props.field.min);

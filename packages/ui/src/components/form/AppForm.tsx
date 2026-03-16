@@ -82,6 +82,16 @@ interface AppFormProps {
    * A form is dirty when any field value differs from its default value.
    */
   onDirtyChange?: (isDirty: boolean) => void;
+  /**
+   * Custom renderer for richtext fields.
+   * The admin panel provides this to inject the editor adapter component.
+   * If not provided, richtext fields render as a JSON textarea fallback.
+   */
+  renderRichTextField?: (props: {
+    field: any;
+    fieldDef: any;
+    name: string;
+  }) => React.ReactNode;
 }
 
 /**
@@ -129,6 +139,7 @@ function AppForm({
   renderUploadField,
   getValuesRef,
   onDirtyChange,
+  renderRichTextField,
 }: AppFormProps) {
   const form = useForm({
     defaultValues: defaultValues as Record<string, any>,
@@ -268,6 +279,41 @@ function AppForm({
                       onUploadNew={uploadNew}
                       selectedMedia={pickerState?.selectedMedia}
                     />
+                  );
+                }
+                case "richtext": {
+                  if (renderRichTextField) {
+                    return readOnlyWrapper(
+                      renderRichTextField({
+                        field,
+                        fieldDef,
+                        name: entry.name,
+                      })
+                    );
+                  }
+                  // Fallback: render as JSON textarea when no editor adapter
+                  return readOnlyWrapper(
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        {fieldDef.label ?? entry.name}
+                      </label>
+                      <textarea
+                        className="w-full min-h-[200px] rounded-md border p-3 font-mono text-sm"
+                        value={JSON.stringify(field.state.value, null, 2)}
+                        onChange={(e) => {
+                          try {
+                            field.handleChange(JSON.parse(e.target.value));
+                          } catch {
+                            // Invalid JSON, don't update
+                          }
+                        }}
+                      />
+                      {fieldDef.description && (
+                        <p className="text-sm text-muted-foreground">
+                          {fieldDef.description}
+                        </p>
+                      )}
+                    </div>
                   );
                 }
                 default:

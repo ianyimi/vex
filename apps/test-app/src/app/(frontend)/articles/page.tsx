@@ -28,9 +28,9 @@ export default function ArticlesPage() {
               className="block rounded border p-4 hover:bg-gray-50"
             >
               <p className="font-medium">{(article.name as string) ?? "Untitled"}</p>
-              {article.slug && (
+              {article.slug ? (
                 <p className="text-sm text-gray-500">/{article.slug as string}</p>
-              )}
+              ) : null}
             </Link>
           </li>
         ))}

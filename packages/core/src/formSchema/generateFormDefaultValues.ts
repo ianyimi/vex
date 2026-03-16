@@ -26,6 +26,8 @@ function getFormDefaultValue(props: { field: VexField }): unknown {
       return props.field.hasMany ? [] : "";
     case "json":
       return {};
+    case "richtext":
+      return [];
     case "array":
       return [];
     default:

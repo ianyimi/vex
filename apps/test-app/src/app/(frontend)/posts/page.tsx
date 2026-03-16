@@ -33,9 +33,9 @@ export default function PostsPage() {
                   {(post.status as string) ?? "unknown"}
                 </span>
               </div>
-              {post.subtitle && (
+              {post.subtitle ? (
                 <p className="mt-1 text-sm text-gray-500">{post.subtitle as string}</p>
-              )}
+              ) : null}
             </Link>
           </li>
         ))}

@@ -24,6 +24,7 @@ export { relationship } from "./fields/relationship";
 export { upload } from "./fields/media";
 export { json } from "./fields/json";
 export { array } from "./fields/array";
+export { richtext } from "./fields/richtext";
 
 export * from "./versioning";
 
@@ -52,6 +53,7 @@ export type {
   UploadFieldDef,
   JsonFieldDef,
   ArrayFieldDef,
+  RichTextFieldDef,
   InferFieldType,
   InferFieldsType,
   // Field admin config
@@ -83,6 +85,13 @@ export type {
   AdminConfigInput,
   AdminMetaInput,
   AdminSidebarInput,
+  // Editor adapter types
+  VexEditorAdapter,
+  VexEditorComponentProps,
+  VexRenderComponentProps,
+  RichTextDocument,
+  RichTextElement,
+  RichTextText,
   // Media types
   VexMediaCollection,
   FileStorageAdapter,

@@ -40,10 +40,16 @@ export default function CollectionEditView({
   config,
   collection,
   documentID,
+  renderRichTextField,
 }: {
   config: ClientVexConfig;
   collection: VexCollection;
   documentID: string;
+  renderRichTextField?: (props: {
+    field: any;
+    fieldDef: any;
+    name: string;
+  }) => React.ReactNode;
 }) {
   const router = useRouter();
   const isVersioned = !!collection.versions?.drafts;
@@ -403,6 +409,7 @@ export default function CollectionEditView({
                   initialValue={uploadProps.defaultValue as string | undefined}
                 />
               )}
+              renderRichTextField={renderRichTextField}
             />
           </div>
         )}

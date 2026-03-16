@@ -3,6 +3,8 @@
 import { useQuery } from "convex/react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import { RichText } from "@vexcms/richtext/render"
+import type { RichTextDocument } from "@vexcms/core"
 
 import { api } from "@convex/_generated/api"
 
@@ -42,9 +44,9 @@ export default function PostPage() {
       </Link>
 
       <h1 className="mb-1 text-2xl font-bold">{(doc.title as string) ?? "Untitled"}</h1>
-      {doc.subtitle && (
+      {doc.subtitle ? (
         <p className="mb-4 text-lg text-gray-600">{doc.subtitle as string}</p>
-      )}
+      ) : null}
 
       <dl className="mt-4 space-y-3">
         <div>
@@ -68,6 +70,15 @@ export default function PostPage() {
           <dd>{doc._creationTime ? new Date(doc._creationTime as number).toLocaleString() : "—"}</dd>
         </div>
       </dl>
+
+      {doc.content ? (
+        <div className="mt-6">
+          <h2 className="mb-2 text-sm font-medium text-gray-500">Content</h2>
+          <div className="rounded border p-4 prose prose-sm max-w-none">
+            <RichText content={doc.content as RichTextDocument} />
+          </div>
+        </div>
+      ) : null}
 
       <pre className="mt-6 overflow-auto rounded bg-gray-100 p-4 text-xs">
         {JSON.stringify(doc, null, 2)}

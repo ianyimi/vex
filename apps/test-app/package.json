@@ -23,6 +23,7 @@
     "@vexcms/admin-next": "workspace:*",
     "@vexcms/better-auth": "workspace:*",
     "@vexcms/core": "workspace:*",
+    "@vexcms/richtext": "workspace:*",
     "@vexcms/ui": "workspace:*",
     "@vexcms/file-storage-convex": "workspace:*",
     "better-auth": "catalog:",

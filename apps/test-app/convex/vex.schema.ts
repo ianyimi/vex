@@ -21,6 +21,7 @@ export const articles = defineTable({
 
 export const posts = defineTable({
   slug: v.string(),
+  content: v.optional(v.any()),
   featured: v.optional(v.boolean()),
   status: v.union(v.literal("draft"), v.literal("published"), v.literal("archived")),
   subtitle: v.string(),

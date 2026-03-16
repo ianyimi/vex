@@ -8,6 +8,7 @@ import { dateColumnDef } from "../fields/date/columnDef";
 import { imageUrlColumnDef } from "../fields/imageUrl/columnDef";
 import { relationshipColumnDef } from "../fields/relationship/columnDef";
 import { jsonColumnDef } from "../fields/json/columnDef";
+import { richtextColumnDef } from "../fields/richtext/columnDef";
 import { arrayColumnDef } from "../fields/array/columnDef";
 import { uploadColumnDef } from "../fields/media/columnDef";
 import { toTitleCase } from "../utils";
@@ -121,6 +122,8 @@ function buildColumnDef(
       return relationshipColumnDef({ fieldKey, field });
     case "json":
       return jsonColumnDef({ fieldKey, field });
+    case "richtext":
+      return richtextColumnDef({ fieldKey, field });
     case "array":
       return arrayColumnDef({ fieldKey, field });
     case "upload":

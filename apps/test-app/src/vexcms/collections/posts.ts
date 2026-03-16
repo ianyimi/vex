@@ -1,4 +1,4 @@
-import { defineCollection, text, checkbox, select } from "@vexcms/core"
+import { checkbox, defineCollection, richtext, select, text } from "@vexcms/core"
 
 import { TABLE_SLUG_POSTS } from "~/db/constants"
 
@@ -16,6 +16,9 @@ export const posts = defineCollection({
       },
       label: "Slug",
       required: true,
+    }),
+    content: richtext({
+      label: "Content",
     }),
     featured: checkbox({
       defaultValue: false,

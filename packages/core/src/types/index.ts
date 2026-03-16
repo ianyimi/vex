@@ -5,6 +5,7 @@ import { AdminConfig, AdminConfigInput } from "./admin";
 import { SchemaConfig, SchemaConfigInput } from "./schema";
 import type { MediaConfig, MediaConfigInput, ClientMediaConfig } from "./media";
 import type { VexAccessConfig } from "../access/types";
+import type { VexEditorAdapter } from "./editor";
 
 export * from "./fields";
 export * from "./collections";
@@ -13,6 +14,7 @@ export * from "./auth";
 export * from "./admin";
 export * from "./schema";
 export * from "./media";
+export * from "./editor";
 
 // =============================================================================
 // CONFIG TYPES
@@ -36,6 +38,8 @@ export interface VexConfig {
   media?: MediaConfig;
   /** RBAC access permissions config. Optional — if not set, all actions are allowed. */
   access?: VexAccessConfig;
+  /** Global rich text editor adapter. Used by all richtext fields unless overridden. */
+  editor?: VexEditorAdapter;
 }
 
 /**
@@ -53,6 +57,8 @@ export interface ClientVexConfig {
   auth: VexAuthAdapter;
   schema: SchemaConfig;
   media?: ClientMediaConfig;
+  /** Global rich text editor adapter. */
+  editor?: VexEditorAdapter;
 }
 
 // =============================================================================
@@ -107,4 +113,10 @@ export interface VexConfigInput {
    * If not set, the admin panel allows all actions on all fields (permissive default).
    */
   access?: VexAccessConfig;
+  /**
+   * Global rich text editor adapter.
+   * Used as the default editor for all richtext fields.
+   * Pass `plateEditor()` from `@vexcms/richtext/editor`.
+   */
+  editor?: VexEditorAdapter;
 }

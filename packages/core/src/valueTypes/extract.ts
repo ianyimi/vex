@@ -7,6 +7,7 @@ import { dateToValueTypeString } from "../fields/date";
 import { imageUrlToValueTypeString } from "../fields/imageUrl";
 import { relationshipToValueTypeString } from "../fields/relationship";
 import { jsonToValueTypeString } from "../fields/json";
+import { richtextToValueTypeString } from "../fields/richtext";
 import { uploadToValueTypeString } from "../fields/media";
 import { arrayToValueTypeString } from "../fields/array";
 import type { VexField } from "../types";
@@ -43,6 +44,8 @@ export function fieldToValueType(props: {
       return uploadToValueTypeString({ field, collectionSlug, fieldName });
     case "json":
       return jsonToValueTypeString({ field, collectionSlug, fieldName });
+    case "richtext":
+      return richtextToValueTypeString({ field, collectionSlug, fieldName });
     case "array":
       return arrayToValueTypeString({
         field,

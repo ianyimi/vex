@@ -303,6 +303,20 @@ export interface ArrayFieldDef extends BaseField {
   max?: number;
 }
 
+import type { VexEditorAdapter, RichTextDocument } from "./editor";
+
+/** Rich text field definition. Stores Plate/Slate JSON via `v.any()`. */
+export interface RichTextFieldDef extends BaseField {
+  readonly type: "richtext";
+  /** Display label for the field in the admin form. */
+  label?: string;
+  /**
+   * Editor adapter override for this specific field.
+   * If not set, uses the global editor from `VexConfig.editor`.
+   */
+  editor?: VexEditorAdapter;
+}
+
 // =============================================================================
 // UTILITY TYPES
 // =============================================================================
@@ -346,7 +360,8 @@ export type VexField =
   | RelationshipFieldDef
   | UploadFieldDef
   | JsonFieldDef
-  | ArrayFieldDef;
+  | ArrayFieldDef
+  | RichTextFieldDef;
 
 // =============================================================================
 // TYPE INFERENCE
@@ -380,9 +395,11 @@ export type InferFieldType<F extends VexField> = F extends { type: "text" }
                       ? string
                       : F extends { type: "json" }
                         ? unknown
-                        : F extends { type: "array" }
-                          ? unknown[]
-                          : never;
+                        : F extends { type: "richtext" }
+                          ? RichTextDocument
+                          : F extends { type: "array" }
+                            ? unknown[]
+                            : never;
 
 /**
  * Infer the document type from a record of fields.

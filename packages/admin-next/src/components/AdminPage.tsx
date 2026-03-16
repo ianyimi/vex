@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import React, { Suspense } from "react";
 import type { ClientVexConfig, VexCollection } from "@vexcms/core";
 import { mergeAuthCollectionWithUserCollection, isMediaCollection } from "@vexcms/core";
 import { DashboardView } from "../views/DashboardView";
@@ -48,9 +48,15 @@ function resolveCollection(
 interface AdminPageProps {
   config: ClientVexConfig;
   path?: string[];
+  /** Custom renderer for richtext fields in edit forms. */
+  renderRichTextField?: (props: {
+    field: any;
+    fieldDef: any;
+    name: string;
+  }) => React.ReactNode;
 }
 
-export function AdminPage({ config, path = [] }: AdminPageProps) {
+export function AdminPage({ config, path = [], renderRichTextField }: AdminPageProps) {
   const [collectionSlug, documentID] = path;
 
   if (!collectionSlug) {
@@ -96,6 +102,7 @@ export function AdminPage({ config, path = [] }: AdminPageProps) {
       config={config}
       collection={collection}
       documentID={documentID}
+      renderRichTextField={renderRichTextField}
     />
   );
 }
