@@ -15,6 +15,12 @@ export * from "./admin";
 export * from "./schema";
 export * from "./media";
 export * from "./editor";
+export type {
+  LivePreviewConfig,
+  LivePreviewBreakpoint,
+  ClientLivePreviewConfig,
+  AdminLivePreviewConfig,
+} from "./livePreview";
 
 // =============================================================================
 // CONFIG TYPES

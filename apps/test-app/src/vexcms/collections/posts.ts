@@ -7,6 +7,9 @@ export const posts = defineCollection({
   admin: {
     defaultColumns: ["title", "status", "featured"],
     group: "Content",
+    livePreview: {
+      url: (doc) => `/posts/${doc._id}`,
+    },
     useAsTitle: "title",
   },
   fields: {

@@ -1,3 +1,5 @@
+import type { AdminLivePreviewConfig } from "./livePreview";
+
 /** Resolved admin panel configuration */
 export interface AdminConfig {
   /** Collection slug used for user authentication */
@@ -14,6 +16,8 @@ export interface AdminConfig {
     /** Whether global collections are hidden from the sidebar */
     hideGlobals: boolean;
   };
+  /** Global live preview defaults */
+  livePreview?: AdminLivePreviewConfig;
 }
 
 // =============================================================================
@@ -100,4 +104,9 @@ export interface AdminConfigInput {
    * ```
    */
   sidebar?: AdminSidebarInput;
+  /**
+   * Global live preview defaults.
+   * Individual collections can override these breakpoints.
+   */
+  livePreview?: AdminLivePreviewConfig;
 }

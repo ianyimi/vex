@@ -247,7 +247,7 @@ export function generateVexSchema(props: { config: VexConfig }): string {
     lines.push("  collection: v.string(),");
     lines.push("  documentId: v.string(),");
     lines.push("  version: v.number(),");
-    lines.push(`  status: v.union(v.literal("draft"), v.literal("published"), v.literal("autosave")),`);
+    lines.push(`  status: v.union(v.literal("draft"), v.literal("published"), v.literal("autosave"), v.literal("previewSnapshot")),`);
     lines.push("  snapshot: v.any(),");
     lines.push("  createdAt: v.number(),");
     lines.push("  createdBy: v.optional(v.string()),");

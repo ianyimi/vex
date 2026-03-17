@@ -19,6 +19,8 @@ import {
   BreadcrumbSeparator,
   Button,
   CreateMediaModal,
+  LivePreviewPanel,
+  PreviewToggleButton,
 } from "@vexcms/ui";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
@@ -35,17 +37,21 @@ import { StatusBadge } from "../components/StatusBadge";
 import { VersionHistoryDropdown } from "../components/VersionHistoryDropdown";
 import { useAutosave } from "../hooks/useAutosave";
 import { usePermissions } from "../hooks/usePermissions";
+import { usePreviewSnapshot } from "../hooks/usePreviewSnapshot";
 
 export default function CollectionEditView({
   config,
   collection,
   documentID,
   renderRichTextField,
+  livePreviewConfigs,
 }: {
   config: ClientVexConfig;
   collection: VexCollection;
   documentID: string;
   renderRichTextField?: (props: Record<string, any>) => React.ReactNode;
+  /** Map of collection slug → { url } for collections with function-based preview URLs */
+  livePreviewConfigs?: Record<string, { url: (doc: { _id: string; [key: string]: any }) => string }>;
 }) {
   const router = useRouter();
   const isVersioned = !!collection.versions?.drafts;
@@ -79,6 +85,11 @@ export default function CollectionEditView({
   const saveDraftMutation = useMutation(anyApi.vex.versions.saveDraft);
   const publishMutation = useMutation(anyApi.vex.versions.publish);
   const unpublishMutation = useMutation(anyApi.vex.versions.unpublish);
+  const deleteSnapshotMutation = useMutation(anyApi.vex.previewSnapshot.remove);
+
+  // Live preview state — works with or without versioning
+  const hasPreview = !!collection.admin?.livePreview;
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -207,6 +218,13 @@ export default function CollectionEditView({
           fields: changedFields,
         });
       }
+      // Clean up preview snapshot after successful save
+      if (hasPreview) {
+        deleteSnapshotMutation({
+          collectionSlug: collection.slug,
+          documentId: documentID,
+        }).catch(() => {}); // best-effort cleanup
+      }
     } finally {
       setIsSaving(false);
     }
@@ -225,6 +243,13 @@ export default function CollectionEditView({
       if (restoredFromVersion !== null) {
         setRestoredSnapshot(null);
         setRestoredFromVersion(null);
+      }
+      // Clean up preview snapshot after publish
+      if (hasPreview) {
+        deleteSnapshotMutation({
+          collectionSlug: collection.slug,
+          documentId: documentID,
+        }).catch(() => {});
       }
     } finally {
       setIsPublishing(false);
@@ -258,6 +283,14 @@ export default function CollectionEditView({
       // Stub — implement based on AppForm's dirty state API
       return null;
     },
+  });
+
+  // Preview snapshot — writes transient snapshot on form changes when preview is open
+  usePreviewSnapshot({
+    collectionSlug: collection.slug,
+    documentId: documentID,
+    enabled: previewOpen && hasPreview && !!document,
+    getFormValues: () => getFormValuesRef.current?.() ?? null,
   });
 
   const isLoading = documentQuery.isPending;
@@ -300,6 +333,12 @@ export default function CollectionEditView({
           <div className="flex items-center gap-2">
             {isVersioned && document && typeof document.vex_status === "string" && (
               <StatusBadge status={document.vex_status} />
+            )}
+            {hasPreview && document && (
+              <PreviewToggleButton
+                isOpen={previewOpen}
+                onToggle={() => setPreviewOpen((prev) => !prev)}
+              />
             )}
             {!disableDelete && document && (
               <Button
@@ -377,46 +416,63 @@ export default function CollectionEditView({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
-        {isLoading && <p className="text-muted-foreground">Loading...</p>}
+      <div className={`flex-1 overflow-hidden ${previewOpen && hasPreview ? "flex" : ""}`}>
+        <div className={`overflow-y-auto p-6 ${previewOpen && hasPreview ? "w-1/2 border-r" : "w-full"}`}>
+          {isLoading && <p className="text-muted-foreground">Loading...</p>}
 
-        {!isLoading && document == null && (
-          <p className="text-muted-foreground">Document not found.</p>
-        )}
+          {!isLoading && document == null && (
+            <p className="text-muted-foreground">Document not found.</p>
+          )}
 
-        {!isLoading && document != null && (
-          <div className="" key={`${documentID}-${restoredFromVersion ?? "latest"}`}>
-            <AppForm
-              formId="collection-edit-form"
-              schema={schema}
-              fieldEntries={fieldEntries}
-              defaultValues={defaultValues}
-              onSubmit={handleSubmit}
-              submitAllFields={isVersioned}
-              getValuesRef={isVersioned ? getFormValuesRef : undefined}
-              onDirtyChange={isVersioned ? setIsFormDirty : undefined}
-              onOpenUploadModal={handleOpenUploadModal}
-              renderUploadField={(uploadProps) => (
-                <UploadFieldWrapper
-                  field={uploadProps.field}
-                  fieldDef={uploadProps.fieldDef}
-                  name={uploadProps.name}
-                  onUploadNew={uploadProps.onUploadNew}
-                  uploadedMediaId={uploadedMediaIds[uploadProps.name]}
-                  basePath={config.basePath}
-                  initialValue={uploadProps.defaultValue as string | undefined}
-                />
-              )}
-              renderRichTextField={renderRichTextField ? (richtextProps: any) => {
-                return renderRichTextField({
-                  ...richtextProps,
-                  generateUploadUrl: async () => await generateUploadUrl(),
-                  createMediaDocument: async (p: any) => await createMediaDocument(p),
-                  onUploadNew: richtextProps.fieldDef?.mediaCollection
-                    ? () => handleOpenUploadModal(richtextProps.name, richtextProps.fieldDef.mediaCollection)
-                    : undefined,
-                });
-              } : undefined}
+          {!isLoading && document != null && (
+            <div className="" key={`${documentID}-${restoredFromVersion ?? "latest"}`}>
+              <AppForm
+                formId="collection-edit-form"
+                schema={schema}
+                fieldEntries={fieldEntries}
+                defaultValues={defaultValues}
+                onSubmit={handleSubmit}
+                submitAllFields={isVersioned}
+                getValuesRef={isVersioned || hasPreview ? getFormValuesRef : undefined}
+                onDirtyChange={isVersioned ? setIsFormDirty : undefined}
+                onOpenUploadModal={handleOpenUploadModal}
+                renderUploadField={(uploadProps) => (
+                  <UploadFieldWrapper
+                    field={uploadProps.field}
+                    fieldDef={uploadProps.fieldDef}
+                    name={uploadProps.name}
+                    onUploadNew={uploadProps.onUploadNew}
+                    uploadedMediaId={uploadedMediaIds[uploadProps.name]}
+                    basePath={config.basePath}
+                    initialValue={uploadProps.defaultValue as string | undefined}
+                  />
+                )}
+                renderRichTextField={renderRichTextField ? (richtextProps: any) => {
+                  return renderRichTextField({
+                    ...richtextProps,
+                    generateUploadUrl: async () => await generateUploadUrl(),
+                    createMediaDocument: async (p: any) => await createMediaDocument(p),
+                    onUploadNew: richtextProps.fieldDef?.mediaCollection
+                      ? () => handleOpenUploadModal(richtextProps.name, richtextProps.fieldDef.mediaCollection)
+                      : undefined,
+                  });
+                } : undefined}
+              />
+            </div>
+          )}
+        </div>
+        {previewOpen && hasPreview && document && (
+          <div className="w-1/2 overflow-hidden flex flex-col">
+            <LivePreviewPanel
+              url={
+                // Use function URL from livePreviewConfigs if available (for function-based URLs
+                // that were stripped during RSC serialization), otherwise use the serialized string URL
+                livePreviewConfigs?.[collection.slug]?.url
+                  ?? collection.admin!.livePreview!.url as string
+              }
+              doc={{ _id: documentID, ...document } as { _id: string; [key: string]: any }}
+              breakpoints={collection.admin!.livePreview!.breakpoints}
+              adminBreakpoints={config.admin.livePreview?.breakpoints}
             />
           </div>
         )}

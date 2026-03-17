@@ -2,7 +2,11 @@
 
 import { AdminPage } from "@vexcms/admin-next"
 import type { ClientVexConfig } from "@vexcms/core"
+import { extractLivePreviewConfigs } from "@vexcms/core"
 import { RichTextFieldWithMedia } from "./RichTextFieldWithMedia"
+import originalConfig from "~/../vex.config"
+
+const livePreviewConfigs = extractLivePreviewConfigs(originalConfig)
 
 export function AdminPageWrapper({
   config,
@@ -15,6 +19,7 @@ export function AdminPageWrapper({
     <AdminPage
       config={config}
       path={path}
+      livePreviewConfigs={livePreviewConfigs}
       renderRichTextField={(props: any) => (
         <RichTextFieldWithMedia
           field={props.field}

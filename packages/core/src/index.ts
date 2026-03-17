@@ -2,7 +2,7 @@ export { defineConfig } from "./config/defineConfig";
 export { defineCollection, defineMediaCollection } from "./config/defineCollection";
 export { defineAccess } from "./access/defineAccess";
 export { hasPermission } from "./access/hasPermission";
-export { sanitizeConfigForClient } from "./config/sanitizeConfig";
+export { sanitizeConfigForClient, extractLivePreviewConfigs } from "./config/sanitizeConfig";
 export { isMediaCollection } from "./config/isMediaCollection";
 export { findCollectionBySlug, getAllCollections } from "./config/findCollectionBySlug";
 export { generateVexSchema } from "./valueTypes/generate";
@@ -27,6 +27,15 @@ export { array } from "./fields/array";
 export { richtext } from "./fields/richtext";
 
 export * from "./versioning";
+
+// Live Preview
+export { resolvePreviewURL, shouldReloadURL, DEFAULT_BREAKPOINTS, PREVIEW_SNAPSHOT_DEBOUNCE_MS } from "./livePreview";
+export {
+  upsertPreviewSnapshot,
+  deletePreviewSnapshot,
+  getPreviewSnapshot,
+} from "./convex/previewSnapshot";
+export { vexQuery, type VexQueryCtx, type VexDraftsMode } from "./convex/vexQuery";
 
 export * from "./errors";
 
@@ -92,6 +101,11 @@ export type {
   RichTextDocument,
   RichTextElement,
   RichTextText,
+  // Live preview types
+  LivePreviewConfig,
+  LivePreviewBreakpoint,
+  ClientLivePreviewConfig,
+  AdminLivePreviewConfig,
   // Media types
   VexMediaCollection,
   FileStorageAdapter,

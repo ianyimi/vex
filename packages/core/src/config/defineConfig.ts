@@ -80,6 +80,7 @@ export function defineConfig(vexConfig: VexConfigInput): VexConfig {
         ...BASE_VEX_CONFIG.admin.sidebar,
         ...vexConfig.admin?.sidebar,
       },
+      livePreview: vexConfig.admin?.livePreview,
     },
     schema: {
       ...BASE_VEX_CONFIG.schema,

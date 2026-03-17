@@ -3,6 +3,7 @@
 // =============================================================================
 
 import type { VexField, InferFieldsType } from "./fields";
+import type { LivePreviewConfig } from "./livePreview";
 
 /**
  * System field keys injected into all user collection schemas.
@@ -55,6 +56,16 @@ export interface CollectionAdminConfig<
    * Default: `false`
    */
   disableDelete?: boolean;
+  /**
+   * Live preview configuration.
+   * When set, the admin edit view shows a toggleable side-by-side preview panel
+   * with an iframe loading the configured URL.
+   *
+   * Works with or without `versions.drafts` — the admin panel writes a transient
+   * preview snapshot to `vex_versions` on form changes. The preview iframe fetches
+   * this snapshot via `vexQuery` with Convex's real-time subscriptions.
+   */
+  livePreview?: LivePreviewConfig<TFields>;
 }
 
 /**

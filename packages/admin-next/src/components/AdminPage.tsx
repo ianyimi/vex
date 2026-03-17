@@ -50,9 +50,11 @@ interface AdminPageProps {
   path?: string[];
   /** Custom renderer for richtext fields in edit forms. */
   renderRichTextField?: (props: Record<string, any>) => React.ReactNode;
+  /** Map of collection slug → { url } for collections with function-based preview URLs */
+  livePreviewConfigs?: Record<string, { url: (doc: { _id: string; [key: string]: any }) => string }>;
 }
 
-export function AdminPage({ config, path = [], renderRichTextField }: AdminPageProps) {
+export function AdminPage({ config, path = [], renderRichTextField, livePreviewConfigs }: AdminPageProps) {
   const [collectionSlug, documentID] = path;
 
   if (!collectionSlug) {
@@ -99,6 +101,7 @@ export function AdminPage({ config, path = [], renderRichTextField }: AdminPageP
       collection={collection}
       documentID={documentID}
       renderRichTextField={renderRichTextField}
+      livePreviewConfigs={livePreviewConfigs}
     />
   );
 }
