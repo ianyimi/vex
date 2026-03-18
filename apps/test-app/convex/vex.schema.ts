@@ -165,7 +165,12 @@ export const vex_versions = defineTable({
   collection: v.string(),
   documentId: v.string(),
   version: v.number(),
-  status: v.union(v.literal("draft"), v.literal("published"), v.literal("autosave")),
+  status: v.union(
+    v.literal("draft"),
+    v.literal("published"),
+    v.literal("autosave"),
+    v.literal("previewSnapshot")
+  ),
   snapshot: v.any(),
   createdAt: v.number(),
   createdBy: v.optional(v.string()),

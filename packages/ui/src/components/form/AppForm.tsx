@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { useForm } from "@tanstack/react-form";
 import type { ZodObject, ZodTypeAny } from "zod";
 import type { VexField } from "@vexcms/core";
@@ -83,6 +83,11 @@ interface AppFormProps {
    */
   onDirtyChange?: (isDirty: boolean) => void;
   /**
+   * Called whenever any form field value changes.
+   * Receives all current form values. Use this for live preview snapshot writes.
+   */
+  onValuesChange?: (values: Record<string, unknown>) => void;
+  /**
    * Custom renderer for richtext fields.
    * The admin panel provides this to inject the editor adapter component.
    * If not provided, richtext fields render as a JSON textarea fallback.
@@ -155,6 +160,7 @@ function AppForm({
   renderUploadField,
   getValuesRef,
   onDirtyChange,
+  onValuesChange,
   renderRichTextField,
 }: AppFormProps) {
   const form = useForm({
@@ -194,6 +200,22 @@ function AppForm({
       return values;
     };
   }
+
+  // Subscribe to form value changes for live preview
+  const onValuesChangeRef = useRef(onValuesChange);
+  onValuesChangeRef.current = onValuesChange;
+  useEffect(() => {
+    if (!onValuesChangeRef.current) return;
+    const unsubscribe = form.store.subscribe(() => {
+      if (!onValuesChangeRef.current) return;
+      const values: Record<string, unknown> = {};
+      for (const entry of fieldEntries) {
+        values[entry.name] = form.state.values[entry.name];
+      }
+      onValuesChangeRef.current(values);
+    });
+    return unsubscribe;
+  }, [form, fieldEntries]);
 
   return (
     <form

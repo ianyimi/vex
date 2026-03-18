@@ -18,7 +18,6 @@ export * from "./editor";
 export type {
   LivePreviewConfig,
   LivePreviewBreakpoint,
-  ClientLivePreviewConfig,
   AdminLivePreviewConfig,
 } from "./livePreview";
 

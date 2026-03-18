@@ -137,12 +137,14 @@ export const getDocument = query({
   args: {
     collectionSlug: v.string(),
     documentId: v.string(),
+    preview: v.optional(v.boolean()),
   },
-  handler: async (ctx, { collectionSlug, documentId }) => {
+  handler: async (ctx, { collectionSlug, documentId, preview }) => {
     const doc = await Collections.getDocument<DataModel>({
       args: {
         collectionSlug: collectionSlug as TableNamesInDataModel<DataModel>,
         documentId,
+        preview,
       },
       ctx,
     })

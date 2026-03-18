@@ -304,12 +304,53 @@ Spec 09b — Custom Component Registration
   - Note: useField/useForm hooks already work in edit forms (Spec 14)
   - This spec adds the registration and resolution system on top
 
+Spec 09c — Field Style Controls & Cross-Collection Copy/Paste
+  - Universal ContainerStyleConfig applied to every field's wrapper div (spacing, bg, border, cursor, hover, shadow, opacity)
+  - Type-specific inner style configs: TextStyleConfig, MediaStyleConfig, LayoutStyleConfig
+  - Custom blocks declare accepted style tiers via admin.styleConfig array
+  - Popover form (tooltip on each field input) with sections based on field type
+  - Cross-collection copy/paste: copy style configs or full field/block definitions to other collections
+  - Paste validation: style-only always valid, field/block paste checks type compatibility
+  - Depends on Spec 09b — custom components must be able to receive and spread style props
+  - See: agent-os/product/specs/09c-field-style-controls/notes.md
+
 Spec 18 — Team Management UI
   - Invite users by email (email send via Convex action)
   - Role assignment during invite flow
   - Pending invite table with revoke support
   - User management table in admin panel
   - Needed before more than one person uses the CMS
+```
+
+### Phase 2.5 — Site Building (composable page builder and site primitives)
+
+```
+Spec 28 — Blocks System                              ← IMPLEMENT FIRST
+  - defineBlock() in @vexcms/core (data-only, no React dep)
+  - blocks() field type storing ordered array of block instances
+  - Admin block picker, reorder, inline edit — ships as standard field component (not custom)
+  - RenderBlocks component in @vexcms/ui (component map pattern, no circular deps)
+  - Type inference: discriminated union of allowed block shapes
+  - See: agent-os/product/specs/28-blocks-system/notes.md
+
+Spec 29 — Color Field
+  - color() field type returning string (CSS variable or hex)
+  - Admin popover with two tabs: theme colors (CSS vars from site theme) and custom (wheel + hex input)
+  - Theme tab reads from current site's active theme document
+  - Graceful degradation: if no site/theme, shows "No theme set" with link to set one
+  - See: agent-os/product/specs/29-color-field/notes.md
+
+Spec 30 — Site Builder (defineSite)
+  - defineSite() config primitive — organizes existing collections into site structure
+  - References collections by slug for: settings, header, footer, theme, pages
+  - Page groups: { slug, label, collection } — slug IS the route prefix
+  - Auto-generates vex_sites table with relationship fields (header, footer, theme, settings)
+  - Header/footer/theme/settings are COLLECTIONS (not globals) — multiple saved versions, swap active
+  - Admin sidebar restructuring: site tree with nested sections, active indicators
+  - Purely organizational — does not create new tables beyond vex_sites
+  - Users control their own frontend routing (VEX is headless)
+  - Optional starter admin components (theme editor etc.) in @vexcms/ui, not a separate package
+  - See: agent-os/product/specs/30-site-builder/notes.md
 ```
 
 ### Phase 3 — Pre-Enterprise Polish (ship before charging money)
@@ -420,8 +461,11 @@ DONE        Specs 00, 01, 05, 06 (partial), 06b, 11, 12, 13, 14 (partial)
 PHASE 1     Spec 06b (Create/Delete) → Spec 15 (Media) → Spec 07 (Drafts) → Spec 16 (RBAC)
   MVP       The minimum for a usable CMS. Cannot ship without all four.
 
-PHASE 2     Spec 17 (Lexical) → Spec 10 (Live Preview) → Spec 09b (Custom Components) → Spec 18 (Teams)
+PHASE 2     Spec 17 (Lexical) → Spec 10 (Live Preview) → Spec 09b (Custom Components) → Spec 09c (Field Styles & Copy/Paste) → Spec 18 (Teams)
   PRODUCT   Makes Vex competitive. Rich text is the biggest unlock.
+
+PHASE 2.5   Spec 28 (Blocks) → Spec 29 (Color Field) → Spec 30 (Site Builder)
+  SITES     Composable page builder and site primitives. The "wow factor" differentiator.
 
 PHASE 3     Spec 19 (API Keys) → Spec 20 (Scheduling) → Spec 22 (Audit Log) → Spec XX (Hooks)
   POLISH    Quality-of-life before enterprise. Hooks land here, not in MVP.
@@ -454,6 +498,7 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 07     | Versioning & Drafts                | Phase 1                                |
 | 08     | File Uploads                       | Superseded by Spec 15                  |
 | 09     | Custom Admin Components            | Phase 2 (registration system)          |
+| 09c    | Field Style Controls & Copy/Paste  | Phase 2 (after 09b)                    |
 | 10     | Live Preview                       | Phase 2                                |
 | 11     | Testing Strategy                   | ✅                                     |
 | 12a    | Admin Data Table                   | ✅                                     |
@@ -473,3 +518,6 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 25     | Plugin System                      | Phase 5                                |
 | 26     | SSO / SAML                         | Phase 4 (enterprise)                   |
 | 27     | Review / Approval Workflows        | Phase 4 (enterprise)                   |
+| 28     | Blocks System                      | Phase 2.5                              |
+| 29     | Color Field                        | Phase 2.5                              |
+| 30     | Site Builder (defineSite)          | Phase 2.5                              |

@@ -6,81 +6,46 @@ import { anyApi } from "convex/server";
 import { PREVIEW_SNAPSHOT_DEBOUNCE_MS } from "@vexcms/core";
 
 /**
- * Writes a debounced preview snapshot on form changes.
+ * Returns a debounced callback that writes preview snapshots to vex_versions.
+ * Pass the returned callback as `onValuesChange` to AppForm.
+ *
  * The snapshot is a transient entry in vex_versions (status: "previewSnapshot")
- * that the preview iframe fetches via vexQuery.
+ * that getDocument merges when the frontend passes `preview: true`.
  *
  * @param props.collectionSlug - Collection slug
  * @param props.documentId - Document ID being edited
  * @param props.enabled - Whether snapshot writing is active (true when preview panel is open)
- * @param props.getFormValues - Function that returns current form field values
+ * @returns Callback to pass as AppForm's onValuesChange, or undefined when disabled
  */
 export function usePreviewSnapshot(props: {
   collectionSlug: string;
   documentId: string;
   enabled: boolean;
-  getFormValues: () => Record<string, unknown> | null;
-}) {
+}): ((values: Record<string, unknown>) => void) | undefined {
   const upsertMutation = useMutation(anyApi.vex.previewSnapshot.upsert);
   const removeMutation = useMutation(anyApi.vex.previewSnapshot.remove);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const enabledRef = useRef(props.enabled);
-  const getFormValuesRef = useRef(props.getFormValues);
+  const inFlightRef = useRef(false);
+  const lastSnapshotRef = useRef<string | null>(null);
 
-  // Keep refs in sync
-  enabledRef.current = props.enabled;
-  getFormValuesRef.current = props.getFormValues;
-
-  const writeSnapshot = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-
-    timerRef.current = setTimeout(async () => {
-      if (!enabledRef.current) return;
-
-      const values = getFormValuesRef.current();
-      if (!values) return;
-
-      try {
-        await upsertMutation({
+  // Clean up snapshot when preview is closed
+  useEffect(() => {
+    if (!props.enabled) {
+      if (lastSnapshotRef.current !== null) {
+        lastSnapshotRef.current = null;
+        removeMutation({
           collectionSlug: props.collectionSlug,
           documentId: props.documentId,
-          snapshot: values,
-        });
-      } catch {
-        // Snapshot writes are best-effort — don't disrupt editing
+        }).catch(() => {});
       }
-    }, PREVIEW_SNAPSHOT_DEBOUNCE_MS);
-  }, [upsertMutation, props.collectionSlug, props.documentId]);
+    }
+  }, [props.enabled, removeMutation, props.collectionSlug, props.documentId]);
 
-  // Write snapshot when enabled and form values change
-  useEffect(() => {
-    if (!props.enabled) return;
-
-    // Write initial snapshot when preview opens
-    writeSnapshot();
-
-    // Set up an interval to check for form changes
-    const intervalId = setInterval(() => {
-      if (enabledRef.current) {
-        writeSnapshot();
-      }
-    }, PREVIEW_SNAPSHOT_DEBOUNCE_MS * 2);
-
-    return () => {
-      clearInterval(intervalId);
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [props.enabled, writeSnapshot]);
-
-  // Clean up snapshot when preview is closed or component unmounts
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (enabledRef.current) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (lastSnapshotRef.current !== null) {
         removeMutation({
           collectionSlug: props.collectionSlug,
           documentId: props.documentId,
@@ -88,4 +53,35 @@ export function usePreviewSnapshot(props: {
       }
     };
   }, [removeMutation, props.collectionSlug, props.documentId]);
+
+  const writeSnapshot = useCallback(
+    (values: Record<string, unknown>) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+
+      timerRef.current = setTimeout(async () => {
+        if (inFlightRef.current) return;
+
+        const serialized = JSON.stringify(values);
+        if (serialized === lastSnapshotRef.current) return;
+
+        inFlightRef.current = true;
+        try {
+          await upsertMutation({
+            collectionSlug: props.collectionSlug,
+            documentId: props.documentId,
+            snapshot: values,
+          });
+          lastSnapshotRef.current = serialized;
+        } catch {
+          // best-effort
+        } finally {
+          inFlightRef.current = false;
+        }
+      }, PREVIEW_SNAPSHOT_DEBOUNCE_MS);
+    },
+    [upsertMutation, props.collectionSlug, props.documentId],
+  );
+
+  if (!props.enabled) return undefined;
+  return writeSnapshot;
 }

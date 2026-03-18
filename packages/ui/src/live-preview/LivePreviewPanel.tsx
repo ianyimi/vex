@@ -48,9 +48,12 @@ export function LivePreviewPanel(props: {
       if (!url) {
         throw new Error(`Live preview URL resolved to empty string for document ${props.doc._id}`);
       }
+      // Append preview flag so the frontend page knows to fetch snapshot data
+      const separator = url.includes("?") ? "&" : "?";
+      const previewUrl = `${url}${separator}_vexPreview=true`;
       setError(null);
-      setPreviousURL(url);
-      return url;
+      setPreviousURL(previewUrl);
+      return previewUrl;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to resolve preview URL");
       return previousURL ?? null;

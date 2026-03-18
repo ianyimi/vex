@@ -53,23 +53,6 @@ export interface LivePreviewConfig<
 }
 
 /**
- * Client-safe version of LivePreviewConfig for RSC serialization.
- * Function URLs are replaced with `null` — the admin panel resolves
- * them at runtime using the original config passed via `livePreviewConfigs`.
- */
-export interface ClientLivePreviewConfig {
-  /**
-   * URL for the preview iframe.
-   * - String: static URL (serializable)
-   * - null: the original config has a function URL — resolve at runtime
-   */
-  url: string | null;
-
-  breakpoints?: LivePreviewBreakpoint[];
-  reloadOnFields?: string[];
-}
-
-/**
  * Global live preview configuration on the admin config.
  * Provides defaults that individual collections can override.
  */

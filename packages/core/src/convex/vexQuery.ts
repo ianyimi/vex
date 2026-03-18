@@ -9,11 +9,7 @@ import { v, type ObjectType, type PropertyValidators } from "convex/values";
  * Drafts mode for vexQuery.
  * - "snapshot": Fetch the transient preview snapshot (written by admin on form changes)
  * - true: Fetch the latest draft version (from versioning system)
- * - false/undefined: Fetch published content only (default in production)
- *
- * In dev mode (NODE_ENV !== "production"), vexQuery automatically behaves as
- * if `drafts: "snapshot"` when a preview snapshot exists, without the caller
- * needing to pass the option.
+ * - false: Fetch published content only
  */
 export type VexDraftsMode = "snapshot" | boolean;
 
@@ -29,8 +25,7 @@ export interface VexQueryCtx<DataModel extends GenericDataModel = GenericDataMod
    * - true: caller wants latest draft version
    * - false: caller wants published content only
    *
-   * In dev mode, this is automatically set to "snapshot" if the caller
-   * didn't pass a `drafts` option.
+   * Defaults to "snapshot" when not explicitly passed by the caller.
    */
   drafts: VexDraftsMode;
 }
@@ -41,8 +36,7 @@ export interface VexQueryCtx<DataModel extends GenericDataModel = GenericDataMod
  * Wraps Convex's `queryGeneric()` to:
  * 1. Automatically add an optional `_vexDrafts` arg (string | boolean)
  * 2. Pass an extended context with `drafts` mode to the handler
- * 3. In dev mode, auto-resolve to "snapshot" when no explicit option is passed
- * 4. Preserve full type safety for args and return types
+ * 3. Preserve full type safety for args and return types
  *
  * The handler receives a `VexQueryCtx` which includes `ctx.drafts`.
  * Use this to decide what content to return.
@@ -95,14 +89,9 @@ export function vexQuery<Args extends PropertyValidators, Output>(props: {
     handler: async (ctx: GenericQueryCtx<any>, args: any) => {
       const { _vexDrafts, ...userArgs } = args;
 
-      let drafts: VexDraftsMode;
-      if (_vexDrafts !== undefined) {
-        drafts = _vexDrafts as VexDraftsMode;
-      } else if (process.env.NODE_ENV !== "production") {
-        drafts = "snapshot";
-      } else {
-        drafts = false;
-      }
+      const drafts: VexDraftsMode = _vexDrafts !== undefined
+        ? (_vexDrafts as VexDraftsMode)
+        : "snapshot";
 
       const vexCtx: VexQueryCtx = Object.assign(Object.create(Object.getPrototypeOf(ctx)), ctx, {
         drafts,

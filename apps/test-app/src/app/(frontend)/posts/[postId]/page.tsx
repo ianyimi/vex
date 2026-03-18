@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { RichText } from "@vexcms/richtext/render"
 import type { RichTextDocument } from "@vexcms/core"
 
@@ -10,10 +10,13 @@ import { api } from "@convex/_generated/api"
 
 export default function PostPage() {
   const { postId } = useParams<{ postId: string }>()
+  const searchParams = useSearchParams()
+  const isPreview = searchParams.get("_vexPreview") === "true"
 
   const post = useQuery(api.vex.collections.getDocument, {
     collectionSlug: "posts",
     documentId: postId,
+    ...(isPreview ? { preview: true } : {}),
   })
 
   if (post === undefined) {

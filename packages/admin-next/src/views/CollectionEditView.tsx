@@ -285,12 +285,11 @@ export default function CollectionEditView({
     },
   });
 
-  // Preview snapshot — writes transient snapshot on form changes when preview is open
-  usePreviewSnapshot({
+  // Preview snapshot — writes debounced snapshot on form value changes when preview is open
+  const onPreviewValuesChange = usePreviewSnapshot({
     collectionSlug: collection.slug,
     documentId: documentID,
     enabled: previewOpen && hasPreview && !!document,
-    getFormValues: () => getFormValuesRef.current?.() ?? null,
   });
 
   const isLoading = documentQuery.isPending;
@@ -435,6 +434,7 @@ export default function CollectionEditView({
                 submitAllFields={isVersioned}
                 getValuesRef={isVersioned || hasPreview ? getFormValuesRef : undefined}
                 onDirtyChange={isVersioned ? setIsFormDirty : undefined}
+                onValuesChange={onPreviewValuesChange}
                 onOpenUploadModal={handleOpenUploadModal}
                 renderUploadField={(uploadProps) => (
                   <UploadFieldWrapper

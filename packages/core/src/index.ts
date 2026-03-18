@@ -104,7 +104,6 @@ export type {
   // Live preview types
   LivePreviewConfig,
   LivePreviewBreakpoint,
-  ClientLivePreviewConfig,
   AdminLivePreviewConfig,
   // Media types
   VexMediaCollection,

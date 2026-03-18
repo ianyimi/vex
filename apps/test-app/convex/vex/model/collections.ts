@@ -7,7 +7,7 @@ import type {
 } from "convex/server"
 
 import { ConvexError } from "convex/values"
-import { generateFormSchema } from "@vexcms/core"
+import { generateFormSchema, getPreviewSnapshot } from "@vexcms/core"
 import type { VexField, CollectionKind } from "@vexcms/core"
 
 async function resolveStorageUrl(
@@ -52,10 +52,27 @@ export async function getDocument<DataModel extends GenericDataModel>(props: {
   args: {
     collectionSlug: TableNamesInDataModel<DataModel>
     documentId: string
+    /** When true, merges the transient preview snapshot (from admin live preview) */
+    preview?: boolean
   }
 }) {
   const doc = await props.ctx.db.get(props.args.documentId as any)
-  return await resolveStorageUrl(props.ctx, doc)
+  if (!doc) return null
+  const resolved = await resolveStorageUrl(props.ctx, doc)
+
+  // Merge preview snapshot when explicitly requested (live preview iframe).
+  if (props.args.preview) {
+    const snapshot = await getPreviewSnapshot<DataModel>({
+      ctx: props.ctx,
+      collection: props.args.collectionSlug as string,
+      documentId: props.args.documentId,
+    })
+    if (snapshot) {
+      return { ...resolved, ...snapshot }
+    }
+  }
+
+  return resolved
 }
 
 export async function updateDocument<DataModel extends GenericDataModel>(props: {

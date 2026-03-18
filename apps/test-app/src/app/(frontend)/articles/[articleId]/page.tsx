@@ -1,17 +1,19 @@
 "use client"
 
+import { api } from "@convex/_generated/api"
 import { useQuery } from "convex/react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
-
-import { api } from "@convex/_generated/api"
+import { useParams, useSearchParams } from "next/navigation"
 
 export default function ArticlePage() {
   const { articleId } = useParams<{ articleId: string }>()
+  const searchParams = useSearchParams()
+  const isPreview = searchParams.get("_vexPreview") === "true"
 
   const article = useQuery(api.vex.collections.getDocument, {
     collectionSlug: "articles",
     documentId: articleId,
+    ...(isPreview ? { preview: true } : {}),
   })
 
   if (article === undefined) {
@@ -26,7 +28,7 @@ export default function ArticlePage() {
     return (
       <div className="mx-auto max-w-2xl px-4 py-8">
         <p className="text-red-500">Article not found.</p>
-        <Link href="/articles" className="mt-2 inline-block text-sm text-blue-600 hover:underline">
+        <Link className="mt-2 inline-block text-sm text-blue-600 hover:underline" href="/articles">
           ← Back to articles
         </Link>
       </div>
@@ -37,7 +39,7 @@ export default function ArticlePage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <Link href="/articles" className="mb-4 inline-block text-sm text-blue-600 hover:underline">
+      <Link className="mb-4 inline-block text-sm text-blue-600 hover:underline" href="/articles">
         ← Back to articles
       </Link>
 
@@ -58,7 +60,9 @@ export default function ArticlePage() {
         </div>
         <div>
           <dt className="text-sm font-medium text-gray-500">Created</dt>
-          <dd>{doc._creationTime ? new Date(doc._creationTime as number).toLocaleString() : "—"}</dd>
+          <dd>
+            {doc._creationTime ? new Date(doc._creationTime as number).toLocaleString() : "—"}
+          </dd>
         </div>
       </dl>
 
