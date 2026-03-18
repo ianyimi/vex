@@ -297,6 +297,15 @@ Spec 10 — Live Preview
   - Draft content queries with _vexIncludeDraft flag
   - Pairs with Spec 07 — preview draft content before publishing
 
+Spec 31 — Typed Per-Collection Queries
+  - CLI generates typed query/mutation files per collection (e.g., convex/vex/collections/articles.ts)
+  - Each collection gets get, list, create, update, delete with fully typed args and return types
+  - Return types inferred from Convex DataModel (Doc<"articles">, etc.)
+  - Generic getDocument remains for admin panel (dynamic collection routing)
+  - preview flag support baked into generated get queries
+  - User-facing code uses api.vex.collections.articles.get instead of the untyped generic
+  - Unlocks full LSP autocomplete on document fields in frontend pages
+
 Spec 09b — Custom Component Registration
   - admin.components.Field path strings on field config
   - Build-time component resolution and componentMap.ts generation
@@ -461,7 +470,7 @@ DONE        Specs 00, 01, 05, 06 (partial), 06b, 11, 12, 13, 14 (partial)
 PHASE 1     Spec 06b (Create/Delete) → Spec 15 (Media) → Spec 07 (Drafts) → Spec 16 (RBAC)
   MVP       The minimum for a usable CMS. Cannot ship without all four.
 
-PHASE 2     Spec 17 (Lexical) → Spec 10 (Live Preview) → Spec 09b (Custom Components) → Spec 09c (Field Styles & Copy/Paste) → Spec 18 (Teams)
+PHASE 2     Spec 17 (Lexical) → Spec 10 (Live Preview) → Spec 31 (Typed Queries) → Spec 09b (Custom Components) → Spec 09c (Field Styles & Copy/Paste) → Spec 18 (Teams)
   PRODUCT   Makes Vex competitive. Rich text is the biggest unlock.
 
 PHASE 2.5   Spec 28 (Blocks) → Spec 29 (Color Field) → Spec 30 (Site Builder)
@@ -521,3 +530,4 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 28     | Blocks System                      | Phase 2.5                              |
 | 29     | Color Field                        | Phase 2.5                              |
 | 30     | Site Builder (defineSite)          | Phase 2.5                              |
+| 31     | Typed Per-Collection Queries       | Phase 2                                |
