@@ -14,12 +14,24 @@ export type Labels = {
 /**
  * Props passed to custom field components.
  * Custom components receive these props and use useVexField() for state.
+ *
+ * Use the generic parameter to narrow the field type for type-safe access
+ * to field-specific properties like `options` on select fields.
+ *
+ * @example
+ * ```tsx
+ * // Generic — fieldDef has label, admin, description, required
+ * function MyField({ name, fieldDef, readOnly }: FieldComponentProps) { ... }
+ *
+ * // Narrowed — fieldDef is TextFieldDef with maxLength, minLength, etc.
+ * function MyTextField({ name, fieldDef }: FieldComponentProps<TextFieldDef>) { ... }
+ * ```
  */
-export interface FieldComponentProps {
+export interface FieldComponentProps<TField extends VexField = VexField> {
   /** The field key name (e.g., "primaryColor") */
   name: string;
   /** The VexField definition for this field */
-  fieldDef: VexField;
+  fieldDef: TField;
   /** Whether the field is read-only (from permissions or config) */
   readOnly: boolean;
 }
@@ -27,13 +39,13 @@ export interface FieldComponentProps {
 /**
  * Props passed to custom cell components in the data table.
  */
-export interface CellComponentProps {
+export interface CellComponentProps<TField extends VexField = VexField> {
   /** The raw cell value from the document */
   value: unknown;
   /** The full row data (document) */
   row: Record<string, unknown>;
   /** The VexField definition for this column's field */
-  fieldDef: VexField;
+  fieldDef: TField;
 }
 
 /**
@@ -112,6 +124,8 @@ export interface FieldAdminConfig {
  * and type-specific options.
  */
 interface BaseField {
+  /** Display label for the field in the admin form. */
+  label?: string;
   /** Description text shown below the field. */
   description?: string;
   /**
@@ -164,8 +178,6 @@ interface BaseField {
 /** Text field definition. */
 export interface TextFieldDef extends BaseField {
   readonly type: "text";
-  /** Display label for the field in the admin form. */
-  label?: string;
   /** Default value for new documents. */
   defaultValue?: string;
   /** Minimum character length. */
@@ -177,8 +189,6 @@ export interface TextFieldDef extends BaseField {
 /** Number field definition. */
 export interface NumberFieldDef extends BaseField {
   readonly type: "number";
-  /** Display label for the field in the admin form. */
-  label?: string;
   /** Default value for new documents. */
   defaultValue?: number;
   /** Minimum allowed value. */
@@ -192,8 +202,6 @@ export interface NumberFieldDef extends BaseField {
 /** Checkbox field definition. */
 export interface CheckboxFieldDef extends BaseField {
   readonly type: "checkbox";
-  /** Display label for the field in the admin form. */
-  label?: string;
   /** Default value for new documents. */
   defaultValue?: boolean;
 }
@@ -217,8 +225,6 @@ export interface SelectFieldSingle<T extends string = string> extends BaseField 
   options: readonly SelectOption<T>[];
   /** Default value for new documents. */
   defaultValue?: T;
-  /** Display label for the field in the admin form. */
-  label?: string;
   hasMany?: false;
 }
 
@@ -242,8 +248,6 @@ export type SelectFieldDef<T extends string = string> =
 /** Date field definition. Stores epoch milliseconds. */
 export interface DateFieldDef extends BaseField {
   readonly type: "date";
-  /** Display label for the field in the admin form. */
-  label?: string;
   /** Default value for new documents (epoch ms). */
   defaultValue?: number;
 }
@@ -251,8 +255,6 @@ export interface DateFieldDef extends BaseField {
 /** Image URL field definition. Stores a URL string, renders as thumbnail. */
 export interface ImageUrlFieldDef extends BaseField {
   readonly type: "imageUrl";
-  /** Display label for the field in the admin form. */
-  label?: string;
   /** Default value for new documents. */
   defaultValue?: string;
   /** Width (px) of the image */
@@ -266,8 +268,6 @@ export interface RelationshipFieldSingle extends BaseField {
   readonly type: "relationship";
   /** Target table name. */
   to: string;
-  /** Display label for the field in the admin form. */
-  label?: string;
   hasMany?: false;
 }
 
@@ -304,8 +304,6 @@ interface UploadFieldBase extends BaseField {
 
 /** Upload field — single reference variant. */
 export interface UploadFieldSingle extends UploadFieldBase {
-  /** Display label for the field in the admin form. */
-  label?: string;
   hasMany?: false;
 }
 
@@ -325,15 +323,11 @@ export type UploadFieldDef = UploadFieldSingle | UploadFieldMany;
 /** JSON field definition. Stores arbitrary data via `v.any()`. */
 export interface JsonFieldDef extends BaseField {
   readonly type: "json";
-  /** Display label for the field in the admin form. */
-  label?: string;
 }
 
 /** Array field definition. Wraps an inner field in `v.array()`. */
 export interface ArrayFieldDef extends BaseField {
   readonly type: "array";
-  /** Display label for the field in the admin form. */
-  label?: string;
   /** Display labels for the field (singular/plural). */
   labels?: Labels;
   /** The inner field type for array elements. */
@@ -349,8 +343,6 @@ import type { VexEditorAdapter, RichTextDocument } from "./editor";
 /** Rich text field definition. Stores Plate/Slate JSON via `v.any()`. */
 export interface RichTextFieldDef extends BaseField {
   readonly type: "richtext";
-  /** Display label for the field in the admin form. */
-  label?: string;
   /**
    * Editor adapter override for this specific field.
    * If not set, uses the global editor from `VexConfig.editor`.
@@ -372,8 +364,6 @@ export interface RichTextFieldDef extends BaseField {
  */
 export interface UIFieldDef extends BaseField {
   readonly type: "ui";
-  /** Display label for the field in the admin form. */
-  label?: string;
   /**
    * Admin config — components.Field is required for ui fields.
    */

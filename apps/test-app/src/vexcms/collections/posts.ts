@@ -30,7 +30,7 @@ export const posts = defineCollection({
         },
         description: "Pick a color for the post header accent",
       },
-      defaultValue: "#3b82f6",
+      defaultValue: "#000000",
       label: "Accent Color",
     }),
     content: richtext({
