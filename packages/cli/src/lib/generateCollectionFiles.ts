@@ -91,6 +91,13 @@ function getExpectedSlugs(config: VexConfig): string[] {
       slugs.push(c.slug);
     }
   }
+  if (config.auth?.collections) {
+    for (const c of config.auth.collections) {
+      if (c.generateApi && !slugs.includes(c.slug)) {
+        slugs.push(c.slug);
+      }
+    }
+  }
   return slugs.sort();
 }
 

@@ -29,6 +29,9 @@ const COLLECTION_LABELS: Record<string, { singular: string; plural: string }> = 
   verification: { singular: "Verification", plural: "Verifications" },
 };
 
+/** Auth collections that should have typed API files generated. */
+const GENERATE_API: Set<string> = new Set(["user"]);
+
 /** Default columns to show in the list view per auth table. */
 const DEFAULT_COLUMNS: Record<string, string[]> = {
   user: ["_id", "name", "email", "createdAt"],
@@ -217,6 +220,7 @@ export function extractAuthCollections(
       fields,
       ...(labels ? { labels } : {}),
       ...(indexes.length > 0 ? { indexes } : {}),
+      ...(GENERATE_API.has(slug) ? { generateApi: true } : {}),
       admin: {
         group: "Auth",
         useAsTitle: "_id",

@@ -212,6 +212,14 @@ export interface VexCollection<
    */
   versions?: VersionsConfig;
   /**
+   * When true, the CLI generates typed per-collection query/mutation files
+   * for this collection (`convex/vex/api/{slug}.ts` + `convex/vex/model/api/{slug}.ts`).
+   *
+   * Defaults to `true` for user-defined collections and media collections.
+   * Auth adapter collections default to `false` — set explicitly to opt in.
+   */
+  generateApi?: boolean;
+  /**
    * Type helper — use `typeof collection._docType` to get the
    * inferred document shape for this collection.
    */

@@ -69,6 +69,23 @@ export function generateCollectionQueries(props: {
     }
   }
 
+  // Auth collections that opt in with generateApi: true
+  if (config.auth?.collections) {
+    for (const collection of config.auth.collections) {
+      if (!collection.generateApi) continue;
+      // Skip if already generated (user may have the same collection in config.collections)
+      if (slugs.includes(collection.slug)) continue;
+      const { apiFile, modelFile } = generateCollectionPair({
+        collection,
+        isMedia: false,
+        imports,
+      });
+      result[`api/${collection.slug}.ts`] = apiFile;
+      result[`model/api/${collection.slug}.ts`] = modelFile;
+      slugs.push(collection.slug);
+    }
+  }
+
   // Barrel index
   result["api/index.ts"] = generateIndexFile({ slugs });
 
