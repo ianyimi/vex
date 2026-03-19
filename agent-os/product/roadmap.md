@@ -331,7 +331,10 @@ Spec 18 — Team Management UI
   - Needed before more than one person uses the CMS
 ```
 
-### Phase 2.5 — Site Building (composable page builder and site primitives)
+### Phase 2.5 — Site Building + Marketing Site
+
+Blocks → color field → site builder → marketing site. Each builds on the last.
+The marketing site is the first real project built with Vex and dogfoods the full stack.
 
 ```
 Spec 28 — Blocks System                              ← IMPLEMENT FIRST
@@ -360,6 +363,29 @@ Spec 30 — Site Builder (defineSite)
   - Users control their own frontend routing (VEX is headless)
   - Optional starter admin components (theme editor etc.) in @vexcms/ui, not a separate package
   - See: agent-os/product/specs/30-site-builder/notes.md
+
+Spec 33 — Marketing Site (apps/www)                   ← STARTS AFTER SITE BUILDER
+  - Next.js app in apps/www, content managed via Vex admin panel
+  - Collections: pages, features, testimonials, changelog
+  - Uses defineSite() for site structure (header, footer, theme)
+  - Uses blocks() for composable landing page sections
+  - Uses color() field for theme/brand customization
+  - Dogfoods: collections, blocks, richtext, site builder, custom components, media, live preview
+  - The best demo of Vex is a real site built with Vex
+```
+
+### Phase 2.75 — Documentation Site
+
+```
+Spec 32 — Documentation Site (apps/docs)
+  - Next.js app in apps/docs, content managed via Vex admin panel
+  - Collections: docs_pages, docs_categories, docs_navigation
+  - Uses blocks() for structured content (code examples, callouts, API tables)
+  - Uses richtext for prose sections
+  - Search via Convex search indexes
+  - Versioned docs (by release, not per-document drafts)
+  - Dogfoods: collections, blocks, richtext, typed queries, custom components
+  - Builds on lessons learned from the marketing site
 ```
 
 ### Phase 3 — Pre-Enterprise Polish (ship before charging money)
@@ -473,8 +499,12 @@ PHASE 1     Spec 06b (Create/Delete) → Spec 15 (Media) → Spec 07 (Drafts) �
 PHASE 2     Spec 17 (Lexical) → Spec 10 (Live Preview) → Spec 31 (Typed Queries) → Spec 09b (Custom Components) → Spec 09c (Field Styles & Copy/Paste) → Spec 18 (Teams)
   PRODUCT   Makes Vex competitive. Rich text is the biggest unlock.
 
-PHASE 2.5   Spec 28 (Blocks) → Spec 29 (Color Field) → Spec 30 (Site Builder)
-  SITES     Composable page builder and site primitives. The "wow factor" differentiator.
+PHASE 2.5   Spec 28 (Blocks) → Spec 29 (Color Field) → Spec 30 (Site Builder) → Spec 33 (Marketing Site)
+  SITES     Blocks, color field, and site builder are prerequisites for the marketing site.
+            apps/www starts after defineSite() lands and dogfoods the full stack.
+
+PHASE 2.75  Spec 32 (Docs Site)
+  DOCS      apps/docs built with Vex. Builds on lessons from the marketing site.
 
 PHASE 3     Spec 19 (API Keys) → Spec 20 (Scheduling) → Spec 22 (Audit Log) → Spec XX (Hooks)
   POLISH    Quality-of-life before enterprise. Hooks land here, not in MVP.
@@ -531,3 +561,5 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 29     | Color Field                        | Phase 2.5                              |
 | 30     | Site Builder (defineSite)          | Phase 2.5                              |
 | 31     | Typed Per-Collection Queries       | Phase 2                                |
+| 32     | Documentation Site (apps/docs)     | Phase 2.75                             |
+| 33     | Marketing Site (apps/www)          | Phase 2.75                             |
