@@ -1,5 +1,5 @@
 import { defineTable, type TableDefinition } from "convex/server";
-import type { GenericValidator, VObject } from "convex/values";
+import type { GenericValidator, ObjectType, VObject } from "convex/values";
 
 type ExtractFields<T> =
   T extends TableDefinition<VObject<any, infer F>> ? F : never;
@@ -7,6 +7,14 @@ type ExtractFields<T> =
 type ForbidExistingKeys<Existing, New> = {
   [K in keyof New]: K extends keyof Existing ? never : New[K];
 };
+
+/**
+ * Compute the TableDefinition type that preserves field types.
+ * Matches the second overload of defineTable:
+ *   defineTable(fields) → TableDefinition<VObject<ObjectType<Fields>, Fields>>
+ */
+type ExtendedTableDef<Fields extends Record<string, GenericValidator>> =
+  TableDefinition<VObject<ObjectType<Fields>, Fields>>;
 
 /**
  * Extends a vex-generated table definition with additional fields,
@@ -41,7 +49,7 @@ export function extendTable<
 >(props: {
   table: T;
   additionalFields?: A & ForbidExistingKeys<ExtractFields<T>, A>;
-}): TableDefinition {
+}): ExtendedTableDef<ExtractFields<T> & A> {
   const { validator } = props.table;
 
   let extended = defineTable({
@@ -75,5 +83,5 @@ export function extendTable<
     } as any);
   }
 
-  return extended;
+  return extended as ExtendedTableDef<ExtractFields<T> & A>;
 }

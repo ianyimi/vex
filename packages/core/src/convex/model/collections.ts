@@ -7,9 +7,10 @@ import type {
 } from "convex/server"
 
 import { ConvexError } from "convex/values"
-import { generateFormSchema } from "@vexcms/core"
-import { getPreviewSnapshot } from "@vexcms/core"
-import type { VexField, CollectionKind } from "@vexcms/core"
+import { generateFormSchema } from "../../formSchema/generateFormSchema"
+import { getPreviewSnapshot } from "../previewSnapshot"
+import type { VexField } from "../../types"
+import type { CollectionKind } from "../../config/findCollectionBySlug"
 
 async function resolveStorageUrl(
   ctx: { storage: { getUrl: (id: any) => Promise<string | null> } },

@@ -11,6 +11,7 @@ import {
 } from "@vexcms/core";
 
 import { waitForDeploy } from "./convexProcess.js";
+import { generateAndWriteCollectionFiles } from "./generateCollectionFiles.js";
 import { logger } from "./logger.js";
 import { executeMigration, executeFieldRemoval, backfillVersionStatus } from "./migrate.js";
 import { resolveConvexUrl } from "./resolveConvexUrl.js";
@@ -48,6 +49,8 @@ export async function generateAndWrite(
   if (existing === finalSchema) {
     // vex.schema.ts unchanged, but schema.ts may still need syncing
     syncSchemaImports(convexSchemaPath, content, outputRelPath, config);
+    // Still generate collection API files (they may be missing or stale)
+    await generateAndWriteCollectionFiles({ config, cwd });
     return { written: false };
   }
 
@@ -177,6 +180,9 @@ export async function generateAndWrite(
       }
     }
   }
+
+  // Generate typed per-collection query files
+  await generateAndWriteCollectionFiles({ config, cwd });
 
   return { written: true };
 }

@@ -37,6 +37,25 @@ export {
 } from "./convex/previewSnapshot";
 export { vexQuery, type VexQueryCtx, type VexDraftsMode } from "./convex/vexQuery";
 
+// Convex model functions — used by generated per-collection query files
+export {
+  getDocument,
+  listDocuments,
+  createDocument,
+  updateDocument,
+  deleteDocument,
+  searchDocuments,
+} from "./convex/model/collections";
+
+// Collection query codegen
+export {
+  generateCollectionQueries,
+  generateIndexFile,
+  GENERATED_HEADER,
+  type CollectionQueryImports,
+  type GeneratedFiles,
+} from "./valueTypes/generateCollectionQueries";
+
 export * from "./errors";
 
 // Migrations

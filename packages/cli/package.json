@@ -20,7 +20,8 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "clean": "rm -rf dist",
-    "typecheck": "tsc --noEmit -p tsconfig.check.json"
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "test": "vitest run"
   },
   "dependencies": {
     "chokidar": "^4.0.0",
@@ -34,7 +35,8 @@
     "@vexcms/core": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",
     "tsup": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "publishConfig": {
     "access": "public"
