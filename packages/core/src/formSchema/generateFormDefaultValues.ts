@@ -30,6 +30,8 @@ function getFormDefaultValue(props: { field: VexField }): unknown {
       return [];
     case "array":
       return [];
+    case "blocks":
+      return [];
     case "ui":
       return undefined;
     default:

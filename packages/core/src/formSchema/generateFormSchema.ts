@@ -99,6 +99,44 @@ export function fieldMetaToZod(props: { field: VexField }): ZodTypeAny {
       return schema;
     }
 
+    case "blocks": {
+      const blockSchemas = props.field.blocks.map((blockDef) => {
+        const shape: Record<string, ZodTypeAny> = {
+          blockType: z.literal(blockDef.slug),
+          blockName: z.string().optional(),
+          _key: z.string(),
+        };
+        for (const [fieldName, field] of Object.entries(blockDef.fields)) {
+          let validator = fieldMetaToZod({ field: field as VexField });
+          if (!(field as VexField).required) {
+            validator = validator.optional();
+          }
+          shape[fieldName] = validator;
+        }
+        return z.object(shape);
+      });
+
+      if (blockSchemas.length === 0) {
+        let schema = z.array(z.any());
+        if (props.field.min != null) schema = schema.min(props.field.min);
+        if (props.field.max != null) schema = schema.max(props.field.max);
+        return schema;
+      }
+
+      const union =
+        blockSchemas.length === 1
+          ? blockSchemas[0]
+          : z.discriminatedUnion(
+              "blockType",
+              blockSchemas as [z.ZodObject<any>, z.ZodObject<any>, ...z.ZodObject<any>[]],
+            );
+
+      let schema = z.array(union);
+      if (props.field.min != null) schema = schema.min(props.field.min);
+      if (props.field.max != null) schema = schema.max(props.field.max);
+      return schema;
+    }
+
     default:
       return z.any();
   }

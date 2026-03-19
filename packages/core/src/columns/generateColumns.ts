@@ -11,6 +11,7 @@ import { jsonColumnDef } from "../fields/json/columnDef";
 import { richtextColumnDef } from "../fields/richtext/columnDef";
 import { arrayColumnDef } from "../fields/array/columnDef";
 import { uploadColumnDef } from "../fields/media/columnDef";
+import { blocksColumnDef } from "../fields/blocks/columnDef";
 import { toTitleCase } from "../utils";
 
 /**
@@ -148,6 +149,8 @@ function buildColumnDef(
       return arrayColumnDef({ fieldKey, field });
     case "upload":
       return uploadColumnDef({ fieldKey, field });
+    case "blocks":
+      return blocksColumnDef({ fieldKey, field });
     default:
       return {
         accessorKey: fieldKey,

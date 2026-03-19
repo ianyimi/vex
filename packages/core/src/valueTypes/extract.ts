@@ -10,6 +10,7 @@ import { jsonToValueTypeString } from "../fields/json";
 import { richtextToValueTypeString } from "../fields/richtext";
 import { uploadToValueTypeString } from "../fields/media";
 import { arrayToValueTypeString } from "../fields/array";
+import { blocksToValueTypeString } from "../fields/blocks";
 import type { VexField } from "../types";
 
 /**
@@ -23,6 +24,7 @@ export function fieldToValueType(props: {
   field: VexField;
   collectionSlug: string;
   fieldName: string;
+  visitedBlockSlugs?: Set<string>;
 }): string {
   const { field, collectionSlug, fieldName } = props;
   switch (field.type) {
@@ -52,6 +54,20 @@ export function fieldToValueType(props: {
         collectionSlug,
         fieldName,
         resolveInnerField: fieldToValueType,
+      });
+    case "blocks":
+      return blocksToValueTypeString({
+        field,
+        collectionSlug,
+        fieldName,
+        resolveInnerField: (innerProps) =>
+          fieldToValueType({
+            field: innerProps.field,
+            collectionSlug: innerProps.collectionSlug,
+            fieldName: innerProps.fieldName,
+            visitedBlockSlugs: innerProps.visitedBlockSlugs,
+          }),
+        visitedBlockSlugs: props.visitedBlockSlugs,
       });
     case "ui":
       throw new VexFieldValidationError(

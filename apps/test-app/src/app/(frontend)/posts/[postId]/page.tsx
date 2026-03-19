@@ -1,16 +1,42 @@
 "use client"
 
-import type { RichTextDocument } from "@vexcms/core"
+import type { InferFieldsType, RichTextDocument } from "@vexcms/core"
 
 import { api } from "@convex/_generated/api"
 import { type Id } from "@convex/_generated/dataModel"
 import { RichText } from "@vexcms/richtext/render"
-import { useVexPreview } from "@vexcms/ui"
+import { type BlockComponentProps, RenderBlocks, useVexPreview } from "@vexcms/ui"
 import { useQuery } from "convex/react"
 import Link from "next/link"
 import { useParams, useSearchParams } from "next/navigation"
 
 import { type TABLE_SLUG_POSTS } from "~/db/constants"
+import { type newBlock } from "~/vexcms/collections/posts"
+
+/** Infer the block instance type from the defineBlock() definition. */
+type NewBlockData = InferFieldsType<typeof newBlock.fields> & {
+  _key: string
+  blockName?: string
+  blockType: typeof newBlock.slug
+}
+
+/** Typed component for the "new-block" block type. */
+function NewBlockComponent({ block, index }: BlockComponentProps<NewBlockData>) {
+  return (
+    <div className="rounded-lg border bg-gray-50 p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xs font-mono text-gray-400">#{index + 1}</span>
+        {block.blockName && <span className="text-xs text-gray-500">{block.blockName}</span>}
+      </div>
+      {block.title ? <h3 className="text-lg font-semibold">{block.title}</h3> : null}
+      {block.subtitle ? <p className="text-gray-600">{block.subtitle}</p> : null}
+    </div>
+  )
+}
+
+const blockComponents = {
+  "new-block": NewBlockComponent,
+}
 
 export default function PostPage() {
   const { postId } = useParams<{ postId: string }>()
@@ -79,6 +105,15 @@ export default function PostPage() {
           <h2 className="mb-2 text-sm font-medium text-gray-500">Content</h2>
           <div className="rounded border p-4 prose prose-sm max-w-none">
             <RichText content={post.content as RichTextDocument} />
+          </div>
+        </div>
+      ) : null}
+
+      {post.testBlocks && post.testBlocks.length > 0 ? (
+        <div className="mt-6">
+          <h2 className="mb-2 text-sm font-medium text-gray-500">Blocks</h2>
+          <div className="space-y-3">
+            <RenderBlocks blocks={post.testBlocks} components={blockComponents} />
           </div>
         </div>
       ) : null}

@@ -375,6 +375,62 @@ export interface UIFieldDef extends BaseField {
 }
 
 // =============================================================================
+// BLOCK TYPES
+// =============================================================================
+
+/**
+ * Admin configuration specific to block definitions.
+ */
+export interface BlockAdminConfig {
+  /** Icon identifier for the block picker UI (e.g., "layout-template"). */
+  icon?: string;
+  /** Custom admin components for this block (future — Spec 09b). */
+  components?: {
+    Editor?: ComponentType<any>;
+  };
+}
+
+/**
+ * A block definition created by `defineBlock()`.
+ * Blocks are reusable field groups composed into ordered lists via the `blocks()` field type.
+ *
+ * @example
+ * ```ts
+ * const heroBlock = defineBlock({
+ *   slug: "hero",
+ *   label: "Hero Section",
+ *   fields: { heading: text({ required: true }), subheading: text() },
+ * })
+ * ```
+ */
+export interface BlockDef<TFields extends Record<string, VexField> = Record<string, VexField>> {
+  /** Unique identifier for this block type. Used as the `blockType` discriminant in stored data. */
+  readonly slug: string;
+  /** Display label for the block in the admin picker. */
+  label: string;
+  /** Field definitions for this block's data shape. */
+  fields: TFields;
+  /** Admin UI configuration. */
+  admin?: BlockAdminConfig;
+}
+
+/** Reserved field names that cannot be used in block field definitions. */
+export const RESERVED_BLOCK_FIELD_NAMES = ["blockType", "blockName", "_key"] as const;
+
+/** Blocks field definition. Stores an ordered array of block instances. */
+export interface BlocksFieldDef extends BaseField {
+  readonly type: "blocks";
+  /** The block definitions allowed in this field. */
+  blocks: BlockDef[];
+  /** Display labels for the field (singular/plural). */
+  labels?: Labels;
+  /** Minimum number of blocks. */
+  min?: number;
+  /** Maximum number of blocks. */
+  max?: number;
+}
+
+// =============================================================================
 // UTILITY TYPES
 // =============================================================================
 
@@ -419,7 +475,8 @@ export type VexField =
   | JsonFieldDef
   | ArrayFieldDef
   | RichTextFieldDef
-  | UIFieldDef;
+  | UIFieldDef
+  | BlocksFieldDef;
 
 // =============================================================================
 // TYPE INFERENCE
@@ -455,11 +512,27 @@ export type InferFieldType<F extends VexField> = F extends { type: "text" }
                         ? unknown
                         : F extends { type: "richtext" }
                           ? RichTextDocument
-                          : F extends { type: "array" }
-                            ? unknown[]
-                            : F extends { type: "ui" }
-                              ? never
-                              : never;
+                          : F extends { type: "blocks" }
+                            ? Array<InferBlockUnion<F>>
+                            : F extends { type: "array" }
+                              ? unknown[]
+                              : F extends { type: "ui" }
+                                ? never
+                                : never;
+
+/**
+ * Infer the discriminated union type for a blocks field.
+ * Each block becomes an object type with `blockType` literal + `_key` + its field types.
+ */
+export type InferBlockUnion<F extends VexField> = F extends BlocksFieldDef
+  ? F["blocks"][number] extends infer B
+    ? B extends BlockDef<infer TFields>
+      ? { blockType: B["slug"]; blockName?: string; _key: string } & {
+          [K in keyof TFields]: InferFieldType<TFields[K] & VexField>;
+        }
+      : never
+    : never
+  : never;
 
 /**
  * Infer the document type from a record of fields.

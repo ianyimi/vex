@@ -26,6 +26,10 @@ export { json } from "./fields/json";
 export { array } from "./fields/array";
 export { richtext } from "./fields/richtext";
 export { ui } from "./fields/ui";
+export { blocks } from "./fields/blocks";
+
+// Block helpers
+export { defineBlock } from "./blocks/defineBlock";
 
 export * from "./versioning";
 
@@ -83,6 +87,10 @@ export type {
   JsonFieldDef,
   ArrayFieldDef,
   RichTextFieldDef,
+  BlockDef,
+  BlockAdminConfig,
+  BlocksFieldDef,
+  InferBlockUnion,
   InferFieldType,
   InferFieldsType,
   // Field admin config

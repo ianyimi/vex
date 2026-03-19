@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { generateFormSchema, fieldMetaToZod } from "./generateFormSchema";
 import { text, number, checkbox, select, date, imageUrl, upload } from "../fields";
+import { defineBlock } from "../blocks/defineBlock";
+import { blocks } from "../fields/blocks";
 
 describe("fieldMetaToZod", () => {
   it("generates z.string() for text field", () => {
@@ -201,5 +203,98 @@ describe("generateFormSchema", () => {
         status: "draft",
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("fieldMetaToZod — blocks", () => {
+  const heroBlock = defineBlock({
+    slug: "hero",
+    label: "Hero",
+    fields: {
+      heading: text({ required: true, defaultValue: "" }),
+      subheading: text(),
+    },
+  });
+
+  const ctaBlock = defineBlock({
+    slug: "cta",
+    label: "CTA",
+    fields: { label: text({ required: true, defaultValue: "" }) },
+  });
+
+  it("validates a correct block instance", () => {
+    const schema = fieldMetaToZod({
+      field: blocks({ blocks: [heroBlock, ctaBlock] }),
+    });
+
+    const result = schema.safeParse([
+      { blockType: "hero", _key: "abc", heading: "Welcome", subheading: "Hi" },
+      { blockType: "cta", _key: "def", label: "Click me" },
+    ]);
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects block with wrong blockType", () => {
+    const schema = fieldMetaToZod({
+      field: blocks({ blocks: [heroBlock] }),
+    });
+
+    const result = schema.safeParse([
+      { blockType: "unknown", _key: "abc", heading: "Hi" },
+    ]);
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects block missing required field", () => {
+    const schema = fieldMetaToZod({
+      field: blocks({ blocks: [heroBlock] }),
+    });
+
+    const result = schema.safeParse([
+      { blockType: "hero", _key: "abc" }, // missing required "heading"
+    ]);
+
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts empty array", () => {
+    const schema = fieldMetaToZod({
+      field: blocks({ blocks: [heroBlock] }),
+    });
+
+    const result = schema.safeParse([]);
+    expect(result.success).toBe(true);
+  });
+
+  it("enforces min/max constraints", () => {
+    const schema = fieldMetaToZod({
+      field: blocks({ blocks: [heroBlock], min: 1, max: 3 }),
+    });
+
+    expect(schema.safeParse([]).success).toBe(false); // below min
+    expect(
+      schema.safeParse([
+        { blockType: "hero", _key: "a", heading: "1" },
+        { blockType: "hero", _key: "b", heading: "2" },
+        { blockType: "hero", _key: "c", heading: "3" },
+        { blockType: "hero", _key: "d", heading: "4" },
+      ]).success,
+    ).toBe(false); // above max
+  });
+
+  it("validates block with no fields (divider)", () => {
+    const divider = defineBlock({
+      slug: "divider",
+      label: "Divider",
+      fields: {},
+    });
+    const schema = fieldMetaToZod({
+      field: blocks({ blocks: [divider] }),
+    });
+
+    const result = schema.safeParse([{ blockType: "divider", _key: "abc" }]);
+    expect(result.success).toBe(true);
   });
 });

@@ -7,3 +7,4 @@ export { DateField } from "./DateField";
 export { ImageUrlField } from "./ImageUrlField";
 export { UploadField } from "./UploadField";
 export { UIField } from "./UIField";
+export { BlocksField } from "./BlocksField";

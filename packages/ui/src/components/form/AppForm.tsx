@@ -13,6 +13,7 @@ import {
   ImageUrlField,
   MultiSelectField,
   UploadField,
+  BlocksField,
 } from "./fields";
 import { VexFormProvider } from "./VexFormProvider";
 import type { MediaDocument } from "../ui/media-picker";
@@ -393,6 +394,14 @@ function AppForm({
                       />,
                     );
                   }
+                  case "blocks":
+                    return readOnlyWrapper(
+                      <BlocksField
+                        field={field}
+                        fieldDef={fieldDef}
+                        name={entry.name}
+                      />,
+                    );
                   case "richtext": {
                     if (renderRichTextField) {
                       return readOnlyWrapper(

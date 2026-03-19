@@ -98,3 +98,17 @@ export class VexAccessError extends VexError {
     this.name = "VexAccessError";
   }
 }
+
+/**
+ * Thrown when a block definition is invalid.
+ * For example: reserved field name used, duplicate block slug.
+ */
+export class VexBlockValidationError extends VexError {
+  constructor(
+    public readonly blockSlug: string,
+    public readonly detail: string,
+  ) {
+    super(`Block "${blockSlug}": ${detail}`);
+    this.name = "VexBlockValidationError";
+  }
+}

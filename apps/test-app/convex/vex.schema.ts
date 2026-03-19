@@ -26,6 +26,17 @@ export const posts = defineTable({
   featured: v.optional(v.boolean()),
   status: v.union(v.literal("draft"), v.literal("published"), v.literal("archived")),
   subtitle: v.string(),
+  testBlocks: v.optional(
+    v.array(
+      v.object({
+        blockType: v.literal("new-block"),
+        blockName: v.optional(v.string()),
+        _key: v.string(),
+        subtitle: v.optional(v.string()),
+        title: v.optional(v.string()),
+      })
+    )
+  ),
   title: v.string(),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
 })
