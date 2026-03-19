@@ -36,9 +36,21 @@ A popover triggered by a color swatch button (shows the current color). Two tabs
 
 ### Tab 2: Custom Color
 
-- Color wheel / gradient picker
+- Full color picker using `@uiw/react-color-sketch` (Sketch-style picker with gradient area, hue slider, and hex/rgb inputs)
 - Hex input field (text input, validates hex format)
 - Clicking/typing sets the value to the hex string (e.g., `"#3b82f6"`)
+
+### Reference Implementation
+
+Existing color field from uifoundry Payload project: `/Users/zaye/Documents/Projects/uifoundry.git/dev/src/payload/fields/color/index.tsx`
+
+Key patterns to reuse for the custom color tab:
+- **`@uiw/react-color-sketch`** — Sketch component for the color picker UI. Use `color` prop for current value and `onChange` with `color.hex` for updates.
+- **Popover pattern** — Button trigger showing current color as background (`style={{ background: value }}`), popover content contains the picker. Use shadcn `Popover`, `PopoverTrigger`, `PopoverContent`.
+- **`useField<string>({ path })`** — VEX already has its own `useField` hook that works the same way. Wire `setValue(color.hex)` from the Sketch onChange.
+- **Default value** — Fall back to `"#000000"` when value is empty/undefined.
+
+The VEX version will wrap this in a tabbed interface (shadcn `Tabs`) where Tab 1 is theme colors and Tab 2 contains the Sketch picker from this reference.
 
 ## Theme Integration
 

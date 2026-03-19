@@ -28,7 +28,7 @@ import { useMutation } from "convex/react";
 import { anyApi } from "convex/server";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQueryState } from "nuqs";
+import { useQueryState, parseAsBoolean } from "nuqs";
 import { Trash2 } from "lucide-react";
 import { DEFAULT_AUTOSAVE_INTERVAL } from "@vexcms/core";
 import { DeleteDocumentDialog } from "../components/DeleteDocumentDialog";
@@ -87,9 +87,12 @@ export default function CollectionEditView({
   const unpublishMutation = useMutation(anyApi.vex.versions.unpublish);
   const deleteSnapshotMutation = useMutation(anyApi.vex.previewSnapshot.remove);
 
-  // Live preview state — works with or without versioning
+  // Live preview state — persisted in URL so it survives page refresh
   const hasPreview = !!collection.admin?.livePreview;
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useQueryState(
+    "preview",
+    parseAsBoolean.withDefault(false),
+  );
 
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -286,7 +289,7 @@ export default function CollectionEditView({
   });
 
   // Preview snapshot — writes debounced snapshot on form value changes when preview is open
-  const onPreviewValuesChange = usePreviewSnapshot({
+  const { onValuesChange: onPreviewValuesChange, isSyncing: isPreviewSyncing } = usePreviewSnapshot({
     collectionSlug: collection.slug,
     documentId: documentID,
     enabled: previewOpen && hasPreview && !!document,
@@ -303,8 +306,8 @@ export default function CollectionEditView({
   const singularLabel = collection.labels?.singular ?? collection.slug;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="shrink-0 border-b px-6 py-4">
+    <div className="flex flex-col h-full">
+      <div className="sticky top-0 z-10 bg-background border-b px-6 py-4">
         <div className="flex justify-between items-center">
           <Breadcrumb>
             <BreadcrumbList>
@@ -415,8 +418,8 @@ export default function CollectionEditView({
         </div>
       </div>
 
-      <div className={`flex-1 overflow-hidden ${previewOpen && hasPreview ? "flex" : ""}`}>
-        <div className={`overflow-y-auto p-6 ${previewOpen && hasPreview ? "w-1/2 border-r" : "w-full"}`}>
+      <div className={`flex-1 min-h-0 ${previewOpen && hasPreview ? "flex overflow-hidden" : "overflow-y-auto"}`}>
+        <div className={`p-6 ${previewOpen && hasPreview ? "w-1/2 border-r overflow-y-auto" : "w-full"}`}>
           {isLoading && <p className="text-muted-foreground">Loading...</p>}
 
           {!isLoading && document == null && (
@@ -473,6 +476,7 @@ export default function CollectionEditView({
               doc={{ _id: documentID, ...document } as { _id: string; [key: string]: any }}
               breakpoints={collection.admin!.livePreview!.breakpoints}
               adminBreakpoints={config.admin.livePreview?.breakpoints}
+              isSyncing={isPreviewSyncing}
             />
           </div>
         )}

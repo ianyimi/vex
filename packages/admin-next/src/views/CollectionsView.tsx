@@ -140,6 +140,27 @@ export default function CollectionsView({
 
     return cols.map((col) => {
       const meta = col.meta as Record<string, unknown> | undefined;
+
+      // Inject custom Cell component if present
+      if (meta?.customCell) {
+        const CustomCell = meta.customCell as React.ComponentType<{
+          value: unknown;
+          row: Record<string, unknown>;
+          fieldDef: any;
+        }>;
+        const fieldDef = meta.fieldDef;
+        return {
+          ...col,
+          cell: (info: any) => (
+            <CustomCell
+              value={info.getValue()}
+              row={info.row.original}
+              fieldDef={fieldDef}
+            />
+          ),
+        };
+      }
+
       if (meta?.type === "upload" && typeof meta.to === "string") {
         const targetSlug = meta.to;
         return {
@@ -308,7 +329,7 @@ export default function CollectionsView({
   ).length;
 
   return (
-    <div className="flex flex-col p-6 h-[calc(100vh-theme(spacing.16))] min-h-0">
+    <div className="flex flex-col p-6 h-full min-h-0">
       <Breadcrumb className="mb-4 shrink-0">
         <BreadcrumbList>
           <BreadcrumbItem>

@@ -27,7 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       permissionUser={permissionUser}
     >
       <SidebarTrigger />
-      <main className="flex flex-col flex-1 overflow-hidden">{children}</main>
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">{children}</div>
     </AdminLayoutWrapper>
   )
 }

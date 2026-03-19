@@ -25,6 +25,7 @@ export { upload } from "./fields/media";
 export { json } from "./fields/json";
 export { array } from "./fields/array";
 export { richtext } from "./fields/richtext";
+export { ui } from "./fields/ui";
 
 export * from "./versioning";
 
@@ -86,6 +87,9 @@ export type {
   InferFieldsType,
   // Field admin config
   FieldAdminConfig,
+  FieldComponentProps,
+  CellComponentProps,
+  UIFieldDef,
   DistributiveOmit,
   // Collection types
   VexCollection,

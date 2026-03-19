@@ -1,1888 +1,1249 @@
-# 09b — Form Hooks & Custom Admin Components
+# 09b — Custom Component Registration System
 
 ## Overview
 
-This spec adds a React Context-based form abstraction layer (`VexFormProvider`) with hooks (`useField`, `useForm`, `useFormFields`, `useDocumentInfo`) that decouple field components from TanStack Form internals. It also adds `admin.components.Field` support for custom field components on eligible field types. Existing built-in field components are refactored to use the new hooks, ensuring the same hooks that custom components use are battle-tested by the built-in UI.
+This spec adds a form abstraction layer (`VexFormProvider` + hooks) over TanStack Form and a custom component registration system. Users can replace the built-in admin field component or table cell renderer for eligible field types by passing a `React.ComponentType` in `admin.components.Field` or `admin.components.Cell`. A new `ui()` field type is added for non-persisted display/action fields. Built-in field components for eligible types are refactored to use the new hooks.
 
 ## Design Decisions
 
-1. **TanStack Form stays as the engine** — no Legend State, no custom form state. The hooks are a thin abstraction over TanStack Form's `form.Field` API, not a replacement.
-2. **Direct React component references** — `admin.components.Field` accepts a `React.ComponentType`, not a string path. Type-safe, no build step required.
-3. **Restricted field types** — `upload` and `richtext` fields cannot have custom `admin.components.Field` because they require special wiring (media picker state, editor adapter injection) that custom components would lose. A runtime error is thrown if attempted.
-4. **`useField` merges readOnly** — combines `field.admin.readOnly` (config-level) and permission-based readOnly into a single `readOnly` boolean.
-5. **Hooks live in `@vexcms/ui`** — since AppForm and field components already live there. The `useDocumentInfo` hook reads from a `DocumentContext` provided by `CollectionEditView` in `@vexcms/admin-next`.
-6. **`useFormFields` uses `form.Subscribe` selector pattern** — only re-renders when selected fields change, matching PayloadCMS's performance pattern.
+1. **TanStack Form stays as the only engine** — no Legend State. `useField` and `useForm` are thin wrappers over TanStack Form's API, exposed via React context.
+2. **Direct React component references** — `admin.components.Field` accepts a `React.ComponentType`, not a string path. Type-safe, no build step, no codegen.
+3. **Restricted Field types** — only `text`, `number`, `checkbox`, and `select` fields can have custom `admin.components.Field`. These are the simple, self-contained field types. `upload`, `richtext`, `relationship`, `date`, `imageUrl`, `array`, and `json` have special wiring that custom components would lose. A runtime error is thrown if attempted.
+4. **Unrestricted Cell types** — `admin.components.Cell` can be set on any field type (it's display-only).
+5. **Cell injection at CollectionsView level** — custom Cell components are stored in `column.meta.customCell` by `generateColumns()` in core, then injected by `CollectionsView` in admin-next (same pattern as `UploadCellPreview`).
+6. **readOnly via hooks, not wrapper** — custom components receive `readOnly` via `useField()` and handle it themselves. The opacity wrapper div is removed for fields with custom components.
 
 ## Out of Scope
 
-- `admin.components.Cell` (list view custom cells)
 - `admin.components.Filter` (custom filter UI)
 - `admin.components.Label`, `Error`, `Description` sub-slots
-- `beforeInput` / `afterInput` slot arrays
-- `ui()` field type (non-persisted display fields)
-- Build-time component resolution / import maps
-- `dispatchFields` action system (ADD_ROW, REMOVE_ROW for array fields)
-- Server component support
+- `useDocumentInfo` hook (needs DocumentContext from admin-next)
+- Conditional field rendering (`admin.condition`)
+- Array/blocks row manipulation helpers on `useForm`
+- Legend State integration
+- Build-time codegen / componentMap.ts
 
 ## Target Directory Structure
 
 ```
+packages/core/src/
+├── types/
+│   └── fields.ts                    # Modified — add components to FieldAdminConfig, add UIFieldDef
+├── fields/
+│   └── ui/
+│       ├── config.ts                # NEW — ui() field factory
+│       └── config.test.ts           # NEW — ui() tests
+├── columns/
+│   └── generateColumns.ts           # Modified — skip ui fields, pass customCell to meta
+├── formSchema/
+│   ├── generateFormSchema.ts        # Modified — skip ui fields
+│   └── generateFormDefaultValues.ts # Modified — skip ui fields
+├── valueTypes/
+│   └── extract.ts                   # Modified — skip ui fields
+└── index.ts                         # Modified — export ui, UIFieldDef
+
 packages/ui/src/
-├── components/form/
-│   ├── AppForm.tsx                      # MODIFIED — add VexFormProvider, component resolution
-│   ├── context/
-│   │   ├── VexFormContext.tsx            # NEW — form context + provider
-│   │   ├── FieldContext.tsx             # NEW — per-field context (path, fieldDef, readOnly)
-│   │   └── index.ts                     # NEW — re-exports
-│   ├── hooks/
-│   │   ├── useField.ts                  # NEW — primary field hook
-│   │   ├── useForm.ts                   # NEW — form-level actions hook
-│   │   ├── useFormFields.ts             # NEW — selective field access hook
-│   │   └── index.ts                     # NEW — re-exports
-│   ├── fields/
-│   │   ├── TextField.tsx                # MODIFIED — use useField
-│   │   ├── NumberField.tsx              # MODIFIED — use useField
-│   │   ├── CheckboxField.tsx            # MODIFIED — use useField
-│   │   ├── SelectField.tsx              # MODIFIED — use useField
-│   │   ├── MultiSelectField.tsx         # MODIFIED — use useField
-│   │   ├── DateField.tsx                # MODIFIED — use useField
-│   │   ├── ImageUrlField.tsx            # MODIFIED — use useField
-│   │   ├── UploadField.tsx              # NOT MODIFIED — keeps props-based API
-│   │   └── index.ts
-│   └── index.ts                         # MODIFIED — re-export hooks + context
+├── hooks/
+│   ├── useVexField.ts               # NEW — field value/state hook
+│   ├── useVexForm.ts                # NEW — form-level state hook
+│   ├── useVexFormFields.ts          # NEW — selector hook for watching specific fields
+│   └── index.ts                     # NEW — re-exports
+├── components/
+│   └── form/
+│       ├── VexFormProvider.tsx       # NEW — context provider wrapping TanStack Form
+│       ├── AppForm.tsx              # Modified — use VexFormProvider, check for custom Field
+│       └── fields/
+│           ├── TextField.tsx        # Modified — refactored to use useVexField
+│           ├── NumberField.tsx      # Modified — refactored to use useVexField
+│           ├── CheckboxField.tsx    # Modified — refactored to use useVexField
+│           ├── SelectField.tsx      # Modified — refactored to use useVexField
+│           └── UIField.tsx          # NEW — renders custom component for ui() fields
+└── index.ts                         # Modified — export hooks, VexFormProvider, types
 
 packages/admin-next/src/
-├── context/
-│   └── DocumentContext.tsx              # NEW — document info context
-├── hooks/
-│   └── useDocumentInfo.ts              # NEW — document metadata hook
 └── views/
-    └── CollectionEditView.tsx           # MODIFIED — wrap with DocumentProvider
-
-packages/core/src/
-└── types/
-    └── fields.ts                        # MODIFIED — add components to FieldAdminConfig
+    └── CollectionsView.tsx          # Modified — inject custom Cell components from meta
 ```
 
 ## Implementation Order
 
-1. **Step 1: Types** — Add `components.Field` to `FieldAdminConfig`, add `CustomFieldComponentProps` type, add restricted field type validation
-2. **Step 2: VexFormContext** — Create form context that wraps TanStack Form instance
-3. **Step 3: FieldContext** — Create per-field context (path, fieldDef, readOnly)
-4. **Step 4: useField hook** — Get/set field value, errors, readOnly from context
-5. **Step 5: useForm hook** — Form-level actions (getData, submit, modified state)
-6. **Step 6: useFormFields hook** — Selective field access with re-render optimization
-7. **Step 7: Refactor built-in field components** — TextField, NumberField, CheckboxField, SelectField, MultiSelectField, DateField, ImageUrlField to use useField
-8. **Step 8: AppForm integration** — Wire VexFormProvider, FieldContext, and custom component resolution into AppForm
-9. **Step 9: DocumentContext + useDocumentInfo** — Document metadata context in admin-next
-10. **Step 10: Final integration + re-exports** — Wire CollectionEditView, update package exports, verify build
+1. **Step 1: Types** — Add `components` to `FieldAdminConfig`, add `UIFieldDef` to discriminated union
+2. **Step 2: ui() field factory** — Create `ui()` in core with tests
+3. **Step 3: Skip ui fields in generation** — Update schema gen, form schema, form defaults, column gen, value type extraction
+4. **Step 4: Custom Cell in generateColumns** — Pass `admin.components.Cell` through `column.meta.customCell`
+5. **Step 5: VexFormProvider** — Create context provider wrapping TanStack Form
+6. **Step 6: useVexField hook** — Create the field-level hook with tests
+7. **Step 7: useVexForm + useVexFormFields hooks** — Create form-level and selector hooks
+8. **Step 8: Refactor built-in fields** — Refactor TextField, NumberField, CheckboxField, SelectField to use useVexField
+9. **Step 9: Custom Field dispatch in AppForm** — Check for `admin.components.Field`, render custom or built-in
+10. **Step 10: UIField component** — Render custom component for ui() fields
+11. **Step 11: Custom Cell injection in CollectionsView** — Wire custom Cell components into table columns
+12. **Step 12: Exports + final integration** — Update package exports, verify full build
 
 ---
 
-## Step 1: Types — FieldAdminConfig + CustomFieldComponentProps
+## Step 1: Types — FieldAdminConfig + UIFieldDef
 
 - [ ] Modify `packages/core/src/types/fields.ts` — add `components` to `FieldAdminConfig`
-- [ ] Create `packages/ui/src/components/form/types.ts` — `CustomFieldComponentProps` type
-- [ ] Run `pnpm build` to verify types compile
+- [ ] Add `UIFieldDef` interface
+- [ ] Add `UIFieldDef` to the `VexField` union
+- [ ] Add `UIFieldDef` to `InferFieldType` (returns `never`)
+- [ ] Export new types from `packages/core/src/index.ts`
+- [ ] Run `pnpm build`
 
-### File: `packages/core/src/types/fields.ts`
+### `File: packages/core/src/types/fields.ts` — additions
 
-Add `components` property to `FieldAdminConfig`:
-
-```typescript
-// ADD to FieldAdminConfig interface, after cellAlignment:
-
-  /**
-   * Custom component overrides for the admin panel.
-   *
-   * Not available on `upload` or `richtext` fields — these field types
-   * require built-in wiring (media picker, editor adapter) that custom
-   * components cannot replicate.
-   */
-  components?: {
-    /**
-     * Custom React component that replaces the entire field input.
-     * The component receives `CustomFieldComponentProps` and should use
-     * `useField()` to read/write the field value.
-     *
-     * @example
-     * ```tsx
-     * import { ColorPicker } from './components/ColorPicker';
-     *
-     * const config = {
-     *   primaryColor: text({
-     *     label: 'Primary Color',
-     *     admin: {
-     *       components: { Field: ColorPicker },
-     *     },
-     *   }),
-     * };
-     * ```
-     */
-    Field?: React.ComponentType<any>;
-  };
-```
-
-### File: `packages/ui/src/components/form/types.ts` (NEW)
+Add `FieldComponentProps` type and `components` to `FieldAdminConfig`:
 
 ```typescript
-import type { VexField } from "@vexcms/core";
-
 /**
- * Field types that cannot have custom admin components.
- * These require built-in wiring (media picker, editor adapter) that
- * custom components cannot replicate.
+ * Props passed to custom field components.
+ * Custom components receive these props and use useVexField() for state.
  */
-export const RESTRICTED_CUSTOM_COMPONENT_TYPES = ["upload", "richtext"] as const;
-
-/**
- * Props passed to custom field components registered via
- * `admin.components.Field`.
- *
- * Custom components should use `useField()` to get/set the field value
- * rather than reading these props directly for state management.
- */
-export interface CustomFieldComponentProps {
-  /** The field key name (e.g., "title", "primaryColor") */
+export interface FieldComponentProps {
+  /** The field key name (e.g., "primaryColor") */
   name: string;
   /** The VexField definition for this field */
   fieldDef: VexField;
-  /** The dot-notation path to this field in the form */
-  path: string;
-}
-
-/**
- * Return type of the `useField` hook.
- */
-export interface UseFieldReturn<TValue = unknown> {
-  /** Current field value */
-  value: TValue;
-  /** Set the field value */
-  setValue: (value: TValue) => void;
-  /** Mark the field as touched (triggers validation display) */
-  handleBlur: () => void;
-  /** The field key name */
-  name: string;
-  /** The VexField definition */
-  fieldDef: VexField;
-  /** Whether the field is read-only (merges config + permission readOnly) */
+  /** Whether the field is read-only (from permissions or config) */
   readOnly: boolean;
-  /** Validation error messages */
-  errors: unknown[];
-  /** Whether errors should be displayed (field has been touched or form submitted) */
-  showErrors: boolean;
-  /** Computed label from fieldDef.label or toTitleCase(name) */
-  label: string;
-  /** Description text from fieldDef.admin.description or fieldDef.description */
-  description: string | undefined;
-  /** Whether the field is required */
-  required: boolean;
-  /** Admin placeholder text */
-  placeholder: string | undefined;
 }
 
 /**
- * Return type of the `useForm` hook.
+ * Props passed to custom cell components in the data table.
  */
-export interface UseFormReturn {
-  /** Get all current form field values */
-  getData: () => Record<string, unknown>;
-  /** Get a single field's current value by name */
-  getFieldValue: (props: { name: string }) => unknown;
-  /** Whether the form has been modified from its default values */
-  isModified: boolean;
-  /** Whether the form is currently submitting */
-  isSubmitting: boolean;
-  /** Programmatically submit the form */
-  submit: () => void;
+export interface CellComponentProps {
+  /** The raw cell value from the document */
+  value: unknown;
+  /** The full row data (document) */
+  row: Record<string, unknown>;
+  /** The VexField definition for this column's field */
+  fieldDef: VexField;
 }
+```
 
-/**
- * Return type of the `useDocumentInfo` hook.
- */
-export interface UseDocumentInfoReturn {
-  /** The document's Convex ID (null for new documents) */
-  documentId: string | null;
-  /** The collection slug */
-  collectionSlug: string;
-  /** Whether the collection uses versioning */
-  isVersioned: boolean;
-  /** The document's current status ('draft' | 'published'), if versioned */
-  status: string | undefined;
-  /** The document's current version number, if versioned */
-  version: number | undefined;
+Add to `FieldAdminConfig`:
+
+```typescript
+export interface FieldAdminConfig {
+  // ... existing properties ...
+
+  /**
+   * Custom components for this field.
+   *
+   * - `Field` replaces the entire field input in the edit form.
+   *   Only allowed on text, number, checkbox, and select fields.
+   *   The component receives FieldComponentProps and uses useVexField() for state.
+   *
+   * - `Cell` replaces the cell renderer in the data table list view.
+   *   Allowed on any field type.
+   */
+  components?: {
+    Field?: React.ComponentType<FieldComponentProps>;
+    Cell?: React.ComponentType<CellComponentProps>;
+  };
 }
+```
+
+Add `UIFieldDef` after `RichTextFieldDef`:
+
+```typescript
+/**
+ * UI field definition. Non-persisted — renders a custom component only.
+ * Skipped during schema generation, form validation, and column generation.
+ * Requires admin.components.Field to be set.
+ */
+export interface UIFieldDef extends BaseField {
+  readonly type: "ui";
+  /** Display label for the field in the admin form. */
+  label?: string;
+  /**
+   * Admin config — components.Field is required for ui fields.
+   */
+  admin: FieldAdminConfig & {
+    components: {
+      Field: React.ComponentType<FieldComponentProps>;
+    };
+  };
+}
+```
+
+Update the `VexField` union:
+
+```typescript
+export type VexField =
+  | TextFieldDef
+  | NumberFieldDef
+  | CheckboxFieldDef
+  | SelectFieldDef<string>
+  | DateFieldDef
+  | ImageUrlFieldDef
+  | RelationshipFieldDef
+  | UploadFieldDef
+  | JsonFieldDef
+  | ArrayFieldDef
+  | RichTextFieldDef
+  | UIFieldDef;
+```
+
+Update `InferFieldType` — add before the final `never`:
+
+```typescript
+  : F extends { type: "ui" }
+    ? never
+```
+
+Note: `FieldAdminConfig` currently lives in a pure TypeScript file with no React dependency. Since `components` references `React.ComponentType`, you'll need to add `import type { ComponentType } from "react"` and use `ComponentType<T>` instead of `React.ComponentType<T>`. Alternatively, use a generic function type: `(props: FieldComponentProps) => React.ReactNode` as `(props: FieldComponentProps) => any` to avoid the React import in core. **Decision: use `ComponentType` from react as a type-only import** — core already has `@tanstack/react-table` as a dependency which pulls React types.
+
+Export from `packages/core/src/index.ts`:
+
+```typescript
+// Add to field helper exports
+export { ui } from "./fields/ui";
+
+// Add to type exports
+export type {
+  UIFieldDef,
+  FieldComponentProps,
+  CellComponentProps,
+} from "./types";
 ```
 
 ---
 
-## Step 2: VexFormContext
+## Step 2: ui() Field Factory
 
-- [ ] Create `packages/ui/src/components/form/context/VexFormContext.tsx`
-- [ ] Create `packages/ui/src/components/form/context/index.ts`
-- [ ] Run `pnpm build`
+- [ ] Create `packages/core/src/fields/ui/config.ts`
+- [ ] Create `packages/core/src/fields/ui/config.test.ts`
+- [ ] Create `packages/core/src/fields/ui/index.ts`
+- [ ] Run tests
 
-### File: `packages/ui/src/components/form/context/VexFormContext.tsx` (NEW)
+### `File: packages/core/src/fields/ui/config.ts`
+
+```typescript
+import type { UIFieldDef, FieldAdminConfig, FieldComponentProps } from "../../types";
+import type { ComponentType } from "react";
+
+/**
+ * Creates a UI field — a non-persisted field that renders a custom component.
+ * UI fields are skipped during schema generation, form validation, and column generation.
+ * They are useful for computed displays, action buttons, and embedded widgets.
+ *
+ * @param props.label - Display label for the field
+ * @param props.admin - Admin config. components.Field is required.
+ * @returns A UIFieldDef
+ *
+ * @example
+ * ```ts
+ * import { ui } from "@vexcms/core";
+ * import WordCount from "~/components/admin/WordCount";
+ *
+ * const collection = defineCollection({
+ *   slug: "posts",
+ *   fields: {
+ *     wordCount: ui({
+ *       label: "Word Count",
+ *       admin: {
+ *         components: { Field: WordCount },
+ *         position: "sidebar",
+ *       },
+ *     }),
+ *   },
+ * });
+ * ```
+ */
+export function ui(props: {
+  label?: string;
+  admin: FieldAdminConfig & {
+    components: {
+      Field: ComponentType<FieldComponentProps>;
+    };
+  };
+  description?: string;
+}): UIFieldDef {
+  return {
+    type: "ui" as const,
+    label: props.label,
+    description: props.description,
+    admin: props.admin,
+  };
+}
+```
+
+### `File: packages/core/src/fields/ui/index.ts`
+
+```typescript
+export { ui } from "./config";
+```
+
+### `File: packages/core/src/fields/ui/config.test.ts`
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { ui } from "./config";
+
+// Minimal mock component for testing
+const MockComponent = () => null;
+
+describe("ui field factory", () => {
+  it("creates a ui field with type 'ui'", () => {
+    const field = ui({
+      label: "Word Count",
+      admin: { components: { Field: MockComponent } },
+    });
+    expect(field.type).toBe("ui");
+    expect(field.label).toBe("Word Count");
+    expect(field.admin.components.Field).toBe(MockComponent);
+  });
+
+  it("preserves admin config properties", () => {
+    const field = ui({
+      label: "Stats",
+      admin: {
+        components: { Field: MockComponent },
+        position: "sidebar",
+        description: "Some stats",
+      },
+    });
+    expect(field.admin.position).toBe("sidebar");
+    expect(field.admin.description).toBe("Some stats");
+  });
+
+  it("allows optional label and description", () => {
+    const field = ui({
+      admin: { components: { Field: MockComponent } },
+    });
+    expect(field.label).toBeUndefined();
+    expect(field.description).toBeUndefined();
+  });
+});
+```
+
+---
+
+## Step 3: Skip ui Fields in Generation
+
+- [ ] Modify `packages/core/src/formSchema/generateFormSchema.ts` — skip `type: "ui"`
+- [ ] Modify `packages/core/src/formSchema/generateFormDefaultValues.ts` — skip `type: "ui"`
+- [ ] Modify `packages/core/src/valueTypes/extract.ts` — skip `type: "ui"`
+- [ ] Modify `packages/core/src/columns/generateColumns.ts` — skip `type: "ui"`
+- [ ] Add tests for ui field skipping
+- [ ] Run tests
+
+### `File: packages/core/src/formSchema/generateFormSchema.ts` — modification
+
+In `generateFormSchema`, add a skip for ui fields right after the hidden check:
+
+```typescript
+for (const [fieldName, field] of Object.entries(props.fields)) {
+  if (field.admin?.hidden) continue;
+  if (field.type === "ui") continue; // UI fields have no database representation
+
+  // ... rest unchanged
+}
+```
+
+### `File: packages/core/src/formSchema/generateFormDefaultValues.ts` — modification
+
+In `generateFormDefaultValues`, skip ui fields:
+
+```typescript
+// In the function that iterates over fields:
+if (field.type === "ui") continue; // UI fields have no form value
+```
+
+Also add to the `getFormDefaultValue` switch:
+
+```typescript
+case "ui":
+  return undefined;
+```
+
+### `File: packages/core/src/valueTypes/extract.ts` — modification
+
+In `fieldToValueType`, add a case for ui:
+
+```typescript
+case "ui":
+  // UI fields have no database representation — this should never be called.
+  // If it is, it means a ui field leaked into schema generation.
+  throw new VexFieldValidationError({
+    message: `UI field "${props.fieldName}" on collection "${props.collectionSlug}" has no database representation and should not be included in schema generation.`,
+    collectionSlug: props.collectionSlug,
+    fieldName: props.fieldName,
+  });
+```
+
+### `File: packages/core/src/columns/generateColumns.ts` — modification
+
+In `buildColumnDef`, add before the default case:
+
+```typescript
+case "ui":
+  // UI fields are not displayed in data tables — return null sentinel
+  // The caller filters these out
+  return null as any;
+```
+
+In the calling code (both the `defaultColumns` loop and the fallback loop), skip null results:
+
+```typescript
+// In the defaultColumns loop:
+if (field.type === "ui") continue;
+
+// In the fallback loop:
+if (field.type === "ui") continue;
+```
+
+### `File: packages/core/src/formSchema/generateFormSchema.test.ts` — addition (append to existing test file)
+
+```typescript
+describe("ui field handling", () => {
+  it("skips ui fields in form schema generation", () => {
+    const MockComponent = () => null;
+    const schema = generateFormSchema({
+      fields: {
+        title: { type: "text" as const, label: "Title" },
+        wordCount: {
+          type: "ui" as const,
+          label: "Word Count",
+          admin: { components: { Field: MockComponent } },
+        },
+      },
+    });
+    expect(schema.shape).toHaveProperty("title");
+    expect(schema.shape).not.toHaveProperty("wordCount");
+  });
+});
+```
+
+---
+
+## Step 4: Custom Cell in generateColumns
+
+- [ ] Modify `packages/core/src/columns/generateColumns.ts` — pass `admin.components.Cell` into `column.meta`
+- [ ] Add test for custom Cell meta passthrough
+- [ ] Run tests
+
+### `File: packages/core/src/columns/generateColumns.ts` — modification
+
+In `buildColumnDef`, after building the column def, check for a custom Cell component and attach it to meta:
+
+```typescript
+function buildColumnDef(
+  fieldKey: string,
+  field: VexField,
+): ColumnDef<Record<string, unknown>> | null {
+  if (field.type === "ui") return null;
+
+  // Build the standard column def
+  let col: ColumnDef<Record<string, unknown>>;
+  switch (field.type) {
+    // ... existing cases unchanged ...
+  }
+
+  // Attach custom Cell component to meta if present
+  if (field.admin?.components?.Cell) {
+    col.meta = {
+      ...col.meta,
+      customCell: field.admin.components.Cell,
+      fieldDef: field,
+    };
+  }
+
+  return col;
+}
+```
+
+Update the callers to skip null returns:
+
+```typescript
+// In the defaultColumns loop:
+const col = buildColumnDef(fieldKey, field);
+if (!col) continue;
+
+// In the fallback loop:
+const col = buildColumnDef(fieldKey, field);
+if (!col) continue;
+```
+
+---
+
+## Step 5: VexFormProvider
+
+- [ ] Create `packages/ui/src/components/form/VexFormProvider.tsx`
+- [ ] Run build
+
+### `File: packages/ui/src/components/form/VexFormProvider.tsx`
 
 ```typescript
 "use client";
 
 import { createContext, useContext } from "react";
-import type { FieldEntry } from "../AppForm";
+import type { FormApi } from "@tanstack/react-form";
+import type { VexField, FieldComponentProps } from "@vexcms/core";
 
-/**
- * Internal form context value. Wraps the TanStack Form instance
- * and the field entries metadata needed by hooks.
- */
+// ---------- Types ----------
+
+interface FieldEntry {
+  name: string;
+  field: VexField;
+  readOnly?: boolean;
+}
+
 interface VexFormContextValue {
   /** The TanStack Form instance */
-  form: any;
-  /** The field entries with name, fieldDef, and readOnly info */
-  fieldEntries: FieldEntry[];
-  /** Default values for the form (used for dirty checking) */
-  defaultValues: Record<string, unknown>;
+  form: FormApi<Record<string, any>, any>;
+  /** Map of field name → VexField definition */
+  fieldDefs: Record<string, VexField>;
+  /** Map of field name → readOnly status */
+  readOnlyMap: Record<string, boolean>;
 }
+
+// ---------- Context ----------
 
 const VexFormContext = createContext<VexFormContextValue | null>(null);
 
 /**
- * Provider component that wraps the form and exposes state to hooks.
- * This is used internally by AppForm — not by consumers directly.
+ * Access the VexForm context. Throws if used outside VexFormProvider.
  */
-function VexFormProvider(props: {
-  form: any;
+export function useVexFormContext(): VexFormContextValue {
+  const ctx = useContext(VexFormContext);
+  if (!ctx) {
+    throw new Error(
+      "useVexFormContext must be used within a VexFormProvider. " +
+      "Wrap your form with <VexFormProvider> or use AppForm which includes it."
+    );
+  }
+  return ctx;
+}
+
+// ---------- Provider ----------
+
+interface VexFormProviderProps {
+  /** The TanStack Form instance */
+  form: FormApi<Record<string, any>, any>;
+  /** The field entries being rendered */
   fieldEntries: FieldEntry[];
-  defaultValues: Record<string, unknown>;
   children: React.ReactNode;
-}) {
+}
+
+/**
+ * Provides form context for useVexField, useVexForm, and useVexFormFields hooks.
+ * Wraps TanStack Form — does not replace it.
+ *
+ * AppForm creates this provider internally. Custom form layouts can use it directly.
+ */
+export function VexFormProvider(props: VexFormProviderProps) {
+  const fieldDefs: Record<string, VexField> = {};
+  const readOnlyMap: Record<string, boolean> = {};
+
+  for (const entry of props.fieldEntries) {
+    fieldDefs[entry.name] = entry.field;
+    readOnlyMap[entry.name] = entry.readOnly ?? false;
+  }
+
   return (
     <VexFormContext.Provider
-      value={{
-        form: props.form,
-        fieldEntries: props.fieldEntries,
-        defaultValues: props.defaultValues,
-      }}
+      value={{ form: props.form, fieldDefs, readOnlyMap }}
     >
       {props.children}
     </VexFormContext.Provider>
   );
 }
 
-/**
- * Internal hook to access the form context.
- * Throws if used outside a VexFormProvider.
- */
-function useVexFormContext(): VexFormContextValue {
-  const ctx = useContext(VexFormContext);
-  if (!ctx) {
-    throw new Error(
-      "useVexFormContext must be used within a VexFormProvider (inside AppForm). " +
-        "Make sure your component is rendered as a child of AppForm."
-    );
-  }
-  return ctx;
-}
-
-export { VexFormProvider, useVexFormContext, type VexFormContextValue };
-```
-
-### File: `packages/ui/src/components/form/context/index.ts` (NEW)
-
-```typescript
-export { VexFormProvider, useVexFormContext, type VexFormContextValue } from "./VexFormContext";
-export { FieldProvider, useFieldContext, type FieldContextValue } from "./FieldContext";
+export type { VexFormContextValue, VexFormProviderProps, FieldEntry };
 ```
 
 ---
 
-## Step 3: FieldContext
+## Step 6: useVexField Hook
 
-- [ ] Create `packages/ui/src/components/form/context/FieldContext.tsx`
-- [ ] Update `packages/ui/src/components/form/context/index.ts` (already includes export in Step 2)
-- [ ] Run `pnpm build`
+- [ ] Create `packages/ui/src/hooks/useVexField.ts`
+- [ ] Create `packages/ui/src/hooks/useVexField.test.tsx`
+- [ ] Run tests
 
-### File: `packages/ui/src/components/form/context/FieldContext.tsx` (NEW)
+### `File: packages/ui/src/hooks/useVexField.ts`
 
 ```typescript
 "use client";
 
-import { createContext, useContext } from "react";
+import { useState, useCallback, useSyncExternalStore } from "react";
+import { useVexFormContext } from "../components/form/VexFormProvider";
 import type { VexField } from "@vexcms/core";
 
 /**
- * Per-field context value. Set by AppForm when rendering each field.
- * Provides the field metadata needed by useField without prop drilling.
+ * Return type for the useVexField hook.
  */
-interface FieldContextValue {
-  /** The field key name (e.g., "title") */
-  name: string;
+export interface UseVexFieldReturn<TValue = unknown> {
+  /** Current field value */
+  value: TValue;
+  /** Set the field value */
+  setValue: (value: TValue) => void;
+  /** Mark the field as touched (blurred) */
+  handleBlur: () => void;
+  /** Validation errors for this field */
+  errors: string[];
+  /** Whether the field has errors and has been touched or submitted */
+  showError: boolean;
+  /** Whether the field is read-only (from config or permissions) */
+  readOnly: boolean;
   /** The VexField definition */
   fieldDef: VexField;
-  /** Whether this field is read-only (permission-based) */
-  permissionReadOnly: boolean;
-  /** The TanStack Form field API (from form.Field render prop) */
-  tanstackField: any;
-}
-
-const FieldContext = createContext<FieldContextValue | null>(null);
-
-/**
- * Provider set by AppForm around each field component.
- */
-function FieldProvider(props: {
+  /** The field name */
   name: string;
-  fieldDef: VexField;
-  permissionReadOnly: boolean;
-  tanstackField: any;
-  children: React.ReactNode;
-}) {
-  return (
-    <FieldContext.Provider
-      value={{
-        name: props.name,
-        fieldDef: props.fieldDef,
-        permissionReadOnly: props.permissionReadOnly,
-        tanstackField: props.tanstackField,
-      }}
-    >
-      {props.children}
-    </FieldContext.Provider>
-  );
 }
 
 /**
- * Internal hook to access the field context.
- * Throws if used outside a FieldProvider.
- */
-function useFieldContext(): FieldContextValue {
-  const ctx = useContext(FieldContext);
-  if (!ctx) {
-    throw new Error(
-      "useFieldContext must be used within a FieldProvider. " +
-        "Make sure your component is rendered inside AppForm."
-    );
-  }
-  return ctx;
-}
-
-export { FieldProvider, useFieldContext, type FieldContextValue };
-```
-
----
-
-## Step 4: useField hook + tests
-
-- [ ] Create `packages/ui/src/components/form/hooks/useField.ts`
-- [ ] Create `packages/ui/src/components/form/hooks/useField.test.tsx`
-- [ ] Create `packages/ui/src/components/form/hooks/index.ts`
-- [ ] Run `pnpm --filter @vexcms/ui test`
-
-### File: `packages/ui/src/components/form/hooks/useField.ts` (NEW)
-
-```typescript
-"use client";
-
-import { toTitleCase } from "@vexcms/core";
-import { useFieldContext } from "../context/FieldContext";
-import type { UseFieldReturn } from "../types";
-
-/**
- * Primary hook for reading and writing field values in the admin form.
+ * Hook for accessing and modifying a form field's value and state.
+ * Must be used within a VexFormProvider (or inside AppForm).
  *
- * Must be used inside a field component rendered by AppForm.
- * Built-in field components use this hook internally.
- * Custom components registered via `admin.components.Field` should use it too.
+ * This is the primary hook for custom field components. It provides
+ * the field value, setter, errors, and readOnly status.
  *
- * @returns Field value, setter, metadata, and validation state
+ * @param props.name - The field name (key in the collection's fields)
  *
  * @example
  * ```tsx
- * function ColorField() {
- *   const { value, setValue, label, readOnly, errors } = useField<string>();
- *   return (
- *     <div>
- *       <label>{label}</label>
- *       <input
- *         type="color"
- *         value={value ?? "#000000"}
- *         onChange={(e) => setValue(e.target.value)}
- *         disabled={readOnly}
- *       />
- *     </div>
- *   );
+ * function ColorField({ name, fieldDef, readOnly }: FieldComponentProps) {
+ *   const { value, setValue, errors, showError } = useVexField<string>({ name });
+ *   return <input value={value ?? ""} onChange={e => setValue(e.target.value)} />;
  * }
  * ```
  */
-function useField<TValue = unknown>(): UseFieldReturn<TValue> {
-  // TODO: implement
-  //
-  // 1. Call useFieldContext() to get name, fieldDef, permissionReadOnly, tanstackField
-  //
-  // 2. Extract value from tanstackField.state.value, cast to TValue
-  //
-  // 3. Compute readOnly by merging:
-  //    a. fieldDef.admin?.readOnly (config-level)
-  //    b. permissionReadOnly (from FieldContext, set by AppForm based on permissions)
-  //    → readOnly = either is true
-  //
-  // 4. Compute label:
-  //    → For select fields with hasMany, use fieldDef.labels?.singular
-  //    → Otherwise use fieldDef.label
-  //    → Fall back to toTitleCase(name)
-  //
-  // 5. Compute description from fieldDef.admin?.description ?? fieldDef.description
-  //
-  // 6. Extract errors from tanstackField.state.meta.errors ?? []
-  //
-  // 7. Compute showErrors — errors.length > 0 (TanStack Form handles touched state)
-  //
-  // 8. Return UseFieldReturn object with:
-  //    - value, setValue (tanstackField.handleChange), handleBlur (tanstackField.handleBlur)
-  //    - name, fieldDef, readOnly, errors, showErrors
-  //    - label, description, required (fieldDef.required ?? false)
-  //    - placeholder (fieldDef.admin?.placeholder) — only if fieldDef has it
-  //
-  // Edge cases:
-  // - value may be undefined/null for optional fields — don't coerce, let component handle
-  // - placeholder only exists on some field types (text, number, imageUrl) — return undefined for others
-  // - label computation differs for hasMany select fields (uses labels.singular)
-  throw new Error("Not implemented");
-}
-
-export { useField };
-```
-
-### File: `packages/ui/src/components/form/hooks/useField.test.tsx` (NEW)
-
-```tsx
-import { describe, it, expect, vi } from "vitest";
-import { renderHook } from "@testing-library/react";
-import { useField } from "./useField";
-import { FieldProvider } from "../context/FieldContext";
-import type { TextFieldDef, SelectFieldDef } from "@vexcms/core";
-
-// Helper to create a mock TanStack Form field object
-function mockTanstackField(props: {
-  value?: unknown;
-  errors?: unknown[];
-}) {
-  return {
-    state: {
-      value: props.value ?? "",
-      meta: {
-        errors: props.errors ?? [],
-      },
-    },
-    handleChange: vi.fn(),
-    handleBlur: vi.fn(),
-  };
-}
-
-// Helper wrapper that provides FieldContext
-function createWrapper(props: {
+export function useVexField<TValue = unknown>(props: {
   name: string;
-  fieldDef: any;
-  permissionReadOnly?: boolean;
-  tanstackField: any;
-}) {
-  return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <FieldProvider
-        name={props.name}
-        fieldDef={props.fieldDef}
-        permissionReadOnly={props.permissionReadOnly ?? false}
-        tanstackField={props.tanstackField}
-      >
-        {children}
-      </FieldProvider>
-    );
-  };
-}
-
-describe("useField", () => {
-  it("returns current field value", () => {
-    const field = mockTanstackField({ value: "hello" });
-    const fieldDef: TextFieldDef = { type: "text" };
-
-    const { result } = renderHook(() => useField<string>(), {
-      wrapper: createWrapper({
-        name: "title",
-        fieldDef,
-        tanstackField: field,
-      }),
-    });
-
-    expect(result.current.value).toBe("hello");
-  });
-
-  it("calls handleChange on setValue", () => {
-    const field = mockTanstackField({ value: "" });
-    const fieldDef: TextFieldDef = { type: "text" };
-
-    const { result } = renderHook(() => useField<string>(), {
-      wrapper: createWrapper({
-        name: "title",
-        fieldDef,
-        tanstackField: field,
-      }),
-    });
-
-    result.current.setValue("new value");
-    expect(field.handleChange).toHaveBeenCalledWith("new value");
-  });
-
-  it("computes label from fieldDef.label", () => {
-    const field = mockTanstackField({});
-    const fieldDef: TextFieldDef = { type: "text", label: "My Title" };
-
-    const { result } = renderHook(() => useField(), {
-      wrapper: createWrapper({
-        name: "title",
-        fieldDef,
-        tanstackField: field,
-      }),
-    });
-
-    expect(result.current.label).toBe("My Title");
-  });
-
-  it("falls back to toTitleCase(name) when no label", () => {
-    const field = mockTanstackField({});
-    const fieldDef: TextFieldDef = { type: "text" };
-
-    const { result } = renderHook(() => useField(), {
-      wrapper: createWrapper({
-        name: "firstName",
-        fieldDef,
-        tanstackField: field,
-      }),
-    });
-
-    expect(result.current.label).toBe("First Name");
-  });
-
-  it("uses labels.singular for hasMany select", () => {
-    const field = mockTanstackField({});
-    const fieldDef: SelectFieldDef = {
-      type: "select",
-      options: [{ value: "a", label: "A" }],
-      hasMany: true,
-      labels: { singular: "Tag", plural: "Tags" },
-    };
-
-    const { result } = renderHook(() => useField(), {
-      wrapper: createWrapper({
-        name: "tags",
-        fieldDef,
-        tanstackField: field,
-      }),
-    });
-
-    expect(result.current.label).toBe("Tag");
-  });
-
-  it("merges config readOnly with permission readOnly", () => {
-    const field = mockTanstackField({});
-
-    // Config readOnly = false, permission readOnly = true → readOnly
-    const fieldDef: TextFieldDef = { type: "text" };
-    const { result: r1 } = renderHook(() => useField(), {
-      wrapper: createWrapper({
-        name: "title",
-        fieldDef,
-        permissionReadOnly: true,
-        tanstackField: field,
-      }),
-    });
-    expect(r1.current.readOnly).toBe(true);
-
-    // Config readOnly = true, permission readOnly = false → readOnly
-    const fieldDef2: TextFieldDef = {
-      type: "text",
-      admin: { readOnly: true },
-    };
-    const { result: r2 } = renderHook(() => useField(), {
-      wrapper: createWrapper({
-        name: "title",
-        fieldDef: fieldDef2,
-        permissionReadOnly: false,
-        tanstackField: field,
-      }),
-    });
-    expect(r2.current.readOnly).toBe(true);
-
-    // Both false → not readOnly
-    const { result: r3 } = renderHook(() => useField(), {
-      wrapper: createWrapper({
-        name: "title",
-        fieldDef,
-        permissionReadOnly: false,
-        tanstackField: field,
-      }),
-    });
-    expect(r3.current.readOnly).toBe(false);
-  });
-
-  it("returns errors from TanStack Form", () => {
-    const field = mockTanstackField({
-      errors: ["Required", "Must be at least 3 characters"],
-    });
-    const fieldDef: TextFieldDef = { type: "text", required: true };
-
-    const { result } = renderHook(() => useField(), {
-      wrapper: createWrapper({
-        name: "title",
-        fieldDef,
-        tanstackField: field,
-      }),
-    });
-
-    expect(result.current.errors).toEqual([
-      "Required",
-      "Must be at least 3 characters",
-    ]);
-    expect(result.current.showErrors).toBe(true);
-  });
-
-  it("returns showErrors=false when no errors", () => {
-    const field = mockTanstackField({ errors: [] });
-    const fieldDef: TextFieldDef = { type: "text" };
-
-    const { result } = renderHook(() => useField(), {
-      wrapper: createWrapper({
-        name: "title",
-        fieldDef,
-        tanstackField: field,
-      }),
-    });
-
-    expect(result.current.showErrors).toBe(false);
-  });
-
-  it("throws when used outside FieldProvider", () => {
-    expect(() => {
-      renderHook(() => useField());
-    }).toThrow("useFieldContext must be used within a FieldProvider");
-  });
-
-  it("returns description from admin config or field level", () => {
-    const field = mockTanstackField({});
-    const fieldDef: TextFieldDef = {
-      type: "text",
-      description: "field-level desc",
-      admin: { description: "admin desc" },
-    };
-
-    const { result } = renderHook(() => useField(), {
-      wrapper: createWrapper({
-        name: "title",
-        fieldDef,
-        tanstackField: field,
-      }),
-    });
-
-    // admin.description takes precedence
-    expect(result.current.description).toBe("admin desc");
-  });
-
-  it("returns placeholder for text fields", () => {
-    const field = mockTanstackField({});
-    const fieldDef: TextFieldDef = {
-      type: "text",
-      admin: { placeholder: "Enter title..." },
-    };
-
-    const { result } = renderHook(() => useField(), {
-      wrapper: createWrapper({
-        name: "title",
-        fieldDef,
-        tanstackField: field,
-      }),
-    });
-
-    expect(result.current.placeholder).toBe("Enter title...");
-  });
-});
-```
-
-### File: `packages/ui/src/components/form/hooks/index.ts` (NEW)
-
-```typescript
-export { useField } from "./useField";
-export { useForm } from "./useForm";
-export { useFormFields } from "./useFormFields";
-```
-
----
-
-## Step 5: useForm hook + tests
-
-- [ ] Create `packages/ui/src/components/form/hooks/useForm.ts`
-- [ ] Create `packages/ui/src/components/form/hooks/useForm.test.tsx`
-- [ ] Run `pnpm --filter @vexcms/ui test`
-
-### File: `packages/ui/src/components/form/hooks/useForm.ts` (NEW)
-
-```typescript
-"use client";
-
-import { useVexFormContext } from "../context/VexFormContext";
-import type { UseFormReturn } from "../types";
-
-/**
- * Hook for form-level actions and state.
- *
- * Unlike `useField` (which is per-field), `useForm` provides access to
- * the entire form: reading all values, checking modified state, and
- * triggering submission.
- *
- * **Performance note:** This hook subscribes to form-level state.
- * For accessing specific field values performantly, use `useFormFields`
- * with a selector instead.
- *
- * @example
- * ```tsx
- * function SaveIndicator() {
- *   const { isModified, submit } = useForm();
- *   return isModified ? <button onClick={submit}>Save</button> : null;
- * }
- * ```
- */
-function useForm(): UseFormReturn {
+}): UseVexFieldReturn<TValue> {
   // TODO: implement
   //
-  // 1. Call useVexFormContext() to get { form, fieldEntries, defaultValues }
+  // 1. Get the VexFormContext via useVexFormContext()
+  //    → gives us form (TanStack Form instance), fieldDefs, readOnlyMap
   //
-  // 2. Build getData():
-  //    → Iterate fieldEntries, read form.state.values[entry.name] for each
-  //    → Return Record<string, unknown> of all current values
+  // 2. Subscribe to the field's value from form.state.values[props.name]
+  //    Use form.store.subscribe() + useSyncExternalStore for reactive updates
+  //    → TanStack Form's store is a TanStack Store, which supports subscribe()
   //
-  // 3. Build getFieldValue({ name }):
-  //    → Return form.state.values[name]
+  // 3. Build setValue callback that calls form.setFieldValue(props.name, value)
   //
-  // 4. Compute isModified:
-  //    → Check if any fieldEntry's current value differs from defaultValues
-  //    → Use form.state.values for current, compare with defaultValues
-  //    → Note: this reads form.state which causes re-renders on any change.
-  //      This is acceptable for useForm — use useFormFields for granular access.
+  // 4. Build handleBlur callback that calls form.setFieldMeta(props.name, { isTouched: true })
+  //    or use form.getFieldMeta / form.validateField
   //
-  // 5. Read isSubmitting from form.state.isSubmitting
+  // 5. Extract errors from form.state.fieldMeta[props.name]?.errors
+  //    → errors is an array, may contain strings or objects with .message
+  //    → normalize to string[]
   //
-  // 6. Build submit():
-  //    → Call form.handleSubmit()
+  // 6. Determine showError: field is touched OR form has been submitted, AND errors.length > 0
+  //
+  // 7. Get readOnly from readOnlyMap[props.name] || fieldDefs[props.name]?.admin?.readOnly
+  //
+  // 8. Return { value, setValue, handleBlur, errors, showError, readOnly, fieldDef, name }
   //
   // Edge cases:
-  // - Called outside VexFormProvider: throws (useVexFormContext handles this)
-  // - isModified comparison uses === (reference equality), same as DirtyWatcher
+  // - Field name doesn't exist in fieldDefs: return with undefined value, don't throw
+  //   (field may be dynamically added)
+  // - Value is undefined vs null: preserve the distinction, don't coerce
+  // - Errors may be objects with .message property: normalize to strings
   throw new Error("Not implemented");
 }
-
-export { useForm };
 ```
 
-### File: `packages/ui/src/components/form/hooks/useForm.test.tsx` (NEW)
+### `File: packages/ui/src/hooks/useVexField.test.tsx`
 
 ```tsx
-import { describe, it, expect, vi } from "vitest";
-import { renderHook } from "@testing-library/react";
-import { useForm } from "./useForm";
-import { VexFormProvider } from "../context/VexFormContext";
+import { describe, it, expect } from "vitest";
+import { renderHook, act } from "@testing-library/react";
+import { useVexField } from "./useVexField";
+import { VexFormProvider } from "../components/form/VexFormProvider";
+import { useForm } from "@tanstack/react-form";
+import type { VexField } from "@vexcms/core";
 
-function mockForm(props: {
-  values?: Record<string, unknown>;
-  isSubmitting?: boolean;
-}) {
-  return {
-    state: {
-      values: props.values ?? {},
-      isSubmitting: props.isSubmitting ?? false,
-    },
-    handleSubmit: vi.fn(),
-  };
-}
-
+// Helper to create a wrapper with VexFormProvider
 function createWrapper(props: {
-  form: any;
-  fieldEntries?: Array<{ name: string; field: any; readOnly?: boolean }>;
-  defaultValues?: Record<string, unknown>;
+  defaultValues: Record<string, unknown>;
+  fieldEntries: { name: string; field: VexField; readOnly?: boolean }[];
 }) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
+    const form = useForm({
+      defaultValues: props.defaultValues,
+    });
     return (
-      <VexFormProvider
-        form={props.form}
-        fieldEntries={
-          props.fieldEntries ?? [
-            { name: "title", field: { type: "text" } },
-            { name: "status", field: { type: "text" } },
-          ]
-        }
-        defaultValues={props.defaultValues ?? { title: "Hello", status: "draft" }}
-      >
+      <VexFormProvider form={form} fieldEntries={props.fieldEntries}>
         {children}
       </VexFormProvider>
     );
   };
 }
 
-describe("useForm", () => {
-  it("getData returns current form values for all field entries", () => {
-    const form = mockForm({
-      values: { title: "Hello", status: "published", extraField: "ignored" },
+describe("useVexField", () => {
+  it("returns the current field value", () => {
+    const wrapper = createWrapper({
+      defaultValues: { title: "Hello" },
+      fieldEntries: [
+        { name: "title", field: { type: "text" as const } },
+      ],
     });
-
-    const { result } = renderHook(() => useForm(), {
-      wrapper: createWrapper({ form }),
-    });
-
-    const data = result.current.getData();
-    expect(data).toEqual({ title: "Hello", status: "published" });
-    // extraField should not be included (not in fieldEntries)
-    expect(data).not.toHaveProperty("extraField");
+    const { result } = renderHook(
+      () => useVexField<string>({ name: "title" }),
+      { wrapper },
+    );
+    expect(result.current.value).toBe("Hello");
   });
 
-  it("getFieldValue returns a single field value", () => {
-    const form = mockForm({ values: { title: "Test" } });
-
-    const { result } = renderHook(() => useForm(), {
-      wrapper: createWrapper({ form }),
+  it("updates value via setValue", () => {
+    const wrapper = createWrapper({
+      defaultValues: { title: "Hello" },
+      fieldEntries: [
+        { name: "title", field: { type: "text" as const } },
+      ],
     });
-
-    expect(result.current.getFieldValue({ name: "title" })).toBe("Test");
+    const { result } = renderHook(
+      () => useVexField<string>({ name: "title" }),
+      { wrapper },
+    );
+    act(() => {
+      result.current.setValue("World");
+    });
+    expect(result.current.value).toBe("World");
   });
 
-  it("isModified is false when values match defaults", () => {
-    const form = mockForm({
-      values: { title: "Hello", status: "draft" },
+  it("returns readOnly from permissions", () => {
+    const wrapper = createWrapper({
+      defaultValues: { title: "Hello" },
+      fieldEntries: [
+        { name: "title", field: { type: "text" as const }, readOnly: true },
+      ],
     });
-
-    const { result } = renderHook(() => useForm(), {
-      wrapper: createWrapper({
-        form,
-        defaultValues: { title: "Hello", status: "draft" },
-      }),
-    });
-
-    expect(result.current.isModified).toBe(false);
+    const { result } = renderHook(
+      () => useVexField<string>({ name: "title" }),
+      { wrapper },
+    );
+    expect(result.current.readOnly).toBe(true);
   });
 
-  it("isModified is true when any value differs from default", () => {
-    const form = mockForm({
-      values: { title: "Changed", status: "draft" },
+  it("returns readOnly from field admin config", () => {
+    const wrapper = createWrapper({
+      defaultValues: { title: "Hello" },
+      fieldEntries: [
+        {
+          name: "title",
+          field: { type: "text" as const, admin: { readOnly: true } },
+        },
+      ],
     });
-
-    const { result } = renderHook(() => useForm(), {
-      wrapper: createWrapper({
-        form,
-        defaultValues: { title: "Hello", status: "draft" },
-      }),
-    });
-
-    expect(result.current.isModified).toBe(true);
-  });
-
-  it("submit calls form.handleSubmit", () => {
-    const form = mockForm({ values: {} });
-
-    const { result } = renderHook(() => useForm(), {
-      wrapper: createWrapper({ form }),
-    });
-
-    result.current.submit();
-    expect(form.handleSubmit).toHaveBeenCalled();
+    const { result } = renderHook(
+      () => useVexField<string>({ name: "title" }),
+      { wrapper },
+    );
+    expect(result.current.readOnly).toBe(true);
   });
 
   it("throws when used outside VexFormProvider", () => {
-    expect(() => {
-      renderHook(() => useForm());
-    }).toThrow("useVexFormContext must be used within a VexFormProvider");
+    expect(() =>
+      renderHook(() => useVexField({ name: "title" })),
+    ).toThrow("useVexFormContext must be used within a VexFormProvider");
+  });
+
+  it("returns field definition", () => {
+    const fieldDef: VexField = { type: "text" as const, label: "Title" };
+    const wrapper = createWrapper({
+      defaultValues: { title: "" },
+      fieldEntries: [{ name: "title", field: fieldDef }],
+    });
+    const { result } = renderHook(
+      () => useVexField({ name: "title" }),
+      { wrapper },
+    );
+    expect(result.current.fieldDef).toEqual(fieldDef);
   });
 });
 ```
 
 ---
 
-## Step 6: useFormFields hook + tests
+## Step 7: useVexForm + useVexFormFields Hooks
 
-- [ ] Create `packages/ui/src/components/form/hooks/useFormFields.ts`
-- [ ] Create `packages/ui/src/components/form/hooks/useFormFields.test.tsx`
-- [ ] Run `pnpm --filter @vexcms/ui test`
+- [ ] Create `packages/ui/src/hooks/useVexForm.ts`
+- [ ] Create `packages/ui/src/hooks/useVexFormFields.ts`
+- [ ] Create `packages/ui/src/hooks/index.ts`
+- [ ] Run build
 
-### File: `packages/ui/src/components/form/hooks/useFormFields.ts` (NEW)
+### `File: packages/ui/src/hooks/useVexForm.ts`
+
+```typescript
+"use client";
+
+import { useCallback } from "react";
+import { useVexFormContext } from "../components/form/VexFormProvider";
+
+/**
+ * Return type for the useVexForm hook.
+ */
+export interface UseVexFormReturn {
+  /** Submit the form. Returns a promise that resolves when submission completes. */
+  submit: () => Promise<void>;
+  /** Reset the form to its default values, or to provided values. */
+  reset: (values?: Record<string, unknown>) => void;
+  /** Get all current form values. */
+  getValues: () => Record<string, unknown>;
+  /** Get a single field's current value. */
+  getValue: <T = unknown>(name: string) => T;
+  /** Whether the form is currently submitting. */
+  isSubmitting: boolean;
+  /** Whether any field value differs from its default value. */
+  isDirty: boolean;
+  /** Whether form validation passes. */
+  isValid: boolean;
+}
+
+/**
+ * Hook for accessing form-level state and actions.
+ * Must be used within a VexFormProvider (or inside AppForm).
+ *
+ * Use this for submit buttons, form status indicators,
+ * or components that need to read/write multiple fields.
+ *
+ * @example
+ * ```tsx
+ * function SaveButton() {
+ *   const { submit, isSubmitting, isDirty } = useVexForm();
+ *   return (
+ *     <button onClick={submit} disabled={isSubmitting || !isDirty}>
+ *       {isSubmitting ? "Saving..." : "Save"}
+ *     </button>
+ *   );
+ * }
+ * ```
+ */
+export function useVexForm(): UseVexFormReturn {
+  // TODO: implement
+  //
+  // 1. Get the VexFormContext via useVexFormContext()
+  //    → gives us form (TanStack Form instance)
+  //
+  // 2. Subscribe to form-level state:
+  //    - isSubmitting: form.state.isSubmitting
+  //    - isDirty: form.state.isDirty
+  //    - isValid: !form.state.canSubmit inverted, or check form.state.isValid
+  //
+  // 3. Build submit callback: () => form.handleSubmit()
+  //
+  // 4. Build reset callback: (values?) => form.reset(values)
+  //
+  // 5. Build getValues callback: () => form.state.values
+  //
+  // 6. Build getValue callback: (name) => form.state.values[name]
+  //
+  // 7. Return all of the above
+  //
+  // Edge cases:
+  // - submit() called while already submitting: TanStack Form handles this
+  // - reset() with partial values: should merge with defaults or replace entirely?
+  //   → Replace entirely (TanStack Form's reset behavior)
+  throw new Error("Not implemented");
+}
+```
+
+### `File: packages/ui/src/hooks/useVexFormFields.ts`
 
 ```typescript
 "use client";
 
 import { useSyncExternalStore, useCallback, useRef } from "react";
-import { useVexFormContext } from "../context/VexFormContext";
+import { useVexFormContext } from "../components/form/VexFormProvider";
 
 /**
- * Performant hook for accessing specific field values from the form.
+ * Hook for watching specific field values with a selector function.
+ * Only re-renders when the selected values change (shallow comparison).
  *
- * Takes a selector function that receives all current form values and
- * returns a derived value. The component only re-renders when the
- * selector's return value changes (shallow comparison).
+ * Use this when a custom component needs to react to changes in OTHER fields
+ * (not its own field — use useVexField for that).
  *
- * This is the recommended way to access sibling field values from a
- * custom component without causing unnecessary re-renders.
- *
- * @param selector - Function that receives form values and returns derived data
- * @returns The selector's return value
+ * @param props.selector - Function that receives all form values and returns the subset you need
  *
  * @example
  * ```tsx
- * // Only re-renders when title or slug change
- * function SlugPreview() {
- *   const { title, slug } = useFormFields((values) => ({
- *     title: values.title as string,
- *     slug: values.slug as string,
- *   }));
- *   return <p>/{slug || slugify(title)}</p>;
+ * function SEOPreview() {
+ *   const { title, slug } = useVexFormFields({
+ *     selector: (values) => ({
+ *       title: values.title as string,
+ *       slug: values.slug as string,
+ *     }),
+ *   });
+ *   return <div>{title} — /{slug}</div>;
  * }
  * ```
  */
-function useFormFields<TResult>(props: {
+export function useVexFormFields<TResult>(props: {
   selector: (values: Record<string, unknown>) => TResult;
 }): TResult {
   // TODO: implement
   //
-  // 1. Call useVexFormContext() to get { form }
+  // 1. Get the VexFormContext via useVexFormContext()
+  //    → gives us form (TanStack Form instance)
   //
-  // 2. Use form.Subscribe pattern or form.state.values with
-  //    useSyncExternalStore / useRef for memoization:
+  // 2. Use form.store.subscribe() + useSyncExternalStore to subscribe to form state
   //
-  //    a. Read current values from form.state.values
-  //    b. Apply props.selector to get derived result
-  //    c. Compare with previous result (shallow equality for objects,
-  //       === for primitives)
-  //    d. Return cached result if unchanged, new result if changed
+  // 3. In the getSnapshot callback, call props.selector(form.state.values)
   //
-  // 3. The key performance property: if the selector returns the same
-  //    value (by shallow comparison), the component does NOT re-render.
-  //
-  // Implementation approach — use useRef to cache:
-  //    - Store previous selector result in a ref
-  //    - On each call, compute new result
-  //    - If shallowEqual(prev, new), return prev (same reference = no re-render)
-  //    - If different, update ref and return new
-  //
-  // Note: TanStack Form's form.state.values is reactive — reading it
-  // in a component will cause re-renders when any value changes.
-  // The selector + shallow comparison pattern prevents propagating
-  // those re-renders to consumers when the selected subset hasn't changed.
+  // 4. Return the selected result
   //
   // Edge cases:
-  // - Selector returns a primitive (string, number): use === comparison
-  // - Selector returns an object: use shallow comparison (Object.keys + ===)
-  // - Selector returns undefined: handle gracefully
-  // - First render: no previous value, always return new result
+  // - Selector returns a new object reference every time: use shallow comparison
+  //   to prevent unnecessary re-renders. Cache the previous result and return it
+  //   if the values haven't changed.
+  // - Selector throws: let it propagate — developer error
   throw new Error("Not implemented");
 }
-
-export { useFormFields };
 ```
 
-### File: `packages/ui/src/components/form/hooks/useFormFields.test.tsx` (NEW)
+### `File: packages/ui/src/hooks/index.ts`
 
-```tsx
-import { describe, it, expect, vi } from "vitest";
-import { renderHook } from "@testing-library/react";
-import { useFormFields } from "./useFormFields";
-import { VexFormProvider } from "../context/VexFormContext";
-
-function mockForm(values: Record<string, unknown>) {
-  return {
-    state: {
-      values,
-      isSubmitting: false,
-    },
-    handleSubmit: vi.fn(),
-  };
-}
-
-function createWrapper(form: any) {
-  return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <VexFormProvider
-        form={form}
-        fieldEntries={[
-          { name: "title", field: { type: "text" as const } },
-          { name: "status", field: { type: "text" as const } },
-          { name: "count", field: { type: "number" as const } },
-        ]}
-        defaultValues={{ title: "", status: "draft", count: 0 }}
-      >
-        {children}
-      </VexFormProvider>
-    );
-  };
-}
-
-describe("useFormFields", () => {
-  it("returns selected field values", () => {
-    const form = mockForm({ title: "Hello", status: "published", count: 5 });
-
-    const { result } = renderHook(
-      () =>
-        useFormFields({
-          selector: (values) => ({
-            title: values.title as string,
-            count: values.count as number,
-          }),
-        }),
-      { wrapper: createWrapper(form) }
-    );
-
-    expect(result.current).toEqual({ title: "Hello", count: 5 });
-  });
-
-  it("returns primitive value from selector", () => {
-    const form = mockForm({ title: "Hello", count: 42 });
-
-    const { result } = renderHook(
-      () =>
-        useFormFields({
-          selector: (values) => values.count as number,
-        }),
-      { wrapper: createWrapper(form) }
-    );
-
-    expect(result.current).toBe(42);
-  });
-
-  it("returns undefined for missing fields", () => {
-    const form = mockForm({ title: "Hello" });
-
-    const { result } = renderHook(
-      () =>
-        useFormFields({
-          selector: (values) => values.nonexistent as string | undefined,
-        }),
-      { wrapper: createWrapper(form) }
-    );
-
-    expect(result.current).toBeUndefined();
-  });
-
-  it("throws when used outside VexFormProvider", () => {
-    expect(() => {
-      renderHook(() =>
-        useFormFields({ selector: (values) => values.title })
-      );
-    }).toThrow("useVexFormContext must be used within a VexFormProvider");
-  });
-});
+```typescript
+export { useVexField, type UseVexFieldReturn } from "./useVexField";
+export { useVexForm, type UseVexFormReturn } from "./useVexForm";
+export { useVexFormFields } from "./useVexFormFields";
 ```
 
 ---
 
-## Step 7: Refactor built-in field components
+## Step 8: Refactor Built-in Fields to Use useVexField
 
-- [ ] Modify `packages/ui/src/components/form/fields/TextField.tsx` — use `useField`
-- [ ] Modify `packages/ui/src/components/form/fields/NumberField.tsx` — use `useField`
-- [ ] Modify `packages/ui/src/components/form/fields/CheckboxField.tsx` — use `useField`
-- [ ] Modify `packages/ui/src/components/form/fields/SelectField.tsx` — use `useField`
-- [ ] Modify `packages/ui/src/components/form/fields/MultiSelectField.tsx` — use `useField`
-- [ ] Modify `packages/ui/src/components/form/fields/DateField.tsx` — use `useField`
-- [ ] Modify `packages/ui/src/components/form/fields/ImageUrlField.tsx` — use `useField`
-- [ ] Run `pnpm --filter @vexcms/ui test`
-- [ ] Verify test-app still works
+- [ ] Modify `packages/ui/src/components/form/fields/TextField.tsx`
+- [ ] Modify `packages/ui/src/components/form/fields/NumberField.tsx`
+- [ ] Modify `packages/ui/src/components/form/fields/CheckboxField.tsx`
+- [ ] Modify `packages/ui/src/components/form/fields/SelectField.tsx`
+- [ ] Run tests + build
 
-Each component is refactored to:
-1. Remove `field`, `fieldDef`, and `name` props
-2. Call `useField()` to get all needed state
-3. Keep the exact same rendered output
+The refactored fields must work in both modes:
+1. **New mode**: receiving `name` only, using `useVexField()` for state (used by custom dispatch)
+2. **Legacy mode**: receiving `field` (TanStack Form field API) directly (used by current AppForm render-prop pattern until fully migrated)
 
-**UploadField is NOT refactored** — it receives extra media picker props that go beyond useField's scope.
+For a clean migration, refactor to use `useVexField()` internally. The `field` prop from TanStack Form's render-prop is no longer needed because `useVexField` subscribes to the same TanStack Form instance via context.
 
-### Refactored TextField (pattern for all simple fields)
+### `File: packages/ui/src/components/form/fields/TextField.tsx` — refactored
 
-```tsx
+```typescript
 "use client";
 
 import type { TextFieldDef } from "@vexcms/core";
-import { useField } from "../hooks/useField";
+import { toTitleCase } from "@vexcms/core";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
+import { useVexField } from "../../../hooks/useVexField";
 
-/**
- * Built-in text field component.
- * Uses useField() for form state — same hook available to custom components.
- */
-function TextField() {
-  const {
-    value,
-    setValue,
-    handleBlur,
-    name,
-    fieldDef,
-    label,
-    description,
-    readOnly,
-    required,
-    placeholder,
-    errors,
-    showErrors,
-  } = useField<string>();
+interface TextFieldProps {
+  /** Field name key */
+  name: string;
+  /**
+   * TanStack Form field API (legacy prop — used when VexFormProvider is not available).
+   * When omitted, useVexField() is used instead.
+   */
+  field?: any;
+  fieldDef?: TextFieldDef;
+}
 
-  const textDef = fieldDef as TextFieldDef;
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={name}>
-        {label}
-        {required && <span className="text-destructive ml-1">*</span>}
-      </Label>
-      <Input
-        id={name}
-        value={value ?? ""}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-          setValue(e.target.value)
-        }
-        onBlur={handleBlur}
-        placeholder={placeholder}
-        disabled={readOnly}
-        maxLength={textDef.maxLength}
-      />
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
-      {showErrors && (
-        <div>
-          {errors.map((error: unknown, i: number) => (
-            <p key={i} className="text-xs text-destructive">
-              {typeof error === "string"
-                ? error
-                : ((error as any)?.message ?? String(error))}
-            </p>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+function TextField(props: TextFieldProps) {
+  // TODO: implement
+  //
+  // 1. If props.field is provided (legacy mode), use it directly for value/onChange/onBlur/errors
+  //    This preserves backward compatibility during migration
+  //
+  // 2. If props.field is NOT provided (new mode), call useVexField<string>({ name: props.name })
+  //    → get value, setValue, handleBlur, errors, showError, readOnly, fieldDef
+  //
+  // 3. Resolve the fieldDef: props.fieldDef ?? vexField.fieldDef (cast to TextFieldDef)
+  //
+  // 4. Compute label: fieldDef.label ?? toTitleCase(props.name)
+  //
+  // 5. Compute description: fieldDef.admin?.description ?? fieldDef.description
+  //
+  // 6. Render the same JSX as before but sourcing state from the appropriate mode
+  //
+  // Edge cases:
+  // - When readOnly is true (new mode), set disabled on the input
+  // - When in legacy mode and fieldDef.admin?.readOnly is set, use that
+  throw new Error("Not implemented");
 }
 
 export { TextField };
 ```
 
-### Refactored NumberField
+Apply the same pattern to `NumberField.tsx`, `CheckboxField.tsx`, and `SelectField.tsx`. Each follows the same dual-mode pattern:
+- If `props.field` is present → legacy mode (use props.field for state)
+- If `props.field` is absent → new mode (use `useVexField()`)
 
-```tsx
-"use client";
+**NumberField specifics:**
+- `useVexField<number>({ name })`
+- Handle empty string → `undefined` conversion in setValue
+- Preserve `min`, `max`, `step` from fieldDef
 
-import type { NumberFieldDef } from "@vexcms/core";
-import { useField } from "../hooks/useField";
-import { Input } from "../../ui/input";
-import { Label } from "../../ui/label";
+**CheckboxField specifics:**
+- `useVexField<boolean>({ name })`
+- `setValue(e.target.checked)`
 
-function NumberField() {
-  const {
-    value,
-    setValue,
-    handleBlur,
-    name,
-    fieldDef,
-    label,
-    description,
-    readOnly,
-    required,
-    placeholder,
-    errors,
-    showErrors,
-  } = useField<number | undefined>();
+**SelectField specifics:**
+- `useVexField<string>({ name })` for single select
+- The multi-select variant (`MultiSelectField`) is NOT refactored in this spec — it stays as-is
 
-  const numDef = fieldDef as NumberFieldDef;
+---
 
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={name}>
-        {label}
-        {required && <span className="text-destructive ml-1">*</span>}
-      </Label>
-      <Input
-        id={name}
-        type="number"
-        value={value ?? ""}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-          const raw = e.target.value;
-          if (raw === "") {
-            setValue(undefined);
-            return;
-          }
-          const num = Number(raw);
-          if (!Number.isNaN(num)) {
-            setValue(num);
-          }
-        }}
-        onBlur={handleBlur}
-        min={numDef.min}
-        max={numDef.max}
-        step={numDef.step}
-        disabled={readOnly}
-        placeholder={placeholder}
-      />
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
-      {showErrors && (
-        <div>
-          {errors.map((error: unknown, i: number) => (
-            <p key={i} className="text-xs text-destructive">
-              {typeof error === "string" ? error : (error as any)?.message ?? String(error)}
-            </p>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+## Step 9: Custom Field Dispatch in AppForm
 
-export { NumberField };
+- [ ] Modify `packages/ui/src/components/form/AppForm.tsx` — wrap in VexFormProvider, add custom Field dispatch
+- [ ] Run build + test
+
+### `File: packages/ui/src/components/form/AppForm.tsx` — modifications
+
+**1. Import VexFormProvider and the eligible field types constant:**
+
+```typescript
+import { VexFormProvider } from "./VexFormProvider";
+import type { FieldComponentProps } from "@vexcms/core";
 ```
 
-### Refactored CheckboxFieldForm
+**2. Define the allowed custom Field types:**
 
-```tsx
-"use client";
+```typescript
+const CUSTOM_FIELD_ELIGIBLE_TYPES = new Set(["text", "number", "checkbox", "select"]);
+```
 
-import { useField } from "../hooks/useField";
-import { CheckboxField as CheckboxInput } from "../../ui/checkbox-field";
-import { Label } from "../../ui/label";
+**3. Wrap the form content with VexFormProvider:**
 
-function CheckboxFieldForm() {
-  const {
-    value,
-    setValue,
-    handleBlur,
-    name,
-    label,
-    description,
-    readOnly,
-    errors,
-    showErrors,
-  } = useField<boolean>();
+In the return statement, wrap the `<form>` children with `<VexFormProvider form={form} fieldEntries={fieldEntries}>`:
 
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <CheckboxInput
-          id={name}
-          checked={value ?? false}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValue(e.target.checked)}
-          onBlur={handleBlur}
-          disabled={readOnly}
-        />
-        <Label htmlFor={name}>{label}</Label>
+```typescript
+return (
+  <form ...>
+    <VexFormProvider form={form} fieldEntries={fieldEntries}>
+      {onDirtyChange && <DirtyWatcher ... />}
+      <div className="space-y-6">
+        {fieldEntries.map((entry) => (
+          // ... field rendering ...
+        ))}
       </div>
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
-      {showErrors && (
-        <div>
-          {errors.map((error: unknown, i: number) => (
-            <p key={i} className="text-xs text-destructive">
-              {typeof error === "string" ? error : (error as any)?.message ?? String(error)}
-            </p>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export { CheckboxFieldForm };
+    </VexFormProvider>
+  </form>
+);
 ```
 
-### Refactored SelectField
+**4. Add custom Field component check at the top of the field render callback:**
 
-```tsx
-"use client";
+Inside the `fieldEntries.map` callback, before the existing `switch`, add:
 
-import type { SelectFieldDef } from "@vexcms/core";
-import { useField } from "../hooks/useField";
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "../../ui/select";
-import { Label } from "../../ui/label";
+```typescript
+{(field) => {
+  const fieldDef = entry.field;
 
-function SelectField() {
-  const {
-    value,
-    setValue,
-    name,
-    fieldDef,
-    label,
-    description,
-    readOnly,
-    required,
-    errors,
-    showErrors,
-  } = useField<string>();
-
-  const selectDef = fieldDef as SelectFieldDef;
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={name}>
-        {label}
-        {required && <span className="text-destructive ml-1">*</span>}
-      </Label>
-      <Select
-        value={value ?? null}
-        onValueChange={(val) => setValue(val)}
-        disabled={readOnly}
-        items={selectDef.options}
-      >
-        <SelectTrigger id={name}>
-          <SelectValue placeholder={!required ? "Select..." : undefined} />
-        </SelectTrigger>
-        <SelectContent>
-          {selectDef.options.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
-      {showErrors && (
-        <div>
-          {errors.map((error: unknown, i: number) => (
-            <p key={i} className="text-xs text-destructive">
-              {typeof error === "string" ? error : (error as any)?.message ?? String(error)}
-            </p>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export { SelectField };
-```
-
-### Refactored MultiSelectField
-
-```tsx
-"use client";
-
-import type { SelectFieldDef } from "@vexcms/core";
-import { useField } from "../hooks/useField";
-import { Label } from "../../ui/label";
-import {
-  MultiSelect,
-  MultiSelectTrigger,
-  MultiSelectValue,
-  MultiSelectContent,
-  MultiSelectItem,
-} from "../../ui/multi-select";
-
-function MultiSelectField() {
-  const {
-    value,
-    setValue,
-    name,
-    fieldDef,
-    label,
-    description,
-    readOnly,
-    required,
-    errors,
-    showErrors,
-  } = useField<string[]>();
-
-  const selectDef = fieldDef as SelectFieldDef;
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={name}>
-        {label}
-        {required && <span className="text-destructive ml-1">*</span>}
-      </Label>
-      <MultiSelect
-        values={Array.isArray(value) ? value : []}
-        onValuesChange={(vals) => setValue(vals)}
-      >
-        <MultiSelectTrigger id={name} disabled={readOnly}>
-          <MultiSelectValue placeholder="Select..." />
-        </MultiSelectTrigger>
-        <MultiSelectContent>
-          {selectDef.options.map((opt) => (
-            <MultiSelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </MultiSelectItem>
-          ))}
-        </MultiSelectContent>
-      </MultiSelect>
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
-      {showErrors && (
-        <div>
-          {errors.map((error: unknown, i: number) => (
-            <p key={i} className="text-xs text-destructive">
-              {typeof error === "string"
-                ? error
-                : (error as any)?.message ?? String(error)}
-            </p>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export { MultiSelectField };
-```
-
-### Refactored DateField
-
-```tsx
-"use client";
-
-import { useField } from "../hooks/useField";
-import { DatePicker } from "../../ui/date-picker";
-import { Label } from "../../ui/label";
-
-function DateField() {
-  const {
-    value,
-    setValue,
-    name,
-    label,
-    description,
-    readOnly,
-    required,
-    errors,
-    showErrors,
-  } = useField<number | undefined>();
-
-  const dateValue = value != null ? new Date(value) : undefined;
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={name}>
-        {label}
-        {required && <span className="text-destructive ml-1">*</span>}
-      </Label>
-      <DatePicker
-        value={dateValue}
-        onChange={(date) => {
-          setValue(date ? date.getTime() : undefined);
-        }}
-        disabled={readOnly}
-      />
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
-      {showErrors && (
-        <div>
-          {errors.map((error: unknown, i: number) => (
-            <p key={i} className="text-xs text-destructive">
-              {typeof error === "string" ? error : (error as any)?.message ?? String(error)}
-            </p>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export { DateField };
-```
-
-### Refactored ImageUrlField
-
-```tsx
-"use client";
-
-import * as React from "react";
-import { useField } from "../hooks/useField";
-import { Input } from "../../ui/input";
-import { Label } from "../../ui/label";
-
-function ImageUrlField() {
-  const {
-    value,
-    setValue,
-    handleBlur,
-    name,
-    label,
-    description,
-    readOnly,
-    required,
-    placeholder,
-    errors,
-    showErrors,
-  } = useField<string>();
-
-  const strValue = value ?? "";
-  const [imgError, setImgError] = React.useState(false);
-
-  React.useEffect(() => {
-    setImgError(false);
-  }, [strValue]);
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={name}>
-        {label}
-        {required && <span className="text-destructive ml-1">*</span>}
-      </Label>
-      <Input
-        id={name}
-        type="url"
-        value={strValue}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValue(e.target.value)}
-        onBlur={handleBlur}
-        placeholder={placeholder ?? "https://..."}
-        disabled={readOnly}
-      />
-      {strValue && !imgError && (
-        <img
-          src={strValue}
-          alt=""
-          className="h-16 w-16 rounded object-cover"
-          onError={() => setImgError(true)}
+  // Check for custom Field component
+  if (fieldDef.admin?.components?.Field) {
+    // Runtime validation: only eligible types can have custom Field
+    if (!CUSTOM_FIELD_ELIGIBLE_TYPES.has(fieldDef.type) && fieldDef.type !== "ui") {
+      console.error(
+        `[VEX] admin.components.Field is not allowed on "${fieldDef.type}" fields. ` +
+        `Only text, number, checkbox, select, and ui fields support custom Field components. ` +
+        `Field: "${entry.name}"`
+      );
+      // Fall through to default rendering
+    } else {
+      const CustomField = fieldDef.admin.components.Field;
+      return (
+        <CustomField
+          name={entry.name}
+          fieldDef={fieldDef}
+          readOnly={entry.readOnly ?? fieldDef.admin?.readOnly ?? false}
         />
-      )}
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
-      {showErrors && (
-        <div>
-          {errors.map((error: unknown, i: number) => (
-            <p key={i} className="text-xs text-destructive">
-              {typeof error === "string"
-                ? error
-                : ((error as any)?.message ?? String(error))}
-            </p>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export { ImageUrlField };
-```
-
----
-
-## Step 8: AppForm integration
-
-- [ ] Modify `packages/ui/src/components/form/AppForm.tsx` — wrap with VexFormProvider, wrap each field with FieldProvider, add custom component resolution
-- [ ] Add runtime validation for restricted field types with custom components
-- [ ] Run `pnpm --filter @vexcms/ui test`
-- [ ] Verify test-app still works
-
-### AppForm changes (guided)
-
-The AppForm component needs these modifications:
-
-```typescript
-// AppForm.tsx — key changes
-
-// 1. Import new context providers
-import { VexFormProvider } from "./context/VexFormContext";
-import { FieldProvider } from "./context/FieldContext";
-import { RESTRICTED_CUSTOM_COMPONENT_TYPES } from "./types";
-
-// 2. Inside the AppForm function, after creating the form with useForm(),
-//    wrap the entire rendered output with VexFormProvider:
-//
-//    <VexFormProvider form={form} fieldEntries={fieldEntries} defaultValues={defaultValues}>
-//      <form ...>
-//        ...
-//      </form>
-//    </VexFormProvider>
-
-// 3. In the fieldEntries.map() render, wrap each field with FieldProvider:
-//
-//    <form.Field key={entry.name} name={entry.name}>
-//      {(field) => {
-//        const fieldDef = entry.field;
-//
-//        // Runtime check: restricted types cannot have custom Field component
-//        if (
-//          fieldDef.admin?.components?.Field &&
-//          RESTRICTED_CUSTOM_COMPONENT_TYPES.includes(fieldDef.type as any)
-//        ) {
-//          console.error(
-//            `[VexCMS] Field "${entry.name}" (type: ${fieldDef.type}) cannot have a custom ` +
-//            `admin.components.Field. Upload and richtext fields require built-in wiring.`
-//          );
-//        }
-//
-//        // Check for custom component (only on non-restricted types)
-//        const CustomComponent = fieldDef.admin?.components?.Field;
-//        const canUseCustom = CustomComponent &&
-//          !RESTRICTED_CUSTOM_COMPONENT_TYPES.includes(fieldDef.type as any);
-//
-//        // Wrap readOnly (permission-based) — config readOnly is handled inside useField
-//        const readOnlyWrapper = (node: React.ReactNode) =>
-//          entry.readOnly ? (
-//            <div className="opacity-60 pointer-events-none" aria-disabled="true">
-//              {node}
-//            </div>
-//          ) : node;
-//
-//        return (
-//          <FieldProvider
-//            name={entry.name}
-//            fieldDef={fieldDef}
-//            permissionReadOnly={entry.readOnly ?? false}
-//            tanstackField={field}
-//          >
-//            {canUseCustom
-//              ? readOnlyWrapper(
-//                  <CustomComponent
-//                    name={entry.name}
-//                    fieldDef={fieldDef}
-//                    path={entry.name}
-//                  />
-//                )
-//              : /* existing switch statement for built-in components */}
-//          </FieldProvider>
-//        );
-//      }}
-//    </form.Field>
-
-// 4. For refactored built-in components (text, number, checkbox, select,
-//    multiSelect, date, imageUrl), remove the props — they now use useField():
-//
-//    case "text":
-//      return readOnlyWrapper(<TextField />);  // no props needed
-//
-// 5. For upload and richtext, keep the existing props-based rendering
-//    (they are NOT refactored to use useField)
-```
-
-**Key constraint:** The `readOnlyWrapper` div with `pointer-events-none` must remain for permission-based readOnly. The `useField` hook exposes `readOnly` for the component's internal use (e.g., setting `disabled` on inputs), but the wrapper prevents all pointer interaction including tabbing/focus, which is the correct UX for permission-denied fields.
-
----
-
-## Step 9: DocumentContext + useDocumentInfo
-
-- [ ] Create `packages/admin-next/src/context/DocumentContext.tsx`
-- [ ] Create `packages/admin-next/src/hooks/useDocumentInfo.ts`
-- [ ] Create `packages/admin-next/src/hooks/useDocumentInfo.test.tsx`
-- [ ] Run `pnpm --filter @vexcms/admin-next test` (or build)
-
-### File: `packages/admin-next/src/context/DocumentContext.tsx` (NEW)
-
-```typescript
-"use client";
-
-import { createContext, useContext } from "react";
-import type { UseDocumentInfoReturn } from "@vexcms/ui";
-
-const DocumentContext = createContext<UseDocumentInfoReturn | null>(null);
-
-/**
- * Provider that exposes document metadata to descendant components.
- * Set by CollectionEditView around the form.
- */
-function DocumentProvider(props: {
-  value: UseDocumentInfoReturn;
-  children: React.ReactNode;
-}) {
-  return (
-    <DocumentContext.Provider value={props.value}>
-      {props.children}
-    </DocumentContext.Provider>
-  );
-}
-
-function useDocumentContext(): UseDocumentInfoReturn | null {
-  return useContext(DocumentContext);
-}
-
-export { DocumentProvider, useDocumentContext };
-```
-
-### File: `packages/admin-next/src/hooks/useDocumentInfo.ts` (NEW)
-
-```typescript
-"use client";
-
-import type { UseDocumentInfoReturn } from "@vexcms/ui";
-import { useDocumentContext } from "../context/DocumentContext";
-
-/**
- * Hook to access document-level metadata (ID, collection, status, version).
- *
- * Must be used inside a DocumentProvider (provided by CollectionEditView).
- * Returns document info for custom components that need to know about
- * the current document being edited.
- *
- * @example
- * ```tsx
- * function MyCustomField() {
- *   const { documentId, collectionSlug, isVersioned } = useDocumentInfo();
- *   // Use document metadata for custom logic
- * }
- * ```
- */
-function useDocumentInfo(): UseDocumentInfoReturn {
-  const ctx = useDocumentContext();
-  if (!ctx) {
-    throw new Error(
-      "useDocumentInfo must be used within a DocumentProvider. " +
-        "Make sure your component is rendered inside CollectionEditView."
-    );
+      );
+    }
   }
-  return ctx;
-}
 
-export { useDocumentInfo };
+  // Handle ui fields — they MUST have a custom component (already validated by type)
+  if (fieldDef.type === "ui") {
+    return null; // Should not reach here — ui fields always have components.Field
+  }
+
+  // Existing switch/case for built-in fields...
+  const readOnlyWrapper = ...
+  switch (fieldDef.type) {
+    // ... unchanged ...
+  }
+}}
 ```
 
-### File: `packages/admin-next/src/hooks/useDocumentInfo.test.tsx` (NEW)
+**5. Validate custom Field at config time (optional runtime check):**
 
-```tsx
-import { describe, it, expect } from "vitest";
-import { renderHook } from "@testing-library/react";
-import { useDocumentInfo } from "./useDocumentInfo";
-import { DocumentProvider } from "../context/DocumentContext";
-import type { UseDocumentInfoReturn } from "@vexcms/ui";
+Add a validation in AppForm's mount that warns about invalid custom component usage. This is a dev-mode check:
 
-function createWrapper(value: UseDocumentInfoReturn) {
-  return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <DocumentProvider value={value}>
-        {children}
-      </DocumentProvider>
-    );
-  };
+```typescript
+if (process.env.NODE_ENV !== "production") {
+  for (const entry of fieldEntries) {
+    const fieldDef = entry.field;
+    if (
+      fieldDef.admin?.components?.Field &&
+      !CUSTOM_FIELD_ELIGIBLE_TYPES.has(fieldDef.type) &&
+      fieldDef.type !== "ui"
+    ) {
+      console.error(
+        `[VEX] admin.components.Field on "${entry.name}" (type: "${fieldDef.type}") ` +
+        `will be ignored. Custom Field components are only supported on: ` +
+        `text, number, checkbox, select, and ui fields.`
+      );
+    }
+  }
+}
+```
+
+---
+
+## Step 10: UIField Component
+
+- [ ] Create `packages/ui/src/components/form/fields/UIField.tsx`
+- [ ] Update `packages/ui/src/components/form/fields/index.ts`
+- [ ] Run build
+
+### `File: packages/ui/src/components/form/fields/UIField.tsx`
+
+```typescript
+"use client";
+
+import type { UIFieldDef, FieldComponentProps } from "@vexcms/core";
+
+interface UIFieldProps {
+  fieldDef: UIFieldDef;
+  name: string;
 }
 
-describe("useDocumentInfo", () => {
-  it("returns document metadata from context", () => {
-    const docInfo: UseDocumentInfoReturn = {
-      documentId: "abc123",
-      collectionSlug: "posts",
-      isVersioned: true,
-      status: "draft",
-      version: 3,
+/**
+ * Renders a ui() field by delegating to its admin.components.Field component.
+ * UI fields are non-persisted — they don't store data in the database.
+ * They're used for computed displays, action buttons, and embedded widgets.
+ */
+function UIField(props: UIFieldProps) {
+  const CustomComponent = props.fieldDef.admin.components.Field;
+  return (
+    <CustomComponent
+      name={props.name}
+      fieldDef={props.fieldDef}
+      readOnly={false}
+    />
+  );
+}
+
+export { UIField };
+```
+
+### `File: packages/ui/src/components/form/fields/index.ts` — modification
+
+Add:
+
+```typescript
+export { UIField } from "./UIField";
+```
+
+---
+
+## Step 11: Custom Cell Injection in CollectionsView
+
+- [ ] Modify `packages/admin-next/src/views/CollectionsView.tsx` — check for `meta.customCell` and inject custom Cell
+- [ ] Run build
+
+### `File: packages/admin-next/src/views/CollectionsView.tsx` — modification
+
+After generating columns and before passing them to the DataTable, iterate and inject custom Cell renderers. This follows the same pattern already used for upload cell previews:
+
+```typescript
+// After: const columns = generateColumns({ collection, auth });
+// Before: passing columns to DataTable
+
+const columnsWithCustomCells = columns.map((col) => {
+  const meta = col.meta as Record<string, any> | undefined;
+
+  // Inject custom Cell component if present
+  if (meta?.customCell) {
+    const CustomCell = meta.customCell as React.ComponentType<{
+      value: unknown;
+      row: Record<string, unknown>;
+      fieldDef: any;
+    }>;
+    const fieldDef = meta.fieldDef;
+
+    return {
+      ...col,
+      cell: (info: any) => (
+        <CustomCell
+          value={info.getValue()}
+          row={info.row.original}
+          fieldDef={fieldDef}
+        />
+      ),
     };
+  }
 
-    const { result } = renderHook(() => useDocumentInfo(), {
-      wrapper: createWrapper(docInfo),
-    });
+  // Existing upload cell preview injection...
+  if (meta?.type === "upload") {
+    // ... existing code unchanged ...
+  }
 
-    expect(result.current.documentId).toBe("abc123");
-    expect(result.current.collectionSlug).toBe("posts");
-    expect(result.current.isVersioned).toBe(true);
-    expect(result.current.status).toBe("draft");
-    expect(result.current.version).toBe(3);
-  });
-
-  it("returns undefined status/version for non-versioned collections", () => {
-    const docInfo: UseDocumentInfoReturn = {
-      documentId: "xyz789",
-      collectionSlug: "settings",
-      isVersioned: false,
-      status: undefined,
-      version: undefined,
-    };
-
-    const { result } = renderHook(() => useDocumentInfo(), {
-      wrapper: createWrapper(docInfo),
-    });
-
-    expect(result.current.isVersioned).toBe(false);
-    expect(result.current.status).toBeUndefined();
-    expect(result.current.version).toBeUndefined();
-  });
-
-  it("throws when used outside DocumentProvider", () => {
-    expect(() => {
-      renderHook(() => useDocumentInfo());
-    }).toThrow("useDocumentInfo must be used within a DocumentProvider");
-  });
+  return col;
 });
 ```
 
+Use `columnsWithCustomCells` instead of `columns` when passing to the DataTable.
+
 ---
 
-## Step 10: Final integration + re-exports
+## Step 12: Exports + Final Integration
 
-- [ ] Modify `packages/admin-next/src/views/CollectionEditView.tsx` — wrap with DocumentProvider
-- [ ] Update `packages/ui/src/components/form/index.ts` — re-export hooks and types
-- [ ] Update `packages/ui/src/index.ts` if needed
-- [ ] Run `pnpm build` (full monorepo)
-- [ ] Run `pnpm --filter @vexcms/ui test`
-- [ ] Run `pnpm --filter @vexcms/admin-next test` (or build)
-- [ ] Verify test-app works end-to-end
+- [ ] Update `packages/ui/src/index.ts` — export hooks, VexFormProvider, FieldComponentProps
+- [ ] Update `packages/ui/src/components/form/index.ts` (if exists) — export VexFormProvider
+- [ ] Run `pnpm build` from root
+- [ ] Run `pnpm --filter @vexcms/core test`
+- [ ] Verify test app compiles
 
-### CollectionEditView changes
+### `File: packages/ui/src/index.ts` — additions
 
 ```typescript
-// Add import
-import { DocumentProvider } from "../context/DocumentContext";
+// Hooks
+export {
+  useVexField,
+  useVexForm,
+  useVexFormFields,
+  type UseVexFieldReturn,
+  type UseVexFormReturn,
+} from "./hooks";
 
-// Inside CollectionEditView, compute document info:
-const documentInfo = useMemo(() => ({
-  documentId: documentID,
-  collectionSlug: collection.slug,
-  isVersioned,
-  status: isVersioned && document ? (document.vex_status as string | undefined) : undefined,
-  version: isVersioned && document ? (document.vex_version as number | undefined) : undefined,
-}), [documentID, collection.slug, isVersioned, document]);
-
-// Wrap the form section with DocumentProvider:
-// Replace:
-//   <AppForm ... />
-// With:
-//   <DocumentProvider value={documentInfo}>
-//     <AppForm ... />
-//   </DocumentProvider>
+// Form provider
+export { VexFormProvider } from "./components/form/VexFormProvider";
 ```
 
-### Updated form/index.ts re-exports
+### `File: packages/core/src/index.ts` — verify exports
+
+Ensure these are exported:
 
 ```typescript
-export { AppForm, type AppFormProps, type FieldEntry, type MediaPickerState } from "./AppForm";
-export * from "./fields";
-export * from "./hooks";
-export * from "./context";
-export * from "./types";
+export { ui } from "./fields/ui";
+
+export type {
+  UIFieldDef,
+  FieldComponentProps,
+  CellComponentProps,
+} from "./types";
 ```
-
-### Package-level exports to add
-
-In `@vexcms/ui` public exports:
-- `useField`
-- `useForm`
-- `useFormFields`
-- `type UseFieldReturn`
-- `type UseFormReturn`
-- `type UseDocumentInfoReturn`
-- `type CustomFieldComponentProps`
-
-In `@vexcms/admin-next` public exports:
-- `useDocumentInfo`
-- `DocumentProvider`
 
 ---
 
 ## Success Criteria
 
-- [ ] `useField()` hook returns value, setValue, readOnly (merged), errors, label, description for any field
-- [ ] `useForm()` hook returns getData, getFieldValue, isModified, isSubmitting, submit
-- [ ] `useFormFields({ selector })` hook returns selected values without re-rendering on unrelated changes
-- [ ] `useDocumentInfo()` hook returns documentId, collectionSlug, isVersioned, status, version
-- [ ] All 7 refactored field components (TextField, NumberField, CheckboxField, SelectField, MultiSelectField, DateField, ImageUrlField) use `useField()` with identical rendered output
-- [ ] UploadField and richtext keep their existing props-based API (not refactored)
-- [ ] `admin.components.Field` on a text/number/checkbox/select/date/imageUrl/json/array field renders the custom component
-- [ ] `admin.components.Field` on upload or richtext field logs a console error and renders the built-in component
-- [ ] Custom components can call `useField()`, `useForm()`, `useFormFields()` to interact with form state
-- [ ] All existing tests pass
-- [ ] Full monorepo builds (`pnpm build`)
-- [ ] Test app works end-to-end (create, edit, save with both built-in and custom components)
+- [ ] `pnpm build` succeeds with no type errors
+- [ ] `pnpm --filter @vexcms/core test` passes with new ui field tests
+- [ ] `ui()` fields are skipped in schema generation, form schema, form defaults, and column generation
+- [ ] `admin.components.Field` renders the custom component for text, number, checkbox, select fields
+- [ ] `admin.components.Field` on ineligible types (upload, richtext, etc.) logs an error and falls back to built-in
+- [ ] `admin.components.Cell` renders custom cell component in the data table
+- [ ] `useVexField()` returns value, setValue, errors, readOnly from VexFormProvider context
+- [ ] `useVexForm()` returns submit, isSubmitting, isDirty, getValues from context
+- [ ] `useVexFormFields()` allows selecting specific field values with a selector
+- [ ] Refactored built-in fields (text, number, checkbox, select) work identically to before
+- [ ] Custom components can import `useVexField`, `useVexForm`, `useVexFormFields` from `@vexcms/ui`
+- [ ] `FieldComponentProps` and `CellComponentProps` are exported from `@vexcms/core`
+- [ ] UI fields with custom components render correctly in the edit form
+- [ ] UI fields are excluded from the data table columns

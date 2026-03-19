@@ -53,6 +53,12 @@ export function fieldToValueType(props: {
         fieldName,
         resolveInnerField: fieldToValueType,
       });
+    case "ui":
+      throw new VexFieldValidationError(
+        collectionSlug,
+        fieldName,
+        `UI field "${fieldName}" on collection "${collectionSlug}" has no database representation and should not be included in schema generation.`,
+      );
     default:
       throw new VexFieldValidationError(
         collectionSlug,

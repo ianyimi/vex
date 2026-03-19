@@ -2,14 +2,17 @@
 
 import { AdminPage } from "@vexcms/admin-next"
 import type { ClientVexConfig } from "@vexcms/core"
-import { extractLivePreviewConfigs } from "@vexcms/core"
+import { extractLivePreviewConfigs, sanitizeConfigForClient } from "@vexcms/core"
 import { RichTextFieldWithMedia } from "./RichTextFieldWithMedia"
 import originalConfig from "~/../vex.config"
 
 const livePreviewConfigs = extractLivePreviewConfigs(originalConfig)
+// Sanitize on the client so component references in admin.components survive
+// (they can't cross the RSC serialization boundary)
+const clientConfig = sanitizeConfigForClient(originalConfig)
 
 export function AdminPageWrapper({
-  config,
+  config: _serverConfig,
   path,
 }: {
   config: ClientVexConfig
@@ -17,7 +20,7 @@ export function AdminPageWrapper({
 }) {
   return (
     <AdminPage
-      config={config}
+      config={clientConfig}
       path={path}
       livePreviewConfigs={livePreviewConfigs}
       renderRichTextField={(props: any) => (

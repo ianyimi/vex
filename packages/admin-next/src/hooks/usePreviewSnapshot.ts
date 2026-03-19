@@ -1,32 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useMutation } from "convex/react";
 import { anyApi } from "convex/server";
 import { PREVIEW_SNAPSHOT_DEBOUNCE_MS } from "@vexcms/core";
 
+interface UsePreviewSnapshotReturn {
+  /** Callback to pass as AppForm's onValuesChange, or undefined when disabled */
+  onValuesChange: ((values: Record<string, unknown>) => void) | undefined;
+  /** True when a snapshot write is pending (debounce timer active or mutation in-flight) */
+  isSyncing: boolean;
+}
+
 /**
- * Returns a debounced callback that writes preview snapshots to vex_versions.
- * Pass the returned callback as `onValuesChange` to AppForm.
- *
- * The snapshot is a transient entry in vex_versions (status: "previewSnapshot")
- * that getDocument merges when the frontend passes `preview: true`.
+ * Returns a debounced callback that writes preview snapshots to vex_versions,
+ * plus a `isSyncing` flag for showing a loading indicator.
  *
  * @param props.collectionSlug - Collection slug
  * @param props.documentId - Document ID being edited
  * @param props.enabled - Whether snapshot writing is active (true when preview panel is open)
- * @returns Callback to pass as AppForm's onValuesChange, or undefined when disabled
  */
 export function usePreviewSnapshot(props: {
   collectionSlug: string;
   documentId: string;
   enabled: boolean;
-}): ((values: Record<string, unknown>) => void) | undefined {
+}): UsePreviewSnapshotReturn {
   const upsertMutation = useMutation(anyApi.vex.previewSnapshot.upsert);
   const removeMutation = useMutation(anyApi.vex.previewSnapshot.remove);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef(false);
   const lastSnapshotRef = useRef<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Clean up snapshot when preview is closed
   useEffect(() => {
@@ -38,6 +42,7 @@ export function usePreviewSnapshot(props: {
           documentId: props.documentId,
         }).catch(() => {});
       }
+      setIsSyncing(false);
     }
   }, [props.enabled, removeMutation, props.collectionSlug, props.documentId]);
 
@@ -56,13 +61,22 @@ export function usePreviewSnapshot(props: {
 
   const writeSnapshot = useCallback(
     (values: Record<string, unknown>) => {
+      const serialized = JSON.stringify(values);
+
+      // Only mark as syncing if values actually differ from last written snapshot
+      if (serialized === lastSnapshotRef.current) return;
+
       if (timerRef.current) clearTimeout(timerRef.current);
+      setIsSyncing(true);
 
       timerRef.current = setTimeout(async () => {
         if (inFlightRef.current) return;
 
-        const serialized = JSON.stringify(values);
-        if (serialized === lastSnapshotRef.current) return;
+        // Re-check in case another write completed while debouncing
+        if (serialized === lastSnapshotRef.current) {
+          setIsSyncing(false);
+          return;
+        }
 
         inFlightRef.current = true;
         try {
@@ -76,12 +90,15 @@ export function usePreviewSnapshot(props: {
           // best-effort
         } finally {
           inFlightRef.current = false;
+          setIsSyncing(false);
         }
       }, PREVIEW_SNAPSHOT_DEBOUNCE_MS);
     },
     [upsertMutation, props.collectionSlug, props.documentId],
   );
 
-  if (!props.enabled) return undefined;
-  return writeSnapshot;
+  return {
+    onValuesChange: props.enabled ? writeSnapshot : undefined,
+    isSyncing: props.enabled && isSyncing,
+  };
 }

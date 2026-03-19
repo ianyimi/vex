@@ -56,6 +56,7 @@ export function generateVexSchema(props: { config: VexConfig }): string {
 
       // All merged fields go through fieldToValueType uniformly
       for (const [name, field] of Object.entries(merged.fields)) {
+        if (field.type === "ui") continue; // UI fields have no database representation
         fields.push({
           name,
           valueType: fieldToValueType({
@@ -82,6 +83,7 @@ export function generateVexSchema(props: { config: VexConfig }): string {
       for (const [fieldName, field] of Object.entries(
         collection.fields,
       ) as [string, VexField][]) {
+        if (field.type === "ui") continue; // UI fields have no database representation
         fields.push({
           name: fieldName,
           valueType: fieldToValueType({
@@ -136,6 +138,7 @@ export function generateVexSchema(props: { config: VexConfig }): string {
       for (const [fieldName, field] of Object.entries(
         mediaCollection.fields,
       ) as [string, VexField][]) {
+        if (field.type === "ui") continue;
         if (fieldName === "storageId") {
           // Use adapter's storageIdValueType instead of fieldToValueType
           fields.push({

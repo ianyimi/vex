@@ -66,11 +66,21 @@ export function generateColumns(props: {
       }
 
       if (field.admin?.hidden) continue;
+      if (field.type === "ui") continue;
 
-      let col = buildColumnDef(fieldKey, field);
+      const col = buildColumnDef(fieldKey, field);
 
       if (useAsTitle && fieldKey === useAsTitle) {
         col.meta = { ...col.meta, isTitle: true };
+      }
+
+      // Attach custom Cell component to meta if present
+      if (field.admin?.components?.Cell) {
+        col.meta = {
+          ...col.meta,
+          customCell: field.admin.components.Cell,
+          fieldDef: field,
+        };
       }
 
       columns.push(col);
@@ -87,11 +97,21 @@ export function generateColumns(props: {
     for (const fieldKey of allFieldKeys) {
       const field = (fields[fieldKey] ?? authFields[fieldKey]) as VexField;
       if (field.admin?.hidden) continue;
+      if (field.type === "ui") continue;
 
-      let col = buildColumnDef(fieldKey, field);
+      const col = buildColumnDef(fieldKey, field);
 
       if (useAsTitle && fieldKey === useAsTitle) {
         col.meta = { ...col.meta, isTitle: true };
+      }
+
+      // Attach custom Cell component to meta if present
+      if (field.admin?.components?.Cell) {
+        col.meta = {
+          ...col.meta,
+          customCell: field.admin.components.Cell,
+          fieldDef: field,
+        };
       }
 
       columns.push(col);

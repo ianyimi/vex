@@ -30,6 +30,8 @@ function getFormDefaultValue(props: { field: VexField }): unknown {
       return [];
     case "array":
       return [];
+    case "ui":
+      return undefined;
     default:
       return undefined;
   }
@@ -49,6 +51,7 @@ export function generateFormDefaultValues(props: {
 
   for (const [fieldName, field] of Object.entries(props.fields)) {
     if (field.admin?.hidden) continue;
+    if (field.type === "ui") continue;
     result[fieldName] = getFormDefaultValue({ field });
   }
 

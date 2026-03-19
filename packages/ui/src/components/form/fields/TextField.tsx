@@ -4,50 +4,80 @@ import type { TextFieldDef } from "@vexcms/core";
 import { toTitleCase } from "@vexcms/core";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
+import { useVexField } from "../../../hooks/useVexField";
 
 interface TextFieldProps {
-  field: any;
-  fieldDef: TextFieldDef;
+  /** Field name key */
   name: string;
+  /**
+   * TanStack Form field API (legacy prop — used when VexFormProvider is not available).
+   * When omitted, useVexField() is used instead.
+   */
+  field?: any;
+  fieldDef?: TextFieldDef;
 }
 
-function TextField({ field, fieldDef, name }: TextFieldProps) {
-  const label = fieldDef.label ?? toTitleCase(name);
-  const description = fieldDef.admin?.description ?? fieldDef.description;
-  const errors: unknown[] = field.state.meta.errors ?? [];
+function TextField({ name, field: legacyField, fieldDef: propFieldDef }: TextFieldProps) {
+  // New mode: use useVexField hook
+  const vexField = legacyField ? null : useVexField<string>({ name });
+
+  // Resolve value/onChange/onBlur/errors from either mode
+  const value = legacyField ? legacyField.state.value : vexField!.value;
+  const handleChange = legacyField
+    ? (v: string) => legacyField.handleChange(v)
+    : (v: string) => vexField!.setValue(v);
+  const handleBlur = legacyField ? legacyField.handleBlur : vexField!.handleBlur;
+
+  const fieldDef = (propFieldDef ?? vexField?.fieldDef) as TextFieldDef | undefined;
+  const label = fieldDef?.label ?? toTitleCase(name);
+  const description = fieldDef?.admin?.description ?? fieldDef?.description;
+  const disabled = legacyField
+    ? fieldDef?.admin?.readOnly
+    : vexField!.readOnly;
+
+  // Errors
+  const errors: string[] = legacyField
+    ? normalizeErrors(legacyField.state.meta.errors)
+    : vexField!.errors;
+  const showError = legacyField ? errors.length > 0 : vexField!.showError;
 
   return (
     <div className="space-y-2">
       <Label htmlFor={name}>
         {label}
-        {fieldDef.required && <span className="text-destructive ml-1">*</span>}
+        {fieldDef?.required && <span className="text-destructive ml-1">*</span>}
       </Label>
       <Input
         id={name}
-        value={field.state.value ?? ""}
+        value={value ?? ""}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-          field.handleChange(e.target.value)
+          handleChange(e.target.value)
         }
-        onBlur={field.handleBlur}
-        placeholder={fieldDef.admin?.placeholder}
-        disabled={fieldDef.admin?.readOnly}
-        maxLength={fieldDef.maxLength}
+        onBlur={handleBlur}
+        placeholder={fieldDef?.admin?.placeholder}
+        disabled={disabled}
+        maxLength={fieldDef?.maxLength}
       />
       {description && (
         <p className="text-xs text-muted-foreground">{description}</p>
       )}
-      {errors.length > 0 && (
+      {showError && errors.length > 0 && (
         <div>
-          {errors.map((error: unknown, i: number) => (
+          {errors.map((error, i) => (
             <p key={i} className="text-xs text-destructive">
-              {typeof error === "string"
-                ? error
-                : ((error as any)?.message ?? String(error))}
+              {error}
             </p>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function normalizeErrors(errors: unknown[] | undefined): string[] {
+  if (!errors) return [];
+  return errors.map((e) =>
+    typeof e === "string" ? e : ((e as any)?.message ?? String(e)),
   );
 }
 

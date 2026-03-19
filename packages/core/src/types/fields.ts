@@ -2,12 +2,39 @@
 // FIELD TYPES — Object-based configuration
 // =============================================================================
 
+import type { ComponentType } from "react";
+
 /** Content alignment for data table cells. */
 export type Alignment = "left" | "right" | "center";
 export type Labels = {
   singular: string;
   plural: string;
 };
+
+/**
+ * Props passed to custom field components.
+ * Custom components receive these props and use useVexField() for state.
+ */
+export interface FieldComponentProps {
+  /** The field key name (e.g., "primaryColor") */
+  name: string;
+  /** The VexField definition for this field */
+  fieldDef: VexField;
+  /** Whether the field is read-only (from permissions or config) */
+  readOnly: boolean;
+}
+
+/**
+ * Props passed to custom cell components in the data table.
+ */
+export interface CellComponentProps {
+  /** The raw cell value from the document */
+  value: unknown;
+  /** The full row data (document) */
+  row: Record<string, unknown>;
+  /** The VexField definition for this column's field */
+  fieldDef: VexField;
+}
 
 /**
  * Admin panel configuration for individual fields.
@@ -59,6 +86,20 @@ export interface FieldAdminConfig {
    * Content alignment in data table cells. 'left' | 'right' | 'center'
    */
   cellAlignment?: Alignment;
+  /**
+   * Custom components for this field.
+   *
+   * - `Field` replaces the entire field input in the edit form.
+   *   Only allowed on text, number, checkbox, and select fields.
+   *   The component receives FieldComponentProps and uses useVexField() for state.
+   *
+   * - `Cell` replaces the cell renderer in the data table list view.
+   *   Allowed on any field type.
+   */
+  components?: {
+    Field?: ComponentType<FieldComponentProps>;
+    Cell?: ComponentType<CellComponentProps>;
+  };
 }
 
 // =============================================================================
@@ -324,6 +365,25 @@ export interface RichTextFieldDef extends BaseField {
   mediaCollection?: string;
 }
 
+/**
+ * UI field definition. Non-persisted — renders a custom component only.
+ * Skipped during schema generation, form validation, and column generation.
+ * Requires admin.components.Field to be set.
+ */
+export interface UIFieldDef extends BaseField {
+  readonly type: "ui";
+  /** Display label for the field in the admin form. */
+  label?: string;
+  /**
+   * Admin config — components.Field is required for ui fields.
+   */
+  admin: FieldAdminConfig & {
+    components: {
+      Field: ComponentType<FieldComponentProps>;
+    };
+  };
+}
+
 // =============================================================================
 // UTILITY TYPES
 // =============================================================================
@@ -368,7 +428,8 @@ export type VexField =
   | UploadFieldDef
   | JsonFieldDef
   | ArrayFieldDef
-  | RichTextFieldDef;
+  | RichTextFieldDef
+  | UIFieldDef;
 
 // =============================================================================
 // TYPE INFERENCE
@@ -406,7 +467,9 @@ export type InferFieldType<F extends VexField> = F extends { type: "text" }
                           ? RichTextDocument
                           : F extends { type: "array" }
                             ? unknown[]
-                            : never;
+                            : F extends { type: "ui" }
+                              ? never
+                              : never;
 
 /**
  * Infer the document type from a record of fields.

@@ -14,7 +14,10 @@ import {
   MultiSelectField,
   UploadField,
 } from "./fields";
+import { VexFormProvider } from "./VexFormProvider";
 import type { MediaDocument } from "../ui/media-picker";
+
+const CUSTOM_FIELD_ELIGIBLE_TYPES = new Set(["text", "number", "checkbox", "select"]);
 
 interface MediaPickerState {
   results: MediaDocument[];
@@ -190,6 +193,24 @@ function AppForm({
     },
   });
 
+  // Dev-mode validation for custom components on ineligible field types
+  if (process.env.NODE_ENV !== "production") {
+    for (const entry of fieldEntries) {
+      const fieldDef = entry.field;
+      if (
+        fieldDef.admin?.components?.Field &&
+        !CUSTOM_FIELD_ELIGIBLE_TYPES.has(fieldDef.type) &&
+        fieldDef.type !== "ui"
+      ) {
+        console.error(
+          `[VEX] admin.components.Field on "${entry.name}" (type: "${fieldDef.type}") ` +
+            `will be ignored. Custom Field components are only supported on: ` +
+            `text, number, checkbox, select, and ui fields.`,
+        );
+      }
+    }
+  }
+
   // Expose a getValues function so the parent can read current form state
   if (getValuesRef) {
     getValuesRef.current = () => {
@@ -201,11 +222,12 @@ function AppForm({
     };
   }
 
-  // Subscribe to form value changes for live preview
+  // Subscribe to form value changes for live preview.
+  // The subscription is always active — onValuesChangeRef is checked inside
+  // the callback so it works when preview is toggled on after mount.
   const onValuesChangeRef = useRef(onValuesChange);
   onValuesChangeRef.current = onValuesChange;
   useEffect(() => {
-    if (!onValuesChangeRef.current) return;
     const unsubscribe = form.store.subscribe(() => {
       if (!onValuesChangeRef.current) return;
       const values: Record<string, unknown> = {};
@@ -226,141 +248,194 @@ function AppForm({
         form.handleSubmit();
       }}
     >
-      {onDirtyChange && (
-        <DirtyWatcher
-          form={form}
-          fieldEntries={fieldEntries}
-          defaultValues={defaultValues}
-          onDirtyChange={onDirtyChange}
-        />
-      )}
-      <div className="space-y-6">
-        {fieldEntries.map((entry) => (
-          <form.Field key={entry.name} name={entry.name}>
-            {(field) => {
-              const fieldDef = entry.field;
-              const readOnlyWrapper = (node: React.ReactNode) =>
-                entry.readOnly ? (
-                  <div className="opacity-60 pointer-events-none" aria-disabled="true">
-                    {node}
-                  </div>
-                ) : node;
+      <VexFormProvider form={form} fieldEntries={fieldEntries}>
+        {onDirtyChange && (
+          <DirtyWatcher
+            form={form}
+            fieldEntries={fieldEntries}
+            defaultValues={defaultValues}
+            onDirtyChange={onDirtyChange}
+          />
+        )}
+        <div className="space-y-6">
+          {fieldEntries.map((entry) => (
+            <form.Field key={entry.name} name={entry.name}>
+              {(field) => {
+                const fieldDef = entry.field;
 
-              switch (fieldDef.type) {
-                case "text":
-                  return readOnlyWrapper(
-                    <TextField field={field} fieldDef={fieldDef} name={entry.name} />
+                // Check for custom Field component
+                if (fieldDef.admin?.components?.Field) {
+                  if (
+                    CUSTOM_FIELD_ELIGIBLE_TYPES.has(fieldDef.type) ||
+                    fieldDef.type === "ui"
+                  ) {
+                    const CustomField = fieldDef.admin.components.Field;
+                    return (
+                      <CustomField
+                        name={entry.name}
+                        fieldDef={fieldDef}
+                        readOnly={
+                          entry.readOnly ?? fieldDef.admin?.readOnly ?? false
+                        }
+                      />
+                    );
+                  }
+                  // Ineligible type — fall through to default rendering
+                }
+
+                // ui fields without custom component (shouldn't happen — type requires it)
+                if (fieldDef.type === "ui") {
+                  return null;
+                }
+
+                const readOnlyWrapper = (node: React.ReactNode) =>
+                  entry.readOnly ? (
+                    <div
+                      className="opacity-60 pointer-events-none"
+                      aria-disabled="true"
+                    >
+                      {node}
+                    </div>
+                  ) : (
+                    node
                   );
-                case "number":
-                  return readOnlyWrapper(
-                    <NumberField field={field} fieldDef={fieldDef} name={entry.name} />
-                  );
-                case "checkbox":
-                  return readOnlyWrapper(
-                    <CheckboxFieldForm
-                      field={field}
-                      fieldDef={fieldDef}
-                      name={entry.name}
-                    />
-                  );
-                case "select":
-                  if (fieldDef.hasMany) {
+
+                switch (fieldDef.type) {
+                  case "text":
                     return readOnlyWrapper(
-                      <MultiSelectField
+                      <TextField
                         field={field}
                         fieldDef={fieldDef}
                         name={entry.name}
-                      />
+                      />,
                     );
-                  }
-                  return readOnlyWrapper(
-                    <SelectField field={field} fieldDef={fieldDef} name={entry.name} />
-                  );
-                case "date":
-                  return readOnlyWrapper(
-                    <DateField field={field} fieldDef={fieldDef} name={entry.name} />
-                  );
-                case "imageUrl":
-                  return readOnlyWrapper(
-                    <ImageUrlField
-                      field={field}
-                      fieldDef={fieldDef}
-                      name={entry.name}
-                    />
-                  );
-                case "upload": {
-                  const uploadNew = () =>
-                    onOpenUploadModal?.(entry.name, fieldDef.to);
-
-                  if (renderUploadField) {
-                    return readOnlyWrapper(renderUploadField({
-                      field,
-                      fieldDef,
-                      name: entry.name,
-                      onUploadNew: uploadNew,
-                      defaultValue: defaultValues[entry.name],
-                    }));
-                  }
-
-                  const pickerState = uploadFieldStates?.[entry.name];
-                  return readOnlyWrapper(
-                    <UploadField
-                      field={field}
-                      fieldDef={fieldDef}
-                      name={entry.name}
-                      mediaResults={pickerState?.results ?? []}
-                      searchTerm={pickerState?.searchTerm ?? ""}
-                      onSearchChange={pickerState?.setSearchTerm ?? (() => {})}
-                      canLoadMore={pickerState?.canLoadMore ?? false}
-                      onLoadMore={pickerState?.loadMore ?? (() => {})}
-                      isLoading={pickerState?.isLoading ?? false}
-                      onUploadNew={uploadNew}
-                      selectedMedia={pickerState?.selectedMedia}
-                    />
-                  );
-                }
-                case "richtext": {
-                  if (renderRichTextField) {
+                  case "number":
                     return readOnlyWrapper(
-                      renderRichTextField({
-                        field,
-                        fieldDef,
-                        name: entry.name,
-                      })
+                      <NumberField
+                        field={field}
+                        fieldDef={fieldDef}
+                        name={entry.name}
+                      />,
+                    );
+                  case "checkbox":
+                    return readOnlyWrapper(
+                      <CheckboxFieldForm
+                        field={field}
+                        fieldDef={fieldDef}
+                        name={entry.name}
+                      />,
+                    );
+                  case "select":
+                    if (fieldDef.hasMany) {
+                      return readOnlyWrapper(
+                        <MultiSelectField
+                          field={field}
+                          fieldDef={fieldDef}
+                          name={entry.name}
+                        />,
+                      );
+                    }
+                    return readOnlyWrapper(
+                      <SelectField
+                        field={field}
+                        fieldDef={fieldDef}
+                        name={entry.name}
+                      />,
+                    );
+                  case "date":
+                    return readOnlyWrapper(
+                      <DateField
+                        field={field}
+                        fieldDef={fieldDef}
+                        name={entry.name}
+                      />,
+                    );
+                  case "imageUrl":
+                    return readOnlyWrapper(
+                      <ImageUrlField
+                        field={field}
+                        fieldDef={fieldDef}
+                        name={entry.name}
+                      />,
+                    );
+                  case "upload": {
+                    const uploadNew = () =>
+                      onOpenUploadModal?.(entry.name, fieldDef.to);
+
+                    if (renderUploadField) {
+                      return readOnlyWrapper(
+                        renderUploadField({
+                          field,
+                          fieldDef,
+                          name: entry.name,
+                          onUploadNew: uploadNew,
+                          defaultValue: defaultValues[entry.name],
+                        }),
+                      );
+                    }
+
+                    const pickerState = uploadFieldStates?.[entry.name];
+                    return readOnlyWrapper(
+                      <UploadField
+                        field={field}
+                        fieldDef={fieldDef}
+                        name={entry.name}
+                        mediaResults={pickerState?.results ?? []}
+                        searchTerm={pickerState?.searchTerm ?? ""}
+                        onSearchChange={
+                          pickerState?.setSearchTerm ?? (() => {})
+                        }
+                        canLoadMore={pickerState?.canLoadMore ?? false}
+                        onLoadMore={pickerState?.loadMore ?? (() => {})}
+                        isLoading={pickerState?.isLoading ?? false}
+                        onUploadNew={uploadNew}
+                        selectedMedia={pickerState?.selectedMedia}
+                      />,
                     );
                   }
-                  // Fallback: render as JSON textarea when no editor adapter
-                  return readOnlyWrapper(
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">
-                        {fieldDef.label ?? entry.name}
-                      </label>
-                      <textarea
-                        className="w-full min-h-[200px] rounded-md border p-3 font-mono text-sm"
-                        value={JSON.stringify(field.state.value, null, 2)}
-                        onChange={(e) => {
-                          try {
-                            field.handleChange(JSON.parse(e.target.value));
-                          } catch {
-                            // Invalid JSON, don't update
-                          }
-                        }}
-                      />
-                      {fieldDef.description && (
-                        <p className="text-sm text-muted-foreground">
-                          {fieldDef.description}
-                        </p>
-                      )}
-                    </div>
-                  );
+                  case "richtext": {
+                    if (renderRichTextField) {
+                      return readOnlyWrapper(
+                        renderRichTextField({
+                          field,
+                          fieldDef,
+                          name: entry.name,
+                        }),
+                      );
+                    }
+                    // Fallback: render as JSON textarea when no editor adapter
+                    return readOnlyWrapper(
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">
+                          {fieldDef.label ?? entry.name}
+                        </label>
+                        <textarea
+                          className="w-full min-h-[200px] rounded-md border p-3 font-mono text-sm"
+                          value={JSON.stringify(field.state.value, null, 2)}
+                          onChange={(e) => {
+                            try {
+                              field.handleChange(JSON.parse(e.target.value));
+                            } catch {
+                              // Invalid JSON, don't update
+                            }
+                          }}
+                        />
+                        {fieldDef.description && (
+                          <p className="text-sm text-muted-foreground">
+                            {fieldDef.description}
+                          </p>
+                        )}
+                      </div>,
+                    );
+                  }
+                  default:
+                    return null;
                 }
-                default:
-                  return null;
-              }
-            }}
-          </form.Field>
-        ))}
-      </div>
+              }}
+            </form.Field>
+          ))}
+        </div>
+      </VexFormProvider>
     </form>
   );
 }

@@ -6,6 +6,7 @@ import { DEFAULT_BREAKPOINTS } from "@vexcms/core";
 import { BreakpointSelector } from "./BreakpointSelector";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "../components/ui/button";
+import { VEX_PREVIEW_UPDATED } from "./useVexPreview";
 
 /**
  * Side panel that embeds a preview iframe with breakpoint controls.
@@ -20,6 +21,8 @@ export function LivePreviewPanel(props: {
   doc: { _id: string; [key: string]: any };
   breakpoints?: LivePreviewBreakpoint[];
   adminBreakpoints?: LivePreviewBreakpoint[];
+  /** Whether a preview snapshot write is pending (debounce or mutation in-flight) */
+  isSyncing?: boolean;
 }) {
   const breakpoints = props.breakpoints ?? props.adminBreakpoints ?? DEFAULT_BREAKPOINTS;
 
@@ -35,6 +38,41 @@ export function LivePreviewPanel(props: {
   const [previousURL, setPreviousURL] = useState<string | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  // Track whether the iframe has sent its first ack (initial load complete)
+  const [iframeReady, setIframeReady] = useState(false);
+  // Track whether we're waiting for iframe to render after a snapshot write
+  const [waitingForIframe, setWaitingForIframe] = useState(false);
+
+  // Reset iframeReady when the iframe is remounted (key changes)
+  const prevIframeKeyRef = useRef(iframeKey);
+  useEffect(() => {
+    if (iframeKey !== prevIframeKeyRef.current) {
+      setIframeReady(false);
+      prevIframeKeyRef.current = iframeKey;
+    }
+  }, [iframeKey]);
+
+  // When isSyncing goes true (snapshot write started), start waiting for iframe ack
+  const prevSyncingRef = useRef(false);
+  useEffect(() => {
+    if (props.isSyncing && !prevSyncingRef.current) {
+      setWaitingForIframe(true);
+    }
+    prevSyncingRef.current = !!props.isSyncing;
+  }, [props.isSyncing]);
+
+  // Listen for postMessage from iframe saying it rendered data
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.data?.type === VEX_PREVIEW_UPDATED) {
+        setIframeReady(true);
+        setWaitingForIframe(false);
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
 
   // Resolve URL
   const previewURL = useMemo(() => {
@@ -59,6 +97,9 @@ export function LivePreviewPanel(props: {
       return previousURL ?? null;
     }
   }, [props.url, props.doc, previousURL]);
+
+  // Spinner shows during initial iframe load OR during snapshot sync cycle
+  const showSpinner = (!!previewURL && !iframeReady) || !!props.isSyncing || waitingForIframe;
 
   // Track container size for scaling
   useEffect(() => {
@@ -141,9 +182,11 @@ export function LivePreviewPanel(props: {
           variant="ghost"
           size="sm"
           onClick={() => setIframeKey((k) => k + 1)}
-          title="Refresh preview"
+          title={showSpinner ? "Syncing changes..." : "Refresh preview"}
         >
-          <RefreshCw className="h-4 w-4" />
+          <RefreshCw
+            className={`h-4 w-4 ${showSpinner ? "animate-spin" : ""}`}
+          />
         </Button>
       </div>
 

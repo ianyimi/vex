@@ -16,6 +16,7 @@ export function generateFormSchema(props: {
 
   for (const [fieldName, field] of Object.entries(props.fields)) {
     if (field.admin?.hidden) continue;
+    if (field.type === "ui") continue;
 
     let validator = fieldMetaToZod({ field });
 

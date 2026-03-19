@@ -5,6 +5,7 @@ import type { RichTextDocument } from "@vexcms/core"
 import { api } from "@convex/_generated/api"
 import { type Id } from "@convex/_generated/dataModel"
 import { RichText } from "@vexcms/richtext/render"
+import { useVexPreview } from "@vexcms/ui"
 import { useQuery } from "convex/react"
 import Link from "next/link"
 import { useParams, useSearchParams } from "next/navigation"
@@ -18,8 +19,11 @@ export default function PostPage() {
 
   const post = useQuery(api.vex.api.posts.get, {
     id: postId as Id<typeof TABLE_SLUG_POSTS>,
-    _vexDrafts: isPreview,
+    _vexDrafts: isPreview ? "snapshot" : false,
   })
+
+  // Notify admin panel's live preview when data changes
+  useVexPreview({ data: post })
 
   if (post === undefined) {
     return (

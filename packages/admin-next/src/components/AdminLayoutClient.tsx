@@ -51,7 +51,7 @@ export function AdminLayoutClient({
   const content = (
     <SidebarProvider className="h-svh overflow-hidden">
       <AppSidebar config={config} user={user} onImpersonate={handleStartImpersonation} impersonatableUsers={impersonatableUsers} />
-      <SidebarInset className="overflow-y-hidden">
+      <SidebarInset className="overflow-hidden min-h-0">
         <ImpersonationBanner onStopImpersonation={handleStopImpersonation} />
         {children}
       </SidebarInset>

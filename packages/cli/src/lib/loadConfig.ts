@@ -88,6 +88,10 @@ function createJitiOptions(cwd: string): JitiOptions {
     fsCache: false,
     interopDefault: true,
     alias: buildAliasFromTsconfig(cwd),
+    // Enable JSX transform so .tsx files imported transitively from the config
+    // (e.g., custom admin components) can be parsed. The CLI doesn't render them —
+    // it only needs the config object — but jiti must be able to parse the files.
+    jsx: true,
   };
 }
 
