@@ -85,6 +85,12 @@ export interface VexGlobal<
    */
   admin?: GlobalAdminConfig<TFields>;
   /**
+   * TypeScript interface name used in generated `vex.types.ts`.
+   * If not set, auto-generated from slug via PascalCase conversion.
+   * @example "SiteSettings"
+   */
+  interfaceName?: string;
+  /**
    * Type helper — use `typeof global._docType` to get the
    * inferred document shape for this global.
    */

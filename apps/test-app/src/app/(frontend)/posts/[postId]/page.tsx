@@ -1,6 +1,7 @@
 "use client"
 
-import type { InferFieldsType, RichTextDocument } from "@vexcms/core"
+import type { NewBlock } from "@convex/vex.types"
+import type { RichTextDocument } from "@vexcms/core"
 
 import { api } from "@convex/_generated/api"
 import { type Id } from "@convex/_generated/dataModel"
@@ -11,17 +12,9 @@ import Link from "next/link"
 import { useParams, useSearchParams } from "next/navigation"
 
 import { type TABLE_SLUG_POSTS } from "~/db/constants"
-import { type newBlock } from "~/vexcms/collections/posts"
-
-/** Infer the block instance type from the defineBlock() definition. */
-type NewBlockData = InferFieldsType<typeof newBlock.fields> & {
-  _key: string
-  blockName?: string
-  blockType: typeof newBlock.slug
-}
 
 /** Typed component for the "new-block" block type. */
-function NewBlockComponent({ block, index }: BlockComponentProps<NewBlockData>) {
+function NewBlockComponent({ block, index }: BlockComponentProps<NewBlock>) {
   return (
     <div className="rounded-lg border bg-gray-50 p-4">
       <div className="flex items-center gap-2 mb-2">

@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import type { VexConfig } from "@vexcms/core";
 import {
   generateVexSchema,
+  generateVexTypes,
   diffSchema,
   makeFieldsOptional,
   addRemovedFieldsAsOptional,
@@ -37,6 +38,24 @@ export async function generateAndWrite(
 
   // Generate the final schema content
   const content = generateVexSchema({ config });
+
+  // Generate and write vex.types.ts
+  try {
+    const typesContent = generateVexTypes({ config });
+    const typesRelPath = config.schema.typesOutputPath;
+    const typesPath = resolve(cwd, typesRelPath.replace(/^\//, ""));
+    const formattedTypes = await formatString(typesContent, typesPath);
+    const existingTypes = existsSync(typesPath)
+      ? readFileSync(typesPath, "utf-8")
+      : "";
+    if (existingTypes !== formattedTypes) {
+      writeFileSync(typesPath, formattedTypes, "utf-8");
+      logger.success("Generated vex.types.ts");
+    }
+  } catch (err) {
+    logger.warn("Type generation failed (vex.types.ts)");
+    logger.error("Type generation error", err);
+  }
 
   // Format content before comparison so Prettier-formatted files match correctly
   const finalSchema = await formatString(content, vexSchemaPath);

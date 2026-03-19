@@ -60,6 +60,7 @@ export function defineCollection<
     VersioningFieldKeys | (TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never)
   >[];
   versions?: VersionsConfig;
+  interfaceName?: string;
 }): VexCollection<
   TFields,
   VersioningFieldKeys | (TAuth extends VexAuthAdapter<any> ? AuthCollectionFieldKeys<TAuth, TSlug> : never),

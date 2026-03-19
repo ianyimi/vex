@@ -31,6 +31,10 @@ export { blocks } from "./fields/blocks";
 // Block helpers
 export { defineBlock } from "./blocks/defineBlock";
 
+// Type generation
+export { generateVexTypes } from "./typeGen/generateVexTypes";
+export { slugToInterfaceName } from "./typeGen/slugToInterfaceName";
+
 export * from "./versioning";
 
 // Live Preview

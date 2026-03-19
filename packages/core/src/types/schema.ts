@@ -7,6 +7,13 @@ export interface SchemaConfig {
    */
   outputPath: string;
   /**
+   * Output path for the generated TypeScript types file, relative to project root.
+   * Contains typed interfaces for all collections, blocks, and globals.
+   *
+   * Default: `"convex/vex.types.ts"`
+   */
+  typesOutputPath: string;
+  /**
    * Automatically backfill existing documents when a new required field
    * with a `defaultValue` is added.
    *
@@ -36,6 +43,13 @@ export interface SchemaConfigInput {
    * Default: `"convex/vex.schema.ts"`
    */
   outputPath?: string;
+  /**
+   * Output path for the generated TypeScript types file, relative to project root.
+   * Contains typed interfaces for all collections, blocks, and globals.
+   *
+   * Default: `"convex/vex.types.ts"`
+   */
+  typesOutputPath?: string;
   /**
    * Automatically backfill existing documents when a new required field
    * with a `defaultValue` is added.

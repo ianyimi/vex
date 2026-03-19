@@ -220,6 +220,12 @@ export interface VexCollection<
    */
   generateApi?: boolean;
   /**
+   * TypeScript interface name used in generated `vex.types.ts`.
+   * If not set, auto-generated from slug via PascalCase conversion.
+   * @example "BlogPost"
+   */
+  interfaceName?: string;
+  /**
    * Type helper — use `typeof collection._docType` to get the
    * inferred document shape for this collection.
    */

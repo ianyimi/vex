@@ -31,6 +31,7 @@ export function defineBlock<TFields extends Record<string, VexField>>(props: {
   label: string;
   fields: TFields;
   admin?: BlockDef["admin"];
+  interfaceName?: string;
 }): BlockDef<TFields> {
   if (!props.slug || !/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(props.slug)) {
     throw new VexBlockValidationError(
@@ -53,5 +54,6 @@ export function defineBlock<TFields extends Record<string, VexField>>(props: {
     label: props.label,
     fields: props.fields,
     admin: props.admin,
+    interfaceName: props.interfaceName,
   };
 }

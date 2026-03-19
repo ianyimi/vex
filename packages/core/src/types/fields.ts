@@ -412,6 +412,12 @@ export interface BlockDef<TFields extends Record<string, VexField> = Record<stri
   fields: TFields;
   /** Admin UI configuration. */
   admin?: BlockAdminConfig;
+  /**
+   * TypeScript interface name used in generated `vex.types.ts`.
+   * If not set, auto-generated from slug via PascalCase conversion.
+   * @example "HeroBlock"
+   */
+  interfaceName?: string;
 }
 
 /** Reserved field names that cannot be used in block field definitions. */

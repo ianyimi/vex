@@ -14,7 +14,7 @@ function makeConfig(overrides: Partial<VexConfig> = {}): VexConfig {
       user: "users",
     },
     auth: { collections: [], type: "betterAuth" as any } as any,
-    schema: { outputPath: "convex/vex.schema.ts", autoMigrate: true, autoRemove: false },
+    schema: { outputPath: "convex/vex.schema.ts", typesOutputPath: "convex/vex.types.ts", autoMigrate: true, autoRemove: false },
     ...overrides,
   };
 }
