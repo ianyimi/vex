@@ -334,10 +334,11 @@ VexNextJSInstaller extends VexFrameworkInstaller
 ```json
 {
   "name": "create-vexcms",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "bin": { "create-vexcms": "./dist/index.js" },
   "files": ["dist", "templates"],
+  "publishConfig": { "access": "public" },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
     "dev": "tsup src/index.ts --format esm --watch",
@@ -356,11 +357,79 @@ VexNextJSInstaller extends VexFrameworkInstaller
 }
 ```
 
-Template `package.json` uses real npm versions (not `workspace:*`/`catalog:`). Updated as part of release workflow.
+**Note:** The `create-vexcms` package is published under its own name (not `@vexcms/create-cli`) so that `pnpm create vexcms@latest` works. However, it must be added to the changeset fixed version group in `.changeset/config.json` so it stays in sync with all `@vexcms/*` packages.
+
+### Changeset Integration
+
+Add `create-vexcms` to the fixed version group in `.changeset/config.json`:
+
+```json
+{
+  "fixed": [
+    [
+      "@vexcms/core",
+      "@vexcms/cli",
+      "@vexcms/better-auth",
+      "@vexcms/admin-next",
+      "@vexcms/ui",
+      "@vexcms/richtext",
+      "@vexcms/file-storage-convex",
+      "create-vexcms"
+    ]
+  ]
+}
+```
+
+This ensures `create-vexcms` is bumped to the same version as all other packages when a changeset is applied.
+
+### Release Pipeline Updates
+
+The existing `release` script and `release.yml` workflow filter on `"@vexcms/*"` which won't match `create-vexcms`. Both need updating:
+
+**Root `package.json` — update `release` script:**
+```json
+{
+  "scripts": {
+    "release": "pnpm --filter \"@vexcms/*\" --filter \"create-vexcms\" build && changeset publish"
+  }
+}
+```
+
+**`.github/workflows/release.yml` — update build step:**
+```yaml
+- name: Build packages
+  run: pnpm --filter "@vexcms/*" --filter "create-vexcms" build
+```
+
+This ensures `create-vexcms` is built and published alongside all `@vexcms/*` packages during releases.
 
 ## Template Version Strategy
 
-Template `package.json` files list specific npm versions for all `@vexcms/*` packages (e.g., `"@vexcms/core": "^0.1.0"`). These are hardcoded and updated before each `create-vexcms` release. This matches create-z3's approach — simple, no network dependency at scaffold time.
+Template `package.json` files list specific npm versions for all `@vexcms/*` packages using the current version at build time (e.g., `"@vexcms/core": "^0.0.2"`). These are hardcoded and updated before each `create-vexcms` release. This matches create-z3's approach — simple, no network dependency at scaffold time.
+
+## Template Scripts
+
+The base template's `package.json` includes these scripts beyond the standard Next.js ones:
+
+```json
+{
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "vex:dev": "vex dev",
+    "vex:generate": "vex dev --once",
+    "vex:update": "pnpm add @vexcms/core@latest @vexcms/cli@latest @vexcms/admin-next@latest @vexcms/ui@latest @vexcms/richtext@latest @vexcms/better-auth@latest @vexcms/file-storage-convex@latest"
+  }
+}
+```
+
+- **`vex:dev`** — Runs the VEX CLI watcher (`vex dev`) which watches `vex.config.ts` and regenerates schema/types/queries on changes. Users run this instead of `convex dev` during development.
+- **`vex:generate`** — One-shot generation (no watcher). Useful for CI or one-off regeneration.
+- **`vex:update`** — Installs the latest version of all `@vexcms/*` packages at once. Since all packages use fixed versioning, this brings everything to the same latest version in one command. The package list in this script should match the template's actual `@vexcms/*` dependencies.
+
+**Note:** The `vex:update` script uses `pnpm add` since the CLI detects the package manager at scaffold time. The installer should replace `pnpm` with the detected package manager's equivalent (`npm install`, `yarn add`, `bun add`) when writing the template's `package.json`.
 
 ## Implementation Order
 
@@ -375,7 +444,10 @@ Template `package.json` files list specific npm versions for all `@vexcms/*` pac
 
 ## Step 1: Package skeleton
 
-- [ ] Create `packages/create-cli/package.json`
+- [ ] Create `packages/create-cli/package.json` (name: `create-vexcms`, version matches other packages)
+- [ ] Add `create-vexcms` to `.changeset/config.json` fixed version group
+- [ ] Update root `package.json` `release` script to include `--filter "create-vexcms"`
+- [ ] Update `.github/workflows/release.yml` build step to include `--filter "create-vexcms"`
 - [ ] Create `packages/create-cli/tsconfig.json`
 - [ ] Create `packages/create-cli/tsup.config.ts`
 - [ ] Copy `utils/validation.ts` from create-z3 (no changes)
@@ -493,8 +565,9 @@ export function overlayTemplate(props: {
 - [ ] Add OAuth placeholder markers to `convex/auth/options.ts`, `src/auth/client.tsx`, `.env.example`, `src/env.mjs`, `README.md`
 - [ ] Create minimal `vex.config.ts` with empty `collections: []`
 - [ ] Create empty `src/vexcms/collections/index.ts` barrel
-- [ ] Replace `workspace:*` and `catalog:` versions in `package.json` with real npm versions
+- [ ] Replace `workspace:*` and `catalog:` versions in `package.json` with real npm versions (e.g., `"@vexcms/core": "^0.0.2"`)
 - [ ] Add `{{PROJECT_NAME}}` placeholder to `package.json` name field
+- [ ] Add `vex:dev`, `vex:generate`, and `vex:update` scripts to template `package.json`
 - [ ] Rename `.gitignore` → `_gitignore`
 - [ ] Verify the template directory is a complete, self-contained Next.js project
 
@@ -505,7 +578,7 @@ The base template is not generated code — it's a manual copy-and-edit of the t
 3. `src/db/constants/index.ts`: auth table slugs only (no content slugs)
 4. `convex/auth/options.ts`: placeholder markers for OAuth config
 5. `src/auth/client.tsx`: placeholder markers for OAuth UI
-6. `package.json`: real npm versions, `{{PROJECT_NAME}}` placeholder
+6. `package.json`: real npm versions, `{{PROJECT_NAME}}` placeholder, vex scripts
 7. All test-specific components and custom fields removed
 
 ---
@@ -809,3 +882,7 @@ next-themes, class-variance-authority, clsx, tailwind-merge
 - [ ] `_gitignore` renamed to `.gitignore` in scaffolded project
 - [ ] Package.json name is set to user's project name
 - [ ] Marketing site vex.config.ts imports all collections correctly
+- [ ] `create-vexcms` added to changeset fixed version group
+- [ ] Root `release` script and `release.yml` updated to build/publish `create-vexcms`
+- [ ] Template package.json includes `vex:dev`, `vex:generate`, and `vex:update` scripts
+- [ ] `vex:update` script uses the correct package manager command (detected at scaffold time)

@@ -10,7 +10,8 @@
       "@vexcms/admin-next",
       "@vexcms/ui",
       "@vexcms/richtext",
-      "@vexcms/file-storage-convex"
+      "@vexcms/file-storage-convex",
+      "create-vexcms"
     ]
   ],
   "linked": [],

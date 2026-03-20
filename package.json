@@ -13,7 +13,7 @@
     "clean": "turbo run clean && rm -rf node_modules",
     "changeset": "changeset",
     "version:packages": "changeset version",
-    "release": "pnpm --filter \"@vexcms/*\" build && changeset publish"
+    "release": "pnpm --filter \"@vexcms/*\" --filter \"create-vexcms\" build && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "2.30.0",

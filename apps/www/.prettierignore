@@ -1,0 +1,26 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.*
+
+# Build outputs
+.next
+out
+dist
+build
+
+# Generated files
+convex/_generated
+
+# Package manager
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Environment
+.env*
+!.env.example
+
+# Misc
+.DS_Store
+*.pem
