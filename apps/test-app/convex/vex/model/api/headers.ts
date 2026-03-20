@@ -8,20 +8,20 @@ import type { CollectionKind, VexField } from "@vexcms/core"
 
 export async function getDocument(props: {
   ctx: QueryCtx
-  documentId: Id<"posts">
+  documentId: Id<"headers">
   preview?: boolean
-}): Promise<Doc<"posts"> | null> {
+}): Promise<Doc<"headers"> | null> {
   const doc = await props.ctx.db.get(props.documentId)
   if (!doc) return null
 
   if (props.preview) {
     const snapshot = await getPreviewSnapshot({
       ctx: props.ctx,
-      collection: "posts",
+      collection: "headers",
       documentId: props.documentId,
     })
     if (snapshot) {
-      return { ...doc, ...snapshot } as Doc<"posts">
+      return { ...doc, ...snapshot } as Doc<"headers">
     }
   }
 
@@ -34,8 +34,8 @@ export async function listDocuments(props: {
   order?: "asc" | "desc"
 }) {
   const q = props.order === "desc"
-    ? props.ctx.db.query("posts").order("desc")
-    : props.ctx.db.query("posts")
+    ? props.ctx.db.query("headers").order("desc")
+    : props.ctx.db.query("headers")
   return await q.paginate(props.paginationOpts)
 }
 
@@ -44,11 +44,11 @@ export async function createDocument(props: {
   ctx: MutationCtx
   fields: unknown
   kind: CollectionKind
-}): Promise<Id<"posts">> {
+}): Promise<Id<"headers">> {
   if (props.kind === "global") {
-    const existing = await props.ctx.db.query("posts").first()
+    const existing = await props.ctx.db.query("headers").first()
     if (existing) {
-      throw new ConvexError(`Global "posts" already exists. Globals can only have one document.`)
+      throw new ConvexError(`Global "headers" already exists. Globals can only have one document.`)
     }
   }
 
@@ -60,34 +60,34 @@ export async function createDocument(props: {
 
   const data = { ...parsed.data }
   data.vex_status ??= "published"
-  return await props.ctx.db.insert("posts", data as WithoutSystemFields<Doc<"posts">>)
+  return await props.ctx.db.insert("headers", data as WithoutSystemFields<Doc<"headers">>)
 }
 
 export async function updateDocument(props: {
   collectionFields: Record<string, VexField>
   ctx: MutationCtx
-  documentId: Id<"posts">
+  documentId: Id<"headers">
   fields: unknown
-}): Promise<Id<"posts">> {
+}): Promise<Id<"headers">> {
   const schema = generateFormSchema({ fields: props.collectionFields }).partial()
   const parsed = schema.safeParse(props.fields)
   if (!parsed.success) {
     throw new ConvexError({ message: "Validation failed", errors: parsed.error.flatten() })
   }
 
-  await props.ctx.db.patch(props.documentId, parsed.data as Partial<Doc<"posts">>)
+  await props.ctx.db.patch(props.documentId, parsed.data as Partial<Doc<"headers">>)
   return props.documentId
 }
 
 export async function deleteDocument(props: {
   ctx: MutationCtx
-  documentId: Id<"posts">
+  documentId: Id<"headers">
   kind: CollectionKind
 }): Promise<void> {
   if (props.kind === "global") {
     const existing = await props.ctx.db.get(props.documentId)
     if (!existing) {
-      throw new ConvexError(`Global "posts" document not found. Cannot delete a non-existent global.`)
+      throw new ConvexError(`Global "headers" document not found. Cannot delete a non-existent global.`)
     }
   }
 

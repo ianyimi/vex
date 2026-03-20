@@ -7,9 +7,9 @@ import type { QueryCtx, MutationCtx } from "../../_generated/server"
 import { hasPermission, findCollectionBySlug } from "@vexcms/core"
 import { getUser } from "../auth"
 import vexConfig from "../../../vex.config"
-import { getDocument, listDocuments, createDocument, updateDocument, deleteDocument } from "../model/api/categories"
+import { getDocument, listDocuments, createDocument, updateDocument, deleteDocument } from "../model/api/pages"
 
-const SLUG = "categories" as const
+const SLUG = "pages" as const
 
 async function requireAuth(ctx: QueryCtx | MutationCtx) {
   const auth = await getUser(ctx)
@@ -19,7 +19,7 @@ async function requireAuth(ctx: QueryCtx | MutationCtx) {
 
 export const get = query({
   args: {
-    id: v.id("categories"),
+    id: v.id("pages"),
     _vexDrafts: v.optional(v.union(v.literal("snapshot"), v.boolean())),
   },
   handler: async (ctx, args) => {
@@ -97,7 +97,7 @@ export const create = mutation({
 })
 
 export const update = mutation({
-  args: { id: v.id("categories"), fields: v.any() },
+  args: { id: v.id("pages"), fields: v.any() },
   handler: async (ctx, args) => {
     const { user, roles } = await requireAuth(ctx)
     hasPermission({
@@ -120,7 +120,7 @@ export const update = mutation({
 })
 
 export const remove = mutation({
-  args: { id: v.id("categories") },
+  args: { id: v.id("pages") },
   handler: async (ctx, args) => {
     const { user, roles } = await requireAuth(ctx)
     hasPermission({

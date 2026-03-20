@@ -12,6 +12,11 @@ export const TABLE_SLUG_POSTS = "posts" as const
 export const TABLE_SLUG_CATEGORIES = "categories" as const
 export const TABLE_SLUG_ARTICLES = "articles" as const
 
+export const TABLE_SLUG_PAGES = "pages" as const
+export const TABLE_SLUG_HEADERS = "headers" as const
+export const TABLE_SLUG_FOOTERS = "footers" as const
+export const TABLE_SLUG_THEMES = "themes" as const
+
 export const AUTH_PROVIDERS = {
   apple: "apple",
   atlassian: "atlassian",

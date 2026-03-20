@@ -25,9 +25,17 @@ import {
   verification,
   media,
   vex_versions,
+  headers,
+  footers,
+  pages,
+  themes,
 } from "./vex.schema"
 
 export default defineSchema({
+  headers,
+  footers,
+  pages,
+  themes,
   media,
   apikey,
   [TABLE_SLUG_ARTICLES]: articles,

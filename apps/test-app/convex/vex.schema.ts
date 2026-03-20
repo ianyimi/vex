@@ -79,6 +79,46 @@ export const categories = defineTable({
   .index("by_name", ["name"])
   .searchIndex("search_name", { searchField: "name" })
 
+export const headers = defineTable({
+  name: v.string(),
+  logoText: v.optional(v.string()),
+  logoUrl: v.optional(v.id("media")),
+  sticky: v.optional(v.boolean()),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+})
+  .index("by_name", ["name"])
+  .searchIndex("search_name", { searchField: "name" })
+
+export const footers = defineTable({
+  name: v.string(),
+  content: v.optional(v.any()),
+  copyright: v.optional(v.string()),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+})
+  .index("by_name", ["name"])
+  .searchIndex("search_name", { searchField: "name" })
+
+export const pages = defineTable({
+  slug: v.string(),
+  content: v.optional(v.any()),
+  status: v.union(v.literal("draft"), v.literal("published")),
+  title: v.string(),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+})
+  .index("by_title", ["title"])
+  .searchIndex("search_title", { searchField: "title" })
+
+export const themes = defineTable({
+  name: v.string(),
+  backgroundColor: v.optional(v.string()),
+  fontFamily: v.optional(v.string()),
+  primaryColor: v.optional(v.string()),
+  secondaryColor: v.optional(v.string()),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+})
+  .index("by_name", ["name"])
+  .searchIndex("search_name", { searchField: "name" })
+
 /**
  * MEDIA COLLECTIONS
  **/

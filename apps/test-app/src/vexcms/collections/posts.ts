@@ -6,7 +6,6 @@ import {
   richtext,
   select,
   text,
-  ui,
 } from "@vexcms/core"
 
 import ColorCell from "~/components/admin/ColorCell"
@@ -15,11 +14,11 @@ import { TABLE_SLUG_MEDIA, TABLE_SLUG_POSTS } from "~/db/constants"
 
 export const newBlock = defineBlock({
   slug: `new-block`,
-  interfaceName: "NewBlock",
   fields: {
     subtitle: text({ label: "SubTitle" }),
     title: text({ label: "Title" }),
   },
+  interfaceName: "NewBlock",
   label: "New Block",
 })
 

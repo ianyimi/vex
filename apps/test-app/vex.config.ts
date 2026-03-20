@@ -2,7 +2,17 @@ import { defineConfig } from "@vexcms/core"
 import { convexFileStorage } from "@vexcms/file-storage-convex"
 
 import { auth } from "~/vexcms/auth"
-import { articles, categories, media, posts, users } from "~/vexcms/collections"
+import {
+  articles,
+  categories,
+  footers,
+  headers,
+  media,
+  pages,
+  posts,
+  themes,
+  users,
+} from "~/vexcms/collections"
 
 export default defineConfig({
   admin: {
@@ -17,7 +27,7 @@ export default defineConfig({
   },
   auth,
   basePath: "/admin",
-  collections: [articles, posts, users, categories],
+  collections: [articles, posts, users, categories, headers, footers, pages, themes],
   media: {
     collections: [media],
     storageAdapter: convexFileStorage(),

@@ -78,6 +78,58 @@ export interface Categories {
   sortOrder?: number
 }
 
+export interface Headers {
+  _id: Id<"headers">
+  _creationTime: number
+  /** Name */
+  name: string
+  /** Logo Text */
+  logoText?: string
+  /** Logo URL */
+  logoUrl?: Id<"media">
+  /** Sticky Header */
+  sticky?: boolean
+}
+
+export interface Footers {
+  _id: Id<"footers">
+  _creationTime: number
+  /** Name */
+  name: string
+  /** Content */
+  content?: any
+  /** Copyright Text */
+  copyright?: string
+}
+
+export interface Pages {
+  _id: Id<"pages">
+  _creationTime: number
+  /** Slug */
+  slug: string
+  /** Content */
+  content?: any
+  /** Status */
+  status: "draft" | "published"
+  /** Title */
+  title: string
+}
+
+export interface Themes {
+  _id: Id<"themes">
+  _creationTime: number
+  /** Name */
+  name: string
+  /** Background Color */
+  backgroundColor?: string
+  /** Font Family */
+  fontFamily?: string
+  /** Primary Color */
+  primaryColor?: string
+  /** Secondary Color */
+  secondaryColor?: string
+}
+
 export interface Session {
   _id: Id<"session">
   _creationTime: number
@@ -169,10 +221,14 @@ export interface VexCollectionTypes {
   apikey: Apikey
   articles: Articles
   categories: Categories
+  footers: Footers
+  headers: Headers
   jwks: Jwks
   media: Media
+  pages: Pages
   posts: Posts
   session: Session
+  themes: Themes
   user: User
   verification: Verification
 }
