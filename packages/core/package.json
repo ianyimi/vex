@@ -33,6 +33,7 @@
   "devDependencies": {
     "@tanstack/react-table": "catalog:",
     "@types/node": "^20.19.33",
+    "@types/react": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "convex": "catalog:",

@@ -39,6 +39,7 @@
     "react-dom": ">=18.0.0"
   },
   "devDependencies": {
+    "@types/node": "^25.5.0",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vexcms/tsconfig": "workspace:*",

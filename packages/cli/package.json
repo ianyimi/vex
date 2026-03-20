@@ -32,6 +32,7 @@
     "convex": ">=1.0.0"
   },
   "devDependencies": {
+    "@types/node": "^25.5.0",
     "@vexcms/core": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",
     "tsup": "catalog:",
