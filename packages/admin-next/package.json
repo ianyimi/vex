@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@vexcms/core": "workspace:*",
-    "@vexcms/ui": "workspace:*"
+    "@vexcms/ui": "workspace:*",
+    "lucide-react": "catalog:"
   },
   "peerDependencies": {
     "@convex-dev/react-query": "catalog:",
@@ -30,7 +31,6 @@
     "@tanstack/react-table": "catalog:",
     "convex": "catalog:",
     "next": ">=14.0.0",
-    "nuqs": ">=2.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
     "zod": "^3.24.0"
