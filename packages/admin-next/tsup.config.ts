@@ -7,7 +7,7 @@ export default defineConfig(({ watch }) => ({
   dts: true,
   sourcemap: true,
   clean: !watch,
-  external: ["react", "react-dom", "next", "nuqs"],
+  external: ["react", "react-dom", "next", "nuqs", "lucide-react"],
   banner: {
     // Preserve "use client" directives in output
     js: '"use client";',
