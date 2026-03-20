@@ -10,9 +10,13 @@
     "test": "turbo run test",
     "coverage": "turbo run coverage",
     "test:e2e": "turbo run test:e2e",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "changeset": "changeset",
+    "version:packages": "changeset version",
+    "release": "pnpm build && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "2.30.0",
     "@vexcms/tsconfig": "workspace:*",
     "prettier": "catalog:",
     "turbo": "^2.8.10",
