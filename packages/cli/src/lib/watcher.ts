@@ -25,7 +25,8 @@ export function createWatcher(paths: string[]): Watcher {
 
   return {
     on(event, cb) {
-      watcher.on(event, cb);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      watcher.on(event, cb as any);
     },
 
     updatePaths(newPaths: string[]) {
