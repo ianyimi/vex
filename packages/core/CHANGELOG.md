@@ -1,5 +1,11 @@
 # @vexcms/core
 
+## 0.0.8
+
+### Patch Changes
+
+- f8a86a1: lock @convex-dev/better-auth package to 0.10.11 since 0.10.13 doesnt work
+
 ## 0.0.7
 
 ### Patch Changes
