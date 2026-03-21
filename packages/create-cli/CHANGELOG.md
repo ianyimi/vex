@@ -1,5 +1,11 @@
 # create-vexcms
 
+## 0.0.4
+
+### Patch Changes
+
+- 91be00e: update package readmes, add installation and getting started instructions, add version selection and port specification for create vexcms package
+
 ## 0.0.3
 
 ### Patch Changes
