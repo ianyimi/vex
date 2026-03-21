@@ -73,25 +73,43 @@ export async function copyTemplate(framework: string, targetPath: string): Promi
   }
 
   // Copy all files from template to target directory
+  // Skip files prefixed with _ that need renaming (npm strips dotfiles from packages)
   await fs.copy(templatePath, targetPath, {
     overwrite: false,
     errorOnExist: false,
     filter: (src) => {
-      // Skip copying _gitignore here, we'll handle it separately
-      return !src.endsWith('_gitignore');
+      const basename = src.split('/').pop() ?? '';
+      // Skip files that need renaming from _name to .name
+      const skipFiles = ['_gitignore', '_env.example', '_prettierrc', '_prettierignore'];
+      return !skipFiles.includes(basename);
     },
   });
 
-  // Rename _gitignore to .gitignore
+  // Rename _gitignore → .gitignore
   // npm excludes .gitignore files from published packages, so we store them as _gitignore
   const sourceGitignore = join(templatePath, '_gitignore');
   const targetGitignore = join(targetPath, '.gitignore');
-
   if (await fs.pathExists(sourceGitignore)) {
     await fs.copy(sourceGitignore, targetGitignore, {
       overwrite: false,
       errorOnExist: false,
     });
+  }
+
+  // Rename all _dotfile → .dotfile
+  // npm strips dotfiles from published packages, so we store them with _ prefix
+  const dotfileRenames: [string, string][] = [
+    ['_env.example', '.env.example'],
+    ['_prettierrc', '.prettierrc'],
+    ['_prettierignore', '.prettierignore'],
+  ];
+
+  for (const [from, to] of dotfileRenames) {
+    const source = join(templatePath, from);
+    const target = join(targetPath, to);
+    if (await fs.pathExists(source)) {
+      await fs.copy(source, target, { overwrite: false, errorOnExist: false });
+    }
   }
 }
 

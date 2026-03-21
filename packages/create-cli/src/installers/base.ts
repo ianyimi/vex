@@ -127,9 +127,9 @@ export abstract class VexFrameworkInstaller {
     }
     await fs.writeJson(pkgPath, pkg, { spaces: 2 });
 
-    // Create .env.local with the site URL
+    // Create .env.local with site URL and empty auth secret
     const envLocalPath = path.join(this.targetPath, '.env.local');
-    const envContent = `NEXT_PUBLIC_SITE_URL=http://localhost:${port}\n`;
+    const envContent = `NEXT_PUBLIC_SITE_URL=http://localhost:${port}\nBETTER_AUTH_SECRET=""\n`;
     await fs.writeFile(envLocalPath, envContent);
   }
 
