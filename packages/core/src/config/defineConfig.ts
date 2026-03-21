@@ -16,6 +16,9 @@ export const BASE_VEX_CONFIG: Omit<VexConfig, "auth"> = {
     sidebar: {
       hideGlobals: false,
     },
+    onboarding: {
+      disabled: false,
+    },
   },
   schema: {
     outputPath: "/convex/vex.schema.ts",
@@ -62,6 +65,7 @@ function resolveMediaCollection(props: {
     tableName: props.mediaCollection.tableName,
     labels: props.mediaCollection.labels,
     admin: adminConfig as any,
+    _isMedia: true,
   };
 }
 
@@ -80,6 +84,10 @@ export function defineConfig(vexConfig: VexConfigInput): VexConfig {
       sidebar: {
         ...BASE_VEX_CONFIG.admin.sidebar,
         ...vexConfig.admin?.sidebar,
+      },
+      onboarding: {
+        ...BASE_VEX_CONFIG.admin.onboarding,
+        ...vexConfig.admin?.onboarding,
       },
       livePreview: vexConfig.admin?.livePreview,
     },

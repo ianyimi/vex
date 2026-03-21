@@ -23,7 +23,9 @@ export type ExtractSlug<T> = T extends { slug: infer S extends string }
  * type K = ExtractFieldKeys<typeof posts>; // "title" | "slug" | "status" | "featured"
  */
 export type ExtractFieldKeys<T> = T extends VexCollection<infer TFields, infer TExtraKeys>
-  ? (keyof TFields & string) | (TExtraKeys & string)
+  ? T extends { _isMedia: true }
+    ? (keyof TFields & string) | (TExtraKeys & string) | DefaultMediaFieldKeys
+    : (keyof TFields & string) | (TExtraKeys & string)
   : T extends VexMediaCollection<infer TFields>
     ? (keyof TFields & string) | DefaultMediaFieldKeys
     : T extends VexGlobal<infer TFields>

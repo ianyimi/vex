@@ -20,15 +20,23 @@ export async function getNextVersionNumber<DataModel extends GenericDataModel>(p
   collection: string
   documentId: string
 }): Promise<number> {
-  const latest = await (props.ctx.db as any)
+  // Query all versions and find the highest version number.
+  // We can't just take the latest by createdAt because previewSnapshot
+  // entries have version: 0 and may have a later createdAt.
+  const allVersions = await (props.ctx.db as any)
     .query("vex_versions")
-    .withIndex("by_document_latest", (q: any) =>
+    .withIndex("by_document", (q: any) =>
       q.eq("collection", props.collection).eq("documentId", props.documentId),
     )
-    .order("desc")
-    .first()
+    .collect()
 
-  return latest ? (latest.version as number) + 1 : 1
+  let maxVersion = 0
+  for (const v of allVersions) {
+    const ver = v.version as number
+    if (ver > maxVersion) maxVersion = ver
+  }
+
+  return maxVersion + 1
 }
 
 /**
@@ -73,15 +81,27 @@ export async function getLatestVersion<DataModel extends GenericDataModel>(props
   collection: string
   documentId: string
 }): Promise<Record<string, unknown> | null> {
-  const latest = await (props.ctx.db as any)
+  // Get all versions and find the one with the highest version number,
+  // excluding previewSnapshot and autosave entries.
+  const allVersions = await (props.ctx.db as any)
     .query("vex_versions")
-    .withIndex("by_document_latest", (q: any) =>
+    .withIndex("by_document", (q: any) =>
       q.eq("collection", props.collection).eq("documentId", props.documentId),
     )
-    .order("desc")
-    .first()
+    .collect()
 
-  return latest as Record<string, unknown> | null
+  let latest: Record<string, unknown> | null = null
+  let maxVersion = -1
+  for (const v of allVersions) {
+    if (v.status === "previewSnapshot" || v.status === "autosave") continue
+    const ver = v.version as number
+    if (ver > maxVersion) {
+      maxVersion = ver
+      latest = v as Record<string, unknown>
+    }
+  }
+
+  return latest
 }
 
 /**
@@ -125,7 +145,7 @@ export async function listVersions<DataModel extends GenericDataModel>(props: {
     .take(props.limit ?? 50)
 
   return (versions as Record<string, unknown>[])
-    .filter((v) => !v.isAutosave)
+    .filter((v) => !v.isAutosave && v.status !== "previewSnapshot")
     .map((v) => ({
       _id: v._id,
       version: v.version,

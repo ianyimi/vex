@@ -9,6 +9,7 @@ import {
   pages,
   siteSettings,
   themes,
+  users,
 } from "~/vexcms/collections"
 
 export default defineConfig({
@@ -23,7 +24,7 @@ export default defineConfig({
   },
   auth,
   basePath: "/admin",
-  collections: [pages, headers, footers, themes, siteSettings],
+  collections: [pages, headers, footers, themes, siteSettings, users],
   media: {
     collections: [media],
     storageAdapter: convexFileStorage(),

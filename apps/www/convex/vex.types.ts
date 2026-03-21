@@ -5,14 +5,15 @@ import type { Id } from "./_generated/dataModel"
 export interface Pages {
   _id: Id<"pages">
   _creationTime: number
+  vex_status?: "draft" | "published"
+  vex_version?: number
+  vex_publishedAt?: number
+  /** Title */
+  title: string
   /** Slug */
   slug: string
   /** Content */
   content?: any
-  /** Status */
-  status: "draft" | "published"
-  /** Title */
-  title: string
 }
 
 export interface Headers {
@@ -68,17 +69,21 @@ export interface SiteSettings {
 export interface User {
   _id: Id<"user">
   _creationTime: number
+  /** Name */
   name: string
   email: string
   emailVerified: boolean
+  /** Image */
   image?: string
   createdAt: number
   updatedAt: number
-  role: string[]
+  role: ("admin" | "editor" | "user")[]
   banned?: boolean
   banReason?: string
   banExpires?: number
   userId?: string
+  /** Onboarding Complete */
+  vex_onboarding_complete?: boolean
 }
 
 export interface Session {

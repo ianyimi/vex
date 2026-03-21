@@ -220,6 +220,12 @@ export interface VexCollection<
    */
   generateApi?: boolean;
   /**
+   * Internal marker set by resolveMediaCollection().
+   * When true, ExtractFieldKeys includes DefaultMediaFieldKeys.
+   * @internal — do not set manually.
+   */
+  _isMedia?: true;
+  /**
    * TypeScript interface name used in generated `vex.types.ts`.
    * If not set, auto-generated from slug via PascalCase conversion.
    * @example "BlogPost"

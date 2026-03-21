@@ -44,7 +44,7 @@ export {
   deletePreviewSnapshot,
   getPreviewSnapshot,
 } from "./convex/previewSnapshot";
-export { vexQuery, type VexQueryCtx, type VexDraftsMode } from "./convex/vexQuery";
+export { vexQuery, createVexQuery, type VexQueryCtx, type VexDraftsMode } from "./convex/vexQuery";
 
 // Convex model functions — used by generated per-collection query files
 export {

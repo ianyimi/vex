@@ -29,8 +29,8 @@ describe("fieldToTypeString", () => {
     expect(fieldToTypeString({ field: json() })).toBe("Record<string, unknown>");
   });
 
-  it("richtext → any", () => {
-    expect(fieldToTypeString({ field: richtext() })).toBe("any");
+  it("richtext → RichTextDocument", () => {
+    expect(fieldToTypeString({ field: richtext() })).toBe("RichTextDocument");
   });
 
   it("select single → literal union", () => {

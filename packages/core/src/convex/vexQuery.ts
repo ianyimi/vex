@@ -1,7 +1,9 @@
 import {
   queryGeneric,
+  type QueryBuilder,
   type GenericQueryCtx,
   type GenericDataModel,
+  type RegisteredQuery,
 } from "convex/server";
 import { v, type ObjectType, type PropertyValidators } from "convex/values";
 
@@ -30,47 +32,91 @@ export interface VexQueryCtx<DataModel extends GenericDataModel = GenericDataMod
   drafts: VexDraftsMode;
 }
 
+function wrapHandler<DataModel extends GenericDataModel, Args extends PropertyValidators, Output>(
+  handler: (ctx: VexQueryCtx<DataModel>, args: ObjectType<Args>) => Output | Promise<Output>,
+) {
+  return async (ctx: GenericQueryCtx<any>, args: any): Promise<Awaited<Output>> => {
+    const { _vexDrafts, ...userArgs } = args;
+
+    const drafts: VexDraftsMode = _vexDrafts !== undefined
+      ? (_vexDrafts as VexDraftsMode)
+      : "snapshot";
+
+    const vexCtx = Object.assign(
+      Object.create(Object.getPrototypeOf(ctx)),
+      ctx,
+      { drafts },
+    ) as VexQueryCtx<DataModel>;
+
+    return handler(vexCtx, userArgs as ObjectType<Args>) as Promise<Awaited<Output>>;
+  };
+}
+
 /**
- * Creates a Convex query with built-in draft/snapshot content support.
+ * Create a typed vexQuery builder from your project's query builder.
  *
- * Wraps Convex's `queryGeneric()` to:
- * 1. Automatically add an optional `_vexDrafts` arg (string | boolean)
- * 2. Pass an extended context with `drafts` mode to the handler
- * 3. Preserve full type safety for args and return types
- *
- * The handler receives a `VexQueryCtx` which includes `ctx.drafts`.
- * Use this to decide what content to return.
+ * Call this once in your project to get a `vexQuery` function that
+ * preserves full return type inference from your DataModel.
  *
  * @example
  * ```ts
- * import { vexQuery, getPreviewSnapshot } from "@vexcms/core";
- * import { v } from "convex/values";
+ * // convex/vex/helpers.ts
+ * import { createVexQuery } from "@vexcms/core";
+ * import { query } from "../_generated/server";
  *
- * export const getPost = vexQuery({
+ * export const vexQuery = createVexQuery(query);
+ * ```
+ *
+ * Then use it in your query files:
+ * ```ts
+ * // convex/pages.ts
+ * import { vexQuery } from "./vex/helpers";
+ * import { getPreviewSnapshot } from "@vexcms/core";
+ *
+ * export const getBySlug = vexQuery({
  *   args: { slug: v.string() },
  *   handler: async (ctx, args) => {
- *     const post = await ctx.db
- *       .query("posts")
+ *     const page = await ctx.db
+ *       .query("pages")
  *       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
  *       .first();
- *
- *     if (!post) return null;
- *
+ *     if (!page) return null;
  *     if (ctx.drafts === "snapshot") {
- *       const snapshot = await getPreviewSnapshot({
- *         ctx,
- *         collection: "posts",
- *         documentId: post._id,
- *       });
- *       if (snapshot) {
- *         return { ...post, ...snapshot };
- *       }
+ *       const snapshot = await getPreviewSnapshot({ ctx, collection: "pages", documentId: page._id });
+ *       if (snapshot) return { ...page, ...snapshot };
  *     }
- *
- *     return post;
+ *     return page;
  *   },
  * });
  * ```
+ */
+export function createVexQuery<DataModel extends GenericDataModel>(
+  _queryBuilder: QueryBuilder<DataModel, "public">,
+) {
+  return <Args extends PropertyValidators, Output>(props: {
+    args: Args;
+    handler: (
+      ctx: VexQueryCtx<DataModel>,
+      args: ObjectType<Args>,
+    ) => Output | Promise<Output>;
+  }): RegisteredQuery<"public", ObjectType<Args & { _vexDrafts: typeof v.optional<any> }>, Awaited<Output>> => {
+    const mergedArgs = {
+      ...props.args,
+      _vexDrafts: v.optional(v.union(v.literal("snapshot"), v.boolean())),
+    };
+
+    return queryGeneric({
+      args: mergedArgs,
+      handler: wrapHandler<DataModel, Args, Output>(props.handler),
+    }) as RegisteredQuery<"public", ObjectType<Args & { _vexDrafts: typeof v.optional<any> }>, Awaited<Output>>;
+  };
+}
+
+/**
+ * Generic vexQuery for use without project-specific types.
+ * Prefer `createVexQuery(query)` for full type inference.
+ *
+ * @deprecated Use `createVexQuery(query)` instead for proper return type inference.
  */
 export function vexQuery<Args extends PropertyValidators, Output>(props: {
   args: Args;
@@ -78,7 +124,7 @@ export function vexQuery<Args extends PropertyValidators, Output>(props: {
     ctx: VexQueryCtx,
     args: ObjectType<Args>,
   ) => Output | Promise<Output>;
-}) {
+}): RegisteredQuery<"public", ObjectType<Args & { _vexDrafts: typeof v.optional<any> }>, Awaited<Output>> {
   const mergedArgs = {
     ...props.args,
     _vexDrafts: v.optional(v.union(v.literal("snapshot"), v.boolean())),
@@ -86,18 +132,6 @@ export function vexQuery<Args extends PropertyValidators, Output>(props: {
 
   return queryGeneric({
     args: mergedArgs,
-    handler: async (ctx: GenericQueryCtx<any>, args: any) => {
-      const { _vexDrafts, ...userArgs } = args;
-
-      const drafts: VexDraftsMode = _vexDrafts !== undefined
-        ? (_vexDrafts as VexDraftsMode)
-        : "snapshot";
-
-      const vexCtx: VexQueryCtx = Object.assign(Object.create(Object.getPrototypeOf(ctx)), ctx, {
-        drafts,
-      });
-
-      return props.handler(vexCtx, userArgs as ObjectType<Args>);
-    },
-  });
+    handler: wrapHandler(props.handler),
+  }) as RegisteredQuery<"public", ObjectType<Args & { _vexDrafts: typeof v.optional<any> }>, Awaited<Output>>;
 }

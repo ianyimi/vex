@@ -239,7 +239,47 @@ export const publish = mutation({
       })
     }
 
-    // Create the published version record
+    // If the latest version is already published with the same snapshot,
+    // don't create a duplicate — just ensure the main doc is up to date
+    if (
+      latestVersion &&
+      (latestVersion as any).status === "published" &&
+      JSON.stringify((latestVersion as any).snapshot) === JSON.stringify(snapshot)
+    ) {
+      const existingVersion = (latestVersion as any).version as number
+      // Ensure main doc reflects published state
+      if ((doc as any).vex_status !== "published") {
+        await (ctx.db as any).patch(documentId as any, {
+          vex_status: "published",
+          vex_publishedAt: Date.now(),
+          vex_version: existingVersion,
+        })
+      }
+      return { version: existingVersion }
+    }
+
+    // If the latest version is a draft with the same snapshot, promote it
+    // to published instead of creating a new version entry
+    if (
+      latestVersion &&
+      (latestVersion as any).status === "draft" &&
+      JSON.stringify((latestVersion as any).snapshot) === JSON.stringify(snapshot)
+    ) {
+      const existingVersion = (latestVersion as any).version as number
+      await (ctx.db as any).patch((latestVersion as any)._id, {
+        status: "published",
+        createdAt: Date.now(),
+      })
+      await (ctx.db as any).patch(documentId as any, {
+        ...snapshot,
+        vex_status: "published",
+        vex_publishedAt: Date.now(),
+        vex_version: existingVersion,
+      })
+      return { version: existingVersion }
+    }
+
+    // Create a new published version record
     const { version } = await Versions.createVersion<DataModel>({
       ctx,
       collection: collectionSlug,
@@ -295,24 +335,25 @@ export const unpublish = mutation({
       throw new ConvexError("Document is not published")
     }
 
+    // Patch the main document status back to draft
     await (ctx.db as any).patch(documentId as any, {
       vex_status: "draft",
     })
 
-    const snapshot = extractUserFields({
-      document: doc as Record<string, unknown>,
-    })
-
-    const { version } = await Versions.createVersion<DataModel>({
+    // Patch the latest published version back to draft instead of creating a new one
+    const latestVersion = await Versions.getLatestVersion<DataModel>({
       ctx,
       collection: collectionSlug,
       documentId,
-      snapshot,
-      status: "draft",
-      createdBy: email,
     })
 
-    return { version }
+    if (latestVersion && (latestVersion as any).status === "published") {
+      await (ctx.db as any).patch((latestVersion as any)._id, {
+        status: "draft",
+      })
+    }
+
+    return { version: (latestVersion as any)?.version ?? 0 }
   },
 })
 
@@ -477,7 +518,9 @@ export const getDocumentForEdit = query({
       return {
         _id: mainDoc._id,
         ...(latestVersion.snapshot as Record<string, unknown>),
-        vex_status: (mainDoc as any).vex_status ?? "published",
+        // Use the latest version's status, not the main doc's — the main doc
+        // only updates on publish, but the latest version may be a draft
+        vex_status: (latestVersion as any).status ?? (mainDoc as any).vex_status ?? "draft",
         vex_version: latestVersion.version,
         vex_publishedAt: (mainDoc as any).vex_publishedAt,
         _creationTime: mainDoc._creationTime,

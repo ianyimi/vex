@@ -78,7 +78,7 @@ export function AdminPage({ config, path = [], renderRichTextField, livePreviewC
     }
     return (
       <Suspense fallback={<div className="p-6 text-muted-foreground">Loading...</div>}>
-        <CollectionsView config={config} collection={collection} />
+        <CollectionsView config={config} collection={collection} renderRichTextField={renderRichTextField} />
       </Suspense>
     );
   }

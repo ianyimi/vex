@@ -168,14 +168,18 @@ export function AppSidebar({
       {/*   <TeamSwitcher teams={data.teams} /> */}
       {/* </SidebarHeader> */}
       <SidebarContent>
-        <NavSection title="Collections" items={nav.collectionGroups} />
+        <div data-tour="sidebar-collections">
+          <NavSection title="Collections" items={nav.collectionGroups} />
+        </div>
         {(!config.admin.sidebar.hideGlobals || config.globals.length > 0) && (
           <NavSection title="Globals" items={nav.globalGroups} />
         )}
       </SidebarContent>
       {user && (
         <SidebarFooter>
-          <NavUser user={user} onImpersonate={onImpersonate} impersonatableUsers={impersonatableUsers} />
+          <div data-tour="user-menu">
+            <NavUser user={user} onImpersonate={onImpersonate} impersonatableUsers={impersonatableUsers} />
+          </div>
         </SidebarFooter>
       )}
       <SidebarRail />

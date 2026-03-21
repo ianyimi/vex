@@ -255,6 +255,35 @@ export abstract class VexFrameworkInstaller {
   }
 
   /**
+   * Configure the Better Auth organizations plugin.
+   * When enabled, replaces placeholders with organization import and plugin.
+   * When disabled, removes the placeholder lines.
+   */
+  protected async configureOrganizations(enabled: boolean): Promise<void> {
+    const pluginsPath = path.join(this.targetPath, 'convex/auth/plugins/index.ts');
+
+    if (!await fs.pathExists(pluginsPath)) return;
+
+    let content = await fs.readFile(pluginsPath, 'utf-8');
+
+    if (enabled) {
+      content = content.replace(
+        '// {{ORGANIZATIONS_IMPORT}}',
+        'import { organization } from "better-auth/plugins"'
+      );
+      content = content.replace(
+        '  // {{ORGANIZATIONS_PLUGIN}}',
+        '  organization(),'
+      );
+    } else {
+      content = content.replace(/.*\/\/ \{\{ORGANIZATIONS_IMPORT\}\}\n?/, '');
+      content = content.replace(/.*\/\/ \{\{ORGANIZATIONS_PLUGIN\}\}\n?/, '');
+    }
+
+    await fs.writeFile(pluginsPath, content);
+  }
+
+  /**
    * Main orchestration method for project initialization
    */
   async initProject(options: ProjectOptions): Promise<void> {
@@ -360,7 +389,22 @@ export abstract class VexFrameworkInstaller {
       throw error;
     }
 
-    // Step 9: Generate auth secret
+    // Step 9: Configure organizations plugin
+    const orgsSpinner = ora('Configuring organizations...').start();
+    try {
+      await this.configureOrganizations(options.orgs);
+      orgsSpinner.succeed(
+        options.orgs
+          ? 'Organizations plugin enabled'
+          : 'Organizations placeholders cleaned up'
+      );
+    } catch (error) {
+      orgsSpinner.fail('Failed to configure organizations');
+      throw error;
+    }
+
+    // Step 10: Generate auth secret
+    // (renumbered from Step 9 after organizations insertion)
     const secretSpinner = ora('Generating auth secret...').start();
     try {
       await this.writeAuthSecret();

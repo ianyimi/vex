@@ -11,6 +11,7 @@ function makeConfig(overrides: Partial<VexConfig> = {}): VexConfig {
     admin: {
       meta: { titleSuffix: "| Admin", favicon: "/favicon.ico" },
       sidebar: { hideGlobals: false },
+      onboarding: { disabled: false },
       user: "users",
     },
     auth: { collections: [], type: "betterAuth" as any } as any,

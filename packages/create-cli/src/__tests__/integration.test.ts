@@ -128,10 +128,13 @@ describe('template scaffold integration', () => {
       expect(fs.existsSync(path.join(targetDir, 'src/components/admin/ColorCell.tsx'))).toBe(false);
       expect(fs.existsSync(path.join(targetDir, 'src/components/admin/ColorField.tsx'))).toBe(false);
 
-      // No generated convex files
-      expect(fs.existsSync(path.join(targetDir, 'convex/vex'))).toBe(false);
+      // No generated schema/types files (vex dev generates these)
       expect(fs.existsSync(path.join(targetDir, 'convex/vex.schema.ts'))).toBe(false);
       expect(fs.existsSync(path.join(targetDir, 'convex/vex.types.ts'))).toBe(false);
+
+      // Static vex convex functions should be present
+      expect(fs.existsSync(path.join(targetDir, 'convex/vex/auth.ts'))).toBe(true);
+      expect(fs.existsSync(path.join(targetDir, 'convex/vex/firstUser.ts'))).toBe(true);
     });
   });
 
@@ -173,7 +176,7 @@ describe('template scaffold integration', () => {
       expect(vexConfig).toContain('themes');
       expect(vexConfig).toContain('siteSettings');
       // The top-level collections should not be empty (media.collections: [] is fine)
-      expect(vexConfig).toContain('collections: [pages, headers, footers, themes, siteSettings]');
+      expect(vexConfig).toContain('collections: [pages, headers, footers, themes, siteSettings, users]');
     });
 
     it('extends db/constants with site builder slugs', async () => {

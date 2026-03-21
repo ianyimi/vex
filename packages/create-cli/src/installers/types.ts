@@ -25,6 +25,7 @@ export interface ProjectOptions {
   projectDir: string
   framework: Framework
   bare: boolean
+  orgs: boolean
   emailPasswordAuth: boolean
   oauthProviders: string[]
   initGit: boolean

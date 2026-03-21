@@ -18,6 +18,11 @@ export interface AdminConfig {
   };
   /** Global live preview defaults */
   livePreview?: AdminLivePreviewConfig;
+  /** Onboarding tour configuration */
+  onboarding: {
+    /** Whether the onboarding tour is disabled. Default: false (tour enabled) */
+    disabled: boolean;
+  };
 }
 
 // =============================================================================
@@ -109,4 +114,20 @@ export interface AdminConfigInput {
    * Individual collections can override these breakpoints.
    */
   livePreview?: AdminLivePreviewConfig;
+  /**
+   * Onboarding tour configuration.
+   *
+   * Default:
+   * ```
+   * disabled: false
+   * ```
+   */
+  onboarding?: {
+    /**
+     * Disable the onboarding tour for all users.
+     *
+     * Default: `false`
+     */
+    disabled?: boolean;
+  };
 }

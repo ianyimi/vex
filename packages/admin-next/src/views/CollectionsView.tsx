@@ -56,9 +56,11 @@ function getStoredPageSize(): string {
 export default function CollectionsView({
   config,
   collection,
+  renderRichTextField,
 }: {
   config: ClientVexConfig;
   collection: VexCollection;
+  renderRichTextField?: (props: Record<string, any>) => React.ReactNode;
 }) {
   const router = useRouter();
 
@@ -372,7 +374,7 @@ export default function CollectionsView({
             </Button>
           )}
           {!disableCreate && (
-            <Button size="sm" onClick={() => setCreateNew(true)}>
+            <Button size="sm" onClick={() => setCreateNew(true)} data-tour="create-document">
               <Plus className="h-4 w-4" />
               Create {singularLabel}
             </Button>
@@ -394,32 +396,34 @@ export default function CollectionsView({
         </div>
       )}
 
-      <DataTable
-        columns={columnsWithActions}
-        data={documents as Record<string, unknown>[]}
-        basePath={config.basePath}
-        collectionSlug={collection.slug}
-        emptyMessage={
-          isSearching
-            ? "No matching documents."
-            : `No ${collection.labels?.plural?.toLowerCase() ?? "documents"} yet.`
-        }
-        canLoadMore={canLoadMore}
-        pageSize={pageSize}
-        pageIndex={isSearching ? pageIndex : tablePageIndex}
-        displayPageIndex={isSearching ? undefined : pageIndex}
-        onPageChange={(page: number) => {
-          const resolved = handlePageChange(page);
-          setPageIndex(resolved);
-        }}
-        onPageSizeChange={handlePageSizeChange}
-        totalCount={isSearching ? undefined : totalCount}
-        linkComponent={Link}
-        enableRowSelection={!disableDelete}
-        rowSelection={rowSelection}
-        onRowSelectionChange={setRowSelection}
-        isLoading={isLoading}
-      />
+      <div data-tour="document-list">
+        <DataTable
+          columns={columnsWithActions}
+          data={documents as Record<string, unknown>[]}
+          basePath={config.basePath}
+          collectionSlug={collection.slug}
+          emptyMessage={
+            isSearching
+              ? "No matching documents."
+              : `No ${collection.labels?.plural?.toLowerCase() ?? "documents"} yet.`
+          }
+          canLoadMore={canLoadMore}
+          pageSize={pageSize}
+          pageIndex={isSearching ? pageIndex : tablePageIndex}
+          displayPageIndex={isSearching ? undefined : pageIndex}
+          onPageChange={(page: number) => {
+            const resolved = handlePageChange(page);
+            setPageIndex(resolved);
+          }}
+          onPageSizeChange={handlePageSizeChange}
+          totalCount={isSearching ? undefined : totalCount}
+          linkComponent={Link}
+          enableRowSelection={!disableDelete}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
+          isLoading={isLoading}
+        />
+      </div>
 
       {/* Create Document Dialog */}
       {!disableCreate && (
@@ -427,6 +431,8 @@ export default function CollectionsView({
           open={createNew}
           onClose={() => setCreateNew(false)}
           collection={collection}
+          config={config}
+          renderRichTextField={renderRichTextField}
           onCreated={({ documentId }) => {
             setCreateNew(false);
             router.push(`${config.basePath}/${collection.slug}/${documentId}`);

@@ -125,6 +125,19 @@ export default tseslint.config(
     },
   },
   {
+    // Disable object sorting in VEX collection/config files — field order determines
+    // the order of fields in admin panel forms
+    files: [
+      "**/vexcms/collections/**/*.ts",
+      "**/vexcms/access.*",
+      "**/vex.config.*",
+      "**/db/constants/**/*.ts",
+    ],
+    rules: {
+      "perfectionist/sort-objects": "off",
+    },
+  },
+  {
     files: ["**/src/convex/**/*.ts"],
     plugins: {
       "@convex-dev": convexPlugin,

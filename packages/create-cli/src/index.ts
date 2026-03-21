@@ -7,7 +7,7 @@
  * Forked from create-z3-app.
  *
  * Usage:
- *   pnpm create vexcms@latest [project-name] [--bare]
+ *   pnpm create vexcms@latest [project-name] [--bare] [--orgs]
  */
 
 import { Command } from 'commander';
@@ -28,11 +28,12 @@ const program = new Command()
   .description('Scaffold a new VEX CMS project')
   .argument('[project-name]', 'Project directory name')
   .option('--bare', 'Skip marketing site collections, scaffold empty project')
+  .option('--orgs', 'Enable multi-tenant organizations')
   .version('0.0.2')
   .parse();
 
 const args = program.args;
-const opts = program.opts<{ bare?: boolean }>();
+const opts = program.opts<{ bare?: boolean; orgs?: boolean }>();
 
 async function main() {
   console.log();
@@ -131,13 +132,19 @@ async function main() {
     choices: allProviderChoices,
   });
 
-  // 5. Git init
+  // 5. Organizations
+  const orgs = opts.orgs ?? await confirm({
+    message: 'Enable multi-tenant (organizations)?',
+    default: false,
+  });
+
+  // 6. Git init
   const initGit = await confirm({
     message: 'Initialize a Git repository?',
     default: true,
   });
 
-  // 6. Install dependencies
+  // 7. Install dependencies
   const installDependencies = await confirm({
     message: 'Install dependencies?',
     default: false,
@@ -149,6 +156,7 @@ async function main() {
     projectDir: targetDir,
     framework,
     bare,
+    orgs,
     emailPasswordAuth,
     oauthProviders,
     initGit,

@@ -26,7 +26,7 @@ export function fieldToTypeString(props: {
     case "json":
       return "Record<string, unknown>";
     case "richtext":
-      return "any";
+      return "RichTextDocument";
     case "ui":
       return "never";
 

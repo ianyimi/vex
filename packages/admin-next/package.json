@@ -22,6 +22,7 @@
   "dependencies": {
     "@vexcms/core": "workspace:*",
     "@vexcms/ui": "workspace:*",
+    "driver.js": "^1.3.1",
     "lucide-react": "catalog:"
   },
   "peerDependencies": {

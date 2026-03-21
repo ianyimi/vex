@@ -86,6 +86,7 @@ export default function CollectionEditView({
   const publishMutation = useMutation(anyApi.vex.versions.publish);
   const unpublishMutation = useMutation(anyApi.vex.versions.unpublish);
   const deleteSnapshotMutation = useMutation(anyApi.vex.previewSnapshot.remove);
+  const upsertSnapshotMutation = useMutation(anyApi.vex.previewSnapshot.upsert);
 
   // Live preview state — persisted in URL so it survives page refresh
   const hasPreview = !!collection.admin?.livePreview;
@@ -101,6 +102,9 @@ export default function CollectionEditView({
   // Ref to get current form values for publish
   const getFormValuesRef = useRef<(() => Record<string, unknown>) | null>(null);
   const [isFormDirty, setIsFormDirty] = useState(false);
+
+  // Counter to force form remount on reset
+  const [formResetKey, setFormResetKey] = useState(0);
 
   // Restored version state — when a user picks a version from history,
   // we store its snapshot here to override the form's default values.
@@ -208,12 +212,12 @@ export default function CollectionEditView({
           fields: changedFields,
           restoredFrom: restoredFromVersion ?? undefined,
         });
-        // Clear restored state — the reactive getDocumentForEdit query
-        // will update with the new version's snapshot
-        if (restoredFromVersion !== null) {
-          setRestoredSnapshot(null);
-          setRestoredFromVersion(null);
-        }
+        // Clear restored state and mark form as clean
+        setRestoredSnapshot(null);
+        setRestoredFromVersion(null);
+        setIsFormDirty(false);
+        // Remount form so defaultValues sync with the new latest version
+        setFormResetKey((k) => k + 1);
       } else {
         await updateDocument({
           collectionSlug: collection.slug,
@@ -221,12 +225,13 @@ export default function CollectionEditView({
           fields: changedFields,
         });
       }
-      // Clean up preview snapshot after successful save
+      // Clean up transient preview snapshot after save — getPreviewSnapshot
+      // will now fall back to the latest version in vex_versions
       if (hasPreview) {
         deleteSnapshotMutation({
           collectionSlug: collection.slug,
           documentId: documentID,
-        }).catch(() => {}); // best-effort cleanup
+        }).catch(() => {});
       }
     } finally {
       setIsSaving(false);
@@ -243,10 +248,10 @@ export default function CollectionEditView({
         documentId: documentID,
         fields: currentFields,
       });
-      if (restoredFromVersion !== null) {
-        setRestoredSnapshot(null);
-        setRestoredFromVersion(null);
-      }
+      setRestoredSnapshot(null);
+      setRestoredFromVersion(null);
+      setIsFormDirty(false);
+      setFormResetKey((k) => k + 1);
       // Clean up preview snapshot after publish
       if (hasPreview) {
         deleteSnapshotMutation({
@@ -334,7 +339,14 @@ export default function CollectionEditView({
           </Breadcrumb>
           <div className="flex items-center gap-2">
             {isVersioned && document && typeof document.vex_status === "string" && (
-              <StatusBadge status={document.vex_status} />
+              <StatusBadge
+                status={
+                  // Show "published" only when the document is published AND form has no changes
+                  document.vex_status === "published" && !isFormDirty && restoredFromVersion === null
+                    ? "published"
+                    : "draft"
+                }
+              />
             )}
             {hasPreview && document && (
               <PreviewToggleButton
@@ -365,25 +377,62 @@ export default function CollectionEditView({
                   onRestore={(snapshot, versionNum) => {
                     const docVersion = typeof document?.vex_version === "number" ? document.vex_version : undefined;
                     if (versionNum === docVersion) {
-                      // Going back to the current version — clear restored state
                       setRestoredSnapshot(null);
                       setRestoredFromVersion(null);
+                      // Revert preview to latest version
+                      if (hasPreview) {
+                        deleteSnapshotMutation({
+                          collectionSlug: collection.slug,
+                          documentId: documentID,
+                        }).catch(() => {});
+                      }
                     } else {
                       setRestoredSnapshot(snapshot);
                       setRestoredFromVersion(versionNum);
+                      // Update preview with the restored version's snapshot
+                      if (hasPreview && snapshot) {
+                        upsertSnapshotMutation({
+                          collectionSlug: collection.slug,
+                          documentId: documentID,
+                          snapshot,
+                        }).catch(() => {});
+                      }
                     }
                   }}
                 />
+                {/* Reset: discard form changes and go back to the latest version */}
+                {(isFormDirty || restoredFromVersion !== null) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setRestoredSnapshot(null);
+                      setRestoredFromVersion(null);
+                      setIsFormDirty(false);
+                      setFormResetKey((k) => k + 1);
+                      // Delete transient preview snapshot — getPreviewSnapshot
+                      // will fall back to the latest version
+                      if (hasPreview) {
+                        deleteSnapshotMutation({
+                          collectionSlug: collection.slug,
+                          documentId: documentID,
+                        }).catch(() => {});
+                      }
+                    }}
+                  >
+                    Reset
+                  </Button>
+                )}
                 <Button
                   type="submit"
                   form="collection-edit-form"
                   variant="outline"
                   size="sm"
-                  disabled={isSaving || !perms.update.allowed}
+                  disabled={isSaving || !perms.update.allowed || (!isFormDirty && restoredFromVersion === null)}
                 >
                   {isSaving ? "Saving..." : "Save Draft"}
                 </Button>
-                {document && document.vex_status === "published" ? (
+                {document && document.vex_status === "published" && !isFormDirty && restoredFromVersion === null ? (
                   <Button
                     size="sm"
                     variant="secondary"
@@ -427,7 +476,7 @@ export default function CollectionEditView({
           )}
 
           {!isLoading && document != null && (
-            <div className="" key={`${documentID}-${restoredFromVersion ?? "latest"}`}>
+            <div className="" key={`${documentID}-${restoredFromVersion ?? "latest"}-${formResetKey}`}>
               <AppForm
                 formId="collection-edit-form"
                 schema={schema}

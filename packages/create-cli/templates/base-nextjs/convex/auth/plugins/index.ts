@@ -2,6 +2,7 @@ import { convex } from "@convex-dev/better-auth/plugins"
 import authConfig from "@convex/auth.config"
 import { nextCookies } from "better-auth/next-js"
 import { admin, apiKey } from "better-auth/plugins"
+// {{ORGANIZATIONS_IMPORT}}
 
 import { USER_ROLES } from "~/db/constants"
 
@@ -13,6 +14,7 @@ const plugins = [
   apiKey(),
   convex({ authConfig }),
   nextCookies(),
+  // {{ORGANIZATIONS_PLUGIN}}
 ]
 
 export default plugins

@@ -75,19 +75,25 @@ export async function deletePreviewSnapshot<DataModel extends GenericDataModel>(
 }
 
 /**
- * Gets the preview snapshot for a document, if one exists.
+ * Gets the preview data for a document.
+ *
+ * Lookup order:
+ * 1. Preview snapshot (transient, written by admin form on each change)
+ * 2. Latest version from vex_versions (draft or published, excluding autosave/previewSnapshot)
+ * 3. null (fall back to main document)
  *
  * @param props.ctx - Convex query context
  * @param props.collection - Collection slug
  * @param props.documentId - Document ID
- * @returns The snapshot data, or null if no preview snapshot exists
+ * @returns The snapshot data, or null if no preview/version exists
  */
 export async function getPreviewSnapshot<DataModel extends GenericDataModel>(props: {
   ctx: GenericQueryCtx<DataModel>;
   collection: string;
   documentId: string;
 }): Promise<Record<string, unknown> | null> {
-  const entry = await (props.ctx.db as any)
+  // 1. Check for a transient preview snapshot (written by admin form edits)
+  const previewEntry = await (props.ctx.db as any)
     .query("vex_versions")
     .withIndex("by_document_status", (q: any) =>
       q
@@ -97,6 +103,33 @@ export async function getPreviewSnapshot<DataModel extends GenericDataModel>(pro
     )
     .first();
 
-  if (!entry) return null;
-  return entry.snapshot as Record<string, unknown>;
+  if (previewEntry) {
+    return previewEntry.snapshot as Record<string, unknown>;
+  }
+
+  // 2. Fall back to the latest version (draft or published)
+  const allVersions = await (props.ctx.db as any)
+    .query("vex_versions")
+    .withIndex("by_document", (q: any) =>
+      q.eq("collection", props.collection).eq("documentId", props.documentId),
+    )
+    .collect();
+
+  let latestVersion: Record<string, unknown> | null = null;
+  let maxVersion = -1;
+  for (const v of allVersions) {
+    if (v.status === "previewSnapshot" || v.status === "autosave") continue;
+    const ver = v.version as number;
+    if (ver > maxVersion) {
+      maxVersion = ver;
+      latestVersion = v;
+    }
+  }
+
+  if (latestVersion) {
+    return (latestVersion as any).snapshot as Record<string, unknown>;
+  }
+
+  // 3. No versions at all — caller will use the main document
+  return null;
 }

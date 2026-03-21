@@ -12,7 +12,7 @@ export default function AuthCard({ pathname }: { pathname: string }) {
         </Activity>
         <DialogContent
           aria-describedby={undefined}
-          className="grid place-items-center border-none bg-transparent shadow-none"
+          className="grid place-items-center border-none bg-transparent shadow-none ring-0"
           showCloseButton={false}
         >
           <AuthView path={pathname} />

@@ -8,12 +8,14 @@ import { v } from "convex/values"
  **/
 
 export const pages = defineTable({
+  title: v.string(),
   slug: v.string(),
   content: v.optional(v.any()),
-  status: v.union(v.literal("draft"), v.literal("published")),
-  title: v.string(),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+  vex_version: v.optional(v.number()),
+  vex_publishedAt: v.optional(v.number()),
 })
+  .index("by_slug", ["slug"])
   .index("by_title", ["title"])
   .searchIndex("search_title", { searchField: "title" })
 
@@ -56,6 +58,25 @@ export const site_settings = defineTable({
   .index("by_name", ["name"])
   .searchIndex("search_name", { searchField: "name" })
 
+export const user = defineTable({
+  name: v.string(),
+  email: v.string(),
+  emailVerified: v.boolean(),
+  image: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  role: v.array(v.union(v.literal("admin"), v.literal("editor"), v.literal("user"))),
+  banned: v.optional(v.boolean()),
+  banReason: v.optional(v.string()),
+  banExpires: v.optional(v.number()),
+  userId: v.optional(v.string()),
+  vex_onboarding_complete: v.optional(v.boolean()),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+})
+  .index("by_name", ["name"])
+  .index("by_email", ["email"])
+  .searchIndex("search_name", { searchField: "name" })
+
 /**
  * MEDIA COLLECTIONS
  **/
@@ -77,20 +98,6 @@ export const media = defineTable({
 /**
  * AUTH TABLES
  **/
-
-export const user = defineTable({
-  name: v.string(),
-  email: v.string(),
-  emailVerified: v.boolean(),
-  image: v.optional(v.string()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-  role: v.array(v.string()),
-  banned: v.optional(v.boolean()),
-  banReason: v.optional(v.string()),
-  banExpires: v.optional(v.number()),
-  userId: v.optional(v.string()),
-}).index("by_email", ["email"])
 
 export const session = defineTable({
   expiresAt: v.number(),

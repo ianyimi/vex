@@ -9,16 +9,16 @@ export const pages = defineCollection({
     useAsTitle: "title",
   },
   fields: {
+    title: text({
+      label: "Title",
+      required: true,
+    }),
     slug: text({
       admin: {
         description: "URL-friendly page path",
       },
       label: "Slug",
       required: true,
-    }),
-    content: richtext({
-      label: "Content",
-      mediaCollection: TABLE_SLUG_MEDIA,
     }),
     status: select({
       defaultValue: "draft",
@@ -29,9 +29,9 @@ export const pages = defineCollection({
       ],
       required: true,
     }),
-    title: text({
-      label: "Title",
-      required: true,
+    content: richtext({
+      label: "Content",
+      mediaCollection: TABLE_SLUG_MEDIA,
     }),
   },
   labels: {
