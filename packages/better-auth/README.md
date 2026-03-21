@@ -1,6 +1,6 @@
 # @vexcms/better-auth
 
-[Better Auth](https://www.better-auth.com/) adapter for [VEX CMS](https://github.com/vexcms). Automatically extracts Better Auth's authentication tables and converts them into VEX collection definitions, enabling admin panel management of auth data.
+[Better Auth](https://www.better-auth.com/) adapter for [VEX CMS](https://github.com/ianyimi/vex). Automatically extracts Better Auth's authentication tables and converts them into VEX collection definitions, enabling admin panel management of auth data.
 
 ## Installation
 

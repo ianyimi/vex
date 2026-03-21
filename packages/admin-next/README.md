@@ -1,6 +1,6 @@
 # @vexcms/admin-next
 
-The admin panel for [VEX CMS](https://github.com/vexcms), built for Next.js. Provides a complete content management interface with collection CRUD, media management, versioning, live preview, access control, and user impersonation.
+The admin panel for [VEX CMS](https://github.com/ianyimi/vex), built for Next.js. Provides a complete content management interface with collection CRUD, media management, versioning, live preview, access control, and user impersonation.
 
 ## Installation
 

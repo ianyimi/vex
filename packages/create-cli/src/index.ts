@@ -50,7 +50,7 @@ async function main() {
     inputArg = args[0];
   } else {
     inputArg = await input({
-      message: 'What is your project named?',
+      message: '(1/8) What is your project named?',
       default: 'my-vexcms-app',
       validate: (value) => {
         // For paths, validate just the last segment
@@ -92,7 +92,7 @@ async function main() {
   let framework: Framework;
   while (true) {
     framework = await select<Framework>({
-      message: 'Select a framework:',
+      message: '(2/8) Select a framework:',
       choices: [
         { name: 'Next.js (Recommended)', value: 'nextjs' },
         { name: 'TanStack Start (Coming Soon)', value: 'tanstack' },
@@ -105,13 +105,25 @@ async function main() {
     break;
   }
 
-  // 3. Email/password auth
+  // 3. Dev server port
+  const portInput = await input({
+    message: '(3/8) Dev server port:',
+    default: '3010',
+    validate: (value) => {
+      const num = parseInt(value, 10);
+      if (isNaN(num) || num < 1 || num > 65535) return 'Must be a valid port number (1-65535)';
+      return true;
+    },
+  });
+  const port = parseInt(portInput, 10);
+
+  // 4. Email/password auth
   const emailPasswordAuth = await confirm({
-    message: 'Enable email/password authentication?',
+    message: '(4/8) Enable email/password authentication?',
     default: true,
   });
 
-  // 4. OAuth providers
+  // 5. OAuth providers
   const popularProviders = getPopularProviders();
   const additionalProviders = getAdditionalProviders();
 
@@ -128,25 +140,25 @@ async function main() {
   ];
 
   const oauthProviders = await checkbox({
-    message: 'Select OAuth providers (space to toggle, enter to confirm):',
+    message: '(5/8) Select OAuth providers (space to toggle, enter to confirm):',
     choices: allProviderChoices,
   });
 
-  // 5. Organizations
+  // 6. Organizations
   const orgs = opts.orgs ?? await confirm({
-    message: 'Enable multi-tenant (organizations)?',
+    message: '(6/8) Enable multi-tenant (organizations)?',
     default: false,
   });
 
-  // 6. Git init
+  // 7. Git init
   const initGit = await confirm({
-    message: 'Initialize a Git repository?',
+    message: '(7/8) Initialize a Git repository?',
     default: true,
   });
 
-  // 7. Install dependencies
+  // 8. Install dependencies
   const installDependencies = await confirm({
-    message: 'Install dependencies?',
+    message: '(8/8) Install dependencies?',
     default: false,
   });
 
@@ -155,6 +167,7 @@ async function main() {
     projectName,
     projectDir: targetDir,
     framework,
+    port,
     bare,
     orgs,
     emailPasswordAuth,

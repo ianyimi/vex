@@ -1,6 +1,6 @@
 # @vexcms/ui
 
-The shared UI component library for [VEX CMS](https://github.com/vexcms). Provides form components, field renderers, UI primitives, and layout utilities used by the admin panel.
+The shared UI component library for [VEX CMS](https://github.com/ianyimi/vex). Provides form components, field renderers, UI primitives, and layout utilities used by the admin panel.
 
 ## Installation
 

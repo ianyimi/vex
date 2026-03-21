@@ -1,6 +1,6 @@
 # @vexcms/cli
 
-The CLI tool for [VEX CMS](https://github.com/vexcms) — handles schema generation, type generation, file watching, auto-migration, and Convex process management during development and deployment.
+The CLI tool for [VEX CMS](https://github.com/ianyimi/vex) — handles schema generation, type generation, file watching, auto-migration, and Convex process management during development and deployment.
 
 ## Installation
 

@@ -110,6 +110,30 @@ export abstract class VexFrameworkInstaller {
   }
 
   /**
+   * Configure the dev server port.
+   * Updates package.json dev script and creates .env.local with NEXT_PUBLIC_SITE_URL.
+   */
+  protected async configurePort(port: number): Promise<void> {
+    // Update package.json dev script with the port
+    const pkgPath = path.join(this.targetPath, 'package.json');
+    const pkg = await fs.readJson(pkgPath);
+    if (pkg.scripts?.dev) {
+      // Replace default port or add port flag
+      if (pkg.scripts.dev.includes('--port')) {
+        pkg.scripts.dev = pkg.scripts.dev.replace(/--port[= ]\d+/, `--port=${port}`);
+      } else {
+        pkg.scripts.dev = `${pkg.scripts.dev} --port=${port}`;
+      }
+    }
+    await fs.writeJson(pkgPath, pkg, { spaces: 2 });
+
+    // Create .env.local with the site URL
+    const envLocalPath = path.join(this.targetPath, '.env.local');
+    const envContent = `NEXT_PUBLIC_SITE_URL=http://localhost:${port}\n`;
+    await fs.writeFile(envLocalPath, envContent);
+  }
+
+  /**
    * Detect the package manager used to invoke the CLI
    */
   protected detectPackageManager(): PackageManager {
@@ -309,10 +333,11 @@ export abstract class VexFrameworkInstaller {
       }
     }
 
-    // Step 3: Update package.json name
+    // Step 3: Update package.json name and configure port
     const nameSpinner = ora('Configuring project...').start();
     try {
       await this.updatePackageName(options.projectName);
+      await this.configurePort(options.port);
       nameSpinner.succeed('Project configured');
     } catch (error) {
       nameSpinner.fail('Failed to configure project');

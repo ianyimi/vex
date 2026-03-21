@@ -1,6 +1,6 @@
 # @vexcms/richtext
 
-Rich text editor and renderer for [VEX CMS](https://github.com/vexcms), built on [Plate.js](https://platejs.org/) (Slate-based). Provides a full WYSIWYG editor for the admin panel and a server-safe static renderer for frontend display.
+Rich text editor and renderer for [VEX CMS](https://github.com/ianyimi/vex), built on [Plate.js](https://platejs.org/) (Slate-based). Provides a full WYSIWYG editor for the admin panel and a server-safe static renderer for frontend display.
 
 ## Installation
 

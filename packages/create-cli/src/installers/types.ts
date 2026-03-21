@@ -24,6 +24,7 @@ export interface ProjectOptions {
   projectName: string
   projectDir: string
   framework: Framework
+  port: number
   bare: boolean
   orgs: boolean
   emailPasswordAuth: boolean

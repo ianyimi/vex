@@ -1,6 +1,6 @@
 # @vexcms/file-storage-convex
 
-[Convex](https://convex.dev) file storage adapter for [VEX CMS](https://github.com/vexcms). Integrates Convex's built-in file storage system with VEX media collections.
+[Convex](https://convex.dev) file storage adapter for [VEX CMS](https://github.com/ianyimi/vex). Integrates Convex's built-in file storage system with VEX media collections.
 
 ## Installation
 
