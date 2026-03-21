@@ -28,21 +28,6 @@
       ],
       "@convex/*": [
         "./convex/*"
-      ],
-      "@vexcms/core": [
-        "../../packages/core/src/index.ts"
-      ],
-      "@vexcms/ui": [
-        "../../packages/ui/src/index.ts"
-      ],
-      "@vexcms/admin-next": [
-        "../../packages/admin-next/src/index.ts"
-      ],
-      "@vexcms/better-auth": [
-        "../../packages/better-auth/src/index.ts"
-      ],
-      "@vexcms/file-storage-convex": [
-        "../../packages/file-storage-convex/src/index.ts"
       ]
     }
   },

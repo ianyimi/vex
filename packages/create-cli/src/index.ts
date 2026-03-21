@@ -123,7 +123,13 @@ async function main() {
     default: true,
   });
 
-  // 5. OAuth providers
+  // 5. Organizations
+  const orgs = opts.orgs ?? await confirm({
+    message: '(5/8) Enable multi-tenant (organizations)?',
+    default: false,
+  });
+
+  // 6. OAuth providers
   const popularProviders = getPopularProviders();
   const additionalProviders = getAdditionalProviders();
 
@@ -140,14 +146,8 @@ async function main() {
   ];
 
   const oauthProviders = await checkbox({
-    message: '(5/8) Select OAuth providers (space to toggle, enter to confirm):',
+    message: '(6/8) Select OAuth providers (space to toggle, enter to confirm):',
     choices: allProviderChoices,
-  });
-
-  // 6. Organizations
-  const orgs = opts.orgs ?? await confirm({
-    message: '(6/8) Enable multi-tenant (organizations)?',
-    default: false,
   });
 
   // 7. Git init
