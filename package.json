@@ -12,7 +12,7 @@
     "test:e2e": "turbo run test:e2e",
     "clean": "turbo run clean && rm -rf node_modules",
     "changeset": "changeset",
-    "version:packages": "changeset version",
+    "version:packages": "changeset version && node scripts/sync-template-versions.mjs",
     "release": "pnpm --filter \"@vexcms/*\" --filter \"create-vexcms\" build && changeset publish"
   },
   "devDependencies": {
