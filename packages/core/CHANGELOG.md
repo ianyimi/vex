@@ -1,5 +1,11 @@
 # @vexcms/core
 
+## 0.0.6
+
+### Patch Changes
+
+- 9acf057: update tsconfig so its not using workspace configs for files that dont exist outside of the workspace when in the project dev setup
+
 ## 0.0.5
 
 ### Patch Changes
