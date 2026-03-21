@@ -1,5 +1,14 @@
 # @vexcms/admin-next
 
+## 0.0.5
+
+### Patch Changes
+
+- bfe4eef: update create vexcms package to ship dotfiles w underscore prefixes, then rename then back after pulling from package repo
+- Updated dependencies [bfe4eef]
+  - @vexcms/core@0.0.5
+  - @vexcms/ui@0.0.5
+
 ## 0.0.4
 
 ### Patch Changes
