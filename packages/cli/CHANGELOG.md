@@ -1,5 +1,13 @@
 # @vexcms/cli
 
+## 0.0.7
+
+### Patch Changes
+
+- 5c4b116: update template package versions, add a script that updates teh template package json versions for @vexcms packages to match the current version being published that happens on version:packages
+- Updated dependencies [5c4b116]
+  - @vexcms/core@0.0.7
+
 ## 0.0.6
 
 ### Patch Changes
