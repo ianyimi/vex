@@ -18,5 +18,5 @@
   "access": "public",
   "baseBranch": "master",
   "updateInternalDependencies": "patch",
-  "ignore": ["@vexcms/tsconfig"]
+  "ignore": ["@vexcms/tsconfig", "test-app", "www"]
 }

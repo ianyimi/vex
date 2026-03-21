@@ -247,23 +247,23 @@ importers:
         specifier: ^5.90.17
         version: 5.90.21(react@19.2.4)
       '@vexcms/admin-next':
-        specifier: ^0.0.2
-        version: 0.0.2(@convex-dev/react-query@0.1.0(@tanstack/react-query@5.90.21(react@19.2.4))(convex@1.32.0(react@19.2.4)))(@tanstack/react-form@1.28.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tanstack/react-query@5.90.21(react@19.2.4))(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/react@19.2.14)(convex@1.32.0(react@19.2.4))(next@16.1.6(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(zod@4.3.6)
+        specifier: workspace:*
+        version: link:../../packages/admin-next
       '@vexcms/better-auth':
-        specifier: ^0.0.2
-        version: 0.0.2(6f82f9ae6f5f17f2ddc33b29da3e92c6)
+        specifier: workspace:*
+        version: link:../../packages/better-auth
       '@vexcms/core':
-        specifier: ^0.0.2
-        version: 0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))(react@19.2.4)
+        specifier: workspace:*
+        version: link:../../packages/core
       '@vexcms/file-storage-convex':
-        specifier: ^0.0.2
-        version: 0.0.2(@vexcms/core@0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))
+        specifier: workspace:*
+        version: link:../../packages/file-storage-convex
       '@vexcms/richtext':
-        specifier: ^0.0.2
-        version: 0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/react@19.2.14)(convex@1.32.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: workspace:*
+        version: link:../../packages/richtext
       '@vexcms/ui':
-        specifier: ^0.0.2
-        version: 0.0.2(@types/react@19.2.14)(convex@1.32.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
+        specifier: workspace:*
+        version: link:../../packages/ui
       better-auth:
         specifier: '>=1.4.9 <1.5.0'
         version: 1.4.21(@prisma/client@7.4.2(prisma@7.4.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3))(drizzle-orm@0.45.1(@electric-sql/pglite@0.3.15)(@prisma/client@7.4.2(prisma@7.4.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3))(kysely@0.28.11)(mysql2@3.15.3)(postgres@3.4.7)(prisma@7.4.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)))(mongodb@7.1.0)(mysql2@3.15.3)(next@16.1.6(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(prisma@7.4.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vitest@4.0.18(@types/node@20.19.33)(jiti@2.6.1)(lightningcss@1.31.1)(msw@2.12.10(@types/node@20.19.33)(typescript@5.9.3))(tsx@4.21.0))
@@ -332,8 +332,8 @@ importers:
         specifier: ^19
         version: 19.2.3(@types/react@19.2.14)
       '@vexcms/cli':
-        specifier: ^0.0.2
-        version: 0.0.2(@vexcms/core@0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))
+        specifier: workspace:*
+        version: link:../../packages/cli
       babel-plugin-react-compiler:
         specifier: ^1.0.0
         version: 1.0.0
@@ -3457,57 +3457,6 @@ packages:
     resolution: {integrity: sha512-lrW200hZdbfRtztbygyaq/6jP6AKE8qQN2KvPcJ+x7wiD038YtnYtZ82IMNJ69GJibV7bwL3y9FgK+5w/pYt6g==}
     cpu: [x64]
     os: [win32]
-
-  '@vexcms/admin-next@0.0.2':
-    resolution: {integrity: sha512-KROrCy0qwabIW+6D6ecL4KAj8SQ6YZKRj1un2ZiTdKJ4vf9hi9/gq5HHTB8KCILK6Qy8s3UzSZFcVUj5cd9tdw==}
-    peerDependencies:
-      '@convex-dev/react-query': ^0.1.0
-      '@tanstack/react-form': ^0.40.0
-      '@tanstack/react-query': ^5.90.17
-      '@tanstack/react-table': 8.21.3
-      convex: ^1.31.5
-      next: '>=14.0.0'
-      react: '>=18.0.0'
-      react-dom: '>=18.0.0'
-      zod: ^3.24.0
-
-  '@vexcms/better-auth@0.0.2':
-    resolution: {integrity: sha512-R5P7h6N2+I6JplJHAk7M6bMEdcDCaqEEB9S2gd36Df6x59PsTSORWP1D/K+x0yMhgFQ12ISR8FdxAz3L64sw5A==}
-    peerDependencies:
-      '@vexcms/core': 0.0.2
-      better-auth: '>=1.4.9 <1.5.0'
-
-  '@vexcms/cli@0.0.2':
-    resolution: {integrity: sha512-w27sc6TmqsvRI79Th5G+SdeFpNaqnQNb5ML07HCYNB6Wt2ijhDmpSi62HHCA+BBj/PGDtvinfoiDWYJutHyePA==}
-    hasBin: true
-    peerDependencies:
-      '@vexcms/core': 0.0.2
-      convex: '>=1.0.0'
-
-  '@vexcms/core@0.0.2':
-    resolution: {integrity: sha512-MSkiMz3iYSomI/UID09WhxakByZPsm8/AN+vGL8rrf7U607oqnL0/KqphOlAsYs4CdOeq9B4h5QN7ZT07zW+Ig==}
-    peerDependencies:
-      '@tanstack/react-table': 8.21.3
-      convex: ^1.31.5
-      react: '>=18.0.0'
-
-  '@vexcms/file-storage-convex@0.0.2':
-    resolution: {integrity: sha512-Y3nuSjb03WRs8JQeqf6ebrzWfSpxSJFWfVNW1lhBuabS+M+v7gPNGlDoDsFfUpgm5GaxtZQ/h83JHCehu7lGTA==}
-    peerDependencies:
-      '@vexcms/core': 0.0.2
-      convex: ^1.31.5
-
-  '@vexcms/richtext@0.0.2':
-    resolution: {integrity: sha512-MnEq2zUEInnoIT/oP957tEu1OZc+BaqjJdSQdxgvC1RlXs6T/MPMfzK3pmeEgNQ4lIWxjE7x+is8s0DvUwe+TQ==}
-    peerDependencies:
-      react: '>=18.0.0'
-      react-dom: '>=18.0.0'
-
-  '@vexcms/ui@0.0.2':
-    resolution: {integrity: sha512-9BMeDs8LYGZJPXTlwLwiQzwlJLtkka+OorPGjWh7d4fv4O5sbBx9Tg8DAsxMseP0GhpRh8qNXytxW2QJdbAujw==}
-    peerDependencies:
-      react: '>=18.0.0'
-      react-dom: '>=18.0.0'
 
   '@vitest/coverage-v8@4.0.18':
     resolution: {integrity: sha512-7i+N2i0+ME+2JFZhfuz7Tg/FqKtilHjGyGvoHYQ6iLV0zahbsJ9sljC9OcFcPDbhYKCet+sG8SsVqlyGvPflZg==}
@@ -9973,92 +9922,6 @@ snapshots:
 
   '@unrs/resolver-binding-win32-x64-msvc@1.11.1':
     optional: true
-
-  '@vexcms/admin-next@0.0.2(@convex-dev/react-query@0.1.0(@tanstack/react-query@5.90.21(react@19.2.4))(convex@1.32.0(react@19.2.4)))(@tanstack/react-form@1.28.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@tanstack/react-query@5.90.21(react@19.2.4))(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/react@19.2.14)(convex@1.32.0(react@19.2.4))(next@16.1.6(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(zod@4.3.6)':
-    dependencies:
-      '@convex-dev/react-query': 0.1.0(@tanstack/react-query@5.90.21(react@19.2.4))(convex@1.32.0(react@19.2.4))
-      '@tanstack/react-form': 1.28.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@tanstack/react-query': 5.90.21(react@19.2.4)
-      '@tanstack/react-table': 8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@vexcms/core': 0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))(react@19.2.4)
-      '@vexcms/ui': 0.0.2(@types/react@19.2.14)(convex@1.32.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
-      convex: 1.32.0(react@19.2.4)
-      lucide-react: 0.577.0(react@19.2.4)
-      next: 16.1.6(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
-      zod: 4.3.6
-    transitivePeerDependencies:
-      - '@tanstack/start'
-      - '@types/react'
-      - typescript
-
-  '@vexcms/better-auth@0.0.2(6f82f9ae6f5f17f2ddc33b29da3e92c6)':
-    dependencies:
-      '@vexcms/core': 0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))(react@19.2.4)
-      better-auth: 1.4.21(@prisma/client@7.4.2(prisma@7.4.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3))(drizzle-orm@0.45.1(@electric-sql/pglite@0.3.15)(@prisma/client@7.4.2(prisma@7.4.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3))(kysely@0.28.11)(mysql2@3.15.3)(postgres@3.4.7)(prisma@7.4.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)))(mongodb@7.1.0)(mysql2@3.15.3)(next@16.1.6(@babel/core@7.29.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(prisma@7.4.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vitest@4.0.18(@types/node@20.19.33)(jiti@2.6.1)(lightningcss@1.31.1)(msw@2.12.10(@types/node@20.19.33)(typescript@5.9.3))(tsx@4.21.0))
-
-  '@vexcms/cli@0.0.2(@vexcms/core@0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))':
-    dependencies:
-      '@vexcms/core': 0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))(react@19.2.4)
-      chokidar: 4.0.3
-      convex: 1.32.0(react@19.2.4)
-      jiti: 2.6.1
-
-  '@vexcms/core@0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))(react@19.2.4)':
-    dependencies:
-      '@tanstack/react-table': 8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      convex: 1.32.0(react@19.2.4)
-      react: 19.2.4
-      zod: 3.25.76
-
-  '@vexcms/file-storage-convex@0.0.2(@vexcms/core@0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))':
-    dependencies:
-      '@vexcms/core': 0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))(react@19.2.4)
-      convex: 1.32.0(react@19.2.4)
-
-  '@vexcms/richtext@0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/react@19.2.14)(convex@1.32.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
-    dependencies:
-      '@platejs/basic-nodes': 52.0.11(platejs@52.3.4(@types/react@19.2.14)(immer@10.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(scheduler@0.27.0)(use-sync-external-store@1.6.0(react@19.2.4)))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@platejs/code-block': 52.0.11(platejs@52.3.4(@types/react@19.2.14)(immer@10.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(scheduler@0.27.0)(use-sync-external-store@1.6.0(react@19.2.4)))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@platejs/link': 52.0.11(platejs@52.3.4(@types/react@19.2.14)(immer@10.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(scheduler@0.27.0)(use-sync-external-store@1.6.0(react@19.2.4)))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@platejs/list': 52.0.11(platejs@52.3.4(@types/react@19.2.14)(immer@10.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(scheduler@0.27.0)(use-sync-external-store@1.6.0(react@19.2.4)))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@platejs/media': 52.0.11(platejs@52.3.4(@types/react@19.2.14)(immer@10.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(scheduler@0.27.0)(use-sync-external-store@1.6.0(react@19.2.4)))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@platejs/table': 52.0.11(platejs@52.3.4(@types/react@19.2.14)(immer@10.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(scheduler@0.27.0)(use-sync-external-store@1.6.0(react@19.2.4)))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@vexcms/core': 0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))(react@19.2.4)
-      platejs: 52.3.4(@types/react@19.2.14)(immer@10.2.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(scheduler@0.27.0)(use-sync-external-store@1.6.0(react@19.2.4))
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
-    transitivePeerDependencies:
-      - '@tanstack/react-table'
-      - '@types/react'
-      - convex
-      - immer
-      - react-native
-      - scheduler
-      - use-sync-external-store
-
-  '@vexcms/ui@0.0.2(@types/react@19.2.14)(convex@1.32.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)':
-    dependencies:
-      '@base-ui/react': 1.2.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@hello-pangea/dnd': 18.0.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@tanstack/react-form': 0.40.4(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
-      '@tanstack/react-table': 8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@vexcms/core': 0.0.2(@tanstack/react-table@8.21.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(convex@1.32.0(react@19.2.4))(react@19.2.4)
-      class-variance-authority: 0.7.1
-      clsx: 2.1.1
-      date-fns: 4.1.0
-      lucide-react: 0.577.0(react@19.2.4)
-      react: 19.2.4
-      react-day-picker: 9.14.0(react@19.2.4)
-      react-dom: 19.2.4(react@19.2.4)
-      tailwind-merge: 3.5.0
-      zod: 3.25.76
-    transitivePeerDependencies:
-      - '@tanstack/start'
-      - '@types/react'
-      - convex
-      - typescript
 
   '@vitest/coverage-v8@4.0.18(vitest@4.0.18(@types/node@20.19.33)(jiti@2.6.1)(lightningcss@1.31.1)(msw@2.12.10(@types/node@20.19.33)(typescript@5.9.3))(tsx@4.21.0))':
     dependencies:
