@@ -99,10 +99,10 @@ export const footers = defineTable({
   .searchIndex("search_name", { searchField: "name" })
 
 export const pages = defineTable({
-  slug: v.string(),
-  content: v.optional(v.any()),
-  status: v.union(v.literal("draft"), v.literal("published")),
   title: v.string(),
+  slug: v.string(),
+  status: v.union(v.literal("draft"), v.literal("published")),
+  content: v.optional(v.any()),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
 })
   .index("by_title", ["title"])

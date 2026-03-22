@@ -10,7 +10,7 @@ import { createResolver } from "./loadConfig.js";
  *   export ... from "specifier"
  */
 const IMPORT_RE =
-  /(?:import|export)\s.*?from\s+["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)/g;
+  /(?:import|export)\s.*?from\s+["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)/gs;
 
 /**
  * Walk the import tree starting from `entryPath`, returning all local file

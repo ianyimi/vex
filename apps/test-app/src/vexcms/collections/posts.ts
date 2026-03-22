@@ -24,6 +24,7 @@ export const newBlock = defineBlock({
 
 export const posts = defineCollection({
   slug: TABLE_SLUG_POSTS,
+  interfaceName: "Post",
   admin: {
     defaultColumns: ["title", "status", "featured", "accentColor"],
     group: "Content",

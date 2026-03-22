@@ -191,33 +191,47 @@ These are two distinct features that compose together:
 
 ---
 
-## Current Project State
+## Current Project State (as of March 2026)
 
 ### What's Built
 
-| Area              | Status  | Details                                                                                           |
-| ----------------- | ------- | ------------------------------------------------------------------------------------------------- |
-| Field types       | ✅ Done | 10 types: text, number, checkbox, select, date, imageUrl, relationship, json, array, multi-select |
-| Schema generation | ✅ Done | Full codegen with auto-migration, diffing, Prettier formatting                                    |
-| CLI               | ✅ Done | `vex dev` (watch + generate), `vex deploy` (migrate + deploy)                                     |
-| Admin list views  | ✅ Done | Paginated tables, full-text search, column generation, bidirectional pagination                   |
-| Admin edit forms  | ✅ Done | Auto-generated Zod validation, field components, partial patch on save                            |
-| Better Auth       | ✅ Done | Auth table extraction, user/session/account tables, admin plugin                                  |
-| Create/delete     | ✅ Done | createDocument (Zod validated), deleteDocument, bulkDelete, admin UI (modals, row selection)      |
-| Testing           | ✅ Done | 233 tests passing (field types, schema diffing, migration planning, form generation, defaults)    |
+| Area                    | Status  | Details                                                                                              |
+| ----------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| Field types             | ✅ Done | 13 types: text, number, checkbox, select, date, imageUrl, relationship, upload, json, array, richtext, ui, blocks |
+| Schema generation       | ✅ Done | Full codegen with auto-migration, diffing, Prettier formatting                                       |
+| Type generation         | ✅ Done | Generated TypeScript interfaces from collection config (vex.types.ts)                                |
+| Query generation        | ✅ Done | Typed per-collection query/mutation files with auth + RBAC                                           |
+| CLI (vex)               | ✅ Done | `vex dev` (watch + generate + convex dev), `vex dev --once`                                          |
+| Create CLI              | ✅ Done | `create-vexcms` — scaffolds Next.js projects with marketing site template, auth, admin panel         |
+| Admin list views        | ✅ Done | Paginated tables, full-text search, column generation, bidirectional pagination                      |
+| Admin edit forms        | ✅ Done | Auto-generated Zod validation, field components, custom components (Field/Cell)                      |
+| Better Auth             | ✅ Done | Auth table extraction, user/session/account tables, admin/apiKey plugins                             |
+| Create/delete           | ✅ Done | createDocument (Zod validated), deleteDocument, admin UI (modals, row selection)                     |
+| Media / uploads         | ✅ Done | upload() field, media library, upload modal, Convex file storage adapter                             |
+| Drafts / versioning     | ✅ Done | Draft/publish workflow, version history, autosave, restore, save draft/publish/unpublish/reset       |
+| RBAC enforcement        | ✅ Done | defineAccess(), hasPermission(), document-level + field-level permissions, org support                |
+| Rich text               | ✅ Done | Plate.js editor + renderer, media upload in editor, @vexcms/richtext package                        |
+| Live preview            | ✅ Done | Side-by-side iframe panel, responsive breakpoints, draft snapshot sync, useVexPreview                |
+| Blocks system           | ✅ Done | defineBlock(), blocks() field, RenderBlocks component, admin block picker/reorder/edit               |
+| Custom components       | ✅ Done | admin.components.Field/Cell — pass React components directly (not path strings)                      |
+| Onboarding tour         | ✅ Done | driver.js guided tour, per-user completion tracking, admin config to disable                         |
+| First-user auto-admin   | ✅ Done | First sign-up gets admin role via atomic Convex mutation                                             |
+| createVexQuery          | ✅ Done | Typed draft-aware query builder (preserves DataModel types, handles _vexDrafts)                      |
+| Testing                 | ✅ Done | 530+ tests passing across core + create-cli                                                         |
 
-### What's Missing for MVP
+### What's Next
 
 | Area                          | Status       | Gap                                                                                    |
 | ----------------------------- | ------------ | -------------------------------------------------------------------------------------- |
-| Create/delete mutations       | ✅ Done      | createDocument, deleteDocument, bulkDelete, create/delete modals, row selection         |
-| Media / uploads               | ❌ Not built | No `upload()` field type, no file upload handlers, no media library UI                 |
-| Drafts / versioning           | ❌ Not built | No `_draftSnapshot`, no `vex_versions` table, no publish workflow                      |
-| RBAC enforcement              | ❌ Not built | Auth exists but no permission checks in query/mutation handlers                        |
-| Rich text                     | ❌ Not built | No `richtext()` field type — without this, Vex is a structured-data tool, not a CMS    |
-| Live preview                  | ❌ Not built | No preview iframe, no postMessage protocol, no draft preview                           |
-| Hooks                         | ❌ Not built | No beforeCreate/afterUpdate lifecycle hooks                                            |
-| Custom component registration | ❌ Not built | useField/useForm exist in edit form, but no `admin.components.Field` path registration |
+| Color field                   | 🔜 Next      | Custom color picker with theme color tab + custom color tab                            |
+| Theme system                  | 🔜 Next      | CSS variable injection from theme collection, theme import UI, OKLCH colors            |
+| Marketing blocks              | 🔜 Next      | Hero, Features, CTA, Testimonials, FAQ, Pricing blocks with 3-5 variants each          |
+| Marketing site (apps/www)     | 🔜 Next      | vexcms.dev built with VEX CMS, dogfoods the full stack                                 |
+| Demo site                     | 📋 Planned   | Public demo admin panel, resets daily, apps/demo                                        |
+| Hooks system                  | 📋 Planned   | Collection + field lifecycle hooks                                                     |
+| Team management UI            | 📋 Planned   | Invite users, role assignment, pending invites                                         |
+| Nested sidebar groups         | 📋 Planned   | Groups inside groups in admin sidebar                                                  |
+| TanStack Start support        | 📋 Planned   | Admin panel + create CLI template for TanStack Start                                   |
 
 ---
 
@@ -490,29 +504,27 @@ Phase 5.5 — Documentation site
 ## Summary Timeline
 
 ```
-DONE        Specs 00, 01, 05, 06 (partial), 06b, 11, 12, 13, 14 (partial)
-            Schema gen, field types, admin CRUD (create/read/update/delete), auth, CLI
+DONE        Phases 0-2 complete. All core CMS features built and published on npm.
+            13 field types, schema/type/query gen, CLI, create CLI, admin panel,
+            media, versioning, RBAC, richtext, live preview, blocks, onboarding,
+            530+ tests, 8 npm packages + create-vexcms.
 
-PHASE 1     Spec 06b (Create/Delete) → Spec 15 (Media) → Spec 07 (Drafts) → Spec 16 (RBAC)
-  MVP       The minimum for a usable CMS. Cannot ship without all four.
+PHASE 2.5   Spec 29 (Color Field + Theme System) → Spec 34 (Marketing Blocks)
+  THEMES    Color field, theme CSS injection, theme import UI, OKLCH colors.
+  BLOCKS    Hero, Features, CTA, Testimonials, FAQ, Pricing, Stats blocks (3-5 variants each).
+            ← CURRENT PRIORITY
 
-PHASE 2     Spec 17 (Lexical) → Spec 10 (Live Preview) → Spec 31 (Typed Queries) → Spec 09b (Custom Components) → Spec 09c (Field Styles & Copy/Paste) → Spec 18 (Teams)
-  PRODUCT   Makes Vex competitive. Rich text is the biggest unlock.
+PHASE 2.75  Spec 33 (Marketing Site) → Spec 35 (Demo Site) → Spec 32 (Docs Site)
+  SITES     vexcms.dev built with VEX. Demo site at demo.vexcms.dev.
+            Template kept in sync — delete & re-scaffold apps/www frequently.
 
-PHASE 2.5   Spec 28 (Blocks) → Spec 29 (Color Field) → Spec 30 (Site Builder) → Spec 33 (Marketing Site)
-  SITES     Blocks, color field, and site builder are prerequisites for the marketing site.
-            apps/www starts after defineSite() lands and dogfoods the full stack.
-
-PHASE 2.75  Spec 32 (Docs Site)
-  DOCS      apps/docs built with Vex. Builds on lessons from the marketing site.
-
-PHASE 3     Spec 19 (API Keys) → Spec 20 (Scheduling) → Spec 22 (Audit Log) → Spec XX (Hooks)
-  POLISH    Quality-of-life before enterprise. Hooks land here, not in MVP.
+PHASE 3     Spec 18 (Teams) → Spec 19 (API Keys) → Spec 20 (Scheduling) → Spec 22 (Audit Log) → Hooks
+  POLISH    Quality-of-life before enterprise.
 
 PHASE 4     Spec 21 (Environments) → Spec 26 (SSO) → Spec 27 (Reviews) → Spec 22b (Audit) → Spec 23 (i18n)
   REVENUE   Enterprise packages. Environments is the highest-value feature.
 
-PHASE 5     Spec 24 (Forms) → Spec 25 (Plugins) → Spec 02 (CI) → TanStack, adapters, docs
+PHASE 5     Spec 24 (Forms) → Spec 25 (Plugins) → TanStack Start, storage adapters, auth adapters
   ECOSYSTEM Long tail growth.
 ```
 
@@ -532,22 +544,22 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 03     | Admin Shell                        | ✅                                     |
 | 04     | Auth Adapter                       | ✅                                     |
 | 05     | Schema Field System                | ✅                                     |
-| 06     | Convex Integration                 | ✅ partial (needs create/delete)       |
+| 06     | Convex Integration                 | ✅                                     |
 | 06b    | Create & Delete Mutations          | ✅                                     |
-| 07     | Versioning & Drafts                | Phase 1                                |
+| 07     | Versioning & Drafts                | ✅                                     |
 | 08     | File Uploads                       | Superseded by Spec 15                  |
-| 09     | Custom Admin Components            | Phase 2 (registration system)          |
-| 09c    | Field Style Controls & Copy/Paste  | Phase 2 (after 09b)                    |
-| 10     | Live Preview                       | Phase 2                                |
+| 09     | Custom Admin Components            | ✅ (direct component refs, not paths)  |
+| 09c    | Field Style Controls & Copy/Paste  | Deferred                               |
+| 10     | Live Preview                       | ✅                                     |
 | 11     | Testing Strategy                   | ✅                                     |
 | 12a    | Admin Data Table                   | ✅                                     |
 | 12b    | Schema Generation Auth Integration | ✅                                     |
 | 13     | Better Auth Package                | ✅                                     |
-| 14     | Collection Edit Form               | ✅ partial                             |
-| 15     | Media Collections                  | Phase 1                                |
-| 16     | RBAC / Access Permissions          | Phase 1                                |
-| 17     | Rich Text (Plate)                  | Phase 2                                |
-| 18     | Team Management UI                 | Phase 2                                |
+| 14     | Collection Edit Form               | ✅                                     |
+| 15     | Media Collections                  | ✅                                     |
+| 16     | RBAC / Access Permissions          | ✅                                     |
+| 17     | Rich Text (Plate)                  | ✅                                     |
+| 18     | Team Management UI                 | Phase 3                                |
 | 19     | API Key Management                 | Phase 3                                |
 | 20     | Content Scheduling                 | Phase 3                                |
 | 21     | Project-Level Environments         | Phase 4 (enterprise)                   |
@@ -557,9 +569,12 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 25     | Plugin System                      | Phase 5                                |
 | 26     | SSO / SAML                         | Phase 4 (enterprise)                   |
 | 27     | Review / Approval Workflows        | Phase 4 (enterprise)                   |
-| 28     | Blocks System                      | Phase 2.5                              |
-| 29     | Color Field                        | Phase 2.5                              |
-| 30     | Site Builder (defineSite)          | Phase 2.5                              |
-| 31     | Typed Per-Collection Queries       | Phase 2                                |
+| 28     | Blocks System                      | ✅                                     |
+| 29     | Color Field + Theme System         | 🔜 Phase 2.5 (NEXT)                    |
+| 30     | Site Builder (defineSite)          | ❌ Scrapped (use collections + groups)  |
+| 30.5   | Create CLI (create-vexcms)         | ✅                                     |
+| 31     | Onboarding, Orgs, Permissions DX   | ✅                                     |
 | 32     | Documentation Site (apps/docs)     | Phase 2.75                             |
 | 33     | Marketing Site (apps/www)          | Phase 2.75                             |
+| 34     | Marketing Blocks                   | Phase 2.5                              |
+| 35     | Demo Site (apps/demo)              | Phase 2.75                             |
