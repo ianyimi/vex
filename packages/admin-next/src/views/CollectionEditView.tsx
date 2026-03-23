@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState, useCallback, useRef } from "react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import type {
   VexCollection,
   ClientVexConfig,
   VexField,
   UploadFieldDef,
 } from "@vexcms/core";
-import { generateFormSchema } from "@vexcms/core";
+import { generateFormSchema, findCollectionBySlug } from "@vexcms/core";
+import { CreateDocumentDialog } from "../components/CreateDocumentDialog";
 import {
   AppForm,
   type FieldEntry,
@@ -87,6 +88,40 @@ export default function CollectionEditView({
   const unpublishMutation = useMutation(anyApi.vex.versions.unpublish);
   const deleteSnapshotMutation = useMutation(anyApi.vex.previewSnapshot.remove);
   const upsertSnapshotMutation = useMutation(anyApi.vex.previewSnapshot.upsert);
+  const initializeVersionMutation = useMutation(anyApi.vex.versions.initializeVersion);
+
+  // Auto-initialize version for versioned documents that have no version entries yet.
+  // This handles the case where versioning was just enabled on an existing collection.
+  const [versionInitialized, setVersionInitialized] = useState(false);
+  useEffect(() => {
+    if (!isVersioned || versionInitialized || !document) return;
+    // If the document has no vex_version, it hasn't been versioned yet
+    if (document.vex_version == null) {
+      initializeVersionMutation({
+        collectionSlug: collection.slug,
+        documentId: documentID,
+      }).then(() => {
+        setVersionInitialized(true);
+      }).catch(() => {
+        // Ignore — may have been initialized by another tab/request
+        setVersionInitialized(true);
+      });
+    } else {
+      setVersionInitialized(true);
+    }
+  }, [isVersioned, document, versionInitialized, collection.slug, documentID, initializeVersionMutation]);
+
+  // Clear stale preview snapshots on mount — prevents the iframe from
+  // showing outdated snapshot data after a page refresh
+  const snapshotClearedRef = useRef(false);
+  useEffect(() => {
+    if (snapshotClearedRef.current) return;
+    snapshotClearedRef.current = true;
+    deleteSnapshotMutation({
+      collectionSlug: collection.slug,
+      documentId: documentID,
+    }).catch(() => {});
+  }, [collection.slug, documentID, deleteSnapshotMutation]);
 
   // Live preview state — persisted in URL so it survives page refresh
   const hasPreview = !!collection.admin?.livePreview;
@@ -517,6 +552,26 @@ export default function CollectionEditView({
                       : undefined,
                   });
                 } : undefined}
+                renderCreateDialog={({ collectionSlug, open: dialogOpen, onClose, onCreated }) => {
+                  const match = findCollectionBySlug({ slug: collectionSlug, config });
+                  if (!match) return null;
+                  const targetCollection = {
+                    slug: match.slug,
+                    fields: match.fields,
+                    labels: (config.collections.find((c) => c.slug === collectionSlug) as any)?.labels,
+                    versions: (config.collections.find((c) => c.slug === collectionSlug) as any)?.versions,
+                  } as VexCollection;
+                  return (
+                    <CreateDocumentDialog
+                      open={dialogOpen}
+                      onClose={onClose}
+                      collection={targetCollection}
+                      config={config}
+                      onCreated={({ documentId }) => onCreated(documentId)}
+                      renderRichTextField={renderRichTextField}
+                    />
+                  );
+                }}
               />
             </div>
           )}

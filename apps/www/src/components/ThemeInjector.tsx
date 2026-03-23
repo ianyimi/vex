@@ -1,11 +1,11 @@
 "use client"
 
 import { useQuery } from "convex/react"
+import { useVexPreview } from "@vexcms/ui"
 import { anyApi } from "convex/server"
 
 /**
  * CSS variable name mapping from camelCase field names to CSS custom property names.
- * e.g., "cardForeground" → "card-foreground"
  */
 const FIELD_TO_CSS_VAR: Record<string, string> = {
   background: "background",
@@ -42,9 +42,6 @@ const FIELD_TO_CSS_VAR: Record<string, string> = {
   sidebarRing: "sidebar-ring",
 }
 
-/**
- * Build CSS variable declarations from a theme color object.
- */
 function buildCSSVars(colors: Record<string, unknown> | null | undefined): string {
   if (!colors) return ""
 
@@ -59,27 +56,46 @@ function buildCSSVars(colors: Record<string, unknown> | null | undefined): strin
 }
 
 /**
- * Client component that reads the active theme and injects CSS variables.
+ * Client component that reads the active theme from the site_settings global
+ * and injects CSS variables for light and dark modes.
  *
- * Queries site_settings for the activeTheme relationship, then fetches
- * the theme document and generates inline CSS variables for light and dark modes.
- *
- * @param props.siteSettingsSlug - The collection slug for site settings
+ * @param props.siteSettingsSlug - The global slug for site settings
+ * @param props.drafts - When "snapshot", reads draft/preview data instead of published
  */
-export function ThemeInjector(props: { siteSettingsSlug: string }) {
-  // Fetch the first site_settings document (it's a singleton-like collection)
-  const settings = useQuery(anyApi.vex.api[props.siteSettingsSlug]?.list, {
-    paginationOpts: { numItems: 1, cursor: null },
-  })
+export function ThemeInjector({
+  siteSettingsSlug,
+  drafts,
+}: {
+  siteSettingsSlug: string
+  drafts?: "snapshot" | false
+}) {
+  // Use globals.get which supports draft awareness
+  const settingsDoc = useQuery(
+    anyApi.vex.globals?.get,
+    {
+      globalSlug: siteSettingsSlug,
+      ...(drafts ? { _vexDrafts: drafts } : {}),
+    },
+  ) as Record<string, unknown> | null | undefined
 
-  const settingsDoc = (settings as any)?.page?.[0] as Record<string, unknown> | undefined
   const activeThemeId = settingsDoc?.activeTheme as string | undefined
 
   // Fetch the active theme document
+  // In draft mode, use versioned query to pick up unpublished theme changes
   const theme = useQuery(
-    anyApi.vex.api.themes?.get,
-    activeThemeId ? { id: activeThemeId } : "skip",
+    drafts
+      ? anyApi.vex.versions?.getDocumentForEdit
+      : anyApi.vex.api.themes?.get,
+    activeThemeId
+      ? drafts
+        ? { collectionSlug: "themes", documentId: activeThemeId }
+        : { id: activeThemeId }
+      : "skip",
   ) as Record<string, unknown> | null | undefined
+
+  // In draft mode, notify the admin panel when settings or theme data changes
+  // so the live preview spinner stops
+  useVexPreview({ data: drafts ? { settings: settingsDoc, theme } : undefined })
 
   if (!theme) return null
 
@@ -98,7 +114,6 @@ export function ThemeInjector(props: { siteSettingsSlug: string }) {
     .filter(Boolean)
     .join("\n\n")
 
-  // Also apply radius and font if present
   const radius = theme.radius as string | undefined
   const fontFamily = theme.fontFamily as string | undefined
   const extraVars: string[] = []

@@ -27,9 +27,19 @@ interface NavSectionProps {
       url: string;
     }[];
   }[];
+  /** Ungrouped items rendered as direct links below the groups */
+  ungroupedItems?: {
+    title: string;
+    url: string;
+    slug: string;
+  }[];
 }
 
-export function NavSection({ title, items }: NavSectionProps) {
+export function NavSection({ title, items, ungroupedItems }: NavSectionProps) {
+  if (items.length === 0 && (!ungroupedItems || ungroupedItems.length === 0)) {
+    return null;
+  }
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>{title}</SidebarGroupLabel>
@@ -60,6 +70,13 @@ export function NavSection({ title, items }: NavSectionProps) {
               </SidebarMenuSub>
             </CollapsibleContent>
           </Collapsible>
+        ))}
+        {ungroupedItems?.map((item) => (
+          <SidebarMenuItem key={item.slug}>
+            <SidebarMenuButton render={<Link href={item.url} />} tooltip={item.title}>
+              <span>{item.title}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         ))}
       </SidebarMenu>
     </SidebarGroup>

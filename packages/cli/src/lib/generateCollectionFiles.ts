@@ -86,6 +86,13 @@ function cleanStaleFiles(dir: string, keepSet: Set<string>, deleted: string[], p
  */
 function getExpectedSlugs(config: VexConfig): string[] {
   const slugs = config.collections.map((c) => c.slug);
+  if (config.globals) {
+    for (const g of config.globals) {
+      if (!slugs.includes(g.slug)) {
+        slugs.push(g.slug);
+      }
+    }
+  }
   if (config.media?.collections) {
     for (const c of config.media.collections) {
       slugs.push(c.slug);

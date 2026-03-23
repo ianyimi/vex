@@ -129,6 +129,9 @@ export interface Footers {
 export interface Themes {
   _id: Id<"themes">
   _creationTime: number
+  vex_status?: "draft" | "published"
+  vex_version?: number
+  vex_publishedAt?: number
   /** Theme Name */
   name: string
   /** Theme Colors */
@@ -137,29 +140,6 @@ export interface Themes {
   radius?: string
   /** Font Family */
   fontFamily?: string
-}
-
-export interface SiteSettings {
-  _id: Id<"site_settings">
-  _creationTime: number
-  /** Site Name */
-  name: string
-  /** Site Description */
-  description?: string
-  /** Active Theme */
-  activeTheme?: Id<"themes">
-  /** Favicon */
-  favicon?: Id<"media">
-  /** Meta Title */
-  metaTitle?: string
-  /** Meta Description */
-  metaDescription?: string
-  /** OG Image */
-  ogImage?: Id<"media">
-  /** Twitter Handle */
-  twitterHandle?: string
-  /** Google Analytics ID */
-  googleAnalyticsId?: string
 }
 
 export interface User {
@@ -268,6 +248,29 @@ export interface Media {
   height?: number
 }
 
+export interface SiteSettings {
+  _id: Id<"site_settings">
+  _creationTime: number
+  /** Site Name */
+  name: string
+  /** Active Theme */
+  activeTheme?: Id<"themes">
+  /** Site Description */
+  description?: string
+  /** Favicon */
+  favicon?: Id<"media">
+  /** Google Analytics ID */
+  googleAnalyticsId?: string
+  /** Meta Description */
+  metaDescription?: string
+  /** Meta Title */
+  metaTitle?: string
+  /** OG Image */
+  ogImage?: Id<"media">
+  /** Twitter Handle */
+  twitterHandle?: string
+}
+
 export interface VexCollectionTypes {
   account: Account
   apikey: Apikey
@@ -277,8 +280,11 @@ export interface VexCollectionTypes {
   media: Media
   pages: Pages
   session: Session
-  site_settings: SiteSettings
   themes: Themes
   user: User
   verification: Verification
+}
+
+export interface VexGlobalTypes {
+  site_settings: SiteSettings
 }

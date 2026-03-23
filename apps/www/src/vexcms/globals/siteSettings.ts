@@ -1,11 +1,14 @@
-import { defineCollection, relationship, text, upload } from "@vexcms/core"
+import { defineGlobal, relationship, text, upload } from "@vexcms/core"
 
 import { TABLE_SLUG_MEDIA, TABLE_SLUG_SITE_SETTINGS, TABLE_SLUG_THEMES } from "~/db/constants"
 
-export const siteSettings = defineCollection({
+export const siteSettings = defineGlobal({
   slug: TABLE_SLUG_SITE_SETTINGS,
   admin: {
     group: "Site Builder",
+    livePreview: {
+      url: "/preview/home",
+    },
     useAsTitle: "name",
   },
   fields: {
@@ -13,42 +16,42 @@ export const siteSettings = defineCollection({
       label: "Site Name",
       required: true,
     }),
-    description: text({
-      label: "Site Description",
-    }),
     activeTheme: relationship({
       label: "Active Theme",
       to: TABLE_SLUG_THEMES,
+    }),
+    description: text({
+      label: "Site Description",
     }),
     favicon: upload({
       admin: { description: "Site favicon image" },
       label: "Favicon",
       to: TABLE_SLUG_MEDIA,
     }),
-    metaTitle: text({
-      label: "Meta Title",
-      admin: { description: "Default <title> tag for the site" },
+    googleAnalyticsId: text({
+      admin: { description: "GA4 measurement ID (G-XXXXXXXXXX)" },
+      label: "Google Analytics ID",
     }),
     metaDescription: text({
-      label: "Meta Description",
       admin: { description: "Default meta description for SEO" },
+      label: "Meta Description",
+    }),
+    metaTitle: text({
+      admin: { description: "Default <title> tag for the site" },
+      label: "Meta Title",
     }),
     ogImage: upload({
+      admin: { description: "Default Open Graph image for social sharing" },
       label: "OG Image",
       to: TABLE_SLUG_MEDIA,
-      admin: { description: "Default Open Graph image for social sharing" },
     }),
     twitterHandle: text({
-      label: "Twitter Handle",
       admin: { description: "@handle for Twitter cards" },
-    }),
-    googleAnalyticsId: text({
-      label: "Google Analytics ID",
-      admin: { description: "GA4 measurement ID (G-XXXXXXXXXX)" },
+      label: "Twitter Handle",
     }),
   },
-  labels: {
-    plural: "Site Settings",
-    singular: "Site Settings",
+  label: "Site Settings",
+  versions: {
+    drafts: true,
   },
 })

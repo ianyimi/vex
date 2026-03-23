@@ -16,8 +16,8 @@ import { access } from "../../src/vexcms/access"
 import * as Versions from "./model/versions"
 
 function requireVersionedCollection(slug: string) {
-  const collections = [...config.collections, ...(config.media?.collections ?? [])]
-  const match = collections.find((c) => c.slug === slug)
+  const collections = [...config.collections, ...(config.media?.collections ?? []), ...(config.globals ?? [])]
+  const match = collections.find((c: any) => c.slug === slug)
   if (!match) {
     throw new ConvexError(`Collection not found: ${slug}`)
   }
@@ -503,10 +503,18 @@ export const getDocumentForEdit = query({
     documentId: v.string(),
   },
   handler: async (ctx, { collectionSlug, documentId }) => {
-    requireVersionedCollection(collectionSlug)
-
     const mainDoc = await ctx.db.get(documentId as any)
     if (!mainDoc) return null
+
+    // Check if this collection/global actually has versioning enabled in config.
+    // If not (e.g. config not yet redeployed), just return the raw document.
+    const collections = [...config.collections, ...(config.media?.collections ?? []), ...(config.globals ?? [])]
+    const match = collections.find((c: any) => c.slug === collectionSlug)
+    if (!match?.versions?.drafts) {
+      const doc = mainDoc as Record<string, unknown>
+      if (!doc.vex_status) doc.vex_status = "published"
+      return doc
+    }
 
     const latestVersion = await Versions.getLatestVersion<DataModel>({
       ctx,
@@ -518,8 +526,6 @@ export const getDocumentForEdit = query({
       return {
         _id: mainDoc._id,
         ...(latestVersion.snapshot as Record<string, unknown>),
-        // Use the latest version's status, not the main doc's — the main doc
-        // only updates on publish, but the latest version may be a draft
         vex_status: (latestVersion as any).status ?? (mainDoc as any).vex_status ?? "draft",
         vex_version: latestVersion.version,
         vex_publishedAt: (mainDoc as any).vex_publishedAt,
@@ -534,6 +540,60 @@ export const getDocumentForEdit = query({
       doc.vex_status = "published"
     }
     return doc
+  },
+})
+
+/**
+ * Creates an initial version entry for a document that has none.
+ * Called by the admin edit view when it detects a versioned document
+ * without any version records (e.g., versioning was just enabled on
+ * an existing collection).
+ *
+ * Preserves the document's current status — if vex_status is "published",
+ * the version is created as published. Otherwise defaults to "draft".
+ *
+ * No-ops if the document already has version entries.
+ */
+export const initializeVersion = mutation({
+  args: {
+    collectionSlug: v.string(),
+    documentId: v.string(),
+  },
+  handler: async (ctx, { collectionSlug, documentId }) => {
+    const mainDoc = await ctx.db.get(documentId as any)
+    if (!mainDoc) return null
+
+    // Check if versions already exist
+    const existing = await Versions.getLatestVersion<DataModel>({
+      ctx,
+      collection: collectionSlug,
+      documentId,
+    })
+    if (existing) return existing
+
+    // Build snapshot from the main document's current fields
+    const { _id, _creationTime, ...snapshot } = mainDoc as Record<string, unknown>
+
+    // Determine status from the document's current state
+    const status = (snapshot.vex_status as string) === "published" ? "published" : "draft"
+
+    // Ensure the main doc has vex_status set
+    if (!snapshot.vex_status) {
+      await ctx.db.patch(documentId as any, { vex_status: "published" } as any)
+      snapshot.vex_status = "published"
+    }
+
+    // Create the initial version
+    const versionId = await Versions.createVersion<DataModel>({
+      ctx,
+      collection: collectionSlug,
+      documentId,
+      snapshot,
+      status: status as "draft" | "published",
+      createdBy: null,
+    })
+
+    return versionId
   },
 })
 

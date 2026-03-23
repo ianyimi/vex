@@ -46,8 +46,15 @@ function themeColorFields() {
 export const themes = defineCollection({
   slug: TABLE_SLUG_THEMES,
   admin: {
+    defaultColumns: ["name", "_id", "fontFamily"],
     group: "Site Builder",
     useAsTitle: "name",
+    livePreview: {
+      url: "/preview/home",
+    },
+  },
+  versions: {
+    drafts: true,
   },
   fields: {
     name: text({
@@ -95,7 +102,10 @@ export const themes = defineCollection({
             sidebar: color({ label: "Sidebar", defaultValue: "#171717" }),
             sidebarForeground: color({ label: "Sidebar Foreground", defaultValue: "#fafafa" }),
             sidebarPrimary: color({ label: "Sidebar Primary", defaultValue: "#fafafa" }),
-            sidebarPrimaryForeground: color({ label: "Sidebar Primary FG", defaultValue: "#171717" }),
+            sidebarPrimaryForeground: color({
+              label: "Sidebar Primary FG",
+              defaultValue: "#171717",
+            }),
             sidebarAccent: color({ label: "Sidebar Accent", defaultValue: "#262626" }),
             sidebarAccentForeground: color({ label: "Sidebar Accent FG", defaultValue: "#fafafa" }),
             sidebarBorder: color({ label: "Sidebar Border", defaultValue: "#262626" }),

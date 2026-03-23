@@ -69,6 +69,27 @@ export function generateCollectionQueries(props: {
     }
   }
 
+  // Globals (treated like collections for API generation)
+  if (config.globals) {
+    for (const global of config.globals) {
+      if (slugs.includes(global.slug)) continue;
+      const collection = {
+        slug: global.slug,
+        tableName: global.tableName ?? global.slug,
+        fields: global.fields,
+        searchIndexes: undefined,
+      } as unknown as VexCollection;
+      const { apiFile, modelFile } = generateCollectionPair({
+        collection,
+        isMedia: false,
+        imports,
+      });
+      result[`api/${global.slug}.ts`] = apiFile;
+      result[`model/api/${global.slug}.ts`] = modelFile;
+      slugs.push(global.slug);
+    }
+  }
+
   // Auth collections that opt in with generateApi: true
   if (config.auth?.collections) {
     for (const collection of config.auth.collections) {

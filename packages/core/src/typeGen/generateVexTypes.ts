@@ -255,6 +255,7 @@ export function generateVexTypes(props: { config: VexConfig }): string {
       generateGlobalInterface({
         name,
         slug: g.slug,
+        tableName: g.tableName ?? g.slug,
         fields: g.fields as Record<string, VexField>,
         blockInterfaceNames,
       }),
@@ -395,14 +396,14 @@ function generateMediaCollectionInterface(props: {
 function generateGlobalInterface(props: {
   name: string;
   slug: string;
+  tableName: string;
   fields: Record<string, VexField>;
   blockInterfaceNames: Map<string, string>;
 }): string {
   const lines: string[] = [];
   lines.push(`export interface ${props.name} {`);
-  lines.push(`  _id: Id<'vex_globals'>;`);
+  lines.push(`  _id: Id<'${props.tableName}'>;`);
   lines.push(`  _creationTime: number;`);
-  lines.push(`  vexGlobalSlug: '${props.slug}';`);
 
   for (const [fieldName, field] of Object.entries(props.fields)) {
     const f = field as VexField;

@@ -177,7 +177,7 @@ describe("generateVexTypes", () => {
     expect(result).toContain("/** Site Name */");
     expect(result).toContain("siteName: string;");
     expect(result).toContain("logo?: string;");
-    expect(result).toContain("vexGlobalSlug: 'site_settings';");
+    expect(result).toContain("_id: Id<'site_settings'>;");
   });
 
   it("generates barrel VexCollectionTypes", () => {

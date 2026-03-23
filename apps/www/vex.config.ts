@@ -7,24 +7,22 @@ import {
   headers,
   media,
   pages,
-  siteSettings,
   themes,
   users,
 } from "~/vexcms/collections"
+import { siteSettings } from "~/vexcms/globals"
 
 export default defineConfig({
   admin: {
     meta: {
       titleSuffix: " | My Site",
     },
-    sidebar: {
-      hideGlobals: true,
-    },
     user: "user",
   },
   auth,
   basePath: "/admin",
-  collections: [pages, headers, footers, themes, siteSettings, users],
+  collections: [pages, headers, footers, themes, users],
+  globals: [siteSettings],
   media: {
     collections: [media],
     storageAdapter: convexFileStorage(),

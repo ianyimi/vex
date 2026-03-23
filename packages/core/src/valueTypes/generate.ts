@@ -275,6 +275,12 @@ export function generateVexSchema(props: { config: VexConfig }): string {
     for (const f of fields) {
       lines.push(`  ${f.name}: ${f.valueType},`);
     }
+    // vex_status on all globals — defaults to "published"
+    lines.push(`  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),`);
+    if ((global as any).versions?.drafts) {
+      lines.push(`  vex_version: v.optional(v.number()),`);
+      lines.push(`  vex_publishedAt: v.optional(v.number()),`);
+    }
     lines.push("})");
     for (const i of indexes) {
       const fieldList = i.fields.map((f) => `"${f}"`).join(", ");

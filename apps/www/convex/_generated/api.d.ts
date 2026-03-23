@@ -30,6 +30,7 @@ import type * as vex_api_user from "../vex/api/user.js";
 import type * as vex_auth from "../vex/auth.js";
 import type * as vex_collections from "../vex/collections.js";
 import type * as vex_firstUser from "../vex/firstUser.js";
+import type * as vex_globals from "../vex/globals.js";
 import type * as vex_helpers from "../vex/helpers.js";
 import type * as vex_impersonation from "../vex/impersonation.js";
 import type * as vex_media from "../vex/media.js";
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   "vex/auth": typeof vex_auth;
   "vex/collections": typeof vex_collections;
   "vex/firstUser": typeof vex_firstUser;
+  "vex/globals": typeof vex_globals;
   "vex/helpers": typeof vex_helpers;
   "vex/impersonation": typeof vex_impersonation;
   "vex/media": typeof vex_media;

@@ -1,5 +1,6 @@
 export { defineConfig } from "./config/defineConfig";
 export { defineCollection, defineMediaCollection } from "./config/defineCollection";
+export { defineGlobal } from "./config/defineGlobal";
 export { defineAccess } from "./access/defineAccess";
 export { hasPermission } from "./access/hasPermission";
 export { sanitizeConfigForClient, extractLivePreviewConfigs } from "./config/sanitizeConfig";

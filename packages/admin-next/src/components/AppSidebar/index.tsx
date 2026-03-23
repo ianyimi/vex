@@ -131,25 +131,29 @@ export function AppSidebar({
     const globalGroups: CollectionNavGroup[] = [];
     config.globals.forEach((g) => {
       if (!g.admin?.group) return;
-      const index = collectionGroups.findIndex(
+      const navItem = {
+        title: g.label ?? g.slug,
+        url: `${config.basePath}/${g.slug}`,
+        slug: g.slug,
+      };
+      // First check if a collection group with this name exists — add there
+      const collectionGroupIndex = collectionGroups.findIndex(
         (gg) => gg.title === g.admin!.group,
       );
-      if (index < 0) {
+      if (collectionGroupIndex >= 0) {
+        collectionGroups[collectionGroupIndex].items.push(navItem);
+        return;
+      }
+      // Otherwise check if a global group with this name exists
+      const globalGroupIndex = globalGroups.findIndex(
+        (gg) => gg.title === g.admin!.group,
+      );
+      if (globalGroupIndex >= 0) {
+        globalGroups[globalGroupIndex].items.push(navItem);
+      } else {
         globalGroups.push({
           title: g.admin!.group,
-          items: [
-            {
-              title: g.slug,
-              url: `${config.basePath}/${g.slug}`,
-              slug: g.slug,
-            },
-          ],
-        });
-      } else {
-        globalGroups[index].items.push({
-          title: g.slug,
-          url: `${config.basePath}/${g.slug}`,
-          slug: g.slug,
+          items: [navItem],
         });
       }
     });
@@ -169,10 +173,10 @@ export function AppSidebar({
       {/* </SidebarHeader> */}
       <SidebarContent>
         <div data-tour="sidebar-collections">
-          <NavSection title="Collections" items={nav.collectionGroups} />
+          <NavSection title="Collections" items={nav.collectionGroups} ungroupedItems={nav.collections} />
         </div>
-        {(!config.admin.sidebar.hideGlobals || config.globals.length > 0) && (
-          <NavSection title="Globals" items={nav.globalGroups} />
+        {(!config.admin.sidebar?.hideGlobals && (nav.globalGroups.length > 0 || nav.globals.length > 0)) && (
+          <NavSection title="Globals" items={nav.globalGroups} ungroupedItems={nav.globals} />
         )}
       </SidebarContent>
       {user && (

@@ -199,7 +199,7 @@ describe("extractAuthCollections", () => {
       });
       const user = collections.find((c) => c.slug === "user")!;
       expect(user.fields.role.type).toBe("array");
-      expect(user.fields.role.field.type).toBe("text");
+      expect(user.fields.role.items.type).toBe("text");
     });
   });
 });

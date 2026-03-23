@@ -10,7 +10,7 @@ export function SiteHeader() {
   const result = useQuery(anyApi.vex.api.headers.list, {
     paginationOpts: { numItems: 1, cursor: null },
   })
-  const header = result?.page?.[0]
+  const header = (result as any)?.page?.[0]
 
   if (!header?.content) return null
 

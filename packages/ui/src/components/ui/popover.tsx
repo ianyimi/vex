@@ -21,7 +21,7 @@ function PopoverContent({
   container?: HTMLElement | null | React.RefObject<HTMLElement | null>;
 }) {
   return (
-    <PopoverPrimitive.Portal container={container}>
+    <PopoverPrimitive.Portal container={container ?? undefined}>
       <PopoverPrimitive.Positioner align={align} sideOffset={sideOffset}>
         <PopoverPrimitive.Popup
           data-slot="popover-content"

@@ -205,21 +205,8 @@ export const themes = defineTable({
   radius: v.optional(v.string()),
   fontFamily: v.optional(v.string()),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
-})
-  .index("by_name", ["name"])
-  .searchIndex("search_name", { searchField: "name" })
-
-export const site_settings = defineTable({
-  name: v.string(),
-  description: v.optional(v.string()),
-  activeTheme: v.optional(v.id("themes")),
-  favicon: v.optional(v.id("media")),
-  metaTitle: v.optional(v.string()),
-  metaDescription: v.optional(v.string()),
-  ogImage: v.optional(v.id("media")),
-  twitterHandle: v.optional(v.string()),
-  googleAnalyticsId: v.optional(v.string()),
-  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+  vex_version: v.optional(v.number()),
+  vex_publishedAt: v.optional(v.number()),
 })
   .index("by_name", ["name"])
   .searchIndex("search_name", { searchField: "name" })
@@ -332,6 +319,18 @@ export const jwks = defineTable({
   createdAt: v.number(),
   expiresAt: v.optional(v.number()),
 })
+
+export const site_settings = defineTable({
+  name: v.string(),
+  activeTheme: v.optional(v.id("themes")),
+  description: v.optional(v.string()),
+  favicon: v.optional(v.id("media")),
+  googleAnalyticsId: v.optional(v.string()),
+  metaDescription: v.optional(v.string()),
+  metaTitle: v.optional(v.string()),
+  ogImage: v.optional(v.id("media")),
+  twitterHandle: v.optional(v.string()),
+}).index("by_name", ["name"])
 
 /**
  * VEX SYSTEM TABLES

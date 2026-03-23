@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 import type { VexConfig } from "@vexcms/core";
@@ -95,8 +95,53 @@ function createJitiOptions(cwd: string): JitiOptions {
   };
 }
 
+/**
+ * Load .env.local into process.env so that vex.config.ts and its
+ * transitive imports (e.g. auth options using process.env.BETTER_AUTH_SECRET)
+ * can resolve environment variables when run from the CLI.
+ */
+function loadDotEnv(cwd: string): void {
+  const envPath = resolve(cwd, ".env.local");
+  if (!existsSync(envPath)) return;
+  try {
+    const content = readFileSync(envPath, "utf-8");
+    for (const line of content.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eqIndex = trimmed.indexOf("=");
+      if (eqIndex < 0) continue;
+      const key = trimmed.slice(0, eqIndex).trim();
+      let value = trimmed.slice(eqIndex + 1).trim();
+      // Strip surrounding quotes
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      } else {
+        // Strip inline comments from unquoted values (e.g. "value # comment")
+        const hashIndex = value.indexOf(" #");
+        if (hashIndex >= 0) {
+          value = value.slice(0, hashIndex).trim();
+        }
+      }
+      // Don't overwrite existing env vars
+      if (process.env[key] === undefined) {
+        process.env[key] = value;
+      }
+    }
+  } catch {
+    // Ignore read errors
+  }
+}
+
 export async function loadConfig(configPath: string): Promise<VexConfig> {
   const cwd = dirname(configPath);
+
+  // Load .env.local so transitive imports can access env vars
+  loadDotEnv(cwd);
+  // Ensure NODE_ENV is set — env validation libraries like @t3-oss/env require it
+  if (!process.env.NODE_ENV) {
+    process.env.NODE_ENV = "development";
+  }
+
   const jiti = createJiti(configPath, createJitiOptions(cwd));
 
   const mod = (await jiti.import(configPath)) as

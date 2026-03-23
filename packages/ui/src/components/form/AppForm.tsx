@@ -127,6 +127,16 @@ interface AppFormProps {
    * the target collection's useAsTitle for display labels.
    */
   config?: any;
+  /**
+   * Renders a create document dialog for a given collection slug.
+   * Used by RelationshipField to create new related documents inline.
+   */
+  renderCreateDialog?: (props: {
+    collectionSlug: string;
+    open: boolean;
+    onClose: () => void;
+    onCreated: (documentId: string) => void;
+  }) => React.ReactNode;
 }
 
 /**
@@ -177,6 +187,7 @@ function AppForm({
   onValuesChange,
   renderRichTextField,
   config,
+  renderCreateDialog,
 }: AppFormProps) {
   const form = useForm({
     defaultValues: defaultValues as Record<string, any>,
@@ -447,6 +458,7 @@ function AppForm({
                           fieldDef={renderFieldDef}
                           name={renderName}
                           config={config}
+                          renderCreateDialog={renderCreateDialog}
                         />,
                       );
                     case "richtext": {

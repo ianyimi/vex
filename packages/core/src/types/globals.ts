@@ -3,6 +3,8 @@
 // =============================================================================
 
 import type { VexField, InferFieldsType } from "./fields";
+import type { LivePreviewConfig } from "./livePreview";
+import type { VersionsConfig } from "./collections";
 
 /**
  * Admin UI configuration for a global.
@@ -27,37 +29,29 @@ export interface GlobalAdminConfig<
    */
   useAsTitle?: keyof TFields;
   /**
-   * Field keys to show as default columns in the admin view.
-   * If not set, all fields are shown.
+   * Live preview configuration.
+   * When set, the admin edit view shows a toggleable side-by-side preview panel
+   * with an iframe loading the configured URL.
    */
-  defaultColumns?: (keyof TFields)[];
-  /**
-   * Disable the "Create New" button in the admin panel.
-   *
-   * Default: `false`
-   */
-  disableCreate?: boolean;
-  /**
-   * Disable the delete action in the admin panel.
-   *
-   * Default: `false`
-   */
-  disableDelete?: boolean;
+  livePreview?: LivePreviewConfig<TFields>;
 }
 
 /**
- * A global definition. Users create these as plain objects
- * with `as const satisfies VexGlobal`.
+ * A global definition. Globals are singleton documents — only one
+ * document exists per global. The admin panel shows them as a single
+ * editable form, not a list view.
  *
  * @example
  * ```ts
- * const siteSettings = {
+ * const siteSettings = defineGlobal({
  *   slug: "site_settings",
  *   label: "Site Settings",
  *   fields: {
- *     siteName: { type: "text", label: "Site Name", required: true },
+ *     siteName: text({ label: "Site Name", required: true }),
+ *     description: text({ label: "Description" }),
  *   },
- * } as const satisfies VexGlobal;
+ *   admin: { useAsTitle: "siteName" },
+ * });
  * ```
  */
 export interface VexGlobal<
@@ -81,9 +75,15 @@ export interface VexGlobal<
   tableName?: string;
   /**
    * Admin UI configuration for this global.
-   * Controls sidebar grouping, icons, and permissions.
+   * Controls sidebar grouping, icons, and live preview.
    */
   admin?: GlobalAdminConfig<TFields>;
+  /**
+   * Versioning and draft/publish workflow configuration.
+   * When `drafts` is enabled, the admin panel shows Save Draft + Publish
+   * and version history, same as versioned collections.
+   */
+  versions?: VersionsConfig;
   /**
    * TypeScript interface name used in generated `vex.types.ts`.
    * If not set, auto-generated from slug via PascalCase conversion.

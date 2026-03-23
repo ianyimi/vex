@@ -9,6 +9,7 @@ import CollectionsView from "../views/CollectionsView";
 import CollectionEditView from "../views/CollectionEditView";
 import MediaCollectionsView from "../views/MediaCollectionsView";
 import MediaCollectionEditView from "../views/MediaCollectionEditView";
+import GlobalEditView from "../views/GlobalEditView";
 
 /**
  * Resolves a collection by slug, merging auth fields when the slug
@@ -59,6 +60,35 @@ export function AdminPage({ config, path = [], renderRichTextField, livePreviewC
 
   if (!collectionSlug) {
     return <DashboardView config={config} />;
+  }
+
+  // Check if this is a global
+  const global = config.globals?.find((g) => g.slug === collectionSlug);
+  if (global) {
+    const globalAsCollection = {
+      ...global,
+      labels: { singular: global.label ?? global.slug, plural: global.label ?? global.slug },
+    } as unknown as VexCollection;
+
+    if (documentID) {
+      // Direct link to the global's document
+      return (
+        <CollectionEditView
+          key={documentID}
+          config={config}
+          collection={globalAsCollection}
+          documentID={documentID}
+          renderRichTextField={renderRichTextField}
+        />
+      );
+    }
+
+    // No document ID — auto-resolve the single document
+    return (
+      <Suspense fallback={<div className="p-6 text-muted-foreground">Loading...</div>}>
+        <GlobalEditView config={config} collection={globalAsCollection} renderRichTextField={renderRichTextField} />
+      </Suspense>
+    );
   }
 
   const collection = resolveCollection(config, collectionSlug);
