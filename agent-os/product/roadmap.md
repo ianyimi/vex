@@ -197,7 +197,7 @@ These are two distinct features that compose together:
 
 | Area                    | Status  | Details                                                                                              |
 | ----------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
-| Field types             | ✅ Done | 13 types: text, number, checkbox, select, date, imageUrl, relationship, upload, json, array, richtext, ui, blocks |
+| Field types             | ✅ Done | 16 types: text, number, checkbox, select, date, imageUrl, relationship, upload, json, object, array, richtext, ui, blocks, color, tabs |
 | Schema generation       | ✅ Done | Full codegen with auto-migration, diffing, Prettier formatting                                       |
 | Type generation         | ✅ Done | Generated TypeScript interfaces from collection config (vex.types.ts)                                |
 | Query generation        | ✅ Done | Typed per-collection query/mutation files with auth + RBAC                                           |
@@ -213,24 +213,30 @@ These are two distinct features that compose together:
 | Rich text               | ✅ Done | Plate.js editor + renderer, media upload in editor, @vexcms/richtext package                        |
 | Live preview            | ✅ Done | Side-by-side iframe panel, responsive breakpoints, draft snapshot sync, useVexPreview                |
 | Blocks system           | ✅ Done | defineBlock(), blocks() field, RenderBlocks component, admin block picker/reorder/edit               |
+| Object field            | ✅ Done | object() field type for named sub-field groups, used inside array() for array-of-objects              |
+| Color field             | ✅ Done | color() field with theme color tab + custom color picker, OKLCH support                              |
+| Tabs field              | ✅ Done | tabs() field for grouped tabbed UI in admin panel                                                    |
 | Custom components       | ✅ Done | admin.components.Field/Cell — pass React components directly (not path strings)                      |
+| Globals system          | ✅ Done | defineGlobal(), globals.get query with draft awareness, GlobalEditView, sidebar integration          |
 | Onboarding tour         | ✅ Done | driver.js guided tour, per-user completion tracking, admin config to disable                         |
 | First-user auto-admin   | ✅ Done | First sign-up gets admin role via atomic Convex mutation                                             |
 | createVexQuery          | ✅ Done | Typed draft-aware query builder (preserves DataModel types, handles _vexDrafts)                      |
-| Testing                 | ✅ Done | 530+ tests passing across core + create-cli                                                         |
+| Recursive field render  | ✅ Done | All field types work inside blocks/arrays/objects/tabs via single renderFieldByType                   |
+| Relationship create     | ✅ Done | Inline "Create new" button in relationship field dropdown, renders full CreateDocumentDialog          |
+| Marketing blocks (www)  | ✅ Done | Hero, Features, CTA, FAQ, Header, Footer blocks with real Vex CMS marketing copy                    |
+| Motion primitives (www) | ✅ Done | TextEffect, AnimatedGroup animation components ported from UIFoundry                                 |
+| CLI env loading         | ✅ Done | CLI loads .env.local before config import, sets NODE_ENV fallback, strips inline comments            |
+| Testing                 | ✅ Done | 586+ tests passing across core + create-cli + better-auth + cli + file-storage-convex                |
 
 ### What's Next
 
 | Area                          | Status       | Gap                                                                                    |
 | ----------------------------- | ------------ | -------------------------------------------------------------------------------------- |
-| Color field                   | 🔜 Next      | Custom color picker with theme color tab + custom color tab                            |
-| Theme system                  | 🔜 Next      | CSS variable injection from theme collection, theme import UI, OKLCH colors            |
-| Marketing blocks              | 🔜 Next      | Hero, Features, CTA, Testimonials, FAQ, Pricing blocks with 3-5 variants each          |
-| Marketing site (apps/www)     | 🔜 Next      | vexcms.dev built with VEX CMS, dogfoods the full stack                                 |
+| Field style controls          | 🔜 Next      | Spec 09c — padding, margin, background, typography controls on blocks/fields            |
+| Marketing site (apps/www)     | 🔜 Next      | vexcms.dev content, deploy, drive interest. Blocks + theme system in place              |
 | Demo site                     | 📋 Planned   | Public demo admin panel, resets daily, apps/demo                                        |
 | Hooks system                  | 📋 Planned   | Collection + field lifecycle hooks                                                     |
 | Team management UI            | 📋 Planned   | Invite users, role assignment, pending invites                                         |
-| Nested sidebar groups         | 📋 Planned   | Groups inside groups in admin sidebar                                                  |
 | TanStack Start support        | 📋 Planned   | Admin panel + create CLI template for TanStack Start                                   |
 
 ---
@@ -504,19 +510,20 @@ Phase 5.5 — Documentation site
 ## Summary Timeline
 
 ```
-DONE        Phases 0-2 complete. All core CMS features built and published on npm.
-            13 field types, schema/type/query gen, CLI, create CLI, admin panel,
-            media, versioning, RBAC, richtext, live preview, blocks, onboarding,
-            530+ tests, 8 npm packages + create-vexcms.
+DONE        Phases 0-2.5 complete. All core CMS features + blocks + themes built.
+            16 field types (incl. object, color, tabs), schema/type/query gen,
+            CLI, create CLI, admin panel, media, versioning, RBAC, richtext,
+            live preview, blocks, globals (defineGlobal), onboarding,
+            586+ tests, 8 npm packages + create-vexcms.
+            Marketing blocks (Hero, Features, CTA, FAQ, Header, Footer) in www.
+            Recursive field rendering — all types work inside blocks/arrays/objects.
+            Relationship field with inline create dialog.
+            CLI loads .env.local, globals.get query with draft awareness.
 
-PHASE 2.5   Spec 29 (Color Field + Theme System) → Spec 34 (Marketing Blocks)
-  THEMES    Color field, theme CSS injection, theme import UI, OKLCH colors.
-  BLOCKS    Hero, Features, CTA, Testimonials, FAQ, Pricing, Stats blocks (3-5 variants each).
+PHASE 2.75  Spec 33 (Marketing Site) → Spec 09c (Field Styles) → Spec 35 (Demo) → Spec 32 (Docs)
+  SITES     vexcms.dev content + deploy. Blocks + theme system in place.
+            Field style controls (padding, margin, bg) on blocks — NEXT.
             ← CURRENT PRIORITY
-
-PHASE 2.75  Spec 33 (Marketing Site) → Spec 35 (Demo Site) → Spec 32 (Docs Site)
-  SITES     vexcms.dev built with VEX. Demo site at demo.vexcms.dev.
-            Template kept in sync — delete & re-scaffold apps/www frequently.
 
 PHASE 3     Spec 18 (Teams) → Spec 19 (API Keys) → Spec 20 (Scheduling) → Spec 22 (Audit Log) → Hooks
   POLISH    Quality-of-life before enterprise.
@@ -570,11 +577,14 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 26     | SSO / SAML                         | Phase 4 (enterprise)                   |
 | 27     | Review / Approval Workflows        | Phase 4 (enterprise)                   |
 | 28     | Blocks System                      | ✅                                     |
-| 29     | Color Field + Theme System         | 🔜 Phase 2.5 (NEXT)                    |
+| 29     | Color Field + Theme System         | ✅                                     |
 | 30     | Site Builder (defineSite)          | ❌ Scrapped (use collections + groups)  |
 | 30.5   | Create CLI (create-vexcms)         | ✅                                     |
 | 31     | Onboarding, Orgs, Permissions DX   | ✅                                     |
 | 32     | Documentation Site (apps/docs)     | Phase 2.75                             |
-| 33     | Marketing Site (apps/www)          | Phase 2.75                             |
-| 34     | Marketing Blocks                   | Phase 2.5                              |
+| 33     | Marketing Site (apps/www)          | 🔜 In progress (blocks + theme done)   |
+| 34     | Marketing Blocks                   | ✅ (Hero, Features, CTA, FAQ, Header, Footer) |
 | 35     | Demo Site (apps/demo)              | Phase 2.75                             |
+| 36     | Relationship Picker                | ✅                                     |
+| 37     | Object Field                       | ✅                                     |
+| 38     | Globals System (defineGlobal)      | ✅                                     |
