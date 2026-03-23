@@ -325,13 +325,22 @@ export interface JsonFieldDef extends BaseField {
   readonly type: "json";
 }
 
+/** Object field definition. Stores a named group of sub-fields as `v.object()`. */
+export interface ObjectFieldDef extends BaseField {
+  readonly type: "object";
+  /** Named sub-fields that make up this object. */
+  fields: Record<string, VexField>;
+}
+
 /** Array field definition. Wraps an inner field in `v.array()`. */
 export interface ArrayFieldDef extends BaseField {
   readonly type: "array";
   /** Display labels for the field (singular/plural). */
   labels?: Labels;
-  /** The inner field type for array elements. */
-  field: VexField;
+  /** The field type for each item in the array. */
+  items: VexField;
+  /** Default value for the array (used when creating new documents/blocks). */
+  defaultValue?: unknown[];
   /** Minimum number of items. */
   min?: number;
   /** Maximum number of items. */
@@ -355,6 +364,91 @@ export interface RichTextFieldDef extends BaseField {
    * When not set, images can only be inserted by URL.
    */
   mediaCollection?: string;
+}
+
+/**
+ * Color picker field. Stores a color string in the configured format.
+ *
+ * @example
+ * ```ts
+ * accentColor: color({ label: "Accent Color", format: "hex" })
+ * primaryColor: color({ label: "Primary", format: "oklch", themeColors: true })
+ * ```
+ */
+export interface ColorFieldDef extends BaseField {
+  readonly type: "color";
+  /**
+   * Default color value.
+   * Should be in the configured format (hex, hsl, or oklch).
+   */
+  defaultValue?: string;
+  /**
+   * Output format for the color value.
+   * - "hex" — e.g., "#3b82f6" (default)
+   * - "hsl" — e.g., "hsl(217, 91%, 60%)"
+   * - "oklch" — e.g., "oklch(0.623 0.214 259.1)"
+   */
+  format?: "hex" | "hsl" | "oklch";
+  /**
+   * When true, shows a "Theme Colors" tab in the color picker
+   * that displays CSS variables from the current page's computed styles.
+   * Users can select a theme color variable instead of picking a custom color.
+   *
+   * Default: false
+   */
+  themeColors?: boolean;
+}
+
+/**
+ * A single tab definition within a tabs field.
+ */
+export interface TabDef {
+  /** Display label for the tab in the admin panel. */
+  label: string;
+  /**
+   * All fields in this tab are nested under this key as an object.
+   * e.g., `slug: "light"` → `{ light: { background: "#fff", ... } }`
+   */
+  slug: string;
+  /** Fields within this tab. */
+  fields: Record<string, VexField>;
+}
+
+/**
+ * Tabs field definition. Groups fields into tabbed UI sections in the admin panel.
+ *
+ * - Tabs with `slug` create nested objects in the document
+ * - Tabs without `slug` flatten their fields onto the parent
+ *
+ * @example
+ * ```ts
+ * themeColors: tabs({
+ *   label: "Theme Colors",
+ *   tabs: [
+ *     {
+ *       label: "Light",
+ *       slug: "light",
+ *       fields: {
+ *         background: color({ label: "Background" }),
+ *         foreground: color({ label: "Foreground" }),
+ *       },
+ *     },
+ *     {
+ *       label: "Dark",
+ *       slug: "dark",
+ *       fields: {
+ *         background: color({ label: "Background" }),
+ *         foreground: color({ label: "Foreground" }),
+ *       },
+ *     },
+ *   ],
+ * })
+ * ```
+ */
+export interface TabsFieldDef extends BaseField {
+  readonly type: "tabs";
+  /** The tab definitions. */
+  tabs: TabDef[];
 }
 
 /**
@@ -479,10 +573,13 @@ export type VexField =
   | RelationshipFieldDef
   | UploadFieldDef
   | JsonFieldDef
+  | ObjectFieldDef
   | ArrayFieldDef
   | RichTextFieldDef
   | UIFieldDef
-  | BlocksFieldDef;
+  | BlocksFieldDef
+  | ColorFieldDef
+  | TabsFieldDef;
 
 // =============================================================================
 // TYPE INFERENCE
@@ -516,7 +613,9 @@ export type InferFieldType<F extends VexField> = F extends { type: "text" }
                       ? string
                       : F extends { type: "json" }
                         ? unknown
-                        : F extends { type: "richtext" }
+                        : F extends { type: "object" }
+                          ? Record<string, unknown>
+                          : F extends { type: "richtext" }
                           ? RichTextDocument
                           : F extends { type: "blocks" }
                             ? Array<InferBlockUnion<F>>
@@ -524,7 +623,11 @@ export type InferFieldType<F extends VexField> = F extends { type: "text" }
                               ? unknown[]
                               : F extends { type: "ui" }
                                 ? never
-                                : never;
+                                : F extends { type: "color" }
+                                  ? string
+                                  : F extends { type: "tabs" }
+                                    ? Record<string, unknown>
+                                    : never;
 
 /**
  * Infer the discriminated union type for a blocks field.

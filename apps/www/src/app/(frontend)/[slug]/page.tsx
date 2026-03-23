@@ -1,16 +1,16 @@
 "use client"
 
-import type { RichTextDocument } from "@vexcms/core"
-
+import { RenderBlocks } from "@vexcms/ui"
 import { api } from "@convex/_generated/api"
-import { RichText } from "@vexcms/richtext/render"
 import { useQuery } from "convex/react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 
+import { blockComponents } from "~/vexcms/blocks"
+
 /**
  * Public page route — renders published pages by slug.
- * Passes _vexDrafts: false to only get published content.
+ * Content is rendered as blocks via RenderBlocks.
  */
 export default function PublicPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -43,16 +43,9 @@ export default function PublicPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="text-3xl font-bold mb-6">{page.title ?? "Untitled"}</h1>
-
-      {page.content ? (
-        <div className="prose prose-lg max-w-none">
-          <RichText content={page.content as RichTextDocument} />
-        </div>
-      ) : (
-        <p className="text-muted-foreground">This page has no content yet.</p>
-      )}
-    </div>
+    <RenderBlocks
+      blocks={page.content as any}
+      components={blockComponents}
+    />
   )
 }

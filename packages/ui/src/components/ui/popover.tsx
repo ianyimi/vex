@@ -12,18 +12,21 @@ function PopoverContent({
   align = "start",
   sideOffset = 4,
   children,
+  container,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Popup> & {
   align?: "start" | "center" | "end";
   sideOffset?: number;
+  /** Portal container — pass a ref to render inside a dialog's stacking context */
+  container?: HTMLElement | null | React.RefObject<HTMLElement | null>;
 }) {
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={container}>
       <PopoverPrimitive.Positioner align={align} sideOffset={sideOffset}>
         <PopoverPrimitive.Popup
           data-slot="popover-content"
           className={cn(
-            "z-50 w-auto rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none",
+            "z-[100] w-auto rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none",
             className,
           )}
           {...props}

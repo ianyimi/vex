@@ -49,6 +49,7 @@ interface MediaPickerProps {
 function MediaPicker(props: MediaPickerProps) {
   const [open, setOpen] = React.useState(false);
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
 
   const handleScroll = React.useCallback(() => {
     const el = scrollRef.current;
@@ -61,6 +62,7 @@ function MediaPicker(props: MediaPickerProps) {
   return (
     <Popover open={open} onOpenChange={(v) => { setOpen(v); props.onOpenChange?.(v); }}>
       <PopoverTrigger
+        ref={triggerRef}
         disabled={props.disabled}
         className="inline-flex items-center justify-between w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
       >
@@ -69,7 +71,7 @@ function MediaPicker(props: MediaPickerProps) {
         </span>
       </PopoverTrigger>
 
-      <PopoverContent className="w-80 p-0">
+      <PopoverContent className="w-80 p-0" container={triggerRef.current?.closest('[data-slot="dialog-content"]') as HTMLElement | null}>
         <div className="p-2 border-b">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />

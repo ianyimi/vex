@@ -38,17 +38,21 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  nested = false,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
+  /** When true, renders at a higher z-index to stack above other dialogs */
+  nested?: boolean
 }) {
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay className={nested ? "z-[60]" : undefined} />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "bg-background data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 rounded-lg border shadow-lg transition duration-150 flex flex-col",
+          "bg-background data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg border shadow-lg transition duration-150 flex flex-col",
+          nested ? "z-[60]" : "z-50",
           className,
         )}
         {...props}

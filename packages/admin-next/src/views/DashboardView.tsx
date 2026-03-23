@@ -1,12 +1,53 @@
+"use client";
+
 import Link from "next/link";
 import type { ClientVexConfig } from "@vexcms/core";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { anyApi } from "convex/server";
 
 interface DashboardViewProps {
   config: ClientVexConfig;
 }
 
+function CollectionCard({ collection, basePath }: {
+  collection: ClientVexConfig["collections"][number];
+  basePath: string;
+}) {
+  const countQuery = useQuery({
+    ...convexQuery(anyApi.vex.collections.countDocuments, {
+      collectionSlug: collection.slug,
+    }),
+  });
+
+  const count = countQuery.data as number | undefined;
+  const label =
+    collection.labels?.plural ??
+    collection.slug.charAt(0).toUpperCase() + collection.slug.slice(1);
+
+  return (
+    <Link
+      href={`${basePath}/${collection.slug}`}
+      className="block rounded-lg border border-border p-4 transition-colors hover:bg-accent/50"
+    >
+      <h2 className="font-semibold">{label}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {count !== undefined
+          ? `${count} ${count === 1 ? "document" : "documents"}`
+          : "Loading..."}
+      </p>
+    </Link>
+  );
+}
+
 export function DashboardView({ config }: DashboardViewProps) {
   const basePath = config.basePath ?? "/admin";
+
+  // Combine user collections + media collections
+  const allCollections = [
+    ...config.collections,
+    ...(config.media?.collections ?? []),
+  ];
 
   return (
     <div className="p-6">
@@ -14,25 +55,13 @@ export function DashboardView({ config }: DashboardViewProps) {
       <p className="mt-2 text-muted-foreground">Welcome to Vex CMS</p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {config.collections.map((collection) => {
-          const fieldCount = Object.keys(collection.fields).length;
-          const label =
-            collection.labels?.plural ??
-            collection.slug.charAt(0).toUpperCase() + collection.slug.slice(1);
-
-          return (
-            <Link
-              key={collection.slug}
-              href={`${basePath}/${collection.slug}`}
-              className="block rounded-lg border border-border p-4 transition-colors hover:bg-accent/50"
-            >
-              <h2 className="font-semibold">{label}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {fieldCount} {fieldCount === 1 ? "field" : "fields"}
-              </p>
-            </Link>
-          );
-        })}
+        {allCollections.map((collection) => (
+          <CollectionCard
+            key={collection.slug}
+            collection={collection}
+            basePath={basePath}
+          />
+        ))}
       </div>
     </div>
   );

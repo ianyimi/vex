@@ -1,9 +1,59 @@
 import type { ResolvedIndex, ResolvedSearchIndex, VexConfig, VexField } from "../types";
+import type { TabsFieldDef } from "../types/fields";
 import { fieldToValueType } from "./extract";
 import { collectIndexes } from "./indexes";
 import { collectSearchIndexes } from "./searchIndexes";
 import { mergeAuthCollectionWithUserCollection } from "./merge";
 import { buildSlugRegistry } from "./slugs";
+
+/**
+ * Expand a record of fields into flat name/valueType pairs,
+ * handling tabs fields by expanding their sub-fields.
+ * Each tab produces a v.optional(v.object({ ... })) entry keyed by its slug.
+ */
+function expandFields(props: {
+  fields: Record<string, VexField>;
+  collectionSlug: string;
+}): { name: string; valueType: string }[] {
+  const result: { name: string; valueType: string }[] = [];
+
+  for (const [fieldName, field] of Object.entries(props.fields) as [string, VexField][]) {
+    if (field.type === "ui") continue;
+
+    if (field.type === "tabs") {
+      const tabsField = field as TabsFieldDef;
+      for (const tab of tabsField.tabs) {
+        const innerFields: string[] = [];
+        for (const [innerName, innerField] of Object.entries(tab.fields) as [string, VexField][]) {
+          if (innerField.type === "ui") continue;
+          const innerValueType = fieldToValueType({
+            field: innerField,
+            collectionSlug: props.collectionSlug,
+            fieldName: innerName,
+          });
+          innerFields.push(`${innerName}: ${innerValueType}`);
+        }
+        if (innerFields.length > 0) {
+          result.push({
+            name: tab.slug,
+            valueType: `v.optional(v.object({ ${innerFields.join(", ")} }))`,
+          });
+        }
+      }
+    } else {
+      result.push({
+        name: fieldName,
+        valueType: fieldToValueType({
+          fieldName,
+          field,
+          collectionSlug: props.collectionSlug,
+        }),
+      });
+    }
+  }
+
+  return result;
+}
 
 /**
  * Generates the full TypeScript source content for `convex/vex.schema.ts`.
@@ -80,19 +130,10 @@ export function generateVexSchema(props: { config: VexConfig }): string {
         searchIndexes.push(si);
       }
     } else {
-      for (const [fieldName, field] of Object.entries(
-        collection.fields,
-      ) as [string, VexField][]) {
-        if (field.type === "ui") continue; // UI fields have no database representation
-        fields.push({
-          name: fieldName,
-          valueType: fieldToValueType({
-            fieldName,
-            field,
-            collectionSlug: collection.slug,
-          }),
-        });
-      }
+      fields.push(...expandFields({
+        fields: collection.fields as Record<string, VexField>,
+        collectionSlug: collection.slug,
+      }));
     }
 
     lines.push(
@@ -250,7 +291,12 @@ export function generateVexSchema(props: { config: VexConfig }): string {
     lines.push("  collection: v.string(),");
     lines.push("  documentId: v.string(),");
     lines.push("  version: v.number(),");
-    lines.push(`  status: v.union(v.literal("draft"), v.literal("published"), v.literal("autosave"), v.literal("previewSnapshot")),`);
+    lines.push("  status: v.union(");
+    lines.push(`    v.literal("draft"),`);
+    lines.push(`    v.literal("published"),`);
+    lines.push(`    v.literal("autosave"),`);
+    lines.push(`    v.literal("previewSnapshot"),`);
+    lines.push("  ),");
     lines.push("  snapshot: v.any(),");
     lines.push("  createdAt: v.number(),");
     lines.push("  createdBy: v.optional(v.string()),");

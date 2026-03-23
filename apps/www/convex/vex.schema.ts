@@ -10,7 +10,56 @@ import { v } from "convex/values"
 export const pages = defineTable({
   title: v.string(),
   slug: v.string(),
-  content: v.optional(v.any()),
+  content: v.optional(
+    v.array(
+      v.union(
+        v.object({
+          blockType: v.literal("hero"),
+          blockName: v.optional(v.string()),
+          _key: v.string(),
+          badgeText: v.optional(v.string()),
+          badgeLink: v.optional(v.string()),
+          heading: v.string(),
+          subheading: v.optional(v.string()),
+          primaryCtaLabel: v.string(),
+          primaryCtaHref: v.string(),
+          secondaryCtaLabel: v.optional(v.string()),
+          secondaryCtaHref: v.optional(v.string()),
+        }),
+        v.object({
+          blockType: v.literal("features"),
+          blockName: v.optional(v.string()),
+          _key: v.string(),
+          heading: v.string(),
+          subheading: v.optional(v.string()),
+          features: v.array(
+            v.object({
+              title: v.string(),
+              description: v.string(),
+              icon: v.optional(v.string()),
+            })
+          ),
+        }),
+        v.object({
+          blockType: v.literal("cta"),
+          blockName: v.optional(v.string()),
+          _key: v.string(),
+          heading: v.string(),
+          subheading: v.optional(v.string()),
+          actions: v.optional(v.array(v.object({ label: v.string(), href: v.string() }))),
+        }),
+        v.object({
+          blockType: v.literal("faq"),
+          blockName: v.optional(v.string()),
+          _key: v.string(),
+          heading: v.string(),
+          subheading: v.optional(v.string()),
+          supportLink: v.optional(v.string()),
+          items: v.array(v.object({ question: v.string(), answer: v.string() })),
+        })
+      )
+    )
+  ),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   vex_version: v.optional(v.number()),
   vex_publishedAt: v.optional(v.number()),
@@ -21,9 +70,30 @@ export const pages = defineTable({
 
 export const headers = defineTable({
   name: v.string(),
-  logoText: v.optional(v.string()),
-  logoUrl: v.optional(v.id("media")),
-  sticky: v.optional(v.boolean()),
+  content: v.optional(
+    v.array(
+      v.object({
+        blockType: v.literal("header"),
+        blockName: v.optional(v.string()),
+        _key: v.string(),
+        logoText: v.optional(v.string()),
+        logoImage: v.optional(v.id("media")),
+        logoHref: v.optional(v.string()),
+        menuItems: v.optional(v.array(v.object({ label: v.string(), href: v.string() }))),
+        actionButtons: v.optional(
+          v.array(
+            v.object({
+              label: v.string(),
+              href: v.string(),
+              variant: v.optional(
+                v.union(v.literal("default"), v.literal("outline"), v.literal("ghost"))
+              ),
+            })
+          )
+        ),
+      })
+    )
+  ),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
 })
   .index("by_name", ["name"])
@@ -31,8 +101,28 @@ export const headers = defineTable({
 
 export const footers = defineTable({
   name: v.string(),
-  content: v.optional(v.any()),
-  copyright: v.optional(v.string()),
+  content: v.optional(
+    v.array(
+      v.object({
+        blockType: v.literal("footer"),
+        blockName: v.optional(v.string()),
+        _key: v.string(),
+        logoText: v.optional(v.string()),
+        logoImage: v.optional(v.id("media")),
+        copyright: v.optional(v.string()),
+        links: v.optional(v.array(v.object({ label: v.string(), href: v.string() }))),
+        socialLinks: v.optional(
+          v.array(
+            v.object({
+              platform: v.string(),
+              href: v.string(),
+              icon: v.optional(v.string()),
+            })
+          )
+        ),
+      })
+    )
+  ),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
 })
   .index("by_name", ["name"])
@@ -40,10 +130,80 @@ export const footers = defineTable({
 
 export const themes = defineTable({
   name: v.string(),
-  backgroundColor: v.optional(v.string()),
+  light: v.optional(
+    v.object({
+      background: v.optional(v.string()),
+      foreground: v.optional(v.string()),
+      card: v.optional(v.string()),
+      cardForeground: v.optional(v.string()),
+      popover: v.optional(v.string()),
+      popoverForeground: v.optional(v.string()),
+      primary: v.optional(v.string()),
+      primaryForeground: v.optional(v.string()),
+      secondary: v.optional(v.string()),
+      secondaryForeground: v.optional(v.string()),
+      muted: v.optional(v.string()),
+      mutedForeground: v.optional(v.string()),
+      accent: v.optional(v.string()),
+      accentForeground: v.optional(v.string()),
+      destructive: v.optional(v.string()),
+      destructiveForeground: v.optional(v.string()),
+      border: v.optional(v.string()),
+      input: v.optional(v.string()),
+      ring: v.optional(v.string()),
+      chart1: v.optional(v.string()),
+      chart2: v.optional(v.string()),
+      chart3: v.optional(v.string()),
+      chart4: v.optional(v.string()),
+      chart5: v.optional(v.string()),
+      sidebar: v.optional(v.string()),
+      sidebarForeground: v.optional(v.string()),
+      sidebarPrimary: v.optional(v.string()),
+      sidebarPrimaryForeground: v.optional(v.string()),
+      sidebarAccent: v.optional(v.string()),
+      sidebarAccentForeground: v.optional(v.string()),
+      sidebarBorder: v.optional(v.string()),
+      sidebarRing: v.optional(v.string()),
+    })
+  ),
+  dark: v.optional(
+    v.object({
+      background: v.optional(v.string()),
+      foreground: v.optional(v.string()),
+      card: v.optional(v.string()),
+      cardForeground: v.optional(v.string()),
+      popover: v.optional(v.string()),
+      popoverForeground: v.optional(v.string()),
+      primary: v.optional(v.string()),
+      primaryForeground: v.optional(v.string()),
+      secondary: v.optional(v.string()),
+      secondaryForeground: v.optional(v.string()),
+      muted: v.optional(v.string()),
+      mutedForeground: v.optional(v.string()),
+      accent: v.optional(v.string()),
+      accentForeground: v.optional(v.string()),
+      destructive: v.optional(v.string()),
+      destructiveForeground: v.optional(v.string()),
+      border: v.optional(v.string()),
+      input: v.optional(v.string()),
+      ring: v.optional(v.string()),
+      chart1: v.optional(v.string()),
+      chart2: v.optional(v.string()),
+      chart3: v.optional(v.string()),
+      chart4: v.optional(v.string()),
+      chart5: v.optional(v.string()),
+      sidebar: v.optional(v.string()),
+      sidebarForeground: v.optional(v.string()),
+      sidebarPrimary: v.optional(v.string()),
+      sidebarPrimaryForeground: v.optional(v.string()),
+      sidebarAccent: v.optional(v.string()),
+      sidebarAccentForeground: v.optional(v.string()),
+      sidebarBorder: v.optional(v.string()),
+      sidebarRing: v.optional(v.string()),
+    })
+  ),
+  radius: v.optional(v.string()),
   fontFamily: v.optional(v.string()),
-  primaryColor: v.optional(v.string()),
-  secondaryColor: v.optional(v.string()),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
 })
   .index("by_name", ["name"])
@@ -52,7 +212,13 @@ export const themes = defineTable({
 export const site_settings = defineTable({
   name: v.string(),
   description: v.optional(v.string()),
+  activeTheme: v.optional(v.id("themes")),
   favicon: v.optional(v.id("media")),
+  metaTitle: v.optional(v.string()),
+  metaDescription: v.optional(v.string()),
+  ogImage: v.optional(v.id("media")),
+  twitterHandle: v.optional(v.string()),
+  googleAnalyticsId: v.optional(v.string()),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
 })
   .index("by_name", ["name"])

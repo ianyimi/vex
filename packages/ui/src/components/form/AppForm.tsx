@@ -13,7 +13,12 @@ import {
   ImageUrlField,
   MultiSelectField,
   UploadField,
+  ObjectField,
+  ArrayField,
   BlocksField,
+  ColorField,
+  TabsField,
+  RelationshipField,
 } from "./fields";
 import { VexFormProvider } from "./VexFormProvider";
 import type { MediaDocument } from "../ui/media-picker";
@@ -117,6 +122,11 @@ interface AppFormProps {
       fields: Record<string, unknown>;
     }) => Promise<string>;
   }) => React.ReactNode;
+  /**
+   * VEX config — passed to RelationshipField so it can look up
+   * the target collection's useAsTitle for display labels.
+   */
+  config?: any;
 }
 
 /**
@@ -166,33 +176,57 @@ function AppForm({
   onDirtyChange,
   onValuesChange,
   renderRichTextField,
+  config,
 }: AppFormProps) {
   const form = useForm({
     defaultValues: defaultValues as Record<string, any>,
     validators: {
-      onSubmit: schema,
+      onSubmit: ({ value }: { value: Record<string, any> }) => {
+        const result = schema.safeParse(value);
+        if (!result.success) {
+          console.error("[VEX] Form validation failed:", result.error.issues);
+          return result.error.issues.map((i: any) => i.message).join(", ");
+        }
+        return undefined;
+      },
     },
     onSubmit: async ({ value }) => {
+      const collected = collectFormValues(value);
       if (submitAllFields) {
-        const allFields: Record<string, unknown> = {};
-        for (const entry of fieldEntries) {
-          allFields[entry.name] = value[entry.name];
-        }
-        await onSubmit(allFields);
+        await onSubmit(collected);
         return;
       }
       const changedFields: Record<string, unknown> = {};
-      for (const entry of fieldEntries) {
-        const current = value[entry.name];
-        const original = defaultValues[entry.name];
-        if (current !== original) {
-          changedFields[entry.name] = current;
+      for (const [key, current] of Object.entries(collected)) {
+        const original = defaultValues[key];
+        if (JSON.stringify(current) !== JSON.stringify(original)) {
+          changedFields[key] = current;
         }
       }
       if (Object.keys(changedFields).length === 0) return;
       await onSubmit(changedFields);
     },
   });
+
+  /**
+   * Collect form values from field entries, expanding tabs into their slug keys.
+   * Used by onSubmit, getValuesRef, and onValuesChange.
+   */
+  function collectFormValues(values: Record<string, any>): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+    for (const entry of fieldEntries) {
+      if (entry.field.type === "ui") continue;
+      if (entry.field.type === "tabs") {
+        // Tabs expand: collect each tab's slug key from form values
+        for (const tab of (entry.field as any).tabs) {
+          result[tab.slug] = values[tab.slug];
+        }
+      } else {
+        result[entry.name] = values[entry.name];
+      }
+    }
+    return result;
+  }
 
   // Dev-mode validation for custom components on ineligible field types
   if (process.env.NODE_ENV !== "production") {
@@ -214,13 +248,7 @@ function AppForm({
 
   // Expose a getValues function so the parent can read current form state
   if (getValuesRef) {
-    getValuesRef.current = () => {
-      const values: Record<string, unknown> = {};
-      for (const entry of fieldEntries) {
-        values[entry.name] = form.state.values[entry.name];
-      }
-      return values;
-    };
+    getValuesRef.current = () => collectFormValues(form.state.values);
   }
 
   // Subscribe to form value changes for live preview.
@@ -231,11 +259,7 @@ function AppForm({
   useEffect(() => {
     const unsubscribe = form.store.subscribe(() => {
       if (!onValuesChangeRef.current) return;
-      const values: Record<string, unknown> = {};
-      for (const entry of fieldEntries) {
-        values[entry.name] = form.state.values[entry.name];
-      }
-      onValuesChangeRef.current(values);
+      onValuesChangeRef.current(collectFormValues(form.state.values));
     });
     return unsubscribe;
   }, [form, fieldEntries]);
@@ -259,194 +283,206 @@ function AppForm({
           />
         )}
         <div className="space-y-6">
-          {fieldEntries.map((entry) => (
+          {fieldEntries.map((entry) => {
+            const fieldDef = entry.field;
+
+            // Tabs render outside form.Field — they create their own form fields
+            if (fieldDef.type === "tabs") {
+              return (
+                <TabsField
+                  key={entry.name}
+                  fieldDef={fieldDef as any}
+                  name={entry.name}
+                  renderField={({ fieldName, fieldPath, field: subFieldDef }) => (
+                    <form.Field key={fieldPath} name={fieldPath as any}>
+                      {(subField: any) => renderFieldByType(subField, subFieldDef, fieldName)}
+                    </form.Field>
+                  )}
+                />
+              );
+            }
+
+            // Custom Field component (ui fields and eligible types)
+            if (fieldDef.admin?.components?.Field) {
+              if (
+                CUSTOM_FIELD_ELIGIBLE_TYPES.has(fieldDef.type) ||
+                fieldDef.type === "ui"
+              ) {
+                const CustomField = fieldDef.admin.components.Field;
+                return (
+                  <CustomField
+                    key={entry.name}
+                    name={entry.name}
+                    fieldDef={fieldDef}
+                    readOnly={
+                      entry.readOnly ?? fieldDef.admin?.readOnly ?? false
+                    }
+                  />
+                );
+              }
+            }
+
+            // ui fields without custom component
+            if (fieldDef.type === "ui") {
+              return null;
+            }
+
+            return (
             <form.Field key={entry.name} name={entry.name}>
-              {(field) => {
-                const fieldDef = entry.field;
-
-                // Check for custom Field component
-                if (fieldDef.admin?.components?.Field) {
-                  if (
-                    CUSTOM_FIELD_ELIGIBLE_TYPES.has(fieldDef.type) ||
-                    fieldDef.type === "ui"
-                  ) {
-                    const CustomField = fieldDef.admin.components.Field;
-                    return (
-                      <CustomField
-                        name={entry.name}
-                        fieldDef={fieldDef}
-                        readOnly={
-                          entry.readOnly ?? fieldDef.admin?.readOnly ?? false
-                        }
-                      />
-                    );
-                  }
-                  // Ineligible type — fall through to default rendering
-                }
-
-                // ui fields without custom component (shouldn't happen — type requires it)
-                if (fieldDef.type === "ui") {
-                  return null;
-                }
-
-                const readOnlyWrapper = (node: React.ReactNode) =>
-                  entry.readOnly ? (
-                    <div
-                      className="opacity-60 pointer-events-none"
-                      aria-disabled="true"
-                    >
-                      {node}
-                    </div>
-                  ) : (
-                    node
-                  );
-
-                switch (fieldDef.type) {
-                  case "text":
-                    return readOnlyWrapper(
-                      <TextField
-                        field={field}
-                        fieldDef={fieldDef}
-                        name={entry.name}
-                      />,
-                    );
-                  case "number":
-                    return readOnlyWrapper(
-                      <NumberField
-                        field={field}
-                        fieldDef={fieldDef}
-                        name={entry.name}
-                      />,
-                    );
-                  case "checkbox":
-                    return readOnlyWrapper(
-                      <CheckboxFieldForm
-                        field={field}
-                        fieldDef={fieldDef}
-                        name={entry.name}
-                      />,
-                    );
-                  case "select":
-                    if (fieldDef.hasMany) {
-                      return readOnlyWrapper(
-                        <MultiSelectField
-                          field={field}
-                          fieldDef={fieldDef}
-                          name={entry.name}
-                        />,
-                      );
-                    }
-                    return readOnlyWrapper(
-                      <SelectField
-                        field={field}
-                        fieldDef={fieldDef}
-                        name={entry.name}
-                      />,
-                    );
-                  case "date":
-                    return readOnlyWrapper(
-                      <DateField
-                        field={field}
-                        fieldDef={fieldDef}
-                        name={entry.name}
-                      />,
-                    );
-                  case "imageUrl":
-                    return readOnlyWrapper(
-                      <ImageUrlField
-                        field={field}
-                        fieldDef={fieldDef}
-                        name={entry.name}
-                      />,
-                    );
-                  case "upload": {
-                    const uploadNew = () =>
-                      onOpenUploadModal?.(entry.name, fieldDef.to);
-
-                    if (renderUploadField) {
-                      return readOnlyWrapper(
-                        renderUploadField({
-                          field,
-                          fieldDef,
-                          name: entry.name,
-                          onUploadNew: uploadNew,
-                          defaultValue: defaultValues[entry.name],
-                        }),
-                      );
-                    }
-
-                    const pickerState = uploadFieldStates?.[entry.name];
-                    return readOnlyWrapper(
-                      <UploadField
-                        field={field}
-                        fieldDef={fieldDef}
-                        name={entry.name}
-                        mediaResults={pickerState?.results ?? []}
-                        searchTerm={pickerState?.searchTerm ?? ""}
-                        onSearchChange={
-                          pickerState?.setSearchTerm ?? (() => {})
-                        }
-                        canLoadMore={pickerState?.canLoadMore ?? false}
-                        onLoadMore={pickerState?.loadMore ?? (() => {})}
-                        isLoading={pickerState?.isLoading ?? false}
-                        onUploadNew={uploadNew}
-                        selectedMedia={pickerState?.selectedMedia}
-                      />,
-                    );
-                  }
-                  case "blocks":
-                    return readOnlyWrapper(
-                      <BlocksField
-                        field={field}
-                        fieldDef={fieldDef}
-                        name={entry.name}
-                      />,
-                    );
-                  case "richtext": {
-                    if (renderRichTextField) {
-                      return readOnlyWrapper(
-                        renderRichTextField({
-                          field,
-                          fieldDef,
-                          name: entry.name,
-                        }),
-                      );
-                    }
-                    // Fallback: render as JSON textarea when no editor adapter
-                    return readOnlyWrapper(
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">
-                          {fieldDef.label ?? entry.name}
-                        </label>
-                        <textarea
-                          className="w-full min-h-[200px] rounded-md border p-3 font-mono text-sm"
-                          value={JSON.stringify(field.state.value, null, 2)}
-                          onChange={(e) => {
-                            try {
-                              field.handleChange(JSON.parse(e.target.value));
-                            } catch {
-                              // Invalid JSON, don't update
-                            }
-                          }}
-                        />
-                        {fieldDef.description && (
-                          <p className="text-sm text-muted-foreground">
-                            {fieldDef.description}
-                          </p>
-                        )}
-                      </div>,
-                    );
-                  }
-                  default:
-                    return null;
-                }
-              }}
+              {(field) => renderFieldByType(field, fieldDef, entry.name, entry.readOnly)}
             </form.Field>
-          ))}
+            );
+          })}
         </div>
       </VexFormProvider>
     </form>
   );
+
+  // Centralized field renderer — used by top-level and recursively by tabs
+  function renderFieldByType(
+                  renderField: any,
+                  renderFieldDef: any,
+                  renderName: string,
+                  renderReadOnly?: boolean,
+                ): React.ReactNode {
+                  const wrap = (node: React.ReactNode) =>
+                    renderReadOnly ? (
+                      <div className="opacity-60 pointer-events-none" aria-disabled="true">
+                        {node}
+                      </div>
+                    ) : (
+                      node
+                    );
+
+                  switch (renderFieldDef.type) {
+                    case "text":
+                      return wrap(<TextField field={renderField} fieldDef={renderFieldDef} name={renderName} />);
+                    case "number":
+                      return wrap(<NumberField field={renderField} fieldDef={renderFieldDef} name={renderName} />);
+                    case "checkbox":
+                      return wrap(<CheckboxFieldForm field={renderField} fieldDef={renderFieldDef} name={renderName} />);
+                    case "select":
+                      if (renderFieldDef.hasMany) {
+                        return wrap(<MultiSelectField field={renderField} fieldDef={renderFieldDef} name={renderName} />);
+                      }
+                      return wrap(<SelectField field={renderField} fieldDef={renderFieldDef} name={renderName} />);
+                    case "date":
+                      return wrap(<DateField field={renderField} fieldDef={renderFieldDef} name={renderName} />);
+                    case "imageUrl":
+                      return wrap(<ImageUrlField field={renderField} fieldDef={renderFieldDef} name={renderName} />);
+                    case "upload": {
+                      const uploadNew = () => onOpenUploadModal?.(renderName, renderFieldDef.to);
+                      if (renderUploadField) {
+                        return wrap(renderUploadField({
+                          field: renderField, fieldDef: renderFieldDef, name: renderName,
+                          onUploadNew: uploadNew, defaultValue: defaultValues[renderName],
+                        }));
+                      }
+                      const pickerState = uploadFieldStates?.[renderName];
+                      return wrap(
+                        <UploadField
+                          field={renderField} fieldDef={renderFieldDef} name={renderName}
+                          mediaResults={pickerState?.results ?? []} searchTerm={pickerState?.searchTerm ?? ""}
+                          onSearchChange={pickerState?.setSearchTerm ?? (() => {})}
+                          canLoadMore={pickerState?.canLoadMore ?? false}
+                          onLoadMore={pickerState?.loadMore ?? (() => {})}
+                          isLoading={pickerState?.isLoading ?? false}
+                          onUploadNew={uploadNew} selectedMedia={pickerState?.selectedMedia}
+                        />,
+                      );
+                    }
+                    case "object":
+                      return wrap(
+                        <ObjectField
+                          field={renderField}
+                          fieldDef={renderFieldDef}
+                          name={renderName}
+                          renderField={({ fieldName, fieldPath, field: subFieldDef }) => (
+                            <form.Field key={fieldPath} name={fieldPath as any}>
+                              {(subField: any) => renderFieldByType(subField, subFieldDef, fieldName)}
+                            </form.Field>
+                          )}
+                        />,
+                      );
+                    case "array":
+                      return wrap(
+                        <ArrayField
+                          field={renderField}
+                          fieldDef={renderFieldDef}
+                          name={renderName}
+                          renderField={({ field: syntheticField, fieldDef: subFieldDef, name: subName }) =>
+                            renderFieldByType(syntheticField, subFieldDef, subName)
+                          }
+                        />,
+                      );
+                    case "blocks":
+                      return wrap(
+                        <BlocksField
+                          field={renderField}
+                          fieldDef={renderFieldDef}
+                          name={renderName}
+                          renderField={({ field: syntheticField, fieldDef: subFieldDef, name: subName }) =>
+                            renderFieldByType(syntheticField, subFieldDef, subName)
+                          }
+                        />,
+                      );
+                    case "color":
+                      return wrap(<ColorField field={renderField} fieldDef={renderFieldDef} name={renderName} />);
+                    case "tabs":
+                      return (
+                        <TabsField
+                          fieldDef={renderFieldDef}
+                          name={renderName}
+                          renderField={({ fieldName, fieldPath, field: subFieldDef }) => (
+                            <form.Field key={fieldPath} name={fieldPath as any}>
+                              {(subField: any) => renderFieldByType(subField, subFieldDef, fieldName)}
+                            </form.Field>
+                          )}
+                        />
+                      );
+                    case "relationship":
+                      return wrap(
+                        <RelationshipField
+                          field={renderField}
+                          fieldDef={renderFieldDef}
+                          name={renderName}
+                          config={config}
+                        />,
+                      );
+                    case "richtext": {
+                      if (renderRichTextField) {
+                        return wrap(
+                          renderRichTextField({
+                            field: renderField,
+                            fieldDef: renderFieldDef,
+                            name: renderName,
+                          }),
+                        );
+                      }
+                      return wrap(
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">
+                            {renderFieldDef.label ?? renderName}
+                          </label>
+                          <textarea
+                            className="w-full min-h-[200px] rounded-md border p-3 font-mono text-sm"
+                            value={JSON.stringify(renderField.state.value, null, 2)}
+                            onChange={(e: any) => {
+                              try {
+                                renderField.handleChange(JSON.parse(e.target.value));
+                              } catch {
+                                // Invalid JSON
+                              }
+                            }}
+                          />
+                        </div>,
+                      );
+                    }
+                    default:
+                      return null;
+                  }
+                }
+
 }
 
 export { AppForm, type AppFormProps, type FieldEntry, type MediaPickerState };

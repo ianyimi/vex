@@ -1,6 +1,7 @@
-import { defineCollection, richtext, text } from "@vexcms/core"
+import { blocks, defineCollection, text } from "@vexcms/core"
 
-import { TABLE_SLUG_MEDIA, TABLE_SLUG_PAGES } from "~/db/constants"
+import { TABLE_SLUG_PAGES } from "~/db/constants"
+import { pageBlocks } from "~/vexcms/blocks/config"
 
 export const pages = defineCollection({
   slug: TABLE_SLUG_PAGES,
@@ -25,9 +26,13 @@ export const pages = defineCollection({
       label: "Slug",
       required: true,
     }),
-    content: richtext({
+    content: blocks({
+      blocks: pageBlocks,
       label: "Content",
-      mediaCollection: TABLE_SLUG_MEDIA,
+      labels: {
+        singular: "Block",
+        plural: "Blocks",
+      },
     }),
   },
   labels: {

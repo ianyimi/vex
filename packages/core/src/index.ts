@@ -23,10 +23,13 @@ export { imageUrl } from "./fields/imageUrl";
 export { relationship } from "./fields/relationship";
 export { upload } from "./fields/media";
 export { json } from "./fields/json";
+export { object } from "./fields/object";
 export { array } from "./fields/array";
 export { richtext } from "./fields/richtext";
 export { ui } from "./fields/ui";
 export { blocks } from "./fields/blocks";
+export { color } from "./fields/color";
+export { tabs } from "./fields/tabs";
 
 // Block helpers
 export { defineBlock } from "./blocks/defineBlock";
@@ -89,11 +92,15 @@ export type {
   RelationshipFieldDef,
   UploadFieldDef,
   JsonFieldDef,
+  ObjectFieldDef,
   ArrayFieldDef,
   RichTextFieldDef,
   BlockDef,
   BlockAdminConfig,
   BlocksFieldDef,
+  ColorFieldDef,
+  TabsFieldDef,
+  TabDef,
   InferBlockUnion,
   InferFieldType,
   InferFieldsType,

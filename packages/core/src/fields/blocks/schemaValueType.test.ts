@@ -65,7 +65,8 @@ describe("blocksToValueTypeString", () => {
       resolveInnerField,
     });
 
-    expect(result).toMatch(/^v\.array\(v\.union\(/);
+    expect(result).toContain("v.array(");
+    expect(result).toContain("v.union(");
     expect(result).toContain('v.literal("hero")');
     expect(result).toContain('v.literal("cta")');
     expect(result).toContain("blockName: v.optional(v.string())");
@@ -85,7 +86,8 @@ describe("blocksToValueTypeString", () => {
       resolveInnerField,
     });
 
-    expect(result).toMatch(/^v\.array\(v\.object\(\{/);
+    expect(result).toContain("v.array(");
+    expect(result).toContain("v.object({");
     expect(result).not.toContain("v.union");
     expect(result).toContain('blockType: v.literal("hero")');
   });
@@ -115,11 +117,8 @@ describe("blocksToValueTypeString", () => {
     expect(result).toContain("blockName: v.optional(v.string())");
     expect(result).toContain("_key: v.string()");
     // Only blockType, blockName, and _key — no user fields
-    const objectContent = result.match(/v\.object\(\{(.+?)\}\)/)?.[1] ?? "";
-    const fieldCount = objectContent
-      .split(",")
-      .filter((s) => s.includes(":")).length;
-    expect(fieldCount).toBe(3); // blockType + blockName + _key
+    const lines = result.split("\n").filter((s) => s.includes(":"));
+    expect(lines.length).toBe(3); // blockType + blockName + _key
   });
 
   it("handles empty blocks array gracefully", () => {

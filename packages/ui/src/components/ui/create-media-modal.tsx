@@ -141,7 +141,7 @@ function CreateMediaModal(props: CreateMediaModalProps) {
 
   return (
     <Dialog open={props.open} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="sm:max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md w-full max-h-[90vh] overflow-y-auto" nested>
         <DialogHeader>
           <DialogTitle>
             Upload to {props.collectionLabel || props.collectionSlug}

@@ -16,7 +16,7 @@ describe("arrayToValueTypeString", () => {
   it("returns v.array(v.string()) for a required array of text", () => {
     expect(
       arrayToValueTypeString({
-        field: array({ field: text(), required: true }),
+        field: array({ items: text(), required: true }),
         collectionSlug: "posts",
         fieldName: "tags",
         resolveInnerField,
@@ -27,7 +27,7 @@ describe("arrayToValueTypeString", () => {
   it("returns v.optional(v.array(v.string())) for optional array of text", () => {
     expect(
       arrayToValueTypeString({
-        field: array({ field: text() }),
+        field: array({ items: text() }),
         collectionSlug: "posts",
         fieldName: "tags",
         resolveInnerField,
@@ -38,7 +38,7 @@ describe("arrayToValueTypeString", () => {
   it("strips v.optional from inner field", () => {
     expect(
       arrayToValueTypeString({
-        field: array({ field: number(), required: true }),
+        field: array({ items: number(), required: true }),
         collectionSlug: "posts",
         fieldName: "scores",
         resolveInnerField,
@@ -49,7 +49,7 @@ describe("arrayToValueTypeString", () => {
   it("wraps required inner field correctly", () => {
     expect(
       arrayToValueTypeString({
-        field: array({ field: number({ required: true, defaultValue: 0 }), required: true }),
+        field: array({ items: number({ required: true, defaultValue: 0 }), required: true }),
         collectionSlug: "posts",
         fieldName: "scores",
         resolveInnerField,

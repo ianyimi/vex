@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ComponentPropsWithRef } from "react";
 
 /**
  * Props for a block component rendered by RenderBlocks.
@@ -37,26 +37,31 @@ export interface BlockComponentProps<
  */
 export function RenderBlocks<
   TBlock extends { blockType: string; blockName?: string; _key: string },
->(props: {
+>({
+  blocks,
+  components,
+  fallback,
+  ...divProps
+}: {
   blocks: TBlock[] | null | undefined;
   components: Record<string, React.ComponentType<BlockComponentProps<any>>>;
   fallback?: React.ComponentType<BlockComponentProps<any>>;
-}): React.ReactElement | null {
-  if (!props.blocks || props.blocks.length === 0) {
+} & ComponentPropsWithRef<"div">): React.ReactElement | null {
+  if (!blocks || blocks.length === 0) {
     return null;
   }
 
-  const elements = props.blocks.map((block, index) => {
-    const Component = props.components[block.blockType];
+  const elements = blocks.map((block, index) => {
+    const Component = components[block.blockType];
     if (Component) {
       return <Component block={block} index={index} key={block._key} />;
     }
-    if (props.fallback) {
-      const Fallback = props.fallback;
+    if (fallback) {
+      const Fallback = fallback;
       return <Fallback block={block} index={index} key={block._key} />;
     }
     return null;
   });
 
-  return <>{elements}</>;
+  return <div {...divProps}>{elements}</div>;
 }

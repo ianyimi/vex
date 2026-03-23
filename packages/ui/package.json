@@ -25,6 +25,7 @@
     "@hello-pangea/dnd": "18.0.1",
     "@tanstack/react-form": "^0.40.0",
     "@tanstack/react-table": "catalog:",
+    "@uiw/react-color-sketch": "^2.9.6",
     "@vexcms/core": "workspace:*",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
@@ -35,10 +36,12 @@
     "zod": "^3.24.0"
   },
   "peerDependencies": {
+    "convex": ">=1.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
   },
   "devDependencies": {
+    "convex": "catalog:",
     "@types/node": "^25.5.0",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

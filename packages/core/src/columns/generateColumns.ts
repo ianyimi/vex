@@ -8,10 +8,12 @@ import { dateColumnDef } from "../fields/date/columnDef";
 import { imageUrlColumnDef } from "../fields/imageUrl/columnDef";
 import { relationshipColumnDef } from "../fields/relationship/columnDef";
 import { jsonColumnDef } from "../fields/json/columnDef";
+import { objectColumnDef } from "../fields/object/columnDef";
 import { richtextColumnDef } from "../fields/richtext/columnDef";
 import { arrayColumnDef } from "../fields/array/columnDef";
 import { uploadColumnDef } from "../fields/media/columnDef";
 import { blocksColumnDef } from "../fields/blocks/columnDef";
+import { colorColumnDef } from "../fields/color/columnDef";
 import { toTitleCase } from "../utils";
 
 /**
@@ -67,7 +69,7 @@ export function generateColumns(props: {
       }
 
       if (field.admin?.hidden) continue;
-      if (field.type === "ui") continue;
+      if (field.type === "ui" || field.type === "tabs") continue;
 
       const col = buildColumnDef(fieldKey, field);
 
@@ -98,7 +100,7 @@ export function generateColumns(props: {
     for (const fieldKey of allFieldKeys) {
       const field = (fields[fieldKey] ?? authFields[fieldKey]) as VexField;
       if (field.admin?.hidden) continue;
-      if (field.type === "ui") continue;
+      if (field.type === "ui" || field.type === "tabs") continue;
 
       const col = buildColumnDef(fieldKey, field);
 
@@ -143,6 +145,8 @@ function buildColumnDef(
       return relationshipColumnDef({ fieldKey, field });
     case "json":
       return jsonColumnDef({ fieldKey, field });
+    case "object":
+      return objectColumnDef({ fieldKey, field });
     case "richtext":
       return richtextColumnDef({ fieldKey, field });
     case "array":
@@ -151,6 +155,8 @@ function buildColumnDef(
       return uploadColumnDef({ fieldKey, field });
     case "blocks":
       return blocksColumnDef({ fieldKey, field });
+    case "color":
+      return colorColumnDef({ fieldKey, field });
     default:
       return {
         accessorKey: fieldKey,

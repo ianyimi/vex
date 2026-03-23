@@ -197,7 +197,14 @@ export default function CollectionEditView({
     if (!source) return {};
     const values: Record<string, unknown> = {};
     for (const entry of fieldEntries) {
-      values[entry.name] = source[entry.name];
+      if (entry.field.type === "tabs") {
+        // Tabs expand: read each tab's slug key from the document
+        for (const tab of (entry.field as any).tabs) {
+          values[tab.slug] = source[tab.slug];
+        }
+      } else {
+        values[entry.name] = source[entry.name];
+      }
     }
     return values;
   }, [document, fieldEntries, restoredSnapshot]);
@@ -484,6 +491,7 @@ export default function CollectionEditView({
                 defaultValues={defaultValues}
                 onSubmit={handleSubmit}
                 submitAllFields={isVersioned}
+                config={config}
                 getValuesRef={isVersioned || hasPreview ? getFormValuesRef : undefined}
                 onDirtyChange={isVersioned ? setIsFormDirty : undefined}
                 onValuesChange={onPreviewValuesChange}

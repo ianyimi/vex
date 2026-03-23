@@ -7,5 +7,8 @@ export { imageUrl } from "./imageUrl";
 export { relationship } from "./relationship";
 export { upload } from "./media";
 export { json } from "./json";
+export { object } from "./object";
 export { array } from "./array";
 export { richtext } from "./richtext";
+export { color } from "./color";
+export { tabs } from "./tabs";

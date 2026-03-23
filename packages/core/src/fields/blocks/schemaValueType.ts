@@ -73,15 +73,17 @@ export function blocksToValueTypeString(props: {
       fieldEntries.push(`${fieldName}: ${valueType}`);
     }
 
-    objectTypes.push(`v.object({${fieldEntries.join(", ")}})`);
+    objectTypes.push(
+      `v.object({\n${fieldEntries.map((e) => `  ${e},`).join("\n")}\n})`,
+    );
   }
 
   const innerType =
     objectTypes.length === 1
       ? objectTypes[0]
-      : `v.union(${objectTypes.join(", ")})`;
+      : `v.union(\n${objectTypes.map((o) => `  ${o},`).join("\n")}\n)`;
 
-  const arrayType = `v.array(${innerType})`;
+  const arrayType = `v.array(\n${innerType}\n)`;
 
   return processFieldValueTypeOptions({
     field: props.field,

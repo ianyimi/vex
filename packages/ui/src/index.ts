@@ -20,5 +20,5 @@ export {
   type UseVexFormReturn,
 } from "./hooks";
 
-// Form provider
-export { VexFormProvider } from "./components/form/VexFormProvider";
+// Form provider & context
+export { VexFormProvider, useVexFormContext } from "./components/form/VexFormProvider";

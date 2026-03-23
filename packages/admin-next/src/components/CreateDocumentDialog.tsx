@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import type { VexCollection, VexField, ClientVexConfig, UploadFieldDef } from "@vexcms/core";
 import { generateFormSchema, generateFormDefaultValues } from "@vexcms/core";
 import {
@@ -103,20 +103,33 @@ export function CreateDocumentDialog(props: CreateDocumentDialogProps) {
   const singularLabel =
     props.collection.labels?.singular ?? props.collection.slug;
 
+  // Increment formResetKey only when the dialog opens to reset form state.
+  // Don't change it on close — that causes a flash as React remounts mid-animation.
+  const formResetKey = useRef(0);
+  const prevOpen = useRef(props.open);
+  if (props.open && !prevOpen.current) {
+    formResetKey.current += 1;
+  }
+  prevOpen.current = props.open;
+
   const handleSubmit = async (changedFields: Record<string, unknown>) => {
     setIsCreating(true);
     try {
       const allFields = { ...defaultValues, ...changedFields };
+      // Strip undefined and empty string values — Convex rejects "" for v.id() fields
+      for (const key of Object.keys(allFields)) {
+        if (allFields[key] === undefined || allFields[key] === "") {
+          delete allFields[key];
+        }
+      }
 
       if (isVersioned) {
-        // Versioned collections: create as draft with initial version entry
         const result = await createDraftDocument({
           collectionSlug: props.collection.slug,
           fields: allFields,
         });
         props.onCreated({ documentId: (result as any).documentId as string });
       } else {
-        // Non-versioned collections: create directly as published
         const result = await createDocument({
           collectionSlug: props.collection.slug,
           fields: allFields,
@@ -146,13 +159,15 @@ export function CreateDocumentDialog(props: CreateDocumentDialogProps) {
             <DialogTitle>Create {singularLabel}</DialogTitle>
           </DialogHeader>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-6" key={props.open ? "open" : "closed"}>
+          <div className="min-h-0 flex-1 overflow-y-auto p-6" key={formResetKey.current}>
             <AppForm
               formId="create-document-form"
               schema={schema}
               fieldEntries={fieldEntries}
               defaultValues={defaultValues}
               onSubmit={handleSubmit}
+              submitAllFields
+              config={props.config}
               onOpenUploadModal={handleOpenUploadModal}
               renderUploadField={(uploadProps) => (
                 <UploadFieldWrapper

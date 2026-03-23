@@ -18,6 +18,21 @@ export function generateFormSchema(props: {
     if (field.admin?.hidden) continue;
     if (field.type === "ui") continue;
 
+    // Tabs expand into slug-keyed z.object() entries
+    if (field.type === "tabs") {
+      for (const tab of field.tabs) {
+        const tabFields: Record<string, ZodTypeAny> = {};
+        for (const [subName, subField] of Object.entries(tab.fields)) {
+          if (subField.type === "ui") continue;
+          let subValidator = fieldMetaToZod({ field: subField });
+          if (!subField.required) subValidator = subValidator.optional();
+          tabFields[subName] = subValidator;
+        }
+        shape[tab.slug] = z.object(tabFields).optional();
+      }
+      continue;
+    }
+
     let validator = fieldMetaToZod({ field });
 
     if (!field.required) {
@@ -89,11 +104,28 @@ export function fieldMetaToZod(props: { field: VexField }): ZodTypeAny {
     case "json":
       return z.any();
 
+    case "object": {
+      const shape: Record<string, ZodTypeAny> = {};
+      for (const [subName, subField] of Object.entries(props.field.fields)) {
+        let subValidator = fieldMetaToZod({ field: subField as VexField });
+        if (!(subField as VexField).required) subValidator = subValidator.optional();
+        shape[subName] = subValidator;
+      }
+      return z.object(shape);
+    }
+
     case "richtext":
       return z.any();
 
+    case "color":
+      return z.string();
+
+    case "tabs":
+      // Tabs are expanded in generateFormSchema's loop, not here
+      return z.any();
+
     case "array": {
-      let schema = z.array(fieldMetaToZod({ field: props.field.field }));
+      let schema = z.array(fieldMetaToZod({ field: props.field.items }));
       if (props.field.min != null) schema = schema.min(props.field.min);
       if (props.field.max != null) schema = schema.max(props.field.max);
       return schema;

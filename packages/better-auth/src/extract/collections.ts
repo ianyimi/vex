@@ -148,7 +148,7 @@ function convertToVexFields(
       case "string[]":
         vexFields[fieldName] = {
           type: "array",
-          field: { type: "text" },
+          items: { type: "text" },
           required,
           ...(admin && { admin }),
         };
@@ -156,7 +156,7 @@ function convertToVexFields(
       case "number[]":
         vexFields[fieldName] = {
           type: "array",
-          field: { type: "number" },
+          items: { type: "number" },
           required,
           ...(admin && { admin }),
         };

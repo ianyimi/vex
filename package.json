@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --concurrency 11",
     "dev:app": "pnpm --filter test-app dev",
     "dev:vex": "pnpm --filter test-app exec vex dev",
     "typecheck": "turbo run typecheck",

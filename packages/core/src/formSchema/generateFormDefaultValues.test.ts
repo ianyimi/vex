@@ -28,7 +28,7 @@ describe("generateFormDefaultValues", () => {
         avatar: imageUrl({ label: "Avatar" }),
         author: relationship({ to: "users" }),
         meta: json({ label: "Meta" }),
-        tags: array({ field: text(), label: "Tags" }),
+        tags: array({ items: text(), label: "Tags" }),
       },
     });
 
@@ -39,7 +39,7 @@ describe("generateFormDefaultValues", () => {
       status: "",
       createdAt: 0,
       avatar: "",
-      author: "",
+      author: undefined,
       meta: {},
       tags: [],
     });

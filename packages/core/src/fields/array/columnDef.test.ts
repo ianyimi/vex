@@ -5,17 +5,17 @@ import { text } from "../text";
 
 describe("arrayColumnDef", () => {
   it("uses fieldKey as accessorKey", () => {
-    const col = arrayColumnDef({ fieldKey: "tags", field: array({ field: text() }) });
+    const col = arrayColumnDef({ fieldKey: "tags", field: array({ items: text() }) });
     expect(col).toHaveProperty("accessorKey", "tags");
   });
 
   it("uses field.label as header when provided", () => {
-    const col = arrayColumnDef({ fieldKey: "tags", field: array({ field: text(), label: "Tags" }) });
+    const col = arrayColumnDef({ fieldKey: "tags", field: array({ items: text(), label: "Tags" }) });
     expect(col).toHaveProperty("header", "Tags");
   });
 
   it("capitalizes fieldKey as header fallback", () => {
-    const col = arrayColumnDef({ fieldKey: "tags", field: array({ field: text() }) });
+    const col = arrayColumnDef({ fieldKey: "tags", field: array({ items: text() }) });
     expect(col).toHaveProperty("header", "Tags");
   });
 });

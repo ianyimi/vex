@@ -1,6 +1,7 @@
-import { defineCollection, richtext, text } from "@vexcms/core"
+import { blocks, defineCollection, text } from "@vexcms/core"
 
-import { TABLE_SLUG_FOOTERS, TABLE_SLUG_MEDIA } from "~/db/constants"
+import { TABLE_SLUG_FOOTERS } from "~/db/constants"
+import { footerBlocks } from "~/vexcms/blocks/config"
 
 export const footers = defineCollection({
   slug: TABLE_SLUG_FOOTERS,
@@ -13,12 +14,14 @@ export const footers = defineCollection({
       label: "Name",
       required: true,
     }),
-    content: richtext({
-      label: "Content",
-      mediaCollection: TABLE_SLUG_MEDIA,
-    }),
-    copyright: text({
-      label: "Copyright Text",
+    content: blocks({
+      blocks: footerBlocks,
+      label: "Footer",
+      max: 1,
+      labels: {
+        singular: "Footer",
+        plural: "Footers",
+      },
     }),
   },
   labels: {

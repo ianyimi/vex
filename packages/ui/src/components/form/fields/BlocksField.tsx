@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { BlocksFieldDef, BlockDef, VexField } from "@vexcms/core";
-import { toTitleCase } from "@vexcms/core";
+import { toTitleCase, generateFormDefaultValues } from "@vexcms/core";
 import { Label } from "../../ui/label";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
@@ -45,6 +45,16 @@ interface BlockInstance {
   [field: string]: unknown;
 }
 
+/** Callback to render a field using the centralized renderFieldByType from AppForm */
+type RenderFieldCallback = (props: {
+  field: {
+    state: { value: unknown; meta: { errors: unknown[] } };
+    handleChange: (value: unknown) => void;
+  };
+  fieldDef: VexField;
+  name: string;
+}) => React.ReactNode;
+
 function generateKey(): string {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -54,7 +64,6 @@ function generateKey(): string {
 // ---------------------------------------------------------------------------
 
 function getStorageKey(fieldName: string): string {
-  // Include pathname so different documents don't clash
   const path =
     typeof window !== "undefined" ? window.location.pathname : "";
   return `vex-blocks-collapse:${path}:${fieldName}`;
@@ -84,62 +93,19 @@ function saveCollapseState(fieldName: string, openKeys: Set<string>): void {
 }
 
 // ---------------------------------------------------------------------------
-// Block instance creation
+// Block instance creation — uses core's generateFormDefaultValues
 // ---------------------------------------------------------------------------
 
 function createBlockInstance(props: {
   blockDef: BlockDef;
 }): BlockInstance {
-  const instance: BlockInstance = {
+  const defaults = generateFormDefaultValues({ fields: props.blockDef.fields as Record<string, VexField> });
+  return {
     blockType: props.blockDef.slug,
     blockName: props.blockDef.label,
     _key: generateKey(),
+    ...defaults,
   };
-  for (const [fieldName, field] of Object.entries(props.blockDef.fields)) {
-    const f = field as VexField;
-    switch (f.type) {
-      case "text":
-        instance[fieldName] = f.defaultValue ?? "";
-        break;
-      case "number":
-        instance[fieldName] = f.defaultValue ?? 0;
-        break;
-      case "checkbox":
-        instance[fieldName] = f.defaultValue ?? false;
-        break;
-      case "select":
-        instance[fieldName] = f.hasMany
-          ? f.defaultValue
-            ? [f.defaultValue]
-            : []
-          : f.defaultValue ?? "";
-        break;
-      case "date":
-        instance[fieldName] = f.defaultValue ?? 0;
-        break;
-      case "imageUrl":
-        instance[fieldName] = f.defaultValue ?? "";
-        break;
-      case "relationship":
-        instance[fieldName] = f.hasMany ? [] : "";
-        break;
-      case "json":
-        instance[fieldName] = {};
-        break;
-      case "richtext":
-        instance[fieldName] = [];
-        break;
-      case "array":
-        instance[fieldName] = [];
-        break;
-      case "blocks":
-        instance[fieldName] = [];
-        break;
-      default:
-        instance[fieldName] = undefined;
-    }
-  }
-  return instance;
 }
 
 function duplicateBlock(block: BlockInstance): BlockInstance {
@@ -244,6 +210,7 @@ function BlockItem(props: {
   onBlockNameChange: (name: string) => void;
   readOnly: boolean;
   dragHandleProps: Record<string, any> | undefined;
+  renderField?: RenderFieldCallback;
 }) {
   if (!props.blockDef) return null;
 
@@ -281,7 +248,7 @@ function BlockItem(props: {
             )}
           </button>
 
-          {/* Block type badge — left of name */}
+          {/* Block type badge */}
           <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0 font-mono">
             {props.blockDef.slug}
           </span>
@@ -301,7 +268,6 @@ function BlockItem(props: {
           {/* Action buttons */}
           {!props.readOnly && (
             <div className="flex items-center gap-0.5 shrink-0">
-              {/* Duplicate above */}
               <Button
                 type="button"
                 variant="ghost"
@@ -316,7 +282,6 @@ function BlockItem(props: {
                 </div>
               </Button>
 
-              {/* Duplicate below */}
               <Button
                 type="button"
                 variant="ghost"
@@ -331,7 +296,6 @@ function BlockItem(props: {
                 </div>
               </Button>
 
-              {/* Delete */}
               <Button
                 type="button"
                 variant="ghost"
@@ -346,7 +310,7 @@ function BlockItem(props: {
           )}
         </div>
 
-        {/* Fields */}
+        {/* Fields — rendered via the callback from AppForm */}
         <CollapsibleContent>
           <div className="p-4 space-y-4 border-t">
             {Object.keys(props.blockDef.fields).length === 0 ? (
@@ -359,15 +323,34 @@ function BlockItem(props: {
                   const f = fieldDef as VexField;
                   const value = props.block[fieldName];
 
+                  if (props.renderField) {
+                    return (
+                      <div key={fieldName}>
+                        {props.renderField({
+                          field: {
+                            state: { value, meta: { errors: [] } },
+                            handleChange: (v: unknown) =>
+                              props.onFieldChange(fieldName, v),
+                          },
+                          fieldDef: f,
+                          name: fieldName,
+                        })}
+                      </div>
+                    );
+                  }
+
+                  // Fallback: basic text input for text fields
                   return (
-                    <BlockFieldInput
-                      key={fieldName}
-                      fieldName={fieldName}
-                      fieldDef={f}
-                      value={value}
-                      onChange={(v) => props.onFieldChange(fieldName, v)}
-                      readOnly={props.readOnly}
-                    />
+                    <div key={fieldName} className="space-y-2">
+                      <Label>{f.label ?? toTitleCase(fieldName)}</Label>
+                      <Input
+                        value={String(value ?? "")}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          props.onFieldChange(fieldName, e.target.value)
+                        }
+                        disabled={props.readOnly}
+                      />
+                    </div>
                   );
                 },
               )
@@ -380,134 +363,6 @@ function BlockItem(props: {
 }
 
 // ---------------------------------------------------------------------------
-// Block Field Input — renders an appropriate input for a block's field
-// ---------------------------------------------------------------------------
-
-function BlockFieldInput(props: {
-  fieldName: string;
-  fieldDef: VexField;
-  value: unknown;
-  onChange: (value: unknown) => void;
-  readOnly: boolean;
-}) {
-  const label = props.fieldDef.label ?? toTitleCase(props.fieldName);
-  const description =
-    props.fieldDef.admin?.description ?? props.fieldDef.description;
-
-  switch (props.fieldDef.type) {
-    case "text":
-      return (
-        <div className="space-y-2">
-          <Label>
-            {label}
-            {props.fieldDef.required && (
-              <span className="text-destructive ml-1">*</span>
-            )}
-          </Label>
-          <Input
-            value={(props.value as string) ?? ""}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              props.onChange(e.target.value)
-            }
-            placeholder={props.fieldDef.admin?.placeholder}
-            disabled={props.readOnly}
-            maxLength={props.fieldDef.maxLength}
-          />
-          {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
-          )}
-        </div>
-      );
-
-    case "number":
-      return (
-        <div className="space-y-2">
-          <Label>
-            {label}
-            {props.fieldDef.required && (
-              <span className="text-destructive ml-1">*</span>
-            )}
-          </Label>
-          <Input
-            type="number"
-            value={(props.value as string | number) ?? ""}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              props.onChange(
-                e.target.value === "" ? undefined : Number(e.target.value),
-              )
-            }
-            disabled={props.readOnly}
-            min={props.fieldDef.min}
-            max={props.fieldDef.max}
-            step={props.fieldDef.step}
-          />
-          {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
-          )}
-        </div>
-      );
-
-    case "checkbox":
-      return (
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={!!props.value}
-            onChange={(e) => props.onChange(e.target.checked)}
-            disabled={props.readOnly}
-            className="size-4 rounded border"
-          />
-          <Label>{label}</Label>
-          {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
-          )}
-        </div>
-      );
-
-    case "select":
-      return (
-        <div className="space-y-2">
-          <Label>
-            {label}
-            {props.fieldDef.required && (
-              <span className="text-destructive ml-1">*</span>
-            )}
-          </Label>
-          <select
-            value={(props.value as string) ?? ""}
-            onChange={(e) => props.onChange(e.target.value)}
-            disabled={props.readOnly}
-            className="w-full h-9 rounded-md border bg-background px-3 text-sm"
-          >
-            <option value="">Select...</option>
-            {props.fieldDef.options.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
-          )}
-        </div>
-      );
-
-    default:
-      return (
-        <div className="space-y-2">
-          <Label>{label}</Label>
-          <div className="rounded-md border p-3 bg-muted/30">
-            <p className="text-xs text-muted-foreground">
-              Field type &quot;{props.fieldDef.type}&quot; is not yet supported
-              inside blocks.
-            </p>
-          </div>
-        </div>
-      );
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Main BlocksField Component
 // ---------------------------------------------------------------------------
 
@@ -515,12 +370,15 @@ interface BlocksFieldProps {
   name: string;
   field?: any;
   fieldDef?: BlocksFieldDef;
+  /** Callback to render sub-fields using AppForm's centralized renderFieldByType */
+  renderField?: RenderFieldCallback;
 }
 
 function BlocksField({
   name,
   field: legacyField,
   fieldDef: propFieldDef,
+  renderField,
 }: BlocksFieldProps) {
   const vexField = legacyField ? null : useVexField<BlockInstance[]>({ name });
 
@@ -772,6 +630,7 @@ function BlocksField({
                             dragHandleProps={
                               draggableProvided.dragHandleProps ?? undefined
                             }
+                            renderField={renderField}
                           />
                         </div>
                       )}
@@ -784,34 +643,40 @@ function BlocksField({
           </DragDropContext>
         )}
 
-        {/* Add block button — inside the drop area */}
-        {!readOnly && blockDefs.length > 0 && (
-          <div className={value.length > 0 ? "mt-3" : ""}>
+        {/* Add block button */}
+        {!readOnly && (
+          <div className="mt-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="w-full bg-background"
-              onClick={() => setPickerOpen(true)}
+              className="w-full"
+              onClick={() => {
+                if (blockDefs.length === 1) {
+                  addBlock(blockDefs[0]);
+                } else {
+                  setPickerOpen(true);
+                }
+              }}
+              disabled={
+                fieldDef?.max != null && value.length >= fieldDef.max
+              }
             >
-              <Plus className="size-4" />
+              <Plus className="size-4 mr-1" />
               Add {singularLabel}
             </Button>
           </div>
         )}
       </div>
 
-      {/* Block picker dialog */}
-      {!readOnly && blockDefs.length > 0 && (
-        <BlockPickerDialog
-          blockDefs={blockDefs}
-          onSelect={addBlock}
-          open={pickerOpen}
-          onOpenChange={setPickerOpen}
-        />
-      )}
+      <BlockPickerDialog
+        blockDefs={blockDefs}
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onSelect={addBlock}
+      />
     </div>
   );
 }
 
-export { BlocksField };
+export { BlocksField, type BlocksFieldProps, type RenderFieldCallback };

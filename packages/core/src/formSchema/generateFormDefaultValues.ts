@@ -21,15 +21,26 @@ function getFormDefaultValue(props: { field: VexField }): unknown {
     case "imageUrl":
       return props.field.defaultValue ?? "";
     case "relationship":
-      return props.field.hasMany ? [] : "";
+      return props.field.hasMany ? [] : undefined;
     case "upload":
-      return props.field.hasMany ? [] : "";
+      return props.field.hasMany ? [] : undefined;
     case "json":
       return {};
+    case "object": {
+      const defaults: Record<string, unknown> = {};
+      for (const [subName, subField] of Object.entries(props.field.fields)) {
+        defaults[subName] = getFormDefaultValue({ field: subField });
+      }
+      return defaults;
+    }
     case "richtext":
       return [];
+    case "color":
+      return props.field.defaultValue ?? "";
+    case "tabs":
+      return {};
     case "array":
-      return [];
+      return props.field.defaultValue ?? [];
     case "blocks":
       return [];
     case "ui":
@@ -54,6 +65,20 @@ export function generateFormDefaultValues(props: {
   for (const [fieldName, field] of Object.entries(props.fields)) {
     if (field.admin?.hidden) continue;
     if (field.type === "ui") continue;
+
+    // Tabs expand into slug-keyed objects with sub-field defaults
+    if (field.type === "tabs") {
+      for (const tab of field.tabs) {
+        const tabDefaults: Record<string, unknown> = {};
+        for (const [subName, subField] of Object.entries(tab.fields)) {
+          if (subField.type === "ui") continue;
+          tabDefaults[subName] = getFormDefaultValue({ field: subField });
+        }
+        result[tab.slug] = tabDefaults;
+      }
+      continue;
+    }
+
     result[fieldName] = getFormDefaultValue({ field });
   }
 

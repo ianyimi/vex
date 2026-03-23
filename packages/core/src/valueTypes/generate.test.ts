@@ -216,8 +216,8 @@ describe("generateVexSchema", () => {
     it("generates array field wrapping inner type", () => {
       const posts = defineCollection({ slug: "posts",
         fields: {
-          tags: array({ field: text(), required: true }),
-          scores: array({ field: number() }),
+          tags: array({ items: text(), required: true }),
+          scores: array({ items: number() }),
         },
       });
       const config = defineConfig({
@@ -450,7 +450,7 @@ describe("generateVexSchema", () => {
             fields: {
               ...baseAuthAdapter.collections[0].fields,
               banned: checkbox(),
-              role: array({ field: text(), required: true }),
+              role: array({ items: text(), required: true }),
             },
           }),
           ...baseAuthAdapter.collections.slice(1),

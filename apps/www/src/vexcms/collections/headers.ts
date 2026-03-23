@@ -1,6 +1,7 @@
-import { checkbox, defineCollection, text, upload } from "@vexcms/core"
+import { blocks, defineCollection, text } from "@vexcms/core"
 
-import { TABLE_SLUG_HEADERS, TABLE_SLUG_MEDIA } from "~/db/constants"
+import { TABLE_SLUG_HEADERS } from "~/db/constants"
+import { headerBlocks } from "~/vexcms/blocks/config"
 
 export const headers = defineCollection({
   slug: TABLE_SLUG_HEADERS,
@@ -13,19 +14,14 @@ export const headers = defineCollection({
       label: "Name",
       required: true,
     }),
-    logoText: text({
-      label: "Logo Text",
-    }),
-    logoUrl: upload({
-      admin: {
-        description: "URL for the header logo image",
+    content: blocks({
+      blocks: headerBlocks,
+      label: "Header",
+      max: 1,
+      labels: {
+        singular: "Header",
+        plural: "Headers",
       },
-      label: "Logo URL",
-      to: TABLE_SLUG_MEDIA,
-    }),
-    sticky: checkbox({
-      defaultValue: false,
-      label: "Sticky Header",
     }),
   },
   labels: {

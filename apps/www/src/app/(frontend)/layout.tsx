@@ -1,3 +1,7 @@
+import { SiteHeader } from "~/components/SiteHeader"
+import { SiteFooter } from "~/components/SiteFooter"
+import { ThemeInjector } from "~/components/ThemeInjector"
+
 export default function FrontendLayout({
   auth,
   children,
@@ -7,7 +11,10 @@ export default function FrontendLayout({
 }>) {
   return (
     <>
-      {children}
+      <ThemeInjector siteSettingsSlug="site_settings" />
+      <SiteHeader />
+      <main>{children}</main>
+      <SiteFooter />
       {auth}
     </>
   )

@@ -39,6 +39,8 @@ export function LivePreviewPanel(props: {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
+  // Track whether the iframe has EVER loaded (first load only)
+  const [iframeEverLoaded, setIframeEverLoaded] = useState(false);
   // Track whether the iframe has sent its first ack (initial load complete)
   const [iframeReady, setIframeReady] = useState(false);
   // Track whether we're waiting for iframe to render after a snapshot write
@@ -67,6 +69,7 @@ export function LivePreviewPanel(props: {
     function handleMessage(event: MessageEvent) {
       if (event.data?.type === VEX_PREVIEW_UPDATED) {
         setIframeReady(true);
+        setIframeEverLoaded(true);
         setWaitingForIframe(false);
       }
     }
@@ -196,13 +199,22 @@ export function LivePreviewPanel(props: {
         className="flex-1 overflow-hidden bg-muted/30 flex items-start justify-center p-2"
       >
         {previewURL ? (
-          <iframe
-            key={iframeKey}
-            src={previewURL}
-            style={iframeStyle}
-            className="border bg-white rounded shadow-sm"
-            title="Live preview"
-          />
+          <div className="relative" style={{ width: iframeStyle.width, height: iframeStyle.height }}>
+            {/* Loading overlay — only shown on the very first iframe load */}
+            {!iframeEverLoaded && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background border rounded shadow-sm">
+                <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Loading preview…</p>
+              </div>
+            )}
+            <iframe
+              key={iframeKey}
+              src={previewURL}
+              style={{ ...iframeStyle, opacity: iframeEverLoaded ? 1 : 0 }}
+              className="border bg-white rounded shadow-sm"
+              title="Live preview"
+            />
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground mt-8">Save to enable preview</p>
         )}

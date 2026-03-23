@@ -81,14 +81,14 @@ describe("fieldToTypeString", () => {
   });
 
   it("array of text → string[]", () => {
-    expect(fieldToTypeString({ field: array({ field: text() }) })).toBe("string[]");
+    expect(fieldToTypeString({ field: array({ items: text() }) })).toBe("string[]");
   });
 
   it("array of select → (union)[]", () => {
     expect(
       fieldToTypeString({
         field: array({
-          field: select({
+          items: select({
             options: [
               { label: "A", value: "a" },
               { label: "B", value: "b" },

@@ -20,12 +20,21 @@ export function arrayToValueTypeString(props: {
   }) => string;
 }): string {
   const innerValueType = props.resolveInnerField({
-    field: props.field.field,
+    field: props.field.items,
     collectionSlug: props.collectionSlug,
     fieldName: `${props.fieldName}[]`,
   });
   // Strip v.optional() from inner — array wrapping handles optionality
-  const unwrapped = innerValueType.replace(/^v\.optional\((.+)\)$/, "$1");
+  // Use a function to find the matching closing paren for v.optional(
+  let unwrapped = innerValueType;
+  if (unwrapped.startsWith("v.optional(")) {
+    // Remove "v.optional(" prefix and matching ")" suffix
+    const inner = unwrapped.slice("v.optional(".length);
+    // Find the matching closing paren (last char should be ")")
+    if (inner.endsWith(")")) {
+      unwrapped = inner.slice(0, -1);
+    }
+  }
   const arrayType = `v.array(${unwrapped})`;
 
   return processFieldValueTypeOptions({

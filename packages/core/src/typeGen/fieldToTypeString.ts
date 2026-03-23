@@ -25,8 +25,14 @@ export function fieldToTypeString(props: {
       return "string";
     case "json":
       return "Record<string, unknown>";
+    case "object":
+      return "Record<string, unknown>";
     case "richtext":
       return "RichTextDocument";
+    case "color":
+      return "string";
+    case "tabs":
+      return "Record<string, unknown>";
     case "ui":
       return "never";
 
@@ -52,7 +58,7 @@ export function fieldToTypeString(props: {
 
     case "array": {
       const inner = fieldToTypeString({
-        field: props.field.field,
+        field: props.field.items,
         blockInterfaceNames: props.blockInterfaceNames,
       });
       const needsParens = inner.includes("|");

@@ -7,10 +7,12 @@ import { dateToValueTypeString } from "../fields/date";
 import { imageUrlToValueTypeString } from "../fields/imageUrl";
 import { relationshipToValueTypeString } from "../fields/relationship";
 import { jsonToValueTypeString } from "../fields/json";
+import { objectToValueTypeString } from "../fields/object";
 import { richtextToValueTypeString } from "../fields/richtext";
 import { uploadToValueTypeString } from "../fields/media";
 import { arrayToValueTypeString } from "../fields/array";
 import { blocksToValueTypeString } from "../fields/blocks";
+import { colorToValueTypeString } from "../fields/color";
 import type { VexField } from "../types";
 
 /**
@@ -46,6 +48,13 @@ export function fieldToValueType(props: {
       return uploadToValueTypeString({ field, collectionSlug, fieldName });
     case "json":
       return jsonToValueTypeString({ field, collectionSlug, fieldName });
+    case "object":
+      return objectToValueTypeString({
+        field,
+        collectionSlug,
+        fieldName,
+        resolveInnerField: fieldToValueType,
+      });
     case "richtext":
       return richtextToValueTypeString({ field, collectionSlug, fieldName });
     case "array":
@@ -69,6 +78,11 @@ export function fieldToValueType(props: {
           }),
         visitedBlockSlugs: props.visitedBlockSlugs,
       });
+    case "color":
+      return colorToValueTypeString({ field, collectionSlug, fieldName });
+    case "tabs":
+      // Tabs are expanded by generate.ts's expandFields(), not here
+      return "v.any()";
     case "ui":
       throw new VexFieldValidationError(
         collectionSlug,
