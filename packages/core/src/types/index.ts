@@ -21,6 +21,22 @@ export type {
   AdminLivePreviewConfig,
 } from "./livePreview";
 
+/**
+ * Responsive breakpoint configuration for block style controls.
+ * Keys are breakpoint names (used as Tailwind prefixes), values are min-width in pixels.
+ *
+ * @example
+ * ```ts
+ * breakpoints: {
+ *   sm: 640,
+ *   md: 768,
+ *   lg: 1024,
+ *   xl: 1280,
+ * }
+ * ```
+ */
+export type BreakpointConfig = Record<string, number>;
+
 // =============================================================================
 // CONFIG TYPES
 // =============================================================================
@@ -45,6 +61,8 @@ export interface VexConfig {
   access?: VexAccessConfig;
   /** Global rich text editor adapter. Used by all richtext fields unless overridden. */
   editor?: VexEditorAdapter;
+  /** Responsive breakpoints for block style controls. If not set, styles apply to all viewports. */
+  breakpoints?: BreakpointConfig;
 }
 
 /**
@@ -64,6 +82,8 @@ export interface ClientVexConfig {
   media?: ClientMediaConfig;
   /** Global rich text editor adapter. */
   editor?: VexEditorAdapter;
+  /** Responsive breakpoints for block style controls. If not set, styles apply to all viewports. */
+  breakpoints?: BreakpointConfig;
 }
 
 // =============================================================================
@@ -124,4 +144,10 @@ export interface VexConfigInput {
    * Pass `plateEditor()` from `@vexcms/richtext/editor`.
    */
   editor?: VexEditorAdapter;
+  /**
+   * Responsive breakpoints for block style controls.
+   * Keys are Tailwind prefix names, values are min-width in pixels.
+   * If not set, block styles apply to all viewports (no breakpoint tabs).
+   */
+  breakpoints?: BreakpointConfig;
 }

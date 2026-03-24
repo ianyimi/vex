@@ -143,6 +143,18 @@ interface AppFormProps {
  * Subscribes to form value changes and calls onDirtyChange when
  * the dirty state changes. Uses form.Subscribe for reactive updates.
  */
+/**
+ * Compare two field values for equality.
+ * Uses referential equality for primitives, JSON.stringify for objects/arrays.
+ */
+function fieldValuesEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+  if (typeof a !== "object" && typeof b !== "object") return false;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 function DirtyWatcher({
   form,
   fieldEntries,
@@ -159,7 +171,8 @@ function DirtyWatcher({
     <form.Subscribe selector={(state: any) => state.values}>
       {(values: Record<string, unknown>) => {
         const isDirty = fieldEntries.some(
-          (entry) => values[entry.name] !== defaultValues[entry.name],
+          (entry) =>
+            !fieldValuesEqual(values[entry.name], defaultValues[entry.name]),
         );
         if (isDirty !== prevDirtyRef.current) {
           prevDirtyRef.current = isDirty;
@@ -432,6 +445,7 @@ function AppForm({
                           field={renderField}
                           fieldDef={renderFieldDef}
                           name={renderName}
+                          breakpoints={config?.breakpoints}
                           renderField={({ field: syntheticField, fieldDef: subFieldDef, name: subName }) =>
                             renderFieldByType(syntheticField, subFieldDef, subName)
                           }

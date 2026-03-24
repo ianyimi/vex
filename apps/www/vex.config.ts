@@ -13,6 +13,12 @@ export default defineConfig({
     },
     user: TABLE_SLUG_USERS,
   },
+  breakpoints: {
+    sm: 640,
+    md: 768,
+    lg: 1024,
+    xl: 1280,
+  },
   auth,
   basePath: "/admin",
   collections: [pages, headers, footers, themes, users],

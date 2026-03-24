@@ -49,6 +49,26 @@ export function defineBlock<TFields extends Record<string, VexField>>(props: {
     }
   }
 
+  // Validate admin.blockStyles
+  const VALID_STYLE_TIERS = ["container", "text", "layout", "media"];
+
+  if (props.admin?.blockStyles && props.admin.blockStyles !== true) {
+    if (!Array.isArray(props.admin.blockStyles)) {
+      throw new VexBlockValidationError(
+        props.slug,
+        `admin.blockStyles must be true or an array of style tier names. Got: ${typeof props.admin.blockStyles}`,
+      );
+    }
+    for (const tier of props.admin.blockStyles) {
+      if (!VALID_STYLE_TIERS.includes(tier)) {
+        throw new VexBlockValidationError(
+          props.slug,
+          `Invalid style tier "${tier}" in admin.blockStyles. Valid tiers: ${VALID_STYLE_TIERS.join(", ")}`,
+        );
+      }
+    }
+  }
+
   return {
     slug: props.slug,
     label: props.label,

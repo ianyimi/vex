@@ -3,6 +3,7 @@
 // =============================================================================
 
 import type { ComponentType } from "react";
+import type { StyleTier } from "../styles/types";
 
 /** Content alignment for data table cells. */
 export type Alignment = "left" | "right" | "center";
@@ -482,6 +483,16 @@ export interface BlockAdminConfig {
   components?: {
     Editor?: ComponentType<any>;
   };
+  /**
+   * Enable block style controls in the admin panel.
+   *
+   * - `true` — enables container styles only (equivalent to `["container"]`)
+   * - `StyleTier[]` — enables specific style tiers (e.g., `["container", "text", "media"]`)
+   * - `undefined` / omitted — no style controls shown
+   *
+   * Available tiers: "container", "text", "layout", "media"
+   */
+  blockStyles?: true | StyleTier[];
 }
 
 /**
@@ -515,7 +526,7 @@ export interface BlockDef<TFields extends Record<string, VexField> = Record<stri
 }
 
 /** Reserved field names that cannot be used in block field definitions. */
-export const RESERVED_BLOCK_FIELD_NAMES = ["blockType", "blockName", "_key"] as const;
+export const RESERVED_BLOCK_FIELD_NAMES = ["blockType", "blockName", "_key", "blockStyles"] as const;
 
 /** Blocks field definition. Stores an ordered array of block instances. */
 export interface BlocksFieldDef extends BaseField {

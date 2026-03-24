@@ -60,6 +60,7 @@ export function blocksToValueTypeString(props: {
     const fieldEntries: string[] = [
       `blockType: v.literal("${block.slug}")`,
       `blockName: v.optional(v.string())`,
+      `blockStyles: v.optional(v.string())`,
       `_key: v.string()`,
     ];
 

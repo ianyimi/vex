@@ -1,4 +1,6 @@
 import React, { ComponentPropsWithRef } from "react";
+import { blockStylesToTailwind } from "@vexcms/core";
+import { ClassValue } from "clsx";
 
 /**
  * Props for a block component rendered by RenderBlocks.
@@ -14,6 +16,8 @@ export interface BlockComponentProps<
   block: TBlock;
   /** The index of this block in the array (0-based). */
   index: number;
+  /** Tailwind class string generated from the block's blockStyles JSON. Empty string if no styles configured. */
+  blockStyles: ClassValue;
 }
 
 /**
@@ -52,13 +56,32 @@ export function RenderBlocks<
   }
 
   const elements = blocks.map((block, index) => {
+    const blockStylesJson = (block as Record<string, unknown>).blockStyles as
+      | string
+      | undefined;
+    const blockStylesClass = blockStylesToTailwind({ blockStylesJson });
+
     const Component = components[block.blockType];
     if (Component) {
-      return <Component block={block} index={index} key={block._key} />;
+      return (
+        <Component
+          block={block}
+          index={index}
+          blockStyles={blockStylesClass}
+          key={block._key}
+        />
+      );
     }
     if (fallback) {
       const Fallback = fallback;
-      return <Fallback block={block} index={index} key={block._key} />;
+      return (
+        <Fallback
+          block={block}
+          index={index}
+          blockStyles={blockStylesClass}
+          key={block._key}
+        />
+      );
     }
     return null;
   });

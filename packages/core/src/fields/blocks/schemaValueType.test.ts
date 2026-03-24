@@ -116,9 +116,10 @@ describe("blocksToValueTypeString", () => {
     expect(result).toContain('blockType: v.literal("divider")');
     expect(result).toContain("blockName: v.optional(v.string())");
     expect(result).toContain("_key: v.string()");
-    // Only blockType, blockName, and _key — no user fields
+    expect(result).toContain("blockStyles: v.optional(v.string())");
+    // Only blockType, blockName, blockStyles, and _key — no user fields
     const lines = result.split("\n").filter((s) => s.includes(":"));
-    expect(lines.length).toBe(3); // blockType + blockName + _key
+    expect(lines.length).toBe(4); // blockType + blockName + blockStyles + _key
   });
 
   it("handles empty blocks array gracefully", () => {

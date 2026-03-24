@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { BlocksFieldDef, BlockDef, VexField } from "@vexcms/core";
+import type { BlocksFieldDef, BlockDef, VexField, StyleTier, BreakpointConfig } from "@vexcms/core";
 import { toTitleCase, generateFormDefaultValues } from "@vexcms/core";
+import { BlockStylePopover } from "./BlockStylePopover";
 import { Label } from "../../ui/label";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
@@ -41,6 +42,7 @@ import {
 interface BlockInstance {
   blockType: string;
   blockName?: string;
+  blockStyles?: string;
   _key: string;
   [field: string]: unknown;
 }
@@ -54,6 +56,14 @@ type RenderFieldCallback = (props: {
   fieldDef: VexField;
   name: string;
 }) => React.ReactNode;
+
+function resolveStyleTiers(
+  blockDef: BlockDef | undefined,
+): StyleTier[] | undefined {
+  if (!blockDef?.admin?.blockStyles) return undefined;
+  if (blockDef.admin.blockStyles === true) return ["container"];
+  return blockDef.admin.blockStyles;
+}
 
 function generateKey(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -208,6 +218,9 @@ function BlockItem(props: {
   onDuplicateBelow: () => void;
   onFieldChange: (fieldName: string, value: unknown) => void;
   onBlockNameChange: (name: string) => void;
+  onBlockStylesChange: (blockStylesJson: string | undefined) => void;
+  blockStyleTiers: StyleTier[] | undefined;
+  breakpoints?: BreakpointConfig;
   readOnly: boolean;
   dragHandleProps: Record<string, any> | undefined;
   renderField?: RenderFieldCallback;
@@ -264,6 +277,17 @@ function BlockItem(props: {
               placeholder={props.blockDef.label}
             />
           </div>
+
+          {/* Style panel — shown even when collapsed */}
+          {props.blockStyleTiers && props.blockStyleTiers.length > 0 && (
+            <BlockStylePopover
+              blockStylesJson={props.block.blockStyles}
+              onChange={props.onBlockStylesChange}
+              tiers={props.blockStyleTiers}
+              breakpoints={props.breakpoints}
+              blockLabel={blockName || props.blockDef?.label || "Block Styles"}
+            />
+          )}
 
           {/* Action buttons */}
           {!props.readOnly && (
@@ -372,6 +396,8 @@ interface BlocksFieldProps {
   fieldDef?: BlocksFieldDef;
   /** Callback to render sub-fields using AppForm's centralized renderFieldByType */
   renderField?: RenderFieldCallback;
+  /** Breakpoint config from vex.config.ts for responsive style tabs. */
+  breakpoints?: BreakpointConfig;
 }
 
 function BlocksField({
@@ -379,6 +405,7 @@ function BlocksField({
   field: legacyField,
   fieldDef: propFieldDef,
   renderField,
+  breakpoints,
 }: BlocksFieldProps) {
   const vexField = legacyField ? null : useVexField<BlockInstance[]>({ name });
 
@@ -505,6 +532,17 @@ function BlocksField({
     [value, setValue],
   );
 
+  const updateBlockStyles = useCallback(
+    (key: string, blockStylesJson: string | undefined) => {
+      setValue(
+        value.map((b) =>
+          b._key === key ? { ...b, blockStyles: blockStylesJson } : b,
+        ),
+      );
+    },
+    [value, setValue],
+  );
+
   const handleDragEnd = useCallback(
     (result: DropResult) => {
       if (!result.destination) return;
@@ -626,6 +664,13 @@ function BlocksField({
                             onBlockNameChange={(blockName) =>
                               updateBlockName(block._key, blockName)
                             }
+                            onBlockStylesChange={(json) =>
+                              updateBlockStyles(block._key, json)
+                            }
+                            blockStyleTiers={resolveStyleTiers(
+                              blockDefMap.get(block.blockType),
+                            )}
+                            breakpoints={breakpoints}
                             readOnly={readOnly}
                             dragHandleProps={
                               draggableProvided.dragHandleProps ?? undefined

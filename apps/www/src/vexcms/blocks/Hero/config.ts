@@ -47,5 +47,6 @@ export const heroBlock = defineBlock({
   },
   admin: {
     icon: "sparkles",
+    blockStyles: ["container", "text"],
   },
 })

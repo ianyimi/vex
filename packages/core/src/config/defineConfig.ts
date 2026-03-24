@@ -96,6 +96,7 @@ export function defineConfig(vexConfig: VexConfigInput): VexConfig {
       ...vexConfig.schema,
     },
     access: vexConfig.access,
+    breakpoints: vexConfig.breakpoints,
   };
 
   // Handle media config

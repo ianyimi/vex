@@ -32,7 +32,7 @@ const transitionVariants = {
   },
 }
 
-export default function HeroBlock({ block }: BlockComponentProps) {
+export default function HeroBlock({ block, blockStyles }: BlockComponentProps) {
   const {
     badgeText,
     badgeLink,
@@ -45,7 +45,7 @@ export default function HeroBlock({ block }: BlockComponentProps) {
   } = block as Record<string, string>
 
   return (
-    <div className="overflow-hidden">
+    <div className={cn("overflow-hidden", blockStyles)}>
       <div
         aria-hidden
         className="absolute inset-0 isolate hidden opacity-65 contain-strict lg:block"

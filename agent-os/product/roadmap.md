@@ -223,16 +223,17 @@ These are two distinct features that compose together:
 | createVexQuery          | ✅ Done | Typed draft-aware query builder (preserves DataModel types, handles _vexDrafts)                      |
 | Recursive field render  | ✅ Done | All field types work inside blocks/arrays/objects/tabs via single renderFieldByType                   |
 | Relationship create     | ✅ Done | Inline "Create new" button in relationship field dropdown, renders full CreateDocumentDialog          |
+| Block style controls    | ✅ Done | Per-block styles via draggable floating panel, Tailwind presets, responsive breakpoints, copy/paste   |
 | Marketing blocks (www)  | ✅ Done | Hero, Features, CTA, FAQ, Header, Footer blocks with real Vex CMS marketing copy                    |
 | Motion primitives (www) | ✅ Done | TextEffect, AnimatedGroup animation components ported from UIFoundry                                 |
 | CLI env loading         | ✅ Done | CLI loads .env.local before config import, sets NODE_ENV fallback, strips inline comments            |
-| Testing                 | ✅ Done | 586+ tests passing across core + create-cli + better-auth + cli + file-storage-convex                |
+| Testing                 | ✅ Done | 550+ tests in core (incl. 31 blockStylesToTailwind), 586+ total across all packages                  |
 
 ### What's Next
 
 | Area                          | Status       | Gap                                                                                    |
 | ----------------------------- | ------------ | -------------------------------------------------------------------------------------- |
-| Field style controls          | 🔜 Next      | Spec 09c — padding, margin, background, typography controls on blocks/fields            |
+| Block style controls          | ✅ Done       | Spec 09c — per-block style system: draggable floating panel, Tailwind presets, responsive breakpoints, copy/paste, JSON→TW converter |
 | Marketing site (apps/www)     | 🔜 Next      | vexcms.dev content, deploy, drive interest. Blocks + theme system in place              |
 | Demo site                     | 📋 Planned   | Public demo admin panel, resets daily, apps/demo                                        |
 | Hooks system                  | 📋 Planned   | Collection + field lifecycle hooks                                                     |
@@ -333,15 +334,18 @@ Spec 09b — Custom Component Registration
   - Note: useField/useForm hooks already work in edit forms (Spec 14)
   - This spec adds the registration and resolution system on top
 
-Spec 09c — Field Style Controls & Cross-Collection Copy/Paste
-  - Universal ContainerStyleConfig applied to every field's wrapper div (spacing, bg, border, cursor, hover, shadow, opacity)
-  - Type-specific inner style configs: TextStyleConfig, MediaStyleConfig, LayoutStyleConfig
-  - Custom blocks declare accepted style tiers via admin.styleConfig array
-  - Popover form (tooltip on each field input) with sections based on field type
-  - Cross-collection copy/paste: copy style configs or full field/block definitions to other collections
-  - Paste validation: style-only always valid, field/block paste checks type compatibility
-  - Depends on Spec 09b — custom components must be able to receive and spread style props
-  - See: agent-os/product/specs/09c-field-style-controls/notes.md
+Spec 09c — Block Style Controls                                        ✅ DONE
+  - Per-block style system: admin.blockStyles on defineBlock() opts in with tier selection
+  - Style tiers: container (spacing, bg, border, shadow, display), text (font, color, alignment),
+    layout (gap, flex), media (object-fit, aspect-ratio)
+  - Draggable floating panel (portal-based, persists position/tab/accordion state across open/close)
+  - Tailwind preset selects with px/rem hints, color picker with CSS variable support
+  - Responsive breakpoint tabs from vex.config.ts (base + sm/md/lg/xl)
+  - blockStyles stored as JSON string on each block instance in Convex
+  - blockStylesToTailwind() converter: JSON → Tailwind class string with breakpoint prefixes
+  - RenderBlocks passes blockStyles as Tailwind class string to block components
+  - Copy/paste block styles via localStorage (strips non-applicable tiers on paste)
+  - See: agent-os/product/specs/09c-field-style-controls/spec.md
 
 Spec 18 — Team Management UI
   - Invite users by email (email send via Convex action)
@@ -510,20 +514,21 @@ Phase 5.5 — Documentation site
 ## Summary Timeline
 
 ```
-DONE        Phases 0-2.5 complete. All core CMS features + blocks + themes built.
+DONE        Phases 0-2.5 complete. All core CMS features + blocks + themes + block styles built.
             16 field types (incl. object, color, tabs), schema/type/query gen,
             CLI, create CLI, admin panel, media, versioning, RBAC, richtext,
             live preview, blocks, globals (defineGlobal), onboarding,
-            586+ tests, 8 npm packages + create-vexcms.
+            550+ core tests, 586+ total across all packages, 8 npm packages + create-vexcms.
             Marketing blocks (Hero, Features, CTA, FAQ, Header, Footer) in www.
+            Block style controls: draggable floating panel, TW presets, responsive breakpoints.
             Recursive field rendering — all types work inside blocks/arrays/objects.
             Relationship field with inline create dialog.
             CLI loads .env.local, globals.get query with draft awareness.
 
-PHASE 2.75  Spec 33 (Marketing Site) → Spec 09c (Field Styles) → Spec 35 (Demo) → Spec 32 (Docs)
-  SITES     vexcms.dev content + deploy. Blocks + theme system in place.
-            Field style controls (padding, margin, bg) on blocks — NEXT.
-            ← CURRENT PRIORITY
+PHASE 2.75  Spec 33 (Marketing Site) → Spec 35 (Demo) → Spec 32 (Docs)
+  SITES     vexcms.dev content + deploy. Blocks + theme system + block styles in place.
+            Spec 09c (block style controls) DONE — draggable panel, TW presets, breakpoints.
+            ← CURRENT PRIORITY: marketing site content + deploy
 
 PHASE 3     Spec 18 (Teams) → Spec 19 (API Keys) → Spec 20 (Scheduling) → Spec 22 (Audit Log) → Hooks
   POLISH    Quality-of-life before enterprise.
@@ -556,7 +561,7 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 07     | Versioning & Drafts                | ✅                                     |
 | 08     | File Uploads                       | Superseded by Spec 15                  |
 | 09     | Custom Admin Components            | ✅ (direct component refs, not paths)  |
-| 09c    | Field Style Controls & Copy/Paste  | Deferred                               |
+| 09c    | Block Style Controls               | ✅ (draggable panel, TW presets, breakpoints, copy/paste) |
 | 10     | Live Preview                       | ✅                                     |
 | 11     | Testing Strategy                   | ✅                                     |
 | 12a    | Admin Data Table                   | ✅                                     |

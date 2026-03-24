@@ -35,6 +35,9 @@ export { tabs } from "./fields/tabs";
 // Block helpers
 export { defineBlock } from "./blocks/defineBlock";
 
+// Styles
+export * from "./styles";
+
 // Type generation
 export { generateVexTypes } from "./typeGen/generateVexTypes";
 export { slugToInterfaceName } from "./typeGen/slugToInterfaceName";
@@ -157,6 +160,8 @@ export type {
   LockedMediaField,
   OverridableMediaField,
   DefaultMediaFieldKeys,
+  // Breakpoint config
+  BreakpointConfig,
 } from "./types";
 
 export type {
