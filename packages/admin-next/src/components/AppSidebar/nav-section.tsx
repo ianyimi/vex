@@ -15,8 +15,7 @@ import {
 } from "@vexcms/ui";
 import { ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
-import { readLocalStorage } from "../../hooks/useLocalStorage";
-import { useCallback } from "react";
+import { useLocalStorage } from "../../hooks/useLocalStorage";
 
 interface NavSectionProps {
   title: string;
@@ -45,26 +44,12 @@ function NavGroup({
   item: NavSectionProps["items"][number];
 }) {
   const storageKey = `vex-nav-group-${sectionTitle}-${item.title}`;
-
-  // Read synchronously for defaultOpen so the Collapsible mounts
-  // in the correct state with no animation.
-  const initialOpen = readLocalStorage(storageKey, item.isActive ?? false);
-
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      try {
-        window.localStorage.setItem(storageKey, JSON.stringify(open));
-      } catch {
-        // Storage unavailable
-      }
-    },
-    [storageKey]
-  );
+  const [isOpen, setIsOpen] = useLocalStorage(storageKey, item.isActive ?? false);
 
   return (
     <Collapsible
-      defaultOpen={initialOpen}
-      onOpenChange={handleOpenChange}
+      open={isOpen}
+      onOpenChange={setIsOpen}
       className="group/collapsible"
       render={<SidebarMenuItem />}
     >

@@ -1,20 +1,14 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import dynamic from "next/dynamic";
 import { SidebarInset, SidebarProvider } from "@vexcms/ui";
-import type { NavUserData } from "./AppSidebar";
+import { AppSidebar, NavUserData } from "./AppSidebar";
 import type { ClientVexConfig, VexAccessConfig } from "@vexcms/core";
 import { PermissionProvider, type PermissionUser } from "../context/PermissionContext";
 import { ImpersonationBanner } from "./ImpersonationBanner";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { anyApi } from "convex/server";
-
-const AppSidebar = dynamic(
-  () => import("./AppSidebar").then((mod) => mod.AppSidebar),
-  { ssr: false }
-);
 
 export function AdminLayoutClient({
   config,

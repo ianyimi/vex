@@ -1,15 +1,9 @@
 import { defineConfig } from "@vexcms/core"
 import { convexFileStorage } from "@vexcms/file-storage-convex"
 
+import { TABLE_SLUG_USERS } from "~/db/constants"
 import { auth } from "~/vexcms/auth"
-import {
-  footers,
-  headers,
-  media,
-  pages,
-  themes,
-  users,
-} from "~/vexcms/collections"
+import { footers, headers, media, pages, themes, users } from "~/vexcms/collections"
 import { siteSettings } from "~/vexcms/globals"
 
 export default defineConfig({
@@ -17,7 +11,7 @@ export default defineConfig({
     meta: {
       titleSuffix: " | My Site",
     },
-    user: "user",
+    user: TABLE_SLUG_USERS,
   },
   auth,
   basePath: "/admin",
