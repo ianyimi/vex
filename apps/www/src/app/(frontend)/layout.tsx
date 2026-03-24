@@ -1,20 +1,36 @@
-import { SiteHeader } from "~/components/SiteHeader"
-import { SiteFooter } from "~/components/SiteFooter"
-import { ThemeInjector } from "~/components/ThemeInjector"
+import { fetchQuery } from "convex/nextjs"
 
-export default function FrontendLayout({
+import { api } from "@convex/_generated/api"
+
+import { SiteFooter } from "~/components/SiteFooter"
+import { SiteHeader } from "~/components/SiteHeader"
+import { ThemeStyle } from "~/components/ThemeStyle"
+
+export default async function FrontendLayout({
   auth,
   children,
 }: Readonly<{
   auth: React.ReactNode
   children: React.ReactNode
 }>) {
+  let headerData: Record<string, unknown> | null = null
+  let footerData: Record<string, unknown> | null = null
+
+  try {
+    ;[headerData, footerData] = await Promise.all([
+      fetchQuery(api.headers.getFirst),
+      fetchQuery(api.footers.getFirst),
+    ])
+  } catch {
+    // Convex not available — fall back to client-only fetch
+  }
+
   return (
     <>
-      <ThemeInjector siteSettingsSlug="site_settings" />
-      <SiteHeader />
+      <ThemeStyle />
+      <SiteHeader initialData={headerData} />
       <main>{children}</main>
-      <SiteFooter />
+      <SiteFooter initialData={footerData} />
       {auth}
     </>
   )

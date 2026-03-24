@@ -8,16 +8,19 @@ import { anyApi } from "convex/server";
 
 interface DashboardViewProps {
   config: ClientVexConfig;
+  initialCounts?: Record<string, number>;
 }
 
-function CollectionCard({ collection, basePath }: {
+function CollectionCard({ collection, basePath, initialCount }: {
   collection: ClientVexConfig["collections"][number];
   basePath: string;
+  initialCount?: number;
 }) {
   const countQuery = useQuery({
     ...convexQuery(anyApi.vex.collections.countDocuments, {
       collectionSlug: collection.slug,
     }),
+    initialData: initialCount,
   });
 
   const count = countQuery.data as number | undefined;
@@ -40,7 +43,7 @@ function CollectionCard({ collection, basePath }: {
   );
 }
 
-export function DashboardView({ config }: DashboardViewProps) {
+export function DashboardView({ config, initialCounts }: DashboardViewProps) {
   const basePath = config.basePath ?? "/admin";
 
   // Combine user collections + media collections
@@ -60,6 +63,7 @@ export function DashboardView({ config }: DashboardViewProps) {
             key={collection.slug}
             collection={collection}
             basePath={basePath}
+            initialCount={initialCounts?.[collection.slug]}
           />
         ))}
       </div>

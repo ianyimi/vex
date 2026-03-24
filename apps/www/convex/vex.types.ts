@@ -94,6 +94,30 @@ export interface Hero {
   secondaryCtaHref?: string
 }
 
+export interface HowItWorks {
+  blockType: "how_it_works"
+  blockName?: string
+  _key: string
+  /** Heading */
+  heading: string
+  /** Subheading */
+  subheading?: string
+  /** Steps */
+  steps: Record<string, unknown>[]
+}
+
+export interface Roadmap {
+  blockType: "roadmap"
+  blockName?: string
+  _key: string
+  /** Heading */
+  heading: string
+  /** Subheading */
+  subheading?: string
+  /** Roadmap Items */
+  items: Record<string, unknown>[]
+}
+
 export interface Pages {
   _id: Id<"pages">
   _creationTime: number
@@ -105,7 +129,7 @@ export interface Pages {
   /** Slug */
   slug: string
   /** Content */
-  content?: (Hero | Features | Cta | Faq)[]
+  content?: (Hero | Features | HowItWorks | Roadmap | Cta | Faq)[]
 }
 
 export interface Headers {

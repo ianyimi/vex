@@ -41,6 +41,34 @@ export const pages = defineTable({
           ),
         }),
         v.object({
+          blockType: v.literal("how_it_works"),
+          blockName: v.optional(v.string()),
+          _key: v.string(),
+          heading: v.string(),
+          subheading: v.optional(v.string()),
+          steps: v.array(
+            v.object({
+              icon: v.optional(v.string()),
+              title: v.string(),
+              description: v.string(),
+            })
+          ),
+        }),
+        v.object({
+          blockType: v.literal("roadmap"),
+          blockName: v.optional(v.string()),
+          _key: v.string(),
+          heading: v.string(),
+          subheading: v.optional(v.string()),
+          items: v.array(
+            v.object({
+              feature: v.string(),
+              description: v.optional(v.string()),
+              status: v.union(v.literal("shipped"), v.literal("coming-soon"), v.literal("planned")),
+            })
+          ),
+        }),
+        v.object({
           blockType: v.literal("cta"),
           blockName: v.optional(v.string()),
           _key: v.string(),

@@ -46,6 +46,17 @@ function resolveCollection(
   return userCollection;
 }
 
+export interface AdminInitialData {
+  /** Prefetched document for edit views */
+  document?: Record<string, unknown> | null;
+  /** Prefetched global document */
+  globalDocument?: Record<string, unknown> | null;
+  /** Prefetched collection counts for dashboard — keyed by collection slug */
+  counts?: Record<string, number>;
+  /** Prefetched count for a single collection list view */
+  count?: number;
+}
+
 interface AdminPageProps {
   config: ClientVexConfig;
   path?: string[];
@@ -53,13 +64,15 @@ interface AdminPageProps {
   renderRichTextField?: (props: Record<string, any>) => React.ReactNode;
   /** Map of collection slug → { url } for collections with function-based preview URLs */
   livePreviewConfigs?: Record<string, { url: (doc: { _id: string; [key: string]: any }) => string }>;
+  /** Server-prefetched data to pass as initialData to views */
+  initialData?: AdminInitialData;
 }
 
-export function AdminPage({ config, path = [], renderRichTextField, livePreviewConfigs }: AdminPageProps) {
+export function AdminPage({ config, path = [], renderRichTextField, livePreviewConfigs, initialData }: AdminPageProps) {
   const [collectionSlug, documentID] = path;
 
   if (!collectionSlug) {
-    return <DashboardView config={config} />;
+    return <DashboardView config={config} initialCounts={initialData?.counts} />;
   }
 
   // Check if this is a global
@@ -79,6 +92,7 @@ export function AdminPage({ config, path = [], renderRichTextField, livePreviewC
           collection={globalAsCollection}
           documentID={documentID}
           renderRichTextField={renderRichTextField}
+          initialData={initialData?.document}
         />
       );
     }
@@ -86,7 +100,7 @@ export function AdminPage({ config, path = [], renderRichTextField, livePreviewC
     // No document ID — auto-resolve the single document
     return (
       <Suspense fallback={<div className="p-6 text-muted-foreground">Loading...</div>}>
-        <GlobalEditView config={config} collection={globalAsCollection} renderRichTextField={renderRichTextField} />
+        <GlobalEditView config={config} collection={globalAsCollection} renderRichTextField={renderRichTextField} initialData={initialData?.globalDocument} />
       </Suspense>
     );
   }
@@ -102,13 +116,13 @@ export function AdminPage({ config, path = [], renderRichTextField, livePreviewC
     if (isMedia) {
       return (
         <Suspense fallback={<div className="p-6 text-muted-foreground">Loading...</div>}>
-          <MediaCollectionsView config={config} collection={collection} />
+          <MediaCollectionsView config={config} collection={collection} initialCount={initialData?.count} />
         </Suspense>
       );
     }
     return (
       <Suspense fallback={<div className="p-6 text-muted-foreground">Loading...</div>}>
-        <CollectionsView config={config} collection={collection} renderRichTextField={renderRichTextField} />
+        <CollectionsView config={config} collection={collection} renderRichTextField={renderRichTextField} initialCount={initialData?.count} />
       </Suspense>
     );
   }
@@ -120,6 +134,7 @@ export function AdminPage({ config, path = [], renderRichTextField, livePreviewC
         config={config}
         collection={collection}
         documentID={documentID}
+        initialData={initialData?.document}
       />
     );
   }
@@ -132,6 +147,7 @@ export function AdminPage({ config, path = [], renderRichTextField, livePreviewC
       documentID={documentID}
       renderRichTextField={renderRichTextField}
       livePreviewConfigs={livePreviewConfigs}
+      initialData={initialData?.document}
     />
   );
 }

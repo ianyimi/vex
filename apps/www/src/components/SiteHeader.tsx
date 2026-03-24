@@ -1,16 +1,21 @@
 "use client"
 
 import { RenderBlocks } from "@vexcms/ui"
-import { useQuery } from "convex/react"
+import { convexQuery } from "@convex-dev/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { anyApi } from "convex/server"
 
 import { blockComponents } from "~/vexcms/blocks"
 
-export function SiteHeader() {
-  const result = useQuery(anyApi.vex.api.headers.list, {
-    paginationOpts: { numItems: 1, cursor: null },
+export function SiteHeader({
+  initialData,
+}: {
+  initialData?: Record<string, unknown> | null
+}) {
+  const { data: header } = useQuery({
+    ...convexQuery(anyApi.headers.getFirst, {}),
+    initialData: initialData ?? undefined,
   })
-  const header = (result as any)?.page?.[0]
 
   if (!header?.content) return null
 

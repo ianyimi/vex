@@ -46,6 +46,7 @@ export default function CollectionEditView({
   documentID,
   renderRichTextField,
   livePreviewConfigs,
+  initialData,
 }: {
   config: ClientVexConfig;
   collection: VexCollection;
@@ -53,6 +54,7 @@ export default function CollectionEditView({
   renderRichTextField?: (props: Record<string, any>) => React.ReactNode;
   /** Map of collection slug → { url } for collections with function-based preview URLs */
   livePreviewConfigs?: Record<string, { url: (doc: { _id: string; [key: string]: any }) => string }>;
+  initialData?: Record<string, unknown> | null;
 }) {
   const router = useRouter();
   const isVersioned = !!collection.versions?.drafts;
@@ -68,6 +70,7 @@ export default function CollectionEditView({
         documentId: documentID,
       },
     ),
+    initialData: initialData ?? undefined,
   });
 
   const document = documentQuery.data as

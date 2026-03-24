@@ -502,6 +502,31 @@ Spec 02 — CI/Publishing
   - Release workflow (publish to npm)
   - Branch protection rules
 
+Spec 39 — @vexcms/next (Next.js Integration Package)
+  Phase 1: Server-side data helpers
+    - fetchPage(slug) — fetchQuery wrapper for pages with published filter
+    - fetchGlobal(slug) — fetchQuery wrapper for globals
+    - fetchActiveTheme() — resolves site settings → active theme in one call
+    - preloadPage(slug) — preloadQuery wrapper, returns token for usePreloadedQuery
+    - preloadGlobal(slug) — preloadQuery wrapper for globals
+    - ThemeStyle server component — inlines theme CSS variables into HTML (eliminates FOUC)
+    - generatePageMetadata(slug) — returns Next.js Metadata object from page SEO fields
+  Phase 2: Admin panel SSR (lower priority)
+    - Preload collection list data for admin routes (shaves ~200ms on first admin page)
+    - Preload document data for edit views based on URL path
+    - Server-render admin sidebar/nav shell, hydrate interactive parts
+    - Note: admin is heavily interactive (forms, drag-drop, live preview) so SSR benefit is marginal
+  Phase 3: Framework-agnostic patterns
+    - Extract server-fetching patterns into a generic @vexcms/server package
+    - @vexcms/next, @vexcms/tanstack-start, @vexcms/remix as thin framework adapters
+    - Each adapter wraps the generic server helpers with framework-specific APIs
+  Design decisions:
+    - NOT a Next.js plugin/build process injection (like Payload) — stays as helper utilities
+    - Vex config does NOT need to run at build time — keeps deployment simple
+    - Admin panel stays primarily client-rendered — SSR is progressive enhancement, not required
+    - preloadQuery pattern: server fetches initial data, client hydrates with real-time subscription
+    - Public pages get full SSR + real-time hydration (best of both worlds)
+
 Phase 5.1 — TanStack Start admin
 Phase 5.2 — Storage Adapters (S3, R2, Vercel Blob)
 Phase 5.3 — Auth Adapters (Clerk, Auth.js)
@@ -593,3 +618,4 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 36     | Relationship Picker                | ✅                                     |
 | 37     | Object Field                       | ✅                                     |
 | 38     | Globals System (defineGlobal)      | ✅                                     |
+| 39     | @vexcms/next (Next.js Integration) | Phase 5 (partially prototyped in www)  |

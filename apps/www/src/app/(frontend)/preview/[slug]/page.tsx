@@ -1,56 +1,25 @@
-"use client"
+import { fetchQuery } from "convex/nextjs"
 
 import { api } from "@convex/_generated/api"
-import { RenderBlocks, useVexPreview } from "@vexcms/ui"
-import { useQuery } from "convex/react"
-import { useParams } from "next/navigation"
 
-import { blockComponents } from "~/vexcms/blocks"
+import { PreviewPageContent } from "./PreviewPageContent"
 
-/**
- * Preview page route — renders draft pages for live preview.
- * Used by the admin panel's live preview iframe.
- */
-export default function PreviewPage() {
-  const { slug } = useParams<{ slug: string }>()
+export default async function PreviewPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
 
-  const page = useQuery(api.pages.getBySlug, {
-    slug,
-    _vexDrafts: "snapshot",
-  })
-
-  // Notify admin panel's live preview when data changes
-  useVexPreview({ data: page })
-
-  if (page === undefined) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-12 h-screen grid place-items-center">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
-          <p className="text-muted-foreground">Loading preview…</p>
-        </div>
-      </div>
-    )
+  let initialData: Record<string, unknown> | null = null
+  try {
+    initialData = await fetchQuery(api.pages.getBySlug, {
+      slug,
+      _vexDrafts: "snapshot" as any,
+    })
+  } catch {
+    // Fall back to client-only fetch
   }
 
-  if (page === null) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <h1 className="text-2xl font-bold">Preview not found</h1>
-        <p className="mt-2 text-muted-foreground">No page with slug &ldquo;{slug}&rdquo; exists.</p>
-      </div>
-    )
-  }
-
-  return (
-    <>
-      {/* Preview banner */}
-      <div className="fixed top-0 left-0 right-0 z-50 border-b border-yellow-200 bg-yellow-50 px-4 py-2 text-center text-sm text-yellow-800">
-        Preview Mode — This page may not be published yet.
-      </div>
-      <div className="pt-10">
-        <RenderBlocks blocks={page.content} components={blockComponents} />
-      </div>
-    </>
-  )
+  return <PreviewPageContent slug={slug} initialData={initialData} />
 }

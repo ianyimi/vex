@@ -378,6 +378,22 @@ function AppForm({
                       node
                     );
 
+                  // Custom Field component support for nested fields (inside objects, arrays, blocks)
+                  if (
+                    renderFieldDef.admin?.components?.Field &&
+                    (CUSTOM_FIELD_ELIGIBLE_TYPES.has(renderFieldDef.type) || renderFieldDef.type === "ui")
+                  ) {
+                    const CustomField = renderFieldDef.admin.components.Field;
+                    return wrap(
+                      <CustomField
+                        name={renderName}
+                        fieldDef={renderFieldDef}
+                        readOnly={renderReadOnly ?? renderFieldDef.admin?.readOnly ?? false}
+                        field={renderField}
+                      />
+                    );
+                  }
+
                   switch (renderFieldDef.type) {
                     case "text":
                       return wrap(<TextField field={renderField} fieldDef={renderFieldDef} name={renderName} />);

@@ -68,9 +68,11 @@ function getStoredPageSize(): string {
 export default function MediaCollectionsView({
   config,
   collection,
+  initialCount,
 }: {
   config: ClientVexConfig;
   collection: VexCollection;
+  initialCount?: number;
 }) {
   const router = useRouter();
   const thumbnailSize = (collection.admin as any)?.thumbnailSize ?? 40;
@@ -193,6 +195,7 @@ export default function MediaCollectionsView({
       collectionSlug: collection.slug,
     }),
     enabled: !isSearching,
+    initialData: initialCount,
   });
   const totalCount = countQuery.data as number | undefined;
 

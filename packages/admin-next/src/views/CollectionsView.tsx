@@ -57,10 +57,12 @@ export default function CollectionsView({
   config,
   collection,
   renderRichTextField,
+  initialCount,
 }: {
   config: ClientVexConfig;
   collection: VexCollection;
   renderRichTextField?: (props: Record<string, any>) => React.ReactNode;
+  initialCount?: number;
 }) {
   const router = useRouter();
 
@@ -196,6 +198,7 @@ export default function CollectionsView({
       collectionSlug: collection.slug,
     }),
     enabled: !isSearching,
+    initialData: initialCount,
   });
   const totalCount = countQuery.data as number | undefined;
 

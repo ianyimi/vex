@@ -30,8 +30,9 @@ export const headerBlock = defineBlock({
         },
       }),
       defaultValue: [
-        { label: "Features", href: "#features" },
-        { label: "FAQ", href: "#faq" },
+        { label: "Features", href: "/features" },
+        { label: "Pricing", href: "/pricing" },
+        { label: "Roadmap", href: "/roadmap" },
         { label: "Docs", href: "/docs" },
       ],
     }),
@@ -53,7 +54,7 @@ export const headerBlock = defineBlock({
         },
       }),
       defaultValue: [
-        { label: "Sign In", href: "/auth/sign-in", variant: "outline" },
+        { label: "GitHub", href: "https://github.com/vexcms/vex", variant: "ghost" },
         { label: "Get Started", href: "/docs", variant: "default" },
       ],
     }),

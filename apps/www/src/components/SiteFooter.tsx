@@ -1,16 +1,21 @@
 "use client"
 
 import { RenderBlocks } from "@vexcms/ui"
-import { useQuery } from "convex/react"
+import { convexQuery } from "@convex-dev/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { anyApi } from "convex/server"
 
 import { blockComponents } from "~/vexcms/blocks"
 
-export function SiteFooter() {
-  const result = useQuery(anyApi.vex.api.footers.list, {
-    paginationOpts: { numItems: 1, cursor: null },
+export function SiteFooter({
+  initialData,
+}: {
+  initialData?: Record<string, unknown> | null
+}) {
+  const { data: footer } = useQuery({
+    ...convexQuery(anyApi.footers.getFirst, {}),
+    initialData: initialData ?? undefined,
   })
-  const footer = result?.page?.[0]
 
   if (!footer?.content) return null
 

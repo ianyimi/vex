@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import type { LivePreviewBreakpoint } from "@vexcms/core";
 import { DEFAULT_BREAKPOINTS } from "@vexcms/core";
 import { BreakpointSelector } from "./BreakpointSelector";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { VEX_PREVIEW_UPDATED } from "./useVexPreview";
 
@@ -178,16 +178,28 @@ export function LivePreviewPanel(props: {
           selected={selectedBreakpoint?.label ?? null}
           onSelect={handleBreakpointSelect}
         />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIframeKey((k) => k + 1)}
-          title={showSpinner ? "Syncing changes..." : "Refresh preview"}
-        >
-          <RefreshCw
-            className={`h-4 w-4 ${showSpinner ? "animate-spin" : ""}`}
-          />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIframeKey((k) => k + 1)}
+            title={showSpinner ? "Syncing changes..." : "Refresh preview"}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${showSpinner ? "animate-spin" : ""}`}
+            />
+          </Button>
+          {previewURL && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.open(previewURL, "_blank")}
+              title="Open preview in new tab"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Iframe container */}

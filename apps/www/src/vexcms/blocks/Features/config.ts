@@ -1,5 +1,6 @@
 import { array, defineBlock, object, text } from "@vexcms/core"
 
+import IconPickerField from "~/components/admin/IconPickerField"
 import { BLOCK_SLUG_FEATURES } from "../constants"
 
 export const featuresBlock = defineBlock({
@@ -25,7 +26,10 @@ export const featuresBlock = defineBlock({
           description: text({ label: "Description", required: true }),
           icon: text({
             label: "Icon",
-            admin: { description: "Lucide icon name (e.g. Zap, Shield, Code)" },
+            admin: {
+              description: "Lucide icon name",
+              components: { Field: IconPickerField },
+            },
           }),
         },
       }),

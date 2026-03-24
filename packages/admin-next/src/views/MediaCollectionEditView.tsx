@@ -55,6 +55,7 @@ export default function MediaCollectionEditView(props: {
   config: ClientVexConfig;
   collection: VexCollection;
   documentID: string;
+  initialData?: Record<string, unknown> | null;
 }) {
   const router = useRouter();
 
@@ -64,6 +65,7 @@ export default function MediaCollectionEditView(props: {
       collectionSlug: props.collection.slug,
       documentId: props.documentID,
     }),
+    initialData: props.initialData ?? undefined,
   });
 
   const document = documentQuery.data as

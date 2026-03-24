@@ -1,7 +1,9 @@
 "use client";
 
 import type { VexCollection, ClientVexConfig } from "@vexcms/core";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { useMutation } from "convex/react";
 import { anyApi } from "convex/server";
 import CollectionEditView from "./CollectionEditView";
 
@@ -9,19 +11,25 @@ interface GlobalEditViewProps {
   config: ClientVexConfig;
   collection: VexCollection;
   renderRichTextField?: (props: Record<string, any>) => React.ReactNode;
+  initialData?: Record<string, unknown> | null;
 }
 
 /**
  * GlobalEditView — automatically finds or creates the single document
  * for a global, then renders the CollectionEditView for it.
  */
-export default function GlobalEditView({ config, collection, renderRichTextField }: GlobalEditViewProps) {
+export default function GlobalEditView({ config, collection, renderRichTextField, initialData }: GlobalEditViewProps) {
   const slug = collection.slug;
 
   // Use globals.get to fetch the single document
-  const doc = useQuery(anyApi.vex.globals?.get, {
-    globalSlug: slug,
-  }) as Record<string, unknown> | null | undefined;
+  const docQuery = useQuery({
+    ...convexQuery(anyApi.vex.globals.get, {
+      globalSlug: slug,
+    }),
+    initialData: initialData ?? undefined,
+  });
+
+  const doc = docQuery.data as Record<string, unknown> | null | undefined;
 
   const createDocument = useMutation(anyApi.vex.collections.createDocument);
 

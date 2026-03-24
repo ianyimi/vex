@@ -1,4 +1,4 @@
-export { AdminPage } from "./components/AdminPage";
+export { AdminPage, type AdminInitialData } from "./components/AdminPage";
 export { AdminLayout } from "./components/AdminLayout";
 export {
   PermissionProvider,

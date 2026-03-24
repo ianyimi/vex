@@ -1,6 +1,7 @@
 "use client"
 
 import { AdminPage } from "@vexcms/admin-next"
+import type { AdminInitialData } from "@vexcms/admin-next"
 import type { ClientVexConfig } from "@vexcms/core"
 import { extractLivePreviewConfigs, sanitizeConfigForClient } from "@vexcms/core"
 import { RichTextFieldWithMedia } from "./RichTextFieldWithMedia"
@@ -14,14 +15,17 @@ const clientConfig = sanitizeConfigForClient(originalConfig)
 export function AdminPageWrapper({
   config: _serverConfig,
   path,
+  initialData,
 }: {
   config: ClientVexConfig
   path?: string[]
+  initialData?: AdminInitialData
 }) {
   return (
     <AdminPage
       config={clientConfig}
       path={path}
+      initialData={initialData}
       livePreviewConfigs={livePreviewConfigs}
       renderRichTextField={(props: any) => (
         <RichTextFieldWithMedia

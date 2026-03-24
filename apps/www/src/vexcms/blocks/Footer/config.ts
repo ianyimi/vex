@@ -1,5 +1,6 @@
 import { array, defineBlock, object, text, upload } from "@vexcms/core"
 
+import IconPickerField from "~/components/admin/IconPickerField"
 import { TABLE_SLUG_MEDIA } from "~/db/constants"
 import { BLOCK_SLUG_FOOTER } from "../constants"
 
@@ -28,9 +29,12 @@ export const footerBlock = defineBlock({
         },
       }),
       defaultValue: [
+        { label: "Features", href: "/features" },
+        { label: "Pricing", href: "/pricing" },
+        { label: "Roadmap", href: "/roadmap" },
         { label: "Documentation", href: "/docs" },
         { label: "GitHub", href: "https://github.com/vexcms/vex" },
-        { label: "npm", href: "https://www.npmjs.com/package/create-vexcms" },
+        { label: "npm", href: "https://www.npmjs.com/package/@vexcms/core" },
         { label: "Convex", href: "https://convex.dev" },
       ],
     }),
@@ -42,7 +46,10 @@ export const footerBlock = defineBlock({
           href: text({ label: "URL", required: true }),
           icon: text({
             label: "Icon",
-            admin: { description: "Lucide icon name (e.g. Twitter, Github, Linkedin)" },
+            admin: {
+              description: "Lucide icon name",
+              components: { Field: IconPickerField },
+            },
           }),
         },
       }),
