@@ -224,7 +224,13 @@ These are two distinct features that compose together:
 | Recursive field render  | ✅ Done | All field types work inside blocks/arrays/objects/tabs via single renderFieldByType                   |
 | Relationship create     | ✅ Done | Inline "Create new" button in relationship field dropdown, renders full CreateDocumentDialog          |
 | Block style controls    | ✅ Done | Per-block styles via draggable floating panel, Tailwind presets, responsive breakpoints, copy/paste   |
-| Marketing blocks (www)  | ✅ Done | Hero, Features, CTA, FAQ, Header, Footer blocks with real Vex CMS marketing copy                    |
+| Marketing blocks (www)  | ✅ Done | Hero, Features, CTA, FAQ, Header, Footer, HowItWorks, Roadmap blocks with marketing copy            |
+| Marketing site (www)    | ✅ Done | 4 CMS-managed pages (home, features, pricing, roadmap), seed script, full sitemap nav                |
+| Server-side prefetch    | ✅ Done | All routes use TanStack Query + fetchQuery/fetchAuthQuery + initialData. No loading spinners.        |
+| Theme SSR               | ✅ Done | ThemeStyle server component inlines CSS vars into HTML. Draft-aware for preview layout.              |
+| Icon picker field       | ✅ Done | Searchable Lucide icon dropdown via admin.components.Field. Works in arrays/blocks.                  |
+| Custom fields in arrays | ✅ Done | admin.components.Field now works inside array/block nested fields via synthetic field prop.           |
+| Live preview link       | ✅ Done | Open-in-new-tab button next to refresh in LivePreviewPanel toolbar.                                  |
 | Motion primitives (www) | ✅ Done | TextEffect, AnimatedGroup animation components ported from UIFoundry                                 |
 | CLI env loading         | ✅ Done | CLI loads .env.local before config import, sets NODE_ENV fallback, strips inline comments            |
 | Testing                 | ✅ Done | 550+ tests in core (incl. 31 blockStylesToTailwind), 586+ total across all packages                  |
@@ -502,30 +508,30 @@ Spec 02 — CI/Publishing
   - Release workflow (publish to npm)
   - Branch protection rules
 
-Spec 39 — @vexcms/next (Next.js Integration Package)
-  Phase 1: Server-side data helpers
-    - fetchPage(slug) — fetchQuery wrapper for pages with published filter
-    - fetchGlobal(slug) — fetchQuery wrapper for globals
-    - fetchActiveTheme() — resolves site settings → active theme in one call
-    - preloadPage(slug) — preloadQuery wrapper, returns token for usePreloadedQuery
-    - preloadGlobal(slug) — preloadQuery wrapper for globals
+Spec 39 — Server-Side Prefetching (DONE — prototyped in www, extract to @vexcms/next later)
+  ✅ Phase 1: Server-side data helpers (implemented directly in www app)
+    - fetchQuery for public pages (pages, header, footer)
+    - fetchAuthQuery for admin routes (dashboard counts, documents, globals)
     - ThemeStyle server component — inlines theme CSS variables into HTML (eliminates FOUC)
+    - ThemeStyle drafts mode for preview layout (fetches draft active theme)
+    - All client components use TanStack Query + convexQuery() + initialData
+    - fetchAuthQuery uses Better Auth JWT via @convex-dev/better-auth/nextjs — full RBAC
+  ✅ Phase 2: Admin panel prefetching (implemented)
+    - Dashboard: prefetch countDocuments for all collections via Promise.all
+    - List views: prefetch countDocuments for the specific collection
+    - Edit views: prefetch getDocument/getDocumentForEdit based on versioning
+    - Global views: prefetch globals.get
+    - Graceful fallback on auth/network failure
+  Future: @vexcms/next package
+    - Extract patterns into reusable helpers: fetchPage(), fetchGlobal(), fetchActiveTheme()
     - generatePageMetadata(slug) — returns Next.js Metadata object from page SEO fields
-  Phase 2: Admin panel SSR (lower priority)
-    - Preload collection list data for admin routes (shaves ~200ms on first admin page)
-    - Preload document data for edit views based on URL path
-    - Server-render admin sidebar/nav shell, hydrate interactive parts
-    - Note: admin is heavily interactive (forms, drag-drop, live preview) so SSR benefit is marginal
-  Phase 3: Framework-agnostic patterns
-    - Extract server-fetching patterns into a generic @vexcms/server package
-    - @vexcms/next, @vexcms/tanstack-start, @vexcms/remix as thin framework adapters
-    - Each adapter wraps the generic server helpers with framework-specific APIs
+    - Framework-agnostic @vexcms/server with @vexcms/next, @vexcms/tanstack-start adapters
   Design decisions:
     - NOT a Next.js plugin/build process injection (like Payload) — stays as helper utilities
     - Vex config does NOT need to run at build time — keeps deployment simple
-    - Admin panel stays primarily client-rendered — SSR is progressive enhancement, not required
-    - preloadQuery pattern: server fetches initial data, client hydrates with real-time subscription
-    - Public pages get full SSR + real-time hydration (best of both worlds)
+    - TanStack Query + convexQuery() is the standard pattern everywhere (public + admin)
+    - fetchQuery (public, no auth) and fetchAuthQuery (admin, with Better Auth JWT)
+    - initialData on useQuery — server fetches, client renders immediately + subscribes reactively
 
 Phase 5.1 — TanStack Start admin
 Phase 5.2 — Storage Adapters (S3, R2, Vercel Blob)
@@ -544,8 +550,12 @@ DONE        Phases 0-2.5 complete. All core CMS features + blocks + themes + blo
             CLI, create CLI, admin panel, media, versioning, RBAC, richtext,
             live preview, blocks, globals (defineGlobal), onboarding,
             550+ core tests, 586+ total across all packages, 8 npm packages + create-vexcms.
-            Marketing blocks (Hero, Features, CTA, FAQ, Header, Footer) in www.
+            Marketing blocks (Hero, Features, CTA, FAQ, Header, Footer, HowItWorks, Roadmap) in www.
+            Marketing site: 4 CMS pages, seed script, full sitemap nav, icon picker field.
+            Server-side prefetch: all routes (public + admin) use TanStack Query + initialData.
+            Theme SSR: ThemeStyle server component eliminates FOUC. Draft-aware for preview.
             Block style controls: draggable floating panel, TW presets, responsive breakpoints.
+            Custom field components work in nested array/block fields.
             Recursive field rendering — all types work inside blocks/arrays/objects.
             Relationship field with inline create dialog.
             CLI loads .env.local, globals.get query with draft awareness.
@@ -553,7 +563,13 @@ DONE        Phases 0-2.5 complete. All core CMS features + blocks + themes + blo
 PHASE 2.75  Spec 33 (Marketing Site) → Spec 35 (Demo) → Spec 32 (Docs)
   SITES     vexcms.dev content + deploy. Blocks + theme system + block styles in place.
             Spec 09c (block style controls) DONE — draggable panel, TW presets, breakpoints.
-            ← CURRENT PRIORITY: marketing site content + deploy
+            Spec 33 (Marketing Site) DONE — 8 blocks, 4 pages, seed script, SSR prefetch.
+            Spec 39 (Server-Side Prefetch) DONE — all routes (public + admin) use
+              TanStack Query + fetchQuery/fetchAuthQuery + initialData. No loading spinners.
+              Server-rendered theme CSS via ThemeStyle. Icon picker field with search.
+              Custom field components work in nested array/block fields.
+              Live preview open-in-new-tab button added.
+            ← CURRENT PRIORITY: demo site + docs site + deploy
 
 PHASE 3     Spec 18 (Teams) → Spec 19 (API Keys) → Spec 20 (Scheduling) → Spec 22 (Audit Log) → Hooks
   POLISH    Quality-of-life before enterprise.
@@ -612,10 +628,10 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 30.5   | Create CLI (create-vexcms)         | ✅                                     |
 | 31     | Onboarding, Orgs, Permissions DX   | ✅                                     |
 | 32     | Documentation Site (apps/docs)     | Phase 2.75                             |
-| 33     | Marketing Site (apps/www)          | 🔜 In progress (blocks + theme done)   |
-| 34     | Marketing Blocks                   | ✅ (Hero, Features, CTA, FAQ, Header, Footer) |
+| 33     | Marketing Site (apps/www)          | ✅ (8 blocks, 4 pages, seed script, SSR) |
+| 34     | Marketing Blocks                   | ✅ (Hero, Features, CTA, FAQ, Header, Footer, HowItWorks, Roadmap) |
 | 35     | Demo Site (apps/demo)              | Phase 2.75                             |
 | 36     | Relationship Picker                | ✅                                     |
 | 37     | Object Field                       | ✅                                     |
 | 38     | Globals System (defineGlobal)      | ✅                                     |
-| 39     | @vexcms/next (Next.js Integration) | Phase 5 (partially prototyped in www)  |
+| 39     | Server-Side Prefetching            | ✅ (TanStack Query + fetchQuery/fetchAuthQuery + initialData) |
