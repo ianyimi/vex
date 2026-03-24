@@ -30,11 +30,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build & Test Packages
-        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" test
+      - name: Build Packages
+        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" build
 
       - name: Typecheck Packages
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" typecheck
+
+      - name: Test Packages
+        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" test
 
       - name: Create Release PR or Publish
         id: changesets
