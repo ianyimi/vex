@@ -90,7 +90,7 @@ export default tseslint.config(
       "object-shorthand": "warn",
 
       "perfectionist/sort-imports": "warn",
-      "perfectionist/sort-interfaces": "warn",
+      "perfectionist/sort-interfaces": "off",
       "perfectionist/sort-intersection-types": "warn",
       // Perfectionist sorting configuration (from PayloadCMS)
       "perfectionist/sort-jsx-props": "warn",
@@ -98,7 +98,7 @@ export default tseslint.config(
       "perfectionist/sort-named-imports": "warn",
       "perfectionist/sort-object-types": "warn",
       "perfectionist/sort-objects": [
-        "warn",
+        "off",
         {
           customGroups: [
             {
@@ -122,19 +122,6 @@ export default tseslint.config(
     files: ["src/test/**/*.js", "src/test/**/*.ts", "tests/**/*.ts", "*.config.js", "*.config.mjs"],
     rules: {
       "import/no-anonymous-default-export": "off",
-    },
-  },
-  {
-    // Disable object sorting in VEX collection/config files — field order determines
-    // the order of fields in admin panel forms
-    files: [
-      "**/vexcms/collections/**/*.ts",
-      "**/vexcms/access.*",
-      "**/vex.config.*",
-      "**/db/constants/**/*.ts",
-    ],
-    rules: {
-      "perfectionist/sort-objects": "off",
     },
   },
   {

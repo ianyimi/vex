@@ -4,7 +4,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --concurrency 11",
-    "dev:app": "pnpm --filter test-app dev",
+    "dev:app": "pnpm --filter www dev",
     "dev:vex": "pnpm --filter www exec vex dev",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",

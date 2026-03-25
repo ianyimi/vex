@@ -16,6 +16,7 @@ export const pages = defineTable({
         v.object({
           blockType: v.literal("hero"),
           blockName: v.optional(v.string()),
+          blockStyles: v.optional(v.string()),
           _key: v.string(),
           badgeText: v.optional(v.string()),
           badgeLink: v.optional(v.string()),
@@ -29,6 +30,7 @@ export const pages = defineTable({
         v.object({
           blockType: v.literal("features"),
           blockName: v.optional(v.string()),
+          blockStyles: v.optional(v.string()),
           _key: v.string(),
           heading: v.string(),
           subheading: v.optional(v.string()),
@@ -43,6 +45,7 @@ export const pages = defineTable({
         v.object({
           blockType: v.literal("how_it_works"),
           blockName: v.optional(v.string()),
+          blockStyles: v.optional(v.string()),
           _key: v.string(),
           heading: v.string(),
           subheading: v.optional(v.string()),
@@ -57,6 +60,7 @@ export const pages = defineTable({
         v.object({
           blockType: v.literal("roadmap"),
           blockName: v.optional(v.string()),
+          blockStyles: v.optional(v.string()),
           _key: v.string(),
           heading: v.string(),
           subheading: v.optional(v.string()),
@@ -71,6 +75,7 @@ export const pages = defineTable({
         v.object({
           blockType: v.literal("cta"),
           blockName: v.optional(v.string()),
+          blockStyles: v.optional(v.string()),
           _key: v.string(),
           heading: v.string(),
           subheading: v.optional(v.string()),
@@ -79,6 +84,7 @@ export const pages = defineTable({
         v.object({
           blockType: v.literal("faq"),
           blockName: v.optional(v.string()),
+          blockStyles: v.optional(v.string()),
           _key: v.string(),
           heading: v.string(),
           subheading: v.optional(v.string()),
@@ -103,6 +109,7 @@ export const headers = defineTable({
       v.object({
         blockType: v.literal("header"),
         blockName: v.optional(v.string()),
+        blockStyles: v.optional(v.string()),
         _key: v.string(),
         logoText: v.optional(v.string()),
         logoImage: v.optional(v.id("media")),
@@ -134,6 +141,7 @@ export const footers = defineTable({
       v.object({
         blockType: v.literal("footer"),
         blockName: v.optional(v.string()),
+        blockStyles: v.optional(v.string()),
         _key: v.string(),
         logoText: v.optional(v.string()),
         logoImage: v.optional(v.id("media")),

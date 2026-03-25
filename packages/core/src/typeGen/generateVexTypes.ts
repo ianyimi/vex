@@ -1,4 +1,5 @@
 import type { VexConfig, VexField, BlockDef } from "../types";
+import type { TabsFieldDef } from "../types/fields";
 import { mergeAuthCollectionWithUserCollection } from "../valueTypes/merge";
 import { LOCKED_MEDIA_FIELDS, OVERRIDABLE_MEDIA_FIELDS } from "../types/media";
 import { fieldToTypeString } from "./fieldToTypeString";
@@ -28,6 +29,10 @@ export function generateVexTypes(props: { config: VexConfig }): string {
             blocksBySlug.set(block.slug, block);
             collectBlocks(block.fields as Record<string, VexField>);
           }
+        }
+      } else if (field.type === "tabs") {
+        for (const tab of (field as TabsFieldDef).tabs) {
+          collectBlocks(tab.fields as Record<string, VexField>);
         }
       }
     }
@@ -115,6 +120,10 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     for (const field of Object.values(fields)) {
       if (field.type === "relationship" || field.type === "upload") {
         needsIdImport = true;
+      } else if (field.type === "tabs") {
+        for (const tab of (field as TabsFieldDef).tabs) {
+          checkForIdFields(tab.fields as Record<string, VexField>);
+        }
       }
     }
   }
@@ -143,6 +152,10 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     for (const field of Object.values(fields)) {
       if (field.type === "richtext") {
         needsRichTextImport = true;
+      } else if (field.type === "tabs") {
+        for (const tab of (field as TabsFieldDef).tabs) {
+          checkForRichTextFields(tab.fields as Record<string, VexField>);
+        }
       }
     }
   }
@@ -299,18 +312,7 @@ function generateBlockInterface(props: {
   lines.push(`  blockName?: string;`);
   lines.push(`  _key: string;`);
 
-  for (const [fieldName, field] of Object.entries(props.block.fields)) {
-    const f = field as VexField;
-    if (f.type === "ui") continue;
-    const label = f.label;
-    if (label) lines.push(`  /** ${label} */`);
-    const optional = f.required ? "" : "?";
-    const typeStr = fieldToTypeString({
-      field: f,
-      blockInterfaceNames: props.blockInterfaceNames,
-    });
-    lines.push(`  ${fieldName}${optional}: ${typeStr};`);
-  }
+  lines.push(...generateFieldLines({ fields: props.block.fields as Record<string, VexField>, blockInterfaceNames: props.blockInterfaceNames }));
 
   lines.push("}");
   return lines.join("\n");
@@ -334,18 +336,7 @@ function generateCollectionInterface(props: {
     lines.push(`  vex_publishedAt?: number;`);
   }
 
-  for (const [fieldName, field] of Object.entries(props.fields)) {
-    const f = field as VexField;
-    if (f.type === "ui") continue;
-    const label = f.label;
-    if (label) lines.push(`  /** ${label} */`);
-    const optional = f.required ? "" : "?";
-    const typeStr = fieldToTypeString({
-      field: f,
-      blockInterfaceNames: props.blockInterfaceNames,
-    });
-    lines.push(`  ${fieldName}${optional}: ${typeStr};`);
-  }
+  lines.push(...generateFieldLines({ fields: props.fields, blockInterfaceNames: props.blockInterfaceNames }));
 
   lines.push("}");
   return lines.join("\n");
@@ -375,19 +366,12 @@ function generateMediaCollectionInterface(props: {
 
   // User-defined fields
   const lockedSet = new Set([...LOCKED_MEDIA_FIELDS, ...OVERRIDABLE_MEDIA_FIELDS]);
+  const filteredFields: Record<string, VexField> = {};
   for (const [fieldName, field] of Object.entries(props.userFields)) {
     if (lockedSet.has(fieldName as any)) continue;
-    const f = field as VexField;
-    if (f.type === "ui") continue;
-    const label = f.label;
-    if (label) lines.push(`  /** ${label} */`);
-    const optional = f.required ? "" : "?";
-    const typeStr = fieldToTypeString({
-      field: f,
-      blockInterfaceNames: props.blockInterfaceNames,
-    });
-    lines.push(`  ${fieldName}${optional}: ${typeStr};`);
+    filteredFields[fieldName] = field as VexField;
   }
+  lines.push(...generateFieldLines({ fields: filteredFields, blockInterfaceNames: props.blockInterfaceNames }));
 
   lines.push("}");
   return lines.join("\n");
@@ -405,19 +389,55 @@ function generateGlobalInterface(props: {
   lines.push(`  _id: Id<'${props.tableName}'>;`);
   lines.push(`  _creationTime: number;`);
 
-  for (const [fieldName, field] of Object.entries(props.fields)) {
-    const f = field as VexField;
-    if (f.type === "ui") continue;
-    const label = f.label;
-    if (label) lines.push(`  /** ${label} */`);
-    const optional = f.required ? "" : "?";
-    const typeStr = fieldToTypeString({
-      field: f,
-      blockInterfaceNames: props.blockInterfaceNames,
-    });
-    lines.push(`  ${fieldName}${optional}: ${typeStr};`);
-  }
+  lines.push(...generateFieldLines({ fields: props.fields, blockInterfaceNames: props.blockInterfaceNames }));
 
   lines.push("}");
   return lines.join("\n");
+}
+
+/**
+ * Generate interface field lines from a record of fields, expanding tabs fields
+ * into their individual tab slugs with proper nested object types.
+ * This mirrors the expandFields() logic in schema generation.
+ */
+function generateFieldLines(props: {
+  fields: Record<string, VexField>;
+  blockInterfaceNames: Map<string, string>;
+}): string[] {
+  const lines: string[] = [];
+
+  for (const [fieldName, field] of Object.entries(props.fields)) {
+    const f = field as VexField;
+    if (f.type === "ui") continue;
+
+    if (f.type === "tabs") {
+      const tabsField = f as TabsFieldDef;
+      for (const tab of tabsField.tabs) {
+        const innerProps: string[] = [];
+        for (const [innerName, innerField] of Object.entries(tab.fields) as [string, VexField][]) {
+          if (innerField.type === "ui") continue;
+          const innerOptional = innerField.required ? "" : "?";
+          const innerTypeStr = fieldToTypeString({
+            field: innerField,
+            blockInterfaceNames: props.blockInterfaceNames,
+          });
+          innerProps.push(`${innerName}${innerOptional}: ${innerTypeStr}`);
+        }
+        if (innerProps.length > 0) {
+          lines.push(`  ${tab.slug}?: { ${innerProps.join("; ")} };`);
+        }
+      }
+    } else {
+      const label = f.label;
+      if (label) lines.push(`  /** ${label} */`);
+      const optional = f.required ? "" : "?";
+      const typeStr = fieldToTypeString({
+        field: f,
+        blockInterfaceNames: props.blockInterfaceNames,
+      });
+      lines.push(`  ${fieldName}${optional}: ${typeStr};`);
+    }
+  }
+
+  return lines;
 }

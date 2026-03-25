@@ -1,4 +1,4 @@
-import type { TabsFieldDef } from "../../types/fields";
+import type { TabDef, TabsFieldDef } from "../../types/fields";
 
 /**
  * Creates a tabs field definition.
@@ -9,9 +9,11 @@ import type { TabsFieldDef } from "../../types/fields";
  *
  * @param props - Tabs field configuration
  * @param props.tabs - Array of tab definitions with label, optional slug, and fields
- * @returns TabsFieldDef
+ * @returns TabsFieldDef with preserved tab slug and field type information
  */
-export function tabs(props: Omit<TabsFieldDef, "type">): TabsFieldDef {
+export function tabs<const TTabs extends TabDef[]>(
+  props: Omit<TabsFieldDef<TTabs>, "type">,
+): TabsFieldDef<TTabs> {
   return {
     ...props,
     type: "tabs" as const,

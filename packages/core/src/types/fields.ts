@@ -403,16 +403,19 @@ export interface ColorFieldDef extends BaseField {
 /**
  * A single tab definition within a tabs field.
  */
-export interface TabDef {
+export interface TabDef<
+  TSlug extends string = string,
+  TFields extends Record<string, VexField> = Record<string, VexField>,
+> {
   /** Display label for the tab in the admin panel. */
   label: string;
   /**
    * All fields in this tab are nested under this key as an object.
    * e.g., `slug: "light"` → `{ light: { background: "#fff", ... } }`
    */
-  slug: string;
+  slug: TSlug;
   /** Fields within this tab. */
-  fields: Record<string, VexField>;
+  fields: TFields;
 }
 
 /**
@@ -446,10 +449,10 @@ export interface TabDef {
  * })
  * ```
  */
-export interface TabsFieldDef extends BaseField {
+export interface TabsFieldDef<TTabs extends TabDef[] = TabDef[]> extends BaseField {
   readonly type: "tabs";
   /** The tab definitions. */
-  tabs: TabDef[];
+  tabs: TTabs;
 }
 
 /**
@@ -655,7 +658,45 @@ export type InferBlockUnion<F extends VexField> = F extends BlocksFieldDef
   : never;
 
 /**
+ * Infer the expanded tab fields from a tabs field definition.
+ * Each tab becomes a property keyed by its slug with an object of its inferred fields.
+ */
+type InferTabsExpansion<F extends TabsFieldDef> =
+  F["tabs"][number] extends infer T
+    ? T extends TabDef<infer TSlug, infer TFields>
+      ? { [K in TSlug]?: { [FK in keyof TFields]: InferFieldType<TFields[FK] & VexField> } }
+      : {}
+    : {};
+
+/**
+ * Extract keys of fields that are tabs fields.
+ */
+type TabsFieldKeys<F extends Record<string, any>> = {
+  [K in keyof F]: (F[K] & VexField) extends { type: "tabs" } ? K : never;
+}[keyof F];
+
+/**
+ * Extract keys of fields that are NOT tabs fields.
+ */
+type NonTabsFieldKeys<F extends Record<string, any>> = {
+  [K in keyof F]: (F[K] & VexField) extends { type: "tabs" } ? never : K;
+}[keyof F];
+
+/**
+ * Expand all tabs fields in a record into their tab slug entries.
+ * Produces a union of objects (one per tabs field) which gets intersected.
+ */
+type ExpandTabsFields<F extends Record<string, any>> =
+  TabsFieldKeys<F> extends infer TK
+    ? TK extends keyof F
+      ? InferTabsExpansion<F[TK] & TabsFieldDef>
+      : {}
+    : {};
+
+/**
  * Infer the document type from a record of fields.
+ * Tabs fields are expanded: instead of `colors: Record<string, unknown>`,
+ * produces `light?: { ... }; dark?: { ... }` based on the tab definitions.
  *
  * @example
  * ```ts
@@ -666,6 +707,16 @@ export type InferBlockUnion<F extends VexField> = F extends BlocksFieldDef
  * // { title: string; count: number }
  * ```
  */
-export type InferFieldsType<F extends Record<string, VexField>> = {
-  [K in keyof F]: InferFieldType<F[K] & VexField>;
-};
+export type InferFieldsType<F extends Record<string, VexField>> =
+  // When F is `any`, fall back to a simple index signature to avoid conditional type issues
+  0 extends (1 & F)
+    ? { [x: string]: unknown }
+    : {
+        [K in NonTabsFieldKeys<F> & keyof F]: InferFieldType<F[K] & VexField>;
+      } & UnionToIntersection<ExpandTabsFields<F>>;
+
+/**
+ * Convert a union to an intersection.
+ * Used to merge expanded tab objects into a single type.
+ */
+type UnionToIntersection<U> = (U extends any ? (x: U) => void : never) extends (x: infer I) => void ? I : never;

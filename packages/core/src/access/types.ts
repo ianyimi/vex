@@ -1,4 +1,5 @@
-import type { VexCollection, InferFieldsType } from "../types";
+import type { VexCollection, InferFieldsType, VexField } from "../types";
+import type { TabsFieldDef, TabDef } from "../types/fields";
 import type { VexGlobal } from "../types/globals";
 import type { VexMediaCollection, DefaultMediaFieldKeys } from "../types/media";
 
@@ -17,19 +18,32 @@ export type ExtractSlug<T> = T extends { slug: infer S extends string }
   : never;
 
 /**
+ * Expand field keys from a fields record, replacing tabs field keys with their tab slugs.
+ */
+type ExpandedFieldKeys<TFields extends Record<string, any>> =
+  | {
+      [K in keyof TFields & string]: (TFields[K] & VexField) extends { type: "tabs" }
+        ? (TFields[K] & TabsFieldDef)["tabs"][number] extends TabDef<infer TSlug>
+          ? TSlug
+          : never
+        : K;
+    }[keyof TFields & string];
+
+/**
  * Extract field keys from a VexCollection (including auth extra keys) or VexGlobal.
+ * Tabs fields are expanded: instead of the tabs field name, the tab slugs are returned.
  *
  * @example
  * type K = ExtractFieldKeys<typeof posts>; // "title" | "slug" | "status" | "featured"
  */
 export type ExtractFieldKeys<T> = T extends VexCollection<infer TFields, infer TExtraKeys>
   ? T extends { _isMedia: true }
-    ? (keyof TFields & string) | (TExtraKeys & string) | DefaultMediaFieldKeys
-    : (keyof TFields & string) | (TExtraKeys & string)
+    ? ExpandedFieldKeys<TFields> | (TExtraKeys & string) | DefaultMediaFieldKeys
+    : ExpandedFieldKeys<TFields> | (TExtraKeys & string)
   : T extends VexMediaCollection<infer TFields>
-    ? (keyof TFields & string) | DefaultMediaFieldKeys
+    ? ExpandedFieldKeys<TFields> | DefaultMediaFieldKeys
     : T extends VexGlobal<infer TFields>
-      ? keyof TFields & string
+      ? ExpandedFieldKeys<TFields>
       : never;
 
 /**
