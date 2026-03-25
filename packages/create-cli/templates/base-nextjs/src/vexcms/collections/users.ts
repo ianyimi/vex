@@ -27,9 +27,9 @@ export const users = defineCollection({
         singular: "Role",
       },
       options: [
-        { badgeColor: "#ff0000", label: "Admin", value: "admin" },
+        { label: "Admin", value: "admin" },
         { label: "Editor", value: "editor" },
-        { badgeColor: "#333333", label: "User", value: "user" },
+        { label: "User", value: "user" },
       ],
       required: true,
     }),

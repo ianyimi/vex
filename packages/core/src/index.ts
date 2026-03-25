@@ -3,6 +3,7 @@ export { defineCollection, defineMediaCollection } from "./config/defineCollecti
 export { defineGlobal } from "./config/defineGlobal";
 export { defineAccess } from "./access/defineAccess";
 export { hasPermission } from "./access/hasPermission";
+export { checkAdminAccess } from "./access/checkAdminAccess";
 export { sanitizeConfigForClient, extractLivePreviewConfigs } from "./config/sanitizeConfig";
 export { isMediaCollection } from "./config/isMediaCollection";
 export { findCollectionBySlug, getAllCollections } from "./config/findCollectionBySlug";

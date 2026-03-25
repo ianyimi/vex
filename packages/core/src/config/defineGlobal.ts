@@ -24,14 +24,15 @@ import type { VersionsConfig } from "../types/collections";
  */
 export function defineGlobal<
   TFields extends Record<string, VexField>,
+  TSlug extends string = string,
 >(props: {
-  readonly slug: string;
+  readonly slug: TSlug;
   fields: TFields;
   label?: string;
   tableName?: string;
   admin?: GlobalAdminConfig<TFields>;
   versions?: VersionsConfig;
   interfaceName?: string;
-}): VexGlobal<TFields> {
+}): VexGlobal<TFields, TSlug> {
   return props;
 }

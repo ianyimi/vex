@@ -56,9 +56,10 @@ export interface GlobalAdminConfig<
  */
 export interface VexGlobal<
   TFields extends Record<string, VexField> = Record<string, VexField>,
+  TSlug extends string = string,
 > {
   /** The global identifier, used in URLs and the database. */
-  readonly slug: string;
+  readonly slug: TSlug;
   /**
    * The fields that make up this global document.
    */

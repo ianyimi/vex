@@ -159,13 +159,32 @@ type ResourcePermissionMap<
   ? SingleResourceEntry<Head, TUser, TOrg> & ResourcePermissionMap<Tail, TUser, TOrg>
   : {};
 
+/**
+ * Permission check for admin panel access.
+ * - `boolean` — static allow/deny
+ * - `(props) => boolean` — dynamic check based on user (and org if configured)
+ *
+ * Defaults to `false` if not specified for a role.
+ */
+type AdminPermissionCheck<
+  TUser = Record<string, any>,
+  TOrg = never,
+> =
+  | boolean
+  | (([TOrg] extends [never]
+    ? (props: { user: TUser }) => boolean
+    : (props: { user: TUser; organization: TOrg }) => boolean));
+
 export type RolesWithPermissions<
   TRoles extends string,
   TResources extends readonly any[],
   TUser = Record<string, any>,
   TOrg = never,
 > = {
-  [Role in TRoles]: ResourcePermissionMap<TResources, TUser, TOrg>;
+  [Role in TRoles]: ResourcePermissionMap<TResources, TUser, TOrg> & {
+    /** Whether this role can access the admin panel. Defaults to false if not specified. */
+    admin?: AdminPermissionCheck<TUser, TOrg>;
+  };
 };
 
 // =============================================================================
