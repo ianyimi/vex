@@ -1,5 +1,11 @@
 # @vexcms/core
 
+## 0.0.11
+
+### Patch Changes
+
+- d2191b0: fix: add missing dependencies in package json file for marketing site template in create cli
+
 ## 0.0.10
 
 ### Patch Changes
