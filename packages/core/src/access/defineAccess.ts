@@ -88,6 +88,8 @@ export function defineAccess(props: {
         const rolePerms = props.permissions[role];
         if (!rolePerms) continue;
         for (const slug of Object.keys(rolePerms)) {
+          // "admin" is a built-in permission key for admin panel access, not a resource
+          if (slug === "admin") continue;
           if (!resourceSlugs.has(slug)) {
             console.warn(
               `[vex] defineAccess: permission resource "${slug}" not found in resources`,
