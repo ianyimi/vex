@@ -1,5 +1,13 @@
 # @vexcms/ui
 
+## 0.0.19
+
+### Patch Changes
+
+- 70a9c37: fix permissions bug and hydration error bug
+- Updated dependencies [70a9c37]
+  - @vexcms/core@0.0.19
+
 ## 0.0.18
 
 ### Patch Changes
