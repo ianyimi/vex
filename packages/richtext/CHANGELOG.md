@@ -1,5 +1,15 @@
 # @vexcms/richtext
 
+## 0.0.14
+
+### Patch Changes
+
+- 7227569: fix: add back onboarding flow for site template in create cli package
+- 46dd320: fix: add utils to resolve slugs in pages collection for site template
+- Updated dependencies [7227569]
+- Updated dependencies [46dd320]
+  - @vexcms/core@0.0.14
+
 ## 0.0.13
 
 ### Patch Changes
