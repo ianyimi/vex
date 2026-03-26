@@ -185,6 +185,7 @@ Create the spec document at the path the user specifies (or suggest one based on
 3. **Step 3 is a test shell** — set up the test file(s) for the entry point so `pnpm test` runs from this point forward. Start with tests that pass against the hardcoded return.
 4. **Remaining steps progressively replace hardcoded values with real implementations** — each step implements one internal function, adds its tests, and wires it into the entry point. After each step, run tests to verify everything still works.
 5. **Last step is final integration** — expand tests, add re-exports, verify full build, update consuming code.
+6. **Every spec ends with a mandatory Verification section** — `pnpm build` and `pnpm test` must pass across the entire monorepo. Broken tests must be fixed before the spec is considered complete.
 
 **The rule: after completing any step, the developer should be able to run `build` and `test` and see progress.** Never structure a spec where the developer builds 5 files in isolation and then has to wire them all together at the end hoping it works.
 
@@ -286,6 +287,17 @@ The spec is organized **by implementation step**, not by category. The developer
 - [ ] [Add re-exports]
 - [ ] [Run full build]
 - [ ] [Update consuming code]
+
+## Verification (mandatory — every spec ends with this)
+
+**Every spec MUST include this section. The implementer MUST run these commands and fix any failures before considering the spec complete.**
+
+- [ ] `pnpm build` — all affected packages build successfully
+- [ ] `pnpm test` — all tests pass across the entire monorepo (not just the package you changed)
+- [ ] Fix any test assertions broken by your changes (update expected values to match new behavior)
+- [ ] Fix any type errors introduced by your changes
+
+If a pre-existing failure is found (not caused by this spec), note it but still attempt to fix it.
 
 ## Success Criteria
 - [ ] [Criterion 1]

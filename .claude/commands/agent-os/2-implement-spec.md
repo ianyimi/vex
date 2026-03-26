@@ -123,15 +123,36 @@ Options:
 How should we proceed?
 ```
 
-### Step 5: Final Summary
+### Step 5: Mandatory Verification
 
-After all tasks complete:
+**CRITICAL: Before reporting completion, you MUST run these commands and ensure they all pass. Do NOT skip this step. Do NOT report success if any command fails.**
+
+1. **Build all affected packages:**
+   ```
+   pnpm build
+   ```
+   If build fails, fix the errors before proceeding.
+
+2. **Run all tests:**
+   ```
+   pnpm test
+   ```
+   If any tests fail, fix them. This includes tests that were broken by your changes — update test assertions to match the new behavior. Never leave failing tests.
+
+3. **Only after both pass**, proceed to the final summary.
+
+If a test or build failure is unrelated to your changes (pre-existing failure), note it explicitly but still attempt to fix it if possible.
+
+### Step 6: Final Summary
+
+After all tasks complete AND verification passes:
 
 ```
 ✓ Implementation Complete
 
 Spec: User Comment System
 Tasks completed: 5/5
+Verification: ✓ build passed, ✓ tests passed (586 tests)
 
 Files created:
 - src/models/comment.ts
@@ -146,7 +167,6 @@ Files modified:
 - src/models/index.ts (exported Comment model)
 
 Next steps:
-- Run tests to verify implementation
 - Review the changes before committing
 - Consider running /discover-standards if new patterns emerged
 ```

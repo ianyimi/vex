@@ -155,7 +155,8 @@ describe('template scaffold integration', () => {
       expect(fs.existsSync(path.join(targetDir, 'src/vexcms/collections/headers.ts'))).toBe(true);
       expect(fs.existsSync(path.join(targetDir, 'src/vexcms/collections/footers.ts'))).toBe(true);
       expect(fs.existsSync(path.join(targetDir, 'src/vexcms/collections/themes.ts'))).toBe(true);
-      expect(fs.existsSync(path.join(targetDir, 'src/vexcms/collections/site_settings.ts'))).toBe(true);
+      // siteSettings is now a global, not a collection
+      expect(fs.existsSync(path.join(targetDir, 'src/vexcms/globals/siteSettings.ts'))).toBe(true);
     });
 
     it('overrides vex.config.ts with marketing site version', async () => {
@@ -176,7 +177,9 @@ describe('template scaffold integration', () => {
       expect(vexConfig).toContain('themes');
       expect(vexConfig).toContain('siteSettings');
       // The top-level collections should not be empty (media.collections: [] is fine)
-      expect(vexConfig).toContain('collections: [pages, headers, footers, themes, siteSettings, users]');
+      // siteSettings moved to globals array
+      expect(vexConfig).toContain('collections: [pages, headers, footers, themes, users]');
+      expect(vexConfig).toContain('globals: [siteSettings]');
     });
 
     it('extends db/constants with site builder slugs', async () => {
