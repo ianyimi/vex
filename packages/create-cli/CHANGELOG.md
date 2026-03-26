@@ -1,5 +1,11 @@
 # create-vexcms
 
+## 0.0.18
+
+### Patch Changes
+
+- 959b166: fix checkPermissions bug that wasnt respecting proper config for certain scenarios
+
 ## 0.0.17
 
 ### Patch Changes
