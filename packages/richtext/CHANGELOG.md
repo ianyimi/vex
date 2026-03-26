@@ -1,5 +1,13 @@
 # @vexcms/richtext
 
+## 0.0.16
+
+### Patch Changes
+
+- d71661c: update next to 16.2.1 in catalog
+- Updated dependencies [d71661c]
+  - @vexcms/core@0.0.16
+
 ## 0.0.15
 
 ### Patch Changes
