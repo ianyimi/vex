@@ -1,5 +1,13 @@
 # @vexcms/better-auth
 
+## 0.0.11
+
+### Patch Changes
+
+- d2191b0: fix: add missing dependencies in package json file for marketing site template in create cli
+- Updated dependencies [d2191b0]
+  - @vexcms/core@0.0.11
+
 ## 0.0.10
 
 ### Patch Changes
