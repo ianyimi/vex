@@ -569,7 +569,15 @@ PHASE 2.75  Spec 33 (Marketing Site) → Spec 35 (Demo) → Spec 32 (Docs)
               Server-rendered theme CSS via ThemeStyle. Icon picker field with search.
               Custom field components work in nested array/block fields.
               Live preview open-in-new-tab button added.
-            ← CURRENT PRIORITY: demo site + docs site + deploy
+            Spec 40 (Admin Access Enforcement) DONE — checkAdminAccess in core,
+              admin permission resource on roles, enforced in admin layout server component.
+            ← CURRENT PRIORITY (2026-03-27 event deadline):
+              1. Deploy marketing site to Vercel (vexcms.dev)
+              2. Polish home page content + reseed
+              3. SEO/metadata (og:image, favicon, meta description) — Spec 41
+              4. Update create-cli site template with www app patterns — Spec 42
+              5. Record 60-second demo video as backup
+              6. Public demo admin panel (deploy www /admin as touchable demo)
 
 PHASE 3     Spec 18 (Teams) → Spec 19 (API Keys) → Spec 20 (Scheduling) → Spec 22 (Audit Log) → Hooks
   POLISH    Quality-of-life before enterprise.
@@ -635,3 +643,6 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 37     | Object Field                       | ✅                                     |
 | 38     | Globals System (defineGlobal)      | ✅                                     |
 | 39     | Server-Side Prefetching            | ✅ (TanStack Query + fetchQuery/fetchAuthQuery + initialData) |
+| 40     | Admin Access Enforcement           | ✅ (checkAdminAccess, admin permission resource, layout guard) |
+| 41     | SEO & Metadata System              | 🔜 Spec ready — framework-agnostic core + Next.js adapter     |
+| 42     | Site Template Update               | 🔜 Spec ready — sync create-cli template with www app patterns |

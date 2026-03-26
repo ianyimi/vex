@@ -11,8 +11,15 @@ const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" })
 
 export const metadata: Metadata = {
-  description: "Test application for Vex CMS development",
-  title: "Vex CMS Test App",
+  title: {
+    default: "Vex CMS",
+    template: "%s",
+  },
+  description:
+    "The headless CMS built for Convex. Real-time data, type-safe schemas, and a beautiful admin panel.",
+  icons: {
+    icon: "/favicons/favicon.ico",
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -22,6 +22,7 @@ import type * as headers from "../headers.js";
 import type * as http from "../http.js";
 import type * as pages from "../pages.js";
 import type * as seed from "../seed.js";
+import type * as siteSettings from "../siteSettings.js";
 import type * as theme from "../theme.js";
 import type * as vex_api_footers from "../vex/api/footers.js";
 import type * as vex_api_headers from "../vex/api/headers.js";
@@ -73,6 +74,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   pages: typeof pages;
   seed: typeof seed;
+  siteSettings: typeof siteSettings;
   theme: typeof theme;
   "vex/api/footers": typeof vex_api_footers;
   "vex/api/headers": typeof vex_api_headers;

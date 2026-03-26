@@ -4,6 +4,7 @@ export { defineGlobal } from "./config/defineGlobal";
 export { defineAccess } from "./access/defineAccess";
 export { hasPermission } from "./access/hasPermission";
 export { checkAdminAccess } from "./access/checkAdminAccess";
+export { buildSiteMetadata, type SiteMetadata } from "./metadata/buildSiteMetadata";
 export { sanitizeConfigForClient, extractLivePreviewConfigs } from "./config/sanitizeConfig";
 export { isMediaCollection } from "./config/isMediaCollection";
 export { findCollectionBySlug, getAllCollections } from "./config/findCollectionBySlug";
@@ -138,6 +139,7 @@ export type {
   AdminConfig,
   // Config input types
   VexConfigInput,
+  VexPlugin,
   AdminConfigInput,
   AdminMetaInput,
   AdminSidebarInput,

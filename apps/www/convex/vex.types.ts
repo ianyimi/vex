@@ -130,6 +130,12 @@ export interface Pages {
   slug: string
   /** Content */
   content?: (Hero | Features | HowItWorks | Roadmap | Cta | Faq)[]
+  /** Meta Title */
+  metaTitle?: string
+  /** Meta Description */
+  metaDescription?: string
+  /** OG Image */
+  ogImage?: string
 }
 
 export interface Headers {

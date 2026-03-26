@@ -94,6 +94,9 @@ export const pages = defineTable({
       )
     )
   ),
+  metaTitle: v.optional(v.string()),
+  metaDescription: v.optional(v.string()),
+  ogImage: v.optional(v.string()),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   vex_version: v.optional(v.number()),
   vex_publishedAt: v.optional(v.number()),

@@ -70,33 +70,44 @@ function resolveMediaCollection(props: {
 }
 
 export function defineConfig(vexConfig: VexConfigInput): VexConfig {
-  const { media: mediaInput, ...restInput } = vexConfig;
+  // Execute plugins sequentially — each transforms the config for the next
+  let resolvedInput = vexConfig;
+  if (vexConfig.plugins && vexConfig.plugins.length > 0) {
+    for (const plugin of vexConfig.plugins) {
+      resolvedInput = plugin(resolvedInput);
+    }
+  }
+  // Remove plugins from the resolved config (they've already been applied)
+  const { plugins: _plugins, ...inputWithoutPlugins } = resolvedInput;
+
+  const { media: mediaInput, ...restInput } = inputWithoutPlugins;
+  const resolved = inputWithoutPlugins;
   const config: VexConfig = {
     ...BASE_VEX_CONFIG,
     ...restInput,
     admin: {
       ...BASE_VEX_CONFIG.admin,
-      ...vexConfig.admin,
+      ...resolved.admin,
       meta: {
         ...BASE_VEX_CONFIG.admin.meta,
-        ...vexConfig.admin?.meta,
+        ...resolved.admin?.meta,
       },
       sidebar: {
         ...BASE_VEX_CONFIG.admin.sidebar,
-        ...vexConfig.admin?.sidebar,
+        ...resolved.admin?.sidebar,
       },
       onboarding: {
         ...BASE_VEX_CONFIG.admin.onboarding,
-        ...vexConfig.admin?.onboarding,
+        ...resolved.admin?.onboarding,
       },
-      livePreview: vexConfig.admin?.livePreview,
+      livePreview: resolved.admin?.livePreview,
     },
     schema: {
       ...BASE_VEX_CONFIG.schema,
-      ...vexConfig.schema,
+      ...resolved.schema,
     },
-    access: vexConfig.access,
-    breakpoints: vexConfig.breakpoints,
+    access: resolved.access,
+    breakpoints: resolved.breakpoints,
   };
 
   // Handle media config

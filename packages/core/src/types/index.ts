@@ -150,4 +150,36 @@ export interface VexConfigInput {
    * If not set, block styles apply to all viewports (no breakpoint tabs).
    */
   breakpoints?: BreakpointConfig;
+  /**
+   * Plugins to apply to the config. Each plugin is a function that receives
+   * the config input and returns a modified config input. Plugins run
+   * sequentially before the config is resolved.
+   *
+   * @example
+   * ```ts
+   * export default defineConfig({
+   *   plugins: [
+   *     seoPlugin({ collections: ["pages"] }),
+   *   ],
+   *   collections: [pages],
+   * })
+   * ```
+   */
+  plugins?: VexPlugin[];
 }
+
+/**
+ * A Vex plugin is a function that transforms the config input.
+ * Plugins receive the config (with all previous plugins applied)
+ * and return a modified config. Use a curried function for options:
+ *
+ * @example
+ * ```ts
+ * export const myPlugin = (opts: MyOpts): VexPlugin =>
+ *   (config) => ({
+ *     ...config,
+ *     collections: [...(config.collections ?? []), myCollection],
+ *   })
+ * ```
+ */
+export type VexPlugin = (config: VexConfigInput) => VexConfigInput;
