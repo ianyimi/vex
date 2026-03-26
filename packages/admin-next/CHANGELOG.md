@@ -1,5 +1,14 @@
 # @vexcms/admin-next
 
+## 0.0.12
+
+### Patch Changes
+
+- fff842b: create cli: add tsconfig json for convex in all templates
+- Updated dependencies [fff842b]
+  - @vexcms/core@0.0.12
+  - @vexcms/ui@0.0.12
+
 ## 0.0.11
 
 ### Patch Changes
