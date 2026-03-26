@@ -1,6 +1,7 @@
 "use client";
 
 import type { VexCollection, ClientVexConfig } from "@vexcms/core";
+import { generateFormDefaultValues } from "@vexcms/core";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useMutation } from "convex/react";
@@ -46,9 +47,10 @@ export default function GlobalEditView({ config, collection, renderRichTextField
       <GlobalCreatePrompt
         collection={collection}
         onCreate={async () => {
+          const defaults = generateFormDefaultValues({ fields: collection.fields });
           await createDocument({
             collectionSlug: slug,
-            fields: {},
+            fields: defaults,
           });
         }}
       />

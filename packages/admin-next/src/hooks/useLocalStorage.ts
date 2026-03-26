@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 /**
  * Reads a value from localStorage synchronously.
@@ -19,16 +19,26 @@ export function readLocalStorage<T>(key: string, fallback: T): T {
 
 /**
  * A hook that syncs state with localStorage.
- * Reads localStorage synchronously in the useState initializer
- * so the very first client render has the correct value.
+ * Starts with initialValue to match server render, then syncs
+ * from localStorage after hydration to avoid SSR mismatch.
  */
 export function useLocalStorage<T>(
   key: string,
   initialValue: T
 ): [T, (value: T | ((prev: T) => T)) => void] {
-  const [storedValue, setStoredValue] = useState<T>(() =>
-    readLocalStorage(key, initialValue)
-  );
+  const [storedValue, setStoredValue] = useState<T>(initialValue);
+
+  // Sync from localStorage after hydration
+  useEffect(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      if (item !== null) {
+        setStoredValue(JSON.parse(item) as T);
+      }
+    } catch {
+      // Storage unavailable
+    }
+  }, [key]);
 
   const setValue = useCallback(
     (next: T | ((prev: T) => T)) => {
