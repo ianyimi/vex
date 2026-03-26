@@ -1,5 +1,14 @@
 # @vexcms/admin-next
 
+## 0.0.17
+
+### Patch Changes
+
+- 82a0384: update dashboard view to show globals, update default admin permissions to allow full access to all default tables in site template
+- Updated dependencies [82a0384]
+  - @vexcms/core@0.0.17
+  - @vexcms/ui@0.0.17
+
 ## 0.0.16
 
 ### Patch Changes
