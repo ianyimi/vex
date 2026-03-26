@@ -46,11 +46,13 @@ function CollectionCard({ collection, basePath, initialCount }: {
 export function DashboardView({ config, initialCounts }: DashboardViewProps) {
   const basePath = config.basePath ?? "/admin";
 
-  // Combine user collections + media collections
+  // Combine user collections + media collections + globals
   const allCollections = [
     ...config.collections,
     ...(config.media?.collections ?? []),
   ];
+
+  const globals = config.globals ?? [];
 
   return (
     <div className="p-6">
@@ -65,6 +67,18 @@ export function DashboardView({ config, initialCounts }: DashboardViewProps) {
             basePath={basePath}
             initialCount={initialCounts?.[collection.slug]}
           />
+        ))}
+        {globals.map((global) => (
+          <Link
+            key={global.slug}
+            href={`${basePath}/${global.slug}`}
+            className="block rounded-lg border border-border p-4 transition-colors hover:bg-accent/50"
+          >
+            <h2 className="font-semibold">
+              {global.label ?? global.slug.charAt(0).toUpperCase() + global.slug.slice(1)}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">Global</p>
+          </Link>
         ))}
       </div>
     </div>
