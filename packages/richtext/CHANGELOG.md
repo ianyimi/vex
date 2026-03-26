@@ -1,5 +1,13 @@
 # @vexcms/richtext
 
+## 0.0.15
+
+### Patch Changes
+
+- 12b02aa: fix: strip access config from sanitized client config as it includes functions
+- Updated dependencies [12b02aa]
+  - @vexcms/core@0.0.15
+
 ## 0.0.14
 
 ### Patch Changes
