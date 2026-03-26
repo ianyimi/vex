@@ -1,5 +1,11 @@
 # create-vexcms
 
+## 0.0.10
+
+### Patch Changes
+
+- 2c61dab: add missing template files for marketing site scaffold in create cli
+
 ## 0.0.9
 
 ### Patch Changes
