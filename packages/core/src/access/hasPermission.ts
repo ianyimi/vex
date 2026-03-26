@@ -30,7 +30,7 @@ export function resolvePermissionCheck(props: {
 }): ResolvedFieldPermissions | boolean {
   // Permissive default for missing actions
   if (props.check === undefined) {
-    if (props.fields === undefined) return true;
+    if (props.fields === undefined || props.fields.length === 0) return true;
     return Object.fromEntries(props.fields.map((k) => [k, true]));
   }
 
@@ -103,8 +103,10 @@ export function mergeRolePermissions(props: {
   }
 
   // No fields — merge booleans with OR
-  if (props.fields === undefined) {
-    return props.results.some((r) => r === true);
+  if (props.fields === undefined || props.fields.length === 0) {
+    return props.results.some((r) =>
+      typeof r === "boolean" ? r : Object.values(r).some(Boolean),
+    );
   }
 
   // With fields — merge field maps with OR
