@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import Link from "next/link"
 import { anyApi } from "convex/server"
 
+import { normalizeSlug } from "~/lib/utils"
 import { blockComponents } from "~/vexcms/blocks"
 
 /**
@@ -20,9 +21,11 @@ export function PageContent({
   slug?: string
   initialData?: Record<string, unknown> | null
 }) {
+  const normalizedSlug = normalizeSlug(slug)
+
   const { data: page, isPending } = useQuery({
     ...convexQuery(anyApi.pages.getBySlug, {
-      slug: slug ?? "home",
+      slug: normalizedSlug,
       _vexDrafts: false,
     }),
     initialData: initialData ?? undefined,
@@ -37,7 +40,7 @@ export function PageContent({
   }
 
   if (!page) {
-    if (!slug || slug === "home") {
+    if (normalizedSlug === "home") {
       return (
         <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8">
           <h1 className="text-4xl font-bold tracking-tight">Vex CMS</h1>

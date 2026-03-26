@@ -11,6 +11,7 @@ import { anyApi } from "convex/server"
 
 import { api } from "@convex/_generated/api"
 import { useSession } from "~/auth/client"
+import { normalizeSlug } from "~/lib/utils"
 import { blockComponents } from "~/vexcms/blocks"
 
 /**
@@ -28,9 +29,11 @@ export function PageContent({
   slug?: string
   initialData?: Record<string, unknown> | null
 }) {
+  const normalizedSlug = normalizeSlug(slug)
+
   const { data: page, isPending } = useQuery({
     ...convexQuery(anyApi.pages.getBySlug, {
-      slug: slug ?? "home",
+      slug: normalizedSlug,
       _vexDrafts: false,
     }),
     initialData: initialData ?? undefined,
@@ -45,7 +48,7 @@ export function PageContent({
   }
 
   if (!page) {
-    if (!slug || slug === "home") {
+    if (normalizedSlug === "home") {
       return <WelcomePage />
     }
 
