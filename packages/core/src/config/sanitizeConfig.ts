@@ -12,7 +12,7 @@ import type { VexConfig, ClientVexConfig } from "../types";
  * properties are added to VexConfig in the future.
  */
 export function sanitizeConfigForClient(config: VexConfig): ClientVexConfig {
-  const { media, ...rest } = config;
+  const { media, access: _access, ...rest } = config;
 
   return {
     ...rest,
