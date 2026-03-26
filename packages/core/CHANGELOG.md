@@ -1,5 +1,11 @@
 # @vexcms/core
 
+## 0.0.9
+
+### Patch Changes
+
+- 7d11f3c: 0.0.9
+
 ## 0.0.8
 
 ### Patch Changes
