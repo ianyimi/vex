@@ -1,5 +1,13 @@
 # @vexcms/better-auth
 
+## 0.0.13
+
+### Patch Changes
+
+- b72d981: added dom.iterable to convex tsconfig lib in templates
+- Updated dependencies [b72d981]
+  - @vexcms/core@0.0.13
+
 ## 0.0.12
 
 ### Patch Changes
