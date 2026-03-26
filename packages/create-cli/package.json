@@ -1,6 +1,6 @@
 {
   "name": "create-vexcms",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "type": "module",
   "bin": {
     "create-vexcms": "./dist/index.js"
