@@ -1,6 +1,7 @@
+import { resolve } from "node:path";
 import { generateAndWrite, getOutputPath } from "../lib/generateSchema.js";
 import { killConvexDev, startConvexDev, waitForDeploy } from "../lib/convexProcess.js";
-import { loadConfig } from "../lib/loadConfig.js";
+import { loadConfig, patchConvexTsconfig } from "../lib/loadConfig.js";
 import { logger } from "../lib/logger.js";
 import { backfillVersionStatus } from "../lib/migrate.js";
 import { resolveConfigPath } from "../lib/resolveConfigPath.js";
@@ -38,23 +39,49 @@ export async function devCommand(options: DevOptions = {}) {
     return;
   }
 
+  // Patch convex/tsconfig.json BEFORE starting Convex dev.
+  patchConvexTsconfig(cwd);
+
+  // Watch convex/tsconfig.json for changes — if Convex overwrites it
+  // during project provisioning, patch it back immediately.
+  // Stops after the first successful deploy (only needed during setup).
+  const convexTsconfigPath = resolve(cwd, "convex/tsconfig.json");
+  let patchDebounce: ReturnType<typeof setTimeout> | null = null;
+  const { watch: watchFs } = await import("node:fs");
+  const tsconfigWatcher = watchFs(convexTsconfigPath, () => {
+    if (patchDebounce) clearTimeout(patchDebounce);
+    patchDebounce = setTimeout(() => {
+      patchConvexTsconfig(cwd);
+    }, 100);
+  });
+
   // Start convex dev — this is the core of `vex dev`
   startConvexDev(cwd);
 
-  // Wait for the first deployment, then run version backfill if needed.
-  // This runs in the background so it doesn't block the watcher setup.
+  // Wait for the first deployment. On success, stop the tsconfig watcher
+  // (no longer needed). On failure, the watcher already patched the file
+  // which triggers Convex to retry.
   const hasVersioning = config.collections.some((c) => c.versions?.drafts);
-  if (hasVersioning) {
-    waitForDeploy(cwd).then(async (deployed) => {
-      if (!deployed) return;
+  waitForDeploy(cwd).then(async (deployed) => {
+    // Stop watching — Convex only overwrites tsconfig during provisioning
+    tsconfigWatcher.close();
+
+    if (!deployed) {
+      // Patch one more time in case the watcher missed it
+      patchConvexTsconfig(cwd);
+      return;
+    }
+
+    if (hasVersioning) {
       const convexUrl = resolveConvexUrl(cwd);
       if (convexUrl) {
         await backfillVersionStatus({ convexUrl, config });
       }
-    }).catch(() => {
-      // Silently ignore — backfill will run on next schema change
-    });
-  }
+    }
+  }).catch(() => {
+    tsconfigWatcher.close();
+    patchConvexTsconfig(cwd);
+  });
 
   // Trace the import tree
   let watchedPaths = traceImports(configPath, outputPath);

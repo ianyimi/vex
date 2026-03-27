@@ -7,7 +7,7 @@ import type {
   VexField,
   UploadFieldDef,
 } from "@vexcms/core";
-import { generateFormSchema, findCollectionBySlug } from "@vexcms/core";
+import { generateFormSchema, findCollectionBySlug, extractUserFields } from "@vexcms/core";
 import { CreateDocumentDialog } from "../components/CreateDocumentDialog";
 import {
   AppForm,
@@ -30,7 +30,7 @@ import { anyApi } from "convex/server";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryState, parseAsBoolean } from "nuqs";
-import { Trash2 } from "lucide-react";
+import { Copy, Trash2 } from "lucide-react";
 import { DEFAULT_AUTOSAVE_INTERVAL } from "@vexcms/core";
 import { DeleteDocumentDialog } from "../components/DeleteDocumentDialog";
 import { UploadFieldWrapper } from "../components/UploadFieldWrapper";
@@ -133,8 +133,12 @@ export default function CollectionEditView({
     parseAsBoolean.withDefault(false),
   );
 
+  const createDocumentMutation = useMutation(anyApi.vex.collections.createDocument);
+  const createDraftMutation = useMutation(anyApi.vex.versions.createDraftDocument);
+
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   // Ref to get current form values for publish
@@ -202,6 +206,43 @@ export default function CollectionEditView({
   });
 
   const disableDelete = (collection.admin?.disableDelete ?? false) || !perms.delete.allowed;
+  const disableCreate = (collection.admin?.disableCreate ?? false) || !perms.create.allowed;
+
+  const handleDuplicate = useCallback(async () => {
+    if (!document || isDuplicating) return;
+    setIsDuplicating(true);
+    try {
+      // Extract user-editable fields (strip system fields like _id, _creationTime, vex_*)
+      const userFields = extractUserFields({ document });
+
+      // Append "- copy" to the title field if it exists
+      const useAsTitle = collection.admin?.useAsTitle as string | undefined;
+      if (useAsTitle && typeof userFields[useAsTitle] === "string") {
+        userFields[useAsTitle] = `${userFields[useAsTitle]} - copy`;
+      }
+
+      let newDocId: string;
+      if (isVersioned) {
+        const result = await createDraftMutation({
+          collectionSlug: collection.slug,
+          fields: userFields,
+        });
+        newDocId = result.documentId;
+      } else {
+        newDocId = await createDocumentMutation({
+          collectionSlug: collection.slug,
+          fields: userFields,
+        }) as string;
+      }
+
+      const basePath = config.basePath ?? "/admin";
+      router.push(`${basePath}/${collection.slug}/${newDocId}`);
+    } catch (err) {
+      console.error("Failed to duplicate document:", err);
+    } finally {
+      setIsDuplicating(false);
+    }
+  }, [document, isDuplicating, collection, isVersioned, createDraftMutation, createDocumentMutation, config.basePath, router]);
 
   // Generate Zod schema from collection fields
   const schema = useMemo(
@@ -398,6 +439,17 @@ export default function CollectionEditView({
                 isOpen={previewOpen}
                 onToggle={() => setPreviewOpen((prev) => !prev)}
               />
+            )}
+            {!disableCreate && document && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDuplicate}
+                disabled={isDuplicating}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                {isDuplicating ? "Duplicating..." : "Duplicate"}
+              </Button>
             )}
             {!disableDelete && document && (
               <Button

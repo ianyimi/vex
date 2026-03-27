@@ -1,8 +1,8 @@
 import { defineConfig } from "@vexcms/core"
 import { convexFileStorage } from "@vexcms/file-storage-convex"
 
-import { access } from "~/auth/access"
 import { TABLE_SLUG_USERS } from "~/db/constants"
+import { access } from "~/vexcms/access"
 import { auth } from "~/vexcms/auth"
 import { footers, headers, media, pages, themes, users } from "~/vexcms/collections"
 import { siteSettings } from "~/vexcms/globals"

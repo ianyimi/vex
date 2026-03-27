@@ -462,6 +462,7 @@ export function buildApiCreateDocument(_props: {
       userRoles: roles,
       resource: SLUG,
       action: "create",
+      data: (args.fields as Record<string, unknown>) ?? {},
       throwOnDenied: true,
     })
     const collection = findCollectionBySlug({ slug: SLUG, config: vexConfig })
@@ -485,12 +486,14 @@ export function buildApiUpdateDocument(props: {
   args: { id: v.id("${tableName}"), fields: v.any() },
   handler: async (ctx, args) => {
     const { user, roles } = await requireAuth(ctx)
+    const existingDoc = await ctx.db.get(args.id)
     hasPermission({
       access: vexConfig.access,
       user,
       userRoles: roles,
       resource: SLUG,
       action: "update",
+      data: (existingDoc as Record<string, unknown>) ?? {},
       throwOnDenied: true,
     })
     const collection = findCollectionBySlug({ slug: SLUG, config: vexConfig })
@@ -511,12 +514,14 @@ export function buildApiDeleteDocument(props: { tableName: string }): string {
   args: { id: v.id("${tableName}") },
   handler: async (ctx, args) => {
     const { user, roles } = await requireAuth(ctx)
+    const doc = await ctx.db.get(args.id)
     hasPermission({
       access: vexConfig.access,
       user,
       userRoles: roles,
       resource: SLUG,
       action: "delete",
+      data: (doc as Record<string, unknown>) ?? {},
       throwOnDenied: true,
     })
     await deleteDocument({

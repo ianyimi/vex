@@ -178,6 +178,9 @@ export const updateDocument = mutation({
     const match = requireCollection(collectionSlug)
     const { user, roles } = await requireUser(ctx)
 
+    // Fetch existing document for permission check (dynamic callbacks may need current data)
+    const existingDoc = await ctx.db.get(documentId as any)
+
     const fieldNames = Object.keys(fields as Record<string, unknown>)
     checkPermission({
       access,
@@ -186,7 +189,7 @@ export const updateDocument = mutation({
       resource: collectionSlug,
       action: "update",
       fields: fieldNames,
-      data: fields as Record<string, unknown>,
+      data: (existingDoc as Record<string, unknown>) ?? (fields as Record<string, unknown>),
     })
 
     return await Collections.updateDocument<DataModel>({
@@ -242,12 +245,16 @@ export const deleteDocument = mutation({
     const match = requireCollection(collectionSlug)
     const { user, roles } = await requireUser(ctx)
 
+    // Fetch the document so dynamic permission callbacks can access its data
+    const doc = await ctx.db.get(documentId as any)
+
     checkPermission({
       access,
       user,
       userRoles: roles,
       resource: collectionSlug,
       action: "delete",
+      data: (doc as Record<string, unknown>) ?? {},
     })
 
     await Collections.deleteDocument<DataModel>({
@@ -269,13 +276,18 @@ export const bulkDeleteDocuments = mutation({
   handler: async (ctx, { collectionSlug, documentIds }) => {
     const { user, roles } = await requireUser(ctx)
 
-    checkPermission({
-      access,
-      user,
-      userRoles: roles,
-      resource: collectionSlug,
-      action: "delete",
-    })
+    // Check permission for each document individually (dynamic callbacks need doc data)
+    for (const docId of documentIds) {
+      const doc = await ctx.db.get(docId as any)
+      checkPermission({
+        access,
+        user,
+        userRoles: roles,
+        resource: collectionSlug,
+        action: "delete",
+        data: (doc as Record<string, unknown>) ?? {},
+      })
+    }
 
     return await Collections.bulkDeleteDocuments<DataModel>({
       args: { documentIds },

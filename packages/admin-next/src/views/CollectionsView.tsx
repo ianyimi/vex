@@ -2,7 +2,8 @@
 
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import type { VexCollection, ClientVexConfig } from "@vexcms/core";
-import { generateColumns } from "@vexcms/core";
+import { generateColumns, hasPermission } from "@vexcms/core";
+import { usePermissionContext } from "../context/PermissionContext";
 import {
   DataTable,
   Input,
@@ -184,6 +185,8 @@ export default function CollectionsView({
 
   // Permission checks
   const perms = usePermissions({ resource: collection.slug });
+  let permCtx: ReturnType<typeof usePermissionContext> | null = null;
+  try { permCtx = usePermissionContext(); } catch { /* no provider */ }
 
   const useAsTitle = collection.admin?.useAsTitle as string | undefined;
   const disableDelete = (collection.admin?.disableDelete ?? false) || !perms.delete.allowed;
@@ -286,6 +289,20 @@ export default function CollectionsView({
             ? (doc[useAsTitle] as string | undefined)
             : undefined;
 
+          // Per-document delete permission check
+          let docDeleteDisabled = disableDelete;
+          if (!docDeleteDisabled && permCtx) {
+            const docDeleteResult = hasPermission({
+              access: permCtx.access,
+              user: { _id: permCtx.user.id, ...permCtx.user },
+              userRoles: permCtx.user.roles,
+              resource: collection.slug,
+              action: "delete",
+              data: doc as Record<string, unknown>,
+            });
+            docDeleteDisabled = docDeleteResult === false;
+          }
+
           return (
             <RowActionsMenu
               onEdit={() => {
@@ -295,7 +312,8 @@ export default function CollectionsView({
                 setDocsToDelete([{ _id: docId, title: docTitle }]);
                 setDeleteOpen(true);
               }}
-              disableDelete={disableDelete}
+              hideDelete={disableDelete}
+              disableDelete={docDeleteDisabled}
               disableEdit={!perms.update.allowed}
               className="w-full grid place-items-center"
             />
@@ -313,6 +331,7 @@ export default function CollectionsView({
       perms.update.allowed,
       useAsTitle,
       router,
+      permCtx,
     ]);
 
   // Build DocumentForDeletion array from selected rows
