@@ -4,7 +4,10 @@ import { cookies } from "next/headers"
 
 export async function getSessionToken() {
   const cookieStore = await cookies()
-  const sessionToken = cookieStore.get("better-auth.session_token")?.value.split(".")[0]
+  // In production (HTTPS), Better Auth prefixes cookies with __Secure-
+  const sessionToken =
+    cookieStore.get("__Secure-better-auth.session_token")?.value.split(".")[0] ??
+    cookieStore.get("better-auth.session_token")?.value.split(".")[0]
   if (!sessionToken) {
     console.error("Error getting session token")
     return null
