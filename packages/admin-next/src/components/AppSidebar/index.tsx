@@ -69,7 +69,8 @@ export function AppSidebar({
     const allCollections = [
       ...config.collections,
       ...(config.auth?.collections.filter((c) => !userSlugs.has(c.slug)) ?? []),
-      ...(config.media?.collections.filter((c) => !userSlugs.has(c.slug)) ?? []),
+      ...(config.media?.collections.filter((c) => !userSlugs.has(c.slug)) ??
+        []),
     ];
 
     // Filter collections by read access (no fields needed — just overall boolean)
@@ -164,25 +165,45 @@ export function AppSidebar({
       globals,
       globalGroups,
     };
-  }, [config.collections, config.auth?.collections, config.media?.collections, config.globals, config.basePath, permissionContext]);
+  }, [
+    config.collections,
+    config.auth?.collections,
+    config.media?.collections,
+    config.globals,
+    config.basePath,
+    permissionContext,
+  ]);
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible="offcanvas" {...props}>
       {/* <SidebarHeader> */}
       {/*   <TeamSwitcher teams={data.teams} /> */}
       {/* </SidebarHeader> */}
       <SidebarContent>
         <div data-tour="sidebar-collections">
-          <NavSection title="Collections" items={nav.collectionGroups} ungroupedItems={nav.collections} />
+          <NavSection
+            title="Collections"
+            items={nav.collectionGroups}
+            ungroupedItems={nav.collections}
+          />
         </div>
-        {(!config.admin.sidebar?.hideGlobals && (nav.globalGroups.length > 0 || nav.globals.length > 0)) && (
-          <NavSection title="Globals" items={nav.globalGroups} ungroupedItems={nav.globals} />
-        )}
+        {!config.admin.sidebar?.hideGlobals &&
+          (nav.globalGroups.length > 0 || nav.globals.length > 0) && (
+            <NavSection
+              title="Globals"
+              items={nav.globalGroups}
+              ungroupedItems={nav.globals}
+            />
+          )}
       </SidebarContent>
       {user && (
         <SidebarFooter>
           <div data-tour="user-menu">
-            <NavUser user={user} onImpersonate={onImpersonate} impersonatableUsers={impersonatableUsers} />
+            <NavUser
+              user={user}
+              onImpersonate={onImpersonate}
+              impersonatableUsers={impersonatableUsers}
+            />
           </div>
         </SidebarFooter>
       )}
