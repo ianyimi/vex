@@ -4,7 +4,6 @@ import { api } from "@convex/_generated/api"
 
 import { SiteFooter } from "~/components/SiteFooter"
 import { SiteHeader } from "~/components/SiteHeader"
-import { ThemeStyle } from "~/components/ThemeStyle"
 
 export default async function FrontendLayout({
   auth,
@@ -27,7 +26,6 @@ export default async function FrontendLayout({
 
   return (
     <>
-      <ThemeStyle />
       <SiteHeader initialData={headerData} />
       <main>{children}</main>
       <SiteFooter initialData={footerData} />

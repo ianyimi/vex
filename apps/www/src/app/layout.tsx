@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Inter } from "next/font/google"
 
 import ClientProviders from "~/components/providers/client"
 import ServerProviders from "~/components/providers/server"
+import { ThemeStyle } from "~/components/ThemeStyle"
 
 import "./globals.css"
 
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${geistSans.variable} ${geistMono.variable}`}>
       <body className="antialiased">
+        <ThemeStyle />
         <ServerProviders>
           <ClientProviders>
             {children}
