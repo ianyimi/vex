@@ -2,13 +2,15 @@
 
 import type { BlockComponentProps } from "@vexcms/ui"
 
+import { checkAdminAccess } from "@vexcms/core"
 import { Menu, Settings, X } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { useSession } from "~/auth/client"
-import { cn } from "~/lib/utils"
 import { buttonVariants } from "~/components/ui/button"
+import { cn } from "~/lib/utils"
+import { access } from "~/vexcms/access"
 
 export { headerBlock } from "./config"
 
@@ -19,16 +21,25 @@ export default function HeaderBlock({ block }: BlockComponentProps) {
     menuItems,
     actionButtons,
   } = block as {
-    logoText?: string
-    logoImage?: string
+    actionButtons?: Array<{ href: string; label: string; variant?: string }>
     logoHref?: string
-    menuItems?: Array<{ label: string; href: string }>
-    actionButtons?: Array<{ label: string; href: string; variant?: string }>
+    logoImage?: string
+    logoText?: string
+    menuItems?: Array<{ href: string; label: string }>
   }
 
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === "admin" ||
-    (Array.isArray((session?.user as any)?.role) && (session?.user as any)?.role?.includes("admin"))
+  let hasAdminAccess = false
+  if (session?.user) {
+    const userRoles = Array.isArray(session.user.role)
+      ? (session.user.role as string[])
+      : ([session.user.role].filter(Boolean) as string[])
+    hasAdminAccess = checkAdminAccess({
+      access,
+      user: session.user,
+      userRoles,
+    })
+  }
 
   const [menuState, setMenuState] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -43,26 +54,33 @@ export default function HeaderBlock({ block }: BlockComponentProps) {
 
   return (
     <header>
-      <nav
-        className="fixed z-20 w-full px-2"
-        data-state={menuState ? "active" : undefined}
-      >
+      <nav className="fixed z-20 w-full px-2" data-state={menuState ? "active" : undefined}>
         <div
           className={cn(
             "mx-auto mt-2 max-w-6xl px-6 transition-all duration-300 lg:px-12",
-            isScrolled &&
-              "bg-background/50 max-w-4xl rounded-2xl border backdrop-blur-lg lg:px-5"
+            isScrolled && "bg-background/50 max-w-4xl rounded-2xl border backdrop-blur-lg lg:px-5"
           )}
         >
           <div className="relative flex flex-wrap items-center justify-between gap-6 py-3 lg:gap-0 lg:py-4">
             <div className="flex w-full justify-between lg:w-auto">
-              <Link
-                aria-label="home"
-                className="flex items-center gap-2 text-lg font-semibold"
-                href={logoHref}
-              >
-                {logoText ?? "Vex CMS"}
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link
+                  aria-label="home"
+                  className="flex items-center gap-2 text-lg font-semibold"
+                  href={logoHref}
+                >
+                  {logoText ?? "Vex CMS"}
+                </Link>
+                {hasAdminAccess && (
+                  <Link
+                    className={cn(buttonVariants({ size: "sm", variant: "outline" }), "gap-1.5 hidden lg:inline-flex")}
+                    href="/admin"
+                  >
+                    <Settings className="size-3.5" />
+                    <span>Admin</span>
+                  </Link>
+                )}
+              </div>
 
               <button
                 aria-label={menuState ? "Close Menu" : "Open Menu"}
@@ -92,30 +110,18 @@ export default function HeaderBlock({ block }: BlockComponentProps) {
             <div className="hidden lg:flex lg:gap-3">
               {(actionButtons ?? []).map((button, index) => (
                 <Link
-                  key={index}
-                  href={button.href}
                   className={cn(
                     buttonVariants({
                       size: "sm",
-                      variant: (button.variant as "default" | "outline" | "ghost") ?? "default",
+                      variant: (button.variant as "default" | "ghost" | "outline") ?? "default",
                     })
                   )}
+                  href={button.href}
+                  key={index}
                 >
                   <span>{button.label}</span>
                 </Link>
               ))}
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  className={cn(
-                    buttonVariants({ size: "sm", variant: "outline" }),
-                    "gap-1.5"
-                  )}
-                >
-                  <Settings className="size-3.5" />
-                  <span>Admin</span>
-                </Link>
-              )}
             </div>
 
             {/* Mobile menu */}
@@ -134,29 +140,31 @@ export default function HeaderBlock({ block }: BlockComponentProps) {
                   ))}
                 </ul>
 
-                {(actionButtons && actionButtons.length > 0 || isAdmin) && (
+                {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
+                {((actionButtons && actionButtons.length > 0) || hasAdminAccess) && (
                   <div className="mt-6 flex flex-col space-y-3">
                     {(actionButtons ?? []).map((button, index) => (
                       <Link
-                        key={index}
-                        href={button.href}
                         className={cn(
                           buttonVariants({
                             size: "sm",
-                            variant: (button.variant as "default" | "outline" | "ghost") ?? "default",
+                            variant:
+                              (button.variant as "default" | "ghost" | "outline") ?? "default",
                           })
                         )}
+                        href={button.href}
+                        key={index}
                       >
                         <span>{button.label}</span>
                       </Link>
                     ))}
-                    {isAdmin && (
+                    {hasAdminAccess && (
                       <Link
-                        href="/admin"
                         className={cn(
                           buttonVariants({ size: "sm", variant: "outline" }),
                           "gap-1.5"
                         )}
+                        href="/admin"
                       >
                         <Settings className="size-3.5" />
                         <span>Admin</span>
