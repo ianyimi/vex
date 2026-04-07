@@ -5,12 +5,12 @@
   "fixed": [
     [
       "@vexcms/core",
+      "@vexcms/react",
+      "@vexcms/next",
       "@vexcms/cli",
       "@vexcms/better-auth",
-      "@vexcms/admin-next",
-      "@vexcms/ui",
-      "@vexcms/richtext",
-      "@vexcms/file-storage-convex",
+      "@vexcms/storage-convex",
+      "@vexcms/richtext-plate",
       "create-vexcms"
     ]
   ],
@@ -18,5 +18,8 @@
   "access": "public",
   "baseBranch": "master",
   "updateInternalDependencies": "patch",
-  "ignore": ["@vexcms/tsconfig", "www", "demo"]
+  "ignore": [
+    "@vexcms/tsconfig",
+    "www"
+  ]
 }

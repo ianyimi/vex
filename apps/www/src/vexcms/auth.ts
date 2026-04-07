@@ -1,4 +1,3 @@
-import { betterAuthOptions } from "@convex/auth/options"
-import { vexBetterAuth } from "@vexcms/better-auth"
-
-export const auth = vexBetterAuth({ config: betterAuthOptions })
+// Stubbed — old VexCMS auth wrapper removed in rebuild
+// Auth is handled by @convex-dev/better-auth directly via ~/auth/server and ~/auth/client
+export const auth = undefined

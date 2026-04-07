@@ -13,11 +13,18 @@
     "clean": "turbo run clean && rm -rf node_modules",
     "changeset": "changeset",
     "version:packages": "changeset version && node scripts/sync-template-versions.mjs",
-    "release": "pnpm --filter \"@vexcms/*\" --filter \"create-vexcms\" build && changeset publish"
+    "release": "pnpm --filter \"@vexcms/*\" --filter \"create-vexcms\" build && changeset publish",
+    "lint": "eslint packages/*/src/**/*.{ts,tsx}",
+    "lint:fix": "eslint --fix packages/*/src/**/*.{ts,tsx}"
   },
   "devDependencies": {
     "@changesets/cli": "2.30.0",
+    "@eslint/js": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
     "@vexcms/tsconfig": "workspace:*",
+    "eslint": "^9.0.0",
+    "eslint-plugin-jsdoc": "^50.0.0",
     "prettier": "catalog:",
     "turbo": "^2.8.10",
     "typescript": "catalog:"

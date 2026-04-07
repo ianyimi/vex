@@ -31,10 +31,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Packages
-        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" build
+        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" build
 
       - name: Typecheck Packages
-        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" typecheck
+        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" typecheck
 
       - name: Test Packages
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" test

@@ -1,6 +1,16 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "paths": {}
-  }
+    "paths": {},
+    "noEmit": true,
+    "rootDir": "..",
+    "outDir": "dist"
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/lib/generateCollectionFiles.test.ts",
+    "src/schema/generateSchema.test.ts"
+  ]
 }

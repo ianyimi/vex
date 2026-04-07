@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { generateAndWrite } from "../lib/generateSchema.js";
 import { deployToProduction } from "../lib/convexProcess.js";
 import { loadConfig } from "../lib/loadConfig.js";

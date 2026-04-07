@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 

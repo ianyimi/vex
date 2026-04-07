@@ -1,0 +1,104 @@
+import { anyApi } from "convex/server";
+import type { FunctionReference } from "convex/server";
+
+/**
+ * Base type for all VexCMS documents as returned from Convex queries.
+ *
+ * All documents include the Convex system fields `_id` and `_creationTime`,
+ * plus whatever field values are defined in the collection's schema.
+ *
+ * Framework adapters use this as the `initialData` type in view component
+ * props — the actual field values are accessed via string keys.
+ *
+ * @example
+ * ```ts
+ * const title = typeof doc.title === "string" ? doc.title : "";
+ * ```
+ *
+ * @see {@link vexConvexApi} for the query functions that return this type
+ */
+export interface VexDocument {
+  /** Convex document ID string. */
+  _id: string;
+  /** Unix timestamp (milliseconds) when the document was created. */
+  _creationTime: number;
+  /** Field values defined by the collection schema. */
+  [key: string]: unknown;
+}
+
+/**
+ * Typed `anyApi` references to the VexCMS generic Convex collection functions.
+ *
+ * These point to functions that users copy into `convex/vex/collections.ts`
+ * in their project. All paths are fixed under `vex.collections.*`.
+ *
+ * **Required:** copy `convex/vex/collections.ts` from the VexCMS template
+ * into your project before these references will resolve at runtime.
+ *
+ * Used internally by view components in `@vexcms/react`. Framework adapter
+ * authors do not need to import this directly unless building custom views.
+ *
+ * @example
+ * ```ts
+ * import { convexQuery } from "@convex-dev/react-query";
+ * import { useQuery } from "@tanstack/react-query";
+ * import { vexConvexApi } from "@vexcms/core";
+ *
+ * const { data } = useQuery({
+ *   ...convexQuery(vexConvexApi.list, { collection: "posts" }),
+ * });
+ * ```
+ */
+export const vexConvexApi = {
+  /**
+   * Lists documents in a collection.
+   * Called by {@link CollectionListView} in `@vexcms/react`.
+   */
+  list: anyApi.vex.collections.list as FunctionReference<
+    "query",
+    "public",
+    { collection: string; limit?: number },
+    VexDocument[]
+  >,
+
+  /**
+   * Fetches a single document by ID.
+   * Called by {@link CollectionEditView} in `@vexcms/react` when editing.
+   */
+  get: anyApi.vex.collections.get as FunctionReference<
+    "query",
+    "public",
+    { collection: string; id: string },
+    VexDocument | null
+  >,
+
+  /**
+   * Creates a new document. Returns the new document's ID as a string.
+   */
+  create: anyApi.vex.collections.create as FunctionReference<
+    "mutation",
+    "public",
+    { collection: string; fields: Record<string, unknown> },
+    string
+  >,
+
+  /**
+   * Patches an existing document — unspecified fields are left unchanged.
+   */
+  update: anyApi.vex.collections.update as FunctionReference<
+    "mutation",
+    "public",
+    { collection: string; id: string; fields: Record<string, unknown> },
+    void
+  >,
+
+  /**
+   * Permanently deletes a document.
+   */
+  remove: anyApi.vex.collections.remove as FunctionReference<
+    "mutation",
+    "public",
+    { collection: string; id: string },
+    void
+  >,
+} as const;

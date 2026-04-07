@@ -1,6 +1,3 @@
-import { type Doc, type Id } from "@convex/_generated/dataModel"
-
-import { type TABLE_SLUG_USERS } from "./constants"
-
-export type User = Doc<typeof TABLE_SLUG_USERS>
-export type UserID = Id<typeof TABLE_SLUG_USERS>
+// Stubbed — User types removed in rebuild (user table not in current schema)
+export type User = Record<string, unknown>
+export type UserID = string

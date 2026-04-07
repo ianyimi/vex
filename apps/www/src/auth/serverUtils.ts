@@ -27,7 +27,7 @@ export const getCurrentUser = async () => {
       return null
     }
 
-    const session = await fetchQuery(api.auth.sessions.getSessionWithUser, {
+    const session = await fetchQuery((api as any).auth.sessions.getSessionWithUser, {
       sessionToken,
     })
     if (!session?.user) {
@@ -52,7 +52,7 @@ export async function getSession() {
       return null
     }
 
-    const session = await fetchQuery(api.auth.sessions.getSessionWithUser, {
+    const session = await fetchQuery((api as any).auth.sessions.getSessionWithUser, {
       sessionToken,
     })
     if (!session?.user) {

@@ -1,4 +1,11 @@
-import type { FileStorageAdapter } from "@vexcms/core";
+// FileStorageAdapter will be imported from @vexcms/core once it is rebuilt
+export interface FileStorageAdapter {
+  name: string;
+  storageIdValueType: string;
+  getUploadUrl: () => Promise<string>;
+  getUrl: (props: { storageId: string }) => Promise<string | null>;
+  deleteFile: (props: { storageId: string }) => Promise<void>;
+}
 
 export interface ConvexFileStorageOptions {
   convexUrl?: string;
@@ -34,12 +41,12 @@ export function convexFileStorage(
         "convexFileStorage.getUploadUrl() requires a Convex client. Wire via admin panel runtime.",
       );
     },
-    getUrl: async () => {
+    getUrl: async (_props: { storageId: string }) => {
       throw new Error(
         "convexFileStorage.getUrl() requires a Convex client. Wire via admin panel runtime.",
       );
     },
-    deleteFile: async () => {
+    deleteFile: async (_props: { storageId: string }) => {
       throw new Error(
         "convexFileStorage.deleteFile() requires a Convex client. Wire via admin panel runtime.",
       );

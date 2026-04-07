@@ -1,1 +1,0 @@
-export { siteSettings } from "./siteSettings"

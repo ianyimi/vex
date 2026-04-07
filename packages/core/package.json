@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/core",
-  "version": "0.0.20",
+  "version": "0.1.0-alpha.1",
   "type": "module",
   "exports": {
     ".": {
@@ -23,7 +23,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "zod": "^3.24.0"
+    "zod": "^4.3.6"
   },
   "peerDependencies": {
     "@tanstack/react-table": "catalog:",

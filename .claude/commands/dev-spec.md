@@ -10,6 +10,21 @@ This spec format bridges AI assistance and developer ownership:
 - **Developer maintains full context**: understands where everything lives, why decisions were made
 - **Spec is a living guide**: developer changes and renames freely during implementation
 
+## Developer Preferences (Extracted from Sync-Spec Runs)
+
+These are patterns the developer applies consistently. Follow them in all generated spec code — do not generate code that deviates from these without flagging it explicitly:
+
+- **Next.js adapter components use `Next*` prefix** — `NextAdminPage`, `NextAdminLayout`, etc. Never `VexAdminPage` or `VexAdminLayout`.
+- **Convex mutation payload arg is `data`** — always `data: v.any()`, never `fields`. "fields" refers to field definitions in the collection config.
+- **React context + hook collocated in `hooks/`** — when a context has a companion hook, put both in `hooks/myHook.ts` as a single file, not in `components/`.
+- **Catch-all Next.js slug param is `[[...slug]]`** — not `[[...vex]]`, `[[...admin]]`, or any other name.
+- **Tailwind `@source` in monorepo uses relative path to package source** — `../../../../packages/react/src/**/*.{ts,tsx}`, never `node_modules/@vexcms/*/dist/**`.
+- **`@vexcms/next` always uses sub-path exports** — `./server` for server components (no `"use client"` banner), `./client` for client components (with banner). Never a single barrel with both. tsup must have split entries.
+- **`Button nativeButton={false}` when render prop is non-button** — always add this when Base UI's `Button` wraps a `VexLink` or other `<a>` tag.
+- **CollectionListView includes a real data table** — not a `<p>` placeholder and not a manual `<Table>` iteration. Use TanStack Table with column definitions derived from the collection's field config. If pagination isn't in scope, note it as a known gap; don't ship a placeholder.
+
+See `agent-os/standards/developer-preferences.md` for the full audit trail.
+
 ## CRITICAL: No Speculative Code
 
 **Every line of code in a spec must serve an explicit purpose within that spec's scope.**
@@ -366,6 +381,141 @@ export function myFunction(props: {
 - The JSDoc above the function covers the public contract (params, returns, purpose)
 - The inline comments cover the implementation algorithm (how to build it)
 
+**JSDoc requirements (applies to ALL code in specs):**
+
+All exported functions, types, and interfaces in the spec MUST include complete JSDoc comments following the `/document` command guidelines:
+
+- **Functions:** Include summary, `@param` for each parameter (including `@param props.fieldName` for object properties), `@returns`, and at least one `@example` showing realistic usage
+- **React components:** Same as functions. `@returns` must describe the JSX output (e.g. `@returns A <form> element wrapped in a context provider`). Every `@param props.fieldName` entry must have a description — bare `@param props.form` with no description text is a lint error (`jsdoc/require-param-description`).
+- **`@returns` is never optional for functions or components.** Even if the return value seems obvious, the `jsdoc/require-returns` rule will flag its absence. Write one line: `@returns The resolved config object` or `@returns The rendered input wrapped in a label`.
+- **`@param props.fieldName` descriptions are never optional.** Every props field needs a description on the same line or indented on the next line. `@param props.form` alone is a lint error; `@param props.form - The TanStack Form instance` is correct.
+- **`@throws` must be present** on any function that explicitly throws. Format: `@throws {Error} When called outside \`<AppForm>\``.
+- **Input types** (e.g., `TextFieldInput`, `FieldAdminConfigInput`): Include summary, full defaults block with inline `//` comments explaining each default value, multiple `@example` blocks, and `@see` references to related types
+- **Output/Resolved types** (e.g., `TextField`, `FieldAdminConfig`): Include one-sentence summary and `@see` reference back to the Input type. No examples or defaults block needed.
+- **Interface properties:** One-sentence description for each property. If it's a union type, explain what each value does in plain English.
+- **Utility types and constants:** Brief JSDoc explaining purpose and usage
+
+**Common JSDoc mistakes that produce lint errors — never do these:**
+
+```typescript
+// ❌ Missing description on @param props.fieldName
+@param props.form
+@param props.children
+
+// ✅ Every props field has a description
+@param props.form - The TanStack Form instance created by `useForm`.
+@param props.children - Field inputs and submit button rendered inside the form.
+
+// ❌ Missing @returns on a function or component
+export function AppForm(props: { ... }) { return <form>...</form> }
+
+// ✅ @returns present
+@returns A `<form>` element wrapped in `AppFormContext.Provider`.
+
+// ❌ Missing @throws on a function that throws
+export function useAppForm() {
+  if (!form) throw new Error("...")
+}
+
+// ✅ @throws present
+@throws {Error} When called outside `<AppForm>`.
+```
+
+**Why this matters:**
+- JSDoc is required for the documentation site to generate API reference pages
+- Writing docs during implementation clarifies the API design and catches ambiguities
+- Specs should produce "done" code — documentation is part of done
+- When the developer copy-pastes code from the spec, the docs come with it
+- Running `/document` later validates and improves rather than creating from scratch
+
+**Format example for an Input type:**
+
+```typescript
+/**
+ * Configuration input for a `text()` field.
+ *
+ * Text fields store short, single-line string values — titles, slugs, URLs,
+ * email addresses, etc. All properties are optional; unset properties fall back
+ * to the defaults listed below.
+ *
+ * **Defaults applied by `text()`:**
+ * ```ts
+ * {
+ *   type:     "text",
+ *   label:    "",       // inferred from the field key by defineCollection
+ *   required: false,    // field is optional by default
+ *   admin: {
+ *     hidden:        false,   // visible in the admin form
+ *     readOnly:      false,   // editable by default
+ *     position:      "main",  // placed in the main content column
+ *     width:         "full",  // spans the full form width
+ *     cellAlignment: "left",  // text aligned left in data table
+ *   }
+ * }
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Minimal — label is inferred from the key
+ * title: text()
+ *
+ * // Required slug with validation and database index
+ * slug: text({ required: true, minLength: 3, maxLength: 100, index: "by_slug" })
+ *
+ * // Half-width field with placeholder
+ * authorName: text({
+ *   required: true,
+ *   admin: { width: "half", placeholder: "e.g. Jane Smith" }
+ * })
+ * ```
+ *
+ * @see {@link TextField} for the resolved type after defaults are applied
+ * @see {@link text} for the config function that applies defaults
+ * @see {@link BaseFieldInput} for shared properties
+ */
+export interface TextFieldInput extends BaseFieldInput {
+  readonly type: "text";
+  /** Default value for new documents. */
+  defaultValue?: string;
+  /** Minimum character length. */
+  minLength?: number;
+  /** Maximum character length. */
+  maxLength?: number;
+}
+```
+
+**Format example for a function:**
+
+```typescript
+/**
+ * Creates a text field with all defaults applied.
+ *
+ * Text fields store short, single-line string values.
+ * Common uses: titles, names, slugs, URLs, email addresses.
+ *
+ * @param options - Text field configuration. All properties are optional.
+ * @returns Resolved text field definition with all defaults applied.
+ *
+ * @example
+ * ```ts
+ * import { text, defineCollection } from '@vexcms/core'
+ *
+ * posts: defineCollection({
+ *   fields: {
+ *     title: text(),
+ *     slug: text({ required: true, minLength: 3, index: "by_slug" }),
+ *   }
+ * })
+ * ```
+ *
+ * @see {@link TextFieldInput} for the full input type
+ * @see {@link TextField} for the resolved output type
+ */
+export function text(options?: TextFieldInput): TextField {
+  // ... implementation
+}
+```
+
 **Do NOT put implementation guidance below the code block** — it must be inside the function body so the developer has everything in one copy-pasteable unit.
 
 **Never include:**
@@ -402,10 +552,16 @@ After writing the spec, present a summary:
 Spec created at: [path]
 
 **What you can copy-paste directly:**
-- [List of types/interfaces/utils/tests]
+- [List of types/interfaces/utils/tests with complete JSDoc]
 
 **What you'll implement yourself (guided):**
 - [List of function stubs with brief descriptions]
+
+**Documentation included:**
+- All exported code has complete JSDoc following `/document` guidelines
+- Input types include defaults blocks and examples
+- Functions include @param, @returns, and @example
+- Ready for API docs generation via TypeDoc
 
 **Suggested implementation order:**
 1. [Phase 1 — what and why]
@@ -419,6 +575,7 @@ Review the spec and let me know if anything needs adjustment.
 
 - **Nothing speculative.** Every line of code must be used by something else in this spec. No "future-proofing" fields, no placeholder stubs for the next spec, no types that only a later feature needs. If it's not tested or called in this spec, it doesn't belong here.
 - **Tests are the real spec.** Every test file should have exact expected values so the developer knows exactly what correct output looks like.
+- **JSDoc is required.** All exported functions, types, and interfaces must have complete JSDoc following `/document` command guidelines. Include defaults blocks for Input types, `@param`/`@returns`/`@example` for functions, and `@see` references. JSDoc enables API documentation generation and clarifies design during implementation.
 - **Types before implementation.** All interfaces and types come first — they're the contract. But only include fields that this spec's functions and tests actually use.
 - **Edge cases are explicit.** Don't leave the developer guessing. List every edge case you found during Phase 3.
 - **No hand-waving.** If a function needs to produce specific output, show what that output looks like in a test. If a type has constraints, document them in JSDoc.

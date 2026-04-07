@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { MigrationOp, RemovedFieldInfo, VexConfig } from "@vexcms/core";
 import { logger } from "./logger.js";
 

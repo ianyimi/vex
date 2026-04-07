@@ -42,7 +42,7 @@
         "../../packages/better-auth/src/index.ts"
       ],
       "@vexcms/file-storage-convex": [
-        "../../packages/file-storage-convex/src/index.ts"
+        "../../packages/file-storage-convex/dist/index.d.ts"
       ]
     }
   },

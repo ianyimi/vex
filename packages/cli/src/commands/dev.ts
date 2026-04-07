@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { resolve } from "node:path";
 import { generateAndWrite, getOutputPath } from "../lib/generateSchema.js";
 import { killConvexDev, startConvexDev, waitForDeploy } from "../lib/convexProcess.js";

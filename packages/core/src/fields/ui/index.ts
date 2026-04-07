@@ -1,1 +1,0 @@
-export { ui } from "./config";
