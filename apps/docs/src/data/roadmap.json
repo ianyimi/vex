@@ -10,7 +10,7 @@
         { "name": "HKT framework adapter (defineFrameworkAdapter)", "status": "done" },
         { "name": "CLI schema generation from vex.config.ts", "status": "in_progress" },
         { "name": "CLI watch mode (auto-regenerate on config change)", "status": "in_progress" },
-        { "name": "React adapter — TextInput + TextCell components", "status": "in_progress" },
+        { "name": "React adapter — TextInput + TextCell components", "status": "done" },
         { "name": "Starlight docs site + TypeDoc API reference", "status": "in_progress" },
         { "name": "Roadmap page", "status": "in_progress" }
       ]
@@ -18,13 +18,13 @@
     {
       "version": "0.1.0-alpha (continued)",
       "label": "Admin UI — Data Table + Edit Form",
-      "status": "planned",
+      "status": "in_progress",
       "description": "Working admin interface for text fields. Data table list view and document edit form.",
       "features": [
-        { "name": "Data table list view (TanStack Table)", "status": "planned" },
-        { "name": "Document edit form", "status": "planned" },
-        { "name": "Next.js page + layout components", "status": "planned" },
-        { "name": "Admin route setup in Next app", "status": "planned" }
+        { "name": "Data table list view (TanStack Table)", "status": "in_progress" },
+        { "name": "Document edit form", "status": "done" },
+        { "name": "Next.js page + layout components", "status": "done" },
+        { "name": "Admin route setup in Next app", "status": "done" }
       ]
     },
     {
