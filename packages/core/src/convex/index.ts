@@ -78,7 +78,7 @@ export const vexConvexApi = {
   create: anyApi.vex.collections.create as FunctionReference<
     "mutation",
     "public",
-    { collection: string; fields: Record<string, unknown> },
+    { collection: string; data: Record<string, unknown> },
     string
   >,
 
@@ -88,7 +88,7 @@ export const vexConvexApi = {
   update: anyApi.vex.collections.update as FunctionReference<
     "mutation",
     "public",
-    { collection: string; id: string; fields: Record<string, unknown> },
+    { collection: string; id: string; data: Record<string, unknown> },
     void
   >,
 

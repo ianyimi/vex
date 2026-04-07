@@ -25,25 +25,69 @@ import { TextField } from "./text/types";
 export type AdminField = TextField;
 
 /**
- * Props passed to custom field input components in the edit form.
+ * Props passed to field input components rendered in the document edit form.
+ *
+ * Every input component registered in a framework adapter's `fields` map must
+ * accept these props. The `TField` generic narrows `fieldDef` to the specific
+ * field type (e.g. `TextField`) so type-specific properties are accessible
+ * with autocomplete.
+ *
+ * In React, use `createFieldInput<TValue, TField>` to build components that
+ * accept these props — it handles TanStack Form wiring automatically.
+ *
+ * @example
+ * ```tsx
+ * // React — using createFieldInput
+ * export const TextFieldInput = createFieldInput<string, TextField>(
+ *   ({ name, fieldDef, readOnly, field }) => (
+ *     <input
+ *       value={field.state.value ?? ""}
+ *       onChange={(e) => field.handleChange(e.target.value)}
+ *       readOnly={readOnly}
+ *       placeholder={fieldDef.admin.placeholder}
+ *     />
+ *   ),
+ * );
+ * ```
+ *
+ * @see {@link CellComponentProps} for the data table equivalent
+ * @see {@link FieldComponentMap} for how components are registered
  */
 export interface InputComponentProps<TField extends AdminField = AdminField> {
-  /** The field key name (e.g., `"title"`) */
+  /** The field key name from the collection config, e.g. `"title"`. Used as the form field name. */
   name: string;
-  /** The resolved field definition for this field */
+  /** The resolved field definition — narrows to the specific field type via `TField`. */
   fieldDef: TField;
-  /** Whether the field is read-only from permissions or config */
+  /** Whether the field is non-editable — derived from `fieldDef.admin.readOnly` or permission checks. */
   readOnly: boolean;
 }
 
 /**
- * Props passed to custom cell components in the data table list view.
+ * Props passed to field cell components rendered in the data table list view.
+ *
+ * Every cell component registered in a framework adapter's `fields` map must
+ * accept these props. The `TField` generic narrows `fieldDef` to the specific
+ * field type so type-specific properties are accessible.
+ *
+ * `value` is typed as `TField["defaultValue"]` which resolves to the field's
+ * stored value type (e.g. `string` for `TextField`).
+ *
+ * @example
+ * ```tsx
+ * export function TextFieldCell(props: CellComponentProps<TextField>) {
+ *   if (!props.value) return <span>—</span>;
+ *   return <span>{props.value}</span>;
+ * }
+ * ```
+ *
+ * @see {@link InputComponentProps} for the edit form equivalent
+ * @see {@link FieldComponentMap} for how components are registered
  */
 export interface CellComponentProps<TField extends AdminField = AdminField> {
-  /** The raw value from the document */
+  /** The raw field value from the document — typed to the field's value type. */
   value: TField["defaultValue"];
-  /** The full document row */
+  /** The full document row, for cases where the cell needs to read other fields. */
   row: Record<string, unknown>;
-  /** The resolved field definition for this column */
+  /** The resolved field definition — narrows to the specific field type via `TField`. */
   fieldDef: TField;
 }
