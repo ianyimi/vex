@@ -8,7 +8,7 @@
     "vex:generate": "vex dev --once",
     "vex:update": "npm install @vexcms/core@latest @vexcms/cli@latest @vexcms/admin-next@latest @vexcms/ui@latest @vexcms/richtext@latest @vexcms/better-auth@latest @vexcms/file-storage-convex@latest",
     "build": "next build",
-    "test": "vitest",
+    "test": "vitest run",
     "start": "next start",
     "lint": "eslint .",
     "format": "prettier --write .",
