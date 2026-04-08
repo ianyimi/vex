@@ -48,46 +48,53 @@ export type TypedFieldApi<TValue> = FieldApi<any, any, any, any, TValue>;
  * is the collection field key (e.g. `"title"`). It is passed directly to `form.Field`
  * as the `name`, connecting the input to the matching key in `form.defaultValues`.
  *
- * @param render - Renders the field UI. Receives base `InputComponentProps` plus a
- *   `field: TypedFieldApi<TValue>` — use `field.state.value`, `field.handleChange`,
- *   `field.handleBlur`, and `field.state.meta.errors` for all form interactions.
+ * @param render - Renders the field UI. Receives base `InputComponentProps` plus:
+ *   - `field: TypedFieldApi<TValue>` — form field state and handlers
+ *   - `submissionAttempts: number` — how many times the form has been submitted.
+ *     Use `field.state.meta.isTouched || submissionAttempts > 0` to decide when
+ *     to show validation errors (on blur after interaction, or after a submit attempt).
  * @returns A React component accepting `InputComponentProps<TField> & { field?: TypedFieldApi<TValue> }`.
  * @throws {Error} When `field` is omitted and the component is rendered outside `<AppForm>`.
  *
  * @example
  * ```tsx
  * export const TextFieldInput = createFieldInput<string, TextField>(
- *   ({ name, fieldDef, readOnly, field }) => (
- *     <div className="flex flex-col gap-1.5">
- *       <Label htmlFor={name}>{fieldDef.label || name}</Label>
- *       <Input
- *         id={name}
- *         value={field.state.value ?? ""}
- *         onChange={(e) => field.handleChange(e.target.value)}
- *         onBlur={field.handleBlur}
- *         readOnly={readOnly}
- *       />
- *       {field.state.meta.errors[0] && (
- *         <p className="text-sm text-destructive">{field.state.meta.errors[0]}</p>
- *       )}
- *     </div>
- *   ),
+ *   ({ name, fieldDef, readOnly, field, submissionAttempts }) => {
+ *     const showError = (field.state.meta.isTouched || submissionAttempts > 0) && field.state.meta.errors[0]
+ *     return (
+ *       <div className="flex flex-col gap-1.5">
+ *         <Label htmlFor={name}>{fieldDef.label || name}</Label>
+ *         <Input
+ *           id={name}
+ *           value={field.state.value ?? ""}
+ *           onChange={(e) => field.handleChange(e.target.value)}
+ *           onBlur={field.handleBlur}
+ *           readOnly={readOnly}
+ *         />
+ *         {showError && <p className="text-sm text-destructive">{field.state.meta.errors[0]}</p>}
+ *       </div>
+ *     )
+ *   },
  * )
  * ```
  */
 export function createFieldInput<TValue, TField extends AdminField>(
   render: (
     // eslint-disable-next-line no-unused-vars
-    props: InputComponentProps<TField> & { field: TypedFieldApi<TValue> },
+    props: InputComponentProps<TField> & {
+      field: TypedFieldApi<TValue>;
+      submissionAttempts: number;
+    },
   ) => ReactNode,
 ) {
   return function FieldInput(
     props: InputComponentProps<TField> & { field?: TypedFieldApi<TValue> },
   ) {
     const form = useContext(AppFormContext);
+    const submissionAttempts = form?.state.submissionAttempts ?? 0;
 
     if (props.field) {
-      return render({ ...props, field: props.field });
+      return render({ ...props, field: props.field, submissionAttempts });
     }
 
     if (!form) {
@@ -99,7 +106,7 @@ export function createFieldInput<TValue, TField extends AdminField>(
     return (
       <form.Field name={props.name}>
         {(fieldApi: TypedFieldApi<TValue>) =>
-          render({ ...props, field: fieldApi })
+          render({ ...props, field: fieldApi, submissionAttempts })
         }
       </form.Field>
     );

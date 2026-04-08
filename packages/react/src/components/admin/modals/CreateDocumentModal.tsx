@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import {
   Button,
   DialogClose,
@@ -60,9 +61,11 @@ export function CreateDocumentModal({
     },
   });
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   return (
     <Modal urlParam={MODALS.createDocument.urlParam}>
-      <DialogContent className="w-[50svw] h-[50svh] flex flex-col">
+      <DialogContent ref={dialogRef} initialFocus={dialogRef} className="w-[50svw] h-[50svh] flex flex-col">
         <AppForm form={form} className="flex flex-col h-full overflow-hidden">
           <DialogHeader className="px-2 pb-4">
             Create {collection.labels.singular}

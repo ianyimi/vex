@@ -31,8 +31,7 @@ export function useCollectionForm(
     defaultValues: getCollectionDefaultValues({ collection, document }),
     validators: {
       onSubmitAsync: getCollectionInputSchema({ collection }),
-      onBlurAsync: getCollectionInputSchema({ collection }),
-      onBlurAsyncDebounceMs: 500,
+      onBlur: getCollectionInputSchema({ collection }),
       ...validators,
     },
     ...formOptions,

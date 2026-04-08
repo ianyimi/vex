@@ -4,6 +4,7 @@ import type { TextField } from "@vexcms/core";
 import { Label } from "../../components/ui/label";
 import { Input } from "../../components/ui/input";
 import { createFieldInput } from "../../components/form/createFieldInput";
+import { FormError } from "../../components/form/FormError";
 
 /**
  * Text field input component for the admin edit form.
@@ -36,29 +37,29 @@ import { createFieldInput } from "../../components/form/createFieldInput";
  * ```
  */
 export const TextFieldInput = createFieldInput<string, TextField>(
-  ({ name, fieldDef, field }) => (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={name} className="relative">
-        {fieldDef.label || name}
-        {fieldDef.required && <span className="text-red-500">*</span>}
-      </Label>
-      <Input
-        id={name}
-        type="text"
-        value={field.state.value ?? ""}
-        onChange={(e) => field.handleChange(e.target.value)}
-        onBlur={field.handleBlur}
-        placeholder={fieldDef.admin.placeholder}
-        readOnly={fieldDef.admin.readOnly}
-      />
-      {fieldDef.admin.description && (
-        <p className="text-[0.8rem] text-muted-foreground">
-          {fieldDef.admin.description}
-        </p>
-      )}
-      {field.state.meta.errors[0] && (
-        <p className="text-sm text-destructive">{field.state.meta.errors[0]}</p>
-      )}
-    </div>
-  ),
+  ({ name, fieldDef, field, submissionAttempts }) => {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={name} className="relative">
+          {fieldDef.label || name}
+          {fieldDef.required && <span className="text-red-500">*</span>}
+        </Label>
+        <Input
+          id={name}
+          type="text"
+          value={field.state.value ?? ""}
+          onChange={(e) => field.handleChange(e.target.value)}
+          onBlur={field.handleBlur}
+          placeholder={fieldDef.admin.placeholder}
+          readOnly={fieldDef.admin.readOnly}
+        />
+        {fieldDef.admin.description && (
+          <p className="text-[0.8rem] text-muted-foreground">
+            {fieldDef.admin.description}
+          </p>
+        )}
+        <FormError field={field} submissionAttempts={submissionAttempts} />
+      </div>
+    );
+  },
 );
