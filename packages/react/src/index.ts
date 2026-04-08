@@ -14,23 +14,23 @@ export type { ReactHKT, ReactAdapter } from "./adapter";
 // Field components
 export { TextFieldInput, TextFieldCell } from "./fields";
 
-// View components
-export { DashboardView, CollectionListView, CollectionEditView } from "./views";
-
-// Layout components
 export {
+  // Layout components
   AdminLayout,
   type AdminLayoutProps,
-} from "./components/admin/AdminLayout";
-export { AppSidebar, AppSidebarProps } from "./components/admin/AdminSidebar";
+  AppSidebar,
+  type AppSidebarProps,
+  // View components
+  DashboardView,
+  CollectionListView,
+  CollectionEditView,
+} from "./components";
+
+// Context
+export { VexConfigContext, useVexConfig } from "./context/VexConfigContext";
 
 // Utilities
 export { cn } from "./styles/utils";
 
 // shadcn UI primitives
-export * from "./components/ui/button";
-export * from "./components/ui/input";
-export * from "./components/ui/label";
-export * from "./components/ui/table";
-export * from "./components/ui/badge";
-export * from "./components/ui/card";
+export * from "./components/ui";

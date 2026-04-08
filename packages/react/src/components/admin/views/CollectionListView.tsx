@@ -1,9 +1,14 @@
+"use client";
+
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { vexConvexApi } from "@vexcms/core";
 import type { CollectionListViewProps } from "@vexcms/core";
-import { Button } from "~/components/ui/button";
-import { VexLink } from "~/components/ui/VexLink";
+import { Button } from "../../ui/button";
+import { VexLink } from "../../ui/VexLink";
+import { MODALS } from "../modals/constants";
+import { CreateDocumentModal } from "../modals";
+import { useVexConfig } from "../../../context/VexConfigContext";
 
 /**
  * Collection list view component.
@@ -26,17 +31,27 @@ import { VexLink } from "~/components/ui/VexLink";
  * ```
  */
 export function CollectionListView(props: CollectionListViewProps) {
+  const liveConfig = useVexConfig();
+  // Prefer the live context collection (updated via Fast Refresh) over the
+  // RSC-serialized prop, falling back to the prop if context isn't available.
+  const collection =
+    liveConfig?.collections.find((c) => c.slug === props.collection.slug) ??
+    props.collection;
+
   const { data: documents = [], isLoading } = useQuery({
-    ...convexQuery(vexConvexApi.list, { collection: props.collection.slug }),
+    ...convexQuery(vexConvexApi.list, { collection: collection.slug }),
     initialData: props.initialData,
   });
 
   return (
     <div>
+      <>
+        <CreateDocumentModal collection={collection} />
+      </>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">
-            {props.collection.labels.plural}
+            {collection.labels.plural}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {isLoading
@@ -46,17 +61,21 @@ export function CollectionListView(props: CollectionListViewProps) {
         </div>
         <Button
           nativeButton={false}
-          render={<VexLink href={`/admin/${props.collection.slug}/new`} />}
+          render={
+            <VexLink
+              href={`/admin/${collection.slug}?${MODALS.createDocument.urlParam}=true`}
+            />
+          }
         >
-          + New {props.collection.labels.singular}
+          + New {collection.labels.singular}
         </Button>
       </div>
 
       {documents.length === 0 && !isLoading ? (
         <div className="text-center py-12 border rounded-md text-muted-foreground">
-          No {props.collection.labels.plural.toLowerCase()} yet.{" "}
+          No {collection.labels.plural.toLowerCase()} yet.{" "}
           <VexLink
-            href={`/admin/${props.collection.slug}/new`}
+            href={`/admin/${collection.slug}/new`}
             className="text-primary hover:underline"
           >
             Create one.

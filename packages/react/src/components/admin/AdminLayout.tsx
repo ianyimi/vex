@@ -1,16 +1,15 @@
+"use client";
+
 import type { ReactNode } from "react";
 import type { VexConfig } from "@vexcms/core";
 import {
   FrameworkComponentsContext,
   type FrameworkComponents,
-} from "~/hooks/useFrameworkComponents";
-import { AppSidebar } from "~/components/admin";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "~/components/ui/sidebar";
-import { TooltipProvider } from "~/components/ui/tooltip";
+} from "../../hooks/useFrameworkComponents";
+import { VexConfigContext } from "../../context/VexConfigContext";
+import { AppSidebar } from ".";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "../ui/sidebar";
+import { TooltipProvider } from "../ui/tooltip";
 
 /**
  * Props for the `AdminLayout` component.
@@ -47,20 +46,19 @@ export interface AdminLayoutProps {
  * the left, and places view content in a `SidebarInset` main area on the right.
  * A `SidebarTrigger` is rendered at the top of the content area for toggling.
  *
- * Exported from `@vexcms/react` and used by `VexAdminPage` in `@vexcms/next`.
+ * Exported from `@vexcms/react` and used by `NextAdminLayout` in `@vexcms/next`.
+ * The consuming framework adapter (e.g. `NextAdminLayout`) is responsible for
+ * providing a nuqs adapter before rendering this component.
  *
  * @param props - Layout props
  * @param props.config - Full VexCMS config
  * @param props.activeSlug - Forwarded to `AppSidebar` for active state
  * @param props.children - The active admin view content
  * @param props.components - Optional framework Link/Image overrides
+ * @returns <AdminLayout>{children}</AdminLayout>
  *
  * @example
  * ```tsx
- * // Next.js — VexAdminPage passes this automatically
- * import NextLink from "next/link";
- * import NextImage from "next/image";
- *
  * <AdminLayout
  *   config={vexConfig}
  *   activeSlug="posts"
@@ -72,6 +70,7 @@ export interface AdminLayoutProps {
  */
 export function AdminLayout(props: AdminLayoutProps) {
   return (
+    <VexConfigContext.Provider value={props.config}>
     <FrameworkComponentsContext.Provider value={props.components ?? {}}>
       <TooltipProvider>
         <SidebarProvider>
@@ -85,5 +84,6 @@ export function AdminLayout(props: AdminLayoutProps) {
         </SidebarProvider>
       </TooltipProvider>
     </FrameworkComponentsContext.Provider>
+    </VexConfigContext.Provider>
   );
 }

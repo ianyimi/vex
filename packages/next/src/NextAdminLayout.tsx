@@ -5,6 +5,7 @@ import type { VexConfig } from "@vexcms/core";
 import { usePathname } from "next/navigation";
 import NextLink from "next/link";
 import NextImage from "next/image";
+import { NuqsAdapter } from "nuqs/adapters/next";
 import { AdminLayout } from "@vexcms/react";
 
 /**
@@ -12,6 +13,8 @@ import { AdminLayout } from "@vexcms/react";
  *
  * A client component that wraps `AdminLayout` from `@vexcms/react` with
  * Next.js-specific wiring:
+ * - Provides a nuqs adapter (`nuqs/adapters/next`) so URL state works
+ *   correctly within the admin panel routes.
  * - Passes `NextLink` and `NextImage` as framework components so all
  *   `VexLink`/`VexImage` helpers in the admin panel use Next.js routing
  *   and image optimisation automatically.
@@ -25,16 +28,30 @@ import { AdminLayout } from "@vexcms/react";
  * @param props - Layout props
  * @param props.config - The resolved VexCMS config from `vex.config.ts`
  * @param props.children - The page content from `[[...slug]]/page.tsx`
- * @returns <VexAdminLayout config={config}>{children}</VexAdminLayout>
+ *
+ * **`layout.tsx` must be `"use client"` and import `vex.config` directly.**
+ * Turbopack's RSC HMR does not reliably propagate transitive dependency changes
+ * (e.g. `posts.ts` → `vex.config.ts` → `layout.tsx`). The fix is to make the
+ * layout a client module so Turbopack's Fast Refresh tracks the dependency.
+ * `VexConfigContext` then propagates the live config to all admin components
+ * (including `CollectionListView` and `CreateDocumentModal`) so field changes
+ * hot-reload without a manual refresh. Next.js passes RSC page content through
+ * `children` regardless of the layout being a client component.
+ *
+ * If you need server-only work in the admin layout (auth checks etc.), add a
+ * separate RSC layout above this one in the route hierarchy.
  *
  * @example
  * ```tsx
  * // app/admin/layout.tsx
- * import { VexAdminLayout } from "@vexcms/next";
- * import config from "../../../vex.config";
+ * "use client"
  *
- * export default function AdminLayout({ children }: { children: React.ReactNode }) {
- *   return <VexAdminLayout config={config}>{children}</VexAdminLayout>;
+ * import type { ReactNode } from "react";
+ * import { NextAdminLayout } from "@vexcms/next/client";
+ * import config from "~/vex.config";
+ *
+ * export default function AdminLayout({ children }: { children: ReactNode }) {
+ *   return <NextAdminLayout config={config}>{children}</NextAdminLayout>;
  * }
  * ```
  */
@@ -49,12 +66,14 @@ export function NextAdminLayout(props: {
   const activeSlug = segments[1]; // undefined on /admin, "posts" on /admin/posts
 
   return (
-    <AdminLayout
-      config={props.config}
-      activeSlug={activeSlug}
-      components={{ Link: NextLink, Image: NextImage }}
-    >
-      {props.children}
-    </AdminLayout>
+    <NuqsAdapter>
+      <AdminLayout
+        config={props.config}
+        activeSlug={activeSlug}
+        components={{ Link: NextLink, Image: NextImage }}
+      >
+        {props.children}
+      </AdminLayout>
+    </NuqsAdapter>
   );
 }

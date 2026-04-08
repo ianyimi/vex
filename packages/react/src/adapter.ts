@@ -6,7 +6,11 @@ import {
 import type { ComponentType } from "react";
 
 import { TextFieldInput, TextFieldCell } from "./fields";
-import { CollectionEditView, CollectionListView, DashboardView } from "./views";
+import {
+  CollectionEditView,
+  CollectionListView,
+  DashboardView,
+} from "./components/admin/views";
 
 /**
  * HKT for React — maps any props type to `ComponentType<P>`.

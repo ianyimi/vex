@@ -1,7 +1,9 @@
+"use client";
+
 import type { TextField } from "@vexcms/core";
-import { Label } from "~/components/ui/label";
-import { Input } from "~/components/ui/input";
-import { createFieldInput } from "~/components/form/createFieldInput";
+import { Label } from "../../components/ui/label";
+import { Input } from "../../components/ui/input";
+import { createFieldInput } from "../../components/form/createFieldInput";
 
 /**
  * Text field input component for the admin edit form.
@@ -34,9 +36,12 @@ import { createFieldInput } from "~/components/form/createFieldInput";
  * ```
  */
 export const TextFieldInput = createFieldInput<string, TextField>(
-  ({ name, fieldDef, readOnly, field }) => (
+  ({ name, fieldDef, field }) => (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor={name}>{fieldDef.label || name}</Label>
+      <Label htmlFor={name} className="relative">
+        {fieldDef.label || name}
+        {fieldDef.required && <span className="text-red-500">*</span>}
+      </Label>
       <Input
         id={name}
         type="text"
@@ -44,7 +49,7 @@ export const TextFieldInput = createFieldInput<string, TextField>(
         onChange={(e) => field.handleChange(e.target.value)}
         onBlur={field.handleBlur}
         placeholder={fieldDef.admin.placeholder}
-        readOnly={readOnly}
+        readOnly={fieldDef.admin.readOnly}
       />
       {fieldDef.admin.description && (
         <p className="text-[0.8rem] text-muted-foreground">

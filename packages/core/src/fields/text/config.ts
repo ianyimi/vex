@@ -67,7 +67,7 @@ export function text(options?: TextFieldInput): TextField {
 
     // Optional field properties (no defaults)
     description: options?.description,
-    defaultValue: options?.defaultValue ?? ADMIN_FIELDS.text.type,
+    defaultValue: options?.defaultValue ?? ADMIN_FIELDS.text.defaultValue,
     min: options?.min,
     max: options?.max,
     index: options?.index,

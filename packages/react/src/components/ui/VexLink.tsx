@@ -1,8 +1,10 @@
+"use client";
+
 import { forwardRef } from "react";
 import {
   useFrameworkComponents,
   type VexLinkProps,
-} from "~/hooks/useFrameworkComponents";
+} from "../../hooks/useFrameworkComponents";
 
 /**
  * Framework-aware link component.

@@ -1,3 +1,5 @@
+"use client";
+
 import type { VexConfig } from "@vexcms/core";
 import {
   Sidebar,
@@ -9,8 +11,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "~/components/ui/sidebar";
-import { VexLink } from "~/components/ui/VexLink";
+} from "../ui/sidebar";
+import { VexLink } from "../ui/VexLink";
 
 /**
  * Props for the `AppSidebar` component.

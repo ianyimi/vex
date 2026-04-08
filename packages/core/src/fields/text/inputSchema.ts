@@ -26,6 +26,9 @@ export function textFieldToInputSchema(props: { field: TextField }): ZodSchema {
   const fieldMaxError = field.max?.error ?? "This field is too long.";
 
   let inputSchema = z.string();
+  if (field.required) {
+    inputSchema = z.string().min(1, "This field is required.");
+  }
   if (field.min) {
     if (field.max) {
       inputSchema = z

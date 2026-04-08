@@ -1,8 +1,10 @@
+"use client";
+
 import { forwardRef } from "react";
 import {
   useFrameworkComponents,
   type VexImageProps,
-} from "~/hooks/useFrameworkComponents";
+} from "../../hooks/useFrameworkComponents";
 
 /**
  * Framework-aware image component.

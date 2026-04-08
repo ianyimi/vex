@@ -26,6 +26,9 @@ export default defineConfig({
     // Date picker
     "react-day-picker",
     "date-fns",
+    // URL state — peer dep, must use the same instance as the consuming app
+    "nuqs",
+    /^nuqs\//,
   ],
   banner: {
     js: '"use client";',

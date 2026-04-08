@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 import type { FieldApi } from "@tanstack/react-form";
 import type { AdminField, InputComponentProps } from "@vexcms/core";

@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactFormExtendedApi } from "@tanstack/react-form";
 import { createContext, useContext } from "react";
 
@@ -9,7 +11,7 @@ import { createContext, useContext } from "react";
  * context hold any form instance regardless of its `TFormData` shape.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AnyFormApi = ReactFormExtendedApi<any>;
+export type AnyFormApi = ReactFormExtendedApi<any, any>;
 
 /**
  * React context that distributes the TanStack Form instance to descendant field
