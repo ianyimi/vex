@@ -4,14 +4,17 @@
   "type": "module",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
     "./server": {
+      "source": "./src/NextAdminPage.tsx",
       "import": "./dist/NextAdminPage.js",
       "types": "./dist/NextAdminPage.d.ts"
     },
     "./client": {
+      "source": "./src/NextAdminLayout.tsx",
       "import": "./dist/NextAdminLayout.js",
       "types": "./dist/NextAdminLayout.d.ts"
     },

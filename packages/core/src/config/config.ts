@@ -24,7 +24,14 @@ import { VexConfig, VexConfigInput } from "./types";
  */
 export function defineConfig(config: VexConfigInput): VexConfig {
   return {
+    collections: [],
     ...config,
-    collections: config?.collections ?? [],
+    admin: {
+      ...config.admin,
+      sidebar: {
+        side: "left",
+        ...config.admin?.sidebar,
+      },
+    },
   };
 }

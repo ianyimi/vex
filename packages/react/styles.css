@@ -11,3 +11,22 @@
  * your own theme.
  */
 @source "./dist/**/*.js";
+
+/*
+ * Sidebar CSS variable defaults.
+ * These alias the consuming app's base theme variables so the sidebar
+ * inherits whatever colour scheme the app defines — no extra config needed.
+ * Override any of these in your own globals.css to customise the sidebar.
+ */
+@layer base {
+  :root {
+    --sidebar: var(--background);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+  }
+}

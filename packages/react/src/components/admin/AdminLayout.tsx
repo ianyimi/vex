@@ -69,21 +69,28 @@ export interface AdminLayoutProps {
  * ```
  */
 export function AdminLayout(props: AdminLayoutProps) {
+  const side = props.config.admin.sidebar.side;
+
+  const sidebar = <AppSidebar config={props.config} activeSlug={props.activeSlug} />;
+  const content = (
+    <SidebarInset>
+      <header className="flex h-12 items-center gap-2 px-4 border-b shrink-0">
+        {side === "right" && <div className="flex-1" />}
+        <SidebarTrigger side={side} />
+      </header>
+      <main className="flex-1 overflow-y-auto p-6">{props.children}</main>
+    </SidebarInset>
+  );
+
   return (
     <VexConfigContext.Provider value={props.config}>
-    <FrameworkComponentsContext.Provider value={props.components ?? {}}>
-      <TooltipProvider>
-        <SidebarProvider>
-          <AppSidebar config={props.config} activeSlug={props.activeSlug} />
-          <SidebarInset>
-            <header className="flex h-12 items-center gap-2 px-4 border-b shrink-0">
-              <SidebarTrigger />
-            </header>
-            <main className="flex-1 overflow-y-auto p-6">{props.children}</main>
-          </SidebarInset>
-        </SidebarProvider>
-      </TooltipProvider>
-    </FrameworkComponentsContext.Provider>
+      <FrameworkComponentsContext.Provider value={props.components ?? {}}>
+        <TooltipProvider>
+          <SidebarProvider>
+            {side === "right" ? <>{content}{sidebar}</> : <>{sidebar}{content}</>}
+          </SidebarProvider>
+        </TooltipProvider>
+      </FrameworkComponentsContext.Provider>
     </VexConfigContext.Provider>
   );
 }

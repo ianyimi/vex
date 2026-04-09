@@ -29,6 +29,10 @@ export function defineCollection(
 ): CollectionConfig {
   return {
     ...config,
+    admin: {
+      useAsTitle: "_id",
+      ...config.admin,
+    },
     labels: {
       singular: config.labels?.singular ?? toTitleCase(config.slug),
       plural: config.labels?.plural ?? plural(toTitleCase(config.slug)),

@@ -78,6 +78,19 @@ export default [
     },
   },
   {
+    // Standard shadcn/base UI primitives — no JSDoc required
+    files: ["packages/react/src/components/ui/**/*.ts", "packages/react/src/components/ui/**/*.tsx"],
+    rules: {
+      "jsdoc/require-jsdoc": "off",
+      "jsdoc/require-description": "off",
+      "jsdoc/require-param": "off",
+      "jsdoc/require-param-description": "off",
+      "jsdoc/require-returns": "off",
+      "jsdoc/require-returns-description": "off",
+      "jsdoc/require-example": "off",
+    },
+  },
+  {
     files: ["**/*.test.ts", "**/*.test.tsx"],
     rules: {
       // Relax JSDoc requirements in tests

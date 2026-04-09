@@ -1,6 +1,54 @@
 import { AdminField } from "../fields";
 
 /**
+ * Admin panel configuration input for a collection.
+ *
+ * Controls how the collection is presented and queried in the admin panel.
+ * All properties are optional.
+ *
+ * **Defaults applied by `defineCollection()`:**
+ * ```ts
+ * {
+ *   useAsTitle: undefined, // no title field designated; falls back to the document ID
+ * }
+ * ```
+ *
+ * @example
+ * ```ts
+ * defineCollection({
+ *   slug: "posts",
+ *   fields: { title: text({ required: true }) },
+ *   admin: { useAsTitle: "title" },
+ * })
+ * ```
+ *
+ * @see {@link AdminCollectionConfig} for the resolved type after defaults are applied
+ */
+export interface AdminCollectionConfigInput<
+  TFieldSlug extends string = string,
+> {
+  /**
+   * The field whose value is displayed as the document's human-readable title
+   * throughout the admin panel (list rows, breadcrumbs, relation pickers).
+   *
+   * Setting this field also auto-generates a database index (`by_<field>`) and
+   * a search index (`search_<field>`) for fast admin queries. Omit to fall back
+   * to the document ID.
+   */
+  useAsTitle?: TFieldSlug;
+}
+
+/**
+ * Resolved admin panel configuration for a collection after defaults are applied.
+ *
+ * @see {@link AdminCollectionConfigInput} for the user-facing input type
+ */
+export interface AdminCollectionConfig<TFieldSlug extends string = string> {
+  /** The field used as the document's human-readable title in the admin panel. */
+  useAsTitle: TFieldSlug;
+}
+
+/**
  * Configuration input for a `defineCollection()` call.
  *
  * A collection maps to a Convex database table. `slug` becomes the table name,
@@ -33,8 +81,10 @@ import { AdminField } from "../fields";
  */
 export interface CollectionConfigInput<
   TSlug extends string = string,
-  TFields extends string = string,
+  TFieldSlug extends string = string,
 > {
+  /** Admin panel behaviour for this collection. All properties are optional. */
+  admin?: AdminCollectionConfigInput;
   /** Convex table name — used as the database table identifier and URL slug in the admin panel. */
   slug: TSlug;
   /**
@@ -48,7 +98,7 @@ export interface CollectionConfigInput<
     plural?: string;
   };
   /** Field definitions that make up this collection's document shape. */
-  fields: Record<TFields, AdminField>;
+  fields: Record<TFieldSlug, AdminField>;
 }
 
 /**
@@ -59,8 +109,10 @@ export interface CollectionConfigInput<
  */
 export interface CollectionConfig<
   TSlug extends string = string,
-  TFields extends string = string,
+  TFieldSlug extends string = string,
 > {
+  /** Resolved admin panel configuration for this collection. */
+  admin: AdminCollectionConfig;
   /** Convex table name for this collection. */
   slug: TSlug;
   /** Display names shown in the admin panel — always present after defaults are applied. */
@@ -71,5 +123,5 @@ export interface CollectionConfig<
     plural: string;
   };
   /** Resolved field definitions for this collection. */
-  fields: Record<TFields, AdminField>;
+  fields: Record<TFieldSlug, AdminField>;
 }

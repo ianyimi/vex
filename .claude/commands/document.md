@@ -140,6 +140,48 @@ Each property JSDoc must be:
 position?: "main" | "sidebar";
 ```
 
+#### Full-depth coverage on critical interfaces
+
+For the following interfaces, **every property at every nesting level must have a JSDoc comment** — including inline object types and their sub-properties. A developer must be able to hover any field at any depth in a `defineConfig()` or `defineCollection()` call and get a useful description.
+
+**Critical interfaces that require full-depth coverage:**
+
+- `VexConfigInput` / `VexConfig` — top-level CMS config passed to `defineConfig()`
+- `AdminConfigInput` / `AdminConfig` — admin panel config nested under `vexConfig.admin`
+- `CollectionConfigInput` / `CollectionConfig` — collection config passed to `defineCollection()`
+- `BaseFieldInput` / `BaseField` — base properties shared by all field types
+- `FieldAdminConfigInput` / `FieldAdminConfig` — admin UI config nested under any field's `.admin`
+- Any field-type-specific `*Input` interface (e.g. `TextFieldInput`, `NumberFieldInput`)
+
+**Rules for nested inline object types:**
+
+When a property's type is an inline object literal (not a named interface), the **property itself** gets the full JSDoc treatment — acting as both the property doc and the container doc. Its sub-properties each get their own one-line JSDoc. For example:
+
+```ts
+/**
+ * Navigation sidebar configuration for the admin panel.
+ *
+ * Controls the sidebar that houses collection links and navigation items.
+ * All properties are optional; omitted values fall back to the defaults below.
+ *
+ * **Defaults applied by `defineConfig()`:**
+ * ```ts
+ * { side: "left" } // sidebar rendered on the left side of the viewport
+ * ```
+ */
+sidebar?: {
+  /**
+   * Which side of the viewport the admin sidebar is anchored to.
+   *
+   * - `"left"` — sidebar sits on the left (default)
+   * - `"right"` — sidebar sits on the right
+   */
+  side?: "left" | "right";
+};
+```
+
+When you encounter any of the critical interfaces above, audit every property — including inline sub-objects — and add JSDoc where it is missing before moving on.
+
 #### Functions
 
 Must include:
