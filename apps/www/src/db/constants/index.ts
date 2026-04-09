@@ -6,17 +6,11 @@ export const TABLE_SLUG_ACCOUNTS = "account" as const
 export const TABLE_SLUG_SESSIONS = "session" as const
 export const TABLE_SLUG_VERIFICATIONS = "verification" as const
 export const TABLE_SLUG_JWKS = "jwks" as const
+export const TABLE_SLUG_API_KEYS = "apikey" as const
 
-// Media
-export const TABLE_SLUG_MEDIA = "media" as const
+export const COLLECTION_SLUG_MEDIA = "media" as const
 
-// Site Builder
-export const TABLE_SLUG_PAGES = "pages" as const
 export const TABLE_SLUG_POSTS = "posts" as const
-export const TABLE_SLUG_HEADERS = "headers" as const
-export const TABLE_SLUG_FOOTERS = "footers" as const
-export const TABLE_SLUG_THEMES = "themes" as const
-export const TABLE_SLUG_SITE_SETTINGS = "site_settings" as const
 
 export const AUTH_PROVIDERS = {
   apple: "apple",

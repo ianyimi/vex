@@ -119,7 +119,6 @@ Visit `http://localhost:3000` to see your application running.
 
 This project uses Better Auth for authentication.
 
-
 ## Customizing Authentication
 
 ### Adding OAuth Providers

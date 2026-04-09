@@ -16,7 +16,7 @@ import {
  * in `app/admin/layout.tsx` owns the persistent shell.
  *
  * **Route mapping:**
- * | `slug` array | View |
+ * | `path` array | View |
  * |---|---|
  * | `[]` or undefined | `DashboardView` |
  * | `[collectionSlug]` | `CollectionListView` with preloaded docs |
@@ -25,7 +25,7 @@ import {
  *
  * @param props - Component props
  * @param props.config - The resolved VexCMS configuration from `vex.config.ts`
- * @param props.params - Next.js 15 async params `{ slug?: string[] }`
+ * @param props.params - Next.js 15 async params `{ path?: string[] }`
  * @returns <VexAdminPage config={config} params={params} />
  *
  * @example
@@ -37,7 +37,7 @@ import {
  * export default function AdminPage({
  *   params,
  * }: {
- *   params: Promise<{ slug?: string[] }>;
+ *   params: Promise<{ path?: string[] }>;
  * }) {
  *   return <VexAdminPage config={config} params={params} />;
  * }
@@ -45,10 +45,10 @@ import {
  */
 export async function NextAdminPage(props: {
   config: VexConfig;
-  params: Promise<{ slug?: string[] }>;
+  params: Promise<{ path?: string[] }>;
 }) {
-  const { slug = [] } = await props.params;
-  const [collectionSlug, documentId] = slug;
+  const { path = [] } = await props.params;
+  const [collectionSlug, documentId] = path;
 
   if (!collectionSlug) {
     return <DashboardView config={props.config} />;

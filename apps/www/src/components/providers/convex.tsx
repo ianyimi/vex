@@ -9,7 +9,9 @@ import { type ReactNode } from "react"
 import { authClient } from "~/auth/client"
 import { env } from "~/env.mjs"
 
-const convex = new ConvexReactClient(env.NEXT_PUBLIC_CONVEX_URL)
+const convex = new ConvexReactClient(env.NEXT_PUBLIC_CONVEX_URL, {
+  expectAuth: true,
+})
 const convexQueryClient = new ConvexQueryClient(convex)
 const queryClient = new QueryClient({
   defaultOptions: {

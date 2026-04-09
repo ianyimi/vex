@@ -14,12 +14,14 @@
     "./client": {
       "import": "./dist/NextAdminLayout.js",
       "types": "./dist/NextAdminLayout.d.ts"
-    }
+    },
+    "./styles": "./styles.css"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "styles.css"
   ],
   "scripts": {
     "build": "tsup",

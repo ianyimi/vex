@@ -90,7 +90,7 @@ export default tseslint.config(
       "object-shorthand": "warn",
 
       "perfectionist/sort-imports": "warn",
-      "perfectionist/sort-interfaces": "off",
+      "perfectionist/sort-interfaces": "warn",
       "perfectionist/sort-intersection-types": "warn",
       // Perfectionist sorting configuration (from PayloadCMS)
       "perfectionist/sort-jsx-props": "warn",

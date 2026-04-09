@@ -6,12 +6,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./styles": "./styles.css"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "styles.css"
   ],
   "source": "./dist/**/*.js",
   "scripts": {
@@ -39,24 +41,24 @@
     "@convex-dev/react-query": "^0.1.0",
     "@tanstack/react-query": ">=5.0.0",
     "convex": ">=1.0.0",
+    "next": ">=14.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
     "nuqs": "catalog:"
   },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    }
+  },
   "devDependencies": {
-    "@convex-dev/react-query": "catalog:",
-    "@tanstack/react-query": "catalog:",
     "@types/node": "^25.5.0",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
-    "convex": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
     "tailwindcss": "catalog:",
     "tsup": "catalog:",
-    "typescript": "catalog:",
-    "nuqs": "catalog:"
+    "typescript": "catalog:"
   },
   "publishConfig": {
     "access": "public"

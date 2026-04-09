@@ -1,7 +1,1 @@
-export * from "./footers"
-export * from "./headers"
-export * from "./media"
-export * from "./pages"
 export * from "./posts"
-export * from "./themes"
-export * from "./users"

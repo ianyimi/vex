@@ -1,0 +1,13 @@
+/**
+ * @vexcms/next styles
+ *
+ * Add once to your app's global CSS:
+ *   @import "@vexcms/next/styles";
+ *
+ * This includes all @vexcms/react styles automatically — no separate
+ * import needed. All component styles use your app's CSS variables
+ * (--background, --foreground, --primary, etc.) so colours stay
+ * consistent with your own theme.
+ */
+@import "@vexcms/react/styles";
+@source "./dist/**/*.js";

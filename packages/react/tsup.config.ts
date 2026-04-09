@@ -20,6 +20,11 @@ export default defineConfig({
     "tailwind-merge",
     // Workspace packages
     "@vexcms/core",
+    // Convex + query
+    "convex",
+    /^convex\//,
+    "@convex-dev/react-query",
+    "@tanstack/react-query",
     // Form
     "@tanstack/react-form",
     "zod",

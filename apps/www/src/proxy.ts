@@ -7,9 +7,7 @@ export async function proxy(request: NextRequest) {
   }
 
   const cookieStore = await cookies()
-  const sessionToken =
-    cookieStore.get("__Secure-better-auth.session_token") ??
-    cookieStore.get("better-auth.session_token")
+  const sessionToken = cookieStore.get("better-auth.session_token")
 
   if (!sessionToken) {
     return NextResponse.redirect(new URL("/auth/sign-in", request.url))
@@ -20,6 +18,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|admin/*|favicon.ico|models/*|staging/*|auth/sign-in|auth/sign-up|$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|models/*|staging/*|auth/sign-in|auth/sign-up|$).*)",
   ],
 }
