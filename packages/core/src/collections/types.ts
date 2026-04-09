@@ -35,7 +35,7 @@ export interface AdminCollectionConfigInput<
    * a search index (`search_<field>`) for fast admin queries. Omit to fall back
    * to the document ID.
    */
-  useAsTitle?: TFieldSlug;
+  useAsTitle?: NoInfer<TFieldSlug>;
 }
 
 /**
@@ -84,7 +84,7 @@ export interface CollectionConfigInput<
   TFieldSlug extends string = string,
 > {
   /** Admin panel behaviour for this collection. All properties are optional. */
-  admin?: AdminCollectionConfigInput;
+  admin?: AdminCollectionConfigInput<TFieldSlug>;
   /** Convex table name — used as the database table identifier and URL slug in the admin panel. */
   slug: TSlug;
   /**
@@ -112,7 +112,7 @@ export interface CollectionConfig<
   TFieldSlug extends string = string,
 > {
   /** Resolved admin panel configuration for this collection. */
-  admin: AdminCollectionConfig;
+  admin: AdminCollectionConfig<TFieldSlug>;
   /** Convex table name for this collection. */
   slug: TSlug;
   /** Display names shown in the admin panel — always present after defaults are applied. */

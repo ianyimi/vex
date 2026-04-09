@@ -24,9 +24,12 @@ import { CollectionConfigInput, CollectionConfig } from "./types";
  * @see {@link CollectionConfigInput} for the user-facing input type
  * @see {@link CollectionConfig} for the resolved return type
  */
-export function defineCollection(
-  config: CollectionConfigInput,
-): CollectionConfig {
+export function defineCollection<
+  TSlug extends string,
+  TFieldSlug extends string,
+>(
+  config: CollectionConfigInput<TSlug, TFieldSlug>,
+): CollectionConfig<TSlug, TFieldSlug> {
   return {
     ...config,
     admin: {
