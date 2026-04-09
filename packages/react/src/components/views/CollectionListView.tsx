@@ -4,11 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { vexConvexApi } from "@vexcms/core";
 import type { CollectionListViewProps } from "@vexcms/core";
-import { Button } from "../../ui/button";
-import { VexLink } from "../../ui/VexLink";
+import { Button } from "../ui/button";
+import { VexLink } from "../ui/VexLink";
 import { MODALS } from "../modals/constants";
 import { CreateDocumentModal } from "../modals";
-import { useVexConfig } from "../../../context/VexConfigContext";
+import { useVexConfig } from "../../context/VexConfigContext";
 
 /**
  * Collection list view component.
@@ -50,9 +50,7 @@ export function CollectionListView(props: CollectionListViewProps) {
       </>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">
-            {collection.labels.plural}
-          </h1>
+          <h1 className="text-2xl font-bold">{collection.labels.plural}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {isLoading
               ? "Loading…"

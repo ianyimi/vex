@@ -1,7 +1,7 @@
 "use client";
 
 import { ComponentPropsWithRef } from "react";
-import { Dialog } from "../../ui/dialog";
+import { Dialog } from "../ui/dialog";
 import { useQueryState, parseAsBoolean } from "nuqs";
 
 /**

@@ -10,7 +10,7 @@ import {
   CollectionEditView,
   CollectionListView,
   DashboardView,
-} from "./components/admin/views";
+} from "./components";
 
 /**
  * HKT for React — maps any props type to `ComponentType<P>`.

@@ -1,10 +1,10 @@
 "use client";
 
 import type { TextField } from "@vexcms/core";
-import { Label } from "../../components/ui/label";
-import { Input } from "../../components/ui/input";
-import { createFieldInput } from "../../components/form/createFieldInput";
-import { FormError } from "../../components/form/FormError";
+import { Label } from "../../ui/label";
+import { Input } from "../../ui/input";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormError } from "../../form/FormError";
 
 /**
  * Text field input component for the admin edit form.

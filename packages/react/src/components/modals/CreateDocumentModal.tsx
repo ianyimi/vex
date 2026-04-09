@@ -7,13 +7,13 @@ import {
   DialogContent,
   DialogFooter,
   DialogHeader,
-} from "../../ui";
+} from "../ui";
 import { Modal } from "./BaseModal";
 import { CollectionConfig } from "@vexcms/core";
 import { MODALS } from "./constants";
-import { AppForm } from "../../form";
-import { useCollectionForm } from "../../../hooks/useCollectionForm";
-import { RenderFieldInputComponents } from "../../../fields";
+import { AppForm } from "../form";
+import { useCollectionForm } from "../../hooks/useCollectionForm";
+import { RenderFieldInputComponents } from "../../fields";
 import { vexConvexApi } from "@vexcms/core";
 import { useMutation } from "@tanstack/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";
@@ -65,7 +65,11 @@ export function CreateDocumentModal({
 
   return (
     <Modal urlParam={MODALS.createDocument.urlParam}>
-      <DialogContent ref={dialogRef} initialFocus={dialogRef} className="w-[50svw] h-[50svh] flex flex-col">
+      <DialogContent
+        ref={dialogRef}
+        initialFocus={dialogRef}
+        className="w-[50svw] h-[50svh] flex flex-col"
+      >
         <AppForm form={form} className="flex flex-col h-full overflow-hidden">
           <DialogHeader className="px-2 pb-4">
             Create {collection.labels.singular}

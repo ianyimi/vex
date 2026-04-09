@@ -5,11 +5,11 @@ import type { VexConfig } from "@vexcms/core";
 import {
   FrameworkComponentsContext,
   type FrameworkComponents,
-} from "../../hooks/useFrameworkComponents";
-import { VexConfigContext } from "../../context/VexConfigContext";
-import { AppSidebar } from ".";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "../ui/sidebar";
-import { TooltipProvider } from "../ui/tooltip";
+} from "../hooks/useFrameworkComponents";
+import { VexConfigContext } from "../context/VexConfigContext";
+import { AppSidebar } from "./AdminSidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "./ui/sidebar";
+import { TooltipProvider } from "./ui/tooltip";
 
 /**
  * Props for the `AdminLayout` component.
@@ -71,7 +71,9 @@ export interface AdminLayoutProps {
 export function AdminLayout(props: AdminLayoutProps) {
   const side = props.config.admin.sidebar.side;
 
-  const sidebar = <AppSidebar config={props.config} activeSlug={props.activeSlug} />;
+  const sidebar = (
+    <AppSidebar config={props.config} activeSlug={props.activeSlug} />
+  );
   const content = (
     <SidebarInset>
       <header className="flex h-12 items-center gap-2 px-4 border-b shrink-0">
@@ -87,7 +89,17 @@ export function AdminLayout(props: AdminLayoutProps) {
       <FrameworkComponentsContext.Provider value={props.components ?? {}}>
         <TooltipProvider>
           <SidebarProvider>
-            {side === "right" ? <>{content}{sidebar}</> : <>{sidebar}{content}</>}
+            {side === "right" ? (
+              <>
+                {content}
+                {sidebar}
+              </>
+            ) : (
+              <>
+                {sidebar}
+                {content}
+              </>
+            )}
           </SidebarProvider>
         </TooltipProvider>
       </FrameworkComponentsContext.Provider>

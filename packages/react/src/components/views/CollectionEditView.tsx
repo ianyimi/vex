@@ -5,10 +5,10 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useForm } from "@tanstack/react-form";
 import { vexConvexApi } from "@vexcms/core";
 import type { CollectionEditViewProps } from "@vexcms/core";
-import { AppForm } from "../../form/AppForm";
-import { VexLink } from "../../ui/VexLink";
-import { Button } from "../../ui/button";
-import { fieldToInputComponent } from "../../../fields";
+import { AppForm } from "../form/AppForm";
+import { VexLink } from "../ui/VexLink";
+import { Button } from "../ui/button";
+import { fieldToInputComponent } from "../../fields";
 
 /**
  * Collection document edit form.

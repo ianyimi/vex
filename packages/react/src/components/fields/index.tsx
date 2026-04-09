@@ -6,7 +6,7 @@ import {
 import { ComponentPropsWithRef, ComponentType } from "react";
 import { TextFieldInput } from "./text";
 import { ADMIN_FIELDS, type AdminFieldType } from "@vexcms/core";
-import { cn } from "../styles/utils";
+import { cn } from "../../styles/utils";
 
 export * from "./text";
 
