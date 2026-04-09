@@ -12,7 +12,7 @@ export { reactAdapter } from "./adapter";
 export type { ReactHKT, ReactAdapter } from "./adapter";
 
 // Field components
-export { TextFieldInput, TextFieldCell } from "./fields";
+export { TextFieldInput, TextFieldCell } from "./components/fields";
 
 export {
   // Layout components

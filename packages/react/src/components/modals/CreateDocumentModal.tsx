@@ -13,7 +13,7 @@ import { CollectionConfig } from "@vexcms/core";
 import { MODALS } from "./constants";
 import { AppForm } from "../form";
 import { useCollectionForm } from "../../hooks/useCollectionForm";
-import { RenderFieldInputComponents } from "../../fields";
+import { RenderFieldInputComponents } from "../fields";
 import { vexConvexApi } from "@vexcms/core";
 import { useMutation } from "@tanstack/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";

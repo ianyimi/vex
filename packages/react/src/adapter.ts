@@ -5,7 +5,7 @@ import {
 } from "@vexcms/core";
 import type { ComponentType } from "react";
 
-import { TextFieldInput, TextFieldCell } from "./fields";
+import { TextFieldInput, TextFieldCell } from "./components/fields";
 import {
   CollectionEditView,
   CollectionListView,

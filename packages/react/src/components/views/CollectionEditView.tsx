@@ -8,7 +8,7 @@ import type { CollectionEditViewProps } from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
 import { VexLink } from "../ui/VexLink";
 import { Button } from "../ui/button";
-import { fieldToInputComponent } from "../../fields";
+import { fieldToInputComponent } from "../fields";
 
 /**
  * Collection document edit form.
