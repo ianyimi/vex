@@ -18,7 +18,7 @@ import { CollectionConfigInput, CollectionConfig } from "./types";
  *     title: text({ required: true }),
  *   },
  * });
- * // → { slug: "posts", labels: { singular: "Post", plural: "Posts" }, fields: { ... } }
+ * // → { slug: "posts", admin: { useAsTitle: "_id" }, labels: { singular: "Post", plural: "Posts" }, fields: { ... } }
  * ```
  *
  * @see {@link CollectionConfigInput} for the user-facing input type

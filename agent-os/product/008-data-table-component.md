@@ -1,5 +1,7 @@
 # 008 — VexCMS Data Table Component
 
+**Status:** POSTPONED — Implementation attempted 2026-04-09 but reverted due to layout/styling issues. Table did not take up full container width and visual appearance was not production-ready. See `agent-os/implementation-log/2026/04/2026-04-09.ideaLog.md` for details.
+
 ## Overview
 
 This spec implements a production-ready data table component for VexCMS collection list views. The table supports server-side pagination, sorting, and search with URL-based state management for shareability. Column preferences (visibility, ordering, sizing) are persisted to localStorage. The component is designed to be framework-agnostic and extractable to a separate package later.

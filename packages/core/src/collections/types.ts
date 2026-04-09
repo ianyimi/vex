@@ -10,7 +10,7 @@ import { CoreAdminField } from "./constants";
  * **Defaults applied by `defineCollection()`:**
  * ```ts
  * {
- *   useAsTitle: undefined, // no title field designated; falls back to the document ID
+ *   useAsTitle: "_id", // falls back to the Convex document ID if not set
  * }
  * ```
  *
@@ -32,9 +32,10 @@ export interface AdminCollectionConfigInput<
    * The field whose value is displayed as the document's human-readable title
    * throughout the admin panel (list rows, breadcrumbs, relation pickers).
    *
-   * Setting this field also auto-generates a database index (`by_<field>`) and
-   * a search index (`search_<field>`) for fast admin queries. Omit to fall back
-   * to the document ID.
+   * Accepts any user-defined field slug from this collection, or a built-in
+   * Convex system field (`"_id"` | `"_creationTime"`). Setting a user-defined
+   * field also auto-generates a database index (`by_<field>`) and a search
+   * index (`search_<field>`) for fast admin queries. Omit to fall back to `"_id"`.
    */
   useAsTitle?: CoreAdminField | NoInfer<TFieldSlug>;
 }
