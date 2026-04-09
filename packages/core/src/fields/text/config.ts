@@ -50,24 +50,26 @@ export function text(options?: TextFieldInput): TextField {
     type: ADMIN_FIELDS.text.type,
 
     // Core properties with defaults
-    label: options?.label ?? "",
-    required: options?.required ?? false,
+    label: "",
+    required: false,
+    defaultValue: ADMIN_FIELDS.text.defaultValue,
+    ...options,
 
     // Admin config with all defaults applied
     admin: {
-      hidden: options?.admin?.hidden ?? false,
-      readOnly: options?.admin?.readOnly ?? false,
-      position: options?.admin?.position ?? "main",
-      width: options?.admin?.width ?? "full",
-      cellAlignment: options?.admin?.cellAlignment ?? "left",
+      hidden: false,
+      readOnly: false,
+      position: "main",
+      width: "full",
+      cellAlignment: "left",
       // Optional admin properties (no defaults)
-      placeholder: options?.admin?.placeholder ?? "",
-      description: options?.admin?.description ?? "",
+      placeholder: "",
+      description: "",
+      ...options?.admin,
     },
 
     // Optional field properties (no defaults)
     description: options?.description,
-    defaultValue: options?.defaultValue ?? ADMIN_FIELDS.text.defaultValue,
     min: options?.min,
     max: options?.max,
     index: options?.index,

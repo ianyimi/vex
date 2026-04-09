@@ -21,7 +21,10 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "clean": "rm -rf dist",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@base-ui/react": "1.2.0",
@@ -53,13 +56,17 @@
     }
   },
   "devDependencies": {
+    "@testing-library/react": "catalog:",
     "@types/node": "^25.5.0",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "jsdom": "catalog:",
     "tailwindcss": "catalog:",
     "tsup": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "publishConfig": {
     "access": "public"

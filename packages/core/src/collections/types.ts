@@ -1,4 +1,5 @@
 import { AdminField } from "../fields";
+import { CoreAdminField } from "./constants";
 
 /**
  * Admin panel configuration input for a collection.
@@ -25,7 +26,7 @@ import { AdminField } from "../fields";
  * @see {@link AdminCollectionConfig} for the resolved type after defaults are applied
  */
 export interface AdminCollectionConfigInput<
-  TFieldSlug extends string = string,
+  TFieldSlug extends string = CoreAdminField,
 > {
   /**
    * The field whose value is displayed as the document's human-readable title
@@ -35,7 +36,7 @@ export interface AdminCollectionConfigInput<
    * a search index (`search_<field>`) for fast admin queries. Omit to fall back
    * to the document ID.
    */
-  useAsTitle?: NoInfer<TFieldSlug>;
+  useAsTitle?: CoreAdminField | NoInfer<TFieldSlug>;
 }
 
 /**
@@ -43,9 +44,11 @@ export interface AdminCollectionConfigInput<
  *
  * @see {@link AdminCollectionConfigInput} for the user-facing input type
  */
-export interface AdminCollectionConfig<TFieldSlug extends string = string> {
+export interface AdminCollectionConfig<
+  TFieldSlug extends string = CoreAdminField,
+> {
   /** The field used as the document's human-readable title in the admin panel. */
-  useAsTitle: TFieldSlug;
+  useAsTitle: CoreAdminField | NoInfer<TFieldSlug>;
 }
 
 /**

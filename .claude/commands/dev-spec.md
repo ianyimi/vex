@@ -252,8 +252,12 @@ The spec is organized **by implementation step**, not by category. The developer
 [File tree showing what will exist after implementation, with annotations]
 
 ## Implementation Order
-[Numbered list summarizing the steps — serves as a table of contents.
- Each entry should note what becomes testable after that step.]
+
+> **Key:**
+> - `[agent]` — Boilerplate or pattern-following; agent generates this, no novel logic required
+> - `[dev]` — Important custom implementation; dev implements this, read these to understand how the feature works
+
+[Numbered list of steps with `[agent]` or `[dev]` tags. Each entry notes what becomes testable after that step and, for `[dev]` steps, names the key function(s) the developer will write so they can navigate directly to that step.]
 
 ---
 
@@ -538,6 +542,7 @@ After writing the spec but before presenting it to the developer, review the imp
 4. For each subsequent step: does the step end with "run tests" and do all prior tests still pass?
 5. Does any step require the developer to build multiple unrelated files before they can test anything? (Must be no — split it into smaller steps)
 6. Does the last step wire everything together and run the full suite?
+7. Is every step in the Implementation Order tagged `[agent]` or `[dev]`? Do all `[dev]` steps name the key function(s) so the developer can jump straight to them?
 
 If any answer is wrong, restructure the steps. Common fixes:
 - **Move the entry point earlier** — even with hardcoded returns, having the public API exist lets the developer verify imports and types

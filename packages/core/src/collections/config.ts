@@ -37,8 +37,9 @@ export function defineCollection<
       ...config.admin,
     },
     labels: {
-      singular: config.labels?.singular ?? toTitleCase(config.slug),
-      plural: config.labels?.plural ?? plural(toTitleCase(config.slug)),
+      singular: toTitleCase(config.slug),
+      plural: plural(toTitleCase(config.slug)),
+      ...config.labels,
     },
   };
 }
