@@ -1,6 +1,7 @@
 import { ADMIN_FIELDS } from "../constants";
 import { AdminField } from "../types";
 import { textFieldToInputSchema } from "../text/inputSchema";
+import { numberFieldToInputSchema } from "../number";
 
 /**
  * Converts any field definition to its form input schema using zod.
@@ -20,6 +21,8 @@ export function adminFieldToInputSchema(props: { field: AdminField }) {
   switch (props.field.type) {
     case ADMIN_FIELDS.text.type:
       return textFieldToInputSchema({ field: props.field });
+    case ADMIN_FIELDS.number.type:
+      return numberFieldToInputSchema({ field: props.field });
     default:
       throw new Error("unrecognized field type");
   }

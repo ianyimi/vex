@@ -1,4 +1,4 @@
-import { defineCollection, text } from "@vexcms/core"
+import { defineCollection, number, text } from "@vexcms/core"
 
 import { TABLE_SLUG_POSTS } from "~/db/constants"
 
@@ -15,5 +15,6 @@ export const posts = defineCollection({
     title: text({ required: true }),
     slug: text({ required: true }),
     excerpt: text(),
+    index: number(),
   },
 })

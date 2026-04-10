@@ -109,5 +109,6 @@ export default defineSchema({
     title: v.string(),
     slug: v.string(),
     excerpt: v.string(),
+    index: v.number()
   }),
 })

@@ -5,3 +5,4 @@ export * from "./validators";
 export * from "./inputSchemas";
 
 export * from "./text";
+export * from "./number";

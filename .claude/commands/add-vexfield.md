@@ -34,6 +34,7 @@ Also read these shared files to understand current registration state:
 - `packages/core/src/fields/constants.ts` — `ADMIN_FIELDS` registry
 - `packages/core/src/fields/types.ts` — `AdminField` union
 - `packages/core/src/fields/validators/index.ts` — `adminFieldToValidator` dispatch switch
+- `packages/core/src/fields/inputSchemas/index.ts` — `adminFieldToInputSchema` dispatch switch
 - `packages/react/src/components/fields/index.tsx` — `fieldInputComponents` map and barrel exports
 - `packages/react/src/adapter.ts` — `reactAdapter.fields` map
 
@@ -72,6 +73,7 @@ Use this checklist per package:
 - [ ] `constants.ts` — `ADMIN_FIELDS.<newField>` entry with correct `type`, `validator`, `defaultValue`
 - [ ] `types.ts` (fields root) — `<NewField>Field` included in `AdminField` union
 - [ ] `validators/index.ts` — `adminFieldToValidator` switch has a `case ADMIN_FIELDS.<newField>.type:` branch calling `<newField>FieldToValidator`
+- [ ] `inputSchemas/index.ts` — `adminFieldToInputSchema` switch has a `case ADMIN_FIELDS.<newField>.type:` branch calling `<newField>FieldToInputSchema`
 
 **React** (`packages/react/src/components/fields/<newField>/`):
 - [ ] `Cell.tsx` — `<NewField>FieldCell` component
@@ -138,6 +140,12 @@ After fixing names, audit the actual implementation logic in each file. Do not a
 - It calls `<newField>FieldToValidator({ field: props.field })` and returns the result
 - The import for `<newField>FieldToValidator` is present at the top of the file
 - The `@see` JSDoc links include the new validator function
+
+#### `inputSchemas/index.ts` — logic checks (shared dispatch)
+- A `case ADMIN_FIELDS.<newField>.type:` branch exists in the `adminFieldToInputSchema` switch
+- It calls `<newField>FieldToInputSchema({ field: props.field })` and returns the result
+- The import for `<newField>FieldToInputSchema` is present at the top of the file
+- The `default:` branch still throws — do not remove it
 
 #### `inputSchema.test.ts` — logic checks
 - The "required" test verifies that the schema rejects the correct values. For numbers, a required schema should accept `0` (not reject it). For strings, a required schema should reject `""`.
