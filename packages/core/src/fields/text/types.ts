@@ -1,4 +1,4 @@
-import { AdminFieldType } from "../constants";
+import { ADMIN_FIELDS } from "../constants";
 import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
 
 /**
@@ -45,7 +45,6 @@ import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`, `searchIndex`)
  */
 export interface TextFieldInput extends BaseFieldInput {
-  readonly type?: AdminFieldType;
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
@@ -79,7 +78,7 @@ export interface TextFieldInput extends BaseFieldInput {
  * @see {@link text} for the config function that produces this type
  */
 export interface TextField extends BaseField {
-  readonly type: AdminFieldType;
+  readonly type: typeof ADMIN_FIELDS.text.type;
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;
   /** Whether this field is required in the database schema. */
@@ -101,14 +100,5 @@ export interface TextField extends BaseField {
     value: number;
     /** Maximum allowed character length error message. */
     error?: string;
-  };
-  /** Description shown below the field in the admin form. */
-  description?: string;
-  /** Convex index name for this field. */
-  index?: string;
-  /** Full-text search index configuration for this field. */
-  searchIndex?: {
-    name: string;
-    filterFields: string[];
   };
 }

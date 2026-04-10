@@ -1,6 +1,7 @@
 import { ADMIN_FIELDS } from "../constants";
 import { AdminField } from "../types";
-import { textFieldToValidator } from "../text/validator";
+import { textFieldToValidator } from "../text";
+import { numberFieldToValidator } from "../number";
 
 /**
  * Converts any field definition to its Convex schema validator string.
@@ -19,5 +20,7 @@ export function adminFieldToValidator(props: { field: AdminField }) {
   switch (props.field.type) {
     case ADMIN_FIELDS.text.type:
       return textFieldToValidator({ field: props.field });
+    case ADMIN_FIELDS.number.type:
+      return numberFieldToValidator({ field: props.field })
   }
 }

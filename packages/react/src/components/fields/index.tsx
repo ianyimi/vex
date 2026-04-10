@@ -5,10 +5,12 @@ import {
 } from "@vexcms/core";
 import { ComponentPropsWithRef, ComponentType } from "react";
 import { TextFieldInput } from "./text";
+import { NumberFieldInput } from "./number";
 import { ADMIN_FIELDS, type AdminFieldType } from "@vexcms/core";
 import { cn } from "../../styles/utils";
 
 export * from "./text";
+export * from "./number";
 
 /**
  * Maps every `AdminFieldType` string to its corresponding input component.
@@ -20,7 +22,8 @@ export const fieldInputComponents: Record<
   AdminFieldType,
   ComponentType<InputComponentProps<AdminField>>
 > = {
-  [ADMIN_FIELDS.text.type]: TextFieldInput,
+  [ADMIN_FIELDS.text.type]: TextFieldInput as ComponentType<InputComponentProps<AdminField>>,
+  [ADMIN_FIELDS.number.type]: NumberFieldInput as ComponentType<InputComponentProps<AdminField>>,
 };
 
 /**

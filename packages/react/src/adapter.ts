@@ -5,8 +5,11 @@ import {
 } from "@vexcms/core";
 import type { ComponentType } from "react";
 
-import { TextFieldInput, TextFieldCell } from "./components/fields";
 import {
+  TextFieldInput,
+  TextFieldCell,
+  NumberFieldCell,
+  NumberFieldInput,
   CollectionEditView,
   CollectionListView,
   DashboardView,
@@ -46,6 +49,10 @@ export const reactAdapter: FrameworkAdapterInput<ReactHKT> =
       text: {
         input: TextFieldInput,
         cell: TextFieldCell,
+      },
+      number: {
+        input: NumberFieldInput,
+        cell: NumberFieldCell,
       },
     },
     views: {

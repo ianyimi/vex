@@ -1,4 +1,8 @@
-import { TextField } from "./text/types";
+import { NumberField } from "./number";
+import { TextField } from "./text";
+
+export * from "./text/types";
+export * from "./number/types";
 
 /**
  * Discriminated union of all field types in VexCMS.
@@ -8,6 +12,7 @@ import { TextField } from "./text/types";
  *
  * Currently includes:
  * - `TextField` — single-line text input
+ * - `NumberField` — numeric value (price, quantity, rating, etc.)
  *
  * More field types will be added as they're implemented.
  *
@@ -22,7 +27,7 @@ import { TextField } from "./text/types";
  * }
  * ```
  */
-export type AdminField = TextField;
+export type AdminField = TextField | NumberField;
 
 /**
  * Props passed to field input components rendered in the document edit form.

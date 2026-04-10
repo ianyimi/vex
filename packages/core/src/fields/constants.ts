@@ -14,11 +14,11 @@ export const ADMIN_FIELDS = {
     validator: "v.string()",
     defaultValue: "",
   },
-  // number: {
-  //   type: "number",
-  //   validator: "v.number()",
-  //   defaultValue: 0,
-  // },
+  number: {
+    type: "number",
+    validator: "v.number()",
+    defaultValue: 0,
+  },
   // checkbox: {
   //   type: "checkbox",
   //   validator: "v.boolean()",
