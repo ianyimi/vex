@@ -1,9 +1,12 @@
 "use client";
 
 import type { CheckboxField } from "@vexcms/core";
-import { Label } from "../../ui/label";
-import { createFieldInput } from "../../form/createFieldInput";
-import { FormError } from "../../form/FormError";
+import {
+  createFieldInput,
+  FormLabel,
+  FormDescription,
+  FormError,
+} from "../../form";
 import { Checkbox } from "../../ui/checkbox";
 
 /**
@@ -48,16 +51,9 @@ export const CheckboxFieldInput = createFieldInput<boolean, CheckboxField>(
             onBlur={field.handleBlur}
             readOnly={fieldDef.admin.readOnly}
           />
-          <Label htmlFor={name} className="relative">
-            {fieldDef.label || name}
-            {/* {fieldDef.required && <span className="text-red-500">*</span>} */}
-          </Label>
+          <FormLabel field={fieldDef} name={name} hideRequired />
         </div>
-        {fieldDef.admin.description && (
-          <p className="text-[0.8rem] text-muted-foreground">
-            {fieldDef.admin.description}
-          </p>
-        )}
+        <FormDescription field={fieldDef} />
         <FormError field={field} submissionAttempts={submissionAttempts} />
       </div>
     );

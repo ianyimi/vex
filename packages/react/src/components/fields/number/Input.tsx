@@ -1,10 +1,13 @@
 "use client";
 
 import type { NumberField } from "@vexcms/core";
-import { Label } from "../../ui/label";
 import { Input } from "../../ui/input";
-import { createFieldInput } from "../../form/createFieldInput";
-import { FormError } from "../../form/FormError";
+import {
+  createFieldInput,
+  FormDescription,
+  FormLabel,
+  FormError,
+} from "../../form";
 
 /**
  * Number field input component for the admin edit form.
@@ -40,10 +43,7 @@ export const NumberFieldInput = createFieldInput<number, NumberField>(
   ({ name, fieldDef, field, submissionAttempts }) => {
     return (
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={name} className="relative">
-          {fieldDef.label || name}
-          {fieldDef.required && <span className="text-red-500">*</span>}
-        </Label>
+        <FormLabel field={fieldDef} name={name} />
         <Input
           id={name}
           type="number"
@@ -53,11 +53,7 @@ export const NumberFieldInput = createFieldInput<number, NumberField>(
           placeholder={fieldDef.admin.placeholder}
           readOnly={fieldDef.admin.readOnly}
         />
-        {fieldDef.admin.description && (
-          <p className="text-[0.8rem] text-muted-foreground">
-            {fieldDef.admin.description}
-          </p>
-        )}
+        <FormDescription field={fieldDef} />
         <FormError field={field} submissionAttempts={submissionAttempts} />
       </div>
     );

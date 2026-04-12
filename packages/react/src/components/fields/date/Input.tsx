@@ -2,10 +2,13 @@
 
 import { useMemo, useCallback, useRef, useEffect } from "react";
 import type { DateField } from "@vexcms/core";
-import { Label } from "../../ui/label";
-import { createFieldInput } from "../../form/createFieldInput";
-import { FormError } from "../../form/FormError";
-import { DateTimePicker } from "../../ui/datetime/date-picker";
+import {
+  createFieldInput,
+  FormError,
+  FormDescription,
+  FormLabel,
+} from "../../form";
+import { DateTimePicker } from "../../ui";
 
 /**
  * Date field input component for the admin edit form.
@@ -72,10 +75,7 @@ export const DateFieldInput = createFieldInput<number, DateField>(
 
     return (
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={name} className="relative">
-          {fieldDef.label || name}
-          {fieldDef.required && <span className="text-red-500">*</span>}
-        </Label>
+        <FormLabel field={fieldDef} name={name} />
         <DateTimePicker
           value={dateValue}
           onChange={handleChange}
@@ -86,11 +86,7 @@ export const DateFieldInput = createFieldInput<number, DateField>(
           use12HourFormat={true}
           timePicker={timePickerConfig}
         />
-        {fieldDef.admin.description && (
-          <p className="text-[0.8rem] text-muted-foreground">
-            {fieldDef.admin.description}
-          </p>
-        )}
+        <FormDescription field={fieldDef} />
         <FormError field={field} submissionAttempts={submissionAttempts} />
       </div>
     );
