@@ -22,15 +22,16 @@ import { VexConfig, VexConfigInput } from "./types";
  * @see {@link VexConfigInput} for the user-facing input type
  * @see {@link VexConfig} for the resolved return type
  */
-export function defineConfig(config: VexConfigInput): VexConfig {
+export function defineConfig(config?: VexConfigInput): VexConfig {
   return {
     collections: [],
+    basePath: "/admin",
     ...config,
     admin: {
-      ...config.admin,
+      ...config?.admin,
       sidebar: {
         side: "left",
-        ...config.admin?.sidebar,
+        ...config?.admin?.sidebar,
       },
     },
   };

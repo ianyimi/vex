@@ -1,5 +1,10 @@
-import type { CellComponentProps } from "@vexcms/core";
-import type { TextField } from "@vexcms/core";
+import {
+  addLeadingSlash,
+  type CellComponentProps,
+  type TextField,
+} from "@vexcms/core";
+import { VexLink } from "../../ui";
+import { useVexConfig } from "../../../context/VexConfigContext";
 
 /**
  * Text field cell component for the data-table list view.
@@ -19,9 +24,24 @@ import type { TextField } from "@vexcms/core";
  * ```
  */
 export function TextFieldCell(props: CellComponentProps<TextField>) {
-  if (props.value.length > 80) {
-    return <span title={props.value}>{props.value.slice(0, 77)}...</span>;
+  const config = useVexConfig();
+  const basePath = addLeadingSlash(config.basePath);
+  if (props.isTitleField) {
+    return (
+      <VexLink
+        href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}
+      >
+        <span className="font-bold" title={props.value}>
+          {props.value.length > 77
+            ? `${props.value.slice(0, 77)}...`
+            : props.value}
+        </span>
+      </VexLink>
+    );
   }
-
-  return <span>{props.value}</span>;
+  return (
+    <span title={props.value}>
+      {props.value.length > 77 ? `${props.value.slice(0, 77)}...` : props.value}
+    </span>
+  );
 }

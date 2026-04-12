@@ -1,6 +1,10 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { ADMIN_FIELDS, type VexDocument } from "@vexcms/core";
-import type { NumberField } from "@vexcms/core";
+import {
+  ADMIN_FIELDS,
+  CollectionConfig,
+  type NumberField,
+  type TDocument,
+} from "@vexcms/core";
 import { NumberFieldCell } from "./Cell";
 
 /**
@@ -13,6 +17,7 @@ import { NumberFieldCell } from "./Cell";
  * @param props.fieldDef - Resolved number field definition
  * @param props.fieldKey - Field key from collection.fields
  * @param props.isTitleField - Whether this is the title field (useAsTitle)
+ * @param props.collection - Parent collection config, forwarded to the cell component
  * @returns TanStack Table column definition
  *
  * @example
@@ -27,8 +32,9 @@ import { NumberFieldCell } from "./Cell";
 export function numberFieldToColumnDef(props: {
   fieldDef: NumberField;
   fieldKey: string;
+  collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<VexDocument, number> {
+}): ColumnDef<TDocument, number> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
@@ -39,8 +45,10 @@ export function numberFieldToColumnDef(props: {
       return (
         <NumberFieldCell
           value={value ?? ADMIN_FIELDS.number.defaultValue}
-          row={row.original}
+          row={row}
+          collection={props.collection}
           fieldDef={props.fieldDef}
+          isTitleField={props.isTitleField ?? false}
         />
       );
     },

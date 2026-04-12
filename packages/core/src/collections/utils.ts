@@ -1,7 +1,7 @@
 import { z, type ZodSchema } from "zod";
 import type { CollectionConfig } from "./types";
 import { adminFieldToInputSchema } from "../fields";
-import type { VexDocument } from "../convex";
+import type { TDocument } from "../convex";
 
 /**
  * Builds the `defaultValues` object for a TanStack Form instance from a collection.
@@ -28,7 +28,7 @@ import type { VexDocument } from "../convex";
  */
 export function getCollectionDefaultValues(props: {
   collection: CollectionConfig;
-  document?: VexDocument;
+  document?: TDocument;
 }) {
   const res: Record<string, unknown> = {};
   for (const [fieldKey, fieldDef] of Object.entries(props.collection.fields)) {

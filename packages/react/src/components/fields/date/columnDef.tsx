@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { VexDocument } from "@vexcms/core";
+import type { CollectionConfig, VexDocument } from "@vexcms/core";
 import type { DateField } from "@vexcms/core";
 import { DateFieldCell } from "./Cell";
 
@@ -13,6 +13,7 @@ import { DateFieldCell } from "./Cell";
  * @param props.fieldDef - Resolved date field definition
  * @param props.fieldKey - Field key from collection.fields
  * @param props.isTitleField - Whether this is the title field (useAsTitle)
+ * @param props.collection - Parent collection config, forwarded to the cell component for title-field link building
  * @returns TanStack Table column definition
  *
  * @example
@@ -27,6 +28,7 @@ import { DateFieldCell } from "./Cell";
 export function dateFieldToColumnDef(props: {
   fieldDef: DateField;
   fieldKey: string;
+  collection: CollectionConfig;
   isTitleField?: boolean;
 }): ColumnDef<VexDocument, number> {
   return {
@@ -39,8 +41,10 @@ export function dateFieldToColumnDef(props: {
       return (
         <DateFieldCell
           value={value}
-          row={row.original}
+          row={row}
+          collection={props.collection}
           fieldDef={props.fieldDef}
+          isTitleField={props.isTitleField ?? false}
         />
       );
     },

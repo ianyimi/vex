@@ -2,13 +2,27 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
-import { vexConvexApi } from "@vexcms/core";
-import type { CollectionListViewProps } from "@vexcms/core";
+import { vexConvexApi, type VexDocument } from "@vexcms/core";
+import type { CollectionConfig, CollectionListViewProps } from "@vexcms/core";
 import { Button } from "../ui/button";
 import { VexLink } from "../ui/VexLink";
 import { MODALS } from "../modals/constants";
 import { CreateDocumentModal } from "../modals";
 import { useVexConfig } from "../../context/VexConfigContext";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "../ui/table";
+import { getCollectionColumnDefs } from "../fields";
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 
 /**
  * Collection list view component.
@@ -81,9 +95,57 @@ export function CollectionListView(props: CollectionListViewProps) {
         </div>
       ) : (
         <div className="border grid place-items-center rounded-md">
-          <p>add data table here. {documents.length} documents found.</p>
+          <CollectionListDataTable
+            documents={documents}
+            collection={collection}
+          />
         </div>
       )}
     </div>
+  );
+}
+
+function CollectionListDataTable({
+  documents,
+  collection,
+}: {
+  documents: VexDocument[];
+  collection: CollectionConfig;
+}) {
+  const columnDefs = getCollectionColumnDefs({ collection });
+  const table = useReactTable({
+    data: documents,
+    columns: columnDefs,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  return (
+    <Table>
+      <TableHeader>
+        {table.getHeaderGroups().map((hg) => (
+          <TableRow key={hg.id}>
+            {hg.headers.map((header) => (
+              <TableHead key={header.id}>
+                {flexRender(
+                  header.column.columnDef.header,
+                  header.getContext(),
+                )}
+              </TableHead>
+            ))}
+          </TableRow>
+        ))}
+      </TableHeader>
+      <TableBody>
+        {table.getRowModel().rows.map((row) => (
+          <TableRow key={row.id}>
+            {row.getVisibleCells().map((cell) => (
+              <TableCell key={cell.id}>
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }

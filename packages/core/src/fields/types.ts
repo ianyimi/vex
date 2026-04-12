@@ -2,6 +2,9 @@ import { NumberField } from "./number";
 import { TextField } from "./text";
 import { CheckboxField } from "./checkbox";
 import { DateField } from "./date";
+import { TDocument } from "../convex";
+import { CollectionConfig } from "../collections";
+import { Row } from "@tanstack/react-table";
 
 export * from "./text/types";
 export * from "./number/types";
@@ -97,7 +100,11 @@ export interface CellComponentProps<TField extends AdminField = AdminField> {
   /** The raw field value from the document — typed to the field's value type. */
   value: TField["defaultValue"];
   /** The full document row, for cases where the cell needs to read other fields. */
-  row: Record<string, unknown>;
+  row: Row<TDocument>;
   /** The resolved field definition — narrows to the specific field type via `TField`. */
   fieldDef: TField;
+  /** Whether this cell is the field designated as `useAsTitle` — used to render a clickable edit link. */
+  isTitleField: boolean;
+  /** The parent collection config — used by title cells to build the edit link `href`. */
+  collection: CollectionConfig;
 }

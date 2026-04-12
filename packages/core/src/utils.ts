@@ -71,3 +71,16 @@ export function plural(word: string): string {
   }
   return word + "s";
 }
+
+/**
+ * Ensures a string starts with a `/`, prepending one if it is absent.
+ *
+ * @param text - The path string to normalise.
+ * @returns The path with a guaranteed leading slash (e.g. `"admin"` → `"/admin"`).
+ */
+export function addLeadingSlash(text: string): string {
+  if (text.charAt(0) !== "/") {
+    return `/${text}`;
+  }
+  return text;
+}

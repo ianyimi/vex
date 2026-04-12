@@ -1,6 +1,10 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { ADMIN_FIELDS, type VexDocument } from "@vexcms/core";
-import type { CheckboxField } from "@vexcms/core";
+import {
+  ADMIN_FIELDS,
+  CollectionConfig,
+  type CheckboxField,
+  type TDocument,
+} from "@vexcms/core";
 import { CheckboxFieldCell } from "./Cell";
 
 /**
@@ -13,6 +17,7 @@ import { CheckboxFieldCell } from "./Cell";
  * @param props.fieldDef - Resolved checkbox field definition
  * @param props.fieldKey - Field key from `collection.fields`
  * @param props.isTitleField - Whether this is the title field (`useAsTitle`)
+ * @param props.collection
  * @returns TanStack Table column definition typed to `boolean`
  *
  * @example
@@ -27,8 +32,9 @@ import { CheckboxFieldCell } from "./Cell";
 export function checkboxFieldToColumnDef(props: {
   fieldDef: CheckboxField;
   fieldKey: string;
+  collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<VexDocument, boolean> {
+}): ColumnDef<TDocument, boolean> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
@@ -39,8 +45,10 @@ export function checkboxFieldToColumnDef(props: {
       return (
         <CheckboxFieldCell
           value={value ?? ADMIN_FIELDS.checkbox.defaultValue}
-          row={row.original}
+          row={row}
+          collection={props.collection}
           fieldDef={props.fieldDef}
+          isTitleField={props.isTitleField ?? false}
         />
       );
     },

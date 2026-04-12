@@ -21,5 +21,5 @@ export function DateFieldCell(props: CellComponentProps<DateField>) {
     return null;
   }
   const date = new Date(props.value);
-  return <span>{date.toLocaleDateString()}</span>;
+  return <span>{date.toDateString()}</span>;
 }

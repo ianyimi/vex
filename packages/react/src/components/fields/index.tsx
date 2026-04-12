@@ -2,14 +2,25 @@ import {
   InputComponentProps,
   AdminField,
   CollectionConfig,
+  CellComponentProps,
+  TDocument,
 } from "@vexcms/core";
 import { ComponentPropsWithRef, ComponentType } from "react";
-import { TextFieldInput } from "./text";
-import { NumberFieldInput } from "./number";
-import { CheckboxFieldInput } from "./checkbox";
-import { DateFieldInput } from "./date";
+import { TextFieldCell, TextFieldInput, textFieldToColumnDef } from "./text";
+import {
+  NumberFieldCell,
+  NumberFieldInput,
+  numberFieldToColumnDef,
+} from "./number";
+import {
+  CheckboxFieldCell,
+  CheckboxFieldInput,
+  checkboxFieldToColumnDef,
+} from "./checkbox";
+import { DateFieldCell, DateFieldInput, dateFieldToColumnDef } from "./date";
 import { ADMIN_FIELDS, type AdminFieldType } from "@vexcms/core";
 import { cn } from "../../styles/utils";
+import { ColumnDef } from "@tanstack/react-table";
 
 export * from "./text";
 export * from "./number";
@@ -39,6 +50,20 @@ export const fieldInputComponents: Record<
     InputComponentProps<AdminField>
   >,
 };
+
+/**
+ * Returns the input component registered for a given field type, or
+ * `undefined` if none is registered.
+ *
+ * Used by `CollectionEditView` to render one input per field without
+ * importing each component directly.
+ *
+ * @param field - The `AdminFieldType` string (e.g. `"text"`).
+ * @returns The matching `ComponentType`, or `undefined` if the type is unknown.
+ */
+export function fieldToInputComponent(field: AdminFieldType) {
+  return fieldInputComponents[field];
+}
 
 /**
  * Renders all field input components for a collection's fields.
@@ -86,7 +111,31 @@ export function RenderFieldInputComponents(
 }
 
 /**
- * Returns the input component registered for a given field type, or
+ * Maps every `AdminFieldType` string to its corresponding input component.
+ *
+ * Mirrors `reactAdapter.fields` — both must be kept in sync when a new
+ * field type is added to `@vexcms/core`.
+ */
+export const fieldCellComponents: Record<
+  AdminFieldType,
+  ComponentType<CellComponentProps<AdminField>>
+> = {
+  [ADMIN_FIELDS.text.type]: TextFieldCell as ComponentType<
+    CellComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.number.type]: NumberFieldCell as ComponentType<
+    CellComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.checkbox.type]: CheckboxFieldCell as ComponentType<
+    CellComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.date.type]: DateFieldCell as ComponentType<
+    CellComponentProps<AdminField>
+  >,
+};
+
+/**
+ * Returns the cell component registered for a given field type, or
  * `undefined` if none is registered.
  *
  * Used by `CollectionEditView` to render one input per field without
@@ -95,6 +144,79 @@ export function RenderFieldInputComponents(
  * @param field - The `AdminFieldType` string (e.g. `"text"`).
  * @returns The matching `ComponentType`, or `undefined` if the type is unknown.
  */
-export function fieldToInputComponent(field: AdminFieldType) {
-  return fieldInputComponents[field];
+export function fieldToCellComponent(field: AdminFieldType) {
+  return fieldCellComponents[field];
+}
+
+/**
+ * Builds TanStack Table column definitions for every field in a collection.
+ *
+ * Iterates the collection's `fields` map and delegates to the appropriate
+ * `*FieldToColumnDef` helper based on `fieldDef.type`. Fields with an
+ * unrecognised type are skipped. The resulting array is ready to pass
+ * directly to `useReactTable({ columns })`.
+ *
+ * @param props - Input props.
+ * @param props.collection - The collection whose fields drive the column shape.
+ * @returns An array of TanStack Table `ColumnDef` objects, one per field.
+ *
+ * @example
+ * ```ts
+ * const columns = getCollectionColumnDefs({ collection: postsCollection });
+ * const table = useReactTable({ data: documents, columns, getCoreRowModel: getCoreRowModel() });
+ * ```
+ */
+export function getCollectionColumnDefs(props: {
+  collection: CollectionConfig;
+}): ColumnDef<TDocument, any>[] {
+  const columnDefs: ColumnDef<TDocument, any>[] = [];
+  const { collection } = props;
+  for (const [fieldKey, fieldDef] of Object.entries(collection.fields)) {
+    const isTitleField = fieldKey === collection.admin.useAsTitle;
+    switch (fieldDef.type) {
+      case ADMIN_FIELDS.text.type:
+        columnDefs.push(
+          textFieldToColumnDef({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+      case ADMIN_FIELDS.number.type:
+        columnDefs.push(
+          numberFieldToColumnDef({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+      case ADMIN_FIELDS.checkbox.type:
+        columnDefs.push(
+          checkboxFieldToColumnDef({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+      case ADMIN_FIELDS.date.type:
+        columnDefs.push(
+          dateFieldToColumnDef({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+      default:
+      //TODO: throw error here
+    }
+  }
+  return columnDefs;
 }

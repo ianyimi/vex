@@ -109,6 +109,13 @@ export interface VexConfigInput {
   admin?: AdminConfigInput;
   /** Content collections to register with the CMS. Defaults to `[]` if omitted. */
   collections?: CollectionConfig[];
+  /**
+   * URL prefix for all admin panel routes.
+   *
+   * Default: `"/admin"`. Override when mounting the admin UI at a custom path
+   * (e.g. `"/cms"` or `"/dashboard/admin"`).
+   */
+  basePath?: string;
 }
 
 /**
@@ -122,4 +129,6 @@ export interface VexConfig {
   admin: AdminConfig;
   /** All registered content collections — always an array after defaults are applied. */
   collections: CollectionConfig[];
+  /** URL prefix for all admin panel routes — always set after defaults are applied. */
+  basePath: string;
 }

@@ -109,6 +109,8 @@ export default defineSchema({
     title: v.string(),
     slug: v.string(),
     excerpt: v.string(),
-    index: v.number()
+    index: v.number(),
+    published: v.optional(v.boolean()),
+    publishedAt: v.optional(v.number()),
   }),
 })

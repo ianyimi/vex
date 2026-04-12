@@ -44,19 +44,16 @@ export const DateFieldInput = createFieldInput<number, DateField>(
   function DateFieldInputRender(props) {
     const { name, fieldDef, field, submissionAttempts } = props;
 
-    // Use ref to store field so callback doesn't change
     const fieldRef = useRef(field);
     useEffect(() => {
       fieldRef.current = field;
     }, [field]);
 
-    // Memoize Date to prevent infinite re-renders
     const dateValue = useMemo(
       () => (field.state.value ? new Date(field.state.value) : undefined),
       [field.state.value],
     );
 
-    // Stable onChange callback using ref
     const handleChange = useCallback((date: Date | undefined) => {
       if (date) {
         fieldRef.current.handleChange(date.getTime());

@@ -35,13 +35,11 @@ export const list = query({
  *
  * Used internally by `CollectionEditView` in `@vexcms/react` via `vexConvexApi.get`.
  *
- * @param collection - Collection slug (must match a Convex table name)
  * @param id - The Convex document ID as a string
  * @returns The document, or `null` if not found
  */
 export const get = query({
   args: {
-    collection: v.string(),
     id: v.string(),
   },
   handler: async (ctx, args) => {
@@ -74,13 +72,11 @@ export const create = mutation({
  * Patches an existing document — only specified fields are updated,
  * unspecified fields are left unchanged.
  *
- * @param collection - Collection slug
  * @param id - The Convex document ID as a string
  * @param data - The fields to update (partial patch)
  */
 export const update = mutation({
   args: {
-    collection: v.string(),
     id: v.string(),
     data: v.any(),
   },

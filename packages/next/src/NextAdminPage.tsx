@@ -71,7 +71,6 @@ export async function NextAdminPage(props: {
 
   if (documentId) {
     const initialData = await fetchQuery(vexConvexApi.get, {
-      collection: collectionSlug,
       id: documentId,
     });
     return (

@@ -1,6 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { VexDocument } from "@vexcms/core";
-import type { TextField } from "@vexcms/core";
+import type { CollectionConfig, TDocument, TextField } from "@vexcms/core";
 import { TextFieldCell } from "./Cell";
 
 /**
@@ -13,6 +12,7 @@ import { TextFieldCell } from "./Cell";
  * @param props.fieldDef - Resolved text field definition
  * @param props.fieldKey - Field key from collection.fields
  * @param props.isTitleField - Whether this is the title field (useAsTitle)
+ * @param props.collection - Parent collection config, forwarded to `TextFieldCell` to build the edit link `href`
  * @returns TanStack Table column definition
  *
  * @example
@@ -27,8 +27,9 @@ import { TextFieldCell } from "./Cell";
 export function textFieldToColumnDef(props: {
   fieldDef: TextField;
   fieldKey: string;
+  collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<VexDocument, string> {
+}): ColumnDef<TDocument, string> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
@@ -39,8 +40,10 @@ export function textFieldToColumnDef(props: {
       return (
         <TextFieldCell
           value={value ?? ""}
-          row={row.original}
+          row={row}
+          collection={props.collection}
           fieldDef={props.fieldDef}
+          isTitleField={props.isTitleField ?? false}
         />
       );
     },

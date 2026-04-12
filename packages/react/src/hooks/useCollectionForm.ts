@@ -3,7 +3,7 @@ import {
   type CollectionConfig,
   getCollectionDefaultValues,
   getCollectionInputSchema,
-  type VexDocument,
+  type TDocument,
 } from "@vexcms/core";
 import type { AnyFormApi } from "../components/form/AppFormContext";
 
@@ -22,18 +22,18 @@ import type { AnyFormApi } from "../components/form/AppFormContext";
 export function useCollectionForm(
   props: {
     collection: CollectionConfig;
-    document?: VexDocument;
+    document?: TDocument;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } & FormOptions<any>,
 ): AnyFormApi {
   const { collection, document, validators, ...formOptions } = props;
   return useForm({
     defaultValues: getCollectionDefaultValues({ collection, document }),
+    ...formOptions,
     validators: {
       onSubmitAsync: getCollectionInputSchema({ collection }),
       onBlur: getCollectionInputSchema({ collection }),
       ...validators,
     },
-    ...formOptions,
   });
 }

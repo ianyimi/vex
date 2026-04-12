@@ -27,6 +27,17 @@ export interface VexDocument {
 }
 
 /**
+ * Alias for `VexDocument` that also satisfies `Record<string, unknown>`.
+ *
+ * Use this type when a generic `Record` index signature is required alongside
+ * the Convex system fields — for example, as the `data` type in TanStack Table
+ * or as the form `defaultValues` record.
+ *
+ * @see {@link VexDocument} for the base type
+ */
+export type TDocument = Record<string, unknown> & VexDocument;
+
+/**
  * Typed `anyApi` references to the VexCMS generic Convex collection functions.
  *
  * These point to functions that users copy into `convex/vex/collections.ts`
@@ -68,7 +79,7 @@ export const vexConvexApi = {
   get: anyApi.vex.collections.get as FunctionReference<
     "query",
     "public",
-    { collection: string; id: string },
+    { id: string },
     VexDocument | null
   >,
 
@@ -88,7 +99,8 @@ export const vexConvexApi = {
   update: anyApi.vex.collections.update as FunctionReference<
     "mutation",
     "public",
-    { collection: string; id: string; data: Record<string, unknown> },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    { id: string; data: any },
     void
   >,
 
