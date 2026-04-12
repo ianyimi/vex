@@ -1,6 +1,6 @@
 # Spec 20: New Field Types & @vexcms/better-auth Adapter
 
-**Status:** Not started  
+**Status:** In progress — Part 1 partially complete (`checkbox`, `number`, `date` implemented; `select`, `imageUrl`, `password`, `json`, `relationship` remaining). Part 2 not started.  
 **Depends on:** Current `text` field implementation (reference implementation)  
 **Supersedes (auth):** `04-auth-adapter-spec.md` — the auth adapter is now a collection factory, not a session/middleware interface
 
@@ -10,7 +10,7 @@
 
 Two sequential workstreams:
 
-1. **New field types** — implement `boolean`, `number`, `select`, `date`, `imageUrl`, `password`, `json`, and `relationship` following the pattern in `adding-a-field-type.md`.
+1. **New field types** — implement `checkbox`, `number`, `select`, `date`, `imageUrl`, `password`, `json`, and `relationship` following the pattern in `adding-a-field-type.md`.
 2. **`@vexcms/better-auth`** — implement the empty `packages/better-auth` package as a collection factory that builds VexCMS `CollectionConfig[]` from a better-auth instance.
 
 ---
@@ -20,7 +20,7 @@ Two sequential workstreams:
 ### Design decisions
 
 - `email` and `url` are **not** separate field types. Use `text()` for those.
-- `boolean()` (not `checkbox()`) — function name matches the type string.
+- `checkbox()` (not `boolean()`) — name describes the UI widget, not the data type. The Convex validator is `v.boolean()`, the TypeScript value type is `boolean`, but the field function and type string are both `"checkbox"`.
 - `relationship()` (not `reference()`) — points to documents in another VexCMS collection.
 - `imageUrl()` is its own type distinct from `text` because it has image preview validation behavior that cannot be derived from a text field option.
 
@@ -30,7 +30,7 @@ Before building React field components, add these to `packages/react/src/compone
 
 | File | Base UI primitive | Used by |
 |---|---|---|
-| `checkbox.tsx` | `@base-ui/react/checkbox` | `boolean` input |
+| `checkbox.tsx` | `@base-ui/react/checkbox` | `checkbox` input |
 | `select.tsx` | `@base-ui/react/select` | `select` and `relationship` inputs |
 | `textarea.tsx` | `@base-ui/react` or native `<textarea>` | `json` input |
 
@@ -42,14 +42,13 @@ Follow `adding-a-field-type.md` for every field. Specific requirements per field
 
 ---
 
-#### `boolean`
+#### `checkbox`
 
 - **Convex validator:** `v.boolean()`
 - **Form value type:** `boolean`
 - **Default value:** `false`
-- **Admin config default:** `width: "half"` (overrides the `"full"` base default — checkboxes look odd full-width)
 - **Input:** `<Checkbox>` with label. Label sits to the right of the checkbox.
-- **Cell:** Checkmark icon for `true`, dash for `false`.
+- **Cell:** `"Yes"` for `true`, `"No"` for `false`. Falls back to `—` when undefined.
 - **Zod schema:** `z.boolean()`
 
 ---
@@ -59,10 +58,9 @@ Follow `adding-a-field-type.md` for every field. Specific requirements per field
 - **Convex validator:** `v.number()`
 - **Form value type:** `number`
 - **Default value:** `0`
-- **Admin config default:** `cellAlignment: "right"`
 - **Config options:** `min?: { value: number; error?: string }` and `max?: { value: number; error?: string }` mirroring the text field's `min`/`max` pattern
 - **Input:** `<Input type="number" />`
-- **Cell:** Right-aligned number string
+- **Cell:** Number string (inherits default `cellAlignment: "left"`)
 - **Zod schema:** `z.number()`, with `.min()` / `.max()` applied when configured
 
 ---
@@ -85,11 +83,13 @@ Follow `adding-a-field-type.md` for every field. Specific requirements per field
 
 - **Convex validator:** `v.number()` (Unix millisecond timestamp)
 - **Form value type:** `number`
-- **Default value:** `0`
-- **Input:** `<Input type="datetime-local" />`. Convert between Unix ms timestamp and the ISO local string format on read/write:
-  - display: `new Date(timestamp).toISOString().slice(0, 16)`
-  - save: `new Date(inputValue).getTime()`
-- **Cell:** Formatted date string using `date-fns` (already a dependency). Use `format(new Date(value), "PPp")` or similar.
+- **Default value:** `undefined`
+- **Config options:**
+  - `time?: { hidden?: boolean; use12HourFormat?: boolean; timePicker?: { hour: boolean; minute: boolean; second: boolean } }` — time picker configuration. Defaults to `{ hidden: false, use12HourFormat: true, timePicker: { hour: true, minute: true, second: false } }`. Each key is individually overridable.
+  - `min?: number` — optional minimum Unix ms timestamp
+  - `max?: number` — optional maximum Unix ms timestamp
+- **Input:** Custom `<DateTimePicker>` component. Drives `hideTime`, `use12HourFormat`, and `timePicker` props directly from `fieldDef.time`. Also passes `clearable` and `disabled` (when `fieldDef.admin.readOnly`). `modal` is not passed — uses the picker's own default.
+- **Cell:** `new Date(value).toLocaleDateString()`. Returns `null` if value is falsy.
 - **Zod schema:** `z.number()`
 
 ---
@@ -158,7 +158,7 @@ Follow `adding-a-field-type.md` for every field. Specific requirements per field
 
 Build fields in this order (simpler ones first to establish patterns before tackling complex ones):
 
-1. `boolean` — simplest, introduces checkbox UI primitive
+1. `checkbox` — simplest, introduces checkbox UI primitive
 2. `number` — straightforward numeric input
 3. `select` — introduces Select UI primitive (needed by `relationship`)
 4. `date` — timestamp conversion logic
@@ -230,19 +230,19 @@ All read-only system fields use `admin: { readOnly: true }`.
 |---|---|
 | `name` | `text()` |
 | `email` | `text({ required: true })` |
-| `emailVerified` | `boolean({ admin: { readOnly: true } })` |
+| `emailVerified` | `checkbox({ admin: { readOnly: true } })` |
 | `image` | `imageUrl()` |
 | `createdAt` | `date({ admin: { readOnly: true } })` |
 | `updatedAt` | `date({ admin: { readOnly: true } })` |
 | `role` (admin plugin) | `select({ options: ["admin", "user"] })` |
-| `banned` (admin plugin) | `boolean()` |
+| `banned` (admin plugin) | `checkbox()` |
 | `banReason` (admin plugin) | `text()` |
 | `banExpires` (admin plugin) | `date()` |
-| `twoFactorEnabled` (two-factor plugin) | `boolean({ admin: { readOnly: true } })` |
+| `twoFactorEnabled` (two-factor plugin) | `checkbox({ admin: { readOnly: true } })` |
 | `username` (username plugin) | `text()` |
 | `phoneNumber` (phone-number plugin) | `text()` |
-| `phoneNumberVerified` (phone-number plugin) | `boolean({ admin: { readOnly: true } })` |
-| `isAnonymous` (anonymous plugin) | `boolean({ admin: { readOnly: true } })` |
+| `phoneNumberVerified` (phone-number plugin) | `checkbox({ admin: { readOnly: true } })` |
+| `isAnonymous` (anonymous plugin) | `checkbox({ admin: { readOnly: true } })` |
 
 **session** (always)
 
@@ -293,8 +293,8 @@ All read-only system fields use `admin: { readOnly: true }`.
 | `start` | `text({ admin: { readOnly: true } })` |
 | `key` | `password()` |
 | `userId` | `relationship({ collection: "user" })` |
-| `enabled` | `boolean()` |
-| `rateLimitEnabled` | `boolean()` |
+| `enabled` | `checkbox()` |
+| `rateLimitEnabled` | `checkbox()` |
 | `rateLimitTimeWindow` | `number({ admin: { readOnly: true } })` |
 | `rateLimitMax` | `number()` |
 | `requestCount` | `number({ admin: { readOnly: true } })` |
@@ -335,3 +335,31 @@ export default defineConfig({
 4. Update `VexConfigInput` and `defineConfig()` to accept and merge `auth.collections`
 5. `packages/better-auth/src/` — `betterAuthAdapter()` collection factory
 6. Wire up in `apps/www/src/vex.config.ts` — replace stubs, pass real auth instance
+
+---
+
+## Implementation Notes
+
+### Completed (synced 2026-04-11)
+
+**UI primitives:** `checkbox.tsx` and `select.tsx` are implemented. `textarea.tsx` is not yet built.
+
+**`checkbox` field** — Implemented as specced with the following intentional deviations:
+- The function name is `checkbox()` and the type string is `"checkbox"` (not `boolean`) — the field type names describe the UI widget, not the data type.
+- `admin.width` defaults to `"full"` (not `"half"`). The original spec proposed overriding to "half" but the implementation keeps the base default.
+- `CheckboxFieldCell` renders `"Yes"` / `"No"` text (not icons). Simpler, no icon import required.
+
+**`number` field** — Implemented as specced with one deviation:
+- `admin.cellAlignment` defaults to `"left"` (not `"right"`). The original spec proposed overriding to "right" but the implementation keeps the base default.
+
+**`date` field** — Implemented with notable deviations from spec:
+- `defaultValue` is `undefined` (not `0`). An undefined default means the field starts empty rather than epoch.
+- `time` config option is a full config object `{ hidden, use12HourFormat, timePicker }` (not a simple boolean). Defaults are merged in `date()` so every key is always present on `DateField.time`. This allows `DateFieldInput` to drive all `<DateTimePicker>` props directly from `fieldDef.time` without conditional logic.
+- `DateField` also accepts optional `min?: number` and `max?: number` timestamp constraints (not in spec).
+- Input uses `<DateTimePicker>` component. `modal` prop is not passed. Drives `hideTime`, `use12HourFormat`, and `timePicker` from `fieldDef.time`.
+- Cell renders via `new Date(value).toLocaleDateString()` instead of `date-fns`.
+
+### Remaining work
+- `select`, `imageUrl`, `password`, `json`, `relationship` field types
+- `textarea.tsx` UI primitive
+- Part 2: `@vexcms/better-auth` auth adapter (entirely not started)

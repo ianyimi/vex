@@ -14,7 +14,15 @@ import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
  *   type:     "date",
  *   label:    "",       // inferred from the field key by defineCollection
  *   required: false,    // field is optional by default
- *   time:     false,    // date-only picker; set true to show a time-of-day picker
+ *   time: {
+ *     hidden:         false, // time picker is visible alongside the calendar
+ *     use12HourFormat: true, // AM/PM format (set false for 24-hour)
+ *     timePicker: {
+ *       hour:   true,  // hour selector shown
+ *       minute: true,  // minute selector shown
+ *       second: false, // seconds hidden
+ *     },
+ *   },
  *   admin: {
  *     hidden:        false,   // visible in the admin form
  *     readOnly:      false,   // editable by default
@@ -33,14 +41,22 @@ import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
  * // Required event date with a database index
  * eventDate: date({ required: true, index: "by_event_date" })
  *
- * // Appointment with time-of-day picker enabled
- * appointmentAt: date({ required: true, time: true })
+ * // Appointment with 24-hour format and seconds hidden (overrides defaults)
+ * appointmentAt: date({
+ *   required: true,
+ *   time: { use12HourFormat: false },
+ * })
+ *
+ * // Date-only picker (hide the time UI entirely)
+ * expiresOn: date({ time: { hidden: true } })
  *
  * // Pre-filled default (Unix ms timestamp for 2025-01-01T00:00:00Z)
  * startsAt: date({ defaultValue: 1735689600000 })
  * ```
  *
- * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`, `searchIndex`)
+ * @see {@link DateField} for the resolved type after defaults are applied
+ * @see {@link date} for the config function that applies defaults
+ * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`)
  */
 export interface DateFieldInput extends BaseFieldInput {
   /**
@@ -48,8 +64,41 @@ export interface DateFieldInput extends BaseFieldInput {
    * Does not apply to existing database values.
    */
   defaultValue?: number | undefined;
-  /** Whether the time-of-day picker is shown alongside the calendar. */
-  time?: boolean;
+  /** Minimum allowed Unix timestamp (milliseconds). Validated in the input schema. */
+  min?: number;
+  /** Maximum allowed Unix timestamp (milliseconds). Validated in the input schema. */
+  max?: number;
+  /**
+   * Date/time picker display configuration. Each key is optional — omitted keys
+   * fall back to the defaults applied by `date()`. The `time` object is always
+   * fully resolved on `DateField` after defaults are merged.
+   */
+  time?: {
+    /**
+     * Hide the time-of-day picker, showing only the calendar date selector.
+     *
+     * Default: `false` (time picker is visible)
+     */
+    hidden?: boolean;
+    /**
+     * Display time in 12-hour AM/PM format instead of 24-hour.
+     *
+     * Default: `true`
+     */
+    use12HourFormat?: boolean;
+    /**
+     * Control which time units are shown in the time picker.
+     * Each unit defaults to `true` for `hour` and `minute`, `false` for `second`.
+     */
+    timePicker?: {
+      /** Show the hour selector. Default: `true`. */
+      hour: boolean;
+      /** Show the minute selector. Default: `true`. */
+      minute: boolean;
+      /** Show the seconds selector. Default: `false`. */
+      second: boolean;
+    };
+  };
 }
 
 /**
@@ -72,6 +121,28 @@ export interface DateField extends BaseField {
   admin: FieldAdminConfig;
   /** Pre-filled Unix timestamp (milliseconds) shown in the admin form when creating a new document. */
   defaultValue: number | undefined;
-  /** Whether the time-of-day picker is shown alongside the calendar in the admin form. */
-  time: boolean;
+  /** Minimum allowed Unix timestamp (milliseconds). */
+  min?: number;
+  /** Maximum allowed Unix timestamp (milliseconds). */
+  max?: number;
+  /**
+   * Resolved date/time picker display configuration — all keys always present after defaults are applied.
+   *
+   * @see {@link DateFieldInput} for the user-facing input type where each key is optional
+   */
+  time: {
+    /** Whether the time-of-day picker is hidden, leaving only the calendar date selector. */
+    hidden: boolean;
+    /** Whether time is displayed in 12-hour AM/PM format (`true`) or 24-hour format (`false`). */
+    use12HourFormat: boolean;
+    /** Which time unit selectors are shown in the time picker. */
+    timePicker: {
+      /** Whether the hour selector is shown. */
+      hour: boolean;
+      /** Whether the minute selector is shown. */
+      minute: boolean;
+      /** Whether the seconds selector is shown. */
+      second: boolean;
+    };
+  };
 }

@@ -56,6 +56,28 @@
   entry would incorrectly mark server components as client components.
   *(Encoded: sync-spec 01, 2026-04-07)*
 
+## Field Type Naming
+
+- **Field type names describe the UI widget, not the data type**: The function name, type string, and interfaces match the input control, not the underlying data type. `checkbox()` stores a `boolean` via `v.boolean()`, but the field type is `"checkbox"`. `select()` stores a `string`, but the field type is `"select"`. Never name a field type after its data type (no `boolean()`, no `string()`). *(Encoded: sync-spec 20, 2026-04-11)*
+
+## Field Type Defaults
+
+- **Do not override `admin.width` or `admin.cellAlignment` as field-type-level defaults**: Keep both at the base defaults (`width: "full"`, `cellAlignment: "left"`) and let users opt in via the config. Field-type-specific override defaults in the spec (e.g., `width: "half"` for checkbox, `cellAlignment: "right"` for number) were intentionally dropped during implementation. *(Encoded: sync-spec 20, 2026-04-11)*
+
+- **`date()` defaultValue is `undefined`, not `0`**: An empty start is more intuitive than epoch. `0` would silently pre-fill the form with 1970-01-01. *(Encoded: sync-spec 20, 2026-04-11)*
+
+## Date Field
+
+- **`date` input uses `<DateTimePicker>`, not `<input type="datetime-local" />`**: The custom DateTimePicker component handles `Date ↔ Unix ms` conversion, `clearable`, `modal`, `use12HourFormat`, and `timePicker` props internally. Never write manual `toISOString().slice(0, 16)` conversion code in a date field input component. *(Encoded: sync-spec 20, 2026-04-11)*
+
+- **`date` cell uses `toLocaleDateString()`, not `date-fns`**: Native browser API is sufficient for locale-aware date display in table cells. Reserve `date-fns` for cases where formatting precision or locale control is actually required. *(Encoded: sync-spec 20, 2026-04-11)*
+
+- **`date()` `time` option is a config object, not a boolean**: `time?: { hidden?: boolean; use12HourFormat?: boolean; timePicker?: { hour, minute, second } }`. The config function deeply merges defaults so all keys are always present on the resolved `DateField.time`. This lets components drive all picker props from `fieldDef.time` without conditional logic. Defaults: `{ hidden: false, use12HourFormat: true, timePicker: { hour: true, minute: true, second: false } }`. *(Encoded: sync-spec 20, 2026-04-11)*
+
+## Checkbox / Boolean Fields
+
+- **`CheckboxFieldCell` renders `"Yes"` / `"No"` text, not icons**: Avoids an icon import and is readable regardless of font/icon loading state. Always use text strings for boolean cell display. *(Encoded: sync-spec 20, 2026-04-11)*
+
 ## Implementation Completeness
 
 - **CollectionListView needs a real data table**: The list view should include a TanStack

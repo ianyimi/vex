@@ -28,7 +28,7 @@ export function dateFieldToColumnDef(props: {
   fieldDef: DateField;
   fieldKey: string;
   isTitleField?: boolean;
-}): ColumnDef<VexDocument, string> {
+}): ColumnDef<VexDocument, number> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
@@ -45,7 +45,7 @@ export function dateFieldToColumnDef(props: {
       );
     },
 
-    // Enable sorting for all text fields
+    // Enable sorting for all date fields
     enableSorting: true,
 
     // Enable hiding for all fields (user can toggle visibility)

@@ -20,7 +20,7 @@ describe("dateFieldToValidator", () => {
   it("ignores time property (UI concern only, not reflected in DB schema)", () => {
     const field = date({
       required: true,
-      time: true,
+      time: { hidden: false, use12HourFormat: true },
     });
     const validator = dateFieldToValidator({ field });
 

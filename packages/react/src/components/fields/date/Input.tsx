@@ -63,16 +63,6 @@ export const DateFieldInput = createFieldInput<number, DateField>(
       }
     }, []);
 
-    // Memoize timePicker config object
-    const timePickerConfig = useMemo(
-      () => ({
-        hour: true,
-        minute: true,
-        second: false,
-      }),
-      [],
-    );
-
     return (
       <div className="flex flex-col gap-1.5">
         <FormLabel field={fieldDef} name={name} />
@@ -81,10 +71,9 @@ export const DateFieldInput = createFieldInput<number, DateField>(
           onChange={handleChange}
           disabled={fieldDef.admin.readOnly}
           clearable
-          modal
-          hideTime={false}
-          use12HourFormat={true}
-          timePicker={timePickerConfig}
+          hideTime={fieldDef.time.hidden}
+          use12HourFormat={fieldDef.time.use12HourFormat}
+          timePicker={fieldDef.time.timePicker}
         />
         <FormDescription field={fieldDef} />
         <FormError field={field} submissionAttempts={submissionAttempts} />

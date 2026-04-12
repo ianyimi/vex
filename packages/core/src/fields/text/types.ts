@@ -65,6 +65,28 @@ export interface TextFieldInput extends BaseFieldInput {
     /** Maximum character length error message. */
     error?: string;
   };
+  /**
+   * Create a full-text search index on this field.
+   * The field this is defined on becomes the `searchField`.
+   *
+   * @example
+   * ```ts
+   * title: {
+   *   type: "text",
+   *   searchIndex: { name: "search_title", filterFields: ["status", "author"] },
+   * }
+   * // Generates: .searchIndex("search_title", { searchField: "title", filterFields: ["status", "author"] })
+   * ```
+   */
+  searchIndex?: {
+    /** Search index name (must be unique within the collection). */
+    name: string;
+    /**
+     * Fields to filter search results by.
+     * String array — validated at runtime against collection field names.
+     */
+    filterFields: string[];
+  };
 }
 
 /**
@@ -100,5 +122,12 @@ export interface TextField extends BaseField {
     value: number;
     /** Maximum allowed character length error message. */
     error?: string;
+  };
+  /** Full-text search index configuration for this field. */
+  searchIndex?: {
+    /** Search index name — must be unique within the collection. */
+    name: string;
+    /** Fields to filter search results by. */
+    filterFields: string[];
   };
 }

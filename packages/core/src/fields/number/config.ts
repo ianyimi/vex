@@ -74,6 +74,5 @@ export function number(options?: NumberFieldInput): NumberField {
     min: options?.min,
     max: options?.max,
     index: options?.index,
-    searchIndex: options?.searchIndex,
   };
 }

@@ -12,7 +12,11 @@ import type { DateFieldInput, DateField } from "./types";
  * **Defaults applied:**
  * - `label` — `""` (inferred from the field key by `defineCollection`)
  * - `required` — `false`
- * - `time` — `false` (date-only picker; set `true` to show a time-of-day picker)
+ * - `time.hidden` — `false` (time picker is visible)
+ * - `time.use12HourFormat` — `true` (AM/PM format)
+ * - `time.timePicker.hour` — `true`
+ * - `time.timePicker.minute` — `true`
+ * - `time.timePicker.second` — `false`
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
@@ -34,11 +38,14 @@ import type { DateFieldInput, DateField } from "./types";
  *     // Required event date with a database index
  *     eventDate: date({ required: true, index: "by_event_date" }),
  *
- *     // Appointment with time-of-day picker enabled
+ *     // Date-only picker (hide the time UI)
+ *     expiresOn: date({ time: { hidden: true } }),
+ *
+ *     // Appointment in 24-hour format, shown in the sidebar
  *     appointmentAt: date({
  *       required: true,
- *       time: true,
- *       admin: { width: "half" },
+ *       time: { use12HourFormat: false },
+ *       admin: { position: "sidebar", width: "half" },
  *     }),
  *   }
  * })
@@ -55,7 +62,6 @@ export function date(options?: DateFieldInput): DateField {
     label: "",
     required: false,
     defaultValue: ADMIN_FIELDS.date.defaultValue,
-    time: false,
     ...options,
 
     // Admin config with all defaults applied
@@ -71,9 +77,20 @@ export function date(options?: DateFieldInput): DateField {
       ...options?.admin,
     },
 
+    time: {
+      hidden: false,
+      use12HourFormat: true,
+      ...options?.time,
+      timePicker: {
+        hour: true,
+        minute: true,
+        second: false,
+        ...options?.time?.timePicker,
+      },
+    },
+
     // Optional field properties (no defaults)
     description: options?.description,
     index: options?.index,
-    searchIndex: options?.searchIndex,
   };
 }

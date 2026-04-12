@@ -14,6 +14,7 @@ import { cn } from "../../styles/utils";
 export * from "./text";
 export * from "./number";
 export * from "./checkbox";
+export * from "./date";
 
 /**
  * Maps every `AdminFieldType` string to its corresponding input component.

@@ -68,6 +68,5 @@ export function checkbox(options?: CheckboxFieldInput): CheckboxField {
     // Optional field properties (no defaults)
     description: options?.description,
     index: options?.index,
-    searchIndex: options?.searchIndex,
   };
 }

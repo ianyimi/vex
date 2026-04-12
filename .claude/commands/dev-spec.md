@@ -22,6 +22,13 @@ These are patterns the developer applies consistently. Follow them in all genera
 - **`@vexcms/next` always uses sub-path exports** — `./server` for server components (no `"use client"` banner), `./client` for client components (with banner). Never a single barrel with both. tsup must have split entries.
 - **`Button nativeButton={false}` when render prop is non-button** — always add this when Base UI's `Button` wraps a `VexLink` or other `<a>` tag.
 - **CollectionListView includes a real data table** — not a `<p>` placeholder and not a manual `<Table>` iteration. Use TanStack Table with column definitions derived from the collection's field config. If pagination isn't in scope, note it as a known gap; don't ship a placeholder.
+- **Field type names describe the UI widget, not the data type** — `checkbox()` not `boolean()`, `select()` not `string()`. The function name, type string (`ADMIN_FIELDS`), and interfaces all use the widget name. The Convex validator and TypeScript value type are separate.
+- **Do not override `admin.width` or `admin.cellAlignment` at the field-type level** — keep both at the base defaults (`"full"` and `"left"`) and let users opt in via their config. Do not add field-type-level default overrides in specs.
+- **`date()` `time` option is a config object, not a boolean** — `time?: { hidden?: boolean; use12HourFormat?: boolean; timePicker?: { hour, minute, second } }`. The config function deeply merges defaults so all keys are always present on the resolved `DateField`. Always include this shape when speccing date fields. Default: `{ hidden: false, use12HourFormat: true, timePicker: { hour: true, minute: true, second: false } }`.
+- **`date` input uses `<DateTimePicker>`, not `<input type="datetime-local" />`** — the custom picker handles `Date ↔ Unix ms` conversion internally. No manual `toISOString().slice(0, 16)` in components.
+- **`date` cell uses `new Date(value).toLocaleDateString()`** — not `date-fns`. Native API is sufficient for table cell display.
+- **Boolean cell displays `"Yes"` / `"No"` text** — not icons. Always use text strings for boolean cell components.
+- **`date()` defaultValue is `undefined`, not `0`** — empty start is more intuitive than epoch.
 
 See `agent-os/standards/developer-preferences.md` for the full audit trail.
 
