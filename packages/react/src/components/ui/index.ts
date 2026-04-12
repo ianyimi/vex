@@ -1,6 +1,8 @@
 export * from "./card";
+export * from "./checkbox";
 export * from "./badge";
 export * from "./dialog";
+export * from "./datetime";
 export * from "./dropdown-menu";
 export * from "./input";
 export * from "./label";
@@ -12,5 +14,7 @@ export * from "./select";
 export * from "./VexLink";
 export * from "./VexImage";
 export * from "./tooltip";
+export * from "./scroll-area";
 export * from "./skeleton";
 export * from "./separator";
+export * from "./popover";

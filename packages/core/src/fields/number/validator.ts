@@ -39,6 +39,6 @@ import type { NumberField } from "./types";
 export function numberFieldToValidator(props: { field: NumberField }): string {
   return applyBaseValidators({
     field: props.field,
-    validator: ADMIN_FIELDS.number.validator,
+    validator: ADMIN_FIELDS.number.validator
   });
 }

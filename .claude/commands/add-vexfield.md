@@ -32,6 +32,7 @@ packages/react/src/components/fields/<newField>/      ← list every file (may n
 
 Also read these shared files to understand current registration state:
 - `packages/core/src/fields/constants.ts` — `ADMIN_FIELDS` registry
+- `packages/core/src/fields/index.ts` — core package barrel export (re-exports every field directory)
 - `packages/core/src/fields/types.ts` — `AdminField` union
 - `packages/core/src/fields/validators/index.ts` — `adminFieldToValidator` dispatch switch
 - `packages/core/src/fields/inputSchemas/index.ts` — `adminFieldToInputSchema` dispatch switch
@@ -71,6 +72,7 @@ Use this checklist per package:
 
 **Core registration**:
 - [ ] `constants.ts` — `ADMIN_FIELDS.<newField>` entry with correct `type`, `validator`, `defaultValue`
+- [ ] `fields/index.ts` — barrel export `export * from "./<newField>"` present
 - [ ] `types.ts` (fields root) — `<NewField>Field` included in `AdminField` union
 - [ ] `validators/index.ts` — `adminFieldToValidator` switch has a `case ADMIN_FIELDS.<newField>.type:` branch calling `<newField>FieldToValidator`
 - [ ] `inputSchemas/index.ts` — `adminFieldToInputSchema` switch has a `case ADMIN_FIELDS.<newField>.type:` branch calling `<newField>FieldToInputSchema`
@@ -79,7 +81,7 @@ Use this checklist per package:
 - [ ] `Cell.tsx` — `<NewField>FieldCell` component
 - [ ] `Input.tsx` — `<NewField>FieldInput` component
 - [ ] `columnDef.tsx` — `<newField>FieldToColumnDef()` function
-- [ ] `index.ts` — re-exports Cell and Input
+- [ ] `index.ts` — re-exports Cell, Input, and columnDef
 
 **React registration**:
 - [ ] `fields/index.tsx` — `fieldInputComponents` map includes `[ADMIN_FIELDS.<newField>.type]: <NewField>FieldInput as ComponentType<InputComponentProps<AdminField>>`
@@ -135,6 +137,10 @@ After fixing names, audit the actual implementation logic in each file. Do not a
 - `ADMIN_FIELDS.<newField>.validator` is the correct validator string for this field type
 - No hardcoded validator strings from the source field remain
 
+#### `fields/index.ts` (core barrel) — logic checks
+- A `export * from "./<newField>"` line is present
+- It sits alongside the other field barrel exports (text, number, etc.) — not mixed in with the utility exports at the top
+
 #### `validators/index.ts` — logic checks (shared dispatch)
 - A `case ADMIN_FIELDS.<newField>.type:` branch exists in the `adminFieldToValidator` switch
 - It calls `<newField>FieldToValidator({ field: props.field })` and returns the result
@@ -180,9 +186,13 @@ After fixing names, audit the actual implementation logic in each file. Do not a
 - The `value ?? <default>` fallback matches the field's default type
 - The cell renders the correct component: `<NewField>FieldCell`, not `<SourceField>FieldCell`
 
+#### `<newField>/index.ts` — logic checks (React field barrel)
+- Exports `Cell.tsx`, `Input.tsx`, AND `columnDef.tsx` — all three: `export * from "./Cell"`, `export * from "./Input"`, `export * from "./columnDef"`
+- Missing any of these three silently breaks consumers that import the column def from the package barrel
+
 #### `fields/index.tsx` — logic checks (React registration)
 - Each entry in `fieldInputComponents` uses `as ComponentType<InputComponentProps<AdminField>>`. This cast is required because each input component is typed to its specific field (e.g. `InputComponentProps<NumberField>`), which is not assignable to the wider `InputComponentProps<AdminField>` union due to contravariance. The map is a type-unsafe dispatch table by design — the caller always passes a field matching the key, so the cast is safe.
-- The `NumberFieldInput` import is present
+- The `<NewField>FieldInput` import is present
 - The barrel export `export * from "./<newField>"` is present
 
 #### `adapter.ts` — logic checks (React adapter)

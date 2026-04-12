@@ -92,9 +92,10 @@ export function createFieldInput<TValue, TField extends AdminField>(
   ) {
     const form = useContext(AppFormContext);
     const submissionAttempts = form?.state.submissionAttempts ?? 0;
+    const Render = render;
 
     if (props.field) {
-      return render({ ...props, field: props.field, submissionAttempts });
+      return <Render {...props} field={props.field} submissionAttempts={submissionAttempts} />;
     }
 
     if (!form) {
@@ -105,9 +106,9 @@ export function createFieldInput<TValue, TField extends AdminField>(
 
     return (
       <form.Field name={props.name}>
-        {(fieldApi: TypedFieldApi<TValue>) =>
-          render({ ...props, field: fieldApi, submissionAttempts })
-        }
+        {(fieldApi: TypedFieldApi<TValue>) => (
+          <Render {...props} field={fieldApi} submissionAttempts={submissionAttempts} />
+        )}
       </form.Field>
     );
   };

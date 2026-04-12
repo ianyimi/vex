@@ -1,4 +1,5 @@
 import {
+  ADMIN_FIELDS,
   defineFrameworkAdapter,
   type ComponentHKT,
   type FrameworkAdapterInput,
@@ -10,10 +11,13 @@ import {
   TextFieldCell,
   NumberFieldCell,
   NumberFieldInput,
+  CheckboxFieldInput,
+  CheckboxFieldCell,
   CollectionEditView,
   CollectionListView,
   DashboardView,
 } from "./components";
+import { DateFieldCell, DateFieldInput } from "./components/fields/date";
 
 /**
  * HKT for React — maps any props type to `ComponentType<P>`.
@@ -46,13 +50,21 @@ export const reactAdapter: FrameworkAdapterInput<ReactHKT> =
     name: "react",
     version: "0.1.0-alpha.1",
     fields: {
-      text: {
+      [ADMIN_FIELDS.text.type]: {
         input: TextFieldInput,
         cell: TextFieldCell,
       },
-      number: {
+      [ADMIN_FIELDS.number.type]: {
         input: NumberFieldInput,
         cell: NumberFieldCell,
+      },
+      [ADMIN_FIELDS.checkbox.type]: {
+        input: CheckboxFieldInput,
+        cell: CheckboxFieldCell,
+      },
+      [ADMIN_FIELDS.date.type]: {
+        input: DateFieldInput,
+        cell: DateFieldCell,
       },
     },
     views: {

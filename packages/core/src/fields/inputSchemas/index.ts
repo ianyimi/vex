@@ -2,6 +2,8 @@ import { ADMIN_FIELDS } from "../constants";
 import { AdminField } from "../types";
 import { textFieldToInputSchema } from "../text/inputSchema";
 import { numberFieldToInputSchema } from "../number";
+import { checkboxFieldToInputSchema } from "../checkbox";
+import { dateFieldToInputSchema } from "../date";
 
 /**
  * Converts any field definition to its form input schema using zod.
@@ -11,10 +13,12 @@ import { numberFieldToInputSchema } from "../number";
  *
  * @param props Input props
  * @param props.field - The resolved field definition to convert
- * @returns A ZodSchema (e.g. `"z.string()"`, `"z.number().optional().default(0)"`)
- * @throws An Error if an unresolved field type is given
+ * @returns A ZodSchema (e.g. `z.string()`, `z.boolean().optional().default(false)`)
+ * @throws An Error if an unrecognized field type is given
  *
  * @see {@link textFieldToInputSchema} for the text field implementation
+ * @see {@link numberFieldToInputSchema} for the number field implementation
+ * @see {@link checkboxFieldToInputSchema} for the checkbox field implementation
  * @internal
  */
 export function adminFieldToInputSchema(props: { field: AdminField }) {
@@ -23,6 +27,10 @@ export function adminFieldToInputSchema(props: { field: AdminField }) {
       return textFieldToInputSchema({ field: props.field });
     case ADMIN_FIELDS.number.type:
       return numberFieldToInputSchema({ field: props.field });
+    case ADMIN_FIELDS.checkbox.type:
+      return checkboxFieldToInputSchema({ field: props.field });
+    case ADMIN_FIELDS.date.type:
+      return dateFieldToInputSchema({ field: props.field });
     default:
       throw new Error("unrecognized field type");
   }

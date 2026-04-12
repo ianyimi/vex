@@ -10,13 +10,13 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  *
  * @param props - Input props.
  * @param props.field - The resolved text field definition
- * @returns A Zod string schema with length constraints and optionality applied
+ * @returns A Zod string schema with length constraints, a baked-in `.default(field.defaultValue)`, and optionality applied
  *
  * @example
  * ```ts
  * const field = text({ required: true, minLength: 3, maxLength: 100 })
- * textFieldtoInputSchema({ field })
- * // → z.string().min(3).max(100)
+ * textFieldToInputSchema({ field })
+ * // → z.string().min(1).min(3).max(100).default("")
  * ```
  */
 export function textFieldToInputSchema(props: { field: TextField }): ZodSchema {
@@ -25,21 +25,31 @@ export function textFieldToInputSchema(props: { field: TextField }): ZodSchema {
   const fieldMinError = field.min?.error ?? "This field is too short.";
   const fieldMaxError = field.max?.error ?? "This field is too long.";
 
-  let inputSchema = z.string();
+  let inputSchema = z.string().default(field.defaultValue);
   if (field.required) {
-    inputSchema = z.string().min(1, "This field is required.");
+    inputSchema = z
+      .string()
+      .min(1, "This field is required.")
+      .default(field.defaultValue);
   }
   if (field.min) {
     if (field.max) {
       inputSchema = z
         .string()
         .min(field.min.value, fieldMinError)
-        .max(field.max.value, fieldMaxError);
+        .max(field.max.value, fieldMaxError)
+        .default(field.defaultValue);
     } else {
-      inputSchema = z.string().min(field.min.value, fieldMinError);
+      inputSchema = z
+        .string()
+        .min(field.min.value, fieldMinError)
+        .default(field.defaultValue);
     }
   } else if (field.max) {
-    inputSchema = z.string().max(field.max.value, fieldMaxError);
+    inputSchema = z
+      .string()
+      .max(field.max.value, fieldMaxError)
+      .default(field.defaultValue);
   }
 
   return applyBaseInputSchemaMeta({ field, inputSchema });

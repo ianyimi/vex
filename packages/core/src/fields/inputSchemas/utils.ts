@@ -2,7 +2,7 @@ import { ZodSchema } from "zod";
 import { AdminField } from "../types";
 
 /**
- * Wraps a Zod schema in `.optional()` and applies `defaultValue` when the field is not required.
+ * Attaches field metadata and wraps in `.optional()` for non-required fields.
  *
  * Used during form schema generation to apply the correct Zod validator based on
  * whether the field is marked as required in its config.
@@ -10,13 +10,13 @@ import { AdminField } from "../types";
  * @param props - Input props.
  * @param props.field - The resolved field definition, used to check `required` and `defaultValue`
  * @param props.inputSchema - The base Zod schema for the field (e.g. `z.string()`)
- * @returns The schema unchanged for required fields, or wrapped in `.optional().default(...)` for optional fields
+ * @returns The schema with `.meta(fieldMeta)` for required fields, or `.meta(fieldMeta).optional()` for non-required fields. No `.default()` is applied — each field's own schema is responsible for baking in a default value.
  *
  * @example
  * ```ts
- * handleOptionalInputSchemas({ field: textField, inputSchema: z.string() })
- * // required field  → z.string()
- * // optional field  → z.string().optional().default("")
+ * applyBaseInputSchemaMeta({ field: textField, inputSchema: z.string() })
+ * // required field  → z.string().meta({ label, description })
+ * // optional field  → z.string().meta({ label, description }).optional()
  * ```
  */
 export function applyBaseInputSchemaMeta(props: {
@@ -29,7 +29,7 @@ export function applyBaseInputSchemaMeta(props: {
     description: field.description ?? "",
   };
   if (!field.required) {
-    return inputSchema.meta(fieldMeta).optional().default(field.defaultValue);
+    return inputSchema.meta(fieldMeta).optional();
   }
-  return inputSchema.meta(fieldMeta).default(field.defaultValue);
+  return inputSchema.meta(fieldMeta);
 }

@@ -6,3 +6,5 @@ export * from "./inputSchemas";
 
 export * from "./text";
 export * from "./number";
+export * from "./checkbox";
+export * from "./date";

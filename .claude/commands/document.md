@@ -5,10 +5,11 @@ Write or update JSDoc comments for a target in this codebase.
 ## Usage
 
 ```
-/document <target> [in <file>]
+/document [<target>] [in <file>]
 ```
 
 **Examples:**
+- `/document` — documents all uncommitted changes (staged + unstaged)
 - `/document TextFieldInput`
 - `/document all fields in packages/core/src/fields/text/types.ts`
 - `/document the text() function`
@@ -22,7 +23,9 @@ You are writing JSDoc comments for the Vex CMS codebase. Your job is to read the
 
 ### Step 1 — Locate and read the target
 
-The user will name a function, interface, type, or set of fields. Find it:
+**If no target was specified**, run `git diff --name-only && git diff --cached --name-only` to get all uncommitted changed files (unstaged and staged). Include all `.ts`, `.tsx`, and `.test.ts` source files under `packages/` and `apps/`. Skip only: `tsup.config.ts`, `package.json`, `tsconfig*.json`, `.md` files, and lock files. **Test files (`.test.ts`, `.test.tsx`) must be included** — check every test file for stale describe names, wrong type assertions, wrong expected values, and test cases that no longer match the implementation. Document (or fix) every changed source file.
+
+**If a target was specified**, the user will name a function, interface, type, or set of fields. Find it:
 - Start in the file the user specifies, or search the `packages/` directory
 - Read the full file the target lives in
 - Follow any imports that are directly relevant to understanding the target's shape or behaviour
@@ -205,3 +208,21 @@ Must include:
 Edit the file in place. Do not reformat surrounding code, rename anything, or change logic. Only add or replace the JSDoc comment blocks for the requested targets.
 
 After editing, read the file back and confirm the comments render correctly (no broken `*/` inside code blocks, no mismatched backticks).
+
+### Step 5 — Verify typecheck and tests pass
+
+After all edits, determine which packages contain the files you changed. For each affected package, run its `typecheck` and `test` scripts from the package directory:
+
+```
+cd packages/<name> && pnpm typecheck
+cd packages/<name> && pnpm test
+```
+
+**If a check fails:**
+- Read the error carefully. Determine whether it is caused by a change you made.
+- **If you caused it** — fix it immediately, then re-run the check to confirm it passes.
+- **If you did not cause it** — do not attempt to fix it. Report it to the user at the end with the exact error message and file location so they can address it. Continue with the remaining checks.
+
+At the end of your response, report:
+- Which packages passed typecheck and tests
+- Any pre-existing failures you did not cause, with the exact error

@@ -1,7 +1,6 @@
-/* eslint-disable jsdoc/require-jsdoc */
 "use client";
 
-import { Button as ButtonPrimitive } from "@base-ui/react/button";
+import { Button as ButtonPrimitive } from "@base-ui/react";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "../../styles/utils";

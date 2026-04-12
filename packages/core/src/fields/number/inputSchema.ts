@@ -10,13 +10,13 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  *
  * @param props - Input props.
  * @param props.field - The resolved number field definition
- * @returns A Zod number schema with range constraints and optionality applied
+ * @returns A Zod number schema with range constraints, a baked-in `.default(field.defaultValue)`, and optionality applied
  *
  * @example
  * ```ts
  * const field = number({ required: true, min: { value: 0 }, max: { value: 100 } })
  * numberFieldToInputSchema({ field })
- * // → z.number().min(0).max(100)
+ * // → z.number().min(0).max(100).default(0)
  * ```
  */
 export function numberFieldToInputSchema(props: {
@@ -27,18 +27,25 @@ export function numberFieldToInputSchema(props: {
   const fieldMinError = field.min?.error ?? "This field is too small.";
   const fieldMaxError = field.max?.error ?? "This field is too large.";
 
-  let inputSchema = z.number();
+  let inputSchema = z.number().default(field.defaultValue);
   if (field.min) {
     if (field.max) {
       inputSchema = z
         .number()
         .min(field.min.value, fieldMinError)
-        .max(field.max.value, fieldMaxError);
+        .max(field.max.value, fieldMaxError)
+        .default(field.defaultValue);
     } else {
-      inputSchema = z.number().min(field.min.value, fieldMinError);
+      inputSchema = z
+        .number()
+        .min(field.min.value, fieldMinError)
+        .default(field.defaultValue);
     }
   } else if (field.max) {
-    inputSchema = z.number().max(field.max.value, fieldMaxError);
+    inputSchema = z
+      .number()
+      .max(field.max.value, fieldMaxError)
+      .default(field.defaultValue);
   }
 
   return applyBaseInputSchemaMeta({ field, inputSchema });

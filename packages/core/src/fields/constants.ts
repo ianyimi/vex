@@ -19,16 +19,16 @@ export const ADMIN_FIELDS = {
     validator: "v.number()",
     defaultValue: 0,
   },
-  // checkbox: {
-  //   type: "checkbox",
-  //   validator: "v.boolean()",
-  //   defaultValue: false,
-  // },
-  // date: {
-  //   type: "date",
-  //   validator: "v.number()",
-  //   defaultValue: 1775554855,
-  // },
+  checkbox: {
+    type: "checkbox",
+    validator: "v.boolean()",
+    defaultValue: false,
+  },
+  date: {
+    type: "date",
+    validator: "v.number()",
+    defaultValue: undefined,
+  },
   // richtext: {
   //   type: "richtext",
   //   validator: "v.any()",

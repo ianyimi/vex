@@ -5,7 +5,7 @@ import type { VexConfig } from "@vexcms/core";
 import { usePathname } from "next/navigation";
 import NextLink from "next/link";
 import NextImage from "next/image";
-import { NuqsAdapter } from "nuqs/adapters/next";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { AdminLayout } from "@vexcms/react";
 
 /**

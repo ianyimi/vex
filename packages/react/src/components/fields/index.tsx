@@ -6,11 +6,14 @@ import {
 import { ComponentPropsWithRef, ComponentType } from "react";
 import { TextFieldInput } from "./text";
 import { NumberFieldInput } from "./number";
+import { CheckboxFieldInput } from "./checkbox";
+import { DateFieldInput } from "./date";
 import { ADMIN_FIELDS, type AdminFieldType } from "@vexcms/core";
 import { cn } from "../../styles/utils";
 
 export * from "./text";
 export * from "./number";
+export * from "./checkbox";
 
 /**
  * Maps every `AdminFieldType` string to its corresponding input component.
@@ -22,8 +25,18 @@ export const fieldInputComponents: Record<
   AdminFieldType,
   ComponentType<InputComponentProps<AdminField>>
 > = {
-  [ADMIN_FIELDS.text.type]: TextFieldInput as ComponentType<InputComponentProps<AdminField>>,
-  [ADMIN_FIELDS.number.type]: NumberFieldInput as ComponentType<InputComponentProps<AdminField>>,
+  [ADMIN_FIELDS.text.type]: TextFieldInput as ComponentType<
+    InputComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.number.type]: NumberFieldInput as ComponentType<
+    InputComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.checkbox.type]: CheckboxFieldInput as ComponentType<
+    InputComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.date.type]: DateFieldInput as ComponentType<
+    InputComponentProps<AdminField>
+  >,
 };
 
 /**
@@ -60,7 +73,7 @@ export function RenderFieldInputComponents(
         if (!FieldInput) return null;
         return (
           <FieldInput
-            key={field.label || field.type}
+            key={fieldKey}
             name={fieldKey}
             fieldDef={field}
             readOnly={field.admin.readOnly}

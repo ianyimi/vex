@@ -1,8 +1,11 @@
 import { NumberField } from "./number";
 import { TextField } from "./text";
+import { CheckboxField } from "./checkbox";
+import { DateField } from "./date";
 
 export * from "./text/types";
 export * from "./number/types";
+export * from "./checkbox/types";
 
 /**
  * Discriminated union of all field types in VexCMS.
@@ -13,6 +16,8 @@ export * from "./number/types";
  * Currently includes:
  * - `TextField` — single-line text input
  * - `NumberField` — numeric value (price, quantity, rating, etc.)
+ * - `CheckboxField` — boolean toggle (published state, feature flag, opt-in, etc.)
+ * - `DateField` — Unix ms timestamp (publish date, expiry date, event time, etc.)
  *
  * More field types will be added as they're implemented.
  *
@@ -27,7 +32,7 @@ export * from "./number/types";
  * }
  * ```
  */
-export type AdminField = TextField | NumberField;
+export type AdminField = TextField | NumberField | CheckboxField | DateField;
 
 /**
  * Props passed to field input components rendered in the document edit form.

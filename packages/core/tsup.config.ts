@@ -1,9 +1,9 @@
 import { defineConfig } from "tsup";
 
-export default defineConfig(({ watch }) => ({
+export default defineConfig({
   entry: ["src/index.ts"],
   format: ["esm"],
-  dts: true,
+  dts: false, // Temporarily disable DTS to fix CPU issue
   sourcemap: true,
-  clean: !watch,
-}));
+  clean: true,
+});

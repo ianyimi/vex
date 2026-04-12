@@ -1,25 +1,27 @@
 import { defineConfig } from "tsup";
 
-export default defineConfig(({ watch }) => [
+export default defineConfig([
   // Server components — no "use client" banner
   {
     entry: { "NextAdminPage": "src/NextAdminPage.tsx" },
     format: ["esm"],
     tsconfig: "tsconfig.build.json",
-    dts: true,
+    dts: false, // Temporarily disable DTS to fix CPU issue
     sourcemap: true,
-    clean: !watch,
-    external: ["react", "react-dom", "next", "nuqs", "lucide-react", "@vexcms/core", "@vexcms/react"],
+    clean: true,
+    skipNodeModulesBundle: true,
+    external: ["react", "react-dom", "next", "nuqs", /^nuqs\//, "lucide-react", "@vexcms/core", "@vexcms/react"],
   },
   // Client components — needs "use client" banner
   {
     entry: { "NextAdminLayout": "src/NextAdminLayout.tsx" },
     format: ["esm"],
     tsconfig: "tsconfig.build.json",
-    dts: true,
+    dts: false, // Temporarily disable DTS to fix CPU issue
     sourcemap: true,
     clean: false,
-    external: ["react", "react-dom", "next", "nuqs", "lucide-react", "@vexcms/core", "@vexcms/react"],
+    skipNodeModulesBundle: true,
+    external: ["react", "react-dom", "next", "nuqs", /^nuqs\//, "lucide-react", "@vexcms/core", "@vexcms/react"],
     banner: {
       js: '"use client";',
     },
