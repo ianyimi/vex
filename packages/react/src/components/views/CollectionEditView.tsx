@@ -56,6 +56,7 @@ export function CollectionEditView(props: CollectionEditViewProps) {
   });
 
   if (!document) {
+    // TODO: add proper not found component or screen
     return <p>Document not found.</p>;
   }
 
@@ -81,7 +82,10 @@ export function CollectionEditView(props: CollectionEditViewProps) {
       <AppForm form={form} className="max-w-2xl space-y-4">
         {Object.entries(props.collection.fields).map(([fieldKey, field]) => {
           const InputComponent = fieldToInputComponent(field.type);
-          if (!InputComponent) return null;
+          if (!InputComponent) {
+            // TODO: handle missing component error here
+            return null;
+          }
           return (
             <InputComponent
               key={fieldKey}
