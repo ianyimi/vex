@@ -5,6 +5,7 @@ import { DateField } from "./date";
 import { TDocument } from "../convex";
 import { CollectionConfig } from "../collections";
 import { Row } from "@tanstack/react-table";
+import { SelectField } from "./select";
 
 export * from "./text/types";
 export * from "./number/types";
@@ -35,7 +36,12 @@ export * from "./checkbox/types";
  * }
  * ```
  */
-export type AdminField = TextField | NumberField | CheckboxField | DateField;
+export type AdminField =
+  | TextField
+  | NumberField
+  | CheckboxField
+  | DateField
+  | SelectField;
 
 /**
  * Props passed to field input components rendered in the document edit form.

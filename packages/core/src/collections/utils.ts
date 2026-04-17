@@ -32,7 +32,7 @@ export function getCollectionDefaultValues(props: {
 }) {
   const res: Record<string, unknown> = {};
   for (const [fieldKey, fieldDef] of Object.entries(props.collection.fields)) {
-    if (props.document) {
+    if (props.document && props.document[fieldKey] !== undefined) {
       res[fieldKey] = props.document[fieldKey];
     } else {
       res[fieldKey] = fieldDef.defaultValue;

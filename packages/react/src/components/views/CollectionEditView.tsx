@@ -79,7 +79,7 @@ export function CollectionEditView(props: CollectionEditViewProps) {
           ? `Edit ${props.collection.labels.singular}`
           : `New ${props.collection.labels.singular}`}
       </h1>
-      <AppForm form={form} className="max-w-2xl space-y-4">
+      <AppForm form={form} className="space-y-4">
         {Object.entries(props.collection.fields).map(([fieldKey, field]) => {
           const InputComponent = fieldToInputComponent(field.type);
           if (!InputComponent) {

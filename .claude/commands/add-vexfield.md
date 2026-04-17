@@ -39,6 +39,13 @@ Also read these shared files to understand current registration state:
 - `packages/react/src/components/fields/index.tsx` — `fieldInputComponents` map and barrel exports
 - `packages/react/src/adapter.ts` — `reactAdapter.fields` map
 
+Also read these integration test files — they must be updated as part of every new field:
+- `packages/core/src/fields/validators/adminFieldToValidator.test.ts` — dispatch tests for all field types
+- `packages/core/src/fields/inputSchemas/adminFieldToInputSchema.test.ts` — dispatch tests for all field types
+- `packages/core/src/collections/utils.test.ts` — `getCollectionInputSchema` / `getCollectionDefaultValues` tests
+- `packages/cli/src/schema/generateSchema.test.ts` — schema generation tests (excluded from test runner but must be kept up to date)
+- `packages/cli/src/lib/generateCollectionFiles.test.ts` — collection file generation tests (excluded from test runner but must be kept up to date)
+
 Read every file you just enumerated. Do not skip any file.
 
 ### Step 1 — Gather spec context
@@ -86,6 +93,7 @@ Use this checklist per package:
 **React registration**:
 - [ ] `fields/index.tsx` — `fieldInputComponents` map includes `[ADMIN_FIELDS.<newField>.type]: <NewField>FieldInput as ComponentType<InputComponentProps<AdminField>>`
 - [ ] `fields/index.tsx` — barrel export `export * from "./<newField>"`
+- [ ] `fields/index.tsx` — `getCollectionColumnDefs` has `case ADMIN_FIELDS.<newField>.type:` calling `<newField>FieldToColumnDef`
 - [ ] `adapter.ts` — `reactAdapter.fields.<newField>` has `input: <NewField>FieldInput` and `cell: <NewField>FieldCell`
 
 Report the missing items to the user at the end as warnings (see Step 6). Do not block on them — continue fixing what is present.
@@ -194,6 +202,7 @@ After fixing names, audit the actual implementation logic in each file. Do not a
 - Each entry in `fieldInputComponents` uses `as ComponentType<InputComponentProps<AdminField>>`. This cast is required because each input component is typed to its specific field (e.g. `InputComponentProps<NumberField>`), which is not assignable to the wider `InputComponentProps<AdminField>` union due to contravariance. The map is a type-unsafe dispatch table by design — the caller always passes a field matching the key, so the cast is safe.
 - The `<NewField>FieldInput` import is present
 - The barrel export `export * from "./<newField>"` is present
+- The `getCollectionColumnDefs` switch has a `case ADMIN_FIELDS.<newField>.type:` branch calling `<newField>FieldToColumnDef` — missing this silently drops the field from data table list views.
 
 #### `adapter.ts` — logic checks (React adapter)
 - `reactAdapter.fields.<newField>` exists with both `input` and `cell` keys
@@ -212,9 +221,94 @@ Key rules for field-specific docs:
 - **`validator.ts` function**: `@returns` shows the correct validator strings. All examples use the correct field function and expected outputs.
 - **React components**: JSDoc describes the new field's rendering behavior specifically, not the source field's.
 
-### Step 6 — Report to user
+### Step 6 — Update integration tests
 
-After all edits, output a structured report:
+After all field-specific files are correct, update the four integration test files. These test higher-order functions that dispatch over all field types — they must be extended every time a new field is added.
+
+**Read each file first**, then add tests for the new field type. Never replace existing tests.
+
+#### `packages/core/src/fields/validators/adminFieldToValidator.test.ts`
+
+Add two new `it()` blocks under the existing field cases:
+
+```ts
+it("dispatches to <newField>FieldToValidator for required <newField>", () => {
+  const field = <newField>({ required: true, /* minimal valid config */ });
+  expect(adminFieldToValidator({ field })).toBe("<expected required validator>");
+});
+
+it("dispatches to <newField>FieldToValidator for optional <newField>", () => {
+  const field = <newField>({ required: false });
+  expect(adminFieldToValidator({ field })).toBe("v.optional(<expected validator>)");
+});
+```
+
+Then update the **comprehensive test** (the last test in the file, labelled "comprehensive" or "all field types") to include `<newField>` fields in the collection alongside text, number, checkbox, date, and all other registered fields.
+
+#### `packages/core/src/fields/inputSchemas/adminFieldToInputSchema.test.ts`
+
+Add `it()` blocks verifying that the dispatched schema accepts and rejects the correct value types for `<newField>`:
+
+```ts
+it("dispatches to <newField>FieldToInputSchema", () => {
+  const field = <newField>({ /* minimal config */ });
+  const schema = adminFieldToInputSchema({ field });
+  // Verify schema accepts correct values and rejects wrong types
+  expect(schema.safeParse(<validValue>).success).toBe(true);
+  expect(schema.safeParse(<wrongTypeValue>).success).toBe(false);
+});
+```
+
+Then update the **comprehensive test** to include `<newField>` fields so the test validates a collection with every registered field type.
+
+#### `packages/core/src/collections/utils.test.ts`
+
+Add `<newField>` fields to the existing collection definitions in both `getCollectionDefaultValues` and `getCollectionInputSchema` tests. Verify:
+- `getCollectionDefaultValues` returns the correct default for the new field type
+- `getCollectionInputSchema` produces a schema that accepts/rejects values for the new field type
+
+Then update the **comprehensive test** (one collection with every field type) to include the new field.
+
+#### `packages/cli/src/schema/generateSchema.test.ts` *(excluded from test runner — update anyway)*
+
+Add a new `it()` block using the new field type. For fields that generate non-trivial validator strings (e.g. select), add a dedicated test:
+
+```ts
+it("generates schema for collection with <newField> fields", () => {
+  const config = defineConfig({
+    collections: [defineCollection({
+      slug: "example",
+      fields: { fieldKey: <newField>({ required: true, /* options etc */ }) },
+    })],
+  });
+  generateVexSchema({ config });
+  const output = readFileSync(outPath, "utf-8");
+  expect(output).toContain("<expected validator output string>");
+});
+```
+
+Then update the **comprehensive test** at the bottom that covers every field type at once.
+
+#### `packages/cli/src/lib/generateCollectionFiles.test.ts` *(excluded from test runner — update anyway)*
+
+Update the comprehensive collection definition used in the existing file content / typing tests to include a `<newField>` field. This ensures generated query files are well-formed even when collections contain non-text fields.
+
+---
+
+### Step 7 — Run typecheck and tests
+
+After all edits, run in this order:
+
+```bash
+pnpm typecheck
+pnpm test
+```
+
+Fix any failures before reporting to the user. Treat test failures as bugs — diagnose the root cause rather than deleting the failing test. The only acceptable reason to modify a test assertion is if the assertion itself was wrong (e.g. tested the wrong expected value for the field type).
+
+### Step 8 — Report to user
+
+After all edits and tests pass, output a structured report:
 
 #### ✅ Fixed automatically
 List every file that was updated, with a one-line summary of what changed.
@@ -228,16 +322,6 @@ List every missing file or registration from the feature parity checklist. For e
 ```
 - packages/react/src/components/fields/number/Cell.tsx
   → NumberFieldCell component rendering the numeric value with a null fallback
-- packages/react/src/components/fields/number/Input.tsx
-  → NumberFieldInput using createFieldInput<number, NumberField> with type="number"
-- packages/react/src/components/fields/number/columnDef.tsx
-  → numberFieldToColumnDef() returning ColumnDef<VexDocument, number>
-- packages/react/src/components/fields/number/index.ts
-  → Re-exports NumberFieldCell and NumberFieldInput
-- fields/index.tsx — fieldInputComponents map
-  → Add [ADMIN_FIELDS.number.type]: NumberFieldInput
-- fields/index.tsx — barrel export
-  → Add export * from "./number"
 ```
 
 #### 🔍 Remaining stale strings (if any)
@@ -249,6 +333,7 @@ Search for any leftover source-field references in the new field's files. Report
 
 - **Spec governs semantics.** The source field is a structural template, not a semantic one. Number fields are not text fields with different names.
 - **Logic bugs are the priority.** Naming and docs can be wrong without breaking anything at runtime. Logic bugs (wrong Zod type, wrong required check, wrong onChange handler) ship as silent breakage. Catch these first.
+- **Integration tests are not optional.** The dispatcher tests (`adminFieldToValidator`, `adminFieldToInputSchema`, `getCollectionInputSchema`) exist to catch the case where a field is registered in the switch but the underlying function has a logic bug. Update them every time.
 - **Don't invent features.** Only add what the field actually has per the spec and existing files. Flag missing features, don't stub them.
 - **One file at a time.** Read → identify all issues (naming + logic + docs) → single edit.
 - **Don't touch source field files.** Only edit files in the new field's directory and the shared registration files.

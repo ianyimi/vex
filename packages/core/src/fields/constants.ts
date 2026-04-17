@@ -29,6 +29,11 @@ export const ADMIN_FIELDS = {
     validator: "v.number()",
     defaultValue: undefined,
   },
+  select: {
+    type: "select",
+    validator: "v.string()",
+    defaultValue: [] as string[],
+  },
   // richtext: {
   //   type: "richtext",
   //   validator: "v.any()",

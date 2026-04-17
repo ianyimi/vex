@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { writeFileSync } from "fs";
 import { textFieldToValidator } from "@vexcms/core";
-import type { TextField, VexConfig } from "@vexcms/core";
+import type { VexConfig } from "@vexcms/core";
 import { adminFieldToValidator } from "../../../core/src/fields";
 
 /**

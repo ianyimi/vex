@@ -35,6 +35,7 @@
     "@vexcms/core": "workspace:*",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
+    "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "lucide-react": "catalog:",
     "react-day-picker": "^9.6.0",
@@ -46,9 +47,9 @@
     "@tanstack/react-query": ">=5.0.0",
     "convex": ">=1.0.0",
     "next": ">=14.0.0",
+    "nuqs": "catalog:",
     "react": ">=18.0.0",
-    "react-dom": ">=18.0.0",
-    "nuqs": "catalog:"
+    "react-dom": ">=18.0.0"
   },
   "peerDependenciesMeta": {
     "next": {
@@ -60,11 +61,11 @@
     "@types/node": "^25.5.0",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "jsdom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "tailwindcss": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",

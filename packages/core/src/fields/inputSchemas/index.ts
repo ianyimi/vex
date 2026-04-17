@@ -4,6 +4,7 @@ import { textFieldToInputSchema } from "../text/inputSchema";
 import { numberFieldToInputSchema } from "../number";
 import { checkboxFieldToInputSchema } from "../checkbox";
 import { dateFieldToInputSchema } from "../date";
+import { selectFieldToInputSchema } from "../select";
 
 /**
  * Converts any field definition to its form input schema using zod.
@@ -31,6 +32,8 @@ export function adminFieldToInputSchema(props: { field: AdminField }) {
       return checkboxFieldToInputSchema({ field: props.field });
     case ADMIN_FIELDS.date.type:
       return dateFieldToInputSchema({ field: props.field });
+    case ADMIN_FIELDS.select.type:
+      return selectFieldToInputSchema({ field: props.field });
     default:
       throw new Error("unrecognized field type");
   }

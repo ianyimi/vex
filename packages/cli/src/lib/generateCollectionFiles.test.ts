@@ -9,7 +9,15 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { defineCollection, defineConfig, text } from "@vexcms/core";
+import {
+  defineCollection,
+  defineConfig,
+  text,
+  number,
+  checkbox,
+  date,
+  select,
+} from "@vexcms/core";
 import {
   deriveConvexDir,
   computeImportPaths,
@@ -200,5 +208,62 @@ describe("generateAndWriteCollectionFiles", () => {
     );
     expect(modelContent).toContain('Doc<"articles">');
     expect(modelContent).toContain('Id<"articles">');
+  });
+
+  // ─── comprehensive ───────────────────────────────────────────────────────────
+
+  it("comprehensive: generates valid files for a collection with every field type", async () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text({ required: true }),
+        body: text({ required: false }),
+        score: number({ required: true }),
+        rating: number({ required: false }),
+        published: checkbox({ required: true }),
+        featured: checkbox({ required: false }),
+        publishedAt: date({ required: false }),
+        status: select({
+          required: false,
+          hasMany: false,
+          options: [
+            { label: "Draft", value: "draft" },
+            { label: "Published", value: "published" },
+          ],
+        }),
+        tags: select({
+          required: false,
+          hasMany: true,
+          options: [
+            { label: "News", value: "news" },
+            { label: "Tutorial", value: "tutorial" },
+          ],
+        }),
+      },
+    });
+    const config = defineConfig({ auth: stubAuth, collections: [posts] });
+
+    const { written } = await generateAndWriteCollectionFiles({
+      config,
+      cwd: tmpDir,
+    });
+
+    // Both api and model files should be written
+    expect(written).toContain("api/posts.ts");
+    expect(written).toContain("model/api/posts.ts");
+
+    // Files should exist on disk
+    expect(existsSync(join(tmpDir, "convex/vex/api/posts.ts"))).toBe(true);
+    expect(existsSync(join(tmpDir, "convex/vex/model/api/posts.ts"))).toBe(
+      true,
+    );
+
+    // Model file should be well-formed (contain typed Doc and Id)
+    const modelContent = readFileSync(
+      join(tmpDir, "convex/vex/model/api/posts.ts"),
+      "utf-8",
+    );
+    expect(modelContent).toContain('Doc<"posts">');
+    expect(modelContent).toContain('Id<"posts">');
   });
 });

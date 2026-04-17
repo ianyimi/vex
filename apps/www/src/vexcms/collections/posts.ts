@@ -1,4 +1,4 @@
-import { checkbox, date, defineCollection, number, text } from "@vexcms/core"
+import { checkbox, date, defineCollection, number, select, text } from "@vexcms/core"
 
 import { TABLE_SLUG_POSTS } from "~/db/constants"
 
@@ -20,5 +20,35 @@ export const posts = defineCollection({
       label: "Published",
     }),
     publishedAt: date(),
+    type: select({
+      hasMany: true,
+      label: "Type",
+      options: [
+        {
+          label: "One",
+          value: "one",
+        },
+        {
+          label: "Two",
+          value: "two",
+        },
+        {
+          label: "Three",
+          value: "three",
+        },
+        {
+          label: "Four",
+          value: "four",
+        },
+        {
+          label: "Five",
+          value: "five",
+        },
+        {
+          label: "Six",
+          value: "six",
+        },
+      ],
+    }),
   },
 })

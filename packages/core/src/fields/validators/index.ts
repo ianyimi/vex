@@ -4,6 +4,7 @@ import { textFieldToValidator } from "../text";
 import { numberFieldToValidator } from "../number";
 import { checkboxFieldToValidator } from "../checkbox";
 import { dateFieldToValidator } from "../date";
+import { selectFieldToValidator } from "../select";
 
 /**
  * Converts any field definition to its Convex schema validator string.
@@ -14,6 +15,7 @@ import { dateFieldToValidator } from "../date";
  * @param props Input props
  * @param props.field - The resolved field definition to convert
  * @returns A Convex validator string (e.g. `"v.string()"`, `"v.optional(v.boolean())"`)
+ * @throws An Error if an unrecognized field type is given
  *
  * @see {@link textFieldToValidator} for the text field implementation
  * @see {@link numberFieldToValidator} for the number field implementation
@@ -30,5 +32,9 @@ export function adminFieldToValidator(props: { field: AdminField }) {
       return checkboxFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.date.type:
       return dateFieldToValidator({ field: props.field });
+    case ADMIN_FIELDS.select.type:
+      return selectFieldToValidator({ field: props.field });
+    default:
+      throw new Error("unrecognized field type");
   }
 }

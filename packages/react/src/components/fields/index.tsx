@@ -21,11 +21,17 @@ import { DateFieldCell, DateFieldInput, dateFieldToColumnDef } from "./date";
 import { ADMIN_FIELDS, type AdminFieldType } from "@vexcms/core";
 import { cn } from "../../styles/utils";
 import { ColumnDef } from "@tanstack/react-table";
+import {
+  SelectFieldCell,
+  SelectFieldInput,
+  selectFieldToColumnDef,
+} from "./select";
 
 export * from "./text";
 export * from "./number";
 export * from "./checkbox";
 export * from "./date";
+export * from "./select";
 
 /**
  * Maps every `AdminFieldType` string to its corresponding input component.
@@ -47,6 +53,9 @@ export const fieldInputComponents: Record<
     InputComponentProps<AdminField>
   >,
   [ADMIN_FIELDS.date.type]: DateFieldInput as ComponentType<
+    InputComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.select.type]: SelectFieldInput as ComponentType<
     InputComponentProps<AdminField>
   >,
 };
@@ -132,6 +141,9 @@ export const fieldCellComponents: Record<
   [ADMIN_FIELDS.date.type]: DateFieldCell as ComponentType<
     CellComponentProps<AdminField>
   >,
+  [ADMIN_FIELDS.select.type]: SelectFieldCell as ComponentType<
+    CellComponentProps<AdminField>
+  >,
 };
 
 /**
@@ -207,6 +219,16 @@ export function getCollectionColumnDefs(props: {
       case ADMIN_FIELDS.date.type:
         columnDefs.push(
           dateFieldToColumnDef({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+      case ADMIN_FIELDS.select.type:
+        columnDefs.push(
+          selectFieldToColumnDef({
             fieldDef,
             fieldKey,
             isTitleField,

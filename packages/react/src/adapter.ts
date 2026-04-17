@@ -13,6 +13,8 @@ import {
   NumberFieldInput,
   CheckboxFieldInput,
   CheckboxFieldCell,
+  SelectFieldInput,
+  SelectFieldCell,
   CollectionEditView,
   CollectionListView,
   DashboardView,
@@ -65,6 +67,10 @@ export const reactAdapter: FrameworkAdapterInput<ReactHKT> =
       [ADMIN_FIELDS.date.type]: {
         input: DateFieldInput,
         cell: DateFieldCell,
+      },
+      [ADMIN_FIELDS.select.type]: {
+        input: SelectFieldInput,
+        cell: SelectFieldCell,
       },
     },
     views: {

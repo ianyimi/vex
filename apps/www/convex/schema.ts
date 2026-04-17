@@ -112,5 +112,6 @@ export default defineSchema({
     index: v.number(),
     published: v.optional(v.boolean()),
     publishedAt: v.optional(v.number()),
+    type: v.optional(v.array(v.string())),
   }),
 })

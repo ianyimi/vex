@@ -1,3 +1,5 @@
+"use client"
+
 import type { CellComponentProps } from "@vexcms/core";
 import type { DateField } from "@vexcms/core";
 
