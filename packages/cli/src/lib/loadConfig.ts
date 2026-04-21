@@ -55,11 +55,22 @@ function stripJsonComments(input: string): string {
  *   "~/*": ["./src/*"]   → alias: { "~": "/abs/path/to/src" }
  *   "@convex/*": ["./convex/*"] → alias: { "@convex": "/abs/path/to/convex" }
  */
+function findTsconfigDir(startDir: string): string {
+  let dir = startDir;
+  while (true) {
+    if (existsSync(resolve(dir, "tsconfig.json"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) return startDir; // filesystem root — give up
+    dir = parent;
+  }
+}
+
 function buildAliasFromTsconfig(cwd: string): Record<string, string> {
   const alias: Record<string, string> = {};
+  const tsconfigDir = findTsconfigDir(cwd);
 
   try {
-    const raw = readFileSync(resolve(cwd, "tsconfig.json"), "utf-8");
+    const raw = readFileSync(resolve(tsconfigDir, "tsconfig.json"), "utf-8");
     const tsconfig = JSON.parse(stripJsonComments(raw));
     const paths: Record<string, string[]> = tsconfig?.compilerOptions?.paths;
     if (!paths) return alias;
@@ -71,7 +82,7 @@ function buildAliasFromTsconfig(cwd: string): Record<string, string> {
       // Only map wildcard patterns: "foo/*" → ["./bar/*"]
       if (pattern.endsWith("/*") && target.endsWith("/*")) {
         const key = pattern.slice(0, -2); // "~" or "@convex"
-        const value = resolve(cwd, target.slice(0, -2)); // absolute path
+        const value = resolve(tsconfigDir, target.slice(0, -2)); // absolute path
         alias[key] = value;
       }
     }

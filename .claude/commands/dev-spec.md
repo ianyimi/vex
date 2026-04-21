@@ -29,6 +29,10 @@ These are patterns the developer applies consistently. Follow them in all genera
 - **`date` cell uses `new Date(value).toLocaleDateString()`** — not `date-fns`. Native API is sufficient for table cell display.
 - **Boolean cell displays `"Yes"` / `"No"` text** — not icons. Always use text strings for boolean cell components.
 - **`date()` defaultValue is `undefined`, not `0`** — empty start is more intuitive than epoch.
+- **Types output config is separate from schema config** — `VexConfigInput.types?: TypesConfigInput` is a separate key from `schema`. Never nest `typesOutputPath` inside `SchemaConfigInput`. Default `types.outputPath` is `"/src/vex.types.ts"` (next to `vex.config.ts`), not `"/convex/vex.types.ts"`.
+- **Interface generation file is `interfaceGen.ts`** — not `typeGen.ts`. When generating TypeScript interfaces from collection configs, always use the `interfaceGen.ts` filename.
+- **Select fields in generated interfaces produce typed option subtypes** — `collectionConfigToInterface` generates `type StatusOption = "draft" | "published"` for each select field (or `field.optionInterfaceName` if set). Field property type is the option name, not `string[]`. Always implement this alongside the interface generator — do not defer.
+- **Auto-generated type files include ESLint disable comments for perfectionist** — write `/* eslint-disable perfectionist/sort-union-types */`, `/* eslint-disable perfectionist/sort-interfaces */`, `/* eslint-disable perfectionist/sort-modules */` at the top of any generated `.ts` file whose member order is determined by user config.
 
 See `agent-os/standards/developer-preferences.md` for the full audit trail.
 

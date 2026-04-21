@@ -63,6 +63,7 @@ export interface SelectFieldInput extends BaseFieldInput {
     badgeColor?: string;
   }[];
   hasMany?: boolean;
+  optionInterfaceName?: string;
 }
 
 /**
@@ -85,4 +86,5 @@ export interface SelectField extends BaseField {
     badgeColor?: string;
   }[];
   hasMany: boolean;
+  optionInterfaceName?: string;
 }

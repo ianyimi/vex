@@ -57,6 +57,7 @@ import type { DateFieldInput, DateField } from "./types";
 export function date(options?: DateFieldInput): DateField {
   return {
     type: ADMIN_FIELDS.date.type,
+    interfaceType: ADMIN_FIELDS.date.interfaceType,
 
     // Core properties with defaults
     label: "",

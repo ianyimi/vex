@@ -4,6 +4,7 @@ import { TABLE_SLUG_POSTS } from "~/db/constants"
 
 export const posts = defineCollection({
   slug: TABLE_SLUG_POSTS,
+  interfaceName: "Post",
   admin: {
     useAsTitle: "title",
   },
@@ -15,6 +16,7 @@ export const posts = defineCollection({
     title: text({ required: true }),
     slug: text({ required: true }),
     excerpt: text(),
+    link: text(),
     index: number(),
     published: checkbox({
       label: "Published",
@@ -23,6 +25,7 @@ export const posts = defineCollection({
     type: select({
       hasMany: true,
       label: "Type",
+      optionInterfaceName: "Type",
       options: [
         {
           label: "One",

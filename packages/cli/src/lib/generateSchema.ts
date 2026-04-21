@@ -1,6 +1,7 @@
 // @ts-nocheck
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, dirname } from "node:path";
 
 import type { VexConfig } from "@vexcms/core";
 import {
@@ -31,21 +32,18 @@ export interface GenerateOptions {
 export async function generateAndWrite(
   config: VexConfig,
   cwd: string,
+  configPath: string,
   options?: GenerateOptions,
 ): Promise<GenerateResult> {
   const outputRelPath = config.schema.outputPath; // e.g. "/convex/vex.schema.ts"
   const vexSchemaPath = resolve(cwd, outputRelPath.replace(/^\//, ""));
   const convexSchemaPath = resolve(cwd, "convex/schema.ts");
 
-  // Generate the final schema content
-  const content = generateVexSchema({ config });
-
-  // Generate and write vex.types.ts
+  // Generate and write vex.types.ts — always placed next to vex.config.ts
   try {
     const typesContent = generateVexTypes({ config });
-    const typesRelPath = config.schema.typesOutputPath;
-    const typesPath = resolve(cwd, typesRelPath.replace(/^\//, ""));
-    const formattedTypes = await formatString(typesContent, typesPath);
+    const typesPath = resolve(dirname(configPath), "vex.types.ts");
+    const formattedTypes = formatString(typesContent, typesPath, cwd);
     const existingTypes = existsSync(typesPath)
       ? readFileSync(typesPath, "utf-8")
       : "";
@@ -58,21 +56,22 @@ export async function generateAndWrite(
     logger.error("Type generation error", err);
   }
 
+  // Generate the schema content; bail early if there are no collections to emit
+  const { update: shouldWriteSchema, contents: schemaContents } =
+    generateVexSchema({ config });
+  if (!shouldWriteSchema) {
+    return { written: false };
+  }
+
   // Format content before comparison so Prettier-formatted files match correctly
-  const finalSchema = await formatString(content, vexSchemaPath);
+  const finalSchema = formatString(schemaContents, vexSchemaPath, cwd);
 
   // Compare with existing file — skip write if unchanged
   const existing = existsSync(vexSchemaPath)
     ? readFileSync(vexSchemaPath, "utf-8")
     : "";
 
-  if (existing === finalSchema) {
-    // vex.schema.ts unchanged, but schema.ts may still need syncing
-    syncSchemaImports(convexSchemaPath, content, outputRelPath, config);
-    // Still generate collection API files (they may be missing or stale)
-    await generateAndWriteCollectionFiles({ config, cwd });
-    return { written: false };
-  }
+  syncSchemaImports(convexSchemaPath, schemaContents, outputRelPath, config);
 
   // Auto-migrate if enabled
   let migrationOk = true;
@@ -102,7 +101,7 @@ export async function generateAndWrite(
         }
 
         // Write the interim schema (may be same as final if only adding optional fields)
-        const formattedInterim = await formatString(interim, vexSchemaPath);
+        const formattedInterim = formatString(interim, vexSchemaPath, cwd);
         writeFileSync(vexSchemaPath, formattedInterim, "utf-8");
 
         if (interim !== finalSchema) {
@@ -179,11 +178,12 @@ export async function generateAndWrite(
       : "";
     if (current !== finalSchema) {
       writeFileSync(vexSchemaPath, finalSchema, "utf-8");
+      logger.success(`Generated ${outputRelPath}`);
     }
   }
 
   // Sync schema.ts imports with vex.schema.ts exports
-  syncSchemaImports(convexSchemaPath, content, outputRelPath, config, existing);
+  syncSchemaImports(convexSchemaPath, schemaContents, outputRelPath, config, existing);
 
   // Backfill vex_status on versioned collections after schema is deployed.
   // The mutation only patches documents missing vex_status, so this is safe
@@ -208,20 +208,80 @@ export async function generateAndWrite(
 }
 
 /**
- * Format a string with Prettier (if available). Returns the original
- * string unchanged when Prettier is not installed or fails.
+ * Walk up from `startDir` looking for `node_modules/.bin/<name>`.
+ * Returns the absolute path to the binary, or null if not found.
  */
-async function formatString(
-  source: string,
-  filepath: string,
-): Promise<string> {
-  try {
-    const prettier = await import("prettier");
-    const options = (await prettier.resolveConfig(filepath)) ?? {};
-    return await prettier.format(source, { ...options, filepath });
-  } catch {
-    return source;
+function findBin(name: string, startDir: string): string | null {
+  let dir = startDir;
+  while (true) {
+    const bin = resolve(dir, "node_modules/.bin", name);
+    if (existsSync(bin)) return bin;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
   }
+}
+
+/**
+ * Detect which formatter the project uses by reading the `format` (or `fmt`)
+ * script from the nearest `package.json`. Falls back to checking installed
+ * binaries when no script is found.
+ */
+function detectFormatter(cwd: string): "prettier" | "biome" | null {
+  try {
+    const pkgPath = resolve(cwd, "package.json");
+    if (existsSync(pkgPath)) {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as {
+        scripts?: Record<string, string>;
+      };
+      const script = pkg.scripts?.format ?? pkg.scripts?.fmt ?? "";
+      if (script.includes("prettier")) return "prettier";
+      if (script.includes("biome")) return "biome";
+    }
+  } catch {
+    // ignore read/parse errors
+  }
+  // Fall back to whichever binary is installed
+  if (findBin("prettier", cwd)) return "prettier";
+  if (findBin("biome", cwd)) return "biome";
+  return null;
+}
+
+/**
+ * Format `source` using the formatter declared in the project's `format` script
+ * (Prettier or Biome). Uses stdin so only the generated file content is touched.
+ * Returns the original string unchanged when no formatter is found or formatting fails.
+ */
+function formatString(source: string, filepath: string, cwd: string): string {
+  const formatter = detectFormatter(cwd);
+
+  if (formatter === "prettier") {
+    const bin = findBin("prettier", cwd);
+    if (bin) {
+      try {
+        return execFileSync(
+          bin,
+          ["--stdin-filepath", filepath, "--log-level", "silent"],
+          { input: source, encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] },
+        );
+      } catch {}
+    }
+  }
+
+  if (formatter === "biome") {
+    const bin = findBin("biome", cwd);
+    if (bin) {
+      try {
+        return execFileSync(
+          bin,
+          ["format", "--stdin-file-path", filepath],
+          { input: source, encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] },
+        );
+      } catch {}
+    }
+  }
+
+  return source;
 }
 
 function syncSchemaImports(
@@ -367,7 +427,10 @@ function addToImport(
   // No existing import — add one after the last import line
   const lastImportIdx = content.lastIndexOf("import ");
   if (lastImportIdx !== -1) {
-    const lineEnd = content.indexOf("\n", lastImportIdx);
+    // Scan forward to the `from "..."` clause to handle multi-line imports
+    const fromIdx = content.indexOf(" from ", lastImportIdx);
+    const scanFrom = fromIdx !== -1 ? fromIdx : lastImportIdx;
+    const lineEnd = content.indexOf("\n", scanFrom);
     const insertPos = lineEnd !== -1 ? lineEnd + 1 : content.length;
     const importLine = `import { ${names.join(", ")} } from "${importPath}";\n`;
     return content.slice(0, insertPos) + importLine + content.slice(insertPos);

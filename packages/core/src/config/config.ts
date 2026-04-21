@@ -34,5 +34,13 @@ export function defineConfig(config?: VexConfigInput): VexConfig {
         ...config?.admin?.sidebar,
       },
     },
+    schema: {
+      outputPath: "/convex/vex.schema.ts",
+      ...config?.schema,
+    },
+    types: {
+      outputPath: "/src/vex.types.ts",
+      ...config?.types,
+    },
   };
 }

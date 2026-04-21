@@ -43,7 +43,8 @@ Also read these integration test files — they must be updated as part of every
 - `packages/core/src/fields/validators/adminFieldToValidator.test.ts` — dispatch tests for all field types
 - `packages/core/src/fields/inputSchemas/adminFieldToInputSchema.test.ts` — dispatch tests for all field types
 - `packages/core/src/collections/utils.test.ts` — `getCollectionInputSchema` / `getCollectionDefaultValues` tests
-- `packages/cli/src/schema/generateSchema.test.ts` — schema generation tests (excluded from test runner but must be kept up to date)
+- `packages/core/src/collections/schema.test.ts` — `collectionConfigToVexSchema` per-collection schema string tests
+- `packages/core/src/schema/generateVexSchema.test.ts` — full schema generation integration test (integration test covers all field types)
 - `packages/cli/src/lib/generateCollectionFiles.test.ts` — collection file generation tests (excluded from test runner but must be kept up to date)
 
 Read every file you just enumerated. Do not skip any file.
@@ -269,25 +270,41 @@ Add `<newField>` fields to the existing collection definitions in both `getColle
 
 Then update the **comprehensive test** (one collection with every field type) to include the new field.
 
-#### `packages/cli/src/schema/generateSchema.test.ts` *(excluded from test runner — update anyway)*
+#### `packages/core/src/collections/schema.test.ts`
 
-Add a new `it()` block using the new field type. For fields that generate non-trivial validator strings (e.g. select), add a dedicated test:
+Add two new `describe` blocks — one for the field validator string, one for index/searchIndex behavior if the field supports it:
 
 ```ts
-it("generates schema for collection with <newField> fields", () => {
-  const config = defineConfig({
-    collections: [defineCollection({
-      slug: "example",
-      fields: { fieldKey: <newField>({ required: true, /* options etc */ }) },
-    })],
+// ─── <newField> ───────────────────────────────────────────────────────────────
+
+describe("collectionConfigToVexSchema — <newField> field", () => {
+  it("generates required <newField> field as <expectedValidator>", () => {
+    const collection = defineCollection({
+      slug: "test",
+      fields: { fieldKey: <newField>({ required: true, /* minimal config */ }) },
+    });
+    expect(collectionConfigToVexSchema({ collection })).toContain(
+      "fieldKey: <expectedValidator>",
+    );
   });
-  generateVexSchema({ config });
-  const output = readFileSync(outPath, "utf-8");
-  expect(output).toContain("<expected validator output string>");
+
+  it("generates optional <newField> field as v.optional(<expectedValidator>)", () => {
+    const collection = defineCollection({
+      slug: "test",
+      fields: { fieldKey: <newField>({ required: false }) },
+    });
+    expect(collectionConfigToVexSchema({ collection })).toContain(
+      "fieldKey: v.optional(<expectedValidator>)",
+    );
+  });
 });
 ```
 
-Then update the **comprehensive test** at the bottom that covers every field type at once.
+Then update the **integration test** at the bottom (the "realistic collection" test) to include the new field type alongside text, number, checkbox, date, select, and all previously added fields.
+
+#### `packages/core/src/schema/generateVexSchema.test.ts`
+
+Update the **integration test** at the bottom (the "generates a complete valid schema for a realistic collection" test) to include a `<newField>` field in the collection definition and add a corresponding `expect(output.contents).toContain(...)` assertion for its validator string.
 
 #### `packages/cli/src/lib/generateCollectionFiles.test.ts` *(excluded from test runner — update anyway)*
 

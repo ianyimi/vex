@@ -8,16 +8,19 @@ const command = args[0];
 
 // Parse flags
 let once = false;
+let cwd: string | undefined;
 
 for (let i = 1; i < args.length; i++) {
   if (args[i] === "--once") {
     once = true;
+  } else if (args[i] === "--cwd" && args[i + 1]) {
+    cwd = args[++i];
   }
 }
 
 switch (command) {
   case "dev":
-    devCommand({ once }).catch((err) => {
+    devCommand({ once, cwd }).catch((err) => {
       logger.error("Fatal error", err);
       process.exit(1);
     });

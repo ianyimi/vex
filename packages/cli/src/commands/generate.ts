@@ -1,12 +1,17 @@
-// @ts-nocheck
 import { execSync } from "node:child_process";
 import { resolve } from "node:path";
 
 import { loadConfig } from "../lib/loadConfig.js";
 import { logger } from "../lib/logger.js";
 import { resolveConfigPath } from "../lib/resolveConfigPath.js";
-import { deriveConvexDir, generateAndWriteCollectionFiles } from "../lib/generateCollectionFiles.js";
+import {
+  deriveConvexDir,
+  generateAndWriteCollectionFiles,
+} from "../lib/generateCollectionFiles.js";
 
+/**
+ *
+ */
 export async function generateCommand() {
   const cwd = process.cwd();
   const configPath = resolveConfigPath(cwd);
@@ -28,10 +33,14 @@ export async function generateCommand() {
     logger.info("All collection API files up to date");
   } else {
     if (written.length > 0) {
-      logger.success(`Generated ${written.length} file(s): ${written.join(", ")}`);
+      logger.success(
+        `Generated ${written.length} file(s): ${written.join(", ")}`,
+      );
     }
     if (deleted.length > 0) {
-      logger.success(`Deleted ${deleted.length} stale file(s): ${deleted.join(", ")}`);
+      logger.success(
+        `Deleted ${deleted.length} stale file(s): ${deleted.join(", ")}`,
+      );
     }
   }
 

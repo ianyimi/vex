@@ -59,6 +59,7 @@ import type { SelectFieldInput, SelectField } from "./types";
 export function select(options?: SelectFieldInput): SelectField {
   return {
     type: ADMIN_FIELDS.select.type,
+    interfaceType: ADMIN_FIELDS.select.interfaceType,
     label: "",
     required: false,
     defaultValue: ADMIN_FIELDS.select.defaultValue,

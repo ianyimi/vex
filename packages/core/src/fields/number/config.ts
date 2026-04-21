@@ -49,6 +49,7 @@ import type { NumberFieldInput, NumberField } from "./types";
 export function number(options?: NumberFieldInput): NumberField {
   return {
     type: ADMIN_FIELDS.number.type,
+    interfaceType: ADMIN_FIELDS.number.interfaceType,
 
     // Core properties with defaults
     label: "",

@@ -103,6 +103,8 @@ export interface CollectionConfigInput<
   };
   /** Field definitions that make up this collection's document shape. */
   fields: Record<TFieldSlug, AdminField>;
+  /** Override the PascalCase interface name used in generated TypeScript types. Inferred from `slug` by `defineCollection` if omitted. */
+  interfaceName?: string;
 }
 
 /**
@@ -128,4 +130,6 @@ export interface CollectionConfig<
   };
   /** Resolved field definitions for this collection. */
   fields: Record<TFieldSlug, AdminField>;
+  /** PascalCase identifier derived from `slug`, used as the TypeScript interface name in generated types (e.g. `"posts"` → `"Posts"`). */
+  interfaceName: string;
 }

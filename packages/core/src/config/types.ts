@@ -64,6 +64,80 @@ export interface AdminConfig {
 }
 
 /**
+ * User-facing schema generation configuration for `defineConfig()`.
+ *
+ * Controls where generated files are written and whether automatic database
+ * migrations run when the schema changes. All properties are optional; omitted
+ * properties fall back to the defaults listed below.
+ *
+ * **Defaults applied by `defineConfig()`:**
+ * ```ts
+ * {
+ *   outputPath:      "/convex/vex.schema.ts", // vex.schema.ts output location
+ *   typesOutputPath: "/convex/vex.types.ts",  // vex.types.ts output location
+ *   autoMigrate:     false,                   // no auto-migration on schema change
+ *   autoRemove:      false,                   // removed tables stay in schema.ts
+ * }
+ *
+ * @see {@link SchemaConfig} for the resolved type after defaults are applied
+ */
+export interface SchemaConfigInput {
+  /**
+   * Path (relative to project root) where `vex.schema.ts` is written.
+   *
+   * Default: `"/convex/vex.schema.ts"`
+   */
+  outputPath?: string;
+}
+
+/**
+ * Resolved schema generation configuration after defaults are applied.
+ *
+ * @see {@link SchemaConfigInput} for the user-facing input type
+ */
+export interface SchemaConfig {
+  /** Path where `vex.schema.ts` is written. Always set after defaults are applied. */
+  outputPath: string;
+}
+
+/**
+ * User-facing schema generation configuration for `defineConfig()`.
+ *
+ * Controls where generated files are written and whether automatic database
+ * migrations run when the schema changes. All properties are optional; omitted
+ * properties fall back to the defaults listed below.
+ *
+ * **Defaults applied by `defineConfig()`:**
+ * ```ts
+ * {
+ *   outputPath:      "/convex/vex.schema.ts", // vex.schema.ts output location
+ *   typesOutputPath: "/convex/vex.types.ts",  // vex.types.ts output location
+ *   autoMigrate:     false,                   // no auto-migration on schema change
+ *   autoRemove:      false,                   // removed tables stay in schema.ts
+ * }
+ *
+ * @see {@link SchemaConfig} for the resolved type after defaults are applied
+ */
+export interface TypesConfigInput {
+  /**
+   * Path (relative to project root) where `vex.types.ts` is written.
+   *
+   * Default: `"/convex/vex.schema.ts"`
+   */
+  outputPath?: string;
+}
+
+/**
+ * Resolved schema generation configuration after defaults are applied.
+ *
+ * @see {@link SchemaConfigInput} for the user-facing input type
+ */
+export interface TypesConfig {
+  /** Path where `vex.types.ts` is written. Always set after defaults are applied. */
+  outputPath: string;
+}
+
+/**
  * User-facing configuration input passed to `defineConfig()`.
  *
  * All properties are optional — omitting `collections` produces an empty CMS
@@ -116,6 +190,14 @@ export interface VexConfigInput {
    * (e.g. `"/cms"` or `"/dashboard/admin"`).
    */
   basePath?: string;
+  /**
+   * Schema generation configuration — controls output paths and auto-migration.
+   * All properties are optional; omitted values fall back to defaults.
+   *
+   * @see {@link SchemaConfigInput} for all available options
+   */
+  schema?: SchemaConfigInput;
+  types?: TypesConfigInput
 }
 
 /**
@@ -131,4 +213,7 @@ export interface VexConfig {
   collections: CollectionConfig[];
   /** URL prefix for all admin panel routes — always set after defaults are applied. */
   basePath: string;
+  /** Resolved schema generation configuration — always fully populated after defaults are applied. */
+  schema: SchemaConfig;
+  types: TypesConfig;
 }

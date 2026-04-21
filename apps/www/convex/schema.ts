@@ -5,13 +5,15 @@ import {
   TABLE_SLUG_ACCOUNTS,
   TABLE_SLUG_API_KEYS,
   TABLE_SLUG_JWKS,
-  TABLE_SLUG_POSTS,
   TABLE_SLUG_SESSIONS,
   TABLE_SLUG_USERS,
   TABLE_SLUG_VERIFICATIONS,
 } from "~/db/constants"
 
+import { posts } from "./vex.schema"
+
 export default defineSchema({
+  posts,
   // Better Auth component tables (type definitions only - actual tables are in component)
   [TABLE_SLUG_USERS]: defineTable({
     name: v.string(),
@@ -104,14 +106,4 @@ export default defineSchema({
   })
     .index("by_referenceId", ["referenceId"])
     .index("by_key", ["key"]),
-
-  [TABLE_SLUG_POSTS]: defineTable({
-    title: v.string(),
-    slug: v.string(),
-    excerpt: v.string(),
-    index: v.number(),
-    published: v.optional(v.boolean()),
-    publishedAt: v.optional(v.number()),
-    type: v.optional(v.array(v.string())),
-  }),
 })

@@ -1,5 +1,6 @@
 import { toTitleCase, plural } from "../utils";
 import { CollectionConfigInput, CollectionConfig } from "./types";
+import { slugToPascalCase } from "./utils";
 
 /**
  * Resolves a raw collection config input into a fully-populated `CollectionConfig`.
@@ -31,6 +32,7 @@ export function defineCollection<
   config: CollectionConfigInput<TSlug, TFieldSlug>,
 ): CollectionConfig<TSlug, TFieldSlug> {
   return {
+    interfaceName: slugToPascalCase({ slug: config.slug }) + "Document",
     ...config,
     admin: {
       useAsTitle: "_id",

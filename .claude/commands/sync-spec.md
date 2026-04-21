@@ -54,6 +54,8 @@ For each file mentioned in the spec:
    - Were tests added or removed?
    - **Check call patterns in tests:** Do test function calls match the actual function signatures? If a function was changed from positional params to `props` object, all test calls must be updated too.
 
+7. **Verify symbol locations for in-progress steps** — for any step that has unchecked `- [ ]` items but already has some files on disk: do not trust the spec's stated file paths for named symbols. For each function, type, or exported const named in that step's code blocks, grep the codebase to confirm it lives in the file the spec states. If it lives somewhere else, treat it as a structural deviation and flag it exactly as you would for a completed step. Never assume the spec is correct about where a partially-implemented symbol lives — always verify against the actual code.
+
 ### Phase 2B: Extract Developer Patterns
 
 **Before presenting the diff to the developer**, synthesize each deviation into a pattern category. Every deviation the developer made to the code is treated as intentional — it represents how they want things done. The goal is to feed these back into the dev-spec process so future specs get them right the first time and the developer can spend less time fixing AI-generated code.
@@ -281,9 +283,10 @@ to the developer — do not continue to the next agent.
 Determine which packages were changed in this sync (from the ideaLog "Packages affected" field),
 then run each agent scoped to those packages only.
 
-1. **JSDoc** — for each source file created or modified in this sync:
-   Spawn a sub-agent using the `jsdoc-agent` skill: `/jsdoc-agent <file-path>`
-   Run one agent per file. Wait for all to complete before proceeding.
+1. **JSDoc** — invoke the `/document` skill with no arguments.
+   It will automatically find all uncommitted changed files and write or update JSDoc
+   for every function, interface, and type that is missing documentation.
+   Wait for it to complete before proceeding.
 
 2. **Guides** — for each developer-facing feature touched in this sync:
    Check `agent-os/standards/feature-checklist.md` section 5/6 to determine which
@@ -309,7 +312,7 @@ Sync complete for spec {number}.
 **Commit message ready:** agent-os/implementation-log/YYYY/MM/YYYY-MM-DD.commit.md
 
 **Pipeline results:**
-- JSDoc: {N} files updated / already complete
+- /document: {N} files updated / already complete
 - Guides: {N} guides written / already exist
 - Typecheck: passed / FAILED (see above)
 - Tests: passed / FAILED (see above)

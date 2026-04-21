@@ -46,6 +46,7 @@ import type { CheckboxFieldInput, CheckboxField } from "./types";
 export function checkbox(options?: CheckboxFieldInput): CheckboxField {
   return {
     type: ADMIN_FIELDS.checkbox.type,
+    interfaceType: ADMIN_FIELDS.checkbox.interfaceType,
 
     // Core properties with defaults
     label: "",

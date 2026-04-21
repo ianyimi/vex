@@ -244,4 +244,6 @@ export interface BaseField {
   description?: string;
   /** Convex index name for this field. */
   index?: string;
+  /** TypeScript type string written to generated document interfaces (e.g. `"string"`, `"number"`, `"string[]"`). */
+  interfaceType: string;
 }

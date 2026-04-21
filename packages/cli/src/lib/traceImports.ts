@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 
 import { createResolver } from "./loadConfig.js";
 
@@ -61,7 +61,18 @@ export function traceImports(
         }
       }
 
-      if (resolved.includes("node_modules")) continue;
+      if (resolved.includes("node_modules")) {
+        // Follow symlinks — pnpm workspace packages resolve through node_modules
+        // but symlink to packages/ in the monorepo. Include those so changes to
+        // local packages trigger a re-run without needing to touch vex.config.ts.
+        try {
+          const real = realpathSync(resolved);
+          if (real.includes("node_modules")) continue;
+          resolved = real;
+        } catch {
+          continue;
+        }
+      }
       if (resolved.includes("_generated")) continue;
       if (resolved === outputPath) continue;
 

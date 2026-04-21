@@ -28,7 +28,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "dev": "tsup --watch",
+    "dev": "tsup --watch --no-clean",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.check.json"
   },

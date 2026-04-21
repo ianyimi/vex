@@ -1,7 +1,11 @@
 // @ts-nocheck
 import { resolve } from "node:path";
 import { generateAndWrite, getOutputPath } from "../lib/generateSchema.js";
-import { killConvexDev, startConvexDev, waitForDeploy } from "../lib/convexProcess.js";
+import {
+  killConvexDev,
+  startConvexDev,
+  waitForDeploy,
+} from "../lib/convexProcess.js";
 import { loadConfig, patchConvexTsconfig } from "../lib/loadConfig.js";
 import { logger } from "../lib/logger.js";
 import { backfillVersionStatus } from "../lib/migrate.js";
@@ -10,12 +14,18 @@ import { resolveConvexUrl } from "../lib/resolveConvexUrl.js";
 import { traceImports } from "../lib/traceImports.js";
 import { createWatcher } from "../lib/watcher.js";
 
+/**
+ *
+ */
 export interface DevOptions {
   once?: boolean;
+  cwd?: string;
 }
 
 export async function devCommand(options: DevOptions = {}) {
-  const cwd = process.cwd();
+  const cwd = options.cwd
+    ? resolve(process.cwd(), options.cwd)
+    : process.cwd();
   const configPath = resolveConfigPath(cwd);
   logger.info(`Config found: ${configPath}`);
 
@@ -23,7 +33,7 @@ export async function devCommand(options: DevOptions = {}) {
   let config = await loadConfig(configPath);
   const outputPath = getOutputPath(config, cwd);
 
-  const result = await generateAndWrite(config, cwd);
+  const result = await generateAndWrite(config, cwd, configPath);
   if (result.written) {
     logger.success(`Generated ${config.schema.outputPath}`);
   } else {
@@ -48,13 +58,15 @@ export async function devCommand(options: DevOptions = {}) {
   // Stops after the first successful deploy (only needed during setup).
   const convexTsconfigPath = resolve(cwd, "convex/tsconfig.json");
   let patchDebounce: ReturnType<typeof setTimeout> | null = null;
-  const { watch: watchFs } = await import("node:fs");
-  const tsconfigWatcher = watchFs(convexTsconfigPath, () => {
-    if (patchDebounce) clearTimeout(patchDebounce);
-    patchDebounce = setTimeout(() => {
-      patchConvexTsconfig(cwd);
-    }, 100);
-  });
+  const { watch: watchFs, existsSync: fsExistsSync } = await import("node:fs");
+  const tsconfigWatcher = fsExistsSync(convexTsconfigPath)
+    ? watchFs(convexTsconfigPath, () => {
+        if (patchDebounce) clearTimeout(patchDebounce);
+        patchDebounce = setTimeout(() => {
+          patchConvexTsconfig(cwd);
+        }, 100);
+      })
+    : null;
 
   // Start convex dev — this is the core of `vex dev`
   startConvexDev(cwd);
@@ -63,26 +75,28 @@ export async function devCommand(options: DevOptions = {}) {
   // (no longer needed). On failure, the watcher already patched the file
   // which triggers Convex to retry.
   const hasVersioning = config.collections.some((c) => c.versions?.drafts);
-  waitForDeploy(cwd).then(async (deployed) => {
-    // Stop watching — Convex only overwrites tsconfig during provisioning
-    tsconfigWatcher.close();
+  waitForDeploy(cwd)
+    .then(async (deployed) => {
+      // Stop watching — Convex only overwrites tsconfig during provisioning
+      tsconfigWatcher?.close();
 
-    if (!deployed) {
-      // Patch one more time in case the watcher missed it
-      patchConvexTsconfig(cwd);
-      return;
-    }
-
-    if (hasVersioning) {
-      const convexUrl = resolveConvexUrl(cwd);
-      if (convexUrl) {
-        await backfillVersionStatus({ convexUrl, config });
+      if (!deployed) {
+        // Patch one more time in case the watcher missed it
+        patchConvexTsconfig(cwd);
+        return;
       }
-    }
-  }).catch(() => {
-    tsconfigWatcher.close();
-    patchConvexTsconfig(cwd);
-  });
+
+      if (hasVersioning) {
+        const convexUrl = resolveConvexUrl(cwd);
+        if (convexUrl) {
+          await backfillVersionStatus({ convexUrl, config });
+        }
+      }
+    })
+    .catch(() => {
+      tsconfigWatcher?.close();
+      patchConvexTsconfig(cwd);
+    });
 
   // Trace the import tree
   let watchedPaths = traceImports(configPath, outputPath);
@@ -105,7 +119,7 @@ export async function devCommand(options: DevOptions = {}) {
 
     try {
       config = await loadConfig(configPath);
-      const genResult = await generateAndWrite(config, cwd);
+      const genResult = await generateAndWrite(config, cwd, configPath);
 
       if (genResult.written) {
         logger.success(`Regenerated ${config.schema.outputPath}`);

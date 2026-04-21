@@ -56,6 +56,28 @@
   entry would incorrectly mark server components as client components.
   *(Encoded: sync-spec 01, 2026-04-07)*
 
+## ADMIN_FIELDS Metadata Keys
+
+- **TypeScript type string key is `interfaceType`, not `tsType`**: When adding a TypeScript type string to an `ADMIN_FIELDS` entry, name the key `interfaceType` (e.g., `interfaceType: "string"`). `tsType` was the spec-generated name; `interfaceType` is preferred because it specifically names what the string generates — a TypeScript interface property type. The derived `AdminFieldTsType` union also reads `["interfaceType"]`. Each field config function stamps `ADMIN_FIELDS[type].interfaceType` onto the resolved field object. *(Encoded: sync-spec 21, 2026-04-20)*
+
+- **`interfaceType` is stored on field objects AND on ADMIN_FIELDS**: Field config functions (e.g., `text()`) stamp `interfaceType: ADMIN_FIELDS.text.interfaceType` onto the resolved field at config time. Type generators read `field.interfaceType` directly — they do not look up `ADMIN_FIELDS[field.type].interfaceType` at generation time. *(Encoded: sync-spec 21, 2026-04-20)*
+
+- **`interfaceName` is stored on `CollectionConfig`**: `defineCollection` sets `interfaceName: slugToPascalCase({ slug })` on the resolved config. Type generators read `collection.interfaceName` directly — they do not recompute it. *(Encoded: sync-spec 21, 2026-04-20)*
+
+## Schema/Types Config Structure
+
+- **Types output gets its own top-level config key, not nested in schema**: `VexConfigInput.types?: TypesConfigInput` and `VexConfig.types: TypesConfig` are separate from `schema`. Do not nest `typesOutputPath` inside `SchemaConfigInput`. When generated output files are logically independent, give each its own config section. *(Encoded: sync-spec 21, 2026-04-21)*
+
+- **Default path for `vex.types.ts` is `/src/vex.types.ts`**: Placed next to `vex.config.ts` in the project's `src/` directory, not in `convex/`. The CLI resolves this relative to `vex.config.ts` at runtime. *(Encoded: sync-spec 21, 2026-04-21)*
+
+## Code Generation Helpers
+
+- **Interface generation file is named `interfaceGen.ts`, not `typeGen.ts`**: When generating TypeScript interfaces from collection configs, name the file `interfaceGen.ts`. `typeGen.ts` is too generic — `interfaceGen.ts` specifically names what the file does. *(Encoded: sync-spec 21, 2026-04-21)*
+
+- **Select fields in generated interfaces produce typed option subtypes**: `collectionConfigToInterface` generates `type StatusOption = "draft" | "published"` as a sub-type for each select field, using `{FieldKey}Option` as the name (or `field.optionInterfaceName` if set). The field property type is the option sub-type name, not `string[]`. Do not defer this to a future spec — it is always implemented alongside the interface generator. *(Encoded: sync-spec 21, 2026-04-21)*
+
+- **Auto-generated type files include ESLint disable comments for perfectionist**: `generateVexTypes` writes `/* eslint-disable perfectionist/sort-union-types */`, `/* eslint-disable perfectionist/sort-interfaces */`, and `/* eslint-disable perfectionist/sort-modules */` at the top of generated `vex.types.ts` files. Always include these when generating TypeScript files whose member order is controlled by user config, not alphabetical sort. *(Encoded: sync-spec 21, 2026-04-21)*
+
 ## Field Type Naming
 
 - **Field type names describe the UI widget, not the data type**: The function name, type string, and interfaces match the input control, not the underlying data type. `checkbox()` stores a `boolean` via `v.boolean()`, but the field type is `"checkbox"`. `select()` stores a `string`, but the field type is `"select"`. Never name a field type after its data type (no `boolean()`, no `string()`). *(Encoded: sync-spec 20, 2026-04-11)*

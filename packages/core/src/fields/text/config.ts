@@ -48,6 +48,7 @@ import type { TextFieldInput, TextField } from "./types";
 export function text(options?: TextFieldInput): TextField {
   return {
     type: ADMIN_FIELDS.text.type,
+    interfaceType: ADMIN_FIELDS.text.interfaceType,
 
     // Core properties with defaults
     label: "",
