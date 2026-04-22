@@ -1,0 +1,56 @@
+# Agent OS Standards Index
+
+backend:
+  api:
+    description: Needs description - run /index-standards
+  effect:
+    description: Needs description - run /index-standards
+  migrations:
+    description: Needs description - run /index-standards
+  models:
+    description: Needs description - run /index-standards
+  queries:
+    description: Needs description - run /index-standards
+
+frontend:
+  accessibility:
+    description: Needs description - run /index-standards
+  components:
+    description: Needs description - run /index-standards
+  css:
+    description: Needs description - run /index-standards
+  data-fetching:
+    description: Needs description - run /index-standards
+  forms:
+    description: Needs description - run /index-standards
+  responsive:
+    description: Needs description - run /index-standards
+  tables:
+    description: Needs description - run /index-standards
+
+global:
+  best-practices:
+    description: Needs description - run /index-standards
+  coding-style:
+    description: Needs description - run /index-standards
+  commenting:
+    description: Needs description - run /index-standards
+  conventions:
+    description: Needs description - run /index-standards
+  error-handling:
+    description: Needs description - run /index-standards
+  performance:
+    description: Needs description - run /index-standards
+  tech-stack:
+    description: Needs description - run /index-standards
+  validation:
+    description: Needs description - run /index-standards
+
+testing:
+  coverage:
+    description: Needs description - run /index-standards
+  test-writing:
+    description: Needs description - run /index-standards
+  unit-tests:
+    description: Needs description - run /index-standards
+
