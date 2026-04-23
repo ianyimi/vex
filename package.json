@@ -5,7 +5,7 @@
     "build": "turbo run build",
     "dev": "turbo run dev --concurrency 11",
     "dev:app": "pnpm --filter www dev",
-    "dev:vex": "node --watch-path packages/core/dist/.build --watch-path packages/cli/dist/.build packages/cli/dist/index.js dev --cwd apps/www",
+    "dev:vex": "node scripts/vex-dev.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "coverage": "turbo run coverage",

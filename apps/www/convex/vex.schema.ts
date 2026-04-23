@@ -10,6 +10,7 @@ export const posts = defineTable({
   excerpt: v.optional(v.string()),
   link: v.optional(v.string()),
   index: v.optional(v.number()),
+  thumbnail: v.optional(v.string()),
   published: v.optional(v.boolean()),
   publishedAt: v.optional(v.number()),
   type: v.optional(

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  text,
+  url,
   number,
   checkbox,
   date,
@@ -16,22 +16,22 @@ const SELECT_OPTIONS = [
 
 // ─── text ────────────────────────────────────────────────────────────────────
 
-describe("adminFieldToInputSchema — text", () => {
-  it("dispatches to text: accepts strings, rejects wrong types", () => {
-    const schema = adminFieldToInputSchema({ field: text({ required: true }) });
-    expect(schema.safeParse("hello").success).toBe(true);
+describe("adminFieldToInputSchema — url", () => {
+  it("dispatches to url: accepts valid URLs, rejects wrong types", () => {
+    const schema = adminFieldToInputSchema({ field: url({ required: true }) });
+    expect(schema.safeParse("https://example.com").success).toBe(true);
     expect(schema.safeParse(123).success).toBe(false);
     expect(schema.safeParse(null).success).toBe(false);
   });
 
   it("required text rejects empty string", () => {
-    const schema = adminFieldToInputSchema({ field: text({ required: true }) });
+    const schema = adminFieldToInputSchema({ field: url({ required: true }) });
     expect(schema.safeParse("").success).toBe(false);
   });
 
   it("optional text accepts undefined and returns default", () => {
     const schema = adminFieldToInputSchema({
-      field: text({ required: false, defaultValue: "" }),
+      field: url({ required: false, defaultValue: "" }),
     });
     const result = schema.safeParse(undefined);
     expect(result.success).toBe(true);
@@ -146,7 +146,7 @@ describe("adminFieldToInputSchema — comprehensive (all field types)", () => {
     const collection = defineCollection({
       slug: "all_fields",
       fields: {
-        title: text({ required: true }),
+        title: url({ required: true }),
         score: number({ required: true }),
         published: checkbox({ required: true }),
         publishedAt: date({ required: false }),
@@ -178,9 +178,9 @@ describe("adminFieldToInputSchema — comprehensive (all field types)", () => {
       ]),
     );
 
-    // text: required, string
-    expect(schemas.title.safeParse("Hello").success).toBe(true);
-    expect(schemas.title.safeParse("").success).toBe(false);
+    // url: required, valid URL
+    expect(schemas.title.safeParse("https://example.com").success).toBe(true);
+    expect(schemas.title.safeParse("not-a-url").success).toBe(false);
 
     // number: required, 0 is valid
     expect(schemas.score.safeParse(0).success).toBe(true);

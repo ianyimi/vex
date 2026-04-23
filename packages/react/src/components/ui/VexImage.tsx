@@ -25,8 +25,12 @@ export const VexImage = forwardRef<HTMLImageElement, VexImageProps>(
   function VexImage({ src, alt, ...rest }, ref) {
     const { Image } = useFrameworkComponents();
     if (Image) {
-      return <Image src={src} alt={alt} ref={ref} {...rest} />;
+      return (
+        <Image src={src} alt={alt} ref={ref} width={64} height={64} {...rest} />
+      );
     }
-    return <img src={src} alt={alt} ref={ref} {...rest} />;
+    return (
+      <img src={src} alt={alt} ref={ref} width={64} height={64} {...rest} />
+    );
   },
 );

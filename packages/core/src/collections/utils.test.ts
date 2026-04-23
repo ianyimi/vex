@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  text,
+  url,
   number,
   checkbox,
   date,
@@ -17,7 +17,7 @@ const SELECT_OPTIONS = [
 const ALL_FIELDS_COLLECTION = defineCollection({
   slug: "all_fields",
   fields: {
-    title: text({ required: true }),
+    title: url({ required: true }),
     score: number({ required: false }),
     published: checkbox({ required: false }),
     publishedAt: date({ required: false }),
@@ -44,8 +44,8 @@ describe("getCollectionDefaultValues", () => {
     const collection = defineCollection({
       slug: "posts",
       fields: {
-        title: text({ required: true }),
-        slug: text({ required: true, defaultValue: "" }),
+        title: url({ required: true }),
+        slug: url({ required: true, defaultValue: "" }),
       },
     });
     const defaults = getCollectionDefaultValues({ collection });
@@ -92,7 +92,7 @@ describe("getCollectionDefaultValues", () => {
     const collection = defineCollection({
       slug: "posts",
       fields: {
-        title: text({ required: true }),
+        title: url({ required: true }),
         score: number({ required: false }),
         published: checkbox(),
       },
@@ -114,7 +114,7 @@ describe("getCollectionDefaultValues", () => {
     const collection = defineCollection({
       slug: "posts",
       fields: {
-        title: text({ required: true }),
+        title: url({ required: true }),
         score: number({ required: false }),
       },
     });
@@ -176,24 +176,28 @@ describe("getCollectionInputSchema", () => {
     const collection = defineCollection({
       slug: "posts",
       fields: {
-        title: text({ required: true }),
-        slug: text({ required: true, min: { value: 3 } }),
-        excerpt: text({ required: false }),
+        title: url({ required: true }),
+        slug: url({ required: true }),
+        excerpt: url({ required: false }),
       },
     });
     const schema = getCollectionInputSchema({ collection });
-    const result = schema.safeParse({ title: "Hello", slug: "hello", excerpt: "" });
+    const result = schema.safeParse({
+      title: "https://example.com",
+      slug: "https://slug.example.com",
+      excerpt: "https://excerpt.example.com",
+    });
     expect(result.success).toBe(true);
   });
 
-  it("validates required text fields — rejects empty string", () => {
+  it("validates required url fields — rejects invalid URLs", () => {
     const collection = defineCollection({
       slug: "posts",
-      fields: { title: text({ required: true }) },
+      fields: { title: url({ required: true }) },
     });
     const schema = getCollectionInputSchema({ collection });
     expect(schema.safeParse({ title: "" }).success).toBe(false);
-    expect(schema.safeParse({ title: "Hello" }).success).toBe(true);
+    expect(schema.safeParse({ title: "https://example.com" }).success).toBe(true);
   });
 
   it("validates required number fields — accepts 0", () => {
@@ -251,7 +255,7 @@ describe("getCollectionInputSchema", () => {
     const collection = defineCollection({
       slug: "posts",
       fields: {
-        title: text({ required: false, defaultValue: "" }),
+        title: url({ required: false, defaultValue: "" }),
         score: number({ required: false }),
         published: checkbox({ required: false }),
         status: select({ required: false, options: SELECT_OPTIONS }),
@@ -277,7 +281,7 @@ describe("getCollectionInputSchema", () => {
 
     // Valid document — all fields present with correct types
     const validResult = schema.safeParse({
-      title: "My Post",
+      title: "https://example.com",
       score: 42,
       published: true,
       publishedAt: 1700000000000,
@@ -287,7 +291,7 @@ describe("getCollectionInputSchema", () => {
     expect(validResult.success).toBe(true);
 
     // Missing optional fields — should use defaults
-    const minimalResult = schema.safeParse({ title: "Hello" });
+    const minimalResult = schema.safeParse({ title: "https://example.com" });
     expect(minimalResult.success).toBe(true);
     if (minimalResult.success) {
       expect(minimalResult.data.score).toBe(0);

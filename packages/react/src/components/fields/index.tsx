@@ -26,12 +26,14 @@ import {
   SelectFieldInput,
   selectFieldToColumnDef,
 } from "./select";
+import { UrlFieldCell, UrlFieldInput, urlFieldToColumnDef } from "./url";
 
 export * from "./text";
 export * from "./number";
 export * from "./checkbox";
 export * from "./date";
 export * from "./select";
+export * from "./url";
 
 /**
  * Maps every `AdminFieldType` string to its corresponding input component.
@@ -56,6 +58,9 @@ export const fieldInputComponents: Record<
     InputComponentProps<AdminField>
   >,
   [ADMIN_FIELDS.select.type]: SelectFieldInput as ComponentType<
+    InputComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.url.type]: UrlFieldInput as ComponentType<
     InputComponentProps<AdminField>
   >,
 };
@@ -144,6 +149,9 @@ export const fieldCellComponents: Record<
   [ADMIN_FIELDS.select.type]: SelectFieldCell as ComponentType<
     CellComponentProps<AdminField>
   >,
+  [ADMIN_FIELDS.url.type]: UrlFieldCell as ComponentType<
+    CellComponentProps<AdminField>
+  >,
 };
 
 /**
@@ -180,7 +188,9 @@ export function fieldToCellComponent(field: AdminFieldType) {
  */
 export function getCollectionColumnDefs(props: {
   collection: CollectionConfig;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 }): ColumnDef<TDocument, any>[] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const columnDefs: ColumnDef<TDocument, any>[] = [];
   const { collection } = props;
   for (const [fieldKey, fieldDef] of Object.entries(collection.fields)) {
@@ -196,6 +206,7 @@ export function getCollectionColumnDefs(props: {
           }),
         );
         break;
+
       case ADMIN_FIELDS.number.type:
         columnDefs.push(
           numberFieldToColumnDef({
@@ -206,6 +217,7 @@ export function getCollectionColumnDefs(props: {
           }),
         );
         break;
+
       case ADMIN_FIELDS.checkbox.type:
         columnDefs.push(
           checkboxFieldToColumnDef({
@@ -216,6 +228,7 @@ export function getCollectionColumnDefs(props: {
           }),
         );
         break;
+
       case ADMIN_FIELDS.date.type:
         columnDefs.push(
           dateFieldToColumnDef({
@@ -226,9 +239,21 @@ export function getCollectionColumnDefs(props: {
           }),
         );
         break;
+
       case ADMIN_FIELDS.select.type:
         columnDefs.push(
           selectFieldToColumnDef({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
+      case ADMIN_FIELDS.url.type:
+        columnDefs.push(
+          urlFieldToColumnDef({
             fieldDef,
             fieldKey,
             isTitleField,

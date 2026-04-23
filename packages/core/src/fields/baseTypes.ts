@@ -237,7 +237,7 @@ export interface BaseField {
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
    */
-  defaultValue: unknown;
+  defaultValue?: unknown;
   /** Resolved admin UI configuration with all defaults applied. */
   admin: FieldAdminConfig;
   /** Description shown below the field in the admin form. */

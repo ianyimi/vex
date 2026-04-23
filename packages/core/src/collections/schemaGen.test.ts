@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { defineCollection } from "./config";
-import { text, number, checkbox, date, select } from "../fields";
+import { url, text, number, checkbox, date, select } from "../fields";
 import { collectionConfigToVexSchema } from "./schemaGen";
 
 // ─── Basic output ─────────────────────────────────────────────────────────────
@@ -9,7 +9,7 @@ describe("collectionConfigToVexSchema — basic output", () => {
   it("exports a const using the collection slug", () => {
     const collection = defineCollection({
       slug: "posts",
-      fields: { title: text({ required: true }) },
+      fields: { title: url({ required: true }) },
     });
     const output = collectionConfigToVexSchema({ collection });
     expect(output).toContain("export const posts = defineTable({");
@@ -30,7 +30,7 @@ describe("collectionConfigToVexSchema — field validators", () => {
   it("generates required text field as v.string()", () => {
     const collection = defineCollection({
       slug: "posts",
-      fields: { title: text({ required: true }) },
+      fields: { title: url({ required: true }) },
     });
     expect(collectionConfigToVexSchema({ collection })).toContain(
       "title: v.string()",
@@ -40,7 +40,7 @@ describe("collectionConfigToVexSchema — field validators", () => {
   it("generates optional text field as v.optional(v.string())", () => {
     const collection = defineCollection({
       slug: "posts",
-      fields: { excerpt: text({ required: false }) },
+      fields: { excerpt: url({ required: false }) },
     });
     expect(collectionConfigToVexSchema({ collection })).toContain(
       "excerpt: v.optional(v.string())",
@@ -102,7 +102,7 @@ describe("collectionConfigToVexSchema — indexes", () => {
   it("appends .index() for a field with an index property", () => {
     const collection = defineCollection({
       slug: "posts",
-      fields: { slug: text({ required: true, index: "by_slug" }) },
+      fields: { slug: url({ required: true, index: "by_slug" }) },
     });
     expect(collectionConfigToVexSchema({ collection })).toContain(
       '.index("by_slug", ["slug"])',
@@ -113,8 +113,8 @@ describe("collectionConfigToVexSchema — indexes", () => {
     const collection = defineCollection({
       slug: "posts",
       fields: {
-        slug: text({ required: true, index: "by_slug" }),
-        authorId: text({ required: true, index: "by_author" }),
+        slug: url({ required: true, index: "by_slug" }),
+        authorId: url({ required: true, index: "by_author" }),
       },
     });
     const output = collectionConfigToVexSchema({ collection });
@@ -125,7 +125,7 @@ describe("collectionConfigToVexSchema — indexes", () => {
   it("does not append .index() for fields without an index property", () => {
     const collection = defineCollection({
       slug: "posts",
-      fields: { title: text({ required: true }) },
+      fields: { title: url({ required: true }) },
     });
     expect(collectionConfigToVexSchema({ collection })).not.toContain(
       ".index(",
@@ -185,9 +185,9 @@ describe("collectionConfigToVexSchema — integration", () => {
     const collection = defineCollection({
       slug: "posts",
       fields: {
-        title: text({ required: true }),
-        slug: text({ required: true, index: "by_slug" }),
-        excerpt: text({ required: false }),
+        title: url({ required: true }),
+        slug: url({ required: true, index: "by_slug" }),
+        excerpt: url({ required: false }),
         views: number({ required: true }),
         published: checkbox({ required: false }),
         publishedAt: date({ required: false }),

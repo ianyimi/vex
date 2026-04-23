@@ -14,6 +14,7 @@ export interface Post {
   excerpt?: string
   link?: string
   index?: number
+  thumbnail?: string
   published?: boolean
   publishedAt?: number
   type?: Type

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  text,
+  url,
   number,
   checkbox,
   date,
@@ -18,13 +18,13 @@ const SELECT_OPTIONS = [
 
 describe("adminFieldToValidator — text", () => {
   it("dispatches required text → v.string()", () => {
-    expect(adminFieldToValidator({ field: text({ required: true }) })).toBe(
+    expect(adminFieldToValidator({ field: url({ required: true }) })).toBe(
       "v.string()",
     );
   });
 
   it("dispatches optional text → v.optional(v.string())", () => {
-    expect(adminFieldToValidator({ field: text({ required: false }) })).toBe(
+    expect(adminFieldToValidator({ field: url({ required: false }) })).toBe(
       "v.optional(v.string())",
     );
   });
@@ -59,9 +59,9 @@ describe("adminFieldToValidator — number", () => {
 
 describe("adminFieldToValidator — checkbox", () => {
   it("dispatches required checkbox → v.boolean()", () => {
-    expect(
-      adminFieldToValidator({ field: checkbox({ required: true }) }),
-    ).toBe("v.boolean()");
+    expect(adminFieldToValidator({ field: checkbox({ required: true }) })).toBe(
+      "v.boolean()",
+    );
   });
 
   it("dispatches optional checkbox → v.optional(v.boolean())", () => {
@@ -122,7 +122,7 @@ describe("adminFieldToValidator — comprehensive (all field types)", () => {
     const collection = defineCollection({
       slug: "all_fields",
       fields: {
-        title: text({ required: true }),
+        title: url({ required: true }),
         score: number({ required: true }),
         published: checkbox({ required: true }),
         publishedAt: date({ required: false }),

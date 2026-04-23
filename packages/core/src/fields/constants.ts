@@ -15,6 +15,12 @@ export const ADMIN_FIELDS = {
     validator: "v.string()",
     defaultValue: "",
   },
+  url: {
+    type: "url",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+  },
   number: {
     type: "number",
     interfaceType: "number",
