@@ -70,6 +70,10 @@
 
 - **Default path for `vex.types.ts` is `/src/vex.types.ts`**: Placed next to `vex.config.ts` in the project's `src/` directory, not in `convex/`. The CLI resolves this relative to `vex.config.ts` at runtime. *(Encoded: sync-spec 21, 2026-04-21)*
 
+## File Organization in `@vexcms/core`
+
+- **Generated/augmentation type files belong in `src/types/`, not `src/` root**: When adding a file that supports type generation or module augmentation (e.g., `generated.ts` containing `GeneratedVexTypes`), place it in `packages/core/src/types/` alongside the generator functions (`generateVexTypes.ts`, etc.), not at `src/` root. Re-export via `types/index.ts`. The spec named the file `generated-types.ts` at root; the developer placed it as `types/generated.ts`. *(Encoded: sync-spec 21, 2026-04-24)*
+
 ## Code Generation Helpers
 
 - **Interface generation file is named `interfaceGen.ts`, not `typeGen.ts`**: When generating TypeScript interfaces from collection configs, name the file `interfaceGen.ts`. `typeGen.ts` is too generic — `interfaceGen.ts` specifically names what the file does. *(Encoded: sync-spec 21, 2026-04-21)*

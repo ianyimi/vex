@@ -168,6 +168,7 @@ Current standing rules (mirrored from `.pi/agent-docs/standards/developer-prefer
 - **Context + hook collocated in `hooks/` as a single file.** E.g. `hooks/useFrameworkComponents.ts` exports both the context and its hook — never split across `components/` + `hooks/`.
 - **Catch-all route segment is `[[...slug]]`**, not the feature name. Directory: `[[...slug]]/page.tsx`.
 - **Field `types.ts` colocated with `config.ts`** — never consolidate field types.
+- **Type generation support files go in `src/types/`**, not `src/` root. E.g. `generated.ts` (module augmentation interface) lives in `packages/core/src/types/` alongside `generateVexTypes.ts`, re-exported via `types/index.ts`.
 - **JSDoc patterns** — see `.pi/agent-docs/standards/memory/feedback_jsdoc_patterns.md`: full interface docs, per-property docs, defaults block, `@example` on public APIs.
 <!-- /sync-spec:developer-preferences -->
 

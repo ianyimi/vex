@@ -1,6 +1,8 @@
+# ✅ COMPLETED 2026-04-24
+
 # Spec 21 — Module Augmentation for Type-Safe Collection Slugs
 
-**Status:** Ready to implement  
+**Status:** Complete  
 **Depends on:** Spec 20 (field types), existing `generateVexTypes` in `packages/core`
 
 ---
