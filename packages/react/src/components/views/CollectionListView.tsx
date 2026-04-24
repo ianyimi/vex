@@ -3,7 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { vexConvexApi, type VexDocument } from "@vexcms/core";
-import type { CollectionConfig, CollectionListViewProps } from "@vexcms/core";
+import type {
+  CollectionConfig,
+  CollectionListViewProps,
+  CollectionSlug,
+} from "@vexcms/core";
 import { Button } from "../ui/button";
 import { VexLink } from "../ui/VexLink";
 import { MODALS } from "../modals/constants";
@@ -44,13 +48,16 @@ import {
  * <CollectionListView collection={postsCollection} initialData={serverDocs} />
  * ```
  */
-export function CollectionListView(props: CollectionListViewProps) {
+export function CollectionListView<
+  TSlug extends CollectionSlug = CollectionSlug,
+>(props: CollectionListViewProps<TSlug>) {
   const liveConfig = useVexConfig();
   // Prefer the live context collection (updated via Fast Refresh) over the
   // RSC-serialized prop, falling back to the prop if context isn't available.
   const collection =
-    liveConfig?.collections.find((c) => c.slug === props.collection.slug) ??
-    props.collection;
+    (liveConfig?.collections.find(
+      (c) => c.slug === props.collection.slug,
+    ) as CollectionConfig<TSlug>) ?? props.collection;
 
   const { data: documents = [], isLoading } = useQuery({
     ...convexQuery(vexConvexApi.list, { collection: collection.slug }),

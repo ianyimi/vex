@@ -7,7 +7,8 @@ import type {
   ComponentHKT,
   InputComponentProps,
 } from "./fields";
-import type { VexDocument } from "./convex";
+import type { TDocument, VexDocument } from "./convex";
+import { CollectionSlug } from "./types/generated";
 
 /**
  * Maps every field type in the `AdminField` union to the framework's input component type
@@ -55,45 +56,50 @@ export interface DashboardProps {
 /**
  * Props passed to the `CollectionListView` component.
  *
- * Renders the list view for a single collection. Data fetching is handled
- * separately by the Next.js server component layer — this component receives
- * only the collection definition.
+ * `TSlug` is inferred from the `collection` prop and narrows the collection type
+ * to a specific slug after `vex generate` runs. `TDoc` defaults to `VexDocument`
+ * and can be narrowed to a generated document interface when the caller has a
+ * typed initial data array.
  *
  * @see {@link ViewComponentMap}
  */
-export interface CollectionListViewProps {
+export interface CollectionListViewProps<
+  TSlug extends CollectionSlug = CollectionSlug,
+  TDoc extends VexDocument = VexDocument,
+> {
   /** The resolved collection configuration for the collection being listed. */
-  collection: CollectionConfig;
+  collection: CollectionConfig<TSlug>;
   /**
    * Pre-fetched documents from the server. Passed as `initialData` to
    * the TanStack Query so the list renders immediately on first load.
    * Omit when rendering client-side only.
    */
-  initialData?: VexDocument[];
+  initialData?: TDoc[];
 }
 
 /**
  * Props passed to the `CollectionEditView` component.
  *
- * Renders the document edit form for a single collection. The component
- * iterates over `collection.fields` and renders the appropriate input
- * component for each field type using the adapter's `fields` map.
+ * `TSlug` is inferred from the `collection` prop. After `vex generate` runs,
+ * passing a collection of the wrong slug is a compile-time error.
  *
  * @see {@link ViewComponentMap}
  */
-export interface CollectionEditViewProps {
+export interface CollectionEditViewProps<
+  TSlug extends CollectionSlug = CollectionSlug,
+> {
   /** The resolved collection configuration whose fields will be rendered. */
-  collection: CollectionConfig;
+  collection: CollectionConfig<TSlug>;
   /**
    * The Convex document ID of the document being edited.
    * Omit for new document creation — the form will be empty.
    */
-  documentId?: string;
+  documentId?: VexDocument["_id"];
   /**
    * Pre-fetched document from the server for SSR hydration.
    * `null` explicitly means "no document found". `undefined` means "not loaded yet".
    */
-  initialData?: VexDocument | null;
+  initialData?: TDocument | null;
 }
 
 /**

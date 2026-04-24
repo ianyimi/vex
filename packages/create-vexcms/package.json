@@ -30,7 +30,7 @@
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
     "@types/validate-npm-package-name": "^4.0.2",
-    "tsup": "^8.5.0",
+    "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

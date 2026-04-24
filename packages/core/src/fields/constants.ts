@@ -19,7 +19,7 @@ export const ADMIN_FIELDS = {
     type: "url",
     interfaceType: "string",
     validator: "v.string()",
-    defaultValue: "",
+    defaultValue: undefined,
   },
   number: {
     type: "number",
@@ -42,9 +42,15 @@ export const ADMIN_FIELDS = {
   select: {
     type: "select",
     interfaceType: "string[]",
-    validator: "v.string()",
+    validator: "v.array(\nv.string()\n)",
     defaultValue: [] as string[],
   },
+  // relationship: {
+  //   type: "relationship",
+  //   interfaceType: "string[]",
+  //   validator: "v.array(\nv.string()\n)",
+  //   defaultValue: [] as string[],
+  // },
   // richtext: {
   //   type: "richtext",
   //   validator: "v.any()",

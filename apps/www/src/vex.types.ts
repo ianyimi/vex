@@ -5,10 +5,12 @@
 /* eslint-disable perfectionist/sort-interfaces */
 /* eslint-disable perfectionist/sort-modules */
 
+import type { Id } from "@convex/_generated/dataModel"
+import type { VexDocument } from "@vexcms/core"
+
 type Type = "one" | "two" | "three" | "four" | "five" | "six"
-export interface Post {
-  _id: string
-  _creationTime: number
+export interface Post extends VexDocument {
+  _id: Id<"posts">
   title: string
   slug: string
   excerpt?: string
@@ -24,4 +26,13 @@ export type CollectionSlug = "posts"
 
 export type DocumentBySlug = {
   posts: Post
+}
+
+declare module "@vexcms/core" {
+  interface GeneratedVexTypes {
+    CollectionSlug: "posts"
+    DocumentBySlug: {
+      posts: Post
+    }
+  }
 }

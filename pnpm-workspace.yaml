@@ -3,26 +3,69 @@ packages:
   - apps/*
 
 catalog:
+  # Convex
   "@convex-dev/react-query": ^0.1.0
-  "@playwright/test": ^1.58.0
-  "@tanstack/react-query": ^5.90.17
-  "@tanstack/react-table": 8.21.3
-  "@testing-library/dom": ^10.5.0
-  "@testing-library/react": ^16.3.0
-  "@types/react": ^19.2.14
-  "@types/react-dom": ^19.2.0
-  "@vitest/coverage-v8": ^4.0.18
-  better-auth: ">=1.4.9 <1.5.0"
   convex: ^1.31.5
-  jsdom: ^26.1.0
-  lucide-react: ^0.577.0
-  next: ^16.2.1
-  nuqs: ^2.8.8
-  playwright: ^1.58.0
-  prettier: ^3.8.1
+
+  # Auth
+  better-auth: ^1.5.0
+
+  # React
   react: ^19.2.4
   react-dom: ^19.2.4
+  next: ^16.2.1
+  nuqs: ^2.8.8
+
+  # Types
+  "@types/react": ^19.2.14
+  "@types/react-dom": ^19.2.0
+  "@types/node": ^20
+
+  # TanStack
+  "@tanstack/react-form": ^1.27.7
+  "@tanstack/react-query": ^5.90.17
+  "@tanstack/react-table": 8.21.3
+
+  # UI utilities
+  class-variance-authority: "0.7.1"
+  clsx: "2.1.1"
+  lucide-react: ^0.577.0
+  tailwind-merge: "3.5.0"
   tailwindcss: ^4.2.1
+
+  # Data
+  zod: ^4.3.6
+
+  # Testing
+  "@playwright/test": ^1.58.0
+  "@testing-library/dom": ^10.5.0
+  "@testing-library/react": ^16.3.0
+  "@vitest/coverage-v8": ^4.0.18
+  jsdom: ^26.1.0
+  playwright: ^1.58.0
+  vitest: ^4.0.18
+
+  # Tooling
+  prettier: ^3.8.1
   tsup: ^8.5.1
   typescript: ^5.9.3
-  vitest: ^4.0.18
+
+  # ESLint core
+  "@eslint/eslintrc": ^3.3.3
+  "@eslint/js": ^9.0.0
+  eslint: ^9.0.0
+
+  # TypeScript ESLint
+  "@typescript-eslint/eslint-plugin": ^8.0.0
+  "@typescript-eslint/parser": ^8.0.0
+  typescript-eslint: ^8.53.0
+
+  # ESLint plugins
+  eslint-config-next: "15.5.9"
+  eslint-plugin-import-x: ^4.16.1
+  eslint-plugin-jsdoc: ^50.0.0
+  eslint-plugin-perfectionist: ^5.3.1
+  eslint-plugin-react: ^7.37.0
+  eslint-plugin-react-hooks: ^7.0.1
+  eslint-plugin-react-refresh: ^0.4.0
+  globals: ^14.0.0

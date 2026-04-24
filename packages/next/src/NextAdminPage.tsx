@@ -1,6 +1,6 @@
 import { fetchQuery } from "convex/nextjs";
 import { vexConvexApi } from "@vexcms/core";
-import type { VexConfig } from "@vexcms/core";
+import type { CollectionConfig, CollectionSlug, VexConfig } from "@vexcms/core";
 import {
   DashboardView,
   CollectionListView,
@@ -26,7 +26,7 @@ import {
  * @param props - Component props
  * @param props.config - The resolved VexCMS configuration from `vex.config.ts`
  * @param props.params - Next.js 15 async params `{ path?: string[] }`
- * @returns <VexAdminPage config={config} params={params} />
+ * @returns The appropriate admin view for the current URL path.
  *
  * @example
  * ```tsx
@@ -69,13 +69,15 @@ export async function NextAdminPage(props: {
     );
   }
 
+  const typedCollection = collection as CollectionConfig<CollectionSlug>;
+
   if (documentId) {
     const initialData = await fetchQuery(vexConvexApi.get, {
       id: documentId,
     });
     return (
       <CollectionEditView
-        collection={collection}
+        collection={typedCollection}
         documentId={documentId}
         initialData={initialData}
       />
@@ -86,6 +88,9 @@ export async function NextAdminPage(props: {
     collection: collectionSlug,
   });
   return (
-    <CollectionListView collection={collection} initialData={initialData} />
+    <CollectionListView
+      collection={typedCollection}
+      initialData={initialData}
+    />
   );
 }

@@ -9,7 +9,7 @@ import {
   DialogHeader,
 } from "../ui";
 import { Modal } from "./BaseModal";
-import { CollectionConfig } from "@vexcms/core";
+import { CollectionConfig, CollectionSlug } from "@vexcms/core";
 import { MODALS } from "./constants";
 import { AppForm } from "../form";
 import { useCollectionForm } from "../../hooks/useCollectionForm";
@@ -37,20 +37,17 @@ import { parseAsBoolean, useQueryState } from "nuqs";
  * <CreateDocumentModal collection={postsCollection} />
  * ```
  */
-export function CreateDocumentModal({
-  collection,
-}: {
-  collection: CollectionConfig;
-}) {
+export function CreateDocumentModal<
+  TSlug extends CollectionSlug = CollectionSlug,
+>({ collection }: { collection: CollectionConfig<TSlug> }) {
   // eslint-disable-next-line no-unused-vars
   const [_, setOpen] = useQueryState(
     MODALS.createDocument.urlParam,
     parseAsBoolean,
   );
 
-  const createDocument = useConvexMutation(vexConvexApi.create);
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: createDocument,
+    mutationFn: useConvexMutation(vexConvexApi.create),
   });
 
   const form = useCollectionForm({

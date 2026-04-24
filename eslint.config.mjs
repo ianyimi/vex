@@ -12,6 +12,8 @@ export default [
       "**/*.test.tsx",
       "**/dist/**",
       "**/node_modules/**",
+      "packages/react/**",
+      "packages/next/**",
     ],
     plugins: {
       "@typescript-eslint": tsPlugin,
@@ -79,7 +81,10 @@ export default [
   },
   {
     // Standard shadcn/base UI primitives — no JSDoc required
-    files: ["packages/react/src/components/ui/**/*.ts", "packages/react/src/components/ui/**/*.tsx"],
+    files: [
+      "packages/react/src/components/ui/**/*.ts",
+      "packages/react/src/components/ui/**/*.tsx",
+    ],
     rules: {
       "jsdoc/require-jsdoc": "off",
       "jsdoc/require-description": "off",

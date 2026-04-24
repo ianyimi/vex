@@ -63,6 +63,9 @@ export interface UrlFieldInput extends BaseFieldInput {
  */
 export interface UrlField extends BaseField {
   readonly type: typeof ADMIN_FIELDS.url.type;
-  /** Pre-filled value shown in the admin form when creating a new field. */
-  defaultValue: string;
+  /**
+   * Pre-filled value shown in the admin form when creating a new document.
+   * `undefined` means no default is applied — the input starts empty.
+   */
+  defaultValue?: string;
 }

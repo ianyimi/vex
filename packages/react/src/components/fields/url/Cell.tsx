@@ -26,6 +26,7 @@ import { useVexConfig } from "../../../context/VexConfigContext";
  * ```
  */
 export function UrlFieldCell(props: CellComponentProps<UrlField>) {
+  if (!props.value) return null;
   const config = useVexConfig();
   const basePath = addLeadingSlash(config.basePath);
   const href = props.isTitleField

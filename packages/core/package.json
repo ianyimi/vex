@@ -24,7 +24,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "zod": "^4.3.6"
+    "zod": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/react-table": "catalog:",
@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@tanstack/react-table": "catalog:",
-    "@types/node": "^20.19.33",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",

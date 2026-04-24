@@ -1,4 +1,4 @@
-import { checkbox, date, defineCollection, number, select, url } from "@vexcms/core"
+import { checkbox, date, defineCollection, number, select, text, url } from "@vexcms/core"
 
 import { TABLE_SLUG_POSTS } from "~/db/constants"
 
@@ -13,9 +13,9 @@ export const posts = defineCollection({
     plural: "Posts",
   },
   fields: {
-    title: url({ required: true }),
-    slug: url({ required: true }),
-    excerpt: url(),
+    title: text({ required: true }),
+    slug: text({ required: true }),
+    excerpt: text(),
     link: url(),
     index: number(),
     thumbnail: url(),

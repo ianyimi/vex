@@ -39,7 +39,7 @@
   },
   "peerDependencies": {
     "@convex-dev/react-query": "catalog:",
-    "@tanstack/react-form": "^0.40.0",
+    "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-table": "catalog:",
     "convex": "catalog:",
@@ -47,10 +47,10 @@
     "nuqs": "catalog:",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
-    "zod": "^3.24.0"
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@tanstack/react-form": "^0.40.0",
+    "@tanstack/react-form": "catalog:",
     "@tanstack/react-table": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

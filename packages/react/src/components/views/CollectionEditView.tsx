@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { vexConvexApi } from "@vexcms/core";
-import type { CollectionEditViewProps } from "@vexcms/core";
+import type { CollectionEditViewProps, CollectionSlug } from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
 import { VexLink } from "../ui/VexLink";
 import { Button } from "../ui/button";
@@ -13,23 +13,20 @@ import { useCollectionForm } from "../../hooks/useCollectionForm";
 /**
  * Collection document edit form.
  *
- * Fetches the document when editing, initialises a TanStack Form instance with
- * the current field values (or empty strings for new documents), and renders an
- * `<AppForm>` containing one input component per field. Field inputs read the
- * form instance from `AppFormContext` — no controller prop needed.
+ * Fetches the document when editing via `vexConvexApi.get` (TanStack Query +
+ * Convex subscription), initialises a `useCollectionForm` instance with the
+ * current field values, and renders an `<AppForm>` with one input component per
+ * field. Submits via `vexConvexApi.update`. Field inputs connect to the form
+ * through `AppFormContext` — no controller prop needed.
  *
- * The form key in `form.defaultValues` for each field is the collection field key
- * (e.g. `"title"`, `"slug"`). Each `<InputComponent name={fieldKey} ...>` connects
- * to that key via `createFieldInput`'s `form.Field name={props.name}` call.
- *
- * **Note:** form submission (create/update mutations) is wired in a future spec.
- * For now the form renders correctly but Save is a no-op.
+ * `TSlug` is inferred from the `collection` prop. After running `vex generate`,
+ * passing a collection of one slug where another is expected is a type error.
  *
  * @param props - View props
- * @param props.collection - The collection configuration whose fields are rendered
- * @param props.documentId - Convex ID of the document being edited (omit for new)
- * @param props.initialData - Pre-fetched document from the server (for SSR)
- * @returns <CollectionEditView collection={postsCollection} />
+ * @param props.collection - The collection whose fields are rendered.
+ * @param props.documentId - Convex document ID to fetch and edit. Omit for new-document mode.
+ * @param props.initialData - Server-prefetched document for SSR hydration. `null` means not found.
+ * @returns The edit form, or a not-found message when the document cannot be loaded.
  *
  * @example
  * ```tsx
@@ -44,7 +41,9 @@ import { useCollectionForm } from "../../hooks/useCollectionForm";
  * />
  * ```
  */
-export function CollectionEditView(props: CollectionEditViewProps) {
+export function CollectionEditView<
+  TSlug extends CollectionSlug = CollectionSlug,
+>(props: CollectionEditViewProps<TSlug>) {
   const isEditing = Boolean(props.documentId);
 
   const { data: document } = useQuery({
@@ -60,9 +59,8 @@ export function CollectionEditView(props: CollectionEditViewProps) {
     return <p>Document not found.</p>;
   }
 
-  const updateDocument = useConvexMutation(vexConvexApi.update);
   const { mutateAsync, isPending } = useMutation({
-    mutationFn: updateDocument,
+    mutationFn: useConvexMutation(vexConvexApi.update),
   });
   const form = useCollectionForm({
     document,
@@ -75,9 +73,7 @@ export function CollectionEditView(props: CollectionEditViewProps) {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">
-        {isEditing
-          ? `Edit ${props.collection.labels.singular}`
-          : `New ${props.collection.labels.singular}`}
+        Edit {props.collection.labels.singular}
       </h1>
       <AppForm form={form} className="space-y-4">
         {Object.entries(props.collection.fields).map(([fieldKey, field]) => {

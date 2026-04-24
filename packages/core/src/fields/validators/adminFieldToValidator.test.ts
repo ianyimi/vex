@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  text,
   url,
   number,
   checkbox,
@@ -18,13 +19,13 @@ const SELECT_OPTIONS = [
 
 describe("adminFieldToValidator — text", () => {
   it("dispatches required text → v.string()", () => {
-    expect(adminFieldToValidator({ field: url({ required: true }) })).toBe(
+    expect(adminFieldToValidator({ field: text({ required: true }) })).toBe(
       "v.string()",
     );
   });
 
   it("dispatches optional text → v.optional(v.string())", () => {
-    expect(adminFieldToValidator({ field: url({ required: false }) })).toBe(
+    expect(adminFieldToValidator({ field: text({ required: false }) })).toBe(
       "v.optional(v.string())",
     );
   });
@@ -122,8 +123,9 @@ describe("adminFieldToValidator — comprehensive (all field types)", () => {
     const collection = defineCollection({
       slug: "all_fields",
       fields: {
-        title: url({ required: true }),
+        title: text({ required: true }),
         score: number({ required: true }),
+        link: url({ required: true }),
         published: checkbox({ required: true }),
         publishedAt: date({ required: false }),
         status: select({
@@ -147,6 +149,7 @@ describe("adminFieldToValidator — comprehensive (all field types)", () => {
     }
 
     expect(results.title).toBe("v.string()");
+    expect(results.link).toBe("v.string()");
     expect(results.score).toBe("v.number()");
     expect(results.published).toBe("v.boolean()");
     expect(results.publishedAt).toBe("v.optional(v.number())");

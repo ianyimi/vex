@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   url,
+  text,
   number,
   checkbox,
   date,
@@ -17,7 +18,7 @@ const SELECT_OPTIONS = [
 const ALL_FIELDS_COLLECTION = defineCollection({
   slug: "all_fields",
   fields: {
-    title: url({ required: true }),
+    title: text({ required: true }),
     score: number({ required: false }),
     published: checkbox({ required: false }),
     publishedAt: date({ required: false }),
@@ -44,8 +45,8 @@ describe("getCollectionDefaultValues", () => {
     const collection = defineCollection({
       slug: "posts",
       fields: {
-        title: url({ required: true }),
-        slug: url({ required: true, defaultValue: "" }),
+        title: text({ required: true }),
+        slug: text({ required: true }),
       },
     });
     const defaults = getCollectionDefaultValues({ collection });
@@ -92,13 +93,13 @@ describe("getCollectionDefaultValues", () => {
     const collection = defineCollection({
       slug: "posts",
       fields: {
-        title: url({ required: true }),
+        title: text({ required: true }),
         score: number({ required: false }),
         published: checkbox(),
       },
     });
     const document = {
-      _id: "doc1" as any,
+      _id: "doc1",
       _creationTime: 0,
       title: "Hello World",
       score: 42,
@@ -114,12 +115,12 @@ describe("getCollectionDefaultValues", () => {
     const collection = defineCollection({
       slug: "posts",
       fields: {
-        title: url({ required: true }),
+        title: text({ required: true }),
         score: number({ required: false }),
       },
     });
     const document = {
-      _id: "doc1" as any,
+      _id: "doc1",
       _creationTime: 0,
       title: "Hello",
       // score is missing
@@ -146,7 +147,7 @@ describe("getCollectionDefaultValues", () => {
 
   it("comprehensive: uses document values for every field type in edit mode", () => {
     const document = {
-      _id: "doc1" as any,
+      _id: "doc1",
       _creationTime: 0,
       title: "My Post",
       score: 99,
@@ -197,7 +198,9 @@ describe("getCollectionInputSchema", () => {
     });
     const schema = getCollectionInputSchema({ collection });
     expect(schema.safeParse({ title: "" }).success).toBe(false);
-    expect(schema.safeParse({ title: "https://example.com" }).success).toBe(true);
+    expect(schema.safeParse({ title: "https://example.com" }).success).toBe(
+      true,
+    );
   });
 
   it("validates required number fields — accepts 0", () => {
@@ -255,7 +258,7 @@ describe("getCollectionInputSchema", () => {
     const collection = defineCollection({
       slug: "posts",
       fields: {
-        title: url({ required: false, defaultValue: "" }),
+        title: text({ required: false, defaultValue: "" }),
         score: number({ required: false }),
         published: checkbox({ required: false }),
         status: select({ required: false, options: SELECT_OPTIONS }),

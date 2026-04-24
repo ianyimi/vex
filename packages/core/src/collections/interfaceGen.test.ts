@@ -85,8 +85,8 @@ describe("generateVexTypes — document interfaces", () => {
       ],
     });
     const output = generateVexTypes({ config });
-    expect(output).toContain("export interface PostsDocument {");
-    expect(output).toContain("export interface AuthorsDocument {");
+    expect(output).toContain("export interface PostsDocument extends VexDocument {");
+    expect(output).toContain("export interface AuthorsDocument extends VexDocument {");
   });
 
   it("always includes _id and _creationTime in every interface", () => {
@@ -99,8 +99,9 @@ describe("generateVexTypes — document interfaces", () => {
       ],
     });
     const output = generateVexTypes({ config });
-    expect(output).toContain("_id: string");
-    expect(output).toContain("_creationTime: number");
+    expect(output).toContain('_id: Id<"posts">');
+    expect(output).toContain("extends VexDocument");
+    expect(output).not.toContain("_creationTime: number");
   });
 
   it("generates required fields without ? modifier", () => {
@@ -172,7 +173,7 @@ describe("generateVexTypes — document interfaces", () => {
       ],
     });
     const output = generateVexTypes({ config });
-    expect(output).toContain("export interface BlogPostsDocument {");
+    expect(output).toContain("export interface BlogPostsDocument extends VexDocument {");
   });
 });
 
