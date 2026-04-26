@@ -1,8 +1,6 @@
-# ✅ COMPLETED 2026-04-24
-
 # Spec 21 — Module Augmentation for Type-Safe Collection Slugs
 
-**Status:** Complete  
+**Status:** Ready to implement  
 **Depends on:** Spec 20 (field types), existing `generateVexTypes` in `packages/core`
 
 ---
@@ -1169,7 +1167,9 @@ import type { AnyFormApi } from "../components/form/AppFormContext";
  *   document from the same collection is accepted.
  * @returns A TanStack Form instance compatible with `<AppForm>`.
  */
-export function useCollectionForm<TSlug extends CollectionSlug = CollectionSlug>(
+export function useCollectionForm<
+  TSlug extends CollectionSlug = CollectionSlug,
+>(
   props: {
     collection: CollectionConfig<TSlug>;
     document?: DocumentBySlug[TSlug] & TDocument;
@@ -1204,7 +1204,7 @@ Now that `vex.types.ts` generates correctly, the three remaining typecheck failu
 
 Make the function generic over `TSlug`. The `document` from `vexConvexApi.get` is typed as `VexDocument` — it can't be narrowed to `DocumentBySlug[TSlug]` at compile time since the query API has no collection context. Cast it as `TDocument` when passing to `useCollectionForm`.
 
-```tsx
+````tsx
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -1249,7 +1249,6 @@ import { useCollectionForm } from "../../hooks/useCollectionForm";
  *   documentId="k573abc..."
  *   initialData={serverDoc}
  * />
- * ```
  */
 export function CollectionEditView<
   TSlug extends CollectionSlug = CollectionSlug,
@@ -1321,13 +1320,13 @@ export function CollectionEditView<
     </div>
   );
 }
-```
+````
 
 ### `packages/react/src/components/modals/CreateDocumentModal.tsx`
 
 Make the function generic over `TSlug` so `useCollectionForm` can infer the slug from the collection prop. The no-document create path is straightforward — no cast needed.
 
-```tsx
+````tsx
 "use client";
 
 import { useRef } from "react";
@@ -1370,15 +1369,10 @@ import { parseAsBoolean, useQueryState } from "nuqs";
  * ```tsx
  * // Rendered inside CollectionListView — opens automatically when ?createNew=true
  * <CreateDocumentModal collection={postsCollection} />
- * ```
  */
 export function CreateDocumentModal<
   TSlug extends CollectionSlug = CollectionSlug,
->({
-  collection,
-}: {
-  collection: CollectionConfig<TSlug>;
-}) {
+>({ collection }: { collection: CollectionConfig<TSlug> }) {
   // eslint-disable-next-line no-unused-vars
   const [_, setOpen] = useQueryState(
     MODALS.createDocument.urlParam,
@@ -1427,13 +1421,13 @@ export function CreateDocumentModal<
     </Modal>
   );
 }
-```
+````
 
 ### `packages/next/src/NextAdminPage.tsx`
 
 The collection is found at runtime via URL slug lookup — TypeScript sees `CollectionConfig<string, string>` after `.find()`. This can't be narrowed at compile time. Cast it to `CollectionConfig<CollectionSlug>` before passing to view components — safe because `.find()` searches only `config.collections`, which are the registered collections whose slugs make up `CollectionSlug`.
 
-```tsx
+````tsx
 import { fetchQuery } from "convex/nextjs";
 import {
   type CollectionSlug,
@@ -1481,7 +1475,6 @@ import {
  * }) {
  *   return <VexAdminPage config={config} params={params} />;
  * }
- * ```
  */
 export async function NextAdminPage(props: {
   config: VexConfig;
@@ -1531,10 +1524,13 @@ export async function NextAdminPage(props: {
     collection: collectionSlug,
   });
   return (
-    <CollectionListView collection={typedCollection} initialData={initialData} />
+    <CollectionListView
+      collection={typedCollection}
+      initialData={initialData}
+    />
   );
 }
-```
+````
 
 ---
 

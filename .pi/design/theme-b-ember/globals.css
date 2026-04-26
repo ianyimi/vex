@@ -1,0 +1,254 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@vexcms/next/styles";
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   VexCMS — Theme B: Ember
+   Warm amber-orange accent on deep warm-dark near-black backgrounds.
+   Primary: #E8622A ≈ oklch(58% 0.185 40)
+   ──────────────────────────────────────────────────────────────────────────── */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* ── shadcn/ui semantic tokens ── */
+  --color-background:             var(--background);
+  --color-foreground:             var(--foreground);
+  --color-card:                   var(--card);
+  --color-card-foreground:        var(--card-foreground);
+  --color-popover:                var(--popover);
+  --color-popover-foreground:     var(--popover-foreground);
+  --color-primary:                var(--primary);
+  --color-primary-foreground:     var(--primary-foreground);
+  --color-secondary:              var(--secondary);
+  --color-secondary-foreground:   var(--secondary-foreground);
+  --color-muted:                  var(--muted);
+  --color-muted-foreground:       var(--muted-foreground);
+  --color-accent:                 var(--accent);
+  --color-accent-foreground:      var(--accent-foreground);
+  --color-destructive:            var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border:                 var(--border);
+  --color-input:                  var(--input);
+  --color-ring:                   var(--ring);
+
+  /* ── radius scale ── */
+  --radius-sm:   calc(var(--radius) - 2px);
+  --radius-md:   var(--radius);
+  --radius-lg:   calc(var(--radius) + 4px);
+  --radius-xl:   calc(var(--radius) + 8px);
+  --radius-2xl:  calc(var(--radius) + 14px);
+  --radius-3xl:  calc(var(--radius) + 20px);
+  --radius-4xl:  calc(var(--radius) + 28px);
+
+  /* ── sidebar tokens ── */
+  --color-sidebar:                    var(--sidebar);
+  --color-sidebar-foreground:         var(--sidebar-foreground);
+  --color-sidebar-primary:            var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:             var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:             var(--sidebar-border);
+  --color-sidebar-ring:               var(--sidebar-ring);
+
+  /* ── chart tokens ── */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* ── brand extensions ── */
+  --color-brand:              var(--brand);
+  --color-brand-foreground:   var(--brand-foreground);
+  --color-brand-muted:        var(--brand-muted);
+  --color-success:            var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning:            var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-code-bg:            var(--code-bg);
+
+  /* ── fonts ── */
+  --font-sans:    var(--font-sans);
+  --font-mono:    var(--font-mono);
+  --font-display: var(--font-display);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   LIGHT MODE
+   Background: warm near-white (#FAF6F2)
+   Primary: Ember Orange #E8622A
+   ──────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* ── page chrome ── */
+  --background:          oklch(97% 0.006 52);       /* #FAF6F2 */
+  --foreground:          oklch(9% 0.018 50);        /* #100C08 */
+
+  /* ── card / popover ── */
+  --card:                oklch(100% 0 0);
+  --card-foreground:     oklch(9% 0.018 50);
+  --popover:             oklch(100% 0 0);
+  --popover-foreground:  oklch(9% 0.018 50);
+
+  /* ── primary — Ember Orange ── */
+  --primary:             oklch(58% 0.185 40);       /* #E8622A */
+  --primary-foreground:  oklch(100% 0 0);
+
+  /* ── secondary ── */
+  --secondary:           oklch(93% 0.014 50);       /* warm light wash */
+  --secondary-foreground: oklch(28% 0.040 50);
+
+  /* ── muted ── */
+  --muted:               oklch(93% 0.010 52);
+  --muted-foreground:    oklch(48% 0.020 50);       /* #7A6A5C */
+
+  /* ── accent (warm tint for hover) ── */
+  --accent:              oklch(95% 0.018 45);       /* #FEF0E8 */
+  --accent-foreground:   oklch(50% 0.175 40);
+
+  /* ── destructive ── */
+  --destructive:         oklch(55% 0.215 25);       /* #DC2626 */
+  --destructive-foreground: oklch(100% 0 0);
+
+  /* ── border / input ── */
+  --border:              oklch(87% 0.012 50);       /* #E0D5CB */
+  --input:               oklch(87% 0.012 50);
+  --ring:                oklch(58% 0.185 40);
+
+  /* ── radius base (4px) ── */
+  --radius: 0.25rem;
+
+  /* ── sidebar (light) ── */
+  --sidebar:                    oklch(97% 0.006 52);
+  --sidebar-foreground:         oklch(40% 0.020 50);
+  --sidebar-primary:            oklch(58% 0.185 40);
+  --sidebar-primary-foreground: oklch(100% 0 0);
+  --sidebar-accent:             oklch(95% 0.018 45);
+  --sidebar-accent-foreground:  oklch(50% 0.175 40);
+  --sidebar-border:             oklch(87% 0.012 50);
+  --sidebar-ring:               oklch(58% 0.185 40);
+
+  /* ── charts (light) ── */
+  --chart-1: oklch(58% 0.185 40);    /* amber-orange — primary */
+  --chart-2: oklch(56% 0.180 162);   /* forest green */
+  --chart-3: oklch(68% 0.145 72);    /* golden yellow */
+  --chart-4: oklch(62% 0.188 20);    /* coral red    */
+  --chart-5: oklch(55% 0.140 260);   /* slate blue   */
+
+  /* ── brand extensions ── */
+  --brand:              oklch(58% 0.185 40);
+  --brand-foreground:   oklch(100% 0 0);
+  --brand-muted:        oklch(95% 0.018 45);
+  --success:            oklch(53% 0.162 142);       /* #16A34A */
+  --success-foreground: oklch(100% 0 0);
+  --warning:            oklch(65% 0.162 72);        /* #CA8A04 */
+  --warning-foreground: oklch(12% 0.040 72);
+  --code-bg:            oklch(97% 0.006 52);
+
+  /* ── fonts (override in layout.tsx via next/font) ── */
+  --font-sans:    "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-mono:    "JetBrains Mono", "Geist Mono", monospace;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   DARK MODE
+   Background: #100C08 (deep warm near-black, orange/brown undertone)
+   Primary: #F07040 (brighter orange for dark surface contrast)
+   ──────────────────────────────────────────────────────────────────────────── */
+.dark {
+  /* ── page chrome ── */
+  --background:          oklch(7% 0.016 50);        /* #100C08 */
+  --foreground:          oklch(93% 0.008 50);
+
+  /* ── card / popover ── */
+  --card:                oklch(13% 0.020 50);       /* #271E16 */
+  --card-foreground:     oklch(93% 0.008 50);
+  --popover:             oklch(13% 0.020 50);
+  --popover-foreground:  oklch(93% 0.008 50);
+
+  /* ── primary — brighter orange for dark bg ── */
+  --primary:             oklch(68% 0.178 40);       /* #F07040 */
+  --primary-foreground:  oklch(7% 0.016 50);
+
+  /* ── secondary ── */
+  --secondary:           oklch(16% 0.022 50);
+  --secondary-foreground: oklch(93% 0.008 50);
+
+  /* ── muted ── */
+  --muted:               oklch(16% 0.022 50);
+  --muted-foreground:    oklch(58% 0.018 50);
+
+  /* ── accent ── */
+  --accent:              oklch(20% 0.025 50);
+  --accent-foreground:   oklch(68% 0.178 40);
+
+  /* ── destructive ── */
+  --destructive:         oklch(50% 0.200 25);
+  --destructive-foreground: oklch(95% 0 0);
+
+  /* ── border / input ── */
+  --border:              oklch(20% 0.022 50);       /* #362A1F */
+  --input:               oklch(20% 0.022 50);
+  --ring:                oklch(68% 0.178 40);
+
+  /* ── sidebar (dark — same warmth, deepest level) ── */
+  --sidebar:                    oklch(5% 0.012 50);
+  --sidebar-foreground:         oklch(70% 0.010 50);
+  --sidebar-primary:            oklch(68% 0.178 40);
+  --sidebar-primary-foreground: oklch(7% 0.016 50);
+  --sidebar-accent:             oklch(14% 0.020 50);
+  --sidebar-accent-foreground:  oklch(68% 0.178 40);
+  --sidebar-border:             oklch(16% 0.018 50);
+  --sidebar-ring:               oklch(68% 0.178 40);
+
+  /* ── charts (dark) ── */
+  --chart-1: oklch(68% 0.178 40);    /* orange  */
+  --chart-2: oklch(62% 0.162 142);   /* green   */
+  --chart-3: oklch(74% 0.155 72);    /* yellow  */
+  --chart-4: oklch(65% 0.188 20);    /* coral   */
+  --chart-5: oklch(62% 0.140 260);   /* blue    */
+
+  /* ── brand extensions (dark) ── */
+  --brand:              oklch(68% 0.178 40);
+  --brand-foreground:   oklch(7% 0.016 50);
+  --brand-muted:        oklch(20% 0.025 50);
+  --success:            oklch(62% 0.162 142);
+  --success-foreground: oklch(7% 0.016 50);
+  --warning:            oklch(74% 0.155 72);
+  --warning-foreground: oklch(10% 0.040 72);
+  --code-bg:            oklch(8% 0.018 50);         /* #18110A */
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BASE LAYER
+   ──────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1, "cv02" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Selection color — warm amber wash ── */
+  ::selection {
+    background-color: oklch(58% 0.185 40 / 0.20);
+    color: inherit;
+  }
+
+  /* ── Focus ring ── */
+  :focus-visible {
+    outline: 2px solid oklch(58% 0.185 40);
+    outline-offset: 2px;
+  }
+
+  .dark :focus-visible {
+    outline-color: oklch(68% 0.178 40);
+  }
+}

@@ -1,10 +1,12 @@
 ---
-description: Write or update JSDoc for exported symbols in vexcms packages. Follows the Input-vs-resolved type pattern and runs typecheck+test after editing.
+description: Write or update JSDoc for exported symbols in vexcms packages AND sync the corresponding docs site page in apps/docs. Follows the Input-vs-resolved type pattern and runs typecheck+test after editing.
 ---
 
 # Document — vexcms
 
-Write or update inline JSDoc for a target in the vexcms codebase. If no target is given, ask for one.
+Write or update inline JSDoc for a target in the vexcms codebase AND create/update its corresponding page in `apps/docs/src/content/docs/`. If no target is given, ask for one.
+
+> **Docs are generated, not hand-written.** Every documented symbol gets a Starlight MDX page derived from its JSDoc, type signature, and usage. Pages are kept in sync with the implementation — not written separately.
 
 > **Questions:** Use `ask_user_question` for every question. Never write question lists as plain text.
 
@@ -173,7 +175,97 @@ After editing, verify comments render correctly (no broken delimiters, no stray 
 
 ---
 
-## Step 5 — Verify
+## Step 5 — Sync docs site
+
+After writing JSDoc, create or update the corresponding Starlight MDX page in `apps/docs/src/content/docs/`.
+
+### Page location rules
+
+| What was documented | Docs path |
+|---|---|
+| Field type (`text`, `richtext`, `blocks`, etc.) | `fields/<name>.mdx` |
+| Config function (`defineCollection`, `defineAccess`, etc.) | `api/<name>.mdx` |
+| Package-level concept (`defineMediaCollection`, media, auth) | `guides/<slug>.mdx` |
+| Hook / utility (`useVexPreview`, `createVexQuery`) | `api/<name>.mdx` |
+| CLI command | `cli/<command>.mdx` |
+
+If a page already exists, update only the sections that have changed. Never delete content added by hand unless it is now incorrect.
+
+### Page templates
+
+**Field type page:**
+
+```mdx
+---
+title: <name> field
+description: <one-sentence summary from JSDoc>
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+<one-paragraph explanation — what it is, when to use it, what it stores in Convex>
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+<!-- row per Input type property, derived from JSDoc @defaultValue and field docs -->
+
+## Schema output
+
+```ts
+// what this field generates in the Convex schema
+```
+
+## Usage
+
+```ts
+// realistic example from JSDoc @example
+```
+
+## Admin UI
+
+<one paragraph describing how the field appears and behaves in the admin panel>
+```
+
+**Config function / API page:**
+
+```mdx
+---
+title: <functionName>
+description: <one-sentence summary from JSDoc>
+---
+
+<explanation paragraph>
+
+## Signature
+
+```ts
+// simplified call signature
+```
+
+## Parameters
+
+<table or prose from @param JSDoc>
+
+## Returns
+
+<from @returns JSDoc>
+
+## Example
+
+```ts
+// from @example
+```
+```
+
+### Sidebar registration
+
+After creating a new page, check `apps/docs/astro.config.mjs`. If the page's directory is `autogenerate`d, no change is needed. If the directory is manually listed, add the new slug to the correct sidebar group. If a new section is being created for the first time, add an `autogenerate` entry for it.
+
+---
+
+## Step 6 — Verify
 
 Run the check commands from Project Context.
 
@@ -181,7 +273,8 @@ Run the check commands from Project Context.
 - If pre-existing → do not fix. Report it at the end with the exact error.
 
 **Report:**
-- Files documented
+- Files documented (JSDoc)
+- Docs pages created or updated
 - Any pre-existing failures
 
 ---

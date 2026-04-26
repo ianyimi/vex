@@ -1,0 +1,256 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@vexcms/next/styles";
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   VexCMS — Theme D: Stark
+   Pure near-black/white neutrals + electric spring-green (#22C55E) accent.
+   Primary: #22C55E ≈ oklch(74% 0.195 142)
+   ──────────────────────────────────────────────────────────────────────────── */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* ── shadcn/ui semantic tokens ── */
+  --color-background:             var(--background);
+  --color-foreground:             var(--foreground);
+  --color-card:                   var(--card);
+  --color-card-foreground:        var(--card-foreground);
+  --color-popover:                var(--popover);
+  --color-popover-foreground:     var(--popover-foreground);
+  --color-primary:                var(--primary);
+  --color-primary-foreground:     var(--primary-foreground);
+  --color-secondary:              var(--secondary);
+  --color-secondary-foreground:   var(--secondary-foreground);
+  --color-muted:                  var(--muted);
+  --color-muted-foreground:       var(--muted-foreground);
+  --color-accent:                 var(--accent);
+  --color-accent-foreground:      var(--accent-foreground);
+  --color-destructive:            var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border:                 var(--border);
+  --color-input:                  var(--input);
+  --color-ring:                   var(--ring);
+
+  /* ── radius scale ── */
+  --radius-sm:   calc(var(--radius) - 1px);
+  --radius-md:   var(--radius);
+  --radius-lg:   calc(var(--radius) + 2px);
+  --radius-xl:   calc(var(--radius) + 6px);
+  --radius-2xl:  calc(var(--radius) + 10px);
+  --radius-3xl:  calc(var(--radius) + 14px);
+  --radius-4xl:  calc(var(--radius) + 20px);
+
+  /* ── sidebar tokens ── */
+  --color-sidebar:                    var(--sidebar);
+  --color-sidebar-foreground:         var(--sidebar-foreground);
+  --color-sidebar-primary:            var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:             var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:             var(--sidebar-border);
+  --color-sidebar-ring:               var(--sidebar-ring);
+
+  /* ── chart tokens ── */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* ── brand extensions ── */
+  --color-brand:              var(--brand);
+  --color-brand-foreground:   var(--brand-foreground);
+  --color-brand-muted:        var(--brand-muted);
+  --color-success:            var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning:            var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-code-bg:            var(--code-bg);
+
+  /* ── fonts ── */
+  --font-sans:    var(--font-sans);
+  --font-mono:    var(--font-geist-mono);
+  --font-display: var(--font-display);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   LIGHT MODE
+   Background: #F5F5F5 (pure neutral near-white)
+   Primary: Electric Spring Green #22C55E
+   ──────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* ── page chrome ── */
+  --background:          oklch(96% 0 0);            /* #F5F5F5 */
+  --foreground:          oklch(9% 0 0);             /* #0A0A0A */
+
+  /* ── card / popover ── */
+  --card:                oklch(100% 0 0);
+  --card-foreground:     oklch(9% 0 0);
+  --popover:             oklch(100% 0 0);
+  --popover-foreground:  oklch(9% 0 0);
+
+  /* ── primary — Electric Spring Green ── */
+  --primary:             oklch(74% 0.195 142);       /* #22C55E */
+  --primary-foreground:  oklch(14% 0.060 142);       /* #052E16 */
+
+  /* ── secondary ── */
+  --secondary:           oklch(92% 0 0);             /* #E8E8E8 */
+  --secondary-foreground: oklch(20% 0 0);
+
+  /* ── muted ── */
+  --muted:               oklch(92% 0 0);
+  --muted-foreground:    oklch(44% 0 0);             /* #717171 */
+
+  /* ── accent (barely-green tint for hover) ── */
+  --accent:              oklch(95% 0.022 142);       /* #DCFCE7 */
+  --accent-foreground:   oklch(40% 0.140 142);
+
+  /* ── destructive ── */
+  --destructive:         oklch(59% 0.227 25);
+  --destructive-foreground: oklch(100% 0 0);
+
+  /* ── border / input ── */
+  --border:              oklch(88% 0 0);             /* #E4E4E4 */
+  --input:               oklch(88% 0 0);
+  --ring:                oklch(74% 0.195 142);
+
+  /* ── radius base (2px) — very sharp ── */
+  --radius: 0.125rem;
+
+  /* ── sidebar (light) ── */
+  --sidebar:                    oklch(96% 0 0);
+  --sidebar-foreground:         oklch(38% 0 0);
+  --sidebar-primary:            oklch(74% 0.195 142);
+  --sidebar-primary-foreground: oklch(14% 0.060 142);
+  --sidebar-accent:             oklch(95% 0.022 142);
+  --sidebar-accent-foreground:  oklch(40% 0.140 142);
+  --sidebar-border:             oklch(88% 0 0);
+  --sidebar-ring:               oklch(74% 0.195 142);
+
+  /* ── charts (light) — monochrome + single green ── */
+  --chart-1: oklch(74% 0.195 142);   /* green    — primary */
+  --chart-2: oklch(44% 0 0);         /* dark gray */
+  --chart-3: oklch(62% 0 0);         /* mid gray  */
+  --chart-4: oklch(74% 0.172 72);    /* amber     */
+  --chart-5: oklch(64% 0.182 220);   /* blue      */
+
+  /* ── brand extensions ── */
+  --brand:              oklch(74% 0.195 142);
+  --brand-foreground:   oklch(14% 0.060 142);
+  --brand-muted:        oklch(95% 0.022 142);
+  --success:            oklch(74% 0.195 142);        /* same as primary */
+  --success-foreground: oklch(14% 0.060 142);
+  --warning:            oklch(78% 0.185 80);         /* #EAB308 */
+  --warning-foreground: oklch(14% 0.040 80);
+  --code-bg:            oklch(96% 0 0);
+
+  /* ── fonts (all Geist — override in layout.tsx via next/font) ── */
+  --font-display: "Geist", "Inter", system-ui, sans-serif;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   DARK MODE
+   Background: #0A0A0A (near-pure black)
+   Primary: #34D96E (brighter green for dark surface contrast)
+   ──────────────────────────────────────────────────────────────────────────── */
+.dark {
+  /* ── page chrome ── */
+  --background:          oklch(8% 0 0);              /* #0A0A0A */
+  --foreground:          oklch(95% 0 0);             /* near-white */
+
+  /* ── card / popover ── */
+  --card:                oklch(14% 0 0);             /* #1E1E1E */
+  --card-foreground:     oklch(95% 0 0);
+  --popover:             oklch(14% 0 0);
+  --popover-foreground:  oklch(95% 0 0);
+
+  /* ── primary — brighter green for dark backgrounds ── */
+  --primary:             oklch(80% 0.190 142);       /* #34D96E */
+  --primary-foreground:  oklch(9% 0.040 142);
+
+  /* ── secondary ── */
+  --secondary:           oklch(16% 0 0);
+  --secondary-foreground: oklch(95% 0 0);
+
+  /* ── muted ── */
+  --muted:               oklch(16% 0 0);
+  --muted-foreground:    oklch(60% 0 0);
+
+  /* ── accent ── */
+  --accent:              oklch(20% 0.015 142);       /* very dark green tint */
+  --accent-foreground:   oklch(80% 0.190 142);
+
+  /* ── destructive ── */
+  --destructive:         oklch(52% 0.210 25);
+  --destructive-foreground: oklch(95% 0 0);
+
+  /* ── border / input ── */
+  --border:              oklch(20% 0 0);             /* #2A2A2A */
+  --input:               oklch(20% 0 0);
+  --ring:                oklch(80% 0.190 142);
+
+  /* ── sidebar (dark — pure near-black) ── */
+  --sidebar:                    oklch(6% 0 0);       /* slightly darker than page */
+  --sidebar-foreground:         oklch(65% 0 0);
+  --sidebar-primary:            oklch(80% 0.190 142);
+  --sidebar-primary-foreground: oklch(9% 0.040 142);
+  --sidebar-accent:             oklch(16% 0.010 142);
+  --sidebar-accent-foreground:  oklch(80% 0.190 142);
+  --sidebar-border:             oklch(16% 0 0);
+  --sidebar-ring:               oklch(80% 0.190 142);
+
+  /* ── charts (dark) ── */
+  --chart-1: oklch(80% 0.190 142);   /* green       */
+  --chart-2: oklch(68% 0 0);         /* light gray  */
+  --chart-3: oklch(50% 0 0);         /* mid gray    */
+  --chart-4: oklch(78% 0.168 72);    /* amber       */
+  --chart-5: oklch(68% 0.182 220);   /* blue        */
+
+  /* ── brand extensions (dark) ── */
+  --brand:              oklch(80% 0.190 142);
+  --brand-foreground:   oklch(9% 0.040 142);
+  --brand-muted:        oklch(20% 0.015 142);
+  --success:            oklch(80% 0.190 142);
+  --success-foreground: oklch(9% 0.040 142);
+  --warning:            oklch(80% 0.182 80);
+  --warning-foreground: oklch(10% 0.040 80);
+  --code-bg:            oklch(10% 0 0);              /* #111111 */
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BASE LAYER
+   ──────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Selection color — very subtle green wash ── */
+  ::selection {
+    background-color: oklch(74% 0.195 142 / 0.18);
+    color: inherit;
+  }
+
+  .dark ::selection {
+    background-color: oklch(80% 0.190 142 / 0.20);
+  }
+
+  /* ── Focus ring — green ── */
+  :focus-visible {
+    outline: 2px solid oklch(74% 0.195 142);
+    outline-offset: 2px;
+  }
+
+  .dark :focus-visible {
+    outline-color: oklch(80% 0.190 142);
+  }
+}

@@ -156,12 +156,13 @@ export async function devCommand(options: DevOptions = {}) {
     }, 200);
   });
 
-  // Graceful shutdown
+  // Graceful shutdown — wait for convex dev to actually exit before we do.
+  // Without the await, the CLI exits immediately after sending SIGTERM to
+  // pnpm, which doesn't forward the signal, leaving convex dev as an orphan.
   const shutdown = async () => {
     logger.info("Shutting down...");
     if (debounceTimer) clearTimeout(debounceTimer);
-    killConvexDev();
-    await watcher.close();
+    await Promise.all([killConvexDev(), watcher.close()]);
     process.exit(0);
   };
 

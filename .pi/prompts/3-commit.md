@@ -107,6 +107,14 @@ Ask:
 
 ### Step 8 — Append to implementation log
 
+Get the current date and time in PST/PDT before writing:
+
+```bash
+TZ='America/Los_Angeles' date '+%Y-%m-%d %H:%M'
+```
+
+Use the output for both the filename (`YYYY-MM-DD`) and the timestamp in the heading. Never use the system clock directly — it may be UTC.
+
 Append to `.pi/agent-docs/implementation-log/YYYY/MM/YYYY-MM-DD.commit.md` (create if missing, never overwrite):
 
 ```markdown

@@ -60,7 +60,15 @@ export function startConvexDev(cwd: string): ChildProcess {
   const child = spawn(pm.cmd, fullArgs, {
     cwd,
     stdio: ["inherit", "pipe", "pipe"],
+    // detached: true creates a new process group so we can kill the entire
+    // group (pnpm + convex dev) with process.kill(-pid). Without this,
+    // killing `pnpm exec convex dev` leaves the convex dev child running
+    // as an orphan because pnpm does not forward signals to its children.
+    detached: true,
   });
+
+  // Prevent the child's process group from keeping the parent alive
+  child.unref();
 
   convexChild = child;
 
@@ -151,11 +159,32 @@ function flushResolvers(ok: boolean) {
   }
 }
 
-/** Kill the managed convex dev process. */
-export function killConvexDev(): void {
-  if (convexChild && !convexChild.killed) {
-    convexChild.kill("SIGTERM");
-  }
+/**
+ * Kill the managed convex dev process and wait for it to exit.
+ * Kills the entire process group (pnpm + convex dev children) so no orphans
+ * are left behind when pnpm fails to forward the signal.
+ */
+export async function killConvexDev(): Promise<void> {
+  if (!convexChild || convexChild.killed) return;
+
+  const child = convexChild;
+  const pid = child.pid;
+
+  await new Promise<void>((resolve) => {
+    const timeout = setTimeout(resolve, 5_000);
+    child.once("exit", () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+
+    // Kill the whole process group so pnpm's child (convex dev) also dies
+    try {
+      if (pid) process.kill(-pid, "SIGTERM");
+    } catch {
+      // Process group may already be gone — fall back to direct kill
+      child.kill("SIGTERM");
+    }
+  });
 }
 
 /**
