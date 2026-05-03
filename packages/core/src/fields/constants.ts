@@ -45,12 +45,12 @@ export const ADMIN_FIELDS = {
     validator: "v.array(\nv.string()\n)",
     defaultValue: [] as string[],
   },
-  // relationship: {
-  //   type: "relationship",
-  //   interfaceType: "string[]",
-  //   validator: "v.array(\nv.string()\n)",
-  //   defaultValue: [] as string[],
-  // },
+  relationship: {
+    type: "relationship",
+    interfaceType: "Id<CollectionSlug>[]",
+    validator: "v.array(\nv.string()\n)",
+    defaultValue: [] as string[],
+  },
   // richtext: {
   //   type: "richtext",
   //   validator: "v.any()",

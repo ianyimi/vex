@@ -104,6 +104,10 @@
 
 - **`CheckboxFieldCell` renders `"Yes"` / `"No"` text, not icons**: Avoids an icon import and is readable regardless of font/icon loading state. Always use text strings for boolean cell display. *(Encoded: sync-spec 20, 2026-04-11)*
 
+## Package CSS Defaults
+
+- **Package-level CSS defaults go in `@layer base`**: When a `@vexcms/*` package ships a `styles.css` with default CSS variable values, always place them inside `@layer base { :root { } }`. Unlayered `:root {}` declarations in any consuming app automatically win over `@layer base` defaults without needing `!important` or specificity tricks. This is the intended override contract for `@vexcms/react/styles` and `@vexcms/next/styles`. *(Encoded: sync-spec 23, 2026-05-01)*
+
 ## Implementation Completeness
 
 - **CollectionListView needs a real data table**: The list view should include a TanStack

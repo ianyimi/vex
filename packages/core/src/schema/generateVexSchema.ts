@@ -95,7 +95,7 @@ export function generateVexSchema(props: { config: VexConfig }): {
   let imports = `import { defineTable } from "convex/server"\nimport { v } from "convex/values"\n`;
   let collections = props.config.collections
     .map((collection) => {
-      return collectionConfigToVexSchema({ collection });
+      return collectionConfigToVexSchema({ collection, config: props.config });
     })
     .join("\n");
 

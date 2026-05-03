@@ -64,6 +64,7 @@ export function NextAdminLayout(props: {
   // Split on "/" and take the segment after "admin"
   const segments = pathname.split("/").filter(Boolean);
   const activeSlug = segments[1]; // undefined on /admin, "posts" on /admin/posts
+  const activeDocID = segments[2];
 
   return (
     <NuqsAdapter>
@@ -71,6 +72,8 @@ export function NextAdminLayout(props: {
         config={props.config}
         activeSlug={activeSlug}
         components={{ Link: NextLink, Image: NextImage }}
+        pathname={pathname}
+        activeDocID={activeDocID}
       >
         {props.children}
       </AdminLayout>

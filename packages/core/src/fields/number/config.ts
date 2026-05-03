@@ -47,6 +47,12 @@ import type { NumberFieldInput, NumberField } from "./types";
  * @see {@link NumberField} for the resolved output type
  */
 export function number(options?: NumberFieldInput): NumberField {
+  if (options?.min?.value && options?.max?.value) {
+    if (options.min.value >= options.max.value) {
+      // TODO. setup errors that throw in development upon invalid configuration
+      throw new Error(`Min value must be lower than the Max value`);
+    }
+  }
   return {
     type: ADMIN_FIELDS.number.type,
     interfaceType: ADMIN_FIELDS.number.interfaceType,

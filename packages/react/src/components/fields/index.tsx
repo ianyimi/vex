@@ -27,6 +27,11 @@ import {
   selectFieldToColumnDef,
 } from "./select";
 import { UrlFieldCell, UrlFieldInput, urlFieldToColumnDef } from "./url";
+import {
+  RelationshipFieldCell,
+  RelationshipFieldInput,
+  relationshipFieldToColumnDef,
+} from "./relationship";
 
 export * from "./text";
 export * from "./number";
@@ -61,6 +66,9 @@ export const fieldInputComponents: Record<
     InputComponentProps<AdminField>
   >,
   [ADMIN_FIELDS.url.type]: UrlFieldInput as ComponentType<
+    InputComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.relationship.type]: RelationshipFieldInput as ComponentType<
     InputComponentProps<AdminField>
   >,
 };
@@ -125,7 +133,7 @@ export function RenderFieldInputComponents(
 }
 
 /**
- * Maps every `AdminFieldType` string to its corresponding input component.
+ * Maps every `AdminFieldType` string to its corresponding cell component.
  *
  * Mirrors `reactAdapter.fields` — both must be kept in sync when a new
  * field type is added to `@vexcms/core`.
@@ -150,6 +158,9 @@ export const fieldCellComponents: Record<
     CellComponentProps<AdminField>
   >,
   [ADMIN_FIELDS.url.type]: UrlFieldCell as ComponentType<
+    CellComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.relationship.type]: RelationshipFieldCell as ComponentType<
     CellComponentProps<AdminField>
   >,
 };
@@ -254,6 +265,17 @@ export function getCollectionColumnDefs(props: {
       case ADMIN_FIELDS.url.type:
         columnDefs.push(
           urlFieldToColumnDef({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
+      case ADMIN_FIELDS.relationship.type:
+        columnDefs.push(
+          relationshipFieldToColumnDef({
             fieldDef,
             fieldKey,
             isTitleField,

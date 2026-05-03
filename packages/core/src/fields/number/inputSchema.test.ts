@@ -152,7 +152,7 @@ describe("numberFieldToInputSchema", () => {
     const result = schema.safeParse(undefined);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data).toBe(0);
+      expect(result.data).toBe(5);
     }
 
     // Should still enforce constraints when value is provided

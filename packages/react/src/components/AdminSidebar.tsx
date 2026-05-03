@@ -1,6 +1,6 @@
 "use client";
 
-import type { VexConfig } from "@vexcms/core";
+import { addLeadingSlash, type VexConfig } from "@vexcms/core";
 import {
   Sidebar,
   SidebarContent,
@@ -56,7 +56,7 @@ export interface AppSidebarProps {
 export function AppSidebar(props: AppSidebarProps) {
   return (
     <Sidebar side={props.config.admin.sidebar.side}>
-      <SidebarHeader>
+      <SidebarHeader className="h-12 border-b flex flex-col justify-center">
         <span className="font-semibold text-sm tracking-tight px-2">
           VexCMS Admin
         </span>
@@ -69,7 +69,11 @@ export function AppSidebar(props: AppSidebarProps) {
               {props.config.collections.map((collection) => (
                 <SidebarMenuItem key={collection.slug}>
                   <SidebarMenuButton
-                    render={<VexLink href={`/admin/${collection.slug}`} />}
+                    render={
+                      <VexLink
+                        href={`${addLeadingSlash(props.config.basePath)}/${collection.slug}`}
+                      />
+                    }
                     isActive={props.activeSlug === collection.slug}
                   >
                     {collection.labels.plural}

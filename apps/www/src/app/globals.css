@@ -10,23 +10,27 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
+
   --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
   --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -39,58 +43,116 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+
+  /* Sharp radii — Vex is square. sm/md are pinned; lg+ scale from --radius. */
+  --radius-sm: 2px;
+  --radius-md: 4px;
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 6px);
+  --radius-3xl: calc(var(--radius) + 10px);
+  --radius-4xl: calc(var(--radius) + 14px);
 }
 
+/* ── Light — Stark × Ember ──────────────────────────────────────────────────
+   page  #F5F5F5  ·  surface #FFFFFF  ·  fg #0A0A0A
+   ember #E8622A (primary accent in light mode)
+   ─────────────────────────────────────────────────────────────────────────── */
 :root {
-  --background: oklch(100% 0 0);
-  --foreground: oklch(3.9% 0.006 240);
-  --card: oklch(100% 0 0);
-  --card-foreground: oklch(3.9% 0.006 240);
+  --background: oklch(96.1% 0 0); /* #F5F5F5 */
+  --foreground: oklch(13.7% 0 0); /* #0A0A0A */
+
+  --card: oklch(100% 0 0); /* #FFFFFF */
+  --card-foreground: oklch(13.7% 0 0);
   --popover: oklch(100% 0 0);
-  --popover-foreground: oklch(3.9% 0.006 240);
-  --primary: oklch(10% 0.003 240);
+  --popover-foreground: oklch(13.7% 0 0);
+
+  /* primary = graphite (text emphasis, default buttons); accent = ember (CTA) */
+  --primary: oklch(13.7% 0 0);
   --primary-foreground: oklch(98% 0 0);
-  --secondary: oklch(95.9% 0.002 240);
-  --secondary-foreground: oklch(10% 0.003 240);
-  --muted: oklch(95.9% 0.002 240);
-  --muted-foreground: oklch(46.1% 0.002 240);
-  --accent: oklch(95.9% 0.002 240);
-  --accent-foreground: oklch(10% 0.003 240);
-  --destructive: oklch(60.2% 0.168 0);
+
+  --secondary: oklch(96.9% 0 0);
+  --secondary-foreground: oklch(13.7% 0 0);
+
+  --muted: oklch(96.9% 0 0);
+  --muted-foreground: oklch(45.7% 0 0);
+
+  --accent: oklch(68.5% 0.165 45); /* ember #E8622A */
+  --accent-foreground: oklch(100% 0 0);
+
+  --destructive: oklch(57.7% 0.198 27);
   --destructive-foreground: oklch(98% 0 0);
-  --border: oklch(90% 0.003 240);
-  --input: oklch(90% 0.003 240);
-  --ring: oklch(10% 0.003 240);
-  --radius: 0.5rem;
+
+  --border: oklch(82% 0 0);
+  --input: oklch(82% 0 0);
+  --ring: oklch(68.5% 0.165 45); /* ember focus ring */
+
+  --radius: 4px;
+
+  /* Sidebar — slightly raised vs page in light mode */
+  --sidebar: oklch(98% 0 0); /* #FAFAFA */
+  --sidebar-foreground: oklch(13.7% 0 0);
+  --sidebar-primary: oklch(68.5% 0.165 45); /* ember */
+  --sidebar-primary-foreground: oklch(100% 0 0);
+  --sidebar-accent: oklch(94.5% 0 0); /* hover bg */
+  --sidebar-accent-foreground: oklch(13.7% 0 0);
+  --sidebar-border: oklch(89% 0 0);
+  --sidebar-ring: oklch(68.5% 0.165 45);
+
+  /* Charts — ember-anchored series */
+  --chart-1: oklch(68.5% 0.165 45); /* ember */
+  --chart-2: oklch(45% 0 0); /* graphite */
+  --chart-3: oklch(72% 0.1 60); /* warm peach */
+  --chart-4: oklch(60% 0.04 30); /* dusty terracotta */
+  --chart-5: oklch(78% 0 0); /* light gray */
 }
 
+/* ── Dark — Stark × Ember dark ──────────────────────────────────────────────
+   page  #0A0A0A  ·  surface #141414  ·  fg #F5F5F5
+   ember slightly hotter for dark-mode contrast
+   ─────────────────────────────────────────────────────────────────────────── */
 .dark {
-  --background: oklch(3.9% 0.006 240);
-  --foreground: oklch(98% 0 0);
-  --card: oklch(3.9% 0.006 240);
-  --card-foreground: oklch(98% 0 0);
-  --popover: oklch(3.9% 0.006 240);
-  --popover-foreground: oklch(98% 0 0);
-  --primary: oklch(98% 0 0);
-  --primary-foreground: oklch(10% 0.003 240);
-  --secondary: oklch(14.9% 0.003 240);
-  --secondary-foreground: oklch(98% 0 0);
-  --muted: oklch(14.9% 0.003 240);
-  --muted-foreground: oklch(63.9% 0.002 240);
-  --accent: oklch(14.9% 0.003 240);
-  --accent-foreground: oklch(98% 0 0);
-  --destructive: oklch(30.6% 0.122 0);
-  --destructive-foreground: oklch(98% 0 0);
-  --border: oklch(30% 0.003 240);
-  --input: oklch(30% 0.003 240);
-  --ring: oklch(83.9% 0 0);
+  --background: oklch(13.7% 0 0); /* #0A0A0A */
+  --foreground: oklch(96.1% 0 0); /* #F5F5F5 */
+
+  --card: oklch(17.4% 0 0); /* #141414 */
+  --card-foreground: oklch(96.1% 0 0);
+  --popover: oklch(17.4% 0 0);
+  --popover-foreground: oklch(96.1% 0 0);
+
+  --primary: oklch(96.1% 0 0);
+  --primary-foreground: oklch(13.7% 0 0);
+
+  --secondary: oklch(22.5% 0 0);
+  --secondary-foreground: oklch(96.1% 0 0);
+
+  --muted: oklch(22.5% 0 0);
+  --muted-foreground: oklch(63.9% 0 0);
+
+  --accent: oklch(72% 0.175 50); /* hotter ember in dark */
+  --accent-foreground: oklch(13.7% 0 0);
+
+  --destructive: oklch(63% 0.21 27);
+  --destructive-foreground: oklch(96.1% 0 0);
+
+  --border: oklch(34% 0 0);
+  --input: oklch(34% 0 0);
+  --ring: oklch(72% 0.175 50);
+
+  --sidebar: oklch(10.5% 0 0); /* #050505 */
+  --sidebar-foreground: oklch(96.1% 0 0);
+  --sidebar-primary: oklch(72% 0.175 50);
+  --sidebar-primary-foreground: oklch(13.7% 0 0);
+  --sidebar-accent: oklch(22.5% 0 0);
+  --sidebar-accent-foreground: oklch(96.1% 0 0);
+  --sidebar-border: oklch(28% 0 0);
+  --sidebar-ring: oklch(72% 0.175 50);
+
+  --chart-1: oklch(72% 0.175 50);
+  --chart-2: oklch(78% 0 0);
+  --chart-3: oklch(78% 0.12 65);
+  --chart-4: oklch(60% 0.06 30);
+  --chart-5: oklch(45% 0 0);
 }
 
 @layer base {
@@ -99,5 +161,9 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings:
+      "ss01" 1,
+      "cv11" 1;
+    -webkit-font-smoothing: antialiased;
   }
 }

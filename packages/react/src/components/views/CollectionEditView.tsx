@@ -46,7 +46,7 @@ export function CollectionEditView<
 >(props: CollectionEditViewProps<TSlug>) {
   const isEditing = Boolean(props.documentId);
 
-  const { data: document } = useQuery({
+  const { data: currentDocument } = useQuery({
     ...convexQuery(vexConvexApi.get, {
       id: props.documentId ?? "",
     }),
@@ -54,7 +54,7 @@ export function CollectionEditView<
     enabled: isEditing,
   });
 
-  if (!document) {
+  if (!currentDocument) {
     // TODO: add proper not found component or screen
     return <p>Document not found.</p>;
   }
@@ -63,10 +63,10 @@ export function CollectionEditView<
     mutationFn: useConvexMutation(vexConvexApi.update),
   });
   const form = useCollectionForm({
-    document,
+    document: currentDocument,
     collection: props.collection,
     onSubmit: async ({ value }) => {
-      await mutateAsync({ id: document._id, data: value });
+      await mutateAsync({ id: currentDocument._id, data: value });
     },
   });
 

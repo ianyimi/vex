@@ -119,6 +119,23 @@ Create `.pi/agent-docs/specs/YYYY-MM-DD-HHMM-<feature-slug>/` with four files: `
 - Framework adapter components use the **framework prefix**, not `Vex`: `NextAdminPage` in `@vexcms/next`, not `VexAdminPage`
 - Barrel exports in `src/index.ts` + `package.json#exports` — shape.md must list both
 
+### Function body comment rule
+
+When speccing function signatures in `shape.md`, the JSDoc comment is the source of truth for what a function does — do **not** repeat that in the body. Comments inside the function body are for **edge cases only**:
+
+```ts
+/**
+ * Publishes a draft document and records it in version history.
+ * Throws if the document has no draft snapshot or if the caller lacks publish permission.
+ */
+async function adminPublish(ctx, args) {
+  // Edge: no draft snapshot means nothing to publish — throw before touching the DB
+  // Edge: environmentId must match the document's environment when environments are enabled
+}
+```
+
+Do NOT write comments like `// Get the document from the DB`, `// Check permissions`, or `// Return the result` — those describe the obvious flow and duplicate what the JSDoc already covers. Only call out non-obvious invariants, guards against tricky inputs, or behavior that differs from what a reader would expect.
+
 ### standards.md
 
 List every rule from `developer-preferences.md` that applies. Note any one-off exceptions.
@@ -161,6 +178,8 @@ Do not begin implementation.
 
 <!-- sync-spec:developer-preferences -->
 Current standing rules (mirrored from `.pi/agent-docs/standards/developer-preferences.md` — read that file for full audit trail):
+
+- **Package CSS defaults in `@layer base`**: Any `styles.css` shipped by a `@vexcms/*` package must put default CSS variable values inside `@layer base { :root { } }` (and `.dark {}` for dark mode). This ensures consuming app `:root {}` declarations always win without `!important`. *(sync-spec 23)*
 
 - **Next.js adapter components use `Next*` prefix**, not `Vex*`. `Vex*` is reserved for framework-agnostic APIs in `@vexcms/core` / `@vexcms/react`.
 - **Convex mutation payload arg is `data`, not `fields`.** "Fields" refers to field definitions in the collection config, never to DB payload.

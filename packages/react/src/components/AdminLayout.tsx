@@ -10,6 +10,7 @@ import { VexConfigContext } from "../context/VexConfigContext";
 import { AppSidebar } from "./AdminSidebar";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "./ui/sidebar";
 import { TooltipProvider } from "./ui/tooltip";
+import AdminTopNav from "./AdminTopNav";
 
 /**
  * Props for the `AdminLayout` component.
@@ -22,6 +23,16 @@ export interface AdminLayoutProps {
    * Forwarded to `AppSidebar` for active nav highlighting.
    */
   activeSlug?: string;
+  /**
+   * The docID of the currently active document.
+   * Forwarded to `AppSidebar` and `AdminTopNav` for admin navigation.
+   */
+  activeDocID?: string;
+  /**
+   * The full pathname of the current url
+   * Forwarded to `AppTopNav` for the top nav.
+   */
+  pathname: string;
   /** The active view content rendered in the main content area. */
   children: ReactNode;
   /**
@@ -78,7 +89,17 @@ export function AdminLayout(props: AdminLayoutProps) {
     <SidebarInset>
       <header className="flex h-12 items-center gap-2 px-4 border-b shrink-0">
         {side === "right" && <div className="flex-1" />}
-        <SidebarTrigger side={side} />
+        {side === "right" ? (
+          <>
+            <AdminTopNav {...props} />
+            <SidebarTrigger side={side} />
+          </>
+        ) : (
+          <>
+            <SidebarTrigger side={side} />
+            <AdminTopNav {...props} />
+          </>
+        )}
       </header>
       <main className="flex-1 overflow-y-auto p-6">{props.children}</main>
     </SidebarInset>

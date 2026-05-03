@@ -22,6 +22,10 @@ import {
   DashboardView,
 } from "./components";
 import { DateFieldCell, DateFieldInput } from "./components/fields/date";
+import {
+  RelationshipFieldInput,
+  RelationshipFieldCell,
+} from "./components/fields/relationship";
 
 /**
  * HKT for React — maps any props type to `ComponentType<P>`.
@@ -77,6 +81,10 @@ export const reactAdapter: FrameworkAdapterInput<ReactHKT> =
       [ADMIN_FIELDS.url.type]: {
         input: UrlFieldInput,
         cell: UrlFieldCell,
+      },
+      [ADMIN_FIELDS.relationship.type]: {
+        input: RelationshipFieldInput,
+        cell: RelationshipFieldCell,
       },
     },
     views: {

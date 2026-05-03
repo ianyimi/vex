@@ -17,6 +17,7 @@ export interface Post extends VexDocument {
   link?: string
   index?: number
   thumbnail?: string
+  parent?: Id<CollectionSlug>[]
   published?: boolean
   publishedAt?: number
   type?: Type

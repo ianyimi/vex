@@ -66,7 +66,10 @@ export default [
       "jsdoc/require-returns-description": "error",
       "jsdoc/require-returns-type": "off", // TypeScript handles this
       "jsdoc/check-param-names": "error",
-      "jsdoc/check-tag-names": "error",
+      "jsdoc/check-tag-names": ["error", {
+        // TypeDoc-specific tags not in the JSDoc standard — keep in sync with typedoc.json
+        definedTags: ["typeParam", "defaultValue", "expand", "ignore"],
+      }],
       "jsdoc/check-types": "off", // TypeScript handles this
       "jsdoc/valid-types": "off", // TypeScript handles this
       "jsdoc/require-throws": "warn", // Warn about documenting thrown errors

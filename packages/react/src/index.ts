@@ -31,6 +31,8 @@ export { VexConfigContext, useVexConfig } from "./context/VexConfigContext";
 
 // Utilities
 export { cn } from "./styles/utils";
+export { Icon } from "./components/Icon";
+export type { IconProps, LucideIconName } from "./components/Icon";
 
 // shadcn UI primitives
 export * from "./components/ui";

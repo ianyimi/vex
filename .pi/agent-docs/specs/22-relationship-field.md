@@ -1,6 +1,6 @@
 # Spec 22 — Relationship Field
 
-**Status:** Ready to implement
+**Status:** In progress (Steps 1–5 complete, Steps 6–10 pending)
 **Depends on:** Spec 20 (field type pattern), Spec 21 (module augmentation — `CollectionSlug`, `DocumentBySlug`)
 
 ---
@@ -13,15 +13,15 @@ Implements the `relationship()` field type end-to-end: core types, config factor
 
 ## Design Decisions
 
-1. **Single collection only — no polymorphic.** `collection: CollectionSlug` takes exactly one slug. Polymorphic (array of slugs) is deferred.
+1. **Single collection only — no polymorphic.** `collection: { slug: TSlug }` takes exactly one slug object. Polymorphic (array of slugs) is deferred.
 
-2. **`hasMany` covered in this spec.** `hasMany: false` → `v.id("slug")` / `string`. `hasMany: true` → `v.array(v.id("slug"))` / `string[]`. The same combobox UI handles both.
+2. **`hasMany` is UI-only — Convex schema always stores as array.** Both `hasMany: false` and `hasMany: true` emit `v.array(v.id("slug"))` in the schema. The UI component uses `hasMany` to control whether the picker caps at one selection. This prevents a schema migration when toggling between single and multi-select on an existing collection. Form value is always `string[]`.
 
-3. **Form value is plain `string` / `string[]`.** Convex IDs are strings at the form boundary. The UI component handles display of the related document's title — the stored value is just the ID.
+3. **Form value is always `string[]`.** Convex IDs are strings at the form boundary. The UI component handles display of the related document's title — the stored value is always an array of IDs regardless of `hasMany`.
 
-4. **Auto FK index, always.** Every relationship field generates `.index("by_<fieldKey>", ["<fieldKey>"])` automatically. No explicit `index` property needed on the field.
+4. **Auto FK index — explicit suppresses auto.** Every relationship field generates `.index("by_<fieldKey>", ["<fieldKey>"])` automatically unless a manual `field.index` is set, in which case only the explicit index is emitted.
 
-5. **Auto search index on the related collection's `useAsTitle` field.** `collectionConfigToVexSchema` receives the full `VexConfig`. A new helper `getIncomingRelationships` detects whether any other collection has a relationship pointing to the current one. If yes and `useAsTitle` is not a Convex system field (`_id`, `_creationTime`), a `.searchIndex("search_<useAsTitle>", { searchField: "<useAsTitle>", filterFields: [] })` is emitted for that collection — unless a search index with the same name is already configured on that field.
+5. **Auto search index on the related collection's `useAsTitle` field.** `collectionConfigToVexSchema` receives the full `VexConfig`. A new helper `getIncomingRelationships` detects whether any other collection has a relationship pointing to the current one. If yes and `useAsTitle` is not a Convex system field (`_id`, `_creationTime`), a `.searchIndex("search_<useAsTitle>", { searchField: "<useAsTitle>", filterFields: [] })` is emitted for that collection — unless a search index with the same name is already configured on that field. The auto index is emitted once regardless of how many collections point here.
 
 6. **`collectionConfigToVexSchema` signature change — breaking.** Adds a required `config: VexConfig` parameter. All existing call sites and tests must pass the full config.
 
@@ -29,7 +29,7 @@ Implements the `relationship()` field type end-to-end: core types, config factor
 
 8. **`RelationshipField` added to `AdminField` union only in the final wiring step.** All component and dispatch code exists first; the union and adapter are updated in one step to keep TypeScript happy (`FieldComponentMap<F>` requires all `AdminField["type"]` variants to have entries).
 
-9. **`interfaceType` is computed dynamically by the factory.** `ADMIN_FIELDS.relationship.interfaceType` is a placeholder (`"Id<string>"`). The factory sets the actual `interfaceType` on the resolved field: `Id<"posts">` (single) or `Id<"posts">[]` (many).
+9. **`interfaceType` uses static constant — dynamic generation deferred.** `ADMIN_FIELDS.relationship.interfaceType` is `"Id<CollectionSlug>[]"` (always array form). Per-slug dynamic computation (`Id<"posts">[]`) is deferred to a later spec.
 
 10. **Cell shows raw ID.** Fetching the related document in every list cell is expensive. The cell renders a truncated ID string. Population is deferred.
 
@@ -53,59 +53,58 @@ Implements the `relationship()` field type end-to-end: core types, config factor
 ```
 packages/core/src/
   fields/
-    constants.ts                        ← MODIFIED — add relationship entry
-    types.ts                            ← MODIFIED — add RelationshipField<string> to AdminField (Step 9)
+    constants.ts                        ← MODIFIED ✓
+    types.ts                            ← MODIFIED ✓ — RelationshipField added to AdminField
     relationship/
-      types.ts                          ← NEW — RelationshipFieldInput, RelationshipField
-      config.ts                         ← NEW — relationship() factory
-      validator.ts                      ← NEW — relationshipFieldToValidator
-      validator.test.ts                 ← NEW
-      inputSchema.ts                    ← NEW — relationshipFieldToInputSchema
-      inputSchema.test.ts               ← NEW
-      index.ts                          ← NEW — re-exports
+      types.ts                          ← NEW ✓
+      config.ts                         ← NEW ✓
+      validator.ts                      ← NEW ✓
+      validator.test.ts                 ← NEW ✓
+      inputSchema.ts                    ← NEW ✓
+      inputSchema.test.ts               ← NEW ✓
+      index.ts                          ← NEW ✓
     validators/
-      index.ts                          ← MODIFIED — add relationship case (Step 9)
+      index.ts                          ← MODIFIED ✓ — relationship case added
     inputSchemas/
-      index.ts                          ← MODIFIED — add relationship case (Step 9)
+      index.ts                          ← PENDING (Step 9)
   collections/
-    schemaGen.ts                        ← MODIFIED — add config param, helper, auto-indexes
-    schemaGen.test.ts                   ← MODIFIED — update all call sites + new tests
-  convex/
-    index.ts                            ← MODIFIED — add vexConvexApi.search reference
-    vex/
-      collections.ts                    ← MODIFIED — add search query
+    validator.ts                        ← MODIFIED ✓ — collectionConfigToVexSchema + getIncomingRelationships
+                                          (NOTE: spec referenced schemaGen.ts — actual file is validator.ts)
+    validator.test.ts                   ← MODIFIED ✓
 
 packages/react/src/
   components/fields/
     relationship/
-      types.ts                          ← NEW — RelationshipOption type used in picker
-      Cell.tsx                          ← NEW — RelationshipFieldCell
-      columnDef.tsx                     ← NEW — relationshipFieldToColumnDef
-      Input.tsx                         ← NEW — RelationshipFieldInput combobox
-      index.ts                          ← NEW — re-exports
-    index.tsx                           ← MODIFIED — add to fieldInputComponents, fieldCellComponents, getCollectionColumnDefs (Step 9)
-  adapter.ts                            ← MODIFIED — add relationship to fields map (Step 9)
+      types.ts                          ← PENDING (Step 7)
+      Cell.tsx                          ← PENDING (Step 7)
+      columnDef.tsx                     ← PENDING (Step 7)
+      Input.tsx                         ← PENDING (Step 8)
+      index.ts                          ← PENDING (Step 7)
+    index.tsx                           ← PENDING (Step 9)
+  adapter.ts                            ← PENDING (Step 9)
+
+packages/core/src/convex/vex/
+  collections.ts                        ← PENDING (Step 6)
+
+packages/core/src/convex/
+  index.ts                              ← PENDING (Step 6)
 
 apps/www/src/vexcms/collections/
-  posts.ts                              ← MODIFIED — add relationship field example
+  posts.ts                              ← PENDING (Step 10)
 ```
 
 ---
 
 ## Implementation Order
 
-> **Key:**
-> - `[agent]` — Boilerplate or pattern-following; agent generates this
-> - `[dev]` — Important custom implementation; dev implements this
-
 1. `[agent]` **Step 1** — Baseline verification
 2. `[agent]` **Step 2** — `relationship/types.ts` + `config.ts` + `ADMIN_FIELDS` entry + `relationship/index.ts`
-3. `[dev]`   **Step 3** — `relationshipFieldToValidator` + tests
-4. `[dev]`   **Step 4** — `relationshipFieldToInputSchema` + tests
-5. `[dev]`   **Step 5** — Update `collectionConfigToVexSchema`: signature, `getIncomingRelationships` helper, auto FK index, auto search index + update all tests
-6. `[dev]`   **Step 6** — `search` Convex query in `collections.ts` + `vexConvexApi.search` in `convex/index.ts`
+3. `[dev]` **Step 3** — `relationshipFieldToValidator` + tests
+4. `[dev]` **Step 4** — `relationshipFieldToInputSchema` + tests
+5. `[dev]` **Step 5** — Update `collectionConfigToVexSchema`: signature, `getIncomingRelationships` helper, auto FK index, auto search index + update all tests
+6. `[dev]` **Step 6** — `search` Convex query in `collections.ts` + `vexConvexApi.search` in `convex/index.ts`
 7. `[agent]` **Step 7** — `RelationshipFieldCell` + `columnDef.tsx` + `relationship/index.ts`
-8. `[dev]`   **Step 8** — `RelationshipFieldInput` combobox
+8. `[dev]` **Step 8** — `RelationshipFieldInput` combobox
 9. `[agent]` **Step 9** — Wire: `AdminField` union, dispatch functions, React adapter, `fields/index.tsx`
 10. `[agent]` **Step 10** — `apps/www` posts collection example
 
@@ -113,171 +112,82 @@ apps/www/src/vexcms/collections/
 
 ## Step 1: Baseline Verification
 
-- [ ] Run `pnpm test --filter @vexcms/core` — all pass
-- [ ] Run `pnpm build --filter @vexcms/core` — builds
-- [ ] Run `pnpm build --filter @vexcms/react` — builds
-- [ ] Note any pre-existing failures so you don't chase them
+- [x] Run `pnpm test --filter @vexcms/core` — all pass
+- [x] Run `pnpm build --filter @vexcms/core` — builds
+- [x] Run `pnpm build --filter @vexcms/react` — builds
 
 ---
 
 ## Step 2: Types, Config Factory, and Constants
 
-- [ ] Add `relationship` entry to `packages/core/src/fields/constants.ts`
-- [ ] Create `packages/core/src/fields/relationship/types.ts`
-- [ ] Create `packages/core/src/fields/relationship/config.ts`
-- [ ] Create `packages/core/src/fields/relationship/index.ts`
-- [ ] Run `pnpm build --filter @vexcms/core` — no type errors
+- [x] Add `relationship` entry to `packages/core/src/fields/constants.ts`
+- [x] Create `packages/core/src/fields/relationship/types.ts`
+- [x] Create `packages/core/src/fields/relationship/config.ts`
+- [x] Create `packages/core/src/fields/relationship/index.ts`
 
-### `packages/core/src/fields/constants.ts` — add to `ADMIN_FIELDS`
+### `packages/core/src/fields/constants.ts` — relationship entry (actual)
 
 ```typescript
 relationship: {
   type: "relationship",
-  // Placeholder — the factory computes the real interfaceType from collection + hasMany
-  interfaceType: "Id<string>",
-  validator: "v.id",
-  defaultValue: undefined as string | string[] | undefined,
+  interfaceType: "Id<CollectionSlug>[]",
+  validator: "v.array(\nv.string()\n)",
+  defaultValue: [] as string[],
 },
 ```
 
-### `packages/core/src/fields/relationship/types.ts`
+### `packages/core/src/fields/relationship/types.ts` (actual)
 
 ```typescript
 import { ADMIN_FIELDS } from "../constants";
-import type { BaseField, BaseFieldInput } from "../baseTypes";
-import type { CollectionSlug } from "../../types/generated";
+import { BaseField, BaseFieldInput } from "../baseTypes";
+import { CollectionSlug } from "../../types/generated";
 
-/**
- * Configuration input for a `relationship()` field.
- *
- * Stores a Convex `Id` (or array of `Id`s) pointing to documents in another
- * registered collection. `TSlug` is inferred from the `collection` option —
- * after running `vex generate`, invalid slugs are a compile-time error.
- *
- * **Defaults applied by `relationship()`:**
- * ```ts
- * {
- *   type:     "relationship",
- *   label:    "",    // inferred from the field key by defineCollection
- *   required: false,
- *   hasMany:  false, // single Id reference by default
- *   admin: {
- *     hidden:        false,
- *     readOnly:      false,
- *     position:      "main",
- *     width:         "full",
- *     cellAlignment: "left",
- *   }
- * }
- * ```
- *
- * @typeParam TSlug - The target collection slug. Inferred from `collection`.
- *   Defaults to `CollectionSlug` (the full union after `vex generate`).
- *
- * @example
- * ```ts
- * // Single reference
- * author: relationship({ collection: "authors" })
- *
- * // Multi-reference
- * tags: relationship({ collection: "tags", hasMany: true })
- * ```
- *
- * @see {@link RelationshipField} for the resolved output type
- * @see {@link relationship} for the config function
- * @see {@link CollectionSlug} for the valid slug union
- */
 export interface RelationshipFieldInput<
   TSlug extends CollectionSlug = CollectionSlug,
 > extends BaseFieldInput {
-  /** The slug of the collection this field links to. Must be a registered collection slug. */
-  collection: TSlug;
+  collection: {
+    /** The slug of the collection this field links to. Must be a registered collection slug. */
+    slug: TSlug;
+  };
   /**
    * Whether this field stores multiple references.
-   * `false` stores a single `Id`, `true` stores `Id[]`.
+   * `false` and `true` both store `Id[]` — hasMany is UI-only.
    * @defaultValue false
    */
   hasMany?: boolean;
 }
 
-/**
- * Resolved configuration for a `relationship()` field, after all defaults are applied.
- *
- * `TCollection` is the string-literal type of the target collection's slug,
- * inferred from `RelationshipFieldInput.collection`.
- *
- * @typeParam TCollection - The target collection slug (inferred from input).
- * @see {@link RelationshipFieldInput} for the user-facing input type
- * @see {@link relationship} for the config function
- */
-export interface RelationshipField<TCollection extends string = string>
-  extends BaseField {
+export interface RelationshipField<
+  TCollection extends string = string,
+> extends BaseField {
   readonly type: typeof ADMIN_FIELDS.relationship.type;
-  /** The slug of the collection this field links to. */
-  collection: TCollection;
-  /** Whether this field stores multiple document references. */
+  collection: {
+    /** The slug of the collection this field links to. */
+    slug: TCollection;
+  };
+  /** UI hint only — both values always store Id[]. false = picker caps at 1 selection. */
   hasMany: boolean;
 }
 ```
 
-### `packages/core/src/fields/relationship/config.ts`
+### `packages/core/src/fields/relationship/config.ts` (actual)
 
 ```typescript
 import { ADMIN_FIELDS } from "../constants";
 import type { RelationshipFieldInput, RelationshipField } from "./types";
 import type { CollectionSlug } from "../../types/generated";
 
-/**
- * Creates a relationship field with all defaults applied.
- *
- * Stores a Convex `Id<collection>` (or `Id<collection>[]` when `hasMany: true`)
- * pointing to a document in the specified collection. The generated Convex schema
- * emits `v.id("collection")` and automatically adds a `.index("by_<fieldKey>",
- * ["<fieldKey>"])` — no explicit `index` property needed.
- *
- * `TSlug` is inferred from `options.collection`. After running `vex generate`,
- * passing an unregistered slug is a compile-time error.
- *
- * **Defaults applied:**
- * - `label` — `""` (inferred from field key by `defineCollection`)
- * - `required` — `false`
- * - `hasMany` — `false`
- * - `admin.hidden` — `false`
- * - `admin.readOnly` — `false`
- * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
- * - `admin.cellAlignment` — `"left"`
- *
- * @typeParam TSlug - Inferred from `options.collection`.
- * @param options - Relationship field config. `collection` is required.
- * @returns Resolved relationship field definition with all defaults applied.
- *
- * @example
- * ```ts
- * // Single reference — stores Id<"authors">
- * author: relationship({ collection: "authors" })
- *
- * // Multi-reference — stores Id<"tags">[]
- * tags: relationship({ collection: "tags", hasMany: true, required: false })
- * ```
- *
- * @see {@link RelationshipFieldInput} for the full input type
- * @see {@link RelationshipField} for the resolved output type
- */
 export function relationship<TSlug extends CollectionSlug = CollectionSlug>(
   options: RelationshipFieldInput<TSlug>,
 ): RelationshipField<TSlug> {
-  const interfaceType = options.hasMany
-    ? `Id<"${options.collection}">[]`
-    : `Id<"${options.collection}">`;
-
   return {
-    type: ADMIN_FIELDS.relationship.type,
-    interfaceType,
     label: "",
     required: false,
     hasMany: false,
     ...options,
+    type: ADMIN_FIELDS.relationship.type,
+    interfaceType: ADMIN_FIELDS.relationship.interfaceType,
     admin: {
       hidden: false,
       readOnly: false,
@@ -292,35 +202,27 @@ export function relationship<TSlug extends CollectionSlug = CollectionSlug>(
 }
 ```
 
-### `packages/core/src/fields/relationship/index.ts`
-
-```typescript
-export * from "./config";
-export * from "./types";
-```
-
-> **Note:** `validator.ts` and `inputSchema.ts` are added to this re-export in Steps 3 and 4.
-
 ---
 
 ## Step 3: Validator + Tests
 
-- [ ] Create `packages/core/src/fields/relationship/validator.ts`
-- [ ] Create `packages/core/src/fields/relationship/validator.test.ts`
-- [ ] Run `pnpm test --filter @vexcms/core` — new tests pass
+- [x] Create `packages/core/src/fields/relationship/validator.ts`
+- [x] Create `packages/core/src/fields/relationship/validator.test.ts`
+- [x] All tests pass
 
-### `packages/core/src/fields/relationship/validator.ts`
+### `packages/core/src/fields/relationship/validator.ts` (actual)
 
-```typescript
+````typescript
 import { applyBaseValidators } from "../validators/utils";
 import type { RelationshipField } from "./types";
 
 /**
  * Converts a relationship field definition to a Convex schema validator string.
  *
- * Emits `v.id("collection")` for single references and
- * `v.array(v.id("collection"))` for multi-references. Wraps in `v.optional()`
- * when `field.required` is `false`.
+ * Always emits `v.array(v.id("collection"))` regardless of `hasMany` —
+ * relationship fields are always stored as an array so that switching between
+ * single and multi-select never requires a schema migration. Wraps in
+ * `v.optional()` when `field.required` is `false`.
  *
  * @param props - Input props.
  * @param props.field - The resolved relationship field definition.
@@ -328,10 +230,10 @@ import type { RelationshipField } from "./types";
  *
  * @example
  * ```ts
- * relationshipFieldToValidator({ field: relationship({ collection: "authors", required: true }) })
- * // → 'v.id("authors")'
+ * relationshipFieldToValidator({ field: relationship({ collection: { slug: "authors" }, required: true }) })
+ * // → 'v.array(v.id("authors"))'
  *
- * relationshipFieldToValidator({ field: relationship({ collection: "tags", hasMany: true }) })
+ * relationshipFieldToValidator({ field: relationship({ collection: { slug: "tags" } }) })
  * // → 'v.optional(v.array(v.id("tags")))'
  * ```
  *
@@ -340,20 +242,14 @@ import type { RelationshipField } from "./types";
 export function relationshipFieldToValidator(props: {
   field: RelationshipField;
 }): string {
-  // TODO: implement
-  //
-  // 1. Build the base validator:
-  //    → hasMany: false → `v.id("${field.collection}")`
-  //    → hasMany: true  → `v.array(v.id("${field.collection}"))`
-  //
-  // 2. Wrap with applyBaseValidators({ field, validator }) to handle optional
-  //
-  // 3. Return the string
-  throw new Error("Not implemented");
+  const { field } = props;
+  // Always emits v.array(v.id(...)) — hasMany is UI-only, schema is always array
+  const validator = `v.array(v.id("${field.collection.slug}"))`;
+  return applyBaseValidators({ field, validator });
 }
-```
+````
 
-### `packages/core/src/fields/relationship/validator.test.ts`
+### `packages/core/src/fields/relationship/validator.test.ts` (actual)
 
 ```typescript
 import { describe, it, expect } from "vitest";
@@ -361,28 +257,40 @@ import { relationship } from "./config";
 import { relationshipFieldToValidator } from "./validator";
 
 describe("relationshipFieldToValidator", () => {
-  it("emits v.id() for a required single reference", () => {
-    const field = relationship({ collection: "authors", required: true });
-    expect(relationshipFieldToValidator({ field })).toBe('v.id("authors")');
+  it("emits v.array(v.id()) for a required reference", () => {
+    const field = relationship({
+      collection: { slug: "authors" },
+      required: true,
+    });
+    expect(relationshipFieldToValidator({ field })).toBe(
+      'v.array(v.id("authors"))',
+    );
   });
 
-  it("wraps in v.optional() for an optional single reference", () => {
-    const field = relationship({ collection: "authors", required: false });
-    expect(relationshipFieldToValidator({ field })).toBe('v.optional(v.id("authors"))');
+  it("wraps v.array(v.id()) in v.optional() for an optional reference", () => {
+    const field = relationship({
+      collection: { slug: "authors" },
+      required: false,
+    });
+    expect(relationshipFieldToValidator({ field })).toBe(
+      'v.optional(v.array(v.id("authors")))',
+    );
   });
 
   it("emits v.array(v.id()) for a required hasMany reference", () => {
     const field = relationship({
-      collection: "tags",
+      collection: { slug: "tags" },
       hasMany: true,
       required: true,
     });
-    expect(relationshipFieldToValidator({ field })).toBe('v.array(v.id("tags"))');
+    expect(relationshipFieldToValidator({ field })).toBe(
+      'v.array(v.id("tags"))',
+    );
   });
 
-  it("wraps v.array(v.id()) in v.optional() for optional hasMany", () => {
+  it("wraps v.array(v.id()) in v.optional() for an optional hasMany reference", () => {
     const field = relationship({
-      collection: "tags",
+      collection: { slug: "tags" },
       hasMany: true,
       required: false,
     });
@@ -393,65 +301,60 @@ describe("relationshipFieldToValidator", () => {
 
   it("uses the collection slug verbatim in the validator string", () => {
     const field = relationship({
-      collection: "blog_posts",
+      collection: { slug: "blog_posts" },
       required: true,
     });
-    expect(relationshipFieldToValidator({ field })).toBe('v.id("blog_posts")');
+    expect(relationshipFieldToValidator({ field })).toBe(
+      'v.array(v.id("blog_posts"))',
+    );
   });
 
-  it("defaults to non-optional when required is not set (required defaults to false)", () => {
-    const field = relationship({ collection: "authors" });
-    // required defaults to false → optional
-    expect(relationshipFieldToValidator({ field })).toBe('v.optional(v.id("authors"))');
+  it("defaults required to false — emits v.optional(v.array(v.id()))", () => {
+    const field = relationship({ collection: { slug: "authors" } });
+    expect(relationshipFieldToValidator({ field })).toBe(
+      'v.optional(v.array(v.id("authors")))',
+    );
   });
 });
-```
-
-Also add `validator.ts` to `packages/core/src/fields/relationship/index.ts`:
-
-```typescript
-export * from "./config";
-export * from "./types";
-export * from "./validator";
 ```
 
 ---
 
 ## Step 4: Input Schema + Tests
 
-- [ ] Create `packages/core/src/fields/relationship/inputSchema.ts`
-- [ ] Create `packages/core/src/fields/relationship/inputSchema.test.ts`
-- [ ] Add `inputSchema` to `packages/core/src/fields/relationship/index.ts`
-- [ ] Run `pnpm test --filter @vexcms/core` — new tests pass
+- [x] Create `packages/core/src/fields/relationship/inputSchema.ts`
+- [x] Create `packages/core/src/fields/relationship/inputSchema.test.ts`
+- [x] All tests pass
 
-### `packages/core/src/fields/relationship/inputSchema.ts`
+### `packages/core/src/fields/relationship/inputSchema.ts` (actual)
 
-```typescript
+````typescript
 import { z, type ZodSchema } from "zod";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 import type { RelationshipField } from "./types";
+import { ADMIN_FIELDS } from "../constants";
 
 /**
  * Builds a Zod schema for validating a relationship field value in the admin form.
  *
- * Convex document IDs are strings at the form boundary. Single references
- * validate as `z.string()`. Multi-references (`hasMany: true`) validate as
- * `z.array(z.string())` with a default of `[]`. Wraps in `.optional()` for
- * non-required fields via {@link applyBaseInputSchemaMeta}.
+ * Always validates as `z.array(z.string())` regardless of `hasMany` — relationship
+ * fields always store an array of Convex ID strings at the form boundary.
+ * `hasMany` only controls the picker UI (single-select vs multi-select).
+ *
+ * A `.default([])` is applied so that `undefined` parses to `[]` rather than
+ * failing or returning `undefined`.
  *
  * @param props - Input props.
  * @param props.field - The resolved relationship field definition.
- * @returns A Zod schema for the relationship value.
+ * @returns A Zod schema that validates `string[]` and defaults `undefined` to `[]`.
  *
  * @example
  * ```ts
- * // Single, optional (default)
- * relationshipFieldToInputSchema({ field: relationship({ collection: "authors" }) })
- * // → z.string().optional()
- *
- * // Multi, required
- * relationshipFieldToInputSchema({ field: relationship({ collection: "tags", hasMany: true, required: true }) })
- * // → z.array(z.string()).default([])
+ * // Both required and optional fields always use z.array(z.string())
+ * const schema = relationshipFieldToInputSchema({ field: relationship({ collection: { slug: "authors" } }) });
+ * schema.safeParse(["id1"]).success  // true
+ * schema.safeParse("id1").success    // false — must be an array
+ * schema.safeParse(undefined).data   // []
  * ```
  *
  * @internal
@@ -459,26 +362,16 @@ import type { RelationshipField } from "./types";
 export function relationshipFieldToInputSchema(props: {
   field: RelationshipField;
 }): ZodSchema {
-  // TODO: implement
-  //
-  // 1. hasMany: false → base schema is z.string()
-  //    hasMany: true  → base schema is z.array(z.string()).default([])
-  //
-  // 2. Pass to applyBaseInputSchemaMeta({ field, inputSchema }) to handle
-  //    label metadata and .optional() wrapping for non-required fields
-  //
-  // 3. Return the result
-  //
-  // Edge cases:
-  // - hasMany: true + required: false → z.array(z.string()).default([]).optional()
-  //   The .default([]) means safeParse(undefined) returns []
-  // - hasMany: false + required: false → z.string().optional()
-  //   safeParse(undefined) returns undefined
-  throw new Error("Not implemented");
+  const { field } = props;
+  // Always array — hasMany is UI-only. defaultValue [] means undefined → [] always.
+  const inputSchema = z
+    .array(z.string())
+    .default(ADMIN_FIELDS.relationship.defaultValue);
+  return applyBaseInputSchemaMeta({ field, inputSchema });
 }
-```
+````
 
-### `packages/core/src/fields/relationship/inputSchema.test.ts`
+### `packages/core/src/fields/relationship/inputSchema.test.ts` (actual)
 
 ```typescript
 import { describe, it, expect } from "vitest";
@@ -486,63 +379,61 @@ import { relationship } from "./config";
 import { relationshipFieldToInputSchema } from "./inputSchema";
 
 describe("relationshipFieldToInputSchema", () => {
-  // ─── single reference ─────────────────────────────────────────────────────
+  // Always validates as z.array(z.string()) — hasMany is UI-only
 
-  it("accepts a valid string (Convex ID) for a required single ref", () => {
-    const field = relationship({ collection: "authors", required: true });
-    const schema = relationshipFieldToInputSchema({ field });
-    expect(schema.safeParse("abc123").success).toBe(true);
-  });
-
-  it("rejects undefined for a required single ref", () => {
-    const field = relationship({ collection: "authors", required: true });
-    const schema = relationshipFieldToInputSchema({ field });
-    expect(schema.safeParse(undefined).success).toBe(false);
-  });
-
-  it("accepts undefined and returns undefined for an optional single ref", () => {
-    const field = relationship({ collection: "authors", required: false });
-    const schema = relationshipFieldToInputSchema({ field });
-    const result = schema.safeParse(undefined);
-    expect(result.success).toBe(true);
-    if (result.success) expect(result.data).toBeUndefined();
-  });
-
-  it("rejects non-string values for a single ref", () => {
-    const field = relationship({ collection: "authors", required: true });
-    const schema = relationshipFieldToInputSchema({ field });
-    expect(schema.safeParse(123).success).toBe(false);
-    expect(schema.safeParse([]).success).toBe(false);
-  });
-
-  // ─── hasMany reference ────────────────────────────────────────────────────
-
-  it("accepts an array of strings for required hasMany", () => {
+  it("accepts an array of strings", () => {
     const field = relationship({
-      collection: "tags",
-      hasMany: true,
+      collection: { slug: "authors" },
       required: true,
     });
     const schema = relationshipFieldToInputSchema({ field });
-    expect(schema.safeParse(["id1", "id2"]).success).toBe(true);
+    expect(schema.safeParse(["abc123", "def456"]).success).toBe(true);
     expect(schema.safeParse([]).success).toBe(true);
   });
 
-  it("rejects non-array for hasMany", () => {
+  it("rejects a bare string — must be wrapped in an array", () => {
     const field = relationship({
-      collection: "tags",
-      hasMany: true,
+      collection: { slug: "authors" },
       required: true,
     });
     const schema = relationshipFieldToInputSchema({ field });
-    expect(schema.safeParse("id1").success).toBe(false);
-    expect(schema.safeParse(undefined).success).toBe(false);
+    expect(schema.safeParse("abc123").success).toBe(false);
   });
 
-  it("returns default [] when undefined is parsed on optional hasMany", () => {
+  it("rejects non-string array items", () => {
     const field = relationship({
-      collection: "tags",
-      hasMany: true,
+      collection: { slug: "tags" },
+      required: true,
+    });
+    const schema = relationshipFieldToInputSchema({ field });
+    expect(schema.safeParse([1, 2]).success).toBe(false);
+  });
+
+  it("rejects non-array values", () => {
+    const field = relationship({
+      collection: { slug: "tags" },
+      required: true,
+    });
+    const schema = relationshipFieldToInputSchema({ field });
+    expect(schema.safeParse(123).success).toBe(false);
+    expect(schema.safeParse(true).success).toBe(false);
+    expect(schema.safeParse({}).success).toBe(false);
+  });
+
+  it("defaults undefined to [] for required fields", () => {
+    const field = relationship({
+      collection: { slug: "authors" },
+      required: true,
+    });
+    const schema = relationshipFieldToInputSchema({ field });
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data).toEqual([]);
+  });
+
+  it("defaults undefined to [] for optional fields", () => {
+    const field = relationship({
+      collection: { slug: "authors" },
       required: false,
     });
     const schema = relationshipFieldToInputSchema({ field });
@@ -551,416 +442,47 @@ describe("relationshipFieldToInputSchema", () => {
     if (result.success) expect(result.data).toEqual([]);
   });
 
-  it("rejects non-string array items for hasMany", () => {
+  it("hasMany: true produces the same array schema (hasMany is UI-only)", () => {
     const field = relationship({
-      collection: "tags",
+      collection: { slug: "tags" },
       hasMany: true,
       required: true,
     });
     const schema = relationshipFieldToInputSchema({ field });
-    expect(schema.safeParse([1, 2]).success).toBe(false);
+    expect(schema.safeParse(["id1", "id2"]).success).toBe(true);
+    expect(schema.safeParse("id1").success).toBe(false);
   });
 });
-```
-
-Add to `packages/core/src/fields/relationship/index.ts`:
-
-```typescript
-export * from "./config";
-export * from "./types";
-export * from "./validator";
-export * from "./inputSchema";
 ```
 
 ---
 
 ## Step 5: Update `collectionConfigToVexSchema` + Tests
 
-This is the most complex core change. `collectionConfigToVexSchema` must now:
-1. Accept the full `VexConfig` to detect cross-collection relationships
-2. Auto-emit `.index("by_<fieldKey>", ["<fieldKey>"])` for every relationship field
-3. Auto-emit `.searchIndex("search_<useAsTitle>", ...)` if any collection has a relationship pointing HERE and `useAsTitle` is not a system field
+- [x] Updated `packages/core/src/collections/validator.ts` (not `schemaGen.ts` — file was already named `validator.ts`)
+- [x] Updated `packages/core/src/collections/validator.test.ts`
+- [x] All tests pass
 
-All existing `collectionConfigToVexSchema({ collection })` call sites must be updated to `collectionConfigToVexSchema({ collection, config })`.
+### Key implementation notes (actual)
 
-- [ ] Update `packages/core/src/collections/schemaGen.ts`
-- [ ] Update `packages/core/src/collections/schemaGen.test.ts` — all existing tests + new relationship tests
-- [ ] Update `packages/core/src/schema/generateVexSchema.ts` — pass `config` to `collectionConfigToVexSchema`
-- [ ] Run `pnpm test --filter @vexcms/core` — all tests pass
-
-### `packages/core/src/collections/schemaGen.ts` — full replacement
-
-```typescript
-import { ADMIN_FIELDS } from "../fields/constants";
-import type { AdminField } from "../fields/types";
-import type { RelationshipField } from "../fields/relationship/types";
-import { adminFieldToValidator } from "../fields/validators";
-import { CollectionConfig } from "./types";
-import type { VexConfig } from "../config/types";
-
-/**
- * Describes a relationship field in another collection that points to a given collection.
- *
- * Used by `collectionConfigToVexSchema` to detect whether a search index should be
- * auto-generated on the current collection's `useAsTitle` field.
- *
- * @see {@link getIncomingRelationships}
- */
-export interface IncomingRelationship {
-  /** The slug of the collection that holds the relationship field. */
-  fromSlug: string;
-  /** The field key of the relationship field in that collection. */
-  fieldKey: string;
-}
-
-/**
- * Returns all relationship fields in other collections that point to `collection`.
- *
- * Iterates every collection in `config` (excluding `collection` itself) and collects
- * any field with `type === "relationship"` whose `collection` matches
- * `props.collection.slug`.
- *
- * @param props - Input props.
- * @param props.collection - The collection being checked for incoming relationships.
- * @param props.config - The full resolved VexCMS configuration.
- * @returns An array of `IncomingRelationship` descriptors, empty if none found.
- *
- * @example
- * ```ts
- * // posts has: author: relationship({ collection: "authors" })
- * getIncomingRelationships({ collection: authorsCollection, config })
- * // → [{ fromSlug: "posts", fieldKey: "author" }]
- * ```
- */
-export function getIncomingRelationships(props: {
-  collection: CollectionConfig;
-  config: VexConfig;
-}): IncomingRelationship[] {
-  // TODO: implement
-  //
-  // 1. Filter config.collections to exclude the current collection
-  //    (skip entries where c.slug === props.collection.slug)
-  //
-  // 2. For each remaining collection, iterate Object.entries(collection.fields)
-  //    → For each [fieldKey, field] where field.type === ADMIN_FIELDS.relationship.type:
-  //      Cast field to RelationshipField
-  //      If (field as RelationshipField).collection === props.collection.slug:
-  //        Push { fromSlug: collection.slug, fieldKey }
-  //
-  // 3. Return the array (empty if no relationships found)
-  throw new Error("Not implemented");
-}
-
-/**
- * Converts a resolved `CollectionConfig` to a Convex `defineTable(...)` source string.
- *
- * Iterates the collection's fields, builds each field's Convex validator via
- * `adminFieldToValidator`, and appends index chains:
- * - `.index()` for fields with an explicit `field.index` property
- * - `.index("by_<fieldKey>", ["<fieldKey>"])` auto-generated for every relationship field
- * - `.searchIndex()` for text fields with `field.searchIndex` configured
- * - `.searchIndex("search_<useAsTitle>", { searchField: "<useAsTitle>", filterFields: [] })`
- *   auto-generated when another collection has a relationship pointing HERE and
- *   `useAsTitle` is not a Convex system field (`_id`, `_creationTime`), provided
- *   no manually configured search index already has that name.
- *
- * @param props - Input props.
- * @param props.collection - The resolved collection definition to convert.
- * @param props.config - The full resolved VexCMS config, needed for cross-collection relationship detection.
- * @returns A TypeScript source string declaring the Convex table.
- *
- * @example
- * ```ts
- * const posts = defineCollection({
- *   slug: "posts",
- *   fields: { author: relationship({ collection: "authors", required: true }) },
- * });
- * collectionConfigToVexSchema({ collection: posts, config });
- * // → 'export const posts = defineTable({...})\n\t.index("by_author", ["author"])'
- * ```
- *
- * @see {@link generateVexSchema} for the full-file generator that wraps this function
- * @see {@link getIncomingRelationships} for the cross-collection helper
- */
-export function collectionConfigToVexSchema(props: {
-  collection: CollectionConfig;
-  config: VexConfig;
-}): string {
-  // TODO: implement
-  //
-  // This is a significant refactor of the existing implementation. The core
-  // field iteration is the same — new logic is the auto-index cases.
-  //
-  // 1. fieldsBlock: for each [fieldKey, field] in collection.fields:
-  //    Push `\t${fieldKey}: ${adminFieldToValidator({ field })},`
-  //
-  // 2. indexes: start with existing logic for field.index:
-  //    If field.index: push `.index("${field.index}", ["${fieldKey}"])`
-  //    NEW: If field.type === "relationship":
-  //      Push `.index("by_${fieldKey}", ["${fieldKey}"])`
-  //      (always, unconditionally — the auto FK index)
-  //
-  // 3. searchIndexes: start with existing text field logic:
-  //    If field.type === "text" && field.searchIndex:
-  //      Push the searchIndex chain (same as before)
-  //    NEW: After iterating fields, compute auto search index:
-  //      a. Call getIncomingRelationships({ collection: props.collection, config: props.config })
-  //      b. If any incoming relationships exist AND props.collection.admin.useAsTitle is not
-  //         one of ["_id", "_creationTime"] (Convex system fields):
-  //         - const useAsTitleKey = props.collection.admin.useAsTitle
-  //         - const autoSearchIndexName = `search_${useAsTitleKey}`
-  //         - Check: does any text field in collection.fields already have
-  //           field.searchIndex?.name === autoSearchIndexName?
-  //           (to avoid duplicating a manually configured search index)
-  //         - If no duplicate: push `.searchIndex("${autoSearchIndexName}", {
-  //             searchField: "${useAsTitleKey}",
-  //             filterFields: [],
-  //           })`
-  //
-  // 4. Assemble and return the defineTable string — same as before:
-  //    `export const ${collection.slug} = defineTable({\n${fieldsBlock.join("\n")}\n})`
-  //    + indexes.join("") + searchIndexes.join("")
-  //
-  // Edge cases:
-  // - No fields: fieldsBlock is empty → defineTable({})
-  // - useAsTitle is "_id" (default): do NOT add auto search index
-  // - Relationship field AND explicit field.index: both indexes are emitted
-  //   (the explicit one from field.index + the auto by_<fieldKey> from relationship)
-  // - Multiple incoming relationships from different collections: only ONE
-  //   search index is emitted (check once; the incoming relationship count doesn't matter)
-  throw new Error("Not implemented");
-}
-```
-
-### `packages/core/src/collections/schemaGen.test.ts` — new and updated tests
-
-Add these describe blocks. Also update every existing `collectionConfigToVexSchema({ collection })` call to `collectionConfigToVexSchema({ collection, config: defineConfig({ collections: [collection] }) })`.
-
-```typescript
-import { describe, it, expect } from "vitest";
-import { defineCollection, defineConfig } from "../index";
-import { relationship } from "../fields/relationship/config";
-import { url, text, number, checkbox, date, select } from "../fields";
-import {
-  collectionConfigToVexSchema,
-  getIncomingRelationships,
-} from "./schemaGen";
-
-// ─── getIncomingRelationships ─────────────────────────────────────────────────
-
-describe("getIncomingRelationships", () => {
-  it("returns an empty array when no collections have relationships", () => {
-    const authors = defineCollection({
-      slug: "authors",
-      fields: { name: text({ required: true }) },
-    });
-    const config = defineConfig({ collections: [authors] });
-    expect(getIncomingRelationships({ collection: authors, config })).toEqual([]);
-  });
-
-  it("returns the field when another collection has a relationship pointing here", () => {
-    const authors = defineCollection({
-      slug: "authors",
-      fields: { name: text({ required: true }) },
-    });
-    const posts = defineCollection({
-      slug: "posts",
-      fields: { author: relationship({ collection: "authors" }) },
-    });
-    const config = defineConfig({ collections: [posts, authors] });
-    expect(getIncomingRelationships({ collection: authors, config })).toEqual([
-      { fromSlug: "posts", fieldKey: "author" },
-    ]);
-  });
-
-  it("returns multiple entries when multiple collections point here", () => {
-    const authors = defineCollection({
-      slug: "authors",
-      fields: { name: text({ required: true }) },
-    });
-    const posts = defineCollection({
-      slug: "posts",
-      fields: { author: relationship({ collection: "authors" }) },
-    });
-    const comments = defineCollection({
-      slug: "comments",
-      fields: { author: relationship({ collection: "authors" }) },
-    });
-    const config = defineConfig({ collections: [posts, comments, authors] });
-    const result = getIncomingRelationships({ collection: authors, config });
-    expect(result).toHaveLength(2);
-    expect(result).toContainEqual({ fromSlug: "posts", fieldKey: "author" });
-    expect(result).toContainEqual({ fromSlug: "comments", fieldKey: "author" });
-  });
-
-  it("ignores the collection's own self-referencing relationship for this check", () => {
-    const nodes = defineCollection({
-      slug: "nodes",
-      fields: { parent: relationship({ collection: "nodes" }) },
-    });
-    const config = defineConfig({ collections: [nodes] });
-    // self-reference: the same collection isn't returned as "incoming from another"
-    expect(getIncomingRelationships({ collection: nodes, config })).toEqual([]);
-  });
-
-  it("does not return relationships pointing to other collections", () => {
-    const authors = defineCollection({
-      slug: "authors",
-      fields: { name: text({ required: true }) },
-    });
-    const categories = defineCollection({
-      slug: "categories",
-      fields: { label: text() },
-    });
-    const posts = defineCollection({
-      slug: "posts",
-      fields: { category: relationship({ collection: "categories" }) },
-    });
-    const config = defineConfig({ collections: [posts, authors, categories] });
-    // posts has a relationship to categories, not to authors
-    expect(getIncomingRelationships({ collection: authors, config })).toEqual([]);
-  });
-});
-
-// ─── relationship field auto-index ────────────────────────────────────────────
-
-describe("collectionConfigToVexSchema — relationship auto-index", () => {
-  it("auto-emits by_<fieldKey> index for a relationship field", () => {
-    const posts = defineCollection({
-      slug: "posts",
-      fields: { author: relationship({ collection: "authors" }) },
-    });
-    const config = defineConfig({ collections: [posts] });
-    const output = collectionConfigToVexSchema({ collection: posts, config });
-    expect(output).toContain('.index("by_author", ["author"])');
-  });
-
-  it("emits both auto index and explicit index when field also has index property", () => {
-    const posts = defineCollection({
-      slug: "posts",
-      fields: {
-        author: relationship({ collection: "authors", index: "by_author_legacy" }),
-      },
-    });
-    const config = defineConfig({ collections: [posts] });
-    const output = collectionConfigToVexSchema({ collection: posts, config });
-    expect(output).toContain('.index("by_author", ["author"])');
-    expect(output).toContain('.index("by_author_legacy", ["author"])');
-  });
-
-  it("emits v.id() validator for a required relationship field", () => {
-    const posts = defineCollection({
-      slug: "posts",
-      fields: { author: relationship({ collection: "authors", required: true }) },
-    });
-    const config = defineConfig({ collections: [posts] });
-    const output = collectionConfigToVexSchema({ collection: posts, config });
-    expect(output).toContain('author: v.id("authors")');
-  });
-
-  it("emits v.optional(v.id()) for an optional relationship field", () => {
-    const posts = defineCollection({
-      slug: "posts",
-      fields: { author: relationship({ collection: "authors" }) },
-    });
-    const config = defineConfig({ collections: [posts] });
-    const output = collectionConfigToVexSchema({ collection: posts, config });
-    expect(output).toContain('author: v.optional(v.id("authors"))');
-  });
-
-  it("emits v.array(v.id()) for a hasMany relationship field", () => {
-    const posts = defineCollection({
-      slug: "posts",
-      fields: { tags: relationship({ collection: "tags", hasMany: true, required: true }) },
-    });
-    const config = defineConfig({ collections: [posts] });
-    const output = collectionConfigToVexSchema({ collection: posts, config });
-    expect(output).toContain('tags: v.array(v.id("tags"))');
-    expect(output).toContain('.index("by_tags", ["tags"])');
-  });
-});
-
-// ─── auto search index on related collection ─────────────────────────────────
-
-describe("collectionConfigToVexSchema — auto search index", () => {
-  it("emits search index on useAsTitle field when another collection points here", () => {
-    const authors = defineCollection({
-      slug: "authors",
-      fields: { name: text({ required: true }) },
-      admin: { useAsTitle: "name" },
-    });
-    const posts = defineCollection({
-      slug: "posts",
-      fields: { author: relationship({ collection: "authors" }) },
-    });
-    const config = defineConfig({ collections: [posts, authors] });
-    const output = collectionConfigToVexSchema({ collection: authors, config });
-    expect(output).toContain('.searchIndex("search_name"');
-    expect(output).toContain('searchField: "name"');
-  });
-
-  it("does NOT emit auto search index when useAsTitle is _id (default)", () => {
-    const authors = defineCollection({
-      slug: "authors",
-      fields: { name: text({ required: true }) },
-      // no admin.useAsTitle → defaults to "_id"
-    });
-    const posts = defineCollection({
-      slug: "posts",
-      fields: { author: relationship({ collection: "authors" }) },
-    });
-    const config = defineConfig({ collections: [posts, authors] });
-    const output = collectionConfigToVexSchema({ collection: authors, config });
-    expect(output).not.toContain(".searchIndex(");
-  });
-
-  it("does NOT emit auto search index when no collection points here", () => {
-    const authors = defineCollection({
-      slug: "authors",
-      fields: { name: text({ required: true }) },
-      admin: { useAsTitle: "name" },
-    });
-    const config = defineConfig({ collections: [authors] });
-    const output = collectionConfigToVexSchema({ collection: authors, config });
-    expect(output).not.toContain(".searchIndex(");
-  });
-
-  it("does NOT duplicate search index when field already has searchIndex configured with same name", () => {
-    const authors = defineCollection({
-      slug: "authors",
-      fields: {
-        name: text({
-          required: true,
-          searchIndex: { name: "search_name", filterFields: [] },
-        }),
-      },
-      admin: { useAsTitle: "name" },
-    });
-    const posts = defineCollection({
-      slug: "posts",
-      fields: { author: relationship({ collection: "authors" }) },
-    });
-    const config = defineConfig({ collections: [posts, authors] });
-    const output = collectionConfigToVexSchema({ collection: authors, config });
-    const count = (output.match(/searchIndex/g) ?? []).length;
-    expect(count).toBe(1); // only one — not duplicated
-  });
-});
-```
+- `getIncomingRelationships` lives in `collections/validator.ts`
+- Auto FK index uses `else if` — explicit `field.index` suppresses the auto `by_<fieldKey>` index
+- Auto search index is computed once after the field loop (not per-field)
+- Deduplication checks `searchIndexes.find(si => si.includes(\`search\_\${useAsTitle}\`))` to avoid emitting when the manual searchIndex name matches
+- Auto search index always has `filterFields: []`
+- `searchField` in the auto search index is `useAsTitle`, not the incoming relationship's field key
 
 ---
 
 ## Step 6: `search` Convex Query
 
-Add a `search` query to the Convex collections file and register it in `vexConvexApi`.
-
-- [ ] Update `packages/core/src/convex/vex/collections.ts` — add `search` export
-- [ ] Update `packages/core/src/convex/index.ts` — add `vexConvexApi.search`
-- [ ] Run `pnpm build --filter @vexcms/core`
+- [x] Update `packages/core/src/convex/vex/collections.ts` — add `search` export
+- [x] Update `packages/core/src/convex/index.ts` — add `vexConvexApi.search`
+- [x] Run `pnpm build --filter @vexcms/core`
 
 ### Add to `packages/core/src/convex/vex/collections.ts`
 
-```typescript
+````typescript
 /**
  * Searches documents in a VexCMS-managed collection using a Convex search index.
  *
@@ -969,44 +491,49 @@ Add a `search` query to the Convex collections file and register it in `vexConve
  * picker shows recent items without requiring a search term.
  *
  * The `searchIndexName` must match a `.searchIndex()` declaration in the
- * collection's Convex schema — for VexCMS this is auto-generated as
- * `search_<useAsTitleFieldKey>` when a relationship field points to this collection.
+ * collection's Convex schema. VexCMS auto-generates `search_<useAsTitle>` on
+ * the target collection whenever another collection has a relationship pointing
+ * to it and `useAsTitle` is not a Convex system field.
  *
  * @param collection - The Convex table name to search.
- * @param searchIndexName - The `.searchIndex()` name declared in the schema.
- * @param query - The search text. Pass `""` to list recent documents.
- * @param limit - Maximum number of results (default: 20).
- * @returns Array of matching documents.
+ * @param searchIndexName - The `.searchIndex()` name declared in the schema (e.g. `"search_name"`).
+ * @param searchField - The field name the search index is built on (e.g. `"name"`). Must match the `searchField` in the `.searchIndex()` declaration. Pass `useAsTitle` from the target collection config.
+ * @param query - The search text. Pass `""` to list recent documents instead of searching.
+ * @param limit - Maximum number of results. Defaults to `20`.
+ * @returns Array of matching documents, ordered by relevance or creation time.
+ *
+ * @example
+ * ```ts
+ * // Search authors by name
+ * vexConvexApi.search({ collection: "authors", searchIndexName: "search_name", searchField: "name", query: "jane" })
+ *
+ * // List recent authors when no search term is entered
+ * vexConvexApi.search({ collection: "authors", searchIndexName: "search_name", searchField: "name", query: "" })
  */
 export const search = query({
   args: {
     collection: v.string(),
     searchIndexName: v.string(),
+    searchField: v.string(),
     query: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // TODO: implement
-    //
-    // 1. const tableName = args.collection as TableNamesInDataModel<DataModel>
-    // 2. const limit = args.limit ?? 20
-    //
-    // 3. If args.query is empty string:
-    //    → return ctx.db.query(tableName).take(limit)
-    //    (no search, just list recent — same as vexConvexApi.list)
-    //
-    // 4. If args.query is non-empty:
-    //    → return (ctx.db as any)
-    //        .search(tableName, args.searchIndexName, { query: args.query })
-    //        .take(limit)
-    //    Note: cast to `any` is necessary because ctx.db.search is typed
-    //    to specific table/index pairs in the generated schema. The cast is
-    //    safe here because the search index is guaranteed to exist by the
-    //    VexCMS schema generation pipeline.
-    throw new Error("Not implemented");
+    const tableName = args.collection as TableNamesInDataModel<DataModel>;
+    const limit = args.limit ?? 20;
+    if (!args.query) {
+      return ctx.db.query(tableName).take(limit);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    return (ctx.db.query(tableName) as any)
+      .withSearchIndex(args.searchIndexName, (q: any) =>
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        (q as any).search(args.searchField, args.query),
+      )
+      .take(limit);
   },
 });
-```
+````
 
 ### Add to `packages/core/src/convex/index.ts` — inside `vexConvexApi`
 
@@ -1015,7 +542,12 @@ export const search = query({
  * Searches documents in a collection by a search index.
  *
  * Used by `RelationshipFieldInput` in `@vexcms/react` to populate the
- * relationship picker combobox. Pass `query: ""` to list recent documents.
+ * relationship picker combobox. The `searchIndexName` must match the
+ * `.searchIndex()` name in the Convex schema — VexCMS auto-generates
+ * `search_<useAsTitle>` when another collection has a relationship here.
+ * Pass `query: ""` to list recent documents when no search term is entered.
+ *
+ * @see {@link https://docs.convex.dev/text-search} for Convex search docs
  */
 search: anyApi.vex.collections.search as FunctionReference<
   "query",
@@ -1023,6 +555,7 @@ search: anyApi.vex.collections.search as FunctionReference<
   {
     collection: string;
     searchIndexName: string;
+    searchField: string;
     query: string;
     limit?: number;
   },
@@ -1044,7 +577,7 @@ search: anyApi.vex.collections.search as FunctionReference<
 
 ```typescript
 /**
- * A single option shown in the relationship field picker.
+ * A single option shown in the relationship field picker combobox.
  *
  * `id` is the Convex document ID stored as the field value.
  * `label` is the display string shown in the combobox, derived from the
@@ -1060,30 +593,27 @@ export interface RelationshipOption {
 
 ### `packages/react/src/components/fields/relationship/Cell.tsx`
 
-```tsx
+````tsx
 "use client";
 
-import type { CellComponentProps, RelationshipField } from "@vexcms/core";
+// import type { CellComponentProps, RelationshipField } from "@vexcms/core";
 
 /**
  * Relationship field cell component for the data-table list view.
  *
- * Displays the raw Convex document ID(s) stored in the relationship field.
- * For `hasMany: false`, renders a single truncated ID string.
- * For `hasMany: true`, renders a comma-separated list of IDs.
+ * Displays the stored `Id[]` value for the relationship field. For
+ * `hasMany: false`, renders the first (and only expected) ID truncated to
+ * 16 characters. For `hasMany: true`, renders a count badge (`N items`).
  *
- * A future spec will add population so the related document's title is shown
- * instead of the ID — that requires per-cell Convex queries and is deferred.
+ * Full document title population is deferred — fetching the related
+ * document's title in every cell would require N+1 Convex queries.
  *
- * @param props - Cell component props.
- * @param props.value - The stored value — a single ID string or array of ID strings.
- * @param props.fieldDef - The resolved relationship field definition.
- * @returns A `<span>` with the ID(s), or an em-dash if empty.
+ * @param props - Standard cell component props from `CellComponentProps<RelationshipField>`.
  *
  * @example
  * ```tsx
- * <RelationshipFieldCell value="abc123" fieldDef={authorField} row={row} isTitleField={false} collection={postsCollection} />
- * ```
+ * // Rendered automatically by relationshipFieldToColumnDef — not used directly
+ * <RelationshipFieldCell value={["abc123"]} fieldDef={authorField} row={row} isTitleField={false} collection={postsCollection} />
  */
 export function RelationshipFieldCell(
   props: CellComponentProps<RelationshipField>,
@@ -1103,55 +633,63 @@ export function RelationshipFieldCell(
     );
   }
 
-  const id = typeof value === "string" ? value : String(value);
+  const ids = Array.isArray(value) ? value : [];
+  const id = ids[0] ?? "";
+  if (!id) return <span className="text-muted-foreground">—</span>;
   return (
-    <span
-      className="text-xs font-mono text-muted-foreground"
-      title={id}
-    >
+    <span className="text-xs font-mono text-muted-foreground" title={id}>
       {id.length > 16 ? `${id.slice(0, 16)}…` : id}
     </span>
   );
 }
-```
+````
 
 ### `packages/react/src/components/fields/relationship/columnDef.tsx`
 
-```tsx
+````tsx
 import type { ColumnDef } from "@tanstack/react-table";
-import type { CollectionConfig, RelationshipField, TDocument } from "@vexcms/core";
+import type {
+  CollectionConfig,
+  RelationshipField,
+  TDocument,
+} from "@vexcms/core";
 import { RelationshipFieldCell } from "./Cell";
 
 /**
  * Creates a TanStack Table column definition for a relationship field.
  *
+ * The column value accessor reads `string[] | undefined` from the document —
+ * relationship fields always store an array of Convex IDs regardless of
+ * `hasMany`. Rendering is delegated to `RelationshipFieldCell`.
+ *
  * @param props - Column generation props.
  * @param props.fieldDef - The resolved relationship field definition.
- * @param props.fieldKey - Field key from `collection.fields`.
+ * @param props.fieldKey - The field key from `collection.fields` (e.g. `"author"`).
  * @param props.collection - The parent collection config.
  * @param props.isTitleField - Whether this field is the collection's `useAsTitle` field.
- * @returns A TanStack Table `ColumnDef`.
+ * @returns A TanStack Table `ColumnDef` with sorting disabled and hiding enabled.
  *
  * @example
  * ```ts
- * const col = relationshipFieldToColumnDef({ fieldDef, fieldKey: "author", isTitleField: false, collection });
- * ```
+ * const col = relationshipFieldToColumnDef({
+ *   fieldDef: authorField,
+ *   fieldKey: "author",
+ *   collection: postsCollection,
+ *   isTitleField: false,
+ * });
  */
 export function relationshipFieldToColumnDef(props: {
   fieldDef: RelationshipField;
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TDocument, string | string[] | undefined> {
+}): ColumnDef<TDocument, string[] | undefined> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
     header: props.fieldDef.label || props.fieldKey,
     cell: ({ row }) => {
-      const value = row.getValue(props.fieldKey) as
-        | string
-        | string[]
-        | undefined;
+      const value = row.getValue(props.fieldKey) as string[] | undefined;
       return (
         <RelationshipFieldCell
           value={value}
@@ -1171,349 +709,59 @@ export function relationshipFieldToColumnDef(props: {
     },
   };
 }
-```
-
-### `packages/react/src/components/fields/relationship/index.ts`
-
-```typescript
-export * from "./Cell";
-export * from "./columnDef";
-export * from "./Input";
-export * from "./types";
-```
-
-> `Input.tsx` is created in Step 8. Add it to this export after Step 8.
+````
 
 ---
 
 ## Step 8: `RelationshipFieldInput` Combobox
 
-This is the most complex component in this spec. It builds a searchable combobox that queries the related collection live via Convex.
-
 - [ ] Create `packages/react/src/components/fields/relationship/Input.tsx`
-- [ ] Add `Input.tsx` export to `packages/react/src/components/fields/relationship/index.ts`
 - [ ] Run `pnpm build --filter @vexcms/react`
 
-### `packages/react/src/components/fields/relationship/Input.tsx`
+### Design notes
 
-```tsx
-"use client";
-
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import {
-  type RelationshipField,
-  vexConvexApi,
-  CORE_ADMIN_FIELDS,
-} from "@vexcms/core";
-import { createFieldInput } from "../../form";
-import { FormDescription, FormError, FormLabel } from "../../form";
-import { useVexConfig } from "../../../context/VexConfigContext";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "../../ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
-import { Button } from "../../ui/button";
-import { Badge } from "../../ui/badge";
-import { ChevronsUpDownIcon, XIcon } from "lucide-react";
-import type { RelationshipOption } from "./types";
-
-/**
- * Relationship field input component for the admin edit form.
- *
- * Renders a searchable combobox that queries the related collection via
- * `vexConvexApi.search`. When `hasMany` is `false`, selecting an item
- * replaces the current value. When `hasMany` is `true`, items are added
- * and removed from an array.
- *
- * Looks up the related collection's config from `VexConfigContext` to determine:
- * - The `useAsTitle` field key (displayed as the option label)
- * - The search index name (`search_<useAsTitle>`) to use for live search
- *
- * When `useAsTitle` is `_id` (the default), search is disabled and the picker
- * falls back to listing recent documents by creation time.
- *
- * Built with `createFieldInput` — handles TanStack Form wiring automatically.
- * Must be rendered inside `<AppForm>` or receive an explicit `field` prop.
- *
- * @param props - Component props (via `createFieldInput`).
- * @param props.name - Field key from the collection config (e.g. `"author"`).
- * @param props.fieldDef - The resolved `RelationshipField` definition.
- * @param props.readOnly - Whether the field is non-editable.
- * @returns The combobox picker for selecting related document(s).
- *
- * @example
- * ```tsx
- * <AppForm form={form}>
- *   <RelationshipFieldInput name="author" fieldDef={authorField} readOnly={false} />
- * </AppForm>
- * ```
- */
-export const RelationshipFieldInput = createFieldInput<
-  string | string[] | undefined,
-  RelationshipField
->(({ name, fieldDef, field, submissionAttempts }) => {
-  // TODO: implement
-  //
-  // === State ===
-  // const [open, setOpen] = useState(false)
-  // const [searchQuery, setSearchQuery] = useState("")
-  //
-  // === Config lookup ===
-  // const config = useVexConfig()
-  // Find the target collection: config.collections.find(c => c.slug === fieldDef.collection)
-  // const targetCollection = config?.collections.find(c => c.slug === fieldDef.collection)
-  // const useAsTitleKey = targetCollection?.admin.useAsTitle ?? "_id"
-  // const systemFields: string[] = [CORE_ADMIN_FIELDS.id.slug, CORE_ADMIN_FIELDS.createdAt.slug]
-  // const canSearch = !systemFields.includes(useAsTitleKey)
-  // const searchIndexName = canSearch ? `search_${useAsTitleKey}` : ""
-  //
-  // === Convex query ===
-  // Use convexQuery + useQuery for the search results:
-  // const { data: results = [] } = useQuery({
-  //   ...convexQuery(vexConvexApi.search, {
-  //     collection: fieldDef.collection,
-  //     searchIndexName,
-  //     query: searchQuery,
-  //   }),
-  //   enabled: open,
-  // })
-  //
-  // Map results to RelationshipOption[]:
-  // const options: RelationshipOption[] = results.map(doc => ({
-  //   id: doc._id,
-  //   label: canSearch && useAsTitleKey !== "_id"
-  //     ? String(doc[useAsTitleKey] ?? doc._id)
-  //     : doc._id,
-  // }))
-  //
-  // === Selected values ===
-  // Normalize field.state.value to an array for uniform handling:
-  // const selectedIds: string[] = fieldDef.hasMany
-  //   ? (Array.isArray(field.state.value) ? field.state.value as string[] : [])
-  //   : (field.state.value ? [field.state.value as string] : [])
-  //
-  // === Handlers ===
-  // handleSelect(id: string):
-  //   If hasMany: false → field.handleChange(id) then setOpen(false)
-  //   If hasMany: true  → toggle: if selectedIds.includes(id) → remove, else → add
-  //     field.handleChange(newArray)
-  //
-  // handleRemove(id: string):
-  //   Only used for hasMany: true
-  //   field.handleChange(selectedIds.filter(s => s !== id))
-  //
-  // === Render ===
-  // Return:
-  // <div className="flex flex-col gap-1.5">
-  //   <FormLabel field={fieldDef} name={name} />
-  //   <Popover open={open} onOpenChange={setOpen}>
-  //     <PopoverTrigger>
-  //       [Trigger button — shows selected labels or placeholder]
-  //       For hasMany: show badges with an X button
-  //       For single: show the selected label or placeholder text
-  //       Always show a ChevronsUpDownIcon on the right
-  //     </PopoverTrigger>
-  //     <PopoverContent className="p-0 w-[--radix-popover-trigger-width]">
-  //       <Command>
-  //         <CommandInput
-  //           placeholder={fieldDef.admin.placeholder || `Search ${targetCollection?.labels.singular ?? fieldDef.collection}…`}
-  //           value={searchQuery}
-  //           onValueChange={setSearchQuery}
-  //         />
-  //         <CommandList>
-  //           <CommandEmpty>No results found.</CommandEmpty>
-  //           <CommandGroup>
-  //             {options.map(option => (
-  //               <CommandItem
-  //                 key={option.id}
-  //                 value={option.id}
-  //                 onSelect={() => handleSelect(option.id)}
-  //               >
-  //                 {option.label}
-  //               </CommandItem>
-  //             ))}
-  //           </CommandGroup>
-  //         </CommandList>
-  //       </Command>
-  //     </PopoverContent>
-  //   </Popover>
-  //   <FormDescription field={fieldDef} />
-  //   <FormError field={field} submissionAttempts={submissionAttempts} />
-  // </div>
-  //
-  // Edge cases:
-  // - targetCollection not found in config (slug not registered): still renders,
-  //   falls back to displaying raw IDs in the picker
-  // - searchQuery is empty: vexConvexApi.search falls back to listing recent docs
-  // - hasMany: false and already has a value: selecting a new item replaces it
-  //   (not adds to it)
-  throw new Error("Not implemented");
-});
-```
+- Value is always `string[]` — `hasMany: false` means the picker enforces max 1 selection in the UI
+- When `useAsTitle` is `_id` or `_creationTime`, search is disabled; falls back to `vexConvexApi.list`
+- `searchIndexName` is `search_${useAsTitle}` — matches the auto-generated index from Step 5
+- `searchField` is `useAsTitle` from the target collection config — passed explicitly so the Convex query doesn't need to guess the field from the index name
+- Combobox built with shadcn `Command` + `Popover`
+- `hasMany: false`: selecting replaces current value; trigger shows single selected label
+- `hasMany: true`: selecting toggles; trigger shows badges with remove buttons
 
 ---
 
 ## Step 9: Wire Everything
 
-This step adds `RelationshipField` to the `AdminField` union and connects all the dispatch functions and React registrations simultaneously. Do all of these in one pass to keep TypeScript happy — adding to `AdminField` immediately requires the adapter entry to exist.
-
-- [ ] Update `packages/core/src/fields/types.ts` — add `RelationshipField<string>` to `AdminField`
-- [ ] Update `packages/core/src/fields/validators/index.ts` — add `relationship` case
 - [ ] Update `packages/core/src/fields/inputSchemas/index.ts` — add `relationship` case
-- [ ] Update `packages/react/src/components/fields/index.tsx` — add to `fieldInputComponents`, `fieldCellComponents`, `getCollectionColumnDefs`
-- [ ] Update `packages/react/src/adapter.ts` — add `relationship` to `fields` map
+- [ ] Update `packages/react/src/components/fields/index.tsx` — add to all three maps
+- [ ] Update `packages/react/src/adapter.ts` — add relationship to fields map
 - [ ] Run `pnpm build --filter @vexcms/core && pnpm build --filter @vexcms/react`
 - [ ] Run `pnpm test --filter @vexcms/core`
 
-### `packages/core/src/fields/types.ts` — add import + union entry
-
-```typescript
-import { RelationshipField } from "./relationship";
-
-export type AdminField =
-  | TextField
-  | NumberField
-  | CheckboxField
-  | DateField
-  | SelectField
-  | UrlField
-  | RelationshipField<string>; // ← add
-```
-
-### `packages/core/src/fields/validators/index.ts` — add case
-
-```typescript
-import { relationshipFieldToValidator } from "../relationship";
-
-// Inside the switch:
-case ADMIN_FIELDS.relationship.type:
-  return relationshipFieldToValidator({ field: props.field as RelationshipField });
-```
-
-> Import `RelationshipField` from `"../relationship"` at the top of the file.
-
-### `packages/core/src/fields/inputSchemas/index.ts` — add case
-
-```typescript
-import { relationshipFieldToInputSchema } from "../relationship";
-
-// Inside the switch:
-case ADMIN_FIELDS.relationship.type:
-  return relationshipFieldToInputSchema({ field: props.field as RelationshipField });
-```
-
-### `packages/react/src/components/fields/index.tsx` — add to all three maps
-
-Add to `fieldInputComponents`:
-```typescript
-[ADMIN_FIELDS.relationship.type]: RelationshipFieldInput as ComponentType<
-  InputComponentProps<AdminField>
->,
-```
-
-Add to `fieldCellComponents`:
-```typescript
-[ADMIN_FIELDS.relationship.type]: RelationshipFieldCell as ComponentType<
-  CellComponentProps<AdminField>
->,
-```
-
-Add to the `getCollectionColumnDefs` switch:
-```typescript
-case ADMIN_FIELDS.relationship.type:
-  columnDefs.push(
-    relationshipFieldToColumnDef({
-      fieldDef,
-      fieldKey,
-      isTitleField,
-      collection,
-    }),
-  );
-  break;
-```
-
-Add to the imports:
-```typescript
-import {
-  RelationshipFieldCell,
-  RelationshipFieldInput,
-  relationshipFieldToColumnDef,
-} from "./relationship";
-
-export * from "./relationship";
-```
-
-### `packages/react/src/adapter.ts` — add relationship field entry
-
-```typescript
-[ADMIN_FIELDS.relationship.type]: {
-  input: RelationshipFieldInput,
-  cell: RelationshipFieldCell,
-},
-```
-
-Add to the imports:
-```typescript
-import {
-  RelationshipFieldCell,
-  RelationshipFieldInput,
-} from "./components/fields/relationship";
-```
+> Note: `RelationshipField` was already added to the `AdminField` union in `types.ts` and `validators/index.ts` during Step 3 implementation. Only `inputSchemas/index.ts` and the React wiring remain.
 
 ---
 
 ## Step 10: `apps/www` Example
 
 - [ ] Update `apps/www/src/vexcms/collections/posts.ts` to add a relationship field
-- [ ] Run `vex generate` (or equivalent) to regenerate `vex.types.ts` and `vex.schema.ts`
 - [ ] Run `pnpm --filter www typecheck`
-
-### `apps/www/src/vexcms/collections/posts.ts` — add field
-
-```typescript
-// Add 'relationship' to the import from @vexcms/core
-import { ..., relationship } from "@vexcms/core"
-
-// Then inside the fields object — example of a self-referencing "related post" field:
-relatedPost: relationship({
-  collection: "posts",
-  required: false,
-  admin: {
-    position: "sidebar",
-    description: "Link to a related post.",
-  },
-}),
-```
-
-> After adding the field, run `vex generate` to verify the schema and types update correctly — `vex.schema.ts` should gain `.index("by_relatedPost", ["relatedPost"])` on the posts table.
 
 ---
 
 ## Verification (mandatory)
 
-- [ ] `pnpm build --filter @vexcms/core` — builds successfully
-- [ ] `pnpm build --filter @vexcms/react` — builds successfully
-- [ ] `pnpm test --filter @vexcms/core` — all tests pass including new relationship tests
-- [ ] `pnpm --filter www typecheck` — passes
-- [ ] Fix any test assertions broken by the `collectionConfigToVexSchema` signature change
-- [ ] Fix any type errors introduced by adding `RelationshipField<string>` to `AdminField`
+- [x] `pnpm test --filter @vexcms/core` — all 210 tests pass
+- [ ] `pnpm build --filter @vexcms/react` — pending Steps 7–9
+- [ ] `pnpm --filter www typecheck` — pending Step 10
 
 ---
 
 ## Success Criteria
 
-- [ ] `relationship({ collection: "authors" })` is a compile-time error after `vex generate` if `"authors"` is not a registered collection
-- [ ] `relationship({ collection: "posts", required: true })` emits `v.id("posts")` in the generated schema
-- [ ] `relationship({ collection: "tags", hasMany: true })` emits `v.array(v.id("tags"))` in the generated schema
-- [ ] A relationship field named `author` auto-generates `.index("by_author", ["author"])` in the Convex schema
-- [ ] A collection with `useAsTitle: "name"` and an incoming relationship auto-generates `.searchIndex("search_name", ...)` in its Convex schema
+- [x] `relationship({ collection: { slug: "authors" } })` produces a valid resolved field
+- [x] A relationship field always emits `v.array(v.id(...))` in the schema regardless of `hasMany`
+- [x] A relationship field named `author` auto-generates `.index("by_author", ["author"])` unless explicit index is set
+- [x] A collection with `useAsTitle: "name"` and an incoming relationship auto-generates `.searchIndex("search_name", ...)` exactly once
 - [ ] The relationship picker combobox opens, searches via Convex, and stores the selected ID(s)
-- [ ] `hasMany: false` stores a single string; `hasMany: true` stores `string[]`
 - [ ] `RelationshipField<string>` in `AdminField` causes a TypeScript error in `reactAdapter.fields` if the relationship entry is missing

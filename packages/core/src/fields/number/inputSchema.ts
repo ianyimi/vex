@@ -29,23 +29,34 @@ export function numberFieldToInputSchema(props: {
 
   let inputSchema = z.number().default(field.defaultValue);
   if (field.min) {
+    let defaultValue =
+      field.defaultValue < field.min.value
+        ? field.min.value
+        : field.defaultValue;
     if (field.max) {
+      if (field.defaultValue > field.max.value) {
+        defaultValue = field.min.value;
+      }
       inputSchema = z
         .number()
         .min(field.min.value, fieldMinError)
         .max(field.max.value, fieldMaxError)
-        .default(field.defaultValue);
+        .default(defaultValue);
     } else {
       inputSchema = z
         .number()
         .min(field.min.value, fieldMinError)
-        .default(field.defaultValue);
+        .default(defaultValue);
     }
   } else if (field.max) {
+    let defaultValue =
+      field.defaultValue > field.max.value
+        ? field.max.value
+        : field.defaultValue;
     inputSchema = z
       .number()
       .max(field.max.value, fieldMaxError)
-      .default(field.defaultValue);
+      .default(defaultValue);
   }
 
   return applyBaseInputSchemaMeta({ field, inputSchema });

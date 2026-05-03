@@ -6,6 +6,7 @@ import { checkboxFieldToInputSchema } from "../checkbox";
 import { dateFieldToInputSchema } from "../date";
 import { selectFieldToInputSchema } from "../select";
 import { urlFieldToInputSchema } from "../url";
+import { relationshipFieldToInputSchema } from "../relationship";
 
 /**
  * Converts any field definition to its form input schema using zod.
@@ -37,6 +38,8 @@ export function adminFieldToInputSchema(props: { field: AdminField }) {
       return selectFieldToInputSchema({ field: props.field });
     case ADMIN_FIELDS.url.type:
       return urlFieldToInputSchema({ field: props.field });
+    case ADMIN_FIELDS.relationship.type:
+      return relationshipFieldToInputSchema({ field: props.field });
     default:
       throw new Error("unrecognized field type");
   }

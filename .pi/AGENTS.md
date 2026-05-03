@@ -72,6 +72,24 @@ Key rules baked into prompts (full list in `developer-preferences.md`):
 | review | `/review` | Code review against standards |
 | research · learn | `/research` · `/learn` | External library / API investigation |
 
+## Git Worktrees
+
+This is a **bare git repo**. Two worktrees are always available:
+
+| Worktree | Path | Branch | Purpose |
+|----------|------|--------|---------|
+| `dev` | `/Users/zaye/Documents/Projects/vex.git/dev` | `rebuild` | **Active development — all work happens here** |
+| `agents` | `/Users/zaye/Documents/Projects/vex.git/agents` | `master` | Read-only reference — inspect old implementation without touching dev |
+
+**Rules:**
+- All file edits go to `dev/` — never edit files in `agents/`
+- Use `agents/` to read existing implementations before writing specs or new code
+- Never run `git checkout` inside `dev/` — switch branches via worktree commands on the bare repo if ever needed
+- To inspect master branch code: `cat /Users/zaye/Documents/Projects/vex.git/agents/packages/...`
+- To check which branch each worktree is on: `git -C /Users/zaye/Documents/Projects/vex.git worktree list`
+
+---
+
 ## Migration Note
 
 `agent-os/`, `memory/`, and `.claude/` directories still exist on disk but are **deprecated**. Source of truth is `.pi/agent-docs/`. Safe to delete the originals once you've verified nothing downstream (CI, scripts) references them.

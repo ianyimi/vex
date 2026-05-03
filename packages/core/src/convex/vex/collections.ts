@@ -68,6 +68,64 @@ export const create = mutation({
 });
 
 /**
+ * Searches documents in a VexCMS-managed collection using a Convex search index.
+ *
+ * When `query` is non-empty, uses `ctx.db.search` with the provided index name.
+ * When `query` is empty, falls back to `ctx.db.query(...).take(limit)` so the
+ * picker shows recent items without requiring a search term.
+ *
+ * The `searchIndexName` must match a `.searchIndex()` declaration in the
+ * collection's Convex schema. VexCMS auto-generates `search_<useAsTitle>` on
+ * the target collection whenever another collection has a relationship pointing
+ * to it and `useAsTitle` is not a Convex system field.
+ *
+ * Used by `RelationshipFieldInput` in `@vexcms/react` to populate the
+ * relationship picker combobox. Pass `query: ""` to list recent documents
+ * when no search term has been entered yet.
+ *
+ * @param collection - The Convex table name to search.
+ * @param searchIndexName - The `.searchIndex()` name declared in the schema (e.g. `"search_name"`).
+ * @param searchField - The field name the search index is built on (e.g. `"name"`). Must match the `searchField` in the `.searchIndex()` declaration.
+ * @param query - The search text. Pass `""` to list recent documents instead of searching.
+ * @param limit - Maximum number of results. Defaults to `20`.
+ * @returns Array of matching documents, ordered by search relevance or creation time.
+ *
+ * @example
+ * ```ts
+ * // Search authors by name
+ * vexConvexApi.search({ collection: "authors", searchIndexName: "search_name", query: "jane" })
+ *
+ * // List recent authors (no search term yet)
+ * vexConvexApi.search({ collection: "authors", searchIndexName: "search_name", query: "" })
+ * ```
+ */
+export const search = query({
+  args: {
+    collection: v.string(),
+    searchIndexName: v.string(),
+    searchField: v.string(),
+    query: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const tableName = args.collection as TableNamesInDataModel<DataModel>;
+    const limit = args.limit ?? 20;
+    if (!args.query) {
+      return ctx.db.query(tableName).take(limit);
+    }
+    return (
+      ctx.db
+        .query(tableName)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .withSearchIndex(args.searchIndexName, (q: any) =>
+          q.search(args.searchField, args.query),
+        )
+        .take(limit)
+    );
+  },
+});
+
+/**
  * Patches an existing document — only specified fields are updated,
  * unspecified fields are left unchanged.
  *

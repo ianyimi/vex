@@ -11,6 +11,7 @@ export const posts = defineTable({
   link: v.optional(v.string()),
   index: v.optional(v.number()),
   thumbnail: v.optional(v.string()),
+  parent: v.optional(v.array(v.id("posts"))),
   published: v.optional(v.boolean()),
   publishedAt: v.optional(v.number()),
   type: v.optional(
@@ -25,4 +26,4 @@ export const posts = defineTable({
       )
     )
   ),
-})
+}).index("by_parent", ["parent"])

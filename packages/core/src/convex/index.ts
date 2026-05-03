@@ -94,6 +94,30 @@ export const vexConvexApi = {
   >,
 
   /**
+   * Searches documents in a collection by a search index.
+   *
+   * Used by `RelationshipFieldInput` in `@vexcms/react` to populate the
+   * relationship picker combobox. The `searchIndexName` must match the
+   * `.searchIndex()` name in the Convex schema — VexCMS auto-generates
+   * `search_<useAsTitle>` when another collection has a relationship here.
+   * Pass `query: ""` to list recent documents when no search term is entered.
+   *
+   * @see {@link https://docs.convex.dev/text-search} for Convex search docs
+   */
+  search: anyApi.vex.collections.search as FunctionReference<
+    "query",
+    "public",
+    {
+      collection: string;
+      searchIndexName: string;
+      searchField: string;
+      query: string;
+      limit?: number;
+    },
+    VexDocument[]
+  >,
+
+  /**
    * Patches an existing document — unspecified fields are left unchanged.
    */
   update: anyApi.vex.collections.update as FunctionReference<
