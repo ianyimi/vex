@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, LucideProps } from "lucide-react";
 import { addLeadingSlash, vexConvexApi } from "@vexcms/core";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
+import { cn } from "../styles/utils";
 
 export function Divider(
   props: { left: boolean } & LucideProps & RefAttributes<SVGSVGElement>,
@@ -36,7 +37,15 @@ export default function AdminTopNav(props: AdminLayoutProps) {
   );
 
   const nav = [
-    <VexLink href={adminRoot} key="home">
+    <VexLink
+      href={adminRoot}
+      key="home"
+      className={cn(
+        !activeCollection && !currentDocument
+          ? "text-primary"
+          : "hover:text-primary-hover",
+      )}
+    >
       <span>Home</span>
     </VexLink>,
     <Fragment key="collection">
@@ -45,13 +54,27 @@ export default function AdminTopNav(props: AdminLayoutProps) {
           {isLeft ? (
             <>
               <Divider left={isLeft} size={16} />
-              <VexLink href={`${adminRoot}/${activeCollection.slug}`}>
+              <VexLink
+                href={`${adminRoot}/${activeCollection.slug}`}
+                className={cn(
+                  !currentDocument
+                    ? "text-primary"
+                    : "hover:text-primary-hover",
+                )}
+              >
                 <span>{activeCollection.labels.plural}</span>
               </VexLink>
             </>
           ) : (
             <>
-              <VexLink href={`${adminRoot}/${activeCollection.slug}`}>
+              <VexLink
+                href={`${adminRoot}/${activeCollection.slug}`}
+                className={cn(
+                  !currentDocument
+                    ? "text-primary"
+                    : "hover:text-primary-hover",
+                )}
+              >
                 <span>{activeCollection.labels.plural}</span>
               </VexLink>
               <Divider left={isLeft} size={16} />
@@ -68,6 +91,7 @@ export default function AdminTopNav(props: AdminLayoutProps) {
               <Divider left={isLeft} size={16} />
               <VexLink
                 href={`${adminRoot}/${activeCollection.slug}/${currentDocument._id}`}
+                className="text-primary"
               >
                 <span>
                   {currentDocument[activeCollection.admin.useAsTitle] as string}
@@ -78,6 +102,7 @@ export default function AdminTopNav(props: AdminLayoutProps) {
             <>
               <VexLink
                 href={`${adminRoot}/${activeCollection.slug}/${currentDocument._id}`}
+                className="text-primary"
               >
                 <span>
                   {currentDocument[activeCollection.admin.useAsTitle] as string}

@@ -5,6 +5,7 @@ import {
   useFrameworkComponents,
   type VexLinkProps,
 } from "../../hooks/useFrameworkComponents";
+import { cn } from "../../styles/utils";
 
 /**
  * Framework-aware link component.
@@ -36,11 +37,16 @@ import {
  * ```
  */
 export const VexLink = forwardRef<HTMLAnchorElement, VexLinkProps>(
-  function VexLink({ href, children, ...rest }, ref) {
+  function VexLink({ href, children, className, ...rest }, ref) {
     const { Link } = useFrameworkComponents();
     if (Link) {
       return (
-        <Link href={href} ref={ref} {...rest}>
+        <Link
+          href={href}
+          ref={ref}
+          {...rest}
+          className={cn("transition-colors duration-300", className)}
+        >
           {children}
         </Link>
       );

@@ -7,23 +7,37 @@ This folder contains all design assets for VexCMS. It is structured for use with
 ```
 .pi/design/
   README.md                  ← this file
-  theme-a-vex-violet/        ← Electric violet. Technical premium.
+  claude-design/             ← Active design source — Claude Design export
+    README.md                ← READ FIRST. Token translation table.
+    vexcms-design.html       ← Artboard index (picker-open, study-rel, …)
+    admin.css                ← Visual reference only. Do NOT import.
+    globals.css              ← Smaller Stark × Ember shadcn snapshot.
+  theme-a-vex-violet/        ← Electric violet. Technical premium. (alt theme)
     DESIGN.md
     globals.css
     brand-guidelines.md
-  theme-b-ember/             ← Warm amber-orange. Convex-native feel.
+  theme-b-ember/             ← Warm amber-orange. Convex-native feel. (alt theme)
     DESIGN.md
     globals.css
     brand-guidelines.md
-  theme-c-signal/            ← Teal/cyan. Real-time, reactive.
+  theme-c-signal/            ← Teal/cyan. Real-time, reactive. (alt theme)
     DESIGN.md
     globals.css
     brand-guidelines.md
-  theme-d-stark/             ← Near-black/white + electric lime pop.
+  theme-d-stark/             ← Near-black/white + electric lime pop. (alt theme)
     DESIGN.md
     globals.css
     brand-guidelines.md
 ```
+
+**Active design:** `claude-design/` is the current source of truth for the
+admin UI visuals. The `theme-*/` folders are alternative palette options
+from an earlier exploration; keep them for reference but the live
+`apps/www/src/app/globals.css` is built off `claude-design/`.
+
+> ⚠️ `claude-design/admin.css` and the project's shadcn `globals.css` use
+> **different token names** for the same concepts. Do not copy `admin.css`
+> into the project. See `claude-design/README.md` for the translation table.
 
 ## How to use with Claude Design
 

@@ -92,11 +92,17 @@ export function AdminLayout(props: AdminLayoutProps) {
         {side === "right" ? (
           <>
             <AdminTopNav {...props} />
-            <SidebarTrigger side={side} />
+            <SidebarTrigger
+              side={side}
+              className="transition-colors duration-300 hover:text-primary-hover"
+            />
           </>
         ) : (
           <>
-            <SidebarTrigger side={side} />
+            <SidebarTrigger
+              side={side}
+              className="transition-colors duration-300 hover:text-primary-hover"
+            />
             <AdminTopNav {...props} />
           </>
         )}
