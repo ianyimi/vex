@@ -47,11 +47,11 @@ export function CollectionEditView<
   const isEditing = Boolean(props.documentId);
 
   const { data: currentDocument } = useQuery({
-    ...convexQuery(vexConvexApi.get, {
-      id: props.documentId ?? "",
-    }),
+    ...convexQuery(
+      vexConvexApi.get,
+      isEditing ? { id: props.documentId! } : "skip",
+    ),
     initialData: props.initialData,
-    enabled: isEditing,
   });
 
   if (!currentDocument) {

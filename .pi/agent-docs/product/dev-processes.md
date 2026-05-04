@@ -52,6 +52,19 @@ Full details: `.pi/agent-docs/standards/debug-hierarchy.md`.
 4. **Vitest output** — `pnpm --filter <pkg> test` for the affected package
 5. **Recent ideaLog** — `.pi/agent-docs/implementation-log/YYYY/MM/*.ideaLog.md`
 
+## Tmux Workspace
+
+Session: `project-vex` — full pane map, per-service capture commands, and no-duplicate rules → `.pi/agent-docs/product/tmux-workspace.md`
+
+| Pane | Command | Purpose |
+|------|---------|--------|
+| `project-vex:0.0` | `pnpm dev` | Turbo: all tsup watchers + Next.js (port 3020) |
+| `project-vex:0.1` | `pnpm dev:vex` | VexCMS CLI watcher + `convex dev` |
+
+**Never start `pnpm dev` or `pnpm dev:vex`** — they are always already running. Starting duplicates causes port conflicts.
+
+To read live output: `tmux_pane({ pane: "project-vex:0.0" })` or `tmux capture-pane -t project-vex:0.0 -p -S -100`.
+
 ## Background Services
 
 | Service | Start command | Port / Notes |

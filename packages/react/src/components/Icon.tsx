@@ -1,6 +1,5 @@
 import { icons, type LucideProps } from "lucide-react";
 import type { ComponentPropsWithRef } from "react";
-import { cn } from "../styles/utils";
 
 /**
  * Union of all valid Lucide icon name strings (e.g. `"FileText"`, `"Users"`, `"Settings"`).
@@ -71,5 +70,5 @@ export type IconProps = ComponentPropsWithRef<"svg"> &
 export function Icon({ name, className, ...rest }: IconProps) {
   const LucideIcon = icons[name];
   if (!LucideIcon) return null;
-  return <LucideIcon className={cn(className)} {...rest} />;
+  return <LucideIcon className={className} {...rest} />;
 }

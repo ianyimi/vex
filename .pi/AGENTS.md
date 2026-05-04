@@ -35,12 +35,29 @@ Summary: Turborepo + pnpm · TypeScript · Next.js 16 / React 19 · Convex · Be
 
 - Primary: browser at `http://localhost:3020` via built-in `browse` tool
 - `pnpm --filter <pkg> typecheck && pnpm --filter <pkg> test` after edits
-- Check tmux pane 1 for dev server errors
+- Dev server errors: `tmux_pane({ pane: "project-vex:0.0" })` (Next.js/tsup) · `tmux_pane({ pane: "project-vex:0.1" })` (Convex)
+
+## Tmux Workspace
+→ `.pi/agent-docs/product/tmux-workspace.md`
+
+Session `project-vex` — two always-running dev panes in window 0:
+- `project-vex:0.0` → `pnpm dev` (Next.js + all tsup watchers)
+- `project-vex:0.1` → `pnpm dev:vex` (Convex + vex CLI)
+
+**Never start duplicate dev processes.** Inspect live output with `tmux_pane` before browsing after a code change. Full pane map, capture commands, and rules in the linked file.
 
 ## Debug Hierarchy
 → `.pi/agent-docs/standards/debug-hierarchy.md`
 
-UI-first: browser console → tmux pane 1 → `git diff` → ideaLog → Vitest output → changed spec files.
+UI-first: browser console → `project-vex:0.0` (Next.js) → `project-vex:0.1` (Convex) → `git diff` → ideaLog → Vitest output → changed spec files.
+
+## Agent Harness
+
+The full harness for this project lives in `.pi/` — it includes `AGENTS.md` (this file), `agent-docs/` (standards, specs, product docs, implementation log), `prompts/`, and any project-local skills.
+
+Base harness (global, all projects): `~/.pi/agent/` — sourced from chezmoi at `~/dotfiles/pi-agent-base/` (see below).
+
+→ Run `/sync-tmux-layout` to re-scan the session and update `tmux-workspace.md` + the chezmoi tmuxinator config.
 
 ## Standards
 → `.pi/agent-docs/standards/` — `global/`, `backend/`, `frontend/`, `testing/`, `memory/` (JSDoc + type colocation), `adding-a-field-type.md`, `developer-preferences.md`.
@@ -90,6 +107,19 @@ This is a **bare git repo**. Two worktrees are always available:
 
 ---
 
+## Dotfiles & Base Harness
+
+| Location | Purpose |
+|----------|---------|
+| `~/.local/share/chezmoi/` | Chezmoi source — source of truth for all dotfiles |
+| `~/.local/share/chezmoi/pi-agent-base/` | Source of truth for the global Pi agent harness |
+| `~/.pi/agent/` | Live global harness (auto-synced from `pi-agent-base/` on `cma`) |
+| `~/.local/share/chezmoi/dot_config/tmuxinator/` | Tmuxinator session configs managed by chezmoi |
+
+**`cma` alias** — runs `chezmoi apply && source ~/.zshrc`. Use this after editing anything in the chezmoi source to deploy changes to the live system.
+
+To propagate a pattern discovered in this project back to all projects: edit the relevant file in `~/.local/share/chezmoi/pi-agent-base/`, then run `cma`.
+
 ## Migration Note
 
-`agent-os/`, `memory/`, and `.claude/` directories still exist on disk but are **deprecated**. Source of truth is `.pi/agent-docs/`. Safe to delete the originals once you've verified nothing downstream (CI, scripts) references them.
+`agent-os/`, `memory/`, and `.claude/` directories still exist on disk but are **deprecated**. Source of truth is `.pi/`. Safe to delete the originals once you've verified nothing downstream (CI, scripts) references them.
