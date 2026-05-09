@@ -259,6 +259,80 @@ The package is scaffolded. Complete the implementation:
 - Open-in-new-tab button in preview panel toolbar
 - Draft snapshot sync: preview fetches draft content via `_vexDrafts: "snapshot"` arg
 
+### M-NEW — Vex API: typed `populate` + server-side joins (foundational)
+
+Add a populate-aware data layer that solves the relationship-cell rendering
+problem (relationship columns in list views currently can't show meaningful
+previews because the parent doc only carries IDs of the related docs).
+
+**Scope is intentionally narrow** — this is a thin enhancement to the existing
+`vexConvexApi` pattern, not a new Payload-style namespace:
+
+- **Convex side:** add `populate?: string[]` to `vexConvexApi.list` (and
+  `get`). Use `convex-helpers/server/relationships` (`getManyFrom` etc., already
+  in deps) to do the join server-side in one round trip. Returns docs with
+  the populated fields replaced/augmented with the resolved target docs.
+- **Type side:** narrowing rides the existing **augmented-module codegen**
+  pattern, not deep generic inference at the call site. `vex generate` emits
+  a new `GeneratedRelationshipMap` interface alongside `GeneratedVexTypes`,
+  declared via `declare module "@vexcms/core"` augmentation in the user's
+  `vex.types.ts`. Core defines:
+  ```ts
+  type RelationshipKeysOf<TSlug> = TSlug extends keyof RelationshipMap
+    ? keyof RelationshipMap[TSlug] & string : never;
+  type RelationshipTargetOf<TSlug, TKey> = … // lookup
+  ```
+  `list<TSlug, const TPopulate extends readonly RelationshipKeysOf<TSlug>[]>`
+  pulls valid populate keys from the registry. Result type narrows each
+  populated field to `Doc<TargetSlug>[]` via a mapped type that consults
+  the registry. **No `string | Doc` union in user code**, no `as const`
+  required at call sites, errors are localized at the populate array
+  ("key 'authr' is not assignable to `RelationshipKeysOf<'posts'>`—did you
+  mean 'author'?"). Dynamic populate widens to escape-hatch type.
+- **Why codegen, not pure generics:** the alternative is `defineCollection`
+  preserving a deeply-typed `fields` generic and callers forcing `as const`.
+  Brittle, slow editor perf, errors surface at the wrong call site. The
+  codegen approach mirrors `DocumentBySlug`/`CollectionSlug` (already proven,
+  already familiar) and keeps `defineCollection`'s signature the way it is today.
+- **Generalized pattern:** `RelationshipMap` is the first of several cross-
+  collection registries that should ride this same augmented-module pattern.
+  Future siblings (when the use case lands): `UseAsTitleMap` (type-level
+  search-index name lookup), `IncomingRelationshipMap` (reverse references
+  for cascading-delete UIs), `SelectOptionsMap` (literal-typed select results
+  in `DocumentBySlug`). Each is a one-interface extension to the existing
+  codegen pipeline; runtime stays unchanged.
+- **React side:** thin `useVexQuery(api, args)` wrapper (`= useQuery({
+  ...convexQuery(api, args) })`) that preserves the populate-narrowed result
+  type. No new tanstack-query abstractions; no parallel hook surface.
+- **Wire into existing list views:** `CollectionListView` auto-passes every
+  relationship field key as `populate`. `RelationshipFieldCell` reads the
+  populated docs from `row.original` (now actually populated) and dispatches
+  through the preview component contract. Closes the loop on spec 22 D11's
+  wrong claim about `row.original`.
+- **Foundational for:** Live Preview (M3 — needs a typed query layer to
+  invalidate against), Blocks/Array fields (M4 — may have nested relationships),
+  future REST surface (Phase 5), future hooks system (Phase 4).
+
+**Decided:**
+- API shape stays Convex-native (enhance `vexConvexApi.list`, don't invent a
+  Payload-shaped `vex.api.find()` namespace).
+- Populate inference uses literal-array narrowing (not `depth: number`).
+- React layer is a thin `useVexQuery` wrapper around tanstack + convexQuery.
+- Migration story for existing `vexConvexApi.list` call sites: TBD during
+  spec drafting.
+
+**Spec deferred** — owner wants to finish thinking through edge cases
+(reactive subscription cost on populated lists, populate depth>1 limits,
+select-fields support) before the full spec is written. Capture the design
+decisions above; draft full spec when ready.
+
+**Design walkthrough:** `.pi/agent-docs/specs/23-vex-api/design-walkthrough.md`
+— readable end-to-end of what user-facing code looks like (collection definitions,
+client/server reads, mutations, RBAC, populate type narrowing). Read this before
+drafting `spec.md`.
+
+---
+
 ### M5 — CLI Completion (`@vexcms/cli`)
 
 - `vex dev` — watch mode: schema gen + type gen + query gen + `convex dev` (verify working end-to-end)

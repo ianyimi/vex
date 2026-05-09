@@ -48,6 +48,7 @@ export function numberFieldToColumnDef(props: {
           row={row}
           collection={props.collection}
           fieldDef={props.fieldDef}
+          fieldKey={props.fieldKey}
           isTitleField={props.isTitleField ?? false}
         />
       );

@@ -1,19 +1,49 @@
-import { Input as InputPrimitive } from "@base-ui/react/input"
+import { Input as InputPrimitive } from "@base-ui/react"
+import { Loader2 } from "lucide-react"
 import * as React from "react"
 
-import { cn } from "~/lib/utils"
+import { cn } from "../../lib/utils"
 
-function Input({ type, className, ...props }: React.ComponentProps<"input">) {
-  return (
+/**
+ * Single-line text input with optional in-input loading spinner.
+ *
+ * When `loading` is true, a spinner renders on the right edge and the input
+ * gains right padding. The default path (no `loading` prop) is unchanged —
+ * a bare `<input>` element with no wrapper.
+ *
+ * @example
+ * ```tsx
+ * <Input value={query} onChange={onChange} loading={isPending} placeholder="Search…" />
+ */
+function Input({
+  className,
+  type,
+  loading,
+  ...props
+}: React.ComponentProps<"input"> & { loading?: boolean }) {
+  const input = (
     <InputPrimitive
       className={cn(
-        "dark:bg-input/30 border-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 h-9 rounded-md border bg-transparent px-2.5 py-1 text-base shadow-xs transition-[color,box-shadow] file:h-7 file:text-sm file:font-medium focus-visible:ring-[3px] aria-invalid:ring-[3px] md:text-sm file:text-foreground placeholder:text-muted-foreground w-full min-w-0 outline-none file:inline-flex file:border-0 file:bg-transparent disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+        "h-8 w-full min-w-0 rounded-sm border border-input bg-card px-2.5 py-1 text-[13px] shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground-subtle focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        loading && "pr-9",
         className
       )}
       data-slot="input"
       type={type}
       {...props}
     />
+  )
+  if (!loading) {
+    return input
+  }
+  return (
+    <span className="relative block w-full">
+      {input}
+      <Loader2
+        aria-hidden="true"
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 animate-spin text-muted-foreground-subtle pointer-events-none"
+      />
+    </span>
   )
 }
 

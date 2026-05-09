@@ -1,5 +1,33 @@
 import { AdminField } from "../fields";
 import { CoreAdminField } from "./constants";
+import type { ApplyComponent, ComponentHKT } from "../fields";
+import type { CollectionSlug } from "../types/generated";
+import { TDocument } from "../convex";
+
+/**
+ * Props received by a custom preview component for relationship rendering.
+ *
+ * `TSlug` is the slug of the doc being rendered. In a picker row, this is the
+ * candidate target doc's slug. In a list-table cell, this is the parent
+ * collection's slug (the table row's `row.original`). In the trigger's
+ * selected-value chip, it is the resolved target doc's slug.
+ *
+ * `fieldKey` is the relationship field's key on the parent collection (e.g.
+ * `"author"`). In picker rows the component may ignore it; in list cells it
+ * gives access to the IDs via `doc[fieldKey]`.
+ *
+ * @typeParam TSlug - The slug of the doc being rendered.
+ */
+export interface RelationshipPreviewProps<
+  TSlug extends CollectionSlug = CollectionSlug,
+> {
+  /** The document being previewed. */
+  doc: TDocument;
+  /** The relationship field key on the parent collection. */
+  fieldKey: string;
+  /** The resolved collection config matching `doc`. */
+  config: CollectionConfig<TSlug>;
+}
 
 /**
  * Admin panel configuration input for a collection.
@@ -27,6 +55,7 @@ import { CoreAdminField } from "./constants";
  */
 export interface AdminCollectionConfigInput<
   TFieldSlug extends string = CoreAdminField,
+  TComponent extends ComponentHKT = ComponentHKT,
 > {
   /**
    * The field whose value is displayed as the document's human-readable title
@@ -38,6 +67,21 @@ export interface AdminCollectionConfigInput<
    * index (`search_<field>`) for fast admin queries. Omit to fall back to `"_id"`.
    */
   useAsTitle?: CoreAdminField | NoInfer<TFieldSlug>;
+  /**
+   * Custom component overrides for rendering this collection's docs in
+   * relationship contexts (picker rows, table cells, selected-value chips).
+   *
+   * Override per-relationship via `RelationshipFieldInput.admin.components.preview`.
+   *
+   * Slot type is `ApplyComponent<F, RelationshipPreviewProps>` — in pure-core
+   * context (`F = ComponentHKT`) this resolves to `unknown`. In React context
+   * (`F = ReactHKT`, exposed via `@vexcms/react`) this resolves to
+   * `ComponentType<RelationshipPreviewProps>`.
+   */
+  components?: {
+    /** Component used to render a doc of this collection as a relationship preview. */
+    preview?: ApplyComponent<TComponent, RelationshipPreviewProps>;
+  };
 }
 
 /**
@@ -47,9 +91,13 @@ export interface AdminCollectionConfigInput<
  */
 export interface AdminCollectionConfig<
   TFieldSlug extends string = CoreAdminField,
+  TComponent extends ComponentHKT = ComponentHKT,
 > {
   /** The field used as the document's human-readable title in the admin panel. */
   useAsTitle: CoreAdminField | NoInfer<TFieldSlug>;
+  components: {
+    preview?: ApplyComponent<TComponent, RelationshipPreviewProps>;
+  };
 }
 
 /**
@@ -86,9 +134,10 @@ export interface AdminCollectionConfig<
 export interface CollectionConfigInput<
   TSlug extends string = string,
   TFieldSlug extends string = string,
+  TComponent extends ComponentHKT = ComponentHKT,
 > {
   /** Admin panel behaviour for this collection. All properties are optional. */
-  admin?: AdminCollectionConfigInput<TFieldSlug>;
+  admin?: AdminCollectionConfigInput<TFieldSlug, TComponent>;
   /** Convex table name — used as the database table identifier and URL slug in the admin panel. */
   slug: TSlug;
   /**
@@ -116,9 +165,10 @@ export interface CollectionConfigInput<
 export interface CollectionConfig<
   TSlug extends string = string,
   TFieldSlug extends string = string,
+  TComponent extends ComponentHKT = ComponentHKT,
 > {
   /** Resolved admin panel configuration for this collection. */
-  admin: AdminCollectionConfig<TFieldSlug>;
+  admin: AdminCollectionConfig<TFieldSlug, TComponent>;
   /** Convex table name for this collection. */
   slug: TSlug;
   /** Display names shown in the admin panel — always present after defaults are applied. */

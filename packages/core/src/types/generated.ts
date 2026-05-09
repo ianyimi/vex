@@ -17,8 +17,19 @@
  * ```ts
  * // After running `vex generate`, this interface is augmented to:
  * interface GeneratedVexTypes {
- *   CollectionSlug: "posts" | "authors"
- *   DocumentBySlug: { posts: PostsDocument; authors: AuthorsDocument }
+ *   CollectionSlug: "posts" | "authors";
+ *   DocumentBySlug: { posts: PostsDocument; authors: AuthorsDocument };
+ *   CollectionsFieldTypeMap: {
+ *     posts: {
+ *       text: "title" | "slug" | "body";
+ *       relationship: "author" | "category";
+ *       select: "status";
+ *       date: "publishedAt";
+ *     };
+ *     authors: {
+ *       text: "name" | "email";
+ *     };
+ *   };
  * }
  * ```
  */
@@ -75,3 +86,45 @@ export type DocumentBySlug = GeneratedVexTypes extends {
 }
   ? D
   : Record<string, unknown>;
+
+/**
+ * Per-collection field-type map. Augmented by `vex generate` from the user's
+ * collection configs. Powers all per-field-type helper types (`RelationshipKeysOf`,
+ * `TextKeysOf`, `SortableKeysOf`, etc.).
+ *
+ * Keyed: collection slug → field type → union of field keys with that type.
+ *
+ * Empty by default; the user's `vex.types.ts` augments it via `declare module
+ * "@vexcms/core"`. Helper types in `packages/core/src/api/types.ts` resolve to
+ * `never` until augmentation runs, which is the intended behaviour for fresh
+ * projects (no collections registered yet).
+ *
+ * @example Generated content (after `vex generate` runs):
+ * ```ts
+ * declare module "@vexcms/core" {
+ *   interface GeneratedVexTypes {
+ *     CollectionSlug: "posts" | "authors";
+ *     DocumentBySlug: { posts: PostsDocument; authors: AuthorsDocument };
+ *     CollectionsFieldTypeMap: {
+ *       posts: {
+ *         text: "title" | "slug" | "body";
+ *         relationship: "author" | "category";
+ *         select: "status";
+ *         date: "publishedAt";
+ *       };
+ *       authors: {
+ *         text: "name" | "email";
+ *       };
+ *     };
+ *   }
+ * }
+ * ```
+ */
+export type CollectionsFieldTypeMap = GeneratedVexTypes extends {
+  CollectionsFieldTypeMap: infer M extends Record<
+    string,
+    Record<string, string>
+  >;
+}
+  ? M
+  : Record<string, Record<string, never>>;

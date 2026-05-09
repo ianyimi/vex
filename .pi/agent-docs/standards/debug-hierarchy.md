@@ -17,7 +17,7 @@ When a bug is reported or found, check in this order. This is a **UI-first** ord
 
 | Area | Signs of trouble | Notes |
 |------|-----------------|-------|
-| _(none recorded yet — `/sync-spec` will populate this table as patterns emerge)_ | | |
+| **PostCSS comment tokenizer (under Turbopack)** | `CssSyntaxError: Unclosed string` at a line inside a `/* */` block; entire stylesheet rejected, no Tailwind output, page renders unstyled | PostCSS treats unmatched `'` (apostrophes in contractions like `don't`, `won't`) and `"` inside CSS comments as string delimiters and reads forward until EOF looking for the close. **Avoid apostrophes, single quotes, double quotes, and backticks in CSS comments.** Same trap with `{a,b}` brace-expansion patterns inside `@source "…"` strings — split into separate `@source "…/*.ts"; @source "…/*.tsx";` lines instead of `@source "…/*.{ts,tsx}"`. *(Recorded: sync-spec, 2026-05-04)* |
 
 ## Debug Heuristics by Symptom
 

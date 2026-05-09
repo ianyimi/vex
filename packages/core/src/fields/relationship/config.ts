@@ -1,14 +1,17 @@
 import { ADMIN_FIELDS } from "../constants";
 import type { RelationshipFieldInput, RelationshipField } from "./types";
 import type { CollectionSlug } from "../../types/generated";
+import { ComponentHKT } from "../baseTypes";
 
 /**
  * Creates a relationship field with all defaults applied.
  *
- * Stores a Convex `Id<collection>` (or `Id<collection>[]` when `hasMany: true`)
- * pointing to a document in the specified collection. The generated Convex schema
- * emits `v.id("collection")` and automatically adds a `.index("by_<fieldKey>",
- * ["<fieldKey>"])` — no explicit `index` property needed.
+ * Stores Convex `Id` references pointing to documents in another registered collection.
+ * The generated Convex schema **always** emits `v.array(v.id("collection"))` regardless
+ * of `hasMany` — `hasMany` is a UI-only hint that controls whether the admin picker allows
+ * one or multiple selections; it does not change the stored Convex type.
+ * A `.index("by_<fieldKey>", ["<fieldKey>"])` is auto-generated for every relationship
+ * field — no explicit `index` property needed.
  *
  * `TSlug` is inferred from `options.collection`. After running `vex generate`,
  * passing an unregistered slug is a compile-time error.
@@ -39,9 +42,12 @@ import type { CollectionSlug } from "../../types/generated";
  * @see {@link RelationshipFieldInput} for the full input type
  * @see {@link RelationshipField} for the resolved output type
  */
-export function relationship<TSlug extends CollectionSlug = CollectionSlug>(
-  options: RelationshipFieldInput<TSlug>,
-): RelationshipField<TSlug> {
+export function relationship<
+  TSlug extends CollectionSlug = CollectionSlug,
+  TComponent extends ComponentHKT = ComponentHKT,
+>(
+  options: RelationshipFieldInput<TSlug, TComponent>,
+): RelationshipField<TSlug, TComponent> {
   return {
     label: "",
     required: false,
@@ -57,6 +63,7 @@ export function relationship<TSlug extends CollectionSlug = CollectionSlug>(
       cellAlignment: "left",
       placeholder: "",
       description: "",
+      components: {},
       ...options?.admin,
     },
   };

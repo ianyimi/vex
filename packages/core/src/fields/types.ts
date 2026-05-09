@@ -24,8 +24,9 @@ export * from "./checkbox/types";
  * - `NumberField` — numeric value (price, quantity, rating, etc.)
  * - `CheckboxField` — boolean toggle (published state, feature flag, opt-in, etc.)
  * - `DateField` — Unix ms timestamp (publish date, expiry date, event time, etc.)
- *
- * More field types will be added as they're implemented.
+ * - `SelectField` — single-choice from a predefined set of options
+ * - `UrlField` — validated URL string
+ * - `RelationshipField` — Convex `Id` reference to a document in another collection
  *
  * @example
  * ```ts
@@ -113,6 +114,8 @@ export interface CellComponentProps<TField extends AdminField = AdminField> {
   row: Row<TDocument>;
   /** The resolved field definition — narrows to the specific field type via `TField`. */
   fieldDef: TField;
+  /** The resolved field key on the collection for this column. */
+  fieldKey: string;
   /** Whether this cell is the field designated as `useAsTitle` — used to render a clickable edit link. */
   isTitleField: boolean;
   /** The parent collection config — used by title cells to build the edit link `href`. */

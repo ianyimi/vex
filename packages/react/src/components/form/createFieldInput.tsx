@@ -29,7 +29,8 @@ import { AppFormContext } from "./AppFormContext";
  * ```
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type TypedFieldApi<TValue> = FieldApi<any, any, any, any, TValue>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type TypedFieldApi<TValue> = FieldApi<any, any, TValue, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>;
 
 /**
  * Creates a typed field input component, handling all TanStack Form wiring.
@@ -60,7 +61,9 @@ export type TypedFieldApi<TValue> = FieldApi<any, any, any, any, TValue>;
  * ```tsx
  * export const TextFieldInput = createFieldInput<string, TextField>(
  *   ({ name, fieldDef, readOnly, field, submissionAttempts }) => {
- *     const showError = (field.state.meta.isTouched || submissionAttempts > 0) && field.state.meta.errors[0]
+ *     const rawError = field.state.meta.errors[0];
+ *     const errorMessage = typeof rawError === "string" ? rawError : rawError?.message;
+ *     const showError = (field.state.meta.isTouched || submissionAttempts > 0) && errorMessage
  *     return (
  *       <div className="flex flex-col gap-1.5">
  *         <Label htmlFor={name}>{fieldDef.label || name}</Label>
@@ -71,7 +74,7 @@ export type TypedFieldApi<TValue> = FieldApi<any, any, any, any, TValue>;
  *           onBlur={field.handleBlur}
  *           readOnly={readOnly}
  *         />
- *         {showError && <p className="text-sm text-destructive">{field.state.meta.errors[0]}</p>}
+ *         {showError && <p className="text-sm text-destructive">{errorMessage}</p>}
  *       </div>
  *     )
  *   },

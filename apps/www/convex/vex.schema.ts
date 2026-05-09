@@ -26,4 +26,10 @@ export const posts = defineTable({
       )
     )
   ),
-}).index("by_parent", ["parent"])
+})
+  .index("by_parent", ["parent"])
+  .searchIndex("search_title", {
+    searchField: "title",
+
+    filterFields: [],
+  })

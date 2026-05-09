@@ -66,3 +66,24 @@ export type AdminFieldValidator =
 /** Union of all TypeScript type strings corresponding to the supported field types (e.g. `"string"` | `"number"` | ...). */
 export type AdminFieldTsType =
   (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["interfaceType"];
+
+/** Literal type `"text"` — the discriminant value on {@link TextField}. */
+export type TextFieldType = typeof ADMIN_FIELDS.text.type;
+
+/** Literal type `"url"` — the discriminant value on {@link UrlField}. */
+export type UrlFieldType = typeof ADMIN_FIELDS.url.type;
+
+/** Literal type `"number"` — the discriminant value on {@link NumberField}. */
+export type NumberFieldType = typeof ADMIN_FIELDS.number.type;
+
+/** Literal type `"checkbox"` — the discriminant value on {@link CheckboxField}. */
+export type CheckboxFieldType = typeof ADMIN_FIELDS.checkbox.type;
+
+/** Literal type `"date"` — the discriminant value on {@link DateField}. */
+export type DateFieldType = typeof ADMIN_FIELDS.date.type;
+
+/** Literal type `"select"` — the discriminant value on {@link SelectField}. */
+export type SelectFieldType = typeof ADMIN_FIELDS.select.type;
+
+/** Literal type `"relationship"` — the discriminant value on {@link RelationshipField}. */
+export type RelationshipFieldType = typeof ADMIN_FIELDS.relationship.type;

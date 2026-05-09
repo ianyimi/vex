@@ -7,6 +7,21 @@
       "source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./server": {
+      "source": "./src/api/server.ts",
+      "types": "./dist/api/server.d.ts",
+      "import": "./dist/api/server.js"
+    },
+    "./client": {
+      "source": "./src/api/client.ts",
+      "types": "./dist/api/client.d.ts",
+      "import": "./dist/api/client.js"
+    },
+    "./convex": {
+      "source": "./src/api/server.ts",
+      "types": "./dist/api/server.d.ts",
+      "import": "./dist/api/server.js"
     }
   },
   "main": "./dist/index.js",
@@ -27,17 +42,24 @@
     "zod": "catalog:"
   },
   "peerDependencies": {
+    "@convex-dev/react-query": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "@tanstack/react-table": "catalog:",
     "convex": "catalog:",
     "react": ">=18.0.0"
   },
   "devDependencies": {
+    "@convex-dev/react-query": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "@tanstack/react-table": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "convex": "catalog:",
+    "convex-helpers": "catalog:",
+    "convex-test": "catalog:",
+    "@edge-runtime/vm": "catalog:",
     "react": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",

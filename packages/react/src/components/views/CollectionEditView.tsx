@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useConvexMutation } from "@convex-dev/react-query";
 import { vexConvexApi } from "@vexcms/core";
 import type { CollectionEditViewProps, CollectionSlug } from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
@@ -9,6 +9,7 @@ import { VexLink } from "../ui/VexLink";
 import { Button } from "../ui/button";
 import { fieldToInputComponent } from "../fields";
 import { useCollectionForm } from "../../hooks/useCollectionForm";
+import { get } from "@vexcms/core/client";
 
 /**
  * Collection document edit form.
@@ -44,13 +45,11 @@ import { useCollectionForm } from "../../hooks/useCollectionForm";
 export function CollectionEditView<
   TSlug extends CollectionSlug = CollectionSlug,
 >(props: CollectionEditViewProps<TSlug>) {
-  const isEditing = Boolean(props.documentId);
-
   const { data: currentDocument } = useQuery({
-    ...convexQuery(
-      vexConvexApi.get,
-      isEditing ? { id: props.documentId! } : "skip",
-    ),
+    // documentId comes from URL params (string). GenericId<TSlug> is the
+    // branded Convex type but the runtime value is identical — cast here.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...get({ id: props.documentId as any }),
     initialData: props.initialData,
   });
 
@@ -65,7 +64,8 @@ export function CollectionEditView<
   const form = useCollectionForm({
     document: currentDocument,
     collection: props.collection,
-    onSubmit: async ({ value }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onSubmit: async ({ value }: { value: any }) => {
       await mutateAsync({ id: currentDocument._id, data: value });
     },
   });

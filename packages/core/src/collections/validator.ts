@@ -42,8 +42,13 @@ export function getIncomingRelationships(props: {
   config: VexConfig;
 }): IncomingRelationship[] {
   const relationships: IncomingRelationship[] = [];
+  // NOTE: self-references are intentionally INCLUDED. A collection that has
+  // a relationship pointing to itself (e.g. `posts.parent: relationship({
+  // slug: "posts" })`) still needs `.searchIndex("search_<useAsTitle>", …)`
+  // so the relationship picker can search the same collection it lives in.
+  // Skipping self-refs left the picker stuck on the loading state because
+  // the picker query targeted an index that was never generated.
   for (const collection of props.config.collections) {
-    if (collection.slug === props.collection.slug) continue;
     Object.entries(collection.fields)
       // eslint-disable-next-line no-unused-vars
       .filter(([_fieldKey, field]) => {

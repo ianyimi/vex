@@ -52,7 +52,8 @@ export function CreateDocumentModal<
 
   const form = useCollectionForm({
     collection,
-    onSubmit: async ({ value }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onSubmit: async ({ value }: { value: any }) => {
       await mutateAsync({ collection: collection.slug, data: value });
       await setOpen(null);
     },

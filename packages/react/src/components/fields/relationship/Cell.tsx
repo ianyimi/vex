@@ -1,53 +1,27 @@
 "use client";
 
-import type {
-  CellComponentProps,
-  CollectionSlug,
-  RelationshipField,
-} from "@vexcms/core";
+import type { CellComponentProps, RelationshipField } from "@vexcms/core";
+import { resolveRelationshipPreview } from "./preview";
 
 /**
  * Relationship field cell component for the data-table list view.
  *
- * Displays the stored `Id[]` value for the relationship field. For
- * `hasMany: false`, renders the first (and only expected) ID truncated to
- * 16 characters. For `hasMany: true`, renders a count badge (`N items`).
+ * Per Decision 11, dispatches through the resolved preview component
+ * (field-level override > target collection's preview > default). The default
+ * renders `doc[useAsTitle] ?? doc._id` from the *parent* doc — useful only when
+ * the relationship field key matches `useAsTitle`, which it generally doesn't.
+ * Most consumers will set `admin.components.preview` on the parent collection
+ * to render whatever the cell should show (chip, count, etc.).
  *
- * Full document title population is deferred — fetching the related
- * document's title in every cell would require N+1 Convex queries.
- *
- * @param props - Standard cell component props from `CellComponentProps<RelationshipField>`.
- *
- * @example
- * ```tsx
- * // Rendered automatically by relationshipFieldToColumnDef — not used directly
- * <RelationshipFieldCell value={["abc123"]} fieldDef={authorField} row={row} isTitleField={false} collection={postsCollection} />
- * ```
+ * @param props - Standard cell component props.
  */
 export function RelationshipFieldCell(
-  props: CellComponentProps<RelationshipField<CollectionSlug>>,
+  props: CellComponentProps<RelationshipField>,
 ) {
-  const { value, fieldDef } = props;
-
-  if (!value) return <span className="text-muted-foreground">—</span>;
-
-  if (fieldDef.hasMany) {
-    const ids = Array.isArray(value) ? value : [];
-    if (ids.length === 0)
-      return <span className="text-muted-foreground">—</span>;
-    return (
-      <span className="text-xs text-muted-foreground font-mono">
-        {ids.length} {ids.length === 1 ? "item" : "items"}
-      </span>
-    );
-  }
-
-  const ids = Array.isArray(value) ? value : [];
-  const id = ids[0] ?? "";
-  if (!id) return <span className="text-muted-foreground">—</span>;
-  return (
-    <span className="text-xs font-mono text-muted-foreground" title={id}>
-      {id.length > 16 ? `${id.slice(0, 16)}…` : id}
-    </span>
-  );
+  const { row, fieldDef, fieldKey, collection } = props;
+  const Preview = resolveRelationshipPreview({
+    fieldDef,
+    targetCollection: undefined, // cell context: doc is the parent, not target
+  });
+  return <Preview doc={row.original} fieldKey={fieldKey} config={collection as never} />;
 }

@@ -1,5 +1,8 @@
 "use client"
 
+import { convexQuery } from "@convex-dev/react-query"
+import { api } from "@convex/_generated/api"
+import { useQuery } from "@tanstack/react-query"
 import { TerminalIcon, UserIcon } from "lucide-react"
 import Link from "next/link"
 
@@ -9,6 +12,15 @@ import { ThemeToggle } from "~/components/ui/theme-toggle"
 
 export function ComponentExample() {
   const { data: session } = useSession()
+  const { data: posts } = useQuery({
+    ...convexQuery(api.test.getAll),
+  })
+  console.log(
+    "posts: ",
+    posts?.map((p) => {
+      return [p.title, p.parent]
+    })
+  )
 
   return (
     <div className="bg-background flex min-h-screen flex-col items-center justify-center gap-8 p-6 text-center">

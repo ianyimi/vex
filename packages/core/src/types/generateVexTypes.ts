@@ -1,4 +1,7 @@
-import { collectionConfigToInterface } from "../collections/interfaceGen";
+import {
+  collectionConfigToFieldTypeMap,
+  collectionConfigToInterface,
+} from "../collections/interfaceGen";
 import type { VexConfig } from "../config/types";
 
 /**
@@ -66,10 +69,15 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     .join("\n");
   const documentBySlugType = `export type DocumentBySlug = {\n${documentsBySlug}\n}`;
 
+  const collectionsFieldTypeMap = config.collections
+    .map((c) => collectionConfigToFieldTypeMap({ collection: c }))
+    .join("\n");
+
   const declareModule = `declare module "@vexcms/core" {
     \tinterface GeneratedVexTypes {
     \t\tCollectionSlug: ${collectionSlugs}
     \t\tDocumentBySlug: {\n${documentsBySlug}\n}
+    \t\tCollectionsFieldTypeMap: {\n${collectionsFieldTypeMap}\n}
     \t}
   \n}`;
 

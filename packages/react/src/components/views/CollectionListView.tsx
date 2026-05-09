@@ -1,8 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { vexConvexApi, type VexDocument } from "@vexcms/core";
+import { type VexDocument } from "@vexcms/core";
 import type {
   CollectionConfig,
   CollectionListViewProps,
@@ -27,6 +26,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { find } from "@vexcms/core/client";
 
 /**
  * Collection list view component.
@@ -60,7 +60,7 @@ export function CollectionListView<
     ) as CollectionConfig<TSlug>) ?? props.collection;
 
   const { data: documents = [], isLoading } = useQuery({
-    ...convexQuery(vexConvexApi.list, { collection: collection.slug }),
+    ...find({ collection: props.collection.slug, limit: 100 }),
     initialData: props.initialData,
   });
 
@@ -72,7 +72,10 @@ export function CollectionListView<
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">{collection.labels.plural}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p
+            className="text-sm text-muted-foreground mt-0.5"
+            suppressHydrationWarning
+          >
             {isLoading
               ? "Loading…"
               : `${documents.length} document${documents.length === 1 ? "" : "s"}`}

@@ -84,8 +84,8 @@ export async function NextAdminPage(props: {
     );
   }
 
-  const initialData = await fetchQuery(vexConvexApi.list, {
-    collection: collectionSlug,
+  const initialData = await fetchQuery(vexConvexApi.find, {
+    collection: collectionSlug as CollectionSlug,
   });
   return (
     <CollectionListView

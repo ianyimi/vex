@@ -1,5 +1,36 @@
 # Agent OS Standards Index
 
+# Top-level standards (read these directly when their topic applies)
+spec-structure:
+  description: Implementation spec layout, ordering, test colocation, decisions discipline. Read every time you write or edit a spec under `.pi/agent-docs/specs/`.
+  path: spec-structure.md
+  triggers: ["writing a spec", "editing a spec", "spec.md", "design-walkthrough.md", "test colocation", "file ordering", "design decisions"]
+
+jsdoc-conventions:
+  description: JSDoc rules enforced by the project's ESLint config. Templates for plain functions, function overloads, interfaces, type aliases. Documented failure modes for every error eslint-plugin-jsdoc can produce.
+  path: jsdoc-conventions.md
+  triggers: ["writing JSDoc", "editing JSDoc", "function overloads", "@param", "@returns", "@typeParam", "jsdoc/require-", "missing JSDoc"]
+
+developer-preferences:
+  description: Standing rules for catalog deps, framework adapter architecture, workspace packaging, type generation, generic React hooks. Updated by /sync-spec.
+  path: developer-preferences.md
+  triggers: ["catalog:", "package.json", "workspace deps", "framework adapter", "@vexcms/core", "customConditions"]
+
+debug-hierarchy:
+  description: Known fragile areas in the codebase + debug order. Read when investigating bugs that could touch type generation, PostCSS comments, etc.
+  path: debug-hierarchy.md
+  triggers: ["debugging", "bug investigation", "weird error", "PostCSS", "type generation"]
+
+adding-a-field-type:
+  description: Step-by-step for adding a new field type (config, types, validator, admin component, codegen integration).
+  path: adding-a-field-type.md
+  triggers: ["new field type", "field config", "adding field"]
+
+verification:
+  description: Commands and checks to run before declaring work complete.
+  path: verification.md
+  triggers: ["verification", "final check", "before commit"]
+
 backend:
   api:
     description: Needs description - run /index-standards

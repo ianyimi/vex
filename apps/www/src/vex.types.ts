@@ -35,5 +35,17 @@ declare module "@vexcms/core" {
     DocumentBySlug: {
       posts: Post
     }
+    CollectionsFieldTypeMap: {
+      posts: {
+        id: "_id"
+        text: "title" | "slug" | "excerpt"
+        url: "link" | "thumbnail"
+        number: "index"
+        relationship: "parent"
+        checkbox: "published"
+        date: "publishedAt"
+        select: "type"
+      }
+    }
   }
 }

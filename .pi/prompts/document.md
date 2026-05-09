@@ -46,6 +46,14 @@ Write or update inline JSDoc for a target in the vexcms codebase AND create/upda
 
 **If no target specified:** run `git diff --name-only && git diff --cached --name-only`. Include all uncommitted `.ts` / `.tsx` source files in `packages/*/src/` or `apps/www/`. Skip config files, `.md`, lock files.
 
+**Run LSP diagnostics on all in-scope files** (changed AND unchanged) using the `lsp` tool with `action: "diagnostics"` before writing any documentation. This catches:
+- Missing JSDoc on exported symbols (`jsdoc/require-jsdoc`)
+- Missing `@param` descriptions (`jsdoc/require-param-description`)
+- Missing `@returns` (`jsdoc/require-returns`)
+- Any other lint errors introduced by the implementation
+
+Fix ALL `jsdoc/*` errors found by LSP before writing new documentation. These are the errors that will prevent the typecheck command from passing. Report non-JSDoc errors separately without fixing them unless they are in a file being documented.
+
 **Test files must be included** — flag stale test descriptions, wrong type assertions, expected values that no longer match implementation.
 
 **If a target is specified:**

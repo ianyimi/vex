@@ -1,13 +1,75 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput } from "../baseTypes";
+import {
+  ApplyComponent,
+  BaseField,
+  BaseFieldInput,
+  ComponentHKT,
+  FieldAdminConfigInput,
+} from "../baseTypes";
 import { CollectionSlug } from "../../types/generated";
+import { RelationshipPreviewProps } from "../../collections";
+
+/**
+ * Admin configuration input specific to a relationship field instance.
+ *
+ * Extends {@link FieldAdminConfigInput} with a `components` slot that lets a
+ * single field override the preview renderer — taking precedence over the target
+ * collection's `admin.components.preview`.
+ *
+ * @typeParam TSlug - The target collection slug, inferred from the field's `collection` option.
+ * @see {@link RelationshipFieldAdminConfig} for the resolved type after defaults are applied
+ * @see {@link FieldAdminConfigInput} for the base admin properties
+ */
+export interface RelationshipFieldAdminInput<
+  TSlug extends CollectionSlug,
+  TComponent extends ComponentHKT = ComponentHKT,
+> extends FieldAdminConfigInput {
+  /**
+   * Custom component overrides specific to this relationship field instance.
+   * These take precedence over the target collection's `admin.components`.
+   */
+  components?: {
+    /**
+     * Per-field override for rendering this relationship's docs. Wins over
+     * the target collection's `admin.components.preview`. `TSlug` is the
+     * *target* slug (`fieldDef.collection.slug`).
+     */
+    preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TSlug>>;
+  };
+}
+
+/**
+ * Resolved admin configuration for a relationship field after defaults are applied.
+ *
+ * @typeParam TSlug - The target collection slug.
+ * @see {@link RelationshipFieldAdminInput} for the user-facing input type
+ */
+export interface RelationshipFieldAdminConfig<
+  TSlug extends CollectionSlug,
+  TComponent extends ComponentHKT = ComponentHKT,
+> extends FieldAdminConfigInput {
+  /**
+   * Custom component overrides specific to this relationship field instance.
+   * These take precedence over the target collection's `admin.components`.
+   */
+  components: {
+    /**
+     * Per-field override for rendering this relationship's docs. Wins over
+     * the target collection's `admin.components.preview`. `TSlug` is the
+     * *target* slug (`fieldDef.collection.slug`).
+     */
+    preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TSlug>>;
+  };
+}
 
 /**
  * Configuration input for a `relationship()` field.
  *
- * Stores a Convex `Id` (or array of `Id`s) pointing to documents in another
- * registered collection. `TSlug` is inferred from the `collection` option —
- * after running `vex generate`, invalid slugs are a compile-time error.
+ * Stores Convex `Id` references to documents in another registered collection.
+ * The Convex schema always uses `v.array(v.id("slug"))` regardless of `hasMany`.
+ * `hasMany` is a UI-only hint — `false` shows a single-selection picker,
+ * `true` shows a multi-selection picker. `TSlug` is inferred from the `collection`
+ * option — after running `vex generate`, invalid slugs are a compile-time error.
  *
  * **Defaults applied by `relationship()`:**
  * ```ts
@@ -15,7 +77,7 @@ import { CollectionSlug } from "../../types/generated";
  *   type:     "relationship",
  *   label:    "",    // inferred from the field key by defineCollection
  *   required: false,
- *   hasMany:  false, // single Id reference by default
+ *   hasMany:  false, // single-select picker in the admin UI; schema is always v.array(v.id())
  *   admin: {
  *     hidden:        false,
  *     readOnly:      false,
@@ -43,6 +105,7 @@ import { CollectionSlug } from "../../types/generated";
  */
 export interface RelationshipFieldInput<
   TSlug extends CollectionSlug = CollectionSlug,
+  TComponent extends ComponentHKT = ComponentHKT,
 > extends BaseFieldInput {
   /** Target collection reference. The slug must match a registered collection in `defineConfig`. */
   collection: {
@@ -55,6 +118,8 @@ export interface RelationshipFieldInput<
    * @defaultValue false
    */
   hasMany?: boolean;
+  admin?: BaseFieldInput["admin"] &
+    RelationshipFieldAdminInput<TSlug, TComponent>;
 }
 
 /**
@@ -69,6 +134,7 @@ export interface RelationshipFieldInput<
  */
 export interface RelationshipField<
   TSlug extends CollectionSlug = CollectionSlug,
+  TComponent extends ComponentHKT = ComponentHKT,
 > extends BaseField {
   readonly type: typeof ADMIN_FIELDS.relationship.type;
   /** Target collection reference. */
@@ -78,4 +144,5 @@ export interface RelationshipField<
   };
   /** Whether this field stores multiple document references. */
   hasMany: boolean;
+  admin: BaseField["admin"] & RelationshipFieldAdminConfig<TSlug, TComponent>;
 }

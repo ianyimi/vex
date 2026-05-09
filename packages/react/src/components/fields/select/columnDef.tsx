@@ -47,6 +47,7 @@ export function selectFieldToColumnDef(props: {
           row={row}
           collection={props.collection}
           fieldDef={props.fieldDef}
+          fieldKey={props.fieldKey}
           isTitleField={props.isTitleField ?? false}
         />
       );

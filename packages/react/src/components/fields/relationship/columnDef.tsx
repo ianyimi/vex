@@ -28,7 +28,6 @@ import { RelationshipFieldCell } from "./Cell";
  *   collection: postsCollection,
  *   isTitleField: false,
  * });
- * ```
  */
 export function relationshipFieldToColumnDef(props: {
   fieldDef: RelationshipField;
@@ -48,6 +47,7 @@ export function relationshipFieldToColumnDef(props: {
           row={row}
           collection={props.collection}
           fieldDef={props.fieldDef}
+          fieldKey={props.fieldKey}
           isTitleField={props.isTitleField ?? false}
         />
       );

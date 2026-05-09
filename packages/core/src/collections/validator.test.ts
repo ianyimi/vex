@@ -62,14 +62,18 @@ describe("getIncomingRelationships", () => {
     });
   });
 
-  it("ignores the collection's own self-referencing relationship for this check", () => {
+  it("includes self-referencing relationships so the search index is generated", () => {
     const nodes = defineCollection({
       slug: "nodes",
       fields: { parent: relationship({ collection: { slug: "nodes" } }) },
     });
     const config = defineConfig({ collections: [nodes] });
-    // self-reference: the same collection isn't returned as "incoming from another"
-    expect(getIncomingRelationships({ collection: nodes, config })).toEqual([]);
+    // Self-references must be returned: the relationship picker on `parent`
+    // searches `nodes` itself and needs `.searchIndex("search_<useAsTitle>")`.
+    // Excluding self-refs left the picker stuck on the loading state.
+    expect(getIncomingRelationships({ collection: nodes, config })).toEqual([
+      { fromSlug: "nodes", fieldKey: "parent" },
+    ]);
   });
 
   it("does not return relationships pointing to other collections", () => {

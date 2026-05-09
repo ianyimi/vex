@@ -10,12 +10,12 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.38.2",
-    "astro": "^6.0.1",
-    "sharp": "^0.34.2"
+    "@astrojs/starlight": "catalog:",
+    "astro": "catalog:",
+    "sharp": "catalog:"
   },
   "devDependencies": {
-    "starlight-typedoc": "^0.21.5",
-    "typedoc": "^0.28.18"
+    "starlight-typedoc": "catalog:",
+    "typedoc": "catalog:"
   }
 }

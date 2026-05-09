@@ -75,18 +75,79 @@ Key rules baked into prompts (full list in `developer-preferences.md`):
 ## IdeaLog
 → `.pi/agent-docs/implementation-log/YYYY/MM/`
 
-## Prompts Available
+## Prompts & Skills — single source of truth
+
+Every project-local prompt at `.pi/prompts/<name>.md` has a thin auto-firing
+skill at `.pi/skills/<name>/SKILL.md`. The two have a strict relationship:
+
+- **Prompts contain all the content** — protocols, rules, output formats, code
+  samples, edge cases. Edit prompts when changing how a workflow behaves.
+- **Skills are pure pointers** — YAML frontmatter (`name` + `description` for
+  intent matching) plus a 3–5 line body that says "read the prompt and follow
+  it." Skills must NEVER duplicate protocol content from the prompt. **You
+  only ever edit the prompt to change behavior; you only edit the skill when
+  the trigger conditions (the `description`) change.**
+
+When the agent recognises spec-writing intent, commit intent, sync intent,
+etc., the matching skill fires from its description, the agent reads the
+underlying prompt file in full, and follows its protocol exactly. **The
+prompt always wins** if memory of past behavior diverges from the current
+prompt content.
+
+| Prompt file | Skill folder | Slash invocation | Purpose |
+|---|---|---|---|
+| `1-dev-spec.md` | `dev-spec/` | `/dev-spec` | Write scoped implementation spec (monorepo-aware) |
+| `2-sync-spec.md` | `sync-spec/` | `/sync-spec` | Extract patterns → update prompts; run typecheck/test upkeep |
+| `3-commit.md` | `commit/` | `/commit` | Conventional commit with required package scope |
+| `changeset.md` | `changeset/` | `/changeset` | Draft Changesets release notes from commits since last changeset |
+| `document.md` | `document/` | `/document` | JSDoc with Input-vs-resolved rule; runs typecheck+test |
+
+Global-only prompts (no project-mirror needed because they're already loaded
+as global skills via `~/.pi/agent/skills/`):
 
 | Prompt | Invoke | Purpose |
-|--------|--------|---------|
-| 1-dev-spec | `/dev-spec` | Write scoped implementation spec (monorepo-aware) |
-| 2-sync-spec | `/sync-spec` | Extract patterns → update prompts; run typecheck/test upkeep |
-| 3-commit | `/commit` | Conventional commit with required package scope |
-| changeset | `/changeset` | Draft Changesets release notes from commits since last changeset |
-| document | `/document` | JSDoc with Input-vs-resolved rule; runs typecheck+test |
+|---|---|---|
 | debug | `/debug` | Systematic bug investigation (UI-first, reads `debug-hierarchy.md`) |
 | build-prompt | `/build-prompt` | Create a new project-specific prompt |
 | review | `/review` | Code review against standards |
+
+### Adding a new project prompt
+
+When creating a new prompt file at `.pi/prompts/<name>.md`, also create the
+mirror skill at `.pi/skills/<name>/SKILL.md`. Use this exact template — do
+not expand the body:
+
+```markdown
+---
+name: <name>
+description: <one-line trigger description — every phrase the user might say
+  to invoke this work, plus the implicit conditions when you should fire it
+  proactively without an explicit invocation>
+---
+
+# <name>
+
+**Single source of truth:** `.pi/prompts/<name>.md`.
+
+**Read that file in full before doing anything**, then follow its protocol
+exactly. All rules, steps, output formats, and edge cases live in the prompt.
+This skill is purely the intent-matched entry point.
+
+Don't act on memory of past invocations; protocols change and the prompt is
+canonical. If anything you remember about <name> conflicts with the current
+prompt, **the prompt wins**.
+```
+
+That's it — the body never grows. If you're tempted to add behavioral notes,
+edge cases, or examples to the skill body, those belong in the prompt instead.
+
+### Editing an existing prompt
+
+- Behavioral / protocol / format change → edit `.pi/prompts/<name>.md` only.
+  The skill stays untouched.
+- Trigger-condition change (the user starts saying a new phrase that should
+  fire this skill) → edit only the `description` line in the skill's YAML
+  frontmatter. Don't touch the body.
 | research · learn | `/research` · `/learn` | External library / API investigation |
 
 ## Git Worktrees

@@ -18,6 +18,10 @@ export default defineConfig({
 					label: 'Guides',
 					autogenerate: { directory: 'guides' },
 				},
+				{
+					label: 'Fields',
+					autogenerate: { directory: 'fields' },
+				},
 				// API Reference injected by starlight-typedoc
 			],
 		}),

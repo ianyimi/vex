@@ -1,5 +1,7 @@
 import { anyApi } from "convex/server";
 import type { FunctionReference } from "convex/server";
+import { PopulateShape } from "../api/types";
+import { CollectionSlug } from "../types";
 
 /**
  * Base type for all VexCMS documents as returned from Convex queries.
@@ -62,13 +64,20 @@ export type TDocument = Record<string, unknown> & VexDocument;
  */
 export const vexConvexApi = {
   /**
-   * Lists documents in a collection.
+   * Finds documents in a collection.
    * Called by {@link CollectionListView} in `@vexcms/react`.
    */
-  list: anyApi.vex.collections.list as FunctionReference<
+  find: anyApi.vex.find as FunctionReference<
     "query",
     "public",
-    { collection: string; limit?: number },
+    {
+      collection: CollectionSlug;
+      // Recursive populate object; type-narrowed at the call site by
+      // PopulateShape<TSlug>. Loose `unknown` here because Convex validators
+      // can't easily express the recursive shape.
+      populate?: PopulateShape;
+      limit?: number;
+    },
     VexDocument[]
   >,
 
@@ -76,17 +85,17 @@ export const vexConvexApi = {
    * Fetches a single document by ID.
    * Called by {@link CollectionEditView} in `@vexcms/react` when editing.
    */
-  get: anyApi.vex.collections.get as FunctionReference<
+  get: anyApi.vex.get as FunctionReference<
     "query",
     "public",
-    { id: string },
+    { id: string; populate?: unknown },
     VexDocument | null
   >,
 
   /**
    * Creates a new document. Returns the new document's ID as a string.
    */
-  create: anyApi.vex.collections.create as FunctionReference<
+  create: anyApi.vex.create as FunctionReference<
     "mutation",
     "public",
     { collection: string; data: Record<string, unknown> },
@@ -104,7 +113,7 @@ export const vexConvexApi = {
    *
    * @see {@link https://docs.convex.dev/text-search} for Convex search docs
    */
-  search: anyApi.vex.collections.search as FunctionReference<
+  search: anyApi.vex.search as FunctionReference<
     "query",
     "public",
     {
@@ -113,6 +122,7 @@ export const vexConvexApi = {
       searchField: string;
       query: string;
       limit?: number;
+      populate?: unknown;
     },
     VexDocument[]
   >,
@@ -120,7 +130,7 @@ export const vexConvexApi = {
   /**
    * Patches an existing document — unspecified fields are left unchanged.
    */
-  update: anyApi.vex.collections.update as FunctionReference<
+  update: anyApi.vex.update as FunctionReference<
     "mutation",
     "public",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -131,7 +141,7 @@ export const vexConvexApi = {
   /**
    * Permanently deletes a document.
    */
-  remove: anyApi.vex.collections.remove as FunctionReference<
+  remove: anyApi.vex.remove as FunctionReference<
     "mutation",
     "public",
     { collection: string; id: string },

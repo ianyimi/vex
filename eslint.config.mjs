@@ -59,13 +59,30 @@ export default [
           checkSetters: false,
         },
       ],
-      "jsdoc/require-param": "error",
+      "jsdoc/require-param": [
+        "error",
+        {
+          // Don't demand nested `@param args.foo` docs when the function takes
+          // an object whose shape is already documented on its TypeScript
+          // interface (e.g., FindClientArgs). The interface JSDoc is the
+          // single source of truth for prop docs; mirroring nested @params
+          // here is duplication, not helpful documentation.
+          checkDestructured: false,
+          checkDestructuredRoots: false,
+        },
+      ],
       "jsdoc/require-param-description": "error",
       "jsdoc/require-param-type": "off", // TypeScript handles this
       "jsdoc/require-returns": "error",
       "jsdoc/require-returns-description": "error",
       "jsdoc/require-returns-type": "off", // TypeScript handles this
-      "jsdoc/check-param-names": "error",
+      "jsdoc/check-param-names": [
+        "error",
+        {
+          // Same reasoning as require-param above.
+          checkDestructured: false,
+        },
+      ],
       "jsdoc/check-tag-names": ["error", {
         // TypeDoc-specific tags not in the JSDoc standard — keep in sync with typedoc.json
         definedTags: ["typeParam", "defaultValue", "expand", "ignore"],
@@ -80,6 +97,25 @@ export default [
       // TypeScript-specific
       "@typescript-eslint/explicit-module-boundary-types": "off",
       "@typescript-eslint/no-explicit-any": "warn",
+      // Use TS-aware variants for these rules; the base versions don't
+      // understand TypeScript function overloads (each overload signature
+      // looks like a redeclaration / unused-args to plain ESLint).
+      "no-redeclare": "off",
+      "@typescript-eslint/no-redeclare": "error",
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          // Allow leading underscore for intentionally-unused params (common
+          // in overload-implementation signatures where the merged-args type
+          // is broader than any individual overload).
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          // Don't flag the args of overload signature stubs — their bodies
+          // are erased; the implementation is what runs.
+          ignoreRestSiblings: true,
+        },
+      ],
     },
   },
   {

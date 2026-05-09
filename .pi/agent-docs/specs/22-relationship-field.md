@@ -1,8 +1,8 @@
 # Spec 22 — Relationship Field
 
-**Status:** In progress (Steps 1–6 complete; Steps 7–10 spec'd — ready for implementation)
+**Status:** In progress — Steps 1–7, 9, 10, and most of 11 done; **Pre-flight + Step 8 + remainder of Step 11 + Step 12 still pending**.
 **Depends on:** Spec 20 (field type pattern), Spec 21 (module augmentation — `CollectionSlug`, `DocumentBySlug`)
-**Last spec update:** 2026-05-04 — added custom preview component API (Decisions 11–14), `Input` `loading` prop, master port inventory, and full Step 7–8 implementations.
+**Last spec update:** 2026-05-04 — reconciled checkboxes with actual implementation state, renamed Step 8a → Pre-flight (positioned between Step 6 and Step 7), dropped the `customConditions` item (already in `packages/tsconfig/base.json`), filename `resolvePreview.tsx` → `preview.tsx` to match the implementation.
 
 ---
 
@@ -26,7 +26,7 @@ Implements the `relationship()` field type end-to-end: core types, config factor
 
 6. **`collectionConfigToVexSchema` signature change — breaking.** Adds a required `config: VexConfig` parameter. All existing call sites and tests must pass the full config.
 
-7. **Live Convex search in the picker.** A new `search` query added to `convex/vex/collections.ts`. When `useAsTitle` is a non-system field, the picker calls `vexConvexApi.search`. When `useAsTitle === "_id"`, falls back to `vexConvexApi.list` (search disabled).
+7. **Live Convex search in the picker.** A new `search` query added to `convex/vex/collections.ts`. When `useAsTitle` is a non-system field, the picker calls `vexConvexApi.search`. When `useAsTitle === "_id"`, falls back to `vexConvexApi.find` (search disabled).
 
 8. **`RelationshipField` added to `AdminField` union only in the final wiring step.** All component and dispatch code exists first; the union and adapter are updated in one step to keep TypeScript happy (`FieldComponentMap<F>` requires all `AdminField["type"]` variants to have entries).
 
@@ -34,13 +34,19 @@ Implements the `relationship()` field type end-to-end: core types, config factor
 
 10. **Cell shows raw ID by default; preview component overrides.** ~~Fetching the related document in every list cell is expensive. The cell renders a truncated ID string. Population is deferred.~~ **Superseded by Decision 11.** The cell now passes `row.original` (the parent doc, already in the table data) to the resolved preview component. No additional fetch occurs at render time. If no preview component is configured, the cell still renders raw ID(s) as before.
 
-11. **Single preview component contract on collections and on relationship fields.** A new `admin.components.preview?: ComponentType<RelationshipPreviewProps<TSlug>>` slot is added to both `AdminCollectionConfigInput` (in `@vexcms/core/collections/types.ts`) and `RelationshipFieldInput.admin` (in `@vexcms/core/fields/relationship/types.ts`). The contract is `{ doc: Doc<TSlug>; fieldKey: string; config: CollectionConfig<TSlug> }`. The relationship field's setting overrides the target collection's setting; absent both, the default renders `doc[useAsTitle] ?? doc._id` as plain text. There is **no separate `admin.components.cell` slot** — one component renders in picker rows, the trigger's selected-value chip(s), and the parent collection's list-table cell.
+11. **Single preview component contract on collections and on relationship fields, slotted via the existing `ComponentHKT`.** A new `admin.components.preview?: ApplyComponent<F, RelationshipPreviewProps>` slot is added to both `AdminCollectionConfigInput` (in `@vexcms/core/collections/types.ts`) and `RelationshipFieldInput.admin` (in `@vexcms/core/fields/relationship/types.ts`). `F extends ComponentHKT` is a generic parameter on the input type, defaulting to `ComponentHKT` (unspecialized — slot resolves to `unknown` in pure-core context). The `RelationshipPreviewProps` data type is `{ doc: Doc<TSlug>; fieldKey: string; config: CollectionConfig<TSlug> }`. The relationship field's setting overrides the target collection's setting; absent both, the default renderer (which lives in `@vexcms/react`) renders `doc[useAsTitle] ?? doc._id` as plain text. There is **no separate `admin.components.cell` slot** — one component renders in picker rows, the trigger's selected-value chip(s), and the parent collection's list-table cell. The cell passes `row.original` (the parent collection's doc, already fetched into the table data) so no additional fetch is required. **Core does not import `react` — the slot type is opaque at the core level and only resolves to `ComponentType<P>` inside `@vexcms/react` via `ReactHKT`.**
 
-12. **Picker query lives inside `RelationshipFieldInput` via a typed hook.** A new export `useRelationshipPickerOptions(fieldDef, query, opts?)` from `@vexcms/react/hooks/useRelationshipPickerOptions.ts` wraps tanstack-query around `vexConvexApi.search` (when `useAsTitle` is a non-system field) or `vexConvexApi.list` (otherwise). Returns `{ documents, isPending, isError, error }`. `RelationshipFieldInput` consumes this hook internally; no consumer wiring required for the common case. The hook is exported from the package barrel for consumers building custom pickers.
+12. **Picker query lives inside `RelationshipFieldInput` via a typed hook.** A new export `useRelationshipPickerOptions(fieldDef, query, opts?)` from `@vexcms/react/hooks/useRelationshipPickerOptions.ts` wraps tanstack-query around `vexConvexApi.search` (when `useAsTitle` is a non-system field) or `vexConvexApi.find` (otherwise). Returns `{ documents, isPending, isError, error }`. `RelationshipFieldInput` consumes this hook internally; no consumer wiring required for the common case. The hook is exported from the package barrel for consumers building custom pickers.
 
 13. **`loading` prop on the `Input` UI primitive.** `packages/react/src/components/ui/input.tsx` gains an optional `loading?: boolean`. When `true`, a `Loader2` spinner from `lucide-react` renders absolutely positioned on the right edge with `pr-9` applied to the input itself; any other right-side content is hidden while loading. Implementation wraps the `<InputPrimitive>` in a `<span className="relative block w-full">` only when `loading` is set, so default-path consumers see no DOM change. `RelationshipFieldInput`'s search input passes the picker hook's `isPending` to this prop.
 
 14. **`RelationshipPreviewProps<TSlug>` is generic over the doc's slug.** The `TSlug` type parameter resolves to whatever doc the consumer passes. One contract serves three rendering contexts: picker rows (`slug = target`, `doc = candidate`, `fieldKey = "_id"`), the trigger's selected-value chip(s) (same as picker rows — the resolved target doc(s)), and the parent collection's list-table cell (`slug = parent`, `doc = row.original`, `fieldKey = relationship field's key`). The preview component author types their component for whichever slug they need. The built-in default renderer handles all three by reading `useAsTitle` or `_id` regardless of slug.
+
+15. **Framework packages re-export core config functions with their HKT bound.** Going forward, `@vexcms/react` (and any future framework adapter package: `@vexcms/solid`, `@vexcms/svelte`, etc.) re-exports `relationship`, `defineCollection`, `defineConfig`, and every other field config function from `@vexcms/core` with the framework's `ComponentHKT` (e.g. `ReactHKT`) bound. **Users import config functions from the framework package, not from `@vexcms/core` directly.** This keeps `@vexcms/core` framework-agnostic (no React imports, no JSX) while letting the user-facing API expose strongly-typed `ComponentType<P>` slots wherever a component override is allowed. Concretely:
+    - `@vexcms/core` exports `relationship<TSlug, F extends ComponentHKT = ComponentHKT>(options): RelationshipField<TSlug, F>`.
+    - `@vexcms/react` exports a wrapper `relationship<TSlug>(options) = coreRelationship<TSlug, ReactHKT>(options)` plus the type alias `RelationshipFieldInput<TSlug> = CoreRelationshipFieldInput<TSlug, ReactHKT>`.
+    - User's `vex.config.ts`: `import { relationship, defineCollection } from "@vexcms/react"` (or `"@vexcms/next"` once it re-exports too).
+    - Any new field type that wants user-supplied components must follow the same pattern: HKT-parameterized in core, re-exported with `F = ReactHKT` from `@vexcms/react`. Document this in `.pi/agent-docs/standards/adding-a-field-type.md` after this spec lands.
 
 ---
 
@@ -59,14 +65,16 @@ Implements the `relationship()` field type end-to-end: core types, config factor
 
 ## Custom Preview Component API
 
-Defines how user-supplied components plug into the relationship rendering pipeline. New in this spec revision (per Decisions 11, 14).
+Defines how user-supplied components plug into the relationship rendering pipeline. New in this spec revision (per Decisions 11, 14, 15).
+
+> **Architectural rule:** `@vexcms/core` does not import from `react`. Any user-facing component slot in core is typed via the existing `ComponentHKT` machinery (`packages/core/src/fields/baseTypes.ts`). The actual `ComponentType<P>` resolution happens at the framework boundary — `@vexcms/react`'s `ReactHKT` (`packages/react/src/adapter.ts`) does the binding.
 
 ### Type additions
 
-**`packages/core/src/collections/types.ts`** — add `components.preview` to `AdminCollectionConfigInput`:
+**`packages/core/src/collections/types.ts`** — add `RelationshipPreviewProps` and HKT-slotted `components.preview`:
 
 ```ts
-import type { ComponentType } from "react";
+import type { ApplyComponent, ComponentHKT } from "../fields";
 import type { Doc, CollectionSlug } from "../types/generated";
 
 /**
@@ -96,6 +104,7 @@ export interface RelationshipPreviewProps<
 
 export interface AdminCollectionConfigInput<
   TFieldSlug extends string = CoreAdminField,
+  F extends ComponentHKT = ComponentHKT,
 > {
   useAsTitle?: CoreAdminField | NoInfer<TFieldSlug>;
   /**
@@ -103,28 +112,29 @@ export interface AdminCollectionConfigInput<
    * relationship contexts (picker rows, table cells, selected-value chips).
    *
    * Override per-relationship via `RelationshipFieldInput.admin.components.preview`.
+   *
+   * Slot type is `ApplyComponent<F, RelationshipPreviewProps>` — in pure-core
+   * context (`F = ComponentHKT`) this resolves to `unknown`. In React context
+   * (`F = ReactHKT`, exposed via `@vexcms/react`) this resolves to
+   * `ComponentType<RelationshipPreviewProps>`.
    */
   components?: {
-    /**
-     * Component used to render a doc of this collection wherever it appears
-     * as a relationship preview. Receives `{ doc, fieldKey, config }`.
-     *
-     * Default (no preview set): renders `doc[useAsTitle] ?? doc._id` as plain text.
-     */
-    preview?: ComponentType<RelationshipPreviewProps>;
+    /** Component used to render a doc of this collection as a relationship preview. */
+    preview?: ApplyComponent<F, RelationshipPreviewProps>;
   };
 }
 ```
 
-**`packages/core/src/fields/relationship/types.ts`** — add `components.preview` to `RelationshipFieldInput.admin`:
+**`packages/core/src/fields/relationship/types.ts`** — add HKT-slotted `components.preview`:
 
 ```ts
-import type { ComponentType } from "react";
+import type { ApplyComponent, ComponentHKT } from "../baseTypes";
 import type { RelationshipPreviewProps } from "../../collections/types";
 import type { FieldAdminConfigInput } from "../baseTypes";
 
 export interface RelationshipFieldAdminInput<
   TSlug extends CollectionSlug,
+  F extends ComponentHKT = ComponentHKT,
 > extends FieldAdminConfigInput {
   /**
    * Custom component overrides specific to this relationship field instance.
@@ -132,28 +142,43 @@ export interface RelationshipFieldAdminInput<
    */
   components?: {
     /**
-     * Per-field override for rendering this relationship's docs.
-     * Wins over the target collection's `admin.components.preview`.
-     * `TSlug` here is the *target* slug (`fieldDef.collection.slug`).
+     * Per-field override for rendering this relationship's docs. Wins over
+     * the target collection's `admin.components.preview`. `TSlug` is the
+     * *target* slug (`fieldDef.collection.slug`).
      */
-    preview?: ComponentType<RelationshipPreviewProps<TSlug>>;
+    preview?: ApplyComponent<F, RelationshipPreviewProps<TSlug>>;
   };
 }
 
 export interface RelationshipFieldInput<
   TSlug extends CollectionSlug = CollectionSlug,
+  F extends ComponentHKT = ComponentHKT,
 > extends BaseFieldInput {
   collection: { slug: TSlug };
   hasMany?: boolean;
-  admin?: RelationshipFieldAdminInput<TSlug>;
+  admin?: RelationshipFieldAdminInput<TSlug, F>;
 }
 ```
 
-> **Type-only React dependency.** `react` is already a peerDependency of `@vexcms/core` (`peerDependencies.react: ">=18.0.0"`); using `ComponentType<P>` here is a type-only reference and does not introduce a runtime React dep on core.
+**`packages/core/src/fields/relationship/config.ts`** — thread `F` through the config function signature:
+
+```ts
+export function relationship<
+  TSlug extends CollectionSlug = CollectionSlug,
+  F extends ComponentHKT = ComponentHKT,
+>(
+  options: RelationshipFieldInput<TSlug, F>,
+): RelationshipField<TSlug, F> {
+  // ...existing body unchanged — the function only manipulates serializable
+  //    config; the F parameter is purely for type-level threading.
+}
+```
+
+> **Why this works without a React import in core.** `ApplyComponent<F, P>` resolves to whatever `F["component"]` is. With the default `F = ComponentHKT`, it resolves to `unknown`. With `F = ReactHKT` (only available inside `@vexcms/react`), it resolves to `ComponentType<P>`. Core never sees `ComponentType` — see the **Re-export Pattern in Framework Packages** section below for how user-facing types get the React-typed slot.
 
 ### Resolution order
 
-Implemented in a new helper `packages/react/src/components/fields/relationship/resolvePreview.tsx`:
+Implemented in `packages/react/src/components/fields/relationship/preview.tsx`:
 
 ```ts
 import type { CollectionConfig, RelationshipField, RelationshipPreviewProps } from "@vexcms/core";
@@ -194,6 +219,156 @@ function DefaultRelationshipPreview({ doc, config }: RelationshipPreviewProps) {
 | List-table cell (`Cell.tsx`)           | `row.original` (`Doc<ParentSlug>`)       | relationship field's key | parent collection config |
 
 The preview component author chooses which contexts to handle. A component typed against the _target_ slug only renders correctly in the picker + chip contexts. A component typed against the _parent_ slug only renders correctly in cells. To handle all three with one component, type against `Doc<CollectionSlug>` (the full union) and branch internally on `fieldKey === "_id"` vs not.
+
+---
+
+---
+
+## Re-export Pattern in Framework Packages
+
+New in this spec revision (per Decision 15). This section defines how `@vexcms/react` (and future framework packages) re-export `@vexcms/core`'s config functions with their `ComponentHKT` bound, so users get strongly-typed component slots without core ever importing `react`.
+
+### Why
+
+- `@vexcms/core` stays framework-agnostic: no `import { ComponentType } from "react"`, no JSX, nothing that ties it to a specific framework.
+- Each framework adapter package binds `F = MyFrameworkHKT` once, in one wrapper layer, and re-exports the config functions with the framework-typed slots resolved.
+- Users import every config function from the framework package (`@vexcms/react`, `@vexcms/next`, future `@vexcms/solid`, etc.) and never touch `@vexcms/core` directly in their `vex.config.ts`.
+
+### Implementation in `@vexcms/react`
+
+**`packages/react/src/adapter.ts`** — already exports `ReactHKT`:
+
+```ts
+export interface ReactHKT extends ComponentHKT {
+  component: ComponentType<this["_props"]>;
+}
+```
+
+**`packages/react/src/config/index.ts`** (new file) — binds `F = ReactHKT` and re-exports:
+
+```ts
+import {
+  relationship as coreRelationship,
+  defineCollection as coreDefineCollection,
+  defineConfig as coreDefineConfig,
+  // … every other field config function
+} from "@vexcms/core";
+import type {
+  CollectionSlug,
+  RelationshipFieldInput as CoreRelationshipFieldInput,
+  RelationshipField as CoreRelationshipField,
+  CollectionConfigInput as CoreCollectionConfigInput,
+  CollectionConfig as CoreCollectionConfig,
+  AdminCollectionConfigInput as CoreAdminCollectionConfigInput,
+} from "@vexcms/core";
+import type { ReactHKT } from "../adapter";
+
+/**
+ * Relationship field input type with the React component slot bound.
+ *
+ * Identical to `@vexcms/core`'s `RelationshipFieldInput<TSlug>` except
+ * `admin.components.preview` is typed as `ComponentType<RelationshipPreviewProps<TSlug>>`
+ * instead of an opaque `ApplyComponent<ComponentHKT, _>`.
+ */
+export type RelationshipFieldInput<
+  TSlug extends CollectionSlug = CollectionSlug,
+> = CoreRelationshipFieldInput<TSlug, ReactHKT>;
+
+export type RelationshipField<
+  TSlug extends CollectionSlug = CollectionSlug,
+> = CoreRelationshipField<TSlug, ReactHKT>;
+
+export type AdminCollectionConfigInput<
+  TFieldSlug extends string = string,
+> = CoreAdminCollectionConfigInput<TFieldSlug, ReactHKT>;
+
+export type CollectionConfigInput<
+  TSlug extends string = string,
+  TFieldSlug extends string = string,
+> = CoreCollectionConfigInput<TSlug, TFieldSlug, ReactHKT>;
+
+export type CollectionConfig<
+  TSlug extends string = string,
+  TFieldSlug extends string = string,
+> = CoreCollectionConfig<TSlug, TFieldSlug, ReactHKT>;
+
+/**
+ * Defines a relationship field with React-typed component slots.
+ *
+ * Drop-in replacement for `@vexcms/core`'s `relationship` — same behaviour,
+ * but `options.admin.components.preview` is typed as a React `ComponentType`.
+ */
+export function relationship<TSlug extends CollectionSlug = CollectionSlug>(
+  options: RelationshipFieldInput<TSlug>,
+): RelationshipField<TSlug> {
+  return coreRelationship<TSlug, ReactHKT>(options);
+}
+
+/** Defines a collection with React-typed component slots. */
+export function defineCollection<
+  TSlug extends string,
+  TFieldSlug extends string,
+>(
+  config: CollectionConfigInput<TSlug, TFieldSlug>,
+): CollectionConfig<TSlug, TFieldSlug> {
+  return coreDefineConfig
+    ? coreDefineCollection<TSlug, TFieldSlug>(config as never)
+    : coreDefineCollection<TSlug, TFieldSlug>(config as never);
+}
+
+/** …defineConfig and every other config function follow the same pattern. */
+```
+
+**`packages/react/src/index.ts`** — add to the public barrel:
+
+```ts
+export {
+  relationship,
+  defineCollection,
+  defineConfig,
+  /* every other config function from packages/react/src/config */
+} from "./config";
+export type {
+  RelationshipFieldInput,
+  RelationshipField,
+  AdminCollectionConfigInput,
+  CollectionConfigInput,
+  CollectionConfig,
+  /* every re-exported type */
+} from "./config";
+```
+
+### User-facing import
+
+Before this spec:
+```ts
+// apps/www/src/vexcms/collections/posts.ts
+import { defineCollection, relationship, text } from "@vexcms/core";
+```
+
+After this spec:
+```ts
+// apps/www/src/vexcms/collections/posts.ts
+import { defineCollection, relationship, text } from "@vexcms/react";
+//                                              ^^^^^^^^^^^^^^^
+// Same API surface, but admin.components.preview slots are typed as
+// React.ComponentType<RelationshipPreviewProps<TSlug>>.
+```
+
+Follow-up: `@vexcms/next` should re-export the same surface from `@vexcms/react` (transitive re-export), so Next users can keep importing from a single package: `import { defineCollection } from "@vexcms/next"`.
+
+### Migration impact
+
+- `apps/www/src/vexcms/collections/*.ts` — update imports from `@vexcms/core` → `@vexcms/react` (or `@vexcms/next` once it re-exports).
+- `apps/www/src/vex.config.ts` — same.
+- The runtime behaviour does not change. This is a pure type-level shift; the JS output of `relationship({…})` is identical.
+- Existing field-config functions (`text`, `number`, `select`, `date`, `url`, `checkbox`, `tabs`, `color`, etc.) get the same treatment in this spec's Step 9. Each gets a thin re-export wrapper in `@vexcms/react/config`. Most are straight pass-throughs because they have no component slots yet — pure re-exports keep import paths consistent so users never need to know which functions have component slots and which don't.
+
+### Standards capture
+
+After this spec lands, append a new section to `.pi/agent-docs/standards/adding-a-field-type.md`:
+
+> **Re-export from `@vexcms/react`.** Every field config function exported from `@vexcms/core` must be re-exported from `packages/react/src/config/index.ts`, even if the field has no component slots. This keeps user imports consistent. If the field gains a component slot later, only the re-export wrapper changes — user code is unaffected.
 
 ---
 
@@ -271,6 +446,28 @@ export { Input };
 
 ---
 
+## Generic Hooks: use `@ts-hooks-kit/core`, don't roll your own
+
+Decided 2026-05-04. Prior spec revisions called for custom `useDebouncedValue`
+and `useDocsByIds` hooks in `packages/react/src/hooks/`. **Both have been
+dropped.**
+
+- **Debounce** — use `useDebounceValue` from [`@ts-hooks-kit/core`](https://github.com/naufaldi/ts-hooks-kit) (note: spec previously named our custom hook `useDebouncedValue` with the `d`; the library's name is `useDebounceValue` without the `d`). Locked at exact `0.2.0` in `pnpm-workspace.yaml#catalog` — see the catalog comment for the rationale (no auto-update, not even patch, manual review only).
+- **`useDocsByIds`** — dropped. The 15-line wrapper around `useQueries` + `vexConvexApi.get` had no domain logic worth naming. Inline the `useQueries` block in `RelationshipFieldInput.tsx` directly; tanstack-query's per-ID cache deduplicates across the picker's search results and the trigger's chip(s) automatically without an extracted hook.
+
+Standing rule (encoded in `developer-preferences.md` under **Generic React hooks**): for any generic hook the project needs, prefer `@ts-hooks-kit/core` over hand-rolled implementations or AI-generated one-offs. Only write a custom hook in `packages/react/src/hooks/` when it has domain logic specific to vexcms (Convex schema, field config, admin UI orchestration). Examples of "domain-specific": `useCollectionForm`, `useFrameworkComponents`, `useRelationshipPickerOptions`. Examples of "generic": debounce, throttle, copy-to-clipboard, media-query, local-storage — all of those use `@ts-hooks-kit/core`.
+
+### Required dep additions
+
+- [ ] Add `"@ts-hooks-kit/core": "catalog:"` to `packages/react/package.json#dependencies`.
+- [ ] Run `pnpm install` to populate the lockfile entry.
+
+> **Why dependencies, not devDependencies.** This is a runtime React hook,
+> not a typecheck-only type. Production builds need the package available
+> at runtime; ship it as a normal dep.
+
+---
+
 ## Picker Hook: `useRelationshipPickerOptions`
 
 New file `packages/react/src/hooks/useRelationshipPickerOptions.ts`. Per Decision 12, the picker query is internal to `RelationshipFieldInput` but exposed for reuse.
@@ -292,7 +489,7 @@ import { vexConvexApi } from "@vexcms/core";
  *
  * Uses Convex search when the target collection's `useAsTitle` is a
  * non-system field (and a `search_<useAsTitle>` index has been auto-generated
- * by `collectionConfigToVexSchema`). Falls back to `vexConvexApi.list` when
+ * by `collectionConfigToVexSchema`). Falls back to `vexConvexApi.find` when
  * `useAsTitle` is `_id` or `_creationTime` — search is disabled in that case.
  *
  * @param fieldDef - The resolved relationship field definition.
@@ -327,7 +524,7 @@ export function useRelationshipPickerOptions(
     : { collection: fieldDef.collection.slug };
   const { data, isPending, isError, error } = useQuery({
     ...convexQuery(
-      isSearchable ? vexConvexApi.search : vexConvexApi.list,
+      isSearchable ? vexConvexApi.search : vexConvexApi.find,
       args as never,
     ),
     enabled: opts?.enabled ?? true,
@@ -341,7 +538,7 @@ export function useRelationshipPickerOptions(
 }
 ````
 
-> **Edge: search is debounced at the call site, not in the hook.** Consumers wrap `query` in `useDebouncedValue(rawQuery, 200)` before passing in.
+> **Edge: search is debounced at the call site, not in the hook.** Consumers wrap `query` in `useDebounceValue(rawQuery, 200)` from `@ts-hooks-kit/core` before passing in.
 > **Edge: when `query === ""` and `isSearchable === true`,** the `search` Convex query falls back to `take(limit)` per Step 6's implementation — no special handling required here.
 
 ---
@@ -356,12 +553,12 @@ The master branch's `packages/ui/src/components/form/fields/RelationshipField.ts
 | 70–85             | `targetCollection` lookup over `config.collections / globals / media / auth`                        | **Drop**          | Rebuild config has only `collections`. Resolve target via `config.collections.find(c => c.slug === fieldDef.collection.slug)` directly, OR receive it via the factory.                                                |
 | 95–112            | `useQuery(anyApi.vex.api[fieldDef.to]?.list, { paginationOpts })`                                   | **Replace**       | Use `useRelationshipPickerOptions(fieldDef, targetCollection, debouncedSearch)`.                                                                                                                                      |
 | 113–135           | client-side `documents` filter + `getDocLabel` reading `useAsTitle`                                 | **Replace**       | Server-side search via auto-generated `search_<useAsTitle>` index. Label rendering goes through `resolveRelationshipPreview`.                                                                                         |
-| 137–155           | `selectedIds`, `selectedLabels` derivations                                                         | **Lift, adapt**   | Logic is sound. Adapt: `selectedIds` from `field.state.value` (always `string[]`); `selectedLabels` becomes "resolved target docs" via a small `useDocsByIds(slug, ids[])` helper, deferred to Step 8 implementation. |
+| 137–155           | `selectedIds`, `selectedLabels` derivations                                                         | **Lift, adapt**   | Logic is sound. Adapt: `selectedIds` from `field.state.value` (always `string[]`); `selectedLabels` becomes "resolved target docs" via an inlined `useQueries` + `vexConvexApi.get` block in `Input.tsx` (no extracted hook — see the **Generic Hooks** section). |
 | 156–162           | `targetLabel = labels.singular ?? slug`                                                             | **Lift verbatim** | Used in placeholder "Select <noun>…".                                                                                                                                                                                 |
 | 165–202           | `handleSelect` / `handleRemove` / `handleCreated` callbacks                                         | **Lift verbatim** | Pure state-update logic. Adapt only the dispatch target: `field.handleChange` from tanstack-form.                                                                                                                     |
 | 207–229           | Multi-select chip layout with X-button removal (lines `{isMany && selectedLabels.length > 0 && …}`) | **Lift verbatim** | Direct port. Replace `bg-secondary` with the rebuild's `bg-muted` (matches design's `.vex-cell-rel` chip background). Each chip's content rendered via `resolveRelationshipPreview` instead of plain `itemLabel`.     |
 | 231–256           | `<Popover>` + `<PopoverTrigger>` styled like an input                                               | **Lift, restyle** | Replace inline `className` with the rebuild's `<Button variant="outline">` or a styled `<MultiSelectTrigger>`. Visual target: `.vex-trigger` from `admin.css` (32px height, `rounded-sm`, `border-input`).            |
-| 258–300           | Search input + scrollable result list                                                               | **Lift, augment** | Search input uses the new `<Input loading={isPending} />` prop (Decision 13). Each result row rendered via `resolveRelationshipPreview` (Decision 11). Add `useDebouncedValue(search, 200)` to throttle queries.      |
+| 258–300           | Search input + scrollable result list                                                               | **Lift, augment** | Search input uses the new `<Input loading={isPending} />` prop (Decision 13). Each result row rendered via `resolveRelationshipPreview` (Decision 11). Add `useDebounceValue(search, 200)` from `@ts-hooks-kit/core` to throttle queries.                                  |
 | 302–320           | Create-dialog `renderCreateDialog` render-prop slot                                                 | **Lift verbatim** | Pattern is framework-agnostic and worth preserving for follow-up `allowCreate` work.                                                                                                                                  |
 | 322–341           | Closing JSX                                                                                         | **Lift verbatim** | Trivial.                                                                                                                                                                                                              |
 
@@ -399,24 +596,36 @@ packages/react/src/
   components/fields/
     relationship/
       types.ts                          ← PENDING (Step 7) — RelationshipPreviewProps re-export
-      resolvePreview.tsx                ← PENDING (Step 7) — NEW: precedence + default
-      Cell.tsx                          ← PENDING (Step 7)
-      columnDef.tsx                     ← PENDING (Step 7)
-      Input.tsx                         ← PENDING (Step 8) — ports from master
-      index.ts                          ← PENDING (Step 7)
-    index.tsx                           ← PENDING (Step 9)
+      preview.tsx                       ← ✅ DONE (Step 7) — precedence + default renderer
+      Cell.tsx                          ← ✅ DONE (Step 7)
+      columnDef.tsx                     ← ✅ DONE (Step 7)
+      Input.tsx                         ← ⏳ PENDING (Step 8) — currently OLD MultiSelect stub; replace with master port
+      index.ts                          ← ✅ DONE (Step 7)
+    index.tsx                           ← ✅ DONE (Step 9)
   hooks/
-    useRelationshipPickerOptions.ts     ← PENDING (Step 8) — NEW: tanstack + Convex
-    useDebouncedValue.ts                ← PENDING (Step 8) — NEW: 200ms search debounce
-    useDocsByIds.ts                     ← PENDING (Step 8) — NEW: resolve selected IDs to docs
-    index.ts                            ← MODIFIED (barrel exports)
-  adapter.ts                            ← PENDING (Step 9)
+    useRelationshipPickerOptions.ts     ← ⏳ PENDING (Step 8) — NEW: tanstack + Convex
+    index.ts                            ← ⏳ PENDING (Step 8) — add useRelationshipPickerOptions export only
+  adapter.ts                            ← ✅ DONE (Step 9)
 
 packages/core/src/
   collections/
-    types.ts                            ← MODIFIED (Decision 11) — RelationshipPreviewProps + admin.components.preview
+    types.ts                            ← MODIFIED (Decision 11) — RelationshipPreviewProps + HKT-slotted admin.components.preview
+    config.ts                           ← MODIFIED (Decision 15) — thread `F extends ComponentHKT` through defineCollection
   fields/relationship/
-    types.ts                            ← MODIFIED (Decision 11) — admin.components.preview override slot
+    types.ts                            ← MODIFIED (Decision 11) — HKT-slotted admin.components.preview override
+    config.ts                           ← MODIFIED (Decision 15) — thread `F extends ComponentHKT` through relationship()
+  config.ts                             ← MODIFIED (Decision 15) — thread `F extends ComponentHKT` through defineConfig
+
+packages/react/
+  package.json                          ← ⏳ PENDING (Pre-flight) — add @convex-dev/react-query + @tanstack/react-query + convex to devDependencies (already in peerDependencies)
+src/
+  index.ts                              ← 🟡 PARTIAL (Decision 15) — typed `relationship()` and `defineCollection()` wrappers + their type aliases done; `defineConfig` and pass-through wrappers for text/number/select/date/url/checkbox/tabs/color still pending
+
+packages/next/
+  src/index.ts                          ← ⏳ PENDING (Step 12) — transitive re-export of every config function and type from @vexcms/react
+
+packages/core/
+  tsup.config.ts                        ← ⏳ PENDING (Pre-flight) — re-enable `dts: true` so dist/index.d.ts is generated for downstream type resolution
 
 packages/core/src/convex/vex/
   collections.ts                        ← PENDING (Step 6)
@@ -432,16 +641,23 @@ apps/www/src/vexcms/collections/
 
 ## Implementation Order
 
-1. `[agent]` **Step 1** — Baseline verification
-2. `[agent]` **Step 2** — `relationship/types.ts` + `config.ts` + `ADMIN_FIELDS` entry + `relationship/index.ts`
-3. `[dev]` **Step 3** — `relationshipFieldToValidator` + tests
-4. `[dev]` **Step 4** — `relationshipFieldToInputSchema` + tests
-5. `[dev]` **Step 5** — Update `collectionConfigToVexSchema`: signature, `getIncomingRelationships` helper, auto FK index, auto search index + update all tests
-6. `[dev]` **Step 6** — `search` Convex query in `collections.ts` + `vexConvexApi.search` in `convex/index.ts`
-7. `[agent]` **Step 7** — `RelationshipFieldCell` + `columnDef.tsx` + `relationship/index.ts`
-8. `[dev]` **Step 8** — `RelationshipFieldInput` combobox
-9. `[agent]` **Step 9** — Wire: `AdminField` union, dispatch functions, React adapter, `fields/index.tsx`
-10. `[agent]` **Step 10** — `apps/www` posts collection example
+Each item below has a status tag reflecting actual implementation state as of 2026-05-04.
+
+1. `[agent]` `✅` **Step 1** — Baseline verification
+2. `[agent]` `✅` **Step 2** — `relationship/types.ts` + `config.ts` + `ADMIN_FIELDS` entry + `relationship/index.ts`
+3. `[dev]` `✅` **Step 3** — `relationshipFieldToValidator` + tests
+4. `[dev]` `✅` **Step 4** — `relationshipFieldToInputSchema` + tests
+5. `[dev]` `✅` **Step 5** — Update `collectionConfigToVexSchema`: signature, `getIncomingRelationships` helper, auto FK index, auto search index + update all tests
+6. `[dev]` `✅` **Step 6** — `search` Convex query in `collections.ts` + `vexConvexApi.search` in `convex/index.ts`
+   * `[dev]` `⏳` **Pre-flight** (must run before Step 8) — Add `@convex-dev/react-query`, `@tanstack/react-query`, `convex` to `packages/react/package.json#devDependencies`. Re-enable `dts: true` in `packages/core/tsup.config.ts`. *(`customConditions: ["source"]` is already set globally in `packages/tsconfig/base.json` — no per-package change needed.)*
+7. `[agent]` `✅` **Step 7** — `RelationshipFieldCell` + `columnDef.tsx` + `preview.tsx` + `types.ts` + `index.ts`
+8. `[dev]` `⏳` **Step 8** — `RelationshipFieldInput` combobox port from master + `useRelationshipPickerOptions` hook + `loading` prop on `Input` UI primitive. Use `useDebounceValue` from `@ts-hooks-kit/core` for search debounce; inline `useQueries` for selected-chip doc resolution. *(Current `Input.tsx` in the relationship folder is the old MultiSelect stub from before this spec revision — needs replacement.)*
+9. `[agent]` `✅` **Step 9** — Wire: `relationship` case in `inputSchemas/index.ts`, `fields/index.tsx` maps, React `adapter.ts`. *(Build commands deferred until Step 8 lands.)*
+10. `[agent]` `✅` **Step 10** — `apps/www/src/vexcms/collections/posts.ts` example uses `relationship({ collection: { slug: "…" } })`
+11. `[dev]` `🟡` **Step 11** — Re-export wrapper layer in `packages/react/src/index.ts` (Decision 15). **Partial:** typed `relationship()` and `defineCollection()` wrappers + their type aliases done. **Remaining:** `defineConfig()` wrapper + pass-through wrappers for `text`, `number`, `select`, `date`, `url`, `checkbox`, `tabs`, `color`, plus any other field config function. Update `.pi/agent-docs/standards/adding-a-field-type.md` with the re-export rule once complete.
+12. `[dev]` `⏳` **Step 12** — Transitive re-export from `packages/next/src/index.ts` so Next users `import { defineCollection, relationship, text, … } from "@vexcms/next"`. Migrates `apps/www/src/vexcms/collections/*.ts` and `apps/www/src/vex.config.ts` imports from `@vexcms/core` → `@vexcms/next`.
+
+**Legend:** `✅` complete · `🟡` partial · `⏳` pending
 
 ---
 
@@ -900,13 +1116,35 @@ search: anyApi.vex.collections.search as FunctionReference<
 
 ---
 
+## Pre-flight — Dev Tooling for `@vexcms/react`
+
+> Position: between Step 6 and Step 7 in execution order. Two mechanical
+> dev-tooling fixes — no logic changes. Required before Step 8 because Step 8's
+> hooks import types from `@tanstack/react-query` + `@convex-dev/react-query`,
+> which need to be in `devDependencies` (not just `peerDependencies`) for
+> the LSP and `pnpm --filter @vexcms/react typecheck` to resolve them.
+
+- [ ] Add `@convex-dev/react-query`, `@tanstack/react-query`, and `convex` to `packages/react/package.json#devDependencies` (same version specifiers as the existing peer entries; use `"catalog:"` if there's a catalog version, otherwise mirror the peer range). Run `pnpm install` afterwards.
+- [ ] Re-enable `dts: true` in `packages/core/tsup.config.ts` so `packages/core/dist/index.d.ts` is produced for published consumers. Verify `pnpm --filter @vexcms/core build` doesn't trigger the CPU regression that originally led to disabling it. If the regression returns, leave `dts: false` — in-workspace dev is unaffected because `customConditions: ["source"]` is already set globally in `packages/tsconfig/base.json` and tells TypeScript to read the source file directly.
+- [ ] Verify: `pnpm --filter @vexcms/react typecheck` runs clean.
+
+> **Why no `customConditions` change is needed.** `packages/tsconfig/base.json`
+> already declares `"customConditions": ["source"]` globally, and every
+> workspace package extends it via `"@vexcms/tsconfig/react-library.json"` /
+> `base.json`. So workspace-wide source-resolution is on by default. If a
+> phantom *Property `X` does not exist on `<SiblingType>`* error appears,
+> restart the TS server before chasing the tsconfig.
+
+---
+
 ## Step 7: Cell + Column Definition
 
-- [ ] Create `packages/react/src/components/fields/relationship/types.ts`
-- [ ] Create `packages/react/src/components/fields/relationship/Cell.tsx`
-- [ ] Create `packages/react/src/components/fields/relationship/columnDef.tsx`
-- [ ] Create `packages/react/src/components/fields/relationship/index.ts`
-- [ ] Run `pnpm build --filter @vexcms/react`
+- [x] Create `packages/react/src/components/fields/relationship/types.ts`
+- [x] Create `packages/react/src/components/fields/relationship/preview.tsx` (filename in implementation; spec originally said `resolvePreview.tsx`)
+- [x] Create `packages/react/src/components/fields/relationship/Cell.tsx`
+- [x] Create `packages/react/src/components/fields/relationship/columnDef.tsx`
+- [x] Create `packages/react/src/components/fields/relationship/index.ts`
+- [ ] Run `pnpm build --filter @vexcms/react` (deferred until Step 8 lands)
 
 ### `packages/react/src/components/fields/relationship/types.ts`
 
@@ -938,7 +1176,7 @@ Updated per Decision 11: the cell receives `row.original` (the parent doc, alrea
 "use client";
 
 import type { CellComponentProps, RelationshipField } from "@vexcms/core";
-import { resolveRelationshipPreview } from "./resolvePreview";
+import { resolveRelationshipPreview } from "./preview";
 
 /**
  * Relationship field cell component for the data-table list view.
@@ -1040,24 +1278,24 @@ export function relationshipFieldToColumnDef(props: {
 Ports the popover-combobox shape from master (see Master Port Inventory) and wires it to the new picker hook + preview resolver.
 
 - [ ] Add `loading?: boolean` prop to `packages/react/src/components/ui/input.tsx` (Decision 13 — see implementation block in the **Input UI Primitive** section above)
-- [ ] Create `packages/react/src/hooks/useDebouncedValue.ts` (trivial — `useState` + `setTimeout` cleanup)
+- [ ] (Removed — use `useDebounceValue` from `@ts-hooks-kit/core` instead. Add the dep per the **Generic Hooks** section.)
 - [ ] Create `packages/react/src/hooks/useRelationshipPickerOptions.ts` (full implementation in the **Picker Hook** section above)
-- [ ] Create `packages/react/src/hooks/useDocsByIds.ts` — batched fetch for resolving the trigger's selected-value chip(s) (1 query per relationship field, not per chip)
+- [ ] (Removed — inline `useQueries` + `vexConvexApi.get` directly in `Input.tsx`; see the **Implementation skeleton** below.)
 - [ ] Update `packages/react/src/hooks/index.ts` barrel
-- [ ] Create `packages/react/src/components/fields/relationship/Input.tsx`
+- [ ] Replace `packages/react/src/components/fields/relationship/Input.tsx` (currently the old MultiSelect stub) with the master port — implementation skeleton in the **Implementation skeleton** section below
 - [ ] Run `pnpm build --filter @vexcms/react`
 
 ### Design notes
 
 - Value is always `string[]` — `hasMany: false` means the picker enforces max 1 selection in the UI
-- When `useAsTitle` is `_id` or `_creationTime`, search is disabled; falls back to `vexConvexApi.list` (handled inside the hook)
+- When `useAsTitle` is `_id` or `_creationTime`, search is disabled; falls back to `vexConvexApi.find` (handled inside the hook)
 - `searchIndexName` is `search_${useAsTitle}` — matches the auto-generated index from Step 5
 - `searchField` is `useAsTitle` from the target collection config — passed explicitly so the Convex query doesn't need to guess the field from the index name
 - Search input uses the new `<Input loading={isPending} />` prop while the picker query is in flight
 - All option rows + selected chips render via `resolveRelationshipPreview(...)` — the preview component is the single source of truth for what an option/chip looks like
 - `hasMany: false`: selecting replaces current value; trigger shows the single selected chip
 - `hasMany: true`: selecting toggles; trigger shows multiple chips with remove (×) buttons
-- Search input is debounced via `useDebouncedValue(search, 200)` before being passed to the hook
+- Search input is debounced via `useDebounceValue(search, 200)` from `@ts-hooks-kit/core` before being passed to the hook
 
 ### Implementation skeleton
 
@@ -1076,12 +1314,13 @@ import {
 import { Popover, PopoverTrigger, PopoverContent } from "../../ui/popover";
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
-import {
-  useRelationshipPickerOptions,
-  useDocsByIds,
-  useDebouncedValue,
-} from "../../../hooks";
-import { resolveRelationshipPreview } from "./resolvePreview";
+import { useDebounceValue } from "@ts-hooks-kit/core";
+import { useQueries } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { vexConvexApi, type VexDocument } from "@vexcms/core";
+import { useRelationshipPickerOptions } from "../../../hooks";
+import { useVexConfig } from "../../../context/VexConfigContext";
+import { resolveRelationshipPreview } from "./preview";
 
 /**
  * Relationship field input — popover combobox.
@@ -1095,16 +1334,35 @@ import { resolveRelationshipPreview } from "./resolvePreview";
 export const RelationshipFieldInput = createFieldInput<
   string[],
   RelationshipField
->(({ name, fieldDef, field, submissionAttempts, config }) => {
+>(({ name, fieldDef, field, submissionAttempts }) => {
+  // `createFieldInput`'s render context provides { name, fieldDef, readOnly,
+  // field, submissionAttempts } — no `config`. Read the live VexConfig from the
+  // existing AdminLayout-provided context instead.
+  const config = useVexConfig();
+
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [createOpen, setCreateOpen] = React.useState(false);
-  const debouncedSearch = useDebouncedValue(search, 200);
+  const [debouncedSearch] = useDebounceValue(search, 200);
 
   const targetCollection = React.useMemo(
     () => config.collections.find((c) => c.slug === fieldDef.collection.slug),
     [config.collections, fieldDef.collection.slug],
   );
+
+  // Early-return guard: if the relationship's target slug isn't registered in
+  // `config.collections` (renamed, typo, deleted), render a clear error
+  // instead of crashing or relying on `targetCollection!` non-null assertions.
+  if (!targetCollection) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <FormLabel field={fieldDef} name={name} />
+        <p className="text-xs text-destructive">
+          Unknown collection: <code>{fieldDef.collection.slug}</code>
+        </p>
+      </div>
+    );
+  }
 
   const Preview = React.useMemo(
     () => resolveRelationshipPreview({ fieldDef, targetCollection }),
@@ -1114,17 +1372,23 @@ export const RelationshipFieldInput = createFieldInput<
   // Picker query — Decision 12.
   const { documents, isPending } = useRelationshipPickerOptions(
     fieldDef,
-    targetCollection!,
+    targetCollection,
     debouncedSearch,
-    { enabled: open && !!targetCollection },
+    { enabled: open },
   );
 
-  // Resolve selected IDs to full docs for chip rendering. One batched query.
+  // Resolve selected IDs to full docs for chip rendering.
+  // tanstack-query's per-ID cache deduplicates with the picker's search results.
   const selectedIds = field.state.value ?? [];
-  const { documents: selectedDocs } = useDocsByIds(
-    fieldDef.collection.slug,
-    selectedIds,
-  );
+  const selectedDocResults = useQueries({
+    queries: selectedIds.map((id) => ({
+      ...convexQuery(vexConvexApi.get, { id }),
+      enabled: id !== "",
+    })),
+  });
+  const selectedDocs = selectedDocResults
+    .map((r) => r.data as VexDocument | undefined)
+    .filter((d): d is VexDocument => d !== undefined && d !== null);
 
   const isMany = fieldDef.hasMany;
   const targetLabel =
@@ -1170,7 +1434,7 @@ export const RelationshipFieldInput = createFieldInput<
               key={doc._id}
               className="inline-flex items-center gap-1 rounded-sm bg-muted border border-border px-2 py-0.5 text-xs"
             >
-              <Preview doc={doc} fieldKey="_id" config={targetCollection!} />
+              <Preview doc={doc} fieldKey="_id" config={targetCollection} />
               <button
                 type="button"
                 onClick={() => handleRemove(doc._id)}
@@ -1201,7 +1465,7 @@ export const RelationshipFieldInput = createFieldInput<
               <Preview
                 doc={selectedDocs[0]}
                 fieldKey="_id"
-                config={targetCollection!}
+                config={targetCollection}
               />
             ) : (
               <span className="text-muted-foreground-subtle">
@@ -1257,7 +1521,7 @@ export const RelationshipFieldInput = createFieldInput<
                       <Preview
                         doc={doc}
                         fieldKey="_id"
-                        config={targetCollection!}
+                        config={targetCollection}
                       />
                     </span>
                   </button>
@@ -1278,17 +1542,17 @@ export const RelationshipFieldInput = createFieldInput<
 });
 ```
 
-> **Open question for implementer:** the `config` prop is needed to resolve `targetCollection`. Confirm that `createFieldInput`'s render context exposes the full VexConfig (or at least `collections[]`). If not, threading config through the factory is a prerequisite — add it as a Step 8a if so.
+> **Resolved.** `createFieldInput`'s render context provides only `{ name, fieldDef, readOnly, field, submissionAttempts }` — no `config`. Use the existing `useVexConfig()` hook from `packages/react/src/context/VexConfigContext.ts`, which reads the live config from the `AdminLayout`-provided `VexConfigContext`. The skeleton above does this in its first hook call.
 
 ---
 
 ## Step 9: Wire Everything
 
-- [ ] Update `packages/core/src/fields/inputSchemas/index.ts` — add `relationship` case
-- [ ] Update `packages/react/src/components/fields/index.tsx` — add to all three maps
-- [ ] Update `packages/react/src/adapter.ts` — add relationship to fields map
-- [ ] Run `pnpm build --filter @vexcms/core && pnpm build --filter @vexcms/react`
-- [ ] Run `pnpm test --filter @vexcms/core`
+- [x] Update `packages/core/src/fields/inputSchemas/index.ts` — add `relationship` case
+- [x] Update `packages/react/src/components/fields/index.tsx` — add to all three maps (input/cell/columnDef)
+- [x] Update `packages/react/src/adapter.ts` — add relationship to fields map
+- [ ] Run `pnpm build --filter @vexcms/core && pnpm build --filter @vexcms/react` (deferred until Step 8 lands)
+- [ ] Run `pnpm test --filter @vexcms/core` (re-run after Pre-flight `dts: true` fix)
 
 > Note: `RelationshipField` was already added to the `AdminField` union in `types.ts` and `validators/index.ts` during Step 3 implementation. Only `inputSchemas/index.ts` and the React wiring remain.
 
@@ -1296,16 +1560,16 @@ export const RelationshipFieldInput = createFieldInput<
 
 ## Step 10: `apps/www` Example
 
-- [ ] Update `apps/www/src/vexcms/collections/posts.ts` to add a relationship field
-- [ ] Run `pnpm --filter www typecheck`
+- [x] Update `apps/www/src/vexcms/collections/posts.ts` to add a relationship field (`parent: relationship({ collection: { slug: "…" } })`)
+- [ ] Run `pnpm --filter www typecheck` (re-run after Step 8 + Step 11 + Step 12 land)
 
 ---
 
 ## Verification (mandatory)
 
 - [x] `pnpm test --filter @vexcms/core` — all 210 tests pass
-- [ ] `pnpm build --filter @vexcms/react` — pending Steps 7–9
-- [ ] `pnpm --filter www typecheck` — pending Step 10
+- [ ] `pnpm build --filter @vexcms/react` — pending Step 8
+- [ ] `pnpm --filter www typecheck` — pending Step 8 + Step 11 + Step 12
 
 ---
 

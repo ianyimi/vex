@@ -43,6 +43,7 @@ export function textFieldToColumnDef(props: {
           row={row}
           collection={props.collection}
           fieldDef={props.fieldDef}
+          fieldKey={props.fieldKey}
           isTitleField={props.isTitleField ?? false}
         />
       );

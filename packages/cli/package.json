@@ -24,8 +24,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "chokidar": "^4.0.0",
-    "jiti": "^2.4.0"
+    "chokidar": "catalog:",
+    "jiti": "catalog:"
   },
   "peerDependencies": {
     "@vexcms/core": "workspace:*",

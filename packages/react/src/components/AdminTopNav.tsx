@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, RefAttributes, useEffect, useState } from "react";
+import { Fragment, type RefAttributes } from "react";
 import { AdminLayoutProps } from "./AdminLayout";
 import { VexLink } from "./ui";
 import { ChevronLeft, ChevronRight, LucideProps } from "lucide-react";
@@ -20,14 +20,16 @@ export function Divider(
 }
 
 export default function AdminTopNav(props: AdminLayoutProps) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+
 
   const { data: currentDocument } = useQuery({
-    ...convexQuery(vexConvexApi.get, {
-      id: props.activeDocID ?? "",
-    }),
-    enabled: mounted && Boolean(props.activeDocID),
+    // Pass "skip" when there is no activeDocID — this tells ConvexQueryClient
+    // not to establish a watchQuery subscription at all (vs enabled:false which
+    // still registers the key in the cache and can fire with an empty id).
+    ...convexQuery(
+      vexConvexApi.get,
+      props.activeDocID ? { id: props.activeDocID } : "skip",
+    ),
   });
 
   const isLeft = props.config.admin.sidebar.side === "left";

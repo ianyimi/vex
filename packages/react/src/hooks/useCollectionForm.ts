@@ -5,6 +5,7 @@ import {
   getCollectionDefaultValues,
   getCollectionInputSchema,
   type TDocument,
+  DocumentBySlug,
 } from "@vexcms/core";
 import type { AnyFormApi } from "../components/form/AppFormContext";
 
@@ -43,16 +44,19 @@ export function useCollectionForm<
     collection: CollectionConfig<TSlug>;
     document?: TDocument;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } & FormOptions<any>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } & FormOptions<DocumentBySlug[TSlug], any, any, any, any, any, any, any, any, any, any, any>,
 ): AnyFormApi {
   const { collection, document, validators, ...formOptions } = props;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return useForm({
-    defaultValues: getCollectionDefaultValues({ collection, document }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    defaultValues: getCollectionDefaultValues({ collection, document }) as any,
     ...formOptions,
     validators: {
       onSubmitAsync: getCollectionInputSchema({ collection }),
       onBlur: getCollectionInputSchema({ collection }),
       ...validators,
     },
-  });
+  }) as AnyFormApi;
 }

@@ -27,13 +27,13 @@
   },
   "dependencies": {
     "@vexcms/core": "workspace:*",
-    "@platejs/basic-nodes": "^52.0.11",
-    "@platejs/code-block": "^52.0.11",
-    "@platejs/link": "^52.0.11",
-    "@platejs/list": "^52.0.11",
-    "@platejs/media": "^52.0.11",
-    "@platejs/table": "^52.0.11",
-    "platejs": "^52.3.4"
+    "@platejs/basic-nodes": "catalog:",
+    "@platejs/code-block": "catalog:",
+    "@platejs/link": "catalog:",
+    "@platejs/list": "catalog:",
+    "@platejs/media": "catalog:",
+    "@platejs/table": "catalog:",
+    "platejs": "catalog:"
   },
   "peerDependencies": {
     "react": ">=18.0.0",

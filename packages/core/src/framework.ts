@@ -94,7 +94,7 @@ export interface CollectionEditViewProps<
    * The Convex document ID of the document being edited.
    * Omit for new document creation — the form will be empty.
    */
-  documentId?: VexDocument["_id"];
+  documentId: VexDocument["_id"];
   /**
    * Pre-fetched document from the server for SSR hydration.
    * `null` explicitly means "no document found". `undefined` means "not loaded yet".
