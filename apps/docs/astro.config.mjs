@@ -22,7 +22,20 @@ export default defineConfig({
 					label: 'Fields',
 					autogenerate: { directory: 'fields' },
 				},
-				// API Reference injected by starlight-typedoc
+				{
+					label: 'API Reference',
+					items: [
+						{ label: 'find', slug: 'api/find' },
+						{ label: 'get', slug: 'api/get' },
+						{ label: 'search', slug: 'api/search' },
+						{ label: 'create', slug: 'api/create' },
+						{ label: 'update', slug: 'api/update' },
+						{ label: 'remove', slug: 'api/remove' },
+						{ label: 'queryApi', slug: 'api/queryApi' },
+						{ label: 'mutationApi', slug: 'api/mutationApi' },
+					],
+				},
+				// Full API Reference injected by starlight-typedoc (re-enable when types are stable)
 			],
 		}),
 	],

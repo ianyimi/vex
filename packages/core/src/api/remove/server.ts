@@ -1,8 +1,8 @@
 import type { GenericDataModel } from "convex/server";
 import type { GenericId } from "convex/values";
 
-import type { CollectionSlug } from "../types/generated";
-import type { GenericMutationServerParams } from "./types";
+import type { CollectionSlug } from "../../types/generated";
+import type { GenericMutationServerParams } from "../types";
 
 /**
  * Server-side args for `remove`.
@@ -14,6 +14,7 @@ export interface RemoveServerArgs<
   DataModel extends GenericDataModel,
   TSlug extends CollectionSlug,
 > extends GenericMutationServerParams<DataModel> {
+  /** The document ID to permanently delete. */
   id: GenericId<TSlug>;
 }
 

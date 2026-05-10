@@ -19,7 +19,15 @@ export interface CreateServerArgs<
   DataModel extends GenericDataModel,
   TSlug extends CollectionSlug,
 > extends GenericMutationServerParams<DataModel> {
+  /** The collection slug to insert into. */
   collection: TSlug;
+  /**
+   * Field values for the new document. `_id` and `_creationTime` are
+   * excluded — Convex assigns these automatically.
+   *
+   * Passed through `v.any()` at the network boundary; CLI codegen validates
+   * the shape against the Convex schema at build time.
+   */
   data: Expand<
     BetterOmit<
       DocumentByName<DataModel, TableNamesInDataModel<DataModel>>,

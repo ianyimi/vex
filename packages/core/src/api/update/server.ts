@@ -7,8 +7,8 @@ import type {
 } from "convex/server";
 import type { GenericId } from "convex/values";
 
-import type { CollectionSlug } from "../types/generated";
-import type { GenericMutationServerParams } from "./types";
+import type { CollectionSlug } from "../../types/generated";
+import type { GenericMutationServerParams } from "../types";
 
 /**
  * Server-side args for `update`.
@@ -20,7 +20,16 @@ export interface UpdateServerArgs<
   DataModel extends GenericDataModel,
   TSlug extends CollectionSlug,
 > extends GenericMutationServerParams<DataModel> {
+  /** The document ID to patch. */
   id: GenericId<TSlug>;
+  /**
+   * Partial field values to merge into the document. Only the keys present
+   * here are written; unspecified fields are left unchanged. `_id` and
+   * `_creationTime` are excluded — Convex manages them.
+   *
+   * Passed through `v.any()` at the network boundary; CLI codegen validates
+   * the shape against the Convex schema at build time.
+   */
   data: Partial<
     Expand<
       BetterOmit<

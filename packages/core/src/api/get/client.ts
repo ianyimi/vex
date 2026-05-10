@@ -1,9 +1,9 @@
 import { convexQuery } from "@convex-dev/react-query";
 import type { GenericId } from "convex/values";
 
-import { vexConvexApi } from "../convex";
-import type { CollectionSlug } from "../types/generated";
-import type { GenericQueryClientParams, PopulateShape } from "./types";
+import { vexConvexApi } from "../../convex";
+import type { CollectionSlug } from "../../types/generated";
+import type { GenericQueryClientParams, PopulateShape } from "../types";
 
 /**
  * Client-side args for `get`. Extends {@link GenericQueryClientParams}
@@ -44,5 +44,6 @@ export function get<
   return convexQuery(vexConvexApi.get, {
     id: args.id,
     populate: args.populate,
+    depth: args.depth,
   });
 }

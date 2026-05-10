@@ -11,30 +11,32 @@ import {
 import { GenericId, v } from "convex/values";
 import type { VexConfig } from "../config";
 import type { CollectionSlug } from "../types/generated";
-import { find } from "./find.server";
-import { get } from "./get.server";
-import { search } from "./search.server";
+import { find } from "./find/server";
+import { get } from "./get/server";
+import { search } from "./search/server";
 import { create } from "./create/server";
-import { update } from "./update.server";
-import { remove } from "./remove.server";
+import { update } from "./update/server";
+import { remove } from "./remove/server";
 
-export { find } from "./find.server";
-export type { FindServerArgs } from "./find.server";
+export { buildDepthPopulate } from "./depth";
 
-export { get } from "./get.server";
-export type { GetServerArgs } from "./get.server";
+export { find } from "./find/server";
+export type { FindServerArgs } from "./find/server";
 
-export { search } from "./search.server";
-export type { SearchServerArgs } from "./search.server";
+export { get } from "./get/server";
+export type { GetServerArgs } from "./get/server";
+
+export { search } from "./search/server";
+export type { SearchServerArgs } from "./search/server";
 
 export { create } from "./create/server";
 export type { CreateServerArgs } from "./create/server";
 
-export { update } from "./update.server";
-export type { UpdateServerArgs } from "./update.server";
+export { update } from "./update/server";
+export type { UpdateServerArgs } from "./update/server";
 
-export { remove } from "./remove.server";
-export type { RemoveServerArgs } from "./remove.server";
+export { remove } from "./remove/server";
+export type { RemoveServerArgs } from "./remove/server";
 
 /**
  * Registers `find`, `get`, and `search` as Convex query endpoints.
@@ -47,7 +49,7 @@ export type { RemoveServerArgs } from "./remove.server";
  * they can subscribe to from React via tanstack-query. They can also call the
  * server functions directly from their own Convex handlers without this factory.
  *
- * @param _config - The user's `VexConfig`. Reserved for future metadata.
+ * @param config - The user's `VexConfig`. Reserved for future metadata.
  * @param query - The user's `query` builder. Defaults to `internalQueryGeneric`.
  * @returns Registered `find` / `get` / `search` Convex queries.
  * @example
@@ -64,7 +66,7 @@ export function queryApi<
   DataModel extends GenericDataModel,
   Visibility extends FunctionVisibility = "public",
 >(
-  _config: VexConfig,
+  config: VexConfig,
   query: QueryBuilder<DataModel, Visibility> = internalQueryGeneric as never,
 ) {
   return {
@@ -72,6 +74,7 @@ export function queryApi<
       args: {
         collection: v.string(),
         populate: v.optional(v.any()),
+        depth: v.optional(v.number()),
         limit: v.optional(v.number()),
       },
       handler: (ctx, args) =>
@@ -79,6 +82,8 @@ export function queryApi<
           ctx,
           collection: args.collection as CollectionSlug,
           populate: args.populate,
+          depth: args.depth,
+          config, // ← new
           limit: args.limit,
         }),
     }) as RegisteredQuery<Visibility, never, never>,
@@ -87,9 +92,16 @@ export function queryApi<
       args: {
         id: v.string(),
         populate: v.optional(v.any()),
+        depth: v.optional(v.number()),
       },
       handler: (ctx, args) =>
-        get({ ctx, id: args.id as GenericId<CollectionSlug>, populate: args.populate }),
+        get({
+          ctx,
+          id: args.id as GenericId<CollectionSlug>,
+          populate: args.populate,
+          depth: args.depth,
+          config, // ← new
+        }),
     }) as RegisteredQuery<Visibility, never, never>,
 
     search: query({
@@ -100,6 +112,7 @@ export function queryApi<
         query: v.string(),
         limit: v.optional(v.number()),
         populate: v.optional(v.any()),
+        depth: v.optional(v.number()),
       },
       handler: (ctx, args) =>
         search({
@@ -110,6 +123,8 @@ export function queryApi<
           searchField: args.searchField,
           limit: args.limit,
           populate: args.populate,
+          depth: args.depth,
+          config,
         }),
     }) as RegisteredQuery<Visibility, never, never>,
   };
@@ -171,14 +186,19 @@ export function mutationApi<
         data: v.any(),
       },
       handler: (ctx, args) =>
-        update({ ctx, id: args.id as GenericId<CollectionSlug>, data: args.data }),
+        update({
+          ctx,
+          id: args.id as GenericId<CollectionSlug>,
+          data: args.data,
+        }),
     }) as RegisteredMutation<Visibility, never, never>,
 
     remove: mutation({
       args: {
         id: v.string(),
       },
-      handler: (ctx, args) => remove({ ctx, id: args.id as GenericId<CollectionSlug> }),
+      handler: (ctx, args) =>
+        remove({ ctx, id: args.id as GenericId<CollectionSlug> }),
     }) as RegisteredMutation<Visibility, never, never>,
   };
 }

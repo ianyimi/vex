@@ -34,6 +34,13 @@ export const posts = defineCollection({
       },
       label: "Parent Post",
     }),
+    children: relationship({
+      collection: {
+        slug: TABLE_SLUG_POSTS,
+      },
+      hasMany: true,
+      label: "Parent Post",
+    }),
     published: checkbox({
       label: "Published",
     }),

@@ -1,6 +1,5 @@
 import { anyApi } from "convex/server";
 import type { FunctionReference } from "convex/server";
-import { PopulateShape } from "../api/types";
 import { CollectionSlug } from "../types";
 
 /**
@@ -72,10 +71,8 @@ export const vexConvexApi = {
     "public",
     {
       collection: CollectionSlug;
-      // Recursive populate object; type-narrowed at the call site by
-      // PopulateShape<TSlug>. Loose `unknown` here because Convex validators
-      // can't easily express the recursive shape.
-      populate?: PopulateShape;
+      populate?: unknown;
+      depth?: number;
       limit?: number;
     },
     VexDocument[]
@@ -88,7 +85,7 @@ export const vexConvexApi = {
   get: anyApi.vex.get as FunctionReference<
     "query",
     "public",
-    { id: string; populate?: unknown },
+    { id: string; populate?: unknown; depth?: number },
     VexDocument | null
   >,
 
@@ -123,6 +120,7 @@ export const vexConvexApi = {
       query: string;
       limit?: number;
       populate?: unknown;
+      depth?: number;
     },
     VexDocument[]
   >,

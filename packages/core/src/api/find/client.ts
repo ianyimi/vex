@@ -1,8 +1,8 @@
 import { convexQuery } from "@convex-dev/react-query";
 
-import { vexConvexApi } from "../convex";
-import type { CollectionSlug } from "../types/generated"; // needed for the queryKey cast below
-import type { GenericQueryClientParams, PopulateShape } from "./types";
+import { vexConvexApi } from "../../convex";
+import type { CollectionSlug } from "../../types/generated"; // needed for the queryKey cast below
+import type { GenericQueryClientParams, PopulateShape } from "../types";
 
 /**
  * Client-side args for `find`. Extends {@link GenericQueryClientParams}
@@ -47,6 +47,7 @@ export function find<
     collection: args.collection,
     populate: args.populate,
     limit: args.limit,
+    depth: args.depth,
   });
 }
 
@@ -65,6 +66,7 @@ export function find<
 find.queryKey = function findQueryKey<TSlug extends CollectionSlug>(
   collection: TSlug,
 ) {
-  return convexQuery(vexConvexApi.find, { collection: collection as CollectionSlug })
-    .queryKey;
+  return convexQuery(vexConvexApi.find, {
+    collection: collection as CollectionSlug,
+  }).queryKey;
 };

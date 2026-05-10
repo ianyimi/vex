@@ -12,6 +12,7 @@ export const posts = defineTable({
   index: v.optional(v.number()),
   thumbnail: v.optional(v.string()),
   parent: v.optional(v.array(v.id("posts"))),
+  children: v.optional(v.array(v.id("posts"))),
   published: v.optional(v.boolean()),
   publishedAt: v.optional(v.number()),
   type: v.optional(
@@ -28,6 +29,7 @@ export const posts = defineTable({
   ),
 })
   .index("by_parent", ["parent"])
+  .index("by_children", ["children"])
   .searchIndex("search_title", {
     searchField: "title",
 

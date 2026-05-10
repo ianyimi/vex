@@ -1,8 +1,8 @@
 import { convexQuery } from "@convex-dev/react-query";
 
-import { vexConvexApi } from "../convex";
-import type { CollectionSlug } from "../types/generated";
-import type { GenericQueryClientParams, PopulateShape } from "./types";
+import { vexConvexApi } from "../../convex";
+import type { CollectionSlug } from "../../types/generated";
+import type { GenericQueryClientParams, PopulateShape } from "../types";
 
 /**
  * Client-side args for `search`. Extends {@link GenericQueryClientParams}
@@ -53,5 +53,6 @@ export function search<
     query: args.query,
     limit: args.limit,
     populate: args.populate,
+    depth: args.depth,
   });
 }

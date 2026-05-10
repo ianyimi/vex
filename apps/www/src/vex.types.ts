@@ -18,6 +18,7 @@ export interface Post extends VexDocument {
   index?: number
   thumbnail?: string
   parent?: Id<CollectionSlug>[]
+  children?: Id<CollectionSlug>[]
   published?: boolean
   publishedAt?: number
   type?: Type
@@ -41,7 +42,7 @@ declare module "@vexcms/core" {
         text: "title" | "slug" | "excerpt"
         url: "link" | "thumbnail"
         number: "index"
-        relationship: "parent"
+        relationship: "parent" | "children"
         checkbox: "published"
         date: "publishedAt"
         select: "type"

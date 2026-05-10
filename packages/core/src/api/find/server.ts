@@ -11,31 +11,34 @@ import type {
   TableNamesInDataModel,
 } from "convex/server";
 
-import type { CollectionSlug, DocumentBySlug } from "../types/generated";
-import { populateDocs } from "./populate";
+import type { CollectionSlug, DocumentBySlug } from "../../types/generated";
+import { buildDepthPopulate } from "../depth";
+import { populateDocs } from "../populate";
 import type {
+  DepthPopulated,
   GenericQueryServerParams,
   Populated,
   PopulateShape,
-} from "./types";
+  Prettify,
+} from "../types";
 
 /**
  * Server-side args for `find`. Extends {@link GenericQueryServerParams}
- * to inherit `ctx: GenericQueryCtx<DataModel>` and `populate?: TPopulate`.
- *
- * All query-chain options map directly to their Convex `ctx.db.query()` chain
- * equivalents and are applied in the order Convex requires:
- * `withIndex` → `order` → `filter` → `take`.
+ * to inherit `ctx`, `populate`, `depth`, and `config` (with their mutual-exclusion
+ * constraints). All query-chain options map to `ctx.db.query()` equivalents
+ * applied in order: `withIndex` → `order` → `filter` → `take`.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
  * @typeParam TSlug - Collection slug.
  * @typeParam TPopulate - Populate object.
+ * @typeParam D - Depth literal (0 = no depth, default).
  */
 export interface FindServerArgs<
   DataModel extends GenericDataModel,
   TSlug extends CollectionSlug,
   TPopulate extends PopulateShape<TSlug>,
-> extends GenericQueryServerParams<DataModel, TSlug, TPopulate> {
+  D extends number = 0,
+> extends GenericQueryServerParams<DataModel, TSlug, TPopulate, D> {
   /** The collection to query — must match a registered collection slug. */
   collection: TSlug;
 
@@ -65,25 +68,24 @@ export interface FindServerArgs<
    * ```
    */
   filter?: (
-    q: FilterBuilder<NamedTableInfo<DataModel, TSlug extends TableNamesInDataModel<DataModel> ? TSlug : never>>,
+    q: FilterBuilder<
+      NamedTableInfo<
+        DataModel,
+        TSlug extends TableNamesInDataModel<DataModel> ? TSlug : never
+      >
+    >,
   ) => ExpressionOrValue<boolean>;
 
   /**
    * Index to use for the query, with an optional equality/range constraint.
    * Equivalent to `.withIndex(name, range?)` on the Convex query.
    *
-   * Using an index is strongly preferred over `filter` for performance — it
-   * narrows the scan to a contiguous range in the index, not a full table scan.
+   * Using an index is strongly preferred over `filter` for performance.
    *
    * @example
    * ```ts
-   * // Point lookup
    * find({ ctx, collection: "posts", withIndex: { name: "by_slug", range: q => q.eq("slug", "hello") } })
-   *
-   * // Range scan
    * find({ ctx, collection: "posts", withIndex: { name: "by_score", range: q => q.gte("score", 50) } })
-   *
-   * // Just use the index order with no constraint
    * find({ ctx, collection: "posts", withIndex: { name: "by_publishedAt" } })
    * ```
    */
@@ -94,7 +96,10 @@ export interface FindServerArgs<
           q: IndexRangeBuilder<
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             any,
-            NamedIndex<NamedTableInfo<DataModel, TSlug>, IndexNames<NamedTableInfo<DataModel, TSlug>>>
+            NamedIndex<
+              NamedTableInfo<DataModel, TSlug>,
+              IndexNames<NamedTableInfo<DataModel, TSlug>>
+            >
           >,
         ) => IndexRange;
       }
@@ -102,29 +107,22 @@ export interface FindServerArgs<
 }
 
 /**
- * Forces TypeScript to eagerly evaluate a mapped/conditional type into a
- * concrete object shape rather than displaying the opaque alias. Without this,
- * hover would show `Populated<"posts", { parent: true }>` instead of the
- * expanded `{ _id: ...; parent: Post[]; ... }` form.
- */
-type Prettify<T> = { [K in keyof T]: T[K] } & {};
-
-/**
- * Resolves the return element type of `find` based on whether populate is given:
+ * Resolves the return element type of `find`:
  *
- * - No populate: returns `DocumentBySlug[TSlug]` — the concrete generated doc
- *   type. Relationship fields are their raw `Id<"slug">[]` types.
- * - With populate: returns `Prettify<Populated<TSlug, TPopulate>>` — TypeScript
- *   evaluates the mapped type eagerly so the IDE shows the expanded shape with
- *   populated relationship fields replaced (e.g. `parent: Post[]`).
+ * - No populate + `D = 0` → `DocumentBySlug[TSlug]` (raw doc).
+ * - No populate + `D > 0` → `DepthPopulated<TSlug, D>` (all relationships auto-populated).
+ * - With populate → `Prettify<Populated<TSlug, TPopulate>>` (explicit fields populated).
  */
 type FindReturnItem<
   TSlug extends CollectionSlug,
   TPopulate extends PopulateShape<TSlug>,
+  D extends number,
 > = [TPopulate] extends [Record<string, never>]
-  ? TSlug extends keyof DocumentBySlug
-    ? DocumentBySlug[TSlug]
-    : never
+  ? [D] extends [0]
+    ? TSlug extends keyof DocumentBySlug
+      ? DocumentBySlug[TSlug]
+      : never
+    : DepthPopulated<TSlug, D>
   : TSlug extends keyof DocumentBySlug
     ? Prettify<Populated<TSlug, TPopulate>>
     : never;
@@ -132,15 +130,17 @@ type FindReturnItem<
 type FindReturn<
   TSlug extends CollectionSlug,
   TPopulate extends PopulateShape<TSlug>,
-> = FindReturnItem<TSlug, TPopulate>[];
+  D extends number,
+> = FindReturnItem<TSlug, TPopulate, D>[];
 
 /**
  * Lists documents in a VexCMS collection with optional filtering, ordering,
- * index scans, and recursive population. Server-side only.
+ * index scans, and relationship population. Server-side only.
  *
- * All query-chain options are optional and compose in the standard Convex
- * order: `withIndex` → `order` → `filter` → `take`. Omitting all options
- * returns the first 100 documents in insertion order.
+ * Pass `populate` to explicitly name the relationship fields to resolve
+ * (documented, recommended). Pass `depth` (with `config`) to automatically
+ * populate all relationship fields to N levels — internal use only.
+ * The two options are mutually exclusive; TypeScript enforces this at the call site.
  *
  * Import from `@vexcms/core/server`. For the client-side (tanstack-query)
  * version, import `find` from `@vexcms/core/client`.
@@ -148,6 +148,7 @@ type FindReturn<
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
  * @typeParam TSlug - Collection slug; compile-error if not registered.
  * @typeParam TPopulate - Populate object, narrowed against `RelationshipKeysOf<TSlug>`.
+ * @typeParam D - Depth literal (0 = none).
  * @param args - Query args. All fields except `ctx` and `collection` are optional.
  * @returns Promise resolving to the (optionally populated) documents array.
  * @example No options — first 100 posts in insertion order
@@ -179,35 +180,41 @@ export async function find<
   DataModel extends GenericDataModel,
   TSlug extends CollectionSlug,
   const TPopulate extends PopulateShape<TSlug> = Record<string, never>,
+  const D extends number = 0,
 >(
-  args: FindServerArgs<DataModel, TSlug, TPopulate>,
-): Promise<FindReturn<TSlug, TPopulate>> {
-  // Build the query in the order Convex requires.
+  args: FindServerArgs<DataModel, TSlug, TPopulate, D>,
+): Promise<FindReturn<TSlug, TPopulate, D>> {
   const tableName = args.collection as TableNamesInDataModel<DataModel>;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let q: any = args.ctx.db.query(tableName);
 
-  // 1. withIndex — narrows the scan to a specific index range (most efficient).
+  // 1. withIndex — narrows the scan (most efficient).
   if (args.withIndex) {
     q = args.withIndex.range
       ? q.withIndex(args.withIndex.name, args.withIndex.range)
       : q.withIndex(args.withIndex.name);
   }
-
   // 2. order — applied after index selection.
-  if (args.order) {
-    q = q.order(args.order);
-  }
-
-  // 3. filter — applied after ordering (secondary predicate, full range scan).
-  if (args.filter) {
-    q = q.filter(args.filter);
-  }
-
-  // 4. take — terminal, resolves the query.
+  if (args.order) q = q.order(args.order);
+  // 3. filter — secondary predicate, full range scan.
+  if (args.filter) q = q.filter(args.filter);
+  // 4. take — terminal.
   const docs: GenericTableInfo[] = await q.take(args.limit ?? 100);
 
-  if (!args.populate) return docs as unknown as FindReturn<TSlug, TPopulate>;
-  return populateDocs(args.ctx, docs as ReadonlyArray<Record<string, unknown>>, args.populate) as unknown as FindReturn<TSlug, TPopulate>;
+  // Explicit populate takes precedence over depth (D11).
+  const effectivePopulate =
+    args.populate ??
+    (args.depth !== undefined && args.depth > 0 && args.config
+      ? buildDepthPopulate(args.config, args.collection, args.depth)
+      : undefined);
+
+  if (!effectivePopulate || Object.keys(effectivePopulate).length === 0) {
+    return docs as unknown as FindReturn<TSlug, TPopulate, D>;
+  }
+  return populateDocs(
+    args.ctx,
+    docs as ReadonlyArray<Record<string, unknown>>,
+    effectivePopulate,
+  ) as unknown as FindReturn<TSlug, TPopulate, D>;
 }

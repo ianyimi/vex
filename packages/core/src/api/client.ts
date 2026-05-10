@@ -1,8 +1,17 @@
-export { find } from "./find.client";
-export type { FindClientArgs } from "./find.client";
+export { find } from "./find/client";
+export type { FindClientArgs } from "./find/client";
 
-export { get } from "./get.client";
-export type { GetClientArgs } from "./get.client";
+export { get } from "./get/client";
+export type { GetClientArgs } from "./get/client";
 
-export { search } from "./search.client";
-export type { SearchClientArgs } from "./search.client";
+export { search } from "./search/client";
+export type { SearchClientArgs } from "./search/client";
+
+export { create } from "./create/client";
+export type { CreateClientArgs } from "./create/client";
+
+export { update } from "./update/client";
+export type { UpdateClientArgs } from "./update/client";
+
+export { remove } from "./remove/client";
+export type { RemoveClientArgs } from "./remove/client";

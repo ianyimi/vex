@@ -41,7 +41,7 @@ import { find } from "@vexcms/core/client";
  * @param props - View props
  * @param props.collection - The collection configuration to list
  * @param props.initialData - Pre-fetched documents from the server (for SSR)
- * @returns <CollectionListView collection={postsCollection} initialData={serverDocs} />
+ * @returns The collection data table — header row with document count and "New" button, then a bordered table of all documents.
  *
  * @example
  * ```tsx
@@ -60,7 +60,7 @@ export function CollectionListView<
     ) as CollectionConfig<TSlug>) ?? props.collection;
 
   const { data: documents = [], isLoading } = useQuery({
-    ...find({ collection: props.collection.slug, limit: 100 }),
+    ...find({ collection: props.collection.slug, limit: 100, depth: 1 }),
     initialData: props.initialData,
   });
 

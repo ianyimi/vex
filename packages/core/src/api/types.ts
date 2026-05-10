@@ -18,6 +18,16 @@ import type {
   CollectionSlug,
   DocumentBySlug,
 } from "../types/generated";
+import { VexDocument } from "../convex";
+import { VexConfig } from "../config";
+
+/**
+ * Forces TypeScript to eagerly evaluate a mapped/conditional type into a
+ * concrete object shape rather than displaying the opaque alias. Without this,
+ * hover would show `Populated<"posts", { parent: true }>` instead of the
+ * expanded `{ _id: ...; parent: Post[]; ... }` form.
+ */
+export type Prettify<T> = { [K in keyof T]: T[K] } & {};
 
 // ── Generic args base types ─────────────────────────────────────────────────
 //
@@ -86,27 +96,56 @@ export interface GenericQueryClientParams<
   ctx?: never;
   /** Recursive populate object, type-narrowed against `RelationshipKeysOf<TSlug>`. */
   populate?: TPopulate;
+  /**
+   * Auto-populate all relationship fields to this many levels.
+   * Plain `number` passthrough — no return type narrowing on the client side
+   * (the Convex network boundary always returns `VexDocument[]`).
+   * Use `populate` for documented consumer code; `depth` is internal.
+   */
+  depth?: number;
 }
 
 /**
- * Base shape for server-side args of a `vex.*` query function. Used inside
- * custom Convex query handlers; receives the Convex query context and runs
- * the query immediately. Carries the same `populate` field as the client
- * variant.
+ * Base shape for server-side args of a `vex.*` query function.
+ *
+ * Carries `ctx`, `populate`, `depth`, and `config`. `populate` and `depth`
+ * are mutually exclusive — TypeScript enforces this via conditional constraints:
+ * `populate` becomes `never` when `D ≠ 0`; `depth` and `config` become `never`
+ * when `TPopulate` is non-empty. Passing both is a compile error at the call site.
+ *
+ * All three query functions (`find`, `get`, `search`) extend this base and
+ * inherit these constraints without re-declaring them.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
- * @typeParam TSlug - The collection slug; used to narrow `populate` keys.
+ * @typeParam TSlug - The collection slug.
  * @typeParam TPopulate - The populate object.
+ * @typeParam D - Depth literal (0 = no depth, default). Captured as a literal
+ *   via `const D extends number = 0` on the implementing function.
  */
 export interface GenericQueryServerParams<
   DataModel extends GenericDataModel = GenericDataModel,
   TSlug extends CollectionSlug = CollectionSlug,
   TPopulate extends PopulateShape<TSlug> = Record<string, never>,
+  D extends number = 0,
 > {
   /** Discriminator: server args MUST supply a Convex query context. */
   ctx: GenericQueryCtx<DataModel>;
-  /** Recursive populate object, type-narrowed against `RelationshipKeysOf<TSlug>`. */
-  populate?: TPopulate;
+  /**
+   * Recursive populate object, type-narrowed against `RelationshipKeysOf<TSlug>`.
+   * Mutually exclusive with `depth` — becomes `never` when `D ≠ 0`.
+   */
+  populate?: [D] extends [0] ? TPopulate : never;
+  /**
+   * @internal Auto-populate all relationship fields to this many levels.
+   * Becomes `never` when `TPopulate` is non-empty. Use `populate` for
+   * consumer-facing code; this is an internal escape hatch for `CollectionListView`.
+   */
+  depth?: [TPopulate] extends [Record<string, never>] ? D : never;
+  /**
+   * @internal The resolved `VexConfig`. Required alongside `depth`; passed
+   * from the `queryApi` factory closure so the Convex handler has schema info.
+   */
+  config?: [TPopulate] extends [Record<string, never>] ? VexConfig : never;
 }
 
 /**
@@ -184,7 +223,11 @@ export type TextKeysOf<TSlug extends CollectionSlug> = FieldKeysOfType<
  */
 export type SortableKeysOf<TSlug extends CollectionSlug> = FieldKeysOfType<
   TSlug,
-  TextFieldType | NumberFieldType | DateFieldType | CheckboxFieldType | SelectFieldType
+  | TextFieldType
+  | NumberFieldType
+  | DateFieldType
+  | CheckboxFieldType
+  | SelectFieldType
 >;
 
 /**
@@ -259,3 +302,87 @@ export type Populated<
         : DocumentBySlug[TSlug][K];
     }
   : never;
+
+/**
+ * Computes the equivalent `PopulateShape` for automatically populating all
+ * relationship fields on `TSlug` to `D` levels deep.
+ *
+ * This is the type-level counterpart of `buildDepthPopulate`. The computed
+ * shape is a valid `PopulateShape<TSlug>` and can be fed directly into
+ * `Populated<TSlug, DepthPopulate<TSlug, D>>`.
+ *
+ * **How the counter works:** `_Counter` is a tuple of `0`s whose `length`
+ * tracks how many levels have been descended. At the penultimate level
+ * (`[..._Counter, 0]["length"] extends D`) fields are emitted as `true`
+ * (populate, no further recursion). At intermediate levels they are emitted as
+ * `{ populate: DepthPopulate<Target, D, [..._Counter, 0]> }`.
+ *
+ * **Practical depth limit: 3.** TypeScript instantiation count grows
+ * exponentially with D × relationship-key-count-per-collection. D=1,2,3 is
+ * safe for typical VexCMS schemas; D≥4 may cause noticeable `tsc` slowdown.
+ * Runtime has no limit.
+ *
+ * @typeParam TSlug - The collection slug to start from.
+ * @typeParam D - The depth as a literal number (1, 2, or 3 recommended).
+ * @typeParam _Counter - Internal tuple counter — callers must not supply this.
+ *
+ * @example Resolved shape for `depth: 1` on "posts" with "author" relationship
+ * ```ts
+ * // DepthPopulate<"posts", 1> → { author?: true }
+ * // Equivalent to writing `populate: { author: true }` explicitly
+ * ```
+ * @example Resolved shape for `depth: 2`
+ * ```ts
+ * // DepthPopulate<"posts", 2> → { author?: { populate: { team?: true } } }
+ * // Equivalent to `populate: { author: { populate: { team: true } } }`
+ * ```
+ */
+export type DepthPopulate<
+  TSlug extends CollectionSlug,
+  D extends number,
+  _Counter extends 0[] = [],
+> = _Counter["length"] extends D
+  ? Record<string, never>
+  : [..._Counter, 0]["length"] extends D
+    ? { [K in RelationshipKeysOf<TSlug>]?: true }
+    : {
+        [K in RelationshipKeysOf<TSlug>]?: {
+          populate: DepthPopulate<
+            RelationshipTargetOf<TSlug, K>,
+            D,
+            [..._Counter, 0]
+          >;
+        };
+      };
+
+/**
+ * Return type of `find` / `get` / `search` when `depth` is provided instead
+ * of an explicit `populate` object.
+ *
+ * Delegates to `Populated<TSlug, DepthPopulate<TSlug, D>>` — the same type
+ * the explicit populate path produces — so the narrowed shape is identical to
+ * what you would get by writing all relationship keys by hand.
+ *
+ * **Non-literal fallback:** `number extends D` (i.e., `D` is not a literal)
+ * short-circuits to `VexDocument` to avoid evaluating an infinite recursive
+ * type. `depth` is only called internally with literal values (`1`), so this
+ * only fires when depth comes from a non-literal `number` variable.
+ *
+ * **`depth: 0`** (the default) returns raw un-populated docs — identical to
+ * omitting both `depth` and `populate`.
+ *
+ * @typeParam TSlug - The collection slug.
+ * @typeParam D - The depth literal.
+ */
+export type DepthPopulated<
+  TSlug extends CollectionSlug,
+  D extends number,
+> = number extends D
+  ? VexDocument
+  : D extends 0
+    ? TSlug extends keyof DocumentBySlug
+      ? DocumentBySlug[TSlug]
+      : never
+    : TSlug extends keyof DocumentBySlug
+      ? Prettify<Populated<TSlug, DepthPopulate<TSlug, D>>>
+      : never;

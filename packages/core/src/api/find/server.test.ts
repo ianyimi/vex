@@ -2,10 +2,10 @@ import { convexTest } from "convex-test";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { describe, expect, test } from "vitest";
 
-import type { DocumentBySlug } from "../types/generated";
-import * as _generatedApi from "./test/convex/_generated/api";
-import schema from "./test/convex/schema";
-import { find } from "./find.server";
+import type { DocumentBySlug } from "../../types/generated";
+import * as _generatedApi from "../test/convex/_generated/api";
+import schema from "../test/convex/schema";
+import { find } from "./server";
 
 const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
@@ -85,8 +85,16 @@ describe("find (server)", () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(
       async (ctx: GenericMutationCtx<GenericDataModel>) => {
-        await ctx.db.insert("posts", { title: "Published", slug: "pub", featured: true });
-        await ctx.db.insert("posts", { title: "Draft", slug: "draft", featured: false });
+        await ctx.db.insert("posts", {
+          title: "Published",
+          slug: "pub",
+          featured: true,
+        });
+        await ctx.db.insert("posts", {
+          title: "Draft",
+          slug: "draft",
+          featured: false,
+        });
         return find({
           ctx,
           collection: "posts",
@@ -104,9 +112,17 @@ describe("find (server)", () => {
     const docs = await t.run(
       async (ctx: GenericMutationCtx<GenericDataModel>) => {
         for (let i = 0; i < 4; i++) {
-          await ctx.db.insert("posts", { title: `Post ${i}`, slug: `s-${i}`, featured: true });
+          await ctx.db.insert("posts", {
+            title: `Post ${i}`,
+            slug: `s-${i}`,
+            featured: true,
+          });
         }
-        await ctx.db.insert("posts", { title: "Hidden", slug: "hidden", featured: false });
+        await ctx.db.insert("posts", {
+          title: "Hidden",
+          slug: "hidden",
+          featured: false,
+        });
         return find({
           ctx,
           collection: "posts",
@@ -124,8 +140,16 @@ describe("find (server)", () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(
       async (ctx: GenericMutationCtx<GenericDataModel>) => {
-        await ctx.db.insert("posts", { title: "Featured", slug: "f", featured: true });
-        await ctx.db.insert("posts", { title: "Not Featured", slug: "nf", featured: false });
+        await ctx.db.insert("posts", {
+          title: "Featured",
+          slug: "f",
+          featured: true,
+        });
+        await ctx.db.insert("posts", {
+          title: "Not Featured",
+          slug: "nf",
+          featured: false,
+        });
         return find({
           ctx,
           collection: "posts",
@@ -146,8 +170,16 @@ describe("find (server)", () => {
     const docs = await t.run(
       async (ctx: GenericMutationCtx<GenericDataModel>) => {
         await ctx.db.insert("posts", { title: "A", slug: "a", featured: true });
-        await ctx.db.insert("posts", { title: "B", slug: "b", featured: false });
-        return find({ ctx, collection: "posts", withIndex: { name: "by_featured" } });
+        await ctx.db.insert("posts", {
+          title: "B",
+          slug: "b",
+          featured: false,
+        });
+        return find({
+          ctx,
+          collection: "posts",
+          withIndex: { name: "by_featured" },
+        });
       },
     );
     expect(docs).toHaveLength(2);
@@ -157,13 +189,20 @@ describe("find (server)", () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(
       async (ctx: GenericMutationCtx<GenericDataModel>) => {
-        await ctx.db.insert("posts", { title: "A", slug: "a", featured: false });
+        await ctx.db.insert("posts", {
+          title: "A",
+          slug: "a",
+          featured: false,
+        });
         await ctx.db.insert("posts", { title: "B", slug: "b", featured: true });
         await ctx.db.insert("posts", { title: "C", slug: "c", featured: true });
         return find({
           ctx,
           collection: "posts",
-          withIndex: { name: "by_featured", range: (q: any) => q.eq("featured", true) },
+          withIndex: {
+            name: "by_featured",
+            range: (q: any) => q.eq("featured", true),
+          },
           limit: 1,
         });
       },
@@ -177,15 +216,31 @@ describe("find (server)", () => {
     const t = convexTest(schema, modules);
     const docs = await t.run(
       async (ctx: GenericMutationCtx<GenericDataModel>) => {
-        await ctx.db.insert("posts", { title: "Short", slug: "s", featured: true });
-        await ctx.db.insert("posts", { title: "Longer title", slug: "l", featured: true });
-        await ctx.db.insert("posts", { title: "Draft", slug: "d", featured: false });
+        await ctx.db.insert("posts", {
+          title: "Short",
+          slug: "s",
+          featured: true,
+        });
+        await ctx.db.insert("posts", {
+          title: "Longer title",
+          slug: "l",
+          featured: true,
+        });
+        await ctx.db.insert("posts", {
+          title: "Draft",
+          slug: "d",
+          featured: false,
+        });
         return find({
           ctx,
           collection: "posts",
-          withIndex: { name: "by_featured", range: (q: any) => q.eq("featured", true) },
+          withIndex: {
+            name: "by_featured",
+            range: (q: any) => q.eq("featured", true),
+          },
           // secondary filter on top of the index range
-          filter: (q: any) => q.gt(q.field("title").length ?? q.field("title"), "S"),
+          filter: (q: any) =>
+            q.gt(q.field("title").length ?? q.field("title"), "S"),
         });
       },
     );
@@ -206,7 +261,11 @@ describe("find (server)", () => {
             author: [authorId],
           });
         }
-        await ctx.db.insert("posts", { title: "Draft", slug: "draft", featured: false });
+        await ctx.db.insert("posts", {
+          title: "Draft",
+          slug: "draft",
+          featured: false,
+        });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return find({
           ctx,
@@ -214,12 +273,16 @@ describe("find (server)", () => {
           filter: (q: any) => q.eq(q.field("featured"), true),
           limit: 2,
           populate: { author: true },
-        } as any) as Promise<{ author: unknown; featured: unknown; [k: string]: unknown }[]>;
+        } as any) as Promise<
+          { author: unknown; featured: unknown; [k: string]: unknown }[]
+        >;
       },
     );
     expect(docs).toHaveLength(2);
     expect(docs.every((d) => d.featured)).toBe(true);
-    expect((docs[0].author as DocumentBySlug["authors"][])[0].name).toBe("Lena");
+    expect((docs[0].author as DocumentBySlug["authors"][])[0].name).toBe(
+      "Lena",
+    );
   });
 
   test("order: desc without index reverses insertion order", async () => {
