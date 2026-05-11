@@ -31,8 +31,8 @@ export default defineConfig({
 						{ label: 'create', slug: 'api/create' },
 						{ label: 'update', slug: 'api/update' },
 						{ label: 'remove', slug: 'api/remove' },
-						{ label: 'queryApi', slug: 'api/queryApi' },
-						{ label: 'mutationApi', slug: 'api/mutationApi' },
+						{ label: 'queryApi', slug: 'api/queryapi' },
+						{ label: 'mutationApi', slug: 'api/mutationapi' },
 					],
 				},
 				// Full API Reference injected by starlight-typedoc (re-enable when types are stable)
