@@ -6,11 +6,11 @@ import type { GenericMutationClientParams } from "../types";
 import { useConvexMutation } from "@convex-dev/react-query";
 
 /**
- * Client-side args for `remove`.
+ * Client-side args for {@link remove}.
  *
  * @example
  * ```tsx
- * import { remove } from "@vexcms/core/client";
+ * import { remove, type RemoveClientArgs } from "@vexcms/core/client";
  * import { useMutation } from "@tanstack/react-query";
  *
  * // Inside a React component:
@@ -24,13 +24,31 @@ export interface RemoveClientArgs extends GenericMutationClientParams {
 }
 
 /**
- * Returns a `mutationFn` for deleting a document from a VexCMS collection.
+ * Returns a `mutationFn` for permanently deleting a document from a VexCMS collection.
  *
- * Wraps `useConvexMutation(vexConvexApi.remove)` — must be called at the
- * top level of a React component (obeys the Rules of Hooks).
+ * Wraps `useConvexMutation(vexConvexApi.remove)`. Call at the top level of
+ * a React component (obeys the Rules of Hooks); pass the return value as
+ * `mutationFn` to `useMutation`.
  *
- * @returns A mutation function accepting {@link RemoveClientArgs}.
+ * Import from `@vexcms/core/client`. For the server-side version, import
+ * `remove` from `@vexcms/core/server`.
+ *
+ * @returns A mutation function compatible with tanstack-query `useMutation`.
  * @see {@link RemoveClientArgs} for the typed args shape.
+ * @example
+ * ```tsx
+ * import { remove } from "@vexcms/core/client";
+ * import { useMutation } from "@tanstack/react-query";
+ *
+ * export function DeleteButton({ id }: { id: Id<"posts"> }) {
+ *   const { mutateAsync, isPending } = useMutation({ mutationFn: remove() });
+ *   return (
+ *     <button onClick={() => mutateAsync({ id })}>
+ *       {isPending ? "Deleting…" : "Delete"}
+ *     </button>
+ *   );
+ * }
+ * ```
  */
 export function remove() {
   return useConvexMutation(vexConvexApi.remove);

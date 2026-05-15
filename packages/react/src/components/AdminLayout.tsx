@@ -13,6 +13,22 @@ import { TooltipProvider } from "./ui/tooltip";
 import AdminTopNav from "./AdminTopNav";
 
 /**
+ * User data displayed in the admin shell.
+ *
+ * Supplied by the host app's auth layer (e.g. Better Auth's `getCurrentUser()`).
+ * All fields are optional so the admin shell degrades gracefully when no user
+ * is provided.
+ */
+export interface AdminUser {
+  /** Display name. */
+  name?: string;
+  /** User email. */
+  email?: string;
+  /** Avatar image URL. */
+  image?: string;
+}
+
+/**
  * Props for the `AdminLayout` component.
  */
 export interface AdminLayoutProps {
@@ -47,6 +63,7 @@ export interface AdminLayoutProps {
    * rather than by the application developer.
    */
   components?: FrameworkComponents;
+  user?: AdminUser;
 }
 
 /**
@@ -83,8 +100,13 @@ export function AdminLayout(props: AdminLayoutProps) {
   const side = props.config.admin.sidebar.side;
 
   const sidebar = (
-    <AppSidebar config={props.config} activeSlug={props.activeSlug} />
+    <AppSidebar
+      config={props.config}
+      activeSlug={props.activeSlug}
+      user={props.user}
+    />
   );
+
   const content = (
     <SidebarInset>
       <header className="flex h-12 items-center gap-2 px-4 border-b shrink-0">

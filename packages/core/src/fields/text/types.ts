@@ -44,7 +44,9 @@ import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
  *
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`, `searchIndex`)
  */
-export interface TextFieldInput extends BaseFieldInput {
+export interface TextFieldInput<
+  TMeta extends {} = {},
+> extends BaseFieldInput<TMeta> {
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
@@ -99,7 +101,7 @@ export interface TextFieldInput extends BaseFieldInput {
  * @see {@link TextFieldInput} for the user-facing input type
  * @see {@link text} for the config function that produces this type
  */
-export interface TextField extends BaseField {
+export interface TextField<TMeta extends {} = {}> extends BaseField<TMeta> {
   readonly type: typeof ADMIN_FIELDS.text.type;
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;

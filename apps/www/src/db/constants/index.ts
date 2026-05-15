@@ -11,6 +11,7 @@ export const TABLE_SLUG_API_KEYS = "apikey" as const
 export const COLLECTION_SLUG_MEDIA = "media" as const
 
 export const TABLE_SLUG_POSTS = "posts" as const
+export const TABLE_SLUG_PAGES = "pages" as const
 
 export const AUTH_PROVIDERS = {
   apple: "apple",

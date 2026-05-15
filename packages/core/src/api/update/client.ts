@@ -6,11 +6,11 @@ import type { GenericMutationClientParams } from "../types";
 import { useConvexMutation } from "@convex-dev/react-query";
 
 /**
- * Client-side args for `update`.
+ * Client-side args for {@link update}.
  *
  * @example
  * ```tsx
- * import { update } from "@vexcms/core/client";
+ * import { update, type UpdateClientArgs } from "@vexcms/core/client";
  * import { useMutation } from "@tanstack/react-query";
  *
  * // Inside a React component:
@@ -26,13 +26,31 @@ export interface UpdateClientArgs extends GenericMutationClientParams {
 }
 
 /**
- * Returns a `mutationFn` for updating a document in a VexCMS collection.
+ * Returns a `mutationFn` for patching an existing document in a VexCMS collection.
  *
- * Wraps `useConvexMutation(vexConvexApi.update)` — must be called at the
- * top level of a React component (obeys the Rules of Hooks).
+ * Wraps `useConvexMutation(vexConvexApi.update)`. Call at the top level of
+ * a React component (obeys the Rules of Hooks); pass the return value as
+ * `mutationFn` to `useMutation`.
  *
- * @returns A mutation function accepting {@link UpdateClientArgs}.
+ * Import from `@vexcms/core/client`. For the server-side version, import
+ * `update` from `@vexcms/core/server`.
+ *
+ * @returns A mutation function compatible with tanstack-query `useMutation`.
  * @see {@link UpdateClientArgs} for the typed args shape.
+ * @example
+ * ```tsx
+ * import { update } from "@vexcms/core/client";
+ * import { useMutation } from "@tanstack/react-query";
+ *
+ * export function EditTitleButton({ id }: { id: Id<"posts"> }) {
+ *   const { mutateAsync, isPending } = useMutation({ mutationFn: update() });
+ *   return (
+ *     <button onClick={() => mutateAsync({ id, data: { title: "New title" } })}>
+ *       {isPending ? "Saving…" : "Save"}
+ *     </button>
+ *   );
+ * }
+ * ```
  */
 export function update() {
   return useConvexMutation(vexConvexApi.update);

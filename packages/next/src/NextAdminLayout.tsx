@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import NextLink from "next/link";
 import NextImage from "next/image";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { AdminLayout } from "@vexcms/react";
+import { AdminLayout, AdminUser } from "@vexcms/react";
 
 /**
  * Next.js admin layout shell for VexCMS.
@@ -58,6 +58,7 @@ import { AdminLayout } from "@vexcms/react";
 export function NextAdminLayout(props: {
   config: VexConfig;
   children: ReactNode;
+  user?: AdminUser;
 }) {
   const pathname = usePathname();
   // pathname: "/admin", "/admin/posts", "/admin/posts/123"
@@ -74,6 +75,7 @@ export function NextAdminLayout(props: {
         components={{ Link: NextLink, Image: NextImage }}
         pathname={pathname}
         activeDocID={activeDocID}
+        user={props.user}
       >
         {props.children}
       </AdminLayout>

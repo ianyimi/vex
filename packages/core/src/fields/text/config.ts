@@ -45,7 +45,9 @@ import type { TextFieldInput, TextField } from "./types";
  * @see {@link TextFieldInput} for the full input type
  * @see {@link TextField} for the resolved output type
  */
-export function text(options?: TextFieldInput): TextField {
+export function text<TMeta extends {} = {}>(
+  options?: TextFieldInput<TMeta>,
+): TextField<TMeta> {
   return {
     type: ADMIN_FIELDS.text.type,
     interfaceType: ADMIN_FIELDS.text.interfaceType,

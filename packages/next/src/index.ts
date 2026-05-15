@@ -45,6 +45,7 @@ export {
 // with React `*FieldInput` component names; users get them via inference
 // through the config functions).
 export type {
+  AdminUser,
   // HKT-bound (admin.components.preview = React ComponentType)
   RelationshipFieldInput,
   RelationshipField,

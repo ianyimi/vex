@@ -4,6 +4,10 @@
 > AI-generated spec code that the developer consistently prefers. These are encoded
 > in `.claude/commands/dev-spec.md` — this file is the audit trail.
 
+## Spec Code Effect Previews
+
+- **Diff previews in specs use `ts` language blocks with `+`/`-` line prefixes, not `diff` blocks or BEFORE/AFTER splits.** The `ts` language ensures the syntax highlighter treats the content as TypeScript (enabling LSP, IntelliSense, and consistent formatting). `+`/`-` prefixes on lines mark additions and removals visually. Avoid `diff` language blocks (may not render in all markdown viewers) and avoid splitting into separate BEFORE/AFTER blocks (doubles code volume, harder to scan at speed). *(Encoded: dev-spec, 2026-05-12)*
+
 ## Next.js Adapter Naming
 
 - **Components are named `Next*` not `Vex*`**: Framework adapter components exported
@@ -155,6 +159,18 @@ Two complementary mechanisms enforce field-typed constraints in vexcms. Pick by 
   `Button` component wraps a non-`<button>` render element (e.g., `VexLink` which renders
   an `<a>`), always pass `nativeButton={false}` to suppress the accessibility warning.
   *(Encoded: sync-spec 01, 2026-04-07)*
+
+## Convex ID Runtime Behavior
+
+- **`GenericId<T>.__tableName` is a TypeScript phantom type — not a runtime property**: `Id<"posts">` is `string & { __tableName: "posts" }` at the TypeScript level only. At runtime, Convex IDs are plain strings (production: opaque base32; convex-test: `"{random};{tableName}"`). Accessing `(id as any).__tableName` is always `undefined` at runtime. When a server function needs the table name from an ID, use the convex-test extraction heuristic `(id as string).split(";").at(-1)` with `__tableName` as the higher-priority fallback. This works in convex-test and gracefully returns `undefined` in production (where IDs have no semicolon), enabling safe degradation. Apply this in any function that resolves the collection from an ID (e.g., `get` with `depth`). *(Encoded: sync-spec 24, 2026-05-10)*
+
+## React Cells and Convex Subscription Data
+
+- **`isMounted` guard on cells that read Convex subscription data**: Any React cell or component that reads from a Convex TanStack Query subscription (i.e., data driven by `convexQuery` + `useQuery`) must render a consistent placeholder on SSR and during the initial hydration render. Pattern: `const [isMounted, setIsMounted] = useState(false); useEffect(() => setIsMounted(true), []);` — return the placeholder (e.g., `—`) when `!isMounted`. Reason: Convex's reactive model can push subscription data into TanStack Query's cache via `useSyncExternalStore` synchronously during the hydration render, while the server rendered from a different snapshot. This causes a systematic hydration mismatch on every page load if cells render real data on first client render. The `isMounted` guard ensures the first client render matches the server output (static placeholder); data appears after mount. Apply to all collection list-view cells that display relationship, computed, or subscription-driven data. *(Encoded: sync-spec 24, 2026-05-10)*
+
+## API Design — Mutation Client Files (Spec 24)
+
+- **Mutation client files export `create()` / `update()` / `remove()` factory functions, not bare re-exports of `vexConvexApi.*`**: The spec (D8) said to re-export `vexConvexApi.create` directly, but the actual implementation wraps each in a factory function that calls `useConvexMutation` internally: `export function create() { return useConvexMutation(vexConvexApi.create); }`. Consumers call it as `mutationFn: create()` inside `useMutation({ ... })` — keeping the hook call at React's top level. The factory pattern is more ergonomic at call sites (`mutationFn: create()`) than the spec's re-export pattern (`mutationFn: useConvexMutation(vexConvexApi.create)`). Follow this factory pattern for any future mutation client file. *(Encoded: sync-spec 24, 2026-05-10)*
 
 ## API Design — Vex API (Spec 23)
 

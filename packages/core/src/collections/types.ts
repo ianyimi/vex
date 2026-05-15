@@ -132,6 +132,8 @@ export interface AdminCollectionConfig<
  * @see {@link defineCollection} for the config function
  */
 export interface CollectionConfigInput<
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
   TSlug extends string = string,
   TFieldSlug extends string = string,
   TComponent extends ComponentHKT = ComponentHKT,
@@ -151,9 +153,10 @@ export interface CollectionConfigInput<
     plural?: string;
   };
   /** Field definitions that make up this collection's document shape. */
-  fields: Record<TFieldSlug, AdminField>;
+  fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
   /** Override the PascalCase interface name used in generated TypeScript types. Inferred from `slug` by `defineCollection` if omitted. */
   interfaceName?: string;
+  meta?: TCollectionMeta;
 }
 
 /**
@@ -163,7 +166,9 @@ export interface CollectionConfigInput<
  * @see {@link defineCollection} for the config function
  */
 export interface CollectionConfig<
-  TSlug extends string = string,
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends string = string,
   TComponent extends ComponentHKT = ComponentHKT,
 > {
@@ -179,7 +184,8 @@ export interface CollectionConfig<
     plural: string;
   };
   /** Resolved field definitions for this collection. */
-  fields: Record<TFieldSlug, AdminField>;
+  fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
   /** PascalCase identifier derived from `slug`, used as the TypeScript interface name in generated types (e.g. `"posts"` → `"Posts"`). */
   interfaceName: string;
+  meta?: TCollectionMeta;
 }

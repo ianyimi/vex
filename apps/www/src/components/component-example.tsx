@@ -50,9 +50,14 @@ export function ComponentExample() {
 
       <div className="flex gap-3">
         {session?.user ? (
-          <Button onClick={() => signOut()} variant="outline">
-            Sign out
-          </Button>
+          <div className="flex gap-4">
+            <Link href="/admin">
+              <Button>Admin</Button>
+            </Link>
+            <Button onClick={() => signOut()} variant="outline">
+              Sign out
+            </Button>
+          </div>
         ) : (
           <>
             <Button nativeButton={false} render={<Link href="/auth/sign-up" />}>

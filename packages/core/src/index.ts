@@ -31,4 +31,14 @@ export * from "./config";
 export * from "./schema";
 export * from "./types";
 
+// ============================================================================
+// AUTH
+// ============================================================================
+
 export * from "./api/types";
+export {
+  type VexAuthAdapter,
+  type AuthCollectionConfig,
+  VexAuthConfigError,
+} from "./auth/types";
+export { mergeAuthCollections } from "./auth/mergeCollections";

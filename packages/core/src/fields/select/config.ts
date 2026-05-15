@@ -56,7 +56,9 @@ import type { SelectFieldInput, SelectField } from "./types";
  * @see {@link SelectFieldInput} for the full input type
  * @see {@link SelectField} for the resolved output type
  */
-export function select(options?: SelectFieldInput): SelectField {
+export function select<TMeta extends {} = {}>(
+  options?: SelectFieldInput<TMeta>,
+): SelectField<TMeta> {
   return {
     type: ADMIN_FIELDS.select.type,
     interfaceType: ADMIN_FIELDS.select.interfaceType,

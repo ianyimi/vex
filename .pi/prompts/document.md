@@ -42,6 +42,27 @@ Write or update inline JSDoc for a target in the vexcms codebase AND create/upda
 
 ---
 
+## Step 0 — Short-circuit check (read before you write)
+
+After locating the target files, **read them first** before gathering deep context or writing any docs.
+
+If **all** of the following are true, **stop immediately** and report the finding — do not burn tokens on further analysis, context gathering, or verification:
+
+1. Every exported symbol in the changed files already has JSDoc that covers its purpose, params, return type, and has at least one `@example`.
+2. Corresponding docs-site pages in `apps/docs/src/content/docs/` already exist and are current.
+3. Test files (if any) have adequate inline comments describing what they test.
+
+**Report format:**
+```
+✅ No changes needed — all targets already documented.
+Files checked: <list>
+Docs pages found: <list>
+```
+
+Only proceed to Step 1+ if something is actually missing or stale.
+
+---
+
 ## Step 1 — Locate and read the target
 
 **If no target specified:** run `git diff --name-only && git diff --cached --name-only`. Include all uncommitted `.ts` / `.tsx` source files in `packages/*/src/` or `apps/www/`. Skip config files, `.md`, lock files.

@@ -43,11 +43,12 @@ import { ComponentHKT } from "../baseTypes";
  * @see {@link RelationshipField} for the resolved output type
  */
 export function relationship<
+  TMeta extends {} = {},
   TSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
 >(
-  options: RelationshipFieldInput<TSlug, TComponent>,
-): RelationshipField<TSlug, TComponent> {
+  options: RelationshipFieldInput<TMeta, TSlug, TComponent>,
+): RelationshipField<TMeta, TSlug, TComponent> {
   return {
     label: "",
     required: false,

@@ -58,7 +58,9 @@ import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
  * @see {@link date} for the config function that applies defaults
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`)
  */
-export interface DateFieldInput extends BaseFieldInput {
+export interface DateFieldInput<
+  TMeta extends {} = {},
+> extends BaseFieldInput<TMeta> {
   /**
    * Pre-filled Unix timestamp (milliseconds) shown in the admin form when creating a new document.
    * Does not apply to existing database values.
@@ -111,7 +113,7 @@ export interface DateFieldInput extends BaseFieldInput {
  * @see {@link DateFieldInput} for the user-facing input type
  * @see {@link date} for the config function that produces this type
  */
-export interface DateField extends BaseField {
+export interface DateField<TMeta extends {} = {}> extends BaseField<TMeta> {
   readonly type: typeof ADMIN_FIELDS.date.type;
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;

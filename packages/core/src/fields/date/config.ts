@@ -54,7 +54,9 @@ import type { DateFieldInput, DateField } from "./types";
  * @see {@link DateFieldInput} for the full input type
  * @see {@link DateField} for the resolved output type
  */
-export function date(options?: DateFieldInput): DateField {
+export function date<TMeta extends {} = {}>(
+  options?: DateFieldInput<TMeta>,
+): DateField<TMeta> {
   return {
     type: ADMIN_FIELDS.date.type,
     interfaceType: ADMIN_FIELDS.date.interfaceType,

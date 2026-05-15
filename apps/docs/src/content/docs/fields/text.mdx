@@ -1,0 +1,79 @@
+---
+title: text field
+description: Stores short single-line string values — titles, slugs, URLs, email addresses, and status labels.
+---
+
+A `text()` field stores short, single-line string values. It is the most common
+field type in VexCMS — used for titles, names, slugs, URLs, email addresses,
+and any other short text value.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema and the form allows leaving it empty. |
+| `defaultValue` | `string` | `""` | Pre-filled value shown in the admin form when creating a new document. |
+| `min` | `{ value: number, error?: string }` | — | Minimum character length constraint. |
+| `max` | `{ value: number, error?: string }` | — | Maximum character length constraint. |
+| `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
+| `searchIndex` | `{ name: string, filterFields: string[] }` | — | Full-text search index on this field. The field becomes the `searchField`. |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders the input as non-interactive — value is visible but cannot be changed. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
+| `admin.placeholder` | `string` | — | Placeholder text shown when the input is empty. |
+| `admin.description` | `string` | — | Helper text displayed below the field input. |
+
+## Schema output
+
+```ts
+// Optional (required: false — default)
+title: v.optional(v.string())
+
+// Required with length constraints
+slug: v.string()
+
+// With a database index
+slug: v.string(),
+.index("by_slug", ["slug"])
+
+// With a search index
+title: v.string(),
+.searchIndex("search_title", { searchField: "title", filterFields: ["status"] })
+```
+
+## Usage
+
+```ts
+import { defineCollection, text } from "@vexcms/core";
+
+const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    // Minimal — label inferred from key ("Title")
+    title: text(),
+
+    // Required slug with length validation and a database index
+    slug: text({ required: true, min: { value: 3 }, max: { value: 100 }, index: "by_slug" }),
+
+    // Author name with a placeholder hint
+    authorName: text({
+      required: true,
+      admin: { width: "half", placeholder: "e.g. Jane Smith" },
+    }),
+
+    // Pre-filled default for a canonical URL
+    canonicalUrl: text({ defaultValue: "https://example.com" }),
+  },
+});
+```
+
+## Admin UI
+
+The text field renders as a single-line `<input type="text">` in the edit form.
+`placeholder` and `description` are displayed inline. In the list-view table, the
+raw string value is shown (left-aligned by default). When a field is designated
+as `useAsTitle`, its cell renders as a clickable link to the document edit page.

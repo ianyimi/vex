@@ -46,7 +46,9 @@ import type { UrlFieldInput, UrlField } from "./types";
  * @see {@link UrlFieldInput} for the full input type
  * @see {@link UrlField} for the resolved output type
  */
-export function url(options?: UrlFieldInput): UrlField {
+export function url<TMeta extends {} = {}>(
+  options?: UrlFieldInput<TMeta>,
+): UrlField<TMeta> {
   return {
     type: ADMIN_FIELDS.url.type,
     interfaceType: ADMIN_FIELDS.url.interfaceType,

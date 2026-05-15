@@ -333,6 +333,9 @@ importers:
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.90.21(react@19.2.4)
+      '@vexcms/better-auth':
+        specifier: workspace:*
+        version: link:../../packages/better-auth
       '@vexcms/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -701,6 +704,9 @@ importers:
       '@uiw/react-color-sketch':
         specifier: 'catalog:'
         version: 2.9.6(@babel/runtime@7.28.6)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@vexcms/better-auth':
+        specifier: workspace:*
+        version: link:../better-auth
       '@vexcms/core':
         specifier: workspace:*
         version: link:../core

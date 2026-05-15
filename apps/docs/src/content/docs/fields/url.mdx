@@ -1,0 +1,73 @@
+---
+title: url field
+description: Stores absolute URLs as strings and renders them as clickable links in the admin data table.
+---
+
+A `url()` field stores absolute URLs as strings. It validates that the input
+starts with a URL scheme (`http://` or `https://`) and renders the value as a
+clickable link in the admin data table. Common uses include website links,
+canonical URLs, external resource references, and social profile URLs.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
+| `defaultValue` | `string` | — | Pre-filled value shown in the admin form when creating a new document. |
+| `min` | `{ value: number, error?: string }` | — | Minimum character length constraint. |
+| `max` | `{ value: number, error?: string }` | — | Maximum character length constraint. |
+| `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders the input as non-interactive. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
+| `admin.placeholder` | `string` | — | Placeholder text shown when the input is empty. |
+| `admin.description` | `string` | — | Helper text displayed below the field input. |
+
+## Schema output
+
+```ts
+// Optional (required: false — default)
+website: v.optional(v.string())
+
+// Required with a length cap and database index
+website: v.string(),
+.index("by_website", ["website"])
+```
+
+## Usage
+
+```ts
+import { defineCollection, url, text } from "@vexcms/core";
+
+const pages = defineCollection({
+  slug: "pages",
+  fields: {
+    // Minimal — label inferred from key ("Canonical Url")
+    canonicalUrl: url(),
+
+    // Required website URL with a length cap and database index
+    website: url({ required: true, max: { value: 2048 }, index: "by_website" }),
+
+    // Social profile URL with a placeholder hint
+    twitterUrl: url({
+      required: false,
+      admin: { width: "half", placeholder: "https://twitter.com/username" },
+    }),
+
+    // Pre-filled default
+    homepageUrl: url({ defaultValue: "https://example.com" }),
+  },
+});
+```
+
+## Admin UI
+
+The URL field renders as a single-line `<input type="url">` in the edit form.
+The browser validates that the value is a well-formed URL. In the list-view
+table, the value is rendered as a clickable `<a>` link that opens in a new tab.
+URL fields are commonly placed in the sidebar (e.g. social links) or used as
+half-width fields alongside text fields.

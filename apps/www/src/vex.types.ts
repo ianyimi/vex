@@ -8,6 +8,12 @@
 import type { Id } from "@convex/_generated/dataModel"
 import type { VexDocument } from "@vexcms/core"
 
+export interface Page extends VexDocument {
+  _id: Id<"pages">
+  title: string
+  slug: string
+  posts?: Id<CollectionSlug>[]
+}
 type Type = "one" | "two" | "three" | "four" | "five" | "six"
 export interface Post extends VexDocument {
   _id: Id<"posts">
@@ -24,19 +30,139 @@ export interface Post extends VexDocument {
   type?: Type
 }
 
-export type CollectionSlug = "posts"
+export interface UserDocument extends VexDocument {
+  _id: Id<"user">
+  name: string
+  email: string
+  emailVerified: boolean
+  image?: string
+  createdAt: number
+  updatedAt: number
+  role?: string
+  banned?: boolean
+  banReason?: string
+  banExpires?: number
+  userId?: string
+}
+
+export interface SessionDocument extends VexDocument {
+  _id: Id<"session">
+  expiresAt: number
+  token: string
+  createdAt: number
+  updatedAt: number
+  ipAddress?: string
+  userAgent?: string
+  userId: Id<CollectionSlug>[]
+  impersonatedBy?: string
+}
+
+export interface AccountDocument extends VexDocument {
+  _id: Id<"account">
+  accountId: string
+  providerId: string
+  userId: Id<CollectionSlug>[]
+  accessToken?: string
+  refreshToken?: string
+  idToken?: string
+  accessTokenExpiresAt?: number
+  refreshTokenExpiresAt?: number
+  scope?: string
+  password?: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface VerificationDocument extends VexDocument {
+  _id: Id<"verification">
+  identifier: string
+  value: string
+  expiresAt: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface ApikeyDocument extends VexDocument {
+  _id: Id<"apikey">
+  configId: string
+  name?: string
+  start?: string
+  referenceId: string
+  prefix?: string
+  key: string
+  refillInterval?: number
+  refillAmount?: number
+  lastRefillAt?: number
+  enabled?: boolean
+  rateLimitEnabled?: boolean
+  rateLimitTimeWindow?: number
+  rateLimitMax?: number
+  requestCount?: number
+  remaining?: number
+  lastRequest?: number
+  expiresAt?: number
+  createdAt: number
+  updatedAt: number
+  permissions?: string
+  metadata?: string
+}
+
+export interface JwksDocument extends VexDocument {
+  _id: Id<"jwks">
+  publicKey: string
+  privateKey: string
+  createdAt: number
+  expiresAt?: number
+}
+
+export type CollectionSlug =
+  | "pages"
+  | "posts"
+  | "user"
+  | "session"
+  | "account"
+  | "verification"
+  | "apikey"
+  | "jwks"
 
 export type DocumentBySlug = {
+  pages: Page
   posts: Post
+  user: UserDocument
+  session: SessionDocument
+  account: AccountDocument
+  verification: VerificationDocument
+  apikey: ApikeyDocument
+  jwks: JwksDocument
 }
 
 declare module "@vexcms/core" {
   interface GeneratedVexTypes {
-    CollectionSlug: "posts"
+    CollectionSlug:
+      | "pages"
+      | "posts"
+      | "user"
+      | "session"
+      | "account"
+      | "verification"
+      | "apikey"
+      | "jwks"
     DocumentBySlug: {
+      pages: Page
       posts: Post
+      user: UserDocument
+      session: SessionDocument
+      account: AccountDocument
+      verification: VerificationDocument
+      apikey: ApikeyDocument
+      jwks: JwksDocument
     }
     CollectionsFieldTypeMap: {
+      pages: {
+        id: "_id"
+        text: "title" | "slug"
+        relationship: "posts"
+      }
       posts: {
         id: "_id"
         text: "title" | "slug" | "excerpt"
@@ -46,6 +172,62 @@ declare module "@vexcms/core" {
         checkbox: "published"
         date: "publishedAt"
         select: "type"
+      }
+      user: {
+        id: "_id"
+        text: "name" | "email" | "image" | "role" | "banReason" | "userId"
+        checkbox: "emailVerified" | "banned"
+        date: "createdAt" | "updatedAt" | "banExpires"
+      }
+      session: {
+        id: "_id"
+        date: "expiresAt" | "createdAt" | "updatedAt"
+        text: "token" | "ipAddress" | "userAgent" | "impersonatedBy"
+        relationship: "userId"
+      }
+      account: {
+        id: "_id"
+        text:
+          | "accountId"
+          | "providerId"
+          | "accessToken"
+          | "refreshToken"
+          | "idToken"
+          | "scope"
+          | "password"
+        relationship: "userId"
+        date: "accessTokenExpiresAt" | "refreshTokenExpiresAt" | "createdAt" | "updatedAt"
+      }
+      verification: {
+        id: "_id"
+        text: "identifier" | "value"
+        date: "expiresAt" | "createdAt" | "updatedAt"
+      }
+      apikey: {
+        id: "_id"
+        text:
+          | "configId"
+          | "name"
+          | "start"
+          | "referenceId"
+          | "prefix"
+          | "key"
+          | "permissions"
+          | "metadata"
+        number:
+          | "refillInterval"
+          | "refillAmount"
+          | "rateLimitTimeWindow"
+          | "rateLimitMax"
+          | "requestCount"
+          | "remaining"
+        date: "lastRefillAt" | "lastRequest" | "expiresAt" | "createdAt" | "updatedAt"
+        checkbox: "enabled" | "rateLimitEnabled"
+      }
+      jwks: {
+        id: "_id"
+        text: "publicKey" | "privateKey"
+        date: "createdAt" | "expiresAt"
       }
     }
   }

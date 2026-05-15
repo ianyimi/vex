@@ -73,7 +73,10 @@ export function CollectionEditView<
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">
-        Edit {props.collection.labels.singular}
+        Edit {props.collection.labels.singular} -{" "}
+        <span className="text-primary">
+          {currentDocument[props.collection.admin.useAsTitle]}
+        </span>
       </h1>
       <AppForm form={form} className="space-y-4">
         {Object.entries(props.collection.fields).map(([fieldKey, field]) => {

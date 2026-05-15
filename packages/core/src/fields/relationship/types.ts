@@ -21,7 +21,7 @@ import { RelationshipPreviewProps } from "../../collections";
  * @see {@link FieldAdminConfigInput} for the base admin properties
  */
 export interface RelationshipFieldAdminInput<
-  TSlug extends CollectionSlug,
+  TSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
 > extends FieldAdminConfigInput {
   /**
@@ -45,7 +45,7 @@ export interface RelationshipFieldAdminInput<
  * @see {@link RelationshipFieldAdminInput} for the user-facing input type
  */
 export interface RelationshipFieldAdminConfig<
-  TSlug extends CollectionSlug,
+  TSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
 > extends FieldAdminConfigInput {
   /**
@@ -104,9 +104,10 @@ export interface RelationshipFieldAdminConfig<
  * @see {@link CollectionSlug} for the valid slug union
  */
 export interface RelationshipFieldInput<
+  TMeta extends {} = {},
   TSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
-> extends BaseFieldInput {
+> extends BaseFieldInput<TMeta> {
   /** Target collection reference. The slug must match a registered collection in `defineConfig`. */
   collection: {
     /** The slug of the collection this field links to. Must be a registered collection slug. */
@@ -133,9 +134,10 @@ export interface RelationshipFieldInput<
  * @see {@link relationship} for the config function
  */
 export interface RelationshipField<
+  TMeta extends {} = {},
   TSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
-> extends BaseField {
+> extends BaseField<TMeta> {
   readonly type: typeof ADMIN_FIELDS.relationship.type;
   /** Target collection reference. */
   collection: {
@@ -144,5 +146,6 @@ export interface RelationshipField<
   };
   /** Whether this field stores multiple document references. */
   hasMany: boolean;
-  admin: BaseField["admin"] & RelationshipFieldAdminConfig<TSlug, TComponent>;
+  admin: BaseField<TMeta>["admin"] &
+    RelationshipFieldAdminConfig<TSlug, TComponent>;
 }

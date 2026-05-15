@@ -46,7 +46,9 @@ import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
  * @see {@link number} for the config function that applies defaults
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`, `searchIndex`)
  */
-export interface NumberFieldInput extends BaseFieldInput {
+export interface NumberFieldInput<
+  TMeta extends {} = {},
+> extends BaseFieldInput<TMeta> {
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * Does not affect database values — only the form's initial state.
@@ -74,7 +76,7 @@ export interface NumberFieldInput extends BaseFieldInput {
  * @see {@link NumberFieldInput} for the user-facing input type
  * @see {@link number} for the config function that produces this type
  */
-export interface NumberField extends BaseField {
+export interface NumberField<TMeta extends {} = {}> extends BaseField<TMeta> {
   readonly type: typeof ADMIN_FIELDS.number.type;
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;

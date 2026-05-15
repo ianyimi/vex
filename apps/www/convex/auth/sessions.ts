@@ -18,7 +18,7 @@ export const getSessionWithUser = query({
     // Find the session by token
     const session = await ctx.db
       .query(TABLE_SLUG_SESSIONS)
-      .withIndex("by_token", (q) => q.eq("token", args.sessionToken))
+      .withIndex("by_token_unique", (q) => q.eq("token", args.sessionToken))
       .first()
 
     if (!session) {
@@ -32,7 +32,11 @@ export const getSessionWithUser = query({
     }
 
     // Get the user data
-    const user = await ctx.db.get(session.userId as Id<typeof TABLE_SLUG_USERS>)
+    const userId = session.userId[0]
+    if (!userId) {
+      return null
+    }
+    const user = await ctx.db.get(userId)
 
     if (!user) {
       return null

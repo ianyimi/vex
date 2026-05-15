@@ -1,6 +1,8 @@
+import { betterAuthAdapter } from "@vexcms/better-auth"
 import { defineConfig } from "@vexcms/core"
 
-import { posts } from "~/vexcms/collections"
+import { authOptions } from "~/auth/options"
+import { pages, posts } from "~/vexcms/collections"
 
 const vexConfig = defineConfig({
   admin: {
@@ -8,7 +10,8 @@ const vexConfig = defineConfig({
       side: "right",
     },
   },
-  collections: [posts],
+  auth: betterAuthAdapter({ config: authOptions }),
+  collections: [pages, posts],
 })
 
 export default vexConfig

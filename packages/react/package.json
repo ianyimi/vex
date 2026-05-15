@@ -34,6 +34,7 @@
     "@ts-hooks-kit/core": "catalog:",
     "@uiw/react-color-sketch": "catalog:",
     "@vexcms/core": "workspace:*",
+    "@vexcms/better-auth": "workspace:*",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "cmdk": "catalog:",

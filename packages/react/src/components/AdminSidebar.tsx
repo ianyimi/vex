@@ -13,6 +13,7 @@ import {
   SidebarMenuItem,
 } from "./ui/sidebar";
 import { VexLink } from "./ui/VexLink";
+import { AdminUser } from "./AdminLayout";
 
 /**
  * Props for the `AppSidebar` component.
@@ -25,6 +26,7 @@ export interface AppSidebarProps {
    * Used to set `isActive` on the matching `SidebarMenuButton`.
    */
   activeSlug?: string;
+  user?: AdminUser;
 }
 
 /**

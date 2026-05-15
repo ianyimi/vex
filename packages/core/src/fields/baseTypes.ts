@@ -43,7 +43,7 @@ export type ApplyComponent<
  * Created via a framework-specific factory (e.g. `fieldComponent()` in `@vex/react`).
  */
 export type ComponentEntry = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   component: (props: any) => unknown;
   props: Record<string, unknown>;
 };
@@ -189,7 +189,7 @@ export interface FieldAdminConfig {
  *
  * @see {@link BaseField} for the resolved type after defaults are applied
  */
-export interface BaseFieldInput {
+export interface BaseFieldInput<TMeta extends {} = {}> {
   /** Display label for the field in the admin form. */
   label?: string;
   /** Description text shown below the field. */
@@ -218,6 +218,7 @@ export interface BaseFieldInput {
    * ```
    */
   index?: string;
+  meta?: TMeta;
 }
 
 /**
@@ -228,7 +229,7 @@ export interface BaseFieldInput {
  *
  * @see {@link BaseFieldInput} for the user-facing input type
  */
-export interface BaseField {
+export interface BaseField<TMeta extends {} = {}> {
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;
   /** Whether this field is required in the database schema. */
@@ -246,4 +247,5 @@ export interface BaseField {
   index?: string;
   /** TypeScript type string written to generated document interfaces (e.g. `"string"`, `"number"`, `"string[]"`). */
   interfaceType: string;
+  meta?: TMeta;
 }

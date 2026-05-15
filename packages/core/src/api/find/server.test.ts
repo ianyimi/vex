@@ -2,10 +2,47 @@ import { convexTest } from "convex-test";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { describe, expect, test } from "vitest";
 
+import type { VexConfig } from "../../config";
 import type { DocumentBySlug } from "../../types/generated";
 import * as _generatedApi from "../test/convex/_generated/api";
 import schema from "../test/convex/schema";
 import { find } from "./server";
+
+// ── Minimal VexConfig fixture for depth tests ─────────────────────────────
+// Mirrors the relationship shape declared in test/convex/schema.ts so that
+// `buildDepthPopulate` produces the correct populate objects at runtime.
+const fixtureConfig: VexConfig = {
+  collections: [
+    {
+      slug: "posts",
+      fields: {
+        title: { type: "text" },
+        author: { type: "relationship", collection: { slug: "authors" } },
+        parent: { type: "relationship", collection: { slug: "posts" } },
+      },
+      labels: { singular: "Post", plural: "Posts" },
+      admin: { useAsTitle: "title" },
+    },
+    {
+      slug: "authors",
+      fields: {
+        name: { type: "text" },
+        organization: {
+          type: "relationship",
+          collection: { slug: "organizations" },
+        },
+      },
+      labels: { singular: "Author", plural: "Authors" },
+      admin: { useAsTitle: "name" },
+    },
+    {
+      slug: "organizations",
+      fields: { name: { type: "text" } },
+      labels: { singular: "Organization", plural: "Organizations" },
+      admin: { useAsTitle: "name" },
+    },
+  ],
+} as unknown as VexConfig;
 
 const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
@@ -339,5 +376,152 @@ describe("find (server)", () => {
       (author.organization as unknown as DocumentBySlug["organizations"][])[0]
         .name,
     ).toBe("Vex Inc");
+  });
+});
+
+describe("find (server) — depth auto-populate", () => {
+  test("depth: 1 auto-populates all direct relationship fields", async () => {
+    const t = convexTest(schema, modules);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const docs = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const authorId = await ctx.db.insert("authors", { name: "Lena" });
+        await ctx.db.insert("posts", {
+          title: "Hi",
+          slug: "hi",
+          author: [authorId],
+        });
+        return find({ ctx, collection: "posts", depth: 1, config: fixtureConfig } as any);
+      },
+    ) as any[];
+    // `author` should be populated with the author doc, not a raw ID array.
+    const author = (docs[0].author as DocumentBySlug["authors"][])[0];
+    expect(author.name).toBe("Lena");
+    expect(typeof author._id).toBe("string");
+  });
+
+  test("depth: 1 returns raw docs when no relationship fields are stored", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        // Post without author — relationship field absent.
+        await ctx.db.insert("posts", { title: "Solo", slug: "solo" });
+        return find({ ctx, collection: "posts", depth: 1, config: fixtureConfig } as any);
+      },
+    ) as any[];
+    expect(docs).toHaveLength(1);
+    expect(docs[0].title).toBe("Solo");
+    // author field is absent — no crash, no null.
+    expect(docs[0].author).toBeUndefined();
+  });
+
+  test("depth: 2 populates nested relationships (posts → authors → organizations)", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const orgId = await ctx.db.insert("organizations", { name: "Vex Inc" });
+        const authorId = await ctx.db.insert("authors", {
+          name: "Lena",
+          organization: [orgId],
+        });
+        await ctx.db.insert("posts", {
+          title: "Hi",
+          slug: "hi",
+          author: [authorId],
+        });
+        return find({ ctx, collection: "posts", depth: 2, config: fixtureConfig } as any);
+      },
+    ) as any[];
+    const author = (docs[0].author as DocumentBySlug["authors"][])[0];
+    expect(author.name).toBe("Lena");
+    const org = (author.organization as unknown as DocumentBySlug["organizations"][])[0];
+    expect(org.name).toBe("Vex Inc");
+  });
+
+  test("depth: 0 (explicit) returns raw docs without population", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const authorId = await ctx.db.insert("authors", { name: "Lena" });
+        await ctx.db.insert("posts", {
+          title: "Hi",
+          slug: "hi",
+          author: [authorId],
+        });
+        // depth: 0 is the default — equivalent to omitting depth.
+        return find({ ctx, collection: "posts", depth: 0, config: fixtureConfig } as any);
+      },
+    ) as any[];
+    // author should still be a raw ID array, not populated docs.
+    expect(Array.isArray(docs[0].author)).toBe(true);
+    expect(typeof docs[0].author[0]).toBe("string");
+  });
+
+  test("depth without config returns raw docs (effectivePopulate is undefined)", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const authorId = await ctx.db.insert("authors", { name: "Lena" });
+        await ctx.db.insert("posts", {
+          title: "Hi",
+          slug: "hi",
+          author: [authorId],
+        });
+        // Passing depth without config — D11 guard: no populate applied.
+        return find({ ctx, collection: "posts", depth: 1 } as any);
+      },
+    ) as any[];
+    // Without config, buildDepthPopulate cannot run → raw ID array.
+    expect(typeof docs[0].author[0]).toBe("string");
+  });
+
+  test("populate wins over depth at runtime (D11)", async () => {
+    const t = convexTest(schema, modules);
+    // At the type level populate+depth is a compile error; at runtime we
+    // force both via `as any` to verify D11: populate takes precedence.
+    const docs = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const authorId = await ctx.db.insert("authors", { name: "Lena" });
+        await ctx.db.insert("posts", {
+          title: "Hi",
+          slug: "hi",
+          author: [authorId],
+        });
+        return find({
+          ctx,
+          collection: "posts",
+          populate: { author: true },
+          depth: 1,
+          config: fixtureConfig,
+        } as any);
+      },
+    ) as any[];
+    // Regardless of depth, the explicit populate should have resolved author.
+    const author = (docs[0].author as DocumentBySlug["authors"][])[0];
+    expect(author.name).toBe("Lena");
+  });
+
+  test("depth: 1 handles multiple docs with mixed relationship presence", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const authorId = await ctx.db.insert("authors", { name: "Lena" });
+        // Post with author.
+        await ctx.db.insert("posts", {
+          title: "With Author",
+          slug: "w",
+          author: [authorId],
+        });
+        // Post without author.
+        await ctx.db.insert("posts", { title: "No Author", slug: "n" });
+        return find({ ctx, collection: "posts", depth: 1, config: fixtureConfig } as any);
+      },
+    ) as any[];
+    expect(docs).toHaveLength(2);
+    // First doc has populated author.
+    const author = (docs[0].author as DocumentBySlug["authors"][])[0];
+    expect(author.name).toBe("Lena");
+    // Second doc has no author — no crash.
+    expect(docs[1].author).toBeUndefined();
   });
 });

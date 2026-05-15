@@ -90,17 +90,30 @@ export async function get<
 ): Promise<GetReturnItem<TSlug, TPopulate, D>> {
   const doc = await args.ctx.db.get(args.id);
 
-  // Resolve slug for buildDepthPopulate from the Id brand (D12).
+  // Resolve slug for buildDepthPopulate from the Id (D12).
+  //
+  // `Id<TableName>` is a TypeScript phantom type — `__tableName` is purely
+  // compile-time and is NOT a runtime property on the string. To extract the
+  // table name at runtime we use two strategies in priority order:
+  //
+  // 1. TypeScript ecosystem environments that DO materialise `__tableName`
+  //    as a runtime property (e.g. custom serialisers, some DX tooling).
+  // 2. The `"{random};{tableName}"` format used by `convex-test`, which
+  //    mirrors the extraction in `convex-test`'s own `tableNameFromId`.
+  //
+  // In production Convex, IDs are opaque base32 strings without a semicolon,
+  // so the split returns a single element and `tableSlug` falls back to
+  // `undefined` — depth silently degrades to no-populate, which is safe.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tableSlug: string | undefined = (args.id as any).__tableName ?? (() => {
+    const parts = (args.id as string).split(";");
+    return parts.length === 2 ? parts[1] : undefined;
+  })();
+
   const effectivePopulate =
     args.populate ??
-    (args.depth !== undefined && args.depth > 0 && args.config
-      ? buildDepthPopulate(
-          args.config,
-          // GenericId is branded with __tableName — cast is safe here.
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (args.id as any).__tableName as string,
-          args.depth,
-        )
+    (args.depth !== undefined && args.depth > 0 && args.config && tableSlug
+      ? buildDepthPopulate(args.config, tableSlug, args.depth)
       : undefined);
 
   if (!effectivePopulate || !doc)

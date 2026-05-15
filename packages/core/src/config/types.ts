@@ -1,4 +1,5 @@
 import { CollectionConfig } from "../collections";
+import { VexAuthAdapter } from "../auth/types";
 
 /**
  * User-facing configuration input for the VexCMS admin panel.
@@ -197,7 +198,20 @@ export interface VexConfigInput {
    * @see {@link SchemaConfigInput} for all available options
    */
   schema?: SchemaConfigInput;
-  types?: TypesConfigInput
+  types?: TypesConfigInput;
+  /**
+   * Auth adapter to register authentication collections (user, session,
+   * account, verification, etc.) alongside user-defined collections.
+   *
+   * Pass the return value of an auth adapter (e.g.
+   * {@link betterAuthAdapter} from `@vexcms/better-auth`). Auth collections
+   * are merged with user collections by `defineConfig()` — protected auth
+   * collections cannot be overridden, and locked fields are preserved.
+   *
+   * @see {@link VexAuthAdapter} for the adapter interface
+   * @see {@link betterAuthAdapter} for the Better Auth implementation
+   */
+  auth?: VexAuthAdapter;
 }
 
 /**
@@ -216,4 +230,13 @@ export interface VexConfig {
   /** Resolved schema generation configuration — always fully populated after defaults are applied. */
   schema: SchemaConfig;
   types: TypesConfig;
+  /**
+   * Auth adapter registered with this config. Auth collections are merged
+   * with user-defined collections — protected collections and locked fields
+   * are preserved during merge.
+   *
+   * @see {@link VexAuthAdapter} for the adapter interface
+   * @see {@link betterAuthAdapter} for the Better Auth implementation
+   */
+  auth?: VexAuthAdapter;
 }

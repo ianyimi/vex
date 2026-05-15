@@ -4,6 +4,12 @@
 import { defineTable } from "convex/server"
 import { v } from "convex/values"
 
+export const pages = defineTable({
+  title: v.string(),
+  slug: v.string(),
+  posts: v.optional(v.array(v.id("posts"))),
+}).index("by_posts", ["posts"])
+
 export const posts = defineTable({
   title: v.string(),
   slug: v.string(),
@@ -35,3 +41,87 @@ export const posts = defineTable({
 
     filterFields: [],
   })
+
+export const user = defineTable({
+  name: v.string(),
+  email: v.string(),
+  emailVerified: v.boolean(),
+  image: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  role: v.optional(v.string()),
+  banned: v.optional(v.boolean()),
+  banReason: v.optional(v.string()),
+  banExpires: v.optional(v.number()),
+  userId: v.optional(v.string()),
+}).index("by_email_unique", ["email"])
+
+export const session = defineTable({
+  expiresAt: v.number(),
+  token: v.string(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  ipAddress: v.optional(v.string()),
+  userAgent: v.optional(v.string()),
+  userId: v.array(v.id("user")),
+  impersonatedBy: v.optional(v.string()),
+})
+  .index("by_token_unique", ["token"])
+  .index("by_userId", ["userId"])
+
+export const account = defineTable({
+  accountId: v.string(),
+  providerId: v.string(),
+  userId: v.array(v.id("user")),
+  accessToken: v.optional(v.string()),
+  refreshToken: v.optional(v.string()),
+  idToken: v.optional(v.string()),
+  accessTokenExpiresAt: v.optional(v.number()),
+  refreshTokenExpiresAt: v.optional(v.number()),
+  scope: v.optional(v.string()),
+  password: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_userId", ["userId"])
+
+export const verification = defineTable({
+  identifier: v.string(),
+  value: v.string(),
+  expiresAt: v.number(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_identifier", ["identifier"])
+
+export const apikey = defineTable({
+  configId: v.string(),
+  name: v.optional(v.string()),
+  start: v.optional(v.string()),
+  referenceId: v.string(),
+  prefix: v.optional(v.string()),
+  key: v.string(),
+  refillInterval: v.optional(v.number()),
+  refillAmount: v.optional(v.number()),
+  lastRefillAt: v.optional(v.number()),
+  enabled: v.optional(v.boolean()),
+  rateLimitEnabled: v.optional(v.boolean()),
+  rateLimitTimeWindow: v.optional(v.number()),
+  rateLimitMax: v.optional(v.number()),
+  requestCount: v.optional(v.number()),
+  remaining: v.optional(v.number()),
+  lastRequest: v.optional(v.number()),
+  expiresAt: v.optional(v.number()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  permissions: v.optional(v.string()),
+  metadata: v.optional(v.string()),
+})
+  .index("by_configId", ["configId"])
+  .index("by_referenceId", ["referenceId"])
+  .index("by_key", ["key"])
+
+export const jwks = defineTable({
+  publicKey: v.string(),
+  privateKey: v.string(),
+  createdAt: v.number(),
+  expiresAt: v.optional(v.number()),
+})

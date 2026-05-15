@@ -1,4 +1,5 @@
 import { ComponentHKT } from "../fields";
+import { CollectionSlug } from "../types";
 import { toTitleCase, plural } from "../utils";
 import { CollectionConfigInput, CollectionConfig } from "./types";
 import { slugToPascalCase } from "./utils";
@@ -27,12 +28,26 @@ import { slugToPascalCase } from "./utils";
  * @see {@link CollectionConfig} for the resolved return type
  */
 export function defineCollection<
-  TSlug extends string,
-  TFieldSlug extends string,
-  TComponent extends ComponentHKT,
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TSlug extends CollectionSlug = CollectionSlug,
+  TFieldSlug extends string = string,
+  TComponent extends ComponentHKT = ComponentHKT,
 >(
-  config: CollectionConfigInput<TSlug, TFieldSlug, TComponent>,
-): CollectionConfig<TSlug, TFieldSlug, TComponent> {
+  config: CollectionConfigInput<
+    TFieldMeta,
+    TCollectionMeta,
+    TSlug,
+    TFieldSlug,
+    TComponent
+  >,
+): CollectionConfig<
+  TFieldMeta,
+  TCollectionMeta,
+  TSlug,
+  TFieldSlug,
+  TComponent
+> {
   return {
     interfaceName: slugToPascalCase({ slug: config.slug }) + "Document",
     ...config,

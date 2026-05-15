@@ -33,6 +33,7 @@ export default defineConfig({
 						{ label: 'remove', slug: 'api/remove' },
 						{ label: 'queryApi', slug: 'api/queryapi' },
 						{ label: 'mutationApi', slug: 'api/mutationapi' },
+						{ label: 'betterAuthAdapter', slug: 'api/betterauthadapter' },
 					],
 				},
 				// Full API Reference injected by starlight-typedoc (re-enable when types are stable)

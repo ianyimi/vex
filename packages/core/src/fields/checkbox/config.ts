@@ -43,7 +43,9 @@ import type { CheckboxFieldInput, CheckboxField } from "./types";
  * @see {@link CheckboxFieldInput} for the full input type
  * @see {@link CheckboxField} for the resolved output type
  */
-export function checkbox(options?: CheckboxFieldInput): CheckboxField {
+export function checkbox<TMeta extends {} = {}>(
+  options?: CheckboxFieldInput<TMeta>,
+): CheckboxField<TMeta> {
   return {
     type: ADMIN_FIELDS.checkbox.type,
     interfaceType: ADMIN_FIELDS.checkbox.interfaceType,
