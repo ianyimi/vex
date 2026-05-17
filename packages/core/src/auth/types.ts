@@ -28,13 +28,13 @@ export type AuthCollectionMeta = {
  * locking so auth adapters can protect fields that must not be overridden.
  */
 export type AuthCollectionConfig<
-  TSlug extends CollectionSlug = CollectionSlug,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends string = string,
   TComponent extends ComponentHKT = ComponentHKT,
 > = CollectionConfig<
   AuthFieldMeta,
   AuthCollectionMeta,
-  TSlug,
+  TCollectionSlug,
   TFieldSlug,
   TComponent
 >;

@@ -2,6 +2,22 @@ import { ADMIN_FIELDS } from "../fields";
 import { CollectionConfig } from "./types";
 import { slugToPascalCase } from "./utils";
 
+function wrapLines(props: { text: string; maxLen: number }): string[] {
+  const words = props.text.split(" ");
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if (current && current.length + 1 + word.length > props.maxLen) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = current ? `${current} ${word}` : word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
 /**
  * Converts a resolved `CollectionConfig` to a TypeScript `export interface` source string.
  *
@@ -45,7 +61,16 @@ export function collectionConfigToInterface(props: {
           `type ${fieldType} = ${field.options.map((o) => `"${o.value}"`).join(" | ")}`,
         );
       }
-      return `\t${fieldKey}${field.required ? "" : "?"}: ${fieldType}`;
+      let jsdocComment = "";
+      const jsdoc = field.interfaceDescription ?? field.description;
+      if (jsdoc) {
+        const linesArray = wrapLines({
+          text: jsdoc,
+          maxLen: 80,
+        });
+        jsdocComment = `\t/**\n${linesArray.map((l) => `\t * ${l}`).join("\n")}\n\t */\n`;
+      }
+      return `${jsdocComment}\t${fieldKey}${field.required ? "" : "?"}: ${fieldType}`;
     })
     .join("\n");
 

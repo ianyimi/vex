@@ -3,15 +3,28 @@ import { v } from "convex/values"
 
 import { TABLE_SLUG_ACCOUNTS, TABLE_SLUG_USERS } from "~/db/constants"
 
-import { apikey, jwks, pages, posts, session, verification } from "./vex.schema"
+import {
+  apikey,
+  footers,
+  headers,
+  jwks,
+  pages,
+  session,
+  themes,
+  verification,
+  site_settings,
+} from "./vex.schema"
 
 export default defineSchema({
+  site_settings,
   session,
   verification,
   apikey,
   jwks,
+  headers,
+  footers,
+  themes,
   pages,
-  posts,
   // Better Auth component tables (type definitions only - actual tables are in component)
   [TABLE_SLUG_USERS]: defineTable({
     name: v.string(),

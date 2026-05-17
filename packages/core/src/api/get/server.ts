@@ -19,43 +19,43 @@ import type {
  * constraints) from {@link GenericQueryServerParams}.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
- * @typeParam TSlug - Collection slug.
+ * @typeParam TCollectionSlug - Collection slug.
  * @typeParam TPopulate - Populate object.
  * @typeParam D - Depth literal (0 = no depth, default).
  */
 export interface GetServerArgs<
   DataModel extends GenericDataModel,
-  TSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TSlug>,
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
   D extends number = 0,
-> extends GenericQueryServerParams<DataModel, TSlug, TPopulate, D> {
+> extends GenericQueryServerParams<DataModel, TCollectionSlug, TPopulate, D> {
   /** The document ID to fetch. */
-  id: GenericId<TSlug>;
+  id: GenericId<TCollectionSlug>;
 }
 
 /**
  * Resolves the return type of `get`:
  *
- * - No populate + `D = 0` → `DocumentBySlug[TSlug] | null`.
- * - No populate + `D > 0` → `DepthPopulated<TSlug, D> | null`.
- * - With populate → `Prettify<Populated<TSlug, TPopulate>> | null`.
+ * - No populate + `D = 0` → `DocumentBySlug[TCollectionSlug] | null`.
+ * - No populate + `D > 0` → `DepthPopulated<TCollectionSlug, D> | null`.
+ * - With populate → `Prettify<Populated<TCollectionSlug, TPopulate>> | null`.
  */
 type GetReturnItem<
-  TSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TSlug>,
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
   D extends number,
 > = [TPopulate] extends [Record<string, never>]
   ? [D] extends [0]
-    ? TSlug extends keyof DocumentBySlug
-      ? DocumentBySlug[TSlug] | null
+    ? TCollectionSlug extends keyof DocumentBySlug
+      ? DocumentBySlug[TCollectionSlug] | null
       : never
-    : DepthPopulated<TSlug, D> | null
-  : TSlug extends keyof DocumentBySlug
-    ? Prettify<Populated<TSlug, TPopulate>> | null
+    : DepthPopulated<TCollectionSlug, D> | null
+  : TCollectionSlug extends keyof DocumentBySlug
+    ? Prettify<Populated<TCollectionSlug, TPopulate>> | null
     : never;
 
 /**
- * Fetches a single document by its `Id<TSlug>`. Server-side only.
+ * Fetches a single document by its `Id<TCollectionSlug>`. Server-side only.
  *
  * Pass `populate` to explicitly name the relationship fields to resolve
  * (documented, recommended). Pass `depth` (with `config`) to automatically
@@ -65,7 +65,7 @@ type GetReturnItem<
  * `get` from `@vexcms/core/client`.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
- * @typeParam TSlug - Collection slug, recovered from the `Id` brand.
+ * @typeParam TCollectionSlug - Collection slug, recovered from the `Id` brand.
  * @typeParam TPopulate - Populate object.
  * @typeParam D - Depth literal (0 = none).
  * @param args - `{ ctx, id, populate? }` or `{ ctx, id, depth, config }`.
@@ -82,12 +82,12 @@ type GetReturnItem<
  */
 export async function get<
   DataModel extends GenericDataModel,
-  TSlug extends CollectionSlug,
-  const TPopulate extends PopulateShape<TSlug> = Record<string, never>,
+  TCollectionSlug extends CollectionSlug,
+  const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
   const D extends number = 0,
 >(
-  args: GetServerArgs<DataModel, TSlug, TPopulate, D>,
-): Promise<GetReturnItem<TSlug, TPopulate, D>> {
+  args: GetServerArgs<DataModel, TCollectionSlug, TPopulate, D>,
+): Promise<GetReturnItem<TCollectionSlug, TPopulate, D>> {
   const doc = await args.ctx.db.get(args.id);
 
   // Resolve slug for buildDepthPopulate from the Id (D12).
@@ -117,8 +117,8 @@ export async function get<
       : undefined);
 
   if (!effectivePopulate || !doc)
-    return doc as unknown as GetReturnItem<TSlug, TPopulate, D>;
+    return doc as unknown as GetReturnItem<TCollectionSlug, TPopulate, D>;
 
   const [populated] = await populateDocs(args.ctx, [doc], effectivePopulate);
-  return (populated ?? null) as unknown as GetReturnItem<TSlug, TPopulate, D>;
+  return (populated ?? null) as unknown as GetReturnItem<TCollectionSlug, TPopulate, D>;
 }

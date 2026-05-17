@@ -14,14 +14,14 @@ import type { GenericMutationServerParams } from "../types";
  * Server-side args for `update`.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
- * @typeParam TSlug - Collection slug, recovered from the `Id` brand.
+ * @typeParam TCollectionSlug - Collection slug, recovered from the `Id` brand.
  */
 export interface UpdateServerArgs<
   DataModel extends GenericDataModel,
-  TSlug extends CollectionSlug,
+  TCollectionSlug extends CollectionSlug,
 > extends GenericMutationServerParams<DataModel> {
   /** The document ID to patch. */
-  id: GenericId<TSlug>;
+  id: GenericId<TCollectionSlug>;
   /**
    * Partial field values to merge into the document. Only the keys present
    * here are written; unspecified fields are left unchanged. `_id` and
@@ -41,13 +41,13 @@ export interface UpdateServerArgs<
 }
 
 /**
- * Patches a document by its `Id<TSlug>`. Only specified fields are updated;
+ * Patches a document by its `Id<TCollectionSlug>`. Only specified fields are updated;
  * unspecified fields are left unchanged. Server-side only.
  *
  * Import from `@vexcms/core/server`.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
- * @typeParam TSlug - Collection slug.
+ * @typeParam TCollectionSlug - Collection slug.
  * @param args - `{ ctx, id, data }`. `ctx` must be a mutation context.
  * @returns Promise resolving to void.
  * @example
@@ -62,7 +62,7 @@ export interface UpdateServerArgs<
  */
 export async function update<
   DataModel extends GenericDataModel,
-  TSlug extends CollectionSlug,
->(args: UpdateServerArgs<DataModel, TSlug>): Promise<void> {
+  TCollectionSlug extends CollectionSlug,
+>(args: UpdateServerArgs<DataModel, TCollectionSlug>): Promise<void> {
   await args.ctx.db.patch(args.id, args.data);
 }

@@ -4,11 +4,9 @@ description: Write or update JSDoc for exported symbols in vexcms packages AND s
 
 # Document — vexcms
 
-Write or update inline JSDoc for a target in the vexcms codebase AND create/update its corresponding page in `apps/docs/src/content/docs/`. If no target is given, ask for one.
+Write or update inline JSDoc for the uncommitted files in the vexcms codebase AND create/update their corresponding pages in `apps/docs/src/content/docs/`. Always run `git status` to find the target — never ask the user what to document.
 
 > **Docs are generated, not hand-written.** Every documented symbol gets a Starlight MDX page derived from its JSDoc, type signature, and usage. Pages are kept in sync with the implementation — not written separately.
-
-> **Questions:** Use `ask_user_question` for every question. Never write question lists as plain text.
 
 ---
 
@@ -31,14 +29,10 @@ Write or update inline JSDoc for a target in the vexcms codebase AND create/upda
 ## Usage
 
 ```
-/document [<target>] [in <file>]
+/document
 ```
 
-**Examples:**
-- `/document` — documents all uncommitted changes (staged + unstaged)
-- `/document TextFieldInput`
-- `/document all exported functions in packages/core/src/fields/text/config.ts`
-- `/document createCollection and Collection`
+Always documents the uncommitted files reported by `git status`. Run `git status --porcelain` to find them, filter to `.ts`/`.tsx` files in `packages/*/src/` or `apps/www/` (skip `_generated/`, `node_modules`, `.pi/`), then document every exported symbol in those files.
 
 ---
 
@@ -65,7 +59,7 @@ Only proceed to Step 1+ if something is actually missing or stale.
 
 ## Step 1 — Locate and read the target
 
-**If no target specified:** run `git diff --name-only && git diff --cached --name-only`. Include all uncommitted `.ts` / `.tsx` source files in `packages/*/src/` or `apps/www/`. Skip config files, `.md`, lock files.
+**Finding uncommitted files:** Run `git status --porcelain` piped to filter `.ts`/`.tsx` files in `packages/*/src/` or `apps/www/` (skip `_generated/`, `node_modules`, `.pi/`). These are the files to document — document all of them, do not ask the user to choose a subset.
 
 **Run LSP diagnostics on all in-scope files** (changed AND unchanged) using the `lsp` tool with `action: "diagnostics"` before writing any documentation. This catches:
 - Missing JSDoc on exported symbols (`jsdoc/require-jsdoc`)
@@ -76,11 +70,6 @@ Only proceed to Step 1+ if something is actually missing or stale.
 Fix ALL `jsdoc/*` errors found by LSP before writing new documentation. These are the errors that will prevent the typecheck command from passing. Report non-JSDoc errors separately without fixing them unless they are in a file being documented.
 
 **Test files must be included** — flag stale test descriptions, wrong type assertions, expected values that no longer match implementation.
-
-**If a target is specified:**
-- Search `packages/*/src/` first (most exported API lives there), then `apps/www/`
-- Read the full file the target lives in
-- Follow imports needed to understand shape/behavior
 
 ---
 

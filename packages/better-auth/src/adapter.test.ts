@@ -63,7 +63,7 @@ describe("betterAuthAdapter", () => {
     const adapter = betterAuthAdapter();
     const session = adapter.collections.find((c) => c.slug === "session");
     expect(session?.fields.userId).toBeDefined();
-    expect(session?.fields.userId?.type).toBe("relationship");
+    expect(session?.fields.userId?.type).toBe("text");
   });
 
   it("maps boolean fields to checkbox type", () => {

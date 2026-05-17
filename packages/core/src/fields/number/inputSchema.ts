@@ -1,4 +1,4 @@
-import { z, ZodSchema } from "zod";
+import { z, ZodType } from "zod";
 import { NumberField } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 
@@ -21,7 +21,7 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  */
 export function numberFieldToInputSchema(props: {
   field: NumberField;
-}): ZodSchema {
+}): ZodType {
   const { field } = props;
 
   const fieldMinError = field.min?.error ?? "This field is too small.";

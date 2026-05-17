@@ -25,7 +25,9 @@
       "@vexcms/react": ["../../packages/react/src/index.ts"],
       "@vexcms/core": ["../../packages/core/src/index.ts"],
       "@vexcms/next/server": ["../../packages/next/src/NextAdminPage.tsx"],
-      "@vexcms/next/client": ["../../packages/next/src/NextAdminLayout.tsx"]
+      "@vexcms/next/client": ["../../packages/next/src/NextAdminLayout.tsx"],
+      "@vexcms/better-auth": ["../../packages/better-auth/src/index.ts"],
+      "@vexcms/better-auth/convex": ["../../packages/better-auth/src/convex/index.ts"]
     }
   },
   "include": [

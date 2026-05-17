@@ -11,7 +11,6 @@ import {
   date,
   defineCollection,
   number,
-  relationship,
   select,
   text,
 } from "@vexcms/core";
@@ -288,10 +287,7 @@ function betterAuthAttrToVexField(
   }
 
   if (attr.references) {
-    return relationship({
-      collection: { slug: attr.references.model as CollectionSlug },
-      ...baseOptions,
-    });
+    return text(baseOptions);
   }
 
   if (Array.isArray(attr.type)) {

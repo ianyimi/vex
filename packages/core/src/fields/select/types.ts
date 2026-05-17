@@ -51,8 +51,8 @@ import { BaseField, BaseFieldInput } from "../baseTypes";
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`)
  */
 export interface SelectFieldInput<
-  TMeta extends {} = {},
-> extends BaseFieldInput<TMeta> {
+  TFieldMeta extends {} = {},
+> extends BaseFieldInput<TFieldMeta> {
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
@@ -78,7 +78,7 @@ export interface SelectFieldInput<
  * @see {@link SelectFieldInput} for the user-facing input type
  * @see {@link select} for the config function that produces this type
  */
-export interface SelectField<TMeta extends {} = {}> extends BaseField<TMeta> {
+export interface SelectField<TFieldMeta extends {} = {}> extends BaseField<TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.select.type;
   /** Pre-filled value shown in the admin form when creating a new field. */
   defaultValue: string[];

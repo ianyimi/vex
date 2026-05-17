@@ -8,14 +8,14 @@ import type { GenericQueryClientParams, PopulateShape } from "../types";
  * Client-side args for `search`. Extends {@link GenericQueryClientParams}
  * to inherit `ctx?: never` and `populate?: TPopulate`.
  *
- * @typeParam TSlug - Collection slug.
+ * @typeParam TCollectionSlug - Collection slug.
  * @typeParam TPopulate - Populate object.
  */
 export interface SearchClientArgs<
-  TSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TSlug>,
-> extends GenericQueryClientParams<TSlug, TPopulate> {
-  collection: TSlug;
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
+> extends GenericQueryClientParams<TCollectionSlug, TPopulate> {
+  collection: TCollectionSlug;
   query: string;
   searchIndexName: string;
   searchField: string;
@@ -29,7 +29,7 @@ export interface SearchClientArgs<
  * Import from `@vexcms/core/client`. For the server-side version, import
  * `search` from `@vexcms/core/server`.
  *
- * @typeParam TSlug - Collection slug.
+ * @typeParam TCollectionSlug - Collection slug.
  * @typeParam TPopulate - Populate object.
  * @param args - `{ collection, query, searchIndexName, searchField, limit?, populate? }`.
  * @returns Tanstack-query `queryOptions`.
@@ -43,9 +43,9 @@ export interface SearchClientArgs<
  * ```
  */
 export function search<
-  TSlug extends CollectionSlug,
-  const TPopulate extends PopulateShape<TSlug> = Record<string, never>,
->(args: SearchClientArgs<TSlug, TPopulate>): ReturnType<typeof convexQuery> {
+  TCollectionSlug extends CollectionSlug,
+  const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+>(args: SearchClientArgs<TCollectionSlug, TPopulate>): ReturnType<typeof convexQuery> {
   return convexQuery(vexConvexApi.search, {
     collection: args.collection,
     searchIndexName: args.searchIndexName,

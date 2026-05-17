@@ -46,9 +46,9 @@ import type { UrlFieldInput, UrlField } from "./types";
  * @see {@link UrlFieldInput} for the full input type
  * @see {@link UrlField} for the resolved output type
  */
-export function url<TMeta extends {} = {}>(
-  options?: UrlFieldInput<TMeta>,
-): UrlField<TMeta> {
+export function url<TFieldMeta extends {} = {}>(
+  options?: UrlFieldInput<TFieldMeta>,
+): UrlField<TFieldMeta> {
   return {
     type: ADMIN_FIELDS.url.type,
     interfaceType: ADMIN_FIELDS.url.interfaceType,
@@ -68,7 +68,6 @@ export function url<TMeta extends {} = {}>(
       cellAlignment: "left",
       // Optional admin properties (no defaults)
       placeholder: "",
-      description: "",
       ...options?.admin,
     },
   };

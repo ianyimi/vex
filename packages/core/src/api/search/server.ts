@@ -18,18 +18,18 @@ import type {
  * constraints) from {@link GenericQueryServerParams}.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
- * @typeParam TSlug - Collection slug.
+ * @typeParam TCollectionSlug - Collection slug.
  * @typeParam TPopulate - Populate object.
  * @typeParam D - Depth literal (0 = no depth, default).
  */
 export interface SearchServerArgs<
   DataModel extends GenericDataModel,
-  TSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TSlug>,
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
   D extends number = 0,
-> extends GenericQueryServerParams<DataModel, TSlug, TPopulate, D> {
+> extends GenericQueryServerParams<DataModel, TCollectionSlug, TPopulate, D> {
   /** The collection to search — must match a registered collection slug. */
-  collection: TSlug;
+  collection: TCollectionSlug;
   /** The search text. Pass `""` to list recent documents (falls back to `.take()`). */
   query: string;
   /** The `.searchIndex()` name declared in the Convex schema (e.g. `"search_name"`). */
@@ -43,22 +43,22 @@ export interface SearchServerArgs<
 /**
  * Resolves the return element type of `search`:
  *
- * - No populate + `D = 0` → `DocumentBySlug[TSlug]`.
- * - No populate + `D > 0` → `DepthPopulated<TSlug, D>`.
- * - With populate → `Prettify<Populated<TSlug, TPopulate>>`.
+ * - No populate + `D = 0` → `DocumentBySlug[TCollectionSlug]`.
+ * - No populate + `D > 0` → `DepthPopulated<TCollectionSlug, D>`.
+ * - With populate → `Prettify<Populated<TCollectionSlug, TPopulate>>`.
  */
 type SearchReturnItem<
-  TSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TSlug>,
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
   D extends number,
 > = [TPopulate] extends [Record<string, never>]
   ? [D] extends [0]
-    ? TSlug extends keyof DocumentBySlug
-      ? DocumentBySlug[TSlug]
+    ? TCollectionSlug extends keyof DocumentBySlug
+      ? DocumentBySlug[TCollectionSlug]
       : never
-    : DepthPopulated<TSlug, D>
-  : TSlug extends keyof DocumentBySlug
-    ? Prettify<Populated<TSlug, TPopulate>>
+    : DepthPopulated<TCollectionSlug, D>
+  : TCollectionSlug extends keyof DocumentBySlug
+    ? Prettify<Populated<TCollectionSlug, TPopulate>>
     : never;
 
 /**
@@ -73,7 +73,7 @@ type SearchReturnItem<
  * `search` from `@vexcms/core/client`.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
- * @typeParam TSlug - Collection slug.
+ * @typeParam TCollectionSlug - Collection slug.
  * @typeParam TPopulate - Populate object.
  * @typeParam D - Depth literal (0 = none).
  * @param args - `{ ctx, collection, query, searchIndexName, searchField, limit?, populate? }`.
@@ -93,12 +93,12 @@ type SearchReturnItem<
  */
 export async function search<
   DataModel extends GenericDataModel,
-  TSlug extends CollectionSlug,
-  const TPopulate extends PopulateShape<TSlug> = Record<string, never>,
+  TCollectionSlug extends CollectionSlug,
+  const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
   const D extends number = 0,
 >(
-  args: SearchServerArgs<DataModel, TSlug, TPopulate, D>,
-): Promise<SearchReturnItem<TSlug, TPopulate, D>[]> {
+  args: SearchServerArgs<DataModel, TCollectionSlug, TPopulate, D>,
+): Promise<SearchReturnItem<TCollectionSlug, TPopulate, D>[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tableName = args.collection as any;
   const limit = args.limit ?? 20;
@@ -122,11 +122,11 @@ export async function search<
       : undefined);
 
   if (!effectivePopulate || Object.keys(effectivePopulate).length === 0) {
-    return docs as unknown as SearchReturnItem<TSlug, TPopulate, D>[];
+    return docs as unknown as SearchReturnItem<TCollectionSlug, TPopulate, D>[];
   }
   return populateDocs(
     args.ctx,
     docs as ReadonlyArray<Record<string, unknown>>,
     effectivePopulate,
-  ) as unknown as SearchReturnItem<TSlug, TPopulate, D>[];
+  ) as unknown as SearchReturnItem<TCollectionSlug, TPopulate, D>[];
 }

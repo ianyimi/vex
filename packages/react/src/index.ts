@@ -136,25 +136,25 @@ export * from "./components/ui";
 /**
  * Relationship field input type with the React component slot bound.
  *
- * Identical to `@vexcms/core`'s `RelationshipFieldInput<TSlug>` except
- * `admin.components.preview` is typed as `ComponentType<RelationshipPreviewProps<TSlug>>`
+ * Identical to `@vexcms/core`'s `RelationshipFieldInput<TCollectionSlug>` except
+ * `admin.components.preview` is typed as `ComponentType<RelationshipPreviewProps<TCollectionSlug>>`
  * instead of an opaque `ApplyComponent<ComponentHKT, _>`.
  */
 export type RelationshipFieldInput<
-  TMeta extends {} = {},
-  TSlug extends CollectionSlug = CollectionSlug,
-> = CoreRelationshipFieldInput<TMeta, TSlug, ReactHKT>;
+  TFieldMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> = CoreRelationshipFieldInput<TFieldMeta, TCollectionSlug, ReactHKT>;
 
 /**
  * Resolved relationship field type with the React component slot bound.
  *
- * Identical to `@vexcms/core`'s `RelationshipField<TSlug>` except
- * `admin.components.preview` is typed as `ComponentType<RelationshipPreviewProps<TSlug>>`.
+ * Identical to `@vexcms/core`'s `RelationshipField<TCollectionSlug>` except
+ * `admin.components.preview` is typed as `ComponentType<RelationshipPreviewProps<TCollectionSlug>>`.
  */
 export type RelationshipField<
-  TMeta extends {} = {},
-  TSlug extends CollectionSlug = CollectionSlug,
-> = CoreRelationshipField<TMeta, TSlug, ReactHKT>;
+  TFieldMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> = CoreRelationshipField<TFieldMeta, TCollectionSlug, ReactHKT>;
 
 /**
  * Collection admin configuration input with the React component slot bound.
@@ -175,12 +175,12 @@ export type AdminCollectionConfigInput<TFieldSlug extends string = string> =
 export type CollectionConfigInput<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
-  TSlug extends CollectionSlug = CollectionSlug,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends CollectionSlug = CollectionSlug,
 > = CoreCollectionConfigInput<
   TFieldMeta,
   TCollectionMeta,
-  TSlug,
+  TCollectionSlug,
   TFieldSlug,
   ReactHKT
 >;
@@ -194,12 +194,12 @@ export type CollectionConfigInput<
 export type CollectionConfig<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
-  TSlug extends CollectionSlug = CollectionSlug,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends CollectionSlug = CollectionSlug,
 > = CoreCollectionConfig<
   TFieldMeta,
   TCollectionMeta,
-  TSlug,
+  TCollectionSlug,
   TFieldSlug,
   ReactHKT
 >;
@@ -211,12 +211,12 @@ export type CollectionConfig<
  * but `options.admin.components.preview` is typed as a React `ComponentType`.
  */
 export function relationship<
-  TMeta extends {} = {},
-  TSlug extends CollectionSlug = CollectionSlug,
+  TFieldMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
 >(
-  options: RelationshipFieldInput<TMeta, TSlug>,
-): RelationshipField<TMeta, TSlug> {
-  return coreRelationship<TMeta, TSlug, ReactHKT>(options);
+  options: RelationshipFieldInput<TFieldMeta, TCollectionSlug>,
+): RelationshipField<TFieldMeta, TCollectionSlug> {
+  return coreRelationship<TFieldMeta, TCollectionSlug, ReactHKT>(options);
 }
 
 /**
@@ -224,20 +224,20 @@ export function relationship<
  *
  * Drop-in replacement for `@vexcms/core`'s `defineCollection` — same
  * behaviour, but `admin.components.preview` is typed as a React
- * `ComponentType<RelationshipPreviewProps<TSlug>>`.
+ * `ComponentType<RelationshipPreviewProps<TCollectionSlug>>`.
  */
 export function defineCollection<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
-  TSlug extends CollectionSlug = CollectionSlug,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends CollectionSlug = CollectionSlug,
 >(
-  config: CollectionConfigInput<TFieldMeta, TCollectionMeta, TSlug, TFieldSlug>,
-): CollectionConfig<TFieldMeta, TCollectionMeta, TSlug, TFieldSlug> {
+  config: CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug>,
+): CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug> {
   return coreDefineCollection<
     TFieldMeta,
     TCollectionMeta,
-    TSlug,
+    TCollectionSlug,
     TFieldSlug,
     ReactHKT
   >(config);

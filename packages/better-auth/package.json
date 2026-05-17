@@ -25,13 +25,17 @@
   },
   "peerDependencies": {
     "better-auth": "catalog:",
+    "convex": "catalog:",
     "@vexcms/core": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
     "@vexcms/core": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "better-auth": "catalog:",
+    "convex": "catalog:",
+    "convex-helpers": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

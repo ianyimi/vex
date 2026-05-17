@@ -1,27 +1,66 @@
-# Claude Design — VexCMS Admin Mockups
+# Claude Design — VexCMS Visual Reference
 
-**Source:** Exported from a Claude Design (claude.ai/design) session. Author: zaye, May 2026.
+**Source:** Exported from Claude Design (claude.ai/design) sessions. Author: zaye, May 2026.
 
-These files are the **visual source of truth** for the admin UI. They are NOT
-drop-in CSS — Claude Design uses its own bespoke token vocabulary and bespoke
-component classes that don't match the project's shadcn/Tailwind v4 stack.
+These files are the **visual source of truth** for both the admin UI and the
+marketing site (www). They are NOT drop-in CSS — Claude Design uses its own
+bespoke token vocabulary and bespoke component classes that don't match the
+project's shadcn/Tailwind v4 stack.
+
+## Directory layout
+
+```
+claude-design/
+├── README.md                  ← this file
+├── admin/                     ← Admin UI mockups (original session)
+│   ├── vexcms-design.html    ← Canvas index — artboard listing
+│   ├── admin.css             ← 972 lines of hand-authored CSS (visual ref only)
+│   ├── globals.css           ← Claude Design's globals snapshot
+│   ├── design-canvas.jsx     ← Artboard layout shell
+│   ├── tweaks-panel.jsx      ← Design-canvas tweaks/controls
+│   ├── fields.jsx            ← Field Inputs + Cells
+│   ├── shell.jsx             ← Sidebar, Topbar, AdminLayout
+│   ├── relationship.jsx      ← RelPickerPopover, RelTrigger, etc.
+│   ├── screens.jsx           ← Dashboard, list, edit, create views
+│   ├── studies.jsx           ← Per-field-type study artboards
+│   ├── mobile.jsx            ← Tablet/mobile views
+│   ├── primitives.jsx        ← Icons, wordmark, sample data
+│   └── prototype.jsx         ← Live interactive prototype
+└── www/                       ← Marketing site mockups (new session)
+    ├── index.html            ← Canvas index — artboard listing
+    ├── site.css              ← Marketing site styles (visual ref only)
+    ├── globals.css            ← Stark × Ember shadcn globals (Tailwind v4)
+    ├── design-canvas.jsx     ← Artboard layout shell (reused)
+    ├── tweaks-panel.jsx      ← Design-canvas tweaks/controls (reused)
+    ├── pages.jsx             ← 6 marketing pages (Home, Features, Pricing, Roadmap, Docs, FAQ)
+    ├── components.jsx        ← Shared components (Nav, Footer, Logo, CodeBlock, etc.)
+    └── assets/               ← Static assets
+        ├── colors_and_type.css  ← Color/type token definitions
+        ├── favicon.svg
+        ├── logo-icon.svg
+        ├── logo-icon-white.svg
+        ├── logo-wordmark.svg
+        ├── logo-wordmark-white.svg
+        ├── admin-screenshot-dark.png
+        └── admin-screenshot-light.png
+```
 
 ---
 
 ## The dual-token-system gotcha
 
-Claude Design's `admin.css` and the project's `apps/www/src/app/globals.css`
+Claude Design's CSS and the project's `apps/www/src/app/globals.css`
 use **different variable names for the same concepts**. Don't try to copy
-`admin.css` over `globals.css` — it will do nothing for the React components
+them over `globals.css` — it will do nothing for the React components
 (they consume shadcn tokens, not Claude Design tokens).
 
-The current `apps/www/src/app/globals.css` already absorbs Claude Design's
-full palette into shadcn-named tokens. If anything in `admin.css` changes,
+The current `apps/www/src/app/globals.css` already absorbs the full palette
+into shadcn-named tokens. If anything in the design CSS changes,
 re-translate using the table below.
 
 ### Token translation table
 
-| Concept                  | Claude Design (`admin.css`)        | Project shadcn (`globals.css`)      | Notes |
+| Concept                  | Claude Design (design CSS)          | Project shadcn (`globals.css`)      | Notes |
 |--------------------------|-------------------------------------|--------------------------------------|-------|
 | Page background          | `--page`                            | `--background`                       | 1:1 |
 | Card / surface           | `--surface`                         | `--card`                             | 1:1 |
@@ -87,14 +126,14 @@ What the `globals.css` swap **doesn't** fix:
 1. **Layout / spacing / typography differences** between the design HTML and
    the live admin. Those live in component JSX, not CSS variables. Fix them
    per-component with the design HTML open as a reference.
-2. **Bespoke component classes** in `admin.css` (`.vex-relpicker-row`,
+2. **Bespoke component classes** in the design CSS (`.vex-relpicker-row`,
    `.vex-wordmark`, etc.) — these don't exist in the React package and
    shouldn't. Use the visual design as a spec and rebuild equivalents in
    React components when needed.
 
 ---
 
-## Files in this folder
+## Admin folder (`admin/`)
 
 ### Manifest & styles
 - **`vexcms-design.html`** — canvas index. JSX-style scaffold listing every
@@ -122,7 +161,7 @@ porting a screen to React in `packages/react`.
 | `tweaks-panel.jsx`  | Design-canvas tweaks/controls (not project-relevant)                          |
 | `design-canvas.jsx` | The artboard layout shell (not project-relevant)                              |
 
-## Component adjustments propagated to `packages/react/src/components/ui`
+### Component adjustments propagated to `packages/react/src/components/ui`
 
 The shadcn UI primitives in `packages/react/src/components/ui` were
 adjusted once to match Claude Design's measurements so per-instance
@@ -143,19 +182,71 @@ cards, `rounded-xl → rounded-lg` for dialogs.
 
 ---
 
+## WWW folder (`www/`)
+
+Marketing site design for the VexCMS public-facing pages.
+
+### Design system
+- **`globals.css`** — Stark × Ember design tokens packaged for shadcn (Tailwind v4).
+  This IS the canonical `globals.css` for `apps/www`. Replace the entire
+  contents of `apps/www/src/app/globals.css` with this file.
+- **`site.css`** — Marketing site page styles. Treat as a **visual reference only**.
+  Uses Claude Design's bespoke token vocabulary (`--accent`, `--fg`, `--line`, etc.).
+  Do not import — port patterns to React components using shadcn tokens.
+- **`assets/colors_and_type.css`** — Raw color/type token definitions (Stark
+  typography + Ember accent). Referenced by `site.css`.
+
+### Artboard & canvas
+- **`index.html`** — Canvas index. Lists every artboard for the marketing site
+  (Home, Features, Pricing, Roadmap, Docs, FAQ) at desktop/tablet/mobile widths.
+- **`design-canvas.jsx`** — Artboard layout shell (reused from admin session).
+- **`tweaks-panel.jsx`** — Design-canvas tweaks/controls (reused from admin session).
+
+### Component implementations (JSX)
+These render the actual marketing pages the canvas index lists. Read them when
+building marketing site React components.
+
+| File                | What it defines                                                                |
+|---------------------|--------------------------------------------------------------------------------|
+| `pages.jsx`         | 6 marketing pages: Home (A/B/C/D variants), Features, Pricing, Roadmap, Docs, FAQ. In-shell router with tagline/category/dev/clever variants. |
+| `components.jsx`    | Shared components: `Nav`, `Footer`, `Logo`, `CodeBlock`, `Install`, `SchemaSample`, `QuerySample`, `AdminMockup`, `ReactivityDemo`, `Icon` |
+
+### Static assets
+- **`assets/favicon.svg`** — VexCMS favicon (V-chevron)
+- **`assets/logo-icon.svg`** / **`logo-icon-white.svg`** — Icon-only logo
+- **`assets/logo-wordmark.svg`** / **`logo-wordmark-white.svg`** — Wordmark logo
+- **`assets/admin-screenshot-dark.png`** — Admin panel screenshot (dark mode)
+- **`assets/admin-screenshot-light.png`** — Admin panel screenshot (light mode)
+
+### Design language notes
+
+The marketing site uses **Stark × Ember** — pure neutral near-black/white
+surfaces with a single Ember Orange accent. Key principles:
+
+- **One typeface:** Geist for everything. Geist Mono for code. No Instrument
+  Serif — the design canvases show it as an option but the Stark system
+  is mono-family.
+- **One accent:** Ember Orange (#E8622A light / #F07040 dark). Never introduce
+  a second chromatic color.
+- **Sharp radii:** 2px for controls, 4px for cards, 8px for modals, pill for
+  badges only. No rounded-full CTAs.
+- **Dark-first:** The default mode is dark. Light mode is the override.
+- **No box-shadows in dark mode:** Elevation via background shifts only.
+
+---
+
 ## Updating
 
 When Claude Design exports a new revision:
 
-1. Drop the new `admin.css` / `globals.css` / `*.html` into this folder
-   (overwriting).
+1. Drop the new files into the appropriate subfolder (`admin/` or `www/`).
 2. Diff against the previous version:
    ```bash
-   git diff HEAD~1 -- .pi/design/claude-design/admin.css
+   git diff HEAD~1 -- .pi/design/claude-design/www/site.css
    ```
-3. For any new token in `admin.css`, add a row to the translation table
-   above and an entry in `apps/www/src/app/globals.css` under both `:root`
-   and `.dark`, plus the `@theme inline` registration.
+3. For any new token, add a row to the translation table above and an entry
+   in `apps/www/src/app/globals.css` under both `:root` and `.dark`, plus
+   the `@theme inline` registration.
 4. For any value change to an existing token, update the matching shadcn
    token's value in `apps/www/src/app/globals.css`.
 5. For new component patterns in the HTML, treat them as visual specs for

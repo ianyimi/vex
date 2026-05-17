@@ -50,30 +50,30 @@ export type Prettify<T> = { [K in keyof T]: T[K] } & {};
  * fields. `limit` stays per-function because it doesn't apply to single-doc
  * queries (`get`) or scalar queries (`count`).
  *
- * @typeParam TSlug - The collection slug; used to narrow `populate` keys via
- *   `RelationshipKeysOf<TSlug>`. Defaults to the full `CollectionSlug` union.
+ * @typeParam TCollectionSlug - The collection slug; used to narrow `populate` keys via
+ *   `RelationshipKeysOf<TCollectionSlug>`. Defaults to the full `CollectionSlug` union.
  * @typeParam TPopulate - The populate object. Defaults to
  *   `Record<string, never>` (no relationships populated).
  *
  * @example Inheritance pattern
  * ```ts
  * // find — adds slug + limit; populate inherited
- * interface FindClientArgs<TSlug, TPopulate>
- *   extends GenericQueryClientParams<TSlug, TPopulate> {
- *   slug: TSlug;
+ * interface FindClientArgs<TCollectionSlug, TPopulate>
+ *   extends GenericQueryClientParams<TCollectionSlug, TPopulate> {
+ *   slug: TCollectionSlug;
  *   limit?: number;
  * }
  *
  * // get — adds id; populate inherited; no limit (single-doc)
- * interface GetClientArgs<TSlug, TPopulate>
- *   extends GenericQueryClientParams<TSlug, TPopulate> {
- *   id: GenericId<TSlug>;
+ * interface GetClientArgs<TCollectionSlug, TPopulate>
+ *   extends GenericQueryClientParams<TCollectionSlug, TPopulate> {
+ *   id: GenericId<TCollectionSlug>;
  * }
  *
  * // search — adds slug + query + index fields + limit; populate inherited
- * interface SearchClientArgs<TSlug, TPopulate>
- *   extends GenericQueryClientParams<TSlug, TPopulate> {
- *   slug: TSlug;
+ * interface SearchClientArgs<TCollectionSlug, TPopulate>
+ *   extends GenericQueryClientParams<TCollectionSlug, TPopulate> {
+ *   slug: TCollectionSlug;
  *   query: string;
  *   searchIndexName: string;
  *   searchField: string;
@@ -81,20 +81,20 @@ export type Prettify<T> = { [K in keyof T]: T[K] } & {};
  * }
  *
  * // count — returns a number, has no docs to populate; overrides populate
- * interface CountClientArgs<TSlug>
- *   extends GenericQueryClientParams<TSlug> {
- *   slug: TSlug;
+ * interface CountClientArgs<TCollectionSlug>
+ *   extends GenericQueryClientParams<TCollectionSlug> {
+ *   slug: TCollectionSlug;
  *   populate?: never;
  * }
  * ```
  */
 export interface GenericQueryClientParams<
-  TSlug extends CollectionSlug = CollectionSlug,
-  TPopulate extends PopulateShape<TSlug> = Record<string, never>,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
 > {
   /** Discriminator: client args MUST NOT supply `ctx`. */
   ctx?: never;
-  /** Recursive populate object, type-narrowed against `RelationshipKeysOf<TSlug>`. */
+  /** Recursive populate object, type-narrowed against `RelationshipKeysOf<TCollectionSlug>`. */
   populate?: TPopulate;
   /**
    * Auto-populate all relationship fields to this many levels.
@@ -117,21 +117,21 @@ export interface GenericQueryClientParams<
  * inherit these constraints without re-declaring them.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
- * @typeParam TSlug - The collection slug.
+ * @typeParam TCollectionSlug - The collection slug.
  * @typeParam TPopulate - The populate object.
  * @typeParam D - Depth literal (0 = no depth, default). Captured as a literal
  *   via `const D extends number = 0` on the implementing function.
  */
 export interface GenericQueryServerParams<
   DataModel extends GenericDataModel = GenericDataModel,
-  TSlug extends CollectionSlug = CollectionSlug,
-  TPopulate extends PopulateShape<TSlug> = Record<string, never>,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
   D extends number = 0,
 > {
   /** Discriminator: server args MUST supply a Convex query context. */
   ctx: GenericQueryCtx<DataModel>;
   /**
-   * Recursive populate object, type-narrowed against `RelationshipKeysOf<TSlug>`.
+   * Recursive populate object, type-narrowed against `RelationshipKeysOf<TCollectionSlug>`.
    * Mutually exclusive with `depth` — becomes `never` when `D ≠ 0`.
    */
   populate?: [D] extends [0] ? TPopulate : never;
@@ -180,14 +180,14 @@ export interface GenericMutationServerParams<
 // `populate` typing, sortable-column inference, and future filter ops.
 
 /**
- * Returns the union of field keys on `TSlug` that have field type `TType`.
+ * Returns the union of field keys on `TCollectionSlug` that have field type `TType`.
  *
  * Reads the `CollectionsFieldTypeMap` property on the augmented `GeneratedVexTypes`
  * registry — populated by `vex generate` from the user's collection configs.
  * Returns `never` when the slug has no fields of that type, or when the
  * registry hasn't been augmented yet (fresh project).
  *
- * @typeParam TSlug - The collection slug.
+ * @typeParam TCollectionSlug - The collection slug.
  * @typeParam TType - The field type literal (e.g., `"text"`, `"relationship"`).
  *
  * @example
@@ -196,33 +196,33 @@ export interface GenericMutationServerParams<
  * // → "author" | "category"
  */
 export type FieldKeysOfType<
-  TSlug extends CollectionSlug,
+  TCollectionSlug extends CollectionSlug,
   TType extends AdminFieldType,
-> = TSlug extends keyof CollectionsFieldTypeMap
-  ? TType extends keyof CollectionsFieldTypeMap[TSlug]
-    ? CollectionsFieldTypeMap[TSlug][TType] & string
+> = TCollectionSlug extends keyof CollectionsFieldTypeMap
+  ? TType extends keyof CollectionsFieldTypeMap[TCollectionSlug]
+    ? CollectionsFieldTypeMap[TCollectionSlug][TType] & string
     : never
   : never;
 
-/** Field keys on `TSlug` that are relationship fields. */
-export type RelationshipKeysOf<TSlug extends CollectionSlug> = FieldKeysOfType<
-  TSlug,
+/** Field keys on `TCollectionSlug` that are relationship fields. */
+export type RelationshipKeysOf<TCollectionSlug extends CollectionSlug> = FieldKeysOfType<
+  TCollectionSlug,
   typeof ADMIN_FIELDS.relationship.type
 >;
 
-/** Field keys on `TSlug` that are text fields. */
-export type TextKeysOf<TSlug extends CollectionSlug> = FieldKeysOfType<
-  TSlug,
+/** Field keys on `TCollectionSlug` that are text fields. */
+export type TextKeysOf<TCollectionSlug extends CollectionSlug> = FieldKeysOfType<
+  TCollectionSlug,
   typeof ADMIN_FIELDS.relationship.type
 >;
 
 /**
- * Field keys on `TSlug` that are sortable in list views (text, number, date,
+ * Field keys on `TCollectionSlug` that are sortable in list views (text, number, date,
  * checkbox, select). Used by future `defaultSort` typing and the data-table
  * column registry.
  */
-export type SortableKeysOf<TSlug extends CollectionSlug> = FieldKeysOfType<
-  TSlug,
+export type SortableKeysOf<TCollectionSlug extends CollectionSlug> = FieldKeysOfType<
+  TCollectionSlug,
   | TextFieldType
   | NumberFieldType
   | DateFieldType
@@ -239,11 +239,11 @@ export type SortableKeysOf<TSlug extends CollectionSlug> = FieldKeysOfType<
  * Falls back to `CollectionSlug` if not resolvable.
  */
 export type RelationshipTargetOf<
-  TSlug extends CollectionSlug,
+  TCollectionSlug extends CollectionSlug,
   TKey extends string,
-> = TSlug extends keyof DocumentBySlug
-  ? TKey extends keyof DocumentBySlug[TSlug]
-    ? NonNullable<DocumentBySlug[TSlug][TKey]> extends ReadonlyArray<{
+> = TCollectionSlug extends keyof DocumentBySlug
+  ? TKey extends keyof DocumentBySlug[TCollectionSlug]
+    ? NonNullable<DocumentBySlug[TCollectionSlug][TKey]> extends ReadonlyArray<{
         __tableName: infer T;
       }>
       ? T extends CollectionSlug
@@ -257,19 +257,19 @@ export type RelationshipTargetOf<
  * Recursive populate options, type-restricted to relationship field keys per
  * the augmented `CollectionsFieldTypeMap` registry.
  *
- * @typeParam TSlug - The collection slug to narrow relationship keys against.
+ * @typeParam TCollectionSlug - The collection slug to narrow relationship keys against.
  *   Defaults to the full `CollectionSlug` union for internal recursive use.
  */
-export type PopulateShape<TSlug extends CollectionSlug = CollectionSlug> = {
-  [K in RelationshipKeysOf<TSlug>]?:
+export type PopulateShape<TCollectionSlug extends CollectionSlug = CollectionSlug> = {
+  [K in RelationshipKeysOf<TCollectionSlug>]?:
     | true
     | {
-        populate: PopulateShape<RelationshipTargetOf<TSlug, K>>;
+        populate: PopulateShape<RelationshipTargetOf<TCollectionSlug, K>>;
       };
 };
 
 /**
- * Result type of a populated query — `Doc<TSlug>` with each key listed in
+ * Result type of a populated query — `Doc<TCollectionSlug>` with each key listed in
  * `TPopulate` replaced from `Id<TargetSlug>[]` to `Doc<TargetSlug>[]`.
  * Recurses if the populate value has a nested `populate` field (D12: unbounded
  * nesting).
@@ -278,13 +278,13 @@ export type PopulateShape<TSlug extends CollectionSlug = CollectionSlug> = {
  * keys are left untouched.
  */
 export type Populated<
-  TSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TSlug>,
-> = TSlug extends keyof DocumentBySlug
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
+> = TCollectionSlug extends keyof DocumentBySlug
   ? {
-      [K in keyof DocumentBySlug[TSlug]]: K extends keyof TPopulate
+      [K in keyof DocumentBySlug[TCollectionSlug]]: K extends keyof TPopulate
         ? K extends string
-          ? RelationshipTargetOf<TSlug, K> extends infer Target
+          ? RelationshipTargetOf<TCollectionSlug, K> extends infer Target
             ? Target extends CollectionSlug
               ? Target extends keyof DocumentBySlug
                 ? // Recurse if nested populate is provided.
@@ -295,21 +295,21 @@ export type Populated<
                     ? Populated<Target, NestedPopulate>[]
                     : DocumentBySlug[Target][]
                   : DocumentBySlug[Target][]
-                : DocumentBySlug[TSlug][K]
-              : DocumentBySlug[TSlug][K]
-            : DocumentBySlug[TSlug][K]
-          : DocumentBySlug[TSlug][K]
-        : DocumentBySlug[TSlug][K];
+                : DocumentBySlug[TCollectionSlug][K]
+              : DocumentBySlug[TCollectionSlug][K]
+            : DocumentBySlug[TCollectionSlug][K]
+          : DocumentBySlug[TCollectionSlug][K]
+        : DocumentBySlug[TCollectionSlug][K];
     }
   : never;
 
 /**
  * Computes the equivalent `PopulateShape` for automatically populating all
- * relationship fields on `TSlug` to `D` levels deep.
+ * relationship fields on `TCollectionSlug` to `D` levels deep.
  *
  * This is the type-level counterpart of `buildDepthPopulate`. The computed
- * shape is a valid `PopulateShape<TSlug>` and can be fed directly into
- * `Populated<TSlug, DepthPopulate<TSlug, D>>`.
+ * shape is a valid `PopulateShape<TCollectionSlug>` and can be fed directly into
+ * `Populated<TCollectionSlug, DepthPopulate<TCollectionSlug, D>>`.
  *
  * **How the counter works:** `_Counter` is a tuple of `0`s whose `length`
  * tracks how many levels have been descended. At the penultimate level
@@ -322,7 +322,7 @@ export type Populated<
  * safe for typical VexCMS schemas; D≥4 may cause noticeable `tsc` slowdown.
  * Runtime has no limit.
  *
- * @typeParam TSlug - The collection slug to start from.
+ * @typeParam TCollectionSlug - The collection slug to start from.
  * @typeParam D - The depth as a literal number (1, 2, or 3 recommended).
  * @typeParam _Counter - Internal tuple counter — callers must not supply this.
  *
@@ -338,17 +338,17 @@ export type Populated<
  * ```
  */
 export type DepthPopulate<
-  TSlug extends CollectionSlug,
+  TCollectionSlug extends CollectionSlug,
   D extends number,
   _Counter extends 0[] = [],
 > = _Counter["length"] extends D
   ? Record<string, never>
   : [..._Counter, 0]["length"] extends D
-    ? { [K in RelationshipKeysOf<TSlug>]?: true }
+    ? { [K in RelationshipKeysOf<TCollectionSlug>]?: true }
     : {
-        [K in RelationshipKeysOf<TSlug>]?: {
+        [K in RelationshipKeysOf<TCollectionSlug>]?: {
           populate: DepthPopulate<
-            RelationshipTargetOf<TSlug, K>,
+            RelationshipTargetOf<TCollectionSlug, K>,
             D,
             [..._Counter, 0]
           >;
@@ -359,7 +359,7 @@ export type DepthPopulate<
  * Return type of `find` / `get` / `search` when `depth` is provided instead
  * of an explicit `populate` object.
  *
- * Delegates to `Populated<TSlug, DepthPopulate<TSlug, D>>` — the same type
+ * Delegates to `Populated<TCollectionSlug, DepthPopulate<TCollectionSlug, D>>` — the same type
  * the explicit populate path produces — so the narrowed shape is identical to
  * what you would get by writing all relationship keys by hand.
  *
@@ -371,18 +371,18 @@ export type DepthPopulate<
  * **`depth: 0`** (the default) returns raw un-populated docs — identical to
  * omitting both `depth` and `populate`.
  *
- * @typeParam TSlug - The collection slug.
+ * @typeParam TCollectionSlug - The collection slug.
  * @typeParam D - The depth literal.
  */
 export type DepthPopulated<
-  TSlug extends CollectionSlug,
+  TCollectionSlug extends CollectionSlug,
   D extends number,
 > = number extends D
   ? VexDocument
   : D extends 0
-    ? TSlug extends keyof DocumentBySlug
-      ? DocumentBySlug[TSlug]
+    ? TCollectionSlug extends keyof DocumentBySlug
+      ? DocumentBySlug[TCollectionSlug]
       : never
-    : TSlug extends keyof DocumentBySlug
-      ? Prettify<Populated<TSlug, DepthPopulate<TSlug, D>>>
+    : TCollectionSlug extends keyof DocumentBySlug
+      ? Prettify<Populated<TCollectionSlug, DepthPopulate<TCollectionSlug, D>>>
       : never;

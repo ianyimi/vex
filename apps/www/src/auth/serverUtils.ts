@@ -4,12 +4,17 @@ import { cookies } from "next/headers"
 
 export async function getSessionToken() {
   const cookieStore = await cookies()
-  const sessionToken = cookieStore.get("better-auth.session_token")?.value.split(".")[0]
-  if (!sessionToken) {
-    console.error("Error getting session token")
-    return null
+  const sessionTokenCookie = cookieStore.get("better-auth.session_token")?.value
+
+  if (!sessionTokenCookie) return null
+
+  // better-auth stores tokens as "<raw_token>.<hmac_signature>" (2 parts, not a JWT)
+  // The raw token (first part) is what's indexed in the DB by_token
+  if (sessionTokenCookie.includes(".")) {
+    return sessionTokenCookie.split(".")[0]
   }
-  return sessionToken
+
+  return sessionTokenCookie
 }
 
 /**
@@ -19,17 +24,12 @@ export async function getSessionToken() {
 export const getCurrentUser = async () => {
   try {
     const sessionToken = await getSessionToken()
-
-    if (!sessionToken) {
-      return null
-    }
+    if (!sessionToken) return null
 
     const session = await fetchQuery(api.auth.sessions.getSessionWithUser, {
       sessionToken,
     })
-    if (!session?.user) {
-      return null
-    }
+    if (!session?.user) return null
     return session.user
   } catch (error) {
     console.error("Error getting current user:", error)
@@ -43,22 +43,15 @@ export const getCurrentUser = async () => {
 export async function getSession() {
   try {
     const sessionToken = await getSessionToken()
-
-    if (!sessionToken) {
-      console.log("no session token")
-      return null
-    }
+    if (!sessionToken) return null
 
     const session = await fetchQuery(api.auth.sessions.getSessionWithUser, {
       sessionToken,
     })
-    if (!session?.user) {
-      console.log("no session")
-      return null
-    }
+    if (!session?.user) return null
     return session
   } catch (error) {
-    console.error("Error getting session:", error)
+    console.error("[getSession] Error:", error)
     return null
   }
 }

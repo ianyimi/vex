@@ -7,11 +7,20 @@ This folder contains all design assets for VexCMS. It is structured for use with
 ```
 .pi/design/
   README.md                  ← this file
-  claude-design/             ← Active design source — Claude Design export
-    README.md                ← READ FIRST. Token translation table.
-    vexcms-design.html       ← Artboard index (picker-open, study-rel, …)
-    admin.css                ← Visual reference only. Do NOT import.
-    globals.css              ← Smaller Stark × Ember shadcn snapshot.
+  claude-design/             ← Visual source of truth from Claude Design sessions
+    README.md                ← READ FIRST. Token translation table + file guide.
+    admin/                   ← Admin UI mockups (original session)
+      vexcms-design.html     ← Canvas index
+      admin.css              ← Visual reference only. Do NOT import.
+      globals.css            ← Smaller Stark × Ember shadcn snapshot.
+      *.jsx                  ← Admin component implementations
+    www/                     ← Marketing site mockups (new session)
+      index.html             ← Canvas index
+      site.css               ← Visual reference only. Do NOT import.
+      globals.css            ← Canonical Stark × Ember shadcn globals (Tailwind v4)
+      pages.jsx              ← 6 marketing pages (Home, Features, Pricing, Roadmap, Docs, FAQ)
+      components.jsx         ← Shared marketing components (Nav, Footer, Logo, CodeBlock, etc.)
+      assets/                ← Static assets (favicon, logos, admin screenshots)
   theme-a-vex-violet/        ← Electric violet. Technical premium. (alt theme)
     DESIGN.md
     globals.css
@@ -30,20 +39,23 @@ This folder contains all design assets for VexCMS. It is structured for use with
     brand-guidelines.md
 ```
 
-**Active design:** `claude-design/` is the current source of truth for the
-admin UI visuals. The `theme-*/` folders are alternative palette options
-from an earlier exploration; keep them for reference but the live
-`apps/www/src/app/globals.css` is built off `claude-design/`.
+**Active design:** `claude-design/` is the current source of truth for both
+the admin UI and the marketing site visuals. The `theme-*/` folders are
+alternative palette options from an earlier exploration; keep them for
+reference but the live `apps/www/src/app/globals.css` is built off
+`claude-design/www/globals.css` (Stark × Ember).
 
-> ⚠️ `claude-design/admin.css` and the project's shadcn `globals.css` use
-> **different token names** for the same concepts. Do not copy `admin.css`
-> into the project. See `claude-design/README.md` for the translation table.
+> ⚠️ Claude Design's CSS files (`admin.css`, `site.css`) use **different token
+> names** for the same concepts as the project's shadcn `globals.css`. Do not
+> copy them into the project. See `claude-design/README.md` for the full
+> translation table.
 
 ## How to use with Claude Design
 
-1. Upload the chosen theme's `DESIGN.md` as your design system file during onboarding
-2. Reference `brand-guidelines.md` for copywriting tone, logo direction, and usage rules
-3. When a theme is selected, copy its `globals.css` to `apps/www/src/app/globals.css`
+1. Read `claude-design/README.md` first — it has the token translation table and file guide.
+2. For admin UI: reference `claude-design/admin/` JSX files when porting screens to React.
+3. For marketing site: reference `claude-design/www/` JSX files and `site.css` for visual specs.
+4. When a theme is selected, copy its `globals.css` to `apps/www/src/app/globals.css`.
 
 ## Competitor Color Map (for reference)
 
@@ -69,7 +81,7 @@ from an earlier exploration; keep them for reference but the live
 ## Applying a Theme to `apps/www`
 
 ```bash
-cp .pi/design/theme-a-vex-violet/globals.css apps/www/src/app/globals.css
+cp .pi/design/claude-design/www/globals.css apps/www/src/app/globals.css
 ```
 
 Then set the matching font in `apps/www/src/app/layout.tsx` per the font stack listed in that theme's `brand-guidelines.md`.

@@ -1,8 +1,5 @@
 "use client"
 
-import { convexQuery } from "@convex-dev/react-query"
-import { api } from "@convex/_generated/api"
-import { useQuery } from "@tanstack/react-query"
 import { TerminalIcon, UserIcon } from "lucide-react"
 import Link from "next/link"
 
@@ -12,15 +9,6 @@ import { ThemeToggle } from "~/components/ui/theme-toggle"
 
 export function ComponentExample() {
   const { data: session } = useSession()
-  const { data: posts } = useQuery({
-    ...convexQuery(api.test.getAll),
-  })
-  console.log(
-    "posts: ",
-    posts?.map((p) => {
-      return [p.title, p.parent]
-    })
-  )
 
   return (
     <div className="bg-background flex min-h-screen flex-col items-center justify-center gap-8 p-6 text-center">
@@ -41,9 +29,9 @@ export function ComponentExample() {
           <TerminalIcon className="size-7" />
         </div>
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold tracking-tight">create-z3-app</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Vex CMS</h1>
           <p className="text-muted-foreground max-w-sm text-base">
-            A full-stack starter with Next.js, Convex, and Better Auth — ready to ship.
+            The CMS built for Convex. Real-time, type-safe, developer first.
           </p>
         </div>
       </div>
@@ -63,7 +51,11 @@ export function ComponentExample() {
             <Button nativeButton={false} render={<Link href="/auth/sign-up" />}>
               Sign up
             </Button>
-            <Button nativeButton={false} render={<Link href="/auth/sign-in" />} variant="outline">
+            <Button
+              nativeButton={false}
+              render={<Link href="/auth/sign-in" />}
+              variant="outline"
+            >
               Sign in
             </Button>
           </>
@@ -71,7 +63,7 @@ export function ComponentExample() {
       </div>
 
       <code className="bg-muted text-muted-foreground rounded-lg px-4 py-2 text-sm font-mono">
-        npm create z3-app@latest
+        npx create-vexcms@latest
       </code>
     </div>
   )

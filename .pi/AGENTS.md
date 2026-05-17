@@ -51,6 +51,11 @@ Session `project-vex` — two always-running dev panes in window 0:
 
 UI-first: browser console → `project-vex:0.0` (Next.js) → `project-vex:0.1` (Convex) → `git diff` → ideaLog → Vitest output → changed spec files.
 
+## Design
+→ `.pi/design/README.md`
+
+VexCMS visual source of truth. Active: `claude-design/` (Stark × Ember for www, full admin mockups). 4 alt themes in `theme-*/`. Agent **always reads `.pi/design/README.md` before writing any UI code**. Claude Design CSS uses different token names — translate via the table in `claude-design/README.md`, never copy directly.
+
 ## Agent Harness
 
 The full harness for this project lives in `.pi/` — it includes `AGENTS.md` (this file), `agent-docs/` (standards, specs, product docs, implementation log), `prompts/`, and any project-local skills.

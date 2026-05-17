@@ -7,40 +7,41 @@ import { v } from "convex/values"
 export const pages = defineTable({
   title: v.string(),
   slug: v.string(),
-  posts: v.optional(v.array(v.id("posts"))),
-}).index("by_posts", ["posts"])
+  content: v.optional(v.string()),
+  metaTitle: v.optional(v.string()),
+  metaDescription: v.optional(v.string()),
+  ogImage: v.optional(v.string()),
+}).index("by_slug", ["slug"])
 
-export const posts = defineTable({
-  title: v.string(),
-  slug: v.string(),
-  excerpt: v.optional(v.string()),
-  link: v.optional(v.string()),
-  index: v.optional(v.number()),
-  thumbnail: v.optional(v.string()),
-  parent: v.optional(v.array(v.id("posts"))),
-  children: v.optional(v.array(v.id("posts"))),
-  published: v.optional(v.boolean()),
-  publishedAt: v.optional(v.number()),
-  type: v.optional(
-    v.array(
-      v.union(
-        v.literal("one"),
-        v.literal("two"),
-        v.literal("three"),
-        v.literal("four"),
-        v.literal("five"),
-        v.literal("six")
-      )
-    )
-  ),
+export const headers = defineTable({
+  name: v.string(),
+  logoText: v.optional(v.string()),
+  logoHref: v.optional(v.string()),
+  menuItems: v.optional(v.string()),
+  actionButtons: v.optional(v.string()),
+}).index("by_name", ["name"])
+
+export const footers = defineTable({
+  name: v.string(),
+  logoText: v.optional(v.string()),
+  copyright: v.optional(v.string()),
+  links: v.optional(v.string()),
+  socialLinks: v.optional(v.string()),
+}).index("by_name", ["name"])
+
+export const themes = defineTable({
+  name: v.string(),
+  fontFamily: v.optional(v.string()),
+  radius: v.optional(v.string()),
+  primaryLight: v.optional(v.string()),
+  primaryDark: v.optional(v.string()),
+  bgDark: v.optional(v.string()),
+  bgLight: v.optional(v.string()),
+}).index("by_name", ["name"])
+
+export const site_settings = defineTable({
+  name: v.string(),
 })
-  .index("by_parent", ["parent"])
-  .index("by_children", ["children"])
-  .searchIndex("search_title", {
-    searchField: "title",
-
-    filterFields: [],
-  })
 
 export const user = defineTable({
   name: v.string(),
@@ -54,7 +55,7 @@ export const user = defineTable({
   banReason: v.optional(v.string()),
   banExpires: v.optional(v.number()),
   userId: v.optional(v.string()),
-}).index("by_email_unique", ["email"])
+}).index("by_email", ["email"])
 
 export const session = defineTable({
   expiresAt: v.number(),
@@ -63,16 +64,16 @@ export const session = defineTable({
   updatedAt: v.number(),
   ipAddress: v.optional(v.string()),
   userAgent: v.optional(v.string()),
-  userId: v.array(v.id("user")),
+  userId: v.string(),
   impersonatedBy: v.optional(v.string()),
 })
-  .index("by_token_unique", ["token"])
+  .index("by_token", ["token"])
   .index("by_userId", ["userId"])
 
 export const account = defineTable({
   accountId: v.string(),
   providerId: v.string(),
-  userId: v.array(v.id("user")),
+  userId: v.string(),
   accessToken: v.optional(v.string()),
   refreshToken: v.optional(v.string()),
   idToken: v.optional(v.string()),

@@ -1,0 +1,972 @@
+/* ==========================================================================
+   VexCMS Admin — Stark × Ember
+   ----------------------------------------------------------------------------
+   Pure-neutral grays + Ember Orange. Geist sans + Geist Mono. Sharp 2/4px
+   radii, no shadows in dark mode. Built to mirror the marketing site's
+   visual vocabulary (project 0845f777) so admin and www feel like one
+   product.
+
+   Loaded with: <link rel="stylesheet" href="admin.css">
+   Scope every screen with class="vex-admin" on the root. Add class="dark"
+   for dark mode (matches shadcn convention).
+   ========================================================================== */
+@import url("assets/colors_and_type.css");
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap");
+
+/* ── Globals ─────────────────────────────────────────────────── */
+.vex-admin * { box-sizing: border-box; }
+.vex-admin {
+  font-family: var(--vex-font-sans);
+  font-feature-settings: "ss01" 1, "cv11" 1;
+  -webkit-font-smoothing: antialiased;
+  background: var(--page);
+  color: var(--fg);
+  line-height: 1.5;
+}
+
+/* Theme surface — light by default, dark via .dark on a parent */
+.vex-admin {
+  --accent:        #E8622A;
+  --accent-hover:  #D45A26;
+  --accent-ink:    #C04E1E;
+  --accent-tint:   #FEF0E8;
+  --accent-line:   rgba(232,98,42,.24);
+  --accent-glow:   rgba(232,98,42,.16);
+  --accent-on:     #FFFFFF;
+
+  --page:    #F5F5F5;
+  --surface: #FFFFFF;
+  --raised:  #FAFAFA;
+  --side:    #FAFAFA;
+  --hover:   #F5F5F5;
+
+  --fg:        #0A0A0A;
+  --fg-muted:  #717171;
+  --fg-subtle: #A0A0A0;
+  --fg-faint:  #D4D4D4;
+
+  --line:      #D4D4D4;
+  --line-bold: #9A9A9A;
+  --line-soft: #EAEAEA;
+
+  --ok:    #16A34A;
+  --ok-bg: #DCFCE7;
+  --warn:  #CA8A04;
+  --warn-bg: #FEF3C7;
+  --bad:   #DC2626;
+  --bad-bg: #FEE2E2;
+
+  --shadow-xs: 0 1px 2px rgba(10,10,10,.04);
+  --shadow-sm: 0 1px 3px rgba(10,10,10,.08);
+  --shadow-md: 0 4px 12px rgba(10,10,10,.08);
+  --shadow-lg: 0 12px 32px rgba(10,10,10,.12);
+  --shadow-pop: 0 12px 28px rgba(10,10,10,.14), 0 1px 3px rgba(10,10,10,.06);
+
+  --ease:      cubic-bezier(.2,.8,.2,1);
+  --dur-fast:  120ms;
+  --dur-base:  180ms;
+}
+
+.vex-admin.dark,
+.dark .vex-admin {
+  --accent:       #F07040;
+  --accent-hover: #FF8258;
+  --accent-ink:   #FFB897;
+  --accent-tint:  rgba(240,112,64,.12);
+  --accent-line:  rgba(240,112,64,.28);
+  --accent-glow:  rgba(240,112,64,.22);
+
+  --page:    #0A0A0A;
+  --surface: #141414;
+  --raised:  #1E1E1E;
+  --side:    #050505;
+  --hover:   #1E1E1E;
+
+  --fg:        #F4F4F4;
+  --fg-muted:  #A0A0A0;
+  --fg-subtle: #717171;
+  --fg-faint:  #3A3A3A;
+
+  --line:      #2A2A2A;
+  --line-bold: #4A4A4A;
+  --line-soft: #1C1C1C;
+
+  --ok:    #22C55E;
+  --ok-bg: rgba(22,163,74,.14);
+  --warn:  #EAB308;
+  --warn-bg: rgba(202,138,4,.16);
+  --bad:   #EF4444;
+  --bad-bg: rgba(220,38,38,.16);
+
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-pop: 0 18px 40px rgba(0,0,0,.55), 0 1px 0 var(--line) inset;
+}
+
+/* ============================================================================
+   WORDMARK — Vex[lightning]CMS where the / of the x is an orange bolt
+   ============================================================================ */
+.vex-wordmark {
+  display: inline-flex; align-items: center;
+  font-family: var(--vex-font-sans);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--fg);
+  user-select: none;
+}
+.vex-wordmark .vex-lightning {
+  display: inline-block;
+  color: var(--accent);
+  /* Lightning glyph — replaces the / stroke of the x */
+  width: 0.62em; height: 1em;
+  margin: 0 -0.04em;
+  vertical-align: -0.13em;
+}
+
+/* ============================================================================
+   SHELL — Sidebar + main
+   ============================================================================ */
+.vex-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100%;
+  background: var(--page);
+  color: var(--fg);
+}
+.vex-shell.right-side { grid-template-columns: 1fr 240px; }
+.vex-shell.right-side .vex-sidebar { order: 2; border-right: 0; border-left: 1px solid var(--line); }
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.vex-sidebar {
+  background: var(--side);
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  min-height: 100%;
+}
+.vex-sidebar-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line);
+  height: 48px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+}
+.vex-sidebar-head .vex-wordmark { font-size: 15px; }
+.vex-sidebar-head .ver {
+  margin-left: auto;
+  font-family: var(--vex-font-mono); font-size: 10px;
+  color: var(--fg-subtle);
+  padding: 2px 6px;
+  border: 1px solid var(--line); border-radius: 2px;
+  letter-spacing: 0.04em;
+}
+
+.vex-sidebar-section {
+  padding: 14px 8px 6px;
+}
+.vex-sidebar-section + .vex-sidebar-section { padding-top: 6px; }
+.vex-sidebar-label {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 10px 6px;
+  font-family: var(--vex-font-sans);
+  font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--fg-subtle);
+}
+.vex-sidebar-label .add {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px;
+  background: transparent; border: 0;
+  color: var(--fg-subtle); cursor: pointer;
+  border-radius: 2px;
+}
+.vex-sidebar-label .add:hover { background: var(--hover); color: var(--fg); }
+
+.vex-sidebar-nav { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.vex-sidebar-nav .item,
+.vex-sidebar-nav a {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px;
+  font-size: 13px; color: var(--fg-muted);
+  text-decoration: none; border-radius: 2px;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.vex-sidebar-nav .item:hover { background: var(--hover); color: var(--fg); }
+.vex-sidebar-nav .item .icn,
+.vex-sidebar-nav .item [data-lucide] { color: currentColor; flex: 0 0 auto; }
+.vex-sidebar-nav .item .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vex-sidebar-nav .item .count {
+  font-family: var(--vex-font-mono); font-size: 10.5px;
+  color: var(--fg-subtle);
+}
+.vex-sidebar-nav .item.active {
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+  position: relative;
+}
+.dark .vex-sidebar-nav .item.active,
+.vex-admin.dark .vex-sidebar-nav .item.active { color: var(--accent); }
+.vex-sidebar-nav .item.active::before {
+  content: ""; position: absolute;
+  left: -8px; top: 6px; bottom: 6px;
+  width: 2px; background: var(--accent);
+  border-radius: 2px;
+}
+.vex-sidebar-nav .item.active .count { color: var(--accent); opacity: .8; }
+
+.vex-sidebar-foot {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.vex-userchip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 8px; border-radius: 2px;
+  cursor: pointer;
+}
+.vex-userchip:hover { background: var(--hover); }
+.vex-userchip .avatar {
+  width: 24px; height: 24px; border-radius: 9999px;
+  background: var(--accent); color: var(--accent-on);
+  display: grid; place-items: center;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.vex-userchip .name { font-size: 12.5px; font-weight: 500; color: var(--fg); }
+.vex-userchip .email { font-size: 10.5px; color: var(--fg-subtle); margin-top: 1px; }
+.vex-userchip .text { flex: 1; min-width: 0; }
+.vex-userchip .text > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Convex live indicator */
+.vex-live {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--vex-font-mono); font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ok);
+  font-weight: 500;
+}
+.vex-live .pulse {
+  width: 6px; height: 6px; border-radius: 9999px;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px rgba(22,163,74,.18);
+  animation: vex-pulse 2.4s ease-in-out infinite;
+}
+.vex-live.connecting { color: var(--warn); }
+.vex-live.connecting .pulse { background: var(--warn); box-shadow: 0 0 0 3px rgba(202,138,4,.18); }
+.vex-live.error { color: var(--bad); }
+.vex-live.error .pulse { background: var(--bad); box-shadow: 0 0 0 3px rgba(220,38,38,.18); animation: none; }
+@keyframes vex-pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+
+/* ── Main column ─────────────────────────────────────────────── */
+.vex-main { display: flex; flex-direction: column; min-width: 0; min-height: 100%; }
+
+/* ── Topbar ──────────────────────────────────────────────────── */
+.vex-topbar {
+  display: flex; align-items: center; gap: 12px;
+  height: 48px; padding: 0 20px;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--line);
+  background: var(--page);
+  position: sticky; top: 0; z-index: 10;
+}
+.vex-topbar .trigger {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  background: transparent; border: 0;
+  color: var(--fg-muted); cursor: pointer;
+  border-radius: 2px;
+}
+.vex-topbar .trigger:hover { background: var(--hover); color: var(--fg); }
+
+.vex-crumbs {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px;
+}
+.vex-crumbs a, .vex-crumbs .seg { color: var(--fg-muted); text-decoration: none; }
+.vex-crumbs a:hover { color: var(--fg); }
+.vex-crumbs .sep { color: var(--fg-subtle); font-size: 11px; }
+.vex-crumbs .here { color: var(--fg); font-weight: 500; }
+.vex-crumbs .meta {
+  font-family: var(--vex-font-mono); font-size: 10.5px;
+  color: var(--fg-subtle);
+  padding: 1px 6px; border: 1px solid var(--line); border-radius: 2px;
+  margin-left: 4px;
+}
+
+.vex-topbar .spacer { flex: 1; }
+.vex-topbar .actions { display: flex; align-items: center; gap: 8px; }
+
+/* ── Page wrapper ────────────────────────────────────────────── */
+.vex-page { padding: 24px 28px 32px; }
+.vex-page.compact { padding: 16px 20px 24px; }
+.vex-page-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 24px; margin-bottom: 20px;
+}
+.vex-page-head h1 {
+  font-family: var(--vex-font-sans);
+  font-size: 22px; font-weight: 600; letter-spacing: -0.02em;
+  margin: 0 0 4px; color: var(--fg);
+}
+.vex-page-head .sub {
+  font-size: 13px; color: var(--fg-muted); margin: 0; line-height: 1.5;
+}
+.vex-page-head .actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+/* ============================================================================
+   BUTTONS — Stark sharp 2px radius
+   ============================================================================ */
+.vex-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 32px; padding: 0 12px;
+  font-family: var(--vex-font-sans); font-size: 13px; font-weight: 500;
+  border-radius: 2px; border: 1px solid transparent;
+  background: transparent; color: var(--fg);
+  cursor: pointer; white-space: nowrap;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.vex-btn:active { transform: translateY(0.5px); }
+.vex-btn:disabled, .vex-btn.disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
+.vex-btn.primary {
+  background: var(--accent); color: var(--accent-on);
+}
+.vex-btn.primary:hover { background: var(--accent-hover); }
+.vex-btn.outline {
+  background: var(--surface); border-color: var(--line-bold); color: var(--fg);
+}
+.vex-btn.outline:hover { background: var(--raised); border-color: var(--fg-subtle); }
+.vex-btn.ghost { color: var(--fg-muted); }
+.vex-btn.ghost:hover { color: var(--fg); background: var(--hover); }
+.vex-btn.destructive {
+  background: var(--bad); color: #fff;
+}
+.vex-btn.destructive.outline {
+  background: transparent; color: var(--bad); border-color: var(--bad);
+}
+.vex-btn.destructive.outline:hover { background: var(--bad-bg); }
+.vex-btn.sm { height: 28px; padding: 0 10px; font-size: 12px; gap: 5px; }
+.vex-btn.lg { height: 36px; padding: 0 14px; font-size: 14px; }
+.vex-btn.icon { width: 28px; height: 28px; padding: 0; }
+.vex-btn.icon.sm { width: 24px; height: 24px; }
+.vex-btn [data-lucide], .vex-btn svg { width: 14px; height: 14px; flex: 0 0 auto; }
+
+/* Kbd hint inline in a button */
+.vex-btn .kbd {
+  margin-left: 4px;
+  font-family: var(--vex-font-mono); font-size: 10px;
+  color: var(--fg-subtle);
+  padding: 1px 4px;
+  border: 1px solid var(--line-bold); border-radius: 2px;
+  font-weight: 500;
+  background: transparent;
+}
+
+/* ============================================================================
+   FORM CONTROLS — inputs, textareas, selects, checks, radios
+   ============================================================================ */
+.vex-input,
+.vex-textarea,
+.vex-select {
+  width: 100%;
+  height: 32px; padding: 0 10px;
+  background: var(--surface);
+  border: 1px solid #6B6B6B;
+  border-radius: 2px;
+  font-family: var(--vex-font-sans); font-size: 13px;
+  color: var(--fg);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+  box-shadow: 0 1px 0 rgba(0,0,0,.02);
+}
+.dark .vex-input, .dark .vex-textarea, .dark .vex-select,
+.vex-admin.dark .vex-input, .vex-admin.dark .vex-textarea, .vex-admin.dark .vex-select { border-color: #5A5A5A; }
+.vex-input::placeholder, .vex-textarea::placeholder { color: var(--fg-subtle); }
+.vex-input:hover, .vex-select:hover, .vex-textarea:hover { border-color: #2A2A2A; }
+.dark .vex-input:hover, .dark .vex-select:hover, .dark .vex-textarea:hover,
+.vex-admin.dark .vex-input:hover, .vex-admin.dark .vex-select:hover, .vex-admin.dark .vex-textarea:hover { border-color: #8A8A8A; }
+.vex-input:focus,
+.vex-textarea:focus,
+.vex-select:focus,
+.vex-input.is-focused,
+.vex-textarea.is-focused,
+.vex-select.is-focused,
+.vex-trigger.is-focused {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-line);
+}
+.vex-input.invalid,
+.vex-textarea.invalid,
+.vex-select.invalid { border-color: var(--bad); }
+.vex-input.invalid:focus { box-shadow: 0 0 0 3px rgba(220,38,38,.22); }
+.vex-input:disabled, .vex-textarea:disabled, .vex-select:disabled {
+  background: var(--raised); color: var(--fg-subtle); cursor: not-allowed;
+}
+.vex-textarea { height: auto; padding: 8px 10px; min-height: 80px; resize: vertical; line-height: 1.5; }
+.vex-input.lg { height: 36px; font-size: 14px; }
+.vex-input.sm { height: 28px; font-size: 12px; }
+.vex-input.mono { font-family: var(--vex-font-mono); font-size: 12.5px; }
+
+/* Input adornment */
+.vex-input-wrap {
+  position: relative; display: flex; align-items: center;
+}
+.vex-input-wrap .leading,
+.vex-input-wrap .trailing {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  color: var(--fg-subtle); display: inline-flex; align-items: center; gap: 4px;
+  pointer-events: none; font-family: var(--vex-font-mono); font-size: 12px;
+}
+.vex-input-wrap .leading { left: 10px; }
+.vex-input-wrap .leading [data-lucide] { width: 14px; height: 14px; }
+.vex-input-wrap .trailing { right: 10px; }
+.vex-input-wrap.has-leading .vex-input { padding-left: 32px; }
+.vex-input-wrap.has-trailing .vex-input { padding-right: 64px; }
+
+/* Field shell — label + control + helper */
+.vex-field { display: flex; flex-direction: column; gap: 6px; }
+.vex-field-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 500; color: var(--fg);
+}
+.vex-field-label .req { color: var(--accent); }
+.vex-field-label .opt {
+  color: var(--fg-subtle); font-weight: 400; font-size: 11px;
+}
+.vex-field-label .type {
+  margin-left: auto;
+  font-family: var(--vex-font-mono); font-size: 10px;
+  color: var(--fg-subtle);
+  padding: 1px 6px; border: 1px solid var(--line); border-radius: 2px;
+  letter-spacing: 0.04em;
+}
+.vex-field-help { font-size: 11.5px; color: var(--fg-muted); line-height: 1.45; }
+.vex-field-error { font-size: 11.5px; color: var(--bad); display: flex; align-items: center; gap: 4px; }
+
+/* Checkbox */
+.vex-check {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--fg);
+  cursor: pointer; user-select: none;
+}
+.vex-check input { position: absolute; opacity: 0; pointer-events: none; }
+.vex-check .box {
+  width: 16px; height: 16px;
+  background: var(--surface); border: 1px solid var(--line-bold);
+  border-radius: 2px;
+  display: grid; place-items: center;
+  color: transparent;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.vex-check .box [data-lucide] { width: 11px; height: 11px; stroke-width: 3; }
+.vex-check input:checked ~ .box {
+  background: var(--accent); border-color: var(--accent);
+  color: var(--accent-on);
+}
+.vex-check input:focus-visible ~ .box {
+  box-shadow: 0 0 0 3px var(--accent-line);
+}
+.vex-check.indeterminate .box { background: var(--accent); border-color: var(--accent); }
+.vex-check.indeterminate .box::after {
+  content: ""; width: 8px; height: 2px; background: var(--accent-on); border-radius: 1px;
+}
+
+/* Switch */
+.vex-switch {
+  position: relative; display: inline-flex; align-items: center;
+  width: 32px; height: 18px;
+  background: var(--line-bold); border-radius: 9999px;
+  cursor: pointer; transition: background var(--dur-fast) var(--ease);
+}
+.vex-switch::after {
+  content: ""; position: absolute; left: 2px; top: 2px;
+  width: 14px; height: 14px; border-radius: 9999px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0,0,0,.2);
+  transition: left var(--dur-fast) var(--ease);
+}
+.vex-switch.on { background: var(--accent); }
+.vex-switch.on::after { left: 16px; }
+
+/* Select / dropdown trigger */
+.vex-trigger {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 32px; padding: 0 10px;
+  background: var(--surface); border: 1px solid var(--line-bold);
+  border-radius: 2px;
+  font-size: 13px; color: var(--fg);
+  cursor: pointer; user-select: none; min-width: 0;
+}
+.vex-trigger:hover { border-color: var(--fg-subtle); }
+.vex-trigger .v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.vex-trigger .v.placeholder { color: var(--fg-subtle); }
+.vex-trigger .chev { color: var(--fg-subtle); flex: 0 0 auto; }
+.vex-trigger.sm { height: 28px; font-size: 12px; padding: 0 8px; }
+
+/* ============================================================================
+   POPOVER / MENU — generic menu surface
+   ============================================================================ */
+.vex-popover {
+  background: var(--surface);
+  border: 1px solid var(--line-bold);
+  border-radius: 4px;
+  box-shadow: var(--shadow-pop);
+  padding: 4px;
+  min-width: 200px;
+  font-size: 13px;
+}
+.vex-popover.lg { min-width: 320px; padding: 0; }
+.vex-menu-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px;
+  border-radius: 2px;
+  cursor: pointer; color: var(--fg);
+}
+.vex-menu-item:hover { background: var(--hover); }
+.vex-menu-item.active { background: var(--accent-tint); color: var(--accent-ink); }
+.dark .vex-menu-item.active, .vex-admin.dark .vex-menu-item.active { color: var(--accent); }
+.vex-menu-item.danger { color: var(--bad); }
+.vex-menu-item .lbl { flex: 1; }
+.vex-menu-item .kbd {
+  font-family: var(--vex-font-mono); font-size: 10px;
+  color: var(--fg-subtle);
+  padding: 1px 5px; border: 1px solid var(--line); border-radius: 2px;
+}
+.vex-menu-item .check {
+  margin-left: auto; color: var(--accent); display: inline-flex;
+}
+.vex-menu-sep { height: 1px; background: var(--line); margin: 4px 0; }
+.vex-menu-label {
+  padding: 6px 8px 4px;
+  font-family: var(--vex-font-sans); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--fg-subtle);
+}
+.vex-popover-search {
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.vex-popover-section { padding: 4px; }
+.vex-popover-foot {
+  padding: 8px; border-top: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--raised);
+  font-size: 11px; color: var(--fg-muted);
+  border-radius: 0 0 4px 4px;
+}
+.vex-popover-foot .keys { display: flex; align-items: center; gap: 8px; font-family: var(--vex-font-mono); }
+
+/* ============================================================================
+   BADGES — Stark pill, status pip
+   ============================================================================ */
+.vex-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 20px; padding: 0 8px;
+  font-family: var(--vex-font-sans);
+  font-size: 11.5px; font-weight: 500;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.vex-badge .dot { width: 5px; height: 5px; border-radius: 9999px; background: currentColor; }
+.vex-badge.brand   { background: var(--accent-tint); color: var(--accent-ink); }
+.dark .vex-badge.brand, .vex-admin.dark .vex-badge.brand { color: var(--accent); }
+.vex-badge.success { background: var(--ok-bg); color: var(--ok); }
+.vex-badge.warn    { background: var(--warn-bg); color: var(--warn); }
+.vex-badge.danger  { background: var(--bad-bg); color: var(--bad); }
+.vex-badge.muted   { background: var(--raised); color: var(--fg-muted); border-color: var(--line); }
+.vex-badge.outline { background: transparent; color: var(--fg-muted); border-color: var(--line-bold); }
+.vex-badge.draft   { background: var(--raised); color: var(--fg-muted); border-color: var(--line); }
+
+/* ============================================================================
+   DATA TABLE
+   ============================================================================ */
+.vex-tablebar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 0;
+  flex-wrap: wrap;
+}
+.vex-tablebar .grow { flex: 1; min-width: 0; }
+
+.vex-table-wrap {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.vex-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 13px; color: var(--fg);
+  table-layout: fixed;
+}
+.vex-table thead th {
+  text-align: left;
+  font-family: var(--vex-font-sans);
+  font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--fg-subtle);
+  padding: 10px 14px;
+  background: var(--raised);
+  border-bottom: 1px solid var(--line);
+  user-select: none;
+  position: relative;
+}
+.vex-table thead th .sort {
+  display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+  color: inherit;
+}
+.vex-table thead th .sort:hover { color: var(--fg-muted); }
+.vex-table thead th .sort.active { color: var(--fg); }
+.vex-table thead th .sort [data-lucide] { width: 11px; height: 11px; }
+.vex-table thead th.col-check { width: 38px; padding-left: 14px; padding-right: 0; }
+.vex-table thead th.col-actions { width: 40px; }
+
+.vex-table tbody tr {
+  border-bottom: 1px solid var(--line);
+  transition: background var(--dur-fast) var(--ease);
+  cursor: pointer;
+}
+.vex-table tbody tr:last-child { border-bottom: 0; }
+.vex-table tbody tr:hover { background: var(--raised); }
+.vex-table tbody tr.selected { background: var(--accent-tint); }
+.dark .vex-table tbody tr.selected, .vex-admin.dark .vex-table tbody tr.selected { background: rgba(240,112,64,.08); }
+.vex-table tbody td {
+  padding: 12px 14px;
+  vertical-align: middle;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.vex-table td.col-check { padding-right: 0; }
+.vex-table td.col-actions { padding: 0 6px; text-align: right; }
+
+.vex-table .cell-title {
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+}
+.vex-table .cell-title > .icn,
+.vex-table .cell-title > [data-lucide] { color: var(--fg-subtle); flex: 0 0 auto; }
+.vex-table .cell-title .t { color: var(--fg); font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vex-table .cell-title .s {
+  display: block; font-family: var(--vex-font-mono);
+  font-size: 11px; color: var(--fg-subtle);
+  margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.vex-table .cell-mono { font-family: var(--vex-font-mono); font-size: 12px; color: var(--fg-muted); }
+.vex-table .cell-muted { color: var(--fg-muted); }
+.vex-table .cell-num { font-family: var(--vex-font-mono); font-size: 12.5px; color: var(--fg); text-align: right; font-feature-settings: "tnum" 1; }
+.vex-table .cell-truncate { overflow: hidden; text-overflow: ellipsis; }
+
+.vex-table .row-actions {
+  display: inline-flex; opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.vex-table tbody tr:hover .row-actions,
+.vex-table tbody tr.selected .row-actions { opacity: 1; }
+
+/* Bulk select bar */
+.vex-bulkbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  background: var(--accent-tint);
+  border: 1px solid var(--accent-line);
+  border-radius: 2px;
+  font-size: 13px;
+  color: var(--accent-ink);
+  margin-bottom: 10px;
+}
+.dark .vex-bulkbar, .vex-admin.dark .vex-bulkbar { color: var(--accent); }
+.vex-bulkbar .count { font-weight: 600; }
+.vex-bulkbar .actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+
+/* Pagination */
+.vex-pagination {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0 0;
+  font-size: 12.5px; color: var(--fg-muted);
+}
+.vex-pagination .controls { display: flex; align-items: center; gap: 4px; }
+
+/* ============================================================================
+   CARDS
+   ============================================================================ */
+.vex-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.vex-card-head {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 10px;
+}
+.vex-card-head h3 {
+  margin: 0; font-size: 14px; font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.vex-card-head .sub {
+  font-size: 12px; color: var(--fg-muted); margin: 0;
+}
+.vex-card-head .actions { margin-left: auto; display: flex; gap: 6px; }
+.vex-card-body { padding: 16px; }
+.vex-card-foot {
+  padding: 12px 16px; border-top: 1px solid var(--line);
+  background: var(--raised);
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* Stat tile */
+.vex-stat {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface);
+}
+.vex-stat .lbl {
+  font-family: var(--vex-font-sans); font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--fg-subtle);
+  display: flex; align-items: center; gap: 6px;
+}
+.vex-stat .val {
+  font-family: var(--vex-font-sans);
+  font-size: 28px; font-weight: 600; letter-spacing: -0.025em;
+  color: var(--fg); line-height: 1;
+}
+.vex-stat .delta { font-size: 11.5px; color: var(--fg-muted); }
+.vex-stat .delta.up { color: var(--ok); }
+.vex-stat .delta.down { color: var(--bad); }
+
+/* ============================================================================
+   MODAL / DIALOG
+   ============================================================================ */
+.vex-overlay {
+  position: absolute; inset: 0;
+  background: rgba(10,10,10,.55);
+  display: grid; place-items: center;
+  padding: 24px;
+}
+.dark .vex-overlay, .vex-admin.dark .vex-overlay { background: rgba(0,0,0,.7); }
+.vex-modal {
+  width: 100%; max-width: 480px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+.vex-modal-head {
+  padding: 18px 20px 12px;
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.vex-modal-head .text { flex: 1; min-width: 0; }
+.vex-modal-head h2 {
+  margin: 0 0 4px;
+  font-size: 16px; font-weight: 600; letter-spacing: -0.015em;
+}
+.vex-modal-head .sub { margin: 0; font-size: 12.5px; color: var(--fg-muted); line-height: 1.5; }
+.vex-modal-head .close {
+  background: transparent; border: 0; cursor: pointer;
+  width: 26px; height: 26px; border-radius: 2px;
+  color: var(--fg-subtle);
+  display: grid; place-items: center;
+}
+.vex-modal-head .close:hover { background: var(--hover); color: var(--fg); }
+.vex-modal-body { padding: 0 20px 16px; display: flex; flex-direction: column; gap: 14px; }
+.vex-modal-foot {
+  padding: 14px 20px;
+  background: var(--raised);
+  border-top: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+}
+.vex-modal-foot .left { margin-right: auto; font-size: 11.5px; color: var(--fg-muted); }
+
+/* ============================================================================
+   EMPTY STATE
+   ============================================================================ */
+.vex-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 12px;
+  padding: 56px 32px;
+  border: 1px dashed var(--line-bold); border-radius: 4px;
+  background: var(--surface);
+}
+.vex-empty .ico {
+  width: 40px; height: 40px;
+  border-radius: 9999px;
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+  display: grid; place-items: center;
+  margin-bottom: 4px;
+}
+.dark .vex-empty .ico, .vex-admin.dark .vex-empty .ico { color: var(--accent); }
+.vex-empty .ico [data-lucide] { width: 18px; height: 18px; }
+.vex-empty h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.vex-empty p { margin: 0; font-size: 13px; color: var(--fg-muted); max-width: 360px; line-height: 1.5; }
+.vex-empty .actions { margin-top: 8px; display: flex; gap: 8px; }
+
+/* ============================================================================
+   SKELETON
+   ============================================================================ */
+.vex-skel {
+  display: inline-block;
+  background: linear-gradient(90deg, var(--raised), var(--hover), var(--raised));
+  background-size: 200% 100%;
+  animation: vex-shimmer 1.4s linear infinite;
+  border-radius: 2px;
+  height: 12px;
+}
+@keyframes vex-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ============================================================================
+   MEDIA / IMAGE PLACEHOLDER
+   ============================================================================ */
+.vex-imgph {
+  position: relative;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  display: grid; place-items: center;
+  color: var(--fg-faint);
+  overflow: hidden;
+}
+.vex-imgph::before {
+  content: ""; position: absolute; inset: 0;
+  background-image:
+    linear-gradient(45deg, var(--line) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--line) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--line) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--line) 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+  opacity: .35;
+}
+.vex-imgph .lbl {
+  position: relative;
+  font-family: var(--vex-font-mono); font-size: 10px;
+  color: var(--fg-subtle); letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--surface);
+  padding: 2px 6px;
+  border: 1px solid var(--line); border-radius: 2px;
+}
+
+/* ============================================================================
+   FIELD-SPECIFIC RENDERERS — Cell + Input
+   ============================================================================ */
+.vex-cell-bool {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px; color: var(--fg);
+}
+.vex-cell-bool .dot {
+  width: 8px; height: 8px; border-radius: 9999px; background: var(--line-bold);
+}
+.vex-cell-bool.t { color: var(--ok); }
+.vex-cell-bool.t .dot { background: var(--ok); }
+.vex-cell-bool.f { color: var(--fg-subtle); }
+
+.vex-cell-url {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: var(--fg);
+  font-family: var(--vex-font-mono); font-size: 12px;
+  text-decoration: none;
+  max-width: 100%; min-width: 0;
+}
+.vex-cell-url .host { color: var(--fg); overflow: hidden; text-overflow: ellipsis; }
+.vex-cell-url .path { color: var(--fg-subtle); overflow: hidden; text-overflow: ellipsis; }
+.vex-cell-url:hover .host { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.vex-cell-url [data-lucide] { width: 11px; height: 11px; color: var(--fg-subtle); flex: 0 0 auto; }
+
+.vex-cell-rel {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 2px 8px 2px 6px;
+  font-size: 12px; color: var(--fg);
+  max-width: 100%; min-width: 0;
+}
+.vex-cell-rel .icn { color: var(--fg-subtle); flex: 0 0 auto; display: inline-flex; }
+.vex-cell-rel .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vex-cell-rel.empty { color: var(--fg-subtle); font-style: italic; background: transparent; border: 0; padding: 0; }
+
+.vex-cell-date {
+  display: inline-flex; flex-direction: column;
+  font-size: 12.5px; color: var(--fg);
+  line-height: 1.2;
+}
+.vex-cell-date .rel { font-size: 11px; color: var(--fg-subtle); margin-top: 2px; font-family: var(--vex-font-mono); }
+
+/* ============================================================================
+   KEYBOARD HINTS
+   ============================================================================ */
+.kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--vex-font-mono); font-size: 10.5px;
+  height: 18px; min-width: 18px; padding: 0 4px;
+  border: 1px solid var(--line-bold); border-radius: 2px;
+  color: var(--fg-muted); background: var(--surface);
+  font-weight: 500;
+}
+
+/* ============================================================================
+   ICON DEFAULTS (lucide)
+   ============================================================================ */
+.vex-admin [data-lucide] { width: 14px; height: 14px; stroke-width: 1.75; stroke: currentColor; fill: none; flex: 0 0 auto; }
+
+/* ============================================================================
+   UTILITIES
+   ============================================================================ */
+.muted { color: var(--fg-muted); }
+.mono { font-family: var(--vex-font-mono); }
+.flex { display: flex; }
+.col { display: flex; flex-direction: column; }
+.row { display: flex; flex-direction: row; }
+.gap-1 { gap: 4px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
+.flex-1 { flex: 1; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+.text-xs { font-size: 11.5px; }
+.text-sm { font-size: 12.5px; }
+.text-md { font-size: 14px; }
+.divider { height: 1px; background: var(--line); margin: 12px 0; }
+.divider.thick { background: var(--line-bold); }
+
+/* Subtle ember glow strip — used at top of dashboard etc */
+.vex-emberline {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%);
+  opacity: .5;
+}
+
+/* "tab" segmented */
+.vex-tabs {
+  display: inline-flex; align-items: center; gap: 0;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+.vex-tabs .tab {
+  height: 36px; padding: 0 14px;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--fg-muted);
+  background: transparent; border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer; user-select: none;
+  margin-bottom: -1px;
+}
+.vex-tabs .tab:hover { color: var(--fg); }
+.vex-tabs .tab.active { color: var(--fg); border-bottom-color: var(--accent); }
+.vex-tabs .tab .count {
+  font-family: var(--vex-font-mono); font-size: 10.5px;
+  color: var(--fg-subtle);
+  padding: 1px 5px; border: 1px solid var(--line); border-radius: 2px;
+  margin-left: 4px;
+}

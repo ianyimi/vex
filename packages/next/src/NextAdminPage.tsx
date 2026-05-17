@@ -1,6 +1,6 @@
 import { fetchQuery } from "convex/nextjs";
 import { vexConvexApi } from "@vexcms/core";
-import type { CollectionConfig, CollectionSlug, VexConfig } from "@vexcms/core";
+import type { CollectionSlug, VexConfig } from "@vexcms/core";
 import {
   DashboardView,
   CollectionListView,
@@ -69,15 +69,13 @@ export async function NextAdminPage(props: {
     );
   }
 
-  const typedCollection = collection as CollectionConfig<CollectionSlug>;
-
   if (documentId) {
     const initialData = await fetchQuery(vexConvexApi.get, {
       id: documentId,
     });
     return (
       <CollectionEditView
-        collection={typedCollection}
+        collection={collection}
         documentId={documentId}
         initialData={initialData}
       />
@@ -88,9 +86,6 @@ export async function NextAdminPage(props: {
     collection: collectionSlug as CollectionSlug,
   });
   return (
-    <CollectionListView
-      collection={typedCollection}
-      initialData={initialData}
-    />
+    <CollectionListView collection={collection} initialData={initialData} />
   );
 }

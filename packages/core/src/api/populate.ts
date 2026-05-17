@@ -15,7 +15,7 @@ import type { Populated, PopulateShape } from "./types";
  * are not mutated.
  *
  * The `TPopulate` generic is the caller-supplied populate shape. The return
- * type `Populated<TSlug, TPopulate>[]` is what TypeScript sees at call sites
+ * type `Populated<TCollectionSlug, TPopulate>[]` is what TypeScript sees at call sites
  * — the `as unknown as` cast at the bottom bridges runtime
  * `Record<string, unknown>[]` to the compile-time `Populated` shape. All
  * callers (`find`, `get`, `search` server functions) benefit without writing
@@ -25,17 +25,17 @@ import type { Populated, PopulateShape } from "./types";
  * @param docs - Documents to populate.
  * @param populate - Relationship fields to resolve, optionally nested.
  * @returns Same docs with relationship Id arrays replaced by Doc arrays,
- *   typed as `Populated<TSlug, TPopulate>[]`.
+ *   typed as `Populated<TCollectionSlug, TPopulate>[]`.
  */
 export async function populateDocs<
   DataModel extends GenericDataModel,
-  TSlug extends CollectionSlug = CollectionSlug,
-  const TPopulate extends PopulateShape<TSlug> = PopulateShape<TSlug>,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  const TPopulate extends PopulateShape<TCollectionSlug> = PopulateShape<TCollectionSlug>,
 >(
   ctx: GenericQueryCtx<DataModel>,
   docs: ReadonlyArray<Record<string, unknown>>,
   populate: TPopulate,
-): Promise<Populated<TSlug, TPopulate>[]> {
+): Promise<Populated<TCollectionSlug, TPopulate>[]> {
   const result = await asyncMap(docs, async (doc) => {
     const out: Record<string, unknown> = { ...doc };
     for (const [fieldKey, opts] of Object.entries(populate)) {
@@ -69,7 +69,7 @@ export async function populateDocs<
     return out;
   });
   // Single cast: the runtime walk produces the correct shape that
-  // Populated<TSlug, TPopulate>[] describes, but TypeScript can't verify
+  // Populated<TCollectionSlug, TPopulate>[] describes, but TypeScript can't verify
   // a mapped type transformation from a runtime Object.entries loop.
-  return result as unknown as Populated<TSlug, TPopulate>[];
+  return result as unknown as Populated<TCollectionSlug, TPopulate>[];
 }

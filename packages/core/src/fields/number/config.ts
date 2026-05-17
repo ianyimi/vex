@@ -46,9 +46,9 @@ import type { NumberFieldInput, NumberField } from "./types";
  * @see {@link NumberFieldInput} for the full input type
  * @see {@link NumberField} for the resolved output type
  */
-export function number<TMeta extends {} = {}>(
-  options?: NumberFieldInput<TMeta>,
-): NumberField<TMeta> {
+export function number<TFieldMeta extends {} = {}>(
+  options?: NumberFieldInput<TFieldMeta>,
+): NumberField<TFieldMeta> {
   if (options?.min?.value && options?.max?.value) {
     if (options.min.value >= options.max.value) {
       // TODO. setup errors that throw in development upon invalid configuration
@@ -74,7 +74,6 @@ export function number<TMeta extends {} = {}>(
       cellAlignment: "left",
       // Optional admin properties (no defaults)
       placeholder: "",
-      description: "",
       ...options?.admin,
     },
 

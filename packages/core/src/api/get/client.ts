@@ -9,14 +9,14 @@ import type { GenericQueryClientParams, PopulateShape } from "../types";
  * Client-side args for `get`. Extends {@link GenericQueryClientParams}
  * to inherit `ctx?: never` and `populate?: TPopulate`.
  *
- * @typeParam TSlug - Collection slug, recovered from the `Id` brand.
+ * @typeParam TCollectionSlug - Collection slug, recovered from the `Id` brand.
  * @typeParam TPopulate - Populate object.
  */
 export interface GetClientArgs<
-  TSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TSlug>,
-> extends GenericQueryClientParams<TSlug, TPopulate> {
-  id: GenericId<TSlug>;
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
+> extends GenericQueryClientParams<TCollectionSlug, TPopulate> {
+  id: GenericId<TCollectionSlug>;
 }
 
 /**
@@ -26,7 +26,7 @@ export interface GetClientArgs<
  * Import from `@vexcms/core/client`. For the server-side version, import
  * `get` from `@vexcms/core/server`.
  *
- * @typeParam TSlug - Collection slug, recovered from the `Id` brand.
+ * @typeParam TCollectionSlug - Collection slug, recovered from the `Id` brand.
  * @typeParam TPopulate - Populate object.
  * @param args - `{ id, populate? }`.
  * @returns Tanstack-query `queryOptions` resolving to the doc or `null`.
@@ -38,9 +38,9 @@ export interface GetClientArgs<
  * ```
  */
 export function get<
-  TSlug extends CollectionSlug,
-  const TPopulate extends PopulateShape<TSlug> = Record<string, never>,
->(args: GetClientArgs<TSlug, TPopulate>): ReturnType<typeof convexQuery> {
+  TCollectionSlug extends CollectionSlug,
+  const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+>(args: GetClientArgs<TCollectionSlug, TPopulate>): ReturnType<typeof convexQuery> {
   return convexQuery(vexConvexApi.get, {
     id: args.id,
     populate: args.populate,

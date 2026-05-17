@@ -13,7 +13,7 @@ import { ComponentHKT } from "../baseTypes";
  * A `.index("by_<fieldKey>", ["<fieldKey>"])` is auto-generated for every relationship
  * field — no explicit `index` property needed.
  *
- * `TSlug` is inferred from `options.collection`. After running `vex generate`,
+ * `TCollectionSlug` is inferred from `options.collection`. After running `vex generate`,
  * passing an unregistered slug is a compile-time error.
  *
  * **Defaults applied:**
@@ -26,7 +26,7 @@ import { ComponentHKT } from "../baseTypes";
  * - `admin.width` — `"full"`
  * - `admin.cellAlignment` — `"left"`
  *
- * @typeParam TSlug - Inferred from `options.collection`.
+ * @typeParam TCollectionSlug - Inferred from `options.collection`.
  * @param options - Relationship field config. `collection` is required.
  * @returns Resolved relationship field definition with all defaults applied.
  *
@@ -43,12 +43,12 @@ import { ComponentHKT } from "../baseTypes";
  * @see {@link RelationshipField} for the resolved output type
  */
 export function relationship<
-  TMeta extends {} = {},
-  TSlug extends CollectionSlug = CollectionSlug,
+  TFieldMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
 >(
-  options: RelationshipFieldInput<TMeta, TSlug, TComponent>,
-): RelationshipField<TMeta, TSlug, TComponent> {
+  options: RelationshipFieldInput<TFieldMeta, TCollectionSlug, TComponent>,
+): RelationshipField<TFieldMeta, TCollectionSlug, TComponent> {
   return {
     label: "",
     required: false,
@@ -63,7 +63,6 @@ export function relationship<
       width: "full",
       cellAlignment: "left",
       placeholder: "",
-      description: "",
       components: {},
       ...options?.admin,
     },

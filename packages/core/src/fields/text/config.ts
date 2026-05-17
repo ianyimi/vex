@@ -45,9 +45,9 @@ import type { TextFieldInput, TextField } from "./types";
  * @see {@link TextFieldInput} for the full input type
  * @see {@link TextField} for the resolved output type
  */
-export function text<TMeta extends {} = {}>(
-  options?: TextFieldInput<TMeta>,
-): TextField<TMeta> {
+export function text<TFieldMeta extends {} = {}>(
+  options?: TextFieldInput<TFieldMeta>,
+): TextField<TFieldMeta> {
   return {
     type: ADMIN_FIELDS.text.type,
     interfaceType: ADMIN_FIELDS.text.interfaceType,
@@ -67,7 +67,6 @@ export function text<TMeta extends {} = {}>(
       cellAlignment: "left",
       // Optional admin properties (no defaults)
       placeholder: "",
-      description: "",
       ...options?.admin,
     },
 

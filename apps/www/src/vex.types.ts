@@ -10,24 +10,130 @@ import type { VexDocument } from "@vexcms/core"
 
 export interface Page extends VexDocument {
   _id: Id<"pages">
+  /**
+   * Display title shown as the page heading and in browser tabs (as fallback).
+   */
   title: string
+  /**
+   * URL-friendly identifier. Used for routing: /<slug>. Must be unique.
+   */
   slug: string
-  posts?: Id<CollectionSlug>[]
+  /**
+   * Page body content. Stored as plain text until block support lands. Rendered with
+   * whitespace preservation.
+   */
+  content?: string
+  /**
+   * Custom <title> tag for search engines. Falls back to the title field if empty.
+   */
+  metaTitle?: string
+  /**
+   * Summary shown in search result snippets. Keep under 160 characters for best
+   * display.
+   */
+  metaDescription?: string
+  /**
+   * Image URL for Open Graph social sharing previews. Recommended 1200×630px.
+   */
+  ogImage?: string
 }
-type Type = "one" | "two" | "three" | "four" | "five" | "six"
-export interface Post extends VexDocument {
-  _id: Id<"posts">
-  title: string
-  slug: string
-  excerpt?: string
-  link?: string
-  index?: number
-  thumbnail?: string
-  parent?: Id<CollectionSlug>[]
-  children?: Id<CollectionSlug>[]
-  published?: boolean
-  publishedAt?: number
-  type?: Type
+
+export interface Header extends VexDocument {
+  _id: Id<"headers">
+  /**
+   * Internal identifier for this header config. Used for idempotent lookups.
+   */
+  name: string
+  /**
+   * Brand name rendered as the logo. Falls back to site settings name.
+   */
+  logoText?: string
+  /**
+   * URL the logo links to. Typically / for the home page.
+   */
+  logoHref?: string
+  /**
+   * JSON array of navigation links. Each item: { label: string, href: string }.
+   * Example: [{"label":"Features","href":"/features"}]
+   */
+  menuItems?: string
+  /**
+   * JSON array of CTA buttons. Each item: { label, href, variant }. Variant options:
+   * default, outline, ghost.
+   */
+  actionButtons?: string
+}
+
+export interface Footer extends VexDocument {
+  _id: Id<"footers">
+  /**
+   * Internal identifier for this footer config. Used for idempotent lookups.
+   */
+  name: string
+  /**
+   * Brand name shown in the footer. Falls back to site settings name.
+   */
+  logoText?: string
+  /**
+   * Copyright line displayed at the bottom of the footer. Auto-prepends © and the
+   * current year.
+   */
+  copyright?: string
+  /**
+   * JSON array of footer navigation links. Each item: { label: string, href: string
+   * }. Grouped by section in the UI.
+   */
+  links?: string
+  /**
+   * JSON array of social profile links. Each item: { platform: string, href: string,
+   * icon: string }. Icon maps to a Lucide icon name.
+   */
+  socialLinks?: string
+}
+
+export interface Theme extends VexDocument {
+  _id: Id<"themes">
+  /**
+   * Internal identifier for this theme. Used for idempotent lookups and admin
+   * display.
+   */
+  name: string
+  /**
+   * CSS font-family stack applied to the body. First available font is used.
+   */
+  fontFamily?: string
+  /**
+   * Base border radius in rem. Applied to the shadcn --radius CSS custom property.
+   */
+  radius?: string
+  /**
+   * Primary brand color for light mode. Hex format. Applied to --primary and its
+   * OKLCH conversion.
+   */
+  primaryLight?: string
+  /**
+   * Primary brand color for dark mode. Hex format. Applied to --primary when dark
+   * mode is active.
+   */
+  primaryDark?: string
+  /**
+   * Page background for dark mode. Hex format. Applied to --background when dark
+   * mode is active.
+   */
+  bgDark?: string
+  /**
+   * Page background for light mode. Hex format. Applied to --background when light
+   * mode is active.
+   */
+  bgLight?: string
+}
+
+export interface SiteSettings extends VexDocument {
+  _id: Id<"site_settings">
+  /**
+   * Global site name used as fallback for logo text, page titles, and meta tags.
+   */
+  name: string
 }
 
 export interface UserDocument extends VexDocument {
@@ -53,7 +159,7 @@ export interface SessionDocument extends VexDocument {
   updatedAt: number
   ipAddress?: string
   userAgent?: string
-  userId: Id<CollectionSlug>[]
+  userId: string
   impersonatedBy?: string
 }
 
@@ -61,7 +167,7 @@ export interface AccountDocument extends VexDocument {
   _id: Id<"account">
   accountId: string
   providerId: string
-  userId: Id<CollectionSlug>[]
+  userId: string
   accessToken?: string
   refreshToken?: string
   idToken?: string
@@ -117,7 +223,10 @@ export interface JwksDocument extends VexDocument {
 
 export type CollectionSlug =
   | "pages"
-  | "posts"
+  | "headers"
+  | "footers"
+  | "themes"
+  | "site_settings"
   | "user"
   | "session"
   | "account"
@@ -127,7 +236,10 @@ export type CollectionSlug =
 
 export type DocumentBySlug = {
   pages: Page
-  posts: Post
+  headers: Header
+  footers: Footer
+  themes: Theme
+  site_settings: SiteSettings
   user: UserDocument
   session: SessionDocument
   account: AccountDocument
@@ -140,7 +252,10 @@ declare module "@vexcms/core" {
   interface GeneratedVexTypes {
     CollectionSlug:
       | "pages"
-      | "posts"
+      | "headers"
+      | "footers"
+      | "themes"
+      | "site_settings"
       | "user"
       | "session"
       | "account"
@@ -149,7 +264,10 @@ declare module "@vexcms/core" {
       | "jwks"
     DocumentBySlug: {
       pages: Page
-      posts: Post
+      headers: Header
+      footers: Footer
+      themes: Theme
+      site_settings: SiteSettings
       user: UserDocument
       session: SessionDocument
       account: AccountDocument
@@ -160,18 +278,31 @@ declare module "@vexcms/core" {
     CollectionsFieldTypeMap: {
       pages: {
         id: "_id"
-        text: "title" | "slug"
-        relationship: "posts"
+        text: "title" | "slug" | "content" | "metaTitle" | "metaDescription"
+        url: "ogImage"
       }
-      posts: {
+      headers: {
         id: "_id"
-        text: "title" | "slug" | "excerpt"
-        url: "link" | "thumbnail"
-        number: "index"
-        relationship: "parent" | "children"
-        checkbox: "published"
-        date: "publishedAt"
-        select: "type"
+        text: "name" | "logoText" | "logoHref" | "menuItems" | "actionButtons"
+      }
+      footers: {
+        id: "_id"
+        text: "name" | "logoText" | "copyright" | "links" | "socialLinks"
+      }
+      themes: {
+        id: "_id"
+        text:
+          | "name"
+          | "fontFamily"
+          | "radius"
+          | "primaryLight"
+          | "primaryDark"
+          | "bgDark"
+          | "bgLight"
+      }
+      site_settings: {
+        id: "_id"
+        text: "name"
       }
       user: {
         id: "_id"
@@ -182,20 +313,19 @@ declare module "@vexcms/core" {
       session: {
         id: "_id"
         date: "expiresAt" | "createdAt" | "updatedAt"
-        text: "token" | "ipAddress" | "userAgent" | "impersonatedBy"
-        relationship: "userId"
+        text: "token" | "ipAddress" | "userAgent" | "userId" | "impersonatedBy"
       }
       account: {
         id: "_id"
         text:
           | "accountId"
           | "providerId"
+          | "userId"
           | "accessToken"
           | "refreshToken"
           | "idToken"
           | "scope"
           | "password"
-        relationship: "userId"
         date: "accessTokenExpiresAt" | "refreshTokenExpiresAt" | "createdAt" | "updatedAt"
       }
       verification: {

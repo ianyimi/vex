@@ -6,7 +6,7 @@ import {
   type FunctionVisibility,
   type GenericDataModel,
   type QueryBuilder,
-  type RegisteredQuery,
+  RegisteredQuery,
 } from "convex/server";
 import { GenericId, v } from "convex/values";
 import type { VexConfig } from "../config";
@@ -17,6 +17,7 @@ import { search } from "./search/server";
 import { create } from "./create/server";
 import { update } from "./update/server";
 import { remove } from "./remove/server";
+import { VexDocument, VexFindArgs } from "../convex";
 
 export { buildDepthPopulate } from "./depth";
 
@@ -37,6 +38,8 @@ export type { UpdateServerArgs } from "./update/server";
 
 export { remove } from "./remove/server";
 export type { RemoveServerArgs } from "./remove/server";
+
+
 
 /**
  * Registers `find`, `get`, and `search` as Convex query endpoints.
@@ -86,7 +89,7 @@ export function queryApi<
           config, // ← new
           limit: args.limit,
         }),
-    }) as RegisteredQuery<Visibility, never, never>,
+    }) as RegisteredQuery<Visibility, VexFindArgs, VexDocument[]>,
 
     get: query({
       args: {
@@ -102,7 +105,7 @@ export function queryApi<
           depth: args.depth,
           config, // ← new
         }),
-    }) as RegisteredQuery<Visibility, never, never>,
+    }) as RegisteredQuery<Visibility, VexFindArgs, VexDocument[]>,
 
     search: query({
       args: {
@@ -126,7 +129,7 @@ export function queryApi<
           depth: args.depth,
           config,
         }),
-    }) as RegisteredQuery<Visibility, never, never>,
+    }) as RegisteredQuery<Visibility, VexFindArgs, VexDocument[]>,
   };
 }
 

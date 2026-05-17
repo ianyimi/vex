@@ -56,7 +56,7 @@ export interface DashboardProps {
 /**
  * Props passed to the `CollectionListView` component.
  *
- * `TSlug` is inferred from the `collection` prop and narrows the collection type
+ * `TCollectionSlug` is inferred from the `collection` prop and narrows the collection type
  * to a specific slug after `vex generate` runs. `TDoc` defaults to `VexDocument`
  * and can be narrowed to a generated document interface when the caller has a
  * typed initial data array.
@@ -64,11 +64,13 @@ export interface DashboardProps {
  * @see {@link ViewComponentMap}
  */
 export interface CollectionListViewProps<
-  TSlug extends CollectionSlug = CollectionSlug,
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
   TDoc extends VexDocument = VexDocument,
 > {
   /** The resolved collection configuration for the collection being listed. */
-  collection: CollectionConfig<TSlug>;
+  collection: CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug>;
   /**
    * Pre-fetched documents from the server. Passed as `initialData` to
    * the TanStack Query so the list renders immediately on first load.
@@ -80,16 +82,18 @@ export interface CollectionListViewProps<
 /**
  * Props passed to the `CollectionEditView` component.
  *
- * `TSlug` is inferred from the `collection` prop. After `vex generate` runs,
+ * `TCollectionSlug` is inferred from the `collection` prop. After `vex generate` runs,
  * passing a collection of the wrong slug is a compile-time error.
  *
  * @see {@link ViewComponentMap}
  */
 export interface CollectionEditViewProps<
-  TSlug extends CollectionSlug = CollectionSlug,
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
 > {
   /** The resolved collection configuration whose fields will be rendered. */
-  collection: CollectionConfig<TSlug>;
+  collection: CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug>;
   /**
    * The Convex document ID of the document being edited.
    * Omit for new document creation — the form will be empty.

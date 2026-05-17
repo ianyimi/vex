@@ -43,9 +43,9 @@ import type { CheckboxFieldInput, CheckboxField } from "./types";
  * @see {@link CheckboxFieldInput} for the full input type
  * @see {@link CheckboxField} for the resolved output type
  */
-export function checkbox<TMeta extends {} = {}>(
-  options?: CheckboxFieldInput<TMeta>,
-): CheckboxField<TMeta> {
+export function checkbox<TFieldMeta extends {} = {}>(
+  options?: CheckboxFieldInput<TFieldMeta>,
+): CheckboxField<TFieldMeta> {
   return {
     type: ADMIN_FIELDS.checkbox.type,
     interfaceType: ADMIN_FIELDS.checkbox.interfaceType,
@@ -64,7 +64,6 @@ export function checkbox<TMeta extends {} = {}>(
       width: "full",
       cellAlignment: "left",
       // Optional admin properties (no defaults)
-      description: "",
       ...options?.admin,
     },
 

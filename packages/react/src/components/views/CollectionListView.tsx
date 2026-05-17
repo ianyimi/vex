@@ -49,8 +49,10 @@ import { find } from "@vexcms/core/client";
  * ```
  */
 export function CollectionListView<
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
   TSlug extends CollectionSlug = CollectionSlug,
->(props: CollectionListViewProps<TSlug>) {
+>(props: CollectionListViewProps<TFieldMeta, TCollectionMeta, TSlug>) {
   const liveConfig = useVexConfig();
   // Prefer the live context collection (updated via Fast Refresh) over the
   // RSC-serialized prop, falling back to the prop if context isn't available.

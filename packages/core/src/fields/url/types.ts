@@ -44,8 +44,8 @@ import { BaseField, BaseFieldInput } from "../baseTypes";
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`, `searchIndex`)
  */
 export interface UrlFieldInput<
-  TMeta extends {} = {},
-> extends BaseFieldInput<TMeta> {
+  TFieldMeta extends {} = {},
+> extends BaseFieldInput<TFieldMeta> {
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * Does not affect existing database values.
@@ -63,7 +63,7 @@ export interface UrlFieldInput<
  * @see {@link UrlFieldInput} for the user-facing input type
  * @see {@link url} for the config function that produces this type
  */
-export interface UrlField<TMeta extends {} = {}> extends BaseField<TMeta> {
+export interface UrlField<TFieldMeta extends {} = {}> extends BaseField<TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.url.type;
   /**
    * Pre-filled value shown in the admin form when creating a new document.

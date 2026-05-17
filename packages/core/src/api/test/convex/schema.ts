@@ -37,8 +37,8 @@ export default schema;
 
 /**
  * Augment `GeneratedVexTypes` with fixture-specific document shapes and
- * field-type maps so that `Populated<TSlug, TPopulate>` resolves to real
- * doc types in tests, and `RelationshipKeysOf<TSlug>` narrows correctly.
+ * field-type maps so that `Populated<TCollectionSlug, TPopulate>` resolves to real
+ * doc types in tests, and `RelationshipKeysOf<TCollectionSlug>` narrows correctly.
  *
  * In a real user project, `vex generate` writes an equivalent block in the
  * user's `vex.types.ts`. This file mimics that for the test fixture.

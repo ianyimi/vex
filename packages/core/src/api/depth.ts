@@ -5,7 +5,7 @@ import type { VexConfig } from "../config";
  * Builds a `PopulateShape`-compatible object covering every relationship field
  * on `slug`'s collection down to `depth` levels.
  *
- * This is the runtime counterpart of the compile-time `DepthPopulate<TSlug, D>`
+ * This is the runtime counterpart of the compile-time `DepthPopulate<TCollectionSlug, D>`
  * type. The returned object can be passed directly to `populateDocs` because it
  * matches the `PopulateShape` structure:
  * - Leaf fields (at the requested depth, or targets with no relationships) → `true`

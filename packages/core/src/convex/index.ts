@@ -38,6 +38,81 @@ export interface VexDocument {
  */
 export type TDocument = Record<string, unknown> & VexDocument;
 
+// ── Shallow FunctionReference types ───────────────────────────────────────
+//
+// Extracted arg/return shapes for the generic Vex API endpoints.
+// Used by `vexConvexApi` below and re-exported for user-side `vex.ts` casts
+// to avoid TS2589 from the deep conditional types in `queryApi()`.
+
+/** Args for `api.vex.find`. */
+export interface VexFindArgs {
+  [key: string]: unknown;
+  collection: CollectionSlug;
+  populate?: unknown;
+  depth?: number;
+  limit?: number;
+}
+
+/** Args for `api.vex.get`. */
+export interface VexGetArgs {
+  [key: string]: unknown;
+  id: string;
+  populate?: unknown;
+  depth?: number;
+}
+
+/** Args for `api.vex.search`. */
+export interface VexSearchArgs {
+  [key: string]: unknown;
+  collection: string;
+  searchIndexName: string;
+  searchField: string;
+  query: string;
+  limit?: number;
+  populate?: unknown;
+  depth?: number;
+}
+
+/** Args for `api.vex.create`. */
+export interface VexCreateArgs {
+  [key: string]: unknown;
+  collection: string;
+  data: Record<string, unknown>;
+}
+
+/** Args for `api.vex.update`. */
+export interface VexUpdateArgs {
+  [key: string]: unknown;
+  id: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any;
+}
+
+/** Args for `api.vex.remove`. */
+export interface VexRemoveArgs {
+  [key: string]: unknown;
+  collection: string;
+  id: string;
+}
+
+/** Shallow FunctionReference for `api.vex.find`. */
+export type VexFindRef = FunctionReference<"query", "public", VexFindArgs, VexDocument[]>;
+
+/** Shallow FunctionReference for `api.vex.get`. */
+export type VexGetRef = FunctionReference<"query", "public", VexGetArgs, VexDocument | null>;
+
+/** Shallow FunctionReference for `api.vex.search`. */
+export type VexSearchRef = FunctionReference<"query", "public", VexSearchArgs, VexDocument[]>;
+
+/** Shallow FunctionReference for `api.vex.create`. */
+export type VexCreateRef = FunctionReference<"mutation", "public", VexCreateArgs, string>;
+
+/** Shallow FunctionReference for `api.vex.update`. */
+export type VexUpdateRef = FunctionReference<"mutation", "public", VexUpdateArgs, void>;
+
+/** Shallow FunctionReference for `api.vex.remove`. */
+export type VexRemoveRef = FunctionReference<"mutation", "public", VexRemoveArgs, void>;
+
 /**
  * Typed `anyApi` references to the VexCMS generic Convex collection functions.
  *
@@ -66,38 +141,18 @@ export const vexConvexApi = {
    * Finds documents in a collection.
    * Called by {@link CollectionListView} in `@vexcms/react`.
    */
-  find: anyApi.vex.find as FunctionReference<
-    "query",
-    "public",
-    {
-      collection: CollectionSlug;
-      populate?: unknown;
-      depth?: number;
-      limit?: number;
-    },
-    VexDocument[]
-  >,
+  find: anyApi.vex.find as VexFindRef,
 
   /**
    * Fetches a single document by ID.
    * Called by {@link CollectionEditView} in `@vexcms/react` when editing.
    */
-  get: anyApi.vex.get as FunctionReference<
-    "query",
-    "public",
-    { id: string; populate?: unknown; depth?: number },
-    VexDocument | null
-  >,
+  get: anyApi.vex.get as VexGetRef,
 
   /**
    * Creates a new document. Returns the new document's ID as a string.
    */
-  create: anyApi.vex.create as FunctionReference<
-    "mutation",
-    "public",
-    { collection: string; data: Record<string, unknown> },
-    string
-  >,
+  create: anyApi.vex.create as VexCreateRef,
 
   /**
    * Searches documents in a collection by a search index.
@@ -110,39 +165,15 @@ export const vexConvexApi = {
    *
    * @see {@link https://docs.convex.dev/text-search} for Convex search docs
    */
-  search: anyApi.vex.search as FunctionReference<
-    "query",
-    "public",
-    {
-      collection: string;
-      searchIndexName: string;
-      searchField: string;
-      query: string;
-      limit?: number;
-      populate?: unknown;
-      depth?: number;
-    },
-    VexDocument[]
-  >,
+  search: anyApi.vex.search as VexSearchRef,
 
   /**
    * Patches an existing document — unspecified fields are left unchanged.
    */
-  update: anyApi.vex.update as FunctionReference<
-    "mutation",
-    "public",
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    { id: string; data: any },
-    void
-  >,
+  update: anyApi.vex.update as VexUpdateRef,
 
   /**
    * Permanently deletes a document.
    */
-  remove: anyApi.vex.remove as FunctionReference<
-    "mutation",
-    "public",
-    { collection: string; id: string },
-    void
-  >,
+  remove: anyApi.vex.remove as VexRemoveRef,
 } as const;

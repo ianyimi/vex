@@ -39,14 +39,14 @@ export * from "./checkbox/types";
  * }
  * ```
  */
-export type AdminField<TMeta extends {} = {}> =
-  | TextField<TMeta>
-  | NumberField<TMeta>
-  | CheckboxField<TMeta>
-  | DateField<TMeta>
-  | SelectField<TMeta>
-  | UrlField<TMeta>
-  | RelationshipField<TMeta>;
+export type AdminField<TFieldMeta extends {} = {}> =
+  | TextField<TFieldMeta>
+  | NumberField<TFieldMeta>
+  | CheckboxField<TFieldMeta>
+  | DateField<TFieldMeta>
+  | SelectField<TFieldMeta>
+  | UrlField<TFieldMeta>
+  | RelationshipField<TFieldMeta>;
 
 /**
  * Props passed to field input components rendered in the document edit form.

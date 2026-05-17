@@ -1,0 +1,267 @@
+/* ==============================================================================
+   VexCMS — Colors & Type
+   Stark typography + Ember accent.
+   Monochrome neutrals (pure warm-black / near-white) + a single Ember Orange.
+   ONE typeface: Geist (all UI, headings, body). Geist Mono for code.
+   Primary (light): #E8622A ≈ oklch(58% 0.185 40)
+   Primary (dark):  #F07040 ≈ oklch(68% 0.178 40)
+   ==============================================================================*/
+
+/* ── Webfonts (Geist + Geist Mono ONLY — no second family) ──────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap");
+
+:root {
+  /* ── BRAND — Ember Orange scale ── */
+  --vex-primary:        #E8622A;  /* Ember Orange (light-mode hero)          */
+  --vex-primary-hover:  #D45A26;  /* hover on light surfaces                 */
+  --vex-primary-bright: #F07040;  /* dark-mode primary (brighter contrast)   */
+  --vex-primary-dark:   #C04E1E;  /* pressed, strong emphasis                */
+  --vex-primary-tint:   #FEF0E8;  /* subtle wash, badge bg, hover bg light   */
+  --vex-on-primary:     #FFFFFF;
+
+  /* ── SURFACE — Dark (pure neutral near-black, Stark) ── */
+  --vex-surface-900:    #0A0A0A;  /* dark page bg                            */
+  --vex-surface-800:    #141414;  /* raised section bg                       */
+  --vex-surface-700:    #1E1E1E;  /* cards, modals, code blocks              */
+  --vex-surface-600:    #2A2A2A;  /* dark borders / dividers                 */
+  --vex-sidebar-dark:   #050505;  /* sidebar — darker than page              */
+  --vex-code-bg-dark:   #111111;  /* pure near-black for code                */
+
+  /* ── SURFACE — Light (pure neutral, Stark) ── */
+  --vex-surface-50:     #FAFAFA;  /* cards / popovers (light)                */
+  --vex-surface-100:    #F5F5F5;  /* page bg (light)                         */
+  --vex-white:          #FFFFFF;
+
+  /* ── INK — text (pure neutral gray scale) ── */
+  --vex-ink:            #0A0A0A;  /* primary text on light                   */
+  --vex-ink-secondary:  #2E2E2E;  /* sub-headings                            */
+  --vex-ink-muted:      #717171;  /* nav labels, metadata, timestamps        */
+  --vex-ink-subtle:     #A0A0A0;  /* placeholders, disabled                  */
+
+  /* ── BORDER ── */
+  --vex-border-light:   #E4E4E4;
+  --vex-border-dark:    #2A2A2A;
+
+  /* ── SEMANTIC STATUS ── */
+  --vex-success:        #16A34A;  /* Green — live/connected, published       */
+  --vex-success-tint:   #DCFCE7;
+  --vex-success-ink:    #15803D;
+  --vex-warning:        #CA8A04;  /* Deep gold — NOT amber, distinct from primary */
+  --vex-warning-tint:   #FEF3C7;
+  --vex-warning-ink:    #854D0E;
+  --vex-destructive:    #DC2626;  /* Red — errors, delete, denied            */
+  --vex-destructive-tint:#FEE2E2;
+  --vex-destructive-ink: #991B1B;
+
+  /* ─────────────────────────────────────────────────────────────────────
+     SEMANTIC ALIASES (what product code should use)
+     ───────────────────────────────────────────────────────────────────── */
+  --vex-bg:             var(--vex-surface-100);
+  --vex-bg-raised:      var(--vex-surface-50);
+  --vex-bg-card:        var(--vex-white);
+  --vex-fg:             var(--vex-ink);
+  --vex-fg-muted:       var(--vex-ink-muted);
+  --vex-fg-subtle:      var(--vex-ink-subtle);
+  --vex-border:         var(--vex-border-light);
+  --vex-ring:           var(--vex-primary);
+
+  /* ── RADII — Stark: very sharp (2px base) ── */
+  --vex-radius-none: 0;
+  --vex-radius-sm:   1px;
+  --vex-radius-md:   2px;   /* buttons, inputs */
+  --vex-radius-lg:   4px;   /* cards, code blocks */
+  --vex-radius-xl:   8px;   /* modals, dialogs */
+  --vex-radius-full: 9999px;/* pills, avatars */
+
+  /* ── SPACING — 4px base ── */
+  --vex-space-xs:   4px;
+  --vex-space-sm:   8px;
+  --vex-space-md:   16px;
+  --vex-space-lg:   24px;
+  --vex-space-xl:   40px;
+  --vex-space-2xl:  80px;  /* section padding desktop — Stark: whitespace does design work */
+  --vex-space-3xl:  120px;
+
+  /* ── SHADOWS — subtle, light-mode only; dark mode has NONE ── */
+  --vex-shadow-xs:  0 1px 2px rgba(10,10,10,0.04);
+  --vex-shadow-sm:  0 1px 3px rgba(10,10,10,0.08);
+  --vex-shadow-md:  0 4px 12px rgba(10,10,10,0.08);
+  --vex-shadow-lg:  0 12px 32px rgba(10,10,10,0.12);
+  --vex-shadow-focus: 0 0 0 3px rgba(232,98,42,0.28);
+
+  /* ── LAYOUT ── */
+  --vex-max-content:     1280px;
+  --vex-admin-sidebar:   260px;
+
+  /* ── FONTS — one typeface only (Stark rule) ── */
+  --vex-font-sans:    "Geist", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --vex-font-mono:    "Geist Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --vex-font-display: var(--vex-font-sans);  /* no second family — display = Geist 800 */
+
+  /* ── MOTION ── */
+  --vex-ease:        cubic-bezier(.2, .8, .2, 1);
+  --vex-dur-fast:    120ms;
+  --vex-dur-base:    180ms;
+  --vex-dur-slow:    260ms;
+}
+
+/* ==============================================================================
+   DARK MODE — activated by .dark on a parent (shadcn convention)
+   ==============================================================================*/
+.vex-dark,
+.dark {
+  --vex-bg:             var(--vex-surface-900);
+  --vex-bg-raised:      var(--vex-surface-800);
+  --vex-bg-card:        var(--vex-surface-700);
+  --vex-fg:             #F4F4F4;
+  --vex-fg-muted:       #A0A0A0;
+  --vex-fg-subtle:      #717171;
+  --vex-border:         var(--vex-border-dark);
+  --vex-ring:           var(--vex-primary-bright);
+  --vex-ink:            #F4F4F4;
+  --vex-shadow-xs: none;
+  --vex-shadow-sm: none;
+  --vex-shadow-md: none;
+  --vex-shadow-lg: none;
+  --vex-shadow-focus: 0 0 0 3px rgba(240,112,64,0.35);
+}
+
+/* ==============================================================================
+   BASE TYPE TOKENS
+   One typeface: Geist. Display uses weight 800 for maximum contrast.
+   The design impact comes from single accent + extreme weight contrast.
+   ==============================================================================*/
+:root {
+  /* display (hero marketing — Geist ExtraBold, largest moment) */
+  --vex-display-font:     var(--vex-font-sans);
+  --vex-display-size:     4.5rem;    /* 72px */
+  --vex-display-weight:   800;
+  --vex-display-line:     1.05;
+  --vex-display-tracking: -0.04em;
+
+  /* h1 (marketing page titles) */
+  --vex-h1-font:     var(--vex-font-sans);
+  --vex-h1-size:     3rem;           /* 48px */
+  --vex-h1-weight:   700;
+  --vex-h1-line:     1.15;
+  --vex-h1-tracking: -0.03em;
+
+  /* h2 (section headings) */
+  --vex-h2-font:     var(--vex-font-sans);
+  --vex-h2-size:     2.25rem;        /* 36px */
+  --vex-h2-weight:   700;
+  --vex-h2-line:     1.2;
+  --vex-h2-tracking: -0.025em;
+
+  /* h3 (sub-section) */
+  --vex-h3-font:     var(--vex-font-sans);
+  --vex-h3-size:     1.875rem;       /* 30px */
+  --vex-h3-weight:   600;
+  --vex-h3-line:     1.25;
+  --vex-h3-tracking: -0.02em;
+
+  /* h4 (card titles, admin page headings) */
+  --vex-h4-font:     var(--vex-font-sans);
+  --vex-h4-size:     1.5rem;         /* 24px */
+  --vex-h4-weight:   600;
+  --vex-h4-line:     1.3;
+  --vex-h4-tracking: -0.015em;
+
+  /* body */
+  --vex-body-lg-size: 1.125rem;
+  --vex-body-md-size: 1rem;
+  --vex-body-sm-size: 0.875rem;
+  --vex-body-line:    1.65;
+
+  /* label (uppercase UI labels) */
+  --vex-label-size:     0.75rem;
+  --vex-label-weight:   500;
+  --vex-label-tracking: 0.08em;      /* Stark: wider tracking on caps */
+
+  /* code */
+  --vex-code-size: 0.875rem;
+  --vex-code-line: 1.7;
+}
+
+/* ==============================================================================
+   SEMANTIC TYPOGRAPHY CLASSES
+   Add to any element: class="vex-h1" / class="vex-body-md" / etc.
+   ==============================================================================*/
+.vex-display {
+  font-family: var(--vex-display-font);
+  font-size:   var(--vex-display-size);
+  font-weight: var(--vex-display-weight);
+  line-height: var(--vex-display-line);
+  letter-spacing: var(--vex-display-tracking);
+}
+.vex-h1 {
+  font-family: var(--vex-h1-font); font-size: var(--vex-h1-size);
+  font-weight: var(--vex-h1-weight); line-height: var(--vex-h1-line);
+  letter-spacing: var(--vex-h1-tracking);
+}
+.vex-h2 {
+  font-family: var(--vex-h2-font); font-size: var(--vex-h2-size);
+  font-weight: var(--vex-h2-weight); line-height: var(--vex-h2-line);
+  letter-spacing: var(--vex-h2-tracking);
+}
+.vex-h3 {
+  font-family: var(--vex-h3-font); font-size: var(--vex-h3-size);
+  font-weight: var(--vex-h3-weight); line-height: var(--vex-h3-line);
+  letter-spacing: var(--vex-h3-tracking);
+}
+.vex-h4 {
+  font-family: var(--vex-h4-font); font-size: var(--vex-h4-size);
+  font-weight: var(--vex-h4-weight); line-height: var(--vex-h4-line);
+  letter-spacing: var(--vex-h4-tracking);
+}
+.vex-body-lg { font-family: var(--vex-font-sans); font-size: var(--vex-body-lg-size); line-height: var(--vex-body-line); }
+.vex-body-md { font-family: var(--vex-font-sans); font-size: var(--vex-body-md-size); line-height: var(--vex-body-line); }
+.vex-body-sm { font-family: var(--vex-font-sans); font-size: var(--vex-body-sm-size); line-height: 1.55; }
+
+.vex-label {
+  font-family: var(--vex-font-sans);
+  font-size:   var(--vex-label-size);
+  font-weight: var(--vex-label-weight);
+  letter-spacing: var(--vex-label-tracking);
+  text-transform: uppercase;
+  color: var(--vex-fg-muted);
+}
+
+.vex-code {
+  font-family: var(--vex-font-mono);
+  font-size:   var(--vex-code-size);
+  line-height: var(--vex-code-line);
+  font-feature-settings: "ss01" 1, "calt" 1;
+}
+.vex-inline-code {
+  font-family: var(--vex-font-mono);
+  font-size: 0.875em;
+  background: var(--vex-primary-tint);
+  color: var(--vex-primary-dark);
+  padding: 1px 6px;
+  border-radius: var(--vex-radius-sm);
+}
+.vex-dark .vex-inline-code,
+.dark .vex-inline-code {
+  background: color-mix(in oklch, var(--vex-primary-bright) 18%, transparent);
+  color: var(--vex-primary-bright);
+}
+
+/* ==============================================================================
+   FOCUS RING + SELECTION (brand — Ember orange)
+   ==============================================================================*/
+.vex-root :focus-visible,
+body.vex-root :focus-visible {
+  outline: 2px solid var(--vex-primary);
+  outline-offset: 2px;
+}
+.vex-dark :focus-visible { outline-color: var(--vex-primary-bright); }
+
+.vex-root ::selection {
+  background-color: rgba(232,98,42,0.22);
+  color: inherit;
+}
+.vex-dark ::selection,
+.dark ::selection {
+  background-color: rgba(240,112,64,0.24);
+}

@@ -7,7 +7,7 @@ import { TDocument } from "../convex";
 /**
  * Props received by a custom preview component for relationship rendering.
  *
- * `TSlug` is the slug of the doc being rendered. In a picker row, this is the
+ * `TCollectionSlug` is the slug of the doc being rendered. In a picker row, this is the
  * candidate target doc's slug. In a list-table cell, this is the parent
  * collection's slug (the table row's `row.original`). In the trigger's
  * selected-value chip, it is the resolved target doc's slug.
@@ -16,17 +16,17 @@ import { TDocument } from "../convex";
  * `"author"`). In picker rows the component may ignore it; in list cells it
  * gives access to the IDs via `doc[fieldKey]`.
  *
- * @typeParam TSlug - The slug of the doc being rendered.
+ * @typeParam TCollectionSlug - The slug of the doc being rendered.
  */
 export interface RelationshipPreviewProps<
-  TSlug extends CollectionSlug = CollectionSlug,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
 > {
   /** The document being previewed. */
   doc: TDocument;
   /** The relationship field key on the parent collection. */
   fieldKey: string;
   /** The resolved collection config matching `doc`. */
-  config: CollectionConfig<TSlug>;
+  config: CollectionConfig<TCollectionSlug>;
 }
 
 /**
@@ -134,14 +134,14 @@ export interface AdminCollectionConfig<
 export interface CollectionConfigInput<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
-  TSlug extends string = string,
+  TCollectionSlug extends string = string,
   TFieldSlug extends string = string,
   TComponent extends ComponentHKT = ComponentHKT,
 > {
   /** Admin panel behaviour for this collection. All properties are optional. */
   admin?: AdminCollectionConfigInput<TFieldSlug, TComponent>;
   /** Convex table name — used as the database table identifier and URL slug in the admin panel. */
-  slug: TSlug;
+  slug: TCollectionSlug;
   /**
    * Display names shown in the admin panel navigation and list views.
    * Both are inferred from `slug` if omitted.
@@ -168,14 +168,14 @@ export interface CollectionConfigInput<
 export interface CollectionConfig<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
-  TSlug extends CollectionSlug = CollectionSlug,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends string = string,
   TComponent extends ComponentHKT = ComponentHKT,
 > {
   /** Resolved admin panel configuration for this collection. */
   admin: AdminCollectionConfig<TFieldSlug, TComponent>;
   /** Convex table name for this collection. */
-  slug: TSlug;
+  slug: TCollectionSlug;
   /** Display names shown in the admin panel — always present after defaults are applied. */
   labels: {
     /** Singular display name (e.g. `"Post"`). */

@@ -29,18 +29,18 @@ import type {
  * applied in order: `withIndex` → `order` → `filter` → `take`.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
- * @typeParam TSlug - Collection slug.
+ * @typeParam TCollectionSlug - Collection slug.
  * @typeParam TPopulate - Populate object.
  * @typeParam D - Depth literal (0 = no depth, default).
  */
 export interface FindServerArgs<
   DataModel extends GenericDataModel,
-  TSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TSlug>,
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
   D extends number = 0,
-> extends GenericQueryServerParams<DataModel, TSlug, TPopulate, D> {
+> extends GenericQueryServerParams<DataModel, TCollectionSlug, TPopulate, D> {
   /** The collection to query — must match a registered collection slug. */
-  collection: TSlug;
+  collection: TCollectionSlug;
 
   /**
    * Maximum number of documents to return. Defaults to 100.
@@ -71,7 +71,7 @@ export interface FindServerArgs<
     q: FilterBuilder<
       NamedTableInfo<
         DataModel,
-        TSlug extends TableNamesInDataModel<DataModel> ? TSlug : never
+        TCollectionSlug extends TableNamesInDataModel<DataModel> ? TCollectionSlug : never
       >
     >,
   ) => ExpressionOrValue<boolean>;
@@ -89,16 +89,16 @@ export interface FindServerArgs<
    * find({ ctx, collection: "posts", withIndex: { name: "by_publishedAt" } })
    * ```
    */
-  withIndex?: TSlug extends TableNamesInDataModel<DataModel>
+  withIndex?: TCollectionSlug extends TableNamesInDataModel<DataModel>
     ? {
-        name: IndexNames<NamedTableInfo<DataModel, TSlug>>;
+        name: IndexNames<NamedTableInfo<DataModel, TCollectionSlug>>;
         range?: (
           q: IndexRangeBuilder<
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             any,
             NamedIndex<
-              NamedTableInfo<DataModel, TSlug>,
-              IndexNames<NamedTableInfo<DataModel, TSlug>>
+              NamedTableInfo<DataModel, TCollectionSlug>,
+              IndexNames<NamedTableInfo<DataModel, TCollectionSlug>>
             >
           >,
         ) => IndexRange;
@@ -109,29 +109,29 @@ export interface FindServerArgs<
 /**
  * Resolves the return element type of `find`:
  *
- * - No populate + `D = 0` → `DocumentBySlug[TSlug]` (raw doc).
- * - No populate + `D > 0` → `DepthPopulated<TSlug, D>` (all relationships auto-populated).
- * - With populate → `Prettify<Populated<TSlug, TPopulate>>` (explicit fields populated).
+ * - No populate + `D = 0` → `DocumentBySlug[TCollectionSlug]` (raw doc).
+ * - No populate + `D > 0` → `DepthPopulated<TCollectionSlug, D>` (all relationships auto-populated).
+ * - With populate → `Prettify<Populated<TCollectionSlug, TPopulate>>` (explicit fields populated).
  */
 type FindReturnItem<
-  TSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TSlug>,
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
   D extends number,
 > = [TPopulate] extends [Record<string, never>]
   ? [D] extends [0]
-    ? TSlug extends keyof DocumentBySlug
-      ? DocumentBySlug[TSlug]
+    ? TCollectionSlug extends keyof DocumentBySlug
+      ? DocumentBySlug[TCollectionSlug]
       : never
-    : DepthPopulated<TSlug, D>
-  : TSlug extends keyof DocumentBySlug
-    ? Prettify<Populated<TSlug, TPopulate>>
+    : DepthPopulated<TCollectionSlug, D>
+  : TCollectionSlug extends keyof DocumentBySlug
+    ? Prettify<Populated<TCollectionSlug, TPopulate>>
     : never;
 
 type FindReturn<
-  TSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TSlug>,
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
   D extends number,
-> = FindReturnItem<TSlug, TPopulate, D>[];
+> = FindReturnItem<TCollectionSlug, TPopulate, D>[];
 
 /**
  * Lists documents in a VexCMS collection with optional filtering, ordering,
@@ -146,8 +146,8 @@ type FindReturn<
  * version, import `find` from `@vexcms/core/client`.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
- * @typeParam TSlug - Collection slug; compile-error if not registered.
- * @typeParam TPopulate - Populate object, narrowed against `RelationshipKeysOf<TSlug>`.
+ * @typeParam TCollectionSlug - Collection slug; compile-error if not registered.
+ * @typeParam TPopulate - Populate object, narrowed against `RelationshipKeysOf<TCollectionSlug>`.
  * @typeParam D - Depth literal (0 = none).
  * @param args - Query args. All fields except `ctx` and `collection` are optional.
  * @returns Promise resolving to the (optionally populated) documents array.
@@ -178,12 +178,12 @@ type FindReturn<
  */
 export async function find<
   DataModel extends GenericDataModel,
-  TSlug extends CollectionSlug,
-  const TPopulate extends PopulateShape<TSlug> = Record<string, never>,
+  TCollectionSlug extends CollectionSlug,
+  const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
   const D extends number = 0,
 >(
-  args: FindServerArgs<DataModel, TSlug, TPopulate, D>,
-): Promise<FindReturn<TSlug, TPopulate, D>> {
+  args: FindServerArgs<DataModel, TCollectionSlug, TPopulate, D>,
+): Promise<FindReturn<TCollectionSlug, TPopulate, D>> {
   const tableName = args.collection as TableNamesInDataModel<DataModel>;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -210,11 +210,11 @@ export async function find<
       : undefined);
 
   if (!effectivePopulate || Object.keys(effectivePopulate).length === 0) {
-    return docs as unknown as FindReturn<TSlug, TPopulate, D>;
+    return docs as unknown as FindReturn<TCollectionSlug, TPopulate, D>;
   }
   return populateDocs(
     args.ctx,
     docs as ReadonlyArray<Record<string, unknown>>,
     effectivePopulate,
-  ) as unknown as FindReturn<TSlug, TPopulate, D>;
+  ) as unknown as FindReturn<TCollectionSlug, TPopulate, D>;
 }

@@ -1,4 +1,4 @@
-import { z, ZodSchema } from "zod";
+import { z, ZodType } from "zod";
 import { CheckboxField } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 
@@ -25,7 +25,7 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  */
 export function checkboxFieldToInputSchema(props: {
   field: CheckboxField;
-}): ZodSchema {
+}): ZodType {
   const { field } = props;
 
   const inputSchema = z.boolean().default(field.defaultValue);

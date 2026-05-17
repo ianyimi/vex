@@ -13,14 +13,14 @@ import type { GenericMutationServerParams } from "../types";
  * Server-side args for `create`.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
- * @typeParam TSlug - Collection slug.
+ * @typeParam TCollectionSlug - Collection slug.
  */
 export interface CreateServerArgs<
   DataModel extends GenericDataModel,
-  TSlug extends CollectionSlug,
+  TCollectionSlug extends CollectionSlug,
 > extends GenericMutationServerParams<DataModel> {
   /** The collection slug to insert into. */
-  collection: TSlug;
+  collection: TCollectionSlug;
   /**
    * Field values for the new document. `_id` and `_creationTime` are
    * excluded — Convex assigns these automatically.
@@ -43,7 +43,7 @@ export interface CreateServerArgs<
  * Import from `@vexcms/core/server`.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
- * @typeParam TSlug - Collection slug.
+ * @typeParam TCollectionSlug - Collection slug.
  * @param args - `{ ctx, collection, data }`. `ctx` must be a mutation context.
  * @returns Promise resolving to the new document's ID as a string.
  * @example
@@ -58,8 +58,8 @@ export interface CreateServerArgs<
  */
 export async function create<
   DataModel extends GenericDataModel,
-  TSlug extends CollectionSlug,
->(args: CreateServerArgs<DataModel, TSlug>): Promise<string> {
+  TCollectionSlug extends CollectionSlug,
+>(args: CreateServerArgs<DataModel, TCollectionSlug>): Promise<string> {
   const id = await args.ctx.db.insert(
     args.collection as TableNamesInDataModel<DataModel>,
     args.data,

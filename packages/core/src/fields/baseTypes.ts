@@ -73,10 +73,8 @@ export type ComponentEntry = {
  *
  * // Sidebar metadata field
  * publishedAt: date({
- *   admin: {
- *     position: "sidebar",
- *     description: "Scheduled publish time"
- *   }
+ *   description: "Scheduled publish time",
+ *   admin: { position: "sidebar" },
  * })
  *
  * // Read-only computed field
@@ -134,11 +132,6 @@ export interface FieldAdminConfigInput {
    */
   placeholder?: string;
   /**
-   * Helper text displayed below the field input.
-   * Use for additional context or formatting hints.
-   */
-  description?: string;
-  /**
    * Content alignment in data table cells. 'left' | 'right' | 'center'
    */
   cellAlignment?: Alignment;
@@ -148,8 +141,8 @@ export interface FieldAdminConfigInput {
  * Resolved admin configuration for a field, returned after defaults are applied.
  *
  * Properties with defaults (`hidden`, `readOnly`, `position`, `width`, `cellAlignment`)
- * are always present. Properties that are meaningless when absent (`placeholder`,
- * `description`) remain optional — `undefined` means the user did not configure them.
+ * are always present. Properties that are meaningless when absent (`placeholder`)
+ * remain optional — `undefined` means the user did not configure them.
  *
  * @see {@link FieldAdminConfigInput} for the user-facing input type
  */
@@ -166,8 +159,6 @@ export interface FieldAdminConfig {
   cellAlignment: Alignment;
   /** Placeholder text shown in the input when empty. */
   placeholder?: string;
-  /** Helper text displayed below the field input. */
-  description?: string;
 }
 
 /**
@@ -189,11 +180,20 @@ export interface FieldAdminConfig {
  *
  * @see {@link BaseField} for the resolved type after defaults are applied
  */
-export interface BaseFieldInput<TMeta extends {} = {}> {
+export interface BaseFieldInput<TFieldMeta extends {} = {}> {
   /** Display label for the field in the admin form. */
   label?: string;
-  /** Description text shown below the field. */
+  /**
+   * Semantic description of the field. Used in three places:
+   * 1. Helper text rendered below the field input in the admin form UI.
+   * 2. As the Zod `.meta({ description })` value for form validation.
+   * 3. As the JSDoc comment on the generated document interface property.
+   *
+   * To write a separate JSDoc comment, use `interfaceDescription` in addition.
+   */
   description?: string;
+  /** The JSDoc comment on the generated document interface property */
+  interfaceDescription?: string;
   /**
    * Whether this field is required.
    *
@@ -218,7 +218,7 @@ export interface BaseFieldInput<TMeta extends {} = {}> {
    * ```
    */
   index?: string;
-  meta?: TMeta;
+  meta?: TFieldMeta;
 }
 
 /**
@@ -229,7 +229,7 @@ export interface BaseFieldInput<TMeta extends {} = {}> {
  *
  * @see {@link BaseFieldInput} for the user-facing input type
  */
-export interface BaseField<TMeta extends {} = {}> {
+export interface BaseField<TFieldMeta extends {} = {}> {
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;
   /** Whether this field is required in the database schema. */
@@ -241,11 +241,20 @@ export interface BaseField<TMeta extends {} = {}> {
   defaultValue?: unknown;
   /** Resolved admin UI configuration with all defaults applied. */
   admin: FieldAdminConfig;
-  /** Description shown below the field in the admin form. */
+  /**
+   * Semantic description of the field. Used in three places:
+   * 1. Helper text rendered below the field input in the admin form UI.
+   * 2. As the Zod `.meta({ description })` value for form validation.
+   * 3. As the JSDoc comment on the generated document interface property.
+   *
+   * To write a separate JSDoc comment, use `interfaceDescription` in addition.
+   */
   description?: string;
+  /** The JSDoc comment on the generated document interface property */
+  interfaceDescription?: string;
   /** Convex index name for this field. */
   index?: string;
   /** TypeScript type string written to generated document interfaces (e.g. `"string"`, `"number"`, `"string[]"`). */
   interfaceType: string;
-  meta?: TMeta;
+  meta?: TFieldMeta;
 }

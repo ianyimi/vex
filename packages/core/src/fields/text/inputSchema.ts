@@ -1,4 +1,4 @@
-import { z, ZodSchema } from "zod";
+import { z, ZodType } from "zod";
 import { TextField } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 
@@ -19,7 +19,7 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  * // → z.string().min(1).min(3).max(100).default("")
  * ```
  */
-export function textFieldToInputSchema(props: { field: TextField }): ZodSchema {
+export function textFieldToInputSchema(props: { field: TextField }): ZodType {
   const { field } = props;
 
   const fieldMinError = field.min?.error ?? "This field is too short.";

@@ -1,4 +1,4 @@
-import { z, type ZodSchema } from "zod";
+import { z, type ZodType } from "zod";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 import type { RelationshipField } from "./types";
 import { ADMIN_FIELDS } from "../constants";
@@ -30,7 +30,7 @@ import { ADMIN_FIELDS } from "../constants";
  */
 export function relationshipFieldToInputSchema(props: {
   field: RelationshipField;
-}): ZodSchema {
+}): ZodType {
   const { field } = props;
   const inputSchema = z
     .array(z.string())

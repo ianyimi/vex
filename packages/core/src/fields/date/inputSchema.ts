@@ -1,4 +1,4 @@
-import { z, ZodSchema, ZodNumber, ZodDefault } from "zod";
+import { z, ZodType, ZodNumber, ZodDefault } from "zod";
 import { DateField } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 
@@ -25,7 +25,7 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  * // → z.number().optional()
  * ```
  */
-export function dateFieldToInputSchema(props: { field: DateField }): ZodSchema {
+export function dateFieldToInputSchema(props: { field: DateField }): ZodType {
   const { field } = props;
 
   let inputSchema: ZodNumber | ZodDefault<ZodNumber> = z.number();

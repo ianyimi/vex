@@ -16,7 +16,7 @@ import { relationshipFieldToInputSchema } from "../relationship";
  *
  * @param props Input props
  * @param props.field - The resolved field definition to convert
- * @returns A ZodSchema (e.g. `z.string()`, `z.boolean().optional().default(false)`)
+ * @returns A ZodType (e.g. `z.string()`, `z.boolean().optional().default(false)`)
  * @throws An Error if an unrecognized field type is given
  *
  * @see {@link textFieldToInputSchema} for the text field implementation

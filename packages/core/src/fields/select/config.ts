@@ -56,9 +56,9 @@ import type { SelectFieldInput, SelectField } from "./types";
  * @see {@link SelectFieldInput} for the full input type
  * @see {@link SelectField} for the resolved output type
  */
-export function select<TMeta extends {} = {}>(
-  options?: SelectFieldInput<TMeta>,
-): SelectField<TMeta> {
+export function select<TFieldMeta extends {} = {}>(
+  options?: SelectFieldInput<TFieldMeta>,
+): SelectField<TFieldMeta> {
   return {
     type: ADMIN_FIELDS.select.type,
     interfaceType: ADMIN_FIELDS.select.interfaceType,
@@ -75,7 +75,6 @@ export function select<TMeta extends {} = {}>(
       width: "full",
       cellAlignment: "left",
       placeholder: "",
-      description: "",
       ...options?.admin,
     },
   };

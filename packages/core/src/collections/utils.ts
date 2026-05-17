@@ -1,4 +1,4 @@
-import { z, type ZodSchema } from "zod";
+import { z, type ZodType } from "zod";
 import type { CollectionConfig } from "./types";
 import { adminFieldToInputSchema } from "../fields";
 import type { TDocument } from "../convex";
@@ -62,7 +62,7 @@ export function getCollectionDefaultValues(props: {
 export function getCollectionInputSchema(props: {
   collection: CollectionConfig;
 }) {
-  const res: Record<string, ZodSchema> = {};
+  const res: Record<string, ZodType> = {};
   for (const [fieldKey, fieldDef] of Object.entries(props.collection.fields)) {
     res[fieldKey] = adminFieldToInputSchema({ field: fieldDef });
   }

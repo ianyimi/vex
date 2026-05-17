@@ -30,21 +30,21 @@ import { slugToPascalCase } from "./utils";
 export function defineCollection<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
-  TSlug extends CollectionSlug = CollectionSlug,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends string = string,
   TComponent extends ComponentHKT = ComponentHKT,
 >(
   config: CollectionConfigInput<
     TFieldMeta,
     TCollectionMeta,
-    TSlug,
+    TCollectionSlug,
     TFieldSlug,
     TComponent
   >,
 ): CollectionConfig<
   TFieldMeta,
   TCollectionMeta,
-  TSlug,
+  TCollectionSlug,
   TFieldSlug,
   TComponent
 > {

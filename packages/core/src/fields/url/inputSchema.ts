@@ -1,4 +1,4 @@
-import { z, ZodDefault, ZodURL, type ZodSchema } from "zod";
+import { z, ZodDefault, ZodURL, type ZodType } from "zod";
 import { UrlField } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 
@@ -27,7 +27,7 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  * // → z.url().default("https://example.com").optional()
  * ```
  */
-export function urlFieldToInputSchema(props: { field: UrlField }): ZodSchema {
+export function urlFieldToInputSchema(props: { field: UrlField }): ZodType {
   const { field } = props;
 
   let inputSchema: ZodURL | ZodDefault<ZodURL> = z.url();

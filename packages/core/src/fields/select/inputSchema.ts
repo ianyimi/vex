@@ -1,4 +1,4 @@
-import { z, ZodSchema } from "zod";
+import { z, ZodType } from "zod";
 import { SelectField } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 
@@ -26,7 +26,7 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  */
 export function selectFieldToInputSchema(props: {
   field: SelectField;
-}): ZodSchema {
+}): ZodType {
   const { field } = props;
 
   const optionValues = field.options.map((o) => o.value);
