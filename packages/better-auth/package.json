@@ -36,6 +36,7 @@
     "better-auth": "catalog:",
     "convex": "catalog:",
     "convex-helpers": "catalog:",
+    "convex-test": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

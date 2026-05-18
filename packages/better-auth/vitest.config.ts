@@ -6,4 +6,9 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     passWithNoTests: true,
   },
+  resolve: {
+    alias: {
+      "convex-test": "convex-test",
+    },
+  },
 });
