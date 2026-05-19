@@ -8,6 +8,7 @@ import { Row } from "@tanstack/react-table";
 import { SelectField } from "./select";
 import { UrlField } from "./url";
 import { RelationshipField } from "./relationship";
+import { ArrayField, ArrayType } from "./array";
 
 export * from "./text/types";
 export * from "./number/types";
@@ -46,6 +47,7 @@ export type AdminField<TFieldMeta extends {} = {}> =
   | DateField<TFieldMeta>
   | SelectField<TFieldMeta>
   | UrlField<TFieldMeta>
+  | ArrayField<ArrayType, TFieldMeta>
   | RelationshipField<TFieldMeta>;
 
 /**

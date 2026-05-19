@@ -36,6 +36,14 @@ export interface Page extends VexDocument {
    * Image URL for Open Graph social sharing previews. Recommended 1200×630px.
    */
   ogImage?: string
+  /**
+   * some test description
+   */
+  test?: unknown[]
+  /**
+   * some test description
+   */
+  test2?: unknown[]
 }
 
 export interface Header extends VexDocument {
@@ -148,6 +156,7 @@ export interface UserDocument extends VexDocument {
   banned?: boolean
   banReason?: string
   banExpires?: number
+  isAnonymous?: boolean
   userId?: string
 }
 
@@ -161,6 +170,8 @@ export interface SessionDocument extends VexDocument {
   userAgent?: string
   userId: string
   impersonatedBy?: string
+  activeOrganizationId?: string
+  activeTeamId?: string
 }
 
 export interface AccountDocument extends VexDocument {
@@ -186,6 +197,51 @@ export interface VerificationDocument extends VexDocument {
   expiresAt: number
   createdAt: number
   updatedAt: number
+}
+
+export interface OrganizationDocument extends VexDocument {
+  _id: Id<"organization">
+  name: string
+  slug: string
+  logo?: string
+  createdAt: number
+  metadata?: string
+  test?: string
+}
+
+export interface TeamDocument extends VexDocument {
+  _id: Id<"team">
+  name: string
+  organizationId: string
+  createdAt: number
+  updatedAt?: number
+}
+
+export interface TeamMemberDocument extends VexDocument {
+  _id: Id<"teamMember">
+  teamId: string
+  userId: string
+  createdAt?: number
+}
+
+export interface MemberDocument extends VexDocument {
+  _id: Id<"member">
+  organizationId: string
+  userId: string
+  role: string
+  createdAt: number
+}
+
+export interface InvitationDocument extends VexDocument {
+  _id: Id<"invitation">
+  organizationId: string
+  email: string
+  role?: string
+  teamId?: string
+  status: string
+  expiresAt: number
+  createdAt: number
+  inviterId: string
 }
 
 export interface ApikeyDocument extends VexDocument {
@@ -231,6 +287,11 @@ export type CollectionSlug =
   | "session"
   | "account"
   | "verification"
+  | "organization"
+  | "team"
+  | "teamMember"
+  | "member"
+  | "invitation"
   | "apikey"
   | "jwks"
 
@@ -244,6 +305,11 @@ export type DocumentBySlug = {
   session: SessionDocument
   account: AccountDocument
   verification: VerificationDocument
+  organization: OrganizationDocument
+  team: TeamDocument
+  teamMember: TeamMemberDocument
+  member: MemberDocument
+  invitation: InvitationDocument
   apikey: ApikeyDocument
   jwks: JwksDocument
 }
@@ -260,6 +326,11 @@ declare module "@vexcms/core" {
       | "session"
       | "account"
       | "verification"
+      | "organization"
+      | "team"
+      | "teamMember"
+      | "member"
+      | "invitation"
       | "apikey"
       | "jwks"
     DocumentBySlug: {
@@ -272,6 +343,11 @@ declare module "@vexcms/core" {
       session: SessionDocument
       account: AccountDocument
       verification: VerificationDocument
+      organization: OrganizationDocument
+      team: TeamDocument
+      teamMember: TeamMemberDocument
+      member: MemberDocument
+      invitation: InvitationDocument
       apikey: ApikeyDocument
       jwks: JwksDocument
     }
@@ -280,6 +356,7 @@ declare module "@vexcms/core" {
         id: "_id"
         text: "title" | "slug" | "content" | "metaTitle" | "metaDescription"
         url: "ogImage"
+        array: "test" | "test2"
       }
       headers: {
         id: "_id"
@@ -307,13 +384,20 @@ declare module "@vexcms/core" {
       user: {
         id: "_id"
         text: "name" | "email" | "image" | "role" | "banReason" | "userId"
-        checkbox: "emailVerified" | "banned"
+        checkbox: "emailVerified" | "banned" | "isAnonymous"
         date: "createdAt" | "updatedAt" | "banExpires"
       }
       session: {
         id: "_id"
         date: "expiresAt" | "createdAt" | "updatedAt"
-        text: "token" | "ipAddress" | "userAgent" | "userId" | "impersonatedBy"
+        text:
+          | "token"
+          | "ipAddress"
+          | "userAgent"
+          | "userId"
+          | "impersonatedBy"
+          | "activeOrganizationId"
+          | "activeTeamId"
       }
       account: {
         id: "_id"
@@ -332,6 +416,31 @@ declare module "@vexcms/core" {
         id: "_id"
         text: "identifier" | "value"
         date: "expiresAt" | "createdAt" | "updatedAt"
+      }
+      organization: {
+        id: "_id"
+        text: "name" | "slug" | "logo" | "metadata" | "test"
+        date: "createdAt"
+      }
+      team: {
+        id: "_id"
+        text: "name" | "organizationId"
+        date: "createdAt" | "updatedAt"
+      }
+      teamMember: {
+        id: "_id"
+        text: "teamId" | "userId"
+        date: "createdAt"
+      }
+      member: {
+        id: "_id"
+        text: "organizationId" | "userId" | "role"
+        date: "createdAt"
+      }
+      invitation: {
+        id: "_id"
+        text: "organizationId" | "email" | "role" | "teamId" | "status" | "inviterId"
+        date: "expiresAt" | "createdAt"
       }
       apikey: {
         id: "_id"

@@ -8,6 +8,15 @@ import PageContent from "../PageContent"
 
 export const dynamic = "force-dynamic"
 
+/**
+ * Generates Open Graph and `<title>` metadata for a public page.
+ *
+ * Fetches the page by slug and uses `metaTitle` / `metaDescription` / `ogImage`
+ * if set, falling back to the page title and description.
+ *
+ * @param params.slug - URL slug from the route
+ * @returns Metadata object for `generateMetadata`
+ */
 export async function generateMetadata({
   params,
 }: {
@@ -16,11 +25,11 @@ export async function generateMetadata({
   const { slug } = await params
   const pages = await fetchQuery(api.pages.getBySlug, { slug })
 
-  if (!pages || pages.length === 0) {
+  const page = pages[0]
+  if (!pages || !page) {
     return { title: "Vex CMS" }
   }
 
-  const page = pages[0]
   return {
     title: (page.metaTitle ?? page.title) + " | Vex CMS",
     description: page.metaDescription ?? undefined,
@@ -28,6 +37,15 @@ export async function generateMetadata({
   }
 }
 
+/**
+ * Public page route — renders a CMS page by its URL slug.
+ *
+ * Fetches the page from Convex using `getBySlug`, renders `notFound()` if no
+ * matching page exists, otherwise renders the page via `<PageContent>`.
+ *
+ * @param params.slug - URL slug from the route (e.g. `/about-us` → `"about-us"`)
+ * @throws {notFound()} When no page with the given slug exists.
+ */
 export default async function SlugPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const pages = await fetchQuery(api.pages.getBySlug, { slug })

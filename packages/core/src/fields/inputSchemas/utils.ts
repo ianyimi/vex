@@ -25,6 +25,7 @@ export function applyBaseInputSchemaMeta(props: {
 }): ZodType {
   const { field, inputSchema } = props;
   const fieldMeta = {
+    fieldType: field.type,
     label: field.label,
     description: field.description ?? "",
   };

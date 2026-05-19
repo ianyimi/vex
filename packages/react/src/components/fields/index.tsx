@@ -32,6 +32,11 @@ import {
   RelationshipFieldInput,
   relationshipFieldToColumnDef,
 } from "./relationship";
+import {
+  ArrayFieldCell,
+  ArrayFieldInput,
+  arrayFieldToColumnDef,
+} from "./array";
 
 export * from "./text";
 export * from "./number";
@@ -39,6 +44,7 @@ export * from "./checkbox";
 export * from "./date";
 export * from "./select";
 export * from "./url";
+export * from "./array";
 
 /**
  * Maps every `AdminFieldType` string to its corresponding input component.
@@ -69,6 +75,9 @@ export const fieldInputComponents: Record<
     InputComponentProps<AdminField>
   >,
   [ADMIN_FIELDS.relationship.type]: RelationshipFieldInput as ComponentType<
+    InputComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.array.type]: ArrayFieldInput as ComponentType<
     InputComponentProps<AdminField>
   >,
 };
@@ -161,6 +170,9 @@ export const fieldCellComponents: Record<
     CellComponentProps<AdminField>
   >,
   [ADMIN_FIELDS.relationship.type]: RelationshipFieldCell as ComponentType<
+    CellComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.array.type]: ArrayFieldCell as ComponentType<
     CellComponentProps<AdminField>
   >,
 };
@@ -276,6 +288,17 @@ export function getCollectionColumnDefs(props: {
       case ADMIN_FIELDS.relationship.type:
         columnDefs.push(
           relationshipFieldToColumnDef({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
+      case ADMIN_FIELDS.array.type:
+        columnDefs.push(
+          arrayFieldToColumnDef({
             fieldDef,
             fieldKey,
             isTitleField,

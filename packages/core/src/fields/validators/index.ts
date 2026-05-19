@@ -7,6 +7,7 @@ import { dateFieldToValidator } from "../date";
 import { selectFieldToValidator } from "../select";
 import { urlFieldToValidator } from "../url";
 import { relationshipFieldToValidator } from "../relationship";
+import { arrayFieldToValidator } from "../array";
 
 /**
  * Converts any field definition to its Convex schema validator string.
@@ -24,7 +25,9 @@ import { relationshipFieldToValidator } from "../relationship";
  * @see {@link checkboxFieldToValidator} for the checkbox field implementation
  * @internal
  */
-export function adminFieldToValidator(props: { field: AdminField }) {
+export function adminFieldToValidator<TFieldMeta extends {} = {}>(props: {
+  field: AdminField<TFieldMeta>;
+}) {
   switch (props.field.type) {
     case ADMIN_FIELDS.text.type:
       return textFieldToValidator({ field: props.field });
@@ -40,6 +43,8 @@ export function adminFieldToValidator(props: { field: AdminField }) {
       return urlFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.relationship.type:
       return relationshipFieldToValidator({ field: props.field });
+    case ADMIN_FIELDS.array.type:
+      return arrayFieldToValidator({ field: props.field });
     default:
       throw new Error("unrecognized field type");
   }

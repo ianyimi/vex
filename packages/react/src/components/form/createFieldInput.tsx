@@ -54,6 +54,7 @@ export type TypedFieldApi<TValue> = FieldApi<any, any, TValue, any, any, any, an
  *   - `submissionAttempts: number` — how many times the form has been submitted.
  *     Use `field.state.meta.isTouched || submissionAttempts > 0` to decide when
  *     to show validation errors (on blur after interaction, or after a submit attempt).
+ * @param mode - Optional TanStack Form field mode. Defaults to `"value"`. Use `"array"` for array fields.
  * @returns A React component accepting `InputComponentProps<TField> & { field?: TypedFieldApi<TValue> }`.
  * @throws {Error} When `field` is omitted and the component is rendered outside `<AppForm>`.
  *
@@ -80,6 +81,18 @@ export type TypedFieldApi<TValue> = FieldApi<any, any, TValue, any, any, any, an
  *   },
  * )
  * ```
+ *
+ * @example
+ * ```tsx
+ * // Array field with mode="array"
+ * export const ArrayFieldInput = createFieldInput<ArrayType[], ArrayField<ArrayType>>(
+ *   ({ name, fieldDef, field, submissionAttempts }) => {
+ *     // field.state.value is T[] in array mode
+ *     return <FormArray name={name} field={field} fieldDef={fieldDef} ... />
+ *   },
+ *   "array" // mode
+ * )
+ * ```
  */
 export function createFieldInput<TValue, TField extends AdminField>(
   render: (
@@ -89,6 +102,7 @@ export function createFieldInput<TValue, TField extends AdminField>(
       submissionAttempts: number;
     },
   ) => ReactNode,
+  mode?: "value" | "array",
 ) {
   return function FieldInput(
     props: InputComponentProps<TField> & { field?: TypedFieldApi<TValue> },
@@ -108,7 +122,7 @@ export function createFieldInput<TValue, TField extends AdminField>(
     }
 
     return (
-      <form.Field name={props.name}>
+      <form.Field name={props.name} mode={mode}>
         {(fieldApi: TypedFieldApi<TValue>) => (
           <Render {...props} field={fieldApi} submissionAttempts={submissionAttempts} />
         )}

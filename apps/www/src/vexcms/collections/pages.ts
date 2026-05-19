@@ -1,7 +1,19 @@
-import { defineCollection, text, url } from "@vexcms/core"
+import { array, defineCollection, number, text, url } from "@vexcms/core"
 
 import { TABLE_SLUG_PAGES } from "~/db/constants"
 
+/**
+ * VexCMS collection config for CMS pages.
+ *
+ * Registers the `pages` Convex table with text fields for title, slug, content,
+ * and SEO metadata, plus URL and array fields for OG images and testing.
+ *
+ * The `slug` field is indexed for efficient lookup in the public `getBySlug` query.
+ * Use `useAsTitle: "title"` so the admin list shows readable page names.
+ *
+ * @see defineCollection in @vexcms/core
+ * @see api.pages.getBySlug in apps/www/convex/pages.ts
+ */
 export const pages = defineCollection({
   slug: TABLE_SLUG_PAGES,
   interfaceName: "Page",
@@ -29,8 +41,7 @@ export const pages = defineCollection({
     }),
     metaTitle: text({
       label: "Meta Title",
-      description:
-        "Custom <title> tag for search engines. Falls back to the title field if empty.",
+      description: "Custom <title> tag for search engines. Falls back to the title field if empty.",
       admin: {
         position: "sidebar",
       },
@@ -45,11 +56,26 @@ export const pages = defineCollection({
     }),
     ogImage: url({
       label: "OG Image",
-      description:
-        "Image URL for Open Graph social sharing previews. Recommended 1200×630px.",
+      description: "Image URL for Open Graph social sharing previews. Recommended 1200×630px.",
       admin: {
         position: "sidebar",
       },
+    }),
+    test: array({
+      label: "Test Array",
+      items: text({ label: "test array header" }),
+      description: "some test description",
+    }),
+    test2: array({
+      label: "Test Array 2",
+      labels: {
+        singular: "array",
+        plural: "arrays",
+      },
+      items: array({
+        items: number({ label: "nested nested number field" }),
+      }),
+      description: "some test description",
     }),
   },
 })

@@ -11,6 +11,8 @@ export const pages = defineTable({
   metaTitle: v.optional(v.string()),
   metaDescription: v.optional(v.string()),
   ogImage: v.optional(v.string()),
+  test: v.optional(v.array(v.string())),
+  test2: v.optional(v.array(v.array(v.number()))),
 }).index("by_slug", ["slug"])
 
 export const headers = defineTable({
@@ -54,6 +56,7 @@ export const user = defineTable({
   banned: v.optional(v.boolean()),
   banReason: v.optional(v.string()),
   banExpires: v.optional(v.number()),
+  isAnonymous: v.optional(v.boolean()),
   userId: v.optional(v.string()),
 }).index("by_email", ["email"])
 
@@ -66,6 +69,8 @@ export const session = defineTable({
   userAgent: v.optional(v.string()),
   userId: v.string(),
   impersonatedBy: v.optional(v.string()),
+  activeOrganizationId: v.optional(v.string()),
+  activeTeamId: v.optional(v.string()),
 })
   .index("by_token", ["token"])
   .index("by_userId", ["userId"])
@@ -92,6 +97,52 @@ export const verification = defineTable({
   createdAt: v.number(),
   updatedAt: v.number(),
 }).index("by_identifier", ["identifier"])
+
+export const organization = defineTable({
+  name: v.string(),
+  slug: v.string(),
+  logo: v.optional(v.string()),
+  createdAt: v.number(),
+  metadata: v.optional(v.string()),
+  test: v.optional(v.string()),
+}).index("by_slug", ["slug"])
+
+export const team = defineTable({
+  name: v.string(),
+  organizationId: v.string(),
+  createdAt: v.number(),
+  updatedAt: v.optional(v.number()),
+}).index("by_organizationId", ["organizationId"])
+
+export const teamMember = defineTable({
+  teamId: v.string(),
+  userId: v.string(),
+  createdAt: v.optional(v.number()),
+})
+  .index("by_teamId", ["teamId"])
+  .index("by_userId", ["userId"])
+
+export const member = defineTable({
+  organizationId: v.string(),
+  userId: v.string(),
+  role: v.string(),
+  createdAt: v.number(),
+})
+  .index("by_organizationId", ["organizationId"])
+  .index("by_userId", ["userId"])
+
+export const invitation = defineTable({
+  organizationId: v.string(),
+  email: v.string(),
+  role: v.optional(v.string()),
+  teamId: v.optional(v.string()),
+  status: v.string(),
+  expiresAt: v.number(),
+  createdAt: v.number(),
+  inviterId: v.string(),
+})
+  .index("by_organizationId", ["organizationId"])
+  .index("by_email", ["email"])
 
 export const apikey = defineTable({
   configId: v.string(),

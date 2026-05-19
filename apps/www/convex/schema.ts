@@ -7,15 +7,25 @@ import {
   apikey,
   footers,
   headers,
+  invitation,
   jwks,
+  member,
+  organization,
   pages,
   session,
+  site_settings,
+  team,
+  teamMember,
   themes,
   verification,
-  site_settings,
 } from "./vex.schema"
 
 export default defineSchema({
+  team,
+  teamMember,
+  organization,
+  member,
+  invitation,
   site_settings,
   session,
   verification,
@@ -25,7 +35,7 @@ export default defineSchema({
   footers,
   themes,
   pages,
-  // Better Auth component tables (type definitions only - actual tables are in component)
+
   [TABLE_SLUG_USERS]: defineTable({
     name: v.string(),
     banExpires: v.optional(v.number()), // admin plugin

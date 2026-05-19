@@ -26,6 +26,10 @@ import {
   RelationshipFieldInput,
   RelationshipFieldCell,
 } from "./components/fields/relationship";
+import {
+  ArrayFieldInput,
+  ArrayFieldCell,
+} from "./components/fields/array";
 
 /**
  * HKT for React — maps any props type to `ComponentType<P>`.
@@ -85,6 +89,10 @@ export const reactAdapter: FrameworkAdapterInput<ReactHKT> =
       [ADMIN_FIELDS.relationship.type]: {
         input: RelationshipFieldInput,
         cell: RelationshipFieldCell,
+      },
+      [ADMIN_FIELDS.array.type]: {
+        input: ArrayFieldInput,
+        cell: ArrayFieldCell,
       },
     },
     views: {

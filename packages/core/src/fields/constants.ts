@@ -51,6 +51,12 @@ export const ADMIN_FIELDS = {
     validator: "v.array(\nv.string()\n)",
     defaultValue: [] as string[],
   },
+  array: {
+    type: "array",
+    interfaceType: "unknown[]",
+    validator: "v.array(\nv.any()\n)",
+    defaultValue: [],
+  },
   // richtext: {
   //   type: "richtext",
   //   validator: "v.any()",
@@ -87,3 +93,6 @@ export type SelectFieldType = typeof ADMIN_FIELDS.select.type;
 
 /** Literal type `"relationship"` — the discriminant value on {@link RelationshipField}. */
 export type RelationshipFieldType = typeof ADMIN_FIELDS.relationship.type;
+
+/** Literal type `"array"` — the discriminant value on {@link ArrayField}. */
+export type ArrayFieldType = typeof ADMIN_FIELDS.array.type;

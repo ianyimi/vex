@@ -1,0 +1,108 @@
+---
+title: array field
+description: Stores ordered lists of strings, numbers, booleans, or nested objects — tags, ratings, nested blocks, and more.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+An `array()` field stores an ordered list of values. Items can be strings,
+numbers, booleans, or nested VexCMS fields — including other arrays for
+multi-dimensional structures. Each item is validated by a nested field
+definition (`items`), which supports every VexCMS field type.
+
+Common uses: tags, skill lists, multi-select options, nested blocks, matrix
+data, and any ordered list where each element has a defined structure.
+
+The admin panel renders a dynamic list with add/remove controls. Items are
+rendered as sub-fields using the `items` field type's input component.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key when left empty. |
+| `labels.singular` | `string` | `"Item"` | Label for a single item in add/remove controls (e.g. "Add Tag"). |
+| `labels.plural` | `string` | `"Items"` | Label shown in the field header and empty state. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
+| `defaultValue` | `TArrayType[]` | `[]` | Pre-filled array shown in the admin form when creating a new document. |
+| `items` | `AdminField` | — | **Required.** The field type used to validate each item in the array. Any VexCMS field builder (including nested `array()`). |
+| `min.value` | `number` | — | Minimum number of items allowed. |
+| `min.error` | `string` | `"This field is too short."` | Error message shown when the array has fewer than `min.value` items. |
+| `max.value` | `number` | — | Maximum number of items allowed. |
+| `max.error` | `string` | `"This field is too long."` | Error message shown when the array has more than `max.value` items. |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders add/remove controls as non-interactive. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Alignment of the item count in the list-view table cell. |
+| `admin.placeholder` | `string` | — | Placeholder shown in empty array state. |
+
+## Schema output
+
+```ts
+// Optional array of strings (default — items defaults to text())
+tags: v.optional(v.array(v.string()))
+
+// Required array of numbers
+scores: v.array(v.number())
+
+// Required with min/max item count
+links: v.array(v.string()).min(1).max(10)
+
+// Nested array — array of arrays of numbers
+matrix: v.array(v.array(v.number()))
+
+// Array of objects (via nested array)
+authors: v.array(v.any())
+```
+
+## Usage
+
+```ts
+import { defineCollection, array, text, number } from "@vexcms/core";
+
+const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    // String tags — label inferred from key ("Tags")
+    tags: array({
+      items: text({ label: "Tag" }),
+    }),
+
+    // Number array with required constraint
+    scores: array({
+      required: true,
+      items: number(),
+    }),
+
+    // Minimum 1, maximum 10 items
+    highlights: array({
+      items: text(),
+      min: { value: 1 },
+      max: { value: 10 },
+    }),
+
+    // Nested array — array of arrays of numbers (2D matrix)
+    matrix: array({
+      items: array({ items: number() }),
+    }),
+
+    // Custom labels
+    skills: array({
+      label: "Skills",
+      labels: { singular: "Skill", plural: "Skills" },
+      items: text(),
+    }),
+  },
+});
+```
+
+## Admin UI
+
+The array field renders a dynamic list with an "Add [Singular]" button.
+Each item appears as a sub-field using the `items` field type's input component
+(e.g. a `text()` field renders as a text input, `number()` as a number input).
+A trash icon removes individual items. Controls are disabled when
+`admin.readOnly` is `true`. The list view table cell shows the item count
+(e.g. "3 items.").

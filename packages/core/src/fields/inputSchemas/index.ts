@@ -1,12 +1,13 @@
 import { ADMIN_FIELDS } from "../constants";
 import { AdminField } from "../types";
-import { textFieldToInputSchema } from "../text/inputSchema";
+import { textFieldToInputSchema } from "../text";
 import { numberFieldToInputSchema } from "../number";
 import { checkboxFieldToInputSchema } from "../checkbox";
 import { dateFieldToInputSchema } from "../date";
 import { selectFieldToInputSchema } from "../select";
 import { urlFieldToInputSchema } from "../url";
 import { relationshipFieldToInputSchema } from "../relationship";
+import { arrayFieldToInputSchema } from "../array";
 
 /**
  * Converts any field definition to its form input schema using zod.
@@ -40,6 +41,8 @@ export function adminFieldToInputSchema(props: { field: AdminField }) {
       return urlFieldToInputSchema({ field: props.field });
     case ADMIN_FIELDS.relationship.type:
       return relationshipFieldToInputSchema({ field: props.field });
+    case ADMIN_FIELDS.array.type:
+      return arrayFieldToInputSchema({ field: props.field });
     default:
       throw new Error("unrecognized field type");
   }

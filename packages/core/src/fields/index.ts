@@ -11,3 +11,4 @@ export * from "./number";
 export * from "./checkbox";
 export * from "./date";
 export * from "./url";
+export * from "./array";
