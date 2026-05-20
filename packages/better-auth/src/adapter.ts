@@ -6,6 +6,7 @@ import type {
   VexAuthAdapter,
 } from "@vexcms/core";
 import {
+  array,
   AuthCollectionMeta,
   checkbox,
   date,
@@ -300,10 +301,20 @@ function betterAuthAttrToVexField(
   switch (attr.type) {
     case "string":
       return text(baseOptions);
+    case "string[]":
+      return array({
+        ...baseOptions,
+        items: text(baseOptions),
+      });
     case "boolean":
       return checkbox(baseOptions);
     case "number":
       return number(baseOptions);
+    case "number[]":
+      return array({
+        ...baseOptions,
+        items: number(baseOptions),
+      });
     case "date":
       return date(baseOptions);
     case "json":
