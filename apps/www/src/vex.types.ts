@@ -190,6 +190,7 @@ export interface UserDocument extends VexDocument {
   banExpires?: number
   isAnonymous?: boolean
   userId?: string
+  roles: string[]
 }
 
 export interface SessionDocument extends VexDocument {
@@ -274,6 +275,7 @@ export interface InvitationDocument extends VexDocument {
   expiresAt: number
   createdAt: number
   inviterId: string
+  roles: string[]
 }
 
 export interface ApikeyDocument extends VexDocument {
@@ -419,6 +421,7 @@ declare module "@vexcms/core" {
         text: "name" | "email" | "image" | "role" | "banReason" | "userId"
         checkbox: "emailVerified" | "banned" | "isAnonymous"
         date: "createdAt" | "updatedAt" | "banExpires"
+        array: "roles"
       }
       session: {
         id: "_id"
@@ -474,6 +477,7 @@ declare module "@vexcms/core" {
         id: "_id"
         text: "organizationId" | "email" | "role" | "teamId" | "status" | "inviterId"
         date: "expiresAt" | "createdAt"
+        array: "roles"
       }
       apikey: {
         id: "_id"

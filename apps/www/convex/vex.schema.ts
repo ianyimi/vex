@@ -84,6 +84,7 @@ export const user = defineTable({
   banExpires: v.optional(v.number()),
   isAnonymous: v.optional(v.boolean()),
   userId: v.optional(v.string()),
+  roles: v.array(v.string()),
 }).index("by_email", ["email"])
 
 export const session = defineTable({
@@ -166,6 +167,7 @@ export const invitation = defineTable({
   expiresAt: v.number(),
   createdAt: v.number(),
   inviterId: v.string(),
+  roles: v.array(v.string()),
 })
   .index("by_organizationId", ["organizationId"])
   .index("by_email", ["email"])
