@@ -8,6 +8,7 @@ import { selectFieldToValidator } from "../select";
 import { urlFieldToValidator } from "../url";
 import { relationshipFieldToValidator } from "../relationship";
 import { arrayFieldToValidator } from "../array";
+import { groupFieldToValidator } from "../group";
 
 /**
  * Converts any field definition to its Convex schema validator string.
@@ -45,6 +46,8 @@ export function adminFieldToValidator<TFieldMeta extends {} = {}>(props: {
       return relationshipFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.array.type:
       return arrayFieldToValidator({ field: props.field });
+    case ADMIN_FIELDS.group.type:
+      return groupFieldToValidator({ field: props.field });
     default:
       throw new Error("unrecognized field type");
   }

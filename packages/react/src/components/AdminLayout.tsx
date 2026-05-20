@@ -109,7 +109,7 @@ export function AdminLayout(props: AdminLayoutProps) {
 
   const content = (
     <SidebarInset>
-      <header className="flex h-12 items-center gap-2 px-4 border-b shrink-0">
+      <header className="flex h-12 sticky top-0 bg-background z-100 items-center gap-2 px-4 border-b shrink-0">
         {side === "right" && <div className="flex-1" />}
         {side === "right" ? (
           <>

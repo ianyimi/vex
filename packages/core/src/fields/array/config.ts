@@ -60,9 +60,17 @@ export function array<
 >(
   options: ArrayFieldInput<TArrayType, TFieldMeta>,
 ): ArrayField<TArrayType, TFieldMeta> {
+  // If the items field is a named group, reference its name in the array
+  // type rather than inlining the full object type. This keeps generated
+  // interfaces readable and lets the named group's own type alias do the work.
+  const itemsInterfaceType =
+    options.items.type === ADMIN_FIELDS.group.type && options.items.interfaceName
+      ? options.items.interfaceName
+      : options.items.interfaceType;
+
   return {
     type: ADMIN_FIELDS.array.type,
-    interfaceType: ADMIN_FIELDS.array.interfaceType,
+    interfaceType: `${itemsInterfaceType}[]`,
 
     // Core properties with defaults
     label: "",

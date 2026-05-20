@@ -1,4 +1,4 @@
-import { array, defineCollection, number, text, url } from "@vexcms/core"
+import { array, defineCollection, group, number, text, url } from "@vexcms/core"
 
 import { TABLE_SLUG_PAGES } from "~/db/constants"
 
@@ -64,7 +64,7 @@ export const pages = defineCollection({
     test: array({
       label: "Test Array",
       items: text({ label: "test array header" }),
-      description: "some test description",
+      description: "some test description.",
     }),
     test2: array({
       label: "Test Array 2",
@@ -74,8 +74,53 @@ export const pages = defineCollection({
       },
       items: array({
         items: number({ label: "nested nested number field" }),
+        label: "SubList",
+        labels: {
+          singular: "SubArray",
+          plural: "SubArrays",
+        },
       }),
-      description: "some test description",
+      description: "some test number array description",
+    }),
+    seo: group({
+      label: "SEO",
+      interfaceName: "SEO",
+      description: "seo metadata",
+      fields: {
+        metaTitle: text({ label: "Meta Title" }),
+        metaDescription: text({ label: "Meta Description" }),
+        ogImage: url({ label: "OG Image" }),
+      },
+    }),
+    anotherTest: group({
+      label: "test nested things",
+      interfaceName: "AnotherGroupNames",
+      fields: {
+        title: text(),
+        subtitle: text(),
+        list: array({
+          label: "test list in group field",
+          items: group({
+            label: "Group",
+            interfaceName: "InnerGroup",
+            defaultOpen: false,
+            fields: {
+              title: text({ description: "test field description", label: "Title" }),
+              description: text({ label: "description", description: "another test description" }),
+              queue: array({
+                label: "sub group array list",
+                items: group({
+                  label: "sub group array sub group",
+                  fields: {
+                    title: text({ label: "Title" }),
+                    description: text({ label: "Description" }),
+                  },
+                }),
+              }),
+            },
+          }),
+        }),
+      },
     }),
   },
 })

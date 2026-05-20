@@ -13,6 +13,32 @@ export const pages = defineTable({
   ogImage: v.optional(v.string()),
   test: v.optional(v.array(v.string())),
   test2: v.optional(v.array(v.array(v.number()))),
+  seo: v.optional(
+    v.object({
+      metaTitle: v.optional(v.string()),
+      metaDescription: v.optional(v.string()),
+      ogImage: v.optional(v.string()),
+    })
+  ),
+  anotherTest: v.optional(
+    v.object({
+      title: v.optional(v.string()),
+      subtitle: v.optional(v.string()),
+      list: v.optional(
+        v.array(
+          v.object({
+            title: v.optional(v.string()),
+            description: v.optional(v.string()),
+            queue: v.optional(
+              v.array(
+                v.object({ title: v.optional(v.string()), description: v.optional(v.string()) })
+              )
+            ),
+          })
+        )
+      ),
+    })
+  ),
 }).index("by_slug", ["slug"])
 
 export const headers = defineTable({

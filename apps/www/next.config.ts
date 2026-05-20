@@ -9,6 +9,9 @@ import "./src/env.mjs"
 const repoRoot = resolve(__dirname, "../..")
 
 const nextConfig: NextConfig = {
+  devIndicators: {
+    position: "bottom-right",
+  },
   allowedDevOrigins: ["127.0.01", "localhost"],
   reactCompiler: true,
   images: {

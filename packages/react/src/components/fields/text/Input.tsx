@@ -40,10 +40,10 @@ import {
  * ```
  */
 export const TextFieldInput = createFieldInput<string, TextField>(
-  ({ name, fieldDef, field, submissionAttempts }) => {
+  ({ name, fieldDef, field, index, submissionAttempts }) => {
     return (
       <div className="flex flex-col gap-1.5">
-        <FormLabel field={fieldDef} name={name} />
+        <FormLabel index={index} field={fieldDef} name={name} />
         <Input
           id={name}
           type="text"

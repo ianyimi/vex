@@ -32,7 +32,7 @@ import { resolveRelationshipPreview } from "./preview";
 export const RelationshipFieldInput = createFieldInput<
   string[],
   RelationshipField
->(({ name, fieldDef, field, submissionAttempts }) => {
+>(({ name, fieldDef, field, index, submissionAttempts }) => {
   // `createFieldInput`'s render context provides { name, fieldDef, readOnly,
   // field, submissionAttempts } — no `config`. Read the live VexConfig from the
   // existing AdminLayout-provided context instead.
@@ -53,7 +53,7 @@ export const RelationshipFieldInput = createFieldInput<
   if (!targetCollection) {
     return (
       <div className="flex flex-col gap-1.5">
-        <FormLabel field={fieldDef} name={name} />
+        <FormLabel field={fieldDef} index={index} name={name} />
         <p className="text-xs text-destructive">
           Unknown collection: <code>{fieldDef.collection.slug}</code>
         </p>
@@ -123,7 +123,7 @@ export const RelationshipFieldInput = createFieldInput<
 
   return (
     <div className="flex flex-col gap-1.5">
-      <FormLabel field={fieldDef} name={name} />
+      <FormLabel field={fieldDef} index={index} name={name} />
 
       {/* —— Multi-select chips: master lines 207–229 —— */}
       {isMany && selectedDocs.length > 0 && (
@@ -133,7 +133,11 @@ export const RelationshipFieldInput = createFieldInput<
               key={doc._id}
               className="inline-flex items-center gap-1 rounded-sm bg-muted border border-border px-2 py-0.5 text-xs"
             >
-              <Preview doc={doc} fieldKey="_id" config={targetCollection as never} />
+              <Preview
+                doc={doc}
+                fieldKey="_id"
+                config={targetCollection as never}
+              />
               <button
                 type="button"
                 onClick={() => handleRemove(doc._id)}

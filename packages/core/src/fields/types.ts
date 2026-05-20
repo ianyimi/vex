@@ -9,6 +9,7 @@ import { SelectField } from "./select";
 import { UrlField } from "./url";
 import { RelationshipField } from "./relationship";
 import { ArrayField, ArrayType } from "./array";
+import { GroupField } from "./group";
 
 export * from "./text/types";
 export * from "./number/types";
@@ -48,7 +49,8 @@ export type AdminField<TFieldMeta extends {} = {}> =
   | SelectField<TFieldMeta>
   | UrlField<TFieldMeta>
   | ArrayField<ArrayType, TFieldMeta>
-  | RelationshipField<TFieldMeta>;
+  | RelationshipField<TFieldMeta>
+  | GroupField<TFieldMeta>;
 
 /**
  * Props passed to field input components rendered in the document edit form.
@@ -86,6 +88,7 @@ export interface InputComponentProps<TField extends AdminField = AdminField> {
   fieldDef: TField;
   /** Whether the field is non-editable — derived from `fieldDef.admin.readOnly` or permission checks. */
   readOnly: boolean;
+  index?: number;
 }
 
 /**

@@ -40,7 +40,7 @@ import { Checkbox } from "../../ui/checkbox";
  * ```
  */
 export const CheckboxFieldInput = createFieldInput<boolean, CheckboxField>(
-  ({ name, fieldDef, field, submissionAttempts }) => {
+  ({ name, fieldDef, field, index, submissionAttempts }) => {
     return (
       <div className="flex flex-col gap-1.5 py-2">
         <div className="flex gap-2">
@@ -51,7 +51,7 @@ export const CheckboxFieldInput = createFieldInput<boolean, CheckboxField>(
             onBlur={field.handleBlur}
             readOnly={fieldDef.admin.readOnly}
           />
-          <FormLabel field={fieldDef} name={name} hideRequired />
+          <FormLabel field={fieldDef} index={index} name={name} hideRequired />
         </div>
         <FormDescription field={fieldDef} />
         <FormError field={field} submissionAttempts={submissionAttempts} />

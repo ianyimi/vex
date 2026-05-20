@@ -57,6 +57,13 @@ export const ADMIN_FIELDS = {
     validator: "v.array(\nv.any()\n)",
     defaultValue: [],
   },
+  group: {
+    type: "group",
+    interfaceType: "Record<string, any>",
+    validator: "v.object({})",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    defaultValue: {} as Record<string, any>,
+  },
   // richtext: {
   //   type: "richtext",
   //   validator: "v.any()",

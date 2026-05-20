@@ -37,6 +37,11 @@ import {
   ArrayFieldInput,
   arrayFieldToColumnDef,
 } from "./array";
+import {
+  GroupFieldCell,
+  GroupFieldInput,
+  groupFieldToColumnDef,
+} from "./group";
 
 export * from "./text";
 export * from "./number";
@@ -45,6 +50,8 @@ export * from "./date";
 export * from "./select";
 export * from "./url";
 export * from "./array";
+export * from "./relationship";
+export * from "./group";
 
 /**
  * Maps every `AdminFieldType` string to its corresponding input component.
@@ -78,6 +85,9 @@ export const fieldInputComponents: Record<
     InputComponentProps<AdminField>
   >,
   [ADMIN_FIELDS.array.type]: ArrayFieldInput as ComponentType<
+    InputComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.group.type]: GroupFieldInput as ComponentType<
     InputComponentProps<AdminField>
   >,
 };
@@ -173,6 +183,9 @@ export const fieldCellComponents: Record<
     CellComponentProps<AdminField>
   >,
   [ADMIN_FIELDS.array.type]: ArrayFieldCell as ComponentType<
+    CellComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.group.type]: GroupFieldCell as ComponentType<
     CellComponentProps<AdminField>
   >,
 };
@@ -306,8 +319,20 @@ export function getCollectionColumnDefs(props: {
           }),
         );
         break;
+
+      case ADMIN_FIELDS.group.type:
+        columnDefs.push(
+          groupFieldToColumnDef({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
       default:
-      //TODO: throw error here
+        throw new Error("unsupported column def field type");
     }
   }
   return columnDefs;

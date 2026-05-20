@@ -20,16 +20,15 @@ import {
   CollectionEditView,
   CollectionListView,
   DashboardView,
-} from "./components";
-import { DateFieldCell, DateFieldInput } from "./components/fields/date";
-import {
   RelationshipFieldInput,
   RelationshipFieldCell,
-} from "./components/fields/relationship";
-import {
-  ArrayFieldInput,
+  DateFieldCell,
+  DateFieldInput,
   ArrayFieldCell,
-} from "./components/fields/array";
+  ArrayFieldInput,
+  GroupFieldCell,
+  GroupFieldInput,
+} from "./components";
 
 /**
  * HKT for React — maps any props type to `ComponentType<P>`.
@@ -93,6 +92,10 @@ export const reactAdapter: FrameworkAdapterInput<ReactHKT> =
       [ADMIN_FIELDS.array.type]: {
         input: ArrayFieldInput,
         cell: ArrayFieldCell,
+      },
+      [ADMIN_FIELDS.group.type]: {
+        input: GroupFieldInput,
+        cell: GroupFieldCell,
       },
     },
     views: {

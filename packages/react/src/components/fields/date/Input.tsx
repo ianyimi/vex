@@ -42,7 +42,7 @@ import { DateTimePicker } from "../../ui";
  */
 export const DateFieldInput = createFieldInput<number, DateField>(
   function DateFieldInputRender(props) {
-    const { name, fieldDef, field, submissionAttempts } = props;
+    const { name, fieldDef, field, index, submissionAttempts } = props;
 
     const fieldRef = useRef(field);
     useEffect(() => {
@@ -62,7 +62,7 @@ export const DateFieldInput = createFieldInput<number, DateField>(
 
     return (
       <div className="flex flex-col gap-1.5">
-        <FormLabel field={fieldDef} name={name} />
+        <FormLabel field={fieldDef} index={index} name={name} />
         <DateTimePicker
           value={dateValue}
           onChange={handleChange}

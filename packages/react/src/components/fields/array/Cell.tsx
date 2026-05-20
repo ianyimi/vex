@@ -26,9 +26,17 @@ export function ArrayFieldCell(
 ) {
   const itemCount = props.value.length;
   const isSingle = props.value.length === 1;
+  const labels = props.fieldDef.labels;
+  const label = labels
+    ? isSingle
+      ? labels.singular
+      : labels.plural
+    : isSingle
+      ? "item"
+      : "items";
   return (
     <span title={`${props.fieldDef.type} - ${props.fieldDef.label}`}>
-      {itemCount} item{isSingle ? "" : "s"}.
+      {itemCount} {label}
     </span>
   );
 }

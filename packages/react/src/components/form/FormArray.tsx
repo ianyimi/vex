@@ -1,6 +1,6 @@
 "use client";
 
-import type { ArrayField, ArrayType } from "@vexcms/core";
+import type { ArrayField, ArrayType, InputComponentProps } from "@vexcms/core";
 import type { TypedFieldApi } from "./createFieldInput";
 import { useContext } from "react";
 import { AppFormContext } from "./AppFormContext";
@@ -10,46 +10,6 @@ import { fieldToInputComponent } from "../fields";
 import { FormError } from "./FormError";
 import { FormLabel } from "./FormLabel";
 import { FormDescription } from "./FormDescription";
-
-/**
- * Props for the FormArray component.
- *
- * @see {@link FormArray}
- */
-export interface FormArrayProps<TArrayType extends ArrayType = string> {
-  /**
-   * The field key name from the collection config, e.g. `"tags"`.
-   *
-   * Used to build sub-field names like `"tags[0]"`, `"tags[1]"`, etc.
-   */
-  name: string;
-  /**
-   * The TanStack Form array field API.
-   *
-   * This is the `field` prop passed to a field input component when using
-   * `createFieldInput` with `mode="array"`. The field's value is `TArrayType[]`.
-   */
-  field: TypedFieldApi<TArrayType[]>;
-  /**
-   * The resolved array field definition from the collection config.
-   *
-   * The `items` property defines the type of each element in the array.
-   */
-  fieldDef: ArrayField<TArrayType>;
-  /**
-   * Whether the field is non-editable.
-   *
-   * Disables all add/remove controls and renders sub-fields as read-only.
-   */
-  readOnly: boolean;
-  /**
-   * How many times the form has been submitted.
-   *
-   * Use this to determine when to show validation errors (on blur after
-   * interaction, or after a submit attempt).
-   */
-  submissionAttempts: number;
-}
 
 /**
  * Renders an array field as a dynamic list with add/remove controls.
@@ -88,9 +48,13 @@ export function FormArray<TArrayType extends ArrayType = string>({
   name,
   field,
   fieldDef,
+  index,
   readOnly,
   submissionAttempts,
-}: FormArrayProps<TArrayType>) {
+}: InputComponentProps<ArrayField<TArrayType>> & {
+  field: TypedFieldApi<TArrayType[]>;
+  submissionAttempts: number;
+}) {
   const form = useContext(AppFormContext);
 
   if (!form) {
@@ -113,10 +77,10 @@ export function FormArray<TArrayType extends ArrayType = string>({
   const items = field.state.value ?? [];
 
   return (
-    <div className="flex flex-col gap-3 p-2 border-2">
+    <div className="flex flex-col gap-3 p-2 border-2 rounded-sm">
       <div className="flex gap-3">
         <div>
-          <FormLabel field={fieldDef} name={name} />
+          <FormLabel field={fieldDef} index={index} name={name} />
           <FormDescription field={fieldDef} />
         </div>
         <Button
@@ -131,7 +95,7 @@ export function FormArray<TArrayType extends ArrayType = string>({
         </Button>
       </div>
       {items.length > 0 ? (
-        <div className="flex flex-col gap-2 rounded-sm">
+        <div className="flex flex-col gap-2">
           {items.map((_, index) => (
             <div key={index} className="flex items-center gap-2">
               <div className="flex-1">
@@ -141,6 +105,7 @@ export function FormArray<TArrayType extends ArrayType = string>({
                       name={`${subField.name}`}
                       fieldDef={itemFieldDef}
                       readOnly={readOnly}
+                      index={index}
                     />
                   )}
                 </form.Field>

@@ -44,10 +44,10 @@ import {
  * ```
  */
 export const UrlFieldInput = createFieldInput<string, UrlField>(
-  ({ name, fieldDef, field, submissionAttempts }) => {
+  ({ name, fieldDef, field, index, submissionAttempts }) => {
     return (
       <div className="flex flex-col gap-1.5">
-        <FormLabel field={fieldDef} name={name} />
+        <FormLabel field={fieldDef} index={index} name={name} />
         <Input
           id={name}
           type="text"

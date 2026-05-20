@@ -8,6 +8,33 @@
 import type { Id } from "@convex/_generated/dataModel"
 import type { VexDocument } from "@vexcms/core"
 
+export type SEO = {
+  metaTitle?: string
+  metaDescription?: string
+  ogImage?: string
+}
+
+export type InnerGroup = {
+  /**
+   * test field description
+   */
+  title?: string
+  /**
+   * another test description
+   */
+  description?: string
+  queue?: {
+    title?: string
+    description?: string
+  }[]
+}
+
+export type AnotherGroupNames = {
+  title?: string
+  subtitle?: string
+  list?: InnerGroup[]
+}
+
 export interface Page extends VexDocument {
   _id: Id<"pages">
   /**
@@ -37,13 +64,18 @@ export interface Page extends VexDocument {
    */
   ogImage?: string
   /**
-   * some test description
+   * some test description.
    */
-  test?: unknown[]
+  test?: string[]
   /**
-   * some test description
+   * some test number array description
    */
-  test2?: unknown[]
+  test2?: number[][]
+  /**
+   * seo metadata
+   */
+  seo?: SEO
+  anotherTest?: AnotherGroupNames
 }
 
 export interface Header extends VexDocument {
@@ -357,6 +389,7 @@ declare module "@vexcms/core" {
         text: "title" | "slug" | "content" | "metaTitle" | "metaDescription"
         url: "ogImage"
         array: "test" | "test2"
+        group: "seo" | "anotherTest"
       }
       headers: {
         id: "_id"

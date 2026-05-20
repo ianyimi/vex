@@ -1,21 +1,48 @@
-import { ADMIN_FIELDS } from "../fields";
+import { ADMIN_FIELDS, wrapLines } from "../fields";
 import { CollectionConfig } from "./types";
 import { slugToPascalCase } from "./utils";
 
-function wrapLines(props: { text: string; maxLen: number }): string[] {
-  const words = props.text.split(" ");
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    if (current && current.length + 1 + word.length > props.maxLen) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = current ? `${current} ${word}` : word;
+/**
+ * Recursively collects `export type` declarations for every group field that
+ * carries an `interfaceName`, at any depth in the field tree.
+ *
+ * Traversal is depth-first so nested named types are always declared before
+ * the parent types that reference them. Both direct group sub-fields and
+ * group items inside array fields are visited.
+ *
+ * @param fields - The field map to walk (collection-level or group sub-fields).
+ * @returns Ordered list of `export type Name = ...` strings, ready to prepend
+ *   to the generated interface block.
+ */
+function getFieldInterfaces(fields: CollectionConfig["fields"]): string[] {
+  const declarations: string[] = [];
+
+  for (const field of Object.values(fields)) {
+    if (field.type === ADMIN_FIELDS.group.type) {
+      // Depth-first: collect nested declarations before this one so that
+      // sub-group named types are declared before any type that references them.
+      declarations.push(...getFieldInterfaces(field.fields));
+
+      if (field.interfaceName) {
+        declarations.push(
+          `export type ${field.interfaceName} = ${field.interfaceType}`,
+        );
+      }
+    } else if (field.type === ADMIN_FIELDS.array.type) {
+      // Array items may themselves be groups — visit their fields too.
+      if (field.items.type === ADMIN_FIELDS.group.type) {
+        declarations.push(...getFieldInterfaces(field.items.fields));
+
+        if (field.items.interfaceName) {
+          declarations.push(
+            `export type ${field.items.interfaceName} = ${field.items.interfaceType}`,
+          );
+        }
+      }
     }
   }
-  if (current) lines.push(current);
-  return lines;
+
+  return declarations;
 }
 
 /**
@@ -46,6 +73,7 @@ export function collectionConfigToInterface(props: {
   collection: CollectionConfig;
 }): string {
   const { collection } = props;
+  const fieldInterfaces = getFieldInterfaces(collection.fields);
   const interfaceStart = `export interface ${collection.interfaceName} extends VexDocument {\n
     \t_id: Id<"${collection.slug}">`;
 
@@ -61,6 +89,9 @@ export function collectionConfigToInterface(props: {
           `type ${fieldType} = ${field.options.map((o) => `"${o.value}"`).join(" | ")}`,
         );
       }
+      if (field.type === ADMIN_FIELDS.group.type && field.interfaceName) {
+        fieldType = field.interfaceName;
+      }
       let jsdocComment = "";
       const jsdoc = field.interfaceDescription ?? field.description;
       if (jsdoc) {
@@ -75,6 +106,7 @@ export function collectionConfigToInterface(props: {
     .join("\n");
 
   return [
+    fieldInterfaces.join("\n\n"),
     collectionSubTypes.join("\n"),
     interfaceStart,
     interfaceFields,
