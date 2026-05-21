@@ -1,6 +1,6 @@
-import { array, defineCollection, group, number, text, url } from "@vexcms/core"
+import { array, defineCollection, group, number, relationship, text, url } from "@vexcms/core"
 
-import { TABLE_SLUG_PAGES } from "~/db/constants"
+import { TABLE_SLUG_PAGES, TABLE_SLUG_THEMES } from "~/db/constants"
 
 /**
  * VexCMS collection config for CMS pages.
@@ -90,6 +90,11 @@ export const pages = defineCollection({
         metaTitle: text({ label: "Meta Title" }),
         metaDescription: text({ label: "Meta Description" }),
         ogImage: url({ label: "OG Image" }),
+      },
+    }),
+    themes: relationship({
+      collection: {
+        slug: TABLE_SLUG_THEMES,
       },
     }),
     anotherTest: group({

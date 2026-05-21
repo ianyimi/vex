@@ -1,4 +1,9 @@
 import { find, get } from "@vexcms/core/server"
+import { v } from "convex/values"
+
+import { type PageId, TABLE_SLUG_PAGES } from "~/db/constants"
+
+import { query } from "./_generated/server"
 
 /**
  * Returns all published pages ordered by creation date (newest first).
@@ -6,13 +11,6 @@ import { find, get } from "@vexcms/core/server"
  * @returns Array of `Page` documents.
  * @see getBySlug for fetching a single page by slug
  */
-
-import { v } from "convex/values"
-
-import { type PageId, TABLE_SLUG_PAGES } from "~/db/constants"
-
-import { query } from "./_generated/server"
-
 export const list = query({
   handler: async (ctx) => {
     return await find({ ctx, collection: TABLE_SLUG_PAGES })
@@ -56,7 +54,7 @@ export const getBySlug = query({
       collection: TABLE_SLUG_PAGES,
       withIndex: {
         name: "by_slug",
-        range: (q) => q.eq("slug", slug)
+        range: (q) => q.eq("slug", slug),
       },
       limit: 1,
     })

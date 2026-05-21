@@ -17,6 +17,7 @@ import type * as auth_sessions from "../auth/sessions.js";
 import type * as http from "../http.js";
 import type * as pages from "../pages.js";
 import type * as seed from "../seed.js";
+import type * as themes from "../themes.js";
 import type * as vex from "../vex.js";
 import type * as vex_collections from "../vex/collections.js";
 
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   pages: typeof pages;
   seed: typeof seed;
+  themes: typeof themes;
   vex: typeof vex;
   "vex/collections": typeof vex_collections;
 }>;

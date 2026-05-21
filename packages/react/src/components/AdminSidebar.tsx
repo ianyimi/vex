@@ -59,7 +59,7 @@ export function AppSidebar(props: AppSidebarProps) {
   return (
     <Sidebar side={props.config.admin.sidebar.side}>
       <SidebarHeader className="h-12 border-b flex flex-col justify-center">
-        <span className="font-semibold text-sm tracking-tight px-2">
+        <span className="font-semibold font-mono text-sm tracking-tight px-2">
           VexCMS Admin
         </span>
       </SidebarHeader>

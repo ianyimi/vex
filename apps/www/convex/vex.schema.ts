@@ -20,6 +20,7 @@ export const pages = defineTable({
       ogImage: v.optional(v.string()),
     })
   ),
+  themes: v.optional(v.array(v.id("themes"))),
   anotherTest: v.optional(
     v.object({
       title: v.optional(v.string()),
@@ -39,7 +40,9 @@ export const pages = defineTable({
       ),
     })
   ),
-}).index("by_slug", ["slug"])
+})
+  .index("by_slug", ["slug"])
+  .index("by_themes", ["themes"])
 
 export const headers = defineTable({
   name: v.string(),
@@ -65,7 +68,13 @@ export const themes = defineTable({
   primaryDark: v.optional(v.string()),
   bgDark: v.optional(v.string()),
   bgLight: v.optional(v.string()),
-}).index("by_name", ["name"])
+})
+  .index("by_name", ["name"])
+  .searchIndex("search_name", {
+    searchField: "name",
+
+    filterFields: [],
+  })
 
 export const site_settings = defineTable({
   name: v.string(),

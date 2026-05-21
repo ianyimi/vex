@@ -75,6 +75,7 @@ export interface Page extends VexDocument {
    * seo metadata
    */
   seo?: SEO
+  themes?: Id<CollectionSlug>[]
   anotherTest?: AnotherGroupNames
 }
 
@@ -392,6 +393,7 @@ declare module "@vexcms/core" {
         url: "ogImage"
         array: "test" | "test2"
         group: "seo" | "anotherTest"
+        relationship: "themes"
       }
       headers: {
         id: "_id"

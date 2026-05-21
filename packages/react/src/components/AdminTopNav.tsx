@@ -20,8 +20,6 @@ export function Divider(
 }
 
 export default function AdminTopNav(props: AdminLayoutProps) {
-
-
   const { data: currentDocument } = useQuery({
     // Pass "skip" when there is no activeDocID — this tells ConvexQueryClient
     // not to establish a watchQuery subscription at all (vs enabled:false which
