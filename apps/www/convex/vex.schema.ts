@@ -8,9 +8,110 @@ export const pages = defineTable({
   title: v.string(),
   slug: v.string(),
   content: v.optional(v.string()),
+  blocks: v.optional(
+    v.array(
+      v.union(
+        v.object({
+          blockType: v.literal("hero"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          badge: v.optional(v.string()),
+          title: v.string(),
+          subtitle: v.optional(v.string()),
+          primaryCtaLabel: v.optional(v.string()),
+          primaryCtaHref: v.optional(v.string()),
+          secondaryCtaLabel: v.optional(v.string()),
+          secondaryCtaHref: v.optional(v.string()),
+          showImage: v.optional(v.boolean()),
+          image: v.optional(v.string()),
+        }),
+        v.object({
+          blockType: v.literal("feature"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          icon: v.optional(v.string()),
+          title: v.string(),
+          description: v.optional(v.string()),
+          linkLabel: v.optional(v.string()),
+          linkHref: v.optional(v.string()),
+        }),
+        v.object({
+          blockType: v.literal("cta"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          title: v.string(),
+          description: v.optional(v.string()),
+          buttonLabel: v.optional(v.string()),
+          buttonHref: v.optional(v.string()),
+          variant: v.optional(
+            v.array(v.union(v.literal("default"), v.literal("outline"), v.literal("ghost")))
+          ),
+        }),
+        v.object({
+          blockType: v.literal("testimonial"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          quote: v.string(),
+          authorName: v.string(),
+          authorRole: v.optional(v.string()),
+          authorAvatar: v.optional(v.string()),
+          company: v.optional(v.string()),
+          rating: v.optional(v.number()),
+        }),
+        v.object({
+          blockType: v.literal("stats"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          title: v.optional(v.string()),
+          stats: v.optional(v.array(v.object({ value: v.string(), label: v.string() }))),
+        }),
+        v.object({
+          blockType: v.literal("logo-cloud"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          title: v.optional(v.string()),
+          logos: v.optional(
+            v.array(v.object({ name: v.string(), image: v.string(), link: v.optional(v.string()) }))
+          ),
+        }),
+        v.object({
+          blockType: v.literal("faq"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          title: v.optional(v.string()),
+          questions: v.optional(v.array(v.object({ question: v.string(), answer: v.string() }))),
+        }),
+        v.object({
+          blockType: v.literal("pricing"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          planName: v.string(),
+          price: v.string(),
+          period: v.optional(v.string()),
+          description: v.optional(v.string()),
+          features: v.optional(v.array(v.string())),
+          ctaLabel: v.optional(v.string()),
+          ctaHref: v.optional(v.string()),
+          highlighted: v.optional(v.boolean()),
+          badge: v.optional(v.string()),
+        }),
+        v.object({
+          blockType: v.literal("content"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          body: v.string(),
+          align: v.optional(v.array(v.union(v.literal("left"), v.literal("center")))),
+          maxWidth: v.optional(
+            v.array(v.union(v.literal("prose"), v.literal("wide"), v.literal("full")))
+          ),
+        })
+      )
+    )
+  ),
   metaTitle: v.optional(v.string()),
   metaDescription: v.optional(v.string()),
   ogImage: v.optional(v.string()),
+  themes: v.optional(v.array(v.id("themes"))),
   test: v.optional(v.array(v.string())),
   test2: v.optional(v.array(v.array(v.number()))),
   seo: v.optional(
@@ -20,7 +121,6 @@ export const pages = defineTable({
       ogImage: v.optional(v.string()),
     })
   ),
-  themes: v.optional(v.array(v.id("themes"))),
   anotherTest: v.optional(
     v.object({
       title: v.optional(v.string()),

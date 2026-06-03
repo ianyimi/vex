@@ -301,3 +301,14 @@
   }
 }
 
+/* Pangea dnd placeholder — thin dashed line instead of full-height gap */
+[data-rfd-placeholder] {
+  height: 3px !important;
+  min-height: 3px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  border-top: 2px dashed var(--border) !important;
+}
+

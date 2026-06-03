@@ -47,6 +47,14 @@ export interface AdminConfigInput {
      * - `"right"` — sidebar sits on the right
      */
     side?: "left" | "right";
+    /**
+     * How the sidebar in the admin panel collapses
+     *
+     * - `"offcanvas"` — A collapsible sidebar that slides in from the left or right.
+     * - `"icon"` — A sidebar that collapses to icons.
+     * - `"none"` — A non-collapsible sidebar.
+     */
+    collapsible?: "offcanvas" | "none" | "icon";
   };
 }
 
@@ -61,6 +69,10 @@ export interface AdminConfig {
   sidebar: {
     /** Which side of the viewport the admin sidebar is anchored to. */
     side: "left" | "right";
+    /**
+     * How the sidebar in the admin panel collapses
+     */
+    collapsible: "offcanvas" | "none" | "icon";
   };
 }
 

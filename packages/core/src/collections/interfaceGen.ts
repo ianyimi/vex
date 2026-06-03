@@ -39,6 +39,20 @@ function getFieldInterfaces(fields: CollectionConfig["fields"]): string[] {
           );
         }
       }
+    } else if (field.type === ADMIN_FIELDS.blocks.type) {
+      // Depth-first: recurse into each block's fields for any named sub-groups,
+      // then emit each block's own type declaration.
+      for (const block of field.blocks) {
+        declarations.push(...getFieldInterfaces(block.fields));
+        declarations.push(
+          `export type ${block.interfaceName} = ${block.interfaceType}`,
+        );
+      }
+      // Named union alias — emitted after all individual block types.
+      if (field.interfaceName) {
+        const union = field.blocks.map((b) => b.interfaceName).join(" | ");
+        declarations.push(`export type ${field.interfaceName} = ${union}`);
+      }
     }
   }
 
@@ -91,6 +105,9 @@ export function collectionConfigToInterface(props: {
       }
       if (field.type === ADMIN_FIELDS.group.type && field.interfaceName) {
         fieldType = field.interfaceName;
+      }
+      if (field.type === ADMIN_FIELDS.blocks.type && field.interfaceName) {
+        fieldType = `${field.interfaceName}[]`;
       }
       let jsdocComment = "";
       const jsdoc = field.interfaceDescription ?? field.description;

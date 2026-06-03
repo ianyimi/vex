@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { stripNonSerializable, sanitizeConfigForClient } from "./sanitizeConfig";
+import {
+  stripNonSerializable,
+  sanitizeConfigForClient,
+} from "./sanitizeConfig";
 import { defineConfig, defineCollection } from "../index";
 import { text } from "../fields";
 
@@ -62,12 +65,21 @@ describe("stripNonSerializable — non-serializable scalars", () => {
 describe("stripNonSerializable — plain objects", () => {
   it("passes a fully-serializable flat object through unchanged", () => {
     const obj = { a: "hello", b: 42, c: true, d: null };
-    expect(stripNonSerializable(obj)).toEqual({ a: "hello", b: 42, c: true, d: null });
+    expect(stripNonSerializable(obj)).toEqual({
+      a: "hello",
+      b: 42,
+      c: true,
+      d: null,
+    });
   });
 
   it("strips function values from a plain object", () => {
     const obj = { label: "posts", onClick: () => "clicked", count: 3 };
-    expect(stripNonSerializable(obj)).toEqual({ label: "posts", onClick: null, count: 3 });
+    expect(stripNonSerializable(obj)).toEqual({
+      label: "posts",
+      onClick: null,
+      count: 3,
+    });
   });
 
   it("strips deeply nested functions", () => {
@@ -115,13 +127,21 @@ describe("stripNonSerializable — plain objects", () => {
       }
     }
     const obj = { adapter: new Adapter(), name: "convex" };
-    expect(stripNonSerializable(obj)).toEqual({ adapter: null, name: "convex" });
+    expect(stripNonSerializable(obj)).toEqual({
+      adapter: null,
+      name: "convex",
+    });
   });
 });
 
 describe("stripNonSerializable — arrays", () => {
   it("passes a serializable array through unchanged", () => {
-    expect(stripNonSerializable([1, "two", true, null])).toEqual([1, "two", true, null]);
+    expect(stripNonSerializable([1, "two", true, null])).toEqual([
+      1,
+      "two",
+      true,
+      null,
+    ]);
   });
 
   it("strips functions inside arrays", () => {
@@ -141,7 +161,12 @@ describe("stripNonSerializable — arrays", () => {
   });
 
   it("handles nested arrays", () => {
-    expect(stripNonSerializable([[1, () => {}], [2, "ok"]])).toEqual([
+    expect(
+      stripNonSerializable([
+        [1, () => {}],
+        [2, "ok"],
+      ]),
+    ).toEqual([
       [1, null],
       [2, "ok"],
     ]);
@@ -180,7 +205,9 @@ describe("sanitizeConfigForClient — strips non-serializable values", () => {
       ],
     });
     const client = sanitizeConfigForClient(config);
-    expect((client.collections[0].admin as Record<string, unknown>)["icon"]).toBeNull();
+    expect(
+      (client.collections[0].admin as Record<string, unknown>)["icon"],
+    ).toBeNull();
   });
 
   it("keeps a string icon value unchanged", () => {
@@ -189,13 +216,14 @@ describe("sanitizeConfigForClient — strips non-serializable values", () => {
         defineCollection({
           slug: "posts",
           fields: { title: text() },
-          // @ts-expect-error — icon not yet typed on rebuild's AdminCollectionConfigInput
           admin: { icon: "FileText" },
         }),
       ],
     });
     const client = sanitizeConfigForClient(config);
-    expect((client.collections[0].admin as Record<string, unknown>)["icon"]).toBe("FileText");
+    expect(
+      (client.collections[0].admin as Record<string, unknown>)["icon"],
+    ).toBe("FileText");
   });
 
   it("strips custom component references from field admin.components", () => {
@@ -216,9 +244,9 @@ describe("sanitizeConfigForClient — strips non-serializable values", () => {
       ],
     });
     const client = sanitizeConfigForClient(config);
-    const titleField = (client.collections[0].fields as Record<string, unknown>)[
-      "title"
-    ] as Record<string, unknown>;
+    const titleField = (
+      client.collections[0].fields as Record<string, unknown>
+    )["title"] as Record<string, unknown>;
     const fieldAdmin = titleField["admin"] as Record<string, unknown>;
     const components = fieldAdmin["components"] as Record<string, unknown>;
     expect(components["Field"]).toBeNull();
@@ -245,7 +273,10 @@ describe("sanitizeConfigForClient — strips non-serializable values", () => {
       },
     };
     const client = sanitizeConfigForClient(mutated as typeof config);
-    const future = (client as Record<string, unknown>)["future"] as Record<string, unknown>;
+    const future = (client as Record<string, unknown>)["future"] as Record<
+      string,
+      unknown
+    >;
     const nested = future["nested"] as Record<string, unknown>;
     expect(nested["deepCallback"]).toBeNull();
     expect(nested["deepValue"]).toBe("should be kept");

@@ -3,6 +3,7 @@ import { CoreAdminField } from "./constants";
 import type { ApplyComponent, ComponentHKT } from "../fields";
 import type { CollectionSlug } from "../types/generated";
 import { TDocument } from "../convex";
+import { LucideIconName } from "../utils";
 
 /**
  * Props received by a custom preview component for relationship rendering.
@@ -82,6 +83,11 @@ export interface AdminCollectionConfigInput<
     /** Component used to render a doc of this collection as a relationship preview. */
     preview?: ApplyComponent<TComponent, RelationshipPreviewProps>;
   };
+  /**
+   * A valid Lucide icon name for this collection in the admin sidebar
+   * See https://lucide.dev/icons/
+   */
+  icon?: LucideIconName;
 }
 
 /**
@@ -98,6 +104,7 @@ export interface AdminCollectionConfig<
   components: {
     preview?: ApplyComponent<TComponent, RelationshipPreviewProps>;
   };
+  icon?: LucideIconName;
 }
 
 /**

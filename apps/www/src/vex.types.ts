@@ -8,6 +8,133 @@
 import type { Id } from "@convex/_generated/dataModel"
 import type { VexDocument } from "@vexcms/core"
 
+export type HeroBlock = {
+  blockType: "hero"
+  blockName?: string
+  id: string
+  badge?: string
+  title: string
+  subtitle?: string
+  primaryCtaLabel?: string
+  primaryCtaHref?: string
+  secondaryCtaLabel?: string
+  secondaryCtaHref?: string
+  showImage?: boolean
+  image?: string
+}
+
+export type FeatureBlock = {
+  blockType: "feature"
+  blockName?: string
+  id: string
+  icon?: string
+  title: string
+  description?: string
+  linkLabel?: string
+  linkHref?: string
+}
+
+export type CtaBlock = {
+  blockType: "cta"
+  blockName?: string
+  id: string
+  title: string
+  description?: string
+  buttonLabel?: string
+  buttonHref?: string
+  variant?: string[]
+}
+
+export type TestimonialBlock = {
+  blockType: "testimonial"
+  blockName?: string
+  id: string
+  quote: string
+  authorName: string
+  authorRole?: string
+  authorAvatar?: string
+  company?: string
+  rating?: number
+}
+
+export type StatsBlock = {
+  blockType: "stats"
+  blockName?: string
+  id: string
+  title?: string
+  stats?: {
+    /**
+     * The number or metric, e.g. '10K+' or '99.9%'.
+     */
+    value: string
+    /**
+     * What the number represents, e.g. 'Active Users'.
+     */
+    label: string
+  }[]
+}
+
+export type LogoCloudBlock = {
+  blockType: "logo-cloud"
+  blockName?: string
+  id: string
+  title?: string
+  logos?: {
+    name: string
+    image: string
+    link?: string
+  }[]
+}
+
+export type FaqBlock = {
+  blockType: "faq"
+  blockName?: string
+  id: string
+  title?: string
+  questions?: {
+    question: string
+    /**
+     * The answer text. Supports basic formatting.
+     */
+    answer: string
+  }[]
+}
+
+export type PricingBlock = {
+  blockType: "pricing"
+  blockName?: string
+  id: string
+  planName: string
+  price: string
+  period?: string
+  description?: string
+  features?: string[]
+  ctaLabel?: string
+  ctaHref?: string
+  highlighted?: boolean
+  badge?: string
+}
+
+export type ContentBlock = {
+  blockType: "content"
+  blockName?: string
+  id: string
+  body: string
+  align?: string[]
+  maxWidth?: string[]
+}
+
+export type PageBlock =
+  | HeroBlock
+  | FeatureBlock
+  | CtaBlock
+  | TestimonialBlock
+  | StatsBlock
+  | LogoCloudBlock
+  | FaqBlock
+  | PricingBlock
+  | ContentBlock
+
 export type SEO = {
   metaTitle?: string
   metaDescription?: string
@@ -46,10 +173,10 @@ export interface Page extends VexDocument {
    */
   slug: string
   /**
-   * Page body content. Stored as plain text until block support lands. Rendered with
-   * whitespace preservation.
+   * Page body content. Legacy field — use the blocks field for new pages.
    */
   content?: string
+  blocks?: PageBlock[]
   /**
    * Custom <title> tag for search engines. Falls back to the title field if empty.
    */
@@ -63,6 +190,7 @@ export interface Page extends VexDocument {
    * Image URL for Open Graph social sharing previews. Recommended 1200×630px.
    */
   ogImage?: string
+  themes?: Id<CollectionSlug>[]
   /**
    * some test description.
    */
@@ -75,7 +203,6 @@ export interface Page extends VexDocument {
    * seo metadata
    */
   seo?: SEO
-  themes?: Id<CollectionSlug>[]
   anotherTest?: AnotherGroupNames
 }
 
@@ -390,10 +517,11 @@ declare module "@vexcms/core" {
       pages: {
         id: "_id"
         text: "title" | "slug" | "content" | "metaTitle" | "metaDescription"
+        blocks: "blocks"
         url: "ogImage"
+        relationship: "themes"
         array: "test" | "test2"
         group: "seo" | "anotherTest"
-        relationship: "themes"
       }
       headers: {
         id: "_id"

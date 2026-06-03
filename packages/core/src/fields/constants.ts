@@ -64,6 +64,12 @@ export const ADMIN_FIELDS = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultValue: {} as Record<string, any>,
   },
+  blocks: {
+    type: "blocks",
+    interfaceType: "Record<string, any>[]", // placeholder - blocks() overridses per instance
+    validator: "v.array(v.any())", // placeholder - blocksFieldToValidator builds dynamically
+    defaultValue: [],
+  },
   // richtext: {
   //   type: "richtext",
   //   validator: "v.any()",

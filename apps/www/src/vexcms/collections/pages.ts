@@ -1,19 +1,22 @@
-import { array, defineCollection, group, number, relationship, text, url } from "@vexcms/core"
+import {
+  array,
+  blocks,
+  defineCollection,
+  group,
+  number,
+  relationship,
+  text,
+  url,
+} from "@vexcms/core"
 
 import { TABLE_SLUG_PAGES, TABLE_SLUG_THEMES } from "~/db/constants"
 
-/**
- * VexCMS collection config for CMS pages.
- *
- * Registers the `pages` Convex table with text fields for title, slug, content,
- * and SEO metadata, plus URL and array fields for OG images and testing.
- *
- * The `slug` field is indexed for efficient lookup in the public `getBySlug` query.
- * Use `useAsTitle: "title"` so the admin list shows readable page names.
- *
- * @see defineCollection in @vexcms/core
- * @see api.pages.getBySlug in apps/www/convex/pages.ts
- */
+import { pageBlocks } from "../blocks"
+
+// ============================================================================
+// Collection
+// ============================================================================
+
 export const pages = defineCollection({
   slug: TABLE_SLUG_PAGES,
   interfaceName: "Page",
@@ -23,6 +26,7 @@ export const pages = defineCollection({
   },
   admin: {
     useAsTitle: "title",
+    icon: "Notebook",
   },
   fields: {
     title: text({
@@ -34,11 +38,28 @@ export const pages = defineCollection({
       index: "by_slug",
       description: "URL-friendly identifier. Used for routing: /<slug>. Must be unique.",
     }),
+
+    // ── Legacy content field (kept for existing documents) ──────────────
     content: text({
       label: "Content",
-      description:
-        "Page body content. Stored as plain text until block support lands. Rendered with whitespace preservation.",
+      description: "Page body content. Legacy field — use the blocks field for new pages.",
     }),
+
+    // ── Page builder blocks ────────────────────────────────────────────────
+    blocks: blocks({
+      label: "Page Builder",
+      description:
+        "Drag-and-drop sections that make up this page. Order determines render order on the site.",
+      interfaceName: "PageBlock",
+      blocks: pageBlocks,
+      labels: { singular: "Section", plural: "Sections" },
+      min: 1,
+      admin: {
+        defaultCollapsed: true,
+      },
+    }),
+
+    // ── SEO metadata (sidebar) ─────────────────────────────────────────────
     metaTitle: text({
       label: "Meta Title",
       description: "Custom <title> tag for search engines. Falls back to the title field if empty.",
@@ -61,6 +82,15 @@ export const pages = defineCollection({
         position: "sidebar",
       },
     }),
+
+    // ── Relationships ──────────────────────────────────────────────────────
+    themes: relationship({
+      collection: {
+        slug: TABLE_SLUG_THEMES,
+      },
+    }),
+
+    // ── Test fields ────────────────────────────────────────────────────────
     test: array({
       label: "Test Array",
       items: text({ label: "test array header" }),
@@ -90,11 +120,6 @@ export const pages = defineCollection({
         metaTitle: text({ label: "Meta Title" }),
         metaDescription: text({ label: "Meta Description" }),
         ogImage: url({ label: "OG Image" }),
-      },
-    }),
-    themes: relationship({
-      collection: {
-        slug: TABLE_SLUG_THEMES,
       },
     }),
     anotherTest: group({

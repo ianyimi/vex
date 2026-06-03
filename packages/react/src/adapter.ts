@@ -28,6 +28,8 @@ import {
   ArrayFieldInput,
   GroupFieldCell,
   GroupFieldInput,
+  BlocksFieldInput,
+  BlocksFieldCell,
 } from "./components";
 
 /**
@@ -96,6 +98,10 @@ export const reactAdapter: FrameworkAdapterInput<ReactHKT> =
       [ADMIN_FIELDS.group.type]: {
         input: GroupFieldInput,
         cell: GroupFieldCell,
+      },
+      [ADMIN_FIELDS.blocks.type]: {
+        input: BlocksFieldInput,
+        cell: BlocksFieldCell,
       },
     },
     views: {

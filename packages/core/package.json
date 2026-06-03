@@ -39,6 +39,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "nanoid": "catalog:",
     "zod": "catalog:"
   },
   "peerDependencies": {
@@ -46,10 +47,12 @@
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-table": "catalog:",
     "convex": "catalog:",
+    "lucide-react": "catalog:",
     "react": ">=18.0.0"
   },
   "devDependencies": {
     "@convex-dev/react-query": "catalog:",
+    "@edge-runtime/vm": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-table": "catalog:",
     "@types/node": "catalog:",
@@ -59,7 +62,7 @@
     "convex": "catalog:",
     "convex-helpers": "catalog:",
     "convex-test": "catalog:",
-    "@edge-runtime/vm": "catalog:",
+    "lucide-react": "catalog:",
     "react": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",

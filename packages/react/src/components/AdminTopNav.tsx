@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, type RefAttributes } from "react";
+import { Fragment, useEffect, useState, type RefAttributes } from "react";
 import { AdminLayoutProps } from "./AdminLayout";
 import { VexLink } from "./ui";
 import { ChevronLeft, ChevronRight, LucideProps } from "lucide-react";
@@ -20,6 +20,9 @@ export function Divider(
 }
 
 export default function AdminTopNav(props: AdminLayoutProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const { data: currentDocument } = useQuery({
     // Pass "skip" when there is no activeDocID — this tells ConvexQueryClient
     // not to establish a watchQuery subscription at all (vs enabled:false which
@@ -35,13 +38,17 @@ export default function AdminTopNav(props: AdminLayoutProps) {
   const activeCollection = props.config.collections.find(
     (c) => c.slug === props.activeSlug,
   );
+  // Only use currentDocument after client mount to avoid SSR/client mismatch.
+  // The server may have this data in the React Query cache (from fetchQuery in
+  // NextAdminPage) while the client starts with undefined until Convex fires.
+  const doc = mounted ? currentDocument : undefined;
 
   const nav = [
     <VexLink
       href={adminRoot}
       key="home"
       className={cn(
-        !activeCollection && !currentDocument
+        !activeCollection && !doc
           ? "text-primary"
           : "hover:text-primary-hover",
       )}
@@ -57,7 +64,7 @@ export default function AdminTopNav(props: AdminLayoutProps) {
               <VexLink
                 href={`${adminRoot}/${activeCollection.slug}`}
                 className={cn(
-                  !currentDocument
+                  !doc
                     ? "text-primary"
                     : "hover:text-primary-hover",
                 )}
@@ -70,7 +77,7 @@ export default function AdminTopNav(props: AdminLayoutProps) {
               <VexLink
                 href={`${adminRoot}/${activeCollection.slug}`}
                 className={cn(
-                  !currentDocument
+                  !doc
                     ? "text-primary"
                     : "hover:text-primary-hover",
                 )}
@@ -84,28 +91,28 @@ export default function AdminTopNav(props: AdminLayoutProps) {
       )}
     </Fragment>,
     <Fragment key="document">
-      {currentDocument && activeCollection && (
+      {doc && activeCollection && (
         <>
           {isLeft ? (
             <>
               <Divider left={isLeft} size={16} />
               <VexLink
-                href={`${adminRoot}/${activeCollection.slug}/${currentDocument._id}`}
+                href={`${adminRoot}/${activeCollection.slug}/${doc._id}`}
                 className="text-primary"
               >
                 <span>
-                  {currentDocument[activeCollection.admin.useAsTitle] as string}
+                  {doc[activeCollection.admin.useAsTitle] as string}
                 </span>
               </VexLink>
             </>
           ) : (
             <>
               <VexLink
-                href={`${adminRoot}/${activeCollection.slug}/${currentDocument._id}`}
+                href={`${adminRoot}/${activeCollection.slug}/${doc._id}`}
                 className="text-primary"
               >
                 <span>
-                  {currentDocument[activeCollection.admin.useAsTitle] as string}
+                  {doc[activeCollection.admin.useAsTitle] as string}
                 </span>
               </VexLink>
               <Divider left={isLeft} size={16} />
@@ -117,7 +124,7 @@ export default function AdminTopNav(props: AdminLayoutProps) {
   ];
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" suppressHydrationWarning>
       {isLeft ? nav : nav.reverse()}
     </div>
   );

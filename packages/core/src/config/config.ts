@@ -54,6 +54,7 @@ export function defineConfig(config?: VexConfigInput): VexConfig {
       ...config?.admin,
       sidebar: {
         side: "left",
+        collapsible: "offcanvas",
         ...config?.admin?.sidebar,
       },
     },

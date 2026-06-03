@@ -14,6 +14,7 @@ import {
 } from "./ui/sidebar";
 import { VexLink } from "./ui/VexLink";
 import { AdminUser } from "./AdminLayout";
+import { Icon } from "./Icon";
 
 /**
  * Props for the `AppSidebar` component.
@@ -57,7 +58,10 @@ export interface AppSidebarProps {
  */
 export function AppSidebar(props: AppSidebarProps) {
   return (
-    <Sidebar side={props.config.admin.sidebar.side}>
+    <Sidebar
+      side={props.config.admin.sidebar.side}
+      collapsible={props.config.admin.sidebar.collapsible}
+    >
       <SidebarHeader className="h-12 border-b flex flex-col justify-center">
         <span className="font-semibold font-mono text-sm tracking-tight px-2">
           VexCMS Admin
@@ -78,6 +82,12 @@ export function AppSidebar(props: AppSidebarProps) {
                     }
                     isActive={props.activeSlug === collection.slug}
                   >
+                    {collection.admin.icon && (
+                      <div>
+                        {/* @ts-expect-error Lucide Icon names match here, unknown lsp error */}
+                        <Icon name={collection.admin.icon} size={12} />
+                      </div>
+                    )}
                     {collection.labels.plural}
                   </SidebarMenuButton>
                 </SidebarMenuItem>

@@ -42,6 +42,11 @@ import {
   GroupFieldInput,
   groupFieldToColumnDef,
 } from "./group";
+import {
+  BlocksFieldCell,
+  BlocksFieldInput,
+  blocksFieldToColumnDef,
+} from "./blocks";
 
 export * from "./text";
 export * from "./number";
@@ -52,6 +57,7 @@ export * from "./url";
 export * from "./array";
 export * from "./relationship";
 export * from "./group";
+export * from "./blocks";
 
 /**
  * Maps every `AdminFieldType` string to its corresponding input component.
@@ -88,6 +94,9 @@ export const fieldInputComponents: Record<
     InputComponentProps<AdminField>
   >,
   [ADMIN_FIELDS.group.type]: GroupFieldInput as ComponentType<
+    InputComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.blocks.type]: BlocksFieldInput as ComponentType<
     InputComponentProps<AdminField>
   >,
 };
@@ -186,6 +195,9 @@ export const fieldCellComponents: Record<
     CellComponentProps<AdminField>
   >,
   [ADMIN_FIELDS.group.type]: GroupFieldCell as ComponentType<
+    CellComponentProps<AdminField>
+  >,
+  [ADMIN_FIELDS.blocks.type]: BlocksFieldCell as ComponentType<
     CellComponentProps<AdminField>
   >,
 };
@@ -323,6 +335,17 @@ export function getCollectionColumnDefs(props: {
       case ADMIN_FIELDS.group.type:
         columnDefs.push(
           groupFieldToColumnDef({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
+      case ADMIN_FIELDS.blocks.type:
+        columnDefs.push(
+          blocksFieldToColumnDef({
             fieldDef,
             fieldKey,
             isTitleField,

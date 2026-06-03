@@ -1,8 +1,7 @@
 "use client";
 
-import { ComponentPropsWithRef } from "react";
+import { ComponentPropsWithRef, useContext } from "react";
 import type { GroupField, InputComponentProps } from "@vexcms/core";
-import { useContext } from "react";
 import { AppFormContext } from "./AppFormContext";
 import { fieldToInputComponent } from "../fields";
 import { cn } from "../../styles/utils";
@@ -16,6 +15,7 @@ import {
 import { FormLabel } from "./FormLabel";
 import { FormDescription } from "./FormDescription";
 import { FormError } from "./FormError";
+import { useAccordionDndState } from "../ui/dnd";
 
 /**
  * Props for the `FormGroup` component.
@@ -92,14 +92,17 @@ export function FormGroup({
   const subFields = Object.entries(fieldDef.fields);
   const subFieldCount = subFields.length;
 
-  // Unique accordion item value — disambiguates multiple instances when
-  // this group is rendered inside an array (items at index 0, 1, 2...)
-  const itemValue = index !== undefined ? `${name}-${index}` : name;
+  const { itemValue, openItems, handleValueChange } = useAccordionDndState({
+    name,
+    index,
+    defaultOpen: fieldDef.defaultOpen !== false,
+  });
 
   return (
     <Accordion
       className={cn("rounded-sm border-2 border-border", className)}
-      defaultValue={fieldDef.defaultOpen !== false ? [itemValue] : []}
+      value={openItems}
+      onValueChange={handleValueChange}
     >
       <AccordionItem value={itemValue}>
         {/* Trigger — label + sub-field count */}

@@ -10,10 +10,12 @@ import { UrlField } from "./url";
 import { RelationshipField } from "./relationship";
 import { ArrayField, ArrayType } from "./array";
 import { GroupField } from "./group";
+import { BlocksField } from "./blocks";
 
 export * from "./text/types";
 export * from "./number/types";
 export * from "./checkbox/types";
+export * from "./blocks/types"
 
 /**
  * Discriminated union of all field types in VexCMS.
@@ -50,6 +52,7 @@ export type AdminField<TFieldMeta extends {} = {}> =
   | UrlField<TFieldMeta>
   | ArrayField<ArrayType, TFieldMeta>
   | RelationshipField<TFieldMeta>
+  | BlocksField<TFieldMeta>
   | GroupField<TFieldMeta>;
 
 /**

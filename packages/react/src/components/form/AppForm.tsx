@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { AppFormContext, type AnyFormApi } from "./AppFormContext";
+import { DndProvider } from "../ui/dnd";
 
 /**
  * Provides a TanStack Form instance to all descendant field input components.
@@ -35,16 +36,18 @@ export function AppForm(props: {
 }) {
   return (
     <AppFormContext.Provider value={props.form}>
-      <form
-        className={props.className}
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          props.form.handleSubmit();
-        }}
-      >
-        {props.children}
-      </form>
+      <DndProvider>
+        <form
+          className={props.className}
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            props.form.handleSubmit();
+          }}
+        >
+          {props.children}
+        </form>
+      </DndProvider>
     </AppFormContext.Provider>
   );
 }

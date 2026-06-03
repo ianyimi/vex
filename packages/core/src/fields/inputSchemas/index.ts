@@ -9,6 +9,7 @@ import { urlFieldToInputSchema } from "../url";
 import { relationshipFieldToInputSchema } from "../relationship";
 import { arrayFieldToInputSchema } from "../array";
 import { groupFieldToInputSchema } from "../group";
+import { blocksFieldToInputSchema } from "../blocks";
 
 /**
  * Converts any field definition to its form input schema using zod.
@@ -46,6 +47,8 @@ export function adminFieldToInputSchema(props: { field: AdminField }) {
       return arrayFieldToInputSchema({ field: props.field });
     case ADMIN_FIELDS.group.type:
       return groupFieldToInputSchema({ field: props.field });
+    case ADMIN_FIELDS.blocks.type:
+      return blocksFieldToInputSchema({ field: props.field });
     default:
       throw new Error("unrecognized field type");
   }

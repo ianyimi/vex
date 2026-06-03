@@ -587,6 +587,17 @@ PHASE 4     Spec 21 (Environments) → Spec 26 (SSO) → Spec 27 (Reviews) → S
 
 PHASE 5     Spec 24 (Forms) → Spec 25 (Plugins) → TanStack Start, storage adapters, auth adapters
   ECOSYSTEM Long tail growth.
+
+PHASE 6     Spec 43 (Multi-Component / Workspace Architecture)
+  FUTURE    Component-as-workspace model: hierarchical vex.config.ts with
+            root collections + components: [defineComponent({...})].
+            Per-component Convex schema generation, discriminated union
+            type narrowing, optional subdomain routing. Enables a single
+            admin panel to manage multiple Convex components (e.g. blog
+            on blog.example.com, shop on shop.example.com) as isolated
+            workspaces. Server-side API model: users write their own Convex
+            functions, frontend calls via @convex-dev/react-query. No
+            client-side Vex data hooks. See multi-component-architecture.md.
 ```
 
 Specs 21 (Environments) and 26 (SSO) are where enterprise monetization lives — those become the `@vexcms/enterprise-*` packages. Everything else stays MIT. Spec 21 is the highest-value feature: it justifies a commercial license, nothing in the Convex ecosystem competes with it, and it maps directly to how engineering teams think about deployment workflows.
@@ -646,3 +657,4 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 40     | Admin Access Enforcement           | ✅ (checkAdminAccess, admin permission resource, layout guard) |
 | 41     | SEO & Metadata System              | 🔜 Spec ready — framework-agnostic core + Next.js adapter     |
 | 42     | Site Template Update               | 🔜 Spec ready — sync create-cli template with www app patterns |
+| 43     | Multi-Component / Workspace Architecture | 📋 Backlog — Phase 6 (see multi-component-architecture.md) |

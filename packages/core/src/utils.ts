@@ -1,3 +1,21 @@
+import type icons from "lucide-react";
+
+/**
+ * Valid Lucide icon name string (e.g. `"FileText"`, `"Users"`, `"Settings"`).
+ *
+ * Use the PascalCase icon name as exported by `lucide-react`.
+ * @see https://lucide.dev/icons
+ *
+ * @example
+ * ```ts
+ * const icon: LucideIconName = "FileText"; // ✅
+ * const bad: LucideIconName = "NotAnIcon"; // ❌ won't render
+ * ```
+ *
+ * @see {@link Icon} for the component that renders a `LucideIconName`
+ */
+export type LucideIconName = keyof typeof icons;
+
 const MINOR_WORDS = new Set([
   "a",
   "an",
