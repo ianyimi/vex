@@ -1,7 +1,22 @@
 import { CollectionConfig } from "../collections";
 import { ComponentHKT } from "../fields";
 import { CollectionSlug } from "../types";
-import { AuthFieldMeta } from "./mergeCollections";
+
+/**
+ * Metadata attached to auth fields to control merge behavior during
+ * auth collection merging.
+ *
+ * When `locked: true`, the field definition from the auth adapter is
+ * preserved and cannot be overridden by a user-defined collection.
+ * Unlocked fields can be extended or replaced by the user.
+ *
+ * @see {@link mergeAuthCollections} for the merge logic that respects this flag
+ * @see {@link betterAuthAdapter} for the adapter that sets `locked` on system fields
+ */
+export interface AuthFieldMeta {
+  /** When `true`, this field cannot be overridden by user-defined collections. */
+  locked: boolean;
+}
 
 /**
  * Metadata attached to auth collections to control merge behavior with

@@ -22,7 +22,7 @@ const vexConfig = defineConfig({
       side: "right",
     },
   },
-  auth: betterAuthAdapter({ config: authOptions }),
+  authAdapter: betterAuthAdapter({ config: authOptions }),
   collections: [pages, headers, footers, themes, siteSettings],
 })
 

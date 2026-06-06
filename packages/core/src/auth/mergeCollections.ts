@@ -1,22 +1,10 @@
 import type { CollectionConfig } from "../collections";
-import { VexAuthConfigError, type AuthCollectionConfig } from "./types";
+import {
+  VexAuthConfigError,
+  type AuthCollectionConfig,
+  AuthFieldMeta,
+} from "./types";
 import type { AdminField } from "../fields";
-
-/**
- * Metadata attached to auth fields to control merge behavior during
- * auth collection merging.
- *
- * When `locked: true`, the field definition from the auth adapter is
- * preserved and cannot be overridden by a user-defined collection.
- * Unlocked fields can be extended or replaced by the user.
- *
- * @see {@link mergeAuthCollections} for the merge logic that respects this flag
- * @see {@link betterAuthAdapter} for the adapter that sets `locked` on system fields
- */
-export interface AuthFieldMeta {
-  /** When `true`, this field cannot be overridden by user-defined collections. */
-  locked: boolean;
-}
 
 /**
  * Merges auth collections with user-defined collections, respecting

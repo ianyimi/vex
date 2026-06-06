@@ -45,9 +45,9 @@ export function defineConfig(config?: VexConfigInput): VexConfig {
   return {
     basePath: "/admin",
     ...config,
-    auth: config?.auth,
+    auth: config?.authAdapter,
     collections: mergeAuthCollections({
-      authCollections: config?.auth?.collections ?? [],
+      authCollections: config?.authAdapter?.collections ?? [],
       userCollections: config?.collections ?? [],
     }),
     admin: {

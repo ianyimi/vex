@@ -3,7 +3,7 @@ import { mergeAuthCollections } from "./mergeCollections";
 import { defineCollection } from "..";
 import { text, checkbox, date } from "../fields";
 import type { AuthCollectionMeta } from "..";
-import type { AuthFieldMeta } from "./mergeCollections";
+import type { AuthFieldMeta } from "./types";
 
 describe("mergeAuthCollections", () => {
   const authUser = defineCollection<AuthFieldMeta, AuthCollectionMeta>({

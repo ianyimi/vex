@@ -418,26 +418,36 @@ Spec 32 — Documentation Site (apps/docs)
   - Builds on lessons learned from the marketing site
 ```
 
-### Phase 3 — Pre-Enterprise Polish (ship before charging money)
+### Phase 3 — Migration Blockers (unblock maprios www + app on Vex)
 
 ```
+Spec 24 — Form Builder
+  - defineFormCollection() builder
+  - Field types: text, email, textarea, select, checkbox
+  - Submission storage in Convex
+  - Email notifications via Convex actions
+  - Frontend embed utilities
+
+Spec 43b — Cross-Component Auth & User Pattern
+  - Root users table (Better Auth) stays in default component
+  - Component tables store userId as v.string() (not v.id("users"))
+  - Index on userId for performant user-scoped queries
+  - Root component exposes getUserById query for cross-component lookup
+  - Vex relationship field support for cross-component refs (to: "users", component: "root")
+  - Access control runs at root dispatcher level before delegating to component
+
+Spec 18 — Team Management UI
+  - Invite users by email (email send via Convex action)
+  - Role assignment during invite flow
+  - Pending invite table with revoke support
+  - User management table in admin panel
+  - Needed before more than one person uses the CMS
+
 Spec 19 — API Key Management
   - Generate read-only API tokens per project
   - Keys stored hashed in Convex, shown once on creation
   - Used for headless content fetching without full auth session
   - Rate limiting config per key (v2)
-
-Spec 20 — Content Scheduling
-  - publishAt timestamp on versioned collections
-  - Convex scheduled function polls + auto-publishes
-  - "Schedule" button in admin alongside Save Draft / Publish
-  - Cancel/reschedule support
-
-Spec 22 — Audit Log (basic MIT version)
-  - vex_audit_log table: who, collection, doc, action, diff, timestamp
-  - Written on every adminCreate/Update/Delete/Publish mutation
-  - Audit log viewer in admin (filter by user/collection/date)
-  - Basic version ships MIT; advanced retention/export/compliance is enterprise
 
 Spec XX — Hooks System
   - Collection hooks: beforeCreate, afterCreate, beforeUpdate, afterUpdate, beforeDelete, afterDelete
@@ -489,12 +499,17 @@ Spec 23 — Localization (i18n)                      [enterprise, @vexcms/enterp
 ### Phase 5 — Ecosystem
 
 ```
-Spec 24 — Form Builder
-  - defineFormCollection() builder
-  - Field types: text, email, textarea, select, checkbox
-  - Submission storage in Convex
-  - Email notifications via Convex actions
-  - Frontend embed utilities
+Spec 20 — Content Scheduling
+  - publishAt timestamp on versioned collections
+  - Convex scheduled function polls + auto-publishes
+  - "Schedule" button in admin alongside Save Draft / Publish
+  - Cancel/reschedule support
+
+Spec 22 — Audit Log (basic MIT version)
+  - vex_audit_log table: who, collection, doc, action, diff, timestamp
+  - Written on every adminCreate/Update/Delete/Publish mutation
+  - Audit log viewer in admin (filter by user/collection/date)
+  - Basic version ships MIT; advanced retention/export/compliance is enterprise
 
 Spec 25 — Plugin System
   - Plugin interface: (config) => config
@@ -578,15 +593,24 @@ PHASE 2.75  Spec 33 (Marketing Site) → Spec 35 (Demo) → Spec 32 (Docs)
               4. Update create-cli site template with www app patterns — Spec 42
               5. Record 60-second demo video as backup
               6. Public demo admin panel (deploy www /admin as touchable demo)
+            7. Multi-Component Core — Spec 43a
+               - defineComponent() API, hierarchical vex.config.ts (root collections + components[])
+               - Per-component schema generation in CLI
+               - Basic workspace routing in admin panel
+               - Goal: unblock www + app as separate Convex components, insight page stays in www
 
-PHASE 3     Spec 18 (Teams) → Spec 19 (API Keys) → Spec 20 (Scheduling) → Spec 22 (Audit Log) → Hooks
-  POLISH    Quality-of-life before enterprise.
+PHASE 3     Spec 24 (Forms) → Spec 43b (Cross-Component Auth) → Spec 18 (Teams) → Spec 19 (API Keys) → Hooks
+  MIGRATION Quality-of-life + blockers for maprios migration. Form builder (contact/lead
+            capture for www), cross-component user/auth pattern, team invites, API keys.
+            Content scheduling (Spec 20) and audit log (Spec 22) deferred to Phase 5.
 
 PHASE 4     Spec 21 (Environments) → Spec 26 (SSO) → Spec 27 (Reviews) → Spec 22b (Audit) → Spec 23 (i18n)
   REVENUE   Enterprise packages. Environments is the highest-value feature.
+            Deprioritized relative to migration — lands once www + app are stable on Vex.
 
-PHASE 5     Spec 24 (Forms) → Spec 25 (Plugins) → TanStack Start, storage adapters, auth adapters
-  ECOSYSTEM Long tail growth.
+PHASE 5     Spec 25 (Plugins) → TanStack Start, storage adapters, auth adapters
+            Spec 20 (Scheduling) + Spec 22 (Audit Log) — deferred from Phase 3.
+  ECOSYSTEM Long tail growth + features deferred during migration push.
 
 PHASE 6     Spec 43 (Multi-Component / Workspace Architecture)
   FUTURE    Component-as-workspace model: hierarchical vex.config.ts with
@@ -633,11 +657,11 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 17     | Rich Text (Plate)                  | ✅                                     |
 | 18     | Team Management UI                 | Phase 3                                |
 | 19     | API Key Management                 | Phase 3                                |
-| 20     | Content Scheduling                 | Phase 3                                |
+| 20     | Content Scheduling                 | Phase 5 (deferred from Phase 3)        |
 | 21     | Project-Level Environments         | Phase 4 (enterprise)                   |
-| 22     | Audit Log                          | Phase 3 (basic) / Phase 4 (enterprise) |
+| 22     | Audit Log                          | Phase 5 (basic) / Phase 4 (enterprise) |
 | 23     | Localization (i18n)                | Phase 4 (enterprise)                   |
-| 24     | Form Builder                       | Phase 5                                |
+| 24     | Form Builder                       | Phase 3 (moved up — www site needs contact/lead forms) |
 | 25     | Plugin System                      | Phase 5                                |
 | 26     | SSO / SAML                         | Phase 4 (enterprise)                   |
 | 27     | Review / Approval Workflows        | Phase 4 (enterprise)                   |
@@ -657,4 +681,6 @@ The current spec numbering has a duplicate: two files numbered `12-*-spec.md` (a
 | 40     | Admin Access Enforcement           | ✅ (checkAdminAccess, admin permission resource, layout guard) |
 | 41     | SEO & Metadata System              | 🔜 Spec ready — framework-agnostic core + Next.js adapter     |
 | 42     | Site Template Update               | 🔜 Spec ready — sync create-cli template with www app patterns |
-| 43     | Multi-Component / Workspace Architecture | 📋 Backlog — Phase 6 (see multi-component-architecture.md) |
+| 43     | Multi-Component / Workspace Architecture | Phase 2.5–6 (see multi-component-architecture.md) |
+| 43a    | Core (defineComponent, schema gen, routing) | Phase 2.5 (current — unblock migration) |
+| 43b    | Cross-Component Auth & User Pattern  | Phase 3 (string userId refs, root lookup, relationship field support) |

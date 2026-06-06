@@ -223,7 +223,7 @@ export interface VexConfigInput {
    * @see {@link VexAuthAdapter} for the adapter interface
    * @see {@link betterAuthAdapter} for the Better Auth implementation
    */
-  auth?: VexAuthAdapter;
+  authAdapter?: VexAuthAdapter;
 }
 
 /**
