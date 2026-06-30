@@ -67,7 +67,7 @@ export function defineMediaCollection<
     storageId: text({ required: true }),
     deleted: checkbox({ defaultValue: false, index: "by_deleted" }),
     // Convex-specific fields
-    convexUrl: text({ required: true }),
+    src: text({ required: true }),
     width: number(),
     height: number(),
     // User-provided fields last so they override label/description on the base fields above

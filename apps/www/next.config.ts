@@ -1,12 +1,12 @@
-import type { NextConfig } from "next"
+import type { NextConfig } from "next";
 
-import { resolve } from "path"
+import { resolve } from "path";
 
-import "./src/env.mjs"
+import "./src/env.mjs";
 
 // Absolute path to the monorepo root (dev/).
 // turbopack.root must be absolute; resolveAlias values are relative to it.
-const repoRoot = resolve(__dirname, "../..")
+const repoRoot = resolve(__dirname, "../..");
 
 const nextConfig: NextConfig = {
   devIndicators: {
@@ -21,6 +21,9 @@ const nextConfig: NextConfig = {
       },
       {
         hostname: "encrypted-tbn0.gstatic.com",
+      },
+      {
+        hostname: "cheery-warbler-575.convex.cloud",
       },
     ],
   },
@@ -38,6 +41,6 @@ const nextConfig: NextConfig = {
       "nuqs/adapters/next/app": "apps/www/node_modules/nuqs/dist/adapters/next/app.js",
     },
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;

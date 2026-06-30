@@ -322,7 +322,7 @@ export const images = defineTable({
   size: v.number(),
   storageId: v.string(),
   deleted: v.optional(v.boolean()),
-  convexUrl: v.string(),
+  src: v.string(),
   width: v.optional(v.number()),
   height: v.optional(v.number()),
 }).index("by_deleted", ["deleted"])

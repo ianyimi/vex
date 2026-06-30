@@ -12,7 +12,7 @@ describe("defineMediaCollection", () => {
     expect(collection.fields).toHaveProperty("size");
     expect(collection.fields).toHaveProperty("storageId");
     expect(collection.fields).toHaveProperty("deleted");
-    expect(collection.fields).toHaveProperty("convexUrl");
+    expect(collection.fields).toHaveProperty("src");
     expect(collection.fields).toHaveProperty("width");
     expect(collection.fields).toHaveProperty("height");
   });

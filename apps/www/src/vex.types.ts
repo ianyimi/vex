@@ -447,7 +447,7 @@ export interface ImagesDocument extends VexDocument {
   size: number
   storageId: string
   deleted?: boolean
-  convexUrl: string
+  src: string
   width?: number
   height?: number
 }
@@ -660,7 +660,7 @@ declare module "@vexcms/core" {
       }
       images: {
         id: "_id"
-        text: "alt" | "filename" | "mimeType" | "storageId" | "convexUrl"
+        text: "alt" | "filename" | "mimeType" | "storageId" | "src"
         number: "size" | "width" | "height"
         checkbox: "deleted"
       }
