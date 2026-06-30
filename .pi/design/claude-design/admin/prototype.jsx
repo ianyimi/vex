@@ -2,7 +2,8 @@
    DashboardView, PostsListView, EditViewSingle, EditViewTwoCol, EditViewCollapsedRail, CreateModal,
    POSTS, AUTHORS, COLLECTIONS */
 
-const { useState: pPS, Fragment: PFrag } = React;
+const { useState: pPS } = React;
+const PFrag = (props) => React.createElement("div", { style: { display: "contents" }, ...props });
 
 /* Live-ish prototype: nav between dashboard / posts / edit, with a working modal toggle. */
 function VexPrototype() {

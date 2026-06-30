@@ -42,6 +42,8 @@ type Sanitized<T> = T extends (...args: any[]) => any
  * return `false`.
  *
  * @internal
+ * @param value - object to check
+ * @returns boolean
  */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (typeof value !== "object" || value === null) return false;
@@ -81,7 +83,9 @@ export function stripNonSerializable(value: unknown): unknown {
   if (typeof value !== "object") return value;
 
   if (Array.isArray(value)) {
-    return value.map(stripNonSerializable);
+    // Recurse into every element — primitives pass through unchanged,
+    // class instances become null, nested objects/arrays are processed recursively.
+    return value.map((item) => stripNonSerializable(item));
   }
 
   // Only recurse into plain objects — class instances (React elements, Zod
@@ -128,7 +132,8 @@ export function stripNonSerializable(value: unknown): unknown {
  * @see {@link stripNonSerializable} for the recursive sanitizer
  */
 export function sanitizeConfigForClient(config: VexConfig): ClientVexConfig {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { ...rest } = config;
+  // Drop storageAdapters up front (they hold adapter class instances), then
+  // recursively strip any remaining non-serializable leaves from the rest.
+  const { storage, ...rest } = config;
   return stripNonSerializable(rest) as ClientVexConfig;
 }

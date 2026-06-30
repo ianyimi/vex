@@ -1,4 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
+import { BaseFieldMeta } from "../types";
 import { adminFieldToJSDocComment } from "../utils";
 import type { GroupFieldInput, GroupField } from "./types";
 
@@ -45,7 +46,7 @@ import type { GroupFieldInput, GroupField } from "./types";
  * @see {@link GroupFieldInput} for the full input type
  * @see {@link GroupField} for the resolved output type
  */
-export function group<TFieldMeta extends {} = {}>(
+export function group<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
   options: GroupFieldInput<TFieldMeta>,
 ): GroupField<TFieldMeta> {
   // Compute the TypeScript interface type string from sub-fields so that
@@ -73,6 +74,9 @@ export function group<TFieldMeta extends {} = {}>(
       placeholder: "",
       ...options?.admin,
     },
+    meta: {
+      ...options?.meta,
+    } as TFieldMeta,
   };
 }
 

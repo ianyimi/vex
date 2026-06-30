@@ -1,4 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
+import { BaseFieldMeta } from "../types";
 import type { DateFieldInput, DateField } from "./types";
 
 /**
@@ -54,7 +55,7 @@ import type { DateFieldInput, DateField } from "./types";
  * @see {@link DateFieldInput} for the full input type
  * @see {@link DateField} for the resolved output type
  */
-export function date<TFieldMeta extends {} = {}>(
+export function date<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
   options?: DateFieldInput<TFieldMeta>,
 ): DateField<TFieldMeta> {
   return {
@@ -90,9 +91,8 @@ export function date<TFieldMeta extends {} = {}>(
         ...options?.time?.timePicker,
       },
     },
-
-    // Optional field properties (no defaults)
-    description: options?.description,
-    index: options?.index,
+    meta: {
+      ...options?.meta,
+    } as TFieldMeta,
   };
 }

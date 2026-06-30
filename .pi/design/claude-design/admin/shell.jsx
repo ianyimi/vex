@@ -1,7 +1,7 @@
 /* global React, VexWordmark, Icon, COLLECTIONS */
 /* Admin shell: Sidebar, Topbar, Layout */
 
-const Frag = React.Fragment;
+const Frag = (props) => React.createElement("span", { style: { display: "contents" }, ...props });
 
 function Sidebar({ activeKey = "dashboard", onNavigate, liveStatus = "connected", collapsed = false }) {
   const click = (key) => (e) => { e.preventDefault(); if (onNavigate) onNavigate(key); };
@@ -31,7 +31,7 @@ function Sidebar({ activeKey = "dashboard", onNavigate, liveStatus = "connected"
             { k: "posts",     i: "newspaper" },
             { k: "pages",     i: "fileText" },
             { k: "authors",   i: "users" },
-            { k: "media",     i: "image" },
+            { k: "images",    i: "image" },
           ].map(x => (
             <button key={x.k} onClick={click(x.k)}
               className={"vex-btn ghost icon sm"}
@@ -78,6 +78,25 @@ function Sidebar({ activeKey = "dashboard", onNavigate, liveStatus = "connected"
               <span className="count">{c.count}</span>
             </li>
           )}
+        </ul>
+      </div>
+
+      <div className="vex-sidebar-section">
+        <div className="vex-sidebar-label">
+          <span>Media</span>
+          <button className="add" title="New media collection"><Icon name="plus" size={12} /></button>
+        </div>
+        <ul className="vex-sidebar-nav">
+          <li className={"item" + (activeKey === "images" ? " active" : "")} onClick={click("images")} style={{ cursor: "pointer" }}>
+            <Icon name="image" size={14} />
+            <span className="lbl">Images</span>
+            <span className="count">132</span>
+          </li>
+          <li className={"item" + (activeKey === "videos" ? " active" : "")} onClick={click("videos")} style={{ cursor: "pointer" }}>
+            <Icon name="layers" size={14} />
+            <span className="lbl">Videos</span>
+            <span className="count">14</span>
+          </li>
         </ul>
       </div>
 

@@ -11,15 +11,7 @@ import {
 // always import config functions from `@vexcms/react` (or `@vexcms/next`),
 // never from `@vexcms/core` directly. When any of these gains a component
 // slot, replace the pass-through with a typed wrapper like `relationship`.
-export {
-  text,
-  number,
-  select,
-  date,
-  url,
-  checkbox,
-  defineConfig,
-} from "@vexcms/core";
+export { text, number, select, date, url, checkbox, defineConfig } from "@vexcms/core";
 
 // Re-export the *resolved* field types users reference in their code.
 //
@@ -62,23 +54,11 @@ import type { ReactHKT } from "./adapter";
 //   import { find, get, search } from "@vexcms/core/client";  // React components
 //   import { find, get, search } from "@vexcms/core/server";  // Convex handlers
 
-export type {
-  FindClientArgs,
-  GetClientArgs,
-  SearchClientArgs,
-} from "@vexcms/core/client";
+export type { FindClientArgs, GetClientArgs, SearchClientArgs } from "@vexcms/core/client";
 
 // Server-side API (Convex query handlers)
-export {
-  find as findServer,
-  get as getServer,
-  search as searchServer,
-} from "@vexcms/core/server";
-export type {
-  FindServerArgs,
-  GetServerArgs,
-  SearchServerArgs,
-} from "@vexcms/core/server";
+export { find as findServer, get as getServer, search as searchServer } from "@vexcms/core/server";
+export type { FindServerArgs, GetServerArgs, SearchServerArgs } from "@vexcms/core/server";
 
 // Shared type helpers
 export type {
@@ -113,17 +93,14 @@ export {
   // View components
   DashboardView,
   CollectionListView,
+  MediaCollectionListView,
   CollectionEditView,
 } from "./components";
 
-export type {
-  AdminUser,
-  AdminLayoutProps,
-  AppSidebarProps,
-} from "./components";
+export type { AdminUser, AdminLayoutProps, AppSidebarProps } from "./components";
 
 // Context
-export { VexConfigContext, useVexConfig } from "./context/VexConfigContext";
+export { VexConfigContext, useVexConfig, StorageAdapterContextProvider } from "./context";
 
 // Utilities
 export { cn } from "./styles/utils";
@@ -177,13 +154,7 @@ export type CollectionConfigInput<
   TCollectionMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends CollectionSlug = CollectionSlug,
-> = CoreCollectionConfigInput<
-  TFieldMeta,
-  TCollectionMeta,
-  TCollectionSlug,
-  TFieldSlug,
-  ReactHKT
->;
+> = CoreCollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, ReactHKT>;
 
 /**
  * Resolved collection configuration with React-typed component slots.
@@ -196,13 +167,7 @@ export type CollectionConfig<
   TCollectionMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends CollectionSlug = CollectionSlug,
-> = CoreCollectionConfig<
-  TFieldMeta,
-  TCollectionMeta,
-  TCollectionSlug,
-  TFieldSlug,
-  ReactHKT
->;
+> = CoreCollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, ReactHKT>;
 
 /**
  * Defines a relationship field with React-typed component slots.
@@ -234,11 +199,7 @@ export function defineCollection<
 >(
   config: CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug>,
 ): CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug> {
-  return coreDefineCollection<
-    TFieldMeta,
-    TCollectionMeta,
-    TCollectionSlug,
-    TFieldSlug,
-    ReactHKT
-  >(config);
+  return coreDefineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, ReactHKT>(
+    config,
+  );
 }

@@ -3,7 +3,8 @@
    POSTS, AUTHORS, COLLECTIONS, STATUS_OPTS,
    SelectCell, RelCell, DateCell */
 
-const { useState: mPS, Fragment: MF } = React;
+const { useState: mPS } = React;
+const MF = (props) => React.createElement("div", { style: { display: "contents" }, ...props });
 
 /* Mobile collection list — single-column cards instead of table */
 function MobilePostsList() {
@@ -42,9 +43,9 @@ function MobilePostsList() {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11, color: "var(--fg-subtle)" }}>
               <RelCell value={p.author} kind="author" />
-              <span style={{ color: "var(--line-strong)" }}>·</span>
+              <span style={{ color: "var(--line-bold)" }}>·</span>
               <DateCell value={p.updatedAt} relative />
-              {p.featured && (<><span style={{ color: "var(--line-strong)" }}>·</span><span className="vex-badge brand">Featured</span></>)}
+              {p.featured && (<><span style={{ color: "var(--line-bold)" }}>·</span><span className="vex-badge brand">Featured</span></>)}
             </div>
           </div>
         ))}
@@ -52,7 +53,7 @@ function MobilePostsList() {
 
       {/* fab */}
       <div style={{ position: "absolute", bottom: 20, right: 20 }}>
-        <button className="vex-btn primary" style={{ width: 48, height: 48, borderRadius: 9999, padding: 0, boxShadow: "var(--shadow-3)" }}>
+        <button className="vex-btn primary" style={{ width: 48, height: 48, borderRadius: 9999, padding: 0, boxShadow: "var(--shadow-pop)" }}>
           <Icon name="plus" size={18} />
         </button>
       </div>

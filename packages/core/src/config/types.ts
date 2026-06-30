@@ -1,5 +1,7 @@
 import { CollectionConfig } from "../collections";
 import { VexAuthAdapter } from "../auth/types";
+import { MediaCollectionConfig, VexStorageAdapter } from "../media";
+import { StorageAdapterSlug } from "../types";
 
 /**
  * User-facing configuration input for the VexCMS admin panel.
@@ -151,6 +153,38 @@ export interface TypesConfig {
 }
 
 /**
+ * Client-side upload functions for each registered presigned-url adapter.
+ *
+ * Keys are `StorageAdapterSlug` — only adapters whose `type` is
+ * `"presigned-url"` and whose `name` appears in the config are valid.
+ * After `vex generate`, this is narrowed to the exact set of adapter
+ * names in the project.
+ *
+ * @example
+ * ```ts
+ * // apps/www/src/app/(vexcms)/admin/clientProviders.tsx
+ * import { StorageAdapterContextProvider } from "@vexcms/react";
+ * import { uploadFile } from "@vexcms/file-storage-convex/adapter";
+ *
+ * // Pass the map to StorageAdapterContextProvider — one entry per registered adapter.
+ * <StorageAdapterContextProvider adapterClients={{ convex: uploadFile }}>
+ *   {children}
+ * </StorageAdapterContextProvider>
+ * ```
+ */
+export type ClientUploadMap = Record<
+  StorageAdapterSlug,
+  (
+    file: any,
+    uploadUrl: string,
+  ) => Promise<{
+    storageId: string;
+    url?: string;
+    [key: string]: unknown;
+  }>
+>;
+
+/**
  * User-facing configuration input passed to `defineConfig()`.
  *
  * All properties are optional — omitting `collections` produces an empty CMS
@@ -224,6 +258,25 @@ export interface VexConfigInput {
    * @see {@link betterAuthAdapter} for the Better Auth implementation
    */
   authAdapter?: VexAuthAdapter;
+  /**
+   * Storage configuration — adapters and client-side upload functions.
+   *
+   * When present, media collections are available in the admin panel and
+   * `upload()` fields can be used in regular collections. The `adapters`
+   * array holds the server-side adapter instances (stripped by
+   * `sanitizeConfigForClient`). The `clientUploads` map holds serializable
+   * `uploadFile` functions that the admin panel uses to upload files
+   * directly from the browser. Keys are `StorageAdapterSlug` — only
+   * presigned-url adapters registered in the config are valid.
+   *
+   * @see {@link VexStorageAdapter} for the adapter interface
+   * @see {@link StorageAdapterSlug} for the key type
+   * @see {@link convexFileStorage} from `@vexcms/file-storage-convex` for the first adapter
+   */
+  storage?: {
+    /** Storage adapters configured for the project. */
+    adapters: VexStorageAdapter[];
+  };
 }
 
 /**
@@ -251,4 +304,19 @@ export interface VexConfig {
    * @see {@link betterAuthAdapter} for the Better Auth implementation
    */
   auth?: VexAuthAdapter;
+  /**
+   * Storage adapters registered with this config. Processed media collections
+   * from all adapters are available via `mediaCollections`.
+   */
+  storage?: {
+    /** Storage adapters configured for the project. */
+    adapters: VexStorageAdapter[];
+  };
+  /**
+   * Media collections — processed by storage adapters and stored separately
+   * from user-defined `collections`. These appear in the admin panel under a
+   * dedicated "Media" section. Each collection is tagged with
+   * `meta.storageAdapterName` indicating which adapter owns it.
+   */
+  mediaCollections: MediaCollectionConfig[];
 }

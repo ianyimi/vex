@@ -10,6 +10,7 @@ import { relationshipFieldToValidator } from "../relationship";
 import { arrayFieldToValidator } from "../array";
 import { groupFieldToValidator } from "../group";
 import { blocksFieldToValidator } from "../blocks";
+import { uploadFieldToValidator } from "../upload";
 
 /**
  * Converts any field definition to its Convex schema validator string.
@@ -51,6 +52,8 @@ export function adminFieldToValidator<TFieldMeta extends {} = {}>(props: {
       return groupFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.blocks.type:
       return blocksFieldToValidator({ field: props.field });
+    case ADMIN_FIELDS.upload.type:
+      return uploadFieldToValidator({ field: props.field });
     default:
       throw new Error("unrecognized field type");
   }

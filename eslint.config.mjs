@@ -119,6 +119,21 @@ export default [
     },
   },
   {
+    // Browser-facing packages use DOM globals (fetch, File, Response, etc.).
+    // TypeScript's type checker already validates these via tsconfig lib — ESLint's
+    // no-undef can't read tsconfig lib so it false-positives on browser globals.
+    files: [
+      "packages/file-storage-convex/src/**/*.ts",
+      "packages/react/src/**/*.ts",
+      "packages/react/src/**/*.tsx",
+      "packages/next/src/**/*.ts",
+      "packages/next/src/**/*.tsx",
+    ],
+    rules: {
+      "no-undef": "off",
+    },
+  },
+  {
     // Standard shadcn/base UI primitives — no JSDoc required
     files: [
       "packages/react/src/components/ui/**/*.ts",

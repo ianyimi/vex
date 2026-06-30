@@ -4,7 +4,10 @@
    AUTHORS, MEDIA, POSTS, PAGES, COLLECTIONS, FIELD_TYPES, STATUS_OPTS,
    Sidebar, Topbar, VexWordmark */
 
-const { useState: uPS, Fragment: PF } = React;
+const { useState: uPS } = React;
+/* Transparent wrapper (no layout impact) so host-injected data-om-id lands on a
+   real DOM node instead of a Fragment (which React warns about). */
+const PF = (props) => React.createElement("div", { style: { display: "contents" }, ...props });
 
 /* ============================================================================
    DASHBOARD

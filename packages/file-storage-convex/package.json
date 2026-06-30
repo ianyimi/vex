@@ -1,7 +1,12 @@
 {
   "name": "@vexcms/file-storage-convex",
   "version": "0.1.0-alpha.1",
+  "files": [
+    "dist"
+  ],
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "source": "./src/index.ts",
@@ -9,11 +14,9 @@
       "import": "./dist/index.js"
     }
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -22,11 +25,8 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "peerDependencies": {
-    "convex": "catalog:",
-    "@vexcms/core": "workspace:*"
-  },
   "devDependencies": {
+    "@types/node": "catalog:",
     "@vexcms/core": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",
     "convex": "catalog:",
@@ -34,7 +34,8 @@
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
-  "publishConfig": {
-    "access": "public"
+  "peerDependencies": {
+    "@vexcms/core": "workspace:*",
+    "convex": "catalog:"
   }
 }

@@ -5,7 +5,9 @@ import {
   DashboardView,
   CollectionListView,
   CollectionEditView,
+  MediaCollectionListView,
 } from "@vexcms/react";
+import { sanitizeConfigForClient } from "@vexcms/core";
 
 /**
  * VexCMS admin page server component for Next.js.
@@ -50,15 +52,17 @@ export async function NextAdminPage(props: {
   const { path = [] } = await props.params;
   const [collectionSlug, documentId] = path;
 
+  // Sanitize config for client components (strips storageAdapters, recursively sanitizes mediaCollections)
+  const clientConfig = sanitizeConfigForClient(props.config);
+
   if (!collectionSlug) {
-    return <DashboardView config={props.config} />;
+    return <DashboardView config={clientConfig} />;
   }
 
-  const collection = props.config.collections.find(
-    (c) => c.slug === collectionSlug,
-  );
+  const collection = clientConfig.collections.find((c) => c.slug === collectionSlug);
+  const mediaCollection = clientConfig.mediaCollections.find((mc) => mc.slug === collectionSlug);
 
-  if (!collection) {
+  if (!collection && !mediaCollection) {
     return (
       <div>
         <p className="text-muted-foreground p-6">
@@ -69,7 +73,7 @@ export async function NextAdminPage(props: {
     );
   }
 
-  if (documentId) {
+  if (collection && documentId) {
     const initialData = await fetchQuery(vexConvexApi.get, {
       id: documentId,
     });
@@ -82,10 +86,15 @@ export async function NextAdminPage(props: {
     );
   }
 
+  if (mediaCollection) {
+    const initialData = await fetchQuery(vexConvexApi.find, {
+      collection: collectionSlug as CollectionSlug,
+    });
+    return <MediaCollectionListView collection={mediaCollection} initialData={initialData} />;
+  }
+
   const initialData = await fetchQuery(vexConvexApi.find, {
     collection: collectionSlug as CollectionSlug,
   });
-  return (
-    <CollectionListView collection={collection} initialData={initialData} />
-  );
+  return <CollectionListView collection={collection!} initialData={initialData} />;
 }

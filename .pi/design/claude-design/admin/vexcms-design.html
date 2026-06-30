@@ -25,6 +25,7 @@
 <script type="text/babel" src="fields.jsx"></script>
 <script type="text/babel" src="relationship.jsx"></script>
 <script type="text/babel" src="shell.jsx"></script>
+<script type="text/babel" src="upload.jsx"></script>
 <script type="text/babel" src="screens.jsx"></script>
 <script type="text/babel" src="studies.jsx"></script>
 <script type="text/babel" src="mobile.jsx"></script>
@@ -186,6 +187,52 @@ function App() {
         subtitle="The most-used surface in any CMS — three patterns by context, plus all trigger and cell states.">
         <DCArtboard id="study-rel" label="relationship" width={1080} height={1900}>
           <div className="ab-scroll vex-admin"><RelationshipStudy /></div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="field-upload"
+        title="Upload field"
+        subtitle="References a media collection. Dropzone, library picker, single + array, progress, error, cell — every state.">
+        <DCArtboard id="study-upload" label="upload" width={1080} height={1640}>
+          <div className="ab-scroll vex-admin"><UploadStudy /></div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="media-picker"
+        title="Media picker"
+        subtitle="Opens from any upload field or the 'Browse library' link. Select existing or upload new; multi-select for array fields.">
+        <DCArtboard id="picker-single" label="Picker · single select" width={1280} height={820}>
+          <div className="ab-frame vex-admin">
+            <ABShell activeKey="posts" page={<EditViewSingle />} />
+            <div className="vex-overlay" style={{ position: "absolute", zIndex: 100 }}>
+              <MediaPicker collection="images" selected={["img_03"]} />
+            </div>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="picker-multi" label="Picker · multi select" width={1280} height={820}>
+          <div className="ab-frame vex-admin">
+            <ABShell activeKey="posts" page={<EditViewSingle />} />
+            <div className="vex-overlay" style={{ position: "absolute", zIndex: 100 }}>
+              <MediaPicker collection="images" multi selected={["img_01", "img_03", "img_06"]} />
+            </div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="media-library"
+        title="Media library"
+        subtitle="The list view for a media collection — grid of assets instead of a table. Sidebar gains a dedicated Media section.">
+        <DCArtboard id="library-grid" label="Library · grid" width={1280} height={900}>
+          <ABShell activeKey="images" page={<MediaLibraryPage />} />
+        </DCArtboard>
+        <DCArtboard id="library-inspector" label="Library · asset inspector" width={1280} height={900}>
+          <ABShell activeKey="images" page={<MediaLibraryPage withInspector />} />
+        </DCArtboard>
+        <DCArtboard id="library-bulk" label="Library · bulk select" width={1280} height={900}>
+          <ABShell activeKey="images" page={<MediaLibraryPage bulk />} />
         </DCArtboard>
       </DCSection>
 

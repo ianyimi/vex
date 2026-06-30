@@ -1,6 +1,6 @@
 "use client";
 
-import { addLeadingSlash, type VexConfig } from "@vexcms/core";
+import { addLeadingSlash, ClientVexConfig } from "@vexcms/core";
 import {
   Sidebar,
   SidebarContent,
@@ -15,13 +15,14 @@ import {
 import { VexLink } from "./ui/VexLink";
 import { AdminUser } from "./AdminLayout";
 import { Icon } from "./Icon";
+import { Activity } from "react";
 
 /**
  * Props for the `AppSidebar` component.
  */
 export interface AppSidebarProps {
   /** The full resolved VexCMS config — used to render the collection nav links. */
-  config: VexConfig;
+  config: ClientVexConfig;
   /**
    * The slug of the currently active collection.
    * Used to set `isActive` on the matching `SidebarMenuButton`.
@@ -63,9 +64,7 @@ export function AppSidebar(props: AppSidebarProps) {
       collapsible={props.config.admin.sidebar.collapsible}
     >
       <SidebarHeader className="h-12 border-b flex flex-col justify-center">
-        <span className="font-semibold font-mono text-sm tracking-tight px-2">
-          VexCMS Admin
-        </span>
+        <span className="font-semibold font-mono text-sm tracking-tight px-2">VexCMS Admin</span>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -95,6 +94,35 @@ export function AppSidebar(props: AppSidebarProps) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <Activity mode={props.config.mediaCollections.length > 0 ? "visible" : "hidden"}>
+          <SidebarGroup>
+            <SidebarGroupLabel>Media</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {props.config.mediaCollections.map((mediaCollection) => (
+                  <SidebarMenuItem key={mediaCollection.slug}>
+                    <SidebarMenuButton
+                      render={
+                        <VexLink
+                          href={`${addLeadingSlash(props.config.basePath)}/${mediaCollection.slug}`}
+                        />
+                      }
+                      isActive={props.activeSlug === mediaCollection.slug}
+                    >
+                      {mediaCollection.admin.icon && (
+                        <div>
+                          {/* @ts-expect-error Lucide Icon names match here, unknown lsp error */}
+                          <Icon name={mediaCollection.admin.icon} size={12} />
+                        </div>
+                      )}
+                      {mediaCollection.labels.plural}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </Activity>
       </SidebarContent>
     </Sidebar>
   );

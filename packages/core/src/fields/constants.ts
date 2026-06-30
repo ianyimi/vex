@@ -70,6 +70,12 @@ export const ADMIN_FIELDS = {
     validator: "v.array(v.any())", // placeholder - blocksFieldToValidator builds dynamically
     defaultValue: [],
   },
+  upload: {
+    type: "upload",
+    interfaceType: "Id<MediaCollectionSlug>[]",
+    validator: "v.array(\nv.string()\n)",
+    defaultValue: undefined,
+  },
   // richtext: {
   //   type: "richtext",
   //   validator: "v.any()",
@@ -77,14 +83,11 @@ export const ADMIN_FIELDS = {
   // },
 } as const;
 /** Union of all supported field type name strings (e.g. `"text"` | `"number"` | `"checkbox"` | ...). */
-export type AdminFieldType =
-  (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["type"];
+export type AdminFieldType = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["type"];
 /** Union of all Convex validator strings for the supported field types (e.g. `"v.string()"` | `"v.number()"` | ...). */
-export type AdminFieldValidator =
-  (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["validator"];
+export type AdminFieldValidator = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["validator"];
 /** Union of all TypeScript type strings corresponding to the supported field types (e.g. `"string"` | `"number"` | ...). */
-export type AdminFieldTsType =
-  (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["interfaceType"];
+export type AdminFieldTsType = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["interfaceType"];
 
 /** Literal type `"text"` — the discriminant value on {@link TextField}. */
 export type TextFieldType = typeof ADMIN_FIELDS.text.type;

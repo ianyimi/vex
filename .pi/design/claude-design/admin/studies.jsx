@@ -3,7 +3,7 @@
    TextCell, NumberCell, CheckCell, SelectCell, DateCell, UrlCell, RelCell, RelChip,
    AUTHORS, MEDIA, POSTS, STATUS_OPTS */
 
-const { Fragment: SF } = React;
+const SF = (props) => React.createElement("div", { style: { display: "contents" }, ...props });
 
 /* ============================================================================
    Per-field-type studies — every field type gets its own artboard with:
@@ -388,7 +388,7 @@ function RelationshipStudy() {
               <RelTrigger value="m_01" kind="media" />
             </FieldShell>
           </div>
-          <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 360, background: "var(--surface)", borderLeft: "1px solid var(--line)", boxShadow: "var(--shadow-3)" }}>
+          <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 360, background: "var(--surface)", borderLeft: "1px solid var(--line)", boxShadow: "var(--shadow-pop)" }}>
             <RelSidePanel kind="post" selected={["p_03", "p_05", "p_07"]} />
           </div>
         </div>
@@ -483,8 +483,136 @@ function EmptyStudies() {
   );
 }
 
+/* ============================================================================
+   UPLOAD — input states + cell, with media collection notes
+   ============================================================================ */
+function UploadStudy() {
+  return (
+    <ShellPage>
+      <StudyHeader
+        title="Upload field"
+        sub="upload"
+        lede="References a media collection by slug. Stores an array of media-document IDs (single uploads are arrays of one). Files arrive by drag-drop, file picker, or the media library."
+      />
+      <StudyCard title="Input · empty">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+          <div>
+            <StateLabel>Idle dropzone</StateLabel>
+            <FieldShell label="Featured image" type="upload" hideTypeChip help="upload({ to: &quot;images&quot; })">
+              <UploadEmpty />
+            </FieldShell>
+          </div>
+          <div>
+            <StateLabel>Drag active</StateLabel>
+            <FieldShell label="Featured image" type="upload" hideTypeChip>
+              <UploadEmpty dragActive />
+            </FieldShell>
+          </div>
+        </div>
+      </StudyCard>
+
+      <StudyCard title="Input · filled">
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div>
+            <StateLabel>Single file</StateLabel>
+            <FieldShell label="Featured image" type="upload" hideTypeChip>
+              <UploadSingle id="img_03" />
+            </FieldShell>
+          </div>
+          <div>
+            <StateLabel>Multiple (array) · with max</StateLabel>
+            <FieldShell label="Gallery" type="upload" hideTypeChip help="upload({ to: &quot;images&quot;, max: 5 }) — drag to reorder.">
+              <UploadMulti ids={["img_01", "img_03", "img_06"]} max={5} />
+            </FieldShell>
+          </div>
+        </div>
+      </StudyCard>
+
+      <StudyCard title="Input · transient & locked">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+          <div>
+            <StateLabel>Uploading</StateLabel>
+            <FieldShell label="Cover" type="upload" hideTypeChip><UploadProgress pct={62} /></FieldShell>
+          </div>
+          <div>
+            <StateLabel>Error · unsupported type</StateLabel>
+            <FieldShell label="Cover" type="upload" hideTypeChip><UploadError /></FieldShell>
+          </div>
+          <div>
+            <StateLabel>Missing alt warning</StateLabel>
+            <FieldShell label="Logo" type="upload" hideTypeChip><UploadSingle id="img_02" /></FieldShell>
+          </div>
+          <div>
+            <StateLabel>Read-only</StateLabel>
+            <FieldShell label="Imported asset" type="upload" hideTypeChip><UploadReadonly /></FieldShell>
+          </div>
+        </div>
+      </StudyCard>
+
+      <StudyCard title="Cell" sub="How upload values render in the table." padded={false}>
+        <CellRow label="single"><UploadCell ids={["img_01"]} /></CellRow>
+        <CellRow label="multiple"><UploadCell ids={["img_01", "img_03", "img_06"]} /></CellRow>
+        <CellRow label="empty"><UploadCell empty /></CellRow>
+      </StudyCard>
+    </ShellPage>
+  );
+}
+
+/* Full media-library admin page (grid list view for a media collection) */
+function MediaLibraryPage({ withSelection = false, withInspector = false, bulk = false }) {
+  return (
+    <SF>
+      <Topbar
+        crumbs={[
+          { label: "Media" },
+          { label: "Images", here: true, meta: String(IMAGES.length) },
+        ]}
+        actions={
+          <>
+            <button className="vex-btn outline sm"><Icon name="folder" size={12} />New folder</button>
+            <button className="vex-btn primary sm"><Icon name="plus" size={12} />Upload</button>
+          </>
+        }
+      />
+      <div className="vex-page">
+        <div className="vex-page-head">
+          <div>
+            <h1>Images</h1>
+            <p className="sub">Media collection · <span className="mono">upload({ "{ to: \"images\" }" })</span> targets this. 218 MB used.</p>
+          </div>
+        </div>
+
+        {bulk && (
+          <div className="vex-bulkbar">
+            <Icon name="check" size={13} strokeWidth={3} />
+            <span><span className="count">1</span> selected</span>
+            <div className="actions">
+              <button className="vex-btn outline sm"><Icon name="folder" size={12} />Move</button>
+              <button className="vex-btn outline sm" style={{ color: "var(--bad)", borderColor: "var(--bad)" }}><Icon name="trash" size={12} />Delete</button>
+              <button className="vex-btn ghost icon sm"><Icon name="x" size={13} /></button>
+            </div>
+          </div>
+        )}
+
+        <div className="vex-tablebar">
+          <div className="vex-input-wrap has-leading" style={{ width: 280 }}>
+            <span className="leading"><Icon name="search" size={13} /></span>
+            <input className="vex-input sm" placeholder="Search images by filename or alt…" />
+          </div>
+          <button className="vex-btn outline sm"><Icon name="filter" size={12} />Type</button>
+          <div className="grow"></div>
+          <button className="vex-btn ghost sm"><Icon name="arrowUpDown" size={12} />Newest <Icon name="chevDown" size={11} /></button>
+        </div>
+
+        <MediaLibraryGrid withSelection={withSelection || bulk} withInspector={withInspector} />
+      </div>
+    </SF>
+  );
+}
+
 Object.assign(window, {
   TextStudy, NumberStudy, CheckStudy, SelectStudy, DateStudy, UrlStudy, RelationshipStudy,
+  UploadStudy, MediaLibraryPage,
   EmptyStudies,
   /* legacy aliases used by older index.html */
   FieldInputStudies: TextStudy, FieldCellStudies: TextStudy, RelationshipStudies: RelationshipStudy,

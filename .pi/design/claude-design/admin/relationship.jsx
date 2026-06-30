@@ -2,7 +2,8 @@
    CheckInput, CheckCell, SelectInput, SelectCell, STATUS_OPTS, DateInput, DateCell,
    UrlInput, UrlCell, RelCell, RelChip, AUTHORS, MEDIA, POSTS, PAGES, FIELD_TYPES, COLLECTIONS */
 
-const { useState: useSState, useRef: useSRef, useEffect: useSEffect, Fragment: SFrag } = React;
+const { useState: useSState, useRef: useSRef, useEffect: useSEffect } = React;
+const SFrag = (props) => React.createElement("span", { style: { display: "contents" }, ...props });
 
 /* ============================================================================
    RELATIONSHIP PICKER — POPOVER (PRIMARY PATTERN)

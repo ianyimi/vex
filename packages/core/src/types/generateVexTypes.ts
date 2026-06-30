@@ -3,6 +3,7 @@ import {
   collectionConfigToInterface,
 } from "../collections/interfaceGen";
 import type { VexConfig } from "../config/types";
+import { STORAGE_ADAPTER_PROTOCOLS } from "../media";
 
 /**
  * Generates the full contents of `vex.types.ts` from a resolved `VexConfig`.
@@ -51,31 +52,40 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     import type { VexDocument } from "@vexcms/core"\n
   `;
 
-  if (config.collections.length === 0) {
+  const allCollections = config.collections.concat(config.mediaCollections);
+  if (allCollections.length === 0) {
     return typesHeader;
   }
 
-  const interfaceBlocks = config.collections.map((collection) =>
+  const interfaceBlocks = allCollections.map((collection) =>
     collectionConfigToInterface({ collection }),
   );
 
-  const collectionSlugs = config.collections
-    .map((c) => `"${c.slug}"`)
-    .join(" | ");
+  const collectionSlugs = allCollections.map((c) => `"${c.slug}"`).join(" | ");
   const collectionSlugType = `export type CollectionSlug = ${collectionSlugs}`;
 
-  const documentsBySlug = config.collections
-    .map((c) => `\t${c.slug}: ${c.interfaceName}`)
-    .join("\n");
+  const mediaCollectionSlugs = config.mediaCollections.map((mc) => `"${mc.slug}"`).join(" | ");
+  const mediaCollectionSlugType = `export type MediaCollectionSlug = ${mediaCollectionSlugs}`;
+
+  const documentsBySlug = allCollections.map((c) => `\t${c.slug}: ${c.interfaceName}`).join("\n");
   const documentBySlugType = `export type DocumentBySlug = {\n${documentsBySlug}\n}`;
 
-  const collectionsFieldTypeMap = config.collections
+  const collectionsFieldTypeMap = allCollections
     .map((c) => collectionConfigToFieldTypeMap({ collection: c }))
     .join("\n");
+
+  const storageAdapterSlugs =
+    config.storage?.adapters
+      .filter((a) => a.type === STORAGE_ADAPTER_PROTOCOLS.presignedUrl)
+      .map((a) => `"${a.name}"`)
+      .join(" | ") ?? "never";
+  const storageAdapterSlugType = `export type StorageAdapterSlug = ${storageAdapterSlugs}`;
 
   const declareModule = `declare module "@vexcms/core" {
     \tinterface GeneratedVexTypes {
     \t\tCollectionSlug: ${collectionSlugs}
+    \t\tMediaCollectionSlug: ${mediaCollectionSlugs}
+    \t\tStorageAdapterSlug: ${storageAdapterSlugs}
     \t\tDocumentBySlug: {\n${documentsBySlug}\n}
     \t\tCollectionsFieldTypeMap: {\n${collectionsFieldTypeMap}\n}
     \t}
@@ -87,6 +97,10 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     ...interfaceBlocks,
     "",
     collectionSlugType,
+    "",
+    mediaCollectionSlugType,
+    "",
+    storageAdapterSlugType,
     "",
     documentBySlugType,
     "",

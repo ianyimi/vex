@@ -970,3 +970,141 @@
   padding: 1px 5px; border: 1px solid var(--line); border-radius: 2px;
   margin-left: 4px;
 }
+
+/* ============================================================================
+   UPLOAD FIELD + MEDIA
+   ============================================================================ */
+
+/* Dropzone */
+.vex-dropzone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; text-align: center;
+  padding: 24px 20px;
+  border: 1px dashed var(--line-bold);
+  border-radius: 4px;
+  background: var(--raised);
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.vex-dropzone[data-active="true"] {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.vex-dropzone .ico {
+  width: 36px; height: 36px; border-radius: 9999px;
+  background: var(--surface); border: 1px solid var(--line);
+  display: grid; place-items: center; color: var(--fg-subtle);
+  margin-bottom: 4px;
+}
+.vex-dropzone[data-active="true"] .ico { color: var(--accent); border-color: var(--accent-line); }
+.vex-dropzone .title { font-size: 13px; font-weight: 500; color: var(--fg); }
+.vex-dropzone .sub { font-size: 11px; color: var(--fg-subtle); }
+
+/* Selected media list (upload field) */
+.vex-upload-list {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--line); border-radius: 4px;
+  overflow: hidden; background: var(--surface);
+}
+.vex-upload-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.vex-upload-item:last-child { border-bottom: 0; }
+.vex-upload-item .grip { color: var(--fg-faint); cursor: grab; display: inline-flex; flex: 0 0 auto; }
+.vex-upload-item .grip:hover { color: var(--fg-subtle); }
+.vex-upload-item .meta { flex: 1; min-width: 0; }
+.vex-upload-item .meta .name { font-size: 12.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vex-upload-item .meta .sub { font-size: 11px; color: var(--fg-subtle); font-family: var(--vex-font-mono); margin-top: 1px; }
+.vex-upload-item .alt {
+  display: flex; align-items: center; gap: 6px;
+  max-width: 200px; min-width: 0; flex: 0 1 auto;
+}
+.vex-upload-item .alt .alt-lbl {
+  font-family: var(--vex-font-mono); font-size: 9px; letter-spacing: 0.08em;
+  color: var(--fg-subtle); border: 1px solid var(--line); border-radius: 2px;
+  padding: 1px 4px; flex: 0 0 auto;
+}
+.vex-upload-item .alt .alt-val { font-size: 11.5px; color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vex-upload-item .acts { display: flex; gap: 2px; flex: 0 0 auto; }
+.vex-upload-item.uploading .meta .sub,
+.vex-upload-item.error .meta .sub { font-family: var(--vex-font-sans); }
+.vex-upload-list.readonly { background: var(--raised); }
+
+/* Progress bar */
+.vex-progress {
+  height: 4px; border-radius: 9999px; background: var(--line);
+  overflow: hidden; margin-top: 6px;
+}
+.vex-progress span {
+  display: block; height: 100%; background: var(--accent);
+  border-radius: 9999px; transition: width var(--dur-base) var(--ease);
+}
+
+/* Media tile (picker grid) */
+.vex-media-tile {
+  display: flex; flex-direction: column; gap: 0;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); overflow: hidden;
+  cursor: pointer; padding: 0; text-align: left;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.vex-media-tile:hover { border-color: var(--fg-subtle); }
+.vex-media-tile.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.vex-media-tile .thumb {
+  position: relative; aspect-ratio: 4 / 3; width: 100%;
+  border-bottom: 1px solid var(--line);
+}
+.vex-media-tile.add .thumb { aspect-ratio: 4 / 3; border-bottom: 0; }
+.vex-media-tile .thumb .check {
+  position: absolute; top: 6px; right: 6px;
+  width: 18px; height: 18px; border-radius: 9999px;
+  background: var(--accent); color: var(--accent-on);
+  display: grid; place-items: center;
+}
+.vex-media-tile .thumb .dim {
+  position: absolute; bottom: 6px; right: 6px;
+  font-family: var(--vex-font-mono); font-size: 8.5px;
+  color: rgba(255,255,255,.82); background: rgba(0,0,0,.45);
+  padding: 1px 4px; border-radius: 2px;
+}
+.vex-media-tile .fname { font-size: 11.5px; font-weight: 500; padding: 6px 8px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vex-media-tile .fmeta { font-size: 10px; color: var(--fg-subtle); font-family: var(--vex-font-mono); padding: 1px 8px 8px; }
+
+/* Media card (library grid) */
+.vex-media-card {
+  border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); overflow: hidden;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+  cursor: pointer;
+}
+.vex-media-card:hover { border-color: var(--fg-subtle); }
+.vex-media-card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.vex-media-card .thumb {
+  position: relative; aspect-ratio: 4 / 3; width: 100%;
+  border-bottom: 1px solid var(--line);
+}
+.vex-media-card .thumb .dim {
+  position: absolute; bottom: 6px; right: 6px;
+  font-family: var(--vex-font-mono); font-size: 8.5px;
+  color: rgba(255,255,255,.82); background: rgba(0,0,0,.45);
+  padding: 1px 4px; border-radius: 2px;
+}
+.vex-media-card .thumb .pick {
+  position: absolute; top: 6px; left: 6px;
+  cursor: pointer;
+}
+.vex-media-card .thumb .pick input { position: absolute; opacity: 0; pointer-events: none; }
+.vex-media-card .thumb .pick .box {
+  width: 18px; height: 18px; border-radius: 3px;
+  background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.5);
+  display: grid; place-items: center; color: #fff;
+  backdrop-filter: blur(2px);
+}
+.vex-media-card.selected .thumb .pick .box,
+.vex-media-card .thumb .pick input:checked ~ .box {
+  background: var(--accent); border-color: var(--accent);
+}
+.vex-media-card .body { padding: 8px 10px 10px; }
+.vex-media-card .body .fname { font-size: 12px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vex-media-card .body .fmeta { font-size: 10.5px; color: var(--fg-subtle); font-family: var(--vex-font-mono); margin-top: 2px; }

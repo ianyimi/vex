@@ -20,9 +20,10 @@
     "@t3-oss/env-nextjs": "catalog:",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "catalog:",
-    "@vexcms/next": "workspace:*",
     "@vexcms/better-auth": "workspace:*",
     "@vexcms/core": "workspace:*",
+    "@vexcms/file-storage-convex": "workspace:*",
+    "@vexcms/next": "workspace:*",
     "@vexcms/react": "workspace:*",
     "better-auth": "catalog:",
     "class-variance-authority": "catalog:",
@@ -41,7 +42,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@vexcms/cli": "workspace:*",
     "@convex-dev/eslint-plugin": "catalog:",
     "@eslint/eslintrc": "catalog:",
     "@next/eslint-plugin-next": "catalog:",
@@ -49,6 +49,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@vexcms/cli": "workspace:*",
     "babel-plugin-react-compiler": "catalog:",
     "eslint": "catalog:",
     "eslint-config-next": "catalog:",

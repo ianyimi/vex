@@ -2,6 +2,7 @@ import { ADMIN_FIELDS } from "../constants";
 import type { RelationshipFieldInput, RelationshipField } from "./types";
 import type { CollectionSlug } from "../../types/generated";
 import { ComponentHKT } from "../baseTypes";
+import { BaseFieldMeta } from "../types";
 
 /**
  * Creates a relationship field with all defaults applied.
@@ -43,7 +44,7 @@ import { ComponentHKT } from "../baseTypes";
  * @see {@link RelationshipField} for the resolved output type
  */
 export function relationship<
-  TFieldMeta extends {} = {},
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
   TCollectionSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
 >(
@@ -66,5 +67,8 @@ export function relationship<
       components: {},
       ...options?.admin,
     },
+    meta: {
+      ...options?.meta,
+    } as TFieldMeta,
   };
 }

@@ -314,3 +314,15 @@ export const jwks = defineTable({
   createdAt: v.number(),
   expiresAt: v.optional(v.number()),
 })
+
+export const images = defineTable({
+  alt: v.string(),
+  filename: v.string(),
+  mimeType: v.string(),
+  size: v.number(),
+  storageId: v.string(),
+  deleted: v.optional(v.boolean()),
+  convexUrl: v.string(),
+  width: v.optional(v.number()),
+  height: v.optional(v.number()),
+}).index("by_deleted", ["deleted"])

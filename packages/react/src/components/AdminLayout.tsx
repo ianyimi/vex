@@ -1,16 +1,15 @@
-"use client";
-
 import type { ReactNode } from "react";
 import type { VexConfig } from "@vexcms/core";
 import {
   FrameworkComponentsContext,
   type FrameworkComponents,
 } from "../hooks/useFrameworkComponents";
-import { VexConfigContext } from "../context/VexConfigContext";
+import { VexConfigContext } from "../context";
 import { AppSidebar } from "./AdminSidebar";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "./ui/sidebar";
 import { TooltipProvider } from "./ui/tooltip";
 import AdminTopNav from "./AdminTopNav";
+import { sanitizeConfigForClient } from "@vexcms/core";
 
 /**
  * User data displayed in the admin shell.
@@ -97,14 +96,13 @@ export interface AdminLayoutProps {
  * ```
  */
 export function AdminLayout(props: AdminLayoutProps) {
-  const side = props.config.admin.sidebar.side;
+  // Sanitize config for client components (strips storageAdapters, recursively sanitizes mediaCollections)
+  const clientConfig = sanitizeConfigForClient(props.config);
+
+  const side = clientConfig.admin.sidebar.side;
 
   const sidebar = (
-    <AppSidebar
-      config={props.config}
-      activeSlug={props.activeSlug}
-      user={props.user}
-    />
+    <AppSidebar config={clientConfig} activeSlug={props.activeSlug} user={props.user} />
   );
 
   const content = (
@@ -134,7 +132,7 @@ export function AdminLayout(props: AdminLayoutProps) {
   );
 
   return (
-    <VexConfigContext.Provider value={props.config}>
+    <VexConfigContext.Provider value={clientConfig}>
       <FrameworkComponentsContext.Provider value={props.components ?? {}}>
         <TooltipProvider>
           <SidebarProvider>

@@ -76,11 +76,8 @@ export function number<TFieldMeta extends {} = {}>(
       placeholder: "",
       ...options?.admin,
     },
-
-    // Optional field properties (no defaults)
-    description: options?.description,
-    min: options?.min,
-    max: options?.max,
-    index: options?.index,
+    meta: {
+      ...options?.meta,
+    } as TFieldMeta,
   };
 }

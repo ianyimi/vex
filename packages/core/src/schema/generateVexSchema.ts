@@ -47,11 +47,12 @@ export function generateVexSchema(props: { config: VexConfig }): {
   }
 
   let imports = `import { defineTable } from "convex/server"\nimport { v } from "convex/values"\n`;
-  let collections = props.config.collections
+  const allCollections = props.config.collections.concat(props.config.mediaCollections);
+  let collectionSchemas = allCollections
     .map((collection) => {
       return collectionConfigToVexSchema({ collection, config: props.config });
     })
     .join("\n");
 
-  return success([header, imports, collections].join("\n"));
+  return success([header, imports, collectionSchemas].join("\n"));
 }

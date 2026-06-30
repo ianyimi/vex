@@ -1,4 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
+import { BaseFieldMeta } from "../types";
 import type { TextFieldInput, TextField } from "./types";
 
 /**
@@ -45,7 +46,7 @@ import type { TextFieldInput, TextField } from "./types";
  * @see {@link TextFieldInput} for the full input type
  * @see {@link TextField} for the resolved output type
  */
-export function text<TFieldMeta extends {} = {}>(
+export function text<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
   options?: TextFieldInput<TFieldMeta>,
 ): TextField<TFieldMeta> {
   return {
@@ -69,12 +70,8 @@ export function text<TFieldMeta extends {} = {}>(
       placeholder: "",
       ...options?.admin,
     },
-
-    // Optional field properties (no defaults)
-    description: options?.description,
-    min: options?.min,
-    max: options?.max,
-    index: options?.index,
-    searchIndex: options?.searchIndex,
+    meta: {
+      ...options?.meta,
+    } as TFieldMeta,
   };
 }

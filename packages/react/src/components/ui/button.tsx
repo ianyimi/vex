@@ -32,8 +32,7 @@ const buttonVariants = cva(
         icon: "size-8",
         "icon-xs":
           "size-6 in-data-[slot=button-group]:rounded-sm [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm":
-          "size-7 in-data-[slot=button-group]:rounded-sm",
+        "icon-sm": "size-7 in-data-[slot=button-group]:rounded-sm",
         "icon-lg": "size-9",
       },
     },
@@ -51,8 +50,7 @@ function Button({
   size = "default",
   children,
   ...props
-}: { isPending?: boolean } & ButtonPrimitive.Props &
-  VariantProps<typeof buttonVariants>) {
+}: { isPending?: boolean } & ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   return (
     <ButtonPrimitive
       data-slot="button"

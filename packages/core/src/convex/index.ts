@@ -36,7 +36,7 @@ export interface VexDocument {
  *
  * @see {@link VexDocument} for the base type
  */
-export type TDocument = Record<string, unknown> & VexDocument;
+export type TDocument<TShape = {}> = Record<string, unknown> & TShape & VexDocument;
 
 // ── Shallow FunctionReference types ───────────────────────────────────────
 //
@@ -113,6 +113,113 @@ export type VexUpdateRef = FunctionReference<"mutation", "public", VexUpdateArgs
 /** Shallow FunctionReference for `api.vex.remove`. */
 export type VexRemoveRef = FunctionReference<"mutation", "public", VexRemoveArgs, void>;
 
+// ── Media API shallow types ──────────────────────────────────────────────
+//
+// Arg and return shapes for the generic media endpoints. These mirror the
+// `VexStorageAdapter` method signatures so the types stay in one place.
+
+/** Args for `api.vex.media.generateUploadUrl`. */
+export interface VexMediaGenerateUploadUrlArgs {
+  [key: string]: unknown;
+  adapter: string;
+}
+
+/** Return for `api.vex.media.generateUploadUrl`. */
+export interface VexMediaGenerateUploadUrlReturn {
+  [key: string]: unknown;
+  url: string;
+}
+
+/** Args for `api.vex.media.createMediaDocument`. */
+export interface VexMediaCreateMediaDocumentArgs {
+  [key: string]: unknown;
+  adapter: string;
+  collectionSlug: string;
+  storageId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  alt?: string;
+  adapterFields?: Record<string, unknown>;
+}
+
+/** Return for `api.vex.media.createMediaDocument`. */
+export type VexMediaCreateMediaDocumentReturn = string;
+
+/** Args for `api.vex.media.deleteMedia`. */
+export interface VexMediaDeleteMediaArgs {
+  [key: string]: unknown;
+  adapter: string;
+  mediaId: string;
+  softDelete?: boolean;
+}
+
+/** Return for `api.vex.media.deleteMedia`. */
+export type VexMediaDeleteMediaReturn = boolean;
+
+/** Args for `api.vex.media.getUrl`. */
+export interface VexMediaGetUrlArgs {
+  [key: string]: unknown;
+  adapter: string;
+  mediaId: string;
+}
+
+/** Return for `api.vex.media.getUrl`. */
+export interface VexMediaGetUrlReturn {
+  [key: string]: unknown;
+  url?: string;
+  error?: string;
+}
+
+/** Args for `api.vex.media.listMedia`. */
+export interface VexMediaListMediaArgs {
+  [key: string]: unknown;
+  adapter: string;
+  collectionSlug: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** Args for `api.vex.media.searchMedia`. */
+export interface VexMediaSearchMediaArgs {
+  [key: string]: unknown;
+  adapter: string;
+  collectionSlug: string;
+  query: string;
+}
+
+/** Shallow FunctionReference for `api.vex.media.generateUploadUrl`. */
+export type VexMediaGenerateUploadUrlRef = FunctionReference<
+  "mutation",
+  "public",
+  VexMediaGenerateUploadUrlArgs,
+  VexMediaGenerateUploadUrlReturn
+>;
+
+/** Shallow FunctionReference for `api.vex.media.createMediaDocument`. */
+export type VexMediaCreateMediaDocumentRef = FunctionReference<
+  "mutation",
+  "public",
+  VexMediaCreateMediaDocumentArgs,
+  VexMediaCreateMediaDocumentReturn
+>;
+
+/** Shallow FunctionReference for `api.vex.media.deleteMedia`. */
+export type VexMediaDeleteMediaRef = FunctionReference<
+  "mutation",
+  "public",
+  VexMediaDeleteMediaArgs,
+  VexMediaDeleteMediaReturn
+>;
+
+/** Shallow FunctionReference for `api.vex.media.getUrl`. */
+export type VexMediaGetUrlRef = FunctionReference<
+  "query",
+  "public",
+  VexMediaGetUrlArgs,
+  VexMediaGetUrlReturn
+>;
+
 /**
  * Typed `anyApi` references to the VexCMS generic Convex collection functions.
  *
@@ -176,4 +283,30 @@ export const vexConvexApi = {
    * Permanently deletes a document.
    */
   remove: anyApi.vex.remove as VexRemoveRef,
+
+  media: {
+    /**
+     * Generates a URL to upload a file to.
+     * Called by `MediaUploadDropzone` in `@vexcms/react`.
+     */
+    generateUploadUrl: anyApi.vex.media.generateUploadUrl as VexMediaGenerateUploadUrlRef,
+
+    /**
+     * Creates a media document in Convex after the file is uploaded.
+     * Called by `MediaUploadDropzone` in `@vexcms/react`.
+     */
+    createMediaDocument: anyApi.vex.media.createMediaDocument as VexMediaCreateMediaDocumentRef,
+
+    /**
+     * Deletes a media document and its file from storage.
+     * Called by `MediaLibrary` in `@vexcms/react`.
+     */
+    deleteMedia: anyApi.vex.media.deleteMedia as VexMediaDeleteMediaRef,
+
+    /**
+     * Returns a URL for a media file.
+     * Called by `UploadFieldCell` in `@vexcms/react`.
+     */
+    getUrl: anyApi.vex.media.getUrl as VexMediaGetUrlRef,
+  },
 } as const;

@@ -1,13 +1,9 @@
 import { ADMIN_FIELDS } from "../constants";
 import { slugToPascalCase } from "../../collections/utils";
-import type {
-  BlockConfigInput,
-  BlockConfig,
-  BlocksFieldInput,
-  BlocksField,
-} from "./types";
+import type { BlockConfigInput, BlockConfig, BlocksFieldInput, BlocksField } from "./types";
 import { RESERVED_BLOCK_FIELD_NAMES } from "./types";
 import { nanoid } from "nanoid";
+import { BaseFieldMeta } from "../types";
 
 /**
  * Defines a single block type for use in a `blocks()` field.
@@ -53,8 +49,7 @@ export function defineBlock(options: BlockConfigInput): BlockConfig {
     }
   }
 
-  const interfaceName =
-    options.interfaceName ?? `${slugToPascalCase({ slug: options.slug })}Block`;
+  const interfaceName = options.interfaceName ?? `${slugToPascalCase({ slug: options.slug })}Block`;
 
   return {
     id: nanoid(),
@@ -102,7 +97,7 @@ export function defineBlock(options: BlockConfigInput): BlockConfig {
  * @see {@link BlocksFieldInput} for the full input type
  * @see {@link BlocksField} for the resolved output type
  */
-export function blocks<TFieldMeta extends {} = {}>(
+export function blocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
   options: BlocksFieldInput<TFieldMeta>,
 ): BlocksField<TFieldMeta> {
   // Validate unique slugs
@@ -140,6 +135,9 @@ export function blocks<TFieldMeta extends {} = {}>(
       placeholder: "",
       ...options?.admin,
     },
+    meta: {
+      ...options.meta,
+    } as TFieldMeta,
   };
 }
 
@@ -170,9 +168,7 @@ function buildBlockInterfaceType(props: {
       return `${key}${field.required ? "" : "?"}: ${typeStr}`;
     })
     .join("; ");
-  return userEntries
-    ? `{ ${frameworkKeys}; ${userEntries} }`
-    : `{ ${frameworkKeys} }`;
+  return userEntries ? `{ ${frameworkKeys}; ${userEntries} }` : `{ ${frameworkKeys} }`;
 }
 
 /**

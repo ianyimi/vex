@@ -12,6 +12,12 @@ export const MODALS = {
     /** Label for the create-document modal's submit button. */
     label: "Create",
   },
+  uploadMedia: {
+    /** URL search param that controls the media upload modal (`?upload=true`). */
+    urlParam: "upload",
+    /** Label for the media upload modal's primary action. */
+    label: "Upload",
+  },
 } as const;
 
 /** Union of all URL parameter strings used to control admin modals. */

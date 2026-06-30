@@ -41,13 +41,7 @@ export function defineCollection<
     TFieldSlug,
     TComponent
   >,
-): CollectionConfig<
-  TFieldMeta,
-  TCollectionMeta,
-  TCollectionSlug,
-  TFieldSlug,
-  TComponent
-> {
+): CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, TComponent> {
   return {
     interfaceName: slugToPascalCase({ slug: config.slug }) + "Document",
     ...config,
@@ -61,5 +55,8 @@ export function defineCollection<
       plural: plural(toTitleCase(config.slug)),
       ...config.labels,
     },
+    meta: {
+      ...config.meta,
+    } as TCollectionMeta,
   };
 }

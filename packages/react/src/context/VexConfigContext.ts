@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 
-import { defineConfig, type VexConfig } from "@vexcms/core";
+import { type ClientVexConfig, defineConfig, sanitizeConfigForClient } from "@vexcms/core";
 
 /**
  * Holds the live VexCMS config for the duration of the admin session.
@@ -13,7 +13,9 @@ import { defineConfig, type VexConfig } from "@vexcms/core";
  * which updates this context and re-renders all consumers, including
  * `CollectionListView` and `CreateDocumentModal`, without a full page reload.
  */
-export const VexConfigContext = createContext<VexConfig>(defineConfig());
+export const VexConfigContext = createContext<ClientVexConfig>(
+  sanitizeConfigForClient(defineConfig()),
+);
 
 /**
  * Returns the live VexCMS config from `VexConfigContext`.
@@ -23,6 +25,6 @@ export const VexConfigContext = createContext<VexConfig>(defineConfig());
  *
  * @returns The resolved `VexConfig` for the current admin session.
  */
-export function useVexConfig(): VexConfig {
+export function useVexConfig(): ClientVexConfig {
   return useContext(VexConfigContext);
 }

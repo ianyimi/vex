@@ -19,9 +19,7 @@ import { LucideIconName } from "../utils";
  *
  * @typeParam TCollectionSlug - The slug of the doc being rendered.
  */
-export interface RelationshipPreviewProps<
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> {
+export interface RelationshipPreviewProps<TCollectionSlug extends CollectionSlug = CollectionSlug> {
   /** The document being previewed. */
   doc: TDocument;
   /** The relationship field key on the parent collection. */
@@ -194,5 +192,5 @@ export interface CollectionConfig<
   fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
   /** PascalCase identifier derived from `slug`, used as the TypeScript interface name in generated types (e.g. `"posts"` → `"Posts"`). */
   interfaceName: string;
-  meta?: TCollectionMeta;
+  meta: TCollectionMeta;
 }

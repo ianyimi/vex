@@ -6,7 +6,7 @@ import {
   type FunctionVisibility,
   type GenericDataModel,
   type QueryBuilder,
-  RegisteredQuery,
+  type RegisteredQuery,
 } from "convex/server";
 import { GenericId, v } from "convex/values";
 import type { VexConfig } from "../config";
@@ -17,7 +17,7 @@ import { search } from "./search/server";
 import { create } from "./create/server";
 import { update } from "./update/server";
 import { remove } from "./remove/server";
-import { VexDocument, VexFindArgs } from "../convex";
+import { VexDocument, VexFindArgs, VexGetArgs, VexSearchArgs } from "../convex";
 
 export { buildDepthPopulate } from "./depth";
 
@@ -38,8 +38,6 @@ export type { UpdateServerArgs } from "./update/server";
 
 export { remove } from "./remove/server";
 export type { RemoveServerArgs } from "./remove/server";
-
-
 
 /**
  * Registers `find`, `get`, and `search` as Convex query endpoints.
@@ -68,10 +66,7 @@ export type { RemoveServerArgs } from "./remove/server";
 export function queryApi<
   DataModel extends GenericDataModel,
   Visibility extends FunctionVisibility = "public",
->(
-  config: VexConfig,
-  query: QueryBuilder<DataModel, Visibility> = internalQueryGeneric as never,
-) {
+>(config: VexConfig, query: QueryBuilder<DataModel, Visibility> = internalQueryGeneric as never) {
   return {
     find: query({
       args: {
@@ -105,7 +100,7 @@ export function queryApi<
           depth: args.depth,
           config, // ← new
         }),
-    }) as RegisteredQuery<Visibility, VexFindArgs, VexDocument[]>,
+    }) as RegisteredQuery<Visibility, VexGetArgs, VexDocument[]>,
 
     search: query({
       args: {
@@ -129,7 +124,7 @@ export function queryApi<
           depth: args.depth,
           config,
         }),
-    }) as RegisteredQuery<Visibility, VexFindArgs, VexDocument[]>,
+    }) as RegisteredQuery<Visibility, VexSearchArgs, VexDocument[]>,
   };
 }
 
@@ -163,10 +158,7 @@ export function mutationApi<
   Visibility extends FunctionVisibility = "public",
 >(
   _config: VexConfig,
-  mutation: MutationBuilder<
-    DataModel,
-    Visibility
-  > = internalMutationGeneric as never,
+  mutation: MutationBuilder<DataModel, Visibility> = internalMutationGeneric as never,
 ) {
   return {
     create: mutation({
@@ -200,8 +192,7 @@ export function mutationApi<
       args: {
         id: v.string(),
       },
-      handler: (ctx, args) =>
-        remove({ ctx, id: args.id as GenericId<CollectionSlug> }),
+      handler: (ctx, args) => remove({ ctx, id: args.id as GenericId<CollectionSlug> }),
     }) as RegisteredMutation<Visibility, never, never>,
   };
 }

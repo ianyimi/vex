@@ -1,4 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
+import { BaseFieldMeta } from "../types";
 import type { CheckboxFieldInput, CheckboxField } from "./types";
 
 /**
@@ -43,7 +44,7 @@ import type { CheckboxFieldInput, CheckboxField } from "./types";
  * @see {@link CheckboxFieldInput} for the full input type
  * @see {@link CheckboxField} for the resolved output type
  */
-export function checkbox<TFieldMeta extends {} = {}>(
+export function checkbox<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
   options?: CheckboxFieldInput<TFieldMeta>,
 ): CheckboxField<TFieldMeta> {
   return {
@@ -66,9 +67,8 @@ export function checkbox<TFieldMeta extends {} = {}>(
       // Optional admin properties (no defaults)
       ...options?.admin,
     },
-
-    // Optional field properties (no defaults)
-    description: options?.description,
-    index: options?.index,
+    meta: {
+      ...options?.meta,
+    } as TFieldMeta,
   };
 }

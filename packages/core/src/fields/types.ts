@@ -11,11 +11,17 @@ import { RelationshipField } from "./relationship";
 import { ArrayField, ArrayType } from "./array";
 import { GroupField } from "./group";
 import { BlocksField } from "./blocks";
+import { UploadField } from "./upload";
 
 export * from "./text/types";
 export * from "./number/types";
 export * from "./checkbox/types";
-export * from "./blocks/types"
+export * from "./blocks/types";
+
+/**
+ * BaseFieldMeta - empty object
+ */
+export type BaseFieldMeta = {};
 
 /**
  * Discriminated union of all field types in VexCMS.
@@ -43,7 +49,7 @@ export * from "./blocks/types"
  * }
  * ```
  */
-export type AdminField<TFieldMeta extends {} = {}> =
+export type AdminField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> =
   | TextField<TFieldMeta>
   | NumberField<TFieldMeta>
   | CheckboxField<TFieldMeta>
@@ -52,6 +58,7 @@ export type AdminField<TFieldMeta extends {} = {}> =
   | UrlField<TFieldMeta>
   | ArrayField<ArrayType, TFieldMeta>
   | RelationshipField<TFieldMeta>
+  | UploadField<TFieldMeta>
   | BlocksField<TFieldMeta>
   | GroupField<TFieldMeta>;
 

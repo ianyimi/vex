@@ -256,5 +256,5 @@ export interface BaseField<TFieldMeta extends {} = {}> {
   index?: string;
   /** TypeScript type string written to generated document interfaces (e.g. `"string"`, `"number"`, `"string[]"`). */
   interfaceType: string;
-  meta?: TFieldMeta;
+  meta: TFieldMeta;
 }

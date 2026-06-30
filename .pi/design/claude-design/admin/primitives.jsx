@@ -148,7 +148,6 @@ const COLLECTIONS = [
   { slug: "pages",   label: "Pages",   icon: "fileText",   count: 14 },
   { slug: "posts",   label: "Posts",   icon: "newspaper",  count: 47 },
   { slug: "authors", label: "Authors", icon: "users",      count: 8  },
-  { slug: "media",   label: "Media",   icon: "image",      count: 132},
 ];
 
 const AUTHORS = [

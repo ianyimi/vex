@@ -36,9 +36,32 @@ export * from "./types";
 // ============================================================================
 
 export * from "./api/types";
-export {
-  type VexAuthAdapter,
-  type AuthCollectionConfig,
-  VexAuthConfigError,
-} from "./auth/types";
+export { type VexAuthAdapter, type AuthCollectionConfig, VexAuthConfigError } from "./auth/types";
 export { mergeAuthCollections } from "./auth/mergeCollections";
+
+// ============================================================================
+// MEDIA / STORAGE ADAPTER
+// ============================================================================
+
+export {
+  type VexStorageAdapter,
+  type StorageAdapterProtocol,
+  type MediaCollectionConfig,
+  type MediaCollectionMeta,
+  type MediaCollectionConfigInput,
+  type GetUrlReturn,
+  type GenerateUploadUrlReturn,
+  type UploadFileReturn,
+  STORAGE_ADAPTER_PROTOCOLS,
+  StorageAdapterPresignedUrl,
+  VexStorageConfigError,
+  validateAndMergeStorageConfig,
+  mediaMutationApi,
+  mediaQueryApi,
+  createMediaDocumentArgs,
+  createMediaDocumentReturn,
+  deleteMediaArgs,
+  deleteMediaReturn,
+  getUrlArgs,
+  getUrlReturn,
+} from "./media";

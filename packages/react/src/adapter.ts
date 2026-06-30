@@ -30,6 +30,8 @@ import {
   GroupFieldInput,
   BlocksFieldInput,
   BlocksFieldCell,
+  UploadFieldInput,
+  UploadFieldCell,
 } from "./components";
 
 /**
@@ -58,58 +60,61 @@ export interface ReactHKT extends ComponentHKT {
  *
  * @see {@link defineFrameworkAdapter} in `@vexcms/core`
  */
-export const reactAdapter: FrameworkAdapterInput<ReactHKT> =
-  defineFrameworkAdapter<ReactHKT>({
-    name: "react",
-    version: "0.1.0-alpha.1",
-    fields: {
-      [ADMIN_FIELDS.text.type]: {
-        input: TextFieldInput,
-        cell: TextFieldCell,
-      },
-      [ADMIN_FIELDS.number.type]: {
-        input: NumberFieldInput,
-        cell: NumberFieldCell,
-      },
-      [ADMIN_FIELDS.checkbox.type]: {
-        input: CheckboxFieldInput,
-        cell: CheckboxFieldCell,
-      },
-      [ADMIN_FIELDS.date.type]: {
-        input: DateFieldInput,
-        cell: DateFieldCell,
-      },
-      [ADMIN_FIELDS.select.type]: {
-        input: SelectFieldInput,
-        cell: SelectFieldCell,
-      },
-      [ADMIN_FIELDS.url.type]: {
-        input: UrlFieldInput,
-        cell: UrlFieldCell,
-      },
-      [ADMIN_FIELDS.relationship.type]: {
-        input: RelationshipFieldInput,
-        cell: RelationshipFieldCell,
-      },
-      [ADMIN_FIELDS.array.type]: {
-        input: ArrayFieldInput,
-        cell: ArrayFieldCell,
-      },
-      [ADMIN_FIELDS.group.type]: {
-        input: GroupFieldInput,
-        cell: GroupFieldCell,
-      },
-      [ADMIN_FIELDS.blocks.type]: {
-        input: BlocksFieldInput,
-        cell: BlocksFieldCell,
-      },
+export const reactAdapter: FrameworkAdapterInput<ReactHKT> = defineFrameworkAdapter<ReactHKT>({
+  name: "react",
+  version: "0.1.0-alpha.1",
+  fields: {
+    [ADMIN_FIELDS.text.type]: {
+      input: TextFieldInput,
+      cell: TextFieldCell,
     },
-    views: {
-      dashboard: DashboardView,
-      collectionEditView: CollectionEditView,
-      collectionListView: CollectionListView,
+    [ADMIN_FIELDS.number.type]: {
+      input: NumberFieldInput,
+      cell: NumberFieldCell,
     },
-  });
+    [ADMIN_FIELDS.checkbox.type]: {
+      input: CheckboxFieldInput,
+      cell: CheckboxFieldCell,
+    },
+    [ADMIN_FIELDS.date.type]: {
+      input: DateFieldInput,
+      cell: DateFieldCell,
+    },
+    [ADMIN_FIELDS.select.type]: {
+      input: SelectFieldInput,
+      cell: SelectFieldCell,
+    },
+    [ADMIN_FIELDS.url.type]: {
+      input: UrlFieldInput,
+      cell: UrlFieldCell,
+    },
+    [ADMIN_FIELDS.relationship.type]: {
+      input: RelationshipFieldInput,
+      cell: RelationshipFieldCell,
+    },
+    [ADMIN_FIELDS.array.type]: {
+      input: ArrayFieldInput,
+      cell: ArrayFieldCell,
+    },
+    [ADMIN_FIELDS.group.type]: {
+      input: GroupFieldInput,
+      cell: GroupFieldCell,
+    },
+    [ADMIN_FIELDS.blocks.type]: {
+      input: BlocksFieldInput,
+      cell: BlocksFieldCell,
+    },
+    [ADMIN_FIELDS.upload.type]: {
+      input: UploadFieldInput,
+      cell: UploadFieldCell,
+    },
+  },
+  views: {
+    dashboard: DashboardView,
+    collectionEditView: CollectionEditView,
+    collectionListView: CollectionListView,
+  },
+});
 
 /** Resolved type of the React adapter, for use in consuming code. */
 export type ReactAdapter = typeof reactAdapter;

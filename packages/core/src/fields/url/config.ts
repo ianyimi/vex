@@ -1,4 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
+import { BaseFieldMeta } from "../types";
 import type { UrlFieldInput, UrlField } from "./types";
 
 /**
@@ -46,7 +47,7 @@ import type { UrlFieldInput, UrlField } from "./types";
  * @see {@link UrlFieldInput} for the full input type
  * @see {@link UrlField} for the resolved output type
  */
-export function url<TFieldMeta extends {} = {}>(
+export function url<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
   options?: UrlFieldInput<TFieldMeta>,
 ): UrlField<TFieldMeta> {
   return {
@@ -70,5 +71,8 @@ export function url<TFieldMeta extends {} = {}>(
       placeholder: "",
       ...options?.admin,
     },
+    meta: {
+      ...options?.meta,
+    } as TFieldMeta,
   };
 }

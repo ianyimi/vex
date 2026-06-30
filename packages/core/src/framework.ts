@@ -1,5 +1,5 @@
 import { CollectionConfig } from "./collections";
-import { VexConfig } from "./config";
+import { ClientVexConfig } from "./config";
 import type {
   AdminField,
   ApplyComponent,
@@ -28,14 +28,8 @@ import { CollectionSlug } from "./types/generated";
  */
 export type FieldComponentMap<F extends ComponentHKT> = {
   [K in AdminField["type"]]: {
-    input: ApplyComponent<
-      F,
-      InputComponentProps<Extract<AdminField, { type: K }>>
-    >;
-    cell: ApplyComponent<
-      F,
-      CellComponentProps<Extract<AdminField, { type: K }>>
-    >;
+    input: ApplyComponent<F, InputComponentProps<Extract<AdminField, { type: K }>>>;
+    cell: ApplyComponent<F, CellComponentProps<Extract<AdminField, { type: K }>>>;
   };
 };
 
@@ -50,7 +44,7 @@ export type FieldComponentMap<F extends ComponentHKT> = {
  */
 export interface DashboardProps {
   /** The full resolved VexCMS configuration. */
-  config: VexConfig;
+  config: ClientVexConfig;
 }
 
 /**

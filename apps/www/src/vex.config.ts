@@ -1,8 +1,9 @@
-import { betterAuthAdapter } from "@vexcms/better-auth"
-import { defineConfig } from "@vexcms/core"
+import { betterAuthAdapter } from "@vexcms/better-auth";
+import { defineConfig } from "@vexcms/core";
+import { convexFileStorage } from "@vexcms/file-storage-convex";
 
-import { authOptions } from "~/auth/options"
-import { footers, headers, pages, siteSettings, themes } from "~/vexcms/collections"
+import { authOptions } from "~/auth/options";
+import { footers, headers, images, pages, siteSettings, themes } from "~/vexcms/collections";
 
 /**
  * VexCMS configuration for the demo/development site.
@@ -23,7 +24,10 @@ const vexConfig = defineConfig({
     },
   },
   authAdapter: betterAuthAdapter({ config: authOptions }),
+  storage: {
+    adapters: [convexFileStorage({ mediaCollections: [images] })],
+  },
   collections: [pages, headers, footers, themes, siteSettings],
-})
+});
 
-export default vexConfig
+export default vexConfig;

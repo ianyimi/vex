@@ -1,4 +1,5 @@
 import { mergeAuthCollections } from "../auth/mergeCollections";
+import { validateAndMergeStorageConfig } from "../media";
 import { VexConfig, VexConfigInput } from "./types";
 
 /**
@@ -42,14 +43,27 @@ import { VexConfig, VexConfigInput } from "./types";
  * @see {@link betterAuthAdapter} for the Better Auth adapter
  */
 export function defineConfig(config?: VexConfigInput): VexConfig {
+  const userCollections = config?.collections ?? [];
+  const authCollections = config?.authAdapter?.collections ?? [];
+  const collections = mergeAuthCollections({
+    authCollections,
+    userCollections,
+  });
+
+  const { mediaCollections } = validateAndMergeStorageConfig({
+    collections: collections,
+    storageAdapters: config?.storage?.adapters,
+  });
+
   return {
     basePath: "/admin",
     ...config,
     auth: config?.authAdapter,
-    collections: mergeAuthCollections({
-      authCollections: config?.authAdapter?.collections ?? [],
-      userCollections: config?.collections ?? [],
-    }),
+    storage: {
+      adapters: config?.storage?.adapters ?? [],
+    },
+    collections,
+    mediaCollections,
     admin: {
       ...config?.admin,
       sidebar: {

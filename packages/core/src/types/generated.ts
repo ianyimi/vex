@@ -88,6 +88,61 @@ export type DocumentBySlug = GeneratedVexTypes extends {
   : Record<string, unknown>;
 
 /**
+ * Union of all media collection slugs registered by storage adapters.
+ *
+ * - **Before `vex generate`:** resolves to `string` — any string is accepted.
+ * - **After `vex generate`:** resolves to a specific union, e.g. `"images" | "videos"`.
+ *
+ * Used by `upload({ to: ... })` so that invalid media collection slugs are
+ * caught at compile time after generation.
+ *
+ * @see {@link GeneratedVexTypes} for the augmentation interface
+ */
+export type MediaCollectionSlug = GeneratedVexTypes extends {
+  MediaCollectionSlug: infer S extends string;
+}
+  ? S
+  : string;
+
+/**
+ * Union of all storage adapter names registered in this project's VexCMS config.
+ *
+ * - **Before `vex generate`:** resolves to `string` — any string is accepted.
+ * - **After `vex generate`:** resolves to a specific union, e.g. `"convex"`.
+ *
+ * Only adapters whose `type` is `"presigned-url"` (i.e. those implementing
+ * `StorageAdapterPresignedUrlInterface`) are included. Adapters using other
+ * protocols (e.g. `"direct-upload"`, `"streaming"`) are excluded because
+ * they require different client-side upload logic.
+ *
+ * Used by `VexConfig.storage.clientUploads` and `StorageAdapterMap` so that
+ * only adapters actually registered in `defineConfig({ storage: { adapters: [...] } })`
+ * can be referenced. Invalid adapter names are caught at compile time after
+ * generation.
+ *
+ * @example
+ * ```ts
+ * // After generation — type is "convex"
+ * import type { StorageAdapterSlug } from "@vexcms/core"
+ *
+ * const registry: StorageAdapterMap = {
+ *   convex: { uploadFile: convexUploadFile },  // ✓
+ *   s3: { uploadFile: s3UploadFile },          // ✗ Type error — "s3" not registered
+ *   fake: { uploadFile: fakeUploadFile },     // ✗ Type error — not a registered adapter
+ * };
+ * ```
+ *
+ * @see {@link GeneratedVexTypes} for the augmentation interface
+ * @see {@link StorageAdapterPresignedUrlInterface} for the protocol requirement
+ * @see {@link VexConfig} for the `storage.clientUploads` consumer
+ */
+export type StorageAdapterSlug = GeneratedVexTypes extends {
+  StorageAdapterSlug: infer S extends string;
+}
+  ? S
+  : string;
+
+/**
  * Per-collection field-type map. Augmented by `vex generate` from the user's
  * collection configs. Powers all per-field-type helper types (`RelationshipKeysOf`,
  * `TextKeysOf`, `SortableKeysOf`, etc.).
@@ -121,10 +176,7 @@ export type DocumentBySlug = GeneratedVexTypes extends {
  * ```
  */
 export type CollectionsFieldTypeMap = GeneratedVexTypes extends {
-  CollectionsFieldTypeMap: infer M extends Record<
-    string,
-    Record<string, string>
-  >;
+  CollectionsFieldTypeMap: infer M extends Record<string, Record<string, string>>;
 }
   ? M
   : Record<string, Record<string, never>>;

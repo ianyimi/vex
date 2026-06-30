@@ -1,4 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
+import { BaseFieldMeta } from "../types";
 import type { ArrayFieldInput, ArrayField, ArrayType } from "./types";
 
 /**
@@ -56,10 +57,8 @@ import type { ArrayFieldInput, ArrayField, ArrayType } from "./types";
  */
 export function array<
   TArrayType extends ArrayType = string,
-  TFieldMeta extends {} = {},
->(
-  options: ArrayFieldInput<TArrayType, TFieldMeta>,
-): ArrayField<TArrayType, TFieldMeta> {
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+>(options: ArrayFieldInput<TArrayType, TFieldMeta>): ArrayField<TArrayType, TFieldMeta> {
   // If the items field is a named group, reference its name in the array
   // type rather than inlining the full object type. This keeps generated
   // interfaces readable and lets the named group's own type alias do the work.
@@ -98,5 +97,8 @@ export function array<
       placeholder: "",
       ...options?.admin,
     },
+    meta: {
+      ...options.meta,
+    } as TFieldMeta,
   };
 }

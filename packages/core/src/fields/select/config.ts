@@ -1,4 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
+import { BaseFieldMeta } from "../types";
 import type { SelectFieldInput, SelectField } from "./types";
 
 /**
@@ -56,7 +57,7 @@ import type { SelectFieldInput, SelectField } from "./types";
  * @see {@link SelectFieldInput} for the full input type
  * @see {@link SelectField} for the resolved output type
  */
-export function select<TFieldMeta extends {} = {}>(
+export function select<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
   options?: SelectFieldInput<TFieldMeta>,
 ): SelectField<TFieldMeta> {
   return {
@@ -77,5 +78,8 @@ export function select<TFieldMeta extends {} = {}>(
       placeholder: "",
       ...options?.admin,
     },
+    meta: {
+      ...options?.meta,
+    } as TFieldMeta,
   };
 }

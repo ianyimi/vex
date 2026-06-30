@@ -7,46 +7,23 @@ import {
 } from "@vexcms/core";
 import { ComponentPropsWithRef, ComponentType } from "react";
 import { TextFieldCell, TextFieldInput, textFieldToColumnDef } from "./text";
-import {
-  NumberFieldCell,
-  NumberFieldInput,
-  numberFieldToColumnDef,
-} from "./number";
-import {
-  CheckboxFieldCell,
-  CheckboxFieldInput,
-  checkboxFieldToColumnDef,
-} from "./checkbox";
+import { NumberFieldCell, NumberFieldInput, numberFieldToColumnDef } from "./number";
+import { CheckboxFieldCell, CheckboxFieldInput, checkboxFieldToColumnDef } from "./checkbox";
 import { DateFieldCell, DateFieldInput, dateFieldToColumnDef } from "./date";
 import { ADMIN_FIELDS, type AdminFieldType } from "@vexcms/core";
 import { cn } from "../../styles/utils";
 import { ColumnDef } from "@tanstack/react-table";
-import {
-  SelectFieldCell,
-  SelectFieldInput,
-  selectFieldToColumnDef,
-} from "./select";
+import { SelectFieldCell, SelectFieldInput, selectFieldToColumnDef } from "./select";
 import { UrlFieldCell, UrlFieldInput, urlFieldToColumnDef } from "./url";
 import {
   RelationshipFieldCell,
   RelationshipFieldInput,
   relationshipFieldToColumnDef,
 } from "./relationship";
-import {
-  ArrayFieldCell,
-  ArrayFieldInput,
-  arrayFieldToColumnDef,
-} from "./array";
-import {
-  GroupFieldCell,
-  GroupFieldInput,
-  groupFieldToColumnDef,
-} from "./group";
-import {
-  BlocksFieldCell,
-  BlocksFieldInput,
-  blocksFieldToColumnDef,
-} from "./blocks";
+import { ArrayFieldCell, ArrayFieldInput, arrayFieldToColumnDef } from "./array";
+import { GroupFieldCell, GroupFieldInput, groupFieldToColumnDef } from "./group";
+import { BlocksFieldCell, BlocksFieldInput, blocksFieldToColumnDef } from "./blocks";
+import { UploadFieldInput, UploadFieldCell } from "./upload";
 
 export * from "./text";
 export * from "./number";
@@ -54,6 +31,7 @@ export * from "./checkbox";
 export * from "./date";
 export * from "./select";
 export * from "./url";
+export * from "./upload";
 export * from "./array";
 export * from "./relationship";
 export * from "./group";
@@ -69,36 +47,21 @@ export const fieldInputComponents: Record<
   AdminFieldType,
   ComponentType<InputComponentProps<AdminField>>
 > = {
-  [ADMIN_FIELDS.text.type]: TextFieldInput as ComponentType<
-    InputComponentProps<AdminField>
-  >,
-  [ADMIN_FIELDS.number.type]: NumberFieldInput as ComponentType<
-    InputComponentProps<AdminField>
-  >,
+  [ADMIN_FIELDS.text.type]: TextFieldInput as ComponentType<InputComponentProps<AdminField>>,
+  [ADMIN_FIELDS.number.type]: NumberFieldInput as ComponentType<InputComponentProps<AdminField>>,
   [ADMIN_FIELDS.checkbox.type]: CheckboxFieldInput as ComponentType<
     InputComponentProps<AdminField>
   >,
-  [ADMIN_FIELDS.date.type]: DateFieldInput as ComponentType<
-    InputComponentProps<AdminField>
-  >,
-  [ADMIN_FIELDS.select.type]: SelectFieldInput as ComponentType<
-    InputComponentProps<AdminField>
-  >,
-  [ADMIN_FIELDS.url.type]: UrlFieldInput as ComponentType<
-    InputComponentProps<AdminField>
-  >,
+  [ADMIN_FIELDS.date.type]: DateFieldInput as ComponentType<InputComponentProps<AdminField>>,
+  [ADMIN_FIELDS.select.type]: SelectFieldInput as ComponentType<InputComponentProps<AdminField>>,
+  [ADMIN_FIELDS.url.type]: UrlFieldInput as ComponentType<InputComponentProps<AdminField>>,
   [ADMIN_FIELDS.relationship.type]: RelationshipFieldInput as ComponentType<
     InputComponentProps<AdminField>
   >,
-  [ADMIN_FIELDS.array.type]: ArrayFieldInput as ComponentType<
-    InputComponentProps<AdminField>
-  >,
-  [ADMIN_FIELDS.group.type]: GroupFieldInput as ComponentType<
-    InputComponentProps<AdminField>
-  >,
-  [ADMIN_FIELDS.blocks.type]: BlocksFieldInput as ComponentType<
-    InputComponentProps<AdminField>
-  >,
+  [ADMIN_FIELDS.array.type]: ArrayFieldInput as ComponentType<InputComponentProps<AdminField>>,
+  [ADMIN_FIELDS.group.type]: GroupFieldInput as ComponentType<InputComponentProps<AdminField>>,
+  [ADMIN_FIELDS.blocks.type]: BlocksFieldInput as ComponentType<InputComponentProps<AdminField>>,
+  [ADMIN_FIELDS.upload.type]: UploadFieldInput as ComponentType<InputComponentProps<AdminField>>,
 };
 
 /**
@@ -170,36 +133,19 @@ export const fieldCellComponents: Record<
   AdminFieldType,
   ComponentType<CellComponentProps<AdminField>>
 > = {
-  [ADMIN_FIELDS.text.type]: TextFieldCell as ComponentType<
-    CellComponentProps<AdminField>
-  >,
-  [ADMIN_FIELDS.number.type]: NumberFieldCell as ComponentType<
-    CellComponentProps<AdminField>
-  >,
-  [ADMIN_FIELDS.checkbox.type]: CheckboxFieldCell as ComponentType<
-    CellComponentProps<AdminField>
-  >,
-  [ADMIN_FIELDS.date.type]: DateFieldCell as ComponentType<
-    CellComponentProps<AdminField>
-  >,
-  [ADMIN_FIELDS.select.type]: SelectFieldCell as ComponentType<
-    CellComponentProps<AdminField>
-  >,
-  [ADMIN_FIELDS.url.type]: UrlFieldCell as ComponentType<
-    CellComponentProps<AdminField>
-  >,
+  [ADMIN_FIELDS.text.type]: TextFieldCell as ComponentType<CellComponentProps<AdminField>>,
+  [ADMIN_FIELDS.number.type]: NumberFieldCell as ComponentType<CellComponentProps<AdminField>>,
+  [ADMIN_FIELDS.checkbox.type]: CheckboxFieldCell as ComponentType<CellComponentProps<AdminField>>,
+  [ADMIN_FIELDS.date.type]: DateFieldCell as ComponentType<CellComponentProps<AdminField>>,
+  [ADMIN_FIELDS.select.type]: SelectFieldCell as ComponentType<CellComponentProps<AdminField>>,
+  [ADMIN_FIELDS.url.type]: UrlFieldCell as ComponentType<CellComponentProps<AdminField>>,
   [ADMIN_FIELDS.relationship.type]: RelationshipFieldCell as ComponentType<
     CellComponentProps<AdminField>
   >,
-  [ADMIN_FIELDS.array.type]: ArrayFieldCell as ComponentType<
-    CellComponentProps<AdminField>
-  >,
-  [ADMIN_FIELDS.group.type]: GroupFieldCell as ComponentType<
-    CellComponentProps<AdminField>
-  >,
-  [ADMIN_FIELDS.blocks.type]: BlocksFieldCell as ComponentType<
-    CellComponentProps<AdminField>
-  >,
+  [ADMIN_FIELDS.array.type]: ArrayFieldCell as ComponentType<CellComponentProps<AdminField>>,
+  [ADMIN_FIELDS.group.type]: GroupFieldCell as ComponentType<CellComponentProps<AdminField>>,
+  [ADMIN_FIELDS.blocks.type]: BlocksFieldCell as ComponentType<CellComponentProps<AdminField>>,
+  [ADMIN_FIELDS.upload.type]: UploadFieldCell as ComponentType<CellComponentProps<AdminField>>,
 };
 
 /**

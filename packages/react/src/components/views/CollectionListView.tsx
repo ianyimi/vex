@@ -2,31 +2,17 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { type VexDocument } from "@vexcms/core";
-import type {
-  CollectionConfig,
-  CollectionListViewProps,
-  CollectionSlug,
-} from "@vexcms/core";
+import type { CollectionConfig, CollectionListViewProps, CollectionSlug } from "@vexcms/core";
 import { Button } from "../ui/button";
 import { VexLink } from "../ui/VexLink";
 import { MODALS } from "../modals/constants";
 import { CreateDocumentModal } from "../modals";
 import { useVexConfig } from "../../context/VexConfigContext";
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "../ui/table";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../ui/table";
 import { getCollectionColumnDefs } from "../fields";
-import {
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { find } from "@vexcms/core/client";
+import { MediaCollectionListView } from "./MediaCollectionListView";
 
 /**
  * Collection list view component.
@@ -61,6 +47,12 @@ export function CollectionListView<
       (c) => c.slug === props.collection.slug,
     ) as CollectionConfig<TSlug>) ?? props.collection;
 
+  for (const mediaCollection of liveConfig.mediaCollections) {
+    if (mediaCollection.slug === collection.slug) {
+      return <MediaCollectionListView collection={mediaCollection} />;
+    }
+  }
+
   const { data: documents = [], isLoading } = useQuery({
     ...find({ collection: props.collection.slug, limit: 100, depth: 1 }),
     initialData: props.initialData,
@@ -74,10 +66,7 @@ export function CollectionListView<
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">{collection.labels.plural}</h1>
-          <p
-            className="text-sm text-muted-foreground mt-0.5"
-            suppressHydrationWarning
-          >
+          <p className="text-sm text-muted-foreground mt-0.5" suppressHydrationWarning>
             {isLoading
               ? "Loading…"
               : `${documents.length} document${documents.length === 1 ? "" : "s"}`}
@@ -86,9 +75,7 @@ export function CollectionListView<
         <Button
           nativeButton={false}
           render={
-            <VexLink
-              href={`/admin/${collection.slug}?${MODALS.createDocument.urlParam}=true`}
-            />
+            <VexLink href={`/admin/${collection.slug}?${MODALS.createDocument.urlParam}=true`} />
           }
         >
           + New {collection.labels.singular}
@@ -98,19 +85,13 @@ export function CollectionListView<
       {documents.length === 0 && !isLoading ? (
         <div className="text-center py-12 border rounded-md text-muted-foreground">
           No {collection.labels.plural.toLowerCase()} yet.{" "}
-          <VexLink
-            href={`/admin/${collection.slug}/new`}
-            className="text-primary hover:underline"
-          >
+          <VexLink href={`/admin/${collection.slug}/new`} className="text-primary hover:underline">
             Create one.
           </VexLink>
         </div>
       ) : (
         <div className="border grid place-items-center rounded-md">
-          <CollectionListDataTable
-            documents={documents}
-            collection={collection}
-          />
+          <CollectionListDataTable documents={documents} collection={collection} />
         </div>
       )}
     </div>
@@ -138,10 +119,7 @@ function CollectionListDataTable({
           <TableRow key={hg.id}>
             {hg.headers.map((header) => (
               <TableHead key={header.id}>
-                {flexRender(
-                  header.column.columnDef.header,
-                  header.getContext(),
-                )}
+                {flexRender(header.column.columnDef.header, header.getContext())}
               </TableHead>
             ))}
           </TableRow>

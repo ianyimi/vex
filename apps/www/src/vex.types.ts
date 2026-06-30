@@ -439,6 +439,19 @@ export interface JwksDocument extends VexDocument {
   expiresAt?: number
 }
 
+export interface ImagesDocument extends VexDocument {
+  _id: Id<"images">
+  alt: string
+  filename: string
+  mimeType: string
+  size: number
+  storageId: string
+  deleted?: boolean
+  convexUrl: string
+  width?: number
+  height?: number
+}
+
 export type CollectionSlug =
   | "pages"
   | "headers"
@@ -456,6 +469,11 @@ export type CollectionSlug =
   | "invitation"
   | "apikey"
   | "jwks"
+  | "images"
+
+export type MediaCollectionSlug = "images"
+
+export type StorageAdapterSlug = "convex"
 
 export type DocumentBySlug = {
   pages: Page
@@ -474,6 +492,7 @@ export type DocumentBySlug = {
   invitation: InvitationDocument
   apikey: ApikeyDocument
   jwks: JwksDocument
+  images: ImagesDocument
 }
 
 declare module "@vexcms/core" {
@@ -495,6 +514,9 @@ declare module "@vexcms/core" {
       | "invitation"
       | "apikey"
       | "jwks"
+      | "images"
+    MediaCollectionSlug: "images"
+    StorageAdapterSlug: "convex"
     DocumentBySlug: {
       pages: Page
       headers: Header
@@ -512,6 +534,7 @@ declare module "@vexcms/core" {
       invitation: InvitationDocument
       apikey: ApikeyDocument
       jwks: JwksDocument
+      images: ImagesDocument
     }
     CollectionsFieldTypeMap: {
       pages: {
@@ -634,6 +657,12 @@ declare module "@vexcms/core" {
         id: "_id"
         text: "publicKey" | "privateKey"
         date: "createdAt" | "expiresAt"
+      }
+      images: {
+        id: "_id"
+        text: "alt" | "filename" | "mimeType" | "storageId" | "convexUrl"
+        number: "size" | "width" | "height"
+        checkbox: "deleted"
       }
     }
   }
