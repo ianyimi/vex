@@ -1,4 +1,4 @@
-import type { CellComponentProps } from "@vexcms/core";
+import type { CellComponentProps, TDocument } from "@vexcms/core";
 import type { NumberField } from "@vexcms/core";
 
 /**
@@ -16,6 +16,8 @@ import type { NumberField } from "@vexcms/core";
  * <NumberFieldCell value={doc.price} fieldDef={priceField} row={row} />
  * ```
  */
-export function NumberFieldCell(props: CellComponentProps<NumberField>) {
+export function NumberFieldCell<TData extends TDocument = TDocument>(
+  props: CellComponentProps<NumberField, TData>,
+) {
   return <span>{props.value}</span>;
 }

@@ -24,12 +24,13 @@ import { TextFieldCell } from "./Cell";
  * });
  * ```
  */
-export function textFieldToColumnDef(props: {
+export function textFieldToColumnDef<TData extends TDocument = TDocument>(props: {
   fieldDef: TextField;
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TDocument, string> {
+  type?: TData;
+}): ColumnDef<TData, string> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
@@ -38,7 +39,7 @@ export function textFieldToColumnDef(props: {
     cell: ({ row }) => {
       const value = row.getValue(props.fieldKey) as string | undefined;
       return (
-        <TextFieldCell
+        <TextFieldCell<TData>
           value={value ?? ""}
           row={row}
           collection={props.collection}

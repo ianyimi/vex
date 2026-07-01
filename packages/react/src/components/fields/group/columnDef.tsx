@@ -15,12 +15,12 @@ import { GroupFieldCell } from "./Cell";
  * @param props.collection - Parent collection config.
  * @returns TanStack Table column definition.
  */
-export function groupFieldToColumnDef(props: {
+export function groupFieldToColumnDef<TData extends TDocument = TDocument>(props: {
   fieldDef: GroupField;
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TDocument, unknown> {
+}): ColumnDef<TData, unknown> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
@@ -29,7 +29,7 @@ export function groupFieldToColumnDef(props: {
     cell: ({ row }) => {
       const value = row.getValue(props.fieldKey) as Record<string, unknown>;
       return (
-        <GroupFieldCell
+        <GroupFieldCell<TData>
           value={value}
           row={row}
           collection={props.collection}

@@ -122,11 +122,14 @@ export interface InputComponentProps<TField extends AdminField = AdminField> {
  * @see {@link InputComponentProps} for the edit form equivalent
  * @see {@link FieldComponentMap} for how components are registered
  */
-export interface CellComponentProps<TField extends AdminField = AdminField> {
+export interface CellComponentProps<
+  TField extends AdminField = AdminField,
+  TData extends TDocument = TDocument,
+> {
   /** The raw field value from the document — typed to the field's value type. */
   value: TField["defaultValue"];
   /** The full document row, for cases where the cell needs to read other fields. */
-  row: Row<TDocument>;
+  row: Row<TData>;
   /** The resolved field definition — narrows to the specific field type via `TField`. */
   fieldDef: TField;
   /** The resolved field key on the collection for this column. */

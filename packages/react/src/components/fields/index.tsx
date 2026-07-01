@@ -180,19 +180,22 @@ export function fieldToCellComponent(field: AdminFieldType) {
  * const table = useReactTable({ data: documents, columns, getCoreRowModel: getCoreRowModel() });
  * ```
  */
-export function getCollectionColumnDefs(props: {
-  collection: CollectionConfig;
+export function getCollectionColumnDefs<
+  TData extends TDocument = TDocument,
+  TCollectionConfig extends CollectionConfig = CollectionConfig,
+>(props: {
+  collection: TCollectionConfig;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-}): ColumnDef<TDocument, any>[] {
+}): ColumnDef<TData, any>[] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const columnDefs: ColumnDef<TDocument, any>[] = [];
+  const columnDefs: ColumnDef<TData, any>[] = [];
   const { collection } = props;
   for (const [fieldKey, fieldDef] of Object.entries(collection.fields)) {
     const isTitleField = fieldKey === collection.admin.useAsTitle;
     switch (fieldDef.type) {
       case ADMIN_FIELDS.text.type:
         columnDefs.push(
-          textFieldToColumnDef({
+          textFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,
@@ -203,7 +206,7 @@ export function getCollectionColumnDefs(props: {
 
       case ADMIN_FIELDS.number.type:
         columnDefs.push(
-          numberFieldToColumnDef({
+          numberFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,
@@ -214,7 +217,7 @@ export function getCollectionColumnDefs(props: {
 
       case ADMIN_FIELDS.checkbox.type:
         columnDefs.push(
-          checkboxFieldToColumnDef({
+          checkboxFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,
@@ -225,7 +228,7 @@ export function getCollectionColumnDefs(props: {
 
       case ADMIN_FIELDS.date.type:
         columnDefs.push(
-          dateFieldToColumnDef({
+          dateFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,
@@ -236,7 +239,7 @@ export function getCollectionColumnDefs(props: {
 
       case ADMIN_FIELDS.select.type:
         columnDefs.push(
-          selectFieldToColumnDef({
+          selectFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,
@@ -247,7 +250,7 @@ export function getCollectionColumnDefs(props: {
 
       case ADMIN_FIELDS.url.type:
         columnDefs.push(
-          urlFieldToColumnDef({
+          urlFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,
@@ -258,7 +261,7 @@ export function getCollectionColumnDefs(props: {
 
       case ADMIN_FIELDS.relationship.type:
         columnDefs.push(
-          relationshipFieldToColumnDef({
+          relationshipFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,
@@ -269,7 +272,7 @@ export function getCollectionColumnDefs(props: {
 
       case ADMIN_FIELDS.array.type:
         columnDefs.push(
-          arrayFieldToColumnDef({
+          arrayFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,
@@ -280,7 +283,7 @@ export function getCollectionColumnDefs(props: {
 
       case ADMIN_FIELDS.group.type:
         columnDefs.push(
-          groupFieldToColumnDef({
+          groupFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,
@@ -291,7 +294,7 @@ export function getCollectionColumnDefs(props: {
 
       case ADMIN_FIELDS.blocks.type:
         columnDefs.push(
-          blocksFieldToColumnDef({
+          blocksFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,

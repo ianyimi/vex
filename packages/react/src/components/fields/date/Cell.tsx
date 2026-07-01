@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import type { CellComponentProps } from "@vexcms/core";
+import type { CellComponentProps, TDocument } from "@vexcms/core";
 import type { DateField } from "@vexcms/core";
 
 /**
@@ -18,7 +18,9 @@ import type { DateField } from "@vexcms/core";
  * <DateFieldCell value={doc.publishedAt} fieldDef={publishedAtField} row={row} />
  * ```
  */
-export function DateFieldCell(props: CellComponentProps<DateField>) {
+export function DateFieldCell<TData extends TDocument = TDocument>(
+  props: CellComponentProps<DateField, TData>,
+) {
   if (!props.value) {
     return null;
   }

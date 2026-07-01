@@ -38,6 +38,43 @@ export interface VexDocument {
  */
 export type TDocument<TShape = {}> = Record<string, unknown> & TShape & VexDocument;
 
+/**
+ * Type for media documents returned from Convex queries.
+ *
+ * Extends `VexDocument` with all required media fields: alt, filename,
+ * mimeType, size, storageId, deleted, src (the file URL), and optional
+ * width/height. Use this instead of `TDocument` in media collection views to
+ * avoid casting fields like `row.original.src as string`.
+ *
+ * @example
+ * ```ts
+ * const src = doc.src; // string | undefined, no cast needed
+ * const alt = doc.alt ?? "";
+ * ```
+ *
+ * @see {@link TDocument} for the base document type with custom shape support
+ */
+export interface VexMediaDocument extends VexDocument {
+  /** Alt text for accessibility and SEO. */
+  alt: string;
+  /** Original filename of the uploaded file. */
+  filename: string;
+  /** MIME type (e.g., "image/jpeg", "application/pdf"). */
+  mimeType: string;
+  /** File size in bytes. */
+  size: number;
+  /** Storage adapter ID for the uploaded file. */
+  storageId: string;
+  /** Whether this media item has been soft-deleted. */
+  deleted: boolean;
+  /** URL to the file. */
+  src: string;
+  /** Image width in pixels (if applicable). */
+  width?: number;
+  /** Image height in pixels (if applicable). */
+  height?: number;
+}
+
 // ── Shallow FunctionReference types ───────────────────────────────────────
 //
 // Extracted arg/return shapes for the generic Vex API endpoints.

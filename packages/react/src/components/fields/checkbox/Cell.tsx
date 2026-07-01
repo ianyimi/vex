@@ -1,4 +1,4 @@
-import type { CellComponentProps } from "@vexcms/core";
+import type { CellComponentProps, TDocument } from "@vexcms/core";
 import type { CheckboxField } from "@vexcms/core";
 
 /**
@@ -17,7 +17,9 @@ import type { CheckboxField } from "@vexcms/core";
  * <CheckboxFieldCell value={doc.published} fieldDef={publishedField} row={row} />
  * ```
  */
-export function CheckboxFieldCell(props: CellComponentProps<CheckboxField>) {
+export function CheckboxFieldCell<TData extends TDocument = TDocument>(
+  props: CellComponentProps<CheckboxField, TData>,
+) {
   if (props.value === undefined || props.value === null) return <span>—</span>;
   return <span>{props.value ? "Yes" : "No"}</span>;
 }

@@ -1,4 +1,4 @@
-import type { CellComponentProps } from "@vexcms/core";
+import type { CellComponentProps, TDocument } from "@vexcms/core";
 import type { SelectField } from "@vexcms/core";
 import { Badge } from "../../ui";
 
@@ -18,7 +18,9 @@ import { Badge } from "../../ui";
  * <SelectFieldCell value={doc.tags} fieldDef={tagsField} row={row} />
  * ```
  */
-export function SelectFieldCell(props: CellComponentProps<SelectField>) {
+export function SelectFieldCell<TData extends TDocument = TDocument>(
+  props: CellComponentProps<SelectField, TData>,
+) {
   const value = props.value ?? [];
   const fields = props.fieldDef.options.filter((o) => value.includes(o.value));
   return (

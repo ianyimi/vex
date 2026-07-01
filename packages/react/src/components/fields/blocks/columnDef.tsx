@@ -8,19 +8,19 @@ import { BlocksFieldCell } from "./Cell";
  * Sorting is disabled — blocks fields store heterogeneous arrays which are
  * not meaningfully sortable by Convex indexes.
  */
-export function blocksFieldToColumnDef(props: {
+export function blocksFieldToColumnDef<TData extends TDocument = TDocument>(props: {
   fieldDef: BlocksField;
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TDocument, unknown> {
+}): ColumnDef<TData, unknown> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
     header: props.fieldDef.label || props.fieldKey,
 
     cell: ({ row }) => (
-      <BlocksFieldCell
+      <BlocksFieldCell<TData>
         value={row.getValue(props.fieldKey)}
         row={row}
         collection={props.collection}

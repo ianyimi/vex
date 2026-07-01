@@ -1,17 +1,15 @@
 "use client";
 
-import type {
-  CellComponentProps,
-  BlocksField,
-  GenericBlock,
-} from "@vexcms/core";
+import type { CellComponentProps, BlocksField, GenericBlock, TDocument } from "@vexcms/core";
 
 /**
  * Blocks field cell component for the admin list-table view.
  *
  * Shows a compact count badge: `"3 blocks"`. Renders `—` when absent or empty.
  */
-export function BlocksFieldCell(props: CellComponentProps<BlocksField>) {
+export function BlocksFieldCell<TData extends TDocument = TDocument>(
+  props: CellComponentProps<BlocksField, TData>,
+) {
   const value = props.value as GenericBlock[] | null | undefined;
 
   if (!value || !Array.isArray(value) || value.length === 0) {

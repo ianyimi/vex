@@ -1,9 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type {
-  CollectionConfig,
-  RelationshipField,
-  TDocument,
-} from "@vexcms/core";
+import type { CollectionConfig, RelationshipField, TDocument } from "@vexcms/core";
 import { RelationshipFieldCell } from "./Cell";
 
 /**
@@ -29,12 +25,12 @@ import { RelationshipFieldCell } from "./Cell";
  *   isTitleField: false,
  * });
  */
-export function relationshipFieldToColumnDef(props: {
+export function relationshipFieldToColumnDef<TData extends TDocument = TDocument>(props: {
   fieldDef: RelationshipField;
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TDocument, string[] | undefined> {
+}): ColumnDef<TData, string[] | undefined> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
@@ -42,7 +38,7 @@ export function relationshipFieldToColumnDef(props: {
     cell: ({ row }) => {
       const value = row.getValue(props.fieldKey) as string[] | undefined;
       return (
-        <RelationshipFieldCell
+        <RelationshipFieldCell<TData>
           value={value}
           row={row}
           collection={props.collection}

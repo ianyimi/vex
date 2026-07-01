@@ -1,10 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  ADMIN_FIELDS,
-  CollectionConfig,
-  type NumberField,
-  type TDocument,
-} from "@vexcms/core";
+import { ADMIN_FIELDS, CollectionConfig, type NumberField, type TDocument } from "@vexcms/core";
 import { NumberFieldCell } from "./Cell";
 
 /**
@@ -29,12 +24,12 @@ import { NumberFieldCell } from "./Cell";
  * });
  * ```
  */
-export function numberFieldToColumnDef(props: {
+export function numberFieldToColumnDef<TData extends TDocument = TDocument>(props: {
   fieldDef: NumberField;
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TDocument, number> {
+}): ColumnDef<TData, number> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
@@ -43,7 +38,7 @@ export function numberFieldToColumnDef(props: {
     cell: ({ row }) => {
       const value = row.getValue(props.fieldKey) as number | undefined;
       return (
-        <NumberFieldCell
+        <NumberFieldCell<TData>
           value={value ?? ADMIN_FIELDS.number.defaultValue}
           row={row}
           collection={props.collection}

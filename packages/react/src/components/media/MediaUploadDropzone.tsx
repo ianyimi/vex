@@ -67,11 +67,6 @@ export function MediaUploadDropzone(props: MediaUploadDropzoneProps) {
         alt: file.name,
       });
 
-      // 4. Invalidate media collection query
-      queryClient.invalidateQueries({
-        queryKey: ["media", props.targetCollection],
-      });
-
       return mediaId;
     },
     [

@@ -1,8 +1,4 @@
-import {
-  addLeadingSlash,
-  type CellComponentProps,
-  type UrlField,
-} from "@vexcms/core";
+import { addLeadingSlash, TDocument, type CellComponentProps, type UrlField } from "@vexcms/core";
 import { VexLink } from "../../ui";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
@@ -25,7 +21,9 @@ import { useVexConfig } from "../../../context/VexConfigContext";
  * <UrlFieldCell value={doc.website} fieldDef={websiteField} row={row} isTitleField={false} />
  * ```
  */
-export function UrlFieldCell(props: CellComponentProps<UrlField>) {
+export function UrlFieldCell<TData extends TDocument = TDocument>(
+  props: CellComponentProps<UrlField, TData>,
+) {
   if (!props.value) return null;
   const config = useVexConfig();
   const basePath = addLeadingSlash(config.basePath);
@@ -35,9 +33,7 @@ export function UrlFieldCell(props: CellComponentProps<UrlField>) {
   return (
     <VexLink href={href}>
       <span className="font-bold" title={props.value}>
-        {props.value.length > 77
-          ? `${props.value.slice(0, 77)}...`
-          : props.value}
+        {props.value.length > 77 ? `${props.value.slice(0, 77)}...` : props.value}
       </span>
     </VexLink>
   );

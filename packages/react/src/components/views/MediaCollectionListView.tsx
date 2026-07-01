@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { CollectionConfig, MediaCollectionConfig, TDocument, VexDocument } from "@vexcms/core";
+import type { MediaCollectionConfig, TDocument, VexDocument, VexMediaDocument } from "@vexcms/core";
 import { find } from "@vexcms/core/client";
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
 import { Button } from "../ui/button";
@@ -111,13 +111,13 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
  * the document has no resolvable image URL.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mediaPreviewColumn(): ColumnDef<TDocument, any> {
+function mediaPreviewColumn(): ColumnDef<TDocument<VexMediaDocument>, any> {
   return {
     id: "preview",
     header: "",
     cell: ({ row }) => {
-      const src = row.original.src as string | undefined;
-      const alt = (row.original.alt as string) ?? "";
+      const src = row.original.src;
+      const alt = row.original.alt;
       return src ? (
         <VexImage src={src} alt={alt} className="w-10 h-10 rounded object-cover bg-muted" />
       ) : (
@@ -133,12 +133,12 @@ function MediaCollectionDataTable({
   documents,
   collection,
 }: {
-  documents: VexDocument[];
+  documents: VexMediaDocument[];
   collection: MediaCollectionConfig;
 }) {
   const columnDefs = [
     mediaPreviewColumn(),
-    ...getCollectionColumnDefs({ collection: collection as unknown as CollectionConfig }),
+    ...getCollectionColumnDefs<VexMediaDocument>({ collection }),
   ];
   const table = useReactTable({
     data: documents,

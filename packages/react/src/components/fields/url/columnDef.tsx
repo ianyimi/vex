@@ -26,12 +26,12 @@ import { UrlFieldCell } from "./Cell";
  * });
  * ```
  */
-export function urlFieldToColumnDef(props: {
+export function urlFieldToColumnDef<TData extends TDocument = TDocument>(props: {
   fieldDef: UrlField;
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TDocument, string> {
+}): ColumnDef<TData, string> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,

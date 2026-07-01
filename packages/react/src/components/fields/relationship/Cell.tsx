@@ -2,11 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import type {
-  CellComponentProps,
-  RelationshipField,
-  TDocument,
-} from "@vexcms/core";
+import type { CellComponentProps, RelationshipField, TDocument } from "@vexcms/core";
 import { useVexConfig } from "../../../context/VexConfigContext";
 import { resolveRelationshipPreview } from "./preview";
 
@@ -34,8 +30,8 @@ import { resolveRelationshipPreview } from "./preview";
  *
  * @param props - Standard cell component props.
  */
-export function RelationshipFieldCell(
-  props: CellComponentProps<RelationshipField>,
+export function RelationshipFieldCell<TData extends TDocument = TDocument>(
+  props: CellComponentProps<RelationshipField, TData>,
 ) {
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
@@ -47,9 +43,7 @@ export function RelationshipFieldCell(
 
   // SSR and initial hydration render — consistent placeholder prevents mismatch.
   if (!isMounted) {
-    return (
-      <span className="text-[13px] text-muted-foreground-subtle">—</span>
-    );
+    return <span className="text-[13px] text-muted-foreground-subtle">—</span>;
   }
 
   const rawValue = row.original[fieldKey] as unknown[] | undefined;
@@ -59,9 +53,7 @@ export function RelationshipFieldCell(
   }
 
   const isPopulated =
-    typeof rawValue[0] === "object" &&
-    rawValue[0] !== null &&
-    "_id" in (rawValue[0] as object);
+    typeof rawValue[0] === "object" && rawValue[0] !== null && "_id" in (rawValue[0] as object);
 
   if (!isPopulated) {
     return (
@@ -72,9 +64,7 @@ export function RelationshipFieldCell(
   }
 
   const docs = rawValue as TDocument[];
-  const targetCollection = config.collections.find(
-    (c) => c.slug === fieldDef.collection.slug,
-  );
+  const targetCollection = config.collections.find((c) => c.slug === fieldDef.collection.slug);
 
   if (docs.length === 1) {
     const Preview = resolveRelationshipPreview({ fieldDef, targetCollection });
@@ -87,8 +77,7 @@ export function RelationshipFieldCell(
     );
   }
 
-  const pluralLabel =
-    targetCollection?.labels.plural ?? fieldDef.collection.slug;
+  const pluralLabel = targetCollection?.labels.plural ?? fieldDef.collection.slug;
   return (
     <span className="text-[13px] text-foreground">
       {docs.length} {pluralLabel}

@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { CollectionConfig, VexDocument } from "@vexcms/core";
+import type { CollectionConfig, TDocument } from "@vexcms/core";
 import type { DateField } from "@vexcms/core";
 import { DateFieldCell } from "./Cell";
 
@@ -25,12 +25,12 @@ import { DateFieldCell } from "./Cell";
  * });
  * ```
  */
-export function dateFieldToColumnDef(props: {
+export function dateFieldToColumnDef<TData extends TDocument = TDocument>(props: {
   fieldDef: DateField;
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<VexDocument, number> {
+}): ColumnDef<TData, number> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
@@ -39,7 +39,7 @@ export function dateFieldToColumnDef(props: {
     cell: ({ row }) => {
       const value = row.getValue(props.fieldKey) as number;
       return (
-        <DateFieldCell
+        <DateFieldCell<TData>
           value={value}
           row={row}
           collection={props.collection}

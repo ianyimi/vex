@@ -1,6 +1,6 @@
 "use client";
 
-import type { CellComponentProps, GroupField } from "@vexcms/core";
+import type { CellComponentProps, GroupField, TDocument } from "@vexcms/core";
 
 /**
  * Group field cell component for the admin list-table view.
@@ -17,7 +17,9 @@ import type { CellComponentProps, GroupField } from "@vexcms/core";
  * // → renders "{ 2 keys }"
  * ```
  */
-export function GroupFieldCell(props: CellComponentProps<GroupField>) {
+export function GroupFieldCell<TData extends TDocument = TDocument>(
+  props: CellComponentProps<GroupField, TData>,
+) {
   const value = props.value as Record<string, unknown> | null | undefined;
 
   if (value == null || typeof value !== "object") {

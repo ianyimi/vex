@@ -1,10 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type {
-  CollectionConfig,
-  TDocument,
-  ArrayField,
-  ArrayType,
-} from "@vexcms/core";
+import type { CollectionConfig, TDocument, ArrayField, ArrayType } from "@vexcms/core";
 import { ArrayFieldCell } from "./Cell";
 
 /**
@@ -31,13 +26,14 @@ import { ArrayFieldCell } from "./Cell";
  * ```
  */
 export function arrayFieldToColumnDef<
+  TData extends ArrayType & TDocument = TDocument,
   TArrayType extends ArrayType = ArrayType,
 >(props: {
   fieldDef: ArrayField<TArrayType>;
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TDocument, TArrayType[]> {
+}): ColumnDef<TData, TArrayType[]> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
@@ -46,7 +42,7 @@ export function arrayFieldToColumnDef<
     cell: ({ row }) => {
       const value = row.getValue(props.fieldKey) as ArrayType[] | undefined;
       return (
-        <ArrayFieldCell
+        <ArrayFieldCell<TData>
           value={value ?? []}
           row={row}
           collection={props.collection}

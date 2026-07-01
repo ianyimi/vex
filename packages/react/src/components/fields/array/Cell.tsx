@@ -1,8 +1,4 @@
-import {
-  type CellComponentProps,
-  type ArrayField,
-  ArrayType,
-} from "@vexcms/core";
+import { type CellComponentProps, type ArrayField, ArrayType, TDocument } from "@vexcms/core";
 
 /**
  * Array field cell component for the data-table list view.
@@ -21,19 +17,14 @@ import {
  * <ArrayFieldCell value={doc.tags ?? []} fieldDef={tagsField} row={row} />
  * ```
  */
-export function ArrayFieldCell(
-  props: CellComponentProps<ArrayField<ArrayType>>,
-) {
+export function ArrayFieldCell<
+  TData extends TDocument = TDocument,
+  TArrayType extends ArrayType = ArrayType,
+>(props: CellComponentProps<ArrayField<TArrayType>, TData>) {
   const itemCount = props.value.length;
   const isSingle = props.value.length === 1;
   const labels = props.fieldDef.labels;
-  const label = labels
-    ? isSingle
-      ? labels.singular
-      : labels.plural
-    : isSingle
-      ? "item"
-      : "items";
+  const label = labels ? (isSingle ? labels.singular : labels.plural) : isSingle ? "item" : "items";
   return (
     <span title={`${props.fieldDef.type} - ${props.fieldDef.label}`}>
       {itemCount} {label}

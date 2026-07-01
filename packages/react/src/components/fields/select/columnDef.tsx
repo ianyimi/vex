@@ -1,9 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  type CollectionConfig,
-  type SelectField,
-  type TDocument,
-} from "@vexcms/core";
+import { type CollectionConfig, type SelectField, type TDocument } from "@vexcms/core";
 import { SelectFieldCell } from "./Cell";
 
 /**
@@ -28,12 +24,12 @@ import { SelectFieldCell } from "./Cell";
  * });
  * ```
  */
-export function selectFieldToColumnDef(props: {
+export function selectFieldToColumnDef<TData extends TDocument = TDocument>(props: {
   fieldDef: SelectField;
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TDocument, string[]> {
+}): ColumnDef<TData, string[]> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
@@ -42,7 +38,7 @@ export function selectFieldToColumnDef(props: {
     cell: ({ row }) => {
       const value = row.getValue(props.fieldKey) as string[] | undefined;
       return (
-        <SelectFieldCell
+        <SelectFieldCell<TData>
           value={value ?? []}
           row={row}
           collection={props.collection}

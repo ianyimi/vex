@@ -1,10 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  ADMIN_FIELDS,
-  CollectionConfig,
-  type CheckboxField,
-  type TDocument,
-} from "@vexcms/core";
+import { ADMIN_FIELDS, CollectionConfig, type CheckboxField, type TDocument } from "@vexcms/core";
 import { CheckboxFieldCell } from "./Cell";
 
 /**
@@ -29,12 +24,12 @@ import { CheckboxFieldCell } from "./Cell";
  * });
  * ```
  */
-export function checkboxFieldToColumnDef(props: {
+export function checkboxFieldToColumnDef<TData extends TDocument = TDocument>(props: {
   fieldDef: CheckboxField;
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;
-}): ColumnDef<TDocument, boolean> {
+}): ColumnDef<TData, boolean> {
   return {
     id: props.fieldKey,
     accessorKey: props.fieldKey,
@@ -43,7 +38,7 @@ export function checkboxFieldToColumnDef(props: {
     cell: ({ row }) => {
       const value = row.getValue(props.fieldKey) as boolean | undefined;
       return (
-        <CheckboxFieldCell
+        <CheckboxFieldCell<TData>
           value={value ?? ADMIN_FIELDS.checkbox.defaultValue}
           row={row}
           collection={props.collection}
