@@ -317,8 +317,8 @@ export const jwks = defineTable({
 })
 
 export const images = defineTable({
-  alt: v.string(),
   filename: v.string(),
+  alt: v.string(),
   mimeType: v.string(),
   size: v.number(),
   storageId: v.string(),
@@ -326,4 +326,9 @@ export const images = defineTable({
   src: v.string(),
   width: v.optional(v.number()),
   height: v.optional(v.number()),
-}).index("by_deleted", ["deleted"])
+})
+  .index("by_deleted", ["deleted"])
+  .searchIndex("search_filename", {
+    searchField: "filename",
+    filterFields: ["alt"],
+  })

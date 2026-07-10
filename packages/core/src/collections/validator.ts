@@ -118,8 +118,8 @@ export function collectionConfigToVexSchema(props: {
     }
     if (field.type === ADMIN_FIELDS.text.type && field.searchIndex) {
       searchIndexes.push(`\t.searchIndex("${field.searchIndex.name}", {\n
-        searchField: "${fieldKey}",\n
-        filterFields: ${JSON.stringify(field.searchIndex.filterFields)},\n
+        searchField: "${fieldKey}",
+        filterFields: ${JSON.stringify(field.searchIndex.filterFields)}\n
       })`);
     }
   }

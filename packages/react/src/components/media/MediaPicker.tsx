@@ -51,8 +51,8 @@ export function MediaPicker({
   const [selectedIds, setSelectedIds] = useState<string[]>(field.state.value ?? []);
 
   const config = useVexConfig();
-  const collection = config.mediaCollections.find((mc) => mc.slug === targetCollection);
-  if (!collection) {
+  const targetCollectionConfig = config.mediaCollections.find((mc) => mc.slug === targetCollection);
+  if (!targetCollectionConfig) {
     throw new Error(`Media collection "${targetCollection}" not found in config.`);
   }
 
@@ -70,16 +70,17 @@ export function MediaPicker({
 
   return (
     <Dialog open onOpenChange={onCancel}>
-      <DialogContent className="vex-modal max-w-[760px]">
-        <div className="vex-modal-head items-center pb-0">
+      <DialogContent className="w-[90svw] !max-w-6xl">
+        <div className="items-center flex gap-4">
           <div className="flex h-8 w-8 flex-none items-center justify-center rounded bg-accent text-accent-foreground">
-            <Icon name="Image" size={16} />
+            <Icon name="Image" size={20} />
           </div>
           <div className="text">
-            <h2>Select media</h2>
-            <p className="sub">
-              Relationship → <span className="mono">{targetCollection}</span> media collection
-            </p>
+            <h1 className="font-mono">
+              Select {targetCollectionConfig.labels.singular} -{" "}
+              <b className="text-primary">{fieldDef.label}</b>
+            </h1>
+            <p className="text-xs">Choose from the list below, or upload more</p>
           </div>
         </div>
 
@@ -103,33 +104,34 @@ export function MediaPicker({
             />
           </TabsList>
 
-          <TabsContent value="library" className="mt-0">
+          <TabsContent value="library">
             <MediaLibraryGrid
-              fieldName={field.name}
-              targetCollection={targetCollection}
+              targetCollectionConfig={targetCollectionConfig}
               multi={multi}
               onSelect={setSelectedIds}
               selectedIds={selectedIds}
             />
-            <div className="vex-modal-foot">
-              <span className="left">
+            <div className="flex items-center justify-between pt-4">
+              <p className="pt-2">
                 {selectedIds.length} {multi || selectedIds.length === 0 ? "selected" : "selected"}
-              </span>
-              <Button variant="ghost" onClick={onCancel}>
-                Cancel
-              </Button>
-              <Button onClick={handleSelect} disabled={selectedIds.length === 0}>
-                {multi && selectedIds.length > 1 ? `Select ${selectedIds.length}` : "Select"}
-              </Button>
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={onCancel}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSelect} disabled={selectedIds.length === 0}>
+                  {multi && selectedIds.length > 1 ? `Select ${selectedIds.length}` : "Select"}
+                </Button>
+              </div>
             </div>
           </TabsContent>
 
           <TabsContent value="upload" className="mt-0">
             <MediaUploadForm
               fieldDef={fieldDef}
-              collection={collection}
+              collection={targetCollectionConfig}
               multi={fieldDef.hasMany}
-              adapterName={collection.meta.storageAdapter}
+              adapterName={targetCollectionConfig.meta.storageAdapter}
               onComplete={handleUploadComplete}
               onCancel={handleBackToLibrary}
             />

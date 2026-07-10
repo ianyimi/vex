@@ -1,4 +1,4 @@
-import { defineBlock, text, select } from "@vexcms/core"
+import { defineBlock, text, select } from "@vexcms/core";
 
 /**
  * Content — a free-form text block for prose sections.
@@ -8,7 +8,7 @@ export const contentBlock = defineBlock({
   slug: "content",
   label: "Content",
   name: "content",
-  admin: { icon: "AlignLeft" },
+  admin: { icon: "Notebook" },
   fields: {
     body: text({
       required: true,
@@ -33,4 +33,4 @@ export const contentBlock = defineBlock({
       ],
     }),
   },
-})
+});

@@ -442,8 +442,8 @@ export interface JwksDocument extends VexDocument {
 
 export interface ImagesDocument extends VexDocument {
   _id: Id<"images">
-  alt: string
   filename: string
+  alt: string
   mimeType: string
   size: number
   storageId: string
@@ -662,7 +662,7 @@ declare module "@vexcms/core" {
       }
       images: {
         id: "_id"
-        text: "alt" | "filename" | "mimeType" | "storageId" | "src"
+        text: "filename" | "alt" | "mimeType" | "storageId" | "src"
         number: "size" | "width" | "height"
         checkbox: "deleted"
       }

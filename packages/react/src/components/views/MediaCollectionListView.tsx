@@ -118,9 +118,9 @@ function mediaPreviewColumn(): ColumnDef<TDocument<VexMediaDocument>, any> {
     cell: ({ row }) => {
       const src = row.original.src;
       return src ? (
-        <>
+        <div className="w-10 h-10 relative">
           <FilePreview mediaDoc={row.original} />
-        </>
+        </div>
       ) : (
         <div className="w-10 h-10 rounded bg-muted flex items-center justify-center text-xs">
           📄

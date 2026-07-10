@@ -60,8 +60,11 @@ export function defineMediaCollection<
 
   const fields: MediaCollectionConfig<TFieldMeta, TCollectionMeta>["fields"] = {
     // Required base fields — user fields spread after so label/description overrides work
+    filename: text({
+      required: true,
+      searchIndex: { name: "search_filename", filterFields: ["alt"] },
+    }),
     alt: text({ required: true }),
-    filename: text({ required: true }),
     mimeType: text({ required: true }),
     size: number({ required: true }),
     storageId: text({ required: true }),
@@ -81,6 +84,10 @@ export function defineMediaCollection<
       ...config.meta,
       storageAdapter: "convex",
     } as TCollectionMeta,
+    admin: {
+      useAsTitle: "filename" as TFieldSlug,
+      ...config.admin,
+    },
   });
 }
 

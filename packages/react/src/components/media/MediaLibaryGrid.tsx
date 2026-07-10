@@ -2,21 +2,25 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { type MediaCollectionSlug, type VexMediaDocument, vexConvexApi } from "@vexcms/core";
+import {
+  type MediaCollectionConfig,
+  type VexMediaDocument,
+  formatBytes,
+  formatMimeType,
+  vexConvexApi,
+} from "@vexcms/core";
 import { Button, Input, Icon } from "../ui";
 import { FilePreview } from "./FilePreview";
-import { useVexConfig } from "../../context";
 import { useDebounceValue } from "@ts-hooks-kit/core";
 import { convexQuery } from "@convex-dev/react-query";
+import { cn } from "../../styles/utils";
 
 /**
  * Props for the MediaLibraryGrid component.
  */
 export interface MediaLibraryGridProps {
   /** The media collection slug. */
-  targetCollection: MediaCollectionSlug;
-  /** The name of this field in the client form state. */
-  fieldName: string;
+  targetCollectionConfig: MediaCollectionConfig;
   /** Whether to allow multi-select (checkmarks on multiple items). */
   multi: boolean;
   /** Callback when user selects items (single or multiple IDs). */
@@ -37,8 +41,7 @@ export interface MediaLibraryGridProps {
  * @param props - Component props.
  */
 export function MediaLibraryGrid({
-  fieldName,
-  targetCollection,
+  targetCollectionConfig,
   multi,
   onSelect,
   selectedIds = [],
@@ -47,15 +50,9 @@ export function MediaLibraryGrid({
   const [debouncedSearch] = useDebounceValue(search, 200);
   const [limit] = useState(24);
   const [offset, setOffset] = useState(0);
-  const config = useVexConfig();
-
-  const targetCollectionConfig = config.mediaCollections.find((mc) => mc.slug === targetCollection);
-  if (!targetCollectionConfig) {
-    throw new Error(`Invalid upload field to - ${targetCollection}`);
-  }
 
   const { data: allItems = [], isPending: pendingAll } = useQuery({
-    ...convexQuery(vexConvexApi.find, { collection: targetCollection, limit }),
+    ...convexQuery(vexConvexApi.find, { collection: targetCollectionConfig.slug, limit }),
     enabled: debouncedSearch.length === 0,
   });
   const allMediaItems = allItems as VexMediaDocument[];
@@ -66,9 +63,9 @@ export function MediaLibraryGrid({
       debouncedSearch.length < 1
         ? "skip"
         : {
-            collection: targetCollection,
+            collection: targetCollectionConfig.slug,
             query: search,
-            searchField: fieldName,
+            searchField: targetCollectionConfig.admin.useAsTitle,
             limit,
             searchIndexName: `search_${targetCollectionConfig.admin.useAsTitle}`,
           },
@@ -92,24 +89,20 @@ export function MediaLibraryGrid({
 
   return (
     <>
-      <div className="flex items-center gap-2 px-5 pb-3 pt-3.5">
-        <div className="vex-input-wrap has-leading flex-1">
-          <span className="leading">
-            <Icon name="Search" size={13} />
-          </span>
-          <Input
-            className="vex-input sm"
-            placeholder={`Search ${targetCollection} by filename or alt…`}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <Button variant="outline" size="sm">
-          <Icon name="ListFilter" size={12} />
+      <div className="flex items-center gap-2 pb-2">
+        <Input
+          className="vex-input sm"
+          placeholder={`Search ${targetCollectionConfig} by filename or alt…`}
+          value={search}
+          isPending={search.length > 0 && pendingSearch}
+          iconLeft={{ name: "Search" }}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <Button variant="outline" icon="ListFilter">
           Type
         </Button>
       </div>
-      <div className="max-h-[320px] overflow-y-auto px-5 pb-1">
+      <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden">
         {displayedItems.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
             {search.length === 0 && pendingAll
@@ -121,42 +114,15 @@ export function MediaLibraryGrid({
                   : "No media files yet"}
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-3">
-            {displayedItems.map((doc) => {
-              const isSel = selectedIds.includes(doc._id);
-              const mimeShort = (doc.mimeType.split("/")[1] || doc.mimeType)
-                .toUpperCase()
-                .replace("SVG+XML", "SVG")
-                .replace("JPEG", "JPG");
-              const sizeDisplay =
-                doc.size < 1024
-                  ? `${doc.size} B`
-                  : doc.size < 1024 * 1024
-                    ? `${(doc.size / 1024).toFixed(0)} KB`
-                    : `${(doc.size / (1024 * 1024)).toFixed(1)} MB`;
-
-              return (
-                <button
-                  key={doc._id}
-                  type="button"
-                  className={`vex-media-tile${isSel ? " selected" : ""}`}
-                  onClick={() => handleItemClick(doc._id)}
-                >
-                  <div className="thumb">
-                    <FilePreview mediaDoc={doc} size={120} radius={4} />
-                    {isSel && (
-                      <span className="check">
-                        <Icon name="CheckCheck" size={12} strokeWidth={3} />
-                      </span>
-                    )}
-                  </div>
-                  <div className="fname">{doc.filename}</div>
-                  <div className="fmeta">
-                    {mimeShort} · {sizeDisplay}
-                  </div>
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+            {displayedItems.map((mediaDoc) => (
+              <MediaDocumentPreview
+                key={mediaDoc._id}
+                mediaDoc={mediaDoc}
+                selectedIds={selectedIds}
+                handleItemClick={handleItemClick}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -168,5 +134,46 @@ export function MediaLibraryGrid({
         </div>
       )}
     </>
+  );
+}
+
+function MediaDocumentPreview({
+  mediaDoc,
+  selectedIds,
+  handleItemClick,
+}: {
+  mediaDoc: VexMediaDocument;
+  selectedIds: string[];
+  handleItemClick: (id: string) => void;
+}) {
+  const isSelected = selectedIds.includes(mediaDoc._id);
+
+  return (
+    <button
+      key={mediaDoc._id}
+      type="button"
+      className={cn(
+        "group relative flex flex-col gap-2 rounded-sm border border-border bg-card p-2 transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        isSelected && "border-2 border-primary",
+      )}
+      onClick={() => handleItemClick(mediaDoc._id)}
+    >
+      <div className="relative w-full aspect-square overflow-hidden rounded-sm bg-muted">
+        <FilePreview mediaDoc={mediaDoc} radius={4} />
+        {isSelected && (
+          <div className="absolute inset-0 flex justify-end p-2 bg-primary/20">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Icon name="Check" size={14} strokeWidth={3} className="" />
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="min-w-0 text-left">
+        <p className="truncate text-xs font-medium">{mediaDoc.filename}</p>
+        <p className="truncate text-[11px] text-muted-foreground">
+          {formatMimeType(mediaDoc.mimeType)} · {formatBytes(mediaDoc.size)}
+        </p>
+      </div>
+    </button>
   );
 }

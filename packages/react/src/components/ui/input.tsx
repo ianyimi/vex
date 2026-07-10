@@ -3,6 +3,7 @@ import { Input as InputPrimitive } from "@base-ui/react";
 import { Loader2 } from "lucide-react";
 
 import { cn } from "../../styles/utils";
+import { Icon, IconProps } from "../Icon";
 
 /**
  * Single-line text input with optional in-input loading spinner.
@@ -27,28 +28,50 @@ import { cn } from "../../styles/utils";
 function Input({
   className,
   type,
-  loading,
+  isPending,
+  iconLeft,
+  iconRight,
   ...props
-}: React.ComponentProps<"input"> & { loading?: boolean }) {
-  const input = (
-    <InputPrimitive
-      type={type}
-      data-slot="input"
-      className={cn(
-        "h-8 w-full min-w-0 rounded-sm border border-input bg-card px-2.5 py-1 text-[13px] shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground-subtle focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
-        loading && "pr-9",
-        className,
-      )}
-      {...props}
-    />
-  );
-  if (!loading) return input;
+}: {
+  isPending?: boolean;
+  iconLeft?: IconProps;
+  iconRight?: IconProps;
+} & React.ComponentProps<"input">) {
   return (
-    <span className="relative block w-full">
-      {input}
+    <span className={cn("relative block w-full")}>
+      {iconLeft && (
+        <Icon
+          name={iconLeft.name}
+          aria-hidden="true"
+          size={12}
+          className={cn("absolute left-2.5 top-1/2 -translate-y-1/2")}
+        />
+      )}
+      <InputPrimitive
+        type={type}
+        data-slot="input"
+        className={cn(
+          "h-8 w-full min-w-0 rounded-sm border border-input bg-card px-2.5 py-1 text-[13px] shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground-subtle focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+          iconLeft && "pl-7",
+          isPending && "pr-9",
+          className,
+        )}
+        {...props}
+      />
+      {iconRight && (
+        <Icon
+          name={iconRight.name}
+          aria-hidden="true"
+          size={12}
+          className={cn("absolute right-5 top-1/2 -translate-y-1/2")}
+        />
+      )}
       <Loader2
         aria-hidden="true"
-        className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 animate-spin text-muted-foreground-subtle pointer-events-none"
+        className={cn(
+          "absolute right-2.5 top-1/2 -translate-y-1/2 size-4 animate-spin text-muted-foreground-subtle pointer-events-none",
+          !isPending && "invisible",
+        )}
       />
     </span>
   );

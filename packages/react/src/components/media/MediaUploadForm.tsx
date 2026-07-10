@@ -251,13 +251,27 @@ export function MediaUploadForm({
                 <Accordion multiple defaultValue={files.map((f) => f.id)}>
                   {files.map((fileData, index) => (
                     <AccordionItem key={fileData.id} value={fileData.id}>
-                      <AccordionTrigger>
+                      <AccordionTrigger
+                        postIconChildren={
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => filesField.removeValue(index)}
+                            className="text-destructive hover:text-destructive/60 ml-4"
+                            disabled={form.state.isSubmitting}
+                            icon="Trash"
+                          />
+                        }
+                      >
                         <div className="flex items-center gap-3">
                           <span className="text-xs font-mono text-muted-foreground tabular-nums">
                             {index + 1}
                           </span>
                           <Icon name="Image" size={14} />
-                          <span className="truncate text-sm font-medium">{fileData.filename}</span>
+                          <span className="truncate max-w-[200px] text-sm font-medium">
+                            {fileData.filename}
+                          </span>
                           <span className="ml-auto text-xs text-muted-foreground">
                             {formatMimeType(fileData.mimeType)} · {formatBytes(fileData.size)}
                           </span>
@@ -270,7 +284,10 @@ export function MediaUploadForm({
                             {(field) => (
                               <div className="space-y-1.5">
                                 <Label htmlFor={field.name} className="text-xs font-medium">
-                                  Filename
+                                  Filename{" "}
+                                  {collection.fields.alt?.required && (
+                                    <span className="text-destructive">*</span>
+                                  )}
                                 </Label>
                                 <Input
                                   id={field.name}
@@ -287,10 +304,7 @@ export function MediaUploadForm({
                             {(field) => (
                               <div className="space-y-1.5">
                                 <Label htmlFor={field.name} className="text-xs font-medium">
-                                  Alt text{" "}
-                                  {collection.fields.alt?.required && (
-                                    <span className="text-destructive">*</span>
-                                  )}
+                                  Alt text
                                 </Label>
                                 <Input
                                   id={field.name}
@@ -304,27 +318,16 @@ export function MediaUploadForm({
                           </form.Field>
 
                           {/* TODO: Render other fields from collection.fields using fieldToInputComponent */}
-
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => filesField.removeValue(index)}
-                            className="self-start text-destructive"
-                            disabled={form.state.isSubmitting}
-                          >
-                            <Icon name="Trash" size={12} className="mr-2" />
-                            Remove file
-                          </Button>
                         </div>
                       </AccordionContent>
                     </AccordionItem>
                   ))}
                 </Accordion>
+              </div>
 
-                {/* Add more files button (multi-upload only) */}
+              <div className="flex items-center justify-between border-t border-border bg-muted/30 py-3">
                 {multi && (
-                  <>
+                  <div>
                     <Button
                       type="button"
                       variant="outline"
@@ -344,14 +347,8 @@ export function MediaUploadForm({
                       onChange={handleFileInputChange}
                       className="hidden"
                     />
-                  </>
+                  </div>
                 )}
-              </div>
-
-              <div className="flex items-center justify-between border-t border-border bg-muted/30 px-5 py-3">
-                <span className="text-xs text-muted-foreground">
-                  Step 2 of 2 · {files.length} file{files.length === 1 ? "" : "s"}
-                </span>
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"

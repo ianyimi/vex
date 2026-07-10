@@ -107,11 +107,9 @@ export async function search<
   if (!args.query) {
     docs = await args.ctx.db.query(tableName).take(limit);
   } else {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    docs = await (args.ctx.db.query(tableName) as any)
-      .withSearchIndex(args.searchIndexName, (q: any) =>
-        (q as any).search(args.searchField, args.query),
-      )
+    docs = await args.ctx.db
+      .query(tableName)
+      .withSearchIndex(args.searchIndexName, (q) => q.search(args.searchField, args.query))
       .take(limit);
   }
 

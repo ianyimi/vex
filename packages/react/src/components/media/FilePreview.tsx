@@ -11,7 +11,7 @@ export type FilePreviewProps<TDoc extends VexMediaDocument = VexMediaDocument> =
   ComponentPropsWithRef<"div"> & {
     /** The media document. */
     mediaDoc: TDoc;
-    /** The size of the preview (width/height in pixels). Default: 64. */
+    /** Fixed size in pixels. If omitted, fills container (default behavior). */
     size?: number;
     /** Border radius in pixels. Default: 3. */
     radius?: number;
@@ -35,7 +35,7 @@ export type FilePreviewProps<TDoc extends VexMediaDocument = VexMediaDocument> =
 export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
   mediaDoc,
   isPending,
-  size = 64,
+  size,
   radius = 3,
   className,
 }: FilePreviewProps<TDoc>) {
@@ -44,15 +44,23 @@ export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
   const isVideo = mediaDoc.mimeType.startsWith("video/");
   const isAudio = mediaDoc.mimeType.startsWith("audio/");
 
-  const wrapperStyle = {
-    width: size,
-    height: size,
-    borderRadius: radius,
-  };
+  // Default behavior: fill container. Pass explicit size for fixed dimensions.
+  const fillContainer = size === undefined;
+  const wrapperStyle = fillContainer
+    ? {
+        borderRadius: radius,
+      }
+    : {
+        width: size,
+        height: size,
+        borderRadius: radius,
+      };
+
+  const wrapperClassName = fillContainer ? "w-full h-full absolute inset-0" : "";
   function IconWrapper({ children }: ComponentPropsWithRef<"div">) {
     return (
       <div
-        className={cn(`flex items-center justify-center p-2 bg-muted`, className)}
+        className={cn(`flex items-center justify-center p-2 bg-muted`, wrapperClassName, className)}
         style={wrapperStyle}
       >
         {children}
@@ -63,7 +71,11 @@ export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
   if (isPending) {
     return (
       <IconWrapper>
-        <Icon name="Loader" size={size * 0.3} className="animate-spin text-muted-foreground" />
+        <Icon
+          name="Loader"
+          size={fillContainer ? 24 : size * 0.3}
+          className="animate-spin text-muted-foreground"
+        />
       </IconWrapper>
     );
   }
@@ -71,7 +83,10 @@ export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
   const alt = mediaDoc.alt ?? mediaDoc.filename;
   if (isImage && mediaDoc?.src) {
     return (
-      <div className={`relative overflow-hidden ${className}`} style={wrapperStyle}>
+      <div
+        className={cn("relative overflow-hidden", wrapperClassName, className)}
+        style={wrapperStyle}
+      >
         <VexImage
           src={mediaDoc.src}
           alt={alt}
@@ -80,7 +95,7 @@ export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
             // Fallback to file icon on load error
             const wrapper = e.currentTarget.parentElement;
             if (wrapper) {
-              wrapper.innerHTML = `<div class="flex h-full w-full items-center justify-center bg-muted text-muted-foreground"><svg width="${size * 0.3}" height="${size * 0.3}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></div>`;
+              wrapper.innerHTML = `<div class="flex h-full w-full items-center justify-center bg-muted text-muted-foreground"><svg width="${mediaDoc.size * 0.3}" height="${mediaDoc.size * 0.3}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></div>`;
             }
           }}
         />
@@ -91,7 +106,10 @@ export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
   // SVG → show type icon
   if (isSvg && mediaDoc?.src) {
     return (
-      <div className={`relative overflow-hidden ${className}`} style={wrapperStyle}>
+      <div
+        className={cn("relative overflow-hidden", wrapperClassName, className)}
+        style={wrapperStyle}
+      >
         <img
           src={mediaDoc.src}
           alt={alt}
@@ -105,7 +123,7 @@ export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
   if (isVideo) {
     return (
       <IconWrapper>
-        <Icon name="Video" size={size} className="text-muted-foreground" />
+        <Icon name="Video" size={fillContainer ? 32 : size} className="text-muted-foreground" />
       </IconWrapper>
     );
   }
@@ -113,7 +131,11 @@ export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
   if (isAudio) {
     return (
       <IconWrapper>
-        <Icon name="AudioWaveform" size={size} className="text-muted-foreground" />
+        <Icon
+          name="AudioWaveform"
+          size={fillContainer ? 32 : size}
+          className="text-muted-foreground"
+        />
       </IconWrapper>
     );
   }
@@ -121,7 +143,7 @@ export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
   // Fallback → generic file icon
   return (
     <IconWrapper>
-      <Icon name="File" size={size} className="text-muted-foreground" />
+      <Icon name="File" size={fillContainer ? 32 : size} className="text-muted-foreground" />
     </IconWrapper>
   );
 }

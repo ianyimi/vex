@@ -1,4 +1,4 @@
-import { array, defineBlock, group, text } from "@vexcms/core"
+import { array, defineBlock, group, text } from "@vexcms/core";
 
 /**
  * Stats — a row of key metrics (e.g. "10K+ users", "99.9% uptime").
@@ -8,7 +8,7 @@ export const statsBlock = defineBlock({
   slug: "stats",
   label: "Stats",
   name: "stats",
-  admin: { icon: "BarChart3" },
+  admin: { icon: "Percent" },
   fields: {
     title: text({
       label: "Section Title",
@@ -34,4 +34,4 @@ export const statsBlock = defineBlock({
       }),
     }),
   },
-})
+});

@@ -133,9 +133,9 @@ function UploadItemRow({
             <Skeleton className="h-4 w-xs" />
           </div>
         ) : (
-          <div className="meta">
-            <div className="name">{mediaDoc.filename}</div>
-            <div className="sub">
+          <div className="">
+            <div className="">{mediaDoc.filename}</div>
+            <div className="">
               {formatMimeType(mediaDoc.mimeType)} · {formatBytes(mediaDoc.size)}
             </div>
           </div>

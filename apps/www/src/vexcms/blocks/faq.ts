@@ -1,4 +1,4 @@
-import { array, defineBlock, group, text } from "@vexcms/core"
+import { array, defineBlock, group, text } from "@vexcms/core";
 
 /**
  * FAQ — an accordion of questions and answers.
@@ -7,7 +7,7 @@ export const faqBlock = defineBlock({
   slug: "faq",
   label: "FAQ",
   name: "faq",
-  admin: { icon: "CircleHelp" },
+  admin: { icon: "CircleQuestionMark" },
   fields: {
     title: text({ label: "Section Title", description: "Optional heading above the FAQ list." }),
     questions: array({
@@ -26,4 +26,4 @@ export const faqBlock = defineBlock({
       }),
     }),
   },
-})
+});

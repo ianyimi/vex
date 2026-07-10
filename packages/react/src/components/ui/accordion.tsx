@@ -2,6 +2,7 @@ import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 
 import { cn } from "../../styles/utils";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { ReactNode } from "react";
 
 function Accordion({ className, ...props }: AccordionPrimitive.Root.Props) {
   return (
@@ -26,14 +27,15 @@ function AccordionItem({ className, ...props }: AccordionPrimitive.Item.Props) {
 function AccordionTrigger({
   className,
   children,
+  postIconChildren,
   ...props
-}: AccordionPrimitive.Trigger.Props) {
+}: { postIconChildren?: ReactNode } & AccordionPrimitive.Trigger.Props) {
   return (
     <AccordionPrimitive.Header className="flex">
       <AccordionPrimitive.Trigger
         data-slot="accordion-trigger"
         className={cn(
-          "group/accordion-trigger relative flex flex-1 items-start justify-between rounded-md border border-transparent py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring aria-disabled:pointer-events-none aria-disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4 **:data-[slot=accordion-trigger-icon]:text-muted-foreground",
+          "group/accordion-trigger relative flex flex-1 items-center justify-between rounded-md border border-transparent py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring aria-disabled:pointer-events-none aria-disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4 **:data-[slot=accordion-trigger-icon]:text-muted-foreground",
           className,
         )}
         {...props}
@@ -47,16 +49,13 @@ function AccordionTrigger({
           data-slot="accordion-trigger-icon"
           className="pointer-events-none self-center hidden shrink-0 group-aria-expanded/accordion-trigger:inline"
         />
+        {postIconChildren}
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>
   );
 }
 
-function AccordionContent({
-  className,
-  children,
-  ...props
-}: AccordionPrimitive.Panel.Props) {
+function AccordionContent({ className, children, ...props }: AccordionPrimitive.Panel.Props) {
   return (
     <AccordionPrimitive.Panel
       data-slot="accordion-content"
