@@ -18,6 +18,10 @@ export const MODALS = {
     /** Label for the media upload modal's primary action. */
     label: "Upload",
   },
+  editMedia: {
+    urlParam: "editMedia",
+    label: "Edit",
+  },
 } as const;
 
 /** Union of all URL parameter strings used to control admin modals. */

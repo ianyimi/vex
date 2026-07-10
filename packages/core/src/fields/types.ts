@@ -125,6 +125,7 @@ export interface InputComponentProps<TField extends AdminField = AdminField> {
 export interface CellComponentProps<
   TField extends AdminField = AdminField,
   TData extends TDocument = TDocument,
+  TCollectionConfig extends CollectionConfig = CollectionConfig,
 > {
   /** The raw field value from the document — typed to the field's value type. */
   value: TField["defaultValue"];
@@ -137,5 +138,5 @@ export interface CellComponentProps<
   /** Whether this cell is the field designated as `useAsTitle` — used to render a clickable edit link. */
   isTitleField: boolean;
   /** The parent collection config — used by title cells to build the edit link `href`. */
-  collection: CollectionConfig;
+  collection: TCollectionConfig;
 }

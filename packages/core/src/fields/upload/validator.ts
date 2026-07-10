@@ -13,6 +13,6 @@ import type { UploadField } from "./types";
  *   `"v.optional(v.id(\"images\"))"`.
  */
 export function uploadFieldToValidator(props: { field: UploadField }): string {
-  const validator = `v.id("${props.field.to}")`;
+  const validator = `v.array(v.id("${props.field.to}"))`;
   return applyBaseValidators({ field: props.field, validator });
 }

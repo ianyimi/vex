@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { AppFormContext, type AnyFormApi } from "./AppFormContext";
 import { DndProvider } from "../ui/dnd";
+import { FormAsyncValidateOrFn, FormValidateOrFn } from "@tanstack/react-form";
 
 /**
  * Provides a TanStack Form instance to all descendant field input components.
@@ -29,8 +30,34 @@ import { DndProvider } from "../ui/dnd";
  * </AppForm>
  * ```
  */
-export function AppForm(props: {
-  form: AnyFormApi;
+export function AppForm<
+  TFormData extends any = any,
+  TOnMount extends undefined | FormValidateOrFn<TFormData> = undefined,
+  TOnChange extends undefined | FormValidateOrFn<TFormData> = undefined,
+  TOnChangeAsync extends undefined | FormAsyncValidateOrFn<TFormData> = undefined,
+  TOnBlur extends undefined | FormValidateOrFn<TFormData> = undefined,
+  TOnBlurAsync extends undefined | FormAsyncValidateOrFn<TFormData> = undefined,
+  TOnSubmit extends undefined | FormValidateOrFn<TFormData> = undefined,
+  TOnSubmitAsync extends undefined | FormAsyncValidateOrFn<TFormData> = undefined,
+  TOnDynamic extends undefined | FormValidateOrFn<TFormData> = undefined,
+  TOnDynamicAsync extends undefined | FormAsyncValidateOrFn<TFormData> = undefined,
+  TOnServer extends undefined | FormAsyncValidateOrFn<TFormData> = undefined,
+  TSubmitMeta extends any = any,
+>(props: {
+  form: AnyFormApi<
+    TFormData,
+    TOnMount,
+    TOnChange,
+    TOnChangeAsync,
+    TOnBlur,
+    TOnBlurAsync,
+    TOnSubmit,
+    TOnSubmitAsync,
+    TOnDynamic,
+    TOnDynamicAsync,
+    TOnServer,
+    TSubmitMeta
+  >;
   children: ReactNode;
   className?: string;
 }) {

@@ -11,7 +11,7 @@ import { MODALS } from "../modals/constants";
 import { CreateMediaModal } from "../modals/CreateMediaModal";
 import { useVexConfig } from "../../context/VexConfigContext";
 import { getCollectionColumnDefs } from "../fields";
-import { VexImage } from "../ui";
+import { FilePreview } from "../media/FilePreview";
 
 /**
  * Props for the `MediaCollectionListView` component.
@@ -117,9 +117,10 @@ function mediaPreviewColumn(): ColumnDef<TDocument<VexMediaDocument>, any> {
     header: "",
     cell: ({ row }) => {
       const src = row.original.src;
-      const alt = row.original.alt;
       return src ? (
-        <VexImage src={src} alt={alt} className="w-10 h-10 rounded object-cover bg-muted" />
+        <>
+          <FilePreview mediaDoc={row.original} />
+        </>
       ) : (
         <div className="w-10 h-10 rounded bg-muted flex items-center justify-center text-xs">
           📄

@@ -32,7 +32,7 @@ export function getCollectionDefaultValues(props: {
 }) {
   const res: Record<string, unknown> = {};
   for (const [fieldKey, fieldDef] of Object.entries(props.collection.fields)) {
-    if (props.document && props.document[fieldKey] !== undefined) {
+    if (props.document && Boolean(props.document[fieldKey])) {
       res[fieldKey] = props.document[fieldKey];
     } else {
       res[fieldKey] = fieldDef.defaultValue;
@@ -59,9 +59,7 @@ export function getCollectionDefaultValues(props: {
  * schema.parse({ title: "Hello", slug: "hello" }) // passes
  * ```
  */
-export function getCollectionInputSchema(props: {
-  collection: CollectionConfig;
-}) {
+export function getCollectionInputSchema(props: { collection: CollectionConfig }) {
   const res: Record<string, ZodType> = {};
   for (const [fieldKey, fieldDef] of Object.entries(props.collection.fields)) {
     res[fieldKey] = adminFieldToInputSchema({ field: fieldDef });

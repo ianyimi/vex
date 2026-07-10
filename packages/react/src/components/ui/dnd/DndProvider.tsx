@@ -10,13 +10,11 @@ import {
   useState,
   type RefObject,
   type ReactNode,
+  useEffect,
 } from "react";
 
 export interface DndContextValue {
-  register: (
-    id: string,
-    handler: (from: number, to: number) => void,
-  ) => () => void;
+  register: (id: string, handler: (from: number, to: number) => void) => () => void;
   /** The droppableId that currently owns the active drag, or null when idle. */
   activeDroppableId: string | null;
   /**
@@ -33,6 +31,8 @@ export interface DndContextValue {
    * Lives outside <DragDropContext key={dndKey}> and survives every remount.
    */
   accordionStateRef: RefObject<Map<string, boolean>>;
+  /** Whether the DnD is mounted on the client (false on server). */
+  mounted: boolean;
 }
 
 export const DndContext = createContext<DndContextValue | null>(null);
@@ -58,7 +58,7 @@ export function useDndRegistry() {
       "useDndContext must be called inside a DndProvider, or with access to a DndContext",
     );
   }
-  return { register: dnd.register, activeDroppableId: dnd.activeDroppableId };
+  return { register: dnd.register, activeDroppableId: dnd.activeDroppableId, mounted: dnd.mounted };
 }
 
 /**
@@ -74,15 +74,15 @@ export function useDndRegistry() {
  * unrelated droppable as isDraggingOver regardless of geometry or render timing.
  */
 export function DndProvider({ children }: { children: ReactNode }) {
-  const registry = useRef(
-    new Map<string, (from: number, to: number) => void>(),
-  );
+  const registry = useRef(new Map<string, (from: number, to: number) => void>());
   const itemStableKeysRef = useRef(new Map<string, (string | undefined)[]>());
   const accordionStateRef = useRef(new Map<string, boolean>());
-  const [activeDroppableId, setActiveDroppableId] = useState<string | null>(
-    null,
-  );
+  const [activeDroppableId, setActiveDroppableId] = useState<string | null>(null);
   const [dndKey, setDndKey] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const register = useCallback(
     (id: string, handler: (from: number, to: number) => void): (() => void) => {
@@ -109,8 +109,9 @@ export function DndProvider({ children }: { children: ReactNode }) {
       activeDroppableId,
       itemStableKeysRef,
       accordionStateRef,
+      mounted,
     }),
-    [register, activeDroppableId],
+    [register, activeDroppableId, mounted],
   );
 
   return (
@@ -125,8 +126,7 @@ export function DndProvider({ children }: { children: ReactNode }) {
           document.body.style.overflowX = "";
           setActiveDroppableId(null);
           if (!result.destination) return;
-          if (result.source.droppableId !== result.destination.droppableId)
-            return;
+          if (result.source.droppableId !== result.destination.droppableId) return;
           const droppableId = result.source.droppableId;
           const from = result.source.index;
           const to = result.destination.index;

@@ -1,6 +1,10 @@
 "use client";
 
-import type { ReactFormExtendedApi } from "@tanstack/react-form";
+import type {
+  FormAsyncValidateOrFn,
+  FormValidateOrFn,
+  ReactFormExtendedApi,
+} from "@tanstack/react-form";
 import { createContext, useContext } from "react";
 
 /**
@@ -10,20 +14,32 @@ import { createContext, useContext } from "react";
  * adds the `Field` render-prop component. Using `any` for all generics lets the
  * context hold any form instance regardless of its `TFormData` shape.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AnyFormApi = ReactFormExtendedApi<
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any
+export type AnyFormApi<
+  TFormData extends any = any,
+  TOnMount extends undefined | FormValidateOrFn<TFormData> = undefined,
+  TOnChange extends undefined | FormValidateOrFn<TFormData> = undefined,
+  TOnChangeAsync extends undefined | FormAsyncValidateOrFn<TFormData> = undefined,
+  TOnBlur extends undefined | FormValidateOrFn<TFormData> = undefined,
+  TOnBlurAsync extends undefined | FormAsyncValidateOrFn<TFormData> = undefined,
+  TOnSubmit extends undefined | FormValidateOrFn<TFormData> = undefined,
+  TOnSubmitAsync extends undefined | FormAsyncValidateOrFn<TFormData> = undefined,
+  TOnDynamic extends undefined | FormValidateOrFn<TFormData> = undefined,
+  TOnDynamicAsync extends undefined | FormAsyncValidateOrFn<TFormData> = undefined,
+  TOnServer extends undefined | FormAsyncValidateOrFn<TFormData> = undefined,
+  TSubmitMeta extends any = any,
+> = ReactFormExtendedApi<
+  TFormData,
+  TOnMount,
+  TOnChange,
+  TOnChangeAsync,
+  TOnBlur,
+  TOnBlurAsync,
+  TOnSubmit,
+  TOnSubmitAsync,
+  TOnDynamic,
+  TOnDynamicAsync,
+  TOnServer,
+  TSubmitMeta
 >;
 
 /**
@@ -37,7 +53,20 @@ export type AnyFormApi = ReactFormExtendedApi<
  * @see {@link useAppForm} for the consuming hook
  * @see {@link createFieldInput} for the factory that reads this context
  */
-export const AppFormContext = createContext<AnyFormApi | null>(null);
+export const AppFormContext = createContext<AnyFormApi<
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any
+> | null>(null);
 
 /**
  * Returns the current TanStack Form instance from the nearest `<AppForm>`.
@@ -47,7 +76,20 @@ export const AppFormContext = createContext<AnyFormApi | null>(null);
  *
  * @see {@link AppFormContext}
  */
-export function useAppForm(): AnyFormApi {
+export function useAppForm<TFormData extends any = any>(): AnyFormApi<
+  TFormData,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any
+> {
   const form = useContext(AppFormContext);
   if (!form) throw new Error("useAppForm must be called inside <AppForm>");
   return form;

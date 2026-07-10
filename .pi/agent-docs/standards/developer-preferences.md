@@ -4,6 +4,12 @@
 > AI-generated spec code that the developer consistently prefers. These are encoded
 > in `.claude/commands/dev-spec.md` — this file is the audit trail.
 
+## UI Components and shadcn/ui
+
+- **Always use shadcn/ui components for UI patterns**: All UI components across the project are built on shadcn/ui components, which are built on Base UI primitives. Before writing any UI code in a spec, search the [shadcn/ui registry](https://ui.shadcn.com/docs/components) to determine which components should be used. The `packages/react/components.json` file is configured with the `@wds` registry and `base-vega` style. Install new components as needed with `npx shadcn@latest add <component-name>`. Never write custom implementations of common UI patterns (tabs, dialogs, dropdowns, etc.) when a shadcn component exists — use the shadcn component for ARIA compliance and consistency. *(Encoded: spec 32b, 2026-07-05)*
+
+- **List of installed shadcn components** (as of 2026-07-05): `accordion`, `badge`, `button`, `card`, `checkbox`, `command`, `dialog`, `dropdown-menu`, `input`, `label`, `multi-select`, `popover`, `scroll-area`, `select`, `separator`, `sheet`, `sidebar`, `skeleton`, `table`, `textarea`, `tooltip`. Check `packages/react/src/components/ui/` for the current list before assuming a component needs installation. *(Encoded: spec 32b, 2026-07-05)*
+
 ## Spec Code Effect Previews
 
 - **Diff previews in specs use `ts` language blocks with `+`/`-` line prefixes, not `diff` blocks or BEFORE/AFTER splits.** The `ts` language ensures the syntax highlighter treats the content as TypeScript (enabling LSP, IntelliSense, and consistent formatting). `+`/`-` prefixes on lines mark additions and removals visually. Avoid `diff` language blocks (may not render in all markdown viewers) and avoid splitting into separate BEFORE/AFTER blocks (doubles code volume, harder to scan at speed). *(Encoded: dev-spec, 2026-05-12)*

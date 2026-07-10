@@ -222,6 +222,23 @@ function App() {
       </DCSection>
 
       <DCSection
+        id="media-create"
+        title="Create media document"
+        subtitle="The Edit action on an upload field opens a tabbed modal: pick from the media collection, or upload a file and fill the new media document (required name + file, optional alt, adapter-declared fields).">
+        <DCArtboard id="mm-library" label="Modal · Library tab" width={1080} height={620}>
+          <div className="ab-scroll vex-admin"><MediaModalStudy /></div>
+        </DCArtboard>
+        <DCArtboard id="mm-create-inshell" label="Create · in edit-page context" width={1280} height={860}>
+          <div className="ab-frame vex-admin">
+            <ABShell activeKey="posts" page={<EditViewSingle />} />
+            <div className="vex-overlay" style={{ position: "absolute", zIndex: 100 }}>
+              <MediaModalCreateForm />
+            </div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
         id="media-library"
         title="Media library"
         subtitle="The list view for a media collection — grid of assets instead of a table. Sidebar gains a dedicated Media section.">

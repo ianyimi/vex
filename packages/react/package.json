@@ -31,6 +31,7 @@
     "@hello-pangea/dnd": "catalog:",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-table": "catalog:",
+    "@tanstack/zod-form-adapter": "^0.42.1",
     "@ts-hooks-kit/core": "catalog:",
     "@uiw/react-color-sketch": "catalog:",
     "@vexcms/better-auth": "workspace:*",

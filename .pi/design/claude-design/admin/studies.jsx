@@ -554,6 +554,62 @@ function UploadStudy() {
         <CellRow label="multiple"><UploadCell ids={["img_01", "img_03", "img_06"]} /></CellRow>
         <CellRow label="empty"><UploadCell empty /></CellRow>
       </StudyCard>
+
+      <StudyCard title="Resolved value · on the collection edit page" sub="The upload field is a relationship to a media document — show its metadata inline.">
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <StateLabel>Selected · expanded metadata</StateLabel>
+            <FieldShell label="Featured image" type="upload" hideTypeChip>
+              <MediaFieldValue id="img_03" expanded />
+            </FieldShell>
+          </div>
+          <div>
+            <StateLabel>Selected · collapsed</StateLabel>
+            <FieldShell label="Cover" type="upload" hideTypeChip>
+              <MediaFieldValue id="img_08" expanded={false} />
+            </FieldShell>
+          </div>
+          <div>
+            <StateLabel>Selected · alt missing warning</StateLabel>
+            <FieldShell label="Logo" type="upload" hideTypeChip>
+              <MediaFieldValue id="img_02" expanded={false} altMissing />
+            </FieldShell>
+          </div>
+        </div>
+      </StudyCard>
+    </ShellPage>
+  );
+}
+
+/* Create-media-document flow — the tabbed modal opened from an upload field */
+function MediaModalStudy() {
+  return (
+    <ShellPage>
+      <StudyHeader
+        title="Media document — select & create"
+        sub="upload · modal"
+        lede="Edit on any upload field opens this modal. Tab 1 searches the related media collection; Tab 2 uploads a file and creates a new media document — capturing required name + file, optional alt/caption, and any extra fields the storage adapter declares."
+      />
+      <StudyCard title="Tab 1 · Library — pick an existing media document">
+        <div style={{ display: "grid", placeItems: "center", padding: 12, background: "var(--page)", borderRadius: 4 }}>
+          <MediaModalLibrary selected={["img_03"]} />
+        </div>
+      </StudyCard>
+      <StudyCard title="Tab 2 · Upload new — choose a file">
+        <div style={{ display: "grid", placeItems: "center", padding: 12, background: "var(--page)", borderRadius: 4 }}>
+          <MediaModalUploadEmpty />
+        </div>
+      </StudyCard>
+      <StudyCard title="Tab 2 · Upload new — document details" sub="System fields (name required) + adapter-declared fields (license required here).">
+        <div style={{ display: "grid", placeItems: "center", padding: 12, background: "var(--page)", borderRadius: 4 }}>
+          <MediaModalCreateForm />
+        </div>
+      </StudyCard>
+      <StudyCard title="Tab 2 · Upload new — uploading" sub="Progress while the file transfers to storage before the document is written.">
+        <div style={{ display: "grid", placeItems: "center", padding: 12, background: "var(--page)", borderRadius: 4 }}>
+          <MediaModalCreateForm uploading pct={68} />
+        </div>
+      </StudyCard>
     </ShellPage>
   );
 }
@@ -612,7 +668,7 @@ function MediaLibraryPage({ withSelection = false, withInspector = false, bulk =
 
 Object.assign(window, {
   TextStudy, NumberStudy, CheckStudy, SelectStudy, DateStudy, UrlStudy, RelationshipStudy,
-  UploadStudy, MediaLibraryPage,
+  UploadStudy, MediaLibraryPage, MediaModalStudy,
   EmptyStudies,
   /* legacy aliases used by older index.html */
   FieldInputStudies: TextStudy, FieldCellStudies: TextStudy, RelationshipStudies: RelationshipStudy,

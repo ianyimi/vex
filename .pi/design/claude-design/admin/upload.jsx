@@ -345,8 +345,222 @@ function MediaLibraryGrid({ withSelection = false, withInspector = false }) {
   );
 }
 
+/* ══════════════════════════════════════════════════════════════
+   MEDIA FIELD VALUE — how a resolved media doc appears ON the collection
+   edit page (the upload field is a relationship to a media document).
+   Shows the file's basic metadata inline, with Edit / Remove.
+   ══════════════════════════════════════════════════════════════ */
+function MediaFieldValue({ id = "img_03", expanded = true, altMissing = false }) {
+  const doc = imgById(id);
+  return (
+    <div className="vex-mediaval">
+      <div className="vex-mediaval-head">
+        <Thumb doc={doc} size={56} radius={3} />
+        <div className="body">
+          <div className="name">{doc.filename}</div>
+          <div className="sub">{mimeShort(doc.mimeType)} · {fmtBytes(doc.size)} · {doc.width}×{doc.height}</div>
+          {altMissing ? (
+            <div className="alt-warn"><Icon name="alertCircle" size={11} /> Alt text missing — add for accessibility</div>
+          ) : (
+            <div className="alt-ok"><span className="k">ALT</span> {doc.alt}</div>
+          )}
+        </div>
+        <div className="acts">
+          <button className="vex-btn outline sm" type="button"><Icon name="edit" size={12} /> Edit</button>
+          <button className="vex-btn ghost icon sm" type="button" title="Open in library"><Icon name="externalLink" size={13} /></button>
+          <button className="vex-btn ghost icon sm" type="button" title="Remove"><Icon name="x" size={13} /></button>
+        </div>
+      </div>
+      {expanded && (
+        <div className="vex-mediaval-meta">
+          <div className="cell"><span className="k">Storage ID</span><span className="v mono">kg2b1c…f90a</span></div>
+          <div className="cell"><span className="k">MIME</span><span className="v mono">{doc.mimeType}</span></div>
+          <div className="cell"><span className="k">Size</span><span className="v mono">{fmtBytes(doc.size)}</span></div>
+          <div className="cell"><span className="k">Dimensions</span><span className="v mono">{doc.width}×{doc.height}</span></div>
+          <div className="cell"><span className="k">Media collection</span><span className="v">images</span></div>
+          <div className="cell"><span className="k">Storage adapter</span><span className="v">convex</span></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MEDIA MODAL — two tabs: Library (pick existing) · Upload new (create doc)
+   Opened from the upload field's Edit/Select button.
+   ══════════════════════════════════════════════════════════════ */
+
+/* Adapter-declared extra fields (from storage adapter config). Example set. */
+const ADAPTER_FIELDS = [
+  { key: "credit",  label: "Credit",  type: "text",   required: false, help: "Photographer or source attribution." },
+  { key: "license", label: "License", type: "select", required: true,  help: "Usage rights for this asset.",
+    options: [
+      { value: "arr",   label: "All rights reserved" },
+      { value: "ccby",  label: "CC BY 4.0" },
+      { value: "cc0",   label: "CC0 (public domain)" },
+    ] },
+];
+
+function MediaModalShell({ tab = "library", children, footer }) {
+  return (
+    <div className="vex-modal" style={{ maxWidth: 760, width: "100%" }}>
+      <div className="vex-modal-head" style={{ alignItems: "center", paddingBottom: 0 }}>
+        <div style={{ width: 32, height: 32, borderRadius: 4, background: "var(--accent-tint)", color: "var(--accent-ink)", display: "grid", placeItems: "center", flex: "0 0 auto" }}>
+          <Icon name="image" size={16} />
+        </div>
+        <div className="text">
+          <h2>Featured image</h2>
+          <p className="sub">Relationship → <span className="mono">images</span> media collection</p>
+        </div>
+        <button className="close"><Icon name="x" size={14} /></button>
+      </div>
+      <div className="vex-tabs" style={{ margin: "12px 20px 0", marginBottom: 0 }}>
+        <button className={"tab" + (tab === "library" ? " active" : "")} type="button"><Icon name="folder" size={13} /> Library</button>
+        <button className={"tab" + (tab === "upload" ? " active" : "")} type="button"><Icon name="plus" size={13} /> Upload new</button>
+      </div>
+      {children}
+      {footer}
+    </div>
+  );
+}
+
+/* Tab 1 — library grid (reuses tile styles) */
+function MediaModalLibrary({ selected = ["img_03"] }) {
+  return (
+    <MediaModalShell
+      tab="library"
+      footer={
+        <div className="vex-modal-foot">
+          <span className="left">1 selected</span>
+          <button className="vex-btn ghost">Cancel</button>
+          <button className="vex-btn primary">Select</button>
+        </div>
+      }
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 20px 12px" }}>
+        <div className="vex-input-wrap has-leading" style={{ flex: 1 }}>
+          <span className="leading"><Icon name="search" size={13} /></span>
+          <input className="vex-input sm" placeholder="Search images by filename or alt…" />
+        </div>
+        <button className="vex-btn outline sm"><Icon name="filter" size={12} /> Type</button>
+      </div>
+      <div style={{ padding: "0 20px 4px", maxHeight: 320, overflowY: "auto" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+          {IMAGES.map(doc => {
+            const isSel = selected.includes(doc.id);
+            return (
+              <button key={doc.id} className={"vex-media-tile" + (isSel ? " selected" : "")} type="button">
+                <div className="thumb" style={{ background: doc.tone }}>
+                  <span style={{ display: "grid", placeItems: "center", width: "100%", height: "100%", color: "rgba(255,255,255,.5)" }}>
+                    <Icon name={doc.mimeType.includes("svg") ? "type" : "image"} size={22} />
+                  </span>
+                  {isSel && <span className="check"><Icon name="check" size={12} strokeWidth={3} /></span>}
+                  <span className="dim">{doc.width}×{doc.height}</span>
+                </div>
+                <div className="fname">{doc.filename}</div>
+                <div className="fmeta">{mimeShort(doc.mimeType)} · {fmtBytes(doc.size)}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </MediaModalShell>
+  );
+}
+
+/* Tab 2a — upload new, before a file is chosen */
+function MediaModalUploadEmpty() {
+  return (
+    <MediaModalShell
+      tab="upload"
+      footer={
+        <div className="vex-modal-foot">
+          <span className="left">Step 1 of 2 · choose a file</span>
+          <button className="vex-btn ghost">Cancel</button>
+          <button className="vex-btn primary disabled" disabled>Create &amp; select</button>
+        </div>
+      }
+    >
+      <div style={{ padding: 20 }}>
+        <div className="vex-dropzone" style={{ padding: "40px 20px" }}>
+          <div className="ico"><Icon name="image" size={18} /></div>
+          <div className="title">Drag a file here, or choose one</div>
+          <div className="sub">PNG, JPG, SVG, WebP · up to 10 MB · stored via the convex adapter</div>
+          <button className="vex-btn outline sm" type="button" style={{ marginTop: 6 }}><Icon name="image" size={12} /> Choose file</button>
+        </div>
+      </div>
+    </MediaModalShell>
+  );
+}
+
+/* Tab 2b — upload new, file chosen → create the media document */
+function MediaModalCreateForm({ uploading = false, pct = 100 }) {
+  const doc = IMAGES[2];
+  return (
+    <MediaModalShell
+      tab="upload"
+      footer={
+        <div className="vex-modal-foot">
+          <span className="left">Step 2 of 2 · document details</span>
+          <button className="vex-btn ghost">Back</button>
+          <button className={"vex-btn primary" + (uploading ? " disabled" : "")} disabled={uploading}>
+            {uploading ? "Uploading…" : "Create & select"}
+          </button>
+        </div>
+      }
+    >
+      <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 20, padding: 20, maxHeight: 420, overflowY: "auto" }}>
+        {/* preview + derived (read-only) metadata */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="vex-imgph" style={{ aspectRatio: "1 / 1", borderRadius: 4, background: doc.tone, display: "grid", placeItems: "center", color: "rgba(255,255,255,.5)" }}>
+            <Icon name="image" size={28} />
+          </div>
+          {uploading && <div className="vex-progress"><span style={{ width: pct + "%" }}></span></div>}
+          <div className="vex-derived">
+            <div className="row"><span className="k">Type</span><span className="v mono">{doc.mimeType}</span></div>
+            <div className="row"><span className="k">Size</span><span className="v mono">{fmtBytes(doc.size)}</span></div>
+            <div className="row"><span className="k">Dimensions</span><span className="v mono">{doc.width}×{doc.height}</span></div>
+            <div className="row"><span className="k">Storage ID</span><span className="v mono">kg2b1c…f90a</span></div>
+          </div>
+          <div style={{ fontSize: 10.5, color: "var(--fg-subtle)", lineHeight: 1.45 }}>
+            Auto-detected from the file. Written to the media document on save.
+          </div>
+        </div>
+
+        {/* editable fields */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <FieldShell label="Name" type="text" hideTypeChip required help="Filename stored on the media document.">
+            <input className="vex-input" defaultValue={doc.filename} />
+          </FieldShell>
+          <FieldShell label="Alt text" type="text" hideTypeChip help="Strongly recommended for accessibility & SEO.">
+            <input className="vex-input" defaultValue="" placeholder="Describe the image" />
+          </FieldShell>
+          <FieldShell label="Caption" type="text" hideTypeChip>
+            <input className="vex-input" defaultValue="" placeholder="Optional caption" />
+          </FieldShell>
+
+          <div className="vex-adapter-sep">
+            <span>From the <strong>convex</strong> storage adapter</span>
+          </div>
+
+          {ADAPTER_FIELDS.map(f => (
+            <FieldShell key={f.key} label={f.label} type="text" hideTypeChip required={f.required} help={f.help}>
+              {f.type === "select" ? (
+                <SelectInput value={f.options[0].value} options={f.options} />
+              ) : (
+                <input className="vex-input" defaultValue="" placeholder={`Add ${f.label.toLowerCase()}`} />
+              )}
+            </FieldShell>
+          ))}
+        </div>
+      </div>
+    </MediaModalShell>
+  );
+}
+
 Object.assign(window, {
   IMAGES, fmtBytes, mimeShort, imgById, Thumb,
   UploadEmpty, UploadSingle, UploadMulti, UploadProgress, UploadError, UploadReadonly,
   UploadCell, MediaPicker, MediaLibraryGrid, UploadItemRow,
+  MediaFieldValue, MediaModalLibrary, MediaModalUploadEmpty, MediaModalCreateForm, ADAPTER_FIELDS,
 });

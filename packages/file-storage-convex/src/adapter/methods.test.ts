@@ -39,7 +39,7 @@ describe("createMediaDocument", () => {
 
     expect(result).toBe("doc_123");
     expect(mockCtx.db.insert).toHaveBeenCalledWith("images", {
-      convexUrl: "https://example.com/file.jpg",
+      src: "https://example.com/file.jpg",
       storageId: "storage_123",
       filename: "photo.jpg",
       mimeType: "image/jpeg",
@@ -69,7 +69,7 @@ describe("createMediaDocument", () => {
     });
 
     expect(mockCtx.db.insert).toHaveBeenCalledWith("images", {
-      convexUrl: "https://example.com/file.jpg",
+      src: "https://example.com/file.jpg",
       storageId: "storage_456",
       filename: "untitled.png",
       mimeType: "image/png",

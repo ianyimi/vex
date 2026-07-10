@@ -11,23 +11,13 @@ import type { TypedFieldApi } from "./createFieldInput";
 import { AppFormContext } from "./AppFormContext";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { TrashIcon, PlusIcon, SearchIcon, LayersIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "../ui/dialog";
+import { TrashIcon, SearchIcon, LayersIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 import { fieldToInputComponent } from "../fields";
 import { Icon } from "../Icon";
 import { cn } from "../../styles/utils";
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-} from "../ui/accordion";
+import { Accordion, AccordionContent, AccordionItem } from "../ui/accordion";
 import { FormError } from "./FormError";
 import { Draggable, DragHandle, Droppable } from "../ui/dnd";
 
@@ -59,10 +49,7 @@ export interface FormBlocksProps {
 /** Builds the default value object for a new block of the given type. */
 function buildDefaultBlock(blockDef: BlockConfig): GenericBlock {
   const fieldDefaults = Object.fromEntries(
-    Object.entries(blockDef.fields).map(([key, subField]) => [
-      key,
-      subField.defaultValue ?? null,
-    ]),
+    Object.entries(blockDef.fields).map(([key, subField]) => [key, subField.defaultValue ?? null]),
   );
   return {
     blockType: blockDef.blockType,
@@ -78,10 +65,7 @@ function buildDefaultBlock(blockDef: BlockConfig): GenericBlock {
  * If `admin.defaultCollapsed` is true, all blocks start collapsed (returns []).
  * Otherwise, all blocks start open.
  */
-function computeDefaultOpenBlocks(
-  items: GenericBlock[],
-  defaultCollapsed: boolean,
-): string[] {
+function computeDefaultOpenBlocks(items: GenericBlock[], defaultCollapsed: boolean): string[] {
   if (defaultCollapsed) return [];
   // All blocks open by default
   return items.map((item) => item.id as string);
@@ -125,9 +109,7 @@ function BlockPickerDialog(props: {
         </div>
         <div className="px-2 pb-3 max-h-72 overflow-y-auto">
           {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">
-              No blocks found
-            </p>
+            <p className="text-sm text-muted-foreground text-center py-6">No blocks found</p>
           ) : (
             <div className="space-y-0.5">
               {filtered.map((blockDef) => (
@@ -152,9 +134,7 @@ function BlockPickerDialog(props: {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {blockDef.label}
-                    </p>
+                    <p className="text-sm font-medium truncate">{blockDef.label}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       {blockDef.blockType}
                       {Object.keys(blockDef.fields).length > 0 &&
@@ -223,12 +203,9 @@ export function FormBlocks({
   const items = (field.state.value ?? []) as GenericBlock[];
   const blockDefMap = new Map(fieldDef.blocks.map((b) => [b.blockType, b]));
   const { singular, plural } = fieldDef.labels;
-  const atMax = fieldDef.max !== undefined && items.length >= fieldDef.max;
+  const atMax = !!fieldDef.max && items.length >= fieldDef.max;
 
-  const defaultOpenBlockIds = computeDefaultOpenBlocks(
-    items,
-    fieldDef.admin.defaultCollapsed,
-  );
+  const defaultOpenBlockIds = computeDefaultOpenBlocks(items, fieldDef.admin.defaultCollapsed);
 
   function handleAdd(blockDef: BlockConfig) {
     field.pushValue(buildDefaultBlock(blockDef));
@@ -254,11 +231,7 @@ export function FormBlocks({
 
       {/* Block list — single shared Accordion */}
       {items.length > 0 && (
-        <Accordion
-          multiple={true}
-          defaultValue={defaultOpenBlockIds}
-          className="w-full"
-        >
+        <Accordion multiple={true} defaultValue={defaultOpenBlockIds} className="w-full">
           <Droppable
             id={name}
             div={{ className: "gap-0" }}
@@ -296,11 +269,7 @@ export function FormBlocks({
               const subFields = Object.entries(blockDef.fields);
 
               return (
-                <Draggable
-                  key={itemKey}
-                  id={`${name}-${itemKey}`}
-                  index={index}
-                >
+                <Draggable key={itemKey} id={`${name}-${itemKey}`} index={index}>
                   <AccordionItem
                     value={itemKey}
                     className={cn(
@@ -331,9 +300,7 @@ export function FormBlocks({
                           <Input
                             type="text"
                             value={(item.blockName as string) ?? ""}
-                            onChange={(e) =>
-                              updateBlockName(index, e.target.value)
-                            }
+                            onChange={(e) => updateBlockName(index, e.target.value)}
                             disabled={readOnly}
                             placeholder={blockDef.label ?? blockDef.blockType}
                             className="w-full bg-transparent text-sm font-medium border-none outline-none focus:ring-0 p-0 truncate placeholder:text-muted-foreground disabled:opacity-50"
@@ -349,7 +316,7 @@ export function FormBlocks({
                           variant="ghost"
                           size="icon-xs"
                           onClick={() => field.removeValue(index)}
-                          className="shrink-0 text-muted-foreground hover:text-destructive"
+                          className="shrink-0 text-muted-foreground hover:text-destructive transition-colors duration-300"
                           aria-label={`Remove ${blockDef.label} block`}
                         >
                           <TrashIcon className="size-3.5" />
@@ -366,18 +333,14 @@ export function FormBlocks({
                           </p>
                         ) : (
                           subFields.map(([fieldKey, subFieldDef]) => {
-                            const SubInput = fieldToInputComponent(
-                              subFieldDef.type,
-                            );
+                            const SubInput = fieldToInputComponent(subFieldDef.type);
                             if (!SubInput) return null;
                             return (
                               <SubInput
                                 key={fieldKey}
                                 name={`${name}[${index}].${fieldKey}`}
                                 fieldDef={subFieldDef as any}
-                                readOnly={
-                                  readOnly || subFieldDef.admin.readOnly
-                                }
+                                readOnly={readOnly || subFieldDef.admin.readOnly}
                               />
                             );
                           })
@@ -402,8 +365,8 @@ export function FormBlocks({
               size="sm"
               onClick={() => handleAdd(fieldDef.blocks[0]!)}
               disabled={atMax}
+              icon="Plus"
             >
-              <PlusIcon className="size-4 inline mb-0.5 mr-1" />
               Add {singular}
             </Button>
           ) : (
@@ -413,8 +376,8 @@ export function FormBlocks({
               size="sm"
               onClick={() => setPickerOpen(true)}
               disabled={atMax}
+              icon="Plus"
             >
-              <PlusIcon className="size-4 inline mb-0.5 mr-1" />
               Add {singular}
             </Button>
           )}

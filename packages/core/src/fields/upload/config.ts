@@ -30,12 +30,14 @@ export function upload<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
   }
 
   return {
+    label: "",
+    required: false,
+    hasMany: false,
+    min: 0,
+    accept: "",
+    ...options,
     type: ADMIN_FIELDS.upload.type,
-    to: options.to,
     interfaceType: ADMIN_FIELDS.upload.interfaceType,
-    label: options.label ?? "",
-    required: options.required ?? false,
-    defaultValue: options.defaultValue ?? ADMIN_FIELDS.upload.defaultValue,
     admin: {
       hidden: false,
       readOnly: false,
@@ -45,9 +47,6 @@ export function upload<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
       placeholder: "",
       ...options.admin,
     },
-    description: options.description,
-    interfaceDescription: options.interfaceDescription,
-    index: options.index,
     meta: {
       ...options.meta,
     } as TFieldMeta,

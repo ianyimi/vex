@@ -26,7 +26,30 @@ export interface UploadFieldInput<
    * upload({ to: "images", label: "Featured Image" })
    */
   to: MediaCollectionSlug;
+  /**
+   * The min number of files allowed.
+   */
+  min?: number;
+  /**
+   * The max number of files allowed.
+   */
+  max?: number;
+  /**
+   * Whether this input accepts multiple files or only one.
+   */
+  hasMany?: boolean;
+  /**
+   * Pre-filled value shown in the admin form when creating a new document.
+   */
   defaultValue?: string[];
+  /**
+   * Restrict files that can be uploaded by mimeType.
+   * @see https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Attributes/accept
+   * @example 'image/*'
+   * @example 'image/*, audio/mp4'
+   * @example 'image/webp, audio/mp3'
+   */
+  accept?: string;
 }
 
 /**
@@ -38,7 +61,23 @@ export interface UploadField<
   readonly type: typeof ADMIN_FIELDS.upload.type;
   to: MediaCollectionSlug;
   /**
+   * Whether this input accepts multiple files or only one.
+   */
+  hasMany: boolean;
+  /**
+   * The min number of files allowed.
+   */
+  min: number;
+  /**
+   * The max number of files allowed.
+   */
+  max?: number;
+  /**
    * Pre-filled value shown in the admin form when creating a new document.
    */
   defaultValue?: string[];
+  /**
+   * Restrict files that can be uploaded by mimeType.
+   */
+  accept: string;
 }

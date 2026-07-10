@@ -55,6 +55,9 @@ export function getIncomingRelationships(props: {
         if (field.type === ADMIN_FIELDS.relationship.type) {
           return field.collection.slug === props.collection.slug;
         }
+        if (field.type === ADMIN_FIELDS.upload.type) {
+          return field.to === props.collection.slug;
+        }
         return false;
       })
       // eslint-disable-next-line no-unused-vars
@@ -126,9 +129,7 @@ export function collectionConfigToVexSchema(props: {
   });
   relationships.forEach(() => {
     const useAsTitle = props.collection.admin.useAsTitle;
-    const coreAdminFields: string[] = Object.values(CORE_ADMIN_FIELDS).map(
-      (f) => f.slug,
-    );
+    const coreAdminFields: string[] = Object.values(CORE_ADMIN_FIELDS).map((f) => f.slug);
     if (coreAdminFields.includes(useAsTitle)) return;
     const searchIndex = searchIndexes.find((si) =>
       si.includes(`.searchIndex("search_${useAsTitle}", {`),

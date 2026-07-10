@@ -47,17 +47,11 @@ export function blocksFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
 
   let schema = z.array(itemSchema);
 
-  if (field.min !== undefined) {
-    schema = schema.min(
-      field.min,
-      `At least ${field.min} ${field.labels.plural} required.`,
-    );
+  if (field.min) {
+    schema = schema.min(field.min, `At least ${field.min} ${field.labels.plural} required.`);
   }
-  if (field.max !== undefined) {
-    schema = schema.max(
-      field.max,
-      `No more than ${field.max} ${field.labels.plural} allowed.`,
-    );
+  if (field.max) {
+    schema = schema.max(field.max, `No more than ${field.max} ${field.labels.plural} allowed.`);
   }
 
   // @ts-expect-error mismatched zod types, works in practice

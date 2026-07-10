@@ -1108,3 +1108,58 @@
 .vex-media-card .body { padding: 8px 10px 10px; }
 .vex-media-card .body .fname { font-size: 12px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vex-media-card .body .fmeta { font-size: 10.5px; color: var(--fg-subtle); font-family: var(--vex-font-mono); margin-top: 2px; }
+
+/* Media field value (on collection edit page) */
+.vex-mediaval {
+  border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); overflow: hidden;
+}
+.vex-mediaval-head { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
+.vex-mediaval-head .body { flex: 1; min-width: 0; }
+.vex-mediaval-head .name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vex-mediaval-head .sub { font-size: 11px; color: var(--fg-subtle); font-family: var(--vex-font-mono); margin-top: 2px; }
+.vex-mediaval-head .alt-ok { font-size: 11.5px; color: var(--fg-muted); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+.vex-mediaval-head .alt-ok .k { font-family: var(--vex-font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--fg-subtle); border: 1px solid var(--line); border-radius: 2px; padding: 1px 4px; }
+.vex-mediaval-head .alt-warn { font-size: 11.5px; color: var(--warn); margin-top: 4px; display: flex; align-items: center; gap: 5px; }
+.vex-mediaval-head .acts { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.vex-mediaval-meta {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+  border-top: 1px solid var(--line); background: var(--raised);
+}
+.vex-mediaval-meta .cell {
+  padding: 8px 12px; display: flex; flex-direction: column; gap: 2px;
+  border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+.vex-mediaval-meta .cell:nth-child(3n) { border-right: 0; }
+.vex-mediaval-meta .cell:nth-last-child(-n+3) { border-bottom: 0; }
+.vex-mediaval-meta .k { font-family: var(--vex-font-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-subtle); }
+.vex-mediaval-meta .v { font-size: 12px; color: var(--fg); }
+.vex-mediaval-meta .v.mono { font-family: var(--vex-font-mono); font-size: 11.5px; }
+
+/* Derived (read-only) metadata block in the create-media form */
+.vex-derived {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--line); border-radius: 4px; overflow: hidden;
+  background: var(--raised);
+}
+.vex-derived .row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 6px 10px; border-bottom: 1px solid var(--line);
+}
+.vex-derived .row:last-child { border-bottom: 0; }
+.vex-derived .k { font-family: var(--vex-font-mono); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-subtle); }
+.vex-derived .v { font-size: 11.5px; color: var(--fg); }
+.vex-derived .v.mono { font-family: var(--vex-font-mono); }
+
+/* Adapter-fields separator inside create form */
+.vex-adapter-sep {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 10.5px; color: var(--fg-subtle);
+  letter-spacing: 0.04em;
+  margin: 2px 0;
+}
+.vex-adapter-sep::before, .vex-adapter-sep::after {
+  content: ""; height: 1px; background: var(--line); flex: 1;
+}
+.vex-adapter-sep strong { color: var(--accent-ink); font-weight: 600; }
+.dark .vex-adapter-sep strong, .vex-admin.dark .vex-adapter-sep strong { color: var(--accent); }

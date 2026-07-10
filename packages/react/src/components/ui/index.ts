@@ -19,3 +19,6 @@ export * from "./scroll-area";
 export * from "./skeleton";
 export * from "./separator";
 export * from "./popover";
+export * from "./tabs";
+
+export * from "../Icon";

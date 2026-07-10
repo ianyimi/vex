@@ -6,7 +6,7 @@ import { useContext } from "react";
 import { AppFormContext } from "./AppFormContext";
 import { Button } from "../ui/button";
 import { Droppable, Draggable, DragHandle } from "../ui/dnd";
-import { PlusIcon, TrashIcon } from "lucide-react";
+import { TrashIcon } from "lucide-react";
 import { fieldToInputComponent } from "../fields";
 import { FormError } from "./FormError";
 import { FormLabel } from "./FormLabel";
@@ -90,8 +90,8 @@ export function FormArray<TArrayType extends ArrayType = string>({
           variant="outline"
           size="sm"
           onClick={() => field.pushValue(getNewItemDefault())}
+          icon="Plus"
         >
-          <PlusIcon size={20} className="inline mb-0.5 mr-1" />
           Add {fieldDef.labels.singular}
         </Button>
       </div>
@@ -104,11 +104,7 @@ export function FormArray<TArrayType extends ArrayType = string>({
           }}
         >
           {items.map((_, index) => (
-            <Draggable
-              key={index}
-              id={`${name}[${index}]`}
-              index={index}
-            >
+            <Draggable key={index} id={`${name}[${index}]`} index={index}>
               <div className="flex items-center gap-2 px-2">
                 <DragHandle />
                 <div className="flex-1">
@@ -129,7 +125,7 @@ export function FormArray<TArrayType extends ArrayType = string>({
                   size="icon-sm"
                   disabled={readOnly}
                   onClick={() => field.removeValue(index)}
-                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                  className="shrink-0 text-muted-foreground hover:text-destructive transition-all duration-300"
                   aria-label={`Remove item ${index + 1}`}
                 >
                   <TrashIcon className="size-4" />

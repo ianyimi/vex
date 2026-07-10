@@ -58,6 +58,8 @@ export {
   validateAndMergeStorageConfig,
   mediaMutationApi,
   mediaQueryApi,
+  formatBytes,
+  formatMimeType,
   createMediaDocumentArgs,
   createMediaDocumentReturn,
   deleteMediaArgs,

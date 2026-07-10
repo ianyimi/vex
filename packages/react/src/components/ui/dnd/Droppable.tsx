@@ -15,7 +15,6 @@ import React, {
   type ReactElement,
   useEffect,
   useRef,
-  useState,
 } from "react";
 import { cn } from "../../../styles/utils";
 import { useDndRegistry } from "./DndProvider";
@@ -29,10 +28,7 @@ import { useDndRegistry } from "./DndProvider";
  */
 export const DroppableTypeContext = createContext<string | null>(null);
 
-interface DroppableProps extends Omit<
-  DNDDroppableProps,
-  "children" | "droppableId"
-> {
+interface DroppableProps extends Omit<DNDDroppableProps, "children" | "droppableId"> {
   id: string;
   children: ReactNode | DNDDroppableProps["children"];
   dndContext?: DragDropContextProps;
@@ -49,10 +45,7 @@ interface DroppableProps extends Omit<
   div?: ComponentPropsWithoutRef<"div">;
 }
 
-type RenderFn = (
-  provided: DroppableProvided,
-  snapshot: DroppableStateSnapshot,
-) => ReactNode;
+type RenderFn = (provided: DroppableProvided, snapshot: DroppableStateSnapshot) => ReactNode;
 
 export function Droppable({
   id,
@@ -65,19 +58,15 @@ export function Droppable({
   onReorder,
   ...droppableProps
 }: DroppableProps) {
-  const [mounted, setMounted] = useState(false);
   const registry = useDndRegistry();
   const activeDroppableId = registry?.activeDroppableId ?? null;
+  const mounted = registry.mounted ?? false;
 
   // Always keep a fresh ref to onReorder so registered handlers never stale-close.
   const onReorderRef = useRef(onReorder);
   useEffect(() => {
     onReorderRef.current = onReorder;
   });
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Register with the shared DragDropContext when DndProvider is present.
   useEffect(() => {
@@ -86,8 +75,15 @@ export function Droppable({
   }, [id, registry, mounted]);
 
   if (!mounted) {
+    const { className, ...divProps } = div ?? { className: "" };
     return (
-      <div className="flex flex-col gap-2 border-border rounded-sm min-h-[4px]" />
+      <div
+        suppressHydrationWarning
+        className={cn("flex flex-col gap-2 border-border rounded-sm min-h-[4px]", className)}
+        {...divProps}
+      >
+        {typeof children === "function" ? null : children}
+      </div>
     );
   }
 
@@ -110,8 +106,7 @@ export function Droppable({
     const droppableType = userType ?? id;
 
     const isDropDisabled =
-      !!userIsDropDisabled ||
-      (activeDroppableId !== null && activeDroppableId !== id);
+      !!userIsDropDisabled || (activeDroppableId !== null && activeDroppableId !== id);
 
     return (
       <DroppableTypeContext.Provider value={droppableType}>
@@ -133,10 +128,7 @@ export function Droppable({
 
             const wrapperBaseProps = {
               ref: provided.innerRef,
-              ...(provided.droppableProps as unknown as Record<
-                string,
-                unknown
-              >),
+              ...(provided.droppableProps as unknown as Record<string, unknown>),
               className: wrapperClassName,
               ...(divProps as unknown as Record<string, unknown>),
             };

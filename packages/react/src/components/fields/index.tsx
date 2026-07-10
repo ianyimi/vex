@@ -23,7 +23,7 @@ import {
 import { ArrayFieldCell, ArrayFieldInput, arrayFieldToColumnDef } from "./array";
 import { GroupFieldCell, GroupFieldInput, groupFieldToColumnDef } from "./group";
 import { BlocksFieldCell, BlocksFieldInput, blocksFieldToColumnDef } from "./blocks";
-import { UploadFieldInput, UploadFieldCell } from "./upload";
+import { UploadFieldInput, UploadFieldCell, uploadFieldToColumnDef } from "./upload";
 
 export * from "./text";
 export * from "./number";
@@ -295,6 +295,17 @@ export function getCollectionColumnDefs<
       case ADMIN_FIELDS.blocks.type:
         columnDefs.push(
           blocksFieldToColumnDef<TData>({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
+      case ADMIN_FIELDS.upload.type:
+        columnDefs.push(
+          uploadFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,

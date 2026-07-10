@@ -6,12 +6,13 @@ import {
   number,
   relationship,
   text,
+  upload,
   url,
-} from "@vexcms/core"
+} from "@vexcms/core";
 
-import { TABLE_SLUG_PAGES, TABLE_SLUG_THEMES } from "~/db/constants"
+import { TABLE_SLUG_IMAGES, TABLE_SLUG_PAGES, TABLE_SLUG_THEMES } from "~/db/constants";
 
-import { pageBlocks } from "../blocks"
+import { pageBlocks } from "../blocks";
 
 // ============================================================================
 // Collection
@@ -57,6 +58,13 @@ export const pages = defineCollection({
       admin: {
         defaultCollapsed: true,
       },
+    }),
+
+    testImage: upload({
+      to: TABLE_SLUG_IMAGES,
+      label: "Test Image",
+      hasMany: true,
+      accept: "image/*",
     }),
 
     // ── SEO metadata (sidebar) ─────────────────────────────────────────────
@@ -153,4 +161,4 @@ export const pages = defineCollection({
       },
     }),
   },
-})
+});

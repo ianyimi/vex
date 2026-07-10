@@ -127,7 +127,7 @@ export function AdminLayout(props: AdminLayoutProps) {
           </>
         )}
       </header>
-      <main className="flex-1 overflow-y-auto p-6">{props.children}</main>
+      <main className="flex-1 p-6 pt-0">{props.children}</main>
     </SidebarInset>
   );
 

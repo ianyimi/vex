@@ -73,14 +73,27 @@ export function CollectionEditView<
   });
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">
-        Edit {props.collection.labels.singular} -{" "}
-        <span className="text-primary">
-          {currentDocument[props.collection.admin.useAsTitle]}
-        </span>
-      </h1>
-      <AppForm form={form} className="space-y-4">
+    <AppForm form={form} className="relative">
+      <div className="h-16 flex sticky top-12 z-10 items-center justify-between bg-background">
+        <h1 className="text-2xl font-bold">
+          Edit {props.collection.labels.singular} -{" "}
+          <span className="text-primary">{currentDocument[props.collection.admin.useAsTitle]}</span>
+        </h1>
+        <div className="flex gap-2">
+          <Button type="submit" isPending={isPending}>
+            Save
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            nativeButton={false}
+            render={<VexLink href={`/admin/${props.collection.slug}`} />}
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+      <div className="space-y-4">
         {Object.entries(props.collection.fields).map(([fieldKey, field]) => {
           const InputComponent = fieldToInputComponent(field.type);
           if (!InputComponent) {
@@ -96,20 +109,7 @@ export function CollectionEditView<
             />
           );
         })}
-        <div className="pt-2 flex gap-2">
-          <Button type="submit" isPending={isPending}>
-            Save
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            nativeButton={false}
-            render={<VexLink href={`/admin/${props.collection.slug}`} />}
-          >
-            Cancel
-          </Button>
-        </div>
-      </AppForm>
-    </div>
+      </div>
+    </AppForm>
   );
 }

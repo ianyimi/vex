@@ -1,4 +1,4 @@
-import { z, ZodDefault, ZodURL, type ZodType } from "zod";
+import { z, type ZodDefault, type ZodLiteral, type ZodUnion, type ZodURL, type ZodType } from "zod";
 import { UrlField } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 
@@ -30,17 +30,17 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 export function urlFieldToInputSchema(props: { field: UrlField }): ZodType {
   const { field } = props;
 
-  let inputSchema: ZodURL | ZodDefault<ZodURL> = z.url();
+  let inputSchema:
+    | ZodURL
+    | ZodDefault<ZodURL>
+    | ZodDefault<ZodUnion<readonly [ZodURL, ZodLiteral<"">]>> = z.url();
   if (field.required) {
     inputSchema = z.url().min(1, "This field is required.");
-    if (field.defaultValue !== undefined) {
-      inputSchema = z
-        .url()
-        .min(1, "This field is required.")
-        .default(field.defaultValue);
+    if (field.defaultValue) {
+      inputSchema = z.url().min(1, "This field is required.").default(field.defaultValue);
     }
   } else if (field.defaultValue !== undefined) {
-    inputSchema = z.url().default(field.defaultValue);
+    inputSchema = z.union([z.url(), z.literal("")]).default(field.defaultValue);
   }
 
   return applyBaseInputSchemaMeta({ field, inputSchema });

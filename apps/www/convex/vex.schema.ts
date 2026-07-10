@@ -108,6 +108,7 @@ export const pages = defineTable({
       )
     )
   ),
+  testImage: v.optional(v.array(v.id("images"))),
   metaTitle: v.optional(v.string()),
   metaDescription: v.optional(v.string()),
   ogImage: v.optional(v.string()),

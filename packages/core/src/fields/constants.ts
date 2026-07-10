@@ -19,7 +19,7 @@ export const ADMIN_FIELDS = {
     type: "url",
     interfaceType: "string",
     validator: "v.string()",
-    defaultValue: undefined,
+    defaultValue: "",
   },
   number: {
     type: "number",

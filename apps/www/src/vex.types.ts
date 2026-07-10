@@ -177,6 +177,7 @@ export interface Page extends VexDocument {
    */
   content?: string
   blocks?: PageBlock[]
+  testImage?: Id<MediaCollectionSlug>[]
   /**
    * Custom <title> tag for search engines. Falls back to the title field if empty.
    */
@@ -541,6 +542,7 @@ declare module "@vexcms/core" {
         id: "_id"
         text: "title" | "slug" | "content" | "metaTitle" | "metaDescription"
         blocks: "blocks"
+        upload: "testImage"
         url: "ogImage"
         relationship: "themes"
         array: "test" | "test2"

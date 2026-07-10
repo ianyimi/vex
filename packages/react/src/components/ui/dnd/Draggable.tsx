@@ -18,14 +18,14 @@ import {
   type DraggableRubric,
 } from "@hello-pangea/dnd";
 import { cn } from "../../../styles/utils";
+import { useDndContext } from "./DndProvider";
 
 export interface DragHandleContextValue {
   dragHandleProps: DraggableProvidedDragHandleProps | null;
   isDragging: boolean;
 }
 
-export const DraggableInstanceContext =
-  createContext<DragHandleContextValue | null>(null);
+export const DraggableInstanceContext = createContext<DragHandleContextValue | null>(null);
 
 export function useDraggableInstanceContext(): DragHandleContextValue {
   const dragContext = useContext(DraggableInstanceContext);
@@ -37,10 +37,7 @@ export function useDraggableInstanceContext(): DragHandleContextValue {
   return dragContext;
 }
 
-interface DraggableProps extends Omit<
-  DNDDraggableProps,
-  "children" | "draggableId"
-> {
+interface DraggableProps extends Omit<DNDDraggableProps, "children" | "draggableId"> {
   id: string;
   isDragHandle?: boolean;
   children: ReactNode | DNDDraggableProps["children"];
@@ -61,6 +58,19 @@ export function Draggable({
   div,
   ...draggableProps
 }: DraggableProps) {
+  const dnd = useDndContext();
+  if (!dnd.mounted) {
+    const staticContext: DragHandleContextValue = {
+      dragHandleProps: null,
+      isDragging: false,
+    };
+    return (
+      <DraggableInstanceContext.Provider value={staticContext}>
+        <div {...div}>{typeof children === "function" ? null : children}</div>
+      </DraggableInstanceContext.Provider>
+    );
+  }
+
   return (
     <DNDDraggable draggableId={id} index={index} {...draggableProps}>
       {(provided, snapshot, rubric) => {
@@ -84,10 +94,7 @@ export function Draggable({
         wrapperProps.className = cn(isDragHandle && "cursor-grab", className);
 
         if (provided.draggableProps) {
-          const dp = provided.draggableProps as unknown as Record<
-            string,
-            unknown
-          >;
+          const dp = provided.draggableProps as unknown as Record<string, unknown>;
           for (const key of Object.keys(dp)) {
             wrapperProps[key] = dp[key];
           }
@@ -102,18 +109,12 @@ export function Draggable({
 
         if (divProps) {
           for (const key of Object.keys(divProps)) {
-            wrapperProps[key] = (
-              divProps as unknown as Record<string, unknown>
-            )[key];
+            wrapperProps[key] = (divProps as unknown as Record<string, unknown>)[key];
           }
         }
 
         if (typeof children === "function") {
-          const childrenResult = (children as DraggableChildrenFn)(
-            provided,
-            snapshot,
-            rubric,
-          );
+          const childrenResult = (children as DraggableChildrenFn)(provided, snapshot, rubric);
           return (
             <DraggableInstanceContext.Provider value={dragHandleContextValue}>
               <div {...wrapperProps}>{childrenResult}</div>
