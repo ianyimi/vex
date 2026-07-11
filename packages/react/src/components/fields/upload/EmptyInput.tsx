@@ -1,4 +1,4 @@
-import { Button, Icon } from "../../ui";
+import { Button } from "../../ui";
 import { MediaUploadDropzone } from "../../media/MediaUploadDropzone";
 import type { StorageAdapterSlug } from "@vexcms/core";
 
@@ -36,8 +36,7 @@ export function UploadEmpty({
         adapterName={adapterName}
         onUploadComplete={onFileUpload}
       />
-      <Button variant="ghost" size="sm" onClick={onPickerOpen} className="self-start">
-        <Icon name="Folder" size={12} />
+      <Button variant="ghost" size="sm" onClick={onPickerOpen} className="self-start" icon="Folder">
         Browse media library
       </Button>
     </div>

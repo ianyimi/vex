@@ -559,13 +559,7 @@ declare module "@vexcms/core" {
       themes: {
         id: "_id"
         text:
-          | "name"
-          | "fontFamily"
-          | "radius"
-          | "primaryLight"
-          | "primaryDark"
-          | "bgDark"
-          | "bgLight"
+          "name" | "fontFamily" | "radius" | "primaryLight" | "primaryDark" | "bgDark" | "bgLight"
       }
       site_settings: {
         id: "_id"

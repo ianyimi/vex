@@ -5,8 +5,7 @@ import { useConvexMutation } from "@convex-dev/react-query";
 import { vexConvexApi } from "@vexcms/core";
 import type { CollectionEditViewProps, CollectionSlug } from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
-import { VexLink } from "../ui/VexLink";
-import { Button } from "../ui/button";
+import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 import { useCollectionForm } from "../../hooks/useCollectionForm";
 import { get } from "@vexcms/core/client";
@@ -66,9 +65,9 @@ export function CollectionEditView<
   const form = useCollectionForm({
     document: currentDocument,
     collection: props.collection,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onSubmit: async ({ value }: { value: any }) => {
       await mutateAsync({ id: currentDocument._id, data: value });
+      form.reset();
     },
   });
 
@@ -79,19 +78,32 @@ export function CollectionEditView<
           Edit {props.collection.labels.singular} -{" "}
           <span className="text-primary">{currentDocument[props.collection.admin.useAsTitle]}</span>
         </h1>
-        <div className="flex gap-2">
-          <Button type="submit" isPending={isPending}>
-            Save
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            nativeButton={false}
-            render={<VexLink href={`/admin/${props.collection.slug}`} />}
-          >
-            Cancel
-          </Button>
-        </div>
+        <form.Subscribe
+          selector={(state) => state.isDefaultValue}
+          children={(isDefaultValue) => (
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                className="transition-all duration-300"
+                isPending={isPending}
+                disabled={isDefaultValue}
+              >
+                Save
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="transition-all duration-300"
+                disabled={isDefaultValue}
+                onClick={() => {
+                  form.reset();
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+        />
       </div>
       <div className="space-y-4">
         {Object.entries(props.collection.fields).map(([fieldKey, field]) => {

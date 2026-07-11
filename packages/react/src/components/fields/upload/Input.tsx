@@ -1,7 +1,7 @@
 "use client";
 
 import type { StorageAdapterSlug, UploadField } from "@vexcms/core";
-import { createFieldInput } from "../../form";
+import { createFieldInput, FormLabel } from "../../form";
 import { MediaPicker } from "../../media";
 import { useVexConfig } from "../../../context";
 import { UploadEmpty } from "./EmptyInput";
@@ -57,22 +57,27 @@ export const UploadFieldInput = createFieldInput<string[], UploadField>(
     }
 
     if (readOnly) {
-      return value.length > 0 ? (
-        <UploadFilledState
-          mediaIds={value}
-          fieldDef={fieldDef}
-          onRemove={handleRemove}
-          openPicker={openPicker}
-        />
-      ) : (
-        <div className="text-sm text-muted-foreground">—</div>
-      );
+      <>
+        <FormLabel name={name} field={fieldDef} />
+        {value.length > 0 ? (
+          <UploadFilledState
+            mediaIds={value}
+            fieldDef={fieldDef}
+            onRemove={handleRemove}
+            openPicker={openPicker}
+          />
+        ) : (
+          <div className="text-sm text-muted-foreground">—</div>
+        )}
+        ;
+      </>;
     }
-    field;
+
     // Empty state
     if (value.length === 0) {
       return (
         <>
+          <FormLabel name={name} field={fieldDef} />
           <UploadEmpty
             onPickerOpen={openPicker}
             onFileUpload={(mediaId) => field.handleChange([mediaId])}
@@ -96,6 +101,7 @@ export const UploadFieldInput = createFieldInput<string[], UploadField>(
     // Filled state (single or multi)
     return (
       <>
+        <FormLabel name={name} field={fieldDef} />
         <UploadFilledState
           mediaIds={value}
           fieldDef={fieldDef}
