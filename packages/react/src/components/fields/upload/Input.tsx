@@ -1,6 +1,6 @@
 "use client";
 
-import type { StorageAdapterSlug, UploadField } from "@vexcms/core";
+import type { UploadField } from "@vexcms/core";
 import { createFieldInput, FormLabel } from "../../form";
 import { MediaPicker } from "../../media";
 import { useVexConfig } from "../../../context";
@@ -8,6 +8,7 @@ import { UploadEmpty } from "./EmptyInput";
 import { UploadFilledState } from "./FilledInput";
 import { parseAsString, useQueryState } from "nuqs";
 import { MODALS } from "../../modals";
+import { useState } from "react";
 
 /**
  * Upload field input with all states + array storage.
@@ -24,19 +25,24 @@ import { MODALS } from "../../modals";
 export const UploadFieldInput = createFieldInput<string[], UploadField>(
   ({ name, fieldDef, field, readOnly }) => {
     const [activeField, setActiveField] = useQueryState(MODALS.editMedia.urlParam, parseAsString);
+    const [defaultTab, setDefaultTab] = useState<"library" | "upload">("library");
+    const [stagedFiles, setStagedFiles] = useState<File[]>([]);
     const isOpen = activeField === name;
     const value = field.state.value || [];
     const config = useVexConfig();
 
-    const adapterName: StorageAdapterSlug =
-      config.mediaCollections.find((mc) => mc.slug === fieldDef.to)?.meta?.storageAdapter ??
-      "convex";
+    const targetCollectionConfig = config.mediaCollections.find((mc) => mc.slug === fieldDef.to);
+    if (!targetCollectionConfig) {
+      throw new Error(`Media collection "${fieldDef.to}" not found in config.`);
+    }
 
     async function openPicker() {
       await setActiveField(name);
     }
     async function closePicker() {
       await setActiveField(null);
+      setDefaultTab("library"); // Reset to library on close
+      setStagedFiles([]); // Clear pending files
     }
 
     async function handleSelect(mediaIds: string[]) {
@@ -56,12 +62,19 @@ export const UploadFieldInput = createFieldInput<string[], UploadField>(
       field.moveValue(from, to);
     }
 
+    async function handleFilesSelected(files: File[]) {
+      setStagedFiles(files);
+      setDefaultTab("upload");
+      await openPicker();
+    }
+
     if (readOnly) {
       <>
         <FormLabel name={name} field={fieldDef} />
         {value.length > 0 ? (
           <UploadFilledState
             mediaIds={value}
+            fieldApi={field}
             fieldDef={fieldDef}
             onRemove={handleRemove}
             openPicker={openPicker}
@@ -80,9 +93,9 @@ export const UploadFieldInput = createFieldInput<string[], UploadField>(
           <FormLabel name={name} field={fieldDef} />
           <UploadEmpty
             onPickerOpen={openPicker}
-            onFileUpload={(mediaId) => field.handleChange([mediaId])}
-            targetCollection={fieldDef.to}
-            adapterName={adapterName}
+            fieldDef={fieldDef}
+            targetCollectionConfig={targetCollectionConfig}
+            onFilesSelected={handleFilesSelected}
           />
           {isOpen && (
             <MediaPicker
@@ -92,6 +105,8 @@ export const UploadFieldInput = createFieldInput<string[], UploadField>(
               multi={fieldDef.hasMany}
               onSelect={handleSelect}
               onCancel={closePicker}
+              defaultTab={defaultTab}
+              stagedFiles={stagedFiles}
             />
           )}
         </>
@@ -104,6 +119,7 @@ export const UploadFieldInput = createFieldInput<string[], UploadField>(
         <FormLabel name={name} field={fieldDef} />
         <UploadFilledState
           mediaIds={value}
+          fieldApi={field}
           fieldDef={fieldDef}
           onRemove={handleRemove}
           onReorder={handleReorder}

@@ -11,7 +11,7 @@ import type { TypedFieldApi } from "./createFieldInput";
 import { AppFormContext } from "./AppFormContext";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { TrashIcon, SearchIcon, LayersIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { TrashIcon, LayersIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
 import { fieldToInputComponent } from "../fields";
 import { Icon } from "../Icon";
@@ -78,76 +78,131 @@ function computeDefaultOpenBlocks(items: GenericBlock[], defaultCollapsed: boole
 function BlockPickerDialog(props: {
   blockDefs: BlockConfig[];
   open: boolean;
+  multiselect?: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (blockDef: BlockConfig) => void;
 }) {
   const [search, setSearch] = useState("");
+  const [selectedBlocks, setSelectedBlocks] = useState<Set<string>>(new Set());
   const filtered = props.blockDefs.filter(
     (b) =>
       b.label?.toLowerCase().includes(search.toLowerCase()) ||
       b.blockType.toLowerCase().includes(search.toLowerCase()),
   );
 
+  function toggleBlock(blockType: string) {
+    setSelectedBlocks((prev) => {
+      const next = new Set(prev);
+      if (next.has(blockType)) {
+        next.delete(blockType);
+      } else {
+        next.add(blockType);
+      }
+      return next;
+    });
+  }
+
+  function handleAddBlocks() {
+    const selectedBlockDefs = props.blockDefs.filter((b) => selectedBlocks.has(b.blockType));
+    selectedBlockDefs.forEach((blockDef) => props.onSelect(blockDef));
+    setSelectedBlocks(new Set());
+    setSearch("");
+    props.onOpenChange(false);
+  }
+
+  function handleAddBlock(blockDef: BlockConfig) {
+    props.onSelect(blockDef);
+    props.onOpenChange(false);
+    setSearch("");
+  }
+
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
       <DialogContent className="w-full max-w-sm p-0">
         <DialogHeader className="p-4 pb-2">
           <DialogTitle>Add block</DialogTitle>
-          <DialogDescription>Select a block type to add</DialogDescription>
+          <DialogDescription>
+            {props.multiselect ? "Select one or more blocks" : "Select a block"}
+          </DialogDescription>
         </DialogHeader>
         <div className="px-4 pb-2">
-          <div className="relative">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Search blocks…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-              autoFocus
-            />
-          </div>
+          <Input
+            iconLeft={{ name: "Search" }}
+            placeholder="Search blocks…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            autoFocus
+          />
         </div>
         <div className="px-2 pb-3 max-h-72 overflow-y-auto">
           {filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">No blocks found</p>
           ) : (
             <div className="space-y-0.5">
-              {filtered.map((blockDef) => (
-                <button
-                  key={blockDef.blockType}
-                  type="button"
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-left hover:bg-muted transition-colors"
-                  onClick={() => {
-                    props.onSelect(blockDef);
-                    props.onOpenChange(false);
-                    setSearch("");
-                  }}
-                >
-                  <div className="size-8 rounded-sm bg-muted flex items-center justify-center shrink-0">
-                    {blockDef.admin?.icon ? (
-                      <Icon
-                        name={blockDef.admin.icon as any}
-                        className="size-4 text-muted-foreground"
-                      />
-                    ) : (
-                      <LayersIcon className="size-4 text-muted-foreground" />
+              {filtered.map((blockDef) => {
+                const isSelected = selectedBlocks.has(blockDef.blockType);
+                return (
+                  <button
+                    key={blockDef.blockType}
+                    type="button"
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-left hover:bg-muted transition-colors",
+                      isSelected && "bg-muted",
                     )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{blockDef.label}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {blockDef.blockType}
-                      {Object.keys(blockDef.fields).length > 0 &&
-                        ` · ${Object.keys(blockDef.fields).length} field${
-                          Object.keys(blockDef.fields).length === 1 ? "" : "s"
-                        }`}
-                    </p>
-                  </div>
-                </button>
-              ))}
+                    onClick={() => {
+                      if (props.multiselect) {
+                        toggleBlock(blockDef.blockType);
+                      } else {
+                        handleAddBlock(blockDef);
+                      }
+                    }}
+                  >
+                    {props.multiselect && (
+                      <div
+                        className={cn(
+                          "size-4 rounded border border-input flex items-center justify-center shrink-0",
+                          isSelected && "bg-primary border-primary",
+                        )}
+                      >
+                        {isSelected && (
+                          <Icon name="Check" className="size-3 text-primary-foreground" />
+                        )}
+                      </div>
+                    )}
+                    <div className="size-8 rounded-sm bg-muted flex items-center justify-center shrink-0">
+                      {blockDef.admin?.icon ? (
+                        <Icon
+                          name={blockDef.admin.icon as any}
+                          className="size-4 text-muted-foreground"
+                        />
+                      ) : (
+                        <LayersIcon className="size-4 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{blockDef.label}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {blockDef.blockType}
+                        {Object.keys(blockDef.fields).length > 0 &&
+                          ` · ${Object.keys(blockDef.fields).length} field${
+                            Object.keys(blockDef.fields).length === 1 ? "" : "s"
+                          }`}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
+        {props.multiselect && selectedBlocks.size > 0 && (
+          <div className="px-4 pb-4 pt-2 border-t flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{selectedBlocks.size} selected</span>
+            <Button onClick={handleAddBlocks} size="sm">
+              Add {selectedBlocks.size} block{selectedBlocks.size === 1 ? "" : "s"}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -187,12 +242,20 @@ export function FormBlocks({
   readOnly,
   submissionAttempts,
   className,
+  modalOpen,
+  openEditor,
+  closeEditor,
 }: InputComponentProps<BlocksField> & {
   field: TypedFieldApi<GenericBlock[]>;
   submissionAttempts: number;
+  /** Whether the block editor modal is open (driven by URL param). */
+  modalOpen: boolean;
+  /** Opens the block editor modal (sets URL param). */
+  openEditor: () => void;
+  /** Closes the block editor modal (clears URL param). */
+  closeEditor: () => void;
 } & ComponentPropsWithRef<"div">) {
   const form = useContext(AppFormContext);
-  const [pickerOpen, setPickerOpen] = useState(false);
 
   if (!form) {
     throw new Error(
@@ -374,7 +437,7 @@ export function FormBlocks({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setPickerOpen(true)}
+              onClick={openEditor}
               disabled={atMax}
               icon="Plus"
             >
@@ -393,9 +456,16 @@ export function FormBlocks({
 
       <BlockPickerDialog
         blockDefs={fieldDef.blocks}
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
+        open={modalOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            openEditor();
+            return;
+          }
+          closeEditor();
+        }}
         onSelect={handleAdd}
+        multiselect={true}
       />
     </div>
   );

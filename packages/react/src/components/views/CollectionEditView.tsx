@@ -47,9 +47,6 @@ export function CollectionEditView<
   TSlug extends CollectionSlug = CollectionSlug,
 >(props: CollectionEditViewProps<TFieldMeta, TCollectionMeta, TSlug>) {
   const { data: currentDocument } = useQuery({
-    // documentId comes from URL params (string). GenericId<TSlug> is the
-    // branded Convex type but the runtime value is identical — cast here.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ...get({ id: props.documentId as any }),
     initialData: props.initialData,
   });

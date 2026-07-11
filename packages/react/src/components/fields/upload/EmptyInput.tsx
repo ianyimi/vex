@@ -1,6 +1,6 @@
 import { Button } from "../../ui";
-import { MediaUploadDropzone } from "../../media/MediaUploadDropzone";
-import type { StorageAdapterSlug } from "@vexcms/core";
+import type { MediaCollectionConfig, UploadField } from "@vexcms/core";
+import { useCallback } from "react";
 
 /**
  * Props for UploadEmpty component.
@@ -8,12 +8,14 @@ import type { StorageAdapterSlug } from "@vexcms/core";
 export interface UploadEmptyProps {
   /** Callback to open the media picker modal. */
   onPickerOpen: () => void;
-  /** Callback when a file is uploaded via dropzone. */
-  onFileUpload: (mediaId: string) => void;
+  /** Callback when files are selected via dropzone (NOT uploaded yet). */
+  onFilesSelected: (files: File[]) => Promise<void>;
+  /** The UploadField of the field being uploaded to. */
+  fieldDef: UploadField;
   /** The media collection slug for the upload. */
-  targetCollection: string;
-  /** The storage adapter name. */
-  adapterName: StorageAdapterSlug;
+  targetCollectionConfig: MediaCollectionConfig;
+  /** Whether the field is read-only. */
+  readOnly?: boolean;
 }
 
 /**
@@ -25,19 +27,65 @@ export interface UploadEmptyProps {
  */
 export function UploadEmpty({
   onPickerOpen,
-  onFileUpload,
-  targetCollection,
-  adapterName,
+  onFilesSelected,
+  fieldDef,
+  targetCollectionConfig,
+  readOnly,
 }: UploadEmptyProps) {
+  const handleDrop = useCallback(
+    async (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      if (readOnly) return;
+
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length > 0) {
+        await onFilesSelected(files);
+      }
+    },
+    [onFilesSelected, readOnly],
+  );
+
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length > 0) {
+        onFilesSelected(files);
+      }
+    },
+    [onFilesSelected],
+  );
+
   return (
-    <div className="flex flex-col gap-2">
-      <MediaUploadDropzone
-        targetCollection={targetCollection}
-        adapterName={adapterName}
-        onUploadComplete={onFileUpload}
-      />
-      <Button variant="ghost" size="sm" onClick={onPickerOpen} className="self-start" icon="Folder">
-        Browse media library
+    <div className="grid grid-cols-2">
+      <div
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+        className="relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-input 
+          p-8 text-center transition-colors hover:border-primary"
+      >
+        <input
+          type="file"
+          multiple
+          onChange={handleFileInput}
+          className="absolute inset-0 cursor-pointer opacity-0"
+          disabled={readOnly}
+          accept={fieldDef.accept}
+        />
+        <div className="pointer-events-none space-y-2">
+          <div className="text-muted-foreground">
+            <p className="text-sm">Drop files here or click to browse</p>
+          </div>
+        </div>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onPickerOpen}
+        className="self-center h-full"
+        icon="Folder"
+        disabled={readOnly}
+      >
+        Browse {targetCollectionConfig.labels.plural}
       </Button>
     </div>
   );

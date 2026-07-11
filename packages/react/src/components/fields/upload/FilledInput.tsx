@@ -9,7 +9,7 @@ import {
 } from "@vexcms/core";
 import { FilePreview } from "../../media/FilePreview";
 import { convexQuery } from "@convex-dev/react-query";
-import { InputTag } from "../../form";
+import { InputTag, TypedFieldApi } from "../../form";
 import { useVexConfig } from "../../../context";
 import { cn } from "../../../styles/utils";
 
@@ -19,6 +19,8 @@ import { cn } from "../../../styles/utils";
 export interface UploadFilledStateProps {
   /** Array of media document IDs. */
   mediaIds: string[];
+  /** The FieldApi of the field being uploaded to. */
+  fieldApi: TypedFieldApi<string[]>;
   /** The UploadField of the field being uploaded to. */
   fieldDef: UploadField;
   /** Callback to remove a specific media ID (or all if no ID provided). */
@@ -45,6 +47,7 @@ export interface UploadFilledStateProps {
 export function UploadFilledState({
   mediaIds,
   fieldDef,
+  fieldApi,
   onRemove,
   onReorder,
   openPicker,
@@ -85,6 +88,15 @@ export function UploadFilledState({
             icon="FilePenLine"
           >
             Edit {targetCollectionConfig.labels.plural}
+          </Button>
+          <Button
+            variant="ghost"
+            className="hover:text-destructive transition-all duration-300"
+            size="sm"
+            onClick={() => fieldApi.setValue([])}
+            icon="X"
+          >
+            Clear
           </Button>
           {fieldDef.max && (
             <span

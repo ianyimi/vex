@@ -5,7 +5,7 @@ import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { vexConvexApi, formatBytes, formatMimeType } from "@vexcms/core";
-import type { MediaCollectionConfig, StorageAdapterSlug, UploadField } from "@vexcms/core";
+import type { MediaCollectionConfig, UploadField } from "@vexcms/core";
 import { Button, Icon, Input, Label } from "../ui";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { AppForm } from "../form/AppForm";
@@ -15,9 +15,7 @@ import { AppForm } from "../form/AppForm";
  */
 export interface MediaUploadFormProps {
   /** The media collection configuration. */
-  collection: MediaCollectionConfig;
-  /** The storage adapter name. */
-  adapterName: StorageAdapterSlug;
+  collectionConfig: MediaCollectionConfig;
   /** Whether to allow multiple file selection (from field.hasMany). */
   multi: boolean;
   /** The UploadField of the field being uploaded to. */
@@ -76,14 +74,14 @@ export interface MediaUploadFormProps {
  */
 export function MediaUploadForm({
   fieldDef,
-  collection,
-  adapterName,
+  collectionConfig,
   multi,
   stagedFiles = [],
   onComplete,
   onCancel,
 }: MediaUploadFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const adapterName = collectionConfig.meta.storageAdapter;
 
   const { mutateAsync: generateUploadUrl } = useMutation({
     mutationFn: useConvexMutation(vexConvexApi.media.generateUploadUrl),
@@ -130,7 +128,7 @@ export function MediaUploadForm({
             // 3. Create media document
             const mediaDocId = await createMediaDoc({
               adapter: adapterName,
-              collectionSlug: collection.slug,
+              collectionSlug: collectionConfig.slug,
               storageId,
               filename: fileData.filename,
               mimeType: fileData.file.type,
@@ -285,7 +283,7 @@ export function MediaUploadForm({
                               <div className="space-y-1.5">
                                 <Label htmlFor={field.name} className="text-xs font-medium">
                                   Filename{" "}
-                                  {collection.fields.alt?.required && (
+                                  {collectionConfig.fields.alt?.required && (
                                     <span className="text-destructive">*</span>
                                   )}
                                 </Label>
@@ -337,7 +335,7 @@ export function MediaUploadForm({
                       className="self-start"
                       icon="Plus"
                     >
-                      Add {collection.labels.plural}
+                      Add {collectionConfig.labels.plural}
                     </Button>
                     <Input
                       ref={fileInputRef}

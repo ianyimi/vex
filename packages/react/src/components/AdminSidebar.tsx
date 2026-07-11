@@ -11,8 +11,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "./ui/sidebar";
-import { VexLink } from "./ui/VexLink";
+  VexLink,
+  ThemeToggle,
+} from "./ui";
 import { AdminUser } from "./AdminLayout";
 import { Icon } from "./Icon";
 import { Activity } from "react";
@@ -63,8 +64,11 @@ export function AppSidebar(props: AppSidebarProps) {
       side={props.config.admin.sidebar.side}
       collapsible={props.config.admin.sidebar.collapsible}
     >
-      <SidebarHeader className="h-12 border-b flex flex-col justify-center">
-        <span className="font-semibold font-mono text-sm tracking-tight px-2">VexCMS Admin</span>
+      <SidebarHeader className="h-12 border-b flex justify-center">
+        <div className="flex justify-between items-center">
+          <span className="font-semibold font-mono text-sm tracking-tight px-2">VexCMS Admin</span>
+          <ThemeToggle />
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

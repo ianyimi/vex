@@ -25,6 +25,10 @@ interface MediaPickerProps {
   onSelect: (mediaIds: string[]) => void;
   /** Callback invoked when the picker is cancelled. */
   onCancel: () => void;
+  /** Initial tab to show ("library" or "upload"). Default: "library". */
+  defaultTab?: "library" | "upload";
+  /** Pre-selected files to populate in the upload form (not uploaded yet). */
+  stagedFiles?: File[];
 }
 
 /**
@@ -45,6 +49,8 @@ export function MediaPicker({
   fieldDef,
   targetCollection,
   multi,
+  defaultTab = "library",
+  stagedFiles: stagedFiles = [],
   onSelect,
   onCancel,
 }: MediaPickerProps) {
@@ -68,6 +74,9 @@ export function MediaPicker({
 
   function handleBackToLibrary() {}
 
+  const label = fieldDef.hasMany
+    ? targetCollectionConfig.labels.plural
+    : targetCollectionConfig.labels.singular;
   return (
     <Dialog open onOpenChange={onCancel}>
       <DialogContent className="w-[90svw] !max-w-6xl">
@@ -77,14 +86,13 @@ export function MediaPicker({
           </div>
           <div className="text">
             <h1 className="font-mono">
-              Select {targetCollectionConfig.labels.singular} -{" "}
-              <b className="text-primary">{fieldDef.label}</b>
+              Select {label} - <b className="text-primary">{fieldDef.label}</b>
             </h1>
             <p className="text-xs">Choose from the list below, or upload more</p>
           </div>
         </div>
 
-        <Tabs defaultValue="library">
+        <Tabs defaultValue={defaultTab}>
           <TabsList>
             <TabsTrigger
               value="library"
@@ -98,7 +106,7 @@ export function MediaPicker({
               value="upload"
               render={
                 <Button variant="ghost" icon="Plus">
-                  Upload New
+                  Upload
                 </Button>
               }
             />
@@ -129,9 +137,9 @@ export function MediaPicker({
           <TabsContent value="upload" className="mt-0">
             <MediaUploadForm
               fieldDef={fieldDef}
-              collection={targetCollectionConfig}
+              stagedFiles={stagedFiles}
+              collectionConfig={targetCollectionConfig}
               multi={fieldDef.hasMany}
-              adapterName={targetCollectionConfig.meta.storageAdapter}
               onComplete={handleUploadComplete}
               onCancel={handleBackToLibrary}
             />

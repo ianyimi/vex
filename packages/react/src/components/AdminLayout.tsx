@@ -6,8 +6,13 @@ import {
 } from "../hooks/useFrameworkComponents";
 import { VexConfigContext } from "../context";
 import { AppSidebar } from "./AdminSidebar";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "./ui/sidebar";
-import { TooltipProvider } from "./ui/tooltip";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+  TooltipProvider,
+  ThemeProvider,
+} from "./ui";
 import AdminTopNav from "./AdminTopNav";
 import { sanitizeConfigForClient } from "@vexcms/core";
 
@@ -134,21 +139,23 @@ export function AdminLayout(props: AdminLayoutProps) {
   return (
     <VexConfigContext.Provider value={clientConfig}>
       <FrameworkComponentsContext.Provider value={props.components ?? {}}>
-        <TooltipProvider>
-          <SidebarProvider>
-            {side === "right" ? (
-              <>
-                {content}
-                {sidebar}
-              </>
-            ) : (
-              <>
-                {sidebar}
-                {content}
-              </>
-            )}
-          </SidebarProvider>
-        </TooltipProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <SidebarProvider>
+              {side === "right" ? (
+                <>
+                  {content}
+                  {sidebar}
+                </>
+              ) : (
+                <>
+                  {sidebar}
+                  {content}
+                </>
+              )}
+            </SidebarProvider>
+          </TooltipProvider>
+        </ThemeProvider>
       </FrameworkComponentsContext.Provider>
     </VexConfigContext.Provider>
   );

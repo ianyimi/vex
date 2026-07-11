@@ -22,3 +22,6 @@ export * from "./popover";
 export * from "./tabs";
 
 export * from "../Icon";
+export * from "./ThemeProvider";
+export * from "./ThemeToggle";
+export * from "./ThemeScript";

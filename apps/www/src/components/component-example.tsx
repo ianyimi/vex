@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import { TerminalIcon, UserIcon } from "lucide-react"
-import Link from "next/link"
+import { ThemeToggle } from "@vexcms/react";
+import { TerminalIcon, UserIcon } from "lucide-react";
+import Link from "next/link";
 
-import { signOut, useSession } from "~/auth/client"
-import { Button } from "~/components/ui/button"
-import { ThemeToggle } from "~/components/ui/theme-toggle"
+import { signOut, useSession } from "~/auth/client";
+import { Button } from "~/components/ui/button";
 
 export function ComponentExample() {
-  const { data: session } = useSession()
+  const { data: session } = useSession();
 
   return (
     <div className="bg-background flex min-h-screen flex-col items-center justify-center gap-8 p-6 text-center">
@@ -51,11 +51,7 @@ export function ComponentExample() {
             <Button nativeButton={false} render={<Link href="/auth/sign-up" />}>
               Sign up
             </Button>
-            <Button
-              nativeButton={false}
-              render={<Link href="/auth/sign-in" />}
-              variant="outline"
-            >
+            <Button nativeButton={false} render={<Link href="/auth/sign-in" />} variant="outline">
               Sign in
             </Button>
           </>
@@ -66,5 +62,5 @@ export function ComponentExample() {
         npx create-vexcms@latest
       </code>
     </div>
-  )
+  );
 }

@@ -58,10 +58,11 @@ function Button({
   isPending?: boolean;
   icon?: LucideIconName;
   iconSize?: number;
-  iconPosition?: "left" | "right";
+  iconPosition?: "left" | "right" | "center";
 } & ButtonPrimitive.Props &
   VariantProps<typeof buttonVariants>) {
   const iconLeft = iconPosition === "left";
+  const iconRight = iconPosition === "right";
   return (
     <ButtonPrimitive
       data-slot="button"
@@ -71,8 +72,9 @@ function Button({
     >
       <span className={isPending ? "invisible" : ""}>
         {icon && iconLeft && <Icon name={icon} size={iconSize} className="inline mb-0.5 mr-1" />}
+        {icon && !iconLeft && !iconRight && <Icon name={icon} size={iconSize} className="inline" />}
         {children}
-        {icon && !iconLeft && <Icon name={icon} size={iconSize} className="inline mb-0.5 mr-1" />}
+        {icon && iconRight && <Icon name={icon} size={iconSize} className="inline mb-0.5 mr-1" />}
       </span>
       {isPending && <Loader2Icon className="animate-spin absolute" />}
     </ButtonPrimitive>

@@ -22,6 +22,10 @@ export const MODALS = {
     urlParam: "editMedia",
     label: "Edit",
   },
+  editBlocks: {
+    urlParam: "editBlocks",
+    label: "Edit",
+  },
 } as const;
 
 /** Union of all URL parameter strings used to control admin modals. */
