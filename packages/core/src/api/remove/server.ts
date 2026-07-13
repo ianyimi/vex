@@ -14,33 +14,70 @@ export interface RemoveServerArgs<
   DataModel extends GenericDataModel,
   TCollectionSlug extends CollectionSlug,
 > extends GenericMutationServerParams<DataModel> {
-  /** The document ID to permanently delete. */
-  id: GenericId<TCollectionSlug>;
+  /**
+   * Document ID(s) to delete.
+   * Pass a single ID in an array for one document, or multiple IDs for bulk delete.
+   */
+  ids: GenericId<TCollectionSlug>[];
+  /**
+   * Optional soft delete field name.
+   * If provided, sets this field to `true` instead of permanently deleting.
+   * @example "deleted" — sets { deleted: true } on the document(s)
+   */
+  softDelete?: string;
 }
 
 /**
- * Permanently deletes a document by its `Id<TCollectionSlug>`. Server-side only.
+ * Deletes one or more documents. Server-side only.
  * Named `remove` to avoid collision with the JavaScript `delete` keyword.
+ *
+ * Supports both hard delete (permanent) and soft delete (mark as deleted).
+ * Pass `softDelete` field name to soft delete instead of permanently removing.
  *
  * Import from `@vexcms/core/server`.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
  * @typeParam TCollectionSlug - Collection slug.
- * @param args - `{ ctx, id }`. `ctx` must be a mutation context.
+ * @param args - `{ ctx, ids, softDelete? }`. `ctx` must be a mutation context.
  * @returns Promise resolving to void.
- * @example
+ * @example Single delete
  * ```ts
  * import { remove } from "@vexcms/core/server";
  *
  * export const deletePost = mutation({
  *   args: { id: v.id("posts") },
- *   handler: (ctx, args) => remove({ ctx, id: args.id }),
+ *   handler: (ctx, args) => remove({ ctx, ids: [args.id] }),
+ * });
+ * ```
+ * @example Bulk delete
+ * ```ts
+ * export const bulkDeletePosts = mutation({
+ *   args: { ids: v.array(v.id("posts")) },
+ *   handler: (ctx, args) => remove({ ctx, ids: args.ids }),
+ * });
+ * ```
+ * @example Soft delete
+ * ```ts
+ * export const softDeletePost = mutation({
+ *   args: { id: v.id("posts") },
+ *   handler: (ctx, args) =>
+ *     remove({ ctx, ids: [args.id], softDelete: "deleted" }),
  * });
  * ```
  */
 export async function remove<
-  DataModel extends GenericDataModel,
-  TCollectionSlug extends CollectionSlug,
+  DataModel extends GenericDataModel = GenericDataModel,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
 >(args: RemoveServerArgs<DataModel, TCollectionSlug>): Promise<void> {
-  await args.ctx.db.delete(args.id);
+  if (args.softDelete) {
+    await Promise.all(
+      args.ids.map((id) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        args.ctx.db.patch(id, { [args.softDelete as string]: true } as any),
+      ),
+    );
+    return;
+  }
+
+  await Promise.all(args.ids.map((id) => args.ctx.db.delete(id)));
 }

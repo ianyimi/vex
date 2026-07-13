@@ -1,12 +1,13 @@
-import { defineSchema, defineTable } from "convex/server"
-import { v } from "convex/values"
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
-import { TABLE_SLUG_ACCOUNTS, TABLE_SLUG_USERS } from "~/db/constants"
+import { TABLE_SLUG_ACCOUNTS, TABLE_SLUG_USERS } from "~/db/constants";
 
 import {
   apikey,
   footers,
   headers,
+  images,
   invitation,
   jwks,
   member,
@@ -18,8 +19,7 @@ import {
   teamMember,
   themes,
   verification,
-  images,
-} from "./vex.schema"
+} from "./vex.schema";
 
 export default defineSchema({
   images,
@@ -75,4 +75,4 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_accountId", ["accountId"]),
-})
+});

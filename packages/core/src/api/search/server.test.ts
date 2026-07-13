@@ -208,4 +208,113 @@ describe("search (server) — depth auto-populate", () => {
     const author = (docs[0].author as DocumentBySlug["authors"][])[0];
     expect(author.name).toBe("Lena");
   });
+
+  // ── Pagination tests ──────────────────────────────────────────────────────
+
+  test("paginationOpts: returns PaginationResult with page, continueCursor, isDone", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        for (let i = 0; i < 5; i++) {
+          await ctx.db.insert("posts", { title: `Post ${i}`, slug: `s-${i}` });
+        }
+        return search({
+          ctx,
+          collection: "posts",
+          query: "", // Empty query (list mode)
+          searchIndexName: "search_title",
+          searchField: "title",
+          paginationOpts: { numItems: 3, cursor: null },
+        });
+      },
+    );
+    expect(result).toHaveProperty("page");
+    expect(result).toHaveProperty("continueCursor");
+    expect(result).toHaveProperty("isDone");
+    expect(result.page).toHaveLength(3);
+    expect(result.page[0].title).toBe("Post 0");
+  });
+
+  test("paginationOpts: continueCursor fetches next page", async () => {
+    const t = convexTest(schema, modules);
+    const { firstPage, secondPage } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        for (let i = 0; i < 7; i++) {
+          await ctx.db.insert("posts", { title: `Post ${i}`, slug: `s-${i}` });
+        }
+        const firstPage = await search({
+          ctx,
+          collection: "posts",
+          query: "",
+          searchIndexName: "search_title",
+          searchField: "title",
+          paginationOpts: { numItems: 3, cursor: null },
+        });
+        const secondPage = await search({
+          ctx,
+          collection: "posts",
+          query: "",
+          searchIndexName: "search_title",
+          searchField: "title",
+          paginationOpts: { numItems: 3, cursor: firstPage.continueCursor },
+        });
+        return { firstPage, secondPage };
+      },
+    );
+    expect(firstPage.page).toHaveLength(3);
+    expect(secondPage.page).toHaveLength(3);
+    expect(firstPage.page[0].title).toBe("Post 0");
+    expect(secondPage.page[0].title).toBe("Post 3");
+  });
+
+  test("paginationOpts: works with search query", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        await ctx.db.insert("posts", { title: "Hello World", slug: "hello" });
+        await ctx.db.insert("posts", { title: "Hello There", slug: "there" });
+        await ctx.db.insert("posts", { title: "Goodbye", slug: "bye" });
+        return search({
+          ctx,
+          collection: "posts",
+          query: "Hello", // Search term
+          searchIndexName: "search_title",
+          searchField: "title",
+          paginationOpts: { numItems: 10, cursor: null },
+        });
+      },
+    );
+    expect(result.page).toHaveLength(2); // Only "Hello" matches
+    expect(result.page[0].title).toContain("Hello");
+    expect(result.page[1].title).toContain("Hello");
+    expect(result.isDone).toBe(true);
+  });
+
+  test("paginationOpts: works with populate", async () => {
+    const t = convexTest(schema, modules);
+    const result: any = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const authorId = await ctx.db.insert("authors", { name: "Lena" });
+        for (let i = 0; i < 3; i++) {
+          await ctx.db.insert("posts", {
+            title: `Post ${i}`,
+            slug: `s-${i}`,
+            author: [authorId],
+          });
+        }
+        return search({
+          ctx,
+          collection: "posts",
+          query: "",
+          searchIndexName: "search_title",
+          searchField: "title",
+          paginationOpts: { numItems: 2, cursor: null },
+          populate: { author: true },
+        } as any);
+      },
+    );
+    expect(result.page).toHaveLength(2);
+    const firstDoc = result.page[0] as { author: DocumentBySlug["authors"][] };
+    expect(firstDoc.author[0].name).toBe("Lena");
+  });
 });

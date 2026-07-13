@@ -1,7 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { MediaCollectionConfig, TDocument, VexDocument, VexMediaDocument } from "@vexcms/core";
+import type {
+  MediaCollectionConfig,
+  TDocument,
+  VexDocument,
+  VexMediaDocument,
+  PaginationResult,
+} from "@vexcms/core";
 import { find } from "@vexcms/core/client";
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
 import { Button } from "../ui/button";
@@ -23,7 +29,7 @@ export interface MediaCollectionListViewProps<TDoc extends VexDocument = VexDocu
    * Pre-fetched documents from the server. Passed as `initialData` to the
    * TanStack Query so the list renders immediately on first load.
    */
-  initialData?: TDoc[];
+  initialData?: TDoc[] | PaginationResult<TDoc>;
 }
 
 /**

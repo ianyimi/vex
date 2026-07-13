@@ -2,7 +2,7 @@ import { convexQuery } from "@convex-dev/react-query";
 
 import { vexConvexApi } from "../../convex";
 import type { CollectionSlug } from "../../types/generated";
-import type { GenericQueryClientParams, PopulateShape } from "../types";
+import type { GenericQueryClientParams, PaginationOptions, PopulateShape } from "../types";
 
 /**
  * Client-side args for `search`. Extends {@link GenericQueryClientParams}
@@ -20,6 +20,7 @@ export interface SearchClientArgs<
   searchIndexName: string;
   searchField: string;
   limit?: number;
+  paginationOpts?: PaginationOptions;
 }
 
 /**
@@ -54,5 +55,6 @@ export function search<
     limit: args.limit,
     populate: args.populate,
     depth: args.depth,
+    paginationOpts: args.paginationOpts,
   });
 }

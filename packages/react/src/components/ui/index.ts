@@ -3,6 +3,7 @@ export * from "./checkbox";
 export * from "./dnd";
 export * from "./badge";
 export * from "./dialog";
+export * from "./data-table";
 export * from "./datetime";
 export * from "./dropdown-menu";
 export * from "./input";

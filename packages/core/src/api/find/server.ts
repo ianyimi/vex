@@ -6,6 +6,8 @@ import type {
   IndexNames,
   IndexRange,
   IndexRangeBuilder,
+  PaginationOptions,
+  PaginationResult,
   NamedIndex,
   NamedTableInfo,
   TableNamesInDataModel,
@@ -104,6 +106,14 @@ export interface FindServerArgs<
         ) => IndexRange;
       }
     : never;
+
+  /**
+   * Pagination options. When provided, the function returns a `PaginationResult`
+   * with `{ page, continueCursor, isDone }` instead of a plain array.
+   *
+   * Uses Convex's native `.paginate(opts)` API under the hood.
+   */
+  paginationOpts?: PaginationOptions;
 }
 
 /**
@@ -132,6 +142,36 @@ type FindReturn<
   TPopulate extends PopulateShape<TCollectionSlug>,
   D extends number,
 > = FindReturnItem<TCollectionSlug, TPopulate, D>[];
+
+type FindReturnPaginated<
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
+  D extends number,
+> = PaginationResult<FindReturnItem<TCollectionSlug, TPopulate, D>>;
+
+// Overload 1: WITHOUT paginationOpts → returns array (most common case)
+export async function find<
+  DataModel extends GenericDataModel,
+  TCollectionSlug extends CollectionSlug,
+  const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+  const D extends number = 0,
+>(
+  args: FindServerArgs<DataModel, TCollectionSlug, TPopulate, D> & {
+    paginationOpts?: never;
+  },
+): Promise<FindReturn<TCollectionSlug, TPopulate, D>>;
+
+// Overload 2: WITH paginationOpts → returns PaginationResult
+export async function find<
+  DataModel extends GenericDataModel,
+  TCollectionSlug extends CollectionSlug,
+  const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+  const D extends number = 0,
+>(
+  args: FindServerArgs<DataModel, TCollectionSlug, TPopulate, D> & {
+    paginationOpts: PaginationOptions;
+  },
+): Promise<FindReturnPaginated<TCollectionSlug, TPopulate, D>>;
 
 /**
  * Lists documents in a VexCMS collection with optional filtering, ordering,
@@ -175,6 +215,15 @@ type FindReturn<
  *   limit: 10,
  * });
  * ```
+ * @example With pagination
+ * ```ts
+ * const result = await find({
+ *   ctx,
+ *   collection: "posts",
+ *   paginationOpts: { numItems: 100, cursor: null },
+ * });
+ * // result: { page: [...], continueCursor: string | null, isDone: boolean }
+ * ```
  */
 export async function find<
   DataModel extends GenericDataModel,
@@ -183,7 +232,9 @@ export async function find<
   const D extends number = 0,
 >(
   args: FindServerArgs<DataModel, TCollectionSlug, TPopulate, D>,
-): Promise<FindReturn<TCollectionSlug, TPopulate, D>> {
+): Promise<
+  FindReturn<TCollectionSlug, TPopulate, D> | FindReturnPaginated<TCollectionSlug, TPopulate, D>
+> {
   const tableName = args.collection as TableNamesInDataModel<DataModel>;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -199,8 +250,16 @@ export async function find<
   if (args.order) q = q.order(args.order);
   // 3. filter — secondary predicate, full range scan.
   if (args.filter) q = q.filter(args.filter);
-  // 4. take — terminal.
-  const docs: GenericTableInfo[] = await q.take(args.limit ?? 100);
+
+  // 4. paginate OR take
+  let docs: GenericTableInfo[];
+  let convexPaginationResult: Awaited<ReturnType<typeof q.paginate>> | undefined;
+  if (args.paginationOpts) {
+    convexPaginationResult = await q.paginate(args.paginationOpts);
+    docs = convexPaginationResult.page;
+  } else {
+    docs = await q.take(args.limit ?? 100);
+  }
 
   // Explicit populate takes precedence over depth (D11).
   const effectivePopulate =
@@ -209,12 +268,22 @@ export async function find<
       ? buildDepthPopulate(args.config, args.collection, args.depth)
       : undefined);
 
-  if (!effectivePopulate || Object.keys(effectivePopulate).length === 0) {
-    return docs as unknown as FindReturn<TCollectionSlug, TPopulate, D>;
+  const finalDocs =
+    !effectivePopulate || Object.keys(effectivePopulate).length === 0
+      ? (docs as unknown as FindReturn<TCollectionSlug, TPopulate, D>)
+      : ((await populateDocs(
+          args.ctx,
+          docs as ReadonlyArray<Record<string, unknown>>,
+          effectivePopulate,
+        )) as unknown as FindReturn<TCollectionSlug, TPopulate, D>);
+
+  if (convexPaginationResult) {
+    // Return Convex pagination result directly with populated docs
+    return {
+      ...convexPaginationResult,
+      page: finalDocs,
+    };
   }
-  return populateDocs(
-    args.ctx,
-    docs as ReadonlyArray<Record<string, unknown>>,
-    effectivePopulate,
-  ) as unknown as FindReturn<TCollectionSlug, TPopulate, D>;
+
+  return finalDocs;
 }

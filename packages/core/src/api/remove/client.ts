@@ -18,9 +18,20 @@ import { useConvexMutation } from "@convex-dev/react-query";
  * await mutateAsync({ id: postId });
  * ```
  */
-export interface RemoveClientArgs extends GenericMutationClientParams {
-  /** The document ID to delete. */
-  id: GenericId<CollectionSlug>;
+export interface RemoveClientArgs<
+  TCollectionSlug extends CollectionSlug,
+> extends GenericMutationClientParams {
+  /**
+   * Document ID(s) to delete.
+   * Pass a single ID in an array for one document, or multiple IDs for bulk delete.
+   */
+  ids: GenericId<TCollectionSlug>[];
+  /**
+   * Optional soft delete field name.
+   * If provided, sets this field to `true` instead of permanently deleting.
+   * @example "deleted" — sets { deleted: true } on the document(s)
+   */
+  softDelete?: string;
 }
 
 /**

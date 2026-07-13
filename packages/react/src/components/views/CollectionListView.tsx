@@ -59,11 +59,9 @@ export function CollectionListView<
   });
 
   return (
-    <div>
-      <>
-        <CreateDocumentModal collection={collection} />
-      </>
-      <div className="flex items-center justify-between mb-6">
+    <div className="relative">
+      <CreateDocumentModal collection={collection} />
+      <div className="flex items-center justify-between mb-6 pt-4">
         <div>
           <h1 className="text-2xl font-bold">{collection.labels.plural}</h1>
           <p className="text-sm text-muted-foreground mt-0.5" suppressHydrationWarning>

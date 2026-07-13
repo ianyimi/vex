@@ -17,6 +17,7 @@ const schema = defineSchema({
     slug: v.string(),
     body: v.optional(v.string()),
     featured: v.optional(v.boolean()),
+    deleted: v.optional(v.boolean()), // For soft delete tests
     author: v.optional(v.array(v.id("authors"))),
     parent: v.optional(v.array(v.id("posts"))), // self-ref for depth tests
   })

@@ -1,6 +1,7 @@
 import {
   internalMutationGeneric,
   internalQueryGeneric,
+  paginationOptsValidator,
   type MutationBuilder,
   type RegisteredMutation,
   type FunctionVisibility,
@@ -74,6 +75,7 @@ export function queryApi<
         populate: v.optional(v.any()),
         depth: v.optional(v.number()),
         limit: v.optional(v.number()),
+        paginationOpts: v.optional(paginationOptsValidator),
       },
       handler: (ctx, args) =>
         find({
@@ -81,9 +83,10 @@ export function queryApi<
           collection: args.collection as CollectionSlug,
           populate: args.populate,
           depth: args.depth,
-          config, // ← new
+          config,
           limit: args.limit,
-        }),
+          paginationOpts: args.paginationOpts,
+        } as any),
     }) as RegisteredQuery<Visibility, VexFindArgs, VexDocument[]>,
 
     get: query({
@@ -98,7 +101,7 @@ export function queryApi<
           id: args.id as GenericId<CollectionSlug>,
           populate: args.populate,
           depth: args.depth,
-          config, // ← new
+          config,
         }),
     }) as RegisteredQuery<Visibility, VexGetArgs, VexDocument[]>,
 
@@ -111,6 +114,7 @@ export function queryApi<
         limit: v.optional(v.number()),
         populate: v.optional(v.any()),
         depth: v.optional(v.number()),
+        paginationOpts: v.optional(paginationOptsValidator),
       },
       handler: (ctx, args) =>
         search({
@@ -122,8 +126,9 @@ export function queryApi<
           limit: args.limit,
           populate: args.populate,
           depth: args.depth,
+          paginationOpts: args.paginationOpts,
           config,
-        }),
+        } as any),
     }) as RegisteredQuery<Visibility, VexSearchArgs, VexDocument[]>,
   };
 }
@@ -190,9 +195,15 @@ export function mutationApi<
 
     remove: mutation({
       args: {
-        id: v.string(),
+        ids: v.array(v.string()),
+        softDelete: v.optional(v.string()),
       },
-      handler: (ctx, args) => remove({ ctx, id: args.id as GenericId<CollectionSlug> }),
+      handler: (ctx, args) =>
+        remove({
+          ctx,
+          ids: args.ids as GenericId<CollectionSlug>[],
+          softDelete: args.softDelete,
+        }),
     }) as RegisteredMutation<Visibility, never, never>,
   };
 }

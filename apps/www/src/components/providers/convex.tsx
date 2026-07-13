@@ -33,7 +33,7 @@ function getClients() {
     return makeClients();
   }
   // Browser: singleton → preserves Convex WebSocket reactivity
-  if (!browserClients) browserClients = makeClients();
+  browserClients ??= makeClients();
   return browserClients;
 }
 

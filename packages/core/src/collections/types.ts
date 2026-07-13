@@ -29,6 +29,96 @@ export interface RelationshipPreviewProps<TCollectionSlug extends CollectionSlug
 }
 
 /**
+ * Configuration for data table display and behavior in the admin panel.
+ */
+export interface CollectionTableConfigInput {
+  /**
+   * Default number of items per page.
+   * @default 50
+   */
+  defaultPageSize?: number;
+
+  /**
+   * Available page size options in the pagination controls.
+   * @default [10, 25, 50, 100]
+   */
+  pageSizeOptions?: number[];
+
+  /**
+   * Default sort field and order.
+   * Must be an indexed field for performance.
+   * @default { field: "_creationTime", order: "desc" }
+   */
+  defaultSort?: {
+    field: string;
+    order: "asc" | "desc";
+  };
+
+  /**
+   * Bulk action configuration.
+   */
+  bulkActions?: {
+    /**
+     * Enable bulk delete action.
+     * @default true
+     */
+    delete: boolean;
+  };
+
+  /**
+   * Default visible columns (by field key).
+   * If not specified, all columns are shown.
+   * @todo — deferred to column visibility spec
+   */
+  defaultColumns?: string[];
+}
+
+/**
+ * Configuration for data table display and behavior in the admin panel.
+ */
+export interface CollectionTableConfig {
+  /**
+   * Default number of items per page.
+   * @default 50
+   */
+  defaultPageSize: number;
+
+  /**
+   * Available page size options in the pagination controls.
+   * @default [10, 25, 50, 100]
+   */
+  pageSizeOptions: number[];
+
+  /**
+   * Default sort field and order.
+   * Must be an indexed field for performance.
+   * @default { field: "_creationTime", order: "desc" }
+   */
+  defaultSort: {
+    field: string;
+    order: "asc" | "desc";
+  };
+
+  /**
+   * Bulk action configuration.
+   */
+  bulkActions: {
+    /**
+     * Enable bulk delete action.
+     * @default true
+     */
+    delete: boolean;
+  };
+
+  /**
+   * Default visible columns (by field key).
+   * If not specified, all columns are shown.
+   * @todo — deferred to column visibility spec
+   */
+  defaultColumns: string[];
+}
+
+/**
  * Admin panel configuration input for a collection.
  *
  * Controls how the collection is presented and queried in the admin panel.
@@ -86,6 +176,10 @@ export interface AdminCollectionConfigInput<
    * See https://lucide.dev/icons/
    */
   icon?: LucideIconName;
+  /**
+   * Data table configuration for list view.
+   */
+  table?: CollectionTableConfigInput;
 }
 
 /**
@@ -103,6 +197,10 @@ export interface AdminCollectionConfig<
     preview?: ApplyComponent<TComponent, RelationshipPreviewProps>;
   };
   icon?: LucideIconName;
+  /**
+   * Data table configuration for list view.
+   */
+  table: CollectionTableConfig;
 }
 
 /**

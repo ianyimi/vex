@@ -524,4 +524,129 @@ describe("find (server) — depth auto-populate", () => {
     // Second doc has no author — no crash.
     expect(docs[1].author).toBeUndefined();
   });
+
+  // ── Pagination tests ──────────────────────────────────────────────────────
+
+  test("paginationOpts: returns PaginationResult with page, continueCursor, isDone", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        for (let i = 0; i < 5; i++) {
+          await ctx.db.insert("posts", { title: `Post ${i}`, slug: `s-${i}` });
+        }
+        return find({
+          ctx,
+          collection: "posts",
+          paginationOpts: { numItems: 3, cursor: null },
+        });
+      },
+    );
+    expect(result).toHaveProperty("page");
+    expect(result).toHaveProperty("continueCursor");
+    expect(result).toHaveProperty("isDone");
+    expect(result.page).toHaveLength(3);
+    expect(result.page[0].title).toBe("Post 0");
+    expect(result.isDone).toBe(false); // More pages exist
+    expect(result.continueCursor).toBeTruthy(); // Cursor for next page
+  });
+
+  test("paginationOpts: continueCursor fetches next page", async () => {
+    const t = convexTest(schema, modules);
+    const { firstPage, secondPage } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        for (let i = 0; i < 7; i++) {
+          await ctx.db.insert("posts", { title: `Post ${i}`, slug: `s-${i}` });
+        }
+        // First page
+        const firstPage = await find({
+          ctx,
+          collection: "posts",
+          paginationOpts: { numItems: 3, cursor: null },
+        });
+        // Second page using continueCursor
+        const secondPage = await find({
+          ctx,
+          collection: "posts",
+          paginationOpts: { numItems: 3, cursor: firstPage.continueCursor },
+        });
+        return { firstPage, secondPage };
+      },
+    );
+    expect(firstPage.page).toHaveLength(3);
+    expect(secondPage.page).toHaveLength(3);
+    expect(firstPage.page[0].title).toBe("Post 0");
+    expect(secondPage.page[0].title).toBe("Post 3");
+    expect(secondPage.isDone).toBe(false); // One more item remains
+  });
+
+  test("paginationOpts: isDone=true when no more pages", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        for (let i = 0; i < 3; i++) {
+          await ctx.db.insert("posts", { title: `Post ${i}`, slug: `s-${i}` });
+        }
+        return find({
+          ctx,
+          collection: "posts",
+          paginationOpts: { numItems: 10, cursor: null },
+        });
+      },
+    );
+    expect(result.page).toHaveLength(3);
+    expect(result.isDone).toBe(true);
+    // Convex returns "_end_cursor" sentinel value instead of null when done
+    expect(result.continueCursor).toBeTruthy();
+  });
+
+  test("paginationOpts: works with populate", async () => {
+    const t = convexTest(schema, modules);
+    const result: any = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const authorId = await ctx.db.insert("authors", { name: "Lena" });
+        for (let i = 0; i < 3; i++) {
+          await ctx.db.insert("posts", {
+            title: `Post ${i}`,
+            slug: `s-${i}`,
+            author: [authorId],
+          });
+        }
+        return find({
+          ctx,
+          collection: "posts",
+          paginationOpts: { numItems: 2, cursor: null },
+          populate: { author: true },
+        } as any);
+      },
+    );
+    expect(result.page).toHaveLength(2);
+    const firstDoc = result.page[0] as { author: DocumentBySlug["authors"][] };
+    expect(firstDoc.author[0].name).toBe("Lena");
+  });
+
+  test("paginationOpts: works with order and filter", async () => {
+    const t = convexTest(schema, modules);
+    const result: any = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        for (let i = 0; i < 5; i++) {
+          await ctx.db.insert("posts", {
+            title: `Post ${i}`,
+            slug: `s-${i}`,
+            featured: i % 2 === 0,
+          });
+        }
+        return find({
+          ctx,
+          collection: "posts",
+          order: "desc",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          filter: (q: any) => q.eq(q.field("featured"), true),
+          paginationOpts: { numItems: 2, cursor: null },
+        });
+      },
+    );
+    expect(result.page).toHaveLength(2);
+    expect(result.page[0].title).toBe("Post 4"); // Descending order
+    expect(result.page[1].title).toBe("Post 2");
+  });
 });

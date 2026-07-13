@@ -29,10 +29,7 @@ export interface CreateServerArgs<
    * the shape against the Convex schema at build time.
    */
   data: Expand<
-    BetterOmit<
-      DocumentByName<DataModel, TableNamesInDataModel<DataModel>>,
-      "_creationTime" | "_id"
-    >
+    BetterOmit<DocumentByName<DataModel, TableNamesInDataModel<DataModel>>, "_creationTime" | "_id">
   >;
 }
 
@@ -64,5 +61,5 @@ export async function create<
     args.collection as TableNamesInDataModel<DataModel>,
     args.data,
   );
-  return id as string;
+  return id;
 }

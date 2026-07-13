@@ -49,6 +49,21 @@ export function defineCollection<
       useAsTitle: "_id",
       components: {},
       ...config.admin,
+      table: {
+        defaultPageSize: 10,
+        pageSizeOptions: [10, 25, 50, 100],
+        defaultColumns: [],
+        ...config.admin?.table,
+        bulkActions: {
+          delete: true,
+          ...config.admin?.table?.bulkActions,
+        },
+        defaultSort: {
+          field: "_createdAt",
+          order: "desc",
+          ...config.admin?.table?.defaultSort,
+        },
+      },
     },
     labels: {
       singular: toTitleCase(config.slug),

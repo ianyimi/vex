@@ -9,6 +9,7 @@ import type {
 } from "./fields";
 import type { TDocument, VexDocument } from "./convex";
 import { CollectionSlug } from "./types/generated";
+import { PaginationResult } from "./api/types";
 
 /**
  * Maps every field type in the `AdminField` union to the framework's input component type
@@ -70,7 +71,7 @@ export interface CollectionListViewProps<
    * the TanStack Query so the list renders immediately on first load.
    * Omit when rendering client-side only.
    */
-  initialData?: TDoc[];
+  initialData?: TDoc[] | PaginationResult<TDoc>;
 }
 
 /**

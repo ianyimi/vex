@@ -1,8 +1,4 @@
-import type {
-  GenericDataModel,
-  GenericMutationCtx,
-  GenericQueryCtx,
-} from "convex/server";
+import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
 
 import {
   ADMIN_FIELDS,
@@ -13,11 +9,7 @@ import {
   TextFieldType,
   type AdminFieldType,
 } from "../fields";
-import type {
-  CollectionsFieldTypeMap,
-  CollectionSlug,
-  DocumentBySlug,
-} from "../types/generated";
+import type { CollectionsFieldTypeMap, CollectionSlug, DocumentBySlug } from "../types/generated";
 import { VexDocument } from "../convex";
 import { VexConfig } from "../config";
 
@@ -166,9 +158,7 @@ export interface GenericMutationClientParams {
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
  */
-export interface GenericMutationServerParams<
-  DataModel extends GenericDataModel,
-> {
+export interface GenericMutationServerParams<DataModel extends GenericDataModel> {
   /** Discriminator: server args MUST supply a Convex mutation context. */
   ctx: GenericMutationCtx<DataModel>;
 }
@@ -223,11 +213,7 @@ export type TextKeysOf<TCollectionSlug extends CollectionSlug> = FieldKeysOfType
  */
 export type SortableKeysOf<TCollectionSlug extends CollectionSlug> = FieldKeysOfType<
   TCollectionSlug,
-  | TextFieldType
-  | NumberFieldType
-  | DateFieldType
-  | CheckboxFieldType
-  | SelectFieldType
+  TextFieldType | NumberFieldType | DateFieldType | CheckboxFieldType | SelectFieldType
 >;
 
 /**
@@ -347,11 +333,7 @@ export type DepthPopulate<
     ? { [K in RelationshipKeysOf<TCollectionSlug>]?: true }
     : {
         [K in RelationshipKeysOf<TCollectionSlug>]?: {
-          populate: DepthPopulate<
-            RelationshipTargetOf<TCollectionSlug, K>,
-            D,
-            [..._Counter, 0]
-          >;
+          populate: DepthPopulate<RelationshipTargetOf<TCollectionSlug, K>, D, [..._Counter, 0]>;
         };
       };
 
@@ -386,3 +368,73 @@ export type DepthPopulated<
     : TCollectionSlug extends keyof DocumentBySlug
       ? Prettify<Populated<TCollectionSlug, DepthPopulate<TCollectionSlug, D>>>
       : never;
+
+/**
+ * Pagination options for Convex queries.
+ * Matches Convex's native `paginationOptsValidator` shape.
+ */
+/**
+ * Pagination options for Convex queries.
+ *
+ * Re-exported from `convex/server` for convenience. This is the exact type
+ * that Convex's `.paginate(opts)` API expects.
+ *
+ * @see https://docs.convex.dev/database/pagination
+ */
+export type { PaginationOptions } from "convex/server";
+
+/**
+ * Pagination result from Convex query.
+ * 
+ * Re-exported from `convex/server`. Returned by queries using `.paginate(opts)`.
+ * 
+ * Includes:
+ * - `page: T[]` — Current page of results
+ * - `isDone: boolean` — Whether this is the last page
+ * - `continueCursor: string` — Cursor to fetch next page
+ * - `splitCursor?: string | null` — Cursor to split large pages (optional)
+ * - `pageStatus?: "SplitRecommended" | "SplitRequired" | null` — Indicates when to split (optional)
+ * 
+ * @see https://docs.convex.dev/database/pagination
+ */
+export type { PaginationResult } from "convex/server";
+
+/**
+ * Client-side pagination state.
+ * Tracks cursor stack for forward/backward navigation.
+ */
+export interface PaginationState {
+  /** Current page number (1-based). */
+  currentPage: number;
+  /** Items per page. */
+  pageSize: number;
+  /** Stack of cursors for backward navigation. */
+  cursorStack: (string | null)[];
+  /** Current cursor (top of stack). */
+  cursor: string | null;
+  /** Whether there are more pages after current page. */
+  hasNextPage: boolean;
+  /** Whether there are previous pages. */
+  hasPreviousPage: boolean;
+  /** Total count of items (optional — requires separate count query). */
+  totalCount?: number;
+}
+
+/**
+ * Selection mode for data tables.
+ */
+export type SelectionMode =
+  | "none" // No items selected
+  | "page" // Items on current page selected
+  | "all" // All items in table selected
+  | "inverse"; // All items selected except explicitly deselected ones
+
+/**
+ * Selection state for bulk actions.
+ */
+export interface SelectionState {
+  /** Set of selected document IDs. */
+  selectedIds: Set<string>;
+  /** Current selection mode. */
+  mode: SelectionMode;
+}

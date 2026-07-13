@@ -63,7 +63,11 @@ export function CollectionEditView<
     document: currentDocument,
     collection: props.collection,
     onSubmit: async ({ value }: { value: any }) => {
-      await mutateAsync({ id: currentDocument._id, data: value });
+      await mutateAsync({
+        id: currentDocument._id,
+        collection: props.collection.slug,
+        data: value,
+      });
       form.reset();
     },
   });
@@ -107,7 +111,7 @@ export function CollectionEditView<
           const InputComponent = fieldToInputComponent(field.type);
           if (!InputComponent) {
             // TODO: handle missing component error here
-            return null;
+            throw new Error(`Missing component for field type '${field.type}'`);
           }
           return (
             <InputComponent

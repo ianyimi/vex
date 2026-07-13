@@ -1,4 +1,5 @@
 import { mergeAuthCollections } from "../auth/mergeCollections";
+import { internalCollections } from "../collections/internal";
 import { validateAndMergeStorageConfig } from "../media";
 import { VexConfig, VexConfigInput } from "./types";
 
@@ -48,7 +49,7 @@ export function defineConfig(config?: VexConfigInput): VexConfig {
   const collections = mergeAuthCollections({
     authCollections,
     userCollections,
-  });
+  }).concat(internalCollections);
 
   const { mediaCollections } = validateAndMergeStorageConfig({
     collections: collections,

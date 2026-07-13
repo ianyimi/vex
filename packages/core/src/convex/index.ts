@@ -1,5 +1,5 @@
 import { anyApi } from "convex/server";
-import type { FunctionReference } from "convex/server";
+import type { FunctionReference, PaginationOptions, PaginationResult } from "convex/server";
 import { CollectionSlug } from "../types";
 
 /**
@@ -88,6 +88,7 @@ export interface VexFindArgs {
   populate?: unknown;
   depth?: number;
   limit?: number;
+  paginationOpts?: PaginationOptions;
 }
 
 /** Args for `api.vex.get`. */
@@ -108,6 +109,7 @@ export interface VexSearchArgs {
   limit?: number;
   populate?: unknown;
   depth?: number;
+  paginationOpts?: PaginationOptions;
 }
 
 /** Args for `api.vex.create`. */
@@ -128,18 +130,28 @@ export interface VexUpdateArgs {
 /** Args for `api.vex.remove`. */
 export interface VexRemoveArgs {
   [key: string]: unknown;
-  collection: string;
-  id: string;
+  ids: string[];
+  softDelete?: string;
 }
 
 /** Shallow FunctionReference for `api.vex.find`. */
-export type VexFindRef = FunctionReference<"query", "public", VexFindArgs, VexDocument[]>;
+export type VexFindRef = FunctionReference<
+  "query",
+  "public",
+  VexFindArgs,
+  VexDocument[] | PaginationResult<VexDocument>
+>;
 
 /** Shallow FunctionReference for `api.vex.get`. */
 export type VexGetRef = FunctionReference<"query", "public", VexGetArgs, VexDocument | null>;
 
 /** Shallow FunctionReference for `api.vex.search`. */
-export type VexSearchRef = FunctionReference<"query", "public", VexSearchArgs, VexDocument[]>;
+export type VexSearchRef = FunctionReference<
+  "query",
+  "public",
+  VexSearchArgs,
+  VexDocument[] | PaginationResult<VexDocument>
+>;
 
 /** Shallow FunctionReference for `api.vex.create`. */
 export type VexCreateRef = FunctionReference<"mutation", "public", VexCreateArgs, string>;

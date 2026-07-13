@@ -18,9 +18,13 @@ import { useConvexMutation } from "@convex-dev/react-query";
  * await mutateAsync({ id: postId, data: { title: "Updated title" } });
  * ```
  */
-export interface UpdateClientArgs extends GenericMutationClientParams {
+export interface UpdateClientArgs<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends GenericMutationClientParams {
+  /** The collection slug to patch metadata. */
+  collection: TCollectionSlug;
   /** The document ID to update. */
-  id: GenericId<CollectionSlug>;
+  id: GenericId<TCollectionSlug>;
   /** Partial field values to merge into the document. */
   data: Record<string, unknown>;
 }
