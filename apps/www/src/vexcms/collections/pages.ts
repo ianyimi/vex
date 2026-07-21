@@ -30,7 +30,7 @@ export const pages = defineCollection({
     icon: "Notebook",
     table: {
       serverPageSize: 100,
-      defaultPageSize: 2,
+      // defaultPageSize: 2,
     },
   },
   fields: {

@@ -52,11 +52,10 @@ export function CollectionListView<
     }
   }
 
-  // const { data: documents = [], isPending } = useQuery({
-  //   ...find({ collection: props.collection.slug, limit: 100, depth: 1 }),
-  //   initialData: props.initialData?.page,
-  // });
-
+  const numItems = Math.max(
+    props.collection.admin.table.serverPageSize,
+    props.collection.admin.table.defaultPageSize,
+  );
   const {
     results: documents,
     isPending,
@@ -68,7 +67,7 @@ export function CollectionListView<
       collection: props.collection.slug,
       depth: 1,
       paginationOpts: {
-        numItems: props.collection.admin.table.serverPageSize,
+        numItems,
         totalDocs: true,
         cursor: null,
       },
