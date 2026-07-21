@@ -100,15 +100,15 @@ export const posts = defineCollection({
 
 ## API Surface
 
-| Export                 | Type      | Package         | Purpose                                                       |
-| ---------------------- | --------- | --------------- | ------------------------------------------------------------- |
-| `TableConfig`          | Type      | `@vexcms/core`  | Collection admin table config (page size, sort, bulk actions) |
-| `PaginationResult`      | Type      | `@vexcms/core`  | Pagination result from server (page, continueCursor, isDone, totalCount?)                |
-| `usePaginatedCollection`        | Hook      | `@vexcms/react` | Load More pagination hook (results, loadMore, isDone, totalCount)                              |
-| `useTableSelection`    | Hook      | `@vexcms/react` | Row selection state management (single page selection)    |
-| `DataTable`  | Component | `@vexcms/react` | Generic data table with Load More button       |
-| `DataTableBulkActions` | Component | `@vexcms/react` | Bulk action bar (delete, count display)                       |
-| `BulkDeleteModal`      | Component | `@vexcms/react` | Confirmation modal for bulk delete                            |
+| Export                   | Type      | Package         | Purpose                                                                   |
+| ------------------------ | --------- | --------------- | ------------------------------------------------------------------------- |
+| `TableConfig`            | Type      | `@vexcms/core`  | Collection admin table config (page size, sort, bulk actions)             |
+| `PaginationResult`       | Type      | `@vexcms/core`  | Pagination result from server (page, continueCursor, isDone, totalCount?) |
+| `usePaginatedCollection` | Hook      | `@vexcms/react` | Load More pagination hook (results, loadMore, isDone, totalCount)         |
+| `useTableSelection`      | Hook      | `@vexcms/react` | Row selection state management (single page selection)                    |
+| `DataTable`              | Component | `@vexcms/react` | Generic data table with Load More button                                  |
+| `DataTableBulkActions`   | Component | `@vexcms/react` | Bulk action bar (delete, count display)                                   |
+| `BulkDeleteModal`        | Component | `@vexcms/react` | Confirmation modal for bulk delete                                        |
 
 ---
 
@@ -132,18 +132,18 @@ export const posts = defineCollection({
 
 ## Design Decisions
 
-| #   | Decision (one line)                                                                                                                                          |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| D1  | Use Convex native `paginate()` API with cursor-based pagination (not offset-based).                                                                          |
-| D2  | Load More pattern instead of page-based navigation. Simpler UX, works perfectly with cursor pagination.                                               |
-| D3  | "Select All" mode toggles between `page` (current page only), `all` (everything in table), and `inverse` (everything except deselected). **DEFERRED** - Start with page-only selection.                     |
-| D4  | Bulk delete uses existing `remove()` function with `ids: string[]` array. No separate bulk delete mutation needed. |
-| D5  | Results accumulate in React state as user clicks Load More. All loaded results visible in one scrollable list.                                                  |
-| D6  | `includeTotalCount` parameter on `find()` runs `.collect()` to count documents. Only runs on first page (when `cursor === null`). Returns `null` if >32k docs.                                   |
-| D7  | `admin.table.defaultPageSize` controls items loaded initially and per Load More. Default: 100.                                                     |
-| D8  | No URL state for pagination. Load More state is ephemeral (resets on page refresh).                                                                                         |
-| D9  | MediaLibraryGrid uses same Load More pattern with DataTable (grid layout deferred).                                                                     |
-| D10 | Total count shown in header: "1,523 documents" or "10,000+ documents" (when count fails).                                                    |
+| #   | Decision (one line)                                                                                                                                                                     |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Use Convex native `paginate()` API with cursor-based pagination (not offset-based).                                                                                                     |
+| D2  | Load More pattern instead of page-based navigation. Simpler UX, works perfectly with cursor pagination.                                                                                 |
+| D3  | "Select All" mode toggles between `page` (current page only), `all` (everything in table), and `inverse` (everything except deselected). **DEFERRED** - Start with page-only selection. |
+| D4  | Bulk delete uses existing `remove()` function with `ids: string[]` array. No separate bulk delete mutation needed.                                                                      |
+| D5  | Results accumulate in React state as user clicks Load More. All loaded results visible in one scrollable list.                                                                          |
+| D6  | `includeTotalCount` parameter on `find()` runs `.collect()` to count documents. Only runs on first page (when `cursor === null`). Returns `null` if >32k docs.                          |
+| D7  | `admin.table.defaultPageSize` controls items loaded initially and per Load More. Default: 100.                                                                                          |
+| D8  | No URL state for pagination. Load More state is ephemeral (resets on page refresh).                                                                                                     |
+| D9  | MediaLibraryGrid uses same Load More pattern with DataTable (grid layout deferred).                                                                                                     |
+| D10 | Total count shown in header: "1,523 documents" or "10,000+ documents" (when count fails).                                                                                               |
 
 ---
 
@@ -235,6 +235,7 @@ packages/react/src/
 - ❌ TO MOVE — File relocation needed (Step 12)
 
 **Key Changes from Original Plan:**
+
 - ➕ **Step 7:** count() API added (server + client + tests)
 - ➕ **Step 8:** usePaginatedCollection hook (encapsulates pagination logic)
 - ➕ **Step 9:** Generic DataTable component (manual pagination mode)
@@ -1714,12 +1715,14 @@ pnpm typecheck
 Update client-side `find()` and `search()` wrappers to accept `paginationOpts` and pass them through to Convex handlers.
 
 **Why keep client wrappers?**
+
 - ✅ Cleaner syntax: `find({ collection: "posts" })` vs `convexQuery(anyApi.vex.find, { ... })`
 - ✅ No extra imports needed
 - ✅ Type-safe args without casting
 - ✅ Provides `.queryKey()` helper for invalidation
 
 **Current usage in CollectionListView:**
+
 ```tsx
 const { data: documents = [] } = useQuery({
   ...find({ collection: props.collection.slug, limit: 100, depth: 1 }),
@@ -1728,6 +1731,7 @@ const { data: documents = [] } = useQuery({
 ```
 
 **Updated usage (with pagination):**
+
 ```tsx
 const { data } = useQuery({
   ...find({
@@ -1743,6 +1747,7 @@ const documents = Array.isArray(data) ? data : (data?.page ?? []);
 ```
 
 #### Files to modify
+
 - [ ] `packages/core/src/api/find/client.ts`
 - [ ] `packages/core/src/api/search/client.ts`
 
@@ -1816,6 +1821,7 @@ pnpm typecheck  # Should pass
 Add an optional `includeTotalCount` parameter to the `find()` server function that runs `.collect()` to count all matching documents when requested. The count is returned only on the first page (when `cursor === null`) to avoid wasteful re-counting on every page load.
 
 **Why this approach:**
+
 - ✅ **Respects filters** — Counts only matching documents, not entire table
 - ✅ **Respects search** — Works with full-text search queries
 - ✅ **Graceful degradation** — Returns `null` for >32k docs, UI shows "10,000+"
@@ -1826,6 +1832,7 @@ Add an optional `includeTotalCount` parameter to the `find()` server function th
 - ✅ **Count only on first page** — When `cursor === null`, subsequent pages don't re-count
 
 **Convex transaction limits:**
+
 - **32,000 documents** max scanned per query
 - **16 MiB** max data read per query
 - Small/medium collections (<10k docs): `.collect()` is instant
@@ -1833,6 +1840,7 @@ Add an optional `includeTotalCount` parameter to the `find()` server function th
 - Filtered queries: Usually return <10k results, so count succeeds
 
 #### Files to modify
+
 - [ ] `packages/core/src/api/types.ts` — Add `includeTotalCount` to `FindServerArgs` and `SearchServerArgs`
 - [ ] `packages/core/src/api/find/server.ts` — Add count logic when `includeTotalCount && cursor === null`
 - [ ] `packages/core/src/api/search/server.ts` — Add count logic when `includeTotalCount && cursor === null`
@@ -1848,22 +1856,77 @@ Add `includeTotalCount` parameter:
 ```ts
 export interface FindServerArgs<...> {
   // ... existing fields
+
+  /**
+   * Optional pagination options for cursor-based pagination.
+   * When provided, returns a PaginationResult instead of an array.
+   */
   paginationOpts?: PaginationOptions;
+
+  /**
+   * Whether to include total document count in the response.
+   *
+   * Only runs on the first page (when cursor is null) to avoid wasteful re-counting.
+   * Counts all documents matching the current filters/search query.
+   *
+   * Returns `null` if the count exceeds Convex transaction limits (>32k documents).
+   *
+   * @default false
+   */
 +  includeTotalCount?: boolean;
 }
 
 export interface SearchServerArgs<...> {
   // ... existing fields
+
+  /**
+   * Optional pagination options for cursor-based pagination.
+   * When provided, returns a PaginationResult instead of an array.
+   */
   paginationOpts?: PaginationOptions;
+
+  /**
+   * Whether to include total search result count in the response.
+   *
+   * Only runs on the first page (when cursor is null).
+   * Counts all documents matching the search query and filters.
+   *
+   * Returns `null` if the count exceeds Convex transaction limits (>32k documents).
+   *
+   * @default false
+   */
 +  includeTotalCount?: boolean;
 }
 
-// Update return type to include optional totalCount
+/**
+ * Pagination result from Convex query.
+ *
+ * Returned by queries using `.paginate(opts)`.
+ *
+ * @typeParam T - Type of documents in the page
+ */
 export type PaginationResult<T> = {
+  /** Current page of results. */
   page: T[];
+
+  /**
+   * Cursor to fetch next page.
+   * `null` when `isDone === true` (no more pages).
+   */
   continueCursor: string | null;
+
+  /** Whether this is the last page. */
   isDone: boolean;
-+  totalCount?: number | null; // Only present when includeTotalCount=true on first page
+
+  /**
+   * Total count of documents matching the query.
+   *
+   * Only present when `includeTotalCount=true` and `cursor === null` (first page).
+   *
+   * `null` when count exceeds 32k documents (Convex transaction limit).
+   * `undefined` when not requested or on subsequent pages.
+   */
++  totalCount?: number | null;
 };
 ```
 
@@ -1873,77 +1936,109 @@ export type PaginationResult<T> = {
 
 Add count logic when requested and on first page:
 
-```ts
+````ts
+/**
+ * Find documents in a collection with optional pagination and total count.
+ *
+ * When `includeTotalCount=true`, runs `.collect()` on the first page to count all
+ * matching documents. Returns `null` if count exceeds 32k documents.
+ *
+ * @param args - Find arguments including filters, sort, pagination, and count options
+ * @returns Array of documents or PaginationResult with optional totalCount
+ *
+ * @example
+ * ```ts
+ * // Without pagination
+ * const docs = await find({ ctx, collection: "posts" });
+ *
+ * // With pagination
+ * const result = await find({
+ *   ctx,
+ *   collection: "posts",
+ *   paginationOpts: { numItems: 100, cursor: null },
+ * });
+ * // result: { page: [...], continueCursor: "...", isDone: false }
+ *
+ * // With pagination and count (first page only)
+ * const result = await find({
+ *   ctx,
+ *   collection: "posts",
+ *   paginationOpts: { numItems: 100, cursor: null },
+ *   includeTotalCount: true,
+ * });
+ * // result: { page: [...], continueCursor: "...", isDone: false, totalCount: 1523 }
+ */
 export async function find<...>(
   args: FindServerArgs<...>,
 ): Promise<FindReturn<...> | FindReturnPaginated<...>> {
   // ... existing query building logic
-  
+
   // Paginate OR take
   let docs, paginationResult;
   if (args.paginationOpts) {
     const result = await q.paginate(args.paginationOpts);
     docs = result.page;
-    paginationResult = { 
-      continueCursor: result.continueCursor, 
-      isDone: result.isDone 
+    paginationResult = {
+      continueCursor: result.continueCursor,
+      isDone: result.isDone
     };
   } else {
     docs = await q.take(args.limit ?? 100);
   }
-  
+
   // Populate logic (unchanged)
   const finalDocs = /* ... existing populate logic ... */;
-  
+
   // Include count ONLY when:
   // 1. User requested it via includeTotalCount
-  // 2. First page (cursor is null)
+  // 2. First page (cursor is null) - subsequent pages don't re-count
 +  if (args.includeTotalCount && !args.paginationOpts?.cursor) {
 +    try {
 +      // Build same query (with filters) but collect all to count
 +      const countQuery = buildQuery(args); // Same filters as main query
 +      const allDocs = await countQuery.collect();
-+      
++
 +      if (paginationResult) {
-+        return { 
-+          page: finalDocs, 
++        return {
++          page: finalDocs,
 +          ...paginationResult,
-+          totalCount: allDocs.length 
++          totalCount: allDocs.length
 +        };
 +      }
-+      return { 
-+        page: finalDocs, 
-+        isDone: true, 
++      return {
++        page: finalDocs,
++        isDone: true,
 +        continueCursor: null,
-+        totalCount: allDocs.length 
++        totalCount: allDocs.length
 +      };
 +    } catch (error) {
 +      // .collect() failed (>32k docs or other limit)
 +      console.warn("Failed to count documents:", error);
 +      if (paginationResult) {
-+        return { 
-+          page: finalDocs, 
++        return {
++          page: finalDocs,
 +          ...paginationResult,
 +          totalCount: null // Signals "too large to count"
 +        };
 +      }
-+      return { 
-+        page: finalDocs, 
-+        isDone: true, 
++      return {
++        page: finalDocs,
++        isDone: true,
 +        continueCursor: null,
-+        totalCount: null 
++        totalCount: null
 +      };
 +    }
 +  }
-  
+
   if (paginationResult) {
     return { page: finalDocs, ...paginationResult };
   }
   return finalDocs;
 }
-```
+````
 
 **Key points:**
+
 - Count runs ONLY when `cursor === null` (first page)
 - Count respects same filters/search as main query
 - Count wrapped in try/catch - returns `null` if it fails (>32k docs)
@@ -1955,72 +2050,95 @@ export async function find<...>(
 
 Add same count logic for search:
 
-```ts
+````ts
+/**
+ * Search documents in a collection with optional pagination and total count.
+ *
+ * When `includeTotalCount=true`, runs `.collect()` on the first page to count all
+ * matching search results. Returns `null` if count exceeds 32k documents.
+ *
+ * @param args - Search arguments including query, filters, pagination, and count options
+ * @returns Array of documents or PaginationResult with optional totalCount
+ *
+ * @example
+ * ```ts
+ * // With pagination and count (first page only)
+ * const result = await search({
+ *   ctx,
+ *   collection: "posts",
+ *   query: "react hooks",
+ *   searchIndexName: "search_posts",
+ *   searchField: "title",
+ *   paginationOpts: { numItems: 100, cursor: null },
+ *   includeTotalCount: true,
+ * });
+ * // result: { page: [...], continueCursor: "...", isDone: false, totalCount: 42 }
+ */
 export async function search<...>(
   args: SearchServerArgs<...>,
 ): Promise<SearchReturnItem<...>[] | SearchReturnPaginated<...>> {
   // ... existing query building logic
-  
+
   // Paginate OR take
   let docs, paginationResult;
   if (args.paginationOpts) {
     const result = await q.paginate(args.paginationOpts);
     docs = result.page;
-    paginationResult = { 
-      continueCursor: result.continueCursor, 
-      isDone: result.isDone 
+    paginationResult = {
+      continueCursor: result.continueCursor,
+      isDone: result.isDone
     };
   } else {
     docs = await q.take(args.limit ?? 20);
   }
-  
+
   // Populate logic (unchanged)
   const finalDocs = /* ... existing populate logic ... */;
-  
+
   // Include count ONLY on first page
 +  if (args.includeTotalCount && !args.paginationOpts?.cursor) {
 +    try {
 +      // Build same search query but collect all to count
 +      const countQuery = buildSearchQuery(args); // Same search params
 +      const allDocs = await countQuery.collect();
-+      
++
 +      if (paginationResult) {
-+        return { 
-+          page: finalDocs, 
++        return {
++          page: finalDocs,
 +          ...paginationResult,
-+          totalCount: allDocs.length 
++          totalCount: allDocs.length
 +        };
 +      }
-+      return { 
-+        page: finalDocs, 
-+        isDone: true, 
++      return {
++        page: finalDocs,
++        isDone: true,
 +        continueCursor: null,
-+        totalCount: allDocs.length 
++        totalCount: allDocs.length
 +      };
 +    } catch (error) {
 +      console.warn("Failed to count search results:", error);
 +      if (paginationResult) {
-+        return { 
-+          page: finalDocs, 
++        return {
++          page: finalDocs,
 +          ...paginationResult,
-+          totalCount: null 
++          totalCount: null
 +        };
 +      }
-+      return { 
-+        page: finalDocs, 
-+        isDone: true, 
++      return {
++        page: finalDocs,
++        isDone: true,
 +        continueCursor: null,
-+        totalCount: null 
++        totalCount: null
 +      };
 +    }
 +  }
-  
+
   if (paginationResult) {
     return { page: finalDocs, ...paginationResult };
   }
   return finalDocs;
 }
-```
+````
 
 ---
 
@@ -2031,60 +2149,69 @@ Add tests for `includeTotalCount` to verify counting logic:
 **`packages/core/src/api/find/server.test.ts`:**
 
 ```ts
+/**
+ * Tests for includeTotalCount parameter.
+ *
+ * Verifies:
+ * - Count is returned on first page (cursor=null)
+ * - Count is NOT returned on subsequent pages
+ * - Count returns null when exceeding transaction limits
+ */
 describe("find() with includeTotalCount", () => {
   it("should return totalCount on first page", async () => {
     // Create test docs
     await ctx.db.insert("posts", { title: "Post 1" });
     await ctx.db.insert("posts", { title: "Post 2" });
     await ctx.db.insert("posts", { title: "Post 3" });
-    
+
     const result = await find({
       ctx,
       collection: "posts",
       paginationOpts: { numItems: 2, cursor: null },
       includeTotalCount: true,
     });
-    
+
     expect(result.page).toHaveLength(2);
     expect(result.totalCount).toBe(3);
     expect(result.isDone).toBe(false);
   });
-  
+
   it("should NOT return totalCount on subsequent pages", async () => {
     // Create test docs
     await ctx.db.insert("posts", { title: "Post 1" });
     await ctx.db.insert("posts", { title: "Post 2" });
     await ctx.db.insert("posts", { title: "Post 3" });
-    
+
     const firstPage = await find({
       ctx,
       collection: "posts",
       paginationOpts: { numItems: 2, cursor: null },
       includeTotalCount: true,
     });
-    
+
     const secondPage = await find({
       ctx,
       collection: "posts",
       paginationOpts: { numItems: 2, cursor: firstPage.continueCursor },
       includeTotalCount: true,
     });
-    
+
     expect(secondPage.totalCount).toBeUndefined();
   });
-  
+
   it("should return null totalCount when count fails (>32k docs)", async () => {
     // Mock .collect() to throw
-    const mockCollect = jest.spyOn(ctx.db.query("posts"), "collect")
+    const mockCollect = jest
+      .spyOn(ctx.db.query("posts"), "collect")
       .mockRejectedValue(new Error("Transaction read too many documents"));
-    
+
     const result = await find({
       ctx,
       collection: "posts",
       paginationOpts: { numItems: 100, cursor: null },
       includeTotalCount: true,
     });
-    
+
     expect(result.totalCount).toBeNull();
     mockCollect.mockRestore();
   });
@@ -2094,13 +2221,36 @@ describe("find() with includeTotalCount", () => {
 **`packages/core/src/api/search/server.test.ts`:**
 
 ```ts
+/**
+ * Tests for includeTotalCount parameter in search.
+ *
+ * Verifies same behavior as find():
+ * - Count is returned on first page only
+ * - Count respects search query filters
+ */
 describe("search() with includeTotalCount", () => {
   it("should return totalCount on first page", async () => {
-    // Similar test for search
+    // Create test docs
+    await ctx.db.insert("posts", { title: "React hooks tutorial" });
+    await ctx.db.insert("posts", { title: "Vue composition API" });
+    await ctx.db.insert("posts", { title: "React context guide" });
+
+    const result = await search({
+      ctx,
+      collection: "posts",
+      query: "react",
+      searchIndexName: "search_posts",
+      searchField: "title",
+      paginationOpts: { numItems: 2, cursor: null },
+      includeTotalCount: true,
+    });
+
+    expect(result.page).toHaveLength(2);
+    expect(result.totalCount).toBe(2); // Only 2 docs match "react"
   });
-  
+
   it("should NOT return totalCount on subsequent pages", async () => {
-    // Similar test for search
+    // Similar to find() test - totalCount should be undefined on page 2
   });
 });
 ```
@@ -2130,6 +2280,7 @@ pnpm dev:app
 Extract pagination logic into a reusable hook that manages Convex cursor-based pagination with Load More pattern.
 
 **Why a custom hook:**
+
 - Encapsulates cursor management logic and result accumulation
 - Handles pagination result processing (unwraps `PaginationResult`)
 - Extracts `totalCount` from first page response
@@ -2138,44 +2289,102 @@ Extract pagination logic into a reusable hook that manages Convex cursor-based p
 - Mimics Convex's `usePaginatedQuery` API with `results`, `loadMore()`, `status`, `isDone`
 
 #### Files to create
+
 - [ ] `packages/react/src/hooks/usePaginatedCollection.ts` (NEW)
 
 #### Files to modify
+
 - [ ] `packages/react/src/hooks/index.ts` — export hook
 
 ---
 
 #### `packages/react/src/hooks/usePaginatedCollection.ts` (NEW)
 
-```tsx
+````tsx
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { find } from "@vexcms/core/client";
-import type { CollectionSlug, PaginationResult, VexDocument } from "@vexcms/core";
+import type {
+  CollectionSlug,
+  PaginationResult,
+  VexDocument,
+} from "@vexcms/core";
 
-export interface UsePaginatedCollectionProps<TCollectionSlug extends CollectionSlug> {
+/**
+ * Props for usePaginatedCollection hook.
+ *
+ * @typeParam TCollectionSlug - Collection slug type
+ *
+ * @defaults
+ * - `initialNumItems`: 100
+ * - `depth`: 1
+ * - `includeTotalCount`: true
+ */
+export interface UsePaginatedCollectionProps<
+  TCollectionSlug extends CollectionSlug,
+> {
   /** Collection slug to paginate. */
   collection: TCollectionSlug;
-  /** Initial data from SSR (optional). */
+
+  /**
+   * Initial data from SSR (optional).
+   * Can be either an array of documents or a PaginationResult.
+   */
   initialData?: VexDocument[] | PaginationResult<VexDocument>;
-  /** Number of items to fetch per Load More (default: 100). */
+
+  /** Number of items to fetch per Load More click. */
   initialNumItems?: number;
-  /** Populate depth for relations (default: 1). */
+
+  /** Populate depth for relations. */
   depth?: number;
-  /** Whether to include total count (default: true). */
+
+  /**
+   * Whether to include total document count.
+   *
+   * Count is fetched only on first page load. Returns `null` if
+   * collection has >32k documents.
+   */
   includeTotalCount?: boolean;
 }
 
+/**
+ * Return type of usePaginatedCollection hook.
+ *
+ * Mimics Convex's usePaginatedQuery API for consistency.
+ */
 export interface UsePaginatedCollectionReturn {
-  /** All loaded documents (accumulated across pages). */
+  /**
+   * All loaded documents (accumulated across Load More calls).
+   * Starts with first page, grows as user clicks Load More.
+   */
   results: VexDocument[];
-  /** Total document count (null if >32k docs). */
+
+  /**
+   * Total document count across all pages.
+   *
+   * - `number` when count succeeded
+   * - `null` when collection has >32k documents (Convex limit)
+   * - `undefined` when count hasn't loaded yet or `includeTotalCount=false`
+   */
   totalCount: number | null | undefined;
-  /** Whether pagination is done (no more pages). */
+
+  /**
+   * Whether all documents have been loaded.
+   * When `true`, Load More button should be hidden.
+   */
   isDone: boolean;
-  /** Load more documents. */
+
+  /**
+   * Load more documents.
+   *
+   * @param numItems - Number of items to fetch (uses initialNumItems if not provided)
+   */
   loadMore: (numItems?: number) => void;
-  /** Loading state. */
+
+  /**
+   * Whether a query is currently in flight.
+   * Use for loading states on Load More button.
+   */
   isLoading: boolean;
 }
 
@@ -2183,13 +2392,15 @@ export interface UsePaginatedCollectionReturn {
  * Hook for cursor-based pagination of VexCMS collections with Load More pattern.
  *
  * Manages:
- * - Convex cursor-based pagination
+ * - Convex cursor-based pagination using `find()` API
  * - Accumulates results across multiple Load More calls
- * - Extracts totalCount from first page
- * - Mimics Convex usePaginatedQuery API
+ * - Extracts `totalCount` from first page response
+ * - Mimics Convex `usePaginatedQuery` API for consistency
  *
+ * @typeParam TCollectionSlug - Collection slug type
  * @param props - Hook configuration
  * @returns Pagination state and controls
+ *
  * @example
  * ```tsx
  * const {
@@ -2201,8 +2412,27 @@ export interface UsePaginatedCollectionReturn {
  * } = usePaginatedCollection({
  *   collection: "posts",
  *   initialNumItems: 100,
+ *   includeTotalCount: true,
  * });
- * ```
+ *
+ * // Show total count in header
+ * <p>
+ *   {totalCount !== null && totalCount !== undefined ? (
+ *     <>{totalCount.toLocaleString()} documents</>
+ *   ) : (
+ *     <>10,000+ documents</>
+ *   )}
+ * </p>
+ *
+ * // Show Load More button
+ * {!isDone && (
+ *   <Button onClick={() => loadMore(100)} disabled={isLoading}>
+ *     {isLoading ? "Loading..." : "Load More"}
+ *   </Button>
+ * )}
+ *
+ * @see {@link find} - Server function for querying documents
+ * @see {@link PaginationResult} - Return type with totalCount
  */
 export function usePaginatedCollection<TCollectionSlug extends CollectionSlug>({
   collection,
@@ -2213,13 +2443,15 @@ export function usePaginatedCollection<TCollectionSlug extends CollectionSlug>({
 }: UsePaginatedCollectionProps<TCollectionSlug>): UsePaginatedCollectionReturn {
   // Cursor state for pagination
   const [cursor, setCursor] = useState<string | null>(null);
-  
+
   // Accumulated results from all pages
   const [allResults, setAllResults] = useState<VexDocument[]>([]);
-  
+
   // Total count (extracted from first page)
-  const [totalCount, setTotalCount] = useState<number | null | undefined>(undefined);
-  
+  const [totalCount, setTotalCount] = useState<number | null | undefined>(
+    undefined,
+  );
+
   // Done state
   const [isDone, setIsDone] = useState(false);
 
@@ -2236,15 +2468,19 @@ export function usePaginatedCollection<TCollectionSlug extends CollectionSlug>({
   });
 
   // Extract pagination result
-  const result = useMemo<PaginationResult<VexDocument> & { totalCount?: number | null }>(() => {
+  const result = useMemo<
+    PaginationResult<VexDocument> & { totalCount?: number | null }
+  >(() => {
     if (!data) return { page: [], continueCursor: null, isDone: true };
-    if (Array.isArray(data)) return { page: data, continueCursor: null, isDone: true };
+    if (Array.isArray(data))
+      return { page: data, continueCursor: null, isDone: true };
     return data;
   }, [data]);
 
-  // Extract totalCount from first page
+  // Extract totalCount from first page response
+  // Only runs once when first page loads with totalCount field
   useEffect(() => {
-    if (result && 'totalCount' in result && totalCount === undefined) {
+    if (result && "totalCount" in result && totalCount === undefined) {
       setTotalCount(result.totalCount);
     }
   }, [result, totalCount]);
@@ -2259,7 +2495,7 @@ export function usePaginatedCollection<TCollectionSlug extends CollectionSlug>({
         // Subsequent pages - append
         setAllResults((prev) => [...prev, ...result.page]);
       }
-      
+
       setIsDone(result.isDone);
     }
   }, [result.page, result.isDone, cursor]);
@@ -2278,7 +2514,7 @@ export function usePaginatedCollection<TCollectionSlug extends CollectionSlug>({
     isLoading,
   };
 }
-```
+````
 
 ---
 
@@ -2299,12 +2535,14 @@ export {
 #### How It Works
 
 **Load More pattern:**
+
 - Starts with first page (e.g., 100 items)
 - User clicks "Load More" to fetch next page
 - Results accumulate in state (all pages shown at once)
 - No page numbers, no URL state needed
 
 **Total count:**
+
 - Extracted from first page response (`totalCount` field)
 - Displayed in UI: "23 documents" or "10,000+ documents" (when null)
 - Only fetched once (when cursor is null)
@@ -2337,23 +2575,26 @@ pnpm typecheck  # Should pass
 Create a generic DataTable component with Load More button. Parent components provide accumulated data and Load More handler via props.
 
 **Why Load More (not page numbers):**
+
 - Simpler UX - no page number state to manage
 - Works perfectly with cursor-based pagination
 - All results stay visible (good for scanning large lists)
 - Matches industry standards (Notion, Airtable, Linear)
 
 #### Files to create
+
 - [ ] `packages/react/src/components/ui/data-table/DataTable.tsx` (NEW)
 - [ ] `packages/react/src/components/ui/data-table/index.ts` (NEW)
 
 #### Files to modify
+
 - [ ] `packages/react/src/index.ts` — export DataTable
 
 ---
 
 #### `packages/react/src/components/ui/data-table/DataTable.tsx` (NEW)
 
-```tsx
+````tsx
 "use client";
 
 import {
@@ -2365,30 +2606,106 @@ import {
 import { useState, useMemo } from "react";
 import { Checkbox } from "../checkbox";
 import { Button } from "../button";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../table";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "../table";
 import { DataTableBulkActions } from "../../data-table/DataTableBulkActions";
 import { BulkDeleteModal } from "../../data-table/BulkDeleteModal";
 
+/**
+ * Props for DataTable component.
+ *
+ * @typeParam TData - Row data type (must have `_id` field for selection)
+ *
+ * @defaults
+ * - `isDone`: true
+ * - `isLoadingMore`: false
+ * - `enableRowSelection`: false
+ * - `enableBulkActions`: false
+ * - `entityName`: "items"
+ * - `isDeleting`: false
+ * - `isLoading`: false
+ */
 export interface DataTableProps<TData extends { _id: string }> {
+  /** Array of data to display in table rows. */
   data: TData[];
+
+  /** TanStack Table column definitions. */
   columns: ColumnDef<TData>[];
 
   // Load More pagination
-  isDone?: boolean; // Whether all results are loaded
-  onLoadMore?: () => void; // Load more handler
-  isLoadingMore?: boolean; // Loading state for Load More
-  totalCount?: number | null; // Total count (null if >32k docs)
+
+  /**
+   * Whether all results have been loaded.
+   * When `true`, Load More button is hidden.
+   */
+  isDone?: boolean;
+
+  /**
+   * Callback when Load More button is clicked.
+   * Parent should fetch next page and append to data.
+   */
+  onLoadMore?: () => void;
+
+  /**
+   * Whether Load More query is in flight.
+   * Shows loading state on button.
+   */
+  isLoadingMore?: boolean;
+
+  /**
+   * Total count of documents across all pages.
+   *
+   * - `number` when count succeeded
+   * - `null` when collection has >32k documents
+   * - `undefined` when count not requested
+   *
+   * Used to show "All X items loaded" message.
+   */
+  totalCount?: number | null;
 
   // Features
+
+  /** Enable checkbox column for row selection. */
   enableRowSelection?: boolean;
+
+  /**
+   * Enable bulk action bar when rows are selected.
+   * Requires `enableRowSelection=true` to work.
+   */
   enableBulkActions?: boolean;
 
   // Bulk actions
+
+  /**
+   * Entity name for UI labels (e.g., "posts", "files").
+   * Used in bulk delete modal: "Delete 5 posts?"
+   */
   entityName?: string;
+
+  /**
+   * Callback when bulk delete is confirmed.
+   * Receives array of selected document IDs.
+   */
   onBulkDelete?: (selectedIds: string[]) => Promise<void>;
+
+  /**
+   * Whether bulk delete mutation is in flight.
+   * Disables bulk action buttons during deletion.
+   */
   isDeleting?: boolean;
 
   // Loading
+
+  /**
+   * Whether initial data is loading.
+   * Shows loading skeleton in table body.
+   */
   isLoading?: boolean;
 }
 
@@ -2396,26 +2713,49 @@ export interface DataTableProps<TData extends { _id: string }> {
  * Generic data table component with Load More pagination, row selection, and bulk actions.
  *
  * Built on TanStack Table. Parent component provides accumulated results and Load More handler.
+ * Displays checkbox column when selection enabled, bulk action bar when items selected,
+ * and Load More button when more results available.
  *
- * @typeParam TData - Row data type (must have `_id` field)
+ * @typeParam TData - Row data type (must have `_id` field for selection)
  * @param props - Component props
  * @returns Data table UI
+ *
  * @example
  * ```tsx
- * const pagination = usePaginatedCollection({ collection: "posts" });
+ * // Define columns
+ * const columns: ColumnDef<Post>[] = [
+ *   { accessorKey: "title", header: "Title" },
+ *   { accessorKey: "author", header: "Author" },
+ * ];
+ *
+ * // Use with pagination hook
+ * const pagination = usePaginatedCollection({
+ *   collection: "posts",
+ *   initialNumItems: 100,
+ * });
+ *
+ * const handleBulkDelete = async (ids: string[]) => {
+ *   await removeMutation.mutateAsync({ ids });
+ *   // Invalidate queries to refresh
+ * };
  *
  * <DataTable
  *   data={pagination.results}
  *   columns={columns}
  *   isDone={pagination.isDone}
- *   onLoadMore={pagination.loadMore}
+ *   onLoadMore={() => pagination.loadMore(100)}
  *   isLoadingMore={pagination.isLoading}
  *   totalCount={pagination.totalCount}
  *   enableRowSelection={true}
  *   enableBulkActions={true}
  *   onBulkDelete={handleBulkDelete}
+ *   isDeleting={removeMutation.isPending}
+ *   entityName="posts"
  * />
- * ```
+ *
+ * @see {@link usePaginatedCollection} - Hook for managing pagination state
+ * @see {@link DataTableBulkActions} - Bulk action bar component
+ * @see {@link BulkDeleteModal} - Confirmation modal component
  */
 export function DataTable<TData extends { _id: string }>({
   data,
@@ -2486,7 +2826,9 @@ export function DataTable<TData extends { _id: string }>({
   });
 
   // Get selected IDs
-  const selectedIds = table.getSelectedRowModel().rows.map((row) => row.original._id);
+  const selectedIds = table
+    .getSelectedRowModel()
+    .rows.map((row) => row.original._id);
 
   const handleBulkDelete = async () => {
     if (!onBulkDelete || selectedIds.length === 0) return;
@@ -2516,7 +2858,10 @@ export function DataTable<TData extends { _id: string }>({
                   <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -2525,13 +2870,19 @@ export function DataTable<TData extends { _id: string }>({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
                   Loading...
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
                   No {entityName} found.
                 </TableCell>
               </TableRow>
@@ -2540,7 +2891,10 @@ export function DataTable<TData extends { _id: string }>({
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -2567,9 +2921,13 @@ export function DataTable<TData extends { _id: string }>({
       {isDone && data.length > 0 && (
         <p className="py-4 text-center text-sm text-muted-foreground">
           {totalCount !== null && totalCount !== undefined ? (
-            <>All {totalCount.toLocaleString()} {entityName} loaded</>
+            <>
+              All {totalCount.toLocaleString()} {entityName} loaded
+            </>
           ) : (
-            <>All {data.length.toLocaleString()} {entityName} loaded</>
+            <>
+              All {data.length.toLocaleString()} {entityName} loaded
+            </>
           )}
         </p>
       )}
@@ -2588,7 +2946,7 @@ export function DataTable<TData extends { _id: string }>({
     </div>
   );
 }
-```
+````
 
 ---
 
@@ -2615,6 +2973,7 @@ pnpm typecheck  # Should pass
 Wire Load More pagination, selection, and bulk delete into the existing `CollectionListView` component using the `usePaginatedCollection` hook and `DataTable` component.
 
 **Pattern:**
+
 ```
 usePaginatedCollection hook
   ↓ (provides results, totalCount, loadMore, isDone)
@@ -2688,14 +3047,22 @@ export function CollectionListView(props: CollectionListViewProps) {
         <div>
           <h1 className="text-3xl font-bold">{collection.labels.plural}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {pagination.totalCount !== null && pagination.totalCount !== undefined ? (
-              <>{pagination.totalCount.toLocaleString()} document{pagination.totalCount === 1 ? "" : "s"}</>
+            {pagination.totalCount !== null &&
+            pagination.totalCount !== undefined ? (
+              <>
+                {pagination.totalCount.toLocaleString()} document
+                {pagination.totalCount === 1 ? "" : "s"}
+              </>
             ) : (
               <>10,000+ documents</>
             )}
           </p>
         </div>
-        <Button onClick={() => {/* Navigate to create */}}>
+        <Button
+          onClick={() => {
+            /* Navigate to create */
+          }}
+        >
           + New {collection.labels.singular}
         </Button>
       </div>
@@ -2733,6 +3100,7 @@ export function CollectionListView(props: CollectionListViewProps) {
 #### What Changed
 
 **Before (no pagination):**
+
 ```tsx
 const { data: documents = [] } = useQuery({
   ...find({ collection: props.collection.slug }),
@@ -2743,6 +3111,7 @@ return <CollectionListDataTable documents={documents} />;
 ```
 
 **After (Load More pagination):**
+
 ```tsx
 const pagination = usePaginatedCollection({
   collection: props.collection.slug,
@@ -2762,6 +3131,7 @@ return (
 ```
 
 **Benefits:**
+
 - ✅ Server-side cursor pagination (efficient for large collections)
 - ✅ Simple Load More UX (no page number complexity)
 - ✅ Total count displayed ("1,523 documents" or "10,000+ documents")
@@ -2840,7 +3210,7 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
 
   // Bulk delete mutation (uses vex.media.deleteMedia instead of vex.remove)
   const deleteMediaMutation = useMutation(
-    convexMutation(anyApi.vex.media.deleteMedia)
+    convexMutation(anyApi.vex.media.deleteMedia),
   );
 
   const handleBulkDelete = async (selectedIds: string[]) => {
@@ -2861,14 +3231,22 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
         <div>
           <h1 className="text-3xl font-bold">Media Library</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {pagination.totalCount !== null && pagination.totalCount !== undefined ? (
-              <>{pagination.totalCount.toLocaleString()} file{pagination.totalCount === 1 ? "" : "s"}</>
+            {pagination.totalCount !== null &&
+            pagination.totalCount !== undefined ? (
+              <>
+                {pagination.totalCount.toLocaleString()} file
+                {pagination.totalCount === 1 ? "" : "s"}
+              </>
             ) : (
               <>10,000+ files</>
             )}
           </p>
         </div>
-        <Button onClick={() => {/* Open upload modal */}}>
+        <Button
+          onClick={() => {
+            /* Open upload modal */
+          }}
+        >
           + Upload Media
         </Button>
       </div>
@@ -2910,6 +3288,7 @@ If MediaLibraryGrid uses a grid layout instead of table:
 **Option 1:** Use DataTable anyway (works for grid if you use custom cell renderers)
 
 **Option 2:** Custom grid component with checkbox overlays:
+
 ```tsx
 // Add checkbox overlay to each media card
 <div className="relative">
@@ -2972,7 +3351,7 @@ Move `vexConvexApi` to the API folder for better organization.
 
 Move content from `src/convex/index.ts`:
 
-```ts
+````ts
 import { anyApi } from "convex/server";
 import type { FunctionReference } from "convex/server";
 import type { CollectionSlug } from "../types/generated";
@@ -3033,7 +3412,12 @@ export interface VexCountArgs {
   collection: CollectionSlug;
 }
 
-export type VexCountRef = FunctionReference<"query", "public", VexCountArgs, number>;
+export type VexCountRef = FunctionReference<
+  "query",
+  "public",
+  VexCountArgs,
+  number
+>;
 
 export interface VexCreateArgs {
   [key: string]: unknown;
@@ -3153,13 +3537,15 @@ export const vexConvexApi = {
   remove: anyApi.vex.remove as VexRemoveRef,
 
   media: {
-    generateUploadUrl: anyApi.vex.media.generateUploadUrl as VexMediaGenerateUploadUrlRef,
-    createMediaDocument: anyApi.vex.media.createMediaDocument as VexMediaCreateMediaDocumentRef,
+    generateUploadUrl: anyApi.vex.media
+      .generateUploadUrl as VexMediaGenerateUploadUrlRef,
+    createMediaDocument: anyApi.vex.media
+      .createMediaDocument as VexMediaCreateMediaDocumentRef,
     deleteMedia: anyApi.vex.media.deleteMedia as VexMediaDeleteMediaRef,
     getUrl: anyApi.vex.media.getUrl as VexMediaGetUrlRef,
   },
 } as const;
-```
+````
 
 ---
 
@@ -3246,6 +3632,7 @@ pnpm dev:app
 ## Success Criteria
 
 **API Functions:**
+
 - [ ] `find()` API accepts `paginationOpts` and `includeTotalCount`, returns `{ page, continueCursor, isDone, totalCount? }`
 - [ ] `search()` API accepts `paginationOpts` and `includeTotalCount`, returns `{ page, continueCursor, isDone, totalCount? }`
 - [ ] `remove()` API accepts `ids: string[]` for bulk deletion
@@ -3254,12 +3641,14 @@ pnpm dev:app
 - [ ] `totalCount` returns `null` when collection exceeds 32k docs
 
 **Hooks:**
+
 - [ ] `usePaginatedCollection` hook manages cursor-based pagination with Load More
 - [ ] Hook extracts `totalCount` from first page response
 - [ ] Hook accumulates results across multiple Load More calls
 - [ ] Hook mimics Convex `usePaginatedQuery` API (`results`, `loadMore`, `isDone`)
 
 **DataTable Component:**
+
 - [ ] `DataTable` component shows Load More button when `!isDone`
 - [ ] Load More button shows loading state when fetching
 - [ ] "All X items loaded" message shown when `isDone`
@@ -3268,6 +3657,7 @@ pnpm dev:app
 - [ ] Bulk delete modal shows correct count
 
 **Collection List View:**
+
 - [ ] CollectionListView uses `usePaginatedCollection` hook
 - [ ] Total count displayed in header ("1,523 documents" or "10,000+ documents")
 - [ ] Load More button works and accumulates results
@@ -3275,10 +3665,12 @@ pnpm dev:app
 - [ ] All loaded results visible in one scrollable list
 
 **Media Library:**
+
 - [ ] MediaCollectionListView uses same Load More pattern
 - [ ] Bulk delete works for media files
 
 **Tests:**
+
 - [ ] `find()` pagination has test coverage (6 existing tests)
 - [ ] `find()` with `includeTotalCount` has test coverage (3 new tests)
 - [ ] `search()` pagination has test coverage (4 existing tests)
@@ -3286,10 +3678,12 @@ pnpm dev:app
 - [ ] `remove()` bulk delete has test coverage (4 existing tests)
 
 **Cleanup:**
+
 - [ ] `vexConvexApi` moved from `src/convex/` to `src/api/convex.ts`
 - [ ] Empty `src/convex/` folder deleted
 
 **Quality:**
+
 - [ ] No TypeScript errors (`pnpm typecheck` clean)
 - [ ] No ESLint errors (`pnpm lint` clean)
 - [ ] All tests pass (`pnpm test` clean)

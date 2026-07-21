@@ -34,9 +34,15 @@ export interface RelationshipPreviewProps<TCollectionSlug extends CollectionSlug
 export interface CollectionTableConfigInput {
   /**
    * Default number of items per page.
-   * @default 50
+   * @default 10
    */
   defaultPageSize?: number;
+
+  /**
+   * Default number of items per page fetch from the server.
+   * @default 100
+   */
+  serverPageSize?: number;
 
   /**
    * Available page size options in the pagination controls.
@@ -78,10 +84,16 @@ export interface CollectionTableConfigInput {
  */
 export interface CollectionTableConfig {
   /**
-   * Default number of items per page.
-   * @default 50
+   * Default number of items per page on the client.
+   * @default 10
    */
   defaultPageSize: number;
+
+  /**
+   * Default number of items per page fetch from the server.
+   * @default 100
+   */
+  serverPageSize: number;
 
   /**
    * Available page size options in the pagination controls.

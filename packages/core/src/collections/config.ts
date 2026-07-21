@@ -51,6 +51,7 @@ export function defineCollection<
       ...config.admin,
       table: {
         defaultPageSize: 10,
+        serverPageSize: 100,
         pageSizeOptions: [10, 25, 50, 100],
         defaultColumns: [],
         ...config.admin?.table,

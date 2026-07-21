@@ -1,4 +1,10 @@
-import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
+import type {
+  GenericDataModel,
+  GenericMutationCtx,
+  GenericQueryCtx,
+  PaginationOptions as ConvexPaginationOptions,
+  PaginationResult as ConvexPaginationResult,
+} from "convex/server";
 
 import {
   ADMIN_FIELDS,
@@ -381,23 +387,37 @@ export type DepthPopulated<
  *
  * @see https://docs.convex.dev/database/pagination
  */
-export type { PaginationOptions } from "convex/server";
+export type PaginationOptions = ConvexPaginationOptions & {
+  /**
+   * Whether to include total document count in the response.
+   *
+   * Only runs on the first page (when cursor is null) to avoid wasteful re-counting.
+   * Counts all documents matching the current filters/search query.
+   *
+   * Returns `null` if the count exceeds Convex transaction limits (>32k documents).
+   *
+   * @default false
+   */
+  totalDocs?: boolean;
+};
 
 /**
  * Pagination result from Convex query.
- * 
+ *
  * Re-exported from `convex/server`. Returned by queries using `.paginate(opts)`.
- * 
+ *
  * Includes:
  * - `page: T[]` — Current page of results
  * - `isDone: boolean` — Whether this is the last page
  * - `continueCursor: string` — Cursor to fetch next page
  * - `splitCursor?: string | null` — Cursor to split large pages (optional)
  * - `pageStatus?: "SplitRecommended" | "SplitRequired" | null` — Indicates when to split (optional)
- * 
+ *
  * @see https://docs.convex.dev/database/pagination
  */
-export type { PaginationResult } from "convex/server";
+export type PaginationResult<T> = ConvexPaginationResult<T> & {
+  totalDocs?: number | null;
+};
 
 /**
  * Client-side pagination state.

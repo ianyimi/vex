@@ -24,6 +24,25 @@ export interface SearchClientArgs<
 }
 
 /**
+ * Client-side args for `search` with PaginationOptions required. Extends {@link GenericQueryClientParams}
+ * to inherit `ctx?: never` and `populate?: TPopulate`.
+ *
+ * @typeParam TCollectionSlug - Collection slug.
+ * @typeParam TPopulate - Populate object.
+ */
+export interface SearchClientPaginatedArgs<
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
+> extends GenericQueryClientParams<TCollectionSlug, TPopulate> {
+  collection: TCollectionSlug;
+  query: string;
+  searchIndexName: string;
+  searchField: string;
+  limit?: number;
+  paginationOpts: PaginationOptions;
+}
+
+/**
  * Returns tanstack-query options for text search in a VexCMS collection.
  * Client-side only — pass to `useQuery` / `useSuspenseQuery`.
  *

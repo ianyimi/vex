@@ -1,4 +1,4 @@
-import type { GenericDataModel, PaginationOptions, PaginationResult } from "convex/server";
+import type { GenericDataModel, NamedTableInfo, QueryInitializer } from "convex/server";
 
 import type { CollectionSlug, DocumentBySlug } from "../../types/generated";
 import { buildDepthPopulate } from "../depth";
@@ -6,6 +6,8 @@ import { populateDocs } from "../populate";
 import type {
   DepthPopulated,
   GenericQueryServerParams,
+  PaginationOptions,
+  PaginationResult,
   Populated,
   PopulateShape,
   Prettify,
@@ -99,45 +101,27 @@ export async function search<
 ): Promise<SearchReturnPaginated<TCollectionSlug, TPopulate, D>>;
 
 /**
- * Text search via a Convex search index. Server-side only.
- * Empty `query` string falls back to `.take()` (returns recent docs).
+ * Search documents in a collection with optional pagination and total count.
  *
- * Pass `populate` to explicitly name the relationship fields to resolve
- * (documented, recommended). Pass `depth` (with `config`) to automatically
- * populate all relationship fields to N levels — internal use only.
+ * When `includeTotalCount=true`, runs `.collect()` on the first page to count all
+ * matching search results. Returns `null` if count exceeds 32k documents.
  *
- * Import from `@vexcms/core/server`. For the client-side version, import
- * `search` from `@vexcms/core/client`.
+ * @param args - Search arguments including query, filters, pagination, and count options
+ * @returns Array of documents or PaginationResult with optional totalCount
  *
- * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
- * @typeParam TCollectionSlug - Collection slug.
- * @typeParam TPopulate - Populate object.
- * @typeParam D - Depth literal (0 = none).
- * @param args - `{ ctx, collection, query, searchIndexName, searchField, limit?, populate? }`.
- * @returns Promise resolving to matching docs.
  * @example
  * ```ts
- * import { search } from "@vexcms/core/server";
- *
- * export const authorSearch = query({
- *   args: { q: v.string() },
- *   handler: (ctx, args) =>
- *     search({ ctx, collection: "authors", query: args.q,
- *               searchIndexName: "search_name", searchField: "name",
- *               populate: { team: true } }),
- * });
- * ```
- * @example With pagination
- * ```ts
+ * // With pagination and count (first page only)
  * const result = await search({
  *   ctx,
- *   collection: "authors",
- *   query: "smith",
- *   searchIndexName: "search_name",
- *   searchField: "name",
- *   paginationOpts: { numItems: 20, cursor: null },
+ *   collection: "posts",
+ *   query: "react hooks",
+ *   searchIndexName: "search_posts",
+ *   searchField: "title",
+ *   paginationOpts: { numItems: 100, cursor: null },
+ *   includeTotalCount: true,
  * });
- * // result: { page: [...], continueCursor: string | null, isDone: boolean }
+ * // result: { page: [...], continueCursor: "...", isDone: false, totalCount: 42 }
  * ```
  */
 export async function search<
@@ -151,30 +135,17 @@ export async function search<
   | SearchReturnItem<TCollectionSlug, TPopulate, D>[]
   | SearchReturnPaginated<TCollectionSlug, TPopulate, D>
 > {
-  const tableName = args.collection;
-  const limit = args.limit ?? 20;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let q: any = args.ctx.db.query(tableName);
+  const searchQuery = buildQuery(args);
 
   let docs: Record<string, unknown>[];
-  let convexPaginationResult: Awaited<ReturnType<typeof q.paginate>> | undefined;
-
-  if (!args.query) {
-    if (args.paginationOpts) {
-      convexPaginationResult = await q.paginate(args.paginationOpts);
-      docs = convexPaginationResult.page;
-    } else {
-      docs = await q.take(limit);
-    }
+  let convexPaginationResult: Awaited<ReturnType<typeof searchQuery.paginate>> | undefined;
+  if (args.paginationOpts) {
+    convexPaginationResult = await searchQuery.paginate(args.paginationOpts);
+    docs = convexPaginationResult.page;
+  } else if (args.limit) {
+    docs = await searchQuery.take(args.limit);
   } else {
-    q = q.withSearchIndex(args.searchIndexName, (q: any) => q.search(args.searchField, args.query));
-    if (args.paginationOpts) {
-      convexPaginationResult = await q.paginate(args.paginationOpts);
-      docs = convexPaginationResult.page;
-    } else {
-      docs = await q.take(limit);
-    }
+    docs = await searchQuery.collect();
   }
 
   const effectivePopulate =
@@ -185,20 +156,63 @@ export async function search<
 
   const finalDocs =
     !effectivePopulate || Object.keys(effectivePopulate).length === 0
-      ? docs
-      : await populateDocs(
+      ? (docs as SearchReturnItem<TCollectionSlug, TPopulate, D>[])
+      : ((await populateDocs(
           args.ctx,
           docs as ReadonlyArray<Record<string, unknown>>,
           effectivePopulate,
-        );
+        )) as SearchReturnItem<TCollectionSlug, TPopulate, D>[]);
 
-  if (convexPaginationResult) {
-    // Return Convex pagination result directly with populated docs
-    return {
-      ...convexPaginationResult,
-      page: finalDocs as SearchReturnItem<TCollectionSlug, TPopulate, D>[],
-    };
+  if (args.paginationOpts) {
+    if (args.paginationOpts.totalDocs && !args.paginationOpts.cursor) {
+      try {
+        // Build same search query but collect all to count
+        const countQuery = buildQuery(args); // Same search params
+        const allDocs = await countQuery.collect();
+
+        if (convexPaginationResult) {
+          return {
+            ...convexPaginationResult,
+            page: finalDocs,
+            totalDocs: allDocs.length,
+          };
+        }
+      } catch (error) {
+        console.warn("Failed to count search results:", error);
+        if (convexPaginationResult) {
+          return {
+            ...convexPaginationResult,
+            page: finalDocs,
+            totalDocs: null,
+          };
+        }
+      }
+    }
+
+    if (convexPaginationResult) {
+      // Return Convex pagination result directly with populated docs
+      return {
+        ...convexPaginationResult,
+        page: finalDocs as SearchReturnItem<TCollectionSlug, TPopulate, D>[],
+      };
+    }
   }
 
   return finalDocs as SearchReturnItem<TCollectionSlug, TPopulate, D>[];
+}
+
+function buildQuery<
+  DataModel extends GenericDataModel,
+  TCollectionSlug extends CollectionSlug,
+  const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+  const D extends number = 0,
+>(
+  args: SearchServerArgs<DataModel, TCollectionSlug, TPopulate, D>,
+): QueryInitializer<NamedTableInfo<DataModel, TCollectionSlug>> {
+  let q = args.ctx.db.query(args.collection);
+  if (args.query) {
+    // @ts-expect-error building query piece by piece from query args
+    q = q.withSearchIndex(args.searchIndexName, (q) => q.search(args.searchField, args.query));
+  }
+  return q;
 }

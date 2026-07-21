@@ -1,5 +1,6 @@
 import { anyApi } from "convex/server";
-import type { FunctionReference, PaginationOptions, PaginationResult } from "convex/server";
+import type { FunctionReference } from "convex/server";
+import type { PaginationOptions, PaginationResult } from "../api/types";
 import { CollectionSlug } from "../types";
 
 /**
@@ -91,6 +92,16 @@ export interface VexFindArgs {
   paginationOpts?: PaginationOptions;
 }
 
+/** Args for `api.vex.find`. */
+export interface VexFindPaginatedArgs {
+  [key: string]: unknown;
+  collection: CollectionSlug;
+  populate?: unknown;
+  depth?: number;
+  limit?: number;
+  paginationOpts: PaginationOptions;
+}
+
 /** Args for `api.vex.get`. */
 export interface VexGetArgs {
   [key: string]: unknown;
@@ -140,6 +151,14 @@ export type VexFindRef = FunctionReference<
   "public",
   VexFindArgs,
   VexDocument[] | PaginationResult<VexDocument>
+>;
+
+/** Shallow FunctionReference for `api.vex.findPaginated`. */
+export type VexFindPaginatedRef = FunctionReference<
+  "query",
+  "public",
+  VexFindPaginatedArgs,
+  PaginationResult<VexDocument>
 >;
 
 /** Shallow FunctionReference for `api.vex.get`. */
@@ -298,6 +317,11 @@ export const vexConvexApi = {
    * Called by {@link CollectionListView} in `@vexcms/react`.
    */
   find: anyApi.vex.find as VexFindRef,
+  /**
+   * Finds documents in a collection with cursor pagination.
+   * Called by {@link CollectionListView} in `@vexcms/react`.
+   */
+  findPaginated: anyApi.vex.find as VexFindPaginatedRef,
 
   /**
    * Fetches a single document by ID.

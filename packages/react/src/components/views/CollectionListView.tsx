@@ -1,18 +1,17 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { type VexDocument } from "@vexcms/core";
 import type { CollectionConfig, CollectionListViewProps, CollectionSlug } from "@vexcms/core";
 import { Button } from "../ui/button";
 import { VexLink } from "../ui/VexLink";
 import { MODALS } from "../modals/constants";
 import { CreateDocumentModal } from "../modals";
 import { useVexConfig } from "../../context/VexConfigContext";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../ui/table";
 import { getCollectionColumnDefs } from "../fields";
-import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { find } from "@vexcms/core/client";
+import { remove } from "@vexcms/core/client";
 import { MediaCollectionListView } from "./MediaCollectionListView";
+import { usePaginatedQuery } from "../../hooks";
+import { useMemo } from "react";
+import { DataTable } from "../ui";
 
 /**
  * Collection list view component.
@@ -53,19 +52,49 @@ export function CollectionListView<
     }
   }
 
-  const { data: documents = [], isLoading } = useQuery({
-    ...find({ collection: props.collection.slug, limit: 100, depth: 1 }),
+  // const { data: documents = [], isPending } = useQuery({
+  //   ...find({ collection: props.collection.slug, limit: 100, depth: 1 }),
+  //   initialData: props.initialData?.page,
+  // });
+
+  const {
+    results: documents,
+    isPending,
+    isDone,
+    totalDocs,
+    loadMore,
+  } = usePaginatedQuery({
+    query: {
+      collection: props.collection.slug,
+      depth: 1,
+      paginationOpts: {
+        numItems: props.collection.admin.table.serverPageSize,
+        totalDocs: true,
+        cursor: null,
+      },
+    },
     initialData: props.initialData,
+    clientPageSize: props.collection.admin.table.defaultPageSize,
   });
+
+  const columns = useMemo(() => {
+    return getCollectionColumnDefs({ collection });
+  }, [collection]);
+
+  const removeMutation = remove();
+
+  async function handleBulkDelete(selectedIds: string[]) {
+    await removeMutation({ ids: selectedIds });
+  }
 
   return (
     <div className="relative">
       <CreateDocumentModal collection={collection} />
-      <div className="flex items-center justify-between mb-6 pt-4">
+      <div className="mb-6 flex items-center justify-between pt-4">
         <div>
           <h1 className="text-2xl font-bold">{collection.labels.plural}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5" suppressHydrationWarning>
-            {isLoading
+          <p className="text-muted-foreground mt-0.5 text-sm" suppressHydrationWarning>
+            {isPending
               ? "Loading…"
               : `${documents.length} document${documents.length === 1 ? "" : "s"}`}
           </p>
@@ -80,60 +109,18 @@ export function CollectionListView<
         </Button>
       </div>
 
-      {documents.length === 0 && !isLoading ? (
-        <div className="text-center py-12 border rounded-md text-muted-foreground">
-          No {collection.labels.plural.toLowerCase()} yet.{" "}
-          <VexLink href={`/admin/${collection.slug}/new`} className="text-primary hover:underline">
-            Create one.
-          </VexLink>
-        </div>
-      ) : (
-        <div className="border grid place-items-center rounded-md">
-          <CollectionListDataTable documents={documents} collection={collection} />
-        </div>
-      )}
+      <DataTable
+        data={documents}
+        columns={columns}
+        isDone={isDone}
+        onLoadMore={loadMore}
+        isLoadingMore={isPending}
+        totalCount={totalDocs}
+        enableRowSelection={true}
+        enableBulkActions={true}
+        entityName={collection.labels.plural.toLowerCase()}
+        onBulkDelete={handleBulkDelete}
+      />
     </div>
-  );
-}
-
-function CollectionListDataTable({
-  documents,
-  collection,
-}: {
-  documents: VexDocument[];
-  collection: CollectionConfig;
-}) {
-  const columnDefs = getCollectionColumnDefs({ collection });
-  const table = useReactTable({
-    data: documents,
-    columns: columnDefs,
-    getCoreRowModel: getCoreRowModel(),
-  });
-
-  return (
-    <Table>
-      <TableHeader>
-        {table.getHeaderGroups().map((hg) => (
-          <TableRow key={hg.id}>
-            {hg.headers.map((header) => (
-              <TableHead key={header.id}>
-                {flexRender(header.column.columnDef.header, header.getContext())}
-              </TableHead>
-            ))}
-          </TableRow>
-        ))}
-      </TableHeader>
-      <TableBody>
-        {table.getRowModel().rows.map((row) => (
-          <TableRow key={row.id}>
-            {row.getVisibleCells().map((cell) => (
-              <TableCell key={cell.id}>
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
   );
 }

@@ -28,6 +28,10 @@ export const pages = defineCollection({
   admin: {
     useAsTitle: "title",
     icon: "Notebook",
+    table: {
+      serverPageSize: 100,
+      defaultPageSize: 2,
+    },
   },
   fields: {
     title: text({

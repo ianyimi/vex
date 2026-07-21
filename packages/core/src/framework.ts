@@ -71,7 +71,7 @@ export interface CollectionListViewProps<
    * the TanStack Query so the list renders immediately on first load.
    * Omit when rendering client-side only.
    */
-  initialData?: TDoc[] | PaginationResult<TDoc>;
+  initialData?: PaginationResult<TDoc>;
 }
 
 /**

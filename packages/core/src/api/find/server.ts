@@ -2,15 +2,13 @@ import type {
   ExpressionOrValue,
   FilterBuilder,
   GenericDataModel,
-  GenericTableInfo,
   IndexNames,
   IndexRange,
   IndexRangeBuilder,
-  PaginationOptions,
-  PaginationResult,
   NamedIndex,
   NamedTableInfo,
   TableNamesInDataModel,
+  QueryInitializer,
 } from "convex/server";
 
 import type { CollectionSlug, DocumentBySlug } from "../../types/generated";
@@ -19,6 +17,8 @@ import { populateDocs } from "../populate";
 import type {
   DepthPopulated,
   GenericQueryServerParams,
+  PaginationOptions,
+  PaginationResult,
   Populated,
   PopulateShape,
   Prettify,
@@ -174,55 +174,35 @@ export async function find<
 ): Promise<FindReturnPaginated<TCollectionSlug, TPopulate, D>>;
 
 /**
- * Lists documents in a VexCMS collection with optional filtering, ordering,
- * index scans, and relationship population. Server-side only.
+ * Find documents in a collection with optional pagination and total count.
  *
- * Pass `populate` to explicitly name the relationship fields to resolve
- * (documented, recommended). Pass `depth` (with `config`) to automatically
- * populate all relationship fields to N levels — internal use only.
- * The two options are mutually exclusive; TypeScript enforces this at the call site.
+ * When `includeTotalCount=true`, runs `.collect()` on the first page to count all
+ * matching documents. Returns `null` if count exceeds 32k documents.
  *
- * Import from `@vexcms/core/server`. For the client-side (tanstack-query)
- * version, import `find` from `@vexcms/core/client`.
+ * @param args - Find arguments including filters, sort, pagination, and count options
+ * @returns Array of documents or PaginationResult with optional totalCount
  *
- * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
- * @typeParam TCollectionSlug - Collection slug; compile-error if not registered.
- * @typeParam TPopulate - Populate object, narrowed against `RelationshipKeysOf<TCollectionSlug>`.
- * @typeParam D - Depth literal (0 = none).
- * @param args - Query args. All fields except `ctx` and `collection` are optional.
- * @returns Promise resolving to the (optionally populated) documents array.
- * @example No options — first 100 posts in insertion order
+ * @example
  * ```ts
- * const posts = await find({ ctx, collection: "posts" });
- * ```
- * @example Filter + limit
- * ```ts
- * const published = await find({
- *   ctx,
- *   collection: "posts",
- *   filter: q => q.eq(q.field("published"), true),
- *   limit: 20,
- * });
- * ```
- * @example Index scan + order + populate
- * ```ts
- * const recent = await find({
- *   ctx,
- *   collection: "posts",
- *   withIndex: { name: "by_publishedAt" },
- *   order: "desc",
- *   populate: { author: true },
- *   limit: 10,
- * });
- * ```
- * @example With pagination
- * ```ts
+ * // Without pagination
+ * const docs = await find({ ctx, collection: "posts" });
+ *
+ * // With pagination
  * const result = await find({
  *   ctx,
  *   collection: "posts",
  *   paginationOpts: { numItems: 100, cursor: null },
  * });
- * // result: { page: [...], continueCursor: string | null, isDone: boolean }
+ * // result: { page: [...], continueCursor: "...", isDone: false }
+ *
+ * // With pagination and count (first page only)
+ * const result = await find({
+ *   ctx,
+ *   collection: "posts",
+ *   paginationOpts: { numItems: 100, cursor: null },
+ *   includeTotalCount: true,
+ * });
+ * // result: { page: [...], continueCursor: "...", isDone: false, totalCount: 1523 }
  * ```
  */
 export async function find<
@@ -235,30 +215,18 @@ export async function find<
 ): Promise<
   FindReturn<TCollectionSlug, TPopulate, D> | FindReturnPaginated<TCollectionSlug, TPopulate, D>
 > {
-  const tableName = args.collection as TableNamesInDataModel<DataModel>;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let q: any = args.ctx.db.query(tableName);
-
-  // 1. withIndex — narrows the scan (most efficient).
-  if (args.withIndex) {
-    q = args.withIndex.range
-      ? q.withIndex(args.withIndex.name, args.withIndex.range)
-      : q.withIndex(args.withIndex.name);
-  }
-  // 2. order — applied after index selection.
-  if (args.order) q = q.order(args.order);
-  // 3. filter — secondary predicate, full range scan.
-  if (args.filter) q = q.filter(args.filter);
+  const findQuery = buildQuery<DataModel, TCollectionSlug, TPopulate, D>(args);
 
   // 4. paginate OR take
-  let docs: GenericTableInfo[];
-  let convexPaginationResult: Awaited<ReturnType<typeof q.paginate>> | undefined;
+  let docs;
+  let convexPaginationResult: Awaited<ReturnType<typeof findQuery.paginate>> | undefined;
   if (args.paginationOpts) {
-    convexPaginationResult = await q.paginate(args.paginationOpts);
+    convexPaginationResult = await findQuery.paginate(args.paginationOpts);
     docs = convexPaginationResult.page;
+  } else if (args.limit) {
+    docs = await findQuery.take(args.limit);
   } else {
-    docs = await q.take(args.limit ?? 100);
+    docs = await findQuery.collect();
   }
 
   // Explicit populate takes precedence over depth (D11).
@@ -277,7 +245,36 @@ export async function find<
           effectivePopulate,
         )) as unknown as FindReturn<TCollectionSlug, TPopulate, D>);
 
-  if (convexPaginationResult) {
+  if (args.paginationOpts && convexPaginationResult) {
+    if (args.paginationOpts.totalDocs && !args.paginationOpts.cursor) {
+      try {
+        if (convexPaginationResult.isDone) {
+          return {
+            ...convexPaginationResult,
+            page: finalDocs,
+            totalDocs: finalDocs.length,
+          };
+        } else {
+          // Build same query (with filters) but collect all to count
+          const countQuery = buildQuery(args); // Same filters as main query
+          const totalDocs = await countQuery.collect();
+          return {
+            ...convexPaginationResult,
+            page: finalDocs,
+            totalDocs: totalDocs.length,
+          };
+        }
+      } catch (error) {
+        // .collect() failed (>32k docs or other limit)
+        console.warn("Failed to count documents:", error);
+        return {
+          ...convexPaginationResult,
+          page: finalDocs,
+          totalDocs: null, // Signals "too large to count"
+        };
+      }
+    }
+
     // Return Convex pagination result directly with populated docs
     return {
       ...convexPaginationResult,
@@ -286,4 +283,31 @@ export async function find<
   }
 
   return finalDocs;
+}
+
+function buildQuery<
+  DataModel extends GenericDataModel,
+  TCollectionSlug extends CollectionSlug,
+  const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+  const D extends number = 0,
+>(
+  args: FindServerArgs<DataModel, TCollectionSlug, TPopulate, D>,
+): QueryInitializer<NamedTableInfo<DataModel, TCollectionSlug>> {
+  const tableName = args.collection;
+  let q = args.ctx.db.query(tableName);
+
+  // 1. withIndex — narrows the scan (most efficient).
+  if (args.withIndex) {
+    // @ts-expect-error building query piece by piece from query args
+    q = args.withIndex.range
+      ? q.withIndex(args.withIndex.name, args.withIndex.range)
+      : q.withIndex(args.withIndex.name);
+  }
+  // 2. order — applied after index selection.
+  // @ts-expect-error building query piece by piece from query args
+  if (args.order) q = q.order(args.order);
+  // 3. filter — secondary predicate, full range scan.
+  if (args.filter) q = q.filter(args.filter);
+
+  return q;
 }

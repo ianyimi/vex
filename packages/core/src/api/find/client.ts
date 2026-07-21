@@ -12,12 +12,28 @@ import type { GenericQueryClientParams, PaginationOptions, PopulateShape } from 
  * @typeParam TPopulate - Populate object, narrowed against `RelationshipKeysOf<TCollectionSlug>`.
  */
 export interface FindClientArgs<
-  TCollectionSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TCollectionSlug>,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug> = PopulateShape<TCollectionSlug>,
 > extends GenericQueryClientParams<TCollectionSlug, TPopulate> {
   collection: TCollectionSlug;
   limit?: number;
   paginationOpts?: PaginationOptions;
+}
+
+/**
+ * Internal Client-side args for `find` with pagination options required. Extends {@link GenericQueryClientParams}
+ * to inherit `ctx?: never` and `populate?: TPopulate`.
+ *
+ * @typeParam TCollectionSlug - Collection slug.
+ * @typeParam TPopulate - Populate object, narrowed against `RelationshipKeysOf<TCollectionSlug>`.
+ */
+export interface FindClientPaginatedArgs<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug> = PopulateShape<TCollectionSlug>,
+> extends GenericQueryClientParams<TCollectionSlug, TPopulate> {
+  collection: TCollectionSlug;
+  limit?: number;
+  paginationOpts: PaginationOptions;
 }
 
 /**

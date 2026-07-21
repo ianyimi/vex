@@ -93,8 +93,18 @@ export async function NextAdminPage(props: {
     return <MediaCollectionListView collection={mediaCollection} initialData={initialData} />;
   }
 
-  const initialData = await fetchQuery(vexConvexApi.find, {
+  if (!collection) {
+    throw new Error("invalid collection slug");
+  }
+
+  const initialData = await fetchQuery(vexConvexApi.findPaginated, {
     collection: collectionSlug as CollectionSlug,
+    depth: 1,
+    paginationOpts: {
+      cursor: null,
+      numItems: collection.admin.table.serverPageSize,
+      totalDocs: true,
+    },
   });
   return <CollectionListView collection={collection!} initialData={initialData} />;
 }

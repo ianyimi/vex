@@ -75,7 +75,9 @@ export function queryApi<
         populate: v.optional(v.any()),
         depth: v.optional(v.number()),
         limit: v.optional(v.number()),
-        paginationOpts: v.optional(paginationOptsValidator),
+        paginationOpts: v.optional(
+          paginationOptsValidator.extend({ totalDocs: v.optional(v.boolean()) }),
+        ),
       },
       handler: (ctx, args) =>
         find({
@@ -114,7 +116,9 @@ export function queryApi<
         limit: v.optional(v.number()),
         populate: v.optional(v.any()),
         depth: v.optional(v.number()),
-        paginationOpts: v.optional(paginationOptsValidator),
+        paginationOpts: v.optional(
+          paginationOptsValidator.extend({ totalDocs: v.optional(v.boolean()) }),
+        ),
       },
       handler: (ctx, args) =>
         search({
