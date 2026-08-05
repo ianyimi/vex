@@ -16,7 +16,8 @@ export * from "./fields";
 
 export * from "./utils";
 export * from "./framework";
-export * from "./convex";
+export * from "./api/convex";
+export * from "./api/types";
 
 // ============================================================================
 // CONFIG BUILDERS
@@ -35,7 +36,6 @@ export * from "./types";
 // AUTH
 // ============================================================================
 
-export * from "./api/types";
 export { type VexAuthAdapter, type AuthCollectionConfig, VexAuthConfigError } from "./auth/types";
 export { mergeAuthCollections } from "./auth/mergeCollections";
 

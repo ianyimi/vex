@@ -1,6 +1,6 @@
 import { anyApi } from "convex/server";
 import type { FunctionReference } from "convex/server";
-import type { PaginationOptions, PaginationResult } from "../api/types";
+import type { PaginationOptions, PaginationResult } from "./types";
 import { CollectionSlug } from "../types";
 
 /**

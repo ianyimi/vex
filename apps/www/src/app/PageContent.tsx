@@ -30,12 +30,16 @@ export default function PageContent({ page }: PageContentProps) {
     <main className="min-h-screen bg-background text-foreground">
       {/* Admin link section */}
       <section className="mx-auto max-w-4xl px-6 py-8">
-        <Link
+        {/* Plain <a> (not <Link>): /admin is a separate zone behind the auth
+            proxy. A document request lets the proxy's 307 do a real hard
+            redirect to the full-page sign-in — an RSC soft-nav redirect gets
+            swallowed by the @auth interception route and renders nothing. */}
+        <a
           className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           href="/admin"
         >
           Go to Admin
-        </Link>
+        </a>
       </section>
 
       {/* Hero section */}

@@ -2583,12 +2583,12 @@ Create a generic DataTable component with Load More button. Parent components pr
 
 #### Files to create
 
-- [ ] `packages/react/src/components/ui/data-table/DataTable.tsx` (NEW)
-- [ ] `packages/react/src/components/ui/data-table/index.ts` (NEW)
+- [x] `packages/react/src/components/ui/data-table/DataTable.tsx` (NEW)
+- [x] `packages/react/src/components/ui/data-table/index.ts` (NEW)
 
 #### Files to modify
 
-- [ ] `packages/react/src/index.ts` — export DataTable
+- [x] `packages/react/src/index.ts` — export DataTable
 
 ---
 
@@ -2984,7 +2984,7 @@ DataTable (generic, reusable with Load More button)
 
 #### Files to modify
 
-- [ ] `packages/react/src/components/views/CollectionListView.tsx`
+- [x] `packages/react/src/components/views/CollectionListView.tsx`
 
 ---
 
@@ -3596,6 +3596,112 @@ pnpm test       # Should pass
 cd ../../apps/www
 pnpm typecheck  # Should pass
 pnpm dev:app    # Should start without errors
+```
+
+---
+
+### Step 13 — MediaCollectionEditView Revisit [DEFERRED — Future Spec]
+
+**Status:** Deferred. Not part of this spec's implementation. This step is a placeholder that documents all open decisions and design constraints to resolve before building a dedicated `MediaCollectionEditView`.
+
+---
+
+#### Current State
+
+`MediaCollectionEditView` currently exists as a direct copy of `CollectionEditView`, renamed and plugged in. It renders media documents in the admin panel edit route. The duplication was intentional as a quick starting point — the two views share enough structure that a fork was faster than a fully custom implementation at this stage.
+
+---
+
+#### What Needs to Change
+
+**1. Storage-provider-driven field visibility**
+
+The media edit view needs to read field visibility rules from the storage adapter config, not just from the field definitions themselves. Each storage adapter (Convex file storage, S3, R2, Vercel Blob, etc.) will expose a different set of system fields. The view must:
+
+- Distinguish **storage adapter fields** (auto-injected by `defineMediaCollection`: `storageId`, `filename`, `mimeType`, `size`, `width`, `height`, `url`) from **user-defined custom fields** (whatever the developer added in their own media collection config)
+- Mark storage adapter fields as **read-only** by default — the user didn't set these, the adapter did, and they shouldn't be editable directly
+- Optionally **hide** certain adapter fields entirely (e.g. `storageId` is internal and should probably never surface in the UI by default)
+- Allow storage adapter configs to declare their own field visibility rules (which fields they inject, which should be read-only, which should be hidden from the edit view)
+
+**2. User-level field control on collection configs**
+
+Developers should be able to control field visibility directly from their `defineCollection()` / `defineMediaCollection()` call. This is already partially done via `admin.hidden` and `admin.readOnly` on individual field configs, but the edit view needs to reliably enforce these. The `useCollectionForm` hook does some of this today — `useMediaCollectionForm` would need to extend it specifically for the media context.
+
+Also applies to regular collections: `admin.hidden: true` on a field should reliably prevent that field from appearing in the edit form. Verify that `CollectionEditView` / `useCollectionForm` correctly respects this today and document any gaps found.
+
+**3. `useMediaCollectionForm` hook**
+
+The current `useCollectionForm` hook was built for general collections. Media collections have enough special-casing (storage adapter fields, file metadata, URL resolution) that a dedicated `useMediaCollectionForm` hook is likely the right separation. It would:
+
+- Accept the media collection config + storage adapter instance
+- Separate adapter-injected fields from user custom fields
+- Apply adapter-level visibility rules (read-only, hidden) on top of user-level field config
+- Return a field list ready to render with the correct `readOnly` and `hidden` states already resolved
+- Potentially expose the resolved file URL and metadata for use in the view header (thumbnail preview, file size badge, etc.)
+
+**4. File swapping — open decision**
+
+There are two philosophies on whether the edit view should allow uploading a new file to replace an existing media document:
+
+**Option A — No file swapping (current leaning, simpler)**
+Users create a new media document for the new file and update their code references to point to it. Old document stays in the database. The edit view is purely metadata-only (alt text, custom fields, labels). No upload input appears on the edit view. Simpler, no risk of silent breakage.
+
+**Option B — Swap with mime-type family restriction (considered, may add later)**
+Users can upload a replacement file from the edit screen. Because all dependent code (blocks, relationship fields, etc.) references the same document ID, swapping the file automatically updates everywhere without any code changes. To prevent silent type-mismatch breakage, the upload input is restricted to files of the **same MIME type family** as the original (e.g. if the original was `image/*`, only images are accepted; if `application/pdf`, only PDFs). A visible warning banner explains the restriction and that existing code relying on the file type will be preserved.
+
+Considerations for Option B:
+- MIME type family groupings to define: `image/*`, `video/*`, `audio/*`, `application/pdf`, `text/*`, catch-all
+- The upload input on the edit view should pre-filter by family, not exact type (i.e., replacing a `.jpg` with a `.png` should be allowed)
+- The storage adapter must support deleting the old file blob after the swap (not all adapters do this cleanly — orphaned blobs may result)
+- Version history interaction: if versioning is added later, does a file swap create a new version? Probably yes.
+- The existing relationship and block fields in other documents hold `v.id("media_collection_slug")` references — swapping the file on the media document transparently updates all of them, which is the entire value of Option B
+
+**Current decision:** Defer this choice to the dedicated spec. Document Option B as the preferred direction but don't implement until the spec is written.
+
+---
+
+#### To Implement When Ready
+
+Run the following prompt in pi to generate the dedicated spec for this work:
+
+```
+/dev-spec
+
+Spec target: MediaCollectionEditView — storage-aware field rendering and optional file swap
+
+Context:
+- `MediaCollectionEditView` currently exists as a copy of `CollectionEditView` in `packages/react/src/components/views/`
+- `useCollectionForm` in `packages/react/src/hooks/` handles general collection form state
+- `defineMediaCollection()` in `packages/core/src/media/` auto-injects storage adapter fields
+- Storage adapters live in `packages/file-storage-convex/` (and future adapters)
+- See: `.pi/agent-docs/specs/34-pagination-bulk-actions.md` Step 13 for full design notes
+
+What to spec:
+
+1. `useMediaCollectionForm` hook
+   - Accepts media collection config + storage adapter instance
+   - Separates adapter-injected fields (storageId, filename, mimeType, size, width, height, url) from user custom fields
+   - Applies adapter-level visibility rules on top of user-level field config (admin.hidden, admin.readOnly)
+   - Returns resolved field list with readOnly/hidden states pre-applied
+   - Exposes resolved file URL and metadata for view header (thumbnail, size badge)
+
+2. Storage adapter field visibility contract
+   - Define which fields `defineMediaCollection` injects and their default visibility in the edit view
+   - Allow storage adapter configs to declare per-field visibility overrides
+   - Verify `admin.hidden: true` is enforced in `CollectionEditView` / `useCollectionForm` and document gaps
+
+3. File swapping (Option B from Step 13)
+   - Upload input on edit view restricted to same MIME type family as original file
+   - MIME family groupings: image/*, video/*, audio/*, application/pdf, text/*, catch-all
+   - Warning banner explaining restriction and behavior
+   - Old blob deletion via storage adapter after successful swap
+   - Decide: does a file swap create a version history entry? (likely yes, align with Spec 07)
+
+4. MediaCollectionEditView refactor
+   - Replace copy-paste from CollectionEditView with proper composition
+   - Use useMediaCollectionForm instead of useCollectionForm
+   - View header: file thumbnail preview, filename, size, type badge
+   - Read-only display section for adapter fields, editable section for custom fields
 ```
 
 ---

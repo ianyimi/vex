@@ -94,6 +94,7 @@ export {
   DashboardView,
   CollectionListView,
   MediaCollectionListView,
+  MediaCollectionEditView,
   CollectionEditView,
 } from "./components";
 

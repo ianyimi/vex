@@ -37,6 +37,7 @@ export function NextAdminLayoutClient(props: {
   config: ClientVexConfig;
   children: ReactNode;
   user?: AdminUser;
+  sidebarOpen?: boolean;
 }) {
   const pathname = usePathname();
   // pathname: "/admin", "/admin/posts", "/admin/posts/123"
@@ -58,6 +59,7 @@ export function NextAdminLayoutClient(props: {
         pathname={pathname}
         activeDocID={activeDocID}
         user={props.user}
+        sidebarOpen={props.sidebarOpen}
       >
         {props.children}
       </AdminLayout>

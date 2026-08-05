@@ -1,10 +1,11 @@
 import { fetchQuery } from "convex/nextjs";
 import { vexConvexApi } from "@vexcms/core";
-import type { CollectionSlug, VexConfig } from "@vexcms/core";
+import type { CollectionSlug, PaginationResult, VexConfig, VexMediaDocument } from "@vexcms/core";
 import {
   DashboardView,
   CollectionListView,
   CollectionEditView,
+  MediaCollectionEditView,
   MediaCollectionListView,
 } from "@vexcms/react";
 import { sanitizeConfigForClient } from "@vexcms/core";
@@ -73,6 +74,40 @@ export async function NextAdminPage(props: {
     );
   }
 
+  if (mediaCollection && documentId) {
+    const initialData = await fetchQuery(vexConvexApi.get, {
+      id: documentId,
+    });
+    return (
+      <MediaCollectionEditView
+        collection={mediaCollection}
+        documentId={documentId}
+        initialData={initialData as VexMediaDocument | null}
+      />
+    );
+  }
+
+  if (mediaCollection) {
+    const numItems = Math.max(
+      mediaCollection.admin.table.serverPageSize,
+      mediaCollection.admin.table.defaultPageSize,
+    );
+    const initialData = await fetchQuery(vexConvexApi.find, {
+      collection: collectionSlug as CollectionSlug,
+      paginationOpts: {
+        numItems,
+        totalDocs: true,
+        cursor: null,
+      },
+    });
+    return (
+      <MediaCollectionListView
+        collection={mediaCollection}
+        initialData={initialData as PaginationResult<VexMediaDocument>}
+      />
+    );
+  }
+
   if (collection && documentId) {
     const initialData = await fetchQuery(vexConvexApi.get, {
       id: documentId,
@@ -86,25 +121,22 @@ export async function NextAdminPage(props: {
     );
   }
 
-  if (mediaCollection) {
-    const initialData = await fetchQuery(vexConvexApi.find, {
-      collection: collectionSlug as CollectionSlug,
-    });
-    return <MediaCollectionListView collection={mediaCollection} initialData={initialData} />;
-  }
-
   if (!collection) {
     throw new Error("invalid collection slug");
   }
 
+  const numItems = Math.max(
+    collection.admin.table.serverPageSize,
+    collection.admin.table.defaultPageSize,
+  );
   const initialData = await fetchQuery(vexConvexApi.findPaginated, {
     collection: collectionSlug as CollectionSlug,
     depth: 1,
     paginationOpts: {
       cursor: null,
-      numItems: collection.admin.table.serverPageSize,
+      numItems,
       totalDocs: true,
     },
   });
-  return <CollectionListView collection={collection!} initialData={initialData} />;
+  return <CollectionListView collection={collection} initialData={initialData} />;
 }

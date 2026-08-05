@@ -16,7 +16,7 @@ import {
   type AdminFieldType,
 } from "../fields";
 import type { CollectionsFieldTypeMap, CollectionSlug, DocumentBySlug } from "../types/generated";
-import { VexDocument } from "../convex";
+import { VexDocument } from "./convex";
 import { VexConfig } from "../config";
 
 /**

@@ -2,7 +2,7 @@ import { AdminField } from "../fields";
 import { CoreAdminField } from "./constants";
 import type { ApplyComponent, ComponentHKT } from "../fields";
 import type { CollectionSlug } from "../types/generated";
-import { TDocument } from "../convex";
+import { TDocument } from "../api/convex";
 import { LucideIconName } from "../utils";
 
 /**

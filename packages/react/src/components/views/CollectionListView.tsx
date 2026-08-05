@@ -1,17 +1,22 @@
 "use client";
 
-import type { CollectionConfig, CollectionListViewProps, CollectionSlug } from "@vexcms/core";
+import {
+  vexConvexApi,
+  type CollectionConfig,
+  type CollectionListViewProps,
+  type CollectionSlug,
+} from "@vexcms/core";
 import { Button } from "../ui/button";
 import { VexLink } from "../ui/VexLink";
 import { MODALS } from "../modals/constants";
 import { CreateDocumentModal } from "../modals";
 import { useVexConfig } from "../../context/VexConfigContext";
 import { getCollectionColumnDefs } from "../fields";
-import { remove } from "@vexcms/core/client";
-import { MediaCollectionListView } from "./MediaCollectionListView";
 import { usePaginatedQuery } from "../../hooks";
 import { useMemo } from "react";
 import { DataTable } from "../ui";
+import { useConvexMutation } from "@convex-dev/react-query";
+import { useMutation } from "@tanstack/react-query";
 
 /**
  * Collection list view component.
@@ -46,23 +51,11 @@ export function CollectionListView<
       (c) => c.slug === props.collection.slug,
     ) as CollectionConfig<TSlug>) ?? props.collection;
 
-  for (const mediaCollection of liveConfig.mediaCollections) {
-    if (mediaCollection.slug === collection.slug) {
-      return <MediaCollectionListView collection={mediaCollection} />;
-    }
-  }
-
   const numItems = Math.max(
     props.collection.admin.table.serverPageSize,
     props.collection.admin.table.defaultPageSize,
   );
-  const {
-    results: documents,
-    isPending,
-    isDone,
-    totalDocs,
-    loadMore,
-  } = usePaginatedQuery({
+  const pagination = usePaginatedQuery({
     query: {
       collection: props.collection.slug,
       depth: 1,
@@ -80,10 +73,10 @@ export function CollectionListView<
     return getCollectionColumnDefs({ collection });
   }, [collection]);
 
-  const removeMutation = remove();
+  const removeMutation = useMutation({ mutationFn: useConvexMutation(vexConvexApi.remove) });
 
   async function handleBulkDelete(selectedIds: string[]) {
-    await removeMutation({ ids: selectedIds });
+    await removeMutation.mutateAsync({ ids: selectedIds });
   }
 
   return (
@@ -93,9 +86,9 @@ export function CollectionListView<
         <div>
           <h1 className="text-2xl font-bold">{collection.labels.plural}</h1>
           <p className="text-muted-foreground mt-0.5 text-sm" suppressHydrationWarning>
-            {isPending
+            {pagination.isPending
               ? "Loading…"
-              : `${documents.length} document${documents.length === 1 ? "" : "s"}`}
+              : `${pagination.results.length} document${pagination.results.length === 1 ? "" : "s"}`}
           </p>
         </div>
         <Button
@@ -109,16 +102,17 @@ export function CollectionListView<
       </div>
 
       <DataTable
-        data={documents}
+        data={pagination.results}
         columns={columns}
-        isDone={isDone}
-        onLoadMore={loadMore}
-        isLoadingMore={isPending}
-        totalCount={totalDocs}
+        isDone={pagination.isDone}
+        onLoadMore={pagination.loadMore}
+        isLoadingMore={pagination.isPending}
+        totalCount={pagination.totalDocs}
         enableRowSelection={true}
         enableBulkActions={true}
         entityName={collection.labels.plural.toLowerCase()}
         onBulkDelete={handleBulkDelete}
+        isDeleting={removeMutation.isPending}
       />
     </div>
   );

@@ -3,6 +3,7 @@ import type { VexConfig } from "@vexcms/core";
 import { sanitizeConfigForClient } from "@vexcms/core";
 import type { AdminUser } from "@vexcms/react";
 import { NextAdminLayoutClient } from "./NextAdminLayoutClient";
+import { cookies } from "next/headers";
 
 /**
  * Next.js admin layout shell for VexCMS.
@@ -47,7 +48,7 @@ import { NextAdminLayoutClient } from "./NextAdminLayoutClient";
  * }
  * ```
  */
-export function NextAdminLayout(props: {
+export async function NextAdminLayout(props: {
   config: VexConfig;
   children: ReactNode;
   user?: AdminUser;
@@ -57,9 +58,11 @@ export function NextAdminLayout(props: {
   // storage adapter class instances that would otherwise crash RSC
   // serialization ("Classes or null prototypes are not supported").
   const clientConfig = sanitizeConfigForClient(props.config);
+  const cookieStore = await cookies();
+  const sidebarOpen = String(cookieStore.get("sidebar_state")?.value) === "true";
 
   return (
-    <NextAdminLayoutClient config={clientConfig} user={props.user}>
+    <NextAdminLayoutClient config={clientConfig} user={props.user} sidebarOpen={sidebarOpen}>
       {props.children}
     </NextAdminLayoutClient>
   );

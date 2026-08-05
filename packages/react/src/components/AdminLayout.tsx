@@ -68,6 +68,7 @@ export interface AdminLayoutProps {
    */
   components?: FrameworkComponents;
   user?: AdminUser;
+  sidebarOpen?: boolean;
 }
 
 /**
@@ -112,21 +113,21 @@ export function AdminLayout(props: AdminLayoutProps) {
 
   const content = (
     <SidebarInset>
-      <header className="flex h-12 sticky top-0 bg-background z-100 items-center gap-2 px-4 border-b shrink-0">
+      <header className="bg-background sticky top-0 z-100 flex h-12 shrink-0 items-center gap-2 border-b px-4">
         {side === "right" && <div className="flex-1" />}
         {side === "right" ? (
           <>
             <AdminTopNav {...props} />
             <SidebarTrigger
               side={side}
-              className="transition-colors duration-300 hover:text-primary-hover"
+              className="hover:text-primary-hover transition-colors duration-300"
             />
           </>
         ) : (
           <>
             <SidebarTrigger
               side={side}
-              className="transition-colors duration-300 hover:text-primary-hover"
+              className="hover:text-primary-hover transition-colors duration-300"
             />
             <AdminTopNav {...props} />
           </>
@@ -141,7 +142,7 @@ export function AdminLayout(props: AdminLayoutProps) {
       <FrameworkComponentsContext.Provider value={props.components ?? {}}>
         <ThemeProvider>
           <TooltipProvider>
-            <SidebarProvider>
+            <SidebarProvider defaultOpen={props.sidebarOpen}>
               {side === "right" ? (
                 <>
                   {content}

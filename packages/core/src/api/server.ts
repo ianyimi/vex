@@ -18,7 +18,7 @@ import { search } from "./search/server";
 import { create } from "./create/server";
 import { update } from "./update/server";
 import { remove } from "./remove/server";
-import { VexDocument, VexFindArgs, VexGetArgs, VexSearchArgs } from "../convex";
+import { VexDocument, VexFindArgs, VexGetArgs, VexSearchArgs } from "./convex";
 
 export { buildDepthPopulate } from "./depth";
 

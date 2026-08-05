@@ -2,7 +2,7 @@ import { NumberField } from "./number";
 import { TextField } from "./text";
 import { CheckboxField } from "./checkbox";
 import { DateField } from "./date";
-import { TDocument } from "../convex";
+import { TDocument } from "../api/convex";
 import { CollectionConfig } from "../collections";
 import { Row } from "@tanstack/react-table";
 import { SelectField } from "./select";

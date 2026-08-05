@@ -24,7 +24,7 @@ import type {
   VexMediaGetUrlArgs,
   VexMediaListMediaArgs,
   VexMediaSearchMediaArgs,
-} from "../../convex";
+} from "../../api/convex";
 
 /**
  * Registers `generateUploadUrl`, `createMediaDocument`, and `deleteMedia` as Convex mutation endpoints.

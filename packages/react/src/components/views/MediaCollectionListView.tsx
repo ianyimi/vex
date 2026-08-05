@@ -1,35 +1,36 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import type {
-  MediaCollectionConfig,
-  TDocument,
-  VexDocument,
-  VexMediaDocument,
-  PaginationResult,
+import { useMutation } from "@tanstack/react-query";
+import {
+  type MediaCollectionConfig,
+  type TDocument,
+  type VexMediaDocument,
+  type PaginationResult,
+  vexConvexApi,
 } from "@vexcms/core";
-import { find } from "@vexcms/core/client";
-import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
+import { type ColumnDef } from "@tanstack/react-table";
 import { Button } from "../ui/button";
 import { VexLink } from "../ui/VexLink";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../ui/table";
 import { MODALS } from "../modals/constants";
 import { CreateMediaModal } from "../modals/CreateMediaModal";
 import { useVexConfig } from "../../context/VexConfigContext";
 import { getCollectionColumnDefs } from "../fields";
 import { FilePreview } from "../media/FilePreview";
+import { usePaginatedQuery } from "../../hooks";
+import { DataTable } from "../ui";
+import { useConvexMutation } from "@convex-dev/react-query";
 
 /**
  * Props for the `MediaCollectionListView` component.
  */
-export interface MediaCollectionListViewProps<TDoc extends VexDocument = VexDocument> {
+export interface MediaCollectionListViewProps<TDoc extends VexMediaDocument = VexMediaDocument> {
   /** The resolved media collection configuration being listed. */
   collection: MediaCollectionConfig;
   /**
    * Pre-fetched documents from the server. Passed as `initialData` to the
    * TanStack Query so the list renders immediately on first load.
    */
-  initialData?: TDoc[] | PaginationResult<TDoc>;
+  initialData?: PaginationResult<TDoc>;
 }
 
 /**
@@ -63,22 +64,46 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
   const collection =
     liveConfig?.mediaCollections.find((c) => c.slug === props.collection.slug) ?? props.collection;
 
-  const { data: documents = [], isLoading } = useQuery({
-    ...find({ collection: props.collection.slug, limit: 100, depth: 1 }),
+  const deleteMediaMutation = useMutation({ mutationFn: useConvexMutation(vexConvexApi.remove) });
+  async function handleBulkDelete(selectedIds: string[]) {
+    await deleteMediaMutation.mutateAsync({ ids: selectedIds });
+  }
+
+  const numItems = Math.max(
+    props.collection.admin.table.serverPageSize,
+    props.collection.admin.table.defaultPageSize,
+  );
+  const pagination = usePaginatedQuery<VexMediaDocument>({
+    query: {
+      collection: props.collection.slug,
+      depth: 1,
+      limit: 100,
+      paginationOpts: {
+        numItems,
+        totalDocs: true,
+        cursor: null,
+      },
+    },
     initialData: props.initialData,
+    clientPageSize: props.collection.admin.table.defaultPageSize,
   });
+
+  const columns = [
+    mediaPreviewColumn(),
+    ...getCollectionColumnDefs<VexMediaDocument>({ collection }),
+  ];
 
   return (
     <div>
       <CreateMediaModal collection={collection} />
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between pt-4">
         <div>
           <h1 className="text-2xl font-bold">{collection.labels.plural}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5" suppressHydrationWarning>
-            {isLoading
+          <p className="text-muted-foreground mt-0.5 text-sm" suppressHydrationWarning>
+            {pagination.isPending
               ? "Loading…"
-              : `${documents.length} item${documents.length === 1 ? "" : "s"}`}
+              : `${pagination.results.length} item${pagination.results.length === 1 ? "" : "s"}`}
           </p>
         </div>
         <Button
@@ -91,8 +116,8 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
         </Button>
       </div>
 
-      {documents.length === 0 && !isLoading ? (
-        <div className="text-center py-12 border rounded-md text-muted-foreground">
+      {pagination.results.length === 0 && !pagination.isPending ? (
+        <div className="text-muted-foreground rounded-md border py-12 text-center">
           No {collection.labels.plural.toLowerCase()} yet.{" "}
           <VexLink
             href={`/admin/${collection.slug}?${MODALS.uploadMedia.urlParam}=true`}
@@ -102,8 +127,21 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
           </VexLink>
         </div>
       ) : (
-        <div className="border grid place-items-center rounded-md">
-          <MediaCollectionDataTable documents={documents} collection={collection} />
+        <div className="grid place-items-center rounded-md border">
+          <DataTable
+            data={pagination.results}
+            columns={columns}
+            isDone={pagination.isDone}
+            onLoadMore={() => pagination.loadMore()}
+            isLoadingMore={pagination.isPending}
+            totalCount={pagination.totalDocs}
+            enableRowSelection
+            enableBulkActions
+            entityName={props.collection.labels.plural}
+            onBulkDelete={handleBulkDelete}
+            isDeleting={deleteMediaMutation.isPending}
+            isPending={pagination.isPending}
+          />
         </div>
       )}
     </div>
@@ -124,59 +162,14 @@ function mediaPreviewColumn(): ColumnDef<TDocument<VexMediaDocument>, any> {
     cell: ({ row }) => {
       const src = row.original.src;
       return src ? (
-        <div className="w-10 h-10 relative">
+        <div className="relative h-10 w-10">
           <FilePreview mediaDoc={row.original} />
         </div>
       ) : (
-        <div className="w-10 h-10 rounded bg-muted flex items-center justify-center text-xs">
+        <div className="bg-muted flex h-10 w-10 items-center justify-center rounded text-xs">
           📄
         </div>
       );
     },
   };
-}
-
-function MediaCollectionDataTable({
-  documents,
-  collection,
-}: {
-  documents: VexMediaDocument[];
-  collection: MediaCollectionConfig;
-}) {
-  const columnDefs = [
-    mediaPreviewColumn(),
-    ...getCollectionColumnDefs<VexMediaDocument>({ collection }),
-  ];
-  const table = useReactTable({
-    data: documents,
-    columns: columnDefs,
-    getCoreRowModel: getCoreRowModel(),
-  });
-
-  return (
-    <Table>
-      <TableHeader>
-        {table.getHeaderGroups().map((hg) => (
-          <TableRow key={hg.id}>
-            {hg.headers.map((header) => (
-              <TableHead key={header.id}>
-                {flexRender(header.column.columnDef.header, header.getContext())}
-              </TableHead>
-            ))}
-          </TableRow>
-        ))}
-      </TableHeader>
-      <TableBody>
-        {table.getRowModel().rows.map((row) => (
-          <TableRow key={row.id}>
-            {row.getVisibleCells().map((cell) => (
-              <TableCell key={cell.id}>
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
 }

@@ -7,7 +7,7 @@ import type {
   ComponentHKT,
   InputComponentProps,
 } from "./fields";
-import type { TDocument, VexDocument } from "./convex";
+import type { VexDocument } from "./api/convex";
 import { CollectionSlug } from "./types/generated";
 import { PaginationResult } from "./api/types";
 
@@ -86,6 +86,7 @@ export interface CollectionEditViewProps<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TDocument extends VexDocument = VexDocument,
 > {
   /** The resolved collection configuration whose fields will be rendered. */
   collection: CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug>;

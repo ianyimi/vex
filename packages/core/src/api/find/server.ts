@@ -266,7 +266,7 @@ export async function find<
         }
       } catch (error) {
         // .collect() failed (>32k docs or other limit)
-        console.warn("Failed to count documents:", error);
+        console.warn("Failed to collect all documents:", error);
         return {
           ...convexPaginationResult,
           page: finalDocs,

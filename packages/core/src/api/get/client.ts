@@ -1,7 +1,7 @@
 import { convexQuery } from "@convex-dev/react-query";
 import type { GenericId } from "convex/values";
 
-import { vexConvexApi } from "../../convex";
+import { vexConvexApi } from "../convex";
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericQueryClientParams, PopulateShape } from "../types";
 
