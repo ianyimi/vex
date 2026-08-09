@@ -314,18 +314,18 @@ export type VexMediaGetUrlRef = FunctionReference<
 export const vexConvexApi = {
   /**
    * Finds documents in a collection.
-   * Called by {@link CollectionListView} in `@vexcms/react`.
+   * Called by {@link react/src!CollectionListView} in `@vexcms/react`.
    */
   find: anyApi.vex.find as VexFindRef,
   /**
    * Finds documents in a collection with cursor pagination.
-   * Called by {@link CollectionListView} in `@vexcms/react`.
+   * Called by {@link react/src!CollectionListView} in `@vexcms/react`.
    */
   findPaginated: anyApi.vex.find as VexFindPaginatedRef,
 
   /**
    * Fetches a single document by ID.
-   * Called by {@link CollectionEditView} in `@vexcms/react` when editing.
+   * Called by {@link react/src!CollectionEditView} in `@vexcms/react` when editing.
    */
   get: anyApi.vex.get as VexGetRef,
 

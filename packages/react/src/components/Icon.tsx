@@ -44,10 +44,7 @@ export type IconProps = ComponentPropsWithRef<"svg"> &
  * Returns `null` silently if `name` does not match a known icon, so invalid
  * strings from dynamic data (e.g. CMS content) do not throw at runtime.
  *
- * @param props - Icon props.
- * @param props.name - The Lucide icon name to render (e.g. `"FileText"`).
- * @param props.className - Additional CSS classes — merged with `cn()`.
- * @param props.strokeWidth - SVG stroke width. Defaults to Lucide's standard (`2`).
+ * @param props - Icon props. See {@link IconProps} for all fields.
  * @returns The rendered SVG icon, or `null` if the name is unrecognised.
  *
  * @example

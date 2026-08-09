@@ -1,14 +1,16 @@
+"use client";
+
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { find, FindClientPaginatedArgs } from "@vexcms/core/client";
 import type { CollectionSlug, PaginationResult, VexDocument } from "@vexcms/core";
 
 /**
- * Props for usePaginatedCollection hook.
+ * Props for the `usePaginatedQuery` hook.
  *
  * @typeParam TCollectionSlug - Collection slug type
  *
- * @defaults
+ * **Defaults:**
  * - `initialNumItems`: 100
  * - `depth`: 1
  * - `includeTotalCount`: true
@@ -67,9 +69,7 @@ export interface UsePaginatedQueryReturn<TDocument extends VexDocument = VexDocu
   isDone: boolean;
 
   /**
-   * Load more documents.
-   *
-   * @param numItems - Number of items to fetch (uses initialNumItems if not provided)
+   * Load more documents. Fetches the next page using `initialNumItems`.
    */
   loadMore: () => void;
 
@@ -124,7 +124,7 @@ export interface UsePaginatedQueryReturn<TDocument extends VexDocument = VexDocu
  * )}
  * ```
  *
- * @see {@link find} - Server function for querying documents
+ * @see `find` - Server function for querying documents
  * @see {@link PaginationResult} - Return type with totalCount
  */
 export function usePaginatedQuery<

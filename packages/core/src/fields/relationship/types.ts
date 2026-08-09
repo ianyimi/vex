@@ -4,6 +4,7 @@ import {
   BaseField,
   BaseFieldInput,
   ComponentHKT,
+  FieldAdminConfig,
   FieldAdminConfigInput,
 } from "../baseTypes";
 import { CollectionSlug } from "../../types/generated";
@@ -47,7 +48,7 @@ export interface RelationshipFieldAdminInput<
 export interface RelationshipFieldAdminConfig<
   TCollectionSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
-> extends FieldAdminConfigInput {
+> extends FieldAdminConfig {
   /**
    * Custom component overrides specific to this relationship field instance.
    * These take precedence over the target collection's `admin.components`.

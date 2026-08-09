@@ -45,6 +45,8 @@ export { mergeAuthCollections } from "./auth/mergeCollections";
 
 export {
   type VexStorageAdapter,
+  type StorageAdapterPresignedUrlInterface,
+  type StorageAdapterBaseInterface,
   type StorageAdapterProtocol,
   type MediaCollectionConfig,
   type MediaCollectionMeta,

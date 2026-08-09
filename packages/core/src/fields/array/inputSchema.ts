@@ -8,7 +8,7 @@ import { adminFieldToInputSchema } from "../inputSchemas";
  *
  * Wraps the nested item schema in `z.array(…)`, applies `min`/`max` item count
  * constraints when configured, then wraps in `.optional()` for non-required
- * fields via {@link applyBaseInputSchemaMeta}. The item schema is built
+ * fields via `applyBaseInputSchemaMeta`. The item schema is built
  * recursively by delegating to `adminFieldToInputSchema` for the nested field.
  *
  * @param props - Input props.

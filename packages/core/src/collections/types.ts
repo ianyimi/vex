@@ -74,7 +74,7 @@ export interface CollectionTableConfigInput {
   /**
    * Default visible columns (by field key).
    * If not specified, all columns are shown.
-   * @todo — deferred to column visibility spec
+   * NOTE: deferred to column visibility spec.
    */
   defaultColumns?: string[];
 }
@@ -125,7 +125,7 @@ export interface CollectionTableConfig {
   /**
    * Default visible columns (by field key).
    * If not specified, all columns are shown.
-   * @todo — deferred to column visibility spec
+   * NOTE: deferred to column visibility spec.
    */
   defaultColumns: string[];
 }

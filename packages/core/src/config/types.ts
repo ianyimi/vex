@@ -250,12 +250,12 @@ export interface VexConfigInput {
    * account, verification, etc.) alongside user-defined collections.
    *
    * Pass the return value of an auth adapter (e.g.
-   * {@link betterAuthAdapter} from `@vexcms/better-auth`). Auth collections
+   * {@link better-auth/src!betterAuthAdapter} from `@vexcms/better-auth`). Auth collections
    * are merged with user collections by `defineConfig()` — protected auth
    * collections cannot be overridden, and locked fields are preserved.
    *
    * @see {@link VexAuthAdapter} for the adapter interface
-   * @see {@link betterAuthAdapter} for the Better Auth implementation
+   * @see {@link better-auth/src!betterAuthAdapter} for the Better Auth implementation
    */
   authAdapter?: VexAuthAdapter;
   /**
@@ -271,7 +271,7 @@ export interface VexConfigInput {
    *
    * @see {@link VexStorageAdapter} for the adapter interface
    * @see {@link StorageAdapterSlug} for the key type
-   * @see {@link convexFileStorage} from `@vexcms/file-storage-convex` for the first adapter
+   * @see {@link file-storage-convex/src!convexFileStorage} from `@vexcms/file-storage-convex` for the first adapter
    */
   storage?: {
     /** Storage adapters configured for the project. */
@@ -301,7 +301,7 @@ export interface VexConfig {
    * are preserved during merge.
    *
    * @see {@link VexAuthAdapter} for the adapter interface
-   * @see {@link betterAuthAdapter} for the Better Auth implementation
+   * @see {@link better-auth/src!betterAuthAdapter} for the Better Auth implementation
    */
   auth?: VexAuthAdapter;
   /**

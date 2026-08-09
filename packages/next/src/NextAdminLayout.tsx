@@ -11,7 +11,7 @@ import { cookies } from "next/headers";
  * A **server component** that sits on the server→client boundary for the admin
  * panel. It sanitizes the resolved `vex.config` with `sanitizeConfigForClient`
  * — stripping storage adapter class instances, functions, and React components
- * — *before* the config is handed to the client leaf {@link NextAdminLayoutClient}.
+ * — *before* the config is handed to the client leaf `NextAdminLayoutClient`.
  *
  * This placement is the whole point: React serializes props when a server
  * component renders a client component, so the sanitize **must** happen on the

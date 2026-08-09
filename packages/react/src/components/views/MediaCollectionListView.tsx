@@ -42,7 +42,7 @@ export interface MediaCollectionListViewProps<TDoc extends VexMediaDocument = Ve
  *
  * 1. A leading **preview** column shows a thumbnail of each media file (from the
  *    `src` field), falling back to a placeholder when no URL is present.
- * 2. The create flow opens {@link CreateMediaModal} (an upload dropzone) instead
+ * 2. The create flow opens the media upload modal (an upload dropzone) instead
  *    of a field form, and the header action reads "Upload" rather than "New".
  *
  * Renders the *content area only* — wrap it in `AdminLayout`.

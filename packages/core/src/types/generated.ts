@@ -8,7 +8,6 @@
  * When empty (before generation), all derived types fall back to their widest
  * safe variants (`string`, `Record<string, unknown>`).
  *
- * @description
  * Do not populate this interface manually. It is populated by the
  * `declare module '@vexcms/core'` block emitted at the bottom of
  * the generated `vex.types.ts` file.
@@ -154,7 +153,7 @@ export type StorageAdapterSlug = GeneratedVexTypes extends {
  * `never` until augmentation runs, which is the intended behaviour for fresh
  * projects (no collections registered yet).
  *
- * @example Generated content (after `vex generate` runs):
+ * @example Generated content after running vex generate
  * ```ts
  * declare module "@vexcms/core" {
  *   interface GeneratedVexTypes {

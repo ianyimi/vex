@@ -12,7 +12,7 @@ import type icons from "lucide-react";
  * const bad: LucideIconName = "NotAnIcon"; // ❌ won't render
  * ```
  *
- * @see {@link Icon} for the component that renders a `LucideIconName`
+ * @see the `Icon` component from lucide-react that renders a `LucideIconName`
  */
 export type LucideIconName = keyof typeof icons;
 

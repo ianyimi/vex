@@ -41,7 +41,7 @@ import { VexConfig, VexConfigInput } from "./types";
  * @see {@link VexConfigInput} for the user-facing input type
  * @see {@link VexConfig} for the resolved return type
  * @see {@link mergeAuthCollections} for auth collection merge logic
- * @see {@link betterAuthAdapter} for the Better Auth adapter
+ * @see {@link better-auth/src!betterAuthAdapter} for the Better Auth adapter
  */
 export function defineConfig(config?: VexConfigInput): VexConfig {
   const userCollections = config?.collections ?? [];

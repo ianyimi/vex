@@ -10,6 +10,7 @@
     "test": "turbo run test",
     "coverage": "turbo run coverage",
     "test:e2e": "turbo run test:e2e",
+    "typedoc": "pnpm --filter docs build",
     "clean": "turbo run clean && rm -rf node_modules",
     "clear": "rm -rf apps/www/.next apps/www/node_modules/.cache",
     "changeset": "changeset",

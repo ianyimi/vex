@@ -14,7 +14,7 @@ import { BulkDeleteModal } from "./DeleteManyModal";
  *
  * @typeParam TData - Row data type (must have `_id` field for selection)
  *
- * @defaults
+ * **Defaults:**
  * - `isDone`: true
  * - `isLoadingMore`: false
  * - `enableRowSelection`: false
@@ -146,7 +146,7 @@ export interface DataTableProps<TData extends { _id: string }> {
  * />
  * ```
  *
- * @see {@link usePaginatedCollection} - Hook for managing pagination state
+ * @see {@link react/src!usePaginatedQuery} - Hook for managing pagination state
  * @see {@link DataTableBulkActions} - Bulk action bar component
  * @see {@link BulkDeleteModal} - Confirmation modal component
  */

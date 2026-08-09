@@ -23,7 +23,7 @@ import { PaginationResult } from "./api/types";
  * the component full autocomplete for field-specific properties (e.g. `fieldDef.maxLength`
  * on the text slot).
  *
- * @see {@link CellComponentMap} for the data table cell equivalent
+ * @see {@link CellComponentProps} for the data table cell props
  * @see {@link ComponentHKT} for how framework packages define their HKT
  * @see {@link ApplyComponent} for how the HKT resolves to a concrete component type
  */
@@ -162,7 +162,7 @@ export type ViewComponentMap<F extends ComponentHKT> = {
  *
  * @see {@link FrameworkAdapter} for the resolved type returned by `defineFrameworkAdapter`
  * @see {@link FieldComponentMap} for the field component slot types
- * @see {@link CellComponentMap} for the cell component slot types
+ * @see {@link CellComponentProps} for the cell component props
  */
 export interface FrameworkAdapterInput<F extends ComponentHKT> {
   /** Framework name used for identification (e.g. `"react"`, `"solid"`). */

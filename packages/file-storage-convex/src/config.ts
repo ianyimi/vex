@@ -36,8 +36,8 @@ type MediaCollectionFieldName = string &
  * // → { slug: "posts", admin: { useAsTitle: "_id" }, labels: { singular: "Post", plural: "Posts" }, fields: { ... } }
  * ```
  *
- * @see {@link CollectionConfigInput} for the user-facing input type
- * @see {@link CollectionConfig} for the resolved return type
+ * @see {@link core/src!CollectionConfigInput} for the user-facing input type
+ * @see {@link core/src!CollectionConfig} for the resolved return type
  */
 export function defineMediaCollection<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,

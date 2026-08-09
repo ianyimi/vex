@@ -103,6 +103,10 @@ export type { AdminUser, AdminLayoutProps, AppSidebarProps } from "./components"
 // Context
 export { VexConfigContext, useVexConfig, StorageAdapterContextProvider } from "./context";
 
+// Hooks
+export { usePaginatedQuery } from "./hooks/usePaginatedQuery";
+export type { UsePaginatedQueryProps, UsePaginatedQueryReturn } from "./hooks/usePaginatedQuery";
+
 // Utilities
 export { cn } from "./styles/utils";
 export { Icon } from "./components/Icon";

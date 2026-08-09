@@ -9,7 +9,7 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  * `.default(field.defaultValue)` is applied only when `defaultValue` is explicitly
  * set on the field — unlike `text()`, the url field has no implicit empty-string
  * default. Wraps in `.optional()` for non-required fields via
- * {@link applyBaseInputSchemaMeta}.
+ * `applyBaseInputSchemaMeta`.
  *
  * @param props - Input props.
  * @param props.field - The resolved URL field definition.

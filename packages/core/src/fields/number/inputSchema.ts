@@ -6,7 +6,7 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  * Builds a Zod schema for validating a number field value in the admin form.
  *
  * Applies `min` and `max` constraints when configured, then wraps in
- * `.optional()` for non-required fields via {@link applyBaseInputSchemaMeta}.
+ * `.optional()` for non-required fields via `applyBaseInputSchemaMeta`.
  *
  * @param props - Input props.
  * @param props.field - The resolved number field definition

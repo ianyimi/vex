@@ -11,7 +11,7 @@ import { CollectionSlug } from "../types";
  * Unlocked fields can be extended or replaced by the user.
  *
  * @see {@link mergeAuthCollections} for the merge logic that respects this flag
- * @see {@link betterAuthAdapter} for the adapter that sets `locked` on system fields
+ * @see {@link better-auth/src!betterAuthAdapter} for the adapter that sets `locked` on system fields
  */
 export interface AuthFieldMeta {
   /** When `true`, this field cannot be overridden by user-defined collections. */
@@ -61,7 +61,7 @@ export type AuthCollectionConfig<
  * so that schema generation, admin navigation, and CRUD views treat them
  * identically to user-defined collections.
  *
- * @see {@link betterAuthAdapter} — the Better Auth implementation
+ * @see {@link better-auth/src!betterAuthAdapter} — the Better Auth implementation
  */
 export interface VexAuthAdapter {
   /** Provider identifier for debugging and telemetry. */

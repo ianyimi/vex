@@ -8,7 +8,7 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  * Date values are Unix timestamps in milliseconds, so the base schema is
  * `z.number()`. For required fields a `.default(Date.now())` is applied so
  * the picker always has an initial value. Non-required fields are wrapped
- * in `.optional()` via {@link applyBaseInputSchemaMeta}.
+ * in `.optional()` via `applyBaseInputSchemaMeta`.
  *
  * @param props - Input props.
  * @param props.field - The resolved date field definition

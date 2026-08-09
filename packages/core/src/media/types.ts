@@ -36,7 +36,7 @@ export type MediaCollectionMeta = {
  * ```
  *
  * @see {@link MediaCollectionConfig} for the resolved type after defaults are applied
- * @see {@link defineMediaCollection} from `@vexcms/file-storage-convex`
+ * @see {@link file-storage-convex/src!defineMediaCollection} from `@vexcms/file-storage-convex`
  */
 export type MediaCollectionConfigInput<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
@@ -58,7 +58,7 @@ export type MediaCollectionConfigInput<
  * `collections` and appear under a dedicated "Media" section in the admin panel.
  *
  * @see {@link MediaCollectionConfigInput} for the user-facing input type
- * @see {@link defineMediaCollection} from `@vexcms/file-storage-convex`
+ * @see {@link file-storage-convex/src!defineMediaCollection} from `@vexcms/file-storage-convex`
  */
 export type MediaCollectionConfig<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,

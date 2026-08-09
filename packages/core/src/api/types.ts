@@ -318,12 +318,12 @@ export type Populated<
  * @typeParam D - The depth as a literal number (1, 2, or 3 recommended).
  * @typeParam _Counter - Internal tuple counter — callers must not supply this.
  *
- * @example Resolved shape for `depth: 1` on "posts" with "author" relationship
+ * @example Resolved shape for depth 1 on posts with an author relationship
  * ```ts
  * // DepthPopulate<"posts", 1> → { author?: true }
  * // Equivalent to writing `populate: { author: true }` explicitly
  * ```
- * @example Resolved shape for `depth: 2`
+ * @example Resolved shape for depth 2
  * ```ts
  * // DepthPopulate<"posts", 2> → { author?: { populate: { team?: true } } }
  * // Equivalent to `populate: { author: { populate: { team: true } } }`

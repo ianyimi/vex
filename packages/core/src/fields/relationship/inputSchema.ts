@@ -9,7 +9,7 @@ import { ADMIN_FIELDS } from "../constants";
  * Convex document IDs are strings at the form boundary. Single references
  * validate as `z.string()`. Multi-references (`hasMany: true`) validate as
  * `z.array(z.string())` with a default of `[]`. Wraps in `.optional()` for
- * non-required fields via {@link applyBaseInputSchemaMeta}.
+ * non-required fields via `applyBaseInputSchemaMeta`.
  *
  * @param props - Input props.
  * @param props.field - The resolved relationship field definition.

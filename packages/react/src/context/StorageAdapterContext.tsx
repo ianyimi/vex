@@ -19,8 +19,8 @@ const StorageAdapterContext = createContext<StorageAdapterContextValue>({
  * `MediaUploadDropzone` reads the map via `useStorageAdapterMap()` to call
  * the correct client-side `uploadFile` function for a given adapter.
  *
- * @param children — Child components that need access to the adapter map.
- * @param adapterClients — Map of adapter name → `uploadFile` function.
+ * Props: `children` (components needing adapter access) and `adapterClients`
+ * (map of adapter name → `uploadFile` function).
  */
 export function StorageAdapterContextProvider({
   children,

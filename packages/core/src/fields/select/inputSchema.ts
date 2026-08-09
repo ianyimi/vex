@@ -7,7 +7,7 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  *
  * Validates that submitted values are arrays containing only defined option values.
  * When `hasMany` is false, limits the array to a maximum of one item.
- * Wraps in `.optional()` for non-required fields via {@link applyBaseInputSchemaMeta}.
+ * Wraps in `.optional()` for non-required fields via `applyBaseInputSchemaMeta`.
  *
  * @param props - Input props.
  * @param props.field - The resolved select field definition
