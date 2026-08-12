@@ -151,6 +151,13 @@ export default [
   },
   {
     files: ["**/*.test.ts", "**/*.test.tsx"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: "latest",
+        sourceType: "module",
+      },
+    },
     rules: {
       // Relax JSDoc requirements in tests
       "jsdoc/require-jsdoc": "off",

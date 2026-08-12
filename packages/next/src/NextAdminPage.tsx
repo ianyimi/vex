@@ -1,12 +1,19 @@
 import { fetchQuery } from "convex/nextjs";
 import { vexConvexApi } from "@vexcms/core";
-import type { CollectionSlug, PaginationResult, VexConfig, VexMediaDocument } from "@vexcms/core";
+import type {
+  CollectionSlug,
+  PaginationResult,
+  VexConfig,
+  VexMediaDocument,
+} from "@vexcms/core";
 import {
   DashboardView,
   CollectionListView,
   CollectionEditView,
   MediaCollectionEditView,
   MediaCollectionListView,
+  GlobalsListView,
+  GlobalEditView,
 } from "@vexcms/react";
 import { sanitizeConfigForClient } from "@vexcms/core";
 
@@ -58,6 +65,26 @@ export async function NextAdminPage(props: {
 
   if (!collectionSlug) {
     return <DashboardView config={clientConfig} />;
+  }
+
+  if (collectionSlug === "globals") {
+    if (!documentId) {
+      return <GlobalsListView config={clientConfig} />;
+    }
+    // Validate the route param against the registered globals first — the
+    // found config's `slug` carries the narrowed GlobalSlug type, so no cast
+    // of the raw URL segment is needed downstream.
+    const globalConfig = clientConfig.globals.find((g) => g.slug === documentId);
+    if (!globalConfig) {
+      return (
+        <div>
+          <p className="text-muted-foreground p-6">Global &quot;{documentId}&quot; not found.</p>
+          <p>TODO: add not found view</p>
+        </div>
+      );
+    }
+    const global = await fetchQuery(vexConvexApi.globals.get, { slug: globalConfig.slug });
+    return <GlobalEditView global={globalConfig} initialData={global} />;
   }
 
   const collection = clientConfig.collections.find((c) => c.slug === collectionSlug);

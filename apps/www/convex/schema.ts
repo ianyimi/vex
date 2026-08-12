@@ -19,9 +19,11 @@ import {
   teamMember,
   themes,
   verification,
+  vex_globals,
 } from "./vex.schema";
 
 export default defineSchema({
+  vex_globals,
   images,
   team,
   teamMember,

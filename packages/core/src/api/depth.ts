@@ -19,7 +19,7 @@ import type { VexConfig } from "../config";
  * (`true`) — the field is populated one level, but the cycle is cut.
  *
  * @param config - The user's resolved `VexConfig`.
- * @param slug - The collection slug to start from.
+ * @param slug - The collection or global slug to start from.
  * @param depth - Levels to descend. `0` returns `{}` (no population).
  * @param visited - Internal cycle guard — callers must not supply this.
  * @returns A plain object usable as the `populate` arg to `populateDocs`.
@@ -44,14 +44,16 @@ export function buildDepthPopulate(
 ): Record<string, unknown> {
   if (depth <= 0) return {};
 
-  const collection = config.collections.find((c) => c.slug === slug);
-  if (!collection) return {};
+  const source =
+    config.collections.find((c) => c.slug === slug) ??
+    config.globals?.find((g) => g.slug === slug);
+  if (!source) return {};
 
   const nextVisited = new Set(visited).add(slug);
   const result: Record<string, unknown> = {};
 
   for (const [key, field] of Object.entries(
-    collection.fields as Record<string, AdminField>,
+    source.fields as Record<string, AdminField>,
   )) {
     if (field.type !== "relationship") continue;
 

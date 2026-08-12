@@ -1,7 +1,7 @@
 import { anyApi } from "convex/server";
 import type { FunctionReference } from "convex/server";
 import type { PaginationOptions, PaginationResult } from "./types";
-import { CollectionSlug } from "../types";
+import { CollectionSlug, VexDocumentGlobal } from "../types";
 
 /**
  * Base type for all VexCMS documents as returned from Convex queries.
@@ -76,9 +76,9 @@ export interface VexMediaDocument extends VexDocument {
   height?: number;
 }
 
-// ── Shallow FunctionReference types ───────────────────────────────────────
+// ── Collection API types ───────────────────────────────────────
 //
-// Extracted arg/return shapes for the generic Vex API endpoints.
+// Extracted arg/return shapes for the generic Vex API collection endpoints.
 // Used by `vexConvexApi` below and re-exported for user-side `vex.ts` casts
 // to avoid TS2589 from the deep conditional types in `queryApi()`.
 
@@ -144,42 +144,6 @@ export interface VexRemoveArgs {
   ids: string[];
   softDelete?: string;
 }
-
-/** Shallow FunctionReference for `api.vex.find`. */
-export type VexFindRef = FunctionReference<
-  "query",
-  "public",
-  VexFindArgs,
-  VexDocument[] | PaginationResult<VexDocument>
->;
-
-/** Shallow FunctionReference for `api.vex.findPaginated`. */
-export type VexFindPaginatedRef = FunctionReference<
-  "query",
-  "public",
-  VexFindPaginatedArgs,
-  PaginationResult<VexDocument>
->;
-
-/** Shallow FunctionReference for `api.vex.get`. */
-export type VexGetRef = FunctionReference<"query", "public", VexGetArgs, VexDocument | null>;
-
-/** Shallow FunctionReference for `api.vex.search`. */
-export type VexSearchRef = FunctionReference<
-  "query",
-  "public",
-  VexSearchArgs,
-  VexDocument[] | PaginationResult<VexDocument>
->;
-
-/** Shallow FunctionReference for `api.vex.create`. */
-export type VexCreateRef = FunctionReference<"mutation", "public", VexCreateArgs, string>;
-
-/** Shallow FunctionReference for `api.vex.update`. */
-export type VexUpdateRef = FunctionReference<"mutation", "public", VexUpdateArgs, void>;
-
-/** Shallow FunctionReference for `api.vex.remove`. */
-export type VexRemoveRef = FunctionReference<"mutation", "public", VexRemoveArgs, void>;
 
 // ── Media API shallow types ──────────────────────────────────────────────
 //
@@ -256,37 +220,26 @@ export interface VexMediaSearchMediaArgs {
   query: string;
 }
 
-/** Shallow FunctionReference for `api.vex.media.generateUploadUrl`. */
-export type VexMediaGenerateUploadUrlRef = FunctionReference<
-  "mutation",
-  "public",
-  VexMediaGenerateUploadUrlArgs,
-  VexMediaGenerateUploadUrlReturn
->;
+// ── Media API shallow types ──────────────────────────────────────────────
 
-/** Shallow FunctionReference for `api.vex.media.createMediaDocument`. */
-export type VexMediaCreateMediaDocumentRef = FunctionReference<
-  "mutation",
-  "public",
-  VexMediaCreateMediaDocumentArgs,
-  VexMediaCreateMediaDocumentReturn
->;
+/** Args for `api.vex.globals.get`. */
+export interface VexGlobalsGetArgs {
+  [key: string]: unknown;
+  slug: string;
+  populate?: Record<string, unknown>;
+}
 
-/** Shallow FunctionReference for `api.vex.media.deleteMedia`. */
-export type VexMediaDeleteMediaRef = FunctionReference<
-  "mutation",
-  "public",
-  VexMediaDeleteMediaArgs,
-  VexMediaDeleteMediaReturn
->;
+/** Args for `api.vex.globals.find`. */
+export interface VexGlobalsFindArgs {
+  [key: string]: unknown;
+}
 
-/** Shallow FunctionReference for `api.vex.media.getUrl`. */
-export type VexMediaGetUrlRef = FunctionReference<
-  "query",
-  "public",
-  VexMediaGetUrlArgs,
-  VexMediaGetUrlReturn
->;
+/** Args for `api.vex.globals.update`. */
+export interface VexGlobalsUpdateArgs {
+  [key: string]: unknown;
+  slug: string;
+  data: Record<string, unknown>;
+}
 
 /**
  * Typed `anyApi` references to the VexCMS generic Convex collection functions.
@@ -316,23 +269,33 @@ export const vexConvexApi = {
    * Finds documents in a collection.
    * Called by {@link react/src!CollectionListView} in `@vexcms/react`.
    */
-  find: anyApi.vex.find as VexFindRef,
+  find: anyApi.vex.find as FunctionReference<
+    "query",
+    "public",
+    VexFindArgs,
+    VexDocument[] | PaginationResult<VexDocument>
+  >,
   /**
    * Finds documents in a collection with cursor pagination.
    * Called by {@link react/src!CollectionListView} in `@vexcms/react`.
    */
-  findPaginated: anyApi.vex.find as VexFindPaginatedRef,
+  findPaginated: anyApi.vex.find as FunctionReference<
+    "query",
+    "public",
+    VexFindPaginatedArgs,
+    PaginationResult<VexDocument>
+  >,
 
   /**
    * Fetches a single document by ID.
    * Called by {@link react/src!CollectionEditView} in `@vexcms/react` when editing.
    */
-  get: anyApi.vex.get as VexGetRef,
+  get: anyApi.vex.get as FunctionReference<"query", "public", VexGetArgs, VexDocument | null>,
 
   /**
    * Creates a new document. Returns the new document's ID as a string.
    */
-  create: anyApi.vex.create as VexCreateRef,
+  create: anyApi.vex.create as FunctionReference<"mutation", "public", VexCreateArgs, string>,
 
   /**
    * Searches documents in a collection by a search index.
@@ -345,41 +308,87 @@ export const vexConvexApi = {
    *
    * @see {@link https://docs.convex.dev/text-search} for Convex search docs
    */
-  search: anyApi.vex.search as VexSearchRef,
+  search: anyApi.vex.search as FunctionReference<
+    "query",
+    "public",
+    VexSearchArgs,
+    VexDocument[] | PaginationResult<VexDocument>
+  >,
 
   /**
    * Patches an existing document — unspecified fields are left unchanged.
    */
-  update: anyApi.vex.update as VexUpdateRef,
+  update: anyApi.vex.update as FunctionReference<"mutation", "public", VexUpdateArgs, void>,
 
   /**
    * Permanently deletes a document.
    */
-  remove: anyApi.vex.remove as VexRemoveRef,
+  remove: anyApi.vex.remove as FunctionReference<"mutation", "public", VexRemoveArgs, void>,
 
   media: {
     /**
      * Generates a URL to upload a file to.
      * Called by `MediaUploadDropzone` in `@vexcms/react`.
      */
-    generateUploadUrl: anyApi.vex.media.generateUploadUrl as VexMediaGenerateUploadUrlRef,
+    generateUploadUrl: anyApi.vex.media.generateUploadUrl as FunctionReference<
+      "mutation",
+      "public",
+      VexMediaGenerateUploadUrlArgs,
+      VexMediaGenerateUploadUrlReturn
+    >,
 
     /**
      * Creates a media document in Convex after the file is uploaded.
      * Called by `MediaUploadDropzone` in `@vexcms/react`.
      */
-    createMediaDocument: anyApi.vex.media.createMediaDocument as VexMediaCreateMediaDocumentRef,
+    createMediaDocument: anyApi.vex.media.createMediaDocument as FunctionReference<
+      "mutation",
+      "public",
+      VexMediaCreateMediaDocumentArgs,
+      VexMediaCreateMediaDocumentReturn
+    >,
 
     /**
      * Deletes a media document and its file from storage.
      * Called by `MediaLibrary` in `@vexcms/react`.
      */
-    deleteMedia: anyApi.vex.media.deleteMedia as VexMediaDeleteMediaRef,
+    deleteMedia: anyApi.vex.media.deleteMedia as FunctionReference<
+      "mutation",
+      "public",
+      VexMediaDeleteMediaArgs,
+      VexMediaDeleteMediaReturn
+    >,
 
     /**
      * Returns a URL for a media file.
      * Called by `UploadFieldCell` in `@vexcms/react`.
      */
-    getUrl: anyApi.vex.media.getUrl as VexMediaGetUrlRef,
+    getUrl: anyApi.vex.media.getUrl as FunctionReference<
+      "query",
+      "public",
+      VexMediaGetUrlArgs,
+      VexMediaGetUrlReturn
+    >,
+  },
+
+  globals: {
+    get: anyApi.vex.globals.get as FunctionReference<
+      "query",
+      "public",
+      VexGlobalsGetArgs,
+      VexDocumentGlobal | null
+    >,
+    find: anyApi.vex.globals.find as FunctionReference<
+      "query",
+      "public",
+      VexGlobalsFindArgs,
+      VexDocumentGlobal[]
+    >,
+    upsert: anyApi.vex.globals.upsert as FunctionReference<
+      "mutation",
+      "public",
+      VexGlobalsUpdateArgs,
+      string
+    >,
   },
 } as const;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defineCollection, defineConfig } from "../index";
+import { defineCollection, defineConfig, defineGlobal } from "../index";
 import { checkbox } from "../fields/checkbox/config";
 import { date } from "../fields/date/config";
 import { number } from "../fields/number/config";
@@ -16,13 +16,6 @@ describe("generateVexTypes — header", () => {
     const config = defineConfig();
     const output = generateVexTypes({ config });
     expect(output.split("\n")[0]).toBe(HEADER);
-  });
-
-  it("returns only the header when there are no collections", () => {
-    const config = defineConfig();
-    const output = generateVexTypes({ config });
-    expect(output).not.toContain("export interface");
-    expect(output).not.toContain("CollectionSlug");
   });
 });
 
@@ -153,9 +146,7 @@ describe("generateVexTypes — CollectionSlug", () => {
 
   it("generates a single-value CollectionSlug for one collection", () => {
     const config = defineConfig({
-      collections: [
-        defineCollection({ slug: "posts", fields: { title: text() } }),
-      ],
+      collections: [defineCollection({ slug: "posts", fields: { title: text() } })],
     });
     const output = generateVexTypes({ config });
     expect(output).toContain('export type CollectionSlug = "posts"');
@@ -218,18 +209,15 @@ describe("generateVexTypes — declare module augmentation", () => {
     expect(output).toContain("authors: AuthorsDocument");
   });
 
-  it("does NOT emit declare module block when there are no collections", () => {
+  it("sets CollectionSlug type to 'never' when there are no collections", () => {
     const config = defineConfig();
     const output = generateVexTypes({ config });
-    expect(output).not.toContain("declare module");
-    expect(output).not.toContain("GeneratedVexTypes");
+    expect(output).toContain("type CollectionSlug = never");
   });
 
   it("emits declare module block for a single collection", () => {
     const config = defineConfig({
-      collections: [
-        defineCollection({ slug: "posts", fields: { title: text() } }),
-      ],
+      collections: [defineCollection({ slug: "posts", fields: { title: text() } })],
     });
     const output = generateVexTypes({ config });
     expect(output).toContain(`declare module "@vexcms/core"`);
@@ -239,9 +227,7 @@ describe("generateVexTypes — declare module augmentation", () => {
 
   it("declare module block appears after DocumentBySlug in the output", () => {
     const config = defineConfig({
-      collections: [
-        defineCollection({ slug: "posts", fields: { title: text() } }),
-      ],
+      collections: [defineCollection({ slug: "posts", fields: { title: text() } })],
     });
     const output = generateVexTypes({ config });
     const documentBySlugPos = output.indexOf("export type DocumentBySlug");
@@ -251,11 +237,65 @@ describe("generateVexTypes — declare module augmentation", () => {
 
   it("uses the collection interfaceName in DocumentBySlug augmentation", () => {
     const config = defineConfig({
-      collections: [
-        defineCollection({ slug: "blog_posts", fields: { title: text() } }),
-      ],
+      collections: [defineCollection({ slug: "blog_posts", fields: { title: text() } })],
     });
     const output = generateVexTypes({ config });
     expect(output).toContain("blog_posts: BlogPostsDocument");
+  });
+});
+
+describe("generateVexTypes — globals", () => {
+  it("emits SiteSettingsGlobal extending VexDocumentGlobal when globals are present", () => {
+    const config = defineConfig({
+      globals: [
+        defineGlobal({
+          slug: "siteSettings",
+          label: "Site Settings",
+          fields: { siteName: text({ label: "Site Name", required: true }) },
+        }),
+      ],
+    });
+    const output = generateVexTypes({ config });
+    expect(output).toContain('extends VexDocumentGlobal<"siteSettings">');
+    expect(output).toContain("siteName: string");
+    expect(output).toContain('type GlobalSlug = "siteSettings"');
+    expect(output).toContain("type GlobalDocumentBySlug = {");
+    expect(output).toContain("GlobalsFieldTypeMap: {");
+  });
+
+  it("emits type GlobalSlug = never when no globals are registered", () => {
+    const config = defineConfig({ globals: [] });
+    const output = generateVexTypes({ config });
+    expect(output).toContain("type GlobalSlug = never");
+  });
+
+  it("respects user-supplied interfaceName", () => {
+    const config = defineConfig({
+      globals: [
+        defineGlobal({
+          slug: "nav",
+          label: "Nav",
+          fields: {} as any,
+          interfaceName: "NavConfig",
+        }),
+      ],
+    });
+    const output = generateVexTypes({ config });
+    expect(output).toContain("export interface NavConfig");
+    expect(output).toContain("NavConfig");
+  });
+
+  it("emits optional field with ? modifier", () => {
+    const config = defineConfig({
+      globals: [
+        defineGlobal({
+          slug: "nav",
+          label: "Nav",
+          fields: { title: text({ label: "Title", required: false }) },
+        }),
+      ],
+    });
+    const output = generateVexTypes({ config });
+    expect(output).toContain("title?: string");
   });
 });

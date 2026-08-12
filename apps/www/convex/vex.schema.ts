@@ -332,3 +332,12 @@ export const images = defineTable({
     searchField: "filename",
     filterFields: ["alt"],
   })
+
+/**
+ * VEX GLOBALS — singleton documents, one row per registered global slug
+ **/
+
+export const vex_globals = defineTable({
+  slug: v.string(),
+  data: v.any(),
+}).index("by_slug", ["slug"])

@@ -1,15 +1,15 @@
 # Roadmap
 
-> Source of truth for migration readiness: `.pi/agent-docs/product/maprios-migration-todo.md`
+> Source of truth for migration readiness: `maprios-migration-todo.md`
 > (verified against package source 2026-08-04). Launch context:
-> `.pi/agent-docs/product/v0.1.0-launch-roadmap.md` (M1-M8).
+> `v0.1.0-launch-roadmap.md` (M1-M8).
 
 ## Milestone 1 — Tier-1 www migration blockers
 
 Framework gaps that block migrating maprios/www off Payload/MongoDB:
 
 1. Versioning & drafts (spec 36) — `_status`/`_draftSnapshot`/`_version` fields, `vex_versions` table, adminSaveDraft/Publish/Unpublish/RestoreVersion, autosave, version history panel
-2. Globals / `defineGlobal` (spec 35) — globals.get query, GlobalEditView, sidebar section
+2. ✅ Globals / `defineGlobal` (spec 35) — globals.get query, GlobalEditView, sidebar section — shipped 2026-08-12 (pending manual browser verification)
 3. RBAC / access control — `defineAccess()`, `hasPermission()`, document + field-level permissions, enforcement in generated functions, public (unauthenticated) mutation access
 4. `json` field type; `email` + `textarea` field types
 5. PDF block — upload field `filterOptions` (mime), `Pdf_1` block, react-pdf renderer (port from maprios)
@@ -34,7 +34,7 @@ Pure content/component work once Milestone 1 lands:
 
 ## Long-term vision (post-launch)
 
-> Sources: `.pi/agent-docs/product/roadmap.md` (monetization strategy v2),
+> Sources: `roadmap.md` (monetization strategy v2),
 > `v0.1.0-launch-roadmap.md` "Post-v1 Backlog", `multi-component-architecture.md`.
 
 **License / monetization:** MIT core forever (all fields, admin panel, CLI, drafts, RBAC,

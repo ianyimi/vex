@@ -28,7 +28,7 @@ import type { TDocument } from "../api/convex";
  */
 export function getCollectionDefaultValues(props: {
   collection: CollectionConfig;
-  document?: TDocument;
+  document?: TDocument | null;
 }) {
   const res: Record<string, unknown> = {};
   for (const [fieldKey, fieldDef] of Object.entries(props.collection.fields)) {

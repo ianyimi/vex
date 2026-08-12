@@ -3,6 +3,7 @@ import {
   collectionConfigToInterface,
 } from "../collections/interfaceGen";
 import type { VexConfig } from "../config/types";
+import { globalConfigToFieldTypeMap, globalConfigToInterface } from "../globals";
 import { STORAGE_ADAPTER_PROTOCOLS } from "../media";
 
 /**
@@ -49,29 +50,46 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     /* eslint-disable perfectionist/sort-interfaces */
     /* eslint-disable perfectionist/sort-modules */\n\n
     import type { Id } from "@convex/_generated/dataModel"
-    import type { VexDocument } from "@vexcms/core"\n
+    import type { VexDocument, VexDocumentGlobal } from "@vexcms/core"\n
   `;
 
   const allCollections = config.collections.concat(config.mediaCollections);
-  if (allCollections.length === 0) {
-    return typesHeader;
-  }
+  const hasCollections = allCollections.length > 0;
+  const hasGlobals = config.globals.length > 0;
 
-  const interfaceBlocks = allCollections.map((collection) =>
-    collectionConfigToInterface({ collection }),
-  );
+  const interfaceBlocks = allCollections
+    .map((collection) => collectionConfigToInterface({ collection }))
+    .concat(config.globals.map((global) => globalConfigToInterface({ global })));
 
-  const collectionSlugs = allCollections.map((c) => `"${c.slug}"`).join(" | ");
+  const collectionSlugs = !hasCollections
+    ? "never"
+    : allCollections.map((c) => `"${c.slug}"`).join(" | ");
   const collectionSlugType = `export type CollectionSlug = ${collectionSlugs}`;
 
-  const mediaCollectionSlugs = config.mediaCollections.map((mc) => `"${mc.slug}"`).join(" | ");
+  const mediaCollectionSlugs = !hasCollections
+    ? `""`
+    : config.mediaCollections.map((mc) => `"${mc.slug}"`).join(" | ");
   const mediaCollectionSlugType = `export type MediaCollectionSlug = ${mediaCollectionSlugs}`;
+
+  const globalSlugs = !hasGlobals ? "never" : config.globals.map((g) => `"${g.slug}"`).join(" | ");
+  const globalSlugType = `export type GlobalSlug = ${globalSlugs}`;
+
+  const globalDocumentsBySlug = config.globals
+    .map((g) => `\t${g.slug}: ${g.interfaceName}`)
+    .join("\n");
+  const globalDocumentBySlugType = !hasGlobals
+    ? undefined
+    : `export type GlobalDocumentBySlug = {\n${globalDocumentsBySlug}\n}`;
 
   const documentsBySlug = allCollections.map((c) => `\t${c.slug}: ${c.interfaceName}`).join("\n");
   const documentBySlugType = `export type DocumentBySlug = {\n${documentsBySlug}\n}`;
 
   const collectionsFieldTypeMap = allCollections
     .map((c) => collectionConfigToFieldTypeMap({ collection: c }))
+    .join("\n");
+
+  const globalsFieldTypeMap = config.globals
+    .map((g) => globalConfigToFieldTypeMap({ global: g }))
     .join("\n");
 
   const storageAdapterSlugs =
@@ -84,10 +102,13 @@ export function generateVexTypes(props: { config: VexConfig }): string {
   const declareModule = `declare module "@vexcms/core" {
     \tinterface GeneratedVexTypes {
     \t\tCollectionSlug: ${collectionSlugs}
+    \t\tGlobalSlug: ${globalSlugs}
     \t\tMediaCollectionSlug: ${mediaCollectionSlugs}
     \t\tStorageAdapterSlug: ${storageAdapterSlugs}
     \t\tDocumentBySlug: {\n${documentsBySlug}\n}
+    \t\tGlobalDocumentBySlug: {\n${globalDocumentsBySlug}\n}
     \t\tCollectionsFieldTypeMap: {\n${collectionsFieldTypeMap}\n}
+    \t\tGlobalsFieldTypeMap: {\n${globalsFieldTypeMap}\n}
     \t}
   \n}`;
 
@@ -98,11 +119,15 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     "",
     collectionSlugType,
     "",
+    globalSlugType,
+    "",
     mediaCollectionSlugType,
     "",
     storageAdapterSlugType,
     "",
     documentBySlugType,
+    "",
+    globalDocumentBySlugType,
     "",
     declareModule,
   ].join("\n");

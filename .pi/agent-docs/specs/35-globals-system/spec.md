@@ -89,10 +89,12 @@ The feature spans `@vexcms/core` (types, schema gen, server/client API, factory)
 
 ```ts
 // Before — globals.set (wrong name), nested data arg
-- globals.set()({ slug: "siteSettings", data: { siteName: "New" } })
-
-// After — globals.update, data arg carries user fields flat (system fields stripped server-side)
-+ globals.update()({ slug: "siteSettings", data: { siteName: "New", activeTheme: "themes:xyz" } })
+-globals.set()({ slug: "siteSettings", data: { siteName: "New" } }) +
+  // After — globals.update, data arg carries user fields flat (system fields stripped server-side)
+  globals.update()({
+    slug: "siteSettings",
+    data: { siteName: "New", activeTheme: "themes:xyz" },
+  });
 // Server strips _id/_creationTime/_slug from data, writes { slug, data: { siteName, activeTheme } } to DB
 ```
 
@@ -113,29 +115,29 @@ The feature spans `@vexcms/core` (types, schema gen, server/client API, factory)
 
 ## API Surface
 
-| Import | Symbol | Signature | Purpose |
-|--------|--------|-----------|---------|
-| `@vexcms/core` | `defineGlobal` | `<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent>(input) → GlobalConfig` | Define a singleton global; enforces reserved field key constraint at compile time |
-| `@vexcms/core` | `GlobalConfig` | `interface<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent>` | Resolved global config — five generics, mirrors `CollectionConfig` |
-| `@vexcms/core` | `GlobalConfigInput` | `interface<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent>` | User-facing input to `defineGlobal` |
-| `@vexcms/core` | `GlobalAdminConfigInput` | `interface<TComponent>` | Admin config input — one generic (no `useAsTitle`, no `TFieldSlug`) |
-| `@vexcms/core` | `GlobalAdminConfig` | `interface<TComponent>` | Resolved admin config |
-| `@vexcms/core` | `GlobalSlug` | `type` | Union of registered global slugs (narrowed post-generate; `string` before) |
-| `@vexcms/core` | `GlobalDocumentBySlug` | `type` | Map: slug → full flat document type (narrowed post-generate) |
-| `@vexcms/core` | `GlobalsFieldTypeMap` | `type` | Map: slug → field type → field key union; powers populate narrowing |
-| `@vexcms/core` | `VexDocumentGlobal` | `interface<TSlug>` | Extends `VexDocument`; adds `_slug: TSlug`; base type for all flat global documents |
-| `@vexcms/core` | `GlobalPopulateShape` | `type<TGlobalSlug>` | Populate arg shape for globals — keys restricted to relationship fields via `GlobalRelationshipKeysOf` |
-| `@vexcms/core` | `GlobalPopulated` | `type<TGlobalSlug, TPopulate>` | Return type of a populated global `get` — mirrors `Populated<TCollectionSlug, TPopulate>` |
-| `@vexcms/core` | `GlobalRelationshipKeysOf` | `type<TGlobalSlug>` | Relationship field keys on `TGlobalSlug` — reads `GlobalsFieldTypeMap` |
-| `@vexcms/core/server` | `globalsApi` | `(config, query, mutation) → { globals }` | Factory registering `globals.get`, `globals.find`, `globals.update` as Convex endpoints |
-| `@vexcms/core/server` | `getGlobal` | `(args: GetGlobalServerArgs) → Promise<GlobalDocumentBySlug[TSlug] \| null>` | Server-side get by slug — flat, populated |
-| `@vexcms/core/server` | `findGlobals` | `(args: FindGlobalsServerArgs) → Promise<VexDocumentGlobal[]>` | Server-side list all globals (flat, unnarrowed) |
-| `@vexcms/core/server` | `updateGlobal` | `(args: UpdateGlobalServerArgs) → Promise<string>` | Server-side upsert; strips system keys, re-nests, writes `data`; returns `_id` |
-| `@vexcms/core/client` | `globals.get` | `(args: GetGlobalClientArgs<TSlug, TPopulate>) → QueryOptions` | Client tanstack-query options; slug and populate keys narrowed post-generate |
-| `@vexcms/core/client` | `globals.find` | `(args: FindGlobalsClientArgs) → QueryOptions` | Client tanstack-query options |
-| `@vexcms/core/client` | `globals.update` | `() → ConvexMutationHook` | Client mutation factory; user passes `{ slug, data }` |
-| `@vexcms/react` | `GlobalsListView` | React component | Admin globals index — list from config, status/timestamps from DB |
-| `@vexcms/react` | `GlobalEditView` | React component | Admin singleton edit form; handles flat↔nested conversion internally |
+| Import                | Symbol                     | Signature                                                                              | Purpose                                                                                                |
+| --------------------- | -------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `@vexcms/core`        | `defineGlobal`             | `<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent>(input) → GlobalConfig` | Define a singleton global; enforces reserved field key constraint at compile time                      |
+| `@vexcms/core`        | `GlobalConfig`             | `interface<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent>`              | Resolved global config — five generics, mirrors `CollectionConfig`                                     |
+| `@vexcms/core`        | `GlobalConfigInput`        | `interface<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent>`              | User-facing input to `defineGlobal`                                                                    |
+| `@vexcms/core`        | `GlobalAdminConfigInput`   | `interface<TComponent>`                                                                | Admin config input — one generic (no `useAsTitle`, no `TFieldSlug`)                                    |
+| `@vexcms/core`        | `GlobalAdminConfig`        | `interface<TComponent>`                                                                | Resolved admin config                                                                                  |
+| `@vexcms/core`        | `GlobalSlug`               | `type`                                                                                 | Union of registered global slugs (narrowed post-generate; `string` before)                             |
+| `@vexcms/core`        | `GlobalDocumentBySlug`     | `type`                                                                                 | Map: slug → full flat document type (narrowed post-generate)                                           |
+| `@vexcms/core`        | `GlobalsFieldTypeMap`      | `type`                                                                                 | Map: slug → field type → field key union; powers populate narrowing                                    |
+| `@vexcms/core`        | `VexDocumentGlobal`        | `interface<TSlug>`                                                                     | Extends `VexDocument`; adds `_slug: TSlug`; base type for all flat global documents                    |
+| `@vexcms/core`        | `GlobalPopulateShape`      | `type<TGlobalSlug>`                                                                    | Populate arg shape for globals — keys restricted to relationship fields via `GlobalRelationshipKeysOf` |
+| `@vexcms/core`        | `GlobalPopulated`          | `type<TGlobalSlug, TPopulate>`                                                         | Return type of a populated global `get` — mirrors `Populated<TCollectionSlug, TPopulate>`              |
+| `@vexcms/core`        | `GlobalRelationshipKeysOf` | `type<TGlobalSlug>`                                                                    | Relationship field keys on `TGlobalSlug` — reads `GlobalsFieldTypeMap`                                 |
+| `@vexcms/core/server` | `globalsApi`               | `(config, query, mutation) → { globals }`                                              | Factory registering `globals.get`, `globals.find`, `globals.update` as Convex endpoints                |
+| `@vexcms/core/server` | `getGlobal`                | `(args: GetGlobalServerArgs) → Promise<GlobalDocumentBySlug[TSlug] \| null>`           | Server-side get by slug — flat, populated                                                              |
+| `@vexcms/core/server` | `findGlobals`              | `(args: FindGlobalsServerArgs) → Promise<VexDocumentGlobal[]>`                         | Server-side list all globals (flat, unnarrowed)                                                        |
+| `@vexcms/core/server` | `updateGlobal`             | `(args: UpdateGlobalServerArgs) → Promise<string>`                                     | Server-side upsert; strips system keys, re-nests, writes `data`; returns `_id`                         |
+| `@vexcms/core/client` | `globals.get`              | `(args: GetGlobalClientArgs<TSlug, TPopulate>) → QueryOptions`                         | Client tanstack-query options; slug and populate keys narrowed post-generate                           |
+| `@vexcms/core/client` | `globals.find`             | `(args: FindGlobalsClientArgs) → QueryOptions`                                         | Client tanstack-query options                                                                          |
+| `@vexcms/core/client` | `globals.update`           | `() → ConvexMutationHook`                                                              | Client mutation factory; user passes `{ slug, data }`                                                  |
+| `@vexcms/react`       | `GlobalsListView`          | React component                                                                        | Admin globals index — list from config, status/timestamps from DB                                      |
+| `@vexcms/react`       | `GlobalEditView`           | React component                                                                        | Admin singleton edit form; handles flat↔nested conversion internally                                   |
 
 ---
 
@@ -155,32 +157,32 @@ The feature spans `@vexcms/core` (types, schema gen, server/client API, factory)
 
 ## Design Decisions
 
-Full rationale lives in `design-walkthrough.md` § *Decisions Reference*.
+Full rationale lives in `design-walkthrough.md` § _Decisions Reference_.
 
-| #   | Decision (one line) |
-| --- | ------------------- |
-| D1  | Single `vex_globals` table (slug + `data: v.any()`) rather than one Convex table per global. |
-| D2  | Validation at the API layer (Zod from field config); `vex_globals` enforces nothing beyond the slug index. |
-| D3  | `data` uses `v.any()` (not `v.record(v.string(), v.any())`); allows blocks/array fields whose values may not be plain objects. |
-| D4  | `globals.get` and `globals.find` mirror the collection `get`/`find` factory pattern via `globalsApi(config, query, mutation)`. |
-| D5  | `updateGlobal` is a single upsert — find-by-slug → patch if exists, insert if not. No separate create/remove. |
-| D6  | `GlobalSlug`, `GlobalDocumentBySlug`, `GlobalsFieldTypeMap` augment the existing `GeneratedVexTypes` (one registry, no new augmentation interfaces). |
-| D7  | API returns flat documents: `VexDocumentGlobal<TSlug>` extends `VexDocument` (adds `_slug: TSlug`); generated interfaces extend `VexDocumentGlobal` and add user fields at root. DB stores nested; the API layer flattens on read, re-nests on write. |
-| D8  | `vex_globals` emitted only when `config.globals.length > 0`; projects without globals get no extra table. |
-| D9  | Versioning fields (`vex_status`, `vex_version`, `vex_publishedAt`) deferred to Spec 36; not present on the v35 `vex_globals` schema. |
-| D10 | Draft config (`versions?: { drafts?: boolean }`) kept on `GlobalConfigInput` for forward compatibility; the field is parsed but ignored in v35. |
-| D11 | `globalsApi` returns `{ globals }` where `globals.get`, `globals.find`, `globals.update` are nested — maps to `api.vex.globals.*` paths. |
-| D12 | `GlobalsListView` derives its list from `config.globals` (always complete); DB queried only for `_creationTime` display. |
-| D13 | `GlobalEditView` reuses existing field rendering (`renderFieldByType`, `AppForm`, TanStack Form); no new form layer. |
-| D14 | Flat API approach: read = flatten (`doc.siteName`), write = `{ slug, data }` at Convex level. `GlobalEditView` strips system keys before calling `globals.update`. |
+| #   | Decision (one line)                                                                                                                                                                                                                                                                                                     |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Single `vex_globals` table (slug + `data: v.any()`) rather than one Convex table per global.                                                                                                                                                                                                                            |
+| D2  | Validation at the API layer (Zod from field config); `vex_globals` enforces nothing beyond the slug index.                                                                                                                                                                                                              |
+| D3  | `data` uses `v.any()` (not `v.record(v.string(), v.any())`); allows blocks/array fields whose values may not be plain objects.                                                                                                                                                                                          |
+| D4  | `globals.get` and `globals.find` mirror the collection `get`/`find` factory pattern via `globalsApi(config, query, mutation)`.                                                                                                                                                                                          |
+| D5  | `updateGlobal` is a single upsert — find-by-slug → patch if exists, insert if not. No separate create/remove.                                                                                                                                                                                                           |
+| D6  | `GlobalSlug`, `GlobalDocumentBySlug`, `GlobalsFieldTypeMap` augment the existing `GeneratedVexTypes` (one registry, no new augmentation interfaces).                                                                                                                                                                    |
+| D7  | API returns flat documents: `VexDocumentGlobal<TSlug>` extends `VexDocument` (adds `_slug: TSlug`); generated interfaces extend `VexDocumentGlobal` and add user fields at root. DB stores nested; the API layer flattens on read, re-nests on write.                                                                   |
+| D8  | `vex_globals` emitted only when `config.globals.length > 0`; projects without globals get no extra table.                                                                                                                                                                                                               |
+| D9  | Versioning fields (`vex_status`, `vex_version`, `vex_publishedAt`) deferred to Spec 36; not present on the v35 `vex_globals` schema.                                                                                                                                                                                    |
+| D10 | Draft config (`versions?: { drafts?: boolean }`) kept on `GlobalConfigInput` for forward compatibility; the field is parsed but ignored in v35.                                                                                                                                                                         |
+| D11 | `globalsApi` returns `{ globals }` where `globals.get`, `globals.find`, `globals.update` are nested — maps to `api.vex.globals.*` paths.                                                                                                                                                                                |
+| D12 | `GlobalsListView` derives its list from `config.globals` (always complete); DB queried only for `_creationTime` display.                                                                                                                                                                                                |
+| D13 | `GlobalEditView` reuses existing field rendering (`renderFieldByType`, `AppForm`, TanStack Form); no new form layer.                                                                                                                                                                                                    |
+| D14 | Flat API approach: read = flatten (`doc.siteName`), write = `{ slug, data }` at Convex level. `GlobalEditView` strips system keys before calling `globals.update`.                                                                                                                                                      |
 | D15 | `TFieldSlug` enforces reserved key constraint in `defineGlobal` via conditional branching: when `TFieldSlug & ReservedGlobalFieldKey` is non-`never`, the second branch expects the reserved key to have the string literal type `"Field name is reserved..."`, producing a clear compile error at the offending field. |
-| D16 | `GlobalAdminConfigInput<TComponent>` has one generic — no `TFieldSlug` because `useAsTitle` is absent. `label` is always the admin page title for globals; no dynamic field-based breadcrumb. |
-| D17 | Populate works directly on the flat document with no extract-re-embed shim — relationship IDs are at root level so `populateDocs` reads them identically to collection documents. |
-| D18 | `GlobalsFieldTypeMap` + `GlobalRelationshipKeysOf<TGlobalSlug>` + `GlobalPopulated<TGlobalSlug, TPopulate>` parallel the collection populate type machinery; all read from `GlobalDocumentBySlug` instead of `DocumentBySlug`. |
-| D19 | `GlobalDocumentBySlug[TSlug]` is the full flat document type (extends `VexDocumentGlobal<TSlug>`), not just the data payload — identical ergonomics to `DocumentBySlug[TSlug]`. |
-| D20 | Generated interface suffix: `Global` (e.g. `SiteSettingsGlobal`). User-overridable via `interfaceName?` on `GlobalConfigInput`. Suffix distinguishes globals from collection documents (`PostsDocument`) and from raw data objects. |
-| D21 | Mirror functions in `src/globals/` (`getGlobalInputSchema`, `getGlobalDefaultValues`, `globalConfigToInterface`, `globalConfigToFieldTypeMap`) — collection helpers unchanged, globals have parallel independent implementations that call the same field-level utilities. |
-| D22 | `findGlobals` populate arg is `Record<string, unknown>` (untyped) — each global in the result has a different slug, so no per-slug key narrowing is possible. |
+| D16 | `GlobalAdminConfigInput<TComponent>` has one generic — no `TFieldSlug` because `useAsTitle` is absent. `label` is always the admin page title for globals; no dynamic field-based breadcrumb.                                                                                                                           |
+| D17 | Populate works directly on the flat document with no extract-re-embed shim — relationship IDs are at root level so `populateDocs` reads them identically to collection documents.                                                                                                                                       |
+| D18 | `GlobalsFieldTypeMap` + `GlobalRelationshipKeysOf<TGlobalSlug>` + `GlobalPopulated<TGlobalSlug, TPopulate>` parallel the collection populate type machinery; all read from `GlobalDocumentBySlug` instead of `DocumentBySlug`.                                                                                          |
+| D19 | `GlobalDocumentBySlug[TSlug]` is the full flat document type (extends `VexDocumentGlobal<TSlug>`), not just the data payload — identical ergonomics to `DocumentBySlug[TSlug]`.                                                                                                                                         |
+| D20 | Generated interface suffix: `Global` (e.g. `SiteSettingsGlobal`). User-overridable via `interfaceName?` on `GlobalConfigInput`. Suffix distinguishes globals from collection documents (`PostsDocument`) and from raw data objects.                                                                                     |
+| D21 | Mirror functions in `src/globals/` (`getGlobalInputSchema`, `getGlobalDefaultValues`, `globalConfigToInterface`, `globalConfigToFieldTypeMap`) — collection helpers unchanged, globals have parallel independent implementations that call the same field-level utilities.                                              |
+| D22 | `findGlobals` populate arg is `Record<string, unknown>` (untyped) — each global in the result has a different slug, so no per-slug key narrowing is possible.                                                                                                                                                           |
 
 ---
 
@@ -269,18 +271,18 @@ Pure TypeScript — no Convex, no codegen. After this step `pnpm --filter @vexcm
 
 #### Files to create / modify
 
-- [ ] `packages/core/src/globals/types.ts` (NEW)
-- [ ] `packages/core/src/globals/config.ts` (NEW)
-- [ ] `packages/core/src/globals/config.test.ts` (NEW)
-- [ ] `packages/core/src/globals/utils.ts` (NEW)
-- [ ] `packages/core/src/globals/index.ts` (NEW)
-- [ ] `packages/core/src/config/types.ts` — add `globals` to `VexConfigInput` + `VexConfig`
-- [ ] `packages/core/src/config/config.ts` — pass `globals` through
-- [ ] `packages/core/src/index.ts` — export `./globals`
+- [x] `packages/core/src/globals/types.ts` (NEW)
+- [x] `packages/core/src/globals/config.ts` (NEW)
+- [x] `packages/core/src/globals/config.test.ts` (NEW)
+- [x] `packages/core/src/globals/utils.ts` (NEW)
+- [x] `packages/core/src/globals/index.ts` (NEW)
+- [x] `packages/core/src/config/types.ts` — add `globals` to `VexConfigInput` + `VexConfig`
+- [x] `packages/core/src/config/config.ts` — pass `globals` through
+- [x] `packages/core/src/index.ts` — export `./globals`
 
 #### `packages/core/src/globals/types.ts` (NEW)
 
-```ts
+````ts
 import type { ApplyComponent, ComponentHKT, AdminField } from "../fields";
 import type { GlobalSlug } from "../types/generated";
 import type { LucideIconName } from "../utils";
@@ -302,7 +304,9 @@ export type ReservedGlobalFieldKey = "_id" | "_creationTime" | "_slug";
  *
  * @typeParam TComponent - Component HKT binding; defaults to `ComponentHKT`.
  */
-export interface GlobalAdminConfigInput<TComponent extends ComponentHKT = ComponentHKT> {
+export interface GlobalAdminConfigInput<
+  TComponent extends ComponentHKT = ComponentHKT,
+> {
   /**
    * Sidebar group label this global appears under (e.g. `"Site Builder"`).
    * Ungrouped when omitted.
@@ -337,7 +341,9 @@ export interface GlobalAdminConfigInput<TComponent extends ComponentHKT = Compon
  *
  * @typeParam TComponent - Component HKT binding.
  */
-export interface GlobalAdminConfig<TComponent extends ComponentHKT = ComponentHKT> {
+export interface GlobalAdminConfig<
+  TComponent extends ComponentHKT = ComponentHKT,
+> {
   /** Sidebar group label. Empty string when not set. */
   group: string;
   /** Description. Empty string when not set. */
@@ -377,7 +383,6 @@ export interface GlobalAdminConfig<TComponent extends ComponentHKT = ComponentHK
  *   },
  *   admin: { group: "Site Builder" },
  * });
- * ```
  *
  * @see {@link GlobalConfig} for the resolved return type
  * @see {@link defineGlobal} for the config function
@@ -462,11 +467,11 @@ export interface GlobalConfig<
   /** Resolved versioning config. Always present after defaults. */
   versions: { drafts: boolean };
 }
-```
+````
 
 #### `packages/core/src/globals/config.ts` (NEW)
 
-```ts
+````ts
 import type { ComponentHKT } from "../fields";
 import { slugToPascalCase } from "../collections/utils";
 import type {
@@ -506,7 +511,6 @@ import type {
  *   },
  *   admin: { group: "Site Builder" },
  * });
- * ```
  *
  * @see {@link GlobalConfigInput} for the user-facing input type
  * @see {@link GlobalConfig} for the resolved return type
@@ -519,16 +523,27 @@ export function defineGlobal<
   TComponent extends ComponentHKT = ComponentHKT,
 >(
   config: [TFieldSlug & ReservedGlobalFieldKey] extends [never]
-    ? GlobalConfigInput<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent>
+    ? GlobalConfigInput<
+        TFieldMeta,
+        TGlobalMeta,
+        TGlobalSlug,
+        TFieldSlug,
+        TComponent
+      >
     : {
         fields: {
-          [K in TFieldSlug & ReservedGlobalFieldKey]:
-            "Field name is reserved — cannot use _id, _creationTime, or _slug";
+          [
+            K in TFieldSlug & ReservedGlobalFieldKey
+          ]: "Field name is reserved — cannot use _id, _creationTime, or _slug";
         };
       },
 ): GlobalConfig<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent> {
   // Runtime guard for JS consumers
-  const reservedKeys: ReservedGlobalFieldKey[] = ["_id", "_creationTime", "_slug"];
+  const reservedKeys: ReservedGlobalFieldKey[] = [
+    "_id",
+    "_creationTime",
+    "_slug",
+  ];
   for (const key of reservedKeys) {
     if (key in (config as GlobalConfigInput).fields) {
       throw new Error(
@@ -538,13 +553,18 @@ export function defineGlobal<
     }
   }
 
-  const input = config as GlobalConfigInput<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent>;
+  const input = config as GlobalConfigInput<
+    TFieldMeta,
+    TGlobalMeta,
+    TGlobalSlug,
+    TFieldSlug,
+    TComponent
+  >;
 
   return {
     ...input,
     interfaceName:
-      input.interfaceName ??
-      slugToPascalCase({ slug: input.slug }) + "Global",
+      input.interfaceName ?? slugToPascalCase({ slug: input.slug }) + "Global",
     admin: {
       group: "",
       description: "",
@@ -558,7 +578,7 @@ export function defineGlobal<
     },
   };
 }
-```
+````
 
 #### `packages/core/src/globals/config.test.ts` (NEW)
 
@@ -581,7 +601,11 @@ describe("defineGlobal", () => {
   });
 
   it("derives interfaceName from slug with Global suffix", () => {
-    const g = defineGlobal({ slug: "siteSettings", label: "x", fields: {} as any });
+    const g = defineGlobal({
+      slug: "siteSettings",
+      label: "x",
+      fields: {} as any,
+    });
     expect(g.interfaceName).toBe("SiteSettingsGlobal");
   });
 
@@ -690,7 +714,7 @@ export function getGlobalInputSchema(props: { global: GlobalConfig }) {
 
 Mirror of `collections/interfaceGen.ts` — generates flat `SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings">` and the `GlobalsFieldTypeMap` entry. Calls `getFieldInterfaces` from collection interfaceGen (field traversal logic is identical and shared at the field level, not the collection level).
 
-```ts
+````ts
 import { ADMIN_FIELDS, wrapLines } from "../fields";
 import { getFieldInterfaces } from "../collections/interfaceGen";
 import type { GlobalConfig } from "./types";
@@ -711,11 +735,12 @@ import type { GlobalConfig } from "./types";
  * // → 'export interface SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings"> {\n\tsiteName: string\n\t...\n}'
  * ```
  */
-export function globalConfigToInterface(props: { global: GlobalConfig }): string {
+export function globalConfigToInterface(props: {
+  global: GlobalConfig;
+}): string {
   const { global: g } = props;
   const fieldInterfaces = getFieldInterfaces(g.fields);
-  const interfaceStart =
-    `export interface ${g.interfaceName} extends VexDocumentGlobal<"${g.slug}"> {`;
+  const interfaceStart = `export interface ${g.interfaceName} extends VexDocumentGlobal<"${g.slug}"> {`;
 
   const interfaceFields = Object.entries(g.fields)
     .map(([fieldKey, field]) => {
@@ -736,7 +761,12 @@ export function globalConfigToInterface(props: { global: GlobalConfig }): string
     })
     .join("\n");
 
-  return [fieldInterfaces.join("\n\n"), interfaceStart, interfaceFields, "}"].join("\n");
+  return [
+    fieldInterfaces.join("\n\n"),
+    interfaceStart,
+    interfaceFields,
+    "}",
+  ].join("\n");
 }
 
 /**
@@ -748,22 +778,23 @@ export function globalConfigToInterface(props: { global: GlobalConfig }): string
  * @param props.global - The resolved global definition.
  * @returns TypeScript source string for one `GlobalsFieldTypeMap` entry.
  */
-export function globalConfigToFieldTypeMap(props: { global: GlobalConfig }): string {
+export function globalConfigToFieldTypeMap(props: {
+  global: GlobalConfig;
+}): string {
   const { global: g } = props;
-  const fieldTypeMap = Object.entries(g.fields).reduce<Record<string, string[]>>(
-    (acc, [fieldKey, field]) => {
-      if (!acc[field.type]) acc[field.type] = [];
-      acc[field.type]!.push(`"${fieldKey}"`);
-      return acc;
-    },
-    {},
-  );
+  const fieldTypeMap = Object.entries(g.fields).reduce<
+    Record<string, string[]>
+  >((acc, [fieldKey, field]) => {
+    if (!acc[field.type]) acc[field.type] = [];
+    acc[field.type]!.push(`"${fieldKey}"`);
+    return acc;
+  }, {});
   const interfaceBody = Object.entries(fieldTypeMap)
     .map(([fieldType, fields]) => `\t\t${fieldType}: ${fields.join(" | ")}`)
     .join("\n");
   return `\t${g.slug}: {\n\t\tid: "_id"\n${interfaceBody}\n\t}`;
 }
-```
+````
 
 #### `packages/core/src/globals/index.ts` (NEW)
 
@@ -777,7 +808,10 @@ export type {
   ReservedGlobalFieldKey,
 } from "./types";
 export { getGlobalDefaultValues, getGlobalInputSchema } from "./utils";
-export { globalConfigToInterface, globalConfigToFieldTypeMap } from "./interfaceGen";
+export {
+  globalConfigToInterface,
+  globalConfigToFieldTypeMap,
+} from "./interfaceGen";
 ```
 
 #### `packages/core/src/config/types.ts` — additions
@@ -823,7 +857,7 @@ pnpm --filter @vexcms/core test -- --run globals
 
 #### Files to modify
 
-- [ ] `packages/core/src/types/generated.ts` — add `GlobalSlug`, `GlobalDocumentBySlug`, `GlobalsFieldTypeMap`, `VexDocumentGlobal`, `GlobalRelationshipKeysOf`, `GlobalPopulateShape`, `GlobalPopulated`
+- [x] `packages/core/src/types/generated.ts` — add `GlobalSlug`, `GlobalDocumentBySlug`, `GlobalsFieldTypeMap`, `VexDocumentGlobal`, `GlobalRelationshipKeysOf`, `GlobalPopulateShape`, `GlobalPopulated`
 - [ ] `packages/core/src/types/generateVexTypes.ts` — emit globals into `GeneratedVexTypes`
 - [ ] `packages/core/src/types/generateVexTypes.test.ts` — add globals tests
 
@@ -831,7 +865,7 @@ pnpm --filter @vexcms/core test -- --run globals
 
 After the existing `CollectionsFieldTypeMap` block, add:
 
-```ts
+````ts
 // ── Global type registry ────────────────────────────────────────────────────
 
 /**
@@ -842,7 +876,9 @@ After the existing `CollectionsFieldTypeMap` block, add:
  *
  * @see {@link GeneratedVexTypes} for the augmentation interface
  */
-export type GlobalSlug = GeneratedVexTypes extends { GlobalSlug: infer S extends string }
+export type GlobalSlug = GeneratedVexTypes extends {
+  GlobalSlug: infer S extends string;
+}
   ? S
   : string;
 
@@ -900,8 +936,9 @@ export type GlobalsFieldTypeMap = GeneratedVexTypes extends {
  *
  * @see {@link VexDocument} for the base type
  */
-export interface VexDocumentGlobal<TSlug extends GlobalSlug = GlobalSlug>
-  extends VexDocument {
+export interface VexDocumentGlobal<
+  TSlug extends GlobalSlug = GlobalSlug,
+> extends VexDocument {
   /**
    * The global slug — uniquely identifies which global this document is.
    * Renamed from `slug` (the DB column name) at the API layer to avoid
@@ -932,7 +969,8 @@ export type GlobalRelationshipKeysOf<TGlobalSlug extends GlobalSlug> =
  * @typeParam TGlobalSlug - The global slug.
  */
 export type GlobalPopulateShape<TGlobalSlug extends GlobalSlug = GlobalSlug> = {
-  [K in GlobalRelationshipKeysOf<TGlobalSlug>]?: true | { populate: Record<string, unknown> };
+  [K in GlobalRelationshipKeysOf<TGlobalSlug>]?:
+    true | { populate: Record<string, unknown> };
 };
 
 /**
@@ -956,14 +994,14 @@ export type GlobalPopulated<
           ? GlobalDocumentBySlug[TGlobalSlug][K] extends string | undefined
             ? // Relationship field: replace ID string with resolved doc array
               TPopulate[K] extends { populate: infer _NestedPopulate }
-                ? Record<string, unknown>[]  // nested populate — widened for now (see Out of Scope)
-                : Record<string, unknown>[]
+              ? Record<string, unknown>[] // nested populate — widened for now (see Out of Scope)
+              : Record<string, unknown>[]
             : GlobalDocumentBySlug[TGlobalSlug][K]
           : GlobalDocumentBySlug[TGlobalSlug][K]
         : GlobalDocumentBySlug[TGlobalSlug][K];
     }
   : never;
-```
+````
 
 > **Note on `GlobalPopulated` precision:** The resolved target doc type is `Record<string, unknown>[]` (widened) rather than a fully typed `DocumentBySlug[Target][]`. Full narrowing requires `GlobalRelationshipTargetOf<TGlobalSlug, TKey>` — a type-level lookup from `GlobalDocumentBySlug` into `CollectionSlug`. This is achievable (same pattern as `RelationshipTargetOf`) but is deferred as a follow-up to keep this step bounded. Runtime behaviour is correct; only the TypeScript type of the populated field is less precise.
 
@@ -972,6 +1010,7 @@ export type GlobalPopulated<
 In `generateVexTypes()`, after the existing collections block, add a globals pass.
 
 The **flat interface** template for `SiteSettingsGlobal`:
+
 ```
 export interface SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings"> {
   siteName: string
@@ -981,6 +1020,7 @@ export interface SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings"> {
 ```
 
 The **`GlobalsFieldTypeMap`** entry:
+
 ```
 siteSettings: {
   id: "_id"
@@ -990,6 +1030,7 @@ siteSettings: {
 ```
 
 The **`GeneratedVexTypes` additions** in the `declare module` block:
+
 ```
 GlobalSlug: "siteSettings" | "nav"
 GlobalDocumentBySlug: { siteSettings: SiteSettingsGlobal; nav: NavigationConfigGlobal }
@@ -1124,7 +1165,14 @@ describe("generateVexSchema — globals", () => {
 
   it("does not include versioning fields in v35", () => {
     const config = defineConfig({
-      globals: [defineGlobal({ slug: "nav", label: "Nav", fields: {} as any, versions: { drafts: true } })],
+      globals: [
+        defineGlobal({
+          slug: "nav",
+          label: "Nav",
+          fields: {} as any,
+          versions: { drafts: true },
+        }),
+      ],
     });
     const { contents } = generateVexSchema({ config });
     expect(contents).not.toContain("vex_status");
@@ -1155,6 +1203,7 @@ pnpm --filter @vexcms/core test -- --run generateVexSchema
 All three flatten on read (`slug` → `_slug`, `data` fields lifted to root) or re-nest on write. Tests use `convex-test` against the fixture schema. Add `vex_globals` to the fixture in `packages/core/src/api/test/convex/schema.ts` before writing any test.
 
 **Fixture addition:**
+
 ```ts
 // packages/core/src/api/test/convex/schema.ts
 + vex_globals: defineTable({
@@ -1174,11 +1223,17 @@ All three flatten on read (`slug` → `_slug`, `data` fields lifted to root) or 
 
 #### `packages/core/src/api/globals/get.server.ts` (NEW)
 
-```ts
+````ts
 import { ConvexError } from "convex/values";
 import type { GenericDataModel, GenericQueryCtx } from "convex/server";
 
-import type { GlobalSlug, GlobalDocumentBySlug, GlobalPopulateShape, GlobalPopulated, VexDocumentGlobal } from "../../types/generated";
+import type {
+  GlobalSlug,
+  GlobalDocumentBySlug,
+  GlobalPopulateShape,
+  GlobalPopulated,
+  VexDocumentGlobal,
+} from "../../types/generated";
 import type { VexConfig } from "../../config";
 import { populateDocs } from "../populate";
 import { buildDepthPopulate } from "../depth";
@@ -1191,7 +1246,9 @@ const GLOBAL_SYSTEM_KEYS = new Set(["slug", "data", "_id", "_creationTime"]);
  * Flattens a raw `vex_globals` DB row into the API-facing flat document.
  * Lifts `data` fields to root, renames `slug` → `_slug`.
  */
-function flattenGlobalRow(row: Record<string, unknown>): Record<string, unknown> {
+function flattenGlobalRow(
+  row: Record<string, unknown>,
+): Record<string, unknown> {
   const { slug, data, _id, _creationTime } = row as {
     slug: string;
     data: Record<string, unknown>;
@@ -1296,7 +1353,10 @@ export async function getGlobal<
   if (depth && depth > 0 && config) {
     const globalConfig = config.globals.find((g) => g.slug === slug);
     if (globalConfig) {
-      const depthPopulate = buildDepthPopulate({ fields: globalConfig.fields, depth });
+      const depthPopulate = buildDepthPopulate({
+        fields: globalConfig.fields,
+        depth,
+      });
       if (depthPopulate && Object.keys(depthPopulate).length > 0) {
         const [populated] = await populateDocs(ctx, [flat], depthPopulate);
         flat = populated as Record<string, unknown>;
@@ -1306,13 +1366,17 @@ export async function getGlobal<
 
   // Explicit populate
   if (populate && Object.keys(populate).length > 0) {
-    const [populated] = await populateDocs(ctx, [flat], populate as Record<string, unknown>);
+    const [populated] = await populateDocs(
+      ctx,
+      [flat],
+      populate as Record<string, unknown>,
+    );
     flat = populated as Record<string, unknown>;
   }
 
   return flat as unknown as GetGlobalReturn<TSlug, TPopulate, D>;
 }
-```
+````
 
 #### `packages/core/src/api/globals/get.server.test.ts` (NEW)
 
@@ -1368,7 +1432,7 @@ describe("getGlobal (server)", () => {
 
 #### `packages/core/src/api/globals/find.server.ts` (NEW)
 
-```ts
+````ts
 import type { GenericDataModel, GenericQueryCtx } from "convex/server";
 import type { VexDocumentGlobal } from "../../types/generated";
 
@@ -1416,7 +1480,7 @@ export async function findGlobals<DataModel extends GenericDataModel>(
     return { _id, _creationTime, _slug: slug, ...(data ?? {}) };
   }) as VexDocumentGlobal[];
 }
-```
+````
 
 #### `packages/core/src/api/globals/find.server.test.ts` (NEW)
 
@@ -1438,8 +1502,14 @@ describe("findGlobals (server)", () => {
   it("returns all saved globals as flat documents", async () => {
     const t = convexTest(schema);
     await t.mutation(async (ctx) => {
-      await (ctx.db as any).insert("vex_globals", { slug: "siteSettings", data: { siteName: "A" } });
-      await (ctx.db as any).insert("vex_globals", { slug: "nav", data: { items: [] } });
+      await (ctx.db as any).insert("vex_globals", {
+        slug: "siteSettings",
+        data: { siteName: "A" },
+      });
+      await (ctx.db as any).insert("vex_globals", {
+        slug: "nav",
+        data: { items: [] },
+      });
     });
     const result = await t.query(async (ctx) => {
       const { findGlobals } = await import("./find.server");
@@ -1459,7 +1529,7 @@ describe("findGlobals (server)", () => {
 
 #### `packages/core/src/api/globals/update.server.ts` (NEW)
 
-```ts
+````ts
 import { ConvexError } from "convex/values";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 
@@ -1556,10 +1626,13 @@ export async function updateGlobal<
     return existing._id as string;
   }
 
-  const id = await (ctx.db as any).insert("vex_globals", { slug, data: result.data });
+  const id = await (ctx.db as any).insert("vex_globals", {
+    slug,
+    data: result.data,
+  });
   return id as string;
 }
-```
+````
 
 #### `packages/core/src/api/globals/update.server.test.ts` (NEW)
 
@@ -1581,11 +1654,18 @@ describe("updateGlobal (server)", () => {
     const t = convexTest(schema);
     await t.mutation(async (ctx) => {
       const { updateGlobal } = await import("./update.server");
-      return updateGlobal({ ctx, slug: "siteSettings", data: { siteName: "My Site" }, globalConfig: siteSettingsGlobal });
+      return updateGlobal({
+        ctx,
+        slug: "siteSettings",
+        data: { siteName: "My Site" },
+        globalConfig: siteSettingsGlobal,
+      });
     });
     const row = await t.query(async (ctx) => {
-      return (ctx.db as any).query("vex_globals")
-        .withIndex("by_slug", (q: any) => q.eq("slug", "siteSettings")).first();
+      return (ctx.db as any)
+        .query("vex_globals")
+        .withIndex("by_slug", (q: any) => q.eq("slug", "siteSettings"))
+        .first();
     });
     expect(row).not.toBeNull();
     expect((row.data as any).siteName).toBe("My Site");
@@ -1595,13 +1675,23 @@ describe("updateGlobal (server)", () => {
   it("patches the existing row on subsequent saves", async () => {
     const t = convexTest(schema);
     await t.mutation(async (ctx) => {
-      await (ctx.db as any).insert("vex_globals", { slug: "siteSettings", data: { siteName: "Old" } });
+      await (ctx.db as any).insert("vex_globals", {
+        slug: "siteSettings",
+        data: { siteName: "Old" },
+      });
     });
     await t.mutation(async (ctx) => {
       const { updateGlobal } = await import("./update.server");
-      return updateGlobal({ ctx, slug: "siteSettings", data: { siteName: "New" }, globalConfig: siteSettingsGlobal });
+      return updateGlobal({
+        ctx,
+        slug: "siteSettings",
+        data: { siteName: "New" },
+        globalConfig: siteSettingsGlobal,
+      });
     });
-    const rows = await t.query(async (ctx) => (ctx.db as any).query("vex_globals").collect());
+    const rows = await t.query(async (ctx) =>
+      (ctx.db as any).query("vex_globals").collect(),
+    );
     expect(rows).toHaveLength(1);
     expect((rows[0].data as any).siteName).toBe("New");
   });
@@ -1614,13 +1704,20 @@ describe("updateGlobal (server)", () => {
       return updateGlobal({
         ctx,
         slug: "siteSettings",
-        data: { _id: "fake", _creationTime: 0, _slug: "siteSettings", siteName: "Clean" },
+        data: {
+          _id: "fake",
+          _creationTime: 0,
+          _slug: "siteSettings",
+          siteName: "Clean",
+        },
         globalConfig: siteSettingsGlobal,
       });
     });
     const row = await t.query(async (ctx) => {
-      return (ctx.db as any).query("vex_globals")
-        .withIndex("by_slug", (q: any) => q.eq("slug", "siteSettings")).first();
+      return (ctx.db as any)
+        .query("vex_globals")
+        .withIndex("by_slug", (q: any) => q.eq("slug", "siteSettings"))
+        .first();
     });
     expect((row.data as any)._id).toBeUndefined();
     expect((row.data as any)._slug).toBeUndefined();
@@ -1633,7 +1730,8 @@ describe("updateGlobal (server)", () => {
       t.mutation(async (ctx) => {
         const { updateGlobal } = await import("./update.server");
         return updateGlobal({
-          ctx, slug: "siteSettings",
+          ctx,
+          slug: "siteSettings",
           data: { siteName: 999 }, // wrong type
           globalConfig: siteSettingsGlobal,
         });
@@ -1665,7 +1763,7 @@ pnpm --filter @vexcms/core test -- --run globals
 
 #### `packages/core/src/api/globals/get.client.ts` (NEW)
 
-```ts
+````ts
 import { convexQuery } from "@convex-dev/react-query";
 import { vexConvexApi } from "../convex";
 import type {
@@ -1724,19 +1822,17 @@ export interface GetGlobalClientArgs<
 export function getGlobalClient<
   TSlug extends GlobalSlug = GlobalSlug,
   TPopulate extends GlobalPopulateShape<TSlug> = Record<string, never>,
->(
-  args: GetGlobalClientArgs<TSlug, TPopulate>,
-): ReturnType<typeof convexQuery> {
+>(args: GetGlobalClientArgs<TSlug, TPopulate>): ReturnType<typeof convexQuery> {
   return convexQuery(vexConvexApi.globals.get, {
     slug: args.slug,
     populate: args.populate,
   });
 }
-```
+````
 
 #### `packages/core/src/api/globals/find.client.ts` (NEW)
 
-```ts
+````ts
 import { convexQuery } from "@convex-dev/react-query";
 import { vexConvexApi } from "../convex";
 
@@ -1769,13 +1865,13 @@ export function findGlobalsClient(
 ): ReturnType<typeof convexQuery> {
   return convexQuery(vexConvexApi.globals.find, {});
 }
-```
+````
 
 #### `packages/core/src/api/globals/update.client.ts` (NEW)
 
 Follows the mutation client factory pattern from `developer-preferences.md`.
 
-```ts
+````ts
 import { useConvexMutation } from "@convex-dev/react-query";
 import { vexConvexApi } from "../convex";
 
@@ -1804,7 +1900,7 @@ import { vexConvexApi } from "../convex";
 export function updateGlobalClient(): ReturnType<typeof useConvexMutation> {
   return useConvexMutation(vexConvexApi.globals.update);
 }
-```
+````
 
 #### `packages/core/src/api/convex.ts` — additions
 
@@ -1890,7 +1986,7 @@ pnpm --filter @vexcms/core test
 
 #### `globalsApi` factory addition to `server.ts`
 
-```ts
+````ts
 /**
  * Registers `globals.get`, `globals.find`, and `globals.update` as Convex
  * query and mutation endpoints under `api.vex.globals.*`.
@@ -1921,7 +2017,10 @@ export function globalsApi<
 >(
   config: VexConfig,
   query: QueryBuilder<DataModel, Visibility> = internalQueryGeneric as never,
-  mutation: MutationBuilder<DataModel, Visibility> = internalMutationGeneric as never,
+  mutation: MutationBuilder<
+    DataModel,
+    Visibility
+  > = internalMutationGeneric as never,
 ) {
   return {
     globals: {
@@ -1937,12 +2036,20 @@ export function globalsApi<
             populate: args.populate,
             config,
           }),
-      }) as RegisteredQuery<Visibility, VexGlobalsGetArgs, VexDocumentGlobal | null>,
+      }) as RegisteredQuery<
+        Visibility,
+        VexGlobalsGetArgs,
+        VexDocumentGlobal | null
+      >,
 
       find: query({
         args: {},
         handler: (ctx) => findGlobals({ ctx }),
-      }) as RegisteredQuery<Visibility, VexGlobalsFindArgs, VexDocumentGlobal[]>,
+      }) as RegisteredQuery<
+        Visibility,
+        VexGlobalsFindArgs,
+        VexDocumentGlobal[]
+      >,
 
       update: mutation({
         args: {
@@ -1953,7 +2060,9 @@ export function globalsApi<
         handler: (ctx, args) => {
           const globalConfig = config.globals.find((g) => g.slug === args.slug);
           if (!globalConfig) {
-            throw new ConvexError(`No global registered with slug "${args.slug}"`);
+            throw new ConvexError(
+              `No global registered with slug "${args.slug}"`,
+            );
           }
           return updateGlobal({
             ctx,
@@ -1966,7 +2075,7 @@ export function globalsApi<
     },
   };
 }
-```
+````
 
 > Import `ConvexError` from `"convex/values"`, `GlobalSlug` from `"../types/generated"`, `VexGlobalsGetArgs`, `VexGlobalsFindArgs`, `VexGlobalsUpdateArgs`, `VexDocumentGlobal` from `"./convex"`, and `getGlobal`, `findGlobals`, `updateGlobal` from their server files.
 
@@ -2075,6 +2184,7 @@ pnpm dev:app
 ## Success Criteria
 
 **Compile-time:**
+
 - `globals.get({ slug: "nonExistent" })` is a compile error after `vex generate`.
 - `defineGlobal({ slug: "x", label: "X", fields: { _slug: text({...}) } })` is a compile error.
 - `defineGlobal({ slug: "x", label: "X", fields: { name: text({...}) } })` compiles cleanly.
@@ -2082,6 +2192,7 @@ pnpm dev:app
 - `doc.siteName` is `string`; `doc.data` does not exist on the returned type.
 
 **Runtime:**
+
 - `globals.update({ slug: "siteSettings" }, { data: { siteName: "My Site" } })` writes to `vex_globals` with `data: { siteName: "My Site" }` nested.
 - `globals.get({ slug: "siteSettings" })` returns `{ _id, _creationTime, _slug: "siteSettings", siteName: "My Site" }` — no `slug`, no `data` wrapper.
 - `globals.get({ slug: "neverSaved" })` returns `null`.
@@ -2090,6 +2201,7 @@ pnpm dev:app
 - `vex dev --once` emits correct schema and types.
 
 **Admin UI:**
+
 - `/admin/globals` shows all registered globals from config.
 - `/admin/globals/siteSettings` renders the edit form with the correct fields.
 - Saving updates the form without a page reload.

@@ -1,0 +1,32 @@
+diff --git a/dist/nextjs/index.js b/dist/nextjs/index.js
+index 0a4e41d5934f5545b9c674d6c9b530732a0cb483..88553e4036606b37f9980b8b9a452f40be2e45f2 100644
+--- a/dist/nextjs/index.js
++++ b/dist/nextjs/index.js
+@@ -29,7 +29,7 @@ const handler = (request, siteUrl) => {
+     const newRequest = new Request(nextUrl, request);
+     newRequest.headers.set("accept-encoding", "application/json");
+     newRequest.headers.set("host", new URL(siteUrl).host);
+-    newRequest.headers.set("x-forwarded-host", requestUrl.host);
++    newRequest.headers.delete("x-forwarded-host");
+     newRequest.headers.set("x-forwarded-proto", requestUrl.protocol.replace(/:$/, ""));
+     newRequest.headers.set("x-better-auth-forwarded-host", requestUrl.host);
+     newRequest.headers.set("x-better-auth-forwarded-proto", requestUrl.protocol.replace(/:$/, ""));
+@@ -50,6 +50,18 @@ export const convexBetterAuthNextJs = (opts) => {
+         mutableHeaders.delete("content-length");
+         mutableHeaders.delete("transfer-encoding");
+         mutableHeaders.set("accept-encoding", "identity");
++        // Convex's edge routes on x-forwarded-host; a non-Convex host 404s before
++        // the component runs (get-convex/better-auth#422). Preserve the public
++        // origin via the better-auth headers, which registerRoutes restores.
++        const forwardedHost = mutableHeaders.get("x-forwarded-host");
++        if (forwardedHost) {
++            mutableHeaders.set("x-better-auth-forwarded-host", forwardedHost);
++            mutableHeaders.delete("x-forwarded-host");
++        }
++        const forwardedProto = mutableHeaders.get("x-forwarded-proto");
++        if (forwardedProto) {
++            mutableHeaders.set("x-better-auth-forwarded-proto", forwardedProto);
++        }
+         return getToken(siteUrl, mutableHeaders, { ...opts, forceRefresh });
+     });
+     const callWithToken = async (fn) => {

@@ -1,13 +1,13 @@
 /* ============================================================================
    VexCMS · globals.css — Stark × Ember (shadcn-faithful translation)
    ----------------------------------------------------------------------------
-   Source of design intent: .pi/design/claude-design/admin.css (Claude Design
+   Source of design intent: .agent/docs/design/claude-design/admin.css (Claude Design
    export). That file uses bespoke tokens (--page, --fg-muted, --line-bold,
    --accent / --accent-tint / --accent-ink, …); this file translates them
    into shadcn-named tokens so every React component in @vexcms/react keeps
    working with no per-component overrides.
 
-   Read .pi/design/claude-design/README.md before editing.
+   Read .agent/docs/design/claude-design/README.md before editing.
 
    Key semantic decisions (different from naive shadcn):
    - Brand CTA  → --primary       (admin.css `--accent`)        ember solid

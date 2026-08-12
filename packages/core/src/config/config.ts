@@ -64,6 +64,7 @@ export function defineConfig(config?: VexConfigInput): VexConfig {
       adapters: config?.storage?.adapters ?? [],
     },
     collections,
+    globals: config?.globals ?? [],
     mediaCollections,
     admin: {
       ...config?.admin,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { defineConfig, defineCollection } from "../index";
+import { defineConfig, defineCollection, defineGlobal } from "../index";
 import { url, text, number, checkbox, date, select } from "../fields";
 import { generateVexSchema } from "./generateVexSchema";
 
@@ -33,22 +33,16 @@ describe("generateVexSchema — header", () => {
 describe("generateVexSchema — imports", () => {
   it("includes convex/server and convex/values imports when there are collections", () => {
     const config = defineConfig({
-      collections: [
-        defineCollection({ slug: "posts", fields: { title: url() } }),
-      ],
+      collections: [defineCollection({ slug: "posts", fields: { title: url() } })],
     });
     const output = generateVexSchema({ config });
-    expect(output.contents).toContain(
-      'import { defineTable } from "convex/server"',
-    );
+    expect(output.contents).toContain('import { defineTable } from "convex/server"');
     expect(output.contents).toContain('import { v } from "convex/values"');
   });
 
   it("returns update: true when there are collections", () => {
     const config = defineConfig({
-      collections: [
-        defineCollection({ slug: "posts", fields: { title: url() } }),
-      ],
+      collections: [defineCollection({ slug: "posts", fields: { title: url() } })],
     });
     const output = generateVexSchema({ config });
     expect(output.update).toBe(true);
@@ -305,9 +299,7 @@ describe("generateVexSchema — integration (full collection)", () => {
     expect(output.contents.split("\n")[0]).toBe(HEADER);
 
     // Imports
-    expect(output.contents).toContain(
-      'import { defineTable } from "convex/server"',
-    );
+    expect(output.contents).toContain('import { defineTable } from "convex/server"');
     expect(output.contents).toContain('import { v } from "convex/values"');
 
     // Table export
@@ -326,5 +318,49 @@ describe("generateVexSchema — integration (full collection)", () => {
 
     // Index
     expect(output.contents).toContain('.index("by_slug", ["slug"])');
+  });
+});
+
+describe("generateVexSchema — globals", () => {
+  it("emits vex_globals table when globals are registered", () => {
+    const config = defineConfig({
+      globals: [defineGlobal({ slug: "nav", label: "Nav", fields: {} as any })],
+    });
+    const { update, contents } = generateVexSchema({ config });
+    expect(update).toBe(true);
+    expect(contents).toContain("export const vex_globals = defineTable({");
+    expect(contents).toContain("slug: v.string(),");
+    expect(contents).toContain("data: v.any(),");
+    expect(contents).toContain('.index("by_slug", ["slug"])');
+  });
+
+  it("does not emit vex_globals when no globals registered", () => {
+    const config = defineConfig({ collections: [] });
+    const { contents } = generateVexSchema({ config });
+    expect(contents).not.toContain("vex_globals");
+  });
+
+  it("does not include versioning fields in v35", () => {
+    const config = defineConfig({
+      globals: [
+        defineGlobal({
+          slug: "nav",
+          label: "Nav",
+          fields: {} as any,
+          versions: { drafts: true },
+        }),
+      ],
+    });
+    const { contents } = generateVexSchema({ config });
+    expect(contents).not.toContain("vex_status");
+    expect(contents).not.toContain("vex_version");
+  });
+
+  it("returns update: true when only globals are registered (no collections)", () => {
+    const config = defineConfig({
+      globals: [defineGlobal({ slug: "nav", label: "Nav", fields: {} as any })],
+    });
+    const { update } = generateVexSchema({ config });
+    expect(update).toBe(true);
   });
 });

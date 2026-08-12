@@ -59,13 +59,6 @@ describe("generateVexTypes — header", () => {
     const output = generateVexTypes({ config });
     expect(output.split("\n")[0]).toBe(HEADER);
   });
-
-  it("returns only the header when there are no collections", () => {
-    const config = defineConfig();
-    const output = generateVexTypes({ config });
-    expect(output).not.toContain("export interface");
-    expect(output).not.toContain("CollectionSlug");
-  });
 });
 
 // ─── Document interfaces ──────────────────────────────────────────────────────
@@ -195,9 +188,7 @@ describe("generateVexTypes — CollectionSlug", () => {
 
   it("generates a single-value CollectionSlug for one collection", () => {
     const config = defineConfig({
-      collections: [
-        defineCollection({ slug: "posts", fields: { title: text() } }),
-      ],
+      collections: [defineCollection({ slug: "posts", fields: { title: text() } })],
     });
     const output = generateVexTypes({ config });
     expect(output).toContain('export type CollectionSlug = "posts"');

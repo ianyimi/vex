@@ -5,6 +5,8 @@ import { convexFileStorage } from "@vexcms/file-storage-convex";
 import { authOptions } from "~/auth/options";
 import { footers, headers, images, pages, siteSettings, themes } from "~/vexcms/collections";
 
+import { nav } from "./vexcms/globals/nav";
+
 /**
  * VexCMS configuration for the demo/development site.
  *
@@ -28,6 +30,7 @@ const vexConfig = defineConfig({
     adapters: [convexFileStorage({ mediaCollections: [images] })],
   },
   collections: [pages, headers, footers, themes, siteSettings],
+  globals: [nav],
 });
 
 export default vexConfig;

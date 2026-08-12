@@ -2,6 +2,7 @@ import { CollectionConfig } from "../collections";
 import { VexAuthAdapter } from "../auth/types";
 import { MediaCollectionConfig, VexStorageAdapter } from "../media";
 import { StorageAdapterSlug } from "../types";
+import { GlobalConfig } from "../globals";
 
 /**
  * User-facing configuration input for the VexCMS admin panel.
@@ -230,6 +231,8 @@ export interface VexConfigInput {
   admin?: AdminConfigInput;
   /** Content collections to register with the CMS. Defaults to `[]` if omitted. */
   collections?: CollectionConfig[];
+  /** Singleton global documents. Each produced by `defineGlobal()`. Slugs must be unique. */
+  globals?: GlobalConfig[];
   /**
    * URL prefix for all admin panel routes.
    *
@@ -290,6 +293,8 @@ export interface VexConfig {
   admin: AdminConfig;
   /** All registered content collections — always an array after defaults are applied. */
   collections: CollectionConfig[];
+  /** Resolved global configs. Always present; defaults to `[]`. */
+  globals: GlobalConfig[];
   /** URL prefix for all admin panel routes — always set after defaults are applied. */
   basePath: string;
   /** Resolved schema generation configuration — always fully populated after defaults are applied. */

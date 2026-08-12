@@ -3,6 +3,7 @@ export * from "./baseTypes";
 export * from "./types";
 export * from "./validators";
 export * from "./inputSchemas";
+export * from "./interfaceGen";
 export * from "./utils";
 
 export * from "./text";

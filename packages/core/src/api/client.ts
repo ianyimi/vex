@@ -15,3 +15,12 @@ export type { UpdateClientArgs } from "./update/client";
 
 export { remove } from "./remove/client";
 export type { RemoveClientArgs } from "./remove/client";
+
+// GLOBALS API
+
+export { getGlobal } from "./globals/get.client";
+export type { GetGlobalClientArgs } from "./globals/get.client";
+
+export { findGlobals } from "./globals/find.client";
+
+export { updateGlobal } from "./globals/update.client";

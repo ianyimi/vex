@@ -1,0 +1,89 @@
+"use client";
+
+import { useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { GlobalEditViewProps, vexConvexApi } from "@vexcms/core";
+import { getGlobal } from "@vexcms/core/client";
+import { AppForm } from "../form";
+import { useGlobalForm } from "../../hooks";
+import { Button } from "../ui";
+import { fieldToInputComponent } from "../fields";
+
+export function GlobalEditView({ global, initialData }: GlobalEditViewProps) {
+  const { data: globalDoc } = useQuery({
+    ...getGlobal({ slug: global.slug }),
+    initialData,
+  });
+
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: useConvexMutation(vexConvexApi.globals.upsert),
+  });
+
+  const form = useGlobalForm({
+    document: globalDoc,
+    global,
+    onSubmit: async ({ value }: { value: any }) => {
+      await mutateAsync({
+        slug: global.slug,
+        data: value,
+      });
+      form.reset();
+    },
+  });
+
+  if (!global) {
+    // TODO: add proper not found component or screen
+    return <p>Global document not found.</p>;
+  }
+
+  return (
+    <AppForm form={form} className="relative">
+      <div className="mb-6 flex items-center justify-between pt-4">
+        <h1 className="text-2xl font-bold">Edit Global - {global.label}</h1>
+        <form.Subscribe
+          selector={(state) => state.isDefaultValue}
+          children={(isDefaultValue) => (
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                className="transition-all duration-300"
+                isPending={isPending}
+                disabled={isDefaultValue}
+              >
+                Save
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="transition-all duration-300"
+                disabled={isDefaultValue}
+                onClick={() => {
+                  form.reset();
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+        />
+      </div>
+      <div className="space-y-4">
+        {Object.entries(global.fields).map(([fieldKey, field]) => {
+          const InputComponent = fieldToInputComponent(field.type);
+          if (!InputComponent) {
+            // TODO: handle missing component error here
+            throw new Error(`Missing component for field type '${field.type}'`);
+          }
+          return (
+            <InputComponent
+              key={fieldKey}
+              name={fieldKey}
+              fieldDef={field}
+              readOnly={field.admin.readOnly}
+            />
+          );
+        })}
+      </div>
+    </AppForm>
+  );
+}

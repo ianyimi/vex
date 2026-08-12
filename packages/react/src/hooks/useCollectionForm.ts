@@ -44,7 +44,7 @@ export function useCollectionForm<
 >(
   props: {
     collection: CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug>;
-    document?: TDocument;
+    document?: TDocument | null;
   } & FormOptions<
     DocumentBySlug[TCollectionSlug],
     any,

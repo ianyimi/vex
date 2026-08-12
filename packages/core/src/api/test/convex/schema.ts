@@ -32,6 +32,11 @@ const schema = defineSchema({
   organizations: defineTable({
     name: v.string(),
   }),
+
+  vex_globals: defineTable({
+    slug: v.string(),
+    data: v.any(),
+  }).index("by_slug", ["slug"]),
 });
 
 export default schema;

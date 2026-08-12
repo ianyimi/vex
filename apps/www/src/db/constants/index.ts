@@ -20,6 +20,8 @@ export const TABLE_SLUG_THEMES = "themes" as const;
 export const TABLE_SLUG_SITE_SETTINGS = "site_settings" as const;
 export const TABLE_SLUG_IMAGES = "images" as const;
 
+export const GLOBAL_SLUG_NAV = "nav" as const;
+
 export const AUTH_PROVIDERS = {
   apple: "apple",
   atlassian: "atlassian",

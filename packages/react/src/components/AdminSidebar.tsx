@@ -59,14 +59,15 @@ export interface AppSidebarProps {
  * ```
  */
 export function AppSidebar(props: AppSidebarProps) {
+  const adminRoot = addLeadingSlash(props.config.basePath);
   return (
     <Sidebar
       side={props.config.admin.sidebar.side}
       collapsible={props.config.admin.sidebar.collapsible}
     >
-      <SidebarHeader className="h-12 border-b flex justify-center">
-        <div className="flex justify-between items-center">
-          <span className="font-semibold font-mono text-sm tracking-tight px-2">VexCMS Admin</span>
+      <SidebarHeader className="flex h-12 justify-center border-b">
+        <div className="flex items-center justify-between">
+          <span className="px-2 font-mono text-sm font-semibold tracking-tight">VexCMS Admin</span>
           <ThemeToggle />
         </div>
       </SidebarHeader>
@@ -78,11 +79,7 @@ export function AppSidebar(props: AppSidebarProps) {
               {props.config.collections.map((collection) => (
                 <SidebarMenuItem key={collection.slug}>
                   <SidebarMenuButton
-                    render={
-                      <VexLink
-                        href={`${addLeadingSlash(props.config.basePath)}/${collection.slug}`}
-                      />
-                    }
+                    render={<VexLink href={`${adminRoot}/${collection.slug}`} />}
                     isActive={props.activeSlug === collection.slug}
                   >
                     {collection.admin.icon && (
@@ -98,6 +95,29 @@ export function AppSidebar(props: AppSidebarProps) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Globals</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {props.config.globals.map((global) => (
+                <SidebarMenuItem key={global.slug}>
+                  <SidebarMenuButton
+                    render={<VexLink href={`${adminRoot}/globals/${global.slug}`} />}
+                    isActive={props.activeSlug === global.slug}
+                  >
+                    {global.admin.icon && (
+                      <div>
+                        {/* @ts-expect-error Lucide Icon names match here, unknown lsp error */}
+                        <Icon name={global.admin.icon} size={12} />
+                      </div>
+                    )}
+                    {global.label}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
         <Activity mode={props.config.mediaCollections.length > 0 ? "visible" : "hidden"}>
           <SidebarGroup>
             <SidebarGroupLabel>Media</SidebarGroupLabel>
@@ -106,11 +126,7 @@ export function AppSidebar(props: AppSidebarProps) {
                 {props.config.mediaCollections.map((mediaCollection) => (
                   <SidebarMenuItem key={mediaCollection.slug}>
                     <SidebarMenuButton
-                      render={
-                        <VexLink
-                          href={`${addLeadingSlash(props.config.basePath)}/${mediaCollection.slug}`}
-                        />
-                      }
+                      render={<VexLink href={`${adminRoot}/${mediaCollection.slug}`} />}
                       isActive={props.activeSlug === mediaCollection.slug}
                     >
                       {mediaCollection.admin.icon && (

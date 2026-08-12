@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at_sha": "3a18c95eb3bed73e6c218a32a587d4cf36ce9d7a",
+  "generated_at_sha": "7b1fa3c9cbcef1c144c50b3ad7dbff045b4aba30",
   "entries": [
     {
       "path": ".agent/context-rules.yaml",
@@ -54,6 +54,12 @@
       "path": ".claude/commands/harness-init.md",
       "kind": "generated",
       "target_or_hash": "079f8639b4b38f226c7ef08063591d293e8b138c4e86d7d2e23dac187e2d2bca",
+      "platform": "claude"
+    },
+    {
+      "path": ".claude/commands/harness-pull.md",
+      "kind": "generated",
+      "target_or_hash": "8ec83c8834eeecc77fdf1d82a19d84ea0fcffb728fa2ccc5a0feec25619bd10c",
       "platform": "claude"
     },
     {
@@ -708,6 +714,12 @@
       "path": ".omp/prompts/harness-init.md",
       "kind": "generated",
       "target_or_hash": "f7f77cd1246074c03c080c5c717443a4b1a8b6f9a647888da6984fc17a908f07",
+      "platform": "omp"
+    },
+    {
+      "path": ".omp/prompts/harness-pull.md",
+      "kind": "generated",
+      "target_or_hash": "db9d26de0bfd05f1c7c1b4b0174dc9b87c887b2119060823d96af5895ff0781d",
       "platform": "omp"
     },
     {

@@ -1,0 +1,257 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@vexcms/next/styles";
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   VexCMS — Theme C: Signal
+   Teal/cyan accent on very dark cool near-black backgrounds.
+   Primary: #0AACA0 ≈ oklch(62% 0.118 185)
+   ──────────────────────────────────────────────────────────────────────────── */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* ── shadcn/ui semantic tokens ── */
+  --color-background:             var(--background);
+  --color-foreground:             var(--foreground);
+  --color-card:                   var(--card);
+  --color-card-foreground:        var(--card-foreground);
+  --color-popover:                var(--popover);
+  --color-popover-foreground:     var(--popover-foreground);
+  --color-primary:                var(--primary);
+  --color-primary-foreground:     var(--primary-foreground);
+  --color-secondary:              var(--secondary);
+  --color-secondary-foreground:   var(--secondary-foreground);
+  --color-muted:                  var(--muted);
+  --color-muted-foreground:       var(--muted-foreground);
+  --color-accent:                 var(--accent);
+  --color-accent-foreground:      var(--accent-foreground);
+  --color-destructive:            var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border:                 var(--border);
+  --color-input:                  var(--input);
+  --color-ring:                   var(--ring);
+
+  /* ── radius scale ── */
+  --radius-sm:   calc(var(--radius) - 4px);
+  --radius-md:   var(--radius);
+  --radius-lg:   calc(var(--radius) + 4px);
+  --radius-xl:   calc(var(--radius) + 10px);
+  --radius-2xl:  calc(var(--radius) + 16px);
+  --radius-3xl:  calc(var(--radius) + 22px);
+  --radius-4xl:  calc(var(--radius) + 30px);
+
+  /* ── sidebar tokens ── */
+  --color-sidebar:                    var(--sidebar);
+  --color-sidebar-foreground:         var(--sidebar-foreground);
+  --color-sidebar-primary:            var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:             var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:             var(--sidebar-border);
+  --color-sidebar-ring:               var(--sidebar-ring);
+
+  /* ── chart tokens ── */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* ── brand extensions ── */
+  --color-brand:              var(--brand);
+  --color-brand-foreground:   var(--brand-foreground);
+  --color-brand-muted:        var(--brand-muted);
+  --color-success:            var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning:            var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-code-bg:            var(--code-bg);
+
+  /* ── fonts ── */
+  --font-sans:    var(--font-sans);
+  --font-mono:    var(--font-geist-mono);
+  --font-display: var(--font-display);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   LIGHT MODE
+   Background: teal-tinted near-white (#F0F8F7)
+   Primary: Signal Teal #0AACA0
+   ──────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* ── page chrome ── */
+  --background:          oklch(96.5% 0.008 185);   /* #F0F8F7 */
+  --foreground:          oklch(8% 0.014 185);      /* #060E0D */
+
+  /* ── card / popover ── */
+  --card:                oklch(100% 0 0);
+  --card-foreground:     oklch(8% 0.014 185);
+  --popover:             oklch(100% 0 0);
+  --popover-foreground:  oklch(8% 0.014 185);
+
+  /* ── primary — Signal Teal ── */
+  --primary:             oklch(62% 0.118 185);      /* #0AACA0 */
+  --primary-foreground:  oklch(100% 0 0);
+
+  /* ── secondary ── */
+  --secondary:           oklch(93% 0.016 185);
+  --secondary-foreground: oklch(28% 0.040 185);
+
+  /* ── muted ── */
+  --muted:               oklch(93% 0.010 185);
+  --muted-foreground:    oklch(47% 0.018 185);      /* #5A7A77 */
+
+  /* ── accent ── */
+  --accent:              oklch(93% 0.022 185);      /* #E0F7F5 */
+  --accent-foreground:   oklch(50% 0.110 185);
+
+  /* ── destructive ── */
+  --destructive:         oklch(59% 0.227 25);
+  --destructive-foreground: oklch(100% 0 0);
+
+  /* ── border / input ── */
+  --border:              oklch(84% 0.014 185);      /* #C5DEDD */
+  --input:               oklch(84% 0.014 185);
+  --ring:                oklch(62% 0.118 185);
+
+  /* ── radius base (8px) ── */
+  --radius: 0.5rem;
+
+  /* ── sidebar (light) ── */
+  --sidebar:                    oklch(96.5% 0.008 185);
+  --sidebar-foreground:         oklch(38% 0.018 185);
+  --sidebar-primary:            oklch(62% 0.118 185);
+  --sidebar-primary-foreground: oklch(100% 0 0);
+  --sidebar-accent:             oklch(93% 0.022 185);
+  --sidebar-accent-foreground:  oklch(50% 0.110 185);
+  --sidebar-border:             oklch(84% 0.014 185);
+  --sidebar-ring:               oklch(62% 0.118 185);
+
+  /* ── charts (light) ── */
+  --chart-1: oklch(62% 0.118 185);   /* teal    — primary */
+  --chart-2: oklch(74% 0.195 142);   /* green   */
+  --chart-3: oklch(74% 0.172 72);    /* amber   */
+  --chart-4: oklch(62% 0.175 280);   /* blue    */
+  --chart-5: oklch(64% 0.188 340);   /* pink    */
+
+  /* ── brand extensions ── */
+  --brand:              oklch(62% 0.118 185);
+  --brand-foreground:   oklch(100% 0 0);
+  --brand-muted:        oklch(93% 0.022 185);
+  --success:            oklch(74% 0.195 142);       /* #22C55E */
+  --success-foreground: oklch(100% 0 0);
+  --warning:            oklch(74% 0.172 72);        /* #F59E0B */
+  --warning-foreground: oklch(12% 0.040 72);
+  --code-bg:            oklch(96.5% 0.008 185);
+
+  /* ── fonts (override in layout.tsx via next/font) ── */
+  --font-sans:    "Outfit", "Inter", system-ui, sans-serif;
+  --font-display: "Outfit", system-ui, sans-serif;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   DARK MODE
+   Background: #060E0D (near-black, barely-visible teal undertone)
+   Primary: #14C5B8 (brighter teal for dark surface contrast)
+   ──────────────────────────────────────────────────────────────────────────── */
+.dark {
+  /* ── page chrome ── */
+  --background:          oklch(6% 0.012 185);       /* #060E0D */
+  --foreground:          oklch(93% 0.008 185);
+
+  /* ── card / popover ── */
+  --card:                oklch(11% 0.018 185);       /* #122220 */
+  --card-foreground:     oklch(93% 0.008 185);
+  --popover:             oklch(11% 0.018 185);
+  --popover-foreground:  oklch(93% 0.008 185);
+
+  /* ── primary — brighter teal for dark backgrounds ── */
+  --primary:             oklch(72% 0.115 185);       /* #14C5B8 */
+  --primary-foreground:  oklch(6% 0.012 185);
+
+  /* ── secondary ── */
+  --secondary:           oklch(14% 0.018 185);
+  --secondary-foreground: oklch(93% 0.008 185);
+
+  /* ── muted ── */
+  --muted:               oklch(14% 0.018 185);
+  --muted-foreground:    oklch(57% 0.014 185);
+
+  /* ── accent ── */
+  --accent:              oklch(17% 0.022 185);
+  --accent-foreground:   oklch(72% 0.115 185);
+
+  /* ── destructive ── */
+  --destructive:         oklch(52% 0.210 25);
+  --destructive-foreground: oklch(95% 0 0);
+
+  /* ── border / input ── */
+  --border:              oklch(17% 0.020 185);      /* #1C3230 */
+  --input:               oklch(17% 0.020 185);
+  --ring:                oklch(72% 0.115 185);
+
+  /* ── sidebar (dark — deepest teal-dark) ── */
+  --sidebar:                    oklch(4% 0.010 185);
+  --sidebar-foreground:         oklch(70% 0.010 185);
+  --sidebar-primary:            oklch(72% 0.115 185);
+  --sidebar-primary-foreground: oklch(6% 0.012 185);
+  --sidebar-accent:             oklch(13% 0.016 185);
+  --sidebar-accent-foreground:  oklch(72% 0.115 185);
+  --sidebar-border:             oklch(15% 0.016 185);
+  --sidebar-ring:               oklch(72% 0.115 185);
+
+  /* ── charts (dark) ── */
+  --chart-1: oklch(72% 0.115 185);   /* teal  */
+  --chart-2: oklch(78% 0.190 142);   /* green */
+  --chart-3: oklch(78% 0.168 72);    /* amber */
+  --chart-4: oklch(68% 0.175 280);   /* blue  */
+  --chart-5: oklch(70% 0.185 340);   /* pink  */
+
+  /* ── brand extensions (dark) ── */
+  --brand:              oklch(72% 0.115 185);
+  --brand-foreground:   oklch(6% 0.012 185);
+  --brand-muted:        oklch(17% 0.022 185);
+  --success:            oklch(78% 0.190 142);
+  --success-foreground: oklch(6% 0.012 185);
+  --warning:            oklch(78% 0.168 72);
+  --warning-foreground: oklch(10% 0.040 72);
+  --code-bg:            oklch(5% 0.010 185);        /* #070F0E */
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   BASE LAYER
+   ──────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Selection color — teal wash ── */
+  ::selection {
+    background-color: oklch(62% 0.118 185 / 0.20);
+    color: inherit;
+  }
+
+  .dark ::selection {
+    background-color: oklch(72% 0.115 185 / 0.25);
+  }
+
+  /* ── Focus ring ── */
+  :focus-visible {
+    outline: 2px solid oklch(62% 0.118 185);
+    outline-offset: 2px;
+  }
+
+  .dark :focus-visible {
+    outline-color: oklch(72% 0.115 185);
+  }
+}

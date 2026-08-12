@@ -9,7 +9,7 @@
       "@vexcms/next",
       "@vexcms/cli",
       "@vexcms/better-auth",
-      "@vexcms/storage-convex",
+      "@vexcms/file-storage-convex",
       "@vexcms/richtext-plate",
       "create-vexcms"
     ]

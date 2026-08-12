@@ -8,8 +8,9 @@ import type {
   InputComponentProps,
 } from "./fields";
 import type { VexDocument } from "./api/convex";
-import { CollectionSlug } from "./types/generated";
+import { CollectionSlug, GlobalSlug, VexDocumentGlobal } from "./types/generated";
 import { PaginationResult } from "./api/types";
+import { GlobalConfig } from "./globals";
 
 /**
  * Maps every field type in the `AdminField` union to the framework's input component type
@@ -95,6 +96,29 @@ export interface CollectionEditViewProps<
    * Omit for new document creation — the form will be empty.
    */
   documentId: VexDocument["_id"];
+  /**
+   * Pre-fetched document from the server for SSR hydration.
+   * `null` explicitly means "no document found". `undefined` means "not loaded yet".
+   */
+  initialData?: TDocument | null;
+}
+
+/**
+ * Props passed to the `GlobalEditView` component.
+ *
+ * `TGlobalSlug` is inferred from the `global` prop. After `vex generate` runs,
+ * passing a global config with an unregistered slug is a compile-time error.
+ *
+ * @see {@link ViewComponentMap}
+ */
+export interface GlobalEditViewProps<
+  TFieldMeta extends {} = {},
+  TGlobalMeta extends {} = {},
+  TGlobalSlug extends GlobalSlug = GlobalSlug,
+  TDocument extends VexDocumentGlobal = VexDocumentGlobal,
+> {
+  /** The resolved global configuration whose fields will be rendered. */
+  global: GlobalConfig<TFieldMeta, TGlobalMeta, TGlobalSlug>;
   /**
    * Pre-fetched document from the server for SSR hydration.
    * `null` explicitly means "no document found". `undefined` means "not loaded yet".

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState, type RefAttributes } from "react";
+import { useEffect, useState, type RefAttributes } from "react";
 import { AdminLayoutProps } from "./AdminLayout";
 import { VexLink } from "./ui";
 import { ChevronLeft, ChevronRight, LucideProps } from "lucide-react";
@@ -23,85 +23,76 @@ export default function AdminTopNav(props: AdminLayoutProps) {
     setMounted(true);
   }, []);
 
+  const isGlobals = props.activeSlug === "globals";
+
   const { data: currentDocument } = useQuery({
-    // Pass "skip" when there is no activeDocID — this tells ConvexQueryClient
-    // not to establish a watchQuery subscription at all (vs enabled:false which
-    // still registers the key in the cache and can fire with an empty id).
-    ...convexQuery(vexConvexApi.get, props.activeDocID ? { id: props.activeDocID } : "skip"),
+    // Pass "skip" when there is no activeDocID OR on a globals route — this
+    // tells ConvexQueryClient not to establish a watchQuery subscription at
+    // all (vs enabled:false which still registers the key in the cache and
+    // can fire with an empty id). On /admin/globals/[slug] the third path
+    // segment is a global slug, not a Convex document ID, so vexConvexApi.get
+    // must never run there.
+    ...convexQuery(
+      vexConvexApi.get,
+      props.activeDocID && !isGlobals ? { id: props.activeDocID } : "skip",
+    ),
   });
 
   const isLeft = props.config.admin.sidebar.side === "left";
   const adminRoot = addLeadingSlash(props.config.basePath);
   const allCollections = props.config.collections.concat(props.config.mediaCollections);
   const activeCollection = allCollections.find((c) => c.slug === props.activeSlug);
+  const activeGlobal =
+    isGlobals && props.activeDocID
+      ? props.config.globals.find((g) => g.slug === props.activeDocID)
+      : undefined;
   // Only use currentDocument after client mount to avoid SSR/client mismatch.
   // The server may have this data in the React Query cache (from fetchQuery in
   // NextAdminPage) while the client starts with undefined until Convex fires.
   const doc = mounted ? currentDocument : undefined;
 
-  const nav = [
-    <VexLink
-      href={adminRoot}
-      key="home"
-      className={cn(!activeCollection && !doc ? "text-primary" : "hover:text-primary-hover")}
-    >
-      <span>Home</span>
-    </VexLink>,
-    <Fragment key="collection">
-      {activeCollection && (
-        <>
-          {isLeft ? (
-            <>
-              <Divider left={isLeft} size={16} />
-              <VexLink
-                href={`${adminRoot}/${activeCollection.slug}`}
-                className={cn(!doc ? "text-primary" : "hover:text-primary-hover")}
-              >
-                <span>{activeCollection.labels.plural}</span>
-              </VexLink>
-            </>
-          ) : (
-            <>
-              <VexLink
-                href={`${adminRoot}/${activeCollection.slug}`}
-                className={cn(!doc ? "text-primary" : "hover:text-primary-hover")}
-              >
-                <span>{activeCollection.labels.plural}</span>
-              </VexLink>
-              <Divider left={isLeft} size={16} />
-            </>
-          )}
-        </>
-      )}
-    </Fragment>,
-    <Fragment key="document">
-      {doc && activeCollection && (
-        <>
-          {isLeft ? (
-            <>
-              <Divider left={isLeft} size={16} />
-              <VexLink
-                href={`${adminRoot}/${activeCollection.slug}/${doc._id}`}
-                className="text-primary"
-              >
-                <span>{doc[activeCollection.admin.useAsTitle] as string}</span>
-              </VexLink>
-            </>
-          ) : (
-            <>
-              <VexLink
-                href={`${adminRoot}/${activeCollection.slug}/${doc._id}`}
-                className="text-primary"
-              >
-                <span>{doc[activeCollection.admin.useAsTitle] as string}</span>
-              </VexLink>
-              <Divider left={isLeft} size={16} />
-            </>
-          )}
-        </>
-      )}
-    </Fragment>,
-  ];
+  type Crumb = { key: string; href: string; label: string };
+  const crumbs: Crumb[] = [{ key: "home", href: adminRoot, label: "Home" }];
+  if (activeCollection) {
+    crumbs.push({
+      key: "collection",
+      href: `${adminRoot}/${activeCollection.slug}`,
+      label: activeCollection.labels.plural,
+    });
+    if (doc) {
+      crumbs.push({
+        key: "document",
+        href: `${adminRoot}/${activeCollection.slug}/${doc._id}`,
+        label: doc[activeCollection.admin.useAsTitle] as string,
+      });
+    }
+  } else if (isGlobals) {
+    // Globals crumbs are fully config-driven: a global's `label` IS its page
+    // title (spec 35, D16 — no useAsTitle), so no doc fetch and no `mounted`
+    // guard are needed here.
+    crumbs.push({ key: "globals", href: `${adminRoot}/globals`, label: "Globals" });
+    if (activeGlobal) {
+      crumbs.push({
+        key: "global",
+        href: `${adminRoot}/globals/${activeGlobal.slug}`,
+        label: activeGlobal.label,
+      });
+    }
+  }
+
+  const nav = crumbs.flatMap((crumb, i) => {
+    const isLast = i === crumbs.length - 1;
+    const link = (
+      <VexLink
+        key={crumb.key}
+        href={crumb.href}
+        className={cn(isLast ? "text-primary" : "hover:text-primary-hover")}
+      >
+        <span>{crumb.label}</span>
+      </VexLink>
+    );
+    return i === 0 ? [link] : [<Divider key={`div-${crumb.key}`} left={isLeft} size={16} />, link];
+  });
 
   return (
     <div className="flex items-center gap-2" suppressHydrationWarning>

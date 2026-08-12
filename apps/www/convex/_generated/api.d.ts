@@ -19,7 +19,7 @@ import type * as pages from "../pages.js";
 import type * as seed from "../seed.js";
 import type * as themes from "../themes.js";
 import type * as vex from "../vex.js";
-import type * as vex_collections from "../vex/collections.js";
+import type * as vex_globals from "../vex/globals.js";
 import type * as vex_media from "../vex/media.js";
 import type * as vexContext from "../vexContext.js";
 
@@ -41,7 +41,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   themes: typeof themes;
   vex: typeof vex;
-  "vex/collections": typeof vex_collections;
+  "vex/globals": typeof vex_globals;
   "vex/media": typeof vex_media;
   vexContext: typeof vexContext;
 }>;

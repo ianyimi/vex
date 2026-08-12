@@ -1,0 +1,177 @@
+/* ============================================================================
+   VexCMS · globals.css — drop-in for the shadcn/Tailwind v4 admin app.
+   Replaces apps/www/src/app/globals.css.
+
+   Palette: Stark × Ember (warm graphite + ember orange).
+   Light + dark in oklch so chart/contrast scaling is predictable.
+   ============================================================================ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@vexcms/next/styles";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Sharp radii — Vex is square. Override per-component if needed. */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 2px);
+  --radius-2xl: calc(var(--radius) + 6px);
+  --radius-3xl: calc(var(--radius) + 10px);
+  --radius-4xl: calc(var(--radius) + 14px);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   LIGHT — Stark
+   page  #F5F5F5  ·  surface #FFFFFF  ·  fg #0A0A0A
+   ember #F07040 (primary accent)
+   ──────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* page = neutral, surfaces ride on top */
+  --background:            oklch(96.1% 0 0);            /* #F5F5F5 */
+  --foreground:            oklch(13.7% 0 0);            /* #0A0A0A */
+
+  --card:                  oklch(100% 0 0);             /* #FFFFFF */
+  --card-foreground:       oklch(13.7% 0 0);
+  --popover:               oklch(100% 0 0);
+  --popover-foreground:    oklch(13.7% 0 0);
+
+  /* primary = graphite (buttons/text emphasis); accent = ember (call-to-action) */
+  --primary:               oklch(13.7% 0 0);            /* near-black graphite */
+  --primary-foreground:    oklch(98% 0 0);
+
+  --secondary:             oklch(96.9% 0 0);            /* raised gray */
+  --secondary-foreground:  oklch(13.7% 0 0);
+
+  --muted:                 oklch(96.9% 0 0);
+  --muted-foreground:      oklch(45.7% 0 0);            /* #666 */
+
+  --accent:                oklch(68.5% 0.165 45);       /* ember #F07040 */
+  --accent-foreground:     oklch(100% 0 0);
+
+  --destructive:           oklch(57.7% 0.198 27);       /* #DC2626 */
+  --destructive-foreground: oklch(98% 0 0);
+
+  --border:                oklch(54.6% 0 0);            /* #6B6B6B — bold inputs */
+  --input:                 oklch(54.6% 0 0);
+  --ring:                  oklch(68.5% 0.165 45);       /* ember focus ring */
+
+  --radius:                4px;                          /* sharp */
+
+  /* Sidebar — slightly raised vs page in light mode */
+  --sidebar:                          oklch(98% 0 0);            /* #FAFAFA */
+  --sidebar-foreground:               oklch(13.7% 0 0);
+  --sidebar-primary:                  oklch(68.5% 0.165 45);     /* ember */
+  --sidebar-primary-foreground:       oklch(100% 0 0);
+  --sidebar-accent:                   oklch(94.5% 0 0);          /* hover bg */
+  --sidebar-accent-foreground:        oklch(13.7% 0 0);
+  --sidebar-border:                   oklch(89% 0 0);
+  --sidebar-ring:                     oklch(68.5% 0.165 45);
+
+  /* Charts — ember-anchored series w/ neutrals */
+  --chart-1: oklch(68.5% 0.165 45);   /* ember */
+  --chart-2: oklch(45% 0 0);           /* graphite */
+  --chart-3: oklch(72% 0.10 60);       /* warm peach */
+  --chart-4: oklch(60% 0.04 30);       /* dusty terracotta */
+  --chart-5: oklch(78% 0 0);           /* light gray */
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   DARK — Stark dark
+   page  #0A0A0A  ·  surface #141414  ·  fg #F5F5F5
+   ember (slightly hotter for contrast)
+   ──────────────────────────────────────────────────────────────────────────── */
+.dark {
+  --background:            oklch(13.7% 0 0);            /* #0A0A0A */
+  --foreground:            oklch(96.1% 0 0);            /* #F5F5F5 */
+
+  --card:                  oklch(17.4% 0 0);            /* #141414 */
+  --card-foreground:       oklch(96.1% 0 0);
+  --popover:               oklch(17.4% 0 0);
+  --popover-foreground:    oklch(96.1% 0 0);
+
+  --primary:               oklch(96.1% 0 0);
+  --primary-foreground:    oklch(13.7% 0 0);
+
+  --secondary:             oklch(22.5% 0 0);            /* raised */
+  --secondary-foreground:  oklch(96.1% 0 0);
+
+  --muted:                 oklch(22.5% 0 0);
+  --muted-foreground:      oklch(63.9% 0 0);
+
+  --accent:                oklch(72% 0.175 50);         /* hotter ember in dark */
+  --accent-foreground:     oklch(13.7% 0 0);
+
+  --destructive:           oklch(63% 0.21 27);
+  --destructive-foreground: oklch(96.1% 0 0);
+
+  --border:                oklch(40% 0 0);              /* #5A5A5A */
+  --input:                 oklch(40% 0 0);
+  --ring:                  oklch(72% 0.175 50);
+
+  --sidebar:                          oklch(10.5% 0 0);          /* #050505 */
+  --sidebar-foreground:               oklch(96.1% 0 0);
+  --sidebar-primary:                  oklch(72% 0.175 50);
+  --sidebar-primary-foreground:       oklch(13.7% 0 0);
+  --sidebar-accent:                   oklch(22.5% 0 0);
+  --sidebar-accent-foreground:        oklch(96.1% 0 0);
+  --sidebar-border:                   oklch(28% 0 0);
+  --sidebar-ring:                     oklch(72% 0.175 50);
+
+  --chart-1: oklch(72% 0.175 50);
+  --chart-2: oklch(78% 0 0);
+  --chart-3: oklch(78% 0.12 65);
+  --chart-4: oklch(60% 0.06 30);
+  --chart-5: oklch(45% 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01" 1, "cv11" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+}

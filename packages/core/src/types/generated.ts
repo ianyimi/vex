@@ -1,3 +1,5 @@
+import { VexDocument } from "../api/convex";
+
 /**
  * Empty interface augmented by the generated `vex.types.ts` file.
  *
@@ -179,3 +181,132 @@ export type CollectionsFieldTypeMap = GeneratedVexTypes extends {
 }
   ? M
   : Record<string, Record<string, never>>;
+
+/**
+ * Union of all global slugs registered in this project's VexCMS config.
+ *
+ * - **Before `vex generate`:** resolves to `string`.
+ * - **After `vex generate`:** resolves to e.g. `"siteSettings" | "navigationConfig"`.
+ *
+ * @see {@link GeneratedVexTypes} for the augmentation interface
+ */
+export type GlobalSlug = GeneratedVexTypes extends { GlobalSlug: infer S extends string }
+  ? S
+  : string;
+
+/**
+ * Maps each global slug to its generated flat document interface.
+ *
+ * Each value type extends `VexDocumentGlobal<TSlug>` (which extends `VexDocument`)
+ * and adds user fields at root level — identical ergonomics to `DocumentBySlug`.
+ *
+ * - **Before `vex generate`:** resolves to `Record<string, unknown>`.
+ * - **After:** e.g. `{ siteSettings: SiteSettingsGlobal; nav: NavigationConfigGlobal }`.
+ *
+ * @see {@link GeneratedVexTypes} for the augmentation interface
+ */
+export type GlobalDocumentBySlug = GeneratedVexTypes extends {
+  GlobalDocumentBySlug: infer D extends Record<string, unknown>;
+}
+  ? D
+  : Record<string, unknown>;
+
+/**
+ * Per-global field-type map. Augmented by `vex generate`. Powers
+ * `GlobalRelationshipKeysOf<TGlobalSlug>` for populate type narrowing.
+ *
+ * Structure: `{ globalSlug: { fieldType: "fieldKey1" | "fieldKey2" } }`.
+ */
+export type GlobalsFieldTypeMap = GeneratedVexTypes extends {
+  GlobalsFieldTypeMap: infer M extends Record<string, Record<string, string>>;
+}
+  ? M
+  : Record<string, Record<string, never>>;
+
+/**
+ * Flat global document returned by `globals.get` and `globals.find`.
+ *
+ * Extends `VexDocument` (inheriting `_id: string` and `_creationTime: number`)
+ * and adds `_slug: TSlug` as the discriminator field. The generated per-global
+ * interfaces (e.g. `SiteSettingsGlobal`) extend this type and add user fields.
+ *
+ * When called with a typed `TSlug`, `globals.get` returns
+ * `GlobalDocumentBySlug[TSlug]` (the concrete generated interface), not this
+ * base type. This type is the fallback for unnarrowed contexts (e.g. the return
+ * of `findGlobals`).
+ *
+ * @typeParam TSlug - The global slug. Defaults to `GlobalSlug` (all slugs).
+ *
+ * @example
+ * ```ts
+ * const doc: VexDocumentGlobal<"siteSettings"> = ...;
+ * doc._slug;         // "siteSettings"
+ * doc._id;           // string (from VexDocument)
+ * doc._creationTime; // number (from VexDocument)
+ * // user fields are accessible via the index signature: doc["siteName"]
+ * ```
+ *
+ * @see {@link VexDocument} for the base type
+ */
+export interface VexDocumentGlobal<TSlug extends GlobalSlug = GlobalSlug> extends VexDocument {
+  /**
+   * The global slug — uniquely identifies which global this document is.
+   * Renamed from `slug` (the DB column name) at the API layer to avoid
+   * collisions with user-defined field keys.
+   */
+  _slug: TSlug;
+}
+
+/**
+ * Relationship field keys on `TGlobalSlug`. Reads `GlobalsFieldTypeMap`.
+ * Used to narrow the `populate` arg of `globals.get` / `globals.find`.
+ *
+ * @typeParam TGlobalSlug - The global slug.
+ */
+export type GlobalRelationshipKeysOf<TGlobalSlug extends GlobalSlug> =
+  TGlobalSlug extends keyof GlobalsFieldTypeMap
+    ? "relationship" extends keyof GlobalsFieldTypeMap[TGlobalSlug]
+      ? GlobalsFieldTypeMap[TGlobalSlug]["relationship"] & string
+      : never
+    : never;
+
+/**
+ * Populate options for a global — keys restricted to relationship fields via
+ * `GlobalRelationshipKeysOf<TGlobalSlug>`. Mirrors `PopulateShape` for
+ * collections; nested populate resolves to collection populate shapes since
+ * globals relate to collections, not to other globals.
+ *
+ * @typeParam TGlobalSlug - The global slug.
+ */
+export type GlobalPopulateShape<TGlobalSlug extends GlobalSlug = GlobalSlug> = {
+  [K in GlobalRelationshipKeysOf<TGlobalSlug>]?: true | { populate: Record<string, unknown> };
+};
+
+/**
+ * Return type of `globals.get` when `populate` is provided. Maps over
+ * `GlobalDocumentBySlug[TGlobalSlug]` replacing each populated relationship
+ * field's `string` type with `Doc<TargetSlug>[]`.
+ *
+ * Mirrors `Populated<TCollectionSlug, TPopulate>` from the collection API;
+ * operates on `GlobalDocumentBySlug` instead of `DocumentBySlug`.
+ *
+ * @typeParam TGlobalSlug - The global slug.
+ * @typeParam TPopulate - The populate options object.
+ */
+export type GlobalPopulated<
+  TGlobalSlug extends GlobalSlug,
+  TPopulate extends GlobalPopulateShape<TGlobalSlug>,
+> = TGlobalSlug extends keyof GlobalDocumentBySlug
+  ? {
+      [K in keyof GlobalDocumentBySlug[TGlobalSlug]]: K extends keyof TPopulate
+        ? K extends string
+          ? GlobalDocumentBySlug[TGlobalSlug][K] extends string | undefined
+            ? // Relationship field: replace ID string with resolved doc array
+              TPopulate[K] extends { populate: infer _NestedPopulate }
+              ? Record<string, unknown>[] // nested populate — widened for now (see Out of Scope)
+              : Record<string, unknown>[]
+            : GlobalDocumentBySlug[TGlobalSlug][K]
+          : GlobalDocumentBySlug[TGlobalSlug][K]
+        : GlobalDocumentBySlug[TGlobalSlug][K];
+    }
+  : never;

@@ -37,7 +37,7 @@ file is dirty), note it in the final summary instead of blocking on it.
    raw `.commit.md` (machine source for `git commit -F`) and the day's ledger
    `.agent/docs/commits/MM-DD-YYYY.md`. Its output is a terse first draft — ALWAYS rewrite
    both files to match `references/commit-format.md` (correct `type(scope)` title, rich prose
-   body naming symbols/why, `Breaking changes:` if any, and the always-present `Spec:`/`Log:`
+   body naming symbols/why, a `!`/`BREAKING CHANGE:` indicator if any, and the always-present `Spec:`/`Log:`
    footer). **Write the ledger as plain Markdown — strip the ``` code fence** `harness log
    commit-msg` adds; the message is not a code block. Then make sure today's session-log entry
    already contains the session's decisions (add them if missing) and, AFTER those decisions,

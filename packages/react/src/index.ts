@@ -96,6 +96,8 @@ export {
   MediaCollectionListView,
   MediaCollectionEditView,
   CollectionEditView,
+  GlobalEditView,
+  GlobalsListView,
 } from "./components";
 
 export type { AdminUser, AdminLayoutProps, AppSidebarProps } from "./components";

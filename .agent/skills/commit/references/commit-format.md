@@ -1,89 +1,92 @@
 # Commit Message Format
 
-The authoritative guide for writing commit messages in this project. `harness log commit-msg`
-emits a terse first draft; ALWAYS rewrite it into this format before finishing.
+Convention: [Conventional Commits](https://www.conventionalcommits.org/) (qoomon cheatsheet).
+`harness log commit-msg` emits a terse first draft; ALWAYS rewrite it into this format.
 
-## Title
+    type(scope): description      ← subject
+    <blank line>
+    body                          ← optional, why + contrast with previous behavior
+    <blank line>
+    footer                        ← Spec/Log always; issues + BREAKING CHANGE when relevant
 
-`type(scope): description` — ≤ 72 chars, lowercase description, no trailing period.
+## Type — everyday set (keep it small)
 
-- **scope** = the affected area or workspace package (`admin`, `api`, `pagination`, `core`,
-  `react`, `docs`, `theme`, …). Omit only when nothing fits.
+Reach for these four first:
 
-### Types — pick the one matching the PRIMARY change
+- **feat** — adds/adjusts/removes a feature or public API surface (new export, option,
+  component, user-visible behavior). New API → bumps a package minor.
+- **fix** — corrects a bug or wrong behavior/type.
+- **refactor** — restructures code without changing behavior or public API.
+- **chore** — tooling, config, deps, scaffolding, harness/CI — no product behavior change.
 
-| Type | Use when |
-|------|----------|
-| `feat` | Ships a new capability or new public API surface (a new export, option, component, or user-visible feature). New exports that bump a package minor are `feat`. |
-| `fix` | Corrects a bug or wrong behavior/type (e.g. a type that was wrongly optional). |
-| `refactor` | Restructures code without changing behavior or public API. |
-| `perf` | A change made specifically to improve performance. |
-| `docs` | **Documentation ONLY — no source code changes.** If any package `src/**` changed, it is NOT `docs:`. |
-| `test` | Adds or changes tests only. |
-| `chore` | Tooling, config, scaffolding, deps, harness/CI — no product code behavior change. |
+Also valid when they fit precisely (from the cheatsheet): `docs` (documentation **only** — no
+`src/**` change), `test` (tests only), `perf` (a refactor specifically for performance),
+`style` (formatting/whitespace), `build` (build tooling/deps/version), `ops` (infra/CI/CD).
 
-### Choosing the type for a mixed change
+Mixed change? Prefer **splitting** into one commit per type. If shipping as one, title with the
+**primary** change's type and cover the rest as body groups. A commit that changes `src/**` is
+never `docs`.
 
-- **Prefer splitting** into separate commits, one type each (e.g. `chore:` harness setup,
-  `feat(docs):` the API reference, `fix(core):` the type bug). This is the cleanest option.
-- If committing as one, title with the type of the **primary/headline** change and cover the
-  rest as body groups. A commit that ships code is never `docs:` even if docs are the theme —
-  use `feat`/`fix`/`chore` as appropriate.
+## Subject rules
+
+- `scope` is optional, project-defined (`api`, `core`, `react`, `admin`, `docs`, …); no issue ids.
+- description: **imperative present** ("add", not "added"/"adds"), **no capital first letter**,
+  **no trailing period**, ≤ 72 chars total.
+- Breaking change → put `!` before the colon: `feat(api)!: remove status endpoint`.
 
 ## Body — rich prose, never a file list
 
-Explain what changed AND why, naming the concrete symbols/APIs/files and the mechanism. The
-diff already lists files; the message says why. Two shapes:
+Explain the motivation and contrast with previous behavior, naming concrete symbols/APIs. The
+diff already lists files. Two shapes:
+- **Multi-concern → bold-headed paragraphs**, one per concern (`**Media admin parity.** …`).
+- **Single-concern → paragraphs or full-sentence bullets**, each a complete thought.
 
-- **Multi-concern commit → bold-headed paragraphs**, one per concern, each with a short bold
-  lead-in and a full explanatory paragraph:
+## Footer
 
-      **Media admin parity.** MediaCollectionListView was rewritten to use usePaginatedQuery
-      and the shared DataTable, giving it cursor pagination and bulk delete …
+- **Breaking changes** (if any): a line starting exactly `BREAKING CHANGE: <what + migration>`
+  (or two newlines after `BREAKING CHANGE:` for a multi-line description). Pair with the `!`
+  subject indicator.
+- Issue refs when relevant: `Closes #123`, `Fixes JIRA-456`.
+- **Project overlay — ALWAYS these two lines, last:**
 
-- **Single-concern commit → explanatory paragraphs or full-sentence bullets**, each a complete
-  thought stating the change and its rationale (not a fragment).
+      Spec: <path to driving spec, or: none>
+      Log: <path to today's session-log entry, or: none>
 
-## Breaking changes
+## Versioning tie-in (changesets)
 
-When callers must migrate, add a `Breaking changes:` section with one bullet per break, showing
-old → new call shape.
+Breaking → major · `feat`/`fix` → minor/patch · everything else → patch. Match the changeset
+bump to the commit type.
 
-## Footer — ALWAYS both lines, trailing the body
+## Storage & where it lands
 
-    Spec: <path to the driving spec, or: none>
-    Log: <path to today's session-log entry, or the ideaLog; or: none>
+- **`.agent/docs/commits/MM-DD-YYYY.md` (ledger) holds the FULL message** to copy from — plain
+  Markdown, **no ``` code fence** (strip the one `harness log commit-msg` adds). One `## HH:MM`
+  section per commit.
+- **`.agent/docs/session-log/.../YYYY-MM-DD.commit.md`** — raw source for `git commit -F`
+  (agent-commits mode). Same content, no fence.
+- **The session-log entry never duplicates the message.** It carries the session's decisions
+  (add them if missing); after them, leave one link to the ledger as the "committed up to here"
+  marker: `_Commit → [<subject>](../../../commits/MM-DD-YYYY.md)_`.
 
-`Spec: none` for ad-hoc work with no spec. `Log:` points to
-`.agent/docs/session-log/YYYY/MM/YYYY-MM-DD.log.md`.
+## Examples
 
-## Where the message is stored (and its shape)
+    feat(api): add pagination and bulk operations to find and remove
 
-- **`.agent/docs/commits/MM-DD-YYYY.md` — the day's ledger — holds the FULL message** the
-  developer copies from. One `## HH:MM` section per commit. **Write it as plain Markdown — do
-  NOT wrap the message in a ``` code block.** (`harness log commit-msg` fences it by default;
-  remove the fence.)
-- **`.agent/docs/session-log/.../YYYY-MM-DD.commit.md`** — the raw machine source fed to
-  `git commit -F` in agent-commits mode. Plain text, same content, no fence.
-- **The session log entry does NOT duplicate the message.** The log already carries the
-  session's ideas/decisions (write them there if missing). After the decisions, leave a single
-  link to the commit ledger — it marks "everything up to this point was committed to source":
+    Add optional `paginationOpts` to `find`/`search`; when present they return
+    `{ page, continueCursor, isDone }` instead of a plain array. Refactor `remove` to take an
+    `ids` array with an optional `softDelete` field name.
 
-      _Committed → [feat(docs): generate multi-package TypeDoc API reference](../../commits/MM-DD-YYYY.md)_
-
-## Example
-
-    feat(api): add pagination and bulk operations to find, search, and remove
-
-    Adds native Convex pagination to `find` and `search` via an optional `paginationOpts`
-    argument. When provided they return `{ page, continueCursor, isDone }` instead of a plain
-    array, enabling cursor-based navigation over large datasets without loading everything.
-
-    Refactors `remove` to support bulk + soft delete: `id` becomes an `ids` array, and an
-    optional `softDelete` field name sets that field to `true` instead of deleting.
-
-    Breaking changes:
-    - `remove({ ctx, id })` → `remove({ ctx, ids: [id] })`
+    BREAKING CHANGE: remove({ ctx, id }) becomes remove({ ctx, ids: [id] }).
 
     Spec: .agent/docs/specs/2026-07-12-pagination/spec.md
     Log: .agent/docs/session-log/2026/07/2026-07-21.log.md
+
+    ---
+
+    fix(core): make resolved relationship admin config extend the resolved base
+
+    RelationshipFieldAdminConfig extended the input base, so resolved admin props were wrongly
+    optional and TypeDoc saw duplicate declarations. Extend FieldAdminConfig instead.
+
+    Spec: none
+    Log: .agent/docs/session-log/2026/08/2026-08-04.log.md

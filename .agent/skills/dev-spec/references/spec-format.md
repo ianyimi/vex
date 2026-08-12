@@ -11,7 +11,7 @@ Frontmatter (written by `harness spec new`, keep all four keys):
 3. `## Design Decisions` — numbered; every decision carries a one-line why. Decisions made in
    the interview land here, not in prose scattered through the spec.
 4. `## Out of Scope` — the explicit exclusion list from the interview. Binding.
-5. `## Implementation` — one `### T<n> — <title>` per task group, mirroring spec-tasks.md
+5. `## Implementation` — one `### Step <n> — <title>` per task group, mirroring spec-tasks.md
    exactly (same ids, same titles). Each group contains:
    - `- [ ]` checkboxes for every file created/modified and every command run
    - a `[dev]` or `[agent]` tag ([dev] = developer implements, [agent] = boilerplate)

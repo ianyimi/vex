@@ -6,7 +6,7 @@
 /* eslint-disable perfectionist/sort-modules */
 
 import type { Id } from "@convex/_generated/dataModel"
-import type { VexDocument } from "@vexcms/core"
+import type { VexDocument, VexDocumentGlobal } from "@vexcms/core"
 
 export type HeroBlock = {
   blockType: "hero"
@@ -453,6 +453,13 @@ export interface ImagesDocument extends VexDocument {
   height?: number
 }
 
+export interface NavGlobal extends VexDocumentGlobal<"nav"> {
+  items?: {
+    title?: string
+    href?: string
+  }[]
+}
+
 export type CollectionSlug =
   | "pages"
   | "headers"
@@ -471,6 +478,8 @@ export type CollectionSlug =
   | "apikey"
   | "jwks"
   | "images"
+
+export type GlobalSlug = "nav"
 
 export type MediaCollectionSlug = "images"
 
@@ -496,6 +505,10 @@ export type DocumentBySlug = {
   images: ImagesDocument
 }
 
+export type GlobalDocumentBySlug = {
+  nav: NavGlobal
+}
+
 declare module "@vexcms/core" {
   interface GeneratedVexTypes {
     CollectionSlug:
@@ -516,6 +529,7 @@ declare module "@vexcms/core" {
       | "apikey"
       | "jwks"
       | "images"
+    GlobalSlug: "nav"
     MediaCollectionSlug: "images"
     StorageAdapterSlug: "convex"
     DocumentBySlug: {
@@ -536,6 +550,9 @@ declare module "@vexcms/core" {
       apikey: ApikeyDocument
       jwks: JwksDocument
       images: ImagesDocument
+    }
+    GlobalDocumentBySlug: {
+      nav: NavGlobal
     }
     CollectionsFieldTypeMap: {
       pages: {
@@ -659,6 +676,12 @@ declare module "@vexcms/core" {
         text: "filename" | "alt" | "mimeType" | "storageId" | "src"
         number: "size" | "width" | "height"
         checkbox: "deleted"
+      }
+    }
+    GlobalsFieldTypeMap: {
+      nav: {
+        id: "_id"
+        array: "items"
       }
     }
   }

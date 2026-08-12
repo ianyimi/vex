@@ -1,0 +1,289 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>VexCMS · Marketing Site</title>
+  <link rel="icon" href="assets/favicon.svg">
+  <link rel="stylesheet" href="site.css?v=responsive4">
+  <style>
+    body { margin: 0; background: #f0eee9; font-family: "Geist", system-ui, sans-serif; }
+
+    /* Each artboard needs to scroll independently within its fixed frame. */
+    .www-shell {
+      width: 1200px;
+      height: 900px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: var(--page);
+      color: var(--fg);
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      position: relative;
+    }
+    /* Tablet + mobile shells override width via inline style on the parent
+       artboard; the .www-shell adapts by width: 100% / height: 100%.       */
+    .www-shell[data-vp="tablet"],
+    .www-shell[data-vp="mobile"] {
+      width: 100%;
+      height: 100%;
+    }
+    .www-shell[data-vp="mobile"] {
+      border-radius: 28px;       /* device-frame feel */
+    }
+    .www-shell[data-vp="tablet"] {
+      border-radius: 18px;
+    }
+    .www-shell::-webkit-scrollbar { width: 10px; }
+    .www-shell[data-vp="mobile"]::-webkit-scrollbar { width: 4px; }
+    .www-shell[data-vp="tablet"]::-webkit-scrollbar { width: 6px; }
+    .www-shell::-webkit-scrollbar-track { background: transparent; }
+    .www-shell::-webkit-scrollbar-thumb { background: var(--line-bold); border-radius: 10px; border: 2px solid var(--page); }
+
+    /* Full-page overview shell — natural height, no scrollbox.
+       Used by the "Full pages" section so each route extends downwards.
+       A vertical guide on the left of each artboard marks the 900px
+       fold lines so you can see how the page falls across screens. */
+    .www-shell-full {
+      width: 1200px;
+      background: var(--page);
+      color: var(--fg);
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      position: relative;
+      overflow: hidden;
+    }
+    .fold-rail {
+      position: absolute;
+      top: 0; bottom: 0;
+      left: -56px;
+      width: 40px;
+      pointer-events: none;
+      font-family: "Geist Mono", ui-monospace, monospace;
+      font-size: 9px;
+      color: rgba(160,160,160,.6);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .fold-rail .fold {
+      position: absolute;
+      left: 0; right: 0;
+      height: 1px;
+      border-top: 1px dashed rgba(160,160,160,.35);
+    }
+    .fold-rail .fold::after {
+      content: attr(data-label);
+      position: absolute;
+      left: 0; top: -14px;
+      font-size: 9px;
+      color: rgba(160,160,160,.7);
+    }
+    .fold-line-overlay {
+      position: absolute;
+      left: 0; right: 0;
+      height: 0;
+      border-top: 1px dashed rgba(240,112,64,.18);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* Notes block used at top of canvas */
+    .dc-notes {
+      font-family: "Geist", system-ui, sans-serif;
+      color: #3a322a; max-width: 720px;
+    }
+    .dc-notes h2 { font-size: 22px; letter-spacing: -0.02em; margin: 0 0 8px; }
+    .dc-notes p { font-size: 14px; line-height: 1.55; color: #5a4f42; margin: 0 0 8px; }
+    .dc-notes ul { margin: 6px 0 0 18px; padding: 0; font-size: 13.5px; color: #5a4f42; line-height: 1.6; }
+    .dc-notes code {
+      font-family: "Geist Mono", ui-monospace, monospace;
+      background: rgba(103,65,217,.08);
+      color: #4D29B0;
+      padding: 1px 6px; border-radius: 3px;
+      font-size: 12px;
+    }
+  </style>
+
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="components.jsx"></script>
+  <script type="text/babel" src="pages.jsx"></script>
+
+  <script type="text/babel">
+    const { useEffect } = React;
+
+      const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+        "theme": "dark",
+        "accentIntensity": "reserved",
+        "heroTagline": "tagline"
+      }/*EDITMODE-END*/;
+
+    // Renders a route at its full natural height with 900px fold guides.
+    // The artboard size is fixed (height comes from the parent DCArtboard);
+    // we render fold lines based on that explicit height to stay alignable.
+    function FullPageInner({ page, tagline, height, vp = "desktop" }) {
+      const FOLD = vp === "mobile" ? 844 : vp === "tablet" ? 1024 : 900;
+      const folds = [];
+      for (let y = FOLD; y < height; y += FOLD) {
+        folds.push(
+          <div key={y} className="fold" data-label={`fold ${Math.round(y / FOLD)} · ${y}px`} style={{ top: y }} />
+        );
+        folds.push(
+          <div key={`o-${y}`} className="fold-line-overlay" style={{ top: y }} />
+        );
+      }
+      return (
+        <div className="www-shell-full" data-vp={vp} style={{ minHeight: height }}>
+          <div className="fold-rail">
+            <div className="fold" data-label={`fold 0 · 0px`} style={{ top: 0 }} />
+            {folds}
+          </div>
+          <Site variant="A" startPage={page} tagline={tagline} fullHeight vp={vp} />
+        </div>
+      );
+    }
+
+    function App() {
+      const [t, setT] = useTweaks(TWEAK_DEFAULTS);
+
+      // Theme + accent-intensity apply to every .vex-www shell on the canvas.
+      useEffect(() => {
+        document.body.classList.toggle("light", t.theme === "light");
+        document.body.classList.add("vex-www");
+        // Accent intensity drives the hero glow opacity.
+        const glow = t.accentIntensity === "loud"     ? "1.6"
+                  :  t.accentIntensity === "balanced" ? "1.0"
+                  :                                     "0.6";
+        document.body.style.setProperty("--glow-strength", glow);
+      }, [t.theme, t.accentIntensity]);
+
+      // Icons self-render via the Icon component's per-instance effect.
+      // No polling — prevents console spam and avoids re-upgrading existing SVGs.
+
+      // (variant A only now — no heroVisual mapping needed)
+
+      return (
+        <>
+          <DesignCanvas>
+            <div className="dc-notes" style={{ padding: "8px 2px 18px", maxWidth: 920 }}>
+              <h2>VexCMS · vexcms.dev — full responsive matrix</h2>
+              <p>
+                Each route is shown at <strong>three sizes side-by-side</strong>:
+                <code>desktop 1200</code> · <code>tablet 768</code> · <code>mobile 390</code>.
+                Every artboard is a real, scrollable full-page render — designed
+                to be developed against directly. Heights are tuned per page; dashed
+                lines mark the per-device fold so you can see how content falls
+                across screens.
+              </p>
+              <p>
+                Theme is <strong>Stark × Ember</strong>: pure neutral surfaces,
+                single Ember Orange accent, sharp 2–4px radii, Geist throughout.
+                The same component code drives every size — responsive behavior
+                is owned by <code>data-vp</code> on the shell.
+              </p>
+            </div>
+
+            <DCSection id="home-matrix" title="Home — full page × every size" subtitle="Hero, schema sample, feature grid, reactivity demo, CTA, footer.">
+              <DCArtboard id="home-desktop" label="Desktop · 1200×4600" width={1200} height={4600}>
+                <FullPageInner page="home" tagline={t.heroTagline} height={4600} vp="desktop" />
+              </DCArtboard>
+              <DCArtboard id="home-tablet"  label="Tablet · 768×4400"  width={768}  height={4400}>
+                <FullPageInner page="home" tagline={t.heroTagline} height={4400} vp="tablet" />
+              </DCArtboard>
+              <DCArtboard id="home-mobile"  label="Mobile · 390×5400"  width={390}  height={5400}>
+                <FullPageInner page="home" tagline={t.heroTagline} height={5400} vp="mobile" />
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection id="features-matrix" title="Features — full page × every size" subtitle="Feature grid + admin panel mockup (native HTML matching the site theme) + reactivity demo.">
+              <DCArtboard id="features-desktop" label="Desktop · 1200×3900" width={1200} height={3900}>
+                <FullPageInner page="features" tagline={t.heroTagline} height={3900} vp="desktop" />
+              </DCArtboard>
+              <DCArtboard id="features-tablet"  label="Tablet · 768×4200"  width={768}  height={4200}>
+                <FullPageInner page="features" tagline={t.heroTagline} height={4200} vp="tablet" />
+              </DCArtboard>
+              <DCArtboard id="features-mobile"  label="Mobile · 390×5200"  width={390}  height={5200}>
+                <FullPageInner page="features" tagline={t.heroTagline} height={5200} vp="mobile" />
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection id="pricing-matrix" title="Pricing — full page × every size" subtitle="MIT core / enterprise / priority support — tiers stack on tablet & mobile.">
+              <DCArtboard id="pricing-desktop" label="Desktop · 1200×2700" width={1200} height={2700}>
+                <FullPageInner page="pricing" tagline={t.heroTagline} height={2700} vp="desktop" />
+              </DCArtboard>
+              <DCArtboard id="pricing-tablet"  label="Tablet · 768×3000"  width={768}  height={3000}>
+                <FullPageInner page="pricing" tagline={t.heroTagline} height={3000} vp="tablet" />
+              </DCArtboard>
+              <DCArtboard id="pricing-mobile"  label="Mobile · 390×3400"  width={390}  height={3400}>
+                <FullPageInner page="pricing" tagline={t.heroTagline} height={3400} vp="mobile" />
+              </DCArtboard>
+            </DCSection>
+
+            <DCSection id="roadmap-matrix" title="Roadmap — full page × every size" subtitle="Spec-numbered list — collapses to stacked card rows on mobile.">
+              <DCArtboard id="roadmap-desktop" label="Desktop · 1200×3200" width={1200} height={3200}>
+                <FullPageInner page="roadmap" tagline={t.heroTagline} height={3200} vp="desktop" />
+              </DCArtboard>
+              <DCArtboard id="roadmap-tablet"  label="Tablet · 768×3400"  width={768}  height={3400}>
+                <FullPageInner page="roadmap" tagline={t.heroTagline} height={3400} vp="tablet" />
+              </DCArtboard>
+              <DCArtboard id="roadmap-mobile"  label="Mobile · 390×3800"  width={390}  height={3800}>
+                <FullPageInner page="roadmap" tagline={t.heroTagline} height={3800} vp="mobile" />
+              </DCArtboard>
+            </DCSection>
+          </DesignCanvas>
+
+          <TweaksPanel title="Tweaks" defaultPos={{ right: 24, bottom: 24 }}>
+            <TweakSection title="Theme">
+              <TweakRadio
+                label="Mode"
+                value={t.theme}
+                onChange={(v) => setT({ theme: v })}
+                options={[
+                  { value: "dark",  label: "Dark" },
+                  { value: "light", label: "Light" },
+                ]}
+              />
+            </TweakSection>
+            <TweakSection title="Accent intensity">
+              <TweakRadio
+                label="Ember presence"
+                value={t.accentIntensity}
+                onChange={(v) => setT({ accentIntensity: v })}
+                options={[
+                  { value: "reserved",  label: "Reserved" },
+                  { value: "balanced",  label: "Balanced" },
+                  { value: "loud",      label: "Loud" },
+                ]}
+              />
+            </TweakSection>
+            <TweakSection title="Hero copy">
+              <TweakRadio
+                label="Tagline"
+                value={t.heroTagline}
+                onChange={(v) => setT({ heroTagline: v })}
+                options={[
+                  { value: "tagline",  label: "Real-time content. Type-safe by default." },
+                  { value: "category", label: "The Convex-native CMS." },
+                  { value: "dev",      label: "Your schema. Your types. Your rules." },
+                  { value: "clever",   label: "The CMS that thinks in types." },
+                ]}
+              />
+            </TweakSection>
+          </TweaksPanel>
+        </>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
