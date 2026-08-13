@@ -1,4 +1,5 @@
 ## In Progress
+- RBAC access control (spec 2026-08-12-rbac-access-control)
 
 ## Inbox
 - Rename naming outliers: MediaLibaryGrid.tsx, use-mobile.ts, blocks/logo-cloud.ts
