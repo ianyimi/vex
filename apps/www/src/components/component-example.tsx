@@ -58,7 +58,7 @@ export function ComponentExample() {
         )}
       </div>
 
-      <code className="bg-muted text-muted-foreground rounded-lg px-4 py-2 text-sm font-mono">
+      <code className="bg-muted text-muted-foreground rounded-lg px-4 py-2 font-mono text-sm">
         npx create-vexcms@latest
       </code>
     </div>

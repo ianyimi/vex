@@ -1,10 +1,12 @@
+"use client";
+
 import type { ReactNode } from "react";
-import type { VexConfig } from "@vexcms/core";
+import type { ClientVexConfig } from "@vexcms/core";
 import {
   FrameworkComponentsContext,
   type FrameworkComponents,
 } from "../hooks/useFrameworkComponents";
-import { VexConfigContext } from "../context";
+import { VexAuthProvider, VexConfigContext } from "../context";
 import { AppSidebar } from "./AdminSidebar";
 import {
   SidebarInset,
@@ -14,7 +16,6 @@ import {
   ThemeProvider,
 } from "./ui";
 import AdminTopNav from "./AdminTopNav";
-import { sanitizeConfigForClient } from "@vexcms/core";
 
 /**
  * User data displayed in the admin shell.
@@ -23,7 +24,8 @@ import { sanitizeConfigForClient } from "@vexcms/core";
  * All fields are optional so the admin shell degrades gracefully when no user
  * is provided.
  */
-export interface AdminUser {
+export interface AdminUser extends Record<string, unknown> {
+  [key: string]: unknown;
   /** Display name. */
   name?: string;
   /** User email. */
@@ -37,7 +39,7 @@ export interface AdminUser {
  */
 export interface AdminLayoutProps {
   /** The full resolved VexCMS config — forwarded to `AppSidebar`. */
-  config: VexConfig;
+  config: ClientVexConfig;
   /**
    * The slug of the currently active collection.
    * Forwarded to `AppSidebar` for active nav highlighting.
@@ -68,6 +70,7 @@ export interface AdminLayoutProps {
    */
   components?: FrameworkComponents;
   user?: AdminUser;
+  organization?: Record<string, unknown>;
   sidebarOpen?: boolean;
 }
 
@@ -102,13 +105,15 @@ export interface AdminLayoutProps {
  * ```
  */
 export function AdminLayout(props: AdminLayoutProps) {
-  // Sanitize config for client components (strips storageAdapters, recursively sanitizes mediaCollections)
-  const clientConfig = sanitizeConfigForClient(props.config);
-
-  const side = clientConfig.admin.sidebar.side;
+  const side = props.config.admin.sidebar.side;
 
   const sidebar = (
-    <AppSidebar config={clientConfig} activeSlug={props.activeSlug} user={props.user} />
+    <AppSidebar
+      config={props.config}
+      activeSlug={props.activeSlug}
+      activeDocID={props.activeDocID}
+      user={props.user}
+    />
   );
 
   const content = (
@@ -138,26 +143,30 @@ export function AdminLayout(props: AdminLayoutProps) {
   );
 
   return (
-    <VexConfigContext.Provider value={clientConfig}>
-      <FrameworkComponentsContext.Provider value={props.components ?? {}}>
-        <ThemeProvider>
-          <TooltipProvider>
-            <SidebarProvider defaultOpen={props.sidebarOpen}>
-              {side === "right" ? (
-                <>
-                  {content}
-                  {sidebar}
-                </>
-              ) : (
-                <>
-                  {sidebar}
-                  {content}
-                </>
-              )}
-            </SidebarProvider>
-          </TooltipProvider>
-        </ThemeProvider>
-      </FrameworkComponentsContext.Provider>
+    <VexConfigContext.Provider value={props.config}>
+      <VexAuthProvider
+        value={{ user: props.user as Record<string, unknown>, organization: props.organization }}
+      >
+        <FrameworkComponentsContext.Provider value={props.components ?? {}}>
+          <ThemeProvider>
+            <TooltipProvider>
+              <SidebarProvider defaultOpen={props.sidebarOpen}>
+                {side === "right" ? (
+                  <>
+                    {content}
+                    {sidebar}
+                  </>
+                ) : (
+                  <>
+                    {sidebar}
+                    {content}
+                  </>
+                )}
+              </SidebarProvider>
+            </TooltipProvider>
+          </ThemeProvider>
+        </FrameworkComponentsContext.Provider>
+      </VexAuthProvider>
     </VexConfigContext.Provider>
   );
 }

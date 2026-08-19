@@ -1,6 +1,10 @@
 import { convexQuery } from "@convex-dev/react-query";
-import { vexConvexApi } from "../convex";
+import type { FunctionReference } from "convex/server";
+
+import { vexConvexApi, type VexGlobalsGetArgs } from "../convex";
 import type { GlobalSlug, GlobalPopulateShape } from "../../types/generated";
+import type { VexQueryOptions } from "../types";
+import type { GetGlobalReturn } from "./get.server";
 
 /**
  * Client-side args for `globals.get`.
@@ -48,9 +52,21 @@ export interface GetGlobalClientArgs<
  */
 export function getGlobal<
   TSlug extends GlobalSlug = GlobalSlug,
-  TPopulate extends GlobalPopulateShape<TSlug> = Record<string, never>,
->(args: GetGlobalClientArgs<TSlug, TPopulate>) {
-  return convexQuery(vexConvexApi.globals.get, {
+  const TPopulate extends GlobalPopulateShape<TSlug> = Record<string, never>,
+>(
+  args: GetGlobalClientArgs<TSlug, TPopulate>,
+): VexQueryOptions<VexGlobalsGetArgs, GetGlobalReturn<TSlug, TPopulate, 0>> {
+  // Cast for the reason documented on `get`: `api.vex.globals.get` is one
+  // registered function serving every global, so its return type is fixed at
+  // codegen and the runtime `slug` cannot narrow it. `GetGlobalClientArgs` has
+  // no `depth`, hence the literal `0`.
+  const funcRef = vexConvexApi.globals.get as FunctionReference<
+    "query",
+    "public",
+    VexGlobalsGetArgs,
+    GetGlobalReturn<TSlug, TPopulate, 0>
+  >;
+  return convexQuery(funcRef, {
     slug: args.slug,
     populate: args.populate,
   });

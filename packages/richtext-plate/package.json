@@ -1,6 +1,9 @@
 {
   "name": "@vexcms/richtext-plate",
   "version": "0.1.0-alpha.1",
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -16,9 +19,9 @@
       "import": "./dist/render/index.js"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -26,20 +29,17 @@
     "typecheck": "tsc --noEmit -p tsconfig.check.json"
   },
   "dependencies": {
-    "@vexcms/core": "workspace:*",
     "@platejs/basic-nodes": "catalog:",
     "@platejs/code-block": "catalog:",
     "@platejs/link": "catalog:",
     "@platejs/list": "catalog:",
     "@platejs/media": "catalog:",
     "@platejs/table": "catalog:",
+    "@vexcms/core": "workspace:*",
     "platejs": "catalog:"
   },
-  "peerDependencies": {
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
-  },
   "devDependencies": {
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
@@ -49,7 +49,8 @@
     "tsup": "catalog:",
     "typescript": "catalog:"
   },
-  "publishConfig": {
-    "access": "public"
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   }
 }

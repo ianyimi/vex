@@ -4,7 +4,13 @@ import { describe, expect, test } from "vitest";
 
 import * as _generatedApi from "../test/convex/_generated/api";
 import schema from "../test/convex/schema";
+import type { VexConfig } from "../../config";
 import { remove } from "./server";
+
+
+// Minimal resolved-config fixture: these server functions only read
+// `config.access` (undefined here → RBAC off) at this layer.
+const fixtureConfig = { collections: [] } as unknown as VexConfig;
 
 const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
@@ -15,7 +21,7 @@ describe("remove (server)", () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       const id = await ctx.db.insert("posts", { title: "Doomed", slug: "d" });
-      await remove({ ctx, ids: [id] });
+      await remove({ ctx, ids: [id], collection: "posts", config: fixtureConfig });
       const doc = await ctx.db.get(id);
       expect(doc).toBeNull();
     });
@@ -28,7 +34,7 @@ describe("remove (server)", () => {
       const id2 = await ctx.db.insert("posts", { title: "Post 2", slug: "p2" });
       const id3 = await ctx.db.insert("posts", { title: "Post 3", slug: "p3" });
       
-      await remove({ ctx, ids: [id1, id2, id3] });
+      await remove({ ctx, ids: [id1, id2, id3], collection: "posts", config: fixtureConfig });
       
       const doc1 = await ctx.db.get(id1);
       const doc2 = await ctx.db.get(id2);
@@ -45,7 +51,7 @@ describe("remove (server)", () => {
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       const id = await ctx.db.insert("posts", { title: "Soft Delete Test", slug: "sdt" });
       
-      await remove({ ctx, ids: [id], softDelete: "deleted" });
+      await remove({ ctx, ids: [id], softDelete: "deleted", collection: "posts", config: fixtureConfig });
       
       const doc = await ctx.db.get(id);
       expect(doc).not.toBeNull();
@@ -59,7 +65,7 @@ describe("remove (server)", () => {
       const id1 = await ctx.db.insert("posts", { title: "Post 1", slug: "p1" });
       const id2 = await ctx.db.insert("posts", { title: "Post 2", slug: "p2" });
       
-      await remove({ ctx, ids: [id1, id2], softDelete: "deleted" });
+      await remove({ ctx, ids: [id1, id2], softDelete: "deleted", collection: "posts", config: fixtureConfig });
       
       const doc1 = await ctx.db.get(id1);
       const doc2 = await ctx.db.get(id2);

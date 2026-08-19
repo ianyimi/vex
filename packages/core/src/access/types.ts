@@ -1,587 +1,411 @@
-import type { CollectionConfig } from "../collections";
-import type { GlobalConfig } from "../globals";
+import { CollectionConfig } from "../types";
+import { GlobalConfig } from "../globals";
 import type {
   DocumentBySlug,
   GlobalDocumentBySlug,
   CollectionsFieldTypeMap,
   GlobalsFieldTypeMap,
+  CollectionSlug,
 } from "../types/generated";
-/**
- * CRUD action set — the four core database operations.
- *
- * All resource subjects (collections and globals) support these actions.
- * Draft actions ({@link DraftAction}) are added conditionally when a resource
- * has `versions.drafts === true`.
- */
-export type CrudAction = "create" | "read" | "update" | "delete";
+import {
+  ADMIN_CUSTOM_SUBJECTS,
+  WILDCARD_KEY,
+  type PermissionMode,
+  type CrudAction,
+  type DraftAction,
+  type AdminCustomSubjectSlug,
+} from "./constants";
+import { ConvexError } from "convex/values";
 
 /**
- * Draft-specific actions — conditional, only present on resources with versioning.
- *
- * Collections and globals that declare `versions.drafts: true` gain this set
- * of actions for controlling read access to unpublished versions and draft
- * publication/unpublication workflows.
+ * Any config that may contribute a resource subject: a collection or a global.
+ * Structural — the slug literal (and `versions.drafts`, when present) is all
+ * the type system reads from it.
  */
-export type DraftAction = "readDrafts" | "saveDraft" | "publish" | "unpublish";
+export type AccessResource = CollectionConfig | GlobalConfig;
 
 /**
- * Default permission posture when a role, subject, or action is not explicitly
- * declared in the permission matrix.
- *
- * - `"allow"` (default): undeclared = allow.
- * - `"deny"`: undeclared = deny, require explicit permission.
- */
-export type AccessDefaults = "allow" | "deny";
-
-/**
- * Single permission check result — boolean (shorthand: all fields or no fields)
- * or field-mode object (restrict to named fields).
+ * Single permission check result — boolean shorthand (all/none) or a
+ * field-mode object restricting the check to named fields.
  *
  * @typeParam TFieldKeys - Union of valid field keys for this resource.
  */
 export type FieldPermissionResult<TFieldKeys extends string> =
   | boolean
-  | { mode: "allow" | "deny"; fields: TFieldKeys[] };
+  | { mode: PermissionMode; fields: TFieldKeys[] };
 
 /**
- * Resolved field-level permissions after a check with fields requested.
- *
- * A map of field name → access boolean (true = allowed, false = denied).
+ * Resolved field-level permissions — one boolean per requested field.
+ * Returned by `hasPermission` when `fields` is passed.
  */
 export type ResolvedFieldPermissions = Record<string, boolean>;
 
 /**
- * Props passed to a permission callback — typed conditionally based on resource
- * and organization support.
+ * Props passed to a permission callback.
  *
- * When `TData` is `never`, the `data` key is omitted.
- * When `TOrg` is `never`, the `organization` key is omitted.
+ * The `data` key exists only for data-carrying subjects; the `organization`
+ * key exists only when `orgCollectionSlug` is configured. Built with
+ * intersections (not conditional property types) so the keys are truly
+ * absent — not present-but-`never` — when unavailable.
  *
- * @typeParam TData - Document type for the resource; `never` if not applicable.
- * @typeParam TUser - User object shape.
- * @typeParam TOrg - Organization object shape; `never` if not configured.
+ * @typeParam TData - Document type for the subject; `never` when the subject has no data.
+ * @typeParam TUser - User document shape (registry lookup on the user collection slug).
+ * @typeParam TOrg - Organization document shape; `never` when not configured.
  */
-export type PermissionCallbackProps<TData, TUser, TOrg> = {
-  ...(TData extends never ? {} : { data: TData }),
-  user: TUser,
-  ...(TOrg extends never ? {} : { organization: TOrg }),
-};
+export type PermissionCallbackProps<
+  TData = unknown,
+  TUser = Record<string, unknown>,
+  TOrg = Record<string, unknown>,
+> = {
+  user: TUser;
+} & ([TData] extends [never] ? unknown : { data: TData }) &
+  ([TOrg] extends [never] ? unknown : { organization: TOrg });
 
 /**
- * A single permission check — static boolean, field-mode object, or async callback.
+ * A single permission check — static boolean, field-mode object, or callback.
  *
- * The callback receives context (user, data, organization) and may return a field
- * permission result or `undefined` (interpreted as deny).
+ * A callback returning `undefined` is treated as deny.
  *
- * @typeParam TData - Document type for the resource.
- * @typeParam TUser - User object shape.
- * @typeParam TOrg - Organization object shape; `never` if not configured.
- * @typeParam TFieldKeys - Union of valid field keys for this resource.
+ * @typeParam TData - Document type for the subject.
+ * @typeParam TUser - User document shape.
+ * @typeParam TOrg - Organization document shape; `never` if not configured.
+ * @typeParam TFieldKeys - Union of valid field keys for this subject.
  */
-export type PermissionCheck<TData, TUser, TOrg, TFieldKeys extends string> =
+export type PermissionCheck<
+  TData = unknown,
+  TUser = Record<string, unknown>,
+  TOrg = Record<string, unknown>,
+  TFieldKeys extends string = string,
+> =
   | FieldPermissionResult<TFieldKeys>
-  | ((props: PermissionCallbackProps<TData, TUser, TOrg>) => FieldPermissionResult<TFieldKeys> | undefined);
+  | ((
+      props: PermissionCallbackProps<TData, TUser, TOrg>,
+    ) => FieldPermissionResult<TFieldKeys> | undefined);
 
 /**
- * A subject entry — the union of possible actions and the shape of data and
- * field names for a single checkable resource or gate.
- *
- * All subjects carry an `action` union (set of checkable action strings),
- * a `data` type (the document shape if data-aware, or `never` if not),
- * and a `fields` union (field names available in field-level checks).
+ * One entry in the subject registry: the action union, the data shape passed
+ * to callbacks, and the field-key union for field-level checks.
  */
 export interface SubjectEntry {
-  /** Union of actions this subject supports (e.g., `"read" | "write" | "delete"`). */
+  /** Union of actions this subject supports. */
   action: string;
-  /** Document or context type; `never` for contexts without data. */
+  /** Document/context type; `never` for subjects without data. */
   data: unknown;
   /** Union of field keys; `never` for non-field-aware subjects. */
   fields: string;
 }
 
-// ──── Inference helpers (local, since rebuild lacks cross-config type inference) ────
+// ── Inference helpers (registry-based via GeneratedVexTypes augmentation) ──
 
-/**
- * Extract the slug from a CollectionConfig or GlobalConfig.
- *
- * @internal
- */
-type ExtractSlug<T> = T extends CollectionConfig<any, any, infer S, any, any>
-  ? S
-  : T extends GlobalConfig<any, any, infer S, any, any>
-    ? S
-    : never;
-
-/**
- * Infer the document type from a CollectionConfig or GlobalConfig.
- *
- * For now, all resources are treated as `Record<string, unknown>` since
- * the rebuild does not yet synthesize doc types from field definitions.
- * This placeholder ensures type consistency; future builds may generate
- * precise types.
- *
- * @internal
- */
-type InferDocType<T> = Record<string, unknown>;
-
-/**
- * Extract the union of field keys from a CollectionConfig or GlobalConfig.
- *
- * For now, returns `never` as a placeholder since the rebuild does not yet
- * synthesize field-key unions from field definitions. This ensures type consistency;
- * future builds may generate precise unions.
- *
- * @internal
- */
-type ExtractFieldKeys<T> = never;
-
-/**
- * Test whether a resource config has versioning with drafts enabled.
- *
- * @internal
- */
-type HasDrafts<T> = T extends GlobalConfig<any, any, any, any, any>
-  ? T["versions"]["drafts"] extends true
-    ? true
-    : false
-  : T extends CollectionConfig<any, any, any, any, any>
-    ? false // Collections do not yet have versions; only globals do
-    : false;
-
-/**
- * The complete subject registry — a record mapping resource slugs and custom
- * subject names to their entry (action union, data type, field keys).
- *
- * Includes:
- * - All resources (collections + globals) keyed by slug, with conditional
- *   DraftAction inclusion.
- * - Custom subjects, each with its declared action union and no data/fields.
-// ──── Inference helpers (registry-based via GeneratedVexTypes augmentation) ────
-
-/**
- * Extract the slug from a resource config (collection or global, or minimal { slug }).
- *
- * @internal
- */
+/** Extract the slug literal from a resource config. @internal */
 type ExtractSlug<T> = T extends { slug: infer S extends string } ? S : never;
 
 /**
- * Infer the document type from a resource slug via the generated registry.
- *
- * Reads `DocumentBySlug[slug]` for collections, `GlobalDocumentBySlug[slug]` for globals,
- * falling back to `Record<string, unknown>` before the build generates types.
- *
- * @internal
+ * Document type for a slug via the generated registry (collections, then
+ * globals; wide fallback pre-generation). @internal
+ */
+type InferDocTypeFromSlug<S extends string> = S extends keyof DocumentBySlug
+  ? DocumentBySlug[S]
+  : S extends keyof GlobalDocumentBySlug
+    ? GlobalDocumentBySlug[S]
+    : Record<string, unknown>;
+
+/**
+ * Document type for a resource config via its slug literal. @internal
  */
 type InferDocType<T> = T extends { slug: infer S extends string }
-  ? S extends keyof DocumentBySlug
-    ? DocumentBySlug[S]
-    : S extends keyof GlobalDocumentBySlug
-      ? GlobalDocumentBySlug[S]
-      : Record<string, unknown>
+  ? InferDocTypeFromSlug<S>
   : Record<string, unknown>;
 
 /**
- * Extract the union of all field keys for a resource slug via CollectionsFieldTypeMap or GlobalsFieldTypeMap.
- *
- * Returns the union of all field names (all values across all field types in the map).
- * Falls back to `string` when the slug is not yet augmented by `vex generate`.
- *
- * @internal
+ * Widens a field-key union to `string` when the registry lookup collapsed to
+ * `never` — happens when an index-signature fallback (pre-`vex generate`)
+ * swallows the slug and its value union is empty. @internal
+ */
+type FieldKeysOrWide<TKeys> = [TKeys] extends [never] ? string : TKeys & string;
+
+/**
+ * Union of all field keys for a resource slug via the generated field-type
+ * maps (wide `string` fallback pre-generation). @internal
  */
 type ExtractFieldKeys<T> = T extends { slug: infer S extends string }
   ? S extends keyof CollectionsFieldTypeMap
-    ? CollectionsFieldTypeMap[S][keyof CollectionsFieldTypeMap[S]] & string
+    ? FieldKeysOrWide<CollectionsFieldTypeMap[S][keyof CollectionsFieldTypeMap[S]]>
     : S extends keyof GlobalsFieldTypeMap
-      ? GlobalsFieldTypeMap[S][keyof GlobalsFieldTypeMap[S]] & string
+      ? FieldKeysOrWide<GlobalsFieldTypeMap[S][keyof GlobalsFieldTypeMap[S]]>
       : string
   : string;
 
-/**
- * Test whether a resource config has versioning with drafts enabled.
- *
- * @internal
- */
+/** True when a resource config declares `versions.drafts: true`. @internal */
 type HasDrafts<T> = T extends { versions?: { drafts?: infer D extends boolean } }
   ? D extends true
     ? true
     : false
   : false;
- * @example
- * ```ts
- * customResources: {
- *   apiKey: {
- *     actions: ["create", "revoke"],
- *     data: dataType<{ key: string; secret: string }>(),
- *   },
- * }
- * ```
- *
- * @ignore
+
 /**
- * Input shape for the `defineAccess` builder.
+ * The complete subject registry: resources (keyed by slug, CRUD + conditional
+ * draft actions), custom resources, and the core built-in subjects from
+ * {@link ADMIN_CUSTOM_SUBJECTS}.
  *
- * Specifies roles, resources (collections + globals), custom subjects, user/org
- * collection bindings, and the permission matrix.
- *
- * @typeParam TRoles - Union of valid role names (inferred from `roles` array).
- * @typeParam TResources - Tuple of resource configs (collections + globals).
- * @typeParam TCustom - Record of custom subject names → action arrays.
-/**
- * The complete subject registry — a record mapping resource slugs and custom
- * subject names to their entry (action union, data type, field keys).
- *
- * Includes:
- * - All resources (collections + globals) keyed by slug, with conditional
- *   DraftAction inclusion gated on `versions.drafts` flag.
- * - Custom subjects, each with its declared action union and no data/fields.
- * - The built-in `adminPanel` subject (actions: `"access" | "impersonate"`).
- *
- * @typeParam TResources - Tuple of resource configs ({ slug: string; versions?: { drafts?: boolean } }).
- * @typeParam TCustom - Record of custom subject names to action-union arrays.
+ * @typeParam TResources - Structural resource tuple (`{ slug, versions? }`).
+ * @typeParam TCustom - Custom resource declarations.
  */
 export type SubjectMap<
-  TResources extends readonly { slug: string; versions?: { drafts?: boolean } }[],
-  TCustom extends Record<string, readonly unknown[]>
-> =
-  // Resources: map each to its subject entry
-  & {
-    [R in TResources[number] as ExtractSlug<R>]: {
-      action: CrudAction | (HasDrafts<R> extends true ? DraftAction : never);
-      data: InferDocType<R>;
-      fields: ExtractFieldKeys<R>;
-    };
-  }
-  // Custom resources: map action arrays
-  & {
-    [K in keyof TCustom]: {
-      action: TCustom[K][number];
-      data: never;
-      fields: never;
-    };
-  }
-  // Built-in admin subject
-  & {
-    adminPanel: {
-      action: "access" | "impersonate";
-      data: never;
-      fields: never;
-    };
+  TResources extends readonly AccessResource[] = AccessResource[],
+  TCustom extends Record<string, CustomResourceInput> = Record<string, CustomResourceInput>,
+> = {
+  [R in TResources[number] as ExtractSlug<R>]: {
+    action: CrudAction | (HasDrafts<R> extends true ? DraftAction : never);
+    data: InferDocType<R>;
+    fields: ExtractFieldKeys<R>;
   };
-  /**
-   * List of role identifiers in this system.
-   *
-   * Role names are used as keys in the `permissions` matrix.
-   * Example: `["admin", "editor", "viewer"]`.
-   */
-  roles: TRoles;
-
-  /**
-   * Resource configs (collections and globals) to include in the subject registry.
-   *
-   * Each resource contributes a subject keyed by its slug.
-   */
-  resources: TResources;
-
-  /**
-   * Custom, non-resource subjects with arbitrary action unions.
-   *
-   * Each entry is a subject name → action array mapping.
-   * Actions are strings; the runtime does not restrict them.
-   * Example: `{ apiKeys: ["create", "revoke"], analytics: ["view", "export"] }`.
-   */
-  customResources?: TCustom;
-
-  /**
-   * Collection config used to identify users and bind to the `organization` context.
-   *
-   * Callback permissions may reference `user` (a doc from this collection).
-   */
-  userCollection: TUserCollection;
-
-  /**
-   * Collection config for organizations (if applicable).
-   *
-   * When provided, the `organization` context is available in permission callbacks.
-   * When omitted, organization context is never available.
-   */
-  organizationCollection?: TOrgCollection;
-
-  /**
-   * Default permission posture for undeclared subjects, actions, or fields.
-   *
-   * - `"allow"` (default): assume allow when no explicit rule is declared.
-   * - `"deny"`: assume deny when no explicit rule is declared (whitelist model).
-   *
-   * @defaultValue `"allow"`
-   */
-  defaults?: AccessDefaults;
-
-  /**
-   * Permission matrix: role name → subject name → per-action checks.
-   *
-   * Each role maps to a record of subject checks. Subject checks may be:
-   * - `boolean` — shorthand for all actions (true = allow all, false = deny all).
-   * - Object with action keys — fine-grained per-action control.
-   *   - Special key `"*"`: wildcard (true = allow all actions, false = deny all).
-   *   - Each action value is a {@link PermissionCheck}.
-   *
-   * Example:
-   * ```ts
-   * permissions: {
-   *   admin: { "*": true },
-   *   editor: {
-   *     pages: {
-   *       create: true, read: true, update: true,
-   *       delete: ({ data }) => !["home", "pricing"].includes(data.slug),
-   *     },
-   *     adminPanel: false,
-   *   },
-   * }
-   * ```
-   */
-  permissions: Record<TRoles[number], Record<string, unknown>>;
-}
-export type CustomResourceInput =
-  | readonly string[]
-  | { actions: readonly string[]; data?: DataTypeCarrier<unknown> };
+} & {
+  [K in keyof TCustom]: {
+    action: TCustom[K]["actions"][number];
+    data: TCustom[K]["data"] extends DataTypeCarrier<infer D> ? D : never;
+    fields: never;
+  };
+} & {
+  [K in AdminCustomSubjectSlug]: {
+    action: (typeof ADMIN_CUSTOM_SUBJECTS)[K]["actions"][number];
+    data: never;
+    fields: never;
+  };
+};
 
 /**
- * Create a data-type carrier for use in custom resource declarations.
- *
- * This function has no runtime implementation; it exists solely to carry
- * type information. Call it with a generic type parameter to create a
- * carrier that preserves the type for callbacks and field inference.
- *
- * @typeParam T - The data type for this custom resource.
- * @returns A carrier object (purely for type inference).
+ * Phantom carrier for a custom resource's `data` type. Created by
+ * {@link dataType}; never inspected at runtime.
+ */
+export interface DataTypeCarrier<T = never> {
+  readonly __phantom?: T;
+}
+
+/**
+ * Declares the data type callbacks (and `hasPermission` callers) receive for a
+ * custom resource.
  *
  * @example
  * ```ts
  * customResources: {
- *   audit: {
- *     actions: ["read", "export"],
- *     data: dataType<AuditLog>(),
- *   },
+ *   reviews: { actions: ["approve", "reject"], data: dataType<{ queue: string }>() },
  * }
  * ```
+ * @returns a plain object '{}'
  */
 export function dataType<T>(): DataTypeCarrier<T> {
+  return {};
+}
+
+/**
+ * A custom (non-collection) subject declaration: its action list and an
+ * optional typed data carrier. One canonical form — no array shorthand.
+ */
+export type CustomResourceInput = {
+  actions: readonly string[];
+  data?: DataTypeCarrier<unknown>;
+};
+
+/**
+ * Per-role permission matrix, typed against the resolved {@link SubjectMap}.
+ *
+ * Each subject key accepts `boolean` (all actions) or a per-action map whose
+ * keys are that subject's action union plus the action-level wildcard
+ * ({@link WILDCARD_KEY}) — each value a full {@link PermissionCheck}.
+ * The role-level wildcard is boolean-only.
+ * Precedence: explicit action > subject wildcard > role wildcard > `defaults`.
+ *
+ * @typeParam TSubjects - The resolved {@link SubjectMap}.
+ * @typeParam TUser - User document shape.
+ * @typeParam TOrg - Organization document shape, or `never`.
+ */
+export type RolePermissions<
+  TSubjects extends Record<string, SubjectEntry>,
+  TUser = Record<string, unknown>,
+  TOrg = never,
+> = {
+  [S in keyof TSubjects]?:
+    | boolean
+    | ({
+        [A in TSubjects[S]["action"]]?: PermissionCheck<
+          TSubjects[S]["data"],
+          TUser,
+          TOrg,
+          TSubjects[S]["fields"]
+        >;
+      } & {
+        [W in typeof WILDCARD_KEY]?: PermissionCheck<
+          TSubjects[S]["data"],
+          TUser,
+          TOrg,
+          TSubjects[S]["fields"]
+        >;
+      });
+} & {
+  /** Role-level wildcard: covers subjects this role never declares. Boolean only. */
+  [W in typeof WILDCARD_KEY]?: boolean;
+};
+
 /**
  * Input shape for the `defineAccess` builder.
  *
- * Specifies roles, resources (collections + globals), custom subjects, user/org
- * collection bindings, and the permission matrix.
- *
- * @typeParam TRoles - Union of valid role names (inferred from `roles` array).
- * @typeParam TResources - Tuple of resource configs with `{ slug: string; versions?: { drafts?: boolean } }` shape.
- * @typeParam TCustom - Record of custom subject names → action arrays.
- * @typeParam TUserCollection - User resource with `{ slug: string }` shape (types inferred from registry).
- * @typeParam TOrgCollection - Organization resource with `{ slug: string }` shape; `undefined` if omitted.
+ * @typeParam TRoles - Tuple of role name literals.
+ * @typeParam TResources - Structural resource tuple (`{ slug, versions? }`).
+ * @typeParam TCustom - Custom resource declarations.
+ * @typeParam TUserCollection - `{ slug }` shape naming the user collection.
+ * @typeParam TOrgCollection - `{ slug }` shape naming the org collection; `undefined` if absent.
  *
  * @see {@link VexAccessConfig} for the resolved runtime shape.
  */
-export interface VexAccessInput<
+export interface VexAccessConfigInput<
   TRoles extends readonly string[],
-  TResources extends readonly { slug: string; versions?: { drafts?: boolean } }[] = readonly [],
-  TCustom extends Record<string, readonly unknown[]> = {},
-  TUserCollection extends { slug: string } = { slug: string },
-  TOrgCollection extends { slug: string } | undefined = undefined,
+  TResources extends readonly AccessResource[] = readonly AccessResource[],
+  TCustom extends Record<string, CustomResourceInput> = {},
+  TUserSlug extends string = string,
+  TOrgSlug extends string | undefined = undefined,
 > {
-  TUserCollection,
-  TOrgCollection,
-> {
-  /**
-   * List of role identifiers in this system.
-   *
-   * Role names are used as keys in the `permissions` matrix.
-   * Example: `["admin", "editor", "viewer"]`.
-   */
+  /** Role identifiers; keys of the `permissions` matrix. */
   roles: TRoles;
 
-  /**
-   * Resource configs (collections and globals) to include in the subject registry.
-   *
-   * Each resource contributes a subject keyed by its slug.
-   */
+  /** Collections/globals contributing subjects, keyed by slug. */
   resources: TResources;
 
   /**
-   * Custom, non-resource subjects with arbitrary action unions.
-   *
-   * Each entry is a subject name → action array mapping.
-   * Actions are strings; the runtime does not restrict them.
-   * Example: `{ apiKeys: ["create", "revoke"], analytics: ["view", "export"] }`.
+   * Custom, non-resource subjects with arbitrary action unions and optional
+   * typed data. Example: `{ apiKeys: { actions: ["create", "revoke"] } }`.
    */
   customResources?: TCustom;
 
   /**
-   * Collection config used to identify users and bind to the `organization` context.
-   *
-   * Callback permissions may reference `user` (a doc from this collection).
+   * Slug of the collection whose documents are `user` in callbacks. A plain
+   * slug string — the full collection often does not exist at authoring time
+   * (auth-adapter collections merge later, inside `defineConfig`); the
+   * document type resolves from the generated registry by slug.
    */
-  userCollection: TUserCollection;
+  userCollectionSlug: TUserSlug;
 
   /**
-   * Collection config for organizations (if applicable).
-   *
-   * When provided, the `organization` context is available in permission callbacks.
-   * When omitted, organization context is never available.
+   * REQUIRED. The field on the user document that holds the user's role(s).
+   * Value may be `string` or `string[]`; `hasPermission` normalizes both.
+   * Callers never pass roles separately — they always ride the user document.
    */
-  organizationCollection?: TOrgCollection;
+  userRolesField: string;
 
   /**
-   * Default permission posture for undeclared subjects, actions, or fields.
-   *
-   * - `"allow"` (default): assume allow when no explicit rule is declared.
-   * - `"deny"`: assume deny when no explicit rule is declared (whitelist model).
-   *
-   * @defaultValue `"allow"`
+   * Slug of the organization collection. When present, `organization` is
+   * available (typed via the registry) in every permission callback; when
+   * omitted, callbacks have no `organization` key.
    */
-  defaults?: AccessDefaults;
+  orgCollectionSlug?: TOrgSlug;
 
   /**
-   * Permission matrix: role name → subject name → per-action checks.
-   *
-   * Each role maps to a record of subject checks. Subject checks may be:
-   * - `boolean` — shorthand for all actions (true = allow all, false = deny all).
-   * - Object with action keys — fine-grained per-action control.
-   *   - Special key `"*"`: wildcard (true = allow all actions, false = deny all).
-   *   - Each action value is a {@link PermissionCheck}.
-   *
-   * Example:
-   * ```ts
-   * permissions: {
-   *   admin: { "*": true },
-   *   editor: {
-   *     pages: {
-   *       create: true, read: true, update: true,
-   *       delete: ({ data }) => !["home", "pricing"].includes(data.slug),
-   *     },
-   *     adminPanel: false,
-   *   },
-   * }
-   * ```
+   * Posture for undeclared role/subject/action combinations.
+   * @defaultValue `PERMISSION_MODES.allow`
    */
-  permissions: Record<TRoles[number], Record<string, unknown>>;
+  defaultPermissionMode?: PermissionMode;
+
+  /**
+   * Permission matrix: role → subject → check. See {@link RolePermissions}
+   * for shapes and wildcard semantics.
+   */
+  permissions: Record<
+    TRoles[number],
+    RolePermissions<
+      SubjectMap<TResources, TCustom>,
+      InferDocTypeFromSlug<TUserSlug>,
+      TOrgSlug extends string ? InferDocTypeFromSlug<TOrgSlug> : never
+    >
+  >;
 }
 
 /**
- * Resolved access configuration — the runtime shape returned by `defineAccess`.
+ * Resolved access configuration returned by `defineAccess` — the runtime
+ * shape consumed by `hasPermission`.
  *
- * This type is intentionally minimal and type-erased at the value level; most
- * inference happens via the phantom `TSubjects` type parameter, which the builder
- * uses to preserve subject shape for `hasPermission` inference.
+ * Deliberately VALUE-LEVEL TYPE-ERASED: every call-site guarantee
+ * (`resource`/`action` unions, callback `data` types, field keys) rides the
+ * phantom `TSubjects` parameter, while the stored fields are wide. This is
+ * what lets any concrete config assign to plain `VexAccessConfig` (e.g. the
+ * `access` field on `VexConfig`) — a fully-generic config type would be
+ * unassignable to any common supertype, because permission callbacks are
+ * contravariant in their `data` parameter.
  *
- * The runtime config carries: roles, defaults, user/org collections, and the
- * permission matrix in normalized form.
- *
- * @typeParam TSubjects - Phantom type parameter: the resolved {@link SubjectMap}.
- *   Used for inference in {@link hasPermission} signatures; erased at runtime.
- *
- * @see {@link VexAccessInput} for the input shape.
- * @see {@link hasPermission} for how this config is consumed.
+ * @typeParam TSubjects - Phantom {@link SubjectMap} carried for `hasPermission` inference.
  */
-export interface VexAccessConfig<TSubjects extends Record<string, SubjectEntry> = Record<string, SubjectEntry>> {
-  /**
-   * List of role names in this system.
-   *
-   * @internal
-   */
+export interface VexAccessConfig<
+  TSubjects extends Record<string, SubjectEntry> = Record<string, SubjectEntry>,
+> {
+  /** Role names known to the system. */
   roles: readonly string[];
 
-  /**
-   * Default permission posture.
-   *
-   * @internal
-   */
-  defaults: AccessDefaults;
+  /** Undeclared-permission posture. */
+  defaultPermissionMode: PermissionMode;
+
+  /** Slug of the user collection. */
+  userCollectionSlug: CollectionSlug;
+
+  /** Field on the user document holding role(s) (`string | string[]`). */
+  userRolesField: string;
+
+  /** Slug of the organization collection, when configured. */
+  orgCollectionSlug?: CollectionSlug;
 
   /**
-   * The user collection config bound to this access system.
-   *
-   * @internal
-   */
-  userCollection: unknown;
-
-  /**
-   * Organization collection config (if configured).
-   *
-   * @internal
-   */
-  organizationCollection?: unknown;
-
-  /**
-   * Permission matrix in normalized form.
-   *
-   * @internal
+   * The permission matrix as authored (checks may be booleans, field-mode
+   * objects, or callbacks). Type-erased for storage; `defineAccess` fully
+   * type-checks it at authoring time.
    */
   permissions: Record<string, Record<string, unknown>>;
 
   /**
-   * Phantom field: carries the {@link SubjectMap} type for inference.
-   *
-   * This field is declared but never assigned or read at runtime.
-   * TypeScript uses it to infer subject shape in {@link hasPermission} overloads.
-   *
-   * @internal
+   * Phantom field carrying {@link SubjectMap} for inference. Optional and
+   * never assigned at runtime.
    */
-  declare readonly __subjects: TSubjects;
+  readonly __subjects?: TSubjects;
 }
 
 /**
- * Runtime error thrown when a permission check fails with `throwOnDenied: true`.
- *
- * Carries the resource, action, and (if applicable) the first denied field name.
- *
- * @example
- * ```ts
- * try {
- *   hasPermission({
- *     access, user, userRoles,
- *     resource: "pages", action: "delete",
- *     data: page,
- *     throwOnDenied: true,
- *   });
- * } catch (err) {
- *   if (err instanceof VexAccessError) {
- *     console.error(`Access denied: ${err.resource}.${err.action} on field ${err.field || "(all)"}`);
- *   }
- * }
- * ```
+ * Thrown by `hasPermission` when `throwOnDenied: true` and access is denied.
+ * Carries the subject, action, and (for field checks) the first denied field.
  */
-export class VexAccessError extends Error {
-  /**
-   * The resource on which access was denied.
-   */
+export class VexAccessError extends ConvexError<{
+  code: "ACCESS_DENIED";
+  resource: string;
+  action: string;
+  field?: string;
+  message: string;
+}> {
+  /** The subject on which access was denied. */
   resource: string;
 
-  /**
-   * The action on the resource that was denied.
-   */
+  /** The denied action. */
   action: string;
 
-  /**
-   * The first field that was denied (if `fields` were checked); undefined otherwise.
-   */
+  /** First denied field (field checks only). */
   field?: string;
 
   /**
-   * @param message — Human-readable error message.
-   * @param options — Additional error details.
-   * @param options.resource — Resource name.
+   * @param options — Structured denial context.
+   * @param options.message — Human-readable error message.
+   * @param options.resource — Subject name.
    * @param options.action — Action name.
-   * @param options.field — First denied field name (optional).
+   * @param options.field — First denied field, when a `fields` check denied.
    */
-  constructor(
-    message: string,
-    options: {
-      resource: string;
-      action: string;
-      field?: string;
-    }
-  ) {
-    super(message);
+  constructor(options: { message?: string; resource: string; action: string; field?: string }) {
+    // `ConvexError.data` MUST be a valid Convex value: `convexToJson` REJECTS
+    // `undefined`, and an unserializable payload means Convex cannot deliver the
+    // error at all — the client subscription never receives a result and the
+    // query hangs in `fetchStatus: "fetching"` forever. Omit absent keys; never
+    // pass `undefined`. `message` travels in `data` because `ConvexError` owns
+    // `this.message` (it stringifies `data`).
+    super({
+      code: "ACCESS_DENIED",
+      resource: options.resource,
+      action: options.action,
+      field: options.field,
+      message: options.message ?? `Access Denied: ${options.resource}/${options.action}`,
+    });
     this.name = "VexAccessError";
     this.resource = options.resource;
     this.action = options.action;
@@ -590,32 +414,11 @@ export class VexAccessError extends Error {
 }
 
 /**
- * Error thrown when access configuration is invalid.
- *
- * Raised by `defineAccess` when builders detects invalid input: role mismatches,
- * missing collections, or misconfigured resource/organization bindings.
- *
- * @example
- * ```ts
- * try {
- *   defineAccess({
- *     roles: ["admin"],
- *     resources: [pages, posts],
- *     permissions: {
- *       admin: { unknown_resource: true }, // unknown_resource not in resources
- *     },
- *   });
- * } catch (err) {
- *   if (err instanceof VexAccessConfigError) {
- *     console.error("Access config is invalid:", err.message);
- *   }
- * }
- * ```
+ * Thrown by `defineAccess` on hard configuration errors (custom resource key
+ * colliding with a resource slug; empty `actions` array).
  */
 export class VexAccessConfigError extends Error {
-  /**
-   * @param message — Human-readable description of the configuration error.
-   */
+  /** @param message — Human-readable description of the configuration error. */
   constructor(message: string) {
     super(message);
     this.name = "VexAccessConfigError";

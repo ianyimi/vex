@@ -6,7 +6,8 @@ import { text } from "../../fields";
 import { defineGlobal } from "../../globals/config";
 import * as generatedApi from "../test/convex/_generated/api";
 import schema from "../test/convex/schema";
-import { upsertGlobal } from "./update.server";
+import type { VexConfig } from "../../config";
+import { upsertGlobal } from "./upsert.server";
 
 const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(generatedApi),
@@ -24,6 +25,10 @@ const siteSettingsGlobal = defineGlobal({
   fields: { siteName: text({ label: "Site Name", required: true }) },
 });
 
+// upsertGlobal resolves the GlobalConfig from `config.globals` by slug and
+// reads `config.access` (undefined here → RBAC off).
+const fixtureConfig = { globals: [siteSettingsGlobal], access: undefined } as unknown as VexConfig;
+
 describe("updateGlobal (server)", () => {
   it("inserts a new row when the global has never been saved", async () => {
     const t = convexTest(schema, modules);
@@ -32,7 +37,7 @@ describe("updateGlobal (server)", () => {
         ctx,
         slug: "siteSettings",
         data: { siteName: "My Site" },
-        globalConfig: siteSettingsGlobal,
+        config: fixtureConfig,
       });
     });
     const rows = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
@@ -56,7 +61,7 @@ describe("updateGlobal (server)", () => {
         ctx,
         slug: "siteSettings",
         data: { siteName: "New" },
-        globalConfig: siteSettingsGlobal,
+        config: fixtureConfig,
       });
     });
     const rows = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
@@ -79,7 +84,7 @@ describe("updateGlobal (server)", () => {
           _slug: "siteSettings",
           siteName: "Clean",
         },
-        globalConfig: siteSettingsGlobal,
+        config: fixtureConfig,
       });
     });
     const rows = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
@@ -98,7 +103,7 @@ describe("updateGlobal (server)", () => {
           ctx,
           slug: "siteSettings",
           data: { siteName: 999 }, // wrong type
-          globalConfig: siteSettingsGlobal,
+          config: fixtureConfig,
         });
       }),
     ).rejects.toThrow();

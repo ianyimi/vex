@@ -1,17 +1,18 @@
 "use client";
 
-import { useConvexMutation } from "@convex-dev/react-query";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { GlobalEditViewProps, vexConvexApi } from "@vexcms/core";
-import { getGlobal } from "@vexcms/core/client";
 import { AppForm } from "../form";
 import { useGlobalForm } from "../../hooks";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 
 export function GlobalEditView({ global, initialData }: GlobalEditViewProps) {
+  // Runtime slug (`global.slug`) — uses the generic endpoint rather than the
+  // per-slug `getGlobal()` wrapper. See the note in `CollectionEditView`.
   const { data: globalDoc } = useQuery({
-    ...getGlobal({ slug: global.slug }),
+    ...convexQuery(vexConvexApi.globals.get, { slug: global.slug }),
     initialData,
   });
 
@@ -80,6 +81,7 @@ export function GlobalEditView({ global, initialData }: GlobalEditViewProps) {
               name={fieldKey}
               fieldDef={field}
               readOnly={field.admin.readOnly}
+              collection={global}
             />
           );
         })}

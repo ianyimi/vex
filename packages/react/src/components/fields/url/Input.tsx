@@ -1,13 +1,9 @@
 "use client";
 
-import type { UrlField } from "@vexcms/core";
+import { CRUD_ACTIONS, type UrlField } from "@vexcms/core";
 import { Input } from "../../ui/input";
-import {
-  createFieldInput,
-  FormDescription,
-  FormLabel,
-  FormError,
-} from "../../form";
+import { createFieldInput, FormDescription, FormLabel, FormError } from "../../form";
+import { usePermission } from "../../../hooks";
 
 /**
  * URL field input component for the admin edit form.
@@ -43,14 +39,16 @@ import {
  * </form.Field>
  * ```
  */
-export const UrlFieldInput = createFieldInput<string, UrlField>(
-  ({ name, fieldDef, field, index, submissionAttempts }) => {
+export const UrlFieldInput = createFieldInput<string, {}, UrlField>(
+  ({ name, collection, fieldDef, field, index, submissionAttempts }) => {
+    const canEdit = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.update });
     return (
       <div className="flex flex-col gap-1.5">
         <FormLabel field={fieldDef} index={index} name={name} />
         <Input
           id={name}
           type="text"
+          disabled={!canEdit}
           value={field.state.value ?? ""}
           onChange={(e) => field.handleChange(e.target.value)}
           onBlur={field.handleBlur}

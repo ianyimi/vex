@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useConvexMutation } from "@convex-dev/react-query";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { vexConvexApi } from "@vexcms/core";
 import type {
   MediaCollectionConfig,
@@ -13,7 +13,6 @@ import { AppForm } from "../form/AppForm";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 import { useCollectionForm } from "../../hooks/useCollectionForm";
-import { get } from "@vexcms/core/client";
 
 /**
  * Props passed to the `CollectionEditView` component.
@@ -78,8 +77,14 @@ export function MediaCollectionEditView<
   TCollectionMeta extends MediaCollectionMeta = MediaCollectionMeta,
   TSlug extends MediaCollectionSlug = MediaCollectionSlug,
 >(props: MediaCollectionEditViewProps<TFieldMeta, TCollectionMeta, TSlug>) {
+  // Generic over `TSlug` — see the note in `CollectionEditView`: the slug is a
+  // runtime value here, so this uses the generic endpoint rather than the
+  // per-slug `get()` wrapper.
   const { data } = useQuery({
-    ...get({ id: props.documentId as any }),
+    ...convexQuery(vexConvexApi.get, {
+      id: props.documentId as string,
+      collection: props.collection.slug,
+    }),
     initialData: props.initialData,
   });
   const currentDocument = data as VexMediaDocument;
@@ -155,6 +160,7 @@ export function MediaCollectionEditView<
                 name={fieldKey}
                 fieldDef={field}
                 readOnly={field.admin.readOnly}
+                collection={props.collection}
               />
             );
           })}

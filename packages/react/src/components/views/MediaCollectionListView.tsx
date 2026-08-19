@@ -66,7 +66,7 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
 
   const deleteMediaMutation = useMutation({ mutationFn: useConvexMutation(vexConvexApi.remove) });
   async function handleBulkDelete(selectedIds: string[]) {
-    await deleteMediaMutation.mutateAsync({ ids: selectedIds });
+    await deleteMediaMutation.mutateAsync({ ids: selectedIds, collection: props.collection.slug });
   }
 
   const numItems = Math.max(

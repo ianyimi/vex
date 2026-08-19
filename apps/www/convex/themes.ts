@@ -1,9 +1,9 @@
-import { find } from "@vexcms/core/server"
-import { v } from "convex/values"
+import { v } from "convex/values";
 
-import { TABLE_SLUG_PAGES } from "~/db/constants"
+import { TABLE_SLUG_PAGES } from "~/db/constants";
+import { find } from "~/vexcms/api";
 
-import { query } from "./_generated/server"
+import { query } from "./_generated/server";
 
 export const getBySlug = query({
   args: {
@@ -18,6 +18,6 @@ export const getBySlug = query({
         range: (q) => q.eq("slug", slug),
       },
       limit: 1,
-    })
+    });
   },
-})
+});

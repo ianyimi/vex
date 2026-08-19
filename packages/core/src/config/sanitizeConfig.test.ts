@@ -3,7 +3,7 @@ import {
   stripNonSerializable,
   sanitizeConfigForClient,
 } from "./sanitizeConfig";
-import { defineConfig, defineCollection } from "../index";
+import { defineAccess, defineConfig, defineCollection } from "../index";
 import { text } from "../fields";
 
 // ─── stripNonSerializable ────────────────────────────────────────────────────
@@ -280,5 +280,31 @@ describe("sanitizeConfigForClient — strips non-serializable values", () => {
     const nested = future["nested"] as Record<string, unknown>;
     expect(nested["deepCallback"]).toBeNull();
     expect(nested["deepValue"]).toBe("should be kept");
+  });
+
+  it("excludes the access config from the client config entirely", () => {
+    const users = defineCollection({
+      slug: "users",
+      fields: { name: text(), roles: text() },
+    });
+    // Authored standalone (as in real apps) — inlining defineAccess inside the
+    // defineConfig literal makes contextual typing collapse TCustom to its
+    // constraint instead of its `{}` default.
+    const access = defineAccess({
+      roles: ["admin"],
+      resources: [users],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        // A callback in the matrix — must never reach the client, even nulled.
+        admin: { users: { read: ({ user }) => user !== undefined } },
+      },
+    });
+    const config = defineConfig({ collections: [users], access });
+    const client = sanitizeConfigForClient(config);
+    // The key is absent — not present-with-nulled-callbacks. A stripped
+    // matrix would misresolve in hasPermission; policy stays server-only.
+    expect(client).not.toHaveProperty("access");
+    expect(client.collections).toHaveLength(1);
   });
 });

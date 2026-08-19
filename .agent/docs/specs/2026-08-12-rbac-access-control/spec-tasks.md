@@ -2,71 +2,86 @@
 
 Ordered task groups. Each leaves build + test green.
 
-## 1. Access module types + errors `[agent]`
+## 1. Access module constants + types + errors `[agent]` — [x] DONE
 
-Create `packages/core/src/access/types.ts`: subject registry machinery
-(`SubjectMap` over resources + `customResources` + core built-in `adminPanel`),
-`PermissionCheck` union (boolean | field-mode object | callback), `CrudAction`,
-`DraftAction`, `VexAccessConfig` (type-erased runtime shape), `VexAccessInput`
-(single input type, optional `organizationCollection`, `defaults: "allow" | "deny"`),
-`customResource()` data-type carrier, `VexAccessError` + `VexAccessConfigError`
-(module-local `types.ts`, extending `Error` — mirrors `VexAuthConfigError`,
-`VexStorageConfigError`).
+`packages/core/src/access/constants.ts` (`CRUD_ACTIONS`, `DRAFT_ACTIONS`, `PERMISSION_MODES`,
+`WILDCARD_KEY`, `ADMIN_CUSTOM_SUBJECTS`) + `types.ts` (`SubjectMap`, `PermissionCheck`,
+`VexAccessConfig<TSubjects>` erased, `VexAccessConfigInput`, `dataType()`, errors).
 
-- Why: every other file imports these contracts; LSP-clean ordering demands they land first.
-- Verify: `pnpm --filter @vexcms/core build` (types-only step, zero new tests).
+- Verify: `pnpm --filter @vexcms/core build` ✓
 
-## 2. defineAccess builder + tests `[dev]`
+## 2. defineAccess builder + tests `[dev]` — [x] DONE
 
-Create `packages/core/src/access/config.ts` (`defineAccess`) +
-`config.test.ts`. Type inference from `roles`/`resources`/`customResources`/
-`userCollection`/`organizationCollection`; dev-time validation warnings (role keys
-⊆ roles, resource slugs known, wildcard `"*"` handling); returns type-erased
-`VexAccessConfig` carrying a phantom type parameter for `hasPermission` inference.
+`access/config.ts` + `config.test.ts`. Hard errors + dev warnings; frozen erased config.
 
-- Why: the authored config is the system's source of truth; hasPermission consumes its output.
-- Verify: `pnpm --filter @vexcms/core test -- access/config`
+- Verify: `pnpm --filter @vexcms/core test -- access/config` ✓
 
-## 3. hasPermission resolver + tests `[dev]`
+## 3. hasPermission resolver + tests `[dev]` — [x] DONE
 
-Create `packages/core/src/access/hasPermission.ts` + `hasPermission.test.ts` +
-`access/index.ts` barrel. Boolean and field-map overloads, multi-role OR merge
-(allow wins over deny), `defaults` posture for undeclared subjects/actions,
-callback resolution (`{ user, data?, organization? }`), `throwOnDenied` →
-`VexAccessError`. Port master's edge-case suite (permissive defaults, empty/unknown
-roles, mode objects with/without `fields` param, boolean shorthand, merge cases,
-callback returning undefined).
+`access/hasPermission.ts` + tests + `index.ts`. Boolean-only; roles from
+`user[userRolesField]`; wildcard precedence; OR merge; single throw site.
 
-- Why: the single runtime entry point; everything downstream (factories, www) calls it.
+- Verify: `pnpm --filter @vexcms/core test -- access` ✓
+
+## 4. Config integration + public exports `[agent]` — [x] DONE (one open item → Step 10)
+
+`access` on `VexConfigInput`/`VexConfig`; `defineConfig` passthrough; `sanitizeConfigForClient`
+strips `access`; core exports.
+
+- [ ] OPEN (→ Step 10): `defineConfig`-time validation of `userCollectionSlug`/`userRolesField`.
+- Verify: `pnpm --filter @vexcms/core test -- sanitizeConfig && build` ✓
+
+## 5. Server API enforcement `[dev]` — [x] DONE
+
+`collectionsApi` + `globalsApi` + media factories; `resolveGetAuth`; `me`; nullable-`user`
+fail-closed guards; reads filter / single-doc null; writes throw.
+
+- Verify: `pnpm --filter @vexcms/core test -- api` ✓
+
+## 6. www wiring `[dev]` — [x] DONE
+
+`@vexcms/better-auth` `createGetAuth`; `convex/vex.ts` + `vex/globals.ts` wiring; token threaded
+through `NextAdminPage` + admin `page.tsx`.
+
+- Verify: `pnpm --filter www typecheck && pnpm --filter www build` ✓
+
+## 7. Capability mode in hasPermission `[dev]` — [ ] NEXT
+
+Add `mode?: "action" | "capability"` (default `"action"`). Action + callback + no `data` →
+throw; capability + callback → `true`; static concrete in both. + tests.
+
 - Verify: `pnpm --filter @vexcms/core test -- access`
 
-## 4. Config integration + public exports `[agent]`
+## 8. Client permission context (sidebar/nav visibility) `[dev]` — [ ]
 
-Add `access?` to `VexConfigInput`/`VexConfig` (`config/types.ts`), pass through in
-`defineConfig` (`config/config.ts`), strip `access` in `sanitizeConfigForClient`
-(+ test), export access module from `packages/core/src/index.ts`.
+`VexAccessProvider`/`useVexAccess` (client-bundle import of `access`) + `VexAuthContext`
+(server-passed `user`/`organization`) + `usePermission()` hook. `AdminSidebar`/`AdminTopNav`
+filter links via `usePermission({ resource, action: "read", mode: "capability" })`. App wires
+`<VexAccessProvider access={access}>` in `clientProviders.tsx`. No snapshot. + tests.
 
-- Why: config is how access reaches server factories and www; sanitization keeps it server-only.
-- Verify: `pnpm --filter @vexcms/core test -- sanitizeConfig && pnpm --filter @vexcms/core build`
+- Verify: `pnpm --filter @vexcms/react build && pnpm --filter www typecheck`
 
-## 5. Server API enforcement seam `[dev]`
+## 9. View-level action enforcement `[dev]` — [ ]
 
-Extend `queryApi`/`mutationApi`/`globalsApi` in `packages/core/src/api/server.ts`
-with optional `options?: { getAuth }` param; guards call `hasPermission` with
-`throwOnDenied: true` on create/update/remove/upsert, doc-read filtering on
-get/find/search results. No `getAuth` ⇒ unchanged behavior (all-allow). Tests in
-`api/server.test.ts` style with a fixture access config.
+Gate affordances via `usePermission()` (direct client `hasPermission`): `CollectionListView`
+create/bulk-delete (capability); `CollectionEditView`/`MediaCollectionEditView` save + readonly
+inputs (exact per-doc `action` mode with the live `currentDocument`); `GlobalEditView` save;
+`CreateDocumentModal` submit. No `canUpdate` prop forwarding. + tests.
 
-- Why: one seam enforces all collections + globals; avoids master's per-generated-file guards.
-- Verify: `pnpm --filter @vexcms/core test -- api`
+- Verify: `pnpm --filter @vexcms/react build && pnpm --filter www typecheck && build`
 
-## 6. www wiring + stub removal `[dev]`
+## 10. Cleanup `[dev]` — [ ]
 
-Create `apps/www/src/vexcms/access.ts` (roles, resources, customResources,
-organizationCollection omitted for now); pass `access` in `apps/www/src/vex.config.ts`;
-create `apps/www/convex/vex/auth.ts` (`getAuth` via better-auth session); pass
-`{ getAuth }` to the factories in `apps/www/convex/vex/globals.ts` (and collection
-factories where registered); delete `apps/www/src/auth/permissions.ts` (zero callsites).
+- [ ] Drop field-mode `{ mode, fields }` from `PermissionCheck`/`FieldPermissionResult`/`mergeRolePermissions`.
+- [ ] `get`/`getGlobal` return `null` on read-deny (not throw).
+- [ ] `defineConfig`-time access validation (the open Step 4 item).
+- [ ] Doc: `me` as client-UI convenience; confirm `resolveCollectionSlug` JSDoc matches throw.
+- Verify: `pnpm --filter @vexcms/core test && pnpm --filter www typecheck`
 
-- Why: proves the DX end-to-end in the real app; removes the dead app-level stub.
-- Verify: `pnpm --filter www typecheck && pnpm --filter www build`
+## 11. Comprehensive test plan `[dev]` — [ ]
+
+All code paths per the spec's `## Test Plan` — hasPermission (incl. capability), collections /
+globals / media guards, `resolveGetAuth`, `createGetAuth`, `me`, snapshot, defineConfig
+validation, denied-write-does-not-mutate regression.
+
+- Verify: `pnpm --filter @vexcms/core test && pnpm --filter @vexcms/better-auth test`

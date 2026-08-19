@@ -1,49 +1,16 @@
 "use client";
 
 import { ComponentPropsWithRef, useContext } from "react";
-import type { GroupField, InputComponentProps } from "@vexcms/core";
+import type { BaseFieldMeta, GroupField, InputComponentProps } from "@vexcms/core";
 import { AppFormContext } from "./AppFormContext";
 import { fieldToInputComponent } from "../fields";
 import { cn } from "../../styles/utils";
 import { TypedFieldApi } from "./createFieldInput";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "../ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { FormLabel } from "./FormLabel";
 import { FormDescription } from "./FormDescription";
 import { FormError } from "./FormError";
 import { useAccordionDndState } from "../ui/dnd";
-
-/**
- * Props for the `FormGroup` component.
- *
- * @see {@link FormGroup}
- */
-export interface FormGroupProps {
-  /**
-   * The field key name from the collection config, e.g. `"seo"`.
-   *
-   * Used to build sub-field paths: `"seo.title"`, `"seo.description"`, etc.
-   * TanStack Form resolves dot-notation paths natively in v1.
-   */
-  name: string;
-  /** The resolved group field definition. */
-  fieldDef: GroupField;
-  /** Whether all controls are read-only. Propagated to every sub-field. */
-  readOnly: boolean;
-  /**
-   * Number of times the parent form has been submitted.
-   *
-   * Passed through to sub-field inputs so validation errors appear after
-   * submit even if a sub-field was never touched.
-   */
-  submissionAttempts: number;
-  /** Additional class names for the outer container. */
-  className?: string;
-}
 
 /**
  * Renders a group field as a collapsible fieldset in the admin edit form.
@@ -69,7 +36,8 @@ export interface FormGroupProps {
  * />
  * ```
  */
-export function FormGroup({
+export function FormGroup<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
+  collection,
   name,
   field,
   fieldDef,
@@ -77,7 +45,7 @@ export function FormGroup({
   readOnly,
   submissionAttempts,
   className,
-}: InputComponentProps<GroupField> & {
+}: InputComponentProps<TFieldMeta, GroupField<TFieldMeta>> & {
   field: TypedFieldApi<Record<string, any>>;
   submissionAttempts: number;
 } & ComponentPropsWithRef<"div">) {
@@ -106,11 +74,11 @@ export function FormGroup({
     >
       <AccordionItem value={itemValue}>
         {/* Trigger — label + sub-field count */}
-        <AccordionTrigger className="text-sm flex gap-4 px-3 font-medium hover:no-underline">
+        <AccordionTrigger className="flex gap-4 px-3 text-sm font-medium hover:no-underline">
           <div className="flex flex-col self-center">
             <span className="flex items-center gap-2">
               <FormLabel field={fieldDef} index={index} name={name} />
-              <span className="text-xs font-normal text-muted-foreground">
+              <span className="text-muted-foreground text-xs font-normal">
                 {subFieldCount} {subFieldCount === 1 ? "field" : "fields"}
               </span>
             </span>
@@ -125,12 +93,11 @@ export function FormGroup({
               const SubInput = fieldToInputComponent(subFieldDef.type);
               if (!SubInput) return null;
               return (
-                // Dot-notation: "seo.title" → form resolves to form.values.seo.title
                 <SubInput
                   key={fieldKey}
                   name={`${name}.${fieldKey}`}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  fieldDef={subFieldDef as any}
+                  collection={collection}
+                  fieldDef={subFieldDef}
                   readOnly={readOnly || subFieldDef.admin.readOnly}
                 />
               );

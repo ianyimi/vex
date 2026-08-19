@@ -1,5 +1,9 @@
 import { convexQuery } from "@convex-dev/react-query";
-import { vexConvexApi } from "../convex";
+import type { FunctionReference } from "convex/server";
+
+import { vexConvexApi, type VexGlobalsFindArgs } from "../convex";
+import type { VexDocumentGlobal } from "../../types/generated";
+import type { VexQueryOptions } from "../types";
 
 /**
  * Returns tanstack-query options for listing all saved global documents.
@@ -16,6 +20,14 @@ import { vexConvexApi } from "../convex";
  * data?.map((g) => g._slug); // ["siteSettings", "nav"]
  * ```
  */
-export function findGlobals() {
-  return convexQuery(vexConvexApi.globals.find, {});
+export function findGlobals(): VexQueryOptions<VexGlobalsFindArgs, VexDocumentGlobal[]> {
+  // Intentionally un-narrowed: this returns a mixed-slug list. Globals carry a
+  // runtime `_slug` discriminator, so callers can narrow it safely themselves.
+  const funcRef = vexConvexApi.globals.find as FunctionReference<
+    "query",
+    "public",
+    VexGlobalsFindArgs,
+    VexDocumentGlobal[]
+  >;
+  return convexQuery(funcRef, {});
 }

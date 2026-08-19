@@ -5,6 +5,7 @@ import { convexFileStorage } from "@vexcms/file-storage-convex";
 import { authOptions } from "~/auth/options";
 import { footers, headers, images, pages, siteSettings, themes } from "~/vexcms/collections";
 
+import { access } from "./auth/access";
 import { nav } from "./vexcms/globals/nav";
 
 /**
@@ -20,6 +21,7 @@ import { nav } from "./vexcms/globals/nav";
  * @see betterAuthAdapter in @vexcms/better-auth
  */
 const vexConfig = defineConfig({
+  access,
   admin: {
     sidebar: {
       side: "right",

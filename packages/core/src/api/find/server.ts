@@ -11,18 +11,19 @@ import type {
   QueryInitializer,
 } from "convex/server";
 
-import type { CollectionSlug, DocumentBySlug } from "../../types/generated";
+import type { CollectionSlug } from "../../types/generated";
 import { buildDepthPopulate } from "../depth";
 import { populateDocs } from "../populate";
 import type {
-  DepthPopulated,
+  DocReturnItem,
+  FindReturn,
+  FindReturnPaginated,
   GenericQueryServerParams,
   PaginationOptions,
   PaginationResult,
-  Populated,
   PopulateShape,
-  Prettify,
 } from "../types";
+import { CRUD_ACTIONS, hasPermission } from "../../access";
 
 /**
  * Server-side args for `find`. Extends {@link GenericQueryServerParams}
@@ -116,39 +117,6 @@ export interface FindServerArgs<
   paginationOpts?: PaginationOptions;
 }
 
-/**
- * Resolves the return element type of `find`:
- *
- * - No populate + `D = 0` → `DocumentBySlug[TCollectionSlug]` (raw doc).
- * - No populate + `D > 0` → `DepthPopulated<TCollectionSlug, D>` (all relationships auto-populated).
- * - With populate → `Prettify<Populated<TCollectionSlug, TPopulate>>` (explicit fields populated).
- */
-type FindReturnItem<
-  TCollectionSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TCollectionSlug>,
-  D extends number,
-> = [TPopulate] extends [Record<string, never>]
-  ? [D] extends [0]
-    ? TCollectionSlug extends keyof DocumentBySlug
-      ? DocumentBySlug[TCollectionSlug]
-      : never
-    : DepthPopulated<TCollectionSlug, D>
-  : TCollectionSlug extends keyof DocumentBySlug
-    ? Prettify<Populated<TCollectionSlug, TPopulate>>
-    : never;
-
-type FindReturn<
-  TCollectionSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TCollectionSlug>,
-  D extends number,
-> = FindReturnItem<TCollectionSlug, TPopulate, D>[];
-
-type FindReturnPaginated<
-  TCollectionSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TCollectionSlug>,
-  D extends number,
-> = PaginationResult<FindReturnItem<TCollectionSlug, TPopulate, D>>;
-
 // Overload 1: WITHOUT paginationOpts → returns array (most common case)
 export async function find<
   DataModel extends GenericDataModel,
@@ -159,7 +127,9 @@ export async function find<
   args: FindServerArgs<DataModel, TCollectionSlug, TPopulate, D> & {
     paginationOpts?: never;
   },
-): Promise<FindReturn<TCollectionSlug, TPopulate, D>>;
+  // Inlined rather than `FindReturn<…>` so hover resolves to `Doc[]` — see the
+  // display/assignability note in `../types`.
+): Promise<DocReturnItem<TCollectionSlug, TPopulate, D>[]>;
 
 // Overload 2: WITH paginationOpts → returns PaginationResult
 export async function find<
@@ -171,7 +141,7 @@ export async function find<
   args: FindServerArgs<DataModel, TCollectionSlug, TPopulate, D> & {
     paginationOpts: PaginationOptions;
   },
-): Promise<FindReturnPaginated<TCollectionSlug, TPopulate, D>>;
+): Promise<PaginationResult<DocReturnItem<TCollectionSlug, TPopulate, D>>>;
 
 /**
  * Find documents in a collection with optional pagination and total count.
@@ -222,28 +192,55 @@ export async function find<
   let convexPaginationResult: Awaited<ReturnType<typeof findQuery.paginate>> | undefined;
   if (args.paginationOpts) {
     convexPaginationResult = await findQuery.paginate(args.paginationOpts);
-    docs = convexPaginationResult.page;
+    docs = convexPaginationResult.page.filter((d) =>
+      hasPermission({
+        access: args.config?.access,
+        resource: args.collection,
+        action: CRUD_ACTIONS.read,
+        data: d,
+        user: args.auth?.user ?? {},
+        organization: args.auth?.organization,
+      }),
+    );
   } else if (args.limit) {
-    docs = await findQuery.take(args.limit);
+    docs = (await findQuery.take(args.limit)).filter((d) =>
+      hasPermission({
+        access: args.config?.access,
+        resource: args.collection,
+        action: CRUD_ACTIONS.read,
+        data: d,
+        user: args.auth?.user ?? {},
+        organization: args.auth?.organization,
+      }),
+    );
   } else {
-    docs = await findQuery.collect();
+    docs = (await findQuery.collect()).filter((d) =>
+      hasPermission({
+        access: args.config?.access,
+        resource: args.collection,
+        action: CRUD_ACTIONS.read,
+        data: d,
+        user: args.auth?.user ?? {},
+        organization: args.auth?.organization,
+      }),
+    );
   }
 
   // Explicit populate takes precedence over depth (D11).
   const effectivePopulate =
     args.populate ??
     (args.depth !== undefined && args.depth > 0 && args.config
-      ? buildDepthPopulate(args.config, args.collection, args.depth)
+      ? buildDepthPopulate<TPopulate>(args.config, args.collection, args.depth)
       : undefined);
 
   const finalDocs =
     !effectivePopulate || Object.keys(effectivePopulate).length === 0
       ? (docs as unknown as FindReturn<TCollectionSlug, TPopulate, D>)
-      : ((await populateDocs(
-          args.ctx,
-          docs as ReadonlyArray<Record<string, unknown>>,
-          effectivePopulate,
-        )) as unknown as FindReturn<TCollectionSlug, TPopulate, D>);
+      : ((await populateDocs(args.ctx, docs, effectivePopulate)) as unknown as FindReturn<
+          TCollectionSlug,
+          TPopulate,
+          D
+        >);
 
   if (args.paginationOpts && convexPaginationResult) {
     if (args.paginationOpts.totalDocs && !args.paginationOpts.cursor) {
@@ -257,7 +254,16 @@ export async function find<
         } else {
           // Build same query (with filters) but collect all to count
           const countQuery = buildQuery(args); // Same filters as main query
-          const totalDocs = await countQuery.collect();
+          const totalDocs = (await countQuery.collect()).filter((d) =>
+            hasPermission({
+              access: args.config?.access,
+              resource: args.collection,
+              action: CRUD_ACTIONS.read,
+              data: d,
+              user: args.auth?.user ?? {},
+              organization: args.auth?.organization,
+            }),
+          );
           return {
             ...convexPaginationResult,
             page: finalDocs,

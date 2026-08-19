@@ -1,8 +1,19 @@
-import { mutationApi, queryApi } from "@vexcms/core/server";
+import { createGetAuth } from "@vexcms/better-auth";
+import { collectionsApi } from "@vexcms/core/server";
 
+import { TABLE_SLUG_ORGANIZATIONS, TABLE_SLUG_SESSIONS, TABLE_SLUG_USERS } from "~/db/constants";
 import config from "~/vex.config";
 
 import { mutation, query } from "./_generated/server";
 
-export const { find, get, search } = queryApi(config, query);
-export const { create, update, remove } = mutationApi(config, mutation);
+export const { find, get, search, create, update, remove } = collectionsApi({
+  config,
+  query,
+  mutation,
+  getAuth: createGetAuth({
+    orgCollectionSlug: TABLE_SLUG_ORGANIZATIONS,
+    userCollectionSlug: TABLE_SLUG_USERS,
+    sessionCollectionSlug: TABLE_SLUG_SESSIONS,
+    resolveOrgs: true,
+  }),
+});

@@ -28,7 +28,7 @@
     "better-auth": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
-    "convex": "catalog:",
+    "convex": "^1.44.0",
     "convex-helpers": "catalog:",
     "lucide-react": "catalog:",
     "next": "catalog:",

@@ -22,8 +22,8 @@ import { useState } from "react";
  * @param props — Field input component props.
  * @returns The upload field input element.
  */
-export const UploadFieldInput = createFieldInput<string[], UploadField>(
-  ({ name, fieldDef, field, readOnly }) => {
+export const UploadFieldInput = createFieldInput<string[], {}, UploadField>(
+  ({ name, collection, fieldDef, field, readOnly }) => {
     const [activeField, setActiveField] = useQueryState(MODALS.editMedia.urlParam, parseAsString);
     const [defaultTab, setDefaultTab] = useState<"library" | "upload">("library");
     const [stagedFiles, setStagedFiles] = useState<File[]>([]);
@@ -73,6 +73,7 @@ export const UploadFieldInput = createFieldInput<string[], UploadField>(
         <FormLabel name={name} field={fieldDef} />
         {value.length > 0 ? (
           <UploadFilledState
+            collection={collection}
             mediaIds={value}
             fieldApi={field}
             fieldDef={fieldDef}
@@ -80,7 +81,7 @@ export const UploadFieldInput = createFieldInput<string[], UploadField>(
             openPicker={openPicker}
           />
         ) : (
-          <div className="text-sm text-muted-foreground">—</div>
+          <div className="text-muted-foreground text-sm">—</div>
         )}
         ;
       </>;
@@ -118,6 +119,7 @@ export const UploadFieldInput = createFieldInput<string[], UploadField>(
       <>
         <FormLabel name={name} field={fieldDef} />
         <UploadFilledState
+          collection={collection}
           mediaIds={value}
           fieldApi={field}
           fieldDef={fieldDef}

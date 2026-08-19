@@ -4,7 +4,13 @@ import { describe, expect, it } from "vitest";
 
 import * as generatedApi from "../test/convex/_generated/api";
 import schema from "../test/convex/schema";
+import type { VexConfig } from "../../config";
 import { findGlobals } from "./find.server";
+
+
+// Minimal resolved-config fixture: findGlobals only reads `config.access`
+// (undefined here → RBAC off) at this layer.
+const fixtureConfig = { globals: [] } as unknown as VexConfig;
 
 const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(generatedApi),
@@ -14,7 +20,7 @@ describe("findGlobals (server)", () => {
   it("returns empty array when no globals saved", async () => {
     const t = convexTest(schema, modules);
     const result = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      findGlobals({ ctx }),
+      findGlobals({ ctx, config: fixtureConfig }),
     );
     expect(result).toEqual([]);
   });
@@ -32,7 +38,7 @@ describe("findGlobals (server)", () => {
       });
     });
     const result = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      findGlobals({ ctx }),
+      findGlobals({ ctx, config: fixtureConfig }),
     );
     expect(result).toHaveLength(2);
     const slugs = result.map((r) => r._slug);

@@ -18,6 +18,14 @@ function makeClients() {
       queries: {
         queryFn: convexQueryClient.queryFn(),
         queryKeyHashFn: convexQueryClient.hashFn(),
+        // Deterministic: a thrown ConvexError re-fails identically, so retrying
+        // only delays the error reaching `error` (it sits in `failureReason`
+        // while retrying).
+        retry: false,
+        // Convex queries ride the Convex WebSocket, not `fetch`, so TanStack's
+        // `onlineManager` must never gate them: a paused query stays
+        // `status: "pending"` / `error: null` forever and ignores `retry`.
+        networkMode: "always",
       },
     },
   });
@@ -26,16 +34,6 @@ function makeClients() {
 }
 
 let browserClients: ReturnType<typeof makeClients> | undefined;
-
-function getClients() {
-  if (typeof window === "undefined") {
-    // Server: brand-new clients every request → no cross-request cache leak
-    return makeClients();
-  }
-  // Browser: singleton → preserves Convex WebSocket reactivity
-  browserClients ??= makeClients();
-  return browserClients;
-}
 
 /**
  * Wires Convex, TanStack Query, and Better Auth together for the app.
@@ -53,4 +51,14 @@ export default function ConvexClientProvider({ children }: { children: ReactNode
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </ConvexBetterAuthProvider>
   );
+}
+
+function getClients() {
+  if (typeof window === "undefined") {
+    // Server: brand-new clients every request → no cross-request cache leak
+    return makeClients();
+  }
+  // Browser: singleton → preserves Convex WebSocket reactivity
+  browserClients ??= makeClients();
+  return browserClients;
 }

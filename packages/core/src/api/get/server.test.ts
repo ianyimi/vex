@@ -7,6 +7,9 @@ import type { DocumentBySlug } from "../../types/generated";
 import * as _generatedApi from "../test/convex/_generated/api";
 import schema from "../test/convex/schema";
 import { get } from "./server";
+import { defineCollection, text } from "../../index";
+import { defineAccess } from "../../access/config";
+import { VexAccessError } from "../../access";
 
 // ── Minimal VexConfig fixture for depth tests ─────────────────────────────
 const fixtureConfig: VexConfig = {
@@ -54,7 +57,7 @@ describe("get (server)", () => {
           title: "Solo",
           slug: "solo",
         });
-        return get({ ctx, id });
+        return get({ ctx, id, collection: "posts", config: fixtureConfig });
       },
     );
     expect(doc).toMatchObject({ title: "Solo", slug: "solo" });
@@ -66,7 +69,7 @@ describe("get (server)", () => {
       async (ctx: GenericMutationCtx<GenericDataModel>) => {
         const id = await ctx.db.insert("posts", { title: "Doomed", slug: "x" });
         await ctx.db.delete(id);
-        return get({ ctx, id });
+        return get({ ctx, id, collection: "posts", config: fixtureConfig });
       },
     );
     expect(doc).toBeNull();
@@ -105,7 +108,7 @@ describe("get (server) — depth auto-populate", () => {
           slug: "hi",
           author: [authorId],
         });
-        return get({ ctx, id: postId, depth: 1, config: fixtureConfig } as any);
+        return get({ ctx, id: postId, collection: "posts", depth: 1, config: fixtureConfig } as any);
       },
     ) as any;
     const author = (doc.author as DocumentBySlug["authors"][])[0];
@@ -119,7 +122,7 @@ describe("get (server) — depth auto-populate", () => {
       async (ctx: GenericMutationCtx<GenericDataModel>) => {
         const id = await ctx.db.insert("posts", { title: "Doomed", slug: "x" });
         await ctx.db.delete(id);
-        return get({ ctx, id, depth: 1, config: fixtureConfig } as any);
+        return get({ ctx, id, collection: "posts", depth: 1, config: fixtureConfig } as any);
       },
     );
     expect(doc).toBeNull();
@@ -139,7 +142,7 @@ describe("get (server) — depth auto-populate", () => {
           slug: "hi",
           author: [authorId],
         });
-        return get({ ctx, id: postId, depth: 2, config: fixtureConfig } as any);
+        return get({ ctx, id: postId, collection: "posts", depth: 2, config: fixtureConfig } as any);
       },
     ) as any;
     const author = (doc.author as DocumentBySlug["authors"][])[0];
@@ -158,7 +161,7 @@ describe("get (server) — depth auto-populate", () => {
           slug: "hi",
           author: [authorId],
         });
-        return get({ ctx, id: postId, depth: 0, config: fixtureConfig } as any);
+        return get({ ctx, id: postId, collection: "posts", depth: 0, config: fixtureConfig } as any);
       },
     ) as any;
     // author should still be a raw ID array.
@@ -180,5 +183,95 @@ describe("get (server) — depth auto-populate", () => {
     ) as any;
     // No config → buildDepthPopulate cannot run → raw ID preserved.
     expect(typeof doc.author[0]).toBe("string");
+  });
+});
+
+// ── RBAC read-enforcement fixture ─────────────────────────────────────────
+const postsResource = defineCollection({
+  slug: "posts",
+  fields: { title: text(), slug: text() },
+});
+
+const rbacConfig = {
+  ...fixtureConfig,
+  access: defineAccess({
+    roles: ["admin", "restricted"] as const,
+    resources: [postsResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      admin: { posts: true },
+      restricted: { posts: { read: false } },
+    },
+  }),
+} as unknown as VexConfig;
+
+const restrictedAuth = { user: { _id: "u1", roles: ["restricted"] } };
+const adminAuth = { user: { _id: "u2", roles: ["admin"] } };
+
+describe("get (server) — read RBAC enforcement", () => {
+  test("denies an un-populated read (regression: check must precede the early return)", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const id = await ctx.db.insert("posts", { title: "Secret", slug: "secret" });
+        return get({ ctx, id, collection: "posts", config: rbacConfig, auth: restrictedAuth } as any);
+      }),
+    ).rejects.toThrow(VexAccessError);
+  });
+
+  test("denies a populated read too (enforced before populate work)", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const id = await ctx.db.insert("posts", { title: "Secret", slug: "secret" });
+        return get({
+          ctx,
+          id,
+          collection: "posts",
+          populate: { author: true },
+          config: rbacConfig,
+          auth: restrictedAuth,
+        } as any);
+      }),
+    ).rejects.toThrow(VexAccessError);
+  });
+
+  test("denies an unauthenticated read when access is configured (fail-closed)", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const id = await ctx.db.insert("posts", { title: "Secret", slug: "secret" });
+        return get({ ctx, id, collection: "posts", config: rbacConfig } as any); // no auth
+      }),
+    ).rejects.toThrow(VexAccessError);
+  });
+
+  test("allows a read for a permitted role", async () => {
+    const t = convexTest(schema, modules);
+    const doc = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await ctx.db.insert("posts", { title: "Public", slug: "public" });
+      return get({ ctx, id, collection: "posts", config: rbacConfig, auth: adminAuth } as any);
+    });
+    expect(doc).toMatchObject({ title: "Public", slug: "public" });
+  });
+
+  test("skips the check when no access config is set (RBAC off)", async () => {
+    const t = convexTest(schema, modules);
+    const doc = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await ctx.db.insert("posts", { title: "Open", slug: "open" });
+      return get({ ctx, id, collection: "posts", config: fixtureConfig, auth: restrictedAuth } as any);
+    });
+    expect(doc).toMatchObject({ title: "Open" });
+  });
+
+  test("returns null for a missing doc without a permission check", async () => {
+    const t = convexTest(schema, modules);
+    const doc = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await ctx.db.insert("posts", { title: "Gone", slug: "gone" });
+      await ctx.db.delete(id);
+      return get({ ctx, id, collection: "posts", config: rbacConfig, auth: restrictedAuth } as any);
+    });
+    expect(doc).toBeNull();
   });
 });

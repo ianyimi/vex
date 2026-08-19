@@ -59,6 +59,7 @@ export function defineConfig(config?: VexConfigInput): VexConfig {
   return {
     basePath: "/admin",
     ...config,
+    access: config?.access,
     auth: config?.authAdapter,
     storage: {
       adapters: config?.storage?.adapters ?? [],

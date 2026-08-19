@@ -1,4 +1,6 @@
+import type { UseSuspenseQueryOptions } from "@tanstack/react-query";
 import type {
+  FunctionReference,
   GenericDataModel,
   GenericMutationCtx,
   GenericQueryCtx,
@@ -89,18 +91,32 @@ export type Prettify<T> = { [K in keyof T]: T[K] } & {};
 export interface GenericQueryClientParams<
   TCollectionSlug extends CollectionSlug = CollectionSlug,
   TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+  D extends number = number,
 > {
+  /** Discriminator: client args MUST NOT supply `auth`. */
+  auth?: never;
   /** Discriminator: client args MUST NOT supply `ctx`. */
   ctx?: never;
   /** Recursive populate object, type-narrowed against `RelationshipKeysOf<TCollectionSlug>`. */
   populate?: TPopulate;
   /**
    * Auto-populate all relationship fields to this many levels.
-   * Plain `number` passthrough — no return type narrowing on the client side
-   * (the Convex network boundary always returns `VexDocument[]`).
+   *
+   * Inferred as the literal `D` so a wrapper that threads `D` through to its
+   * return type narrows accordingly (`depth: 2` → depth-populated doc). A
+   * non-literal `number` degrades to `VexDocument` via {@link DepthPopulated}'s
+   * guard. `D` defaults to `number`, so wrappers that do not thread it keep the
+   * plain passthrough they had before.
+   *
    * Use `populate` for documented consumer code; `depth` is internal.
    */
-  depth?: number;
+  depth?: D;
+  /**
+   * When `true`, the wrapper passes convexQuery's `"skip"` sentinel instead of
+   * args, so the query is not issued. Use for conditional queries (e.g. an id
+   * that is not known yet) without violating the Rules of Hooks.
+   */
+  skip?: boolean;
 }
 
 /**
@@ -126,6 +142,13 @@ export interface GenericQueryServerParams<
   TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
   D extends number = 0,
 > {
+  /** The auth config of the current user making the query.
+   * @example
+   * ```ts
+   * { user: {...}, organization: {...} }
+   * ```
+   */
+  auth?: VexApiAuth;
   /** Discriminator: server args MUST supply a Convex query context. */
   ctx: GenericQueryCtx<DataModel>;
   /**
@@ -134,13 +157,13 @@ export interface GenericQueryServerParams<
    */
   populate?: [D] extends [0] ? TPopulate : never;
   /**
-   * @internal Auto-populate all relationship fields to this many levels.
+   * Auto-populate all relationship fields to this many levels.
    * Becomes `never` when `TPopulate` is non-empty. Use `populate` for
    * consumer-facing code; this is an internal escape hatch for `CollectionListView`.
    */
   depth?: [TPopulate] extends [Record<string, never>] ? D : never;
   /**
-   * @internal The resolved `VexConfig`. Required alongside `depth`; passed
+   * The resolved `VexConfig`. Required alongside `depth`; passed
    * from the `queryApi` factory closure so the Convex handler has schema info.
    */
   config?: [TPopulate] extends [Record<string, never>] ? VexConfig : never;
@@ -153,6 +176,8 @@ export interface GenericQueryServerParams<
  * mutation-only shared fields have a clear home.
  */
 export interface GenericMutationClientParams {
+  /** Discriminator: client args MUST NOT supply `auth`. */
+  auth?: never;
   /** Discriminator: client args MUST NOT supply `ctx`. */
   ctx?: never;
 }
@@ -165,8 +190,20 @@ export interface GenericMutationClientParams {
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
  */
 export interface GenericMutationServerParams<DataModel extends GenericDataModel> {
+  /** The auth config of the current user making the query.
+   * @example
+   * ```ts
+   * { user: {...}, organization: {...} }
+   * ```
+   */
+  auth?: VexApiAuth;
   /** Discriminator: server args MUST supply a Convex mutation context. */
   ctx: GenericMutationCtx<DataModel>;
+  /**
+   * The resolved `VexConfig`. Required for rbac access control during operations
+   * from the `queryApi` factory closure so the Convex handler has schema info.
+   */
+  config: VexConfig;
 }
 
 // ── Per-collection field-type helpers ─────────────────────────────────────
@@ -375,6 +412,167 @@ export type DepthPopulated<
       ? Prettify<Populated<TCollectionSlug, DepthPopulate<TCollectionSlug, D>>>
       : never;
 
+// ── Client wrapper return contracts ─────────────────────────────────────────
+//
+// The Convex endpoints registered by `collectionsApi` are monomorphic: one
+// registered function serves every collection, so a `FunctionReference`'s
+// return type is fixed at codegen time and a runtime `collection` value can
+// never narrow it. The `@vexcms/core/client` wrappers therefore re-attach the
+// per-slug type at the CALL SITE by casting the funcRef to the types below.
+// The cast is sound because the endpoint really does return that collection's
+// document at runtime — `get` (server) reads the row from that table.
+//
+// These are also the contracts the future per-collection codegen reuses, so
+// the narrowing logic lives here exactly once.
+
+/**
+ * Tanstack-query options as produced by `convexQuery` for a non-`"skip"` call,
+ * with the result pinned to `TReturn` instead of the funcRef's baked type.
+ *
+ * Named deliberately: publishing this contract as `ReturnType<typeof
+ * convexQuery>` instantiates the adapter's generics at their constraints and
+ * collapses the query data to `any`.
+ *
+ * @typeParam TArgs - The endpoint's args shape.
+ * @typeParam TReturn - The narrowed return type for this call.
+ */
+export type VexQueryOptions<TArgs extends Record<string, unknown>, TReturn> = Pick<
+  UseSuspenseQueryOptions<
+    TReturn,
+    Error,
+    TReturn,
+    ["convexQuery", FunctionReference<"query", "public", TArgs, TReturn>, TArgs]
+  >,
+  "queryKey" | "queryFn" | "staleTime"
+>;
+
+/**
+ * The per-document element type shared by `get`, `find`, and `search`:
+ *
+ * - No populate + `D = 0` → `DocumentBySlug[TCollectionSlug]` (raw doc).
+ * - No populate + `D > 0` → `DepthPopulated<TCollectionSlug, D>`.
+ * - With populate → `Prettify<Populated<TCollectionSlug, TPopulate>>`.
+ *
+ * Resolves to `never` when the slug is absent from the generated registry
+ * (pre-`vex generate`). Nullability is applied by the per-operation aliases.
+ *
+ * @typeParam TCollectionSlug - Collection slug.
+ * @typeParam TPopulate - Populate object.
+ * @typeParam D - Depth literal (0 = none).
+ */
+export type DocReturnItem<
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
+  D extends number,
+> = [TPopulate] extends [Record<string, never>]
+  ? [D] extends [0]
+    ? TCollectionSlug extends keyof DocumentBySlug
+      ? DocumentBySlug[TCollectionSlug]
+      : never
+    : DepthPopulated<TCollectionSlug, D>
+  : TCollectionSlug extends keyof DocumentBySlug
+    ? Prettify<Populated<TCollectionSlug, TPopulate>>
+    : never;
+
+/**
+ * Return type of `get` — a {@link DocReturnItem}, or `null` when no document
+ * matches the id. Shared by the server function and the client wrapper's query
+ * data so both narrow identically from the collection slug.
+ *
+ * The `[never]` guard keeps the unregistered-slug case as `never` rather than
+ * collapsing it to `null`.
+ *
+ * @typeParam TCollectionSlug - Collection slug.
+ * @typeParam TPopulate - Populate object.
+ * @typeParam D - Depth literal (0 = none).
+ */
+export type GetReturn<
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
+  D extends number = 0,
+> = [DocReturnItem<TCollectionSlug, TPopulate, D>] extends [never]
+  ? never
+  : DocReturnItem<TCollectionSlug, TPopulate, D> | null;
+
+// ── Display / assignability tradeoff (read before "simplifying" this) ────────
+//
+// The four aliases below have PLAIN bodies, and the `find`/`search` signatures
+// deliberately inline `DocReturnItem<…>[]` rather than referencing them.
+//
+// Why: TypeScript prints a referenced non-conditional alias by NAME, so a
+// signature returning `FindReturn<…>` hovers as
+// `FindReturn<"session", Record<string, never>, 0>` — useless. Inlining
+// `DocReturnItem<…>[]` hovers as `SessionDocument[]`, because `DocReturnItem` is
+// a conditional and must be resolved to be displayed. (That is also why
+// `GetReturn` reads cleanly: its body is a top-level conditional.)
+//
+// The tempting fix — wrapping these bodies in a no-op
+// `[X] extends [infer T] ? T[] : never` — does force clean display, but a
+// deferred conditional is not assignable while `TCollectionSlug`/`TPopulate`/`D`
+// are still generic, so every `find`/`search` implementation then needs an
+// `as` cast (the price `get` already pays). Plain bodies + inlined signatures
+// gets clean display AND no casts.
+//
+// These names are kept exported as documented contracts for consumers who want
+// to annotate their own helpers.
+
+/**
+ * Return type of `find` without `paginationOpts` — an array of
+ * {@link DocReturnItem}. Shared by the server function and the client wrapper's
+ * query data so both narrow identically from the collection slug.
+ *
+ * @typeParam TCollectionSlug - Collection slug.
+ * @typeParam TPopulate - Populate object.
+ * @typeParam D - Depth literal (0 = none).
+ */
+export type FindReturn<
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
+  D extends number = 0,
+> = DocReturnItem<TCollectionSlug, TPopulate, D>[];
+
+/**
+ * Return type of `find` with `paginationOpts` — a Convex `PaginationResult`
+ * whose `page` entries are {@link DocReturnItem}.
+ *
+ * @typeParam TCollectionSlug - Collection slug.
+ * @typeParam TPopulate - Populate object.
+ * @typeParam D - Depth literal (0 = none).
+ */
+export type FindReturnPaginated<
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
+  D extends number = 0,
+> = PaginationResult<DocReturnItem<TCollectionSlug, TPopulate, D>>;
+
+/**
+ * Return type of `search` without `paginationOpts`. Identical in shape to
+ * {@link FindReturn}; kept as a distinct name so each operation's contract can
+ * diverge without a breaking rename.
+ *
+ * @typeParam TCollectionSlug - Collection slug.
+ * @typeParam TPopulate - Populate object.
+ * @typeParam D - Depth literal (0 = none).
+ */
+export type SearchReturn<
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
+  D extends number = 0,
+> = DocReturnItem<TCollectionSlug, TPopulate, D>[];
+
+/**
+ * Return type of `search` with `paginationOpts`.
+ *
+ * @typeParam TCollectionSlug - Collection slug.
+ * @typeParam TPopulate - Populate object.
+ * @typeParam D - Depth literal (0 = none).
+ */
+export type SearchReturnPaginated<
+  TCollectionSlug extends CollectionSlug,
+  TPopulate extends PopulateShape<TCollectionSlug>,
+  D extends number = 0,
+> = PaginationResult<DocReturnItem<TCollectionSlug, TPopulate, D>>;
+
 /**
  * Pagination options for Convex queries.
  * Matches Convex's native `paginationOptsValidator` shape.
@@ -458,3 +656,30 @@ export interface SelectionState {
   /** Current selection mode. */
   mode: SelectionMode;
 }
+
+// ── RBAC enforcement seam ───────────────────────────────────────────────────
+//
+// Consumed by `queryApi` / `mutationApi` / `globalsApi` in `./server`. Kept here
+// (not `./server`) because these describe the factories collectively, not one
+// operation, and this file is barrel-exported from the package root.
+
+/**
+ * The resolved caller identity RBAC guards check against. Returned by a
+ * user-supplied `getAuth` callback.
+ *
+ * @see {@link VexApiOptions} for where `getAuth` is configured.
+ */
+export type VexApiAuth = {
+  /**
+   * Passed as `hasPermission`'s `user` — shape is caller-defined. Must include
+   * whatever field `access.userRolesField` names (a role string or string[])
+   * for role resolution to succeed; a user object without it resolves to an
+   * empty role list and denies every check.
+   */
+  user: Record<string, unknown> | null;
+  /**
+   * Passed as `hasPermission`'s `organization`. Shape is caller-defined; omit
+   * when the access config has no `orgCollectionSlug`.
+   */
+  organization?: Record<string, unknown>;
+};

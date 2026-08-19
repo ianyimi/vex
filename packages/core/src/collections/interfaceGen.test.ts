@@ -5,6 +5,8 @@ import { number } from "../fields/number/config";
 import { checkbox } from "../fields/checkbox/config";
 import { date } from "../fields/date/config";
 import { select } from "../fields/select/config";
+import { relationship } from "../fields/relationship/config";
+import { upload } from "../fields/upload/config";
 import { ADMIN_FIELDS } from "../fields/constants";
 import { slugToPascalCase } from "./utils";
 import { generateVexTypes } from "../types/generateVexTypes";
@@ -48,6 +50,36 @@ describe("ADMIN_FIELDS — interfaceType", () => {
 
   it("select maps to string[] (always array)", () => {
     expect(ADMIN_FIELDS.select.interfaceType).toBe("string[]");
+  });
+});
+
+// ─── relationship / upload target slug ───────────────────────────────────────
+
+describe("interfaceType carries the target collection slug", () => {
+  it("relationship emits Id<\"target\">[] rather than the CollectionSlug union", () => {
+    const field = relationship({ collection: { slug: "themes" } });
+    // Regression: a static `Id<CollectionSlug>[]` makes `RelationshipTargetOf`
+    // infer the whole slug union, so `populate` widens to a union of every doc.
+    expect(field.interfaceType).toBe('Id<"themes">[]');
+    expect(field.interfaceType).not.toBe(ADMIN_FIELDS.relationship.interfaceType);
+  });
+
+  it("upload emits Id<\"target\">[] rather than the MediaCollectionSlug union", () => {
+    expect(upload({ to: "images" }).interfaceType).toBe('Id<"images">[]');
+  });
+
+  it("emits the literal target into the generated interface source", () => {
+    const themes = defineCollection({ slug: "themes", fields: { name: text({}) } });
+    const pages = defineCollection({
+      slug: "pages",
+      fields: {
+        title: text({}),
+        themes: relationship({ collection: { slug: "themes" } }),
+      },
+    });
+    const source = generateVexTypes({ config: defineConfig({ collections: [themes, pages] }) });
+    expect(source).toContain('themes?: Id<"themes">[]');
+    expect(source).not.toContain("Id<CollectionSlug>[]");
   });
 });
 

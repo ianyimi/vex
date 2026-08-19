@@ -8,4 +8,5 @@ export const images = defineMediaCollection({
     singular: "Image",
     plural: "Images",
   },
+  interfaceName: "Image",
 });

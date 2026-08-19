@@ -1,0 +1,10 @@
+# Preferences
+
+Style and API patterns the developer has ratified. Append `- P-NNN (YYYY-MM-DD) rule`;
+compact only via `harness pref compact`.
+
+- P-001 (2026-08-12) Config props holding a slug string are named `<thing>Slug` (`userCollectionSlug`, `orgCollectionSlug`) — never the bare entity name; pass slugs, not config objects, when the referenced config may not exist at authoring time (auth-adapter-merged collections).
+- P-002 (2026-08-12) Builder outputs that travel as values are value-level type-erased: authoring-time checking lives on the `*ConfigInput` generics, call-site inference on ONE phantom generic (`__subjects`-style); never thread authoring generics through traveling types (callback contravariance makes instantiations mutually unassignable).
+- P-003 (2026-08-12) Literal unions derive from `as const` constant maps (`PERMISSION_MODES` → `PermissionMode`); reuse an existing map instead of adding a parallel one (no `ACCESS_DEFAULTS` beside `PERMISSION_MODES`), and runtime code references the constants, never inline literals.
+- P-004 (2026-08-12) RBAC/permission checks run client-side by calling `hasPermission` **directly** (no server-computed permission snapshot). The `access` config reaches the client via a **direct client-bundle import** into a provider (`VexAccessProvider`), NOT the serialized RSC/config prop (which strips it); `user`/`organization` arrive as serializable props from the server layout into a context. Both are synchronous at first render (no FOUC). Shipping permission rules to the client is accepted for **advisory** UI gating — server API guards remain the enforcement point; a hidden/disabled affordance is UX, not security.
+- P-005 (2026-08-12) `sanitizeConfigForClient` strips only the *serialized* boundary (functions/adapters/`access`); values that must reach the client WITH functions intact (e.g. `access` callbacks) travel by direct client-bundle module import instead — a bundler import and an RSC serialization are different boundaries, and only the latter strips.

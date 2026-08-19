@@ -3,6 +3,7 @@ import { ClientVexConfig } from "./config";
 import type {
   AdminField,
   ApplyComponent,
+  BaseFieldMeta,
   CellComponentProps,
   ComponentHKT,
   InputComponentProps,
@@ -28,10 +29,16 @@ import { GlobalConfig } from "./globals";
  * @see {@link ComponentHKT} for how framework packages define their HKT
  * @see {@link ApplyComponent} for how the HKT resolves to a concrete component type
  */
-export type FieldComponentMap<F extends ComponentHKT> = {
+export type FieldComponentMap<
+  F extends ComponentHKT,
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+> = {
   [K in AdminField["type"]]: {
-    input: ApplyComponent<F, InputComponentProps<Extract<AdminField, { type: K }>>>;
-    cell: ApplyComponent<F, CellComponentProps<Extract<AdminField, { type: K }>>>;
+    input: ApplyComponent<
+      F,
+      InputComponentProps<TFieldMeta, Extract<AdminField<TFieldMeta>, { type: K }>>
+    >;
+    cell: ApplyComponent<F, CellComponentProps<Extract<AdminField<TFieldMeta>, { type: K }>>>;
   };
 };
 
@@ -188,7 +195,10 @@ export type ViewComponentMap<F extends ComponentHKT> = {
  * @see {@link FieldComponentMap} for the field component slot types
  * @see {@link CellComponentProps} for the cell component props
  */
-export interface FrameworkAdapterInput<F extends ComponentHKT> {
+export interface FrameworkAdapterInput<
+  F extends ComponentHKT,
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+> {
   /** Framework name used for identification (e.g. `"react"`, `"solid"`). */
   name: string;
   /** Adapter version — should match the framework package version. */
@@ -197,7 +207,7 @@ export interface FrameworkAdapterInput<F extends ComponentHKT> {
    * Input components for each field type, rendered in the document edit form.
    * Every type in the `AdminField` union must have a corresponding component.
    */
-  fields: FieldComponentMap<F>;
+  fields: FieldComponentMap<F, TFieldMeta>;
   /**
    * Admin view components — required for rendering the admin panel.
    * All three must be provided; TypeScript enforces completeness.
@@ -211,7 +221,10 @@ export interface FrameworkAdapterInput<F extends ComponentHKT> {
  * @see {@link FrameworkAdapterInput} for the user-facing input type
  * @see {@link defineFrameworkAdapter} for the function that produces this type
  */
-export type FrameworkAdapter<F extends ComponentHKT> = FrameworkAdapterInput<F>;
+export type FrameworkAdapter<
+  F extends ComponentHKT,
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+> = FrameworkAdapterInput<F, TFieldMeta>;
 
 /**
  * Registers a framework adapter, enforcing that all field and cell components are
@@ -249,8 +262,9 @@ export type FrameworkAdapter<F extends ComponentHKT> = FrameworkAdapterInput<F>;
  * @see {@link FrameworkAdapterInput} for the full input type
  * @see {@link FrameworkAdapter} for the resolved return type
  */
-export function defineFrameworkAdapter<F extends ComponentHKT>(
-  adapter: FrameworkAdapterInput<F>,
-): FrameworkAdapter<F> {
+export function defineFrameworkAdapter<
+  F extends ComponentHKT,
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+>(adapter: FrameworkAdapterInput<F, TFieldMeta>): FrameworkAdapter<F, TFieldMeta> {
   return adapter;
 }

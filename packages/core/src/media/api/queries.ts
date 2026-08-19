@@ -1,7 +1,11 @@
 import type { GenericDataModel } from "convex/server";
 
-import { GetUrlReturn, VexStorageConfigError } from "../types";
-import type { GetUrlServerArgs, ListMediaServerArgs, SearchMediaServerArgs } from "./types";
+import { GetUrlReturn } from "../types";
+import type { GetUrlServerArgs } from "./types";
+import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { resolveCollectionSlug } from "../../api/utils";
+import { GenericId } from "convex/values";
+import { CollectionSlug } from "../../types";
 
 /**
  * Returns a URL for a media file.
@@ -29,6 +33,21 @@ import type { GetUrlServerArgs, ListMediaServerArgs, SearchMediaServerArgs } fro
 export async function getUrl<TDataModel extends GenericDataModel = GenericDataModel>(
   args: GetUrlServerArgs<TDataModel>,
 ): Promise<GetUrlReturn> {
+  if (args.config.access !== undefined) {
+    const resource = resolveCollectionSlug({
+      ctx: args.ctx,
+      config: args.config,
+      id: args.mediaId as GenericId<CollectionSlug>,
+    });
+    hasPermission({
+      throwOnDenied: true,
+      access: args.config.access,
+      user: args.auth?.user ?? {},
+      organization: args.auth?.organization ?? {},
+      resource: resource,
+      action: CRUD_ACTIONS.read,
+    });
+  }
   const adapter = args.config.storage?.adapters.find((a) => a.name === args.adapter);
   if (!adapter) {
     return {
@@ -39,54 +58,4 @@ export async function getUrl<TDataModel extends GenericDataModel = GenericDataMo
     collectionSlug: "",
     mediaId: args.mediaId,
   });
-}
-
-/**
- * Lists media documents from a collection.
- * Server-side only — call inside a Convex query handler.
- *
- * **Not yet implemented** — currently returns an empty array.
- * Will query the media collection table directly via `ctx.db` once implemented.
- *
- * Import from `@vexcms/core/server`.
- *
- * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
- * @param args - `{ ctx, config, adapter, collectionSlug, limit?, offset? }`.
- * @returns Promise resolving to an empty array until implemented.
- */
-export async function listMedia<TDataModel extends GenericDataModel>(
-  args: ListMediaServerArgs<TDataModel>,
-): Promise<Array<Record<string, unknown>>> {
-  const adapter = args.config.storage?.adapters.find((a) => a.name === args.adapter);
-  if (!adapter) {
-    throw new VexStorageConfigError(`Storage adapter "${args.adapter}" not found`);
-  }
-  // Note: listMedia is implemented by core, not adapter-specific
-  // This will query the media collection table directly
-  return [];
-}
-
-/**
- * Searches media documents in a collection by filename or alt text.
- * Server-side only — call inside a Convex query handler.
- *
- * **Not yet implemented** — currently returns an empty array.
- * Will query the media collection table directly via `ctx.db` once implemented.
- *
- * Import from `@vexcms/core/server`.
- *
- * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
- * @param args - `{ ctx, config, adapter, collectionSlug, query }`.
- * @returns Promise resolving to an empty array until implemented.
- */
-export async function searchMedia<TDataModel extends GenericDataModel>(
-  args: SearchMediaServerArgs<TDataModel>,
-): Promise<Array<Record<string, unknown>>> {
-  const adapter = args.config.storage?.adapters.find((a) => a.name === args.adapter);
-  if (!adapter) {
-    throw new VexStorageConfigError(`Storage adapter "${args.adapter}" not found`);
-  }
-  // Note: searchMedia is implemented by core, not adapter-specific
-  // This will query the media collection table directly
-  return [];
 }

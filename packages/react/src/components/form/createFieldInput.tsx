@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { FieldApi } from "@tanstack/react-form";
-import type { AdminField, InputComponentProps } from "@vexcms/core";
+import type { AdminField, BaseFieldMeta, InputComponentProps } from "@vexcms/core";
 import { useContext } from "react";
 import { AppFormContext } from "./AppFormContext";
 
@@ -30,7 +30,31 @@ import { AppFormContext } from "./AppFormContext";
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type TypedFieldApi<TValue> = FieldApi<any, any, TValue, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any, any>;
+export type TypedFieldApi<TValue> = FieldApi<
+  any,
+  any,
+  TValue,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any
+>;
 
 /**
  * Creates a typed field input component, handling all TanStack Form wiring.
@@ -94,10 +118,13 @@ export type TypedFieldApi<TValue> = FieldApi<any, any, TValue, any, any, any, an
  * )
  * ```
  */
-export function createFieldInput<TValue, TField extends AdminField>(
+export function createFieldInput<
+  TValue,
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  TField extends AdminField<TFieldMeta> = AdminField<TFieldMeta>,
+>(
   render: (
-    // eslint-disable-next-line no-unused-vars
-    props: InputComponentProps<TField> & {
+    props: InputComponentProps<TFieldMeta, TField> & {
       field: TypedFieldApi<TValue>;
       submissionAttempts: number;
     },
@@ -105,7 +132,7 @@ export function createFieldInput<TValue, TField extends AdminField>(
   mode?: "value" | "array",
 ) {
   return function FieldInput(
-    props: InputComponentProps<TField> & { field?: TypedFieldApi<TValue> },
+    props: InputComponentProps<TFieldMeta, TField> & { field?: TypedFieldApi<TValue> },
   ) {
     const form = useContext(AppFormContext);
     const submissionAttempts = form?.state.submissionAttempts ?? 0;

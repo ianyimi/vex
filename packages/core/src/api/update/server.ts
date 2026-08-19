@@ -9,6 +9,7 @@ import type { GenericId } from "convex/values";
 
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
+import { CRUD_ACTIONS, hasPermission } from "../../access";
 
 /**
  * Server-side args for `update`.
@@ -20,6 +21,8 @@ export interface UpdateServerArgs<
   DataModel extends GenericDataModel,
   TCollectionSlug extends CollectionSlug,
 > extends GenericMutationServerParams<DataModel> {
+  /** The collection slug to patch this document. */
+  collection: TCollectionSlug;
   /** The document ID to patch. */
   id: GenericId<TCollectionSlug>;
   /**
@@ -64,5 +67,16 @@ export async function update<
   DataModel extends GenericDataModel,
   TCollectionSlug extends CollectionSlug,
 >(args: UpdateServerArgs<DataModel, TCollectionSlug>): Promise<void> {
+  if (args.config.access !== undefined) {
+    hasPermission({
+      throwOnDenied: true,
+      access: args.config.access,
+      user: args.auth?.user ?? {},
+      organization: args.auth?.organization,
+      resource: args.collection,
+      action: CRUD_ACTIONS.update,
+      data: args.data,
+    });
+  }
   await args.ctx.db.patch(args.id, args.data);
 }

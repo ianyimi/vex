@@ -6,6 +6,8 @@ import {
   type BlockConfig,
   type InputComponentProps,
   type GenericBlock,
+  BaseFieldMeta,
+  CRUD_ACTIONS,
 } from "@vexcms/core";
 import type { TypedFieldApi } from "./createFieldInput";
 import { AppFormContext } from "./AppFormContext";
@@ -20,6 +22,7 @@ import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 import { Accordion, AccordionContent, AccordionItem } from "../ui/accordion";
 import { FormError } from "./FormError";
 import { Draggable, DragHandle, Droppable } from "../ui/dnd";
+import { usePermission } from "../../hooks";
 
 /**
  * Props for the `FormBlocks` component.
@@ -134,9 +137,9 @@ function BlockPickerDialog(props: {
             autoFocus
           />
         </div>
-        <div className="px-2 pb-3 max-h-72 overflow-y-auto">
+        <div className="max-h-72 overflow-y-auto px-2 pb-3">
           {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">No blocks found</p>
+            <p className="text-muted-foreground py-6 text-center text-sm">No blocks found</p>
           ) : (
             <div className="space-y-0.5">
               {filtered.map((blockDef) => {
@@ -165,23 +168,23 @@ function BlockPickerDialog(props: {
                         )}
                       >
                         {isSelected && (
-                          <Icon name="Check" className="size-3 text-primary-foreground" />
+                          <Icon name="Check" className="text-primary-foreground size-3" />
                         )}
                       </div>
                     )}
-                    <div className="size-8 rounded-sm bg-muted flex items-center justify-center shrink-0">
+                    <div className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-sm">
                       {blockDef.admin?.icon ? (
                         <Icon
                           name={blockDef.admin.icon as any}
-                          className="size-4 text-muted-foreground"
+                          className="text-muted-foreground size-4"
                         />
                       ) : (
-                        <LayersIcon className="size-4 text-muted-foreground" />
+                        <LayersIcon className="text-muted-foreground size-4" />
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{blockDef.label}</p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="truncate text-sm font-medium">{blockDef.label}</p>
+                      <p className="text-muted-foreground truncate text-xs">
                         {blockDef.blockType}
                         {Object.keys(blockDef.fields).length > 0 &&
                           ` · ${Object.keys(blockDef.fields).length} field${
@@ -196,8 +199,8 @@ function BlockPickerDialog(props: {
           )}
         </div>
         {props.multiselect && selectedBlocks.size > 0 && (
-          <div className="px-4 pb-4 pt-2 border-t flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">{selectedBlocks.size} selected</span>
+          <div className="flex items-center justify-between border-t px-4 pt-2 pb-4">
+            <span className="text-muted-foreground text-sm">{selectedBlocks.size} selected</span>
             <Button onClick={handleAddBlocks} size="sm">
               Add {selectedBlocks.size} block{selectedBlocks.size === 1 ? "" : "s"}
             </Button>
@@ -235,7 +238,8 @@ function BlockPickerDialog(props: {
  *
  * @throws {Error} When rendered outside `<AppForm>` and no form context is available.
  */
-export function FormBlocks({
+export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
+  collection,
   name,
   field,
   fieldDef,
@@ -245,7 +249,7 @@ export function FormBlocks({
   modalOpen,
   openEditor,
   closeEditor,
-}: InputComponentProps<BlocksField> & {
+}: InputComponentProps<TFieldMeta, BlocksField<TFieldMeta>> & {
   field: TypedFieldApi<GenericBlock[]>;
   submissionAttempts: number;
   /** Whether the block editor modal is open (driven by URL param). */
@@ -286,9 +290,9 @@ export function FormBlocks({
     <div className={cn("flex flex-col gap-3", className)}>
       {/* Empty state */}
       {items.length === 0 && (
-        <div className="rounded-sm border-2 border-dashed border-border py-8 text-center">
-          <LayersIcon className="size-8 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No {plural} yet.</p>
+        <div className="border-border rounded-sm border-2 border-dashed py-8 text-center">
+          <LayersIcon className="text-muted-foreground mx-auto mb-2 size-8" />
+          <p className="text-muted-foreground text-sm">No {plural} yet.</p>
         </div>
       )}
 
@@ -311,7 +315,7 @@ export function FormBlocks({
                 return (
                   <div
                     key={itemKey}
-                    className="rounded-sm border border-destructive/40 px-3 py-2 text-sm text-destructive"
+                    className="border-destructive/40 text-destructive rounded-sm border px-3 py-2 text-sm"
                   >
                     Unknown block type: <code>{blockSlug}</code>
                     {!readOnly && (
@@ -331,6 +335,10 @@ export function FormBlocks({
 
               const subFields = Object.entries(blockDef.fields);
 
+              const canEdit = usePermission({
+                resource: collection.slug,
+                action: CRUD_ACTIONS.update,
+              });
               return (
                 <Draggable key={itemKey} id={`${name}-${itemKey}`} index={index}>
                   <AccordionItem
@@ -345,53 +353,52 @@ export function FormBlocks({
                         Trigger, never nested inside it. @hello-pangea/dnd blocks drags
                         that start inside a <button> parent, so the DragHandle must live
                         outside AccordionPrimitive.Trigger. */}
-                    <AccordionPrimitive.Header className="flex items-center gap-2 px-3 py-2 bg-muted/40">
-                      <DragHandle />
-                      <AccordionPrimitive.Trigger className="group/accordion-trigger flex flex-1 items-center gap-2 rounded-md border border-transparent outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:pointer-events-none aria-disabled:opacity-50">
+                    <AccordionPrimitive.Header className="bg-muted/40 flex items-center gap-2 px-3 py-2">
+                      <DragHandle disabled={!canEdit} />
+                      <AccordionPrimitive.Trigger className="group/accordion-trigger focus-visible:border-ring focus-visible:ring-ring/50 flex flex-1 items-center gap-2 rounded-md border border-transparent outline-none focus-visible:ring-3 aria-disabled:pointer-events-none aria-disabled:opacity-50">
                         {/* Order number */}
-                        <span className="text-xs font-mono text-muted-foreground tabular-nums w-4 text-center shrink-0">
+                        <span className="text-muted-foreground w-4 shrink-0 text-center font-mono text-xs tabular-nums">
                           {index + 1}
                         </span>
                         {/* Type badge */}
-                        <div className="p-0.5 shrink-0">
-                          <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
+                        <div className="shrink-0 p-0.5">
+                          <span className="text-muted-foreground bg-muted shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px]">
                             {blockDef.blockType}
                           </span>
                         </div>
                         {/* blockName input */}
-                        <div className="flex-1 min-w-[50%] sm:min-w-[60%]">
+                        <div className="min-w-[50%] flex-1 sm:min-w-[60%]">
                           <Input
                             type="text"
                             value={(item.blockName as string) ?? ""}
                             onChange={(e) => updateBlockName(index, e.target.value)}
-                            disabled={readOnly}
+                            disabled={!canEdit || readOnly}
                             placeholder={blockDef.label ?? blockDef.blockType}
-                            className="w-full bg-transparent text-sm font-medium border-none outline-none focus:ring-0 p-0 truncate placeholder:text-muted-foreground disabled:opacity-50"
+                            className="placeholder:text-muted-foreground w-full truncate border-none bg-transparent p-0 text-sm font-medium outline-none focus:ring-0 disabled:opacity-50"
                             onClick={(e) => e.stopPropagation()}
                           />
                         </div>
-                        <ChevronDownIcon className="ml-auto size-4 text-muted-foreground pointer-events-none self-center shrink-0 group-aria-expanded/accordion-trigger:hidden" />
-                        <ChevronUpIcon className="size-4 text-muted-foreground pointer-events-none self-center hidden shrink-0 group-aria-expanded/accordion-trigger:inline" />
+                        <ChevronDownIcon className="text-muted-foreground pointer-events-none ml-auto size-4 shrink-0 self-center group-aria-expanded/accordion-trigger:hidden" />
+                        <ChevronUpIcon className="text-muted-foreground pointer-events-none hidden size-4 shrink-0 self-center group-aria-expanded/accordion-trigger:inline" />
                       </AccordionPrimitive.Trigger>
-                      {!readOnly && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-xs"
-                          onClick={() => field.removeValue(index)}
-                          className="shrink-0 text-muted-foreground hover:text-destructive transition-colors duration-300"
-                          aria-label={`Remove ${blockDef.label} block`}
-                        >
-                          <TrashIcon className="size-3.5" />
-                        </Button>
-                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-xs"
+                        disabled={!canEdit || readOnly}
+                        onClick={() => field.removeValue(index)}
+                        className="text-muted-foreground hover:text-destructive shrink-0 transition-colors duration-300"
+                        aria-label={`Remove ${blockDef.label} block`}
+                      >
+                        <TrashIcon className="size-3.5" />
+                      </Button>
                     </AccordionPrimitive.Header>
 
                     {/* Sub-fields content */}
                     <AccordionContent className="px-3 pt-3">
                       <div className="flex flex-col gap-4 pt-3">
                         {subFields.length === 0 ? (
-                          <p className="text-sm text-muted-foreground italic">
+                          <p className="text-muted-foreground text-sm italic">
                             This block has no configurable fields.
                           </p>
                         ) : (
@@ -403,6 +410,7 @@ export function FormBlocks({
                                 key={fieldKey}
                                 name={`${name}[${index}].${fieldKey}`}
                                 fieldDef={subFieldDef as any}
+                                collection={collection}
                                 readOnly={readOnly || subFieldDef.admin.readOnly}
                               />
                             );
@@ -445,7 +453,7 @@ export function FormBlocks({
             </Button>
           )}
           {atMax && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               Maximum {fieldDef.max} {plural} reached
             </span>
           )}

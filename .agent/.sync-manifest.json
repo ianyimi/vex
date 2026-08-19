@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at_sha": "7b1fa3c9cbcef1c144c50b3ad7dbff045b4aba30",
+  "generated_at_sha": "ae8fe40da8b7e1cdc547f7b20881af09808c1032",
   "entries": [
     {
       "path": ".agent/context-rules.yaml",
@@ -18,6 +18,12 @@
       "path": ".claude/commands/commit.md",
       "kind": "generated",
       "target_or_hash": "187d5a6022579239c8918fbd7296d777c2109eb1006a19b2dce7be635f8ff58b",
+      "platform": "claude"
+    },
+    {
+      "path": ".claude/commands/critique.md",
+      "kind": "generated",
+      "target_or_hash": "5ed4d4b310fcd912cd373c75bab2af8579892ba697f16ecef2995b5b90c82d84",
       "platform": "claude"
     },
     {
@@ -684,6 +690,12 @@
       "path": ".omp/prompts/commit.md",
       "kind": "generated",
       "target_or_hash": "8fef23302631d28140402eabbc1315c39dc6c5c403ca8d3fb50b775f9e961f08",
+      "platform": "omp"
+    },
+    {
+      "path": ".omp/prompts/critique.md",
+      "kind": "generated",
+      "target_or_hash": "053d88c3cabcb8b6a3c925109e0d8482f859f5e7e252b8e8e98d51ef2bb1abcc",
       "platform": "omp"
     },
     {

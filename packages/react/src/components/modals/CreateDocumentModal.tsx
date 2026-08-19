@@ -1,13 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import {
-  Button,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-} from "../ui";
+import { Button, DialogClose, DialogContent, DialogFooter, DialogHeader } from "../ui";
 import { Modal } from "./BaseModal";
 import { CollectionConfig, CollectionSlug } from "@vexcms/core";
 import { MODALS } from "./constants";
@@ -37,14 +31,13 @@ import { parseAsBoolean, useQueryState } from "nuqs";
  * <CreateDocumentModal collection={postsCollection} />
  * ```
  */
-export function CreateDocumentModal<
-  TSlug extends CollectionSlug = CollectionSlug,
->({ collection }: { collection: CollectionConfig<TSlug> }) {
+export function CreateDocumentModal<TSlug extends CollectionSlug = CollectionSlug>({
+  collection,
+}: {
+  collection: CollectionConfig<TSlug>;
+}) {
   // eslint-disable-next-line no-unused-vars
-  const [_, setOpen] = useQueryState(
-    MODALS.createDocument.urlParam,
-    parseAsBoolean,
-  );
+  const [_, setOpen] = useQueryState(MODALS.createDocument.urlParam, parseAsBoolean);
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: useConvexMutation(vexConvexApi.create),
@@ -66,16 +59,14 @@ export function CreateDocumentModal<
       <DialogContent
         ref={dialogRef}
         initialFocus={dialogRef}
-        className="w-[50svw] h-[50svh] flex flex-col"
+        className="flex h-[50svh] w-[50svw] flex-col"
       >
-        <AppForm form={form} className="flex flex-col h-full overflow-hidden">
-          <DialogHeader className="px-2 pb-4">
-            Create {collection.labels.singular}
-          </DialogHeader>
-          <div className="overflow-y-auto grow flex flex-col px-2">
+        <AppForm form={form} className="flex h-full flex-col overflow-hidden">
+          <DialogHeader className="px-2 pb-4">Create {collection.labels.singular}</DialogHeader>
+          <div className="flex grow flex-col overflow-y-auto px-2">
             <RenderFieldInputComponents
-              fields={collection.fields}
-              className="grow flex flex-col gap-2"
+              collection={collection}
+              className="flex grow flex-col gap-2"
             />
           </div>
           <DialogFooter className="p-1">

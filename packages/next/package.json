@@ -1,7 +1,13 @@
 {
   "name": "@vexcms/next",
   "version": "0.1.0-alpha.1",
+  "files": [
+    "dist",
+    "styles.css"
+  ],
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "source": "./src/index.ts",
@@ -20,12 +26,9 @@
     },
     "./styles": "./styles.css"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist",
-    "styles.css"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch --no-clean",
@@ -36,6 +39,21 @@
     "@vexcms/core": "workspace:*",
     "@vexcms/react": "workspace:*",
     "lucide-react": "catalog:"
+  },
+  "devDependencies": {
+    "@tanstack/react-form": "catalog:",
+    "@tanstack/react-table": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vexcms/tsconfig": "workspace:*",
+    "next": "catalog:",
+    "nuqs": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
     "@convex-dev/react-query": "catalog:",
@@ -48,22 +66,5 @@
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
     "zod": "catalog:"
-  },
-  "devDependencies": {
-    "@tanstack/react-form": "catalog:",
-    "@tanstack/react-table": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "@vexcms/tsconfig": "workspace:*",
-    "next": "catalog:",
-    "nuqs": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "tailwindcss": "catalog:",
-    "tsup": "catalog:",
-    "typescript": "catalog:"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }

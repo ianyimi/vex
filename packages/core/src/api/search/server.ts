@@ -1,17 +1,23 @@
-import type { GenericDataModel, NamedTableInfo, QueryInitializer } from "convex/server";
+import type {
+  DocumentByInfo,
+  GenericDataModel,
+  NamedTableInfo,
+  QueryInitializer,
+} from "convex/server";
 
-import type { CollectionSlug, DocumentBySlug } from "../../types/generated";
+import type { CollectionSlug } from "../../types/generated";
 import { buildDepthPopulate } from "../depth";
 import { populateDocs } from "../populate";
 import type {
-  DepthPopulated,
+  DocReturnItem,
   GenericQueryServerParams,
   PaginationOptions,
   PaginationResult,
-  Populated,
   PopulateShape,
-  Prettify,
+  SearchReturn,
+  SearchReturnPaginated,
 } from "../types";
+import { CRUD_ACTIONS, hasPermission } from "../../access";
 
 /**
  * Server-side args for `search`.
@@ -49,33 +55,6 @@ export interface SearchServerArgs<
   paginationOpts?: PaginationOptions;
 }
 
-/**
- * Resolves the return element type of `search`:
- *
- * - No populate + `D = 0` → `DocumentBySlug[TCollectionSlug]`.
- * - No populate + `D > 0` → `DepthPopulated<TCollectionSlug, D>`.
- * - With populate → `Prettify<Populated<TCollectionSlug, TPopulate>>`.
- */
-type SearchReturnItem<
-  TCollectionSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TCollectionSlug>,
-  D extends number,
-> = [TPopulate] extends [Record<string, never>]
-  ? [D] extends [0]
-    ? TCollectionSlug extends keyof DocumentBySlug
-      ? DocumentBySlug[TCollectionSlug]
-      : never
-    : DepthPopulated<TCollectionSlug, D>
-  : TCollectionSlug extends keyof DocumentBySlug
-    ? Prettify<Populated<TCollectionSlug, TPopulate>>
-    : never;
-
-type SearchReturnPaginated<
-  TCollectionSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TCollectionSlug>,
-  D extends number,
-> = PaginationResult<SearchReturnItem<TCollectionSlug, TPopulate, D>>;
-
 // Overload 1: WITHOUT paginationOpts → returns array (most common case)
 export async function search<
   DataModel extends GenericDataModel,
@@ -86,7 +65,9 @@ export async function search<
   args: SearchServerArgs<DataModel, TCollectionSlug, TPopulate, D> & {
     paginationOpts?: never;
   },
-): Promise<SearchReturnItem<TCollectionSlug, TPopulate, D>[]>;
+  // Inlined rather than `SearchReturn<…>` so hover resolves to `Doc[]` — see the
+  // display/assignability note in `../types`.
+): Promise<DocReturnItem<TCollectionSlug, TPopulate, D>[]>;
 
 // Overload 2: WITH paginationOpts → returns PaginationResult
 export async function search<
@@ -98,7 +79,7 @@ export async function search<
   args: SearchServerArgs<DataModel, TCollectionSlug, TPopulate, D> & {
     paginationOpts: PaginationOptions;
   },
-): Promise<SearchReturnPaginated<TCollectionSlug, TPopulate, D>>;
+): Promise<PaginationResult<DocReturnItem<TCollectionSlug, TPopulate, D>>>;
 
 /**
  * Search documents in a collection with optional pagination and total count.
@@ -132,43 +113,79 @@ export async function search<
 >(
   args: SearchServerArgs<DataModel, TCollectionSlug, TPopulate, D>,
 ): Promise<
-  | SearchReturnItem<TCollectionSlug, TPopulate, D>[]
+  | SearchReturn<TCollectionSlug, TPopulate, D>
   | SearchReturnPaginated<TCollectionSlug, TPopulate, D>
 > {
   const searchQuery = buildQuery(args);
 
-  let docs: Record<string, unknown>[];
+  let docs: DocumentByInfo<NamedTableInfo<DataModel, string>>[];
   let convexPaginationResult: Awaited<ReturnType<typeof searchQuery.paginate>> | undefined;
   if (args.paginationOpts) {
     convexPaginationResult = await searchQuery.paginate(args.paginationOpts);
-    docs = convexPaginationResult.page;
+    docs = convexPaginationResult.page.filter((d) =>
+      hasPermission({
+        access: args.config?.access,
+        user: args.auth?.user ?? {},
+        organization: args.auth?.organization,
+        resource: args.collection,
+        action: CRUD_ACTIONS.read,
+        data: d,
+      }),
+    );
   } else if (args.limit) {
-    docs = await searchQuery.take(args.limit);
+    docs = (await searchQuery.take(args.limit)).filter((d) =>
+      hasPermission({
+        access: args.config?.access,
+        user: args.auth?.user ?? {},
+        organization: args.auth?.organization,
+        resource: args.collection,
+        action: CRUD_ACTIONS.read,
+        data: d,
+      }),
+    );
   } else {
-    docs = await searchQuery.collect();
+    docs = (await searchQuery.collect()).filter((d) =>
+      hasPermission({
+        access: args.config?.access,
+        user: args.auth?.user ?? {},
+        organization: args.auth?.organization,
+        resource: args.collection,
+        action: CRUD_ACTIONS.read,
+        data: d,
+      }),
+    );
   }
 
   const effectivePopulate =
     args.populate ??
     (args.depth !== undefined && args.depth > 0 && args.config
-      ? buildDepthPopulate(args.config, args.collection, args.depth)
+      ? buildDepthPopulate<TPopulate>(args.config, args.collection, args.depth)
       : undefined);
 
   const finalDocs =
     !effectivePopulate || Object.keys(effectivePopulate).length === 0
-      ? (docs as SearchReturnItem<TCollectionSlug, TPopulate, D>[])
-      : ((await populateDocs(
-          args.ctx,
-          docs as ReadonlyArray<Record<string, unknown>>,
-          effectivePopulate,
-        )) as SearchReturnItem<TCollectionSlug, TPopulate, D>[]);
+      ? (docs as DocReturnItem<TCollectionSlug, TPopulate, D>[])
+      : ((await populateDocs(args.ctx, docs, effectivePopulate)) as DocReturnItem<
+          TCollectionSlug,
+          TPopulate,
+          D
+        >[]);
 
   if (args.paginationOpts) {
     if (args.paginationOpts.totalDocs && !args.paginationOpts.cursor) {
       try {
         // Build same search query but collect all to count
         const countQuery = buildQuery(args); // Same search params
-        const allDocs = await countQuery.collect();
+        const allDocs = (await countQuery.collect()).filter((d) =>
+          hasPermission({
+            access: args.config?.access,
+            user: args.auth?.user ?? {},
+            organization: args.auth?.organization,
+            resource: args.collection,
+            action: CRUD_ACTIONS.read,
+            data: d,
+          }),
+        );
 
         if (convexPaginationResult) {
           return {
@@ -193,12 +210,12 @@ export async function search<
       // Return Convex pagination result directly with populated docs
       return {
         ...convexPaginationResult,
-        page: finalDocs as SearchReturnItem<TCollectionSlug, TPopulate, D>[],
+        page: finalDocs as DocReturnItem<TCollectionSlug, TPopulate, D>[],
       };
     }
   }
 
-  return finalDocs as SearchReturnItem<TCollectionSlug, TPopulate, D>[];
+  return finalDocs as DocReturnItem<TCollectionSlug, TPopulate, D>[];
 }
 
 function buildQuery<

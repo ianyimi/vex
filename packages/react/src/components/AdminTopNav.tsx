@@ -34,7 +34,9 @@ export default function AdminTopNav(props: AdminLayoutProps) {
     // must never run there.
     ...convexQuery(
       vexConvexApi.get,
-      props.activeDocID && !isGlobals ? { id: props.activeDocID } : "skip",
+      props.activeDocID && props.activeSlug && !isGlobals
+        ? { id: props.activeDocID, collection: props.activeSlug }
+        : "skip",
     ),
   });
 

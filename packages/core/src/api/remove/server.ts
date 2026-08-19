@@ -3,6 +3,7 @@ import type { GenericId } from "convex/values";
 
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
+import { CRUD_ACTIONS, hasPermission } from "../../access";
 
 /**
  * Server-side args for `remove`.
@@ -14,6 +15,8 @@ export interface RemoveServerArgs<
   DataModel extends GenericDataModel,
   TCollectionSlug extends CollectionSlug,
 > extends GenericMutationServerParams<DataModel> {
+  /** The collection slug to insert into. */
+  collection: TCollectionSlug;
   /**
    * Document ID(s) to delete.
    * Pass a single ID in an array for one document, or multiple IDs for bulk delete.
@@ -69,15 +72,24 @@ export async function remove<
   DataModel extends GenericDataModel = GenericDataModel,
   TCollectionSlug extends CollectionSlug = CollectionSlug,
 >(args: RemoveServerArgs<DataModel, TCollectionSlug>): Promise<void> {
-  if (args.softDelete) {
-    await Promise.all(
-      args.ids.map((id) =>
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        args.ctx.db.patch(id, { [args.softDelete as string]: true } as any),
-      ),
-    );
-    return;
+  async function removeById(id: GenericId<TCollectionSlug>): Promise<void> {
+    if (args.config.access !== undefined) {
+      const doc = await args.ctx.db.get(id);
+      hasPermission({
+        throwOnDenied: true,
+        access: args.config.access,
+        user: args.auth?.user ?? {},
+        organization: args.auth?.organization,
+        resource: args.collection,
+        action: CRUD_ACTIONS.delete,
+        data: doc ?? undefined,
+      });
+    }
+    if (args.softDelete) {
+      return await args.ctx.db.patch(args.collection, id, { [args.softDelete as never]: true });
+    }
+    return await args.ctx.db.delete(args.collection, id);
   }
 
-  await Promise.all(args.ids.map((id) => args.ctx.db.delete(id)));
+  await Promise.all(args.ids.map((id) => removeById(id)));
 }

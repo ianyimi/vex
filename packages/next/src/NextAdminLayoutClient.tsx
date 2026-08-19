@@ -2,7 +2,7 @@
 // "use client" is injected by the tsup build banner for this entry (see
 // tsup.config.ts) so the emitted module carries the client boundary.
 import type { ReactNode } from "react";
-import type { ClientVexConfig, VexConfig } from "@vexcms/core";
+import type { ClientVexConfig } from "@vexcms/core";
 import { usePathname } from "next/navigation";
 import NextLink from "next/link";
 import NextImage from "next/image";
@@ -37,6 +37,7 @@ export function NextAdminLayoutClient(props: {
   config: ClientVexConfig;
   children: ReactNode;
   user?: AdminUser;
+  organization?: Record<string, unknown>;
   sidebarOpen?: boolean;
 }) {
   const pathname = usePathname();
@@ -49,16 +50,13 @@ export function NextAdminLayoutClient(props: {
   return (
     <NuqsAdapter>
       <AdminLayout
-        // The config is already sanitized by NextAdminLayout (the server
-        // wrapper). AdminLayout's prop type is the full VexConfig; the
-        // sanitized shape is structurally compatible for everything the admin
-        // UI reads (it only touches serializable fields).
-        config={props.config as unknown as VexConfig}
+        config={props.config}
         activeSlug={activeSlug}
         components={{ Link: NextLink, Image: NextImage }}
         pathname={pathname}
         activeDocID={activeDocID}
         user={props.user}
+        organization={props.organization}
         sidebarOpen={props.sidebarOpen}
       >
         {props.children}

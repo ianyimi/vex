@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "starlight-typedoc": "catalog:",
-    "typedoc": "catalog:"
+    "typedoc": "catalog:",
+    "@types/node": "catalog:"
   }
 }

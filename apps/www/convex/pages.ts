@@ -1,9 +1,10 @@
-import { find, get } from "@vexcms/core/server"
-import { v } from "convex/values"
+// import { find, get } from "@vexcms/core/server";
+import { v } from "convex/values";
 
-import { type PageId, TABLE_SLUG_PAGES } from "~/db/constants"
+import { type PageID, TABLE_SLUG_PAGES } from "~/db/constants";
+import { find, get } from "~/vexcms/api";
 
-import { query } from "./_generated/server"
+import { query } from "./_generated/server";
 
 /**
  * Returns all published pages ordered by creation date (newest first).
@@ -13,9 +14,9 @@ import { query } from "./_generated/server"
  */
 export const list = query({
   handler: async (ctx) => {
-    return await find({ ctx, collection: TABLE_SLUG_PAGES })
+    return await find({ ctx, collection: TABLE_SLUG_PAGES });
   },
-})
+});
 
 /**
  * Returns the demo page document by its Convex ID.
@@ -27,9 +28,16 @@ export const list = query({
  */
 export const getIndex = query({
   handler: async (ctx) => {
-    return await get({ ctx, id: "jd7c3tr2ssz89pzdyx65by5k0n86razb" as PageId })
+    return await get({
+      ctx,
+      collection: TABLE_SLUG_PAGES,
+      id: "jd7c3tr2ssz89pzdyx65by5k0n86razb" as PageID,
+      // Public read: rendered by `src/app/page.tsx` for anonymous visitors, who
+      // have no roles and would therefore be denied (`get` throws on denial).
+      skipAccess: true,
+    });
   },
-})
+});
 
 /**
  * Returns the page document matching the given slug.
@@ -57,6 +65,9 @@ export const getBySlug = query({
         range: (q) => q.eq("slug", slug),
       },
       limit: 1,
-    })
+      // Public read: rendered by `src/app/[slug]/page.tsx` for anonymous
+      // visitors, who have no roles and would otherwise be filtered out.
+      skipAccess: true,
+    });
   },
-})
+});

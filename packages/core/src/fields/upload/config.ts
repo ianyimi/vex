@@ -37,7 +37,11 @@ export function upload<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
     accept: "",
     ...options,
     type: ADMIN_FIELDS.upload.type,
-    interfaceType: ADMIN_FIELDS.upload.interfaceType,
+    // Per-field override of the static `ADMIN_FIELDS.upload.interfaceType`
+    // (`Id<MediaCollectionSlug>[]`). `to` is validated as a slug above; emitting
+    // it as a literal keeps the populated type narrow once more than one media
+    // collection is registered (a single-member union masks the difference).
+    interfaceType: `Id<"${options.to}">[]`,
     admin: {
       hidden: false,
       readOnly: false,

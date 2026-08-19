@@ -1,6 +1,4 @@
-import type { BetterAuthOptions } from "better-auth"
-
-import { createPlugins } from "@convex/auth/plugins"
+import type { BetterAuthOptions } from "better-auth";
 
 import {
   TABLE_SLUG_ACCOUNTS,
@@ -8,7 +6,9 @@ import {
   TABLE_SLUG_USERS,
   TABLE_SLUG_VERIFICATIONS,
   USER_ROLES,
-} from "~/db/constants"
+} from "~/db/constants";
+
+import { createPlugins } from "./plugins";
 
 export const authOptions: BetterAuthOptions = {
   account: {
@@ -37,4 +37,4 @@ export const authOptions: BetterAuthOptions = {
   verification: {
     modelName: TABLE_SLUG_VERIFICATIONS,
   },
-}
+};

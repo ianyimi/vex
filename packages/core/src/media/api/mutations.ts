@@ -5,6 +5,10 @@ import type {
   DeleteMediaServerArgs,
   GenerateUploadUrlServerArgs,
 } from "./types";
+import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { resolveCollectionSlug } from "../../api/utils";
+import { type GenericId } from "convex/values";
+import { CollectionSlug } from "../../types";
 
 /**
  * Generates a URL to upload a file to the storage adapter.
@@ -31,6 +35,16 @@ import type {
 export async function generateUploadUrl<TDataModel extends GenericDataModel = GenericDataModel>(
   args: GenerateUploadUrlServerArgs<TDataModel>,
 ): Promise<{ url: string }> {
+  if (args.config.access !== undefined) {
+    hasPermission({
+      throwOnDenied: true,
+      user: args.auth?.user ?? {},
+      organization: args.auth?.organization,
+      access: args.config.access,
+      resource: args.collection,
+      action: CRUD_ACTIONS.create,
+    });
+  }
   const adapter = args.config.storage?.adapters.find((a) => a.name === args.adapter);
   if (!adapter) {
     throw new VexStorageConfigError(`Storage adapter "${args.adapter}" not found`);
@@ -64,12 +78,22 @@ export async function generateUploadUrl<TDataModel extends GenericDataModel = Ge
 export async function createMediaDocument<TDataModel extends GenericDataModel = GenericDataModel>(
   args: CreateMediaDocumentServerArgs<TDataModel>,
 ): Promise<string> {
+  if (args.config.access !== undefined) {
+    hasPermission({
+      throwOnDenied: true,
+      access: args.config.access,
+      user: args.auth?.user ?? {},
+      organization: args.auth?.organization,
+      resource: args.collection,
+      action: CRUD_ACTIONS.create,
+    });
+  }
   const adapter = args.config.storage?.adapters.find((a) => a.name === args.adapter);
   if (!adapter) {
     throw new VexStorageConfigError(`Storage adapter "${args.adapter}" not found`);
   }
   return await adapter.createMediaDocument(args.ctx, {
-    collectionSlug: args.collectionSlug,
+    collectionSlug: args.collection,
     storageId: args.storageId,
     filename: args.filename,
     mimeType: args.mimeType,
@@ -105,6 +129,21 @@ export async function createMediaDocument<TDataModel extends GenericDataModel = 
 export async function deleteMedia<TDataModel extends GenericDataModel = GenericDataModel>(
   args: DeleteMediaServerArgs<TDataModel>,
 ): Promise<boolean> {
+  if (args.config.access !== undefined) {
+    const resource = resolveCollectionSlug({
+      ctx: args.ctx,
+      config: args.config,
+      id: args.mediaId as GenericId<CollectionSlug>,
+    });
+    hasPermission({
+      throwOnDenied: true,
+      access: args.config.access,
+      user: args.auth?.user ?? {},
+      organization: args.auth?.organization,
+      resource,
+      action: CRUD_ACTIONS.delete,
+    });
+  }
   const adapter = args.config.storage?.adapters.find((a) => a.name === args.adapter);
   if (!adapter) {
     throw new VexStorageConfigError(`Storage adapter "${args.adapter}" not found`);

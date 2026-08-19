@@ -8,6 +8,7 @@ import type {
 
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
+import { CRUD_ACTIONS, hasPermission } from "../../access";
 
 /**
  * Server-side args for `create`.
@@ -57,6 +58,16 @@ export async function create<
   DataModel extends GenericDataModel,
   TCollectionSlug extends CollectionSlug,
 >(args: CreateServerArgs<DataModel, TCollectionSlug>): Promise<string> {
+  if (args.config.access !== undefined) {
+    hasPermission({
+      access: args.config.access,
+      user: args.auth?.user ?? {},
+      organization: args.auth?.organization,
+      resource: args.collection,
+      action: CRUD_ACTIONS.create,
+      throwOnDenied: true,
+    });
+  }
   const id = await args.ctx.db.insert(
     args.collection as TableNamesInDataModel<DataModel>,
     args.data,

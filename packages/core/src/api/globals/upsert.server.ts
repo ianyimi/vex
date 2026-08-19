@@ -1,9 +1,10 @@
 import { ConvexError } from "convex/values";
-import type { GenericDataModel, GenericMutationCtx } from "convex/server";
+import type { GenericDataModel } from "convex/server";
 
 import type { GlobalSlug } from "../../types/generated";
-import type { GlobalConfig } from "../../globals/types";
 import { getGlobalInputSchema } from "../../globals/utils";
+import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { GenericGlobalsMutationServerArgs } from "./types";
 
 /** System keys stripped from flat input before writing to DB. */
 const STRIPPED_KEYS = new Set(["_id", "_creationTime", "_slug"]);
@@ -14,12 +15,10 @@ const STRIPPED_KEYS = new Set(["_id", "_creationTime", "_slug"]);
  * @typeParam DataModel - Convex data model.
  * @typeParam TSlug - Global slug.
  */
-export interface UpdateGlobalServerArgs<
+export interface UpsertGlobalServerArgs<
   DataModel extends GenericDataModel,
   TSlug extends GlobalSlug = GlobalSlug,
-> {
-  /** Convex mutation context. */
-  ctx: GenericMutationCtx<DataModel>;
+> extends GenericGlobalsMutationServerArgs<DataModel> {
   /** The global slug to upsert. Must match a registered global in config. */
   slug: TSlug;
   /**
@@ -28,12 +27,6 @@ export interface UpdateGlobalServerArgs<
    * values. The `GlobalEditView` component sends the flat form values here.
    */
   data: Record<string, unknown>;
-  /**
-   * The `GlobalConfig` for this slug — used to derive the Zod schema for
-   * validation. Passed in by the `globalsApi` factory which already has
-   * `config.globals` in closure.
-   */
-  globalConfig: GlobalConfig;
 }
 
 /**
@@ -65,8 +58,24 @@ export interface UpdateGlobalServerArgs<
 export async function upsertGlobal<
   DataModel extends GenericDataModel,
   TSlug extends GlobalSlug = GlobalSlug,
->(args: UpdateGlobalServerArgs<DataModel, TSlug>): Promise<string> {
-  const { ctx, slug, data, globalConfig } = args;
+>(args: UpsertGlobalServerArgs<DataModel, TSlug>): Promise<string> {
+  const { ctx, slug, data } = args;
+
+  const globalConfig = args.config.globals.find((g) => g.slug === args.slug);
+  if (!globalConfig) {
+    throw new ConvexError(`No global registered with slug "${args.slug}"`);
+  }
+
+  if (args.config.access !== undefined) {
+    hasPermission({
+      throwOnDenied: true,
+      access: args.config.access,
+      user: args.auth?.user ?? {},
+      organization: args.auth?.organization,
+      resource: args.slug,
+      action: CRUD_ACTIONS.update,
+    });
+  }
 
   // Strip any system keys that arrived in the flat payload
   const userFields: Record<string, unknown> = {};

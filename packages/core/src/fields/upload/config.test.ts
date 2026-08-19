@@ -8,7 +8,7 @@ describe("upload()", () => {
     expect(field.to).toBe("images");
     expect(field.label).toBe("");
     expect(field.required).toBe(false);
-    expect(field.interfaceType).toBe("Id<MediaCollectionSlug>[]");
+    expect(field.interfaceType).toBe('Id<"images">[]');
     expect(field.admin.hidden).toBe(false);
     expect(field.admin.readOnly).toBe(false);
     expect(field.admin.position).toBe("main");

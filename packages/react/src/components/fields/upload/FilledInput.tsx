@@ -1,22 +1,30 @@
 import { Button, Draggable, DragHandle, Droppable, Icon, Skeleton } from "../../ui";
 import { useQuery } from "@tanstack/react-query";
 import {
+  CollectionConfig,
+  type CollectionSlug,
+  CRUD_ACTIONS,
   formatBytes,
   formatMimeType,
-  UploadField,
-  vexConvexApi,
-  VexMediaDocument,
+  GlobalConfig,
+  type UploadField,
+  VexAccessError,
+  type VexMediaDocument,
 } from "@vexcms/core";
 import { FilePreview } from "../../media/FilePreview";
-import { convexQuery } from "@convex-dev/react-query";
+import { get } from "@vexcms/core/client";
 import { InputTag, TypedFieldApi } from "../../form";
 import { useVexConfig } from "../../../context";
 import { cn } from "../../../styles/utils";
+import { GenericId } from "convex/values";
+import { usePermission } from "../../../hooks";
 
 /**
  * Props for UploadFilledState component.
  */
 export interface UploadFilledStateProps {
+  /** CollectionConfig for this field's collection. */
+  collection: CollectionConfig | GlobalConfig;
   /** Array of media document IDs. */
   mediaIds: string[];
   /** The FieldApi of the field being uploaded to. */
@@ -45,6 +53,7 @@ export interface UploadFilledStateProps {
  * @param props - Component props.
  */
 export function UploadFilledState({
+  collection,
   mediaIds,
   fieldDef,
   fieldApi,
@@ -60,20 +69,37 @@ export function UploadFilledState({
     throw new Error(`Media collection not configured with slug ${fieldDef.to}`);
   }
 
+  // TODO. currently throws because the resource here is the collection slug
+  // but we dont have access to that information at this point in the code runtime.
+  const canEdit = usePermission({
+    action: CRUD_ACTIONS.update,
+    resource: collection.slug,
+  });
+
   return (
     <div className="flex flex-col gap-2">
       {fieldDef.hasMany && onReorder ? (
         <Droppable id={`upload-${fieldDef.label}`} onReorder={onReorder}>
           {mediaIds.map((id, index) => (
             <Draggable key={id} id={id} index={index}>
-              <UploadItemRow mediaId={id} onRemove={() => onRemove(id)} showDragHandle={true} />
+              <UploadItemRow
+                mediaId={id}
+                collection={targetCollectionConfig.slug}
+                onRemove={() => onRemove(id)}
+                showDragHandle={true}
+              />
             </Draggable>
           ))}
         </Droppable>
       ) : (
         <div>
           {mediaIds.map((id) => (
-            <UploadItemRow key={id} mediaId={id} onRemove={() => onRemove(id)} />
+            <UploadItemRow
+              key={id}
+              mediaId={id}
+              collection={targetCollectionConfig.slug}
+              onRemove={() => onRemove(id)}
+            />
           ))}
         </div>
       )}
@@ -84,7 +110,7 @@ export function UploadFilledState({
             variant="outline"
             size="sm"
             onClick={openPicker}
-            disabled={atLimit}
+            disabled={atLimit || !canEdit}
             icon="FilePenLine"
           >
             Edit {targetCollectionConfig.labels.plural}
@@ -94,15 +120,15 @@ export function UploadFilledState({
             className="hover:text-destructive transition-all duration-300"
             size="sm"
             onClick={() => fieldApi.setValue([])}
+            disabled={!canEdit}
             icon="X"
           >
             Clear
           </Button>
           {fieldDef.max && (
             <span
-              className={`ml-auto font-mono text-[11px] ${
-                atLimit ? "text-warning" : "text-muted-foreground"
-              }`}
+              className={`${atLimit ? "text-warning" : "text-muted-foreground"} ml-auto font-mono
+              text-[11px]`}
             >
               {mediaIds.length}/{fieldDef.max}
             </span>
@@ -122,28 +148,46 @@ function UploadItemRow({
   mediaId,
   onRemove,
   showDragHandle = false,
+  collection,
 }: {
   mediaId: string;
   onRemove: () => void;
+  collection: CollectionSlug;
   showDragHandle?: boolean;
 }) {
-  const { data: doc, isPending } = useQuery({ ...convexQuery(vexConvexApi.get, { id: mediaId }) });
+  const {
+    data: doc,
+    isPending,
+    error,
+  } = useQuery({
+    ...get({ id: mediaId as GenericId<CollectionSlug>, collection }),
+  });
   const mediaDoc = doc as VexMediaDocument | null | undefined;
 
+  const accessError = (error as ReturnType<typeof useQuery<any, VexAccessError>>["error"])?.data;
   return (
-    <div className="flex justify-between border-2 border-border rounded items-center px-2">
-      <div className="font-mono flex w-full gap-2 items-center">
-        <DragHandle className={cn(!showDragHandle && "opacity-0 pointer-events-none")} />
+    <div className="border-border flex items-center justify-between rounded border-2 px-2">
+      <div className="flex w-full items-center gap-2 font-mono">
+        <DragHandle
+          className={cn(!showDragHandle && "opacity-0 pointer-events-none")}
+          disabled={Boolean(accessError)}
+        />
         {!mediaDoc ? (
-          <Skeleton className="h-12 w-12" />
+          !accessError ? (
+            <Skeleton className="h-12 w-12" />
+          ) : (
+            <p className="text-destructive w-full text-center">{accessError.message}</p>
+          )
         ) : (
           <FilePreview mediaDoc={mediaDoc} size={44} radius={3} isPending={isPending} />
         )}
         {!mediaDoc ? (
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-4 w-xs" />
-            <Skeleton className="h-4 w-xs" />
-          </div>
+          !accessError ? (
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-4 w-xs" />
+              <Skeleton className="h-4 w-xs" />
+            </div>
+          ) : null
         ) : (
           <div className="">
             <div className="">{mediaDoc.filename}</div>
@@ -153,14 +197,16 @@ function UploadItemRow({
           </div>
         )}
       </div>
-      <div className="flex gap-2 items-center">
+      <div className="flex items-center gap-2">
         {!mediaDoc ? (
-          <Skeleton className="h-8 w-[200px]" />
+          !accessError ? (
+            <Skeleton className="h-8 w-[200px]" />
+          ) : null
         ) : (
           mediaDoc.alt.length > 0 && (
-            <div className="flex min-w-0 max-w-[200px] items-center gap-2">
+            <div className="flex max-w-[200px] min-w-0 items-center gap-2">
               <InputTag>ALT</InputTag>
-              <span className="flex-1 truncate w-sm text-xs">
+              <span className="w-sm flex-1 truncate text-xs">
                 {mediaDoc.alt || <em className="text-destructive">Missing</em>}
               </span>
             </div>
@@ -173,6 +219,7 @@ function UploadItemRow({
             type="button"
             title="Remove"
             onClick={onRemove}
+            disabled={Boolean(accessError)}
           >
             <Icon name="X" size={13} />
           </Button>

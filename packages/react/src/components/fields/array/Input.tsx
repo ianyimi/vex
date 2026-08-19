@@ -34,21 +34,21 @@ import { createFieldInput, FormArray } from "../../form";
  * </form.Field>
  * ```
  */
-export const ArrayFieldInput = createFieldInput<
-  ArrayType[],
-  ArrayField<ArrayType>
->(({ name, fieldDef, field, index, submissionAttempts }) => {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <FormArray
-        name={name}
-        field={field}
-        index={index}
-        fieldDef={fieldDef}
-        readOnly={fieldDef.admin.readOnly}
-        submissionAttempts={submissionAttempts}
-      />
-    </div>
-  );
-}, "array");
-
+export const ArrayFieldInput = createFieldInput<ArrayType[], {}, ArrayField<ArrayType>>(
+  ({ name, collection, fieldDef, field, index, submissionAttempts }) => {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <FormArray
+          name={name}
+          collection={collection}
+          field={field}
+          index={index}
+          fieldDef={fieldDef}
+          readOnly={fieldDef.admin.readOnly}
+          submissionAttempts={submissionAttempts}
+        />
+      </div>
+    );
+  },
+  "array",
+);

@@ -1,6 +1,11 @@
 "use client";
 
-import { addLeadingSlash, ClientVexConfig } from "@vexcms/core";
+import {
+  addLeadingSlash,
+  ClientVexConfig,
+  CRUD_ACTIONS,
+  PERMISSION_SCOPES,
+} from "@vexcms/core";
 import {
   Sidebar,
   SidebarContent,
@@ -17,6 +22,7 @@ import {
 import { AdminUser } from "./AdminLayout";
 import { Icon } from "./Icon";
 import { Activity } from "react";
+import { usePermission } from "../hooks";
 
 /**
  * Props for the `AppSidebar` component.
@@ -29,6 +35,12 @@ export interface AppSidebarProps {
    * Used to set `isActive` on the matching `SidebarMenuButton`.
    */
   activeSlug?: string;
+  /**
+   * The docID of the currently active document.
+   * Sometimes refers to a global slug.
+   * Used to set `isActive` on the matching `SidebarMenuButton`.
+   */
+  activeDocID?: string;
   user?: AdminUser;
 }
 
@@ -60,6 +72,32 @@ export interface AppSidebarProps {
  */
 export function AppSidebar(props: AppSidebarProps) {
   const adminRoot = addLeadingSlash(props.config.basePath);
+
+  // `scope: "any"` — the sidebar asks "may they read at least one document in
+  // this collection?", so a per-document check resolves optimistically and the
+  // section stays visible; row-level filtering happens in `find`/`get`.
+  const collections = props.config.collections.filter((c) =>
+    usePermission({
+      resource: c.slug,
+      action: CRUD_ACTIONS.read,
+      scope: PERMISSION_SCOPES.any,
+    }),
+  );
+  const globals = props.config.globals.filter((g) =>
+    usePermission({
+      resource: g.slug,
+      action: CRUD_ACTIONS.read,
+      scope: PERMISSION_SCOPES.any,
+    }),
+  );
+  const mediaCollections = props.config.mediaCollections.filter((mc) =>
+    usePermission({
+      resource: mc.slug,
+      action: CRUD_ACTIONS.read,
+      scope: PERMISSION_SCOPES.any,
+    }),
+  );
+
   return (
     <Sidebar
       side={props.config.admin.sidebar.side}
@@ -72,58 +110,62 @@ export function AppSidebar(props: AppSidebarProps) {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Collections</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {props.config.collections.map((collection) => (
-                <SidebarMenuItem key={collection.slug}>
-                  <SidebarMenuButton
-                    render={<VexLink href={`${adminRoot}/${collection.slug}`} />}
-                    isActive={props.activeSlug === collection.slug}
-                  >
-                    {collection.admin.icon && (
-                      <div>
-                        {/* @ts-expect-error Lucide Icon names match here, unknown lsp error */}
-                        <Icon name={collection.admin.icon} size={12} />
-                      </div>
-                    )}
-                    {collection.labels.plural}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Globals</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {props.config.globals.map((global) => (
-                <SidebarMenuItem key={global.slug}>
-                  <SidebarMenuButton
-                    render={<VexLink href={`${adminRoot}/globals/${global.slug}`} />}
-                    isActive={props.activeSlug === global.slug}
-                  >
-                    {global.admin.icon && (
-                      <div>
-                        {/* @ts-expect-error Lucide Icon names match here, unknown lsp error */}
-                        <Icon name={global.admin.icon} size={12} />
-                      </div>
-                    )}
-                    {global.label}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <Activity mode={props.config.mediaCollections.length > 0 ? "visible" : "hidden"}>
+        <Activity mode={collections.length > 0 ? "visible" : "hidden"}>
+          <SidebarGroup>
+            <SidebarGroupLabel>Collections</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {collections.map((collection) => (
+                  <SidebarMenuItem key={collection.slug}>
+                    <SidebarMenuButton
+                      render={<VexLink href={`${adminRoot}/${collection.slug}`} />}
+                      isActive={props.activeSlug === collection.slug}
+                    >
+                      {collection.admin.icon && (
+                        <div>
+                          {/* @ts-expect-error Lucide Icon names match here, unknown lsp error */}
+                          <Icon name={collection.admin.icon} size={12} />
+                        </div>
+                      )}
+                      {collection.labels.plural}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </Activity>
+        <Activity mode={globals.length > 0 ? "visible" : "hidden"}>
+          <SidebarGroup>
+            <SidebarGroupLabel>Globals</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {globals.map((global) => (
+                  <SidebarMenuItem key={global.slug}>
+                    <SidebarMenuButton
+                      render={<VexLink href={`${adminRoot}/globals/${global.slug}`} />}
+                      isActive={props.activeDocID === global.slug}
+                    >
+                      {global.admin.icon && (
+                        <div>
+                          {/* @ts-expect-error Lucide Icon names match here, unknown lsp error */}
+                          <Icon name={global.admin.icon} size={12} />
+                        </div>
+                      )}
+                      {global.label}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </Activity>
+        <Activity mode={mediaCollections.length > 0 ? "visible" : "hidden"}>
           <SidebarGroup>
             <SidebarGroupLabel>Media</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {props.config.mediaCollections.map((mediaCollection) => (
+                {mediaCollections.map((mediaCollection) => (
                   <SidebarMenuItem key={mediaCollection.slug}>
                     <SidebarMenuButton
                       render={<VexLink href={`${adminRoot}/${mediaCollection.slug}`} />}

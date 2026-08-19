@@ -1,5 +1,6 @@
 export * from "./use-mobile";
 export * from "./useCollectionForm";
+export * from "./usePermission";
 export * from "./useGlobalForm";
 export * from "./useFrameworkComponents";
 export * from "./useRelationshipPickerOptions";

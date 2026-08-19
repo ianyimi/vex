@@ -52,6 +52,7 @@ export async function NextAdminLayout(props: {
   config: VexConfig;
   children: ReactNode;
   user?: AdminUser;
+  organization?: Record<string, unknown>;
 }) {
   // Sanitize on the SERVER side of the server→client boundary, before the
   // config is serialized as a prop into the client leaf. This removes the
@@ -62,7 +63,12 @@ export async function NextAdminLayout(props: {
   const sidebarOpen = String(cookieStore.get("sidebar_state")?.value) === "true";
 
   return (
-    <NextAdminLayoutClient config={clientConfig} user={props.user} sidebarOpen={sidebarOpen}>
+    <NextAdminLayoutClient
+      config={clientConfig}
+      user={props.user}
+      organization={props.organization}
+      sidebarOpen={sidebarOpen}
+    >
       {props.children}
     </NextAdminLayoutClient>
   );

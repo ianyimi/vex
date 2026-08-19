@@ -6,6 +6,18 @@ import jsdocPlugin from "eslint-plugin-jsdoc";
 export default [
   js.configs.recommended,
   {
+    // Node globals used across server-side package code and tests (process.env
+    // guards, console.warn dev validation + warn-spies). TypeScript validates
+    // these via tsconfig lib/types; ESLint's no-undef can't read tsconfig so
+    // it false-positives without them.
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+      },
+    },
+  },
+  {
     files: ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"],
     ignores: [
       "**/*.test.ts",
@@ -151,6 +163,11 @@ export default [
   },
   {
     files: ["**/*.test.ts", "**/*.test.tsx"],
+    // Load the plugin so eslint-disable comments referencing
+    // @typescript-eslint rules resolve inside test files too.
+    plugins: {
+      "@typescript-eslint": tsPlugin,
+    },
     languageOptions: {
       parser: tsParser,
       parserOptions: {

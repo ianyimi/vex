@@ -1,8 +1,43 @@
-import { ComponentHKT } from "../fields";
+import { AdminField, CollectionFieldMeta, ComponentHKT } from "../fields";
 import { CollectionSlug } from "../types";
 import { toTitleCase, plural } from "../utils";
 import { CollectionConfigInput, CollectionConfig } from "./types";
 import { slugToPascalCase } from "./utils";
+
+function populateCollectionFieldMeta<
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TFieldSlug extends string = string,
+  TComponent extends ComponentHKT = ComponentHKT,
+>({
+  config,
+}: {
+  config: CollectionConfigInput<
+    TFieldMeta,
+    TCollectionMeta,
+    TCollectionSlug,
+    TFieldSlug,
+    TComponent
+  >;
+}): Record<TFieldSlug, AdminField<TFieldMeta & CollectionFieldMeta>> {
+  const fields: Record<
+    TFieldSlug,
+    AdminField<TFieldMeta & { collectionSlug: string }>
+  > = {} as Record<TFieldSlug, AdminField<TFieldMeta & CollectionFieldMeta>>;
+  Object.entries(config.fields).forEach((value) => {
+    const fieldSlug = value[0] as TFieldSlug;
+    const field = value[1] as AdminField<TFieldMeta & CollectionFieldMeta>;
+    fields[fieldSlug] = {
+      ...field,
+      meta: {
+        ...field?.meta,
+        collectionSlug: config.slug,
+      },
+    };
+  });
+  return fields;
+}
 
 /**
  * Resolves a raw collection config input into a fully-populated `CollectionConfig`.
@@ -41,10 +76,18 @@ export function defineCollection<
     TFieldSlug,
     TComponent
   >,
-): CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, TComponent> {
+): CollectionConfig<
+  TFieldMeta & CollectionFieldMeta,
+  TCollectionMeta,
+  TCollectionSlug,
+  TFieldSlug,
+  TComponent
+> {
+  const fields = populateCollectionFieldMeta({ config });
   return {
     interfaceName: slugToPascalCase({ slug: config.slug }) + "Document",
     ...config,
+    fields,
     admin: {
       useAsTitle: "_id",
       components: {},

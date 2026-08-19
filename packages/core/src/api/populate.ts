@@ -1,10 +1,6 @@
 import { asyncMap } from "convex-helpers";
 import { getAll } from "convex-helpers/server/relationships";
-import type {
-  GenericDataModel,
-  GenericQueryCtx,
-  TableNamesInDataModel,
-} from "convex/server";
+import type { GenericDataModel, GenericQueryCtx, TableNamesInDataModel } from "convex/server";
 import type { GenericId } from "convex/values";
 import type { CollectionSlug } from "../types/generated";
 import type { Populated, PopulateShape } from "./types";
@@ -33,7 +29,7 @@ export async function populateDocs<
   const TPopulate extends PopulateShape<TCollectionSlug> = PopulateShape<TCollectionSlug>,
 >(
   ctx: GenericQueryCtx<DataModel>,
-  docs: ReadonlyArray<Record<string, unknown>>,
+  docs: Record<string, unknown>[],
   populate: TPopulate,
 ): Promise<Populated<TCollectionSlug, TPopulate>[]> {
   const result = await asyncMap(docs, async (doc) => {
@@ -42,13 +38,8 @@ export async function populateDocs<
       const ids = doc[fieldKey];
       if (!Array.isArray(ids)) continue;
 
-      const targets = await getAll(
-        ctx.db,
-        ids as GenericId<TableNamesInDataModel<DataModel>>[],
-      );
-      const filtered = targets.filter(
-        (t): t is NonNullable<typeof t> => t !== null,
-      );
+      const targets = await getAll(ctx.db, ids as GenericId<TableNamesInDataModel<DataModel>>[]);
+      const filtered = targets.filter((t): t is NonNullable<typeof t> => t !== null);
 
       if (
         typeof opts === "object" &&
@@ -57,11 +48,7 @@ export async function populateDocs<
         opts.populate &&
         filtered.length > 0
       ) {
-        out[fieldKey] = await populateDocs(
-          ctx,
-          filtered as ReadonlyArray<Record<string, unknown>>,
-          opts.populate,
-        );
+        out[fieldKey] = await populateDocs(ctx, filtered, opts.populate);
       } else {
         out[fieldKey] = filtered;
       }

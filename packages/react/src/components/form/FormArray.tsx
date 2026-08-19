@@ -1,6 +1,12 @@
 "use client";
 
-import type { ArrayField, ArrayType, InputComponentProps } from "@vexcms/core";
+import {
+  CRUD_ACTIONS,
+  type ArrayField,
+  type ArrayType,
+  type BaseFieldMeta,
+  type InputComponentProps,
+} from "@vexcms/core";
 import type { TypedFieldApi } from "./createFieldInput";
 import { useContext } from "react";
 import { AppFormContext } from "./AppFormContext";
@@ -11,6 +17,7 @@ import { fieldToInputComponent } from "../fields";
 import { FormError } from "./FormError";
 import { FormLabel } from "./FormLabel";
 import { FormDescription } from "./FormDescription";
+import { usePermission } from "../../hooks";
 
 /**
  * Renders an array field as a dynamic list with add/remove controls.
@@ -45,14 +52,18 @@ import { FormDescription } from "./FormDescription";
  * )
  * ```
  */
-export function FormArray<TArrayType extends ArrayType = string>({
+export function FormArray<
+  TArrayType extends ArrayType = string,
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+>({
+  collection,
   name,
   field,
   fieldDef,
   index,
   readOnly,
   submissionAttempts,
-}: InputComponentProps<ArrayField<TArrayType>> & {
+}: InputComponentProps<TFieldMeta, ArrayField<TArrayType, TFieldMeta>> & {
   field: TypedFieldApi<TArrayType[]>;
   submissionAttempts: number;
 }) {
@@ -77,8 +88,9 @@ export function FormArray<TArrayType extends ArrayType = string>({
 
   const items = field.state.value ?? [];
 
+  const canEdit = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.update });
   return (
-    <div className="flex flex-col gap-3 p-2 border-2 rounded-sm">
+    <div className="flex flex-col gap-3 rounded-sm border-2 p-2">
       <div className="flex gap-3">
         <div>
           <FormLabel field={fieldDef} index={index} name={name} />
@@ -86,7 +98,7 @@ export function FormArray<TArrayType extends ArrayType = string>({
         </div>
         <Button
           type="button"
-          disabled={readOnly}
+          disabled={!canEdit || readOnly}
           variant="outline"
           size="sm"
           onClick={() => field.pushValue(getNewItemDefault())}
@@ -106,12 +118,13 @@ export function FormArray<TArrayType extends ArrayType = string>({
           {items.map((_, index) => (
             <Draggable key={index} id={`${name}[${index}]`} index={index}>
               <div className="flex items-center gap-2 px-2">
-                <DragHandle />
+                <DragHandle disabled={!canEdit || readOnly} />
                 <div className="flex-1">
                   <form.Field name={`${name}[${index}]`}>
                     {(subField) => (
                       <ItemInput
                         name={`${subField.name}`}
+                        collection={collection}
                         fieldDef={itemFieldDef}
                         readOnly={readOnly}
                         index={index}
@@ -125,7 +138,7 @@ export function FormArray<TArrayType extends ArrayType = string>({
                   size="icon-sm"
                   disabled={readOnly}
                   onClick={() => field.removeValue(index)}
-                  className="shrink-0 text-muted-foreground hover:text-destructive transition-all duration-300"
+                  className="text-muted-foreground hover:text-destructive shrink-0 transition-all duration-300"
                   aria-label={`Remove item ${index + 1}`}
                 >
                   <TrashIcon className="size-4" />
@@ -135,7 +148,7 @@ export function FormArray<TArrayType extends ArrayType = string>({
           ))}
         </Droppable>
       ) : (
-        <p className="text-sm text-muted-foreground">No items yet.</p>
+        <p className="text-muted-foreground text-sm">No items yet.</p>
       )}
 
       <FormError field={field} submissionAttempts={submissionAttempts} />

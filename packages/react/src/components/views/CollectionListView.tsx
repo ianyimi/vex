@@ -76,7 +76,7 @@ export function CollectionListView<
   const removeMutation = useMutation({ mutationFn: useConvexMutation(vexConvexApi.remove) });
 
   async function handleBulkDelete(selectedIds: string[]) {
-    await removeMutation.mutateAsync({ ids: selectedIds });
+    await removeMutation.mutateAsync({ ids: selectedIds, collection: collection.slug });
   }
 
   return (

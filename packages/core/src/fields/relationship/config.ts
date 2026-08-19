@@ -56,7 +56,11 @@ export function relationship<
     hasMany: false,
     ...options,
     type: ADMIN_FIELDS.relationship.type,
-    interfaceType: ADMIN_FIELDS.relationship.interfaceType,
+    // Per-field override of the static `ADMIN_FIELDS.relationship.interfaceType`
+    // (`Id<CollectionSlug>[]`): emitting the target slug as a literal is what
+    // lets `RelationshipTargetOf` recover it, so `populate`/`depth` can narrow
+    // the populated field to `Doc<target>[]` instead of a union of every doc.
+    interfaceType: `Id<"${options.collection.slug}">[]`,
     admin: {
       hidden: false,
       readOnly: false,

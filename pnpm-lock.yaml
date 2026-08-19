@@ -138,6 +138,9 @@ catalogs:
     commander:
       specifier: ^12.0.0
       version: 12.1.0
+    convex:
+      specifier: 1.44.0
+      version: 1.44.0
     convex-helpers:
       specifier: ^0.1.113
       version: 0.1.120
@@ -250,9 +253,6 @@ catalogs:
       specifier: ^4.3.6
       version: 4.4.3
 
-overrides:
-  convex: ^1.39.1
-
 patchedDependencies:
   '@convex-dev/better-auth@0.11.5':
     hash: 31f1332af0200ec9de5af148e16dfd9b97062c1b882d60b4654e22190eccdb12
@@ -297,17 +297,20 @@ importers:
     dependencies:
       '@astrojs/starlight':
         specifier: 'catalog:'
-        version: 0.38.5(astro@6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0))
+        version: 0.38.5(astro@6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0))
       astro:
         specifier: 'catalog:'
-        version: 6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)
+        version: 6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)
       sharp:
         specifier: 'catalog:'
         version: 0.34.5
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.19.43
       starlight-typedoc:
         specifier: 'catalog:'
-        version: 0.21.5(@astrojs/starlight@0.38.5(astro@6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)))(typedoc-plugin-markdown@4.12.0(typedoc@0.28.20(typescript@6.0.3)))(typedoc@0.28.20(typescript@6.0.3))
+        version: 0.21.5(@astrojs/starlight@0.38.5(astro@6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)))(typedoc-plugin-markdown@4.12.0(typedoc@0.28.20(typescript@6.0.3)))(typedoc@0.28.20(typescript@6.0.3))
       typedoc:
         specifier: 'catalog:'
         version: 0.28.20(typescript@6.0.3)
@@ -322,10 +325,10 @@ importers:
         version: 1.6.23(@better-auth/core@1.6.23(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.3)(kysely@0.29.3)(nanostores@1.4.0))(@better-auth/utils@0.4.2)(better-auth@1.6.23(next@16.2.10(@babel/core@7.29.7)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vitest@4.1.10))(better-call@1.3.7(zod@4.4.3))
       '@convex-dev/better-auth':
         specifier: 'catalog:'
-        version: 0.11.5(patch_hash=31f1332af0200ec9de5af148e16dfd9b97062c1b882d60b4654e22190eccdb12)(@standard-schema/spec@1.1.0)(better-auth@1.6.23(next@16.2.10(@babel/core@7.29.7)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vitest@4.1.10))(convex@1.42.1(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)
+        version: 0.11.5(patch_hash=31f1332af0200ec9de5af148e16dfd9b97062c1b882d60b4654e22190eccdb12)(@standard-schema/spec@1.1.0)(better-auth@1.6.23(next@16.2.10(@babel/core@7.29.7)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vitest@4.1.10))(convex@1.44.0(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)
       '@convex-dev/react-query':
         specifier: 'catalog:'
-        version: 0.1.0(@tanstack/react-query@5.101.2(react@19.2.7))(convex@1.42.1(react@19.2.7))
+        version: 0.1.0(@tanstack/react-query@5.101.2(react@19.2.7))(convex@1.44.0(react@19.2.7))
       '@daveyplate/better-auth-ui':
         specifier: 'catalog:'
         version: 3.4.0(b35d69b93cf6719284436394078be712)
@@ -363,11 +366,11 @@ importers:
         specifier: 'catalog:'
         version: 2.1.1
       convex:
-        specifier: ^1.39.1
-        version: 1.42.1(react@19.2.7)
+        specifier: ^1.44.0
+        version: 1.44.0(react@19.2.7)
       convex-helpers:
         specifier: 'catalog:'
-        version: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.42.1(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
+        version: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.44.0(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
       lucide-react:
         specifier: 'catalog:'
         version: 0.577.0(react@19.2.7)
@@ -398,7 +401,7 @@ importers:
     devDependencies:
       '@convex-dev/eslint-plugin':
         specifier: 'catalog:'
-        version: 1.2.2(convex@1.42.1(react@19.2.7))(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
+        version: 1.2.2(convex@1.44.0(react@19.2.7))(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
       '@eslint/eslintrc':
         specifier: 'catalog:'
         version: 3.3.6
@@ -469,14 +472,14 @@ importers:
         specifier: 'catalog:'
         version: 1.6.23(next@16.2.10(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vitest@4.1.10)
       convex:
-        specifier: ^1.39.1
-        version: 1.42.1(react@19.2.7)
+        specifier: 'catalog:'
+        version: 1.44.0(react@19.2.7)
       convex-helpers:
         specifier: 'catalog:'
-        version: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.42.1(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
+        version: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.44.0(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
       convex-test:
         specifier: 'catalog:'
-        version: 0.0.38(convex@1.42.1(react@19.2.7))
+        version: 0.0.38(convex@1.44.0(react@19.2.7))
       tsup:
         specifier: 'catalog:'
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.16)(typescript@6.0.3)(yaml@2.9.0)
@@ -493,8 +496,8 @@ importers:
         specifier: 'catalog:'
         version: 4.0.3
       convex:
-        specifier: ^1.39.1
-        version: 1.42.1(react@19.2.7)
+        specifier: '>=1.0.0'
+        version: 1.44.0(react@19.2.7)
       jiti:
         specifier: 'catalog:'
         version: 2.7.0
@@ -529,7 +532,7 @@ importers:
     devDependencies:
       '@convex-dev/react-query':
         specifier: 'catalog:'
-        version: 0.1.0(@tanstack/react-query@5.101.2(react@19.2.7))(convex@1.42.1(react@19.2.7))
+        version: 0.1.0(@tanstack/react-query@5.101.2(react@19.2.7))(convex@1.44.0(react@19.2.7))
       '@edge-runtime/vm':
         specifier: 'catalog:'
         version: 5.0.0
@@ -552,14 +555,14 @@ importers:
         specifier: 'catalog:'
         version: 4.1.10(vitest@4.1.10)
       convex:
-        specifier: ^1.39.1
-        version: 1.42.1(react@19.2.7)
+        specifier: 'catalog:'
+        version: 1.44.0(react@19.2.7)
       convex-helpers:
         specifier: 'catalog:'
-        version: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.42.1(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
+        version: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.44.0(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
       convex-test:
         specifier: 'catalog:'
-        version: 0.0.38(convex@1.42.1(react@19.2.7))
+        version: 0.0.38(convex@1.44.0(react@19.2.7))
       lucide-react:
         specifier: 'catalog:'
         version: 0.577.0(react@19.2.7)
@@ -631,8 +634,8 @@ importers:
         specifier: workspace:*
         version: link:../tsconfig
       convex:
-        specifier: ^1.39.1
-        version: 1.42.1(react@19.2.7)
+        specifier: 'catalog:'
+        version: 1.44.0(react@19.2.7)
       tsup:
         specifier: 'catalog:'
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.16)(typescript@6.0.3)(yaml@2.9.0)
@@ -647,7 +650,7 @@ importers:
     dependencies:
       '@convex-dev/react-query':
         specifier: 'catalog:'
-        version: 0.1.0(@tanstack/react-query@5.101.2(react@19.2.7))(convex@1.42.1(react@19.2.7))
+        version: 0.1.0(@tanstack/react-query@5.101.2(react@19.2.7))(convex@1.44.0(react@19.2.7))
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.101.2(react@19.2.7)
@@ -658,8 +661,8 @@ importers:
         specifier: workspace:*
         version: link:../react
       convex:
-        specifier: ^1.39.1
-        version: 1.42.1(react@19.2.7)
+        specifier: 'catalog:'
+        version: 1.44.0(react@19.2.7)
       lucide-react:
         specifier: 'catalog:'
         version: 0.577.0(react@19.2.7)
@@ -673,6 +676,9 @@ importers:
       '@tanstack/react-table':
         specifier: 'catalog:'
         version: 8.21.3(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.19.43
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.17
@@ -711,7 +717,7 @@ importers:
         version: 1.2.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@convex-dev/react-query':
         specifier: 'catalog:'
-        version: 0.1.0(@tanstack/react-query@5.101.2(react@19.2.7))(convex@1.42.1(react@19.2.7))
+        version: 0.1.0(@tanstack/react-query@5.101.2(react@19.2.7))(convex@1.44.0(react@19.2.7))
       '@hello-pangea/dnd':
         specifier: 'catalog:'
         version: 18.0.1(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -749,8 +755,8 @@ importers:
         specifier: 'catalog:'
         version: 1.1.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       convex:
-        specifier: ^1.39.1
-        version: 1.42.1(react@19.2.7)
+        specifier: '>=1.0.0'
+        version: 1.44.0(react@19.2.7)
       date-fns:
         specifier: 'catalog:'
         version: 4.4.0
@@ -843,6 +849,9 @@ importers:
         specifier: 'catalog:'
         version: 52.3.21(@types/react@19.2.17)(immer@10.2.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(scheduler@0.27.0)(use-sync-external-store@1.6.0(react@19.2.7))
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.19.43
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.17
@@ -1264,19 +1273,19 @@ packages:
     resolution: {integrity: sha512-wSaHyP/M7/wycba+8IMxZoxvxXlDLD7N9NqM7VFM7cmwCT2O3bbdxFL9ommS2eGFcTe52DSOmforZXPGRPhr4Q==}
     peerDependencies:
       better-auth: '>=1.5.0 <1.6.0'
-      convex: ^1.39.1
+      convex: ^1.25.0
       react: ^18.3.1 || ^19.0.0
 
   '@convex-dev/eslint-plugin@1.2.2':
     resolution: {integrity: sha512-hLElzzSHuO83O/7PqaeFrMy8EOaDPMAUBNaqo7wkOzCsUCgA+tI9SXVSVLUozDGBBQjyXjAaPYRIBKoPeZbZKg==}
     peerDependencies:
-      convex: ^1.39.1
+      convex: ^1.34.1
 
   '@convex-dev/react-query@0.1.0':
     resolution: {integrity: sha512-ULmBZCtAQDUePdBhUv7hj1Yy4QiCelhi6uEIOtMpjW8db6W9CFKvQwLt9heLngccFyMFfAZdOfSrT+cP4AH0Jw==}
     peerDependencies:
       '@tanstack/react-query': ^5.0.0
-      convex: ^1.39.1
+      convex: ^1.29.3
 
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
@@ -4494,7 +4503,7 @@ packages:
     hasBin: true
     peerDependencies:
       '@standard-schema/spec': ^1.0.0
-      convex: ^1.39.1
+      convex: ^1.32.0
       hono: ^4.0.5
       react: ^17.0.2 || ^18.0.0 || ^19.0.0
       typescript: ^5.5 || ^6.0.0
@@ -4514,10 +4523,10 @@ packages:
   convex-test@0.0.38:
     resolution: {integrity: sha512-1o/3GvUR9gMLjiqq7SxchI/0OYQaWwbQC4INmB1SNt1WLBjUgEM8+brgpqrZwJ+Vb1DdGZokCVeihwT5IPk49w==}
     peerDependencies:
-      convex: ^1.39.1
+      convex: ^1.16.4
 
-  convex@1.42.1:
-    resolution: {integrity: sha512-yFKp4xerVuBwQqpuTtvosOk9F/fX0twZs+Xti3oj/MlwPUU90QuhgCYo/I2wvFBAFwXsmx9tXpf2q8ekh1+3ug==}
+  convex@1.44.0:
+    resolution: {integrity: sha512-84bBa1ufSX4qohXdycXuQl2c2kAmfVpTCpypcmIgxpS5rUBgv5qjhArYugTkJVbljMs5SH2mW30bjJo+SQwe1w==}
     engines: {node: '>=18.0.0', npm: '>=7.0.0'}
     hasBin: true
     peerDependencies:
@@ -8458,12 +8467,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@astrojs/mdx@5.0.6(astro@6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0))':
+  '@astrojs/mdx@5.0.6(astro@6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0))':
     dependencies:
       '@astrojs/markdown-remark': 7.1.2
       '@mdx-js/mdx': 3.1.1
       acorn: 8.17.0
-      astro: 6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)
+      astro: 6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)
       es-module-lexer: 2.3.0
       estree-util-visit: 2.0.0
       hast-util-to-html: 9.0.5
@@ -8487,17 +8496,17 @@ snapshots:
       stream-replace-string: 2.0.0
       zod: 4.4.3
 
-  '@astrojs/starlight@0.38.5(astro@6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0))':
+  '@astrojs/starlight@0.38.5(astro@6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0))':
     dependencies:
       '@astrojs/markdown-remark': 7.2.1
-      '@astrojs/mdx': 5.0.6(astro@6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0))
+      '@astrojs/mdx': 5.0.6(astro@6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0))
       '@astrojs/sitemap': 3.7.3
       '@pagefind/default-ui': 1.5.2
       '@types/hast': 3.0.5
       '@types/js-yaml': 4.0.9
       '@types/mdast': 4.0.4
-      astro: 6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)
-      astro-expressive-code: 0.42.0(astro@6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0))
+      astro: 6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)
+      astro-expressive-code: 0.42.0(astro@6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0))
       bcp-47: 2.1.1
       hast-util-from-html: 2.0.3
       hast-util-select: 6.0.4
@@ -8991,13 +9000,13 @@ snapshots:
       fast-wrap-ansi: 0.2.2
       sisteransi: 1.0.5
 
-  '@convex-dev/better-auth@0.11.5(patch_hash=31f1332af0200ec9de5af148e16dfd9b97062c1b882d60b4654e22190eccdb12)(@standard-schema/spec@1.1.0)(better-auth@1.6.23(next@16.2.10(@babel/core@7.29.7)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vitest@4.1.10))(convex@1.42.1(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)':
+  '@convex-dev/better-auth@0.11.5(patch_hash=31f1332af0200ec9de5af148e16dfd9b97062c1b882d60b4654e22190eccdb12)(@standard-schema/spec@1.1.0)(better-auth@1.6.23(next@16.2.10(@babel/core@7.29.7)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vitest@4.1.10))(convex@1.44.0(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)':
     dependencies:
       '@better-fetch/fetch': 1.3.1
       better-auth: 1.6.23(next@16.2.10(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vitest@4.1.10)
       common-tags: 1.8.2
-      convex: 1.42.1(react@19.2.7)
-      convex-helpers: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.42.1(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
+      convex: 1.44.0(react@19.2.7)
+      convex-helpers: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.44.0(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
       jose: 6.2.3
       react: 19.2.7
       remeda: 2.39.0
@@ -9009,20 +9018,20 @@ snapshots:
       - hono
       - typescript
 
-  '@convex-dev/eslint-plugin@1.2.2(convex@1.42.1(react@19.2.7))(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)':
+  '@convex-dev/eslint-plugin@1.2.2(convex@1.44.0(react@19.2.7))(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)':
     dependencies:
       '@typescript-eslint/types': 8.58.2
       '@typescript-eslint/utils': 8.58.2(eslint@9.39.5(jiti@2.7.0))(typescript@6.0.3)
-      convex: 1.42.1(react@19.2.7)
+      convex: 1.44.0(react@19.2.7)
     transitivePeerDependencies:
       - eslint
       - supports-color
       - typescript
 
-  '@convex-dev/react-query@0.1.0(@tanstack/react-query@5.101.2(react@19.2.7))(convex@1.42.1(react@19.2.7))':
+  '@convex-dev/react-query@0.1.0(@tanstack/react-query@5.101.2(react@19.2.7))(convex@1.44.0(react@19.2.7))':
     dependencies:
       '@tanstack/react-query': 5.101.2(react@19.2.7)
-      convex: 1.42.1(react@19.2.7)
+      convex: 1.44.0(react@19.2.7)
 
   '@csstools/color-helpers@5.1.0': {}
 
@@ -11190,11 +11199,11 @@ snapshots:
 
   '@types/sax@1.2.7':
     dependencies:
-      '@types/node': 24.13.3
+      '@types/node': 26.1.1
 
   '@types/set-cookie-parser@2.4.10':
     dependencies:
-      '@types/node': 20.19.43
+      '@types/node': 26.1.1
 
   '@types/statuses@2.0.6': {}
 
@@ -11749,12 +11758,12 @@ snapshots:
 
   astring@1.9.0: {}
 
-  astro-expressive-code@0.42.0(astro@6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)):
+  astro-expressive-code@0.42.0(astro@6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)):
     dependencies:
-      astro: 6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)
+      astro: 6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)
       rehype-expressive-code: 0.42.0
 
-  astro@6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0):
+  astro@6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0):
     dependencies:
       '@astrojs/compiler': 4.0.0
       '@astrojs/internal-helpers': 0.10.0
@@ -11806,8 +11815,8 @@ snapshots:
       unist-util-visit: 5.1.0
       unstorage: 1.17.5
       vfile: 6.0.3
-      vite: 7.3.6(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
-      vitefu: 1.1.3(vite@7.3.6(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0))
+      vite: 7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
+      vitefu: 1.1.3(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0))
       xxhash-wasm: 1.1.0
       yargs-parser: 22.0.0
       zod: 4.4.3
@@ -12134,9 +12143,9 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  convex-helpers@0.1.120(@standard-schema/spec@1.1.0)(convex@1.42.1(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3):
+  convex-helpers@0.1.120(@standard-schema/spec@1.1.0)(convex@1.44.0(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3):
     dependencies:
-      convex: 1.42.1(react@19.2.7)
+      convex: 1.44.0(react@19.2.7)
     optionalDependencies:
       '@standard-schema/spec': 1.1.0
       hono: 4.12.29
@@ -12144,11 +12153,11 @@ snapshots:
       typescript: 6.0.3
       zod: 4.4.3
 
-  convex-test@0.0.38(convex@1.42.1(react@19.2.7)):
+  convex-test@0.0.38(convex@1.44.0(react@19.2.7)):
     dependencies:
-      convex: 1.42.1(react@19.2.7)
+      convex: 1.44.0(react@19.2.7)
 
-  convex@1.42.1(react@19.2.7):
+  convex@1.44.0(react@19.2.7):
     dependencies:
       esbuild: 0.27.0
       prettier: 3.9.5
@@ -15873,9 +15882,9 @@ snapshots:
 
   stackback@0.0.2: {}
 
-  starlight-typedoc@0.21.5(@astrojs/starlight@0.38.5(astro@6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)))(typedoc-plugin-markdown@4.12.0(typedoc@0.28.20(typescript@6.0.3)))(typedoc@0.28.20(typescript@6.0.3)):
+  starlight-typedoc@0.21.5(@astrojs/starlight@0.38.5(astro@6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0)))(typedoc-plugin-markdown@4.12.0(typedoc@0.28.20(typescript@6.0.3)))(typedoc@0.28.20(typescript@6.0.3)):
     dependencies:
-      '@astrojs/starlight': 0.38.5(astro@6.4.8(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0))
+      '@astrojs/starlight': 0.38.5(astro@6.4.8(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.2)(yaml@2.9.0))
       github-slugger: 2.0.0
       typedoc: 0.28.20(typescript@6.0.3)
       typedoc-plugin-markdown: 4.12.0(typedoc@0.28.20(typescript@6.0.3))
@@ -16501,9 +16510,9 @@ snapshots:
       lightningcss: 1.32.0
       yaml: 2.9.0
 
-  vitefu@1.1.3(vite@7.3.6(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)):
+  vitefu@1.1.3(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)):
     optionalDependencies:
-      vite: 7.3.6(@types/node@26.1.1)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
+      vite: 7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)
 
   vitest@4.1.10(@edge-runtime/vm@5.0.0)(@types/node@20.19.43)(@vitest/coverage-v8@4.1.10)(jsdom@26.1.0)(msw@2.15.0(@types/node@20.19.43)(typescript@6.0.3))(vite@7.3.6(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0)):
     dependencies:

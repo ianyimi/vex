@@ -40,14 +40,12 @@
  * @see {@link betterAuthAdapter} for the main Vex auth adapter function
  * @see {@link authDbApi} for wiring the Convex DB operations
  */
-export {
-  betterAuthAdapter,
-  type BetterAuthAdapterOptions,
-} from "./adapter";
+export { betterAuthAdapter, type BetterAuthAdapterOptions } from "./adapter";
 export {
   authDbApi,
   createBetterAuthAdapter,
   convexAdapter,
+  createGetAuth,
   type CreateBetterAuthAdapterArgs,
   type CreateBetterAuthAdapterResult,
 } from "./convex";

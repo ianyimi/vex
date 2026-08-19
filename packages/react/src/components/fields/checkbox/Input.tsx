@@ -1,13 +1,9 @@
 "use client";
 
-import type { CheckboxField } from "@vexcms/core";
-import {
-  createFieldInput,
-  FormLabel,
-  FormDescription,
-  FormError,
-} from "../../form";
+import { CRUD_ACTIONS, type CheckboxField } from "@vexcms/core";
+import { createFieldInput, FormLabel, FormDescription, FormError } from "../../form";
 import { Checkbox } from "../../ui/checkbox";
+import { usePermission } from "../../../hooks";
 
 /**
  * Checkbox field input component for the admin edit form.
@@ -39,13 +35,15 @@ import { Checkbox } from "../../ui/checkbox";
  * </form.Field>
  * ```
  */
-export const CheckboxFieldInput = createFieldInput<boolean, CheckboxField>(
-  ({ name, fieldDef, field, index, submissionAttempts }) => {
+export const CheckboxFieldInput = createFieldInput<boolean, {}, CheckboxField>(
+  ({ name, collection, fieldDef, field, index, submissionAttempts }) => {
+    const canEdit = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.update });
     return (
       <div className="flex flex-col gap-1.5 py-2">
         <div className="flex gap-2">
           <Checkbox
             id={name}
+            disabled={!canEdit}
             checked={field.state.value}
             onCheckedChange={(checked) => field.handleChange(checked)}
             onBlur={field.handleBlur}

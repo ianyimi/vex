@@ -1,16 +1,20 @@
 ---
-status: draft
+status: in-progress
 spec_id: 2026-08-12-rbac-access-control
 touches:
   - "packages/core/src/access/**"
-  - "packages/core/src/config/types.ts"
-  - "packages/core/src/config/config.ts"
-  - "packages/core/src/config/sanitizeConfig.ts"
-  - "packages/core/src/api/server.ts"
+  - "packages/core/src/config/{types,config,sanitizeConfig}.ts"
+  - "packages/core/src/api/**"
+  - "packages/core/src/media/api/**"
   - "packages/core/src/index.ts"
-  - "apps/www/src/vexcms/access.ts"
+  - "packages/better-auth/src/convex/getAuth.ts"
+  - "packages/next/src/NextAdminPage.tsx"
+  - "packages/react/src/components/{AdminSidebar,AdminTopNav}.tsx"
+  - "packages/react/src/components/views/**"
+  - "packages/react/src/context/**"
+  - "apps/www/src/auth/access.ts"
   - "apps/www/src/vex.config.ts"
-  - "apps/www/src/auth/permissions.ts"
+  - "apps/www/convex/vex.ts"
   - "apps/www/convex/vex/**"
 prompt_version: 1
 ---
@@ -22,11 +26,11 @@ prompt_version: 1
 Reimplements RBAC from scratch for the rebuild (no master merge planned; rebuild will be
 promoted). New `packages/core/src/access/` module: roles x subjects x actions permission
 matrix authored as one typed constant, checked at runtime by a pure, synchronous
-`hasPermission({...}) => boolean | field-map`. Unlike master, every checkable thing is a
-*subject*: collections and globals (CRUD + draft actions), the core-provided `adminPanel`
+`hasPermission({...}) => boolean`. Unlike master, every checkable thing is a
+_subject_: collections and globals (CRUD + draft actions), the core-provided `adminPanel`
 subject, and arbitrary user-declared `customResources` with their own action unions.
-Enforcement lands once, in the server API factories (`queryApi`/`mutationApi`/`globalsApi`)
-via an optional `getAuth` seam. Design rationale and variant comparison:
+Enforcement lands once, in the server API factories (`collectionsApi` / `globalsApi` / media)
+via an optional server-resolved `getAuth` seam. Design rationale and variant comparison:
 `.agent/docs/research/rbac-v2-design.md`.
 
 ## Code Effect Preview
@@ -43,11 +47,12 @@ export const access = defineAccess({
   roles: [USER_ROLES.admin, USER_ROLES.user],
   resources: [pages, headers, footers, themes, siteSettings, nav, { slug: TABLE_SLUG_USERS }],
   customResources: {
-    seedData: ["reset"],                       // arbitrary non-collection subject
+    seedData: { actions: ["reset"] },          // arbitrary non-collection subject
     // reviews: { actions: ["approve"], data: dataType<{ queue: string }>() },
   },
-  userCollection: { slug: TABLE_SLUG_USERS },
-  defaults: "allow",
+  userCollectionSlug: TABLE_SLUG_USERS,
+  userRolesField: "roles",                     // field on the user doc holding string | string[]
+  defaultPermissionMode: PERMISSION_MODES.allow,   // optional — this is already the default
   permissions: {
     admin: { "*": true },
     user: {
@@ -65,37 +70,71 @@ export const access = defineAccess({
 
 Wildcards compose at two levels — role (`admin: { "*": true }`, boolean only) and action
 (`pages: { "*": true, delete: cb }`, any `PermissionCheck` incl. callbacks). Precedence:
-explicit action > subject `"*"` > role `"*"` > `defaults`.
+explicit action > subject `"*"` > role `"*"` > `defaultPermissionMode`.
 
 ### hasPermission — one call shape for collections, globals, admin panel, custom gates
 
 ```ts
-// Before (master) — separate checkAdminAccess() + magic `admin` key in the matrix
-checkAdminAccess({ access, user, userRoles })
+// Before (master) — separate checkAdminAccess() + user AND userRoles both required
+checkAdminAccess({ access, user, userRoles });
 
-// After — everything is a subject; action unions are typed per subject
-hasPermission({ access, user, userRoles, resource: "pages", action: "update" })            // boolean
-hasPermission({ access, user, userRoles, resource: "adminPanel", action: "access" })       // boolean
-hasPermission({ access, user, userRoles, resource: "seedData", action: "reset" })          // boolean
-hasPermission({ access, user, userRoles, resource: "pages", action: "publish" })           // draft action (versions.drafts)
-hasPermission({ access, user, userRoles, resource: "user", action: "update",
-  fields: ["name", "email"] })                                       // → { name: boolean, email: boolean }
-hasPermission({ access, user, userRoles, resource: "pages", action: "delete",
-  data: page, throwOnDenied: true })                                 // throws VexAccessError on deny
+// After — everything is a subject; roles ride the user document (access.userRolesField)
+hasPermission({ access, user, resource: "pages", action: "update" }); // boolean
+hasPermission({ access, user, resource: "adminPanel", action: "access" }); // boolean
+hasPermission({ access, user, resource: "seedData", action: "reset" }); // boolean
+hasPermission({ access, user, resource: "pages", action: "publish" }); // draft action (versions.drafts)
+hasPermission({
+  access,
+  user,
+  resource: "user",
+  action: "update",
+  fields: ["name", "email"],
+}); // → { name: boolean, email: boolean }
+hasPermission({
+  access,
+  user,
+  resource: "pages",
+  action: "delete",
+  data: page,
+  throwOnDenied: true,
+}); // throws VexAccessError on deny
+
+// App-level wrappers (www, not core): fetch the current session when user is omitted
+await hasServerPermission({ resource: "pages", action: "update" }); // server helper
+useHasPermission({ resource: "adminPanel", action: "access" }); // client hook
 ```
 
 ### Server factories — enforcement lands once, via the getAuth seam
 
 ```ts
 // Before — apps/www/convex/vex.ts: no access control anywhere
-export const { find, get, search } = queryApi(config, query)
+export const { find, get, search } = queryApi(config, query);
 
-// After — same factories, one optional options param; omitted = behavior unchanged
-import { getAuth } from "./vex/auth"
-export const { find, get, search } = queryApi(config, query, { getAuth })
-export const { create, update, remove } = mutationApi(config, mutation, { getAuth })
-export const { get: globalGet, find: globalFind, upsert } = globalsApi(config, query, mutation, { getAuth })
-// writes throw VexAccessError on deny; reads filter denied docs / return null
+// After — one unified factory with the getAuth seam; identity resolved server-side
+import { createGetAuth } from "@vexcms/better-auth";
+const getAuth = createGetAuth({
+  userCollectionSlug,
+  orgCollectionSlug,
+  sessionCollectionSlug,
+  resolveOrgs: true,
+});
+export const { find, get, search, create, update, remove } = collectionsApi({
+  config,
+  query,
+  mutation,
+  getAuth,
+});
+export const {
+  get: globalGet,
+  find: globalFind,
+  upsert,
+} = globalsApi({
+  config,
+  query,
+  mutation,
+  getAuth,
+});
+// writes throw VexAccessError on deny; single-doc reads return null; lists filter denied docs
 ```
 
 ### Client boundary — access never ships to the browser
@@ -107,40 +146,49 @@ export const { get: globalGet, find: globalFind, upsert } = globalsApi(config, q
 
 ## API Surface
 
-| Import | Symbol | Signature | Purpose |
-| --- | --- | --- | --- |
-| `@vexcms/core` | `defineAccess` | `(props: VexAccessInput<…>) => VexAccessConfig<SubjectMap<…>>` | Build the typed access config constant |
-| `@vexcms/core` | `hasPermission` | `(props: { access, user, userRoles, resource, action, data?, organization?, fields?, throwOnDenied? }) => boolean \| ResolvedFieldPermissions` | Pure sync permission check; field map when `fields` passed |
-| `@vexcms/core` | `dataType` | `<T>() => DataTypeCarrier<T>` | Phantom data-type carrier for `customResources` |
-| `@vexcms/core` | `resolvePermissionCheck` / `mergeRolePermissions` | see Step 3 | Advanced: single-check resolution / multi-role OR merge |
-| `@vexcms/core` | `VexAccessError` | `new (message, { resource, action, field? })` | Thrown by `throwOnDenied`; structured denial context |
-| `@vexcms/core` | `VexAccessConfigError` | `new (message)` | Thrown by `defineAccess` on hard config errors |
-| `@vexcms/core/server` | `queryApi` / `mutationApi` | `(config, builder, options?: VexApiOptions)` | Factories gain optional enforcement seam (3rd param) |
-| `@vexcms/core/server` | `globalsApi` | `(config, query, mutation, options?: VexApiOptions)` | Same seam, 4th param |
-| `@vexcms/core/server` | `VexApiAuth` / `VexApiOptions` | `{ user, roles }` / `{ getAuth?: (ctx) => Promise<VexApiAuth \| null> }` | Auth resolution contract for the factories |
+| Import                | Symbol                                                                                           | Signature                                                                                                                             | Purpose                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `@vexcms/core`        | `defineAccess`                                                                                   | `(props: VexAccessConfigInput<TRoles, TResources, TCustom, TUserSlug, TOrgSlug>) => VexAccessConfig<SubjectMap<TResources, TCustom>>` | Build the typed access config constant                                                          |
+| `@vexcms/core`        | `hasPermission`                                                                                  | `(props: { access?, user, organization?, resource, action, data?, mode?, throwOnDenied? }) => boolean`                                | Pure sync check → boolean; roles from `access.userRolesField`; `mode: "action" \| "capability"` |
+| `@vexcms/core`        | `dataType`                                                                                       | `<T>() => DataTypeCarrier<T>`                                                                                                         | Phantom data-type carrier for `customResources`                                                 |
+| `@vexcms/core`        | `CRUD_ACTIONS` / `DRAFT_ACTIONS` / `PERMISSION_MODES` / `WILDCARD_KEY` / `ADMIN_CUSTOM_SUBJECTS` | `as const` maps + `"*"`                                                                                                               | Access constants; all module types derive from these                                            |
+| `@vexcms/core`        | `VexAccessError`                                                                                 | `new (message, { resource, action, field? })`                                                                                         | Thrown by `throwOnDenied`; structured denial context                                            |
+| `@vexcms/core`        | `VexAccessConfigError`                                                                           | `new (message)`                                                                                                                       | Thrown by `defineAccess` on hard config errors                                                  |
+| `@vexcms/core/server` | `collectionsApi` / `globalsApi`                                                                  | `({ config, query, mutation, getAuth })`                                                                                              | Unified factories; server-resolved enforcement seam                                             |
+| `@vexcms/core/server` | `resolveGetAuth` / `VexApiAuth`                                                                  | `({ ctx, config, getAuth }) => Promise<VexApiAuth \| undefined>` / `{ user: … \| null; organization? }`                               | Auth resolution; `user: null` = unauthenticated → deny                                          |
+| `@vexcms/better-auth` | `createGetAuth`                                                                                  | `({ userCollectionSlug, orgCollectionSlug, sessionCollectionSlug, resolveOrgs? }) => getAuth`                                         | Better-auth `getAuth` resolver (user + active org)                                              |
+
+`resolvePermissionCheck`, `mergeRolePermissions`, and `resolveActionCheck` are module-private
+helpers inside `hasPermission.ts` — `hasPermission` is the only runtime entry point.
 
 ## Progress Checklist
 
-- [ ] Step 1 — Access module types + errors (`access/types.ts`)
-- [ ] Step 2 — `defineAccess` builder + tests (`access/config.ts`)
-- [ ] Step 3 — `hasPermission` resolver + tests (`access/hasPermission.ts`, `access/index.ts`)
-- [ ] Step 4 — Config integration + public exports (VexConfig `access`, sanitize strip, `index.ts`)
-- [ ] Step 5 — Server API enforcement seam (`api/types.ts`, `api/server.ts`, `api/access.test.ts`)
-- [ ] Step 6 — www wiring + stub removal (`access.ts`, `vex.config.ts`, `convex/vex/auth.ts`, delete `permissions.ts`)
+- [x] Step 1 — Access constants + types + errors (`access/constants.ts`, `access/types.ts`)
+- [x] Step 2 — `defineAccess` builder + tests (`access/config.ts`)
+- [x] Step 3 — `hasPermission` resolver + tests (`access/hasPermission.ts`, `access/index.ts`)
+- [x] Step 4 — Config integration + public exports (`defineConfig`-time access validation still open — see Step 4 / Step 10)
+- [x] Step 5 — Server API enforcement (`collectionsApi` + `globalsApi` + media factories, `resolveGetAuth`, `me`, nullable `user`)
+- [x] Step 6 — www wiring (`@vexcms/better-auth` `createGetAuth`, `convex/vex.ts`, token through `NextAdminPage`)
+- [ ] Step 7 — Capability mode in `hasPermission` (`mode: "action" | "capability"`)
+- [ ] Step 8 — Client permission context (`VexAccessProvider`/`useVexAuth`/`usePermission` → sidebar/nav)
+- [ ] Step 9 — View-level action enforcement (create/save/delete buttons, readonly inputs)
+- [ ] Step 10 — Cleanup: drop field-mode objects, `get`/`getGlobal` null-on-deny, `defineConfig`-time validation
+- [ ] Step 11 — Comprehensive test plan (all code paths)
 
 ## Design Decisions
 
 1. **Variant B — unified subjects.** One vocabulary: `hasPermission({ resource, action })`
    for collections, globals, admin panel, and custom gates alike. Why: one mental model,
    typed action unions per subject, master-parity call ergonomics.
-2. **`customResources`, not `custom`.** Declares non-collection subjects
-   (array shorthand `["create", "revoke"]` or `{ actions, data: dataType<T>() }`). Why: the
-   check site reads `resource:`, so declaring them as resources keeps the vocabulary honest.
+2. **`customResources`, not `custom`.** Declares non-collection subjects — one canonical
+   object form: `{ actions: ["create", "revoke"], data?: dataType<T>() }` (no array
+   shorthand — one shape, no normalization step). Why: the check site reads `resource:`,
+   so declaring them as resources keeps the vocabulary honest.
 3. **Typed `data` flows end-to-end.** A `dataType<T>()` carrier on a custom resource types
    both the callback's `data` prop AND the `data` argument `hasPermission` accepts for that
    subject. Why: compile-time proof the caller passes what checks consume.
 4. **Callbacks allowed on every subject** (collections, globals, customResources). A callback
-   is just one kind of `PermissionCheck`. Why: row-level *logic* without row-level storage.
+   is just one kind of `PermissionCheck`. Why: row-level _logic_ without row-level storage.
 5. **`adminPanel` built-in subject replaces master's `adminRoles` + `checkAdminAccess`.**
    Actions: `access`, `impersonate`. Why: adminRoles duplicated what permissions already
    express; one fewer concept.
@@ -148,27 +196,32 @@ export const { get: globalGet, find: globalFind, upsert } = globalsApi(config, q
    auto-added to subjects whose config has `versions.drafts: true` (globals today;
    collections when Spec 36 lands — machinery is forward-compatible). Why: draft gating is
    naturally per-collection; no separate "drafts" concept to configure.
-7. **`defaults: "allow" | "deny"`, default `"allow"`.** Master parity by default; deny
+7. **`defaultPermissionMode: PermissionMode`, default `PERMISSION_MODES.allow`.** Reuses the
+   same `PERMISSION_MODES` constant used by field-mode objects — no separate `ACCESS_DEFAULTS`
+   enum for what is semantically the same allow/deny choice. Master parity by default; deny
    posture opt-in for hardened configs. Undeclared role/subject/action resolves to this.
    Why: a forgotten `dangerZone` declaration shouldn't silently allow — but flipping the
    default would break master-shaped mental models.
-8. **Single input type, optional `organizationCollection`.** No with/without-org overload
+8. **Single input type, optional `orgCollectionSlug`.** No with/without-org overload
    pair (master had two). When present, `organization` is typed in every callback; when
    absent it is `never`. No `userOrgField` (master used it only for a dev warning).
    Why: half the generic surface for the same capability.
-9. **Multi-role merge: OR, allow wins over deny** — per action and per field. Empty or
-   all-unknown `userRoles` deny. `access: undefined` allows everything (system off).
-   Why: master parity; its 1272-line test suite encodes these semantics and ports directly.
-10. **Enforcement in the API factories, not generated files.** `queryApi`/`mutationApi`/
-    `globalsApi` accept `options?: { getAuth }`; omitted = behavior unchanged. Why: one seam
+9. **Multi-role merge: OR, allow wins over deny** — per action and per field. Roles are
+   derived from the user document (`access.userRolesField`); a missing/empty/unknown roles
+   value denies. `access: undefined` allows everything (system off). Why: master parity on
+   merge semantics; its 1272-line test suite ports directly.
+10. **Enforcement in the API factories, not generated files.** `collectionsApi`/`globalsApi`/
+    media factories take `{ getAuth }`; omitted = behavior unchanged. Why: one seam
     covers every collection and global; master's per-generated-file guards were N copies of
     the same block.
 11. **Read filtering is post-query.** Convex cannot push predicates into indexes; `find` is
     limit-based (not `paginationOpts`), so filtering denied docs is safe here. Why: honest
     about the platform; the paginated-admin-list story belongs to the admin enforcement spec.
-12. **`access` stripped from client config entirely.** Server-only; the admin UI will get a
-    computed permission snapshot in a follow-up spec. Why: callbacks don't serialize, and
-    permission rules are not client data.
+12. **`access` stripped from the _serialized_ client config.** `sanitizeConfigForClient` drops
+    it — callbacks don't serialize and permission rules aren't config data. The admin UI gets
+    `access` a different way (Step 8): a direct client-bundle import into `VexAccessProvider`,
+    not through the serialized prop. Why: keeps the serialized boundary clean while still
+    enabling direct client `hasPermission`.
 13. **Config stays one typed constant** imported into `vex.config.ts`. Per-collection/global
     inline `access` is intentionally unsupported. Why: developer preference — single place to
     audit; forces every project into the same auditable layout.
@@ -178,566 +231,633 @@ export const { get: globalGet, find: globalFind, upsert } = globalsApi(config, q
 
 15. **Wildcards at two levels, one resolver util.** Role-level `"*": boolean` (covers
     undeclared subjects); action-level `"*": PermissionCheck` inside a per-action map
-    (covers undeclared actions on that subject — booleans, mode objects, and callbacks all
-    valid, enabling `pages: { "*": true, delete: cb }`). Precedence: explicit action >
-    subject `"*"` > role `"*"` > `defaults`; wildcards never cross subject boundaries.
+    (covers undeclared actions on that subject — booleans and callbacks; field-mode
+    objects are being dropped, see decision 20), enabling `pages: { "*": true, delete: cb }`.
+    Precedence: explicit action >
+    subject `"*"` > role `"*"` > `defaultPermissionMode`; wildcards never cross subject boundaries.
     Role-level stays boolean-only because a role-wide callback would receive a union of
     every subject's `data`. Why: "everything except X" is otherwise inexpressible, and the
     whole feature is one module-private util (`resolveActionCheck`), not a new layer.
 
+16. **Roles ride the user document — `userRolesField` (required).** `defineAccess` names
+    the field on the user doc holding role(s); `string` and `string[]` both work
+    (normalized inside `hasPermission`). No `userRoles` parameter anywhere. Why: roles are
+    always on the user object already; a second parameter was redundant state to keep in
+    sync.
+17. **Core `hasPermission` requires `user`; runtime wrappers live in the app.** Core stays
+    pure and synchronous (an auto-fetching core would be async and runtime-aware). The www
+    app ships thin wrappers — `hasServerPermission` (server helpers) and `useHasPermission`
+    (client hook) — that fetch the current session user + active organization when omitted
+    and forward to core. Why: each runtime fetches auth its own way; core shouldn't know any
+    of them.
+18. **Constants-first, minimal surface.** Every literal (actions, modes, wildcard, built-in
+    subjects) lives in `access/constants.ts` as `as const` maps — `PERMISSION_MODES`
+    supplies `defaultPermissionMode`, so there is no separate
+    "defaults" constant bucket; types derive from the constants, runtime code never inlines
+    magic strings. `hasPermission` is the only runtime function exported from
+    `hasPermission.ts` — the merge/resolve helpers are module-private.
+    Why: project convention (`USER_ROLES`, `ADMIN_FIELDS`), and a smaller public API is
+    easier to keep stable.
+19. **User/org bindings are plain slugs; document types resolve from the registry.**
+    `userCollectionSlug` / `orgCollectionSlug` are strings — the merged user collection
+    (auth-adapter fields included) does not exist at `defineAccess` authoring time, so a
+    full config can never be passed. Callback `user`/`organization` types come from
+    `InferDocTypeFromSlug<TUserSlug>` (registry lookup). `resources` still take full
+    configs (draft-action narrowing via `versions.drafts` needs the config type).
+    Field-existence validation of `userRolesField` cannot happen in `defineAccess` and
+    belongs in `defineConfig` (which sees the merged collections). Generated
+    `UserCollectionDocument`/`OrgCollectionDocument` registry types remain deferred —
+    an additive future migration.
+20. **Field-mode objects dropped — `PermissionCheck = boolean | callback`.** The API is
+    whole-document (Convex is a document DB; no field-level API support), so `{ mode: "allow"
+| "deny", fields }` objects are removed from `PermissionCheck`/`FieldPermissionResult`
+    and from `mergeRolePermissions`. Why: the runtime already collapses to a boolean; the
+    mode-object type surface promised granularity the API never delivered. Field-level can
+    return later as its own designed feature.
+21. **Read-deny returns `null` for single-doc reads.** `get`/`getGlobal` return `null` on a
+    denied read (never throw); lists (`find`/`findGlobals`/`search`) filter denied docs.
+    Why: composable — the UI treats "no access" like "not found," and a denied read never
+    crashes a server render (the globals-preload bug).
+22. **Capability mode on `hasPermission` (`mode: "action" | "capability"`, default
+    `"action"`).** A data-less check against a _callback_ permission is ambiguous: `"action"`
+    throws `VexAccessError` (pass `data` or switch mode — no silent `undefined.x` crash);
+    `"capability"` resolves callbacks to `true` (the user is _capable_; per-doc filtering
+    happens downstream). Static checks resolve concretely in both modes (explicit `false`
+    still denies). Why: subject-level UI visibility ("can this user reach Pages at all")
+    needs a doc-independent answer; concrete per-doc checks stay `"action"` mode with `data`.
+23. **Admin-UI enforcement is subject-level (capability), not row-count.** Sidebar/nav
+    visibility asks "can the user reach this subject" — a visible link may lead to a
+    fully-filtered empty list, which is correct. Edit views have the concrete doc, so their
+    affordances (readonly inputs, Save) use exact `"action"`-mode checks with `data`. Why:
+    "hide link unless ≥1 visible row" would require a per-request scan of every collection —
+    expensive and unnecessary; empty-list UX is standard.
+24. **The client evaluates `hasPermission` directly — no server snapshot.** `access` reaches
+    the client via a **direct client-bundle import** (a `"use client"` module imports
+    `~/auth/access` → `VexAccessProvider`; callbacks survive because it's a bundler import, not
+    the serialized-config strip), and `user`/`organization` arrive as serializable props from
+    the server layout. Both are synchronous at first render → no FOUC, so a server-computed
+    boolean snapshot buys nothing (batching N cheap sync calls saves nothing) and is dropped.
+    Tradeoff: the permission rules ship in the client bundle — acceptable for _advisory_ UI
+    gating (server guards remain the enforcement; CASL et al. do the same), and it requires
+    `access` + its imported configs to stay client-safe. A snapshot returns only if a future
+    requirement forbids shipping `access` to the client.
+
 ## Out of Scope
 
-- Row-level ACL storage (per-document permission configs) — rejected; callbacks + userland
-  `acl` fields cover it (research doc §row-level).
-- DB-stored roles / role-editor tooling (`vex_roles`, `buildAccess`) — future spec; design
-  keeps the seam.
-- Admin panel UI enforcement (nav hiding, field readOnly, impersonation UI) and the client
-  permission snapshot (`resolvePermissionSnapshot`) — follow-up spec.
-- Field-level enforcement in form rendering.
+- Row-level ACL storage (per-document permission _configs_ stored in the DB) — rejected;
+  doc-aware callbacks + a userland `acl` field cover it (research doc §row-level).
+- DB-stored roles / role-editor tooling (`vex_roles`, `buildAccess`) — future spec; the
+  matrix shape stays serialization-compatible so the seam remains.
+- Field-level access (per-field read/write) — removed for now (decision 20); the API is
+  whole-document. A future feature, not this spec.
+- Row-count-aware navigation ("hide a link unless the user has ≥1 visible row") — rejected
+  (decision 23); visibility is subject-level capability, empty lists are expected.
 - Drafts/versioning enforcement semantics beyond declaring the action unions (Spec 36 owns
   the verbs and storage).
-- Org-aware www wiring (www config omits `organizationCollection` for now; core supports it).
+- Impersonation UI and audit logging — future work.
 - Migration of master apps — the rebuild replaces master wholesale.
 
 ## Implementation
 
-### Step 1 — Access module types + errors [agent]
+### Step 1 — Access module constants + types + errors [agent]
 
-Create `packages/core/src/access/types.ts`: subject registry machinery, permission check types, error classes.
+**Status: implemented and verified** (63 access tests, tsc clean)
 
-- [x] Create `packages/core/src/access/types.ts`
-- [x] Implement all contract types: `CrudAction`, `DraftAction`, `AccessDefaults`, `FieldPermissionResult`, `ResolvedFieldPermissions`, `PermissionCallbackProps`, `PermissionCheck`, `SubjectEntry`, `SubjectMap`
-- [x] Implement `dataType()` function and `DataTypeCarrier` phantom type
-- [x] Implement input/config types: `CustomResourceInput`, `VexAccessInput`, `VexAccessConfig`
-- [x] Implement error classes: `VexAccessError`, `VexAccessConfigError`
+Creates `packages/core/src/access/constants.ts` (all literal values live here — no magic
+strings anywhere else in the module) and `packages/core/src/access/types.ts` (subject
+registry machinery, permission check types, error classes; every literal union derived
+from the constants).
+
+- [x] Create `packages/core/src/access/constants.ts` — `CRUD_ACTIONS`, `DRAFT_ACTIONS`,
+      `PERMISSION_MODES`, `WILDCARD_KEY`, `ADMIN_CUSTOM_SUBJECTS`
+- [x] Create/revise `packages/core/src/access/types.ts` — all types derive from constants;
+      `userRolesField` on input + config; fixed `PermissionCallbackProps`; object-only
+      `CustomResourceInput`
 - [x] JSDoc every exported symbol (TypeDoc-clean, zero warnings)
-- [x] Run build: `pnpm --filter @vexcms/core build` ✓ Success
-- [x] **Registry-based inference:** Data/field types read from `DocumentBySlug`, `GlobalDocumentBySlug`, `CollectionsFieldTypeMap`, `GlobalsFieldTypeMap` via GeneratedVexTypes augmentation; fallbacks until `vex generate` runs.
-- [x] **Structural resource bounds:** `TResources extends readonly { slug: string; versions?: { drafts?: boolean } }[]` permits full configs AND minimal inline objects like `{ slug: "user" }`; DraftAction gated on `versions.drafts` flag.
+- [x] Verify: `pnpm --filter @vexcms/core build`
 
 **Implementation notes:**
 
-- **Registry-based inference (replacement for placeholders):** Data types inferred from `DocumentBySlug[slug]` (collections) and `GlobalDocumentBySlug[slug]` (globals) via the GeneratedVexTypes augmented registry. Field keys extracted as value union from `CollectionsFieldTypeMap[slug]` / `GlobalsFieldTypeMap[slug]` (all field names across all field types). Falls back to `Record<string, unknown>` and `string` before `vex generate` augments the registry — no compile errors pre-generation.
-- **Structural resource bounds:** `TResources extends readonly { slug: string; versions?: { drafts?: boolean } }[]` allows full `CollectionConfig` / `GlobalConfig` objects AND minimal inline `{ slug: "user" }` shapes (for better-auth adapter-owned tables). DraftAction included in action union when the resource entry's `versions.drafts === true`.
-- **User/org callback types:** `PermissionCallbackProps` uses registry: `data: DocumentBySlug[TUserCollection["slug"]]` for user docs, `organization: DocumentBySlug[TOrgCollection["slug"]]` for org docs. Typing comes from registry; object only carries the slug.
-- **Phantom type pattern:** `VexAccessConfig.__subjects` (declare readonly) carries `SubjectMap` for hasPermission inference without runtime footprint.
-- **Error classes:** Follow auth module pattern: extend Error, set name property in constructor, carry structured fields.
+- **Constants-first (project convention, cf. `USER_ROLES` / `AUTH_ACTIONS` in www and
+  `ADMIN_FIELDS` in fields):** `{ key: "key" } as const` maps + types derived via
+  `keyof typeof`. Runtime code references `PERMISSION_MODES.allow` / `WILDCARD_KEY` —
+  never inline `"allow"` / `"*"` literals. There is no separate `ACCESS_DEFAULTS`
+  constant: `defaultPermissionMode` (the undeclared-permission posture, on both
+  `VexAccessConfigInput` and `VexAccessConfig`) is itself typed `PermissionMode` and
+  derives from `PERMISSION_MODES` — the "posture" concept and the field-mode-object
+  "mode" concept share one `allow | deny` vocabulary, so one constant covers both.
+- **Registry-based inference:** `InferDocTypeFromSlug<S>` resolves a document type
+  directly from a slug literal via `DocumentBySlug` / `GlobalDocumentBySlug`;
+  `InferDocType<T>` wraps it for resource configs (`{ slug }` → `ExtractSlug` →
+  `InferDocTypeFromSlug`). Field keys come from `ExtractFieldKeys<T>` — the value union
+  of `CollectionsFieldTypeMap[slug]` / `GlobalsFieldTypeMap[slug]` — run through
+  `FieldKeysOrWide<TKeys>`, a never-collapse guard that widens to `string` when the
+  registry lookup produces `never` (the pre-`vex generate` index-signature fallback
+  swallows the slug and its value union is empty; without the guard every field-mode
+  check would type as `fields: never[]`, permanently unusable pre-generation).
+- **User/org bindings are plain slugs, not refs:** `userCollectionSlug` / `orgCollectionSlug`
+  are plain strings, not `{ slug }` refs or full configs — the merged user collection
+  (auth-adapter fields included) does not exist at `defineAccess` authoring time, so a
+  full config can never be passed for it. The slug literal alone drives the
+  `InferDocTypeFromSlug` registry lookup that types callback `user`/`organization` props.
+  `resources` (collections/globals contributing subjects) still take full `AccessResource`
+  configs (`CollectionConfig | GlobalConfig`) — draft-action narrowing via
+  `HasDrafts<T>`/`versions.drafts` needs the config type, not just a slug.
+- **Structural resource bounds:** `TResources extends readonly AccessResource[]` — real
+  `defineCollection()`/`defineGlobal()` results only; the old minimal-`{ slug }`-ref
+  shorthand only ever applied to the user/org bindings, which are slugs now, not resources.
+- **`userRolesField` (required):** names the field on the user document holding roles
+  (`string | string[]`). `hasPermission` derives roles from it — callers never pass roles.
+- **Phantom type:** `VexAccessConfig.__subjects?` is optional + never assigned; keeps the
+  builder's return cast single (`as VexAccessConfig<…>`), no double cast. `VexAccessConfig`
+  takes exactly **one** generic (`TSubjects`) — its JSDoc documents why: the config is
+  deliberately VALUE-LEVEL TYPE-ERASED (stored fields are wide; every call-site guarantee
+  rides the phantom `TSubjects` parameter). That's what lets any concrete `defineAccess()`
+  result assign to the plain `VexAccessConfig` on `VexConfig.access` — permission callbacks
+  are contravariant in their `data` parameter, so a fully-generic config type (multiple
+  independent type parameters carried into the stored shape) would be unassignable to any
+  common supertype.
+- **Error classes:** module `types.ts`, extend `Error`, set `name`, carry structured fields
+  (mirrors `VexAuthConfigError`, `VexStorageConfigError`).
+- `packages/core/src/types/generated.ts` was **not modified** — `DocumentBySlug` /
+  `GlobalDocumentBySlug` / `CollectionsFieldTypeMap` / `GlobalsFieldTypeMap` are consumed
+  as-is; registry augmentation remains `vex generate`'s job, untouched by this spec.
+
+**Implemented — deviations from original spec:**
+
+- No `ACCESS_DEFAULTS` constant and no `AccessDefaults` type. Collapsed into
+  `PERMISSION_MODES` / `PermissionMode` — one `allow | deny` vocabulary for both the
+  field-mode object mode and the undeclared-permission posture. The input/output field
+  also renamed `defaults` → `defaultPermissionMode`.
+- `userCollection: { slug }` / `organizationCollection: { slug }` → `userCollectionSlug:
+string` / `orgCollectionSlug?: string`. Plain slugs, not `{ slug }` refs — decision 19
+  already called for slug-driven inference; the input properties say so directly instead
+  of accepting (and unwrapping) a ref object.
+- `VexAccessConfig<TSubjects>` ships with exactly one generic, as designed; the JSDoc adds
+  the contravariance rationale for why the stored shape must stay value-level type-erased.
+
+#### `packages/core/src/access/constants.ts` (IMPLEMENTED)
 
 ```typescript
-import type { CollectionConfig } from "../collections";
-import type { GlobalConfig } from "../globals";
+/**
+ * CRUD actions available on every resource subject (collections and globals).
+ *
+ * Draft actions ({@link DRAFT_ACTIONS}) are added conditionally when a resource
+ * declares `versions.drafts: true`.
+ */
+export const CRUD_ACTIONS = {
+  create: "create",
+  read: "read",
+  update: "update",
+  delete: "delete",
+} as const;
+/** CRUD action union, derived from {@link CRUD_ACTIONS}. */
+export type CrudAction = (typeof CRUD_ACTIONS)[keyof typeof CRUD_ACTIONS];
+
+/**
+ * Draft workflow actions — present on a resource subject only when its config
+ * declares `versions.drafts: true` (globals today; collections with Spec 36).
+ */
+export const DRAFT_ACTIONS = {
+  readDrafts: "readDrafts",
+  saveDraft: "saveDraft",
+  publish: "publish",
+  unpublish: "unpublish",
+} as const;
+/** Draft action union, derived from {@link DRAFT_ACTIONS}. */
+export type DraftAction = (typeof DRAFT_ACTIONS)[keyof typeof DRAFT_ACTIONS];
+
+/**
+ * Field-mode object modes: `allow` = only the listed fields, `deny` = all but
+ * the listed fields.
+ */
+export const PERMISSION_MODES = {
+  allow: "allow",
+  deny: "deny",
+} as const;
+/** Field-mode object mode, derived from {@link PERMISSION_MODES}. */
+export type PermissionMode =
+  (typeof PERMISSION_MODES)[keyof typeof PERMISSION_MODES];
+
+/**
+ * Wildcard key usable at two matrix levels: role level (`admin: { [WILDCARD_KEY]:
+ * true }`, boolean only) and action level inside a per-action map (any
+ * `PermissionCheck`). Precedence: explicit action > subject wildcard > role
+ * wildcard > `defaults`.
+ */
+export const WILDCARD_KEY = "*" as const;
+
+/**
+ * Built-in non-resource subjects contributed by core. Every entry becomes a
+ * subject in the {@link SubjectMap} exactly like a user-declared custom
+ * resource (no data, no fields).
+ */
+export const ADMIN_CUSTOM_SUBJECTS = {
+  adminPanel: {
+    key: "adminPanel",
+    actions: ["access", "impersonate"],
+  },
+} as const;
+
+/** Union of built-in subject slugs (currently `"adminPanel"`). */
+export type AdminCustomSubjectSlug = keyof typeof ADMIN_CUSTOM_SUBJECTS;
+```
+
+#### `packages/core/src/access/types.ts` (IMPLEMENTED)
+
+````typescript
+import { CollectionConfig } from "../types";
+import { GlobalConfig } from "../globals";
 import type {
   DocumentBySlug,
   GlobalDocumentBySlug,
   CollectionsFieldTypeMap,
   GlobalsFieldTypeMap,
 } from "../types/generated";
+import {
+  ADMIN_CUSTOM_SUBJECTS,
+  WILDCARD_KEY,
+  type PermissionMode,
+  type CrudAction,
+  type DraftAction,
+  type AdminCustomSubjectSlug,
+} from "./constants";
 
 /**
- * CRUD action set — the four core database operations.
- *
- * All resource subjects (collections and globals) support these actions.
- * Draft actions ({@link DraftAction}) are added conditionally when a resource
- * has `versions.drafts === true`.
+ * Any config that may contribute a resource subject: a collection or a global.
+ * Structural — the slug literal (and `versions.drafts`, when present) is all
+ * the type system reads from it.
  */
-export type CrudAction = "create" | "read" | "update" | "delete";
+export type AccessResource = CollectionConfig | GlobalConfig;
 
 /**
- * Draft-specific actions — conditional, only present on resources with versioning.
- *
- * Collections and globals that declare `versions.drafts: true` gain this set
- * of actions for controlling read access to unpublished versions and draft
- * publication/unpublication workflows.
- */
-export type DraftAction = "readDrafts" | "saveDraft" | "publish" | "unpublish";
-
-/**
- * Default permission posture when a role, subject, or action is not explicitly
- * declared in the permission matrix.
- *
- * - `"allow"` (default): undeclared = allow.
- * - `"deny"`: undeclared = deny, require explicit permission.
- */
-export type AccessDefaults = "allow" | "deny";
-
-/**
- * Single permission check result — boolean (shorthand: all fields or no fields)
- * or field-mode object (restrict to named fields).
+ * Single permission check result — boolean shorthand (all/none) or a
+ * field-mode object restricting the check to named fields.
  *
  * @typeParam TFieldKeys - Union of valid field keys for this resource.
  */
 export type FieldPermissionResult<TFieldKeys extends string> =
-  | boolean
-  | { mode: "allow" | "deny"; fields: TFieldKeys[] };
+  boolean | { mode: PermissionMode; fields: TFieldKeys[] };
 
 /**
- * Resolved field-level permissions after a check with fields requested.
- *
- * A map of field name → access boolean (true = allowed, false = denied).
+ * Resolved field-level permissions — one boolean per requested field.
+ * Returned by `hasPermission` when `fields` is passed.
  */
 export type ResolvedFieldPermissions = Record<string, boolean>;
 
 /**
- * Props passed to a permission callback — typed conditionally based on resource
- * and organization support.
+ * Props passed to a permission callback.
  *
- * When `TData` is `never`, the `data` key is omitted.
- * When `TOrg` is `never`, the `organization` key is omitted.
+ * The `data` key exists only for data-carrying subjects; the `organization`
+ * key exists only when `orgCollectionSlug` is configured. Built with
+ * intersections (not conditional property types) so the keys are truly
+ * absent — not present-but-`never` — when unavailable.
  *
- * @typeParam TData - Document type for the resource; `never` if not applicable.
- * @typeParam TUser - User object shape.
- * @typeParam TOrg - Organization object shape; `never` if not configured.
+ * @typeParam TData - Document type for the subject; `never` when the subject has no data.
+ * @typeParam TUser - User document shape (registry lookup on the user collection slug).
+ * @typeParam TOrg - Organization document shape; `never` when not configured.
  */
-export type PermissionCallbackProps<TData, TUser, TOrg> = {
-  ...(TData extends never ? {} : { data: TData }),
-  user: TUser,
-  ...(TOrg extends never ? {} : { organization: TOrg }),
-};
+export type PermissionCallbackProps<
+  TData = unknown,
+  TUser = Record<string, unknown>,
+  TOrg = Record<string, unknown>,
+> = {
+  user: TUser;
+} & ([TData] extends [never] ? unknown : { data: TData }) &
+  ([TOrg] extends [never] ? unknown : { organization: TOrg });
 
 /**
  * A single permission check — static boolean, field-mode object, or callback.
  *
- * The callback receives context (user, data, organization) and may return a field
- * permission result or `undefined` (interpreted as deny).
+ * A callback returning `undefined` is treated as deny.
  *
- * @typeParam TData - Document type for the resource.
- * @typeParam TUser - User object shape.
- * @typeParam TOrg - Organization object shape; `never` if not configured.
- * @typeParam TFieldKeys - Union of valid field keys for this resource.
+ * @typeParam TData - Document type for the subject.
+ * @typeParam TUser - User document shape.
+ * @typeParam TOrg - Organization document shape; `never` if not configured.
+ * @typeParam TFieldKeys - Union of valid field keys for this subject.
  */
-export type PermissionCheck<TData, TUser, TOrg, TFieldKeys extends string> =
+export type PermissionCheck<
+  TData = unknown,
+  TUser = Record<string, unknown>,
+  TOrg = Record<string, unknown>,
+  TFieldKeys extends string = string,
+> =
   | FieldPermissionResult<TFieldKeys>
-  | ((props: PermissionCallbackProps<TData, TUser, TOrg>) => FieldPermissionResult<TFieldKeys> | undefined);
+  | ((
+      props: PermissionCallbackProps<TData, TUser, TOrg>,
+    ) => FieldPermissionResult<TFieldKeys> | undefined);
 
 /**
- * A subject entry — the union of possible actions and the shape of data and
- * field names for a single checkable resource or gate.
- *
- * All subjects carry an `action` union (set of checkable action strings),
- * a `data` type (the document shape if data-aware, or `never` if not),
- * and a `fields` union (field names available in field-level checks).
+ * One entry in the subject registry: the action union, the data shape passed
+ * to callbacks, and the field-key union for field-level checks.
  */
 export interface SubjectEntry {
-  /** Union of actions this subject supports (e.g., `"read" | "write" | "delete"`). */
+  /** Union of actions this subject supports. */
   action: string;
-  /** Document or context type; `never` for contexts without data. */
+  /** Document/context type; `never` for subjects without data. */
   data: unknown;
   /** Union of field keys; `never` for non-field-aware subjects. */
   fields: string;
 }
 
-// ──── Inference helpers (registry-based via GeneratedVexTypes augmentation) ────
+// ── Inference helpers (registry-based via GeneratedVexTypes augmentation) ──
 
-/**
- * Extract the slug from a resource config (collection or global, or minimal { slug }).
- *
- * @internal
- */
+/** Extract the slug literal from a resource config. @internal */
 type ExtractSlug<T> = T extends { slug: infer S extends string } ? S : never;
 
 /**
- * Infer the document type from a resource slug via the generated registry.
- *
- * Reads `DocumentBySlug[slug]` for collections, `GlobalDocumentBySlug[slug]` for globals,
- * falling back to `Record<string, unknown>` before the build generates types.
- *
- * @internal
+ * Document type for a slug via the generated registry (collections, then
+ * globals; wide fallback pre-generation). @internal
+ */
+type InferDocTypeFromSlug<S extends string> = S extends keyof DocumentBySlug
+  ? DocumentBySlug[S]
+  : S extends keyof GlobalDocumentBySlug
+    ? GlobalDocumentBySlug[S]
+    : Record<string, unknown>;
+
+/**
+ * Document type for a resource config via its slug literal. @internal
  */
 type InferDocType<T> = T extends { slug: infer S extends string }
-  ? S extends keyof DocumentBySlug
-    ? DocumentBySlug[S]
-    : S extends keyof GlobalDocumentBySlug
-      ? GlobalDocumentBySlug[S]
-      : Record<string, unknown>
+  ? InferDocTypeFromSlug<S>
   : Record<string, unknown>;
 
 /**
- * Extract the union of all field keys for a resource slug via CollectionsFieldTypeMap or GlobalsFieldTypeMap.
- *
- * Returns the union of all field names (all values across all field types in the map).
- * Falls back to `string` when the slug is not yet augmented by `vex generate`.
- *
- * @internal
+ * Widens a field-key union to `string` when the registry lookup collapsed to
+ * `never` — happens when an index-signature fallback (pre-`vex generate`)
+ * swallows the slug and its value union is empty. @internal
+ */
+type FieldKeysOrWide<TKeys> = [TKeys] extends [never] ? string : TKeys & string;
+
+/**
+ * Union of all field keys for a resource slug via the generated field-type
+ * maps (wide `string` fallback pre-generation). @internal
  */
 type ExtractFieldKeys<T> = T extends { slug: infer S extends string }
   ? S extends keyof CollectionsFieldTypeMap
-    ? CollectionsFieldTypeMap[S][keyof CollectionsFieldTypeMap[S]] & string
+    ? FieldKeysOrWide<
+        CollectionsFieldTypeMap[S][keyof CollectionsFieldTypeMap[S]]
+      >
     : S extends keyof GlobalsFieldTypeMap
-      ? GlobalsFieldTypeMap[S][keyof GlobalsFieldTypeMap[S]] & string
+      ? FieldKeysOrWide<GlobalsFieldTypeMap[S][keyof GlobalsFieldTypeMap[S]]>
       : string
   : string;
 
-/**
- * Test whether a resource config has versioning with drafts enabled.
- *
- * @internal
- */
-type HasDrafts<T> = T extends { versions?: { drafts?: infer D extends boolean } }
+/** True when a resource config declares `versions.drafts: true`. @internal */
+type HasDrafts<T> = T extends {
+  versions?: { drafts?: infer D extends boolean };
+}
   ? D extends true
     ? true
     : false
   : false;
 
 /**
- * The complete subject registry — a record mapping resource slugs and custom
- * subject names to their entry (action union, data type, field keys).
+ * The complete subject registry: resources (keyed by slug, CRUD + conditional
+ * draft actions), custom resources, and the core built-in subjects from
+ * {@link ADMIN_CUSTOM_SUBJECTS}.
  *
- * Includes:
- * - All resources (collections + globals) keyed by slug, with conditional
- *   DraftAction inclusion gated on `versions.drafts` flag.
- * - Custom subjects, each with its declared action union and no data/fields.
- * - The built-in `adminPanel` subject (actions: `"access" | "impersonate"`).
- *
- * @typeParam TResources - Tuple of resource configs ({ slug: string; versions?: { drafts?: boolean } }).
- * @typeParam TCustom - Record of custom subject names to action-union arrays.
+ * @typeParam TResources - Structural resource tuple (`{ slug, versions? }`).
+ * @typeParam TCustom - Custom resource declarations.
  */
 export type SubjectMap<
-  TResources extends readonly { slug: string; versions?: { drafts?: boolean } }[],
-  TCustom extends Record<string, readonly unknown[]>
-> =
-  // Resources: map each to its subject entry
-  & {
-    [R in TResources[number] as ExtractSlug<R>]: {
-      action: CrudAction | (HasDrafts<R> extends true ? DraftAction : never);
-      data: InferDocType<R>;
-      fields: ExtractFieldKeys<R>;
-    };
-  }
-  // Custom resources: map action arrays
-  & {
-    [K in keyof TCustom]: {
-      action: TCustom[K][number];
-      data: never;
-      fields: never;
-    };
-  }
-  // Built-in admin subject
-  & {
-    adminPanel: {
-      action: "access" | "impersonate";
-      data: never;
-      fields: never;
-    };
+  TResources extends readonly AccessResource[],
+  TCustom extends Record<string, CustomResourceInput>,
+> = {
+  [R in TResources[number] as ExtractSlug<R>]: {
+    action: CrudAction | (HasDrafts<R> extends true ? DraftAction : never);
+    data: InferDocType<R>;
+    fields: ExtractFieldKeys<R>;
   };
+} & {
+  [K in keyof TCustom]: {
+    action: TCustom[K]["actions"][number];
+    data: TCustom[K]["data"] extends DataTypeCarrier<infer D> ? D : never;
+    fields: never;
+  };
+} & {
+  [K in AdminCustomSubjectSlug]: {
+    action: (typeof ADMIN_CUSTOM_SUBJECTS)[K]["actions"][number];
+    data: never;
+    fields: never;
+  };
+};
 
 /**
- * Phantom type carrier for custom resource data types.
- *
- * Used internally to preserve type information when declaring custom resources
- * in shorthand (action list) vs. long form (actions + optional dataType).
- * Runtime: returns an empty object; this type is compiled away.
- *
- * @typeParam T - The data type this carrier represents.
- *
- * @example
- * ```ts
- * customResources: {
- *   apiKey: {
- *     actions: ["create", "revoke"],
- *     data: dataType<{ key: string; secret: string }>(),
- *   },
- * }
- * ```
- *
- * @ignore
+ * Phantom carrier for a custom resource's `data` type. Created by
+ * {@link dataType}; never inspected at runtime.
  */
 export interface DataTypeCarrier<T = never> {
   readonly __phantom?: T;
 }
 
 /**
- * Custom resource input — shorthand or full form.
- *
- * - Shorthand: a list of action strings (e.g., `["create", "revoke"]`).
- * - Full: an object with `actions` (required) and optional `data` type carrier.
- */
-export type CustomResourceInput =
-  | readonly string[]
-  | { actions: readonly string[]; data?: DataTypeCarrier<unknown> };
-
-/**
- * Create a data-type carrier for use in custom resource declarations.
- *
- * This function has no runtime implementation; it exists solely to carry
- * type information. Call it with a generic type parameter to create a
- * carrier that preserves the type for callbacks and field inference.
- *
- * @typeParam T - The data type for this custom resource.
- * @returns A carrier object (purely for type inference).
+ * Declares the data type callbacks (and `hasPermission` callers) receive for a
+ * custom resource.
  *
  * @example
  * ```ts
  * customResources: {
- *   audit: {
- *     actions: ["read", "export"],
- *     data: dataType<AuditLog>(),
- *   },
+ *   reviews: { actions: ["approve", "reject"], data: dataType<{ queue: string }>() },
  * }
  * ```
+ * @returns a plain object '{}'
  */
 export function dataType<T>(): DataTypeCarrier<T> {
   return {};
 }
 
 /**
+ * A custom (non-collection) subject declaration: its action list and an
+ * optional typed data carrier. One canonical form — no array shorthand.
+ */
+export type CustomResourceInput = {
+  actions: readonly string[];
+  data?: DataTypeCarrier<unknown>;
+};
+
+/**
  * Per-role permission matrix, typed against the resolved {@link SubjectMap}.
  *
- * Each subject key accepts:
- * - `boolean` — resource-level shorthand (all actions allowed/denied).
- * - A per-action map whose keys are that subject's action union, plus the
- *   action-level wildcard `"*"` — each value is a full {@link PermissionCheck}
- *   (boolean, field-mode object, or callback). `"*"` sets the check for every
- *   action not explicitly declared on that subject, enabling
- *   "everything except X": `pages: { "*": true, delete: cb }`.
- *
- * The role-level wildcard `"*"` is boolean-only: a role-wide callback would
- * receive a union of every subject's `data`, which is deliberately unsupported.
+ * Each subject key accepts `boolean` (all actions) or a per-action map whose
+ * keys are that subject's action union plus the action-level wildcard
+ * ({@link WILDCARD_KEY}) — each value a full {@link PermissionCheck}.
+ * The role-level wildcard is boolean-only.
+ * Precedence: explicit action > subject wildcard > role wildcard > `defaults`.
  *
  * @typeParam TSubjects - The resolved {@link SubjectMap}.
- * @typeParam TUser - User doc type (registry lookup on the user collection slug).
- * @typeParam TOrg - Organization doc type, or `never` when no
- *   `organizationCollection` is configured.
+ * @typeParam TUser - User document shape.
+ * @typeParam TOrg - Organization document shape, or `never`.
  */
 export type RolePermissions<
   TSubjects extends Record<string, SubjectEntry>,
-  TUser,
-  TOrg,
+  TUser = Record<string, unknown>,
+  TOrg = never,
 > = {
   [S in keyof TSubjects]?:
     | boolean
     | ({
         [A in TSubjects[S]["action"]]?: PermissionCheck<
-          TSubjects[S]["data"], TUser, TOrg, TSubjects[S]["fields"]
+          TSubjects[S]["data"],
+          TUser,
+          TOrg,
+          TSubjects[S]["fields"]
         >;
       } & {
-        "*"?: PermissionCheck<TSubjects[S]["data"], TUser, TOrg, TSubjects[S]["fields"]>;
+        [W in typeof WILDCARD_KEY]?: PermissionCheck<
+          TSubjects[S]["data"],
+          TUser,
+          TOrg,
+          TSubjects[S]["fields"]
+        >;
       });
 } & {
   /** Role-level wildcard: covers subjects this role never declares. Boolean only. */
-  "*"?: boolean;
+  [W in typeof WILDCARD_KEY]?: boolean;
 };
 
 /**
  * Input shape for the `defineAccess` builder.
  *
- * Specifies roles, resources (collections + globals), custom subjects, user/org
- * collection bindings, and the permission matrix.
- *
- * @typeParam TRoles - Union of valid role names (inferred from `roles` array).
- * @typeParam TResources - Tuple of resource configs with `{ slug: string; versions?: { drafts?: boolean } }` shape.
- * @typeParam TCustom - Record of custom subject names → action arrays.
- * @typeParam TUserCollection - User resource with `{ slug: string }` shape (types inferred from registry).
- * @typeParam TOrgCollection - Organization resource with `{ slug: string }` shape; `undefined` if omitted.
+ * @typeParam TRoles - Tuple of role name literals.
+ * @typeParam TResources - Structural resource tuple (`{ slug, versions? }`).
+ * @typeParam TCustom - Custom resource declarations.
+ * @typeParam TUserCollection - `{ slug }` shape naming the user collection.
+ * @typeParam TOrgCollection - `{ slug }` shape naming the org collection; `undefined` if absent.
  *
  * @see {@link VexAccessConfig} for the resolved runtime shape.
  */
-export interface VexAccessInput<
+export interface VexAccessConfigInput<
   TRoles extends readonly string[],
-  TResources extends readonly { slug: string; versions?: { drafts?: boolean } }[] = readonly [],
-  TCustom extends Record<string, readonly unknown[]> = {},
-  TUserCollection extends { slug: string } = { slug: string },
-  TOrgCollection extends { slug: string } | undefined = undefined,
+  TResources extends readonly AccessResource[] = readonly AccessResource[],
+  TCustom extends Record<string, CustomResourceInput> = {},
+  TUserSlug extends string = string,
+  TOrgSlug extends string | undefined = undefined,
 > {
-  /**
-   * List of role identifiers in this system.
-   *
-   * Role names are used as keys in the `permissions` matrix.
-   * Example: `["admin", "editor", "viewer"]`.
-   */
+  /** Role identifiers; keys of the `permissions` matrix. */
   roles: TRoles;
 
-  /**
-   * Resource configs (collections and globals) to include in the subject registry.
-   *
-   * Each resource contributes a subject keyed by its slug.
-   */
+  /** Collections/globals contributing subjects, keyed by slug. */
   resources: TResources;
 
   /**
-   * Custom, non-resource subjects with arbitrary action unions.
-   *
-   * Each entry is a subject name → action array mapping.
-   * Actions are strings; the runtime does not restrict them.
-   * Example: `{ apiKeys: ["create", "revoke"], analytics: ["view", "export"] }`.
+   * Custom, non-resource subjects with arbitrary action unions and optional
+   * typed data. Example: `{ apiKeys: { actions: ["create", "revoke"] } }`.
    */
   customResources?: TCustom;
 
   /**
-   * Collection config used to identify users and bind to the `organization` context.
-   *
-   * Callback permissions may reference `user` (a doc from this collection).
+   * Slug of the collection whose documents are `user` in callbacks. A plain
+   * slug string — the full collection often does not exist at authoring time
+   * (auth-adapter collections merge later, inside `defineConfig`); the
+   * document type resolves from the generated registry by slug.
    */
-  userCollection: TUserCollection;
+  userCollectionSlug: TUserSlug;
 
   /**
-   * Collection config for organizations (if applicable).
-   *
-   * When provided, the `organization` context is available in permission callbacks.
-   * When omitted, organization context is never available.
+   * REQUIRED. The field on the user document that holds the user's role(s).
+   * Value may be `string` or `string[]`; `hasPermission` normalizes both.
+   * Callers never pass roles separately — they always ride the user document.
    */
-  organizationCollection?: TOrgCollection;
+  userRolesField: string;
 
   /**
-   * Default permission posture for undeclared subjects, actions, or fields.
-   *
-   * - `"allow"` (default): assume allow when no explicit rule is declared.
-   * - `"deny"`: assume deny when no explicit rule is declared (whitelist model).
-   *
-   * @defaultValue `"allow"`
+   * Slug of the organization collection. When present, `organization` is
+   * available (typed via the registry) in every permission callback; when
+   * omitted, callbacks have no `organization` key.
    */
-  defaults?: AccessDefaults;
+  orgCollectionSlug?: TOrgSlug;
 
   /**
-   * Permission matrix: role name → subject name → per-action checks.
-   *
-   * Typed via {@link RolePermissions} against the resolved {@link SubjectMap}:
-   * subject keys, per-subject action unions, callback `data`/`organization`
-   * props, and field-mode field keys are all compile-checked.
-   *
-   * Wildcards, by level:
-   * - Role level — `"*": boolean` covers subjects the role never declares.
-   * - Action level — `"*": PermissionCheck` inside a per-action map covers
-   *   actions not explicitly declared on that subject (callbacks allowed).
-   * Precedence: explicit action > subject `"*"` > role `"*"` > `defaults`.
-   *
-   * Example:
-   * ```ts
-   * permissions: {
-   *   admin: { "*": true },
-   *   editor: {
-   *     pages: {
-   *       "*": true,                                              // all actions…
-   *       delete: ({ data }) => !["home", "pricing"].includes(data.slug), // …except this
-   *     },
-   *     adminPanel: false,
-   *   },
-   * }
-   * ```
+   * Posture for undeclared role/subject/action combinations.
+   * @defaultValue `PERMISSION_MODES.allow`
+   */
+  defaultPermissionMode?: PermissionMode;
+
+  /**
+   * Permission matrix: role → subject → check. See {@link RolePermissions}
+   * for shapes and wildcard semantics.
    */
   permissions: Record<
     TRoles[number],
     RolePermissions<
       SubjectMap<TResources, TCustom>,
-      InferDocType<TUserCollection>,
-      TOrgCollection extends { slug: string } ? InferDocType<TOrgCollection> : never
+      InferDocTypeFromSlug<TUserSlug>,
+      TOrgSlug extends string ? InferDocTypeFromSlug<TOrgSlug> : never
     >
   >;
 }
 
 /**
- * Resolved access configuration — the runtime shape returned by `defineAccess`.
+ * Resolved access configuration returned by `defineAccess` — the runtime
+ * shape consumed by `hasPermission`.
  *
- * This type is intentionally minimal and type-erased at the value level; most
- * inference happens via the phantom `TSubjects` type parameter, which the builder
- * uses to preserve subject shape for `hasPermission` inference.
+ * Deliberately VALUE-LEVEL TYPE-ERASED: every call-site guarantee
+ * (`resource`/`action` unions, callback `data` types, field keys) rides the
+ * phantom `TSubjects` parameter, while the stored fields are wide. This is
+ * what lets any concrete config assign to plain `VexAccessConfig` (e.g. the
+ * `access` field on `VexConfig`) — a fully-generic config type would be
+ * unassignable to any common supertype, because permission callbacks are
+ * contravariant in their `data` parameter.
  *
- * The runtime config carries: roles, defaults, user/org collections, and the
- * permission matrix in normalized form.
- *
- * @typeParam TSubjects - Phantom type parameter: the resolved {@link SubjectMap}.
- *   Used for inference in {@link hasPermission}} signatures; erased at runtime.
- *
- * @see {@link VexAccessInput} for the input shape.
- * @see {@link hasPermission} for how this config is consumed.
+ * @typeParam TSubjects - Phantom {@link SubjectMap} carried for `hasPermission` inference.
  */
-export interface VexAccessConfig<TSubjects extends Record<string, SubjectEntry> = Record<string, SubjectEntry>> {
-  /**
-   * List of role names in this system.
-   *
-   * @internal
-   */
+export interface VexAccessConfig<
+  TSubjects extends Record<string, SubjectEntry> = Record<string, SubjectEntry>,
+> {
+  /** Role names known to the system. */
   roles: readonly string[];
 
-  /**
-   * Default permission posture.
-   *
-   * @internal
-   */
-  defaults: AccessDefaults;
+  /** Undeclared-permission posture. */
+  defaultPermissionMode: PermissionMode;
+
+  /** Slug of the user collection. */
+  userCollectionSlug: string;
+
+  /** Field on the user document holding role(s) (`string | string[]`). */
+  userRolesField: string;
+
+  /** Slug of the organization collection, when configured. */
+  orgCollectionSlug?: string;
 
   /**
-   * The user collection config bound to this access system.
-   *
-   * @internal
-   */
-  userCollection: unknown;
-
-  /**
-   * Organization collection config (if configured).
-   *
-   * @internal
-   */
-  organizationCollection?: unknown;
-
-  /**
-   * Permission matrix in normalized form.
-   *
-   * @internal
+   * The permission matrix as authored (checks may be booleans, field-mode
+   * objects, or callbacks). Type-erased for storage; `defineAccess` fully
+   * type-checks it at authoring time.
    */
   permissions: Record<string, Record<string, unknown>>;
 
   /**
-   * Phantom field: carries the {@link SubjectMap} type for inference.
-   *
-   * This field is declared but never assigned or read at runtime.
-   * TypeScript uses it to infer subject shape in {@link hasPermission}} overloads.
-   *
-   * @internal
+   * Phantom field carrying {@link SubjectMap} for inference. Optional and
+   * never assigned at runtime.
    */
-  declare readonly __subjects: TSubjects;
+  readonly __subjects?: TSubjects;
 }
 
 /**
- * Runtime error thrown when a permission check fails with `throwOnDenied: true`.
- *
- * Carries the resource, action, and (if applicable) the first denied field name.
- *
- * @example
- * ```ts
- * try {
- *   hasPermission({
- *     access, user, userRoles,
- *     resource: "pages", action: "delete",
- *     data: page,
- *     throwOnDenied: true,
- *   });
- * } catch (err) {
- *   if (err instanceof VexAccessError) {
- *     console.error(`Access denied: ${err.resource}.${err.action} on field ${err.field || "(all)"}`);
- *   }
- * }
- * ```
+ * Thrown by `hasPermission` when `throwOnDenied: true` and access is denied.
+ * Carries the subject, action, and (for field checks) the first denied field.
  */
 export class VexAccessError extends Error {
-  /**
-   * The resource on which access was denied.
-   */
+  /** The subject on which access was denied. */
   resource: string;
 
-  /**
-   * The action on the resource that was denied.
-   */
+  /** The denied action. */
   action: string;
 
-  /**
-   * The first field that was denied (if `fields` were checked); undefined otherwise.
-   */
+  /** First denied field (field checks only). */
   field?: string;
 
   /**
    * @param message — Human-readable error message.
-   * @param options — Additional error details.
-   * @param options.resource — Resource name.
+   * @param options — Structured denial context.
+   * @param options.resource — Subject name.
    * @param options.action — Action name.
-   * @param options.field — First denied field name (optional).
+   * @param options.field — First denied field, when a `fields` check denied.
    */
   constructor(
     message: string,
-    options: {
-      resource: string;
-      action: string;
-      field?: string;
-    }
+    options: { resource: string; action: string; field?: string },
   ) {
     super(message);
     this.name = "VexAccessError";
@@ -748,187 +868,214 @@ export class VexAccessError extends Error {
 }
 
 /**
- * Error thrown when access configuration is invalid.
- *
- * Raised by `defineAccess` when builders detects invalid input: role mismatches,
- * missing collections, or misconfigured resource/organization bindings.
- *
- * @example
- * ```ts
- * try {
- *   defineAccess({
- *     roles: ["admin"],
- *     resources: [pages, posts],
- *     permissions: {
- *       admin: { unknown_resource: true }, // unknown_resource not in resources
- *     },
- *   });
- * } catch (err) {
- *   if (err instanceof VexAccessConfigError) {
- *     console.error("Access config is invalid:", err.message);
- *   }
- * }
- * ```
+ * Thrown by `defineAccess` on hard configuration errors (custom resource key
+ * colliding with a resource slug; empty `actions` array).
  */
 export class VexAccessConfigError extends Error {
-  /**
-   * @param message — Human-readable description of the configuration error.
-   */
+  /** @param message — Human-readable description of the configuration error. */
   constructor(message: string) {
     super(message);
     this.name = "VexAccessConfigError";
   }
 }
-```
+````
 
-Verify: `pnpm --filter @vexcms/core build`
+Verify: `pnpm --filter @vexcms/core build` — clean, zero TypeDoc warnings.
 
 ### Step 2 — defineAccess builder + tests [dev]
 
-- [ ] `packages/core/src/access/config.ts` (NEW)
-- [ ] `packages/core/src/access/config.test.ts` (NEW)
+**Status: implemented and verified** (63 access tests, tsc clean)
+
+- [x] `packages/core/src/access/config.ts` (NEW)
+- [x] `packages/core/src/access/config.test.ts` (NEW)
 
 `defineAccess` mirrors `defineCollection` (`collections/config.ts`) and `defineGlobal`
-(`globals/config.ts`): one builder function, a single `props` object, full JSDoc, dev-only
-`console.warn` validation. Unlike master's `defineAccess`, there is **no org / no-org
-overload pair** — Variant B is a single input type; `organizationCollection` is just an
-optional field (ratified decision, do not reopen). `TUserCollection`/`TOrgCollection` are
-bound to the minimal `{ slug: string }` shape — matching master's own `defineAccess.ts`,
-*not* a full `CollectionConfig` — so a project can pass a real `defineCollection()` result
-**or** a plain `{ slug: "user" }` literal when no collection backs the user table (e.g. an
-auth-adapter-owned table with no VexCMS collection, as in `apps/www`).
+(`globals/config.ts`) — builder pattern with input validation, dev warnings via
+`console.warn`. Unlike master's `defineAccess`, there is **no org / no-org
+overload pair** — Variant B is a single input type; `orgCollectionSlug` is just an
+optional field (ratified decision, do not reopen). `TUserSlug` and `TOrgSlug` are plain
+slug-literal type parameters (not `{ slug }` shapes); their document types resolve via
+`InferDocTypeFromSlug`, which looks them up in the generated registry and falls back to
+`Record<string, unknown>` pre-generation.
 
-#### `packages/core/src/access/config.ts`
+`TRoles` / `TResources` / `TCustom` are **`const` type parameters** (as on master's
+`defineAccess`). Without `const`, an inline literal like `{ slug: "posts" }` in the
+`resources` array infers as `{ slug: string }` — the literal widens, the `SubjectMap`
+key collapses, and typing silently degrades. `const` preserves literals with no
+`as const` at the call site. Full `defineCollection()`/`defineGlobal()` results are
+unaffected either way (their types already carry the slug literal). `resources` only
+accepts real `AccessResource` configs now — the minimal `{ slug }` shorthand moved to
+the user/org bindings, which are plain slug strings (`userCollectionSlug`,
+`orgCollectionSlug`), not resources.
 
-```ts
-import type { CollectionConfig } from "../collections";
-import type { GlobalConfig } from "../globals";
+Validation is limited to the config's own shape: `userCollectionSlug` and
+`userRolesField` must be non-empty; a `customResources` key colliding with a resource
+slug or declaring an empty `actions` array throws. **Field-existence validation of
+`userRolesField`** (does the named field actually exist on the user collection, and is
+it a text/array-typed field?) **cannot happen here** — the merged user collection
+(auth-adapter fields included) doesn't exist until `defineConfig` assembles it. That
+check is a Step 4 leftover: `defineConfig` sees the fully merged collections and is
+where it belongs.
+
+#### `packages/core/src/access/config.ts` (IMPLEMENTED)
+
+````ts
+import {
+  PERMISSION_MODES,
+  ADMIN_CUSTOM_SUBJECTS,
+  WILDCARD_KEY,
+} from "./constants";
 import {
   VexAccessConfigError,
+  type AccessResource,
   type CustomResourceInput,
   type SubjectMap,
   type VexAccessConfig,
-  type VexAccessInput,
+  type VexAccessConfigInput,
 } from "./types";
 
 /**
  * Defines the RBAC configuration for a VexCMS project.
  *
- * This is a builder function (like `defineCollection`/`defineGlobal`) that infers a
- * per-subject action/data/field union — the `SubjectMap` — from `resources` and
- * `customResources`, so `hasPermission()` calls against the returned config are fully
- * typed. Validates the matrix in non-production and returns a frozen, type-erased
- * `VexAccessConfig` for `defineConfig({ access })`.
+ * Builder in the `defineCollection`/`defineGlobal` family: infers the
+ * per-subject action/data/field registry (`SubjectMap`) from `resources` and
+ * `customResources` so `hasPermission()` calls against the returned config are
+ * fully typed; validates the matrix in dev; returns a frozen `VexAccessConfig`
+ * for `defineConfig({ access })`.
  *
- * @typeParam TRoles - Tuple of role name string literals.
- * @typeParam TResources - Tuple of collection/global configs contributing CRUD (+ draft,
- * when `versions.drafts: true`) subjects.
- * @typeParam TCustom - Map of custom subject name to its action list — shorthand
- * `readonly string[]` or the full `{ actions, data? }` object form.
- * @typeParam TUserCollection - Minimal `{ slug }` shape backing `userCollection` — accepts
- * a real `CollectionConfig` or a plain literal when no collection exists for the user table.
- * @typeParam TOrgCollection - Minimal `{ slug }` shape backing `organizationCollection`,
- * when the project is multi-tenant.
- * @param props - The raw access configuration supplied by the caller.
+ * @typeParam TRoles - Tuple of role name literals.
+ * @typeParam TResources - Tuple of collection/global configs contributing subjects.
+ * @typeParam TCustom - Custom subject declarations (`{ actions, data? }`).
+ * @typeParam TUserSlug - Slug literal of the user collection; drives the callback
+ *   `user` type via the generated registry.
+ * @typeParam TOrgSlug - Slug literal of the organization collection, when
+ *   multi-tenant. Presence gates the `organization` callback key; `undefined`
+ *   when single-tenant.
+ * @param props - The access configuration.
  * @param props.roles - All role names the matrix may reference.
- * @param props.resources - Collections/globals to turn into subjects, keyed by slug.
- * @param props.customResources - Non-resource subjects (e.g. `apiKeys`), keyed by name.
- * @param props.userCollection - `{ slug }` stored as the resolved config's `userCollection`.
- * @param props.organizationCollection - Optional `{ slug }` enabling org-scoped checks.
- * @param props.defaults - Posture for undeclared role/subject/action combinations.
- * Defaults to `"allow"`.
- * @param props.permissions - Per-role subject matrix; see `SubjectMap` for subject shapes,
- * `"*"` for the role-level wildcard (allow/deny everything not otherwise declared).
- * @returns A frozen, type-erased `VexAccessConfig` carrying `TSubjects` for
- * `hasPermission()` inference.
- * @throws {VexAccessConfigError} When a `customResources` key collides with a resource
- * slug, or a `customResources` entry declares an empty `actions` array.
+ * @param props.resources - Collections/globals to expose as subjects, keyed by slug.
+ * @param props.customResources - Non-resource subjects, keyed by name.
+ * @param props.userCollectionSlug - Slug of the collection whose documents are
+ *   `user` in callbacks. A plain string — the merged user collection
+ *   (auth-adapter fields included) does not exist yet at authoring time; the
+ *   document type resolves from the generated registry by slug.
+ * @param props.userRolesField - Field on the user document holding role(s)
+ *   (`string` or `string[]` value); `hasPermission` reads roles from it.
+ * @param props.orgCollectionSlug - Optional org collection slug enabling
+ *   org-scoped callbacks.
+ * @param props.defaultPermissionMode - Undeclared-permission posture; defaults to
+ *   `PERMISSION_MODES.allow`.
+ * @param props.permissions - Role → subject → check matrix (see `RolePermissions`).
+ * @returns Frozen `VexAccessConfig` carrying the `SubjectMap` phantom for inference.
+ * @throws {VexAccessConfigError} When `userCollectionSlug` or `userRolesField` is
+ *   empty, when a `customResources` key collides with a resource slug, or when a
+ *   `customResources` entry declares an empty `actions` array.
  *
  * @example
  * ```ts
  * export const access = defineAccess({
- *   roles: ["admin", "editor"] as const,
+ *   roles: ["admin", "editor"],
  *   resources: [pages, users],
- *   customResources: { apiKeys: ["create", "revoke"] },
- *   userCollection: users,
+ *   customResources: { apiKeys: { actions: ["create", "revoke"] } },
+ *   userCollectionSlug: "users",
+ *   userRolesField: "roles",
  *   permissions: {
- *     admin: { "*": true },
+ *     admin: { [WILDCARD_KEY]: true },
  *     editor: { pages: { read: true, update: true }, apiKeys: false },
  *   },
  * });
  * ```
  *
- * @see {@link VexAccessInput} for the user-facing input type
+ * @see {@link VexAccessConfigInput} for the input type
  * @see {@link VexAccessConfig} for the resolved return type
  */
 export function defineAccess<
   const TRoles extends readonly string[],
-  const TResources extends readonly (
-    | CollectionConfig<any, any, any, any, any>
-    | GlobalConfig<any, any, any, any, any>
-  )[],
-  const TCustom extends Record<string, CustomResourceInput> = Record<string, never>,
-  TUserCollection extends { slug: string } = { slug: string },
-  TOrgCollection extends { slug: string } | undefined = undefined,
+  const TResources extends readonly AccessResource[],
+  const TCustom extends Record<string, CustomResourceInput> = {},
+  const TUserSlug extends string = string,
+  const TOrgSlug extends string | undefined = undefined,
 >(
-  props: VexAccessInput<TRoles, TResources, TCustom, TUserCollection, TOrgCollection>,
+  props: VexAccessConfigInput<TRoles, TResources, TCustom, TUserSlug, TOrgSlug>,
 ): VexAccessConfig<SubjectMap<TResources, TCustom>> {
-  // 1. Normalize `customResources` shorthand to `{ actions }` form.
-  //    a. For each `[key, value]` in `Object.entries(props.customResources ?? {})`:
-  //       - `Array.isArray(value)` → `{ actions: value }`
-  //       - otherwise → `value` unchanged (already `{ actions, data? }`)
-  //    → `normalizedCustomResources: Record<string, { actions: readonly string[] }>`
+  // Hard errors — always run, regardless of NODE_ENV. The user collection
+  // itself cannot be validated here (auth-adapter fields merge later, inside
+  // `defineConfig`), so validation is limited to the config's own shape.
+  if (props.userCollectionSlug.length === 0) {
+    throw new VexAccessConfigError(`userCollectionSlug must not be empty`);
+  }
+  if (props.userRolesField.length === 0) {
+    throw new VexAccessConfigError(`userRolesField must not be empty`);
+  }
 
-  // 2. Hard validation — always runs, unconditional on `NODE_ENV`.
-  //    a. `resourceSlugs = new Set(props.resources.map((r) => r.slug))`.
-  //    b. For each `key` in `Object.keys(normalizedCustomResources)`:
-  //       - `resourceSlugs.has(key)` → throw `VexAccessConfigError`
-  //         (`customResources key "${key}" collides with a resource slug`)
-  //       - `normalizedCustomResources[key].actions.length === 0` → throw
-  //         `VexAccessConfigError` (`customResources "${key}" must declare at least one action`)
+  const resourceSlugs = new Set<string>(
+    props.resources.map((resource) => resource.slug),
+  );
+  for (const [key, customResource] of Object.entries(
+    props.customResources ?? {},
+  )) {
+    if (resourceSlugs.has(key)) {
+      throw new VexAccessConfigError(
+        `customResources "${key}" collides with a resource slug`,
+      );
+    }
+    if (customResource.actions.length === 0) {
+      throw new VexAccessConfigError(
+        `customResources "${key}" must declare at least one action`,
+      );
+    }
+  }
 
-  // 3. Dev-only validation warnings — skipped when `process.env.NODE_ENV === "production"`.
-  //    a. `knownSubjects = new Set([...resourceSlugs, ...Object.keys(normalizedCustomResources), "adminPanel"])`
-  //    b. `rolesSet = new Set(props.roles)`.
-  //    c. For each `role` in `Object.keys(props.permissions)`:
-  //       - `role` ∉ `rolesSet` → `console.warn` (`permission role "${role}" not in roles array`)
-  //       - else for each `subjectKey` in `Object.keys(props.permissions[role])`:
-  //         - `subjectKey === "*"` → skip (role-level wildcard, always valid)
-  //         - `subjectKey` ∉ `knownSubjects` → `console.warn` (`permission subject
-  //           "${subjectKey}" not found in resources, customResources, or adminPanel`)
-  //    d. `props.organizationCollection && !props.organizationCollection.slug` →
-  //       `console.warn` (`organizationCollection must have a slug`)
+  // Dev-only validation warnings — a typo'd role or subject would otherwise
+  // silently resolve via `defaultPermissionMode` at runtime.
+  if (process.env.NODE_ENV !== "production") {
+    const knownSubjects = new Set<string>([
+      ...resourceSlugs,
+      ...Object.keys(props.customResources ?? {}),
+      ...Object.keys(ADMIN_CUSTOM_SUBJECTS),
+    ]);
+    const roleSet = new Set<string>(props.roles);
+    for (const [role, subjects] of Object.entries(props.permissions)) {
+      if (!roleSet.has(role)) {
+        console.warn(`permission role "${role}" not in roles array`);
+        continue;
+      }
+      for (const subjectKey of Object.keys(
+        subjects as Record<string, unknown>,
+      )) {
+        if (subjectKey !== WILDCARD_KEY && !knownSubjects.has(subjectKey)) {
+          console.warn(
+            `permission subject "${subjectKey}" not found in resources, customResources, or adminPanel`,
+          );
+        }
+      }
+    }
+    if (
+      props.orgCollectionSlug !== undefined &&
+      props.orgCollectionSlug.length === 0
+    ) {
+      console.warn(`orgCollectionSlug must not be empty`);
+    }
+  }
 
-  // 4. Build and freeze the runtime config.
-  //    → `Object.freeze({`
-  //         `roles: props.roles,`
-  //         `defaults: props.defaults ?? "allow",`
-  //         `userCollection: props.userCollection.slug,`
-  //         `organizationCollection: props.organizationCollection?.slug,`
-  //         `permissions: props.permissions,`
-  //       `})` cast to `VexAccessConfig<SubjectMap<TResources, TCustom>>`
-
-  // Edge cases:
-  // - `props.customResources` omitted → normalize to `{}`; steps 2b/3a operate on an
-  //   empty map, no warnings/errors from that source.
-  // - A key present as both a resource slug AND a `customResources` key → step 2b throws
-  //   before any dev warnings run (hard error takes precedence over validation warnings).
-  // - `permissions[role]` has `"*": true` alongside explicit subject keys → both are
-  //   valid; `"*"` is resolved at `hasPermission()` call time, not expanded here.
-  // - `defaults` explicitly `"deny"` → passed through unchanged; only `undefined` falls
-  //   back to `"allow"`.
-  // - `props.organizationCollection` omitted entirely → step 3d and the runtime
-  //   `organizationCollection` field are both skipped (`undefined`), not an error.
-
-  throw new Error("Not implemented");
+  return Object.freeze({
+    roles: props.roles,
+    defaultPermissionMode:
+      props.defaultPermissionMode ?? PERMISSION_MODES.allow,
+    userCollectionSlug: props.userCollectionSlug,
+    userRolesField: props.userRolesField,
+    orgCollectionSlug: props.orgCollectionSlug,
+    permissions: props.permissions,
+  });
 }
-```
+````
 
-#### `packages/core/src/access/config.test.ts`
+#### `packages/core/src/access/config.test.ts` (IMPLEMENTED)
 
 ```ts
 import { describe, expect, it, vi } from "vitest";
 import { defineCollection, text } from "../index";
+import { PERMISSION_MODES, WILDCARD_KEY } from "./constants";
 import { defineAccess } from "./config";
 import { VexAccessConfigError } from "./types";
 
@@ -947,116 +1094,136 @@ const posts = defineCollection({
   fields: { title: text({ required: true }) },
 });
 
+// `roles` / `accountRoles` are text fields — defineAccess validates that
+// `userRolesField` exists on the user collection and is a text/array field.
 const users = defineCollection({
   slug: "users",
-  fields: { name: text({ required: true }) },
+  fields: {
+    name: text({ required: true }),
+    roles: text(),
+    accountRoles: text(),
+  },
 });
+
+/** Shared valid base — spread into calls, override per test. */
+const baseInput = {
+  roles: ["admin"] as const,
+  resources: [users],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+} as const;
 
 describe("defineAccess — runtime passthrough", () => {
   it("passes the permissions matrix through unchanged", () => {
     const permissions = {
-      admin: { "*": true },
+      admin: { [WILDCARD_KEY]: true },
       editor: {
         posts: { create: true, read: true, update: true, delete: false },
       },
     };
     const access = defineAccess({
+      ...baseInput,
       roles: ["admin", "editor"] as const,
       resources: [posts, users],
-      userCollection: users,
       permissions,
     });
     expect(access.roles).toEqual(["admin", "editor"]);
-    expect(access.userCollection).toBe("users");
+    expect(access.userCollectionSlug).toBe("users");
+    expect(access.userRolesField).toBe("roles");
     expect(access.permissions).toEqual(permissions);
-    expect(access.organizationCollection).toBeUndefined();
+    expect(access.orgCollectionSlug).toBeUndefined();
   });
 
-  it("accepts a minimal { slug } userCollection with no backing CollectionConfig", () => {
-    const access = defineAccess({
-      roles: ["admin"] as const,
-      resources: [posts],
-      userCollection: { slug: "user" },
-      permissions: { admin: { "*": true } },
-    });
-    expect(access.userCollection).toBe("user");
+  it("throws when userCollectionSlug is empty", () => {
+    expect(() =>
+      defineAccess({
+        ...baseInput,
+        userCollectionSlug: "",
+        permissions: { admin: { [WILDCARD_KEY]: true } },
+      }),
+    ).toThrow(VexAccessConfigError);
   });
 
-  it("resolves organizationCollection to its slug when provided", () => {
-    const organizations = defineCollection({
-      slug: "organizations",
-      fields: { name: text({ required: true }) },
-    });
+  it("stores the org collection slug when provided", () => {
     const access = defineAccess({
-      roles: ["admin"] as const,
-      resources: [users],
-      userCollection: users,
-      organizationCollection: organizations,
-      permissions: { admin: { "*": true } },
+      ...baseInput,
+      orgCollectionSlug: "organizations",
+      permissions: { admin: { [WILDCARD_KEY]: true } },
     });
-    expect(access.organizationCollection).toBe("organizations");
+    expect(access.orgCollectionSlug).toBe("organizations");
   });
 });
 
 describe("defineAccess — defaults", () => {
-  it('falls back to "allow" when defaults is omitted', () => {
+  it("falls back to allow when defaults is omitted", () => {
     const access = defineAccess({
-      roles: ["admin"] as const,
-      resources: [users],
-      userCollection: users,
-      permissions: { admin: { "*": true } },
+      ...baseInput,
+      permissions: { admin: { [WILDCARD_KEY]: true } },
     });
-    expect(access.defaults).toBe("allow");
+    expect(access.defaultPermissionMode).toBe(PERMISSION_MODES.allow);
   });
 
-  it('passes through an explicit "deny" default', () => {
+  it("passes through an explicit deny default", () => {
     const access = defineAccess({
-      roles: ["admin"] as const,
-      resources: [users],
-      userCollection: users,
-      defaults: "deny",
-      permissions: { admin: { "*": true } },
+      ...baseInput,
+      defaultPermissionMode: PERMISSION_MODES.deny,
+      permissions: { admin: { [WILDCARD_KEY]: true } },
     });
-    expect(access.defaults).toBe("deny");
+    expect(access.defaultPermissionMode).toBe(PERMISSION_MODES.deny);
   });
 });
 
-describe("defineAccess — customResources shorthand normalization", () => {
-  it("normalizes array-shorthand customResources so referencing them does not warn", () => {
+describe("defineAccess — userRolesField", () => {
+  it("stores the userRolesField on the resolved config", () => {
+    const access = defineAccess({
+      ...baseInput,
+      userRolesField: "accountRoles",
+      permissions: { admin: { [WILDCARD_KEY]: true } },
+    });
+    expect(access.userRolesField).toBe("accountRoles");
+  });
+
+  it("rejects an empty userRolesField with VexAccessConfigError", () => {
+    expect(() =>
+      defineAccess({
+        ...baseInput,
+        userRolesField: "",
+        permissions: { admin: { [WILDCARD_KEY]: true } },
+      }),
+    ).toThrow(VexAccessConfigError);
+  });
+});
+
+describe("defineAccess — customResources", () => {
+  it("does not warn when referencing a declared custom resource", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     withNodeEnv("development", () => {
       defineAccess({
-        roles: ["admin"] as const,
-        resources: [users],
-        customResources: { apiKeys: ["create", "revoke"] },
-        userCollection: users,
-        permissions: { admin: { apiKeys: { create: true, revoke: false } } },
+        ...baseInput,
+        customResources: { apiKeys: { actions: ["create", "revoke"] } },
+        permissions: { admin: { apiKeys: { create: true } } },
       });
     });
     expect(warnSpy).not.toHaveBeenCalled();
     warnSpy.mockRestore();
   });
 
-  it("rejects an empty-array customResources shorthand with VexAccessConfigError", () => {
+  it("rejects an empty actions array with VexAccessConfigError", () => {
     expect(() =>
       defineAccess({
-        roles: ["admin"] as const,
-        resources: [users],
-        customResources: { apiKeys: [] },
-        userCollection: users,
-        permissions: { admin: {} },
+        ...baseInput,
+        customResources: { apiKeys: { actions: [] } },
+        permissions: { admin: { [WILDCARD_KEY]: true } },
       }),
     ).toThrow(VexAccessConfigError);
   });
 
-  it("rejects an empty actions array in object-form customResources with VexAccessConfigError", () => {
+  it("rejects a customResources key that collides with a resource slug", () => {
     expect(() =>
       defineAccess({
-        roles: ["admin"] as const,
-        resources: [users],
-        customResources: { apiKeys: { actions: [] } },
-        userCollection: users,
-        permissions: { admin: {} },
+        ...baseInput,
+        customResources: { users: { actions: ["create"] } },
+        permissions: { admin: { [WILDCARD_KEY]: true } },
       }),
     ).toThrow(VexAccessConfigError);
   });
@@ -1067,13 +1234,11 @@ describe("defineAccess — dev-mode warnings", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     withNodeEnv("development", () => {
       defineAccess({
-        roles: ["admin"] as const,
-        resources: [users],
-        userCollection: users,
+        ...baseInput,
         permissions: {
-          admin: { "*": true },
-          superuser: { "*": true },
-        } as any,
+          admin: { [WILDCARD_KEY]: true },
+          superuser: { [WILDCARD_KEY]: true },
+        } as never,
       });
     });
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("superuser"));
@@ -1084,13 +1249,13 @@ describe("defineAccess — dev-mode warnings", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     withNodeEnv("development", () => {
       defineAccess({
-        roles: ["admin"] as const,
-        resources: [users],
-        userCollection: users,
-        permissions: { admin: { nonexistent: { read: true } } } as any,
+        ...baseInput,
+        permissions: { admin: { nonexistent: true } } as never,
       });
     });
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("nonexistent"));
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("nonexistent"),
+    );
     warnSpy.mockRestore();
   });
 
@@ -1098,11 +1263,12 @@ describe("defineAccess — dev-mode warnings", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     withNodeEnv("development", () => {
       defineAccess({
-        roles: ["admin"] as const,
-        resources: [users],
-        userCollection: users,
+        ...baseInput,
         permissions: {
-          admin: { adminPanel: { access: true, impersonate: false }, "*": true } as any,
+          admin: {
+            adminPanel: { access: true, impersonate: false },
+            [WILDCARD_KEY]: true,
+          },
         },
       });
     });
@@ -1110,18 +1276,23 @@ describe("defineAccess — dev-mode warnings", () => {
     warnSpy.mockRestore();
   });
 
-  it("warns when organizationCollection has no slug", () => {
+  it("warns exactly once when orgCollectionSlug is empty", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     withNodeEnv("development", () => {
       defineAccess({
-        roles: ["admin"] as const,
-        resources: [users],
-        userCollection: users,
-        organizationCollection: {} as any,
-        permissions: { admin: { "*": true } },
+        ...baseInput,
+        roles: ["admin", "editor"] as const,
+        orgCollectionSlug: "",
+        permissions: {
+          admin: { [WILDCARD_KEY]: true },
+          editor: { [WILDCARD_KEY]: true },
+        },
       });
     });
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("organizationCollection"));
+    const orgWarnings = warnSpy.mock.calls.filter(([msg]) =>
+      String(msg).includes("orgCollectionSlug"),
+    );
+    expect(orgWarnings).toHaveLength(1); // once total — not once per role
     warnSpy.mockRestore();
   });
 
@@ -1129,13 +1300,11 @@ describe("defineAccess — dev-mode warnings", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     withNodeEnv("production", () => {
       defineAccess({
-        roles: ["admin"] as const,
-        resources: [users],
-        userCollection: users,
+        ...baseInput,
         permissions: {
-          admin: { "*": true },
-          superuser: { nonexistent: true },
-        } as any,
+          admin: { nonexistent: true },
+          superuser: { [WILDCARD_KEY]: true },
+        } as never,
       });
     });
     expect(warnSpy).not.toHaveBeenCalled();
@@ -1143,49 +1312,28 @@ describe("defineAccess — dev-mode warnings", () => {
   });
 });
 
-describe("defineAccess — VexAccessConfigError", () => {
-  it("rejects a customResources key that collides with a resource slug", () => {
-    expect(() =>
-      defineAccess({
-        roles: ["admin"] as const,
-        resources: [users],
-        customResources: { users: ["create"] },
-        userCollection: users,
-        permissions: { admin: {} },
-      }),
-    ).toThrow(VexAccessConfigError);
-  });
-});
-
 describe("defineAccess — type-level", () => {
   it("rejects an unknown role key in permissions", () => {
     defineAccess({
+      ...baseInput,
       roles: ["admin"] as const,
       resources: [posts, users],
-      userCollection: users,
       permissions: {
-        admin: { "*": true },
+        admin: { [WILDCARD_KEY]: true },
         // @ts-expect-error — "superuser" is not in `roles`
-        superuser: { "*": true },
+        superuser: { [WILDCARD_KEY]: true },
       },
     });
   });
 
   it("rejects an unknown action for a resource subject", () => {
     defineAccess({
-      roles: ["admin"] as const,
+      ...baseInput,
       resources: [posts, users],
-      userCollection: users,
       permissions: {
         admin: {
-          posts: {
-            create: true,
-            read: true,
-            update: true,
-            delete: true,
-            // @ts-expect-error — "archive" is not a CrudAction
-            archive: true,
-          },
+          // @ts-expect-error — "publish" requires versions.drafts on the resource
+          posts: { publish: true },
         },
       },
     });
@@ -1193,10 +1341,9 @@ describe("defineAccess — type-level", () => {
 
   it("rejects a field-mode object on a custom resource", () => {
     defineAccess({
-      roles: ["admin"] as const,
+      ...baseInput,
       resources: [posts, users],
-      customResources: { apiKeys: ["create", "revoke"] },
-      userCollection: users,
+      customResources: { apiKeys: { actions: ["create", "revoke"] } },
       permissions: {
         admin: {
           // @ts-expect-error — custom resource subjects have `fields: never`, no field-mode object
@@ -1208,61 +1355,78 @@ describe("defineAccess — type-level", () => {
 });
 ```
 
-Verify: `pnpm --filter @vexcms/core test -- access/config`
+Verify: `pnpm --filter @vexcms/core test -- access/config` — 18 tests, all green.
 
 ### Step 3 — hasPermission resolver + tests [dev]
 
-Create `packages/core/src/access/hasPermission.ts` (guided stub: `hasPermission`, `resolvePermissionCheck`,
-`mergeRolePermissions`), `packages/core/src/access/hasPermission.test.ts` (full test suite porting master's
-edge-case matrix plus the v2-only cases), and `packages/core/src/access/index.ts` (barrel). This is the single
-runtime entry point — every server API guard (Step 5), admin panel gate, and custom-subject check calls
-`hasPermission`; the resolution order below is binding (see contract) and every branch is exercised by a test.
+**Status: implemented and verified** (63 access tests, tsc clean)
 
-- [ ] Create `packages/core/src/access/hasPermission.ts`
-- [ ] Create `packages/core/src/access/hasPermission.test.ts`
-- [ ] Create `packages/core/src/access/index.ts`
+`packages/core/src/access/hasPermission.ts` is the single runtime entry point — every
+server API guard (Step 5), admin panel gate, and custom-subject check calls it; the
+resolution helpers (`resolvePermissionCheck`, `mergeRolePermissions`, `resolveActionCheck`)
+are module-private and exercised only through `hasPermission`'s tests.
+`packages/core/src/access/hasPermission.test.ts` is the full test suite (45 tests) — every
+resolution branch and the full multi-role merge matrix. `packages/core/src/access/index.ts`
+is the barrel.
 
-#### `packages/core/src/access/hasPermission.ts` (NEW)
+- [x] Create `packages/core/src/access/hasPermission.ts`
+- [x] Create `packages/core/src/access/hasPermission.test.ts`
+- [x] Create `packages/core/src/access/index.ts`
 
-```ts
-import type {
-  VexAccessConfig,
-  SubjectEntry,
-  PermissionCheck,
-  FieldPermissionResult,
-  ResolvedFieldPermissions,
-} from "./types";
+#### `packages/core/src/access/hasPermission.ts` (IMPLEMENTED)
+
+````ts
+import { PERMISSION_MODES, WILDCARD_KEY } from "./constants";
 import { VexAccessError } from "./types";
+import type {
+  FieldPermissionResult,
+  PermissionCallbackProps,
+  PermissionCheck,
+  ResolvedFieldPermissions,
+  SubjectEntry,
+  VexAccessConfig,
+} from "./types";
 
 /**
  * Resolves runtime role-based access for a single subject + action, merging
  * every role the user holds into one decision.
  *
- * This is the single entry point every server API guard, admin panel gate,
- * and custom-subject check calls. When `fields` is provided, resolves and
- * returns a per-field permission map instead of a single boolean.
+ * This is the single runtime entry point — every server API guard, admin panel
+ * gate, and custom-subject check calls it; the resolution helpers below are
+ * module-private. When `fields` is provided, returns a per-field permission
+ * map instead of a single boolean.
  *
- * @param props.access - The resolved access config from `defineAccess()`. `undefined` disables
- *   access control entirely (no `access` configured) — every check passes.
- * @param props.user - The authenticated user document (from `access.userCollection`).
- * @param props.userRoles - Role names held by `user`. Roles absent from `access.roles` are ignored.
- * @param props.resource - Subject name — a resource slug, `"adminPanel"`, or a custom resource name.
- * @param props.action - Action on `resource`. Typed per-subject via `TSubjects[TSubject]["action"]`.
- * @param props.data - Document/context passed to permission callbacks. Omit for subjects with `data: never`.
- * @param props.organization - The organization document passed to callbacks. Only surfaces in callback
- *   props when `access.organizationCollection` is configured.
- * @param props.fields - When provided, restricts (and shapes) the result to a per-field permission map.
- * @param props.throwOnDenied - When `true`, throws `VexAccessError` instead of returning `false`/a
- *   partially-`false` field map. Default `false`.
- * @returns `boolean` when `fields` is omitted; `ResolvedFieldPermissions` (one entry per requested
- *   field) when `fields` is provided.
- * @throws {VexAccessError} When `throwOnDenied` is `true` and access is denied — carries `resource`,
- *   `action`, and (for field checks) the first denied field.
+ * Resolution, per role, first hit wins: subject boolean shorthand → explicit
+ * action key → subject-level `WILDCARD_KEY` → role-level `WILDCARD_KEY`
+ * (undeclared subjects only) → `defaultPermissionMode`. Roles then OR-merge:
+ * any role allowing (per field, when `fields` is given) allows.
+ *
+ * @param props.access - The resolved config from `defineAccess()`. `undefined`
+ *   disables access control entirely — every check passes.
+ * @param props.user - The authenticated user document. Roles are derived from
+ *   `user[access.userRolesField]` (`string` or `string[]`); a missing or empty
+ *   value denies. There is no separate roles parameter.
+ * @param props.organization - The organization document forwarded to callbacks.
+ *   Only surfaces when `access.orgCollectionSlug` is configured.
+ * @param props.resource - Subject name — a resource slug, a built-in subject
+ *   (e.g. `"adminPanel"`), or a custom resource name.
+ * @param props.action - Action on `resource`, typed per subject.
+ * @param props.data - Document/context forwarded to permission callbacks.
+ * @param props.fields - When provided, shapes the result into a per-field map
+ *   covering exactly these fields.
+ * @param props.throwOnDenied - When `true`, throws `VexAccessError` instead of
+ *   returning `false` / a partially-`false` field map. Default `false`.
+ * @returns `boolean` when `fields` is omitted; `ResolvedFieldPermissions`
+ *   (one entry per requested field) when `fields` is provided.
+ * @throws {VexAccessError} When `throwOnDenied` is `true` and access is denied —
+ *   carries `resource`, `action`, and (for field checks) the first denied field.
  *
  * @example
  * ```ts
- * hasPermission({ access, user, userRoles, resource: "posts", action: "update" }); // boolean
- * hasPermission({ access, user, userRoles, resource: "posts", action: "update",
+ * hasPermission({ access, user, resource: "posts", action: "update" }); // boolean
+ * hasPermission({ access, user, resource: "posts", action: "delete",
+ *   data: post, throwOnDenied: true }); // throws VexAccessError on deny
+ * hasPermission({ access, user, resource: "posts", action: "update",
  *   fields: ["title", "slug"] }); // { title: boolean, slug: boolean }
  * ```
  */
@@ -1270,621 +1434,425 @@ export function hasPermission<
   TSubjects extends Record<string, SubjectEntry>,
   TSubject extends keyof TSubjects & string,
 >(props: {
-  access: VexAccessConfig<TSubjects> | undefined;
+  access?: VexAccessConfig<TSubjects>;
   user: Record<string, unknown>;
-  userRoles: string[];
+  organization?: Record<string, unknown>;
   resource: TSubject;
   action: TSubjects[TSubject]["action"];
   data?: TSubjects[TSubject]["data"];
-  organization?: Record<string, unknown>;
   fields?: TSubjects[TSubject]["fields"][];
   throwOnDenied?: boolean;
 }): boolean | ResolvedFieldPermissions {
-  // TODO: implement
-  // 1. Destructure props (`throwOnDenied` defaults to `false`).
-  // 2. `access === undefined` → the system has no access control configured:
-  //    a. → build the allow result (`true`, or `{ [field]: true }` for every
-  //       requested field when `fields` is provided) and return it directly —
-  //       skip `throwOnDenied` entirely, nothing was ever denied.
-  // 3. Filter `userRoles` down to roles present in `access.roles`; unknown role
-  //    names are dropped silently.
-  //    a. If the filtered list is empty → every role was unknown or none were
-  //       supplied → build the deny result (`false`, or `{ [field]: false }`
-  //       for every requested field) and go to step 6.
-  // 4. For each remaining (known) role, resolve that role's check for
-  //    `resource`/`action`:
-  //    a. Read `roleEntry = access.permissions[role]`.
-  //    b. If `roleEntry[resource]` is declared (regardless of role-level `"*"`) →
-  //       - `typeof roleEntry[resource] === "boolean"` → that boolean is the
-  //         resolved check for every action on this subject (resource-level
-  //         shorthand — the per-action `PermissionCheck` path is skipped).
-  //       - Otherwise it's a per-action map → resolve via the shared util
-  //         `resolveActionCheck({ subjectEntry, action })`:
-  //         i.  `subjectEntry[action]` declared → that check.
-  //         ii. else `subjectEntry["*"]` declared → that check (action-level
-  //             wildcard — a full `PermissionCheck`, so booleans, mode objects,
-  //             and callbacks all work; enables "everything except X":
-  //             `pages: { "*": true, delete: cb }`).
-  //         iii. else `undefined` → caller falls through to `access.defaults`
-  //             (an explicitly declared subject never falls back to the
-  //             role-level wildcard, only to its own `"*"` or `defaults`).
-  //    c. Else if `resource` has no entry at all on this role AND
-  //       `roleEntry["*"]` is declared → that boolean is the resolved check
-  //       for every action (the role-level wildcard covers only subjects the
-  //       role never mentions).
-  //    d. Else (neither `resource` nor `"*"` declared) → resolved check =
-  //       `access.defaults === "deny" ? false : true`.
-  //    e. If the resolved check is a function, call `resolvePermissionCheck()`
-  //       with `{ check, user, data, organization: access.organizationCollection
-  //       !== undefined ? organization : undefined }` — this also normalizes a
-  //       callback returning `undefined` to `false` (deny).
-  // 5. Merge every role's resolved check with `mergeRolePermissions({ resolved,
-  //    fields })` → OR across roles, allow wins over deny, per field when
-  //    `fields` is provided.
-  // 6. `throwOnDenied` check:
-  //    a. `fields` omitted and the merged result is `false` → throw
-  //       `new VexAccessError(...)` with `{ resource, action }`.
-  //    b. `fields` provided → find the first field (in `fields` array order)
-  //       whose merged value is `false` → throw `new VexAccessError(...)` with
-  //       `{ resource, action, field }`. No `false` entries → don't throw.
-  // 7. Return the merged result.
-  //
-  // Edge cases:
-  // - Field-map edge semantics (no `fields` param): allow-mode w/ nonempty
-  //   `fields` → `true`; allow-mode w/ empty `fields` → `false`; deny-mode
-  //   w/ nonempty `fields` → `false`; deny-mode w/ empty `fields` → `true`.
-  // - `"*": true` only ever fills in for subjects the role never declares — it
-  //   grants access to custom resources and other undeclared subjects, but
-  //   never overrides an explicit per-subject `false`/deny entry.
-  // - `"*": false` denies every undeclared subject, but an explicit per-subject
-  //   entry on the same role (even one nested under a per-action map) still wins.
-  // - Action-level `"*"` inside a per-action map is consulted BETWEEN the
-  //   explicit action key and `defaults`; it never leaks across subjects.
-  //   Precedence: explicit action > subject `"*"` > role `"*"` (undeclared
-  //   subjects only) > `defaults`.
-  // - Role-level `"*"` is boolean-only; action-level `"*"` is any
-  //   `PermissionCheck` (a role-wide callback would receive a union of every
-  //   subject's `data` — deliberately unsupported).
-  // - `access.defaults: "deny"` flips every undeclared role/subject/action from
-  //   allow to deny — it does not affect subjects that ARE declared.
-  // - A callback resolving to `undefined` is deny, distinct from a subject/action
-  //   never being declared (which resolves via `defaults`, not deny-by-default).
-  throw new Error("Not implemented");
+  const { access } = props;
+
+  if (!access) {
+    return buildFieldPermissions({ allowed: true, fields: props.fields });
+  }
+
+  const rawRoles = props.user[access.userRolesField];
+  const userRoles =
+    typeof rawRoles === "string"
+      ? [rawRoles]
+      : Array.isArray(rawRoles)
+        ? rawRoles.filter((role): role is string => typeof role === "string")
+        : [];
+  const knownRoles = userRoles.filter((role) => access.roles.includes(role));
+
+  const defaultAllowed =
+    access.defaultPermissionMode === PERMISSION_MODES.allow;
+  let allPermissions: boolean | ResolvedFieldPermissions;
+
+  if (knownRoles.length === 0) {
+    allPermissions = buildFieldPermissions({
+      allowed: false,
+      fields: props.fields,
+    });
+  } else {
+    const resolved = knownRoles.map(
+      (userRole): FieldPermissionResult<string> => {
+        const role = access.permissions[userRole];
+        const resource = role?.[props.resource];
+
+        let check: PermissionCheck;
+        if (typeof resource === "boolean") {
+          // { posts: true }
+          check = resource;
+        } else if (
+          resource !== null &&
+          resource !== undefined &&
+          typeof resource === "object"
+        ) {
+          // { posts: { "*": true, update: () => {}, delete: false } }
+          check =
+            resolveActionCheck({
+              resource: resource as Record<string, unknown>,
+              action: props.action,
+            }) ?? defaultAllowed;
+        } else {
+          // { posts: undefined }
+          const roleWildcard = role?.[WILDCARD_KEY];
+          check =
+            typeof roleWildcard === "boolean" ? roleWildcard : defaultAllowed;
+        }
+
+        return (
+          resolvePermissionCheck({
+            check,
+            user: props.user,
+            data: props.data,
+            organization:
+              access.orgCollectionSlug !== undefined
+                ? props.organization
+                : undefined,
+          }) ?? defaultAllowed
+        );
+      },
+    );
+
+    allPermissions = mergeRolePermissions({ resolved, fields: props.fields });
+  }
+
+  if (props.throwOnDenied) {
+    if (allPermissions === false) {
+      throw new VexAccessError("Access Denied.", {
+        resource: props.resource,
+        action: props.action,
+      });
+    }
+    if (typeof allPermissions === "object") {
+      const deniedField = props.fields?.find(
+        (field) => allPermissions[field] === false,
+      );
+      if (deniedField !== undefined) {
+        throw new VexAccessError("Access Denied.", {
+          resource: props.resource,
+          action: props.action,
+          field: deniedField,
+        });
+      }
+    }
+  }
+
+  return allPermissions;
 }
 
 /**
- * Resolves a single role's `PermissionCheck` into a concrete
- * `FieldPermissionResult` — invoking the callback (if it is one) with the
- * caller's `user`/`data`/`organization` context.
+ * Builds an all-`true` or all-`false` result in the caller's requested shape:
+ * a bare boolean, or a field map covering exactly the requested fields.
  *
- * Advanced/testing use: `hasPermission()` calls this once per role per check;
- * exported so callers can resolve one role's check in isolation (e.g. to
- * preview what a specific role would allow, without merging).
+ * Module-private.
  *
- * @param props.check - The check to resolve — a boolean, a `{ mode, fields }` object, a callback,
- *   or `undefined` (subject/action not declared — the caller applies the `defaults` posture).
- * @param props.user - Passed to the callback as `props.user`.
- * @param props.data - Passed to the callback as `props.data` when defined; omitted from the
- *   callback's props object otherwise.
- * @param props.organization - Passed to the callback as `props.organization` when defined;
- *   omitted from the callback's props object otherwise.
- * @returns The resolved `FieldPermissionResult`, or `undefined` when `props.check` itself was
- *   `undefined` (caller must apply the config's `defaults` posture). A callback that returns
- *   `undefined` resolves to `false`, never to `undefined` — only an undeclared check propagates
- *   `undefined` out of this function.
- *
- * @example
- * ```ts
- * resolvePermissionCheck({ check: true, user }); // → true
- * resolvePermissionCheck({
- *   check: ({ data, user }) => data.authorId === user._id,
- *   user, data: post,
- * }); // → boolean returned by the callback
- * ```
+ * @returns `props.allowed` as-is when no fields are requested; otherwise a
+ *   field map with every requested field set to `props.allowed`.
  */
-export function resolvePermissionCheck<
-  TData = unknown,
-  TUser extends Record<string, unknown> = Record<string, unknown>,
-  TOrg extends Record<string, unknown> = Record<string, unknown>,
-  TFieldKeys extends string = string,
+function buildFieldPermissions(props: {
+  allowed: boolean;
+  fields?: readonly string[];
+}): boolean | ResolvedFieldPermissions {
+  if (props.fields === undefined) {
+    return props.allowed;
+  }
+  const fieldPermissions: ResolvedFieldPermissions = {};
+  for (const field of props.fields) {
+    fieldPermissions[field] = props.allowed;
+  }
+  return fieldPermissions;
+}
+
+/**
+ * Resolves one role's `PermissionCheck` into a concrete result: booleans and
+ * mode objects pass through; callbacks are invoked with `{ user, data?,
+ * organization? }`.
+ *
+ * Module-private. The caller resolves "not declared" to the configured
+ * `defaultPermissionMode` BEFORE calling — `check` is always a real check
+ * here. A callback returning `undefined` resolves to `false` (deny), so an
+ * inconclusive callback can never be mistaken for an undeclared action.
+ *
+ * @returns The check's boolean or field-mode object; for callbacks, the
+ *   callback's result with `undefined` normalized to `false`.
+ */
+function resolvePermissionCheck<
+  TData,
+  TUser,
+  TOrg,
+  TFieldKeys extends string,
 >(props: {
-  check: PermissionCheck<TData, TUser, TOrg, TFieldKeys> | undefined;
+  check: PermissionCheck;
   user: TUser;
   data?: TData;
   organization?: TOrg;
-}): FieldPermissionResult<TFieldKeys> | undefined {
-  // TODO: implement
-  // 1. `props.check === undefined` → return `undefined` unchanged (nothing to
-  //    resolve — signals "not declared" up to `hasPermission`, which applies
-  //    `defaults`).
-  // 2. `typeof props.check !== "function"` → it's already a boolean or a
-  //    `{ mode, fields }` object → return it as-is.
-  // 3. It's a callback:
-  //    a. Build the callback props: start with `{ user: props.user }`, then
-  //       spread in `data: props.data` only when `props.data !== undefined`,
-  //       then spread in `organization: props.organization` only when
-  //       `props.organization !== undefined` → matches
-  //       `PermissionCallbackProps<TData, TUser, TOrg>`'s conditional shape.
-  //    b. Call `props.check(callbackProps)`.
-  //    c. Callback returned `undefined` → return `false` (deny) — NOT
-  //       `undefined` (that would be misread by the caller as "not declared").
-  //    d. Otherwise return the callback's `FieldPermissionResult` unchanged.
-  //
-  // Edge cases:
-  // - Distinguish "no check configured" (`undefined` in → `undefined` out) from
-  //   "callback denied" (`undefined` out of the callback → `false` out of this
-  //   function). Collapsing these would make undeclared actions deny-by-default
-  //   instead of falling through to `defaults`.
-  throw new Error("Not implemented");
+}): FieldPermissionResult<TFieldKeys> {
+  if (typeof props.check !== "function") {
+    return props.check as FieldPermissionResult<TFieldKeys>;
+  }
+  const callbackProps = {
+    user: props.user,
+    data: props.data !== undefined ? props.data : undefined,
+    organization:
+      props.organization !== undefined ? props.organization : undefined,
+  } as PermissionCallbackProps;
+  const result = props.check(callbackProps);
+  return result === undefined
+    ? false
+    : (result as FieldPermissionResult<TFieldKeys>);
 }
 
 /**
- * Merges one resolved `FieldPermissionResult` per role into a single result,
- * OR-ing across roles so that any role granting access wins (allow beats deny).
+ * Merges one resolved `FieldPermissionResult` per role into a single result —
+ * OR across roles (allow wins over deny), per field when `fields` is given.
  *
- * @param props.resolved - One resolved check per role the user holds (already run through
- *   `resolvePermissionCheck` + the `defaults` fallback — no raw `undefined` entries).
- * @param props.fields - When provided, the field map to compute; the returned
- *   `ResolvedFieldPermissions` has exactly these keys. Omit to get a single overall boolean.
- * @returns `boolean` when `props.fields` is omitted; `ResolvedFieldPermissions` otherwise.
+ * Module-private. Field-map semantics with no `fields` param: allow-mode with
+ * nonempty `fields` → `true` ("can touch something"); allow-mode with empty
+ * `fields` → `false`; deny-mode with nonempty `fields` → `false` ("something
+ * is denied"); deny-mode with empty `fields` → `true`.
  *
- * @example
- * ```ts
- * mergeRolePermissions({
- *   resolved: [
- *     { mode: "allow", fields: ["title"] },
- *     { mode: "deny", fields: ["slug"] },
- *   ],
- *   fields: ["title", "slug", "status"],
- * });
- * // → { title: true, slug: true, status: true }
- * // (role A allows "title"; role B denies "slug" but allows everything else —
- * // allow wins per field across roles)
- * ```
+ * @returns A single OR-merged boolean when `fields` is omitted; otherwise a
+ *   field map keyed by exactly the requested fields.
  */
-export function mergeRolePermissions<TFieldKeys extends string = string>(props: {
+function mergeRolePermissions<TFieldKeys extends string>(props: {
   resolved: Array<FieldPermissionResult<TFieldKeys>>;
   fields?: TFieldKeys[];
 }): boolean | ResolvedFieldPermissions {
-  // TODO: implement
-  // 1. `props.fields` is `undefined` → compute one boolean per role (step 2,
-  //    overall-boolean variant), then OR them together (`some(Boolean)`) →
-  //    return the single boolean.
-  //    a. `props.fields` is provided → for each field in `props.fields`,
-  //       compute one boolean per role for THAT field (step 2, per-field
-  //       variant), OR them together → build a `ResolvedFieldPermissions`
-  //       keyed by exactly the requested fields (fields not requested never
-  //       appear in the result, even if an underlying mode object mentions them).
-  // 2. Per-role, per-check boolean collapse (used by both branches above):
-  //    a. `check` is a plain `boolean` → that value, for every field.
-  //    b. `check` is `{ mode: "allow", fields }`:
-  //       - Overall-boolean branch (no specific field being asked) → `fields`
-  //         non-empty → `true`; `fields` empty → `false`.
-  //       - Per-field branch, asking about field `f` → `fields.includes(f)`.
-  //    c. `check` is `{ mode: "deny", fields }`:
-  //       - Overall-boolean branch → `fields` non-empty → `false`; `fields`
-  //         empty → `true`.
-  //       - Per-field branch for field `f` → `!fields.includes(f)`.
-  // 3. Return the OR-merged boolean (step 1) or field map (step 1a).
-  //
-  // Edge cases:
-  // - Mixed booleans and mode objects across roles merge fine — step 2 collapses
-  //   every role to a boolean (per field or overall) before the OR in step 1.
-  // - `props.resolved` is never empty when called from `hasPermission()` (an
-  //   empty `userRoles` short-circuits before reaching this function), but an
-  //   empty array here still has a well-defined answer: no role to grant access
-  //   → `false` (or an all-`false` field map).
-  throw new Error("Not implemented");
-}
+  const collapse = (
+    check: FieldPermissionResult<TFieldKeys>,
+    field?: TFieldKeys,
+  ): boolean => {
+    if (typeof check === "boolean") {
+      return check;
+    }
+    if (check.mode === PERMISSION_MODES.allow) {
+      return field === undefined
+        ? check.fields.length > 0
+        : check.fields.includes(field);
+    }
+    return field === undefined
+      ? check.fields.length === 0
+      : !check.fields.includes(field);
+  };
 
+  if (props.fields === undefined) {
+    return props.resolved.some((check) => collapse(check));
+  }
+  const result: ResolvedFieldPermissions = {};
+  for (const field of props.fields) {
+    result[field] = props.resolved.some((check) => collapse(check, field));
+  }
+  return result;
+}
 
 /**
  * Resolves a single action's check from a per-action map, consulting the
- * action-level wildcard `"*"` when the explicit action is not declared.
- *
- * Used internally by `hasPermission` to flatten a per-action map into
- * a single `PermissionCheck` for a given action, enabling "everything
- * except X" patterns like `pages: { "*": true, delete: cb }`.
- *
- * @param props.subjectEntry - The per-action map for a subject
- *   (already validated to be an object, not a boolean shorthand).
- * @param props.action - The action name to resolve.
- * @returns The resolved `PermissionCheck`, or `undefined` if neither the
- *   explicit action nor `"*"` are declared on this subject.
- *
- * @internal Exported for testing only.
- */
-export function resolveActionCheck<TAction extends string>(props: {
-  subjectEntry: Record<string, unknown>;
-  action: TAction;
-}): PermissionCheck<any, any, any, any> | undefined {
-  // TODO: implement
-  // 1. Check `props.subjectEntry[props.action]` — if declared, return it.
-  // 2. Else check `props.subjectEntry["*"]` — if declared, return it.
-  // 3. Else return `undefined` (neither action nor wildcard declared).
-  throw new Error("Not implemented");
-}
-```
-
-#### `packages/core/src/access/index.ts` (NEW)
-
-```ts
-export * from "./types";
-export * from "./config";
-export * from "./hasPermission";
-```
-
----
-
-#### Action-level Wildcard Test Suite
-
-Add to `packages/core/src/access/hasPermission.test.ts`:
-
-```ts
-// ────────────────────────────────────────────────────────────────────────
-// Action-level wildcard `"*"` — enables "everything except X" patterns
-// ────────────────────────────────────────────────────────────────────────
-
-describe("action-level wildcard", () => {
-  it("covers undeclared actions inside a per-action map", () => {
-    const access = defineAccess({
-      roles: ["editor"],
-      resources: [posts],
-      userCollection: { slug: "users" },
-      permissions: {
-        editor: {
-          posts: {
-            "*": true,  // allow all actions (create, read, update, delete, etc.)
-            delete: false,  // except delete
-          },
-        },
-      },
-    });
-
-    const user = { _id: "u1", name: "Alice" };
-    const userRoles = ["editor"];
-
-    expect(hasPermission({ access, user, userRoles, resource: "posts", action: "create" }))
-      .toBe(true);
-    expect(hasPermission({ access, user, userRoles, resource: "posts", action: "read" }))
-      .toBe(true);
-    expect(hasPermission({ access, user, userRoles, resource: "posts", action: "update" }))
-      .toBe(true);
-    // Explicit action beats wildcard
-    expect(hasPermission({ access, user, userRoles, resource: "posts", action: "delete" }))
-      .toBe(false);
-  });
-
-  it("wildcard can be a callback (data-aware deny)", () => {
-    const access = defineAccess({
-      roles: ["editor"],
-      resources: [posts],
-      userCollection: { slug: "users" },
-      permissions: {
-        editor: {
-          posts: {
-            "*": ({ data }) => data.status !== "published",  // wildcard callback
-            delete: false,  // still explicitly denied
-          },
-        },
-      },
-    });
-
-    const user = { _id: "u1", name: "Alice" };
-    const userRoles = ["editor"];
-
-    expect(hasPermission({
-      access, user, userRoles, resource: "posts", action: "create",
-      data: { title: "Draft", status: "draft" }
-    })).toBe(true);
-
-    expect(hasPermission({
-      access, user, userRoles, resource: "posts", action: "update",
-      data: { title: "Published", status: "published" }
-    })).toBe(false);  // wildcard callback denies
-
-    expect(hasPermission({
-      access, user, userRoles, resource: "posts", action: "delete",
-      data: { title: "Draft", status: "draft" }
-    })).toBe(false);  // explicit delete deny, wildcard doesn't matter
-  });
-
-  it("explicit action takes precedence over subject wildcard", () => {
-    const access = defineAccess({
-      roles: ["viewer"],
-      resources: [posts],
-      userCollection: { slug: "users" },
-      permissions: {
-        viewer: {
-          posts: {
-            "*": false,  // deny all actions by default
-            read: true,  // except read
-          },
-        },
-      },
-    });
-
-    const user = { _id: "u1", name: "Alice" };
-    const userRoles = ["viewer"];
-
-    expect(hasPermission({ access, user, userRoles, resource: "posts", action: "read" }))
-      .toBe(true);
-    expect(hasPermission({ access, user, userRoles, resource: "posts", action: "create" }))
-      .toBe(false);
-  });
-
-  it("wildcard callbacks can return field-mode objects", () => {
-    const access = defineAccess({
-      roles: ["editor"],
-      resources: [posts],
-      userCollection: { slug: "users" },
-      permissions: {
-        editor: {
-          posts: {
-            "*": { mode: "allow", fields: ["title", "status"] },  // update default
-            delete: false,
-          },
-        },
-      },
-    });
-
-    const user = { _id: "u1", name: "Alice" };
-    const userRoles = ["editor"];
-
-    expect(hasPermission({
-      access, user, userRoles, resource: "posts", action: "update",
-      fields: ["title", "status", "slug"]
-    })).toEqual({ title: true, status: true, slug: false });
-  });
-
-  it("precedence: explicit action > subject wildcard > role wildcard > defaults", () => {
-    const access = defineAccess({
-      roles: ["contributor"],
-      resources: [posts],
-      userCollection: { slug: "users" },
-      defaults: "allow",  // base default
-      permissions: {
-        contributor: {
-          "*": false,  // role wildcard denies undeclared subjects
-          posts: {
-            "*": true,  // subject wildcard allows all actions
-            delete: false,  // explicit action beats subject wildcard
-            publish: ({ data }) => data.status === "reviewed",  // callback beats subject wildcard
-          },
-        },
-      },
-    });
-
-    const user = { _id: "u1", name: "Alice" };
-    const userRoles = ["contributor"];
-
-    expect(hasPermission({ access, user, userRoles, resource: "posts", action: "create" }))
-      .toBe(true);  // subject wildcard
-    expect(hasPermission({
-      access, user, userRoles, resource: "posts", action: "publish",
-      data: { title: "T", status: "reviewed" }
-    })).toBe(true);  // explicit callback wins
-    expect(hasPermission({
-      access, user, userRoles, resource: "posts", action: "publish",
-      data: { title: "T", status: "draft" }
-    })).toBe(false);  // explicit callback wins
-    expect(hasPermission({ access, user, userRoles, resource: "posts", action: "delete" }))
-      .toBe(false);  // explicit action beats subject wildcard
-  });
-
-  it("multiple roles: OR merge applies per action (action-level wildcards included)", () => {
-    const access = defineAccess({
-      roles: ["viewer", "editor"],
-      resources: [posts],
-      userCollection: { slug: "users" },
-      permissions: {
-        viewer: {
-          posts: { read: true, "*": false },  // read only
-        },
-        editor: {
-          posts: {
-            "*": true,  // all actions
-            delete: false,  // except delete
-          },
-        },
-      },
-    });
-
-    const user = { _id: "u1", name: "Alice" };
-    const viewerAndEditor = ["viewer", "editor"];
-
-    // Viewer denies create via "*": false; Editor allows via "*": true → allow wins
-    expect(hasPermission({
-      access, user, userRoles: viewerAndEditor, resource: "posts", action: "create"
-    })).toBe(true);
-
-    // Both allow read
-    expect(hasPermission({
-      access, user, userRoles: viewerAndEditor, resource: "posts", action: "read"
-    })).toBe(true);
-
-    // Both deny delete (viewer via "*": false, editor via explicit delete: false)
-    expect(hasPermission({
-      access, user, userRoles: viewerAndEditor, resource: "posts", action: "delete"
-    })).toBe(false);
-  });
-});
-```
-
- * Resolves the effective check for one action inside a per-action map,
- * honoring the action-level wildcard.
+ * action-level wildcard when the explicit action isn't declared.
  *
  * Module-private — the wildcard precedence lives in exactly one place so
  * `hasPermission` (and any future evaluator, e.g. DB-backed roles) shares it.
+ * Presence, not truthiness, decides: an explicit `false` still wins over the
+ * wildcard.
  *
- * @param props.subjectEntry - The per-action map declared for a subject
- *   (already known not to be a boolean shorthand).
- * @param props.action - The action being checked.
- * @returns The declared check for `action`, else the subject's `"*"` check,
- *   else `undefined` (caller falls through to `access.defaults`).
+ * @returns The declared check for `action`, else the wildcard's check, else
+ *   `undefined` (caller falls through to `defaultPermissionMode`).
  */
 function resolveActionCheck(props: {
-  subjectEntry: Record<string, unknown>;
+  resource: Record<string, unknown>;
   action: string;
-}): unknown {
-  // TODO: implement
-  // 1. `props.action in props.subjectEntry` → return `props.subjectEntry[props.action]`.
-  //    (An explicit key wins even when its value is `false` or a deny-mode
-  //    object — presence, not truthiness, decides.)
-  // 2. `"*" in props.subjectEntry` → return `props.subjectEntry["*"]`.
-  // 3. Return `undefined`.
-  //
-  // Edge cases:
-  // - `"*"` value may be any `PermissionCheck` (boolean, mode object, callback)
-  //   — callers treat it exactly like an explicit action's check.
-  // - An explicit `action: undefined` key (unlikely, but possible via spread)
-  //   counts as declared in step 1 and resolves as deny downstream — matches
-  //   the callback-returning-undefined posture.
-  throw new Error("Not implemented");
+}): PermissionCheck | undefined {
+  if (props.action in props.resource) {
+    return props.resource[props.action] as PermissionCheck;
+  }
+  if (WILDCARD_KEY in props.resource) {
+    return props.resource[WILDCARD_KEY] as PermissionCheck;
+  }
+  return undefined;
 }
-```
+````
 
-#### `packages/core/src/access/index.ts` (NEW)
+#### `packages/core/src/access/index.ts` (IMPLEMENTED)
+
+Star-export from every module — `resolvePermissionCheck`, `mergeRolePermissions`, and
+`resolveActionCheck` never reach the barrel because they are not `export`ed from
+`hasPermission.ts`; `hasPermission` is the only runtime symbol this file contributes to
+the public surface.
 
 ```ts
+export * from "./constants";
 export * from "./types";
 export * from "./config";
 export * from "./hasPermission";
 ```
 
-#### `packages/core/src/access/hasPermission.test.ts` (NEW)
+**Implemented — deviations from original spec:**
+
+- **Single throw site, no double-optional check type.** The stub's private-helper
+  signatures took `check: PermissionCheck | undefined` and `PermissionCheck<...> |
+undefined`, pushing the "not declared" `undefined` sentinel through every helper. The
+  real `hasPermission` resolves "not declared" to `defaultAllowed` (the boolean form of
+  `defaultPermissionMode`) at each of its three branches (subject boolean, per-action map
+  via `resolveActionCheck`, role wildcard) _before_ calling `resolvePermissionCheck` — so
+  `resolvePermissionCheck`'s `check` param is a non-optional `PermissionCheck`, never
+  returns `undefined`, and the "callback returning `undefined` → `false`" rule is its only
+  `undefined` handling. `throwOnDenied` is still applied exactly once, after
+  `mergeRolePermissions`, in `hasPermission` itself.
+- **Helpers stay function declarations, not arrow-typed private exports** — matches the
+  stub's intent (module-private, not part of the public API) with no behavioral change;
+  `resolveActionCheck` takes `{ resource, action }` (not `{ subjectEntry, action }`) to
+  match the call sites' naming.
+- The worked `@example` in the original stub's JSDoc (a long walkthrough numbering five
+  call shapes against a hypothetical `posts` config) is trimmed to four inline one-liners
+  in the real file — the full walkthrough now lives as executable test cases in
+  `hasPermission.test.ts` instead of prose; the code + tests are the documentation.
+
+#### `packages/core/src/access/hasPermission.test.ts` (IMPLEMENTED)
 
 ```ts
-import { describe, it, expect } from "vitest";
-import { defineCollection } from "../collections";
-import { defineGlobal } from "../globals";
-import { text } from "../fields";
+import { describe, expect, it } from "vitest";
+import { defineCollection, text } from "../index";
+import { PERMISSION_MODES, WILDCARD_KEY } from "./constants";
 import { defineAccess } from "./config";
-import { dataType, VexAccessError } from "./types";
 import { hasPermission } from "./hasPermission";
+import { dataType, VexAccessError } from "./types";
 
-// ────────────────────────────────────────────────────────────────────────
-// Fixtures
-//
-// `data`/`fields` types fall back to their wide defaults here (this test
-// file does not augment `GeneratedVexTypes` — see
-// `packages/core/src/api/test/convex/schema.ts` for the augmentation
-// pattern every other `@vexcms/core` fixture that needs narrowed types
-// uses). Runtime behavior below is exercised with plain object literals
-// regardless; only `dataType()`-carried custom-resource data (declared
-// inline, independent of the generated registry) is narrowly typed.
-// ────────────────────────────────────────────────────────────────────────
+// Core tests run with an unaugmented GeneratedVexTypes registry, so callback
+// `data` params are the wide fallback (`Record<string, unknown>`) — the casts
+// inside callbacks below are expected and disappear in apps after
+// `vex generate` augments the registry.
 
-const posts = defineCollection({
-  slug: "posts",
-  fields: {
-    title: text({ required: true }),
-    slug: text({ required: true }),
-    status: text(),
-  },
+const articles = defineCollection({
+  slug: "articles",
+  fields: { title: text({ required: true }), slug: text(), status: text() },
 });
 
 const users = defineCollection({
   slug: "users",
-  fields: {
-    name: text({ required: true }),
-    email: text({ required: true }),
-  },
-});
-
-const siteSettings = defineGlobal({
-  slug: "siteSettings",
-  label: "Site Settings",
-  fields: {
-    siteName: text({ required: true }),
-  },
-  versions: { drafts: true },
+  fields: { name: text({ required: true }), roles: text() },
 });
 
 const PROTECTED_SLUGS = ["home", "pricing"];
 
 /**
- * Primary shared fixture — exercises the realistic surface: role-level
- * wildcard, boolean shorthand, per-action maps, field-mode objects,
- * callbacks (incl. a drafts-enabled global and two custom resources, one
- * with a typed `dataType()` carrier).
+ * Primary fixture: role wildcard, boolean shorthand, per-action maps,
+ * action-level wildcard, field-mode objects, callbacks, custom resources
+ * (one with a typed dataType carrier), and the built-in adminPanel subject.
  */
 const access = defineAccess({
-  roles: ["admin", "editor", "viewer", "restricted", "poweruser", "noOrgSupport", "callbackUndefined"],
-  resources: [posts, users, siteSettings],
+  roles: [
+    "admin",
+    "editor",
+    "viewer",
+    "restricted",
+    "poweruser",
+    "owner",
+    "callbackUndefined",
+  ] as const,
+  resources: [articles, users],
   customResources: {
-    apiKeys: ["create", "revoke"],
+    apiKeys: { actions: ["create", "revoke"] },
     reviewQueue: {
       actions: ["approve", "reject"],
-      data: dataType<{ id: string; status: string }>(),
+      data: dataType<{ status: string }>(),
     },
   },
-  userCollection: users,
+  userCollectionSlug: "users",
+  userRolesField: "roles",
   permissions: {
-    // "*": true — wildcard-allow-all; nothing else is declared for "admin",
-    // so every subject (incl. adminPanel and both custom resources) resolves
-    // through the wildcard.
-    admin: {
-      "*": true,
-    },
+    // Role-level wildcard: everything, including custom resources.
+    admin: { [WILDCARD_KEY]: true },
     editor: {
       adminPanel: { access: true, impersonate: false },
-      posts: {
+      articles: {
         create: true,
         read: true,
-        // field-level: only "title" is directly editable.
-        update: { mode: "allow", fields: ["title"] },
-        delete: ({ data }) => !PROTECTED_SLUGS.includes((data as { slug: string }).slug),
+        update: { mode: PERMISSION_MODES.allow, fields: ["title", "status"] },
+        delete: ({ data }) => {
+          // Registry is unaugmented in core tests — fixture data is wide.
+          const post = data as { slug: string };
+          return !PROTECTED_SLUGS.includes(post.slug);
+        },
       },
       users: {
-        // self-read only; create/update/delete intentionally left
-        // UNDECLARED — demonstrates "action undeclared for a declared
-        // subject" falling through to `defaults`.
-        read: ({ data, user }) => (data as { _id: string })._id === (user as { _id: string })._id,
-      },
-      siteSettings: {
-        read: true,
-        readDrafts: true,
-        publish: false,
-        // create/update/delete/saveDraft/unpublish left undeclared → `defaults`.
+        // Only `read` declared — other actions fall through to the default.
+        read: ({ data, user }) => {
+          // Registry is unaugmented in core tests — fixture docs are wide.
+          const target = data as { _id: string };
+          const currentUser = user as { _id: string };
+          return target._id === currentUser._id;
+        },
       },
       apiKeys: { create: true, revoke: false },
       reviewQueue: {
         approve: ({ data }) => data?.status === "pending",
-        reject: ({ data }) => data?.status === "pending",
+        reject: false,
       },
     },
     viewer: {
-      posts: { read: true },
+      articles: { read: true },
       users: false, // resource-level boolean shorthand — deny every action
-      siteSettings: { read: true },
     },
-    // "*": false — deny every subject NOT explicitly declared below; "posts"
-    // IS declared, so its explicit entry wins over the wildcard.
+    // Role wildcard false: deny every subject NOT explicitly declared.
     restricted: {
-      "*": false,
-      posts: { read: true },
+      [WILDCARD_KEY]: false,
+      articles: { read: true },
     },
-    // resource-level boolean shorthand — allow every action on "posts".
+    // Resource-level boolean shorthand — allow every action on articles.
     poweruser: {
-      posts: true,
+      articles: true,
     },
-    // Probes for the organization-context and undefined-callback edge cases.
-    noOrgSupport: {
-      posts: { read: (callbackProps) => "organization" in callbackProps },
+    // Action-level wildcard with a callback; explicit `read` bypasses it.
+    owner: {
+      articles: {
+        [WILDCARD_KEY]: ({ data, user }) => {
+          // Registry is unaugmented in core tests — fixture docs are wide.
+          const post = data as { ownerId?: string };
+          const currentUser = user as { _id: string };
+          return post.ownerId === currentUser._id;
+        },
+        read: true,
+      },
     },
     callbackUndefined: {
-      posts: { read: () => undefined },
+      articles: { read: () => undefined },
     },
   },
 });
 
-/**
- * Isolated fixture for field-map resolution + multi-role merge semantics —
- * kept separate from `access` so each role demonstrates exactly one
- * mode/empty-fields combination without the primary fixture's noise.
- */
-const mergeFixtureAccess = defineAccess({
+/** Deny-posture fixture: undeclared role/subject/action resolves to deny. */
+const accessDenyDefaults = defineAccess({
+  roles: ["editor"] as const,
+  resources: [articles, users],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  defaultPermissionMode: PERMISSION_MODES.deny,
+  permissions: {
+    editor: { articles: { read: true } },
+  },
+});
+
+/** Org-aware fixture: organization is configured, so callbacks receive it. */
+const accessWithOrg = defineAccess({
+  roles: ["member"] as const,
+  resources: [articles, users],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  orgCollectionSlug: "organizations",
+  permissions: {
+    member: {
+      articles: {
+        read: (props) => {
+          if (!("organization" in props)) {
+            return false;
+          }
+          // Registry is unaugmented in core tests — the org doc is wide.
+          const organization = props.organization as
+            { _id: string } | undefined;
+          return organization?._id === "org1";
+        },
+      },
+    },
+  },
+});
+
+/** Merge fixture: one mode/boolean combination per role. */
+const mergeAccess = defineAccess({
   roles: [
     "roleAllowTitle",
     "roleDenySlug",
@@ -1893,614 +1861,427 @@ const mergeFixtureAccess = defineAccess({
     "allowEmptyFields",
     "denyEmptyFields",
     "boolTrue",
-  ],
-  resources: [posts, users],
-  userCollection: users,
+    "boolFalse",
+  ] as const,
+  resources: [articles, users],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  defaultPermissionMode: PERMISSION_MODES.deny,
   permissions: {
-    roleAllowTitle: { posts: { update: { mode: "allow", fields: ["title"] } } },
-    roleDenySlug: { posts: { update: { mode: "deny", fields: ["slug"] } } },
-    roleAllowStatus: { posts: { update: { mode: "allow", fields: ["status"] } } },
-    roleDenyTitle: { posts: { update: { mode: "deny", fields: ["title"] } } },
-    allowEmptyFields: { posts: { update: { mode: "allow", fields: [] } } },
-    denyEmptyFields: { posts: { update: { mode: "deny", fields: [] } } },
-    boolTrue: { posts: true },
-  },
-});
-
-/** Isolated fixture for `defaults: "deny"` — undeclared flips to deny. */
-const accessDenyDefaults = defineAccess({
-  roles: ["editor"],
-  resources: [posts, users],
-  userCollection: users,
-  defaults: "deny",
-  permissions: {
-    editor: {
-      posts: { read: true },
+    roleAllowTitle: {
+      articles: { update: { mode: PERMISSION_MODES.allow, fields: ["title"] } },
     },
-  },
-});
-
-/** Isolated fixture for organization-aware callbacks. */
-const organizations = defineCollection({
-  slug: "organizations",
-  fields: {
-    name: text({ required: true }),
-  },
-});
-
-const accessWithOrg = defineAccess({
-  roles: ["orgMember", "orgProbe", "callbackModeObject"],
-  resources: [posts, users],
-  userCollection: users,
-  organizationCollection: organizations,
-  permissions: {
-    orgMember: {
-      posts: {
-        read: ({ data, organization }) =>
-          organization !== undefined &&
-          (data as { orgId?: string })?.orgId === (organization as { _id?: string })?._id,
+    roleDenySlug: {
+      articles: { update: { mode: PERMISSION_MODES.deny, fields: ["slug"] } },
+    },
+    roleAllowStatus: {
+      articles: {
+        update: { mode: PERMISSION_MODES.allow, fields: ["status"] },
       },
     },
-    orgProbe: {
-      posts: { read: (callbackProps) => "organization" in callbackProps },
+    roleDenyTitle: {
+      articles: { update: { mode: PERMISSION_MODES.deny, fields: ["title"] } },
     },
-    callbackModeObject: {
-      users: { update: () => ({ mode: "allow" as const, fields: ["name"] }) },
+    allowEmptyFields: {
+      articles: { update: { mode: PERMISSION_MODES.allow, fields: [] } },
     },
+    denyEmptyFields: {
+      articles: { update: { mode: PERMISSION_MODES.deny, fields: [] } },
+    },
+    boolTrue: { articles: true },
+    boolFalse: { articles: false },
   },
 });
 
-// ────────────────────────────────────────────────────────────────────────
+const asUser = (roles: string | string[] | number, _id = "u1") => ({
+  _id,
+  roles,
+});
 
-describe("hasPermission — permissive defaults", () => {
-  it("allows everything when access is undefined (system disabled)", () => {
+describe("hasPermission — no access config", () => {
+  it("allows everything when access is undefined", () => {
     expect(
       hasPermission({
         access: undefined,
         user: {},
-        userRoles: ["editor"],
-        resource: "posts",
+        resource: "articles",
+        action: "read",
+      } as never),
+    ).toBe(true);
+  });
+
+  it("returns an all-true field map when fields are requested", () => {
+    expect(
+      hasPermission({
+        access: undefined,
+        user: {},
+        resource: "articles",
+        action: "update",
+        fields: ["title", "slug"],
+      } as never),
+    ).toEqual({ title: true, slug: true });
+  });
+
+  it("never throws, even with throwOnDenied", () => {
+    expect(
+      hasPermission({
+        access: undefined,
+        user: {},
+        resource: "articles",
         action: "delete",
-        data: { slug: "home" },
+        throwOnDenied: true,
+      } as never),
+    ).toBe(true);
+  });
+});
+
+describe("hasPermission — roles derivation from userRolesField", () => {
+  it("accepts a single string role value", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("admin"),
+        resource: "articles",
+        action: "read",
       }),
     ).toBe(true);
   });
 
-  it("resolves every requested field to true when access is undefined, even with no roles", () => {
-    expect(
-      hasPermission({
-        access: undefined,
-        user: {},
-        userRoles: [],
-        resource: "posts",
-        action: "delete",
-        fields: ["title", "slug"],
-      }),
-    ).toEqual({ title: true, slug: true });
-  });
-
-  it("falls through to `defaults` when a role never declares the subject at all", () => {
-    // "viewer" declares posts/users/siteSettings but never "apiKeys".
+  it("accepts a string[] role value", () => {
     expect(
       hasPermission({
         access,
-        user: {},
-        userRoles: ["viewer"],
+        user: asUser(["admin"]),
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(true);
+  });
+
+  it("denies when the roles field is missing from the user document", () => {
+    expect(
+      hasPermission({
+        access,
+        user: { _id: "u1" },
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(false);
+  });
+
+  it("denies when the roles array is empty", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser([]),
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(false);
+  });
+
+  it("denies when the roles value is not a string or string[]", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser(42),
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(false);
+  });
+
+  it("ignores unknown roles; all-unknown denies", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser(["ghost", "phantom"]),
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(false);
+  });
+
+  it("ignores unknown roles but honors known ones alongside them", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser(["ghost", "viewer"]),
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("hasPermission — boolean shorthand and per-action checks", () => {
+  it("resource-level `true` allows every action", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("poweruser"),
+        resource: "articles",
+        action: "delete",
+      }),
+    ).toBe(true);
+  });
+
+  it("resource-level `false` denies every action", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("viewer"),
+        resource: "users",
+        action: "read",
+      }),
+    ).toBe(false);
+  });
+
+  it("explicit per-action booleans resolve directly", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "create",
+      }),
+    ).toBe(true);
+    expect(
+      hasPermission({
+        access,
+        user: asUser("editor"),
+        resource: "apiKeys",
+        action: "revoke",
+      }),
+    ).toBe(false);
+  });
+
+  it("an undeclared action on a declared subject falls through to the default (allow)", () => {
+    // editor declares only `read` on users; `create` is undeclared.
+    expect(
+      hasPermission({
+        access,
+        user: asUser("editor"),
+        resource: "users",
+        action: "create",
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("hasPermission — callbacks", () => {
+  it("passes data and user to the callback", () => {
+    const owner = asUser("editor", "u1");
+    expect(
+      hasPermission({
+        access,
+        user: owner,
+        resource: "users",
+        action: "read",
+        data: { _id: "u1" } as never,
+      }),
+    ).toBe(true);
+    expect(
+      hasPermission({
+        access,
+        user: owner,
+        resource: "users",
+        action: "read",
+        data: { _id: "someone-else" } as never,
+      }),
+    ).toBe(false);
+  });
+
+  it("supports data-driven deny on protected documents", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "delete",
+        data: { slug: "home" } as never,
+      }),
+    ).toBe(false);
+    expect(
+      hasPermission({
+        access,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "delete",
+        data: { slug: "blog-post" } as never,
+      }),
+    ).toBe(true);
+  });
+
+  it("passes typed data to custom resource callbacks", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("editor"),
+        resource: "reviewQueue",
+        action: "approve",
+        data: { status: "pending" },
+      }),
+    ).toBe(true);
+    expect(
+      hasPermission({
+        access,
+        user: asUser("editor"),
+        resource: "reviewQueue",
+        action: "approve",
+        data: { status: "resolved" },
+      }),
+    ).toBe(false);
+  });
+
+  it("treats a callback returning undefined as deny — not as undeclared", () => {
+    // Undeclared would resolve via the default (allow); this must be false.
+    expect(
+      hasPermission({
+        access,
+        user: asUser("callbackUndefined"),
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(false);
+  });
+
+  it("passes organization to callbacks only when organizationCollection is configured", () => {
+    expect(
+      hasPermission({
+        access: accessWithOrg,
+        user: asUser("member"),
+        organization: { _id: "org1" },
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(true);
+    expect(
+      hasPermission({
+        access: accessWithOrg,
+        user: asUser("member"),
+        organization: { _id: "org2" },
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(false);
+  });
+
+  it("withholds organization from callbacks when no organizationCollection is configured", () => {
+    // Primary fixture has no organizationCollection; the owner wildcard
+    // callback never sees `organization` even though the caller passed one.
+    expect(
+      hasPermission({
+        access,
+        user: asUser("owner", "u1"),
+        organization: { _id: "org1" },
+        resource: "articles",
+        action: "update",
+        data: { ownerId: "u1" } as never,
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("hasPermission — role-level wildcard", () => {
+  it("`true` covers subjects the role never declares, including custom resources", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("admin"),
         resource: "apiKeys",
         action: "create",
       }),
     ).toBe(true);
-  });
-
-  it("falls through to `defaults` when the action is undeclared on a declared subject", () => {
-    // "editor" declares siteSettings.read/readDrafts/publish but not "create".
     expect(
       hasPermission({
         access,
-        user: {},
-        userRoles: ["editor"],
-        resource: "siteSettings",
+        user: asUser("admin"),
+        resource: "adminPanel",
+        action: "impersonate",
+      }),
+    ).toBe(true);
+  });
+
+  it("`false` denies subjects the role never declares", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("restricted"),
+        resource: "users",
+        action: "read",
+      }),
+    ).toBe(false);
+  });
+
+  it("`false` does not override an explicitly declared subject", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("restricted"),
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(true);
+  });
+
+  it("a declared subject's undeclared action falls to the default, not the role wildcard", () => {
+    // restricted declares articles (only read); create is undeclared on that
+    // subject and resolves via the default (allow) — NOT the role's `false`.
+    expect(
+      hasPermission({
+        access,
+        user: asUser("restricted"),
+        resource: "articles",
         action: "create",
       }),
     ).toBe(true);
   });
 });
 
-describe("hasPermission — field-map resolution (no fields param)", () => {
-  it("allow-mode with nonempty fields resolves to true", () => {
-    expect(
-      hasPermission({
-        access: mergeFixtureAccess,
-        user: {},
-        userRoles: ["roleAllowTitle"],
-        resource: "posts",
-        action: "update",
-      }),
-    ).toBe(true);
-  });
-
-  it("allow-mode with empty fields resolves to false", () => {
-    expect(
-      hasPermission({
-        access: mergeFixtureAccess,
-        user: {},
-        userRoles: ["allowEmptyFields"],
-        resource: "posts",
-        action: "update",
-      }),
-    ).toBe(false);
-  });
-
-  it("deny-mode with empty fields resolves to true", () => {
-    expect(
-      hasPermission({
-        access: mergeFixtureAccess,
-        user: {},
-        userRoles: ["denyEmptyFields"],
-        resource: "posts",
-        action: "update",
-      }),
-    ).toBe(true);
-  });
-
-  it("deny-mode with nonempty fields resolves to false", () => {
-    expect(
-      hasPermission({
-        access: mergeFixtureAccess,
-        user: {},
-        userRoles: ["roleDenySlug"],
-        resource: "posts",
-        action: "update",
-      }),
-    ).toBe(false);
-  });
-});
-
-describe("hasPermission — boolean resource shorthand", () => {
-  it("resource: true allows every action", () => {
-    expect(
-      hasPermission({ access, user: {}, userRoles: ["poweruser"], resource: "posts", action: "delete" }),
-    ).toBe(true);
-  });
-
-  it("resource: true with fields maps every requested field to true", () => {
+describe("hasPermission — action-level wildcard", () => {
+  it("covers actions not explicitly declared on the subject", () => {
     expect(
       hasPermission({
         access,
-        user: {},
-        userRoles: ["poweruser"],
-        resource: "posts",
+        user: asUser("owner", "u1"),
+        resource: "articles",
         action: "delete",
-        fields: ["title", "slug"],
-      }),
-    ).toEqual({ title: true, slug: true });
-  });
-
-  it("resource: false denies every action", () => {
-    expect(hasPermission({ access, user: {}, userRoles: ["viewer"], resource: "users", action: "read" })).toBe(
-      false,
-    );
-  });
-
-  it("resource: false with fields maps every requested field to false", () => {
-    expect(
-      hasPermission({
-        access,
-        user: {},
-        userRoles: ["viewer"],
-        resource: "users",
-        action: "read",
-        fields: ["name", "email"],
-      }),
-    ).toEqual({ name: false, email: false });
-  });
-});
-
-describe("hasPermission — multi-role merge", () => {
-  it("OR logic: any role granting access wins", () => {
-    expect(
-      hasPermission({
-        access: mergeFixtureAccess,
-        user: {},
-        userRoles: ["roleAllowTitle", "roleDenySlug"],
-        resource: "posts",
-        action: "update",
+        data: { ownerId: "u1" } as never,
       }),
     ).toBe(true);
-  });
-
-  it("merges two restrictive roles allowing different fields", () => {
-    expect(
-      hasPermission({
-        access: mergeFixtureAccess,
-        user: {},
-        userRoles: ["roleAllowTitle", "roleAllowStatus"],
-        resource: "posts",
-        action: "update",
-        fields: ["title", "status", "slug"],
-      }),
-    ).toEqual({ title: true, status: true, slug: false });
-  });
-
-  it("allow wins over deny across roles for the same field", () => {
-    expect(
-      hasPermission({
-        access: mergeFixtureAccess,
-        user: {},
-        userRoles: ["roleAllowTitle", "roleDenyTitle"],
-        resource: "posts",
-        action: "update",
-        fields: ["title"],
-      }),
-    ).toEqual({ title: true });
-  });
-
-  it("allow wins over deny across roles for the overall boolean too", () => {
-    expect(
-      hasPermission({
-        access: mergeFixtureAccess,
-        user: {},
-        userRoles: ["roleAllowTitle", "roleDenyTitle"],
-        resource: "posts",
-        action: "update",
-      }),
-    ).toBe(true);
-  });
-
-  it("a boolean-true role wins over a deny-mode field map from another role", () => {
-    expect(
-      hasPermission({
-        access: mergeFixtureAccess,
-        user: {},
-        userRoles: ["boolTrue", "roleDenySlug"],
-        resource: "posts",
-        action: "update",
-        fields: ["slug"],
-      }),
-    ).toEqual({ slug: true });
-  });
-});
-
-describe("hasPermission — unknown & empty userRoles", () => {
-  it("denies when every supplied role is unknown", () => {
-    expect(hasPermission({ access, user: {}, userRoles: ["ghost"], resource: "posts", action: "read" })).toBe(
-      false,
-    );
-  });
-
-  it("denies every requested field when every supplied role is unknown", () => {
     expect(
       hasPermission({
         access,
-        user: {},
-        userRoles: ["ghost"],
-        resource: "posts",
-        action: "read",
-        fields: ["title"],
-      }),
-    ).toEqual({ title: false });
-  });
-
-  it("ignores unknown roles mixed with a known role — the known role still grants access", () => {
-    expect(
-      hasPermission({
-        access,
-        user: {},
-        userRoles: ["editor", "ghost"],
-        resource: "posts",
-        action: "create",
-      }),
-    ).toBe(true);
-  });
-
-  it("denies everything when userRoles is empty", () => {
-    expect(hasPermission({ access, user: {}, userRoles: [], resource: "posts", action: "read" })).toBe(false);
-  });
-
-  it("denies every requested field when userRoles is empty", () => {
-    expect(
-      hasPermission({ access, user: {}, userRoles: [], resource: "posts", action: "read", fields: ["title"] }),
-    ).toEqual({ title: false });
-  });
-});
-
-describe("hasPermission — dynamic callbacks & organization context", () => {
-  it("resolves a callback comparing data to the acting user", () => {
-    expect(
-      hasPermission({
-        access,
-        user: { _id: "u1" },
-        userRoles: ["editor"],
-        resource: "users",
-        action: "read",
-        data: { _id: "u1" },
-      }),
-    ).toBe(true);
-
-    expect(
-      hasPermission({
-        access,
-        user: { _id: "u1" },
-        userRoles: ["editor"],
-        resource: "users",
-        action: "read",
-        data: { _id: "u2" },
-      }),
-    ).toBe(false);
-  });
-
-  it("resolves a callback comparing document data against a protected-slugs list", () => {
-    expect(
-      hasPermission({
-        access,
-        user: {},
-        userRoles: ["editor"],
-        resource: "posts",
+        user: asUser("owner", "u1"),
+        resource: "articles",
         action: "delete",
-        data: { slug: "home" },
-      }),
-    ).toBe(false);
-
-    expect(
-      hasPermission({
-        access,
-        user: {},
-        userRoles: ["editor"],
-        resource: "posts",
-        action: "delete",
-        data: { slug: "my-post" },
-      }),
-    ).toBe(true);
-  });
-
-  it("passes `organization` to the callback only when configured AND passed", () => {
-    expect(
-      hasPermission({
-        access: accessWithOrg,
-        user: {},
-        userRoles: ["orgProbe"],
-        resource: "posts",
-        action: "read",
-        organization: { _id: "org_1" },
-      }),
-    ).toBe(true);
-
-    expect(
-      hasPermission({
-        access: accessWithOrg,
-        user: {},
-        userRoles: ["orgProbe"],
-        resource: "posts",
-        action: "read",
+        data: { ownerId: "u2" } as never,
       }),
     ).toBe(false);
   });
 
-  it("omits `organization` from callback props when the config never configured organizationCollection", () => {
-    // "access" (primary fixture) has no organizationCollection — even though
-    // the caller passes one here, "noOrgSupport" must never see it.
+  it("an explicit action key bypasses the wildcard", () => {
+    // read: true is explicit; the owner-only wildcard callback must not run.
     expect(
       hasPermission({
         access,
-        user: {},
-        userRoles: ["noOrgSupport"],
-        resource: "posts",
+        user: asUser("owner", "u1"),
+        resource: "articles",
         action: "read",
-        organization: { _id: "org_1" },
+        data: { ownerId: "someone-else" } as never,
       }),
-    ).toBe(false);
-  });
-
-  it("resolves an org-aware callback using both data and organization", () => {
-    expect(
-      hasPermission({
-        access: accessWithOrg,
-        user: {},
-        userRoles: ["orgMember"],
-        resource: "posts",
-        action: "read",
-        data: { orgId: "org_1" },
-        organization: { _id: "org_1" },
-      }),
-    ).toBe(true);
-
-    expect(
-      hasPermission({
-        access: accessWithOrg,
-        user: {},
-        userRoles: ["orgMember"],
-        resource: "posts",
-        action: "read",
-        data: { orgId: "org_1" },
-        organization: { _id: "org_2" },
-      }),
-    ).toBe(false);
-  });
-
-  it("resolves a callback that dynamically returns a field-mode object", () => {
-    expect(
-      hasPermission({
-        access: accessWithOrg,
-        user: {},
-        userRoles: ["callbackModeObject"],
-        resource: "users",
-        action: "update",
-        fields: ["name", "email"],
-      }),
-    ).toEqual({ name: true, email: false });
-  });
-});
-
-describe("hasPermission — callback returning undefined", () => {
-  it("treats undefined returned by a callback as deny", () => {
-    expect(
-      hasPermission({
-        access,
-        user: {},
-        userRoles: ["callbackUndefined"],
-        resource: "posts",
-        action: "read",
-      }),
-    ).toBe(false);
-  });
-
-  it("treats undefined returned by a callback as deny for every requested field", () => {
-    expect(
-      hasPermission({
-        access,
-        user: {},
-        userRoles: ["callbackUndefined"],
-        resource: "posts",
-        action: "read",
-        fields: ["title", "slug"],
-      }),
-    ).toEqual({ title: false, slug: false });
-  });
-});
-
-describe("hasPermission — field subset checking", () => {
-  it("returns a result entry only for requested fields", () => {
-    expect(
-      hasPermission({
-        access,
-        user: {},
-        userRoles: ["editor"],
-        resource: "posts",
-        action: "update",
-        fields: ["title", "slug", "status"],
-      }),
-    ).toEqual({ title: true, slug: false, status: false });
-  });
-
-  it("a smaller subset omits fields entirely, even ones the matrix mentions", () => {
-    expect(
-      hasPermission({
-        access,
-        user: {},
-        userRoles: ["editor"],
-        resource: "posts",
-        action: "update",
-        fields: ["title", "status"],
-      }),
-    ).toEqual({ title: true, status: false });
-  });
-});
-
-describe('hasPermission — role wildcard ("*")', () => {
-  it('"*": true allows subjects the role never declares, including custom resources', () => {
-    expect(
-      hasPermission({ access, user: {}, userRoles: ["admin"], resource: "apiKeys", action: "create" }),
-    ).toBe(true);
-    expect(
-      hasPermission({ access, user: {}, userRoles: ["admin"], resource: "reviewQueue", action: "approve" }),
-    ).toBe(true);
-    expect(
-      hasPermission({ access, user: {}, userRoles: ["admin"], resource: "adminPanel", action: "impersonate" }),
-    ).toBe(true);
-  });
-
-  it('"*": false denies subjects the role never declares', () => {
-    expect(hasPermission({ access, user: {}, userRoles: ["restricted"], resource: "users", action: "read" })).toBe(
-      false,
-    );
-  });
-
-  it('"*": false does not override an explicitly declared subject/action', () => {
-    expect(hasPermission({ access, user: {}, userRoles: ["restricted"], resource: "posts", action: "read" })).toBe(
-      true,
-    );
-  });
-
-  it('an undeclared action on an explicitly declared subject falls through to `defaults`, not "*"', () => {
-    // "restricted" declares "posts" (only "read"); "create" is undeclared on
-    // that subject and must resolve via `defaults` ("allow"), not "*": false.
-    expect(
-      hasPermission({ access, user: {}, userRoles: ["restricted"], resource: "posts", action: "create" }),
     ).toBe(true);
   });
 });
 
-/**
- * Isolated fixture for the action-level wildcard — `"*"` inside a
- * per-action map applies to every action not explicitly declared on that
- * subject. Precedence: explicit action > subject `"*"` > role `"*"` > defaults.
- */
-const actionWildcardAccess = defineAccess({
-  roles: ["editor", "owner"],
-  resources: [posts, users],
-  userCollection: users,
-  defaults: "deny",
-  permissions: {
-    editor: {
-      // allow everything on posts EXCEPT delete.
-      posts: { "*": true, delete: false },
-    },
-    owner: {
-      // wildcard callback: owner-only for every action, but read stays public.
-      posts: {
-        "*": ({ data, user }) =>
-          (data as { ownerId?: string }).ownerId === (user as { _id: string })._id,
-        read: true,
-      },
-    },
-  },
-});
-
-describe('hasPermission — action-level wildcard ("*" inside a per-action map)', () => {
-  it('"*": true covers actions not explicitly declared on the subject', () => {
-    expect(
-      hasPermission({ access: actionWildcardAccess, user: {}, userRoles: ["editor"], resource: "posts", action: "update" }),
-    ).toBe(true);
-  });
-
-  it("an explicit action key wins over the subject wildcard", () => {
-    expect(
-      hasPermission({ access: actionWildcardAccess, user: {}, userRoles: ["editor"], resource: "posts", action: "delete" }),
-    ).toBe(false);
-  });
-
-  it('"*" accepts a callback and passes it data/user like any check', () => {
-    const user = { _id: "u1" };
-    expect(
-      hasPermission({
-        access: actionWildcardAccess, user, userRoles: ["owner"],
-        resource: "posts", action: "update", data: { ownerId: "u1" },
-      }),
-    ).toBe(true);
-    expect(
-      hasPermission({
-        access: actionWildcardAccess, user, userRoles: ["owner"],
-        resource: "posts", action: "update", data: { ownerId: "u2" },
-      }),
-    ).toBe(false);
-  });
-
-  it("explicit read: true bypasses the wildcard callback", () => {
-    expect(
-      hasPermission({
-        access: actionWildcardAccess, user: { _id: "u1" }, userRoles: ["owner"],
-        resource: "posts", action: "read", data: { ownerId: "someone-else" },
-      }),
-    ).toBe(true);
-  });
-
-  it("subject wildcard does not leak to other subjects (defaults still apply)", () => {
-    // "users" is undeclared for "editor"; with defaults: "deny" it must deny —
-    // the posts-level "*" never crosses subject boundaries.
-    expect(
-      hasPermission({ access: actionWildcardAccess, user: {}, userRoles: ["editor"], resource: "users", action: "read" }),
-    ).toBe(false);
-  });
-});
-
-describe('hasPermission — defaults: "deny"', () => {
-  it("still allows explicitly declared subjects/actions", () => {
+describe("hasPermission — defaultPermissionMode: deny", () => {
+  it("still allows explicitly declared subject/action", () => {
     expect(
       hasPermission({
         access: accessDenyDefaults,
-        user: {},
-        userRoles: ["editor"],
-        resource: "posts",
+        user: asUser("editor"),
+        resource: "articles",
         action: "read",
       }),
     ).toBe(true);
@@ -2510,114 +2291,191 @@ describe('hasPermission — defaults: "deny"', () => {
     expect(
       hasPermission({
         access: accessDenyDefaults,
-        user: {},
-        userRoles: ["editor"],
-        resource: "posts",
+        user: asUser("editor"),
+        resource: "articles",
+        action: "create",
+      }),
+    ).toBe(false);
+  });
+
+  it("denies an undeclared subject", () => {
+    expect(
+      hasPermission({
+        access: accessDenyDefaults,
+        user: asUser("editor"),
+        resource: "users",
+        action: "read",
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("hasPermission — field maps", () => {
+  it("returns a per-field map covering exactly the requested fields", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+        fields: ["title", "slug", "status"],
+      }),
+    ).toEqual({ title: true, slug: false, status: true });
+  });
+
+  it("requests a subset — unrequested fields never appear", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+        fields: ["title"],
+      }),
+    ).toEqual({ title: true });
+  });
+
+  it("boolean checks fan out to every requested field", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("poweruser"),
+        resource: "articles",
+        action: "update",
+        fields: ["title", "slug"],
+      }),
+    ).toEqual({ title: true, slug: true });
+  });
+
+  it("no fields param: allow-mode with nonempty fields is true, empty is false", () => {
+    expect(
+      hasPermission({
+        access: mergeAccess,
+        user: asUser("roleAllowTitle"),
+        resource: "articles",
+        action: "update",
+      }),
+    ).toBe(true);
+    expect(
+      hasPermission({
+        access: mergeAccess,
+        user: asUser("allowEmptyFields"),
+        resource: "articles",
         action: "update",
       }),
     ).toBe(false);
   });
 
-  it("denies an entirely undeclared subject", () => {
+  it("no fields param: deny-mode with nonempty fields is false, empty is true", () => {
     expect(
       hasPermission({
-        access: accessDenyDefaults,
-        user: {},
-        userRoles: ["editor"],
+        access: mergeAccess,
+        user: asUser("roleDenySlug"),
+        resource: "articles",
+        action: "update",
+      }),
+    ).toBe(false);
+    expect(
+      hasPermission({
+        access: mergeAccess,
+        user: asUser("denyEmptyFields"),
+        resource: "articles",
+        action: "update",
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("hasPermission — multi-role merge (OR, allow wins)", () => {
+  it("any allowing role wins over a denying one", () => {
+    // viewer denies users entirely; admin's wildcard allows.
+    expect(
+      hasPermission({
+        access,
+        user: asUser(["viewer", "admin"]),
         resource: "users",
-        action: "read",
+        action: "delete",
       }),
-    ).toBe(false);
-  });
-});
-
-describe("hasPermission — adminPanel built-in subject", () => {
-  it("resolves via role wildcard", () => {
-    expect(
-      hasPermission({ access, user: {}, userRoles: ["admin"], resource: "adminPanel", action: "access" }),
     ).toBe(true);
   });
 
-  it("resolves via an explicit per-action declaration", () => {
-    expect(
-      hasPermission({ access, user: {}, userRoles: ["editor"], resource: "adminPanel", action: "access" }),
-    ).toBe(true);
-    expect(
-      hasPermission({ access, user: {}, userRoles: ["editor"], resource: "adminPanel", action: "impersonate" }),
-    ).toBe(false);
-  });
-
-  it("falls through to `defaults` when never declared for the role", () => {
-    expect(
-      hasPermission({ access, user: {}, userRoles: ["viewer"], resource: "adminPanel", action: "access" }),
-    ).toBe(true);
-  });
-});
-
-describe("hasPermission — custom resources", () => {
-  it("resolves per-action boolean checks on a plain (no-dataType) custom resource", () => {
-    expect(hasPermission({ access, user: {}, userRoles: ["editor"], resource: "apiKeys", action: "create" })).toBe(
-      true,
-    );
-    expect(hasPermission({ access, user: {}, userRoles: ["editor"], resource: "apiKeys", action: "revoke" })).toBe(
-      false,
-    );
-  });
-
-  it("passes the typed `data` argument through to a dataType()-carrying custom resource's callback", () => {
+  it("merges field allow-lists across roles per field", () => {
     expect(
       hasPermission({
-        access,
-        user: {},
-        userRoles: ["editor"],
-        resource: "reviewQueue",
-        action: "approve",
-        data: { id: "rq_1", status: "pending" },
+        access: mergeAccess,
+        user: asUser(["roleAllowTitle", "roleAllowStatus"]),
+        resource: "articles",
+        action: "update",
+        fields: ["title", "slug", "status"],
       }),
-    ).toBe(true);
-
-    expect(
-      hasPermission({
-        access,
-        user: {},
-        userRoles: ["editor"],
-        resource: "reviewQueue",
-        action: "approve",
-        data: { id: "rq_1", status: "approved" },
-      }),
-    ).toBe(false);
+    ).toEqual({ title: true, slug: false, status: true });
   });
 
-  it("denies when no data is passed to a callback that depends on it", () => {
-    expect(hasPermission({ access, user: {}, userRoles: ["editor"], resource: "reviewQueue", action: "reject" })).toBe(
-      false,
-    );
+  it("allow wins over deny for the same field across roles", () => {
+    // roleDenyTitle denies title but allows everything else (deny-mode);
+    // roleAllowTitle allows only title. Union: everything.
+    expect(
+      hasPermission({
+        access: mergeAccess,
+        user: asUser(["roleAllowTitle", "roleDenyTitle"]),
+        resource: "articles",
+        action: "update",
+        fields: ["title", "slug"],
+      }),
+    ).toEqual({ title: true, slug: true });
+  });
+
+  it("a boolean true role overrides field restrictions from another role", () => {
+    expect(
+      hasPermission({
+        access: mergeAccess,
+        user: asUser(["allowEmptyFields", "boolTrue"]),
+        resource: "articles",
+        action: "update",
+        fields: ["title", "slug"],
+      }),
+    ).toEqual({ title: true, slug: true });
+  });
+
+  it("all-denying roles merge to deny", () => {
+    expect(
+      hasPermission({
+        access: mergeAccess,
+        user: asUser(["boolFalse", "allowEmptyFields"]),
+        resource: "articles",
+        action: "update",
+      }),
+    ).toBe(false);
   });
 });
 
 describe("hasPermission — throwOnDenied", () => {
-  it("throws VexAccessError when denied with no fields", () => {
-    expect(() =>
-      hasPermission({
-        access,
-        user: { _id: "u1" },
-        userRoles: ["editor"],
-        resource: "users",
-        action: "read",
-        data: { _id: "u2" },
-        throwOnDenied: true,
-      }),
-    ).toThrow(VexAccessError);
-  });
-
-  it("throws with resource, action, and the first denied field when fields are checked", () => {
+  it("throws VexAccessError with resource and action on a denied boolean check", () => {
     let caught: unknown;
     try {
       hasPermission({
         access,
-        user: {},
-        userRoles: ["editor"],
-        resource: "posts",
+        user: asUser("viewer"),
+        resource: "users",
+        action: "read",
+        throwOnDenied: true,
+      });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(VexAccessError);
+    expect((caught as VexAccessError).resource).toBe("users");
+    expect((caught as VexAccessError).action).toBe("read");
+    expect((caught as VexAccessError).field).toBeUndefined();
+  });
+
+  it("throws with the first denied field in fields order", () => {
+    let caught: unknown;
+    try {
+      hasPermission({
+        access,
+        user: asUser("editor"),
+        resource: "articles",
         action: "update",
         fields: ["title", "slug", "status"],
         throwOnDenied: true,
@@ -2626,75 +2484,123 @@ describe("hasPermission — throwOnDenied", () => {
       caught = error;
     }
     expect(caught).toBeInstanceOf(VexAccessError);
-    const error = caught as VexAccessError;
-    expect(error.resource).toBe("posts");
-    expect(error.action).toBe("update");
-    expect(error.field).toBe("slug");
+    expect((caught as VexAccessError).field).toBe("slug");
   });
 
-  it("throws when userRoles is empty", () => {
+  it("throws when the user has no known roles", () => {
     expect(() =>
       hasPermission({
         access,
-        user: {},
-        userRoles: [],
-        resource: "posts",
+        user: { _id: "u1" },
+        resource: "articles",
         action: "read",
         throwOnDenied: true,
       }),
     ).toThrow(VexAccessError);
   });
 
-  it("does not throw when access is allowed", () => {
-    let result: boolean | undefined;
-    expect(() => {
-      result = hasPermission({
+  it("does not throw when access is granted", () => {
+    expect(
+      hasPermission({
         access,
-        user: {},
-        userRoles: ["editor"],
-        resource: "posts",
-        action: "read",
+        user: asUser("admin"),
+        resource: "articles",
+        action: "delete",
         throwOnDenied: true,
-      }) as boolean;
-    }).not.toThrow();
-    expect(result).toBe(true);
+      }),
+    ).toBe(true);
   });
 
-  it("silently returns false when denied and throwOnDenied is left at its default (false)", () => {
-    expect(() =>
-      hasPermission({ access, user: {}, userRoles: ["viewer"], resource: "users", action: "read" }),
-    ).not.toThrow();
-    expect(hasPermission({ access, user: {}, userRoles: ["viewer"], resource: "users", action: "read" })).toBe(
-      false,
-    );
+  it("returns false silently by default", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("viewer"),
+        resource: "users",
+        action: "read",
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("hasPermission — built-in adminPanel subject", () => {
+  it("checks adminPanel access like any other subject", () => {
+    expect(
+      hasPermission({
+        access,
+        user: asUser("editor"),
+        resource: "adminPanel",
+        action: "access",
+      }),
+    ).toBe(true);
+    expect(
+      hasPermission({
+        access,
+        user: asUser("editor"),
+        resource: "adminPanel",
+        action: "impersonate",
+      }),
+    ).toBe(false);
   });
 });
 ```
 
-Verify: `pnpm --filter @vexcms/core test -- access`
+Verify: `pnpm --filter @vexcms/core test -- access` — 45 tests in `hasPermission.test.ts`
+(63 total across the `access` group), all green.
 
 ### Step 4 — Config integration + public exports [agent]
 
-- [ ] `packages/core/src/config/types.ts` — add VexAccessConfig import
-- [ ] `packages/core/src/config/types.ts` — add `access` field to VexConfigInput
-- [ ] `packages/core/src/config/types.ts` — add `access` field to VexConfig
-- [ ] `packages/core/src/config/config.ts` — pass `access` through in defineConfig return
-- [ ] `packages/core/src/config/sanitizeConfig.ts` — update ClientVexConfig type to Omit access
-- [ ] `packages/core/src/config/sanitizeConfig.ts` — update sanitizeConfigForClient to exclude access
-- [ ] `packages/core/src/index.ts` — add access module exports
-- [ ] `packages/core/src/config/sanitizeConfig.test.ts` — add test for access stripping
-- [ ] `pnpm --filter @vexcms/core test -- sanitizeConfig`
-- [ ] `pnpm --filter @vexcms/core build`
+- [x] `packages/core/src/config/types.ts` — add `VexAccessConfig` import
+- [x] `packages/core/src/config/types.ts` — add `access` field to `VexConfigInput`
+- [x] `packages/core/src/config/types.ts` — add `access` field to `VexConfig`
+- [x] `packages/core/src/config/config.ts` — pass `access` through in `defineConfig` return
+- [x] `packages/core/src/config/sanitizeConfig.ts` — `ClientVexConfig` omits `access`
+- [x] `packages/core/src/config/sanitizeConfig.ts` — `sanitizeConfigForClient` strips `access`
+- [x] `packages/core/src/index.ts` — access module exports
+- [x] `packages/core/src/config/sanitizeConfig.test.ts` — test for access stripping
+- [ ] `packages/core/src/config/config.ts` — defineConfig-time access validation (warn on
+      unknown `userCollectionSlug` / missing-or-mistyped `userRolesField`) — see #9 below
+- [x] `pnpm --filter @vexcms/core test -- sanitizeConfig`
+- [x] `pnpm --filter @vexcms/core build`
 
-#### 1. Add VexAccessConfig import (packages/core/src/config/types.ts)
+**Implemented — deviations from original spec:**
 
-**Insert after line 5:**
+- `access` on `VexConfigInput`/`VexConfig` carries Step 1/2's final `VexAccessConfig` shape —
+  single generic, value-level type-erased (see Step 1/2's own deviation notes for
+  `userCollectionSlug`/`defaultPermissionMode`/`PERMISSION_MODES` reuse). Nothing config-layer
+  specific changed there; listed here only for continuity.
+- `VexAccessConfig` imports from `"../access"` (the module barrel), not `"../access/types"` —
+  matches every other cross-module import in `config/types.ts` (`VexAuthAdapter`,
+  `MediaCollectionConfig`, …), none of which reach into a submodule's internal `types.ts`.
+- The `access?: VexAccessConfig;` field lands right after `admin` on both `VexConfigInput` and
+  `VexConfig` (top of the interface, no JSDoc block) — not after `storage`/`mediaCollections` at
+  the bottom as originally guided. Every other field in these two interfaces is a bare
+  passthrough line with no per-field doc comment; `access` follows that convention rather than
+  becoming the one heavily-documented field.
+- `defineConfig`'s return spreads `access: config?.access,` immediately after `...config,` —
+  next to `auth: config?.authAdapter,`, not down by `mediaCollections`.
+- `ClientVexConfig = Sanitized<Omit<VexConfig, "access">>` — `Omit` wraps `VexConfig` BEFORE
+  `Sanitized` runs (guided stub had the order flipped: `Omit<Sanitized<VexConfig>, "access">`).
+  Omitting first means `access` is never walked into a nulled-callback shape at all — it's
+  simply not a key on the type.
+- `packages/core/src/index.ts` re-exports the whole access module with one line —
+  `export * from "./access";` under the existing "CONFIG BUILDERS" banner, right after
+  `export * from "./config";` — not the hand-maintained selective `export { ... } from
+"./access"` / `export type { ... } from "./access"` block the guided stub spelled out. Every
+  other module in `index.ts` (`./collections`, `./globals`, `./fields`, `./config`, `./schema`,
+  `./types`, …) is already re-exported the same wildcard way, and `access/index.ts` itself is
+  four `export * from` lines (Step 3) — access follows the file's own convention. `ACCESS_DEFAULTS`
+  / `AccessDefaults` never existed to export (see Step 1's deviation note).
+
+#### 1. `VexAccessConfig` import (`packages/core/src/config/types.ts`)
+
+**Line 6, after the `GlobalConfig` import:**
 
 ```ts
-import { VexAccessConfig } from "../access/types";
+import { VexAccessConfig } from "../access";
 ```
 
-**Location context (lines 1–6 from types.ts):**
+**Full import header (lines 1–6):**
 
 ```ts
 import { CollectionConfig } from "../collections";
@@ -2702,88 +2608,70 @@ import { VexAuthAdapter } from "../auth/types";
 import { MediaCollectionConfig, VexStorageAdapter } from "../media";
 import { StorageAdapterSlug } from "../types";
 import { GlobalConfig } from "../globals";
-import { VexAccessConfig } from "../access/types";
+import { VexAccessConfig } from "../access";
 ```
 
-#### 2. Add `access` to VexConfigInput (packages/core/src/config/types.ts)
+#### 2. `access` on `VexConfigInput` (`packages/core/src/config/types.ts`)
 
-**Insertion after storage field, before closing brace:**
+**Right after `admin?: AdminConfigInput;`:**
 
 ```ts
+export interface VexConfigInput {
   /**
-   * Access control configuration — role-based permissions matrix.
-   *
-   * When provided, runtime permission checks (via `hasPermission`) enforce
-   * the declared roles, resources, actions, and field-level permissions across
-   * all API operations. `access` is server-side only and is stripped from
-   * `ClientVexConfig` during sanitization.
-   *
-   * Omit this field to disable access control entirely — all checks will pass
-   * (allow-all default).
-   *
-   * @see {@link defineAccess} to build an access config
-   * @see {@link hasPermission} for runtime resolution
-   * @see {@link VexAccessConfig} for the resolved type
+   * Admin panel configuration. All properties are optional — omitted values fall back to defaults.
+   * …
+   * @see {@link AdminConfigInput} for all available options
    */
+  admin?: AdminConfigInput;
   access?: VexAccessConfig;
-```
-
-**Location context (surrounding lines 279–283 from types.ts):**
-
-```ts
-  storage?: {
-    /** Storage adapters configured for the project. */
-    adapters: VexStorageAdapter[];
-  };
-  access?: VexAccessConfig;
+  /** Content collections to register with the CMS. Defaults to `[]` if omitted. */
+  collections?: CollectionConfig[];
+  /** Singleton global documents. Each produced by `defineGlobal()`. Slugs must be unique. */
+  globals?: GlobalConfig[];
+  // … basePath, authAdapter, schema, types, storage — unchanged …
 }
 ```
 
-#### 3. Add `access` to VexConfig (packages/core/src/config/types.ts)
+No JSDoc on the `access` field itself — bare passthrough, same treatment as `collections`/
+`globals` immediately below it.
 
-**Insertion after mediaCollections field, before closing brace:**
+#### 3. `access` on `VexConfig` (`packages/core/src/config/types.ts`)
 
-```ts
-  /**
-   * Access control configuration — role-based permissions matrix.
-   *
-   * When provided, runtime permission checks (via `hasPermission`) enforce
-   * the declared roles, resources, actions, and field-level permissions across
-   * all API operations. `access` is server-side only and is stripped from
-   * `ClientVexConfig` during sanitization.
-   *
-   * Omit this field to disable access control entirely — all checks will pass
-   * (allow-all default).
-   *
-   * @see {@link defineAccess} to build an access config
-   * @see {@link hasPermission} for runtime resolution
-   * @see {@link VexAccessConfig} for the resolved type
-   */
-  access?: VexAccessConfig;
-```
-
-**Location context (surrounding lines 320–327 from types.ts):**
+**Right after `admin: AdminConfig;`:**
 
 ```ts
-  /**
-   * Media collections — processed by storage adapters and stored separately
-   * from user-defined `collections`. These appear in the admin panel under a
-   * dedicated "Media" section. Each collection is tagged with
-   * `meta.storageAdapterName` indicating which adapter owns it.
-   */
-  mediaCollections: MediaCollectionConfig[];
+export interface VexConfig {
+  /** Resolved admin panel configuration — always fully populated after defaults are applied. */
+  admin: AdminConfig;
   access?: VexAccessConfig;
+  /** All registered content collections — always an array after defaults are applied. */
+  collections: CollectionConfig[];
+  /** Resolved global configs. Always present; defaults to `[]`. */
+  globals: GlobalConfig[];
+  // … basePath, auth, storage, mediaCollections, schema, types — unchanged …
 }
 ```
 
-#### 4. Pass `access` through in defineConfig (packages/core/src/config/config.ts)
-
-**Modification to the return object (line 59–85, change return statement):**
+#### 4. Pass `access` through in `defineConfig` (`packages/core/src/config/config.ts`)
 
 ```ts
+export function defineConfig(config?: VexConfigInput): VexConfig {
+  const userCollections = config?.collections ?? [];
+  const authCollections = config?.authAdapter?.collections ?? [];
+  const collections = mergeAuthCollections({
+    authCollections,
+    userCollections,
+  }).concat(internalCollections);
+
+  const { mediaCollections } = validateAndMergeStorageConfig({
+    collections: collections,
+    storageAdapters: config?.storage?.adapters,
+  });
+
   return {
     basePath: "/admin",
     ...config,
+    access: config?.access,
     auth: config?.authAdapter,
     storage: {
       adapters: config?.storage?.adapters ?? [],
@@ -2791,7 +2679,6 @@ import { VexAccessConfig } from "../access/types";
     collections,
     globals: config?.globals ?? [],
     mediaCollections,
-    access: config?.access,
     admin: {
       ...config?.admin,
       sidebar: {
@@ -2809,1188 +2696,1059 @@ import { VexAccessConfig } from "../access/types";
       ...config?.types,
     },
   };
+}
 ```
 
-**Exact insertion point (after line 68, before admin block on line 69):**
+#### 5. `ClientVexConfig` excludes `access` (`packages/core/src/config/sanitizeConfig.ts`)
 
 ```ts
-    mediaCollections,
-    access: config?.access,
-    admin: {
+export type ClientVexConfig = Sanitized<Omit<VexConfig, "access">>;
 ```
 
-#### 5. Exclude `access` from ClientVexConfig type (packages/core/src/config/sanitizeConfig.ts)
-
-**Replace line 14:**
-
-```ts
-export type ClientVexConfig = Omit<Sanitized<VexConfig>, "access">;
-```
-
-**Original (line 14):**
-```ts
-export type ClientVexConfig = Sanitized<VexConfig>;
-```
-
-#### 6. Strip `access` key in sanitizeConfigForClient (packages/core/src/config/sanitizeConfig.ts)
-
-**Modification to function body (lines 134–139):**
+#### 6. `sanitizeConfigForClient` strips `access` (`packages/core/src/config/sanitizeConfig.ts`)
 
 ```ts
 export function sanitizeConfigForClient(config: VexConfig): ClientVexConfig {
-  // Drop storageAdapters and access up front (they hold adapter class instances
-  // and permission callbacks that cannot be serialized), then recursively strip
-  // any remaining non-serializable leaves from the rest.
+  // Drop storage adapters (class instances) and the access config up front.
+  // Access is deliberately server-only: its callbacks cannot serialize (a
+  // nulled matrix would misresolve in hasPermission), client checks are
+  // advisory at best, and permission policy should not ship to the browser.
   const { storage, access, ...rest } = config;
   return stripNonSerializable(rest) as ClientVexConfig;
 }
 ```
 
-**Exact change (line 137, add `access` to destructuring):**
+#### 7. Export the access module from `packages/core/src/index.ts`
 
-```ts
-  const { storage, access, ...rest } = config;
-```
-
-#### 7. Export access module from packages/core/src/index.ts
-
-**Add new section after AUTH section (insert after line 46):**
+**Under the existing "CONFIG BUILDERS" section, right after the `./config` re-export:**
 
 ```ts
 // ============================================================================
-// ACCESS CONTROL
+// CONFIG BUILDERS
 // ============================================================================
 
-export { defineAccess, hasPermission, dataType, resolvePermissionCheck, mergeRolePermissions } from "./access";
-export type {
-  VexAccessConfig,
-  VexAccessInput,
-  VexAccessError,
-  VexAccessConfigError,
-  CrudAction,
-  DraftAction,
-  AccessDefaults,
-  FieldPermissionResult,
-  ResolvedFieldPermissions,
-  PermissionCallbackProps,
-  PermissionCheck,
-  SubjectEntry,
-  SubjectMap,
-  CustomResourceInput,
-} from "./access";
+export * from "./config";
 
-```
-
-**Location context (lines 41–48 from index.ts):**
-
-```ts
-// ============================================================================
-// AUTH
-// ============================================================================
-
-export { type VexAuthAdapter, type AuthCollectionConfig, VexAuthConfigError } from "./auth/types";
-export { mergeAuthCollections } from "./auth/mergeCollections";
+export * from "./access";
 
 // ============================================================================
-// ACCESS CONTROL
-// ============================================================================
-
-export { defineAccess, hasPermission, dataType, resolvePermissionCheck, mergeRolePermissions } from "./access";
-export type {
-  VexAccessConfig,
-  VexAccessInput,
-  VexAccessError,
-  VexAccessConfigError,
-  CrudAction,
-  DraftAction,
-  AccessDefaults,
-  FieldPermissionResult,
-  ResolvedFieldPermissions,
-  PermissionCallbackProps,
-  PermissionCheck,
-  SubjectEntry,
-  SubjectMap,
-  CustomResourceInput,
-} from "./access";
-
-// ============================================================================
-// MEDIA / STORAGE ADAPTER
+// SCHEMA GENERATION
 // ============================================================================
 ```
 
-#### 8. Add test for access stripping in sanitizeConfig.test.ts
+One wildcard re-export — `access/index.ts` already does `export * from "./constants"` /
+`"./types"` / `"./config"` / `"./hasPermission"` (Step 3), so the package root picks up every
+public symbol (`defineAccess`, `hasPermission`, `dataType`, `CRUD_ACTIONS`, `DRAFT_ACTIONS`,
+`PERMISSION_MODES`, `WILDCARD_KEY`, `ADMIN_CUSTOM_SUBJECTS`, `VexAccessConfig`,
+`VexAccessConfigInput`, `VexAccessError`, `VexAccessConfigError`, `CrudAction`, `DraftAction`,
+`PermissionMode`, `AccessResource`, `FieldPermissionResult`, `ResolvedFieldPermissions`,
+`PermissionCallbackProps`, `PermissionCheck`, `SubjectEntry`, `SubjectMap`, `RolePermissions`,
+`CustomResourceInput`, `AdminCustomSubjectSlug`, `DataTypeCarrier`) for free. `resolvePermissionCheck`,
+`mergeRolePermissions`, and `resolveActionCheck` are module-private inside `hasPermission.ts` and
+were never exported — `hasPermission` is the only runtime entry point.
 
-**Add new test block after the existing sanitizeConfigForClient test suite (after line 284):**
+#### 8. Test: access stripping (`packages/core/src/config/sanitizeConfig.test.ts`)
+
+**Added to the `describe("sanitizeConfigForClient — strips non-serializable values", ...)` block,
+after the last existing test:**
 
 ```ts
-  it("excludes access config from client config", () => {
-    // Create a config with a mock access object containing functions
-    const config = defineConfig({
-      collections: [
-        defineCollection({
-          slug: "posts",
-          fields: { title: text({ required: true }) },
-        }),
-      ],
-      access: {
-        roles: ["user", "admin"],
-        defaults: "allow",
-        permissions: {},
-      } as any, // type-cast since we're testing the runtime behavior
-    });
-
-    const client = sanitizeConfigForClient(config);
-
-    // The client config must not have an access property
-    expect(client).not.toHaveProperty("access");
-    // Other properties should still be present and intact
-    expect(client.collections).toHaveLength(1);
-    expect(client.collections[0].slug).toBe("posts");
+it("excludes the access config from the client config entirely", () => {
+  const users = defineCollection({
+    slug: "users",
+    fields: { name: text(), roles: text() },
   });
+  // Authored standalone (as in real apps) — inlining defineAccess inside the
+  // defineConfig literal makes contextual typing collapse TCustom to its
+  // constraint instead of its `{}` default.
+  const access = defineAccess({
+    roles: ["admin"],
+    resources: [users],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      // A callback in the matrix — must never reach the client, even nulled.
+      admin: { users: { read: ({ user }) => user !== undefined } },
+    },
+  });
+  const config = defineConfig({ collections: [users], access });
+  const client = sanitizeConfigForClient(config);
+  // The key is absent — not present-with-nulled-callbacks. A stripped
+  // matrix would misresolve in hasPermission; policy stays server-only.
+  expect(client).not.toHaveProperty("access");
+  expect(client.collections).toHaveLength(1);
+});
 ```
 
-**Placement: add to the `describe("sanitizeConfigForClient — strips non-serializable values", () => {` block before its closing brace (after the last existing test).**
+File-level imports gain `defineAccess`:
+
+```ts
+import { defineAccess, defineConfig, defineCollection } from "../index";
+```
+
+#### 9. `defineConfig`-time access validation [dev]
+
+Guided stub — not yet implemented. `defineAccess` cannot validate `userCollectionSlug` /
+`userRolesField` against the real user collection because the merged collection (auth-adapter
+fields included) doesn't exist until `defineConfig` runs `mergeAuthCollections` (decision 19).
+`defineConfig` is the first place both `config.access` and the merged `collections` array exist
+together, so the check belongs here — dev-only, mirroring `defineAccess`'s own
+`process.env.NODE_ENV !== "production"` warnings (never a thrown error; a misconfigured
+`userRolesField` degrades to "every check denies" at runtime, not a build failure).
+
+```ts
+export function defineConfig(config?: VexConfigInput): VexConfig {
+  const userCollections = config?.collections ?? [];
+  const authCollections = config?.authAdapter?.collections ?? [];
+  const collections = mergeAuthCollections({
+    authCollections,
+    userCollections,
+  }).concat(internalCollections);
+
+  // TODO: implement (dev-only, mirrors defineAccess's own NODE_ENV guard)
+  // 1. `if (config?.access && process.env.NODE_ENV !== "production") { ... }`
+  // 2. `const userCollection = collections.find((c) => c.slug === config.access!.userCollectionSlug);`
+  //    a. `undefined` → `console.warn(`access.userCollectionSlug "${...}" matches no registered
+  //       collection (after auth-adapter merge)`)` — nothing else to check; stop here.
+  // 3. Else resolve the field: `const field = userCollection.fields[config.access!.userRolesField];`
+  //    a. `undefined` → `console.warn(`access.userRolesField "${...}" is not a field on the
+  //       "${userCollection.slug}" collection`)`.
+  //    b. defined but `field.type !== "text" && field.type !== "array"` → `console.warn(`access.userRolesField
+  //       "${...}" must be a text or array field, got "${field.type}"`)` — `hasPermission` reads
+  //       `string | string[]` off it; any other field type can never hold a role value.
+  // Edge cases:
+  // - `config.access` undefined → skip entirely, no warnings (access control is off).
+  // - Runs against `collections` (post-merge), not `config.collections` — the whole point is
+  //   catching auth-adapter-only slugs/fields `defineAccess` itself could never see.
+
+  const { mediaCollections } = validateAndMergeStorageConfig({
+    collections: collections,
+    storageAdapters: config?.storage?.adapters,
+  });
+
+  return {
+    // … unchanged, see #4 above …
+  };
+}
+```
+
+**Test cases:**
+
+1. `access.userCollectionSlug` names a slug absent from the merged `collections` array → warns
+   once, naming the slug.
+2. `userCollectionSlug` resolves, but `userRolesField` is missing from that collection's `fields`
+   (or resolves to a field whose `type` is neither `"text"` nor `"array"`) → warns once.
+3. A valid `{ userCollectionSlug, userRolesField }` pair (slug matches a merged collection, field
+   exists and is `type: "text"` or `type: "array"`) → no warnings.
 
 Verify: `pnpm --filter @vexcms/core test -- sanitizeConfig && pnpm --filter @vexcms/core build`
 
-### Step 5 — Server API enforcement seam `[dev]`
+### Step 5 — Server API enforcement `[dev]`
 
-Extends `queryApi` / `mutationApi` / `globalsApi` in `packages/core/src/api/server.ts` with an
-optional 4th-or-3rd `options` param (real param count differs per factory — see below) that wires
-`hasPermission` into every read and write path. No `getAuth` (or no `config.access`) ⇒ every
-handler behaves exactly as it does today — this is a pure additive seam, not a rewrite of any
-existing query/mutation logic.
+**Status: implemented and verified** (api suites green, tsc clean, www typecheck clean).
 
-**Type placement:** `VexApiAuth` / `VexApiOptions<DataModel>` land in `packages/core/src/api/types.ts`,
-not `server.ts`. Rationale: `types.ts` is already the home for cross-cutting base shapes shared by
-all three factories (`GenericQueryServerParams`, `GenericMutationServerParams`) and is barrel-exported
-wholesale (`packages/core/src/index.ts` does `export * from "./api/types"`) — placing the new types
-there means `@vexcms/core` (root) picks them up for free. `server.ts` only ever re-exports
-per-operation arg types that are co-located with their function (`FindServerArgs` next to `find`,
-etc.); `VexApiAuth`/`VexApiOptions` describe the factories themselves, not one operation, so they
-don't belong in an operation-specific file. `server.ts` gains one new re-export line so
-`@vexcms/core/server` consumers (this is the subpath the JSDoc examples import `queryApi` from) get
-the option type alongside the factory, without a second import from the package root.
+Enforcement lives in the server API factories and per-operation server functions — one seam
+covers every collection, global, and media operation. Identity is resolved server-side from
+`ctx.auth` and **never** accepted as a client argument.
 
-- [ ] `packages/core/src/api/types.ts` — add `VexApiAuth`, `VexApiOptions<DataModel>` (full code)
-- [ ] `packages/core/src/api/server.ts` — add `options?` param to `queryApi` / `mutationApi` /
-      `globalsApi`; add `resolveCollectionSlug` / `hasReadPermission` / `assertWritePermission`
-      module-private helpers; guard every handler (guided stubs)
-- [ ] `packages/core/src/api/access.test.ts` — new file, RBAC enforcement tests (full code)
+- [x] `packages/core/src/api/types.ts` — `VexApiAuth = { user: Record<string, unknown> | null; organization?: Record<string, unknown> }` (nullable `user`; roles ride the user doc).
+- [x] `packages/core/src/api/server.ts` — `collectionsApi({ config, query, mutation, getAuth })` (unified find/get/search/create/update/remove), `globalsApi({ config, query, mutation, getAuth })`, and the shared `resolveGetAuth({ ctx, config, getAuth })` helper.
+- [x] `me: query(() => resolveGetAuth(...))` — client-UI convenience (current user/roles); NOT part of enforcement.
+- [x] `packages/core/src/api/{create,update,remove,get,find,search}/server.ts` — per-op guards.
+- [x] `packages/core/src/api/globals/{get,find,upsert}.server.ts` — globals guards.
+- [x] `packages/core/src/media/api/{mutations,queries}.ts` — media guards.
+- Verify: `pnpm --filter @vexcms/core test -- api` ✓
 
-#### 1. `packages/core/src/api/types.ts` — new types `[agent]`
+**As-built contract:**
 
-Append near the other `Generic*ServerParams` base shapes (after `GenericMutationServerParams`,
-around line 170):
+- **`resolveGetAuth`** — the single auth-resolution point. `config.access` undefined → returns
+  `undefined` (RBAC off, no check). `config.access` set but no `getAuth` → throws
+  `VexAccessConfigError` (misconfig, loud). Otherwise returns `getAuth(ctx)` — `{ user }` for a
+  resolved user, `{ user: null }` for an unauthenticated caller.
+- **Fail-closed via nullable `user`** — every guard runs `hasPermission` with
+  `user: args.auth?.user ?? {}` (or `args.auth.user`, which is `null` for unauthenticated).
+  A `null`/`{}` user derives no roles → deny. There is no "skip the check because no
+  credentials" path.
+- **Reads** — `get`/`getGlobal` return `null` on deny (decision 21); `find`/`findGlobals`/
+  `search` filter denied docs (per-doc, and per-global for `findGlobals`). List filtering is
+  post-query (Convex can't push predicates into indexes) and `find` is limit-based.
+- **Writes** — `create`/`update`/`remove`/`upsertGlobal` call `hasPermission(..., throwOnDenied:
+true)`; `update`/`remove` load the existing doc and pass it as `data` for doc-aware
+  callbacks; Convex transactionality means a thrown guard mid-`Promise.all` rolls back.
+- **Media action mapping** — `getUrl`/`listMedia`/`searchMedia` → `read`;
+  `generateUploadUrl`/`createMediaDocument` → `create`; `deleteMedia` → `delete`.
+- **Deviations from the original stub spec:** `queryApi`/`mutationApi` merged into
+  `collectionsApi`; the `hasReadPermission`/`assertWritePermission` helpers were not extracted
+  (guards inline per op); `VexApiAuth` carries `user | null` (not the original `{ user, roles }`).
+
+### Step 6 — www wiring `[dev]`
+
+**Status: implemented and verified** (www typecheck clean; toggling a matrix line flips the
+list view between 0 and N documents).
+
+The resolver lives in the auth plugin package; the app wires it once and threads the JWT to
+server-side fetches.
+
+- [x] `packages/better-auth/src/convex/getAuth.ts` — `createGetAuth({ userCollectionSlug, orgCollectionSlug, sessionCollectionSlug, resolveOrgs? })`. Resolves `ctx.auth.getUserIdentity()` → user doc via `identity.subject`; org via `identity.sessionId` → session doc → `activeOrganizationId` → org doc. Unauthenticated or deleted user → `{ user: null }`.
+- [x] `apps/www/src/auth/access.ts` — authored `defineAccess` config (slug-based, typed callbacks).
+- [x] `apps/www/src/vex.config.ts` — `access` wired into `defineConfig`.
+- [x] `apps/www/convex/vex.ts` — `collectionsApi({ config, query, mutation, getAuth: createGetAuth({...}) })`.
+- [x] `apps/www/convex/vex/globals.ts` — `globalsApi({ ..., getAuth })`.
+- [x] `packages/next/src/NextAdminPage.tsx` — accepts `token`; passes `{ token }` as the 3rd arg to every server-side `fetchQuery` so `getAuth` resolves the real user (fixes the unauthenticated-preload deny).
+- [x] `apps/www/src/app/(vexcms)/admin/[[...path]]/page.tsx` — sources the JWT via `getToken()` and passes `token` into `NextAdminPage`.
+- Verify: `pnpm --filter www typecheck && pnpm --filter www build` ✓
+
+**As-built notes:**
+
+- **Token threading is the crux of server-side fetches.** Client `useQuery` gets identity from
+  the authenticated ConvexProvider automatically; server `fetchQuery`/`preloadQuery` must be
+  passed `{ token }` explicitly, or `getAuth` sees an unauthenticated `ctx` and denies.
+- **`createGetAuth` uses `identity.sessionId`** (appended to every JWT by the `convex()`
+  better-auth plugin; present at runtime via `UserIdentity`'s custom-claim index signature) to
+  read the live active org from the session doc — never trusting a stale org claim.
+- **Deviations from the original spec:** the resolver is `createGetAuth` in `@vexcms/better-auth`,
+  not a hand-written `convex/vex/auth.ts`; the `hasServerPermission`/`useHasPermission` wrappers
+  were not needed (queries self-resolve auth via the factory `getAuth`); `me` is kept as a
+  client convenience, not deleted.
+
+### Step 7 — Capability mode in `hasPermission` `[dev]`
+
+Adds `mode?: "action" | "capability"` (default `"action"`) to `hasPermission`. Today, a
+function check resolved with no `data` silently does `undefined.someField` inside the
+callback and throws an opaque `TypeError` — there is no way to ask "can this role touch
+this subject at all" without fabricating a fake document. `mode: "capability"` answers
+exactly that question (used by Step 8's nav snapshot); `mode: "action"` (the default,
+current behavior otherwise) now fails loudly instead of throwing an unrelated `TypeError`
+when a caller forgets `data`. This step assumes `PermissionCheck<TData, TUser, TOrg> =
+boolean | ((props: PermissionCallbackProps<TData, TUser, TOrg>) => boolean | undefined)` —
+the field-mode object variant is gone (dropped earlier in this spec's rework); nothing
+below references `{ mode: "allow" | "deny", fields }`.
+
+Do not confuse the new `PERMISSION_EVAL_MODES` with the existing `PERMISSION_MODES`
+(`allow`/`deny` — still used by `defaultPermissionMode`, unrelated and untouched here).
+
+- [ ] `packages/core/src/access/constants.ts` — add `PERMISSION_EVAL_MODES` + `PermissionEvalMode`
+- [ ] `packages/core/src/access/hasPermission.ts` — `mode` prop + `resolvePermissionCheck` delta
+- [ ] `packages/core/src/access/hasPermission.test.ts` — new `describe` block (below)
+
+#### 1. New constant
 
 ```ts
-// ── RBAC enforcement seam ───────────────────────────────────────────────────
-//
-// Consumed by `queryApi` / `mutationApi` / `globalsApi` in `./server`. Kept here
-// (not `./server`) because these describe the factories collectively, not one
-// operation, and this file is barrel-exported from the package root.
+// packages/core/src/access/constants.ts
 
 /**
- * The resolved caller identity RBAC guards check against. Returned by a
- * user-supplied `getAuth` callback.
+ * How `hasPermission` resolves a function check when no `data` is supplied.
  *
- * @see {@link VexApiOptions} for where `getAuth` is configured.
+ * - `action` (default) — a function check with no `data` is a caller bug: the
+ *   check needs a document to evaluate and none was given. Throws
+ *   `VexAccessError` instead of letting the callback crash on `undefined`.
+ * - `capability` — resolves a function check to `true` without invoking it.
+ *   Answers "can this role do this at all" (nav/list-level gating); per-document
+ *   filtering still happens downstream in `find`/`get`. Static boolean checks
+ *   are unaffected by either mode.
  */
-export type VexApiAuth = {
-  /** Passed as `hasPermission`'s `user` — shape is caller-defined. */
-  user: Record<string, unknown>;
-  /** Role keys checked against the resolved `VexAccessConfig`. Empty array denies everything. */
-  roles: string[];
-};
+export const PERMISSION_EVAL_MODES = {
+  action: "action",
+  capability: "capability",
+} as const;
+/** Permission evaluation mode, derived from {@link PERMISSION_EVAL_MODES}. */
+export type PermissionEvalMode =
+  (typeof PERMISSION_EVAL_MODES)[keyof typeof PERMISSION_EVAL_MODES];
+```
 
-/**
- * Optional 4th (`globalsApi`) or 3rd (`queryApi`, `mutationApi`) param enabling
- * per-request RBAC enforcement. Omitting `getAuth` — or omitting `options`
- * entirely — leaves every factory's behavior unchanged: no permission checks
- * run, matching pre-RBAC behavior exactly.
- *
- * @typeParam DataModel - The Convex data model (inferred from the factory's `query`/`mutation` builder).
- */
-export type VexApiOptions<DataModel extends GenericDataModel> = {
+#### 2. `hasPermission` signature/JSDoc delta
+
+Add one prop and one `@param`; nothing else in the exported signature changes.
+
+```ts
+export function hasPermission<
+  TSubjects extends Record<string, SubjectEntry>,
+  TSubject extends keyof TSubjects & string,
+  TData extends {},
+>(props: {
+  access?: VexAccessConfig<TSubjects>;
+  user: Record<string, unknown> | null;
+  organization?: Record<string, unknown>;
+  resource: TSubject;
+  action: TSubjects[TSubject]["action"];
+  data?: TData;
+  fields?: TSubjects[TSubject]["fields"][];
+  throwOnDenied?: boolean;
   /**
-   * Resolves the current request's caller. Called once per query/mutation
-   * invocation (not once per document) when `config.access` is configured.
-   * Returning `null` (no session) is treated as `{ roles: [] }` — every
-   * `hasPermission` check for that request denies.
-   *
-   * @param ctx - The active query or mutation context. Mutation handlers pass
-   *   their `GenericMutationCtx`, which is structurally a superset of
-   *   `GenericQueryCtx` — the same `getAuth` works for both read and write guards.
+   * How to resolve a role's check when it is a function and `data` is
+   * omitted. `"action"` (default) throws `VexAccessError` — pass `data` for
+   * an exact per-document decision, or `"capability"` to ask "can this role
+   * do this at all" (nav/list gating; row-level filtering happens
+   * separately in `find`/`get`). Has no effect on static boolean checks, and
+   * no effect when `data` is provided (always resolves the function against
+   * it, in either mode).
+   * @default "action"
    */
-  getAuth?: (ctx: GenericQueryCtx<DataModel>) => Promise<VexApiAuth | null>;
-};
+  mode?: PermissionEvalMode;
+}): boolean;
 ```
 
-#### 2. `packages/core/src/api/server.ts` — guarded factories `[dev]`
+TODOs (numbered, `hasPermission`'s body):
 
-New/changed imports (added lines only — `internalMutationGeneric` … `RegisteredQuery` and the
-`./convex` import block are unchanged):
+1. Default `const mode = props.mode ?? PERMISSION_EVAL_MODES.action;` near the top, beside the
+   existing `defaultAllowed` derivation.
+2. Thread `mode`, `props.resource`, and `props.action` into every `resolvePermissionCheck(...)`
+   call inside the `knownRoles.map(...)` loop (currently only `check`, `user`, `data`,
+   `organization` are passed) — `resolvePermissionCheck` needs `resource`/`action` to build the
+   thrown `VexAccessError`'s context.
+3. Multi-role OR merge (`mergeRolePermissions` / whatever it collapses to post field-drop) is
+   **unchanged** — it merges the already-resolved per-role booleans; it never sees `mode`.
 
-```ts
-import type {
-  GenericQueryCtx, // NEW — resolveCollectionSlug / VexApiOptions ctx param
-  MutationBuilder,
-  RegisteredMutation,
-  FunctionVisibility,
-  GenericDataModel,
-  QueryBuilder,
-  RegisteredQuery,
-} from "convex/server";
-import { ConvexError, GenericId, v } from "convex/values";
-import type { VexConfig } from "../config";
-import type { CollectionSlug, GlobalSlug, VexDocumentGlobal } from "../types/generated";
-import { hasPermission } from "../access"; // NEW
-import type { VexApiAuth, VexApiOptions } from "./types"; // NEW
-import { find } from "./find/server";
-// … get / search / create / update / remove / globals imports unchanged …
-```
-
-Add `export type { VexApiAuth, VexApiOptions } from "./types";` next to the other re-export lines
-(after `export { upsertGlobal } from "./globals/update.server";`), so `@vexcms/core/server`
-consumers can build the `options` object without a second import from the package root.
-
-Three module-private helpers, inserted above `queryApi` (after the imports/exports, before line 61's
-`queryApi` JSDoc):
+#### 3. `resolvePermissionCheck` — modified stub
 
 ```ts
 /**
- * Resolves the collection slug that owns a document `id` by probing
- * `ctx.db.normalizeId` against every registered collection.
+ * Resolves one role's `PermissionCheck` into a concrete boolean. Static
+ * booleans pass through unchanged in both modes. Function checks:
  *
- * A Convex `Id` does not expose its table name at runtime. `get/server.ts`'s
- * D12 comment documents the same constraint for depth-populate, where
- * degrading to "unresolvable" is safe (populate is simply skipped). It is
- * NOT safe here — `get`, `update`, and `remove` gate a real permission
- * check — so this resolves the slug via the `ctx.db.normalizeId(tableName, id)`
- * syscall instead of string-parsing the id. Unlike the D12 trick, this works
- * identically in `convex-test` and production Convex.
+ * - `data` provided → always invoked against it, in either mode (unchanged
+ *   from today). A callback returning `undefined` resolves to `false`
+ *   (deny) — inconclusive is never mistaken for "undeclared".
+ * - `data` omitted, `mode: "action"` → throws `VexAccessError` instead of
+ *   invoking the callback (it would otherwise read fields off `undefined`).
+ * - `data` omitted, `mode: "capability"` → resolves to `true` without
+ *   invoking the callback. The role is *capable* of the action in the
+ *   abstract; whether a specific document passes is a separate, later
+ *   check (row-level filtering in `find`/`get`, or the exact per-doc check
+ *   in Step 9's edit views).
  *
- * @param props.ctx - Query or mutation context — only `ctx.db.normalizeId` is used.
- * @param props.config - The resolved `VexConfig`, to enumerate candidate collections.
- * @param props.id - The document id to resolve.
- * @returns The owning collection's slug, or `undefined` if no registered collection claims it.
+ * Module-private. The caller resolves "not declared" to the configured
+ * `defaultPermissionMode` BEFORE calling — `check` is always a real check
+ * here.
+ *
+ * @throws {VexAccessError} `mode: "action"` (default), function check, no `data`.
  */
-function resolveCollectionSlug<DataModel extends GenericDataModel>(props: {
-  ctx: GenericQueryCtx<DataModel>;
-  config: VexConfig;
-  id: GenericId<CollectionSlug>;
-}): CollectionSlug | undefined {
-  // TODO: implement
-  // 1. For each `c` of `props.config.collections`:
-  //    a. `if (props.ctx.db.normalizeId(c.slug, props.id) !== null) return c.slug;`
-  // 2. No collection claimed the id → return `undefined`.
-  // Edge cases:
-  // - `config.collections` is small and `normalizeId` is a local syscall (no DB round trip) —
-  //   looping it once per `get` / `update` / `remove` request is cheap.
-  // - An id for a table outside `config.collections` (e.g. `vex_globals`, or a stale id from a
-  //   deleted collection) resolves to `undefined` — callers treat that as "cannot resolve
-  //   resource" (see each handler's TODO below for the fail-open behavior this implies).
-  throw new Error("Not implemented");
-}
-
-/**
- * Evaluates a single-document read check. Returns `true` when `doc` should
- * be visible to the resolved caller.
- *
- * @param props.config - The resolved `VexConfig` (`config.access` may be `undefined`).
- * @param props.auth - The already-resolved `VexApiAuth`, or `null` for no session.
- * @param props.resource - The subject key `doc` belongs to (a collection or global slug).
- * @param props.doc - The candidate document, passed through as `hasPermission`'s `data`.
- * @returns Whether `action: "read"` is allowed for this doc.
- */
-function hasReadPermission(props: {
-  config: VexConfig;
-  auth: VexApiAuth | null;
+function resolvePermissionCheck<TData, TUser, TOrg>(props: {
+  check: PermissionCheck<TData, TUser, TOrg>;
+  user: TUser;
+  data?: TData;
+  organization?: TOrg;
+  mode: PermissionEvalMode;
   resource: string;
-  doc: Record<string, unknown>;
+  action: string;
 }): boolean {
-  // TODO: implement
-  // 1. `return hasPermission({ access: props.config.access, user: props.auth?.user ?? {},
-  //      userRoles: props.auth?.roles ?? [], resource: props.resource, action: "read",
-  //      data: props.doc }) as boolean;` — no `fields` param passed, so `hasPermission`
-  //    resolves to `boolean` (not the field-map overload).
-  // Edge cases:
-  // - `props.auth === null` (no session / `getAuth` resolved `null`) → `userRoles: []` →
-  //   `hasPermission` denies per its resolution order step 2 (empty roles → deny), regardless
-  //   of the config's `defaults` posture.
-  throw new Error("Not implemented");
-}
+  if (typeof props.check !== "function") {
+    return props.check;
+  }
 
-/**
- * Asserts a write is permitted. Delegates the throw to `hasPermission`'s
- * `throwOnDenied` — returns normally on allow, never returns a value to branch on.
- *
- * @param props.config - The resolved `VexConfig`.
- * @param props.auth - The already-resolved `VexApiAuth`, or `null`.
- * @param props.resource - The subject key being written.
- * @param props.action - `"create" | "update" | "delete"`.
- * @param props.data - The data role callbacks see — the incoming payload for `create` /
- *   globals `upsert`, the pre-write DB row for `update` / `remove`.
- * @throws {VexAccessError} When the resolved permission denies the action.
- */
-function assertWritePermission(props: {
-  config: VexConfig;
-  auth: VexApiAuth | null;
-  resource: string;
-  action: "create" | "update" | "delete";
-  data: Record<string, unknown>;
-}): void {
-  // TODO: implement
-  // 1. `hasPermission({ access: props.config.access, user: props.auth?.user ?? {},
-  //      userRoles: props.auth?.roles ?? [], resource: props.resource, action: props.action,
-  //      data: props.data, throwOnDenied: true });`
-  // 2. Discard the return value — a denial throws `VexAccessError` inside `hasPermission`;
-  //    it never returns `false` here, nothing else to branch on.
-  throw new Error("Not implemented");
+  if (props.data === undefined) {
+    // TODO 1: capability mode → the role can perform this action in the
+    // abstract; return true without invoking the callback (it has nothing
+    // to evaluate against).
+    if (props.mode === PERMISSION_EVAL_MODES.capability) {
+      return true;
+    }
+    // TODO 2: action mode (default) → this used to silently crash inside
+    // the callback (`undefined.someField`) as an opaque TypeError. Throw a
+    // named, actionable error instead.
+    throw new VexAccessError({
+      resource: props.resource,
+      action: props.action,
+      message:
+        `hasPermission: "${props.resource}.${props.action}" resolves to a function check, ` +
+        `but no "data" was passed. Pass "data" for an exact per-document check, or call ` +
+        `with mode: "capability" to ask whether the user can perform this action at all ` +
+        `(nav/list-level gating — row-level filtering happens separately in find/get).`,
+    });
+  }
+
+  // TODO 3: data provided → unchanged in both modes, run the callback for real.
+  const callbackProps = {
+    user: props.user,
+    data: props.data,
+    organization: props.organization,
+  } as PermissionCallbackProps<TData, TUser, TOrg>;
+  const result = props.check(callbackProps);
+  return result === undefined ? false : result;
 }
 ```
 
-`queryApi` — signature gains `options` as the **3rd** param (the factory only had 2: `config`,
-`query`):
+#### 4. Tests — full code (append to `hasPermission.test.ts`)
+
+Add a fixture near the other module-level `defineAccess(...)` consts (reuses the existing
+`articles` collection and `asUser` helper already in the file):
 
 ```ts
-/**
- * Registers `find`, `get`, and `search` as Convex query endpoints.
- * … (existing JSDoc paragraphs unchanged) …
- *
- * @param config - The user's `VexConfig`. Also supplies `config.access` for RBAC.
- * @param query - The user's `query` builder. Defaults to `internalQueryGeneric`.
- * @param options - Optional `{ getAuth }` to enable RBAC read guards. Omit to leave
- *   `find` / `get` / `search` unguarded (pre-RBAC behavior).
- * @returns Registered `find` / `get` / `search` Convex queries.
- */
-export function queryApi<
-  DataModel extends GenericDataModel,
-  Visibility extends FunctionVisibility = "public",
->(
-  config: VexConfig,
-  query: QueryBuilder<DataModel, Visibility> = internalQueryGeneric as never,
-  options?: VexApiOptions<DataModel>,
-) {
-  return {
-    find: query({
-      args: {
-        collection: v.string(),
-        populate: v.optional(v.any()),
-        depth: v.optional(v.number()),
-        limit: v.optional(v.number()),
-        paginationOpts: v.optional(
-          paginationOptsValidator.extend({ totalDocs: v.optional(v.boolean()) }),
-        ),
-      },
-      handler: async (ctx, args) => {
-        const result = await find({
-          ctx,
-          collection: args.collection as CollectionSlug,
-          populate: args.populate,
-          depth: args.depth,
-          config,
-          limit: args.limit,
-          paginationOpts: args.paginationOpts,
-        } as any);
-        /**
-         * TODO: RBAC read filter.
-         * 1. (a) `!config.access || !options?.getAuth` → return `result` unchanged (skip auth
-         *    resolution entirely — avoids calling `getAuth`, often a session/DB lookup, when
-         *    there is no access config to enforce, even though `hasPermission`'s own
-         *    undefined-`access` branch would resolve to allow regardless).
-         * 2. (b) `const auth = (await options.getAuth(ctx)) ?? null;`
-         * 3. (d) Resolve the array to filter — `find` returns either the raw array or a
-         *    `PaginationResult` (`.page`) depending on `paginationOpts`:
-         *    `const docs = Array.isArray(result) ? result : result.page;`
-         *    `const filtered = docs.filter((doc) => hasReadPermission({ config, auth,
-         *       resource: args.collection, doc: doc as Record<string, unknown> }));`
-         * 4. Rebuild `result` with `filtered` in place of the array/page and return it:
-         *    non-paginated → return `filtered` directly; paginated → return
-         *    `{ ...result, page: filtered }` (`isDone` / `continueCursor` / `totalDocs` are left
-         *    as Convex computed them pre-filter).
-         * Edge cases:
-         * - Paginated pages can come back with fewer than `paginationOpts.numItems` visible rows
-         *   after filtering — this is the same tradeoff master already ships (see
-         *   research.md "Row-level auth configs: skip — confirmed"): Convex cannot push a
-         *   `hasPermission` predicate into the index, so filtering is necessarily post-query.
-         * - `args.collection` is used as `resource` for every doc in this call — `find` is
-         *   single-collection by construction, so unlike `get` / `update` / `remove` no
-         *   per-doc `resolveCollectionSlug` call is needed.
-         */
-        throw new Error("Not implemented");
-      },
-    }) as RegisteredQuery<Visibility, VexFindArgs, VexDocument[]>,
-
-    get: query({
-      args: {
-        id: v.string(),
-        populate: v.optional(v.any()),
-        depth: v.optional(v.number()),
-      },
-      handler: async (ctx, args) => {
-        const doc = await get({
-          ctx,
-          id: args.id as GenericId<CollectionSlug>,
-          populate: args.populate,
-          depth: args.depth,
-          config,
-        });
-        /**
-         * TODO: RBAC read guard (single doc → `null` on denial, not filtered).
-         * 1. (a) `!config.access || !options?.getAuth || doc === null` → return `doc` unchanged.
-         * 2. (b) `const auth = (await options.getAuth(ctx)) ?? null;`
-         * 3. `get`'s args carry no `collection` (unlike `find` / `search`) — resolve it:
-         *    `const resource = resolveCollectionSlug({ ctx, config, id: args.id as GenericId<CollectionSlug> });`
-         *    `if (resource === undefined) return doc;` — id doesn't belong to any registered
-         *    collection; fail open rather than hide a doc no access rule can even name.
-         * 4. (d) `return hasReadPermission({ config, auth, resource, doc: doc as Record<string, unknown> })
-         *      ? doc : null;`
-         * Edge cases:
-         * - Do NOT reuse `get/server.ts`'s `__tableName` / semicolon-split `tableSlug`
-         *   extraction (see its D12 comment) — it degrades to `undefined` on real production
-         *   Convex ids, which is "safe" there because it only skips depth-populate. Silently
-         *   skipping a permission check on that same degradation would be a security hole, so
-         *   this guard goes through `resolveCollectionSlug` (`ctx.db.normalizeId`) instead.
-         */
-        throw new Error("Not implemented");
-      },
-    }) as RegisteredQuery<Visibility, VexGetArgs, VexDocument[]>,
-
-    search: query({
-      args: {
-        collection: v.string(),
-        searchIndexName: v.string(),
-        searchField: v.string(),
-        query: v.string(),
-        limit: v.optional(v.number()),
-        populate: v.optional(v.any()),
-        depth: v.optional(v.number()),
-        paginationOpts: v.optional(
-          paginationOptsValidator.extend({ totalDocs: v.optional(v.boolean()) }),
-        ),
-      },
-      handler: async (ctx, args) => {
-        const result = await search({
-          ctx,
-          collection: args.collection as CollectionSlug,
-          query: args.query,
-          searchIndexName: args.searchIndexName,
-          searchField: args.searchField,
-          limit: args.limit,
-          populate: args.populate,
-          depth: args.depth,
-          paginationOpts: args.paginationOpts,
-          config,
-        } as any);
-        /**
-         * TODO: RBAC read filter — identical shape to `find`'s guard above (same steps
-         * 1–4, same paginated-`.page` handling). `resource` is `args.collection`, same
-         * single-collection reasoning as `find`.
-         */
-        throw new Error("Not implemented");
-      },
-    }) as RegisteredQuery<Visibility, VexSearchArgs, VexDocument[]>,
-  };
-}
-```
-
-`mutationApi` — signature gains `options` as the **3rd** param; `_config` becomes `config` (no
-longer unused — the leading underscore convention only applies to genuinely-unused params):
-
-```ts
-/**
- * Registers `create`, `update`, and `remove` as Convex mutation endpoints.
- * … (existing JSDoc paragraphs unchanged) …
- *
- * @param config - The user's `VexConfig`. Also supplies `config.access` for RBAC.
- * @param mutation - The user's `mutation` builder from `convex/_generated/server`.
- *   Defaults to `internalMutationGeneric`.
- * @param options - Optional `{ getAuth }` to enable RBAC write guards. Omit to leave
- *   `create` / `update` / `remove` unguarded (pre-RBAC behavior).
- * @returns Registered `create` / `update` / `remove` Convex mutations.
- */
-export function mutationApi<
-  DataModel extends GenericDataModel,
-  Visibility extends FunctionVisibility = "public",
->(
-  config: VexConfig,
-  mutation: MutationBuilder<DataModel, Visibility> = internalMutationGeneric as never,
-  options?: VexApiOptions<DataModel>,
-) {
-  return {
-    create: mutation({
-      args: {
-        collection: v.string(),
-        data: v.any(),
-      },
-      returns: v.string(),
-      handler: async (ctx, args) => {
-        /**
-         * TODO: RBAC write guard — check BEFORE inserting.
-         * 1. (a) `!config.access || !options?.getAuth` → skip straight to step 4.
-         * 2. (b) `const auth = (await options.getAuth(ctx)) ?? null;`
-         * 3. (c) `assertWritePermission({ config, auth, resource: args.collection, action: "create",
-         *      data: args.data as Record<string, unknown> });` — throws `VexAccessError` on
-         *    denial, aborting before any write (Convex mutations are transactional; nothing
-         *    is committed).
-         * 4. Proceed to the existing `create({ ctx, collection: args.collection as CollectionSlug,
-         *      data: args.data })` call, unchanged, and return its result.
-         * Edge cases:
-         * - `data` checked is the INCOMING payload (`args.data`) — there is no existing document
-         *   yet for `create`.
-         */
-        throw new Error("Not implemented");
-      },
-    }) as RegisteredMutation<Visibility, never, never>,
-
-    update: mutation({
-      args: {
-        id: v.string(),
-        data: v.any(),
-      },
-      handler: async (ctx, args) => {
-        /**
-         * TODO: RBAC write guard — check against the EXISTING doc, not the patch payload.
-         * 1. (a) `!config.access || !options?.getAuth` → skip straight to step 6.
-         * 2. (b) `const auth = (await options.getAuth(ctx)) ?? null;`
-         * 3. `const existing = await ctx.db.get(args.id as GenericId<CollectionSlug>);`
-         *    `if (existing === null)` → skip the permission check and fall through to step 6 —
-         *    the existing `update()` call throws Convex's own "nonexistent document" error from
-         *    `ctx.db.patch`, matching current unguarded behavior for a bad id.
-         * 4. `const resource = resolveCollectionSlug({ ctx, config, id: args.id as GenericId<CollectionSlug> });`
-         *    (defined whenever `existing` is non-null — the id resolved to a real row.)
-         * 5. (c) `assertWritePermission({ config, auth, resource: resource as string, action: "update",
-         *      data: existing as unknown as Record<string, unknown> });`
-         * 6. Proceed to the existing `update({ ctx, id: args.id as GenericId<CollectionSlug>,
-         *      data: args.data })` call, unchanged.
-         * Edge cases:
-         * - The permission callback sees the PRE-patch document — a role that can only update
-         *   its own docs checks e.g. `data.author` on the row as it exists NOW, not the patched
-         *   result (matches master's `update` semantics — see master-report.md).
-         */
-        throw new Error("Not implemented");
-      },
-    }) as RegisteredMutation<Visibility, never, never>,
-
-    remove: mutation({
-      args: {
-        ids: v.array(v.string()),
-        softDelete: v.optional(v.string()),
-      },
-      handler: async (ctx, args) => {
-        /**
-         * TODO: RBAC write guard — one check per id, existing doc as data.
-         * 1. (a) `!config.access || !options?.getAuth` → skip straight to step 4.
-         * 2. (b) `const auth = (await options.getAuth(ctx)) ?? null;`
-         * 3. For EACH id in `args.ids`, sequentially (`for...of`, not `Promise.all` — a thrown
-         *    `VexAccessError` must abort before any further checks or the delete itself):
-         *    a. `const existing = await ctx.db.get(id as GenericId<CollectionSlug>);`
-         *       `if (existing === null) continue;` — already-gone id, same no-op treatment
-         *       `remove()` gives it today.
-         *    b. `const resource = resolveCollectionSlug({ ctx, config, id: id as GenericId<CollectionSlug> });`
-         *    c. `assertWritePermission({ config, auth, resource: resource as string, action: "delete",
-         *         data: existing as unknown as Record<string, unknown> });`
-         * 4. All ids passed the guard (or RBAC disabled) → proceed to the existing
-         *    `remove({ ctx, ids: args.ids as GenericId<CollectionSlug>[], softDelete: args.softDelete })`
-         *    call, unchanged.
-         * Edge cases:
-         * - A denial on the 3rd of 5 ids throws before ids 4–5 are even checked, and before any
-         *   of the 5 are deleted — Convex mutations run in one transaction, so the whole call
-         *   rolls back atomically. Bulk delete is all-or-nothing under RBAC, not best-effort.
-         */
-        throw new Error("Not implemented");
-      },
-    }) as RegisteredMutation<Visibility, never, never>,
-  };
-}
-```
-
-`globalsApi` — signature gains `options` as the **4th** param (this factory already had 3:
-`config`, `query`, `mutation` — this is the one case where "4th param" is literal):
-
-```ts
-/**
- * Registers `globals.get`, `globals.find`, and `globals.update` as Convex
- * query and mutation endpoints under `api.vex.globals.*`.
- * … (existing JSDoc paragraphs unchanged) …
- *
- * @param config - The resolved `VexConfig`. Also supplies `config.access` for RBAC.
- * @param query - Convex `query` builder. Defaults to `internalQueryGeneric`.
- * @param mutation - Convex `mutation` builder. Defaults to `internalMutationGeneric`.
- * @param options - Optional `{ getAuth }` to enable RBAC guards. Omit to leave
- *   `globals.get` / `globals.find` / `globals.upsert` unguarded (pre-RBAC behavior).
- * @returns `{ globals }` with `.get`, `.find`, `.update` registered handlers.
- */
-export function globalsApi<
-  DataModel extends GenericDataModel,
-  Visibility extends FunctionVisibility = "public",
->(
-  config: VexConfig,
-  query: QueryBuilder<DataModel, Visibility> = internalQueryGeneric as never,
-  mutation: MutationBuilder<DataModel, Visibility> = internalMutationGeneric as never,
-  options?: VexApiOptions<DataModel>,
-) {
-  return {
-    get: query({
-      args: {
-        slug: v.string(),
-        populate: v.optional(v.any()),
-      },
-      handler: async (ctx, args) => {
-        const doc = await getGlobal({
-          ctx,
-          slug: args.slug as GlobalSlug,
-          populate: args.populate,
-          config,
-        });
-        /**
-         * TODO: RBAC read guard — same shape as collection `get`, but `resource` is the slug
-         * directly (globals don't need `resolveCollectionSlug` — the arg already names the subject).
-         * 1. (a) `!config.access || !options?.getAuth || doc === null` → return `doc` unchanged.
-         * 2. (b) `const auth = (await options.getAuth(ctx)) ?? null;`
-         * 3. (d) `return hasReadPermission({ config, auth, resource: args.slug,
-         *      doc: doc as unknown as Record<string, unknown> }) ? doc : null;`
-         */
-        throw new Error("Not implemented");
-      },
-    }) as RegisteredQuery<Visibility, VexGlobalsGetArgs, VexDocumentGlobal | null>,
-
-    find: query({
-      args: {},
-      handler: async (ctx) => {
-        const docs = await findGlobals({ ctx });
-        /**
-         * TODO: RBAC read filter — `resource` varies PER DOC (`doc._slug`), unlike collection
-         * `find`, where `resource` is one fixed `args.collection` for the whole call.
-         * 1. (a) `!config.access || !options?.getAuth` → return `docs` unchanged.
-         * 2. (b) `const auth = (await options.getAuth(ctx)) ?? null;`
-         * 3. (d) `return docs.filter((doc) => hasReadPermission({ config, auth, resource: doc._slug,
-         *      doc: doc as unknown as Record<string, unknown> }));`
-         */
-        throw new Error("Not implemented");
-      },
-    }) as RegisteredQuery<Visibility, VexGlobalsFindArgs, VexDocumentGlobal[]>,
-
-    upsert: mutation({
-      args: {
-        slug: v.string(),
-        data: v.any(),
-      },
-      returns: v.string(),
-      handler: async (ctx, args) => {
-        const globalConfig = config.globals.find((g) => g.slug === args.slug);
-        if (!globalConfig) {
-          throw new ConvexError(`No global registered with slug "${args.slug}"`);
-        }
-        /**
-         * TODO: RBAC write guard — resource is the global's own slug, action always "update"
-         * (globals have no separate create/update distinction at the API level — `upsertGlobal`
-         * inserts or patches transparently).
-         * 1. (a) `!config.access || !options?.getAuth` → skip straight to step 4.
-         * 2. (b) `const auth = (await options.getAuth(ctx)) ?? null;`
-         * 3. (c) `assertWritePermission({ config, auth, resource: args.slug, action: "update",
-         *      data: args.data as Record<string, unknown> });`
-         * 4. Proceed to the existing `upsertGlobal({ ctx, slug: args.slug as GlobalSlug,
-         *      data: args.data as Record<string, unknown>, globalConfig })` call, unchanged.
-         * Edge cases:
-         * - Checked against the INCOMING payload, not a loaded existing row — a global may not
-         *   have been saved yet (first save = insert inside `upsertGlobal`), so there is no
-         *   guaranteed existing doc to load, unlike collection `update`.
-         */
-        throw new Error("Not implemented");
-      },
-    }) as RegisteredMutation<Visibility, VexGlobalsUpdateArgs, string>,
-  };
-}
-```
-
-#### 3. `packages/core/src/api/access.test.ts` — RBAC enforcement tests `[agent]`
-
-New file (not folded into an existing `*/server.test.ts`, since it exercises the three top-level
-factories in `server.ts` rather than one operation's server function — mirrors how `server.ts`
-itself is a separate module from `find/server.ts` etc. per the `api-operation-split` naming rule).
-
-Existing tests in this package call the plain server functions (`find`, `get`, `create`, …)
-directly via `t.run(ctx => fn({ ctx, ... }))`, bypassing Convex's `query()`/`mutation()`
-registration entirely (see `find/server.test.ts`, `globals/get.server.test.ts`). The RBAC guard
-lives *inside* `queryApi`/`mutationApi`/`globalsApi`'s handler closures, so this file needs to
-invoke those handlers directly too. `query()`/`mutation()` builders accept any function matching
-`QueryBuilder`/`MutationBuilder`; passing an identity builder that returns `handler` unwrapped
-(instead of `internalQueryGeneric`/`internalMutationGeneric`) gets a plain `(ctx, args) => Promise<...>`
-callable straight from `t.run`, with no need for a real registered Convex module.
-
-```ts
-import { convexTest } from "convex-test";
-import type {
-  GenericDataModel,
-  GenericMutationCtx,
-  MutationBuilder,
-  QueryBuilder,
-} from "convex/server";
-import { describe, expect, it } from "vitest";
-
-import { defineAccess } from "../access/config";
-import { VexAccessError } from "../access/types";
-import type { VexConfig } from "../config";
-import { text } from "../fields";
-import { defineGlobal } from "../globals/config";
-import * as generatedApi from "./test/convex/_generated/api";
-import schema from "./test/convex/schema";
-import { globalsApi, mutationApi, queryApi } from "./server";
-import type { VexApiAuth } from "./types";
-
-const modules: Record<string, () => Promise<unknown>> = {
-  "./test/convex/_generated/api": () => Promise.resolve(generatedApi),
-};
-
-/**
- * Identity `query`/`mutation` builders — return the raw `handler` instead of a
- * Convex-registered function, so tests can call `(fn as UnwrappedHandler)(ctx, args)`
- * directly via `t.run` without a real registered Convex module (mirrors the
- * `t.run(ctx => find({ ctx, ... }))` pattern the rest of this package's tests use,
- * one layer further out at the factory boundary).
- */
-const passthroughQuery = ((def: { handler: (...args: never[]) => unknown }) =>
-  def.handler) as unknown as QueryBuilder<GenericDataModel, "public">;
-const passthroughMutation = ((def: { handler: (...args: never[]) => unknown }) =>
-  def.handler) as unknown as MutationBuilder<GenericDataModel, "public">;
-
-type UnwrappedHandler = (
-  ctx: GenericMutationCtx<GenericDataModel>,
-  args: Record<string, unknown>,
-) => Promise<unknown>;
-
-// ── Fixture collections (mirrors find/server.test.ts's fixtureConfig shape) ──
-const postsCollection = {
-  slug: "posts",
-  fields: {
-    title: { type: "text" },
-    author: { type: "relationship", collection: { slug: "authors" } },
-  },
-  labels: { singular: "Post", plural: "Posts" },
-  admin: { useAsTitle: "title" },
-};
-
-const authorsCollection = {
-  slug: "authors",
-  fields: { name: { type: "text" } },
-  labels: { singular: "Author", plural: "Authors" },
-  admin: { useAsTitle: "name" },
-};
-
-const siteSettingsGlobal = defineGlobal({
-  slug: "siteSettings",
-  label: "Site Settings",
-  fields: { siteName: text({ label: "Site Name", required: true }) },
-});
-
-// editor: full posts CRUD + can save site settings.
-// viewer: read-only on posts, restricted to docs they authored; cannot write
-// posts or site settings at all.
-const access = defineAccess({
-  roles: ["editor", "viewer"],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  resources: [postsCollection, siteSettingsGlobal] as any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userCollection: authorsCollection as any,
+/** Capability-mode fixture: one function-check role, one explicit-deny role. */
+const capabilityAccess = defineAccess({
+  roles: ["reviewer", "denier", "viewer"] as const,
+  resources: [articles],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
   permissions: {
-    editor: {
-      posts: { create: true, read: true, update: true, delete: true },
-      siteSettings: { update: true },
+    reviewer: {
+      articles: {
+        update: ({ data }) => (data as { ownerId?: string })?.ownerId === "u1",
+      },
+    },
+    denier: {
+      articles: { update: false },
     },
     viewer: {
-      posts: {
-        create: false,
-        read: ({ data, user }: { data: unknown; user: Record<string, unknown> }) => {
-          const author = (data as { author?: unknown }).author;
-          return Array.isArray(author) && author.includes(user._id);
-        },
-        update: false,
-        delete: false,
-      },
-      siteSettings: { update: false },
+      articles: { read: true },
     },
   },
 });
+```
 
-function fixtureConfig(withAccess: boolean): VexConfig {
-  return {
-    collections: [postsCollection, authorsCollection],
-    globals: [siteSettingsGlobal],
-    access: withAccess ? access : undefined,
-  } as unknown as VexConfig;
-}
+Then a new `describe` block:
 
-describe("RBAC server API enforcement", () => {
-  it("no options.getAuth configured → every operation is unguarded", async () => {
-    const t = convexTest(schema, modules);
-    const config = fixtureConfig(true); // access IS configured...
-    const { find } = queryApi(config, passthroughQuery); // ...but no options passed
-    const { create } = mutationApi(config, passthroughMutation);
-
-    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      (create as unknown as UnwrappedHandler)(ctx, { collection: "posts", data: { title: "Hi" } }),
-    );
-    expect(typeof id).toBe("string");
-
-    const docs = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      (find as unknown as UnwrappedHandler)(ctx, { collection: "posts" }),
-    )) as { title: string }[];
-    expect(docs).toHaveLength(1);
-    expect(docs[0].title).toBe("Hi");
+```ts
+describe("hasPermission — mode: capability vs action", () => {
+  it("capability mode resolves a function check to true without invoking it", () => {
+    expect(
+      hasPermission({
+        access: capabilityAccess,
+        user: asUser("reviewer"),
+        resource: "articles",
+        action: "update",
+        mode: "capability",
+      }),
+    ).toBe(true);
   });
 
-  it("getAuth resolving to null denies writes and empties reads", async () => {
-    const t = convexTest(schema, modules);
-    const config = fixtureConfig(true);
-    const getAuth = async (): Promise<VexApiAuth | null> => null;
-    const { create } = mutationApi(config, passthroughMutation, { getAuth });
-    const { find, get } = queryApi(config, passthroughQuery, { getAuth });
-
-    await expect(
-      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-        (create as unknown as UnwrappedHandler)(ctx, {
-          collection: "posts",
-          data: { title: "Hi" },
-        }),
-      ),
-    ).rejects.toThrow(VexAccessError);
-
-    // Seed a post directly, bypassing the guarded mutation, so the read guards
-    // have something to filter/deny.
-    const postId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      ctx.db.insert("posts", { title: "Existing" }),
-    );
-
-    const docs = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      (find as unknown as UnwrappedHandler)(ctx, { collection: "posts" }),
-    );
-    expect(docs).toEqual([]);
-
-    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      (get as unknown as UnwrappedHandler)(ctx, { id: postId }),
-    );
-    expect(doc).toBeNull();
+  it("capability mode still resolves a static false check to false", () => {
+    expect(
+      hasPermission({
+        access: capabilityAccess,
+        user: asUser("denier"),
+        resource: "articles",
+        action: "update",
+        mode: "capability",
+      }),
+    ).toBe(false);
   });
 
-  it("viewer role (posts.delete: false) → remove throws VexAccessError", async () => {
-    const t = convexTest(schema, modules);
-    const config = fixtureConfig(true);
-    const authorId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      ctx.db.insert("authors", { name: "Lena" }),
-    );
-    const postId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      ctx.db.insert("posts", { title: "Mine", author: [authorId] }),
-    );
-    const getAuth = async (): Promise<VexApiAuth | null> => ({
-      user: { _id: authorId },
-      roles: ["viewer"],
-    });
-    const { remove } = mutationApi(config, passthroughMutation, { getAuth });
-
-    await expect(
-      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-        (remove as unknown as UnwrappedHandler)(ctx, { ids: [postId] }),
-      ),
-    ).rejects.toThrow(VexAccessError);
-
-    const stillExists = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      ctx.db.get(postId),
-    );
-    expect(stillExists).not.toBeNull();
+  it("action mode (default) throws VexAccessError when a function check has no data", () => {
+    let caught: unknown;
+    try {
+      hasPermission({
+        access: capabilityAccess,
+        user: asUser("reviewer"),
+        resource: "articles",
+        action: "update",
+      });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(VexAccessError);
+    expect((caught as VexAccessError).resource).toBe("articles");
+    expect((caught as VexAccessError).action).toBe("update");
+    expect((caught as Error).message).toMatch(/mode: "capability"|data/);
   });
 
-  it("owner-only read callback filters find() to only the caller's docs", async () => {
-    const t = convexTest(schema, modules);
-    const config = fixtureConfig(true);
-    const authorAId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      ctx.db.insert("authors", { name: "A" }),
-    );
-    const authorBId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      ctx.db.insert("authors", { name: "B" }),
-    );
-    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      await ctx.db.insert("posts", { title: "A's post", author: [authorAId] });
-      await ctx.db.insert("posts", { title: "B's post", author: [authorBId] });
-    });
-    const getAuth = async (): Promise<VexApiAuth | null> => ({
-      user: { _id: authorAId },
-      roles: ["viewer"],
-    });
-    const { find } = queryApi(config, passthroughQuery, { getAuth });
-
-    const docs = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      (find as unknown as UnwrappedHandler)(ctx, { collection: "posts" }),
-    )) as { title: string }[];
-    expect(docs).toHaveLength(1);
-    expect(docs[0].title).toBe("A's post");
+  it("action mode runs the callback normally once data is provided", () => {
+    expect(
+      hasPermission({
+        access: capabilityAccess,
+        user: asUser("reviewer"),
+        resource: "articles",
+        action: "update",
+        data: { ownerId: "u1" } as never,
+      }),
+    ).toBe(true);
+    expect(
+      hasPermission({
+        access: capabilityAccess,
+        user: asUser("reviewer"),
+        resource: "articles",
+        action: "update",
+        data: { ownerId: "someone-else" } as never,
+      }),
+    ).toBe(false);
   });
 
-  it("viewer role (siteSettings.update: false) → globals upsert throws VexAccessError", async () => {
-    const t = convexTest(schema, modules);
-    const config = fixtureConfig(true);
-    const getAuth = async (): Promise<VexApiAuth | null> => ({
-      user: { _id: "viewer-1" },
-      roles: ["viewer"],
-    });
-    const { globals } = globalsApi(config, passthroughQuery, passthroughMutation, { getAuth });
-
-    await expect(
-      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-        (globals.upsert as unknown as UnwrappedHandler)(ctx, {
-          slug: "siteSettings",
-          data: { siteName: "Nope" },
-        }),
-      ),
-    ).rejects.toThrow(VexAccessError);
-
-    const rows = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      ctx.db.query("vex_globals").collect(),
-    );
-    expect(rows).toHaveLength(0);
+  it("multi-role OR merge under capability mode: one capable role wins over an explicit deny", () => {
+    expect(
+      hasPermission({
+        access: capabilityAccess,
+        user: asUser(["denier", "reviewer"]),
+        resource: "articles",
+        action: "update",
+        mode: "capability",
+      }),
+    ).toBe(true);
   });
 });
 ```
 
-Verify: `pnpm --filter @vexcms/core test -- api`
+**Verify:** `pnpm --filter @vexcms/core test -- access`
 
-### Step 6 — www wiring + stub removal `[dev]`
+---
 
-Wires the access module into the real app: `apps/www/src/vexcms/access.ts` (the
-authored config — full code, mostly declarative), `apps/www/src/vex.config.ts`
-(registration), `apps/www/convex/vex/auth.ts` (`getAuth` — genuinely ambiguous
-session resolution, guided stub), and the two Convex registration points that
-receive `{ getAuth }`. Ends with deleting the now-dead app-level permission stub.
+### Step 8 — Client permission context (sidebar/nav visibility) `[dev]`
 
-- [ ] `apps/www/src/vexcms/access.ts` — new file, full code.
+The client evaluates `hasPermission` **directly** — no server-computed snapshot. Two inputs
+reach the client without crossing a serialization boundary, so both are available
+synchronously on first render (no FOUC):
 
-  There is no `defineCollection` for the better-auth `user` table in this app
-  (`authOptions.user.modelName` in `apps/www/src/auth/options.ts` points
-  better-auth straight at the `TABLE_SLUG_USERS` table) — but it's still a
-  real *resource* here: `apps/www/src/vex.types.ts`'s generated
-  `DocumentBySlug` registry already maps slug `"user"` to `UserDocument`
-  (better-auth-merged tables are generated too, not just vexcms
-  collections — see `vex.types.ts:308` `UserDocument`, `:494` the
-  `DocumentBySlug` entry). So `{ slug: TABLE_SLUG_USERS }` goes straight
-  into `resources` alongside the real collections, and the self-read/update
-  check from the deleted stub becomes a normal per-action CRUD map on that
-  subject — `data` comes back typed as `UserDocument` from the registry, no
-  `dataType()` carrier needed. `seedData` is the one `customResources`
-  entry (array-shorthand form, ties to the real `apps/www/convex/seed.ts`);
-  a commented-out line illustrates the object/`dataType()` form since
-  nothing in this app needs a non-collection typed custom resource today.
+- **`access`** (callbacks intact) via a **direct client-bundle import** — the app imports
+  `~/auth/access` inside a `"use client"` module and hands it to a provider. This bypasses the
+  RSC/`sanitizeConfigForClient` strip entirely (that strip only governs the _serialized_ config
+  prop; a bundler import keeps functions). `access` and the collection configs it imports must
+  stay client-safe (they already are — the admin UI renders those same configs).
+- **`user` / `organization`** as serializable props from the server layout (which already
+  resolves `user` via `getCurrentUser()`; add `organization`). Plain docs, no callbacks —
+  serialize fine, present at hydration.
 
-  ```ts
-  // apps/www/src/vexcms/access.ts
-  import { defineAccess } from "@vexcms/core";
+A snapshot is intentionally NOT used (Decision 23): batching N cheap synchronous
+`hasPermission` calls saves nothing, and shipping `access` client-side is already accepted for
+direct evaluation. Client checks are advisory UX; the Step 5 server guards remain enforcement.
 
-  import { TABLE_SLUG_USERS, USER_ROLES } from "~/db/constants";
+- [x] `packages/react/src/context/VexAccessContext.tsx` (new) — `VexAccessProvider` +
+      `useVexAccess()`; holds the raw `VexAccessConfig` (with callbacks). Fail-closed default
+      (`undefined` → deny).
+- [x] `packages/react/src/context/VexAuthContext.tsx` (new) — `useVexAuth()` →
+      `{ user, organization }`; seeded by `AdminLayout` from server-passed props.
+- [x] `packages/react/src/hooks/usePermission.ts` (new) — composes the two contexts + calls
+      `hasPermission`.
+- [x] `packages/react/src/context/index.ts` + package root — export the providers/hooks.
+- [x] `packages/react/src/components/AdminLayout.tsx` — accept `user`/`organization` props,
+      wrap children in `VexAuthContext.Provider` (beside the existing `VexConfigContext`).
+- [x] `packages/next/src/NextAdminLayout.tsx` — forward server-resolved `user`/`organization`.
+- [x] `packages/react/src/components/AdminSidebar.tsx` — filter collection/global/media links
+      by `usePermission({ resource: slug, action: "read", mode: "capability" })`; hide the
+      admin entry when `adminPanel`/`access` is false.
+- [ ] `packages/react/src/components/AdminTopNav.tsx` — suppress a crumb for a denied subject.
+- [x] App wiring: `apps/www/src/app/(vexcms)/admin/clientProviders.tsx` imports `access` and
+      renders `<VexAccessProvider access={access}>`; `admin/layout.tsx` passes `organization`.
+- Verify: `pnpm --filter @vexcms/react build && pnpm --filter www typecheck`.
 
-  import { footers, headers, pages, siteSettings, themes } from "./collections";
-  import { nav } from "./globals/nav";
+#### 1. `VexAccessContext` (react) — client import of the raw config
 
-  /**
-   * RBAC configuration for the demo/development site.
-   *
-   * Two roles (`USER_ROLES.admin` / `USER_ROLES.user` —
-   * `apps/www/src/db/constants/auth.ts`): `admin` gets the `"*"` wildcard
-   * (every subject, every action). `user` gets admin-panel access plus
-   * read/update on their own account only — same ownership check
-   * (`user._id === data._id`) and create/delete posture as the deleted
-   * `~/auth/permissions.ts` stub. Every other subject (all collections +
-   * `nav`) falls through to this config's `defaults` posture ("allow", the
-   * system default) for the `user` role.
-   *
-   * The better-auth-owned `user` table has no `defineCollection` in this
-   * app, but `apps/www/src/vex.types.ts`'s generated `DocumentBySlug`
-   * registry maps slug `"user"` to `UserDocument`, so `{ slug:
-   * TABLE_SLUG_USERS }` is enough for the `user`-role callbacks below to
-   * get `data: UserDocument` for free.
-   *
-   * `images` is intentionally excluded from `resources`, same as it's
-   * excluded from `vex.config.ts`'s `collections:` array — media collections
-   * are served by `mediaQueryApi`/`mediaMutationApi`, not `queryApi`/
-   * `mutationApi`/`globalsApi`, so they sit outside this RBAC seam.
-   *
-   * @see defineAccess in @vexcms/core
-   * @see apps/www/src/vex.config.ts for registration
-   */
-  export const access = defineAccess({
-    roles: [USER_ROLES.admin, USER_ROLES.user],
-    resources: [
-      pages,
-      headers,
-      footers,
-      themes,
-      siteSettings,
-      nav,
-      { slug: TABLE_SLUG_USERS },
-    ],
-    userCollection: { slug: TABLE_SLUG_USERS },
-    customResources: {
-      // array shorthand: bare action list, no `data` typing needed.
-      seedData: ["reset"],
-      // object form illustration (unused here — every real subject in this
-      // app is already typed via the DocumentBySlug registry above):
-      //   analytics: { actions: ["view"], data: dataType<AnalyticsSnapshot>() }
-    },
-    permissions: {
-      [USER_ROLES.admin]: {
-        "*": true,
-      },
-      [USER_ROLES.user]: {
-        adminPanel: {
-          access: true,
-        },
-        [TABLE_SLUG_USERS]: {
-          "*": false, // action-level wildcard — deny everything not declared below
-          read: ({ data, user }) => user._id === data._id,
-          update: ({ data, user }) => user._id === data._id,
-        },
-      },
-    },
-  });
-  ```
+```ts
+// packages/react/src/context/VexAccessContext.tsx
+"use client";
+import { createContext, useContext } from "react";
+import type { VexAccessConfig } from "@vexcms/core";
 
-- [ ] `apps/www/src/vex.config.ts` — add `access` import + field.
+/** The raw access config (callbacks intact), provided from a client-bundle import in the
+ *  app — NOT from the sanitized server config prop (which strips `access`). */
+const VexAccessContext = createContext<VexAccessConfig | undefined>(undefined);
 
-  ```ts
-  // apps/www/src/vex.config.ts
-  import { betterAuthAdapter } from "@vexcms/better-auth";
-  import { defineConfig } from "@vexcms/core";
-  import { convexFileStorage } from "@vexcms/file-storage-convex";
+/** @returns the access config for the session, or `undefined` (→ every check denies). */
+export function useVexAccess(): VexAccessConfig | undefined {
+  return useContext(VexAccessContext);
+}
 
-  import { authOptions } from "~/auth/options";
-  import { footers, headers, images, pages, siteSettings, themes } from "~/vexcms/collections";
+/** Wrap the admin UI; the app supplies `access` from a `"use client"` import of
+ *  `~/auth/access` so its callbacks survive into the client bundle. */
+export function VexAccessProvider(props: { access?: VexAccessConfig; children: React.ReactNode }) {
+  return <VexAccessContext.Provider value={props.access}>{props.children}</VexAccessContext.Provider>;
+}
+```
 
-  import { access } from "./vexcms/access";
-  import { nav } from "./vexcms/globals/nav";
+#### 2. `VexAuthContext` (react) — server-resolved caller
 
-  const vexConfig = defineConfig({
-    admin: {
-      sidebar: {
-        side: "right",
-      },
-    },
+```ts
+// packages/react/src/context/VexAuthContext.tsx
+"use client";
+import { createContext, useContext } from "react";
+
+export interface VexAuth {
+  user: Record<string, unknown> | null;      // null → unauthenticated → no roles → deny
+  organization?: Record<string, unknown>;
+}
+const VexAuthContext = createContext<VexAuth>({ user: null });
+
+/** @returns the current caller `{ user, organization }` from the server layout. */
+export function useVexAuth(): VexAuth {
+  return useContext(VexAuthContext);
+}
+export function VexAuthProvider(props: { value: VexAuth; children: React.ReactNode }) {
+  return <VexAuthContext.Provider value={props.value}>{props.children}</VexAuthContext.Provider>;
+}
+```
+
+#### 3. `usePermission` (react) — the one hook every affordance uses
+
+```ts
+// packages/react/src/hooks/usePermission.ts
+"use client";
+import { hasPermission } from "@vexcms/core";
+import { useVexAccess } from "../context/VexAccessContext";
+import { useVexAuth } from "../context/VexAuthContext";
+
+/**
+ * Client-side permission check for UI affordances (advisory — server guards enforce).
+ *
+ * @param props.resource - Subject slug (collection/global/media/`adminPanel`).
+ * @param props.action - Action to check.
+ * @param props.data - The concrete document for an exact per-doc check (edit views). Omit for
+ *   subject-level "capability" checks (sidebar/list/create), which pass `mode: "capability"`.
+ * @returns boolean — `false` when no `access`/`user` (fail-closed).
+ */
+export function usePermission(props: {
+  resource: string;
+  action: string;
+  data?: Record<string, unknown>;
+}): boolean {
+  const access = useVexAccess();
+  const { user, organization } = useVexAuth();
+  // TODO: capability mode when no `data` (subject-level); action mode when `data` given.
+  return hasPermission({
     access,
-    authAdapter: betterAuthAdapter({ config: authOptions }),
-    storage: {
-      adapters: [convexFileStorage({ mediaCollections: [images] })],
-    },
-    collections: [pages, headers, footers, themes, siteSettings],
-    globals: [nav],
-  });
+    user,
+    organization,
+    resource: props.resource as never,
+    action: props.action as never,
+    data: props.data as never,
+    mode: props.data === undefined ? "capability" : "action",
+  } as never);
+}
+```
 
-  export default vexConfig;
-  ```
+#### 4. Sidebar / topnav — filter by capability
 
-- [ ] `apps/www/convex/vex/auth.ts` — new file, guided stub.
+`AdminSidebar`/`AdminTopNav` map over `useVexConfig().collections/globals/mediaCollections`;
+wrap each rendered link in `usePermission({ resource: slug, action: "read", mode: "capability" })`
+(a helper component or a filtered list, since hooks can't be called in a `.map` callback
+conditionally — compute a `visible` array up front). Hide the admin/dashboard entry when
+`usePermission({ resource: "adminPanel", action: "access" })` is false.
 
-  `getAuth` runs inside `GenericQueryCtx` — no request cookies, so the
-  Next.js-side session-token flow (`getSessionWithUser` +
-  `apps/www/src/auth/serverUtils.ts`'s `cookies()` read) doesn't apply here.
-  The only auth surface a Convex ctx has is `ctx.auth.getUserIdentity()`,
-  already used (unparsed) by `apps/www/convex/auth/api.ts`'s
-  `identifyCurrentUser`. Its `identity.subject` format for this
-  `@convex-dev/better-auth` "convex" plugin version isn't established
-  anywhere in the repo — the TODOs below name the real candidates and leave
-  that call to whoever implements this.
+> **Capability ≠ row count.** A visible link means "you can reach this subject"; the list it
+> opens may be empty after per-doc filtering (Step 5). That's correct and expected — see
+> Decision 23. `access` + `user` are both synchronous at first render, so no flash.
 
-  ```ts
-  // apps/www/convex/vex/auth.ts
-  import type { VexApiAuth } from "@vexcms/core/server";
-  import type { GenericQueryCtx } from "convex/server";
+### Step 9 — View-level action enforcement `[dev]`
 
-  import type { DataModel } from "../_generated/dataModel";
+Gates the action affordances (Create / Save / bulk-delete / readonly inputs) using the same
+`usePermission()` hook from Step 8 — every check is a **direct client-side `hasPermission`
+call**, no `canUpdate` prop forwarded from the server. Two check shapes:
 
-  /**
-   * Resolves `{ user, roles }` for RBAC enforcement inside the Convex
-   * functions registered by `queryApi`/`mutationApi`/`globalsApi`
-   * (`apps/www/convex/vex.ts`, `apps/www/convex/vex/globals.ts`).
-   *
-   * @param ctx - Convex query context. A mutation ctx satisfies this too
-   *   (`GenericMutationCtx` extends `GenericQueryCtx`).
-   * @returns `{ user, roles }` for an authenticated session backed by an
-   *   existing `user` doc, else `null`. `hasPermission` treats `null` as
-   *   `userRoles: []` (deny).
-   */
-  export async function getAuth(
-    ctx: GenericQueryCtx<DataModel>,
-  ): Promise<VexApiAuth | null> {
-    // TODO: implement
-    // 1. Resolve the Convex-native identity for this request:
-    //      const identity = await ctx.auth.getUserIdentity()
-    //    → populated via the @convex-dev/better-auth "convex" plugin
-    //      (apps/www/convex/auth/plugins/index.ts) + the customJwt provider
-    //      in apps/www/convex/auth.config.ts. This is the only identity
-    //      source available in a GenericQueryCtx.
-    //   a. identity === null → not authenticated → return null.
-    // 2. Resolve the app's `user` doc from the identity:
-    //   a. TODO(dev): confirm whether `identity.subject` is the raw `user`
-    //      table `_id` or some composite string for the installed
-    //      @convex-dev/better-auth version — there's no in-repo precedent
-    //      (identifyCurrentUser in apps/www/convex/auth/api.ts never parses
-    //      `subject`); check the plugin's source/docs before wiring this up.
-    //   b. await ctx.db.get(userId as Id<typeof TABLE_SLUG_USERS>) — same
-    //      lookup as getSessionWithUser (apps/www/convex/auth/sessions.ts:32).
-    //   c. Doc missing (deleted account, stale token) → return null.
-    // 3. Read `roles` off the resolved doc — added via
-    //    authOptions.user.additionalFields.roles
-    //    (apps/www/src/auth/options.ts:27-34), default [USER_ROLES.user].
-    //   a. Missing/empty roles → use [], NOT [USER_ROLES.user] — never
-    //      silently upgrade a role-less doc to the default role.
-    // 4. → { user, roles }.
-    //
-    // Edge cases:
-    // - No identity → null.
-    // - Identity resolves but the `user` doc no longer exists → null.
-    // - `user.roles` undefined/empty → roles: [] (hasPermission denies empty
-    //   role sets — see the access-control contract's resolution order).
-    throw new Error("Not implemented");
-  }
-  ```
+- **List/create surfaces have no specific document** → `usePermission({ resource, action })`
+  with no `data` (capability mode): `CollectionListView` Create/bulk-delete, `CreateDocumentModal`,
+  `MediaCollectionListView`, `GlobalEditView` update gate.
+- **Edit views have the loaded document** → `usePermission({ resource, action: "update", data:
+currentDocument })` (action mode, exact). Because `currentDocument` is the live
+  `useQuery`-subscribed doc, the check **re-evaluates reactively** if a permission-relevant
+  field changes — no stale server-computed value. This is strictly better than the earlier
+  `canUpdate`-prop design, which is why that prop and the `NextAdminPage` per-doc computation
+  are dropped.
 
-- [ ] `apps/www/convex/vex/globals.ts` — pass `{ getAuth }` to `globalsApi`.
+A disabled button is UX, not security — the Step 5 server guards enforce; the read guards
+(`get`/`getGlobal` → `null` on deny, Step 10) already make a denied user who types a URL land
+on an empty/not-found view, so no separate server route-guard is needed.
 
-  ```ts
-  // apps/www/convex/vex/globals.ts
-  import { globalsApi } from "@vexcms/core/server";
+- [ ] `packages/react/src/components/views/CollectionListView.tsx` — Create button + bulk-delete.
+- [ ] `packages/react/src/components/modals/CreateDocumentModal.tsx` — submit gate (defense-in-depth; the modal opens off a `?createDocument=true` URL param).
+- [ ] `packages/react/src/components/views/CollectionEditView.tsx` — exact per-doc Save gate + readonly inputs.
+- [ ] `packages/react/src/components/views/GlobalEditView.tsx` — capability update gate.
+- [ ] `packages/react/src/components/views/MediaCollectionListView.tsx` — mirrors list view.
+- [ ] `packages/react/src/components/views/MediaCollectionEditView.tsx` — mirrors edit view.
+- Verify: `pnpm --filter @vexcms/react build && pnpm --filter www typecheck && pnpm --filter www build`.
 
-  import config from "~/vex.config";
+#### 1. `CollectionListView` — Create + bulk-delete
 
-  import { mutation, query } from "../_generated/server";
-  import { getAuth } from "./auth";
+```ts
+const collection = /* … unchanged … */;
+const canCreate = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.create });
+const canDelete = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.delete });
+```
 
-  export const { get, find, upsert } = globalsApi(config, query, mutation, { getAuth });
-  ```
+1. Wrap the `"+ New {label}"` `<Button>` in `{canCreate && (...)}` — hide, don't disable (no
+   actionable next step for a user who can't create).
+2. `<DataTable ... enableRowSelection={canDelete} enableBulkActions={canDelete} />` — row
+   selection today exists only to drive bulk-delete.
 
-- [ ] `apps/www/convex/vex.ts` — pass `{ getAuth }` to `queryApi`/`mutationApi`
-      (the only other registration point — `apps/www/convex/vex/media.ts` uses
-      the separate `mediaQueryApi`/`mediaMutationApi`, out of scope here).
+#### 2. `CreateDocumentModal` — submit gate
 
-  ```ts
-  // apps/www/convex/vex.ts
-  import { mutationApi, queryApi } from "@vexcms/core/server";
+The trigger is hidden per #1, but the modal is always mounted and opens off a URL param a
+denied user can type. `const canCreate = usePermission({ resource: collection.slug, action:
+CRUD_ACTIONS.create });` → `disabled={!canCreate}` on the submit `<Button>`. Backstop is still
+the server `create` guard.
 
-  import config from "~/vex.config";
+#### 3. `CollectionEditView` — exact per-doc Save + readonly inputs
 
-  import { mutation, query } from "./_generated/server";
-  import { getAuth } from "./vex/auth";
+```ts
+const { data: currentDocument } = useQuery({/* … unchanged … */});
+if (!currentDocument) {
+  /* … unchanged … */
+}
+const canUpdate = usePermission({
+  resource: props.collectionSlug,
+  action: CRUD_ACTIONS.update,
+  data: currentDocument, // exact per-doc check, reactive to live doc changes
+});
+```
 
-  export const { find, get, search } = queryApi(config, query, { getAuth });
-  export const { create, update, remove } = mutationApi(config, mutation, { getAuth });
-  ```
+1. `<Button type="submit" disabled={isDefaultValue || !canUpdate}>` — extend the existing
+   expression.
+2. `readOnly={field.admin.readOnly || !canUpdate}` on every `<InputComponent>` in the fields map.
 
-- [ ] DELETE `apps/www/src/auth/permissions.ts` — zero callsites (verified:
-      no import of `~/auth/permissions` or relative equivalent anywhere under
-      `apps/www/src` or `apps/www/convex`). After deletion, the
-      `auth-file-roles` naming rule (`.agent/docs/standards/naming-conventions.md`)
-      still holds for everything left in `apps/www/src/auth/`:
-      `client.tsx`, `server.ts`, `serverUtils.ts`, `options.ts`, `types.ts` —
-      `permissions.ts` was the one file in that fixed role set this spec removes.
+#### 4. `GlobalEditView` — capability update gate
 
-Verify: `pnpm --filter www typecheck && pnpm --filter www build`
+Singletons have no distinct "specific document" case; a plain capability check suffices:
+`const canUpdate = usePermission({ resource: global.slug, action: CRUD_ACTIONS.update });` →
+same Save `disabled` + `readOnly` edits as #3.
+
+#### 5. Media views
+
+- `MediaCollectionListView` mirrors #1 (`create`/`delete` on the media slug); wrap `"+ Upload"`
+  in `{canCreate && ...}`, gate `enableRowSelection`/`enableBulkActions` on `canDelete`.
+  `CreateMediaModal` needs no internal gate — no distinct Save action; the dropzone hits the
+  server-guarded `generateUploadUrl` (`create`).
+- `MediaCollectionEditView` mirrors #3 — `usePermission({ resource: slug, action: "update",
+data: currentDocument })`, Save + readonly.
+
+**Verify:** `pnpm --filter @vexcms/react build && pnpm --filter www typecheck && pnpm --filter www build`
+
+### Step 10 — Cleanup `[dev]`
+
+Loose ends surfaced during the build, batched so none is forgotten. Each is small and
+independently verifiable.
+
+- [ ] **Drop field-mode objects.** Remove `{ mode, fields }` from `FieldPermissionResult` /
+      `PermissionCheck` (`access/types.ts`) and the mode-object branch from
+      `mergeRolePermissions` (`access/hasPermission.ts`) → `PermissionCheck = boolean |
+callback`. Remove the `@ts-expect-error` field-mode test in `config.test.ts`. Why: the
+      API is whole-document; the type promised granularity the runtime never delivered
+      (Decision 20).
+- [ ] **`get` / `getGlobal` return `null` on read-deny** instead of throwing `VexAccessError`
+      (`api/get/server.ts`, `api/globals/get.server.ts`). Lists already filter; this makes
+      single-doc reads composable and stops denied server-renders crashing (Decision 21).
+- [ ] **`defineConfig`-time access validation** (the open Step 4 item): after
+      `mergeAuthCollections`, when `config.access` is set, `console.warn` if
+      `userCollectionSlug` matches no merged collection, or `userRolesField` is missing / not a
+      `text`/`array` field on it. Warn, don't throw (config still returns).
+- [ ] **Docs:** `me` documented as client-UI convenience (not enforcement); `resolveCollectionSlug`
+      JSDoc already matches its throw (done). Grep the module for any remaining
+      `ResolvedFieldPermissions` return-type mentions once field-mode is dropped.
+- Verify: `pnpm --filter @vexcms/core test && pnpm --filter www typecheck`
+
+## Test Plan
+
+Exhaustive branch coverage for RBAC — every resolution path, every guard call site, every
+deny/allow/throw/null/filter outcome. Grouped by area; each file's cases are additions unless
+marked **(new file)**. Reflects target behavior for not-yet-built Steps 7–10 (capability mode,
+permission context, view enforcement, field-mode removal + null-on-deny) alongside the shipped
+Steps 3–6 surface — this section **is** Step 11.
+
+### 1. `hasPermission` core — `packages/core/src/access/hasPermission.test.ts` (extend)
+
+- [ ] `access: undefined` → `true` for every `{resource, action}` combination, including an
+      unregistered/made-up resource string and a `user: null` caller (system fully off).
+- [ ] `user: null` → empty role list → deny, regardless of `defaultPermissionMode`.
+- [ ] `user: {}` (no `userRolesField` key present) → empty role list → deny.
+- [ ] `user[access.userRolesField]` is a single string not in `access.roles` → deny (unknown
+      role filtered out of `knownRoles`).
+- [ ] `user[access.userRolesField]` is `[]` → deny.
+- [ ] `user[access.userRolesField]` is a plain string (e.g. `"admin"`) → normalized to `["admin"]`
+      and resolved.
+- [ ] `user[access.userRolesField]` is `string[]` with a mix of known/unknown roles → only known
+      roles participate in the OR-merge.
+- [ ] `user[access.userRolesField]` is `string[]` containing non-string entries (e.g. numbers) →
+      non-string entries filtered out before role-known-ness check.
+- [ ] Boolean shorthand: `{ [role]: { posts: true } }` → allow; `{ [role]: { posts: false } }` →
+      deny, for every action on `posts` (shorthand is action-independent).
+- [ ] Per-action map: `{ posts: { read: true, update: false } }` → `read` allows, `update` denies,
+      an action absent from the map falls through to the action-level wildcard or
+      `defaultPermissionMode`.
+- [ ] Action-level wildcard `"*"`: `{ posts: { "*": true, delete: false } }` → `delete` (explicit)
+      denies even though the wildcard allows; `create`/`read`/`update` (undeclared) fall through
+      to the wildcard and allow. Presence (not truthiness) wins: `{ "*": true, delete: false }`
+      vs `{ "*": true }` with no `delete` key must differ.
+- [ ] Role-level wildcard: `{ [role]: { [WILDCARD_KEY]: true } }` → every **undeclared** subject
+      allows; a subject with an explicit entry (including explicit `false`) is NOT overridden by
+      the role wildcard — explicit subject entry always wins.
+- [ ] `defaultPermissionMode: "allow"` vs `"deny"`: a known role with no entry at all for the
+      requested resource (`role[resource]` is `undefined`, no role wildcard) resolves to the
+      configured default in both directions.
+- [ ] Callback check: returns `true` → allow; returns `false` → deny; returns `undefined` → deny
+      (per `resolvePermissionCheck`'s "inconclusive callback never mistaken for undeclared"
+      contract — must differ observably from an undeclared-action test only via the callback
+      actually being invoked, e.g. via a spy).
+- [ ] Callback receives exactly `{ user, data?, organization? }` — `organization` is `undefined`
+      when `access.orgCollectionSlug` is not configured even if the caller passed one; present
+      and forwarded verbatim when it is configured.
+- [ ] Multi-role OR-merge: role A denies (`false`), role B allows (`true`) → overall allow;
+      both deny → overall deny; order of roles in the array does not affect the result.
+- [ ] `throwOnDenied: true` + denied → throws `VexAccessError` carrying `{ resource, action }`
+      (no `field`, since no `fields` was requested).
+- [ ] `throwOnDenied: false` (default) + denied → returns `false`, never throws.
+- [ ] `throwOnDenied: true` + allowed → returns `true`, never throws (throw path only reachable
+      on deny).
+- [ ] **`mode: "capability"`** — resolved check is a function → resolves to `true` without regard
+      to `data` (function is never invoked, or is invoked and its result discarded — assert via
+      spy that it is NOT invoked, since capability mode means "skip data-dependent evaluation").
+- [ ] **`mode: "capability"`** — resolved check is a static `false` → still resolves `false`
+      (explicit deny is not overridden by capability mode).
+- [ ] **`mode: "capability"`** — resolved check is a static `true` → resolves `true`.
+- [ ] **`mode: "capability"`** — multi-role OR-merge unchanged: one role's function check
+      (→ `true` under capability mode) ORs with another role's static `false` → overall `true`.
+- [ ] **`mode: "action"` (default, or explicit)** + resolved check is a function + `data` is
+      `undefined` → throws `VexAccessError` whose message instructs the caller to pass `data` or
+      use `mode: "capability"`; throws even when `throwOnDenied` is `false` (this throw is a
+      programmer-error guard, not the normal deny path).
+- [ ] `mode: "action"` + function check + `data` provided → unchanged existing behavior (resolves
+      the callback's boolean normally, no throw).
+- [ ] `mode: "action"` + **static** boolean/wildcard check (no function involved) + `data`
+      `undefined` → resolves normally, no throw (the throw is specific to unresolved function
+      checks, not to `data` being absent in general).
+- [ ] `mode: "action"` + multi-role: one role's check is a static allow, another role's check is
+      a function with `data` undefined → short-circuits to `true` **without** throwing (an
+      already-decided OR-merge must not force evaluation of an ambiguous sibling role).
+- [ ] `mode: "action"` + multi-role: every role whose check would resolve needs a function with
+      no `data`, and none is a static allow → throws.
+- [ ] Boolean-only `fields` param (field-mode objects removed): passing `fields: ["title","slug"]`
+      against a plain boolean/callback check applies the single resolved boolean uniformly to
+      every requested field (AND-over-requested degenerates to the one merged value — verify it
+      is neither dropped nor produces a mismatched per-field result now that no per-field
+      resolution mechanism exists).
+- [ ] `fields` omitted but `data` provided → `data`'s own keys drive the same AND-over-fields
+      pass-through described above (still yields a single boolean, using `Object.keys(data)`).
+- [ ] Built-in `adminPanel` subject: `hasPermission({ resource: "adminPanel", action: "access" })`
+      resolves through the identical role/wildcard/default machinery as a real resource (boolean
+      shorthand, per-action map, role wildcard, `defaultPermissionMode` all apply); `impersonate`
+      action covered separately from `access`.
+- [ ] Org-aware fixture: `access.orgCollectionSlug` configured + `organization` passed → callback
+      receives it; `access.orgCollectionSlug` undefined + `organization` passed anyway →
+      callback still receives `undefined` (org is stripped, not merely optional).
+
+### 2. Collections API guards — `packages/core/src/api/access.test.ts` **(new file)**
+
+Using `convex-test` against `create`/`update`/`remove`/`get`/`find`/`search` in
+`packages/core/src/api/{create,update,remove,get,find,search}/server.ts`.
+
+- [ ] `create`: denied role → throws `VexAccessError` (action `"create"`); allowed role → resolves
+      the new id and the document is actually present via a follow-up `ctx.db.get`.
+- [ ] `create`: `args.auth` omitted entirely (no RBAC / `config.access` on but no auth passed) →
+      `user: args.auth?.user ?? {}` = `{}` → treated as authenticated-with-no-roles, not a bypass.
+- [ ] `create`: `args.auth = { user: null }` (unauthenticated, per `VexApiAuth`) → `user ?? {}` =
+      `{}` → empty role list → deny → throws, for every configured role's permission matrix.
+- [ ] `create`: `config.access === undefined` → no `hasPermission` call at all (assert via spy /
+      by using a config with `access` unset and a `user` that would fail every role) — insert
+      always succeeds.
+- [ ] `update`: denied → throws `VexAccessError` (action `"update"`); allowed → document patched
+      with exactly the merged fields.
+- [ ] `update`: `hasPermission` is called with `data: args.data` — the **incoming patch payload**,
+      not the pre-existing document (confirm a callback keyed on the new values, e.g.
+      `update: ({ data }) => data.status !== "locked"`, sees the patch, not the stored doc).
+- [ ] `update`: unauthenticated (`auth: { user: null }`) → denies for every role.
+- [ ] `remove`: denied → throws `VexAccessError` (action `"delete"`); allowed → document removed
+      (hard delete) or `softDelete` field flipped to `true` when `softDelete` is provided.
+- [ ] `remove`: `hasPermission` is called with `data: doc ?? undefined` — the **existing document**
+      fetched via `ctx.db.get(id)` before deletion (confirm a callback keyed on stored fields,
+      e.g. ownership check `data.authorId === user._id`, sees the pre-delete doc).
+- [ ] `remove`: id that no longer resolves to a document (`ctx.db.get` returns `null`) →
+      `hasPermission` called with `data: undefined`; a callback that only handles `data` present
+      must resolve per its own `undefined`-handling (denies unless it explicitly allows).
+- [ ] `remove`: bulk `ids` array with a per-doc callback that allows doc A and denies doc B →
+      the whole call throws on the first denied id (`Promise.all` + `throwOnDenied: true`) and
+      doc A is NOT removed either (no partial application — see Regression guard, item 10).
+- [ ] `remove`: unauthenticated → denies for every role.
+- [ ] `get`: denied (post-populate `hasPermission` check) → **returns `null`**, does not throw
+      (target Step 10 behavior — replaces today's `throwOnDenied: true`); allowed → returns the
+      populated document.
+- [ ] `get`: document not found (`ctx.db.get` returns `null`) → returns `null` before any
+      permission check runs (no `hasPermission` call for a nonexistent doc).
+- [ ] `get`: `config.access === undefined` → returns the document unconditionally, no check run.
+- [ ] `get`: unauthenticated → `null` for every collection with any role requirement.
+- [ ] `find` (no pagination): denied docs are filtered out of the returned array; count of
+      returned docs equals count of docs the resolved role can read, not the total row count.
+- [ ] `find` (no pagination): mixed allow/deny — some docs pass a callback (e.g.
+      `read: ({ data, user }) => data.ownerId === user._id`) and others don't → only the
+      caller-owned docs are returned; `hasPermission` is called per-doc (no `throwOnDenied`,
+      filter never throws even on deny).
+- [ ] `find` with `limit`: filtering happens on the already-`take`n page (post-fetch filter, not
+      pre-fetch) — verify a `limit: 2` request against 3 total docs where 1 of the first 2 is
+      denied returns only 1 doc (limit is not compensated after filtering).
+- [ ] `find` with `paginationOpts` (no `totalDocs`): `page` is filtered; `isDone`/`continueCursor`
+      pass through from the underlying Convex pagination untouched.
+- [ ] `find` with `paginationOpts.totalDocs: true` and `cursor` unset, `isDone: true` →
+      `totalDocs` equals `finalDocs.length` (the filtered page, not a separate count query).
+- [ ] `find` with `paginationOpts.totalDocs: true`, not done → runs a second full `collect()` +
+      filter for the count; `totalDocs` equals the filtered count, independent of `page`'s size.
+- [ ] `find` with `paginationOpts.totalDocs: true`, count `collect()` throws (simulate >32k rows
+      or a thrown error) → caught, `totalDocs: null`, `page` still returned.
+- [ ] `find`: `config.access === undefined` → no filtering, full page/array returned unchanged.
+- [ ] `search`: identical filter/count matrix as `find` — unfiltered `collect()`/`take()`/
+      `paginate()` branches, `totalDocs` short-circuit on `isDone` unavailable (search always
+      re-`collect()`s for the count, verify the re-query uses the same search params), thrown
+      count query → `totalDocs: null`.
+- [ ] Guard called with no `access` config present at all on a subject that isn't in
+      `access.roles`/`permissions` (e.g. a resource string with zero matrix entries) → resolves
+      through `defaultPermissionMode`, not a crash.
+
+### 3. Globals — `packages/core/src/api/globals/{get,find,upsert}.server.test.ts`
+
+- [ ] `get.server.test.ts` — `getGlobal`: denied → **returns `null`** (target Step 10 behavior,
+      replaces today's `throwOnDenied: true`); allowed → returns the flattened document.
+- [ ] `get.server.test.ts` — `getGlobal`: no row for `slug` → returns `null` before any permission
+      check (mirrors collection `get`'s not-found short-circuit).
+- [ ] `get.server.test.ts` — `getGlobal`: unauthenticated (`auth: { user: null }`) → `null` for a
+      global whose config requires a role.
+- [ ] `get.server.test.ts` — `getGlobal`: `config.access === undefined` → returns unconditionally.
+- [ ] `find.server.test.ts` — `findGlobals`: **mixed allow/deny across different globals** — e.g.
+      role can read `siteSettings` but not `secretsGlobal` — only the allowed global's row is
+      returned; the check runs per-row filter (`Array.filter`), so a denied row is silently
+      dropped, **never throws** even though other API surfaces use `throwOnDenied`.
+- [ ] `find.server.test.ts` — `findGlobals`: filter uses `resource: r.slug` (per-row, not a single
+      resource) — verify a role allowed on global A and denied on global B, both present in
+      `vex_globals`, returns exactly `[A]`.
+- [ ] `find.server.test.ts` — `findGlobals`: unauthenticated → empty array when every global
+      requires a role; `config.access === undefined` → all rows returned unfiltered.
+- [ ] `upsert.server.test.ts` — `upsertGlobal`: denied → throws `VexAccessError` (action
+      `"update"`) **before** Zod validation and before any DB write — assert the row is unchanged
+      / not created (see Regression guard, item 10).
+- [ ] `upsert.server.test.ts` — `upsertGlobal`: allowed → patches an existing row or inserts a new
+      one; unauthenticated → denies (throws) regardless of `globalConfig` existing.
+- [ ] `upsert.server.test.ts` — `upsertGlobal`: unregistered `slug` (no matching `globalConfig`)
+      throws `ConvexError` **before** the permission check runs — order matters, verify via a
+      denied-role + bad-slug combination that the `ConvexError` (not `VexAccessError`) surfaces.
+
+### 4. Media — `packages/core/src/media/api/{mutations,queries}.test.ts` **(new files)**
+
+- [ ] `mutations.test.ts` — `generateUploadUrl`: denied → throws `VexAccessError` (action
+      `"create"`, `resource: args.collection`); allowed → returns `{ url }` from the resolved
+      adapter.
+- [ ] `mutations.test.ts` — `generateUploadUrl`: unauthenticated → denies; `config.access ===
+undefined` → skips the check entirely, still resolves the adapter and errors with
+      `VexStorageConfigError` if the adapter name doesn't match (permission and storage-config
+      errors are independent failure modes — verify order: permission check runs first).
+- [ ] `mutations.test.ts` — `createMediaDocument`: denied → throws `VexAccessError` (action
+      `"create"`); allowed → adapter's `createMediaDocument` invoked with the full field set
+      (`storageId`, `filename`, `mimeType`, `size`, `alt`, `adapterFields`).
+- [ ] `mutations.test.ts` — `deleteMedia`: denied → throws `VexAccessError` (action `"delete"`,
+      `resource` = the slug resolved via `resolveCollectionSlug` from `args.mediaId`, not a
+      hardcoded media collection name); allowed → adapter's `deleteMedia` invoked, respects
+      `softDelete`.
+- [ ] `mutations.test.ts` — `deleteMedia`: `resolveCollectionSlug` returns `undefined` (id doesn't
+      match any registered collection) → `hasPermission` called with `resource: undefined` —
+      verify this denies (unknown/undefined resource never matches a configured role's matrix)
+      rather than throwing a lookup error or silently allowing.
+- [ ] `mutations.test.ts` — unauthenticated → denies on all three mutations.
+- [ ] `queries.test.ts` — `getUrl`: denied → throws `VexAccessError` (action `"read"`); allowed →
+      returns the adapter's resolved URL.
+- [ ] `queries.test.ts` — `getUrl`: `config.access === undefined` → skips the check; adapter not
+      found → returns `{ error: "Adapter \"<name>\" not found" }` (not a thrown error) — verify
+      this returns even when access is on and the check passed.
+- [ ] `queries.test.ts` — `getUrl`: unauthenticated → denies.
+
+### 5. `resolveGetAuth` — `packages/core/src/api/server.test.ts` **(new file)**
+
+- [ ] `config.access === undefined` → returns `undefined` **without ever invoking** `getAuth`
+      (assert via spy — zero auth overhead when RBAC is off, per the function's own contract).
+- [ ] `config.access` set, `getAuth` omitted → throws `VexAccessConfigError` with a message
+      naming `collectionsApi`/`vex.ts` misconfiguration.
+- [ ] `config.access` set, `getAuth` provided, authenticated → returns exactly what `getAuth(ctx)`
+      resolved (`{ user, organization? }`), forwarded unmodified.
+- [ ] `config.access` set, `getAuth` provided, unauthenticated (`getAuth` resolves `{ user: null }`
+      or `undefined`) → `resolveGetAuth` returns that value as-is; downstream guards are what
+      turn it into a deny (this function does not itself default `user` to `{}`).
+- [ ] `collectionsApi`/`globalsApi` end-to-end: each returned handler (`find`, `get`, `search`,
+      `create`, `update`, `remove`, `get`/`find`/`upsert` on globals) calls `resolveGetAuth`
+      exactly once per invocation and forwards the result as `auth` to the underlying server
+      function — verify via a `getAuth` spy call-count per handler invocation, not per document.
+
+### 6. `createGetAuth` — `packages/better-auth/src/convex/getAuth.test.ts` **(new file)**
+
+- [ ] `ctx.auth.getUserIdentity()` resolves `null` (no session) → returns `{ user: null }`.
+- [ ] Valid `identity.subject` but `ctx.db.get(userCollectionSlug, id)` resolves `null` (token for
+      a deleted user) → returns `{ user }` where `user` is `null` (not `{}` — matches the deleted
+      user still-null contract).
+- [ ] Valid identity, `resolveOrgs` omitted/`false` → returns `{ user }` only, **no** `organization`
+      key at all (not `organization: undefined` vs the key being absent — assert with
+      `"organization" in result` if the distinction matters to consumers, else `toEqual`).
+- [ ] Valid identity, `resolveOrgs: true`, `identity.sessionId` present, session doc has
+      `activeOrganizationId` → returns `{ user, organization }` with the resolved org document.
+- [ ] Valid identity, `resolveOrgs: true`, `identity.sessionId` **absent** → `session` lookup
+      skipped (`sessionId ? ... : null`), returns `{ user, organization: undefined }`.
+- [ ] Valid identity, `resolveOrgs: true`, session exists but has no `activeOrganizationId` →
+      `organization: undefined`.
+- [ ] Valid identity, `resolveOrgs: true`, `activeOrganizationId` points at a deleted org
+      (`ctx.db.get` returns `null`) → `organization: undefined` (the `?? undefined` fallback,
+      not a thrown error).
+- [ ] Documents are read fresh per call — two consecutive calls after a role change on the user
+      doc between them return different `user.roles` (guards against any caching assumption).
+
+### 7. `me` endpoint — `packages/core/src/api/server.test.ts`
+
+- [ ] Authenticated caller → `me` resolves the same `{ user, organization? }` shape
+      `resolveGetAuth`/`getAuth` produced for that request (no additional transformation/leakage
+      of fields beyond what `getAuth` returned).
+- [ ] Unauthenticated caller → `me` resolves `{ user: null }` (never throws — this is a read of
+      "who am I," not a gated resource; there is no `VexAccessError` path here).
+- [ ] `config.access === undefined` (RBAC off) → `me` still resolves the raw `getAuth` result if
+      `getAuth` is configured independently, or a defined "RBAC off" shape if not — pin down
+      whichever this factory settles on and assert it explicitly (this is the one endpoint whose
+      contract does NOT gate on `config.access`, since callers need `me` to bootstrap admin UI
+      permission state before any resource check runs).
+- [ ] `me` never accepts a client-supplied identity argument — its validator takes no `user`/
+      `organization` args (mirrors `collectionsApi`'s "identity never crosses the wire" guarantee
+      for every other endpoint); assert the generated function's arg validator is `{}`.
+
+### 8. Client permission context + `usePermission` (Steps 8–9) — `packages/react/src/hooks/usePermission.test.tsx` **(new)**
+
+- [ ] `usePermission({ resource, action })` (no `data`, capability mode) returns `true` for a
+      role with a data-dependent callback on that action; `false` for an explicit deny/static
+      `false`; `false` when `access` is `undefined` OR `user` is `null` (fail-closed default).
+- [ ] `usePermission({ resource, action: "update", data: doc })` (action mode) returns the
+      exact per-doc result — `true` for a matching owner-callback doc, `false` for a
+      non-matching one; changing the passed `data` flips the result (reactivity contract).
+- [ ] `adminPanel`/`access`: allowed vs. denied fixtures drive show/hide of the admin entry.
+- [ ] `VexAccessProvider` value is the raw config WITH callbacks (a bundler import), not the
+      sanitized `ClientVexConfig` — a callback-bearing role resolves correctly through the hook
+      (guards that `access` is NOT stripped on this path).
+- [ ] `VexAuthContext` default `{ user: null }` → every `usePermission` denies until seeded.
+- [ ] `AdminSidebar`/`AdminTopNav`: given contexts where collection X's `read` capability is
+      `false`, its nav link is omitted; `true` → rendered. Cover a collection, a global, and a
+      media collection; plus `adminPanel.access` false → admin entry hidden.
+- [ ] `CollectionEditView`/`GlobalEditView`: `usePermission` update-denied → Save `disabled` and
+      inputs `readOnly`; allowed → interactive. `CollectionListView`/`MediaCollectionListView`:
+      create-denied → Create button absent; delete-denied → row selection/bulk actions off.
+- [ ] No FOUC: with `access` (import) and `user` (prop) both present at first render, the
+      sidebar renders its filtered set on the initial pass — assert no all-links-then-filtered
+      transition (e.g. first committed render already excludes denied links).
+
+### 9. `defineConfig`-time access validation (Step 4/10 open item) — `packages/core/src/config/config.test.ts`
+
+- [ ] `config.access.userCollectionSlug` names a slug absent from the merged `collections` array
+      → `console.warn` called exactly once, message names the offending slug; `defineConfig`
+      still returns a config (warning, not a thrown error).
+- [ ] `userCollectionSlug` resolves to a real collection, but `userRolesField` is missing from
+      that collection's `fields` → warns once, naming both the field and the collection slug.
+- [ ] `userCollectionSlug` resolves, `userRolesField` resolves to a field whose `type` is neither
+      `"text"` nor `"array"` (e.g. `"number"` or `"boolean"`) → warns once, message states the
+      required types and the field's actual type.
+- [ ] Valid `{ userCollectionSlug, userRolesField: "text"-typed field }` → no warning.
+- [ ] Valid `{ userCollectionSlug, userRolesField: "array"-typed field }` → no warning.
+- [ ] `config.access` entirely absent → no validation runs, no warnings, `getAuth`/roles machinery
+      untouched.
+- [ ] Validation only runs when `process.env.NODE_ENV !== "production"` (mirrors `defineAccess`'s
+      own dev-only warnings) — set `NODE_ENV=production` and assert zero `console.warn` calls
+      even with an invalid `userCollectionSlug`/`userRolesField` pair.
+- [ ] Warnings never throw and never mutate the returned config's `access` object — a
+      misconfigured `userRolesField` degrades to "every check denies" at runtime (per
+      `hasPermission`'s empty-roles path), not a build failure.
+
+### 10. Regression guard — denied write never mutates the DB
+
+Cross-cutting: for every mutation path above, pair the "denied → throws" assertion with a direct
+DB-state check taken before and after the call.
+
+- [ ] `create` (denied): `ctx.db.query(collection).collect()` row count is unchanged after the
+      thrown call (no partial insert).
+- [ ] `update` (denied): re-`ctx.db.get(id)` after the thrown call returns the document
+      byte-for-byte equal to its pre-call state (no partial patch).
+- [ ] `remove` (denied, single id): `ctx.db.get(id)` after the thrown call still resolves the
+      document (not deleted, not soft-deleted).
+- [ ] `remove` (denied, bulk `ids` with one allowed + one denied): **neither** document is
+      removed — the allowed one is not committed just because it was processed before the
+      denied one threw (`Promise.all` short-circuits the whole batch on first rejection; no
+      compensating rollback is needed only because nothing committed).
+- [ ] `upsertGlobal` (denied): the `vex_globals` row for that slug (if it existed) is unchanged;
+      if it didn't exist, no row is created.
+- [ ] `createMediaDocument` / `generateUploadUrl` (denied): no media document row created, no
+      adapter method invoked (assert via spy that the adapter's `generateUploadUrl`/
+      `createMediaDocument` is never called when the permission check throws first).
+- [ ] `deleteMedia` (denied): underlying storage file/document untouched, adapter's `deleteMedia`
+      never invoked.
 
 ## Verification
 

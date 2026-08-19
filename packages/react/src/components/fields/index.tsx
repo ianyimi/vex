@@ -4,6 +4,7 @@ import {
   CollectionConfig,
   CellComponentProps,
   TDocument,
+  BaseFieldMeta,
 } from "@vexcms/core";
 import { ComponentPropsWithRef, ComponentType } from "react";
 import { TextFieldCell, TextFieldInput, textFieldToColumnDef } from "./text";
@@ -45,23 +46,41 @@ export * from "./blocks";
  */
 export const fieldInputComponents: Record<
   AdminFieldType,
-  ComponentType<InputComponentProps<AdminField>>
+  ComponentType<InputComponentProps<BaseFieldMeta, AdminField>>
 > = {
-  [ADMIN_FIELDS.text.type]: TextFieldInput as ComponentType<InputComponentProps<AdminField>>,
-  [ADMIN_FIELDS.number.type]: NumberFieldInput as ComponentType<InputComponentProps<AdminField>>,
+  [ADMIN_FIELDS.text.type]: TextFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
+  [ADMIN_FIELDS.number.type]: NumberFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
   [ADMIN_FIELDS.checkbox.type]: CheckboxFieldInput as ComponentType<
-    InputComponentProps<AdminField>
+    InputComponentProps<BaseFieldMeta, AdminField>
   >,
-  [ADMIN_FIELDS.date.type]: DateFieldInput as ComponentType<InputComponentProps<AdminField>>,
-  [ADMIN_FIELDS.select.type]: SelectFieldInput as ComponentType<InputComponentProps<AdminField>>,
-  [ADMIN_FIELDS.url.type]: UrlFieldInput as ComponentType<InputComponentProps<AdminField>>,
+  [ADMIN_FIELDS.date.type]: DateFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
+  [ADMIN_FIELDS.select.type]: SelectFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
+  [ADMIN_FIELDS.url.type]: UrlFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
   [ADMIN_FIELDS.relationship.type]: RelationshipFieldInput as ComponentType<
-    InputComponentProps<AdminField>
+    InputComponentProps<BaseFieldMeta, AdminField>
   >,
-  [ADMIN_FIELDS.array.type]: ArrayFieldInput as ComponentType<InputComponentProps<AdminField>>,
-  [ADMIN_FIELDS.group.type]: GroupFieldInput as ComponentType<InputComponentProps<AdminField>>,
-  [ADMIN_FIELDS.blocks.type]: BlocksFieldInput as ComponentType<InputComponentProps<AdminField>>,
-  [ADMIN_FIELDS.upload.type]: UploadFieldInput as ComponentType<InputComponentProps<AdminField>>,
+  [ADMIN_FIELDS.array.type]: ArrayFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
+  [ADMIN_FIELDS.group.type]: GroupFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
+  [ADMIN_FIELDS.blocks.type]: BlocksFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
+  [ADMIN_FIELDS.upload.type]: UploadFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
 };
 
 /**
@@ -102,12 +121,12 @@ export function fieldToInputComponent(field: AdminFieldType) {
  * ```
  */
 export function RenderFieldInputComponents(
-  props: { fields: CollectionConfig["fields"] } & ComponentPropsWithRef<"div">,
+  props: { collection: CollectionConfig } & ComponentPropsWithRef<"div">,
 ) {
-  const { fields, className, ...divProps } = props;
+  const { collection, className, ...divProps } = props;
   return (
     <div className={cn("relative", className)} {...divProps}>
-      {Object.entries(fields).map(([fieldKey, field]) => {
+      {Object.entries(collection.fields).map(([fieldKey, field]) => {
         const FieldInput = fieldInputComponents[field.type];
         if (!FieldInput) return null;
         return (
@@ -116,6 +135,7 @@ export function RenderFieldInputComponents(
             name={fieldKey}
             fieldDef={field}
             readOnly={field.admin.readOnly}
+            collection={collection}
           />
         );
       })}

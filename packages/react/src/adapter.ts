@@ -1,5 +1,6 @@
 import {
   ADMIN_FIELDS,
+  CollectionFieldMeta,
   defineFrameworkAdapter,
   type ComponentHKT,
   type FrameworkAdapterInput,
@@ -60,7 +61,10 @@ export interface ReactHKT extends ComponentHKT {
  *
  * @see {@link defineFrameworkAdapter} in `@vexcms/core`
  */
-export const reactAdapter: FrameworkAdapterInput<ReactHKT> = defineFrameworkAdapter<ReactHKT>({
+export const reactAdapter: FrameworkAdapterInput<ReactHKT> = defineFrameworkAdapter<
+  ReactHKT,
+  CollectionFieldMeta
+>({
   name: "react",
   version: "0.1.0-alpha.1",
   fields: {

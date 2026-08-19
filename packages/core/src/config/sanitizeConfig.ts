@@ -11,7 +11,7 @@ import type { VexConfig } from "./types";
  * @see {@link VexConfig} for the full server-side config
  * @see {@link sanitizeConfigForClient} for the sanitization function
  */
-export type ClientVexConfig = Sanitized<VexConfig>;
+export type ClientVexConfig = Sanitized<Omit<VexConfig, "access">>;
 
 /**
  * Recursively replaces all non-serializable values in a type with `null`.
@@ -132,8 +132,10 @@ export function stripNonSerializable(value: unknown): unknown {
  * @see {@link stripNonSerializable} for the recursive sanitizer
  */
 export function sanitizeConfigForClient(config: VexConfig): ClientVexConfig {
-  // Drop storageAdapters up front (they hold adapter class instances), then
-  // recursively strip any remaining non-serializable leaves from the rest.
-  const { storage, ...rest } = config;
+  // Drop storage adapters (class instances) and the access config up front.
+  // Access is deliberately server-only: its callbacks cannot serialize (a
+  // nulled matrix would misresolve in hasPermission), client checks are
+  // advisory at best, and permission policy should not ship to the browser.
+  const { storage, access, ...rest } = config;
   return stripNonSerializable(rest) as ClientVexConfig;
 }

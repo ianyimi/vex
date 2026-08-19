@@ -12,6 +12,7 @@ import { ArrayField, ArrayType } from "./array";
 import { GroupField } from "./group";
 import { BlocksField } from "./blocks";
 import { UploadField } from "./upload";
+import { GlobalConfig } from "../globals";
 
 export * from "./text/types";
 export * from "./number/types";
@@ -22,6 +23,14 @@ export * from "./blocks/types";
  * BaseFieldMeta - empty object
  */
 export type BaseFieldMeta = {};
+
+/**
+ * CollectionFieldMeta - default metadata
+ * added to all fields via defineCollection, defineMediaCollection, etc
+ */
+export type CollectionFieldMeta = BaseFieldMeta & {
+  collectionSlug: string;
+};
 
 /**
  * Discriminated union of all field types in VexCMS.
@@ -91,7 +100,10 @@ export type AdminField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> =
  * @see {@link CellComponentProps} for the data table equivalent
  * @see {@link FieldComponentMap} for how components are registered
  */
-export interface InputComponentProps<TField extends AdminField = AdminField> {
+export interface InputComponentProps<
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  TField extends AdminField<TFieldMeta> = AdminField<TFieldMeta>,
+> {
   /** The field key name from the collection config, e.g. `"title"`. Used as the form field name. */
   name: string;
   /** The resolved field definition — narrows to the specific field type via `TField`. */
@@ -99,6 +111,8 @@ export interface InputComponentProps<TField extends AdminField = AdminField> {
   /** Whether the field is non-editable — derived from `fieldDef.admin.readOnly` or permission checks. */
   readOnly: boolean;
   index?: number;
+  /** The config for the collection this field is attached to. */
+  collection: CollectionConfig | GlobalConfig;
 }
 
 /**

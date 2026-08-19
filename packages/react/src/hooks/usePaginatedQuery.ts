@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { find, FindClientPaginatedArgs } from "@vexcms/core/client";
+import { convexQuery } from "@convex-dev/react-query";
+import type { FindClientPaginatedArgs } from "@vexcms/core/client";
+import { vexConvexApi } from "@vexcms/core";
 import type { CollectionSlug, PaginationResult, VexDocument } from "@vexcms/core";
 
 /**
@@ -160,8 +162,12 @@ export function usePaginatedQuery<
   }
 
   // Fetch current page
+  // This hook is generic over `TCollectionSlug` — the collection is only known
+  // at runtime, so it queries the generic paginated endpoint rather than the
+  // per-slug `find()` wrapper, which narrows only for a literal slug. The
+  // caller asserts the document shape via `TDocument`; see the memo below.
   const { data, isPending } = useQuery({
-    ...find({
+    ...convexQuery(vexConvexApi.findPaginated, {
       ...query,
       paginationOpts: {
         ...query.paginationOpts,
@@ -174,9 +180,19 @@ export function usePaginatedQuery<
 
   // Extract pagination result
   const result = useMemo<PaginationResult<TDocument>>(() => {
-    if (!data) return { page: [], continueCursor: null, isDone: true };
-    if (Array.isArray(data)) return { page: data, continueCursor: null, isDone: true };
-    return data;
+    // Empty state for "no data yet" / array response. `continueCursor: ""` is a
+    // falsy placeholder, never a real cursor: it is only read for truthiness in
+    // `loadMore`, so `setCursor` never receives it and Convex only ever sees
+    // `null` (first page) or a genuine cursor. `isDone: true` is the actual
+    // "no further pages" signal.
+    const empty = {
+      page: [] as TDocument[],
+      continueCursor: "",
+      isDone: true,
+    };
+    if (!data) return empty;
+    if (Array.isArray(data)) return { ...empty, page: data as TDocument[] };
+    return data as PaginationResult<TDocument>;
   }, [data]);
 
   const { totalDocs } = useTotalDocs({

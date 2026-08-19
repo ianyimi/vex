@@ -177,7 +177,7 @@ export interface Page extends VexDocument {
    */
   content?: string
   blocks?: PageBlock[]
-  testImage?: Id<MediaCollectionSlug>[]
+  testImage?: Id<"images">[]
   /**
    * Custom <title> tag for search engines. Falls back to the title field if empty.
    */
@@ -191,7 +191,7 @@ export interface Page extends VexDocument {
    * Image URL for Open Graph social sharing previews. Recommended 1200×630px.
    */
   ogImage?: string
-  themes?: Id<CollectionSlug>[]
+  themes?: Id<"themes">[]
   /**
    * some test description.
    */
@@ -440,7 +440,7 @@ export interface JwksDocument extends VexDocument {
   expiresAt?: number
 }
 
-export interface ImagesDocument extends VexDocument {
+export interface Image extends VexDocument {
   _id: Id<"images">
   filename: string
   alt: string
@@ -502,7 +502,7 @@ export type DocumentBySlug = {
   invitation: InvitationDocument
   apikey: ApikeyDocument
   jwks: JwksDocument
-  images: ImagesDocument
+  images: Image
 }
 
 export type GlobalDocumentBySlug = {
@@ -549,7 +549,7 @@ declare module "@vexcms/core" {
       invitation: InvitationDocument
       apikey: ApikeyDocument
       jwks: JwksDocument
-      images: ImagesDocument
+      images: Image
     }
     GlobalDocumentBySlug: {
       nav: NavGlobal

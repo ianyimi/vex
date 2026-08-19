@@ -1,7 +1,9 @@
 "use client";
 
 import { uploadFile } from "@vexcms/file-storage-convex";
-import { StorageAdapterContextProvider } from "@vexcms/react";
+import { StorageAdapterContextProvider, VexAccessProvider } from "@vexcms/react";
+
+import { access } from "~/auth/access";
 
 /**
  * Provides client-side upload functions for VexCMS storage adapters.
@@ -14,7 +16,7 @@ import { StorageAdapterContextProvider } from "@vexcms/react";
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <StorageAdapterContextProvider adapterClients={{ convex: uploadFile }}>
-      {children}
+      <VexAccessProvider access={access}>{children}</VexAccessProvider>
     </StorageAdapterContextProvider>
   );
 }

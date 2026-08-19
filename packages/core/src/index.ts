@@ -31,6 +31,8 @@ export * from "./api/types";
 
 export * from "./config";
 
+export * from "./access";
+
 // ============================================================================
 // SCHEMA GENERATION
 // ============================================================================
@@ -64,8 +66,7 @@ export {
   StorageAdapterPresignedUrl,
   VexStorageConfigError,
   validateAndMergeStorageConfig,
-  mediaMutationApi,
-  mediaQueryApi,
+  mediaApi,
   formatBytes,
   formatMimeType,
   createMediaDocumentArgs,

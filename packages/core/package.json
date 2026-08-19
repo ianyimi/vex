@@ -1,7 +1,12 @@
 {
   "name": "@vexcms/core",
   "version": "0.1.0-alpha.1",
+  "files": [
+    "dist"
+  ],
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "source": "./src/index.ts",
@@ -24,11 +29,9 @@
       "import": "./dist/api/server.js"
     }
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "node --watch-path src watch.mjs",
@@ -41,14 +44,6 @@
   "dependencies": {
     "nanoid": "catalog:",
     "zod": "catalog:"
-  },
-  "peerDependencies": {
-    "@convex-dev/react-query": "catalog:",
-    "@tanstack/react-query": "catalog:",
-    "@tanstack/react-table": "catalog:",
-    "convex": "catalog:",
-    "lucide-react": "catalog:",
-    "react": ">=18.0.0"
   },
   "devDependencies": {
     "@convex-dev/react-query": "catalog:",
@@ -68,7 +63,12 @@
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
-  "publishConfig": {
-    "access": "public"
+  "peerDependencies": {
+    "@convex-dev/react-query": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-table": "catalog:",
+    "convex": "catalog:",
+    "lucide-react": "catalog:",
+    "react": ">=18.0.0"
   }
 }

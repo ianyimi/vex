@@ -5,6 +5,7 @@ import type {
   GenericMutationServerParams,
   GenericQueryClientParams,
   GenericQueryServerParams,
+  VexApiAuth,
 } from "../../api/types";
 import type { VexConfig } from "../../config";
 
@@ -22,6 +23,13 @@ import type { VexConfig } from "../../config";
 export interface GenericMediaMutationServerParams<
   DataModel extends GenericDataModel = GenericDataModel,
 > extends GenericMutationServerParams<DataModel> {
+  /** The auth config of the current user making the query.
+   * @example
+   * ```ts
+   * { user: {...}, organization: {...} }
+   * ```
+   */
+  auth?: VexApiAuth;
   /** The resolved `VexConfig` — required for adapter lookup. */
   config: VexConfig;
 }
@@ -54,6 +62,13 @@ export interface GenericMediaMutationClientParams extends GenericMutationClientP
 export interface GenericMediaQueryServerParams<
   DataModel extends GenericDataModel = GenericDataModel,
 > extends GenericQueryServerParams<DataModel> {
+  /** The auth config of the current user making the query.
+   * @example
+   * ```ts
+   * { user: {...}, organization: {...} }
+   * ```
+   */
+  auth?: VexApiAuth;
   /** The resolved `VexConfig` — required for adapter lookup. */
   config: VexConfig;
 }
@@ -79,6 +94,8 @@ export interface GenerateUploadUrlServerArgs<
 > extends GenericMediaMutationServerParams<TDataModel> {
   /** The adapter name — matches `VexStorageAdapter.name`. */
   adapter: string;
+  /** The media collection slug where the document will be created. */
+  collection: string;
 }
 
 /** Server-side args for `createMediaDocument`. */
@@ -88,7 +105,7 @@ export interface CreateMediaDocumentServerArgs<
   /** The adapter name — matches `VexStorageAdapter.name`. */
   adapter: string;
   /** The media collection slug where the document is stored. */
-  collectionSlug: string;
+  collection: string;
   /** Adapter-specific storage ID (e.g., Cloudinary public_id, S3 key). */
   storageId: string;
   /** Original filename of the uploaded file. */
@@ -125,32 +142,6 @@ export interface GetUrlServerArgs<
   adapter: string;
   /** The media document ID to get the URL for. */
   mediaId: string;
-}
-
-/** Server-side args for `listMedia`. */
-export interface ListMediaServerArgs<
-  TDataModel extends GenericDataModel = GenericDataModel,
-> extends GenericMediaQueryServerParams<TDataModel> {
-  /** The adapter name — matches `VexStorageAdapter.name`. */
-  adapter: string;
-  /** The media collection slug to list from. */
-  collectionSlug: string;
-  /** Maximum number of documents to return. Defaults to 100. */
-  limit?: number;
-  /** Offset for pagination. Defaults to 0. */
-  offset?: number;
-}
-
-/** Server-side args for `searchMedia`. */
-export interface SearchMediaServerArgs<
-  TDataModel extends GenericDataModel = GenericDataModel,
-> extends GenericMediaQueryServerParams<TDataModel> {
-  /** The adapter name — matches `VexStorageAdapter.name`. */
-  adapter: string;
-  /** The media collection slug to search in. */
-  collectionSlug: string;
-  /** Search query string — matches against `filename` and `alt` fields. */
-  query: string;
 }
 
 // ── Per-function client args ───────────────────────────────────────────────

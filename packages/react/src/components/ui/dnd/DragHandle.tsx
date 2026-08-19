@@ -11,12 +11,14 @@ export function DragHandle({
   dragHandleProps: dragHandlePropsProp,
   children,
   className,
+  disabled = false,
   ...divProps
 }: {
   dragHandleProps?: DraggableProvidedDragHandleProps | null;
+  disabled?: boolean;
 } & ComponentPropsWithoutRef<"div">) {
   const dnd = useDndContext();
-  if (!dnd.mounted) {
+  if (!dnd.mounted || disabled) {
     if (children) {
       return (
         <div

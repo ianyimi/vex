@@ -1,10 +1,10 @@
-import { apiKey } from "@better-auth/api-key"
-import { convex } from "@convex-dev/better-auth/plugins"
-import authConfig from "@convex/auth.config"
-import { nextCookies } from "better-auth/next-js"
-import { admin, anonymous, organization } from "better-auth/plugins"
+import { apiKey } from "@better-auth/api-key";
+import { convex } from "@convex-dev/better-auth/plugins";
+import authConfig from "@convex/auth.config";
+import { nextCookies } from "better-auth/next-js";
+import { admin, anonymous, organization } from "better-auth/plugins";
 
-import { USER_ROLES } from "~/db/constants"
+import { USER_ROLES } from "~/db/constants";
 
 /**
  * Returns a fresh array of Better Auth plugins for each VexCMS auth session.
@@ -50,6 +50,7 @@ export const createPlugins = () => [
     teams: { enabled: true },
   }),
   apiKey(),
-  nextCookies(),
   convex({ authConfig }),
-]
+  // this plugin must be last. per convex dev cli warnings
+  nextCookies(),
+];

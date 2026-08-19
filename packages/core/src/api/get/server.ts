@@ -1,16 +1,11 @@
 import type { GenericDataModel } from "convex/server";
 import type { GenericId } from "convex/values";
 
-import type { CollectionSlug, DocumentBySlug } from "../../types/generated";
+import type { CollectionSlug } from "../../types/generated";
 import { buildDepthPopulate } from "../depth";
 import { populateDocs } from "../populate";
-import type {
-  DepthPopulated,
-  GenericQueryServerParams,
-  Populated,
-  PopulateShape,
-  Prettify,
-} from "../types";
+import type { GenericQueryServerParams, GetReturn, PopulateShape } from "../types";
+import { CRUD_ACTIONS, hasPermission } from "../../access";
 
 /**
  * Server-side args for `get`.
@@ -31,28 +26,9 @@ export interface GetServerArgs<
 > extends GenericQueryServerParams<DataModel, TCollectionSlug, TPopulate, D> {
   /** The document ID to fetch. */
   id: GenericId<TCollectionSlug>;
+  /** The collection slug to patch this document. */
+  collection: TCollectionSlug;
 }
-
-/**
- * Resolves the return type of `get`:
- *
- * - No populate + `D = 0` → `DocumentBySlug[TCollectionSlug] | null`.
- * - No populate + `D > 0` → `DepthPopulated<TCollectionSlug, D> | null`.
- * - With populate → `Prettify<Populated<TCollectionSlug, TPopulate>> | null`.
- */
-type GetReturnItem<
-  TCollectionSlug extends CollectionSlug,
-  TPopulate extends PopulateShape<TCollectionSlug>,
-  D extends number,
-> = [TPopulate] extends [Record<string, never>]
-  ? [D] extends [0]
-    ? TCollectionSlug extends keyof DocumentBySlug
-      ? DocumentBySlug[TCollectionSlug] | null
-      : never
-    : DepthPopulated<TCollectionSlug, D> | null
-  : TCollectionSlug extends keyof DocumentBySlug
-    ? Prettify<Populated<TCollectionSlug, TPopulate>> | null
-    : never;
 
 /**
  * Fetches a single document by its `Id<TCollectionSlug>`. Server-side only.
@@ -87,8 +63,19 @@ export async function get<
   const D extends number = 0,
 >(
   args: GetServerArgs<DataModel, TCollectionSlug, TPopulate, D>,
-): Promise<GetReturnItem<TCollectionSlug, TPopulate, D>> {
+): Promise<GetReturn<TCollectionSlug, TPopulate, D>> {
   const doc = await args.ctx.db.get(args.id);
+  if (doc && args.config?.access !== undefined) {
+    hasPermission({
+      throwOnDenied: true,
+      access: args.config?.access,
+      user: args.auth?.user ?? {},
+      organization: args.auth?.organization,
+      resource: args.collection,
+      action: CRUD_ACTIONS.read,
+      data: doc,
+    });
+  }
 
   // Resolve slug for buildDepthPopulate from the Id (D12).
   //
@@ -104,21 +91,22 @@ export async function get<
   // In production Convex, IDs are opaque base32 strings without a semicolon,
   // so the split returns a single element and `tableSlug` falls back to
   // `undefined` — depth silently degrades to no-populate, which is safe.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tableSlug: string | undefined = (args.id as any).__tableName ?? (() => {
-    const parts = (args.id as string).split(";");
-    return parts.length === 2 ? parts[1] : undefined;
-  })();
 
   const effectivePopulate =
     args.populate ??
-    (args.depth !== undefined && args.depth > 0 && args.config && tableSlug
-      ? buildDepthPopulate(args.config, tableSlug, args.depth)
+    (args.depth !== undefined && args.depth > 0 && args.config && args.collection
+      ? buildDepthPopulate<TPopulate>(args.config, args.collection, args.depth)
       : undefined);
 
-  if (!effectivePopulate || !doc)
-    return doc as unknown as GetReturnItem<TCollectionSlug, TPopulate, D>;
+  if (!effectivePopulate || !doc) {
+    return doc as unknown as GetReturn<TCollectionSlug, TPopulate, D>;
+  }
 
-  const [populated] = await populateDocs(args.ctx, [doc], effectivePopulate);
-  return (populated ?? null) as unknown as GetReturnItem<TCollectionSlug, TPopulate, D>;
+  const [populated] = await populateDocs<DataModel, TCollectionSlug, TPopulate>(
+    args.ctx,
+    [doc],
+    effectivePopulate,
+  );
+
+  return (populated ?? null) as unknown as GetReturn<TCollectionSlug, TPopulate, D>;
 }

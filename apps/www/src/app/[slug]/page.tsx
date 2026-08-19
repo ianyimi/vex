@@ -1,12 +1,12 @@
-import type { Metadata } from "next"
+import type { Metadata } from "next";
 
-import { api } from "@convex/_generated/api"
-import { fetchQuery } from "convex/nextjs"
-import { notFound } from "next/navigation"
+import { api } from "@convex/_generated/api";
+import { fetchQuery } from "convex/nextjs";
+import { notFound } from "next/navigation";
 
-import PageContent from "../PageContent"
+import PageContent from "../PageContent";
 
-export const dynamic = "force-dynamic"
+export const dynamic = "force-dynamic";
 
 /**
  * Generates Open Graph and `<title>` metadata for a public page.
@@ -20,21 +20,21 @@ export const dynamic = "force-dynamic"
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params
-  const pages = await fetchQuery(api.pages.getBySlug, { slug })
+  const { slug } = await params;
+  const pages = await fetchQuery(api.pages.getBySlug, { slug });
 
-  const page = pages[0]
+  const page = pages[0];
   if (!pages || !page) {
-    return { title: "Vex CMS" }
+    return { title: "Vex CMS" };
   }
 
   return {
     title: (page.metaTitle ?? page.title) + " | Vex CMS",
     description: page.metaDescription ?? undefined,
     openGraph: page.ogImage ? { images: [{ url: page.ogImage }] } : undefined,
-  }
+  };
 }
 
 /**
@@ -47,13 +47,13 @@ export async function generateMetadata({
  * @throws {notFound()} When no page with the given slug exists.
  */
 export default async function SlugPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params
-  const pages = await fetchQuery(api.pages.getBySlug, { slug })
+  const { slug } = await params;
+  const pages = await fetchQuery(api.pages.getBySlug, { slug });
 
-  const page = pages[0]
+  const page = pages[0];
   if (!page) {
-    notFound()
+    notFound();
   }
 
-  return <PageContent page={page} />
+  return <PageContent page={page} />;
 }

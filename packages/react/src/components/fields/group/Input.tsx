@@ -21,20 +21,20 @@ import { createFieldInput, FormGroup } from "../../form";
  * </AppForm>
  * ```
  */
-export const GroupFieldInput = createFieldInput<
-  Record<string, unknown>,
-  GroupField
->(({ name, fieldDef, field, index, submissionAttempts }) => {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <FormGroup
-        name={name}
-        field={field}
-        fieldDef={fieldDef}
-        index={index}
-        readOnly={fieldDef.admin.readOnly}
-        submissionAttempts={submissionAttempts}
-      />
-    </div>
-  );
-});
+export const GroupFieldInput = createFieldInput<Record<string, unknown>, {}, GroupField>(
+  ({ name, collection, fieldDef, field, index, submissionAttempts }) => {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <FormGroup
+          name={name}
+          collection={collection}
+          field={field}
+          fieldDef={fieldDef}
+          index={index}
+          readOnly={fieldDef.admin.readOnly}
+          submissionAttempts={submissionAttempts}
+        />
+      </div>
+    );
+  },
+);

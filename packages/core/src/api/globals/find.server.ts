@@ -1,15 +1,7 @@
-import type { GenericDataModel, GenericQueryCtx } from "convex/server";
+import type { GenericDataModel } from "convex/server";
 import type { VexDocumentGlobal } from "../../types/generated";
-
-/**
- * Server-side args for `findGlobals`.
- *
- * @typeParam DataModel - Convex data model.
- */
-export interface FindGlobalsServerArgs<DataModel extends GenericDataModel> {
-  /** Convex query context. */
-  ctx: GenericQueryCtx<DataModel>;
-}
+import { CRUD_ACTIONS, hasPermission } from "../../access";
+import type { GenericGlobalsQueryServerArgs } from "./types";
 
 /**
  * Returns all rows from `vex_globals` as flat documents, ordered by
@@ -36,10 +28,22 @@ export interface FindGlobalsServerArgs<DataModel extends GenericDataModel> {
  * ```
  */
 export async function findGlobals<DataModel extends GenericDataModel>(
-  args: FindGlobalsServerArgs<DataModel>,
+  args: GenericGlobalsQueryServerArgs<DataModel>,
 ): Promise<VexDocumentGlobal[]> {
   const { ctx } = args;
-  const rows = await ctx.db.query("vex_globals").collect();
+  let rows = await ctx.db.query("vex_globals").collect();
+  if (args.config.access !== undefined) {
+    rows = rows.filter((r) =>
+      hasPermission({
+        access: args.config.access,
+        user: args.auth?.user ?? {},
+        organization: args.auth?.organization,
+        resource: r.slug as string,
+        action: CRUD_ACTIONS.read,
+        data: r.data as Record<string, unknown>,
+      }),
+    );
+  }
   return rows.map((row: Record<string, unknown>) => {
     const { slug, data, _id, _creationTime } = row;
     return { _id, _creationTime, _slug: slug, ...(data ?? {}) };

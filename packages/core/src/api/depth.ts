@@ -1,5 +1,6 @@
 import type { AdminField } from "../fields";
 import type { VexConfig } from "../config";
+import { PopulateShape } from "./types";
 
 /**
  * Builds a `PopulateShape`-compatible object covering every relationship field
@@ -36,44 +37,38 @@ import type { VexConfig } from "../config";
  * //   (category has no relationships → collapses to `true`)
  * ```
  */
-export function buildDepthPopulate(
+export function buildDepthPopulate<TPopulate extends PopulateShape = PopulateShape>(
   config: VexConfig,
   slug: string,
   depth: number,
   visited: ReadonlySet<string> = new Set(),
-): Record<string, unknown> {
-  if (depth <= 0) return {};
+): TPopulate {
+  if (depth <= 0) return {} as TPopulate;
 
   const source =
-    config.collections.find((c) => c.slug === slug) ??
-    config.globals?.find((g) => g.slug === slug);
-  if (!source) return {};
+    config.collections.find((c) => c.slug === slug) ?? config.globals?.find((g) => g.slug === slug);
+  if (!source) return {} as TPopulate;
 
   const nextVisited = new Set(visited).add(slug);
-  const result: Record<string, unknown> = {};
+  const result: TPopulate = {} as TPopulate;
 
-  for (const [key, field] of Object.entries(
-    source.fields as Record<string, AdminField>,
-  )) {
+  for (const [key, field] of Object.entries(source.fields as Record<string, AdminField>)) {
     if (field.type !== "relationship") continue;
 
-    const targetSlug = (field as Extract<AdminField, { type: "relationship" }>)
-      .collection.slug;
+    const targetSlug = (field as Extract<AdminField, { type: "relationship" }>).collection.slug;
 
     // Leaf level OR circular edge → `true` (populate this field, no further recursion)
     if (depth === 1 || nextVisited.has(targetSlug)) {
-      result[key] = true;
+      result[key as keyof TPopulate] = true as TPopulate[keyof TPopulate];
       continue;
     }
 
-    const nested = buildDepthPopulate(
-      config,
-      targetSlug,
-      depth - 1,
-      nextVisited,
-    );
+    const nested = buildDepthPopulate(config, targetSlug, depth - 1, nextVisited);
     // Target has no relationship fields → collapse to `true`
-    result[key] = Object.keys(nested).length > 0 ? { populate: nested } : true;
+    result[key as keyof TPopulate] =
+      Object.keys(nested).length > 0
+        ? ({ populate: nested } as TPopulate[keyof TPopulate])
+        : (true as TPopulate[keyof TPopulate]);
   }
 
   return result;

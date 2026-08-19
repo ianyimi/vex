@@ -160,3 +160,4 @@ export function createBetterAuthAdapter<DataModel extends GenericDataModel>(
 
 export { convexAdapter } from "./adapter";
 export * from "./types";
+export * from "./getAuth";

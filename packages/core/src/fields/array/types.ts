@@ -1,6 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
-import { AdminField } from "../types";
+import { AdminField, BaseFieldMeta } from "../types";
 
 /**
  * Union of all types allowed as array item values.
@@ -102,7 +102,7 @@ export interface ArrayFieldInput<
  */
 export interface ArrayField<
   TArrayType extends ArrayType = string,
-  TFieldMeta extends {} = {},
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 > extends BaseField<TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.array.type;
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */

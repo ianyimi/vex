@@ -1,14 +1,14 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useConvexMutation } from "@convex-dev/react-query";
-import { vexConvexApi } from "@vexcms/core";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { CRUD_ACTIONS, vexConvexApi } from "@vexcms/core";
 import type { CollectionEditViewProps, CollectionSlug } from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 import { useCollectionForm } from "../../hooks/useCollectionForm";
-import { get } from "@vexcms/core/client";
+import { usePermission } from "../../hooks";
 
 /**
  * Collection document edit form.
@@ -46,8 +46,15 @@ export function CollectionEditView<
   TCollectionMeta extends {} = {},
   TSlug extends CollectionSlug = CollectionSlug,
 >(props: CollectionEditViewProps<TFieldMeta, TCollectionMeta, TSlug>) {
+  // This view is generic over `TSlug` — the collection is only known at
+  // runtime, so it queries the generic endpoint (`VexDocument`) directly. The
+  // per-slug `get()` wrapper from `@vexcms/core/client` narrows only when the
+  // slug is a literal at the call site, which is not the case here.
   const { data: currentDocument } = useQuery({
-    ...get({ id: props.documentId as any }),
+    ...convexQuery(vexConvexApi.get, {
+      id: props.documentId as string,
+      collection: props.collection.slug,
+    }),
     initialData: props.initialData,
   });
 
@@ -72,12 +79,16 @@ export function CollectionEditView<
     },
   });
 
+  const canEdit = usePermission({ resource: props.collection.slug, action: CRUD_ACTIONS.update });
+
   return (
     <AppForm form={form} className="relative">
-      <div className="h-16 flex sticky top-12 z-10 items-center justify-between bg-background">
+      <div className="bg-background sticky top-12 z-10 flex h-16 items-center justify-between">
         <h1 className="text-2xl font-bold">
           Edit {props.collection.labels.singular} -{" "}
-          <span className="text-primary">{currentDocument[props.collection.admin.useAsTitle]}</span>
+          <span className="text-primary">
+            {String(currentDocument[props.collection.admin.useAsTitle] ?? "")}
+          </span>
         </h1>
         <form.Subscribe
           selector={(state) => state.isDefaultValue}
@@ -87,7 +98,7 @@ export function CollectionEditView<
                 type="submit"
                 className="transition-all duration-300"
                 isPending={isPending}
-                disabled={isDefaultValue}
+                disabled={!canEdit || isDefaultValue}
               >
                 Save
               </Button>
@@ -95,7 +106,7 @@ export function CollectionEditView<
                 type="button"
                 variant="outline"
                 className="transition-all duration-300"
-                disabled={isDefaultValue}
+                disabled={!canEdit || isDefaultValue}
                 onClick={() => {
                   form.reset();
                 }}
@@ -119,6 +130,7 @@ export function CollectionEditView<
               name={fieldKey}
               fieldDef={field}
               readOnly={field.admin.readOnly}
+              collection={props.collection}
             />
           );
         })}

@@ -3,144 +3,62 @@ import {
   type QueryBuilder,
   type FunctionVisibility,
   type GenericDataModel,
-  // type GenericMutationCtx,
-  RegisteredMutation,
-  RegisteredQuery,
+  GenericMutationCtx,
+  GenericQueryCtx,
 } from "convex/server";
 import { v } from "convex/values";
 import type { VexConfig } from "../../config";
-import {
-  generateUploadUrl,
-  createMediaDocument,
-  deleteMedia,
-  getUrl,
-  listMedia,
-  searchMedia,
-} from "./index";
-import type {
-  VexMediaGenerateUploadUrlArgs,
-  VexMediaCreateMediaDocumentArgs,
-  VexMediaDeleteMediaArgs,
-  VexMediaGetUrlArgs,
-  VexMediaListMediaArgs,
-  VexMediaSearchMediaArgs,
-} from "../../api/convex";
+import { generateUploadUrl, createMediaDocument, deleteMedia, getUrl } from "./index";
+import { VexApiAuth } from "../../api/types";
+import { resolveGetAuth } from "../../api/server";
 
 /**
+ * Registers `getUrl` as a convex query endpoint.
  * Registers `generateUploadUrl`, `createMediaDocument`, and `deleteMedia` as Convex mutation endpoints.
  *
- * Call alongside `mediaQueryApi` in the user's `convex/vex/media.ts`. The factory wraps
+ * Call in the user's `convex/vex/media.ts`. The factory wraps
  * the server functions in `mutation()` with `v.args()` schemas so Convex
  * exposes them at `api.vex.media.generateUploadUrl`, `api.vex.media.createMediaDocument`, etc.
  *
  * `vexConvexApi.media.generateUploadUrl`, `vexConvexApi.media.createMediaDocument`, etc. in
  * `@vexcms/core/src/convex/index.ts` point at these paths.
  *
- * @param config - The user's `VexConfig`.
- * @param mutation - The user's `mutation` builder from `convex/_generated/server`.
+ * @param props.config - The user's `VexConfig`.
+ * @param props.query - Convex `query` builder. Defaults to `internalQueryGeneric`.
+ * @param props.mutation - Convex `mutation` builder. Defaults to `internalMutationGeneric`.
+ * @param props.getAuth - Server-side resolver for the current caller: receives
+ *   the handler's ctx and returns `{ user, organization? }` (or `undefined`
+ *   when unauthenticated). Called once per request, and only when
+ *   `config.access` is configured. Never exposed to clients.
  *   Defaults to `internalMutationGeneric`.
- * @returns Registered `generateUploadUrl` / `createMediaDocument` / `deleteMedia` Convex mutations.
+ * @returns Registered `getUrl` Convex query, `generateUploadUrl` / `createMediaDocument` / `deleteMedia` Convex mutations.
  * @example
  * ```ts
  * // apps/www/convex/vex/media.ts
- * import { mediaMutationApi, mediaQueryApi } from "@vexcms/core/convex";
+ * import { createGetAuth } from "@vexcms/better-auth"
+ * import { mediaApi } from "@vexcms/core/convex";
  * import { mutation, query } from "../_generated/server";
  * import config from "../../src/vex.config";
  *
- * export const { generateUploadUrl, createMediaDocument, deleteMedia } = mediaMutationApi(config, mutation);
- * export const { getUrl, listMedia, searchMedia } = mediaQueryApi(config, query);
+ * export const { getUrl, generateUploadUrl, createMediaDocument, deleteMedia } = mediaApi({ config, query, mutation, getAuth: createGetAuth({...}) });
  * ```
  */
-export function mediaMutationApi<
+export function mediaApi<
   TDataModel extends GenericDataModel = GenericDataModel,
   Visibility extends FunctionVisibility = "public",
->(config: VexConfig, mutation: MutationBuilder<TDataModel, Visibility>) {
-  return {
-    generateUploadUrl: mutation({
-      args: {
-        adapter: v.string(),
-      },
-      returns: v.object({ url: v.string() }),
-      handler: (ctx, args) =>
-        generateUploadUrl({
-          ctx: ctx,
-          config,
-          adapter: args.adapter,
-        }),
-    }) as RegisteredMutation<Visibility, VexMediaGenerateUploadUrlArgs, { url: string }>,
-
-    createMediaDocument: mutation({
-      args: {
-        adapter: v.string(),
-        collectionSlug: v.string(),
-        storageId: v.string(),
-        filename: v.string(),
-        mimeType: v.string(),
-        size: v.number(),
-        alt: v.optional(v.string()),
-        adapterFields: v.optional(v.any()),
-      },
-      returns: v.string(),
-      handler: (ctx, args) =>
-        createMediaDocument({
-          ctx,
-          config,
-          adapter: args.adapter,
-          collectionSlug: args.collectionSlug,
-          storageId: args.storageId,
-          filename: args.filename,
-          mimeType: args.mimeType,
-          size: args.size,
-          alt: args.alt,
-          adapterFields: args.adapterFields,
-        }),
-    }) as RegisteredMutation<Visibility, VexMediaCreateMediaDocumentArgs, string>,
-
-    deleteMedia: mutation({
-      args: {
-        adapter: v.string(),
-        mediaId: v.string(),
-        softDelete: v.optional(v.boolean()),
-      },
-      returns: v.boolean(),
-      handler: (ctx, args) =>
-        deleteMedia({
-          ctx,
-          config,
-          adapter: args.adapter,
-          mediaId: args.mediaId,
-          softDelete: args.softDelete,
-        }),
-    }) as RegisteredMutation<Visibility, VexMediaDeleteMediaArgs, boolean>,
-  };
-}
-
-/**
- * Registers `getUrl`, `listMedia`, and `searchMedia` as Convex query endpoints.
- *
- * Call alongside `mediaMutationApi` in the user's `convex/vex/media.ts`. The factory wraps
- * the server functions in `query()` with `v.args()` schemas so Convex
- * exposes them at `api.vex.media.getUrl`, `api.vex.media.listMedia`, etc.
- *
- * @param config - The user's `VexConfig`.
- * @param query - The user's `query` builder from `convex/_generated/server`.
- *   Defaults to `internalQueryGeneric`.
- * @returns Registered `getUrl` / `listMedia` / `searchMedia` Convex queries.
- * @example
- * ```ts
- * // apps/www/convex/vex/media.ts
- * import { mediaMutationApi, mediaQueryApi } from "@vexcms/core/convex";
- * import { mutation, query } from "../_generated/server";
- * import config from "../../src/vex.config";
- *
- * export const { generateUploadUrl, createMediaDocument, deleteMedia } = mediaMutationApi(config, mutation);
- * export const { getUrl, listMedia, searchMedia } = mediaQueryApi(config, query);
- * ```
- */
-export function mediaQueryApi<
-  TDataModel extends GenericDataModel = GenericDataModel,
-  Visibility extends FunctionVisibility = "public",
->(config: VexConfig, query: QueryBuilder<TDataModel, Visibility>) {
+>({
+  config,
+  query,
+  mutation,
+  getAuth,
+}: {
+  config: VexConfig;
+  query: QueryBuilder<TDataModel, Visibility>;
+  mutation: MutationBuilder<TDataModel, Visibility>;
+  getAuth?: (
+    ctx: GenericQueryCtx<TDataModel> | GenericMutationCtx<TDataModel>,
+  ) => Promise<VexApiAuth | undefined>;
+}) {
   return {
     getUrl: query({
       args: {
@@ -155,53 +73,85 @@ export function mediaQueryApi<
           error: v.string(),
         }),
       ),
-      handler: (ctx, args) =>
-        getUrl({
+      handler: async (ctx, args) => {
+        const auth = await resolveGetAuth({ ctx, config, getAuth });
+        return await getUrl({
+          auth,
           ctx,
           config,
           adapter: args.adapter,
           mediaId: args.mediaId,
-        }),
-    }) as RegisteredQuery<
-      Visibility,
-      VexMediaGetUrlArgs,
-      { url: string; error: never } | { url: never; error: string }
-    >,
+        });
+      },
+    }),
 
-    listMedia: query({
+    // MUTATIONS
+    generateUploadUrl: mutation({
+      args: {
+        adapter: v.string(),
+        collection: v.string(),
+      },
+      returns: v.object({ url: v.string() }),
+      handler: async (ctx, args) => {
+        const auth = await resolveGetAuth({ ctx, config, getAuth });
+        return await generateUploadUrl({
+          auth,
+          ctx: ctx,
+          collection: args.collection,
+          config,
+          adapter: args.adapter,
+        });
+      },
+    }),
+
+    createMediaDocument: mutation({
       args: {
         adapter: v.string(),
         collectionSlug: v.string(),
-        limit: v.optional(v.number()),
-        offset: v.optional(v.number()),
+        storageId: v.string(),
+        filename: v.string(),
+        mimeType: v.string(),
+        size: v.number(),
+        alt: v.optional(v.string()),
+        adapterFields: v.optional(v.any()),
       },
-      returns: v.array(v.any()),
-      handler: (ctx, args) =>
-        listMedia({
+      returns: v.string(),
+      handler: async (ctx, args) => {
+        const auth = await resolveGetAuth({ ctx, config, getAuth });
+        return await createMediaDocument({
+          auth,
           ctx,
           config,
           adapter: args.adapter,
-          collectionSlug: args.collectionSlug,
-          limit: args.limit,
-          offset: args.offset,
-        }),
-    }) as RegisteredQuery<Visibility, VexMediaListMediaArgs, any[]>,
+          collection: args.collectionSlug,
+          storageId: args.storageId,
+          filename: args.filename,
+          mimeType: args.mimeType,
+          size: args.size,
+          alt: args.alt,
+          adapterFields: args.adapterFields,
+        });
+      },
+    }),
 
-    searchMedia: query({
+    deleteMedia: mutation({
       args: {
         adapter: v.string(),
-        collectionSlug: v.string(),
-        query: v.string(),
+        mediaId: v.string(),
+        softDelete: v.optional(v.boolean()),
       },
-      returns: v.array(v.any()),
-      handler: (ctx, args) =>
-        searchMedia({
+      returns: v.boolean(),
+      handler: async (ctx, args) => {
+        const auth = await resolveGetAuth({ ctx, config, getAuth });
+        return await deleteMedia({
+          auth,
           ctx,
           config,
           adapter: args.adapter,
-          collectionSlug: args.collectionSlug,
-          query: args.query,
-        }),
-    }) as RegisteredQuery<Visibility, VexMediaSearchMediaArgs, any[]>,
+          mediaId: args.mediaId,
+          softDelete: args.softDelete,
+        });
+      },
+    }),
   };
 }

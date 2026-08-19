@@ -4,13 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import {
   CellComponentProps,
   CollectionConfig,
+  CollectionSlug,
   TDocument,
   UploadField,
-  vexConvexApi,
   VexMediaDocument,
 } from "@vexcms/core";
 import { FilePreview } from "../../media/FilePreview";
-import { convexQuery } from "@convex-dev/react-query";
+import { get } from "@vexcms/core/client";
+import { GenericId } from "convex/values";
 
 /**
  * Table cell rendering for upload field.
@@ -34,7 +35,9 @@ export function UploadFieldCell<TData extends TDocument = TDocument>(
   }
 
   const firstId = value[0];
-  const { data: doc } = useQuery({ ...convexQuery(vexConvexApi.get, { id: firstId }) });
+  const { data: doc } = useQuery({
+    ...get({ id: firstId as GenericId<CollectionSlug>, collection: props.fieldDef.to }),
+  });
   const mediaDoc = doc as VexMediaDocument;
 
   if (!mediaDoc) {
@@ -44,7 +47,7 @@ export function UploadFieldCell<TData extends TDocument = TDocument>(
   return (
     <span className="inline-flex min-w-0 items-center gap-2">
       <FilePreview mediaDoc={mediaDoc} size={26} radius={2} />
-      <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px]">
+      <span className="overflow-hidden text-[12.5px] text-ellipsis whitespace-nowrap">
         {mediaDoc.filename}
       </span>
       {value.length > 1 && <span className="vex-badge muted font-mono">+{value.length - 1}</span>}

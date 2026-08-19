@@ -1,6 +1,6 @@
 import { anyApi } from "convex/server";
 import type { FunctionReference } from "convex/server";
-import type { PaginationOptions, PaginationResult } from "./types";
+import type { PaginationOptions, PaginationResult, VexApiAuth } from "./types";
 import { CollectionSlug, VexDocumentGlobal } from "../types";
 
 /**
@@ -85,6 +85,7 @@ export interface VexMediaDocument extends VexDocument {
 /** Args for `api.vex.find`. */
 export interface VexFindArgs {
   [key: string]: unknown;
+  auth?: VexApiAuth;
   collection: CollectionSlug;
   populate?: unknown;
   depth?: number;
@@ -95,6 +96,7 @@ export interface VexFindArgs {
 /** Args for `api.vex.find`. */
 export interface VexFindPaginatedArgs {
   [key: string]: unknown;
+  auth?: VexApiAuth;
   collection: CollectionSlug;
   populate?: unknown;
   depth?: number;
@@ -105,6 +107,8 @@ export interface VexFindPaginatedArgs {
 /** Args for `api.vex.get`. */
 export interface VexGetArgs {
   [key: string]: unknown;
+  auth?: VexApiAuth;
+  collection: string;
   id: string;
   populate?: unknown;
   depth?: number;
@@ -113,6 +117,7 @@ export interface VexGetArgs {
 /** Args for `api.vex.search`. */
 export interface VexSearchArgs {
   [key: string]: unknown;
+  auth?: VexApiAuth;
   collection: string;
   searchIndexName: string;
   searchField: string;
@@ -126,6 +131,7 @@ export interface VexSearchArgs {
 /** Args for `api.vex.create`. */
 export interface VexCreateArgs {
   [key: string]: unknown;
+  auth?: VexApiAuth;
   collection: string;
   data: Record<string, unknown>;
 }
@@ -133,14 +139,17 @@ export interface VexCreateArgs {
 /** Args for `api.vex.update`. */
 export interface VexUpdateArgs {
   [key: string]: unknown;
+  auth?: VexApiAuth;
+  collection: string;
   id: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any;
+  data: Record<string, unknown>;
 }
 
 /** Args for `api.vex.remove`. */
 export interface VexRemoveArgs {
   [key: string]: unknown;
+  auth?: VexApiAuth;
+  collection: string;
   ids: string[];
   softDelete?: string;
 }
@@ -181,6 +190,7 @@ export type VexMediaCreateMediaDocumentReturn = string;
 /** Args for `api.vex.media.deleteMedia`. */
 export interface VexMediaDeleteMediaArgs {
   [key: string]: unknown;
+  auth?: VexApiAuth;
   adapter: string;
   mediaId: string;
   softDelete?: boolean;
@@ -192,6 +202,7 @@ export type VexMediaDeleteMediaReturn = boolean;
 /** Args for `api.vex.media.getUrl`. */
 export interface VexMediaGetUrlArgs {
   [key: string]: unknown;
+  auth?: VexApiAuth;
   adapter: string;
   mediaId: string;
 }
@@ -203,28 +214,12 @@ export interface VexMediaGetUrlReturn {
   error?: string;
 }
 
-/** Args for `api.vex.media.listMedia`. */
-export interface VexMediaListMediaArgs {
-  [key: string]: unknown;
-  adapter: string;
-  collectionSlug: string;
-  limit?: number;
-  offset?: number;
-}
-
-/** Args for `api.vex.media.searchMedia`. */
-export interface VexMediaSearchMediaArgs {
-  [key: string]: unknown;
-  adapter: string;
-  collectionSlug: string;
-  query: string;
-}
-
 // ── Media API shallow types ──────────────────────────────────────────────
 
 /** Args for `api.vex.globals.get`. */
 export interface VexGlobalsGetArgs {
   [key: string]: unknown;
+  auth?: VexApiAuth;
   slug: string;
   populate?: Record<string, unknown>;
 }
@@ -232,11 +227,13 @@ export interface VexGlobalsGetArgs {
 /** Args for `api.vex.globals.find`. */
 export interface VexGlobalsFindArgs {
   [key: string]: unknown;
+  auth?: VexApiAuth;
 }
 
 /** Args for `api.vex.globals.update`. */
 export interface VexGlobalsUpdateArgs {
   [key: string]: unknown;
+  auth?: VexApiAuth;
   slug: string;
   data: Record<string, unknown>;
 }

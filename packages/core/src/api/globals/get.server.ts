@@ -1,4 +1,4 @@
-import type { GenericDataModel, GenericQueryCtx } from "convex/server";
+import type { GenericDataModel } from "convex/server";
 
 import type {
   GlobalSlug,
@@ -7,10 +7,11 @@ import type {
   GlobalPopulated,
   VexDocumentGlobal,
 } from "../../types/generated";
-import type { VexConfig } from "../../config";
 import { populateDocs } from "../populate";
 import { buildDepthPopulate } from "../depth";
 import type { Prettify } from "../types";
+import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { GenericGlobalsQueryServerArgs } from "./types";
 
 /**
  * Flattens a raw `vex_globals` DB row into the API-facing flat document.
@@ -41,23 +42,19 @@ export interface GetGlobalServerArgs<
   TGlobalSlug extends GlobalSlug = GlobalSlug,
   TPopulate extends GlobalPopulateShape<TGlobalSlug> = Record<string, never>,
   D extends number = 0,
-> {
-  /** Convex query context. */
-  ctx: GenericQueryCtx<DataModel>;
+> extends GenericGlobalsQueryServerArgs<DataModel> {
   /** Global slug to fetch. Narrowed to `GlobalSlug` after `vex generate`. */
   slug: TGlobalSlug;
   /** Relationship fields to populate. Mutually exclusive with `depth`. */
   populate?: [D] extends [0] ? TPopulate : never;
   /** Auto-populate all relationship fields to N levels. Mutually exclusive with `populate`. */
   depth?: [TPopulate] extends [Record<string, never>] ? D : never;
-  /** Required alongside `depth`. The resolved `VexConfig`. */
-  config?: [TPopulate] extends [Record<string, never>] ? VexConfig : never;
 }
 
 /**
  * Return type of `getGlobal` — narrows by populate/depth presence.
  */
-type GetGlobalReturn<
+export type GetGlobalReturn<
   TSlug extends GlobalSlug,
   TPopulate extends GlobalPopulateShape<TSlug>,
   D extends number,
@@ -110,20 +107,32 @@ export async function getGlobal<
 ): Promise<GetGlobalReturn<TSlug, TPopulate, D>> {
   const { ctx, slug, populate, depth, config } = args;
 
-  const row = await (ctx.db as any)
+  const row = await ctx.db
     .query("vex_globals")
-    .withIndex("by_slug", (q: any) => q.eq("slug", slug))
+    .withIndex("by_slug", (q) => q.eq("slug", slug as any))
     .first();
 
   if (!row) return null as GetGlobalReturn<TSlug, TPopulate, D>;
 
   let flat = flattenGlobalRow(row as Record<string, unknown>);
 
+  if (args.config?.access !== undefined) {
+    hasPermission({
+      throwOnDenied: true,
+      user: args.auth?.user ?? {},
+      organization: args.auth?.organization,
+      access: args.config?.access,
+      resource: args.slug,
+      action: CRUD_ACTIONS.read,
+      data: flat,
+    });
+  }
+
   // Depth: auto-populate all relationship fields to N levels
   if (depth && depth > 0 && config) {
     const globalConfig = config.globals.find((g) => g.slug === slug);
     if (globalConfig) {
-      const depthPopulate = buildDepthPopulate(config, slug, depth);
+      const depthPopulate = buildDepthPopulate<TPopulate>(config, slug, depth);
       if (depthPopulate && Object.keys(depthPopulate).length > 0) {
         const [populated] = await populateDocs(ctx, [flat], depthPopulate);
         flat = populated as Record<string, unknown>;
