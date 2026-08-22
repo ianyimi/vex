@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  CRUD_ACTIONS,
+  PERMISSION_SCOPES,
   vexConvexApi,
   type CollectionConfig,
   type CollectionListViewProps,
@@ -12,7 +14,7 @@ import { MODALS } from "../modals/constants";
 import { CreateDocumentModal } from "../modals";
 import { useVexConfig } from "../../context/VexConfigContext";
 import { getCollectionColumnDefs } from "../fields";
-import { usePaginatedQuery } from "../../hooks";
+import { usePaginatedQuery, usePermission } from "../../hooks";
 import { useMemo } from "react";
 import { DataTable } from "../ui";
 import { useConvexMutation } from "@convex-dev/react-query";
@@ -79,6 +81,12 @@ export function CollectionListView<
     await removeMutation.mutateAsync({ ids: selectedIds, collection: collection.slug });
   }
 
+  const canCreate = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.create });
+  const canDelete = usePermission({
+    resource: collection.slug,
+    action: CRUD_ACTIONS.delete,
+    scope: PERMISSION_SCOPES.any,
+  });
   return (
     <div className="relative">
       <CreateDocumentModal collection={collection} />
@@ -93,6 +101,7 @@ export function CollectionListView<
         </div>
         <Button
           nativeButton={false}
+          disabled={!canCreate}
           render={
             <VexLink href={`/admin/${collection.slug}?${MODALS.createDocument.urlParam}=true`} />
           }
@@ -111,7 +120,7 @@ export function CollectionListView<
         enableRowSelection={true}
         enableBulkActions={true}
         entityName={collection.labels.plural.toLowerCase()}
-        onBulkDelete={handleBulkDelete}
+        onBulkDelete={canDelete ? handleBulkDelete : undefined}
         isDeleting={removeMutation.isPending}
       />
     </div>

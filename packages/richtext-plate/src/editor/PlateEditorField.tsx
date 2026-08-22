@@ -84,6 +84,19 @@ const ImageInsertBridge = forwardRef<ImageInsertHandle>(function ImageInsertBrid
   return null;
 });
 
+/**
+ * Interactive Plate-based editor field for a single rich text form value.
+ *
+ * Builds a `platejs/react` editor from the enabled `features`, and renders
+ * the formatting toolbar, table toolbar, and editable content area inside
+ * `EditorContainer`. Wires up image insertion (toolbar button, paste, and
+ * drag-and-drop upload via `useImageUpload`) and propagates content changes
+ * through `onChange`. This is the `editorComponent` used by the adapter
+ * returned from `plateEditor()`.
+ *
+ * @returns The rendered field — label and description, the formatting and table
+ *   toolbars, and the editable content area wrapped in `EditorContainer`.
+ */
 export function PlateEditorField({
   value,
   onChange,
@@ -118,7 +131,11 @@ export function PlateEditorField({
       override: { components },
       value: value && value.length > 0 ? (value as any) : DEFAULT_VALUE,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Intentionally keyed on `plugins` only: the editor is rebuilt when the
+    // feature set changes, not when `components` or the current `value` change —
+    // rebuilding on value would discard editor state on every keystroke.
+    // (Was an `eslint-disable` for react-hooks/exhaustive-deps, but that plugin
+    // is not installed, so the directive itself errored as an unknown rule.)
   }, [plugins]);
 
   const handleChange = useCallback(

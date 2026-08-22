@@ -265,6 +265,9 @@ export interface VexAccessConfigInput<
   TUserSlug extends string = string,
   TOrgSlug extends string | undefined = undefined,
 > {
+  /** Default: `true`. Turn access control on or off. */
+  enabled?: boolean;
+
   /** Role identifiers; keys of the `permissions` matrix. */
   roles: TRoles;
 
@@ -336,6 +339,9 @@ export interface VexAccessConfigInput<
 export interface VexAccessConfig<
   TSubjects extends Record<string, SubjectEntry> = Record<string, SubjectEntry>,
 > {
+  /** Default: `true`. Turn access control on or off. */
+  enabled: boolean;
+
   /** Role names known to the system. */
   roles: readonly string[];
 

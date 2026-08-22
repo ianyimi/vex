@@ -19,16 +19,44 @@ import { logger } from "./logger.js";
 import { executeMigration, executeFieldRemoval, backfillVersionStatus } from "./migrate.js";
 import { resolveConvexUrl } from "./resolveConvexUrl.js";
 
+/**
+ * Result of a `generateAndWrite` run.
+ */
 export interface GenerateResult {
   /** Whether the file was actually written (false = unchanged, skipped) */
   written: boolean;
 }
 
+/**
+ * Optional overrides accepted by `generateAndWrite`.
+ */
 export interface GenerateOptions {
   /** Override the push function used to deploy schema to Convex. */
   pushSchema?: (cwd: string) => boolean | Promise<boolean>;
 }
 
+/**
+ * Generates `vex.types.ts` and the vex schema file for `config`, then keeps
+ * `convex/schema.ts` and Convex in sync with the result.
+ *
+ * Writes `vex.types.ts` next to `configPath` (best-effort — failures are
+ * logged, not thrown). Generates the schema content and, if there are no
+ * collections to emit, returns early. Otherwise formats the schema with the
+ * project's detected formatter and skips the write when the formatted
+ * content already matches what's on disk. When `config.schema.autoMigrate`
+ * is enabled and a previous schema exists, computes the field diff, writes
+ * and deploys an interim schema with new/removed fields made optional, runs
+ * field-removal and backfill migrations against Convex, then writes and
+ * deploys the final schema. Also syncs `convex/schema.ts` imports with the
+ * vex schema's exports, backfills `vex_status` on versioned collections,
+ * and regenerates the per-collection query files.
+ *
+ * @param config - The loaded vex config describing collections and schema output settings.
+ * @param cwd - Project root used to resolve output paths and locate Convex/formatter binaries.
+ * @param configPath - Absolute path to `vex.config.ts`, used to place `vex.types.ts` alongside it.
+ * @param options - Optional overrides; currently only a custom `pushSchema` deploy function.
+ * @returns `{ written: false }` when the config has no collections to emit; otherwise `{ written: true }` once schema generation (and any auto-migration) has completed.
+ */
 export async function generateAndWrite(
   config: VexConfig,
   cwd: string,
@@ -210,6 +238,10 @@ export async function generateAndWrite(
 /**
  * Walk up from `startDir` looking for `node_modules/.bin/<name>`.
  * Returns the absolute path to the binary, or null if not found.
+ *
+ * @param name - The binary's file name inside `node_modules/.bin` (e.g. `"prettier"`).
+ * @param startDir - Directory to start searching from; each parent directory is checked in turn up to the filesystem root.
+ * @returns The absolute path to the binary if found, otherwise `null`.
  */
 function findBin(name: string, startDir: string): string | null {
   let dir = startDir;
@@ -226,6 +258,9 @@ function findBin(name: string, startDir: string): string | null {
  * Detect which formatter the project uses by reading the `format` (or `fmt`)
  * script from the nearest `package.json`. Falls back to checking installed
  * binaries when no script is found.
+ *
+ * @param cwd - Project root containing (or near) `package.json` and `node_modules`.
+ * @returns `"prettier"` or `"biome"` based on the project's format script or installed binaries, or `null` if neither is detected.
  */
 function detectFormatter(cwd: string): "prettier" | "biome" | null {
   try {
@@ -251,6 +286,11 @@ function detectFormatter(cwd: string): "prettier" | "biome" | null {
  * Format `source` using the formatter declared in the project's `format` script
  * (Prettier or Biome). Uses stdin so only the generated file content is touched.
  * Returns the original string unchanged when no formatter is found or formatting fails.
+ *
+ * @param source - The generated source text to format.
+ * @param filepath - Path handed to the formatter (e.g. via `--stdin-filepath`) so it can infer the file type; the file itself is not read or written.
+ * @param cwd - Project root used to detect and locate the formatter binary.
+ * @returns The formatted source text, or `source` unchanged if no formatter is available or the formatter invocation fails.
  */
 function formatString(source: string, filepath: string, cwd: string): string {
   const formatter = detectFormatter(cwd);
@@ -382,6 +422,11 @@ function syncSchemaImports(
 /**
  * Add `names` to the vex import statement in schema.ts.
  * Handles both single-line and multi-line import formats.
+ *
+ * @param content - The `convex/schema.ts` source text to modify.
+ * @param names - Export names to add to the import from `importPath`.
+ * @param importPath - Module specifier of the existing (or to-be-created) import, e.g. `"./vex.schema"`.
+ * @returns `content` with `names` merged into the import from `importPath`; if no matching import exists, a new import statement is appended after the last import (or prepended if the file has none).
  */
 function addToImport(
   content: string,
@@ -442,6 +487,10 @@ function addToImport(
 
 /**
  * Insert `names` as entries into the `defineSchema({...})` block.
+ *
+ * @param content - The `convex/schema.ts` source text to modify.
+ * @param names - Table identifiers to insert as entries inside `defineSchema({ ... })`.
+ * @returns `content` with `names` inserted immediately after the `defineSchema({` opening brace, or unchanged if no `defineSchema({` call is found.
  */
 function addToDefineSchema(content: string, names: string[]): string {
   const defineIdx = content.indexOf("defineSchema({");
@@ -454,6 +503,11 @@ function addToDefineSchema(content: string, names: string[]): string {
 
 /**
  * Remove a single `name` from the vex import statement.
+ *
+ * @param content - The `convex/schema.ts` source text to modify.
+ * @param name - Export name to remove from the import from `importPath`.
+ * @param importPath - Module specifier of the import to modify, e.g. `"./vex.schema"`.
+ * @returns `content` with `name` removed from the import; the entire import statement is dropped if `name` was the last one, and `content` is returned unchanged if no matching import is found.
  */
 function removeFromImport(
   content: string,
@@ -494,7 +548,13 @@ function removeFromImport(
   return content.replace(importRe, `$1 ${items.join(", ")} $3`);
 }
 
-/** Returns the resolved output path for the vex schema file. */
+/**
+ * Resolves the absolute output path for the generated vex schema file.
+ *
+ * @param config - The loaded vex config; `config.schema.outputPath` is the project-relative (leading-slash) output path.
+ * @param cwd - Project root the output path is resolved against.
+ * @returns The absolute filesystem path where the vex schema file should be written.
+ */
 export function getOutputPath(config: VexConfig, cwd: string): string {
   return resolve(cwd, config.schema.outputPath.replace(/^\//, ""));
 }

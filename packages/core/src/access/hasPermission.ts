@@ -89,7 +89,7 @@ export function hasPermission<
 >(props: HasPermissionProps<TSubjects, TSubject, TData>): boolean {
   const { access } = props;
 
-  if (!access || access === undefined) {
+  if (!access || access === undefined || !access.enabled) {
     return true;
   }
 

@@ -17,6 +17,11 @@ import type { AnyFormApi } from "../components/form/AppFormContext";
  * / `getGlobalInputSchema`. `TGlobalSlug` is inferred from the `global`
  * argument — after `vex generate`, passing a global narrows the hook's
  * internal types to that global's document shape.
+ *
+ * @param props - The target global config, its currently loaded document
+ *   (if any), and any `useForm` options to merge in (e.g. `onSubmit`).
+ * @returns The TanStack `AnyFormApi` form instance, pre-wired with the
+ *   global's default values and submit/blur validators.
  */
 export function useGlobalForm<
   TFieldMeta extends {} = {},

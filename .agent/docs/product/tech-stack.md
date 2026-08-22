@@ -1,5 +1,5 @@
 ---
-verified_at: 3a18c95eb3bed73e6c218a32a587d4cf36ce9d7a
+verified_at: aa56f385cb68ac94d76ba77cb27366592efc4a64
 ---
 
 # Tech Stack
@@ -19,7 +19,7 @@ verified_at: 3a18c95eb3bed73e6c218a32a587d4cf36ce9d7a
 |------|------|---------|
 | `www` | `apps/www` | Next.js 16 demo + admin host app (primary dev target, port **3020**) |
 | `docs` | `apps/docs` | Astro 6 + Starlight docs site (port 4321) |
-| `@vexcms/core` | `packages/core` | Framework-agnostic schema, field system, hooks, config (`defineCollection`, `defineConfig`) |
+| `@vexcms/core` | `packages/core` | Framework-agnostic schema, field system, hooks, config, RBAC (`defineCollection`, `defineConfig`, `defineGlobal`, `defineAccess`) |
 | `@vexcms/cli` | `packages/cli` | `vex dev` / codegen / Convex schema generation |
 | `@vexcms/next` | `packages/next` | Next.js adapter — `NextAdminPage`, `NextAdminLayout`, route handlers |
 | `@vexcms/react` | `packages/react` | Framework-agnostic admin UI (Base UI + TanStack Form/Table) |
@@ -37,7 +37,7 @@ Root tooling lives in `package.json` / `turbo.json` / `eslint.config.mjs`.
 |---------|---------|
 | Next.js 16 | Admin host framework (App Router, React 19) |
 | React 19 | UI runtime (React Compiler via babel plugin) |
-| Convex (`^1.39.1`, pnpm override) | Real-time DB, serverless functions, file storage |
+| Convex (catalog `1.44.0`, exact) | Real-time DB, serverless functions, file storage |
 | Better Auth `^1.5.0` (+ `@convex-dev/better-auth`) | Auth (OAuth, sessions) |
 | TanStack Query (+ `@convex-dev/react-query`) | Server state with Convex subscriptions |
 | TanStack Form | Form state in admin |

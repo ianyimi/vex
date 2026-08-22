@@ -25,6 +25,11 @@ import {
  * Handles Next.js App Router-specific file locations and configuration patterns
  */
 export class VexNextJSInstaller extends VexFrameworkInstaller {
+  /**
+   * Framework identifier used for template selection and logging.
+   *
+   * @returns The literal string `"nextjs"`.
+   */
   get frameworkName(): string {
     return 'nextjs';
   }
@@ -32,6 +37,9 @@ export class VexNextJSInstaller extends VexFrameworkInstaller {
   /**
    * Update OAuth configuration in Convex auth options file
    * Target file: convex/auth/options.ts
+   *
+   * @param selectedProviders - IDs of the OAuth providers chosen for the project (e.g. `["google", "github"]`).
+   * @param emailPasswordEnabled - Whether email/password authentication is also enabled.
    */
   async updateOAuthConfig(
     selectedProviders: string[],
@@ -61,6 +69,9 @@ export class VexNextJSInstaller extends VexFrameworkInstaller {
   /**
    * Update OAuth UI configuration in auth client file
    * Target file: src/auth/client.tsx
+   *
+   * @param selectedProviders - IDs of the OAuth providers chosen for the project (e.g. `["google", "github"]`).
+   * @param emailPasswordEnabled - Whether email/password authentication is also enabled.
    */
   async updateOAuthUIConfig(
     selectedProviders: string[],
@@ -86,6 +97,8 @@ export class VexNextJSInstaller extends VexFrameworkInstaller {
   /**
    * Update .env.example with OAuth environment variables
    * Target file: .env.example
+   *
+   * @param selectedProviders - IDs of the OAuth providers chosen for the project (e.g. `["google", "github"]`).
    */
   async updateEnvExample(selectedProviders: string[]): Promise<void> {
     const envFilePath = join(this.targetPath, '.env.example');
@@ -101,6 +114,8 @@ export class VexNextJSInstaller extends VexFrameworkInstaller {
   /**
    * Update README with OAuth provider setup guides
    * Target file: README.md
+   *
+   * @param selectedProviders - IDs of the OAuth providers chosen for the project (e.g. `["google", "github"]`).
    */
   async updateReadme(selectedProviders: string[]): Promise<void> {
     const readmeFilePath = join(this.targetPath, 'README.md');
@@ -117,6 +132,8 @@ export class VexNextJSInstaller extends VexFrameworkInstaller {
   /**
    * Update env.mjs with OAuth provider environment variables
    * Target file: src/env.mjs
+   *
+   * @param selectedProviders - IDs of the OAuth providers chosen for the project (e.g. `["google", "github"]`).
    */
   async updateEnvTs(selectedProviders: string[]): Promise<void> {
     const envFilePath = join(this.targetPath, 'src/env.mjs');

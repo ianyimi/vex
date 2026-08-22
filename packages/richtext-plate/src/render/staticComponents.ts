@@ -29,6 +29,10 @@ let _components: Record<string, FC<any>> | null = null;
 /**
  * Returns a map of Plate node type strings to static render components.
  * The map is created once and cached.
+ *
+ * @returns A record keyed by Plate element/leaf type (e.g. `"p"`, `"h1"`,
+ *   `"bold"`) whose values are the static components `RichText` passes to
+ *   `createStaticEditor` for server-safe rendering.
  */
 export function getStaticComponents(): Record<string, FC<any>> {
   if (_components) return _components;

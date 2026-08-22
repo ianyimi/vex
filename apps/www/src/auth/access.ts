@@ -5,6 +5,7 @@ import { footers, headers, images, pages, siteSettings, themes } from "~/vexcms/
 import { nav } from "~/vexcms/globals";
 
 export const access = defineAccess({
+  // enabled: false,
   roles: Object.values(USER_ROLES),
   userRolesField: "roles",
   userCollectionSlug: TABLE_SLUG_USERS,
@@ -46,7 +47,7 @@ export const access = defineAccess({
         read: true,
       },
       adminPanel: {
-        access: ({ user }) => user.roles.includes(USER_ROLES.admin),
+        access: true,
         impersonate: false,
       },
       nav: {

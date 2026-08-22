@@ -24,6 +24,10 @@ function ensureRelative(p: string): string {
  *
  * API files live at:       `{cwd}/{convexDir}/vex/api/{slug}.ts`
  * Model files live at:     `{cwd}/{convexDir}/vex/model/api/{slug}.ts`
+ * @returns The relative import path strings (`vexConfigFromApi`,
+ * `generatedDirFromApi`, `authFromApi`, `generatedDirFromModel`) generated
+ * files use to reach `vex.config`, the `_generated` dir, and the auth
+ * module from their own location.
  */
 export function computeImportPaths(props: {
   cwd: string;
@@ -55,6 +59,8 @@ export function computeImportPaths(props: {
 /**
  * Derive the convex directory from the schema outputPath.
  * e.g. "/convex/vex.schema.ts" → "convex"
+ * @returns The directory portion of `outputPath` (with any leading slash
+ * stripped), or `"."` when the schema file lives at the project root.
  */
 export function deriveConvexDir(props: { outputPath: string }): string {
   let p = props.outputPath;
@@ -64,9 +70,16 @@ export function deriveConvexDir(props: { outputPath: string }): string {
 }
 
 /**
- * Clean stale generated .ts files from a directory.
- * Only deletes files that start with GENERATED_HEADER.
+ * Clean stale generated `.ts` files from a directory.
+ * Only deletes files that start with `GENERATED_HEADER`.
  * Skips files present in `keepSet`.
+ * @param dir - Directory to scan for stale generated files.
+ * @param keepSet - Filenames (relative to `dir`) that must be kept even if
+ * they carry the generated-file header.
+ * @param deleted - Accumulator array; each deleted file's path (`prefix`
+ * joined with its filename) is pushed onto it as a side effect.
+ * @param prefix - String prepended to a filename before recording it in
+ * `deleted`, so callers can tell which directory a deletion came from.
  */
 function cleanStaleFiles(dir: string, keepSet: Set<string>, deleted: string[], prefix: string) {
   if (!existsSync(dir)) return;
@@ -84,6 +97,11 @@ function cleanStaleFiles(dir: string, keepSet: Set<string>, deleted: string[], p
 
 /**
  * Collect the expected set of collection slugs from the config.
+ * @param config - The resolved Vex config to read collections, globals,
+ * media collections, and auth collections from.
+ * @returns The sorted, de-duplicated list of slugs that should have
+ * generated files: every collection slug, plus global slugs, media
+ * collection slugs, and auth collection slugs with `generateApi` enabled.
  */
 function getExpectedSlugs(config: VexConfig): string[] {
   const slugs = config.collections.map((c) => c.slug);
@@ -111,7 +129,13 @@ function getExpectedSlugs(config: VexConfig): string[] {
 
 /**
  * Check whether the generated files on disk match the current config.
- * Returns true if all expected files exist and no stale files are present.
+ * @param vexDir - Path to the `vex/` directory containing the `api/` and
+ * `model/api/` subdirectories to check.
+ * @param expectedSlugs - Collection slugs that should have generated files,
+ * as returned by `getExpectedSlugs`.
+ * @returns `true` if both directories exist, every expected file is
+ * present, and no stale generated file remains in either; `false`
+ * otherwise.
  */
 function isUpToDate(vexDir: string, expectedSlugs: string[]): boolean {
   const apiDir = join(vexDir, "api");
@@ -164,6 +188,9 @@ function isUpToDate(vexDir: string, expectedSlugs: string[]): boolean {
  * Writes to two directories under `{convexDir}/vex/`:
  * - `api/{slug}.ts` + `api/index.ts` — Convex query/mutation exports
  * - `model/api/{slug}.ts` — typed model functions
+ * @returns The relative paths of files actually written (unchanged files
+ * are skipped) and the paths of stale generated files that were deleted.
+ * Both arrays are empty when the fast-path up-to-date check short-circuits.
  */
 export async function generateAndWriteCollectionFiles(props: {
   config: VexConfig;

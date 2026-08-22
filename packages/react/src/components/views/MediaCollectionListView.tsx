@@ -2,6 +2,8 @@
 
 import { useMutation } from "@tanstack/react-query";
 import {
+  CRUD_ACTIONS,
+  PERMISSION_SCOPES,
   type MediaCollectionConfig,
   type TDocument,
   type VexMediaDocument,
@@ -16,7 +18,7 @@ import { CreateMediaModal } from "../modals/CreateMediaModal";
 import { useVexConfig } from "../../context/VexConfigContext";
 import { getCollectionColumnDefs } from "../fields";
 import { FilePreview } from "../media/FilePreview";
-import { usePaginatedQuery } from "../../hooks";
+import { usePaginatedQuery, usePermission } from "../../hooks";
 import { DataTable } from "../ui";
 import { useConvexMutation } from "@convex-dev/react-query";
 
@@ -93,6 +95,11 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
     ...getCollectionColumnDefs<VexMediaDocument>({ collection }),
   ];
 
+  const canDelete = usePermission({
+    resource: collection.slug,
+    action: CRUD_ACTIONS.delete,
+    scope: PERMISSION_SCOPES.any,
+  });
   return (
     <div>
       <CreateMediaModal collection={collection} />
@@ -138,7 +145,7 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
             enableRowSelection
             enableBulkActions
             entityName={props.collection.labels.plural}
-            onBulkDelete={handleBulkDelete}
+            onBulkDelete={canDelete ? handleBulkDelete : undefined}
             isDeleting={deleteMediaMutation.isPending}
             isPending={pagination.isPending}
           />

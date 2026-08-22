@@ -82,10 +82,10 @@ rules:
     examples: ["form/AppFormContext.ts", "context/VexConfigContext.ts"]
     counter_examples: ["app-form-context.ts", "AppForm.ts (missing suffix)"]
   - id: auth-file-roles
-    pattern: '^(client|server|serverUtils|options|permissions|types)\.tsx?$'
+    pattern: '^(access|client|hasPermission|options|permissions|plugins|server|serverUtils|types)\.tsx?$'
     scope: ["apps/www/src/auth/**"]
-    description: Host-app auth files use fixed role names separating client/server/util/config concerns.
-    examples: ["auth/client.tsx", "auth/server.ts", "auth/serverUtils.ts"]
+    description: Host-app auth files use fixed role names separating client/server/util/config concerns. RBAC adds `access` (the `defineAccess` matrix), `hasPermission` (the app-side check wrapper), and `plugins` (the better-auth plugin list).
+    examples: ["auth/client.tsx", "auth/server.ts", "auth/serverUtils.ts", "auth/access.ts", "auth/plugins.ts"]
     counter_examples: ["auth/client-auth.tsx", "auth/AuthClient.tsx"]
   - id: vexcms-resource-defs
     pattern: '^[a-z][a-zA-Z0-9-]*\.ts$'

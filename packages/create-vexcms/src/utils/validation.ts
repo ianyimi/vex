@@ -1,6 +1,5 @@
 import validateNpmPackageName from 'validate-npm-package-name';
 import fs from 'fs-extra';
-import { basename } from 'path';
 
 /**
  * Validates a project name using npm package name validation rules.
@@ -53,7 +52,7 @@ export async function isDirectoryEmpty(dirPath: string): Promise<boolean> {
     const visibleFiles = files.filter(file => !file.startsWith('.'));
 
     return visibleFiles.length === 0;
-  } catch (error) {
+  } catch {
     // If directory doesn't exist or can't be read, consider it empty
     return true;
   }
@@ -61,13 +60,16 @@ export async function isDirectoryEmpty(dirPath: string): Promise<boolean> {
 
 /**
  * Resolves the project name based on input.
- * If input is ".", keeps it as "." for directory creation but validates using the current directory's basename.
- * Otherwise, returns the input unchanged.
  *
- * @param input - The project name input (can be "." for current directory)
- * @param cwd - The current working directory path
- * @returns The project name (kept as "." if that was the input)
+ * Currently returns `input` unchanged — the "." case is handled by the caller
+ * (`index.ts` passes `process.cwd()` and validates separately), so no
+ * basename-derived rewriting happens here.
+ *
+ * @param input - The project name input (may be "." for the current directory)
+ * @param _cwd - The current working directory. Accepted to keep the call site
+ *   stable, but unused until "." resolution moves into this function.
+ * @returns The project name, unchanged.
  */
-export function resolveProjectName(input: string, cwd: string): string {
+export function resolveProjectName(input: string, _cwd: string): string {
   return input;
 }

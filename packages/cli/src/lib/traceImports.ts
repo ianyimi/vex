@@ -20,6 +20,9 @@ const IMPORT_RE =
  * - `node_modules` paths (external packages)
  * - `_generated` paths (Convex codegen output)
  * - The output file itself (prevents infinite regeneration loops)
+ * @param entryPath - Path to the file to start tracing imports from (typically the vex config).
+ * @param outputPath - Path of the generated file to exclude from the results, avoiding self-referential watch loops.
+ * @returns The deduplicated list of local file paths reachable from `entryPath`, including `entryPath` itself.
  */
 export function traceImports(
   entryPath: string,

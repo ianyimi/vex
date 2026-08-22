@@ -10,7 +10,9 @@ import {
 } from "../lib/generateCollectionFiles.js";
 
 /**
- *
+ * Run the `vex generate` command: load the config, generate/update the
+ * per-collection Convex API files, delete stale ones for removed
+ * collections, and run `eslint --fix` over the generated directories.
  */
 export async function generateCommand() {
   const cwd = process.cwd();

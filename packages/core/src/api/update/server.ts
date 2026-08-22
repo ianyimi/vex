@@ -68,6 +68,13 @@ export async function update<
   TCollectionSlug extends CollectionSlug,
 >(args: UpdateServerArgs<DataModel, TCollectionSlug>): Promise<void> {
   if (args.config.access !== undefined) {
+    // Authorize against the STORED document, never `args.data`. The patch is
+    // caller-controlled, so checking it would let a per-document rule be
+    // satisfied by the payload rather than by the resource being protected
+    // (e.g. `update: ({ data }) => !data.src.includes("example.com")` would pass
+    // for a protected row simply by sending a different `src`). Matches the
+    // behaviour of `get`, `find`, and `remove`.
+    const doc = await args.ctx.db.get(args.id);
     hasPermission({
       throwOnDenied: true,
       access: args.config.access,
@@ -75,7 +82,7 @@ export async function update<
       organization: args.auth?.organization,
       resource: args.collection,
       action: CRUD_ACTIONS.update,
-      data: args.data,
+      data: doc ?? undefined,
     });
   }
   await args.ctx.db.patch(args.id, args.data);

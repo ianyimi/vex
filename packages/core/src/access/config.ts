@@ -121,6 +121,7 @@ export function defineAccess<
   }
 
   return Object.freeze({
+    enabled: props.enabled ?? true,
     roles: props.roles,
     defaultPermissionMode: props.defaultPermissionMode ?? PERMISSION_MODES.allow,
     userCollectionSlug: props.userCollectionSlug,

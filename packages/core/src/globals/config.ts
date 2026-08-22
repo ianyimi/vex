@@ -22,6 +22,8 @@ import type { GlobalSlug } from "../types/generated";
  * @typeParam TComponent - Framework HKT binding.
  * @param config - The raw global configuration.
  * @returns The resolved `GlobalConfig` with all defaults applied.
+ * @throws {Error} When `config.fields` contains one of the reserved keys
+ *   `_id`, `_creationTime`, or `_slug`.
  *
  * @example
  * ```ts

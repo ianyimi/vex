@@ -21,6 +21,13 @@ import { copyTemplate, overlayTemplate } from '../helpers/fileOperations.js';
  * Implements the Template Method pattern for project initialization
  */
 export abstract class VexFrameworkInstaller {
+  /**
+   * Binds this installer to the destination directory and package name used
+   * throughout scaffolding (template copy target, package.json, README, etc).
+   *
+   * @param targetPath - Absolute path of the directory the project is created in.
+   * @param projectName - npm package name recorded for subclasses; not read directly by the base class.
+   */
   constructor(
     protected targetPath: string,
     protected projectName: string
@@ -74,6 +81,8 @@ export abstract class VexFrameworkInstaller {
    * Apply a template overlay on top of the base template.
    * Merges overlay files onto the already-copied base — existing files
    * not in the overlay are left untouched.
+   *
+   * @param overlay - Name of the overlay template directory under `templates/` (e.g. `"marketing-site"`).
    */
   protected async applyTemplateOverlay(overlay: string): Promise<void> {
     const { dirname } = await import('path');
@@ -93,6 +102,8 @@ export abstract class VexFrameworkInstaller {
   /**
    * Update the package.json name field and vex:update script
    * to match the detected package manager.
+   *
+   * @param name - npm package name to write into `package.json`'s `name` field.
    */
   protected async updatePackageName(name: string): Promise<void> {
     const pkgPath = path.join(this.targetPath, 'package.json');
@@ -112,6 +123,8 @@ export abstract class VexFrameworkInstaller {
   /**
    * Configure the dev server port.
    * Updates package.json dev script and creates .env.local with NEXT_PUBLIC_SITE_URL.
+   *
+   * @param port - Dev server port number to write into the `dev` script and `.env.local`.
    */
   protected async configurePort(port: number): Promise<void> {
     // Update package.json dev script with the port
@@ -135,6 +148,8 @@ export abstract class VexFrameworkInstaller {
 
   /**
    * Detect the package manager used to invoke the CLI
+   *
+   * @returns The package manager inferred from `npm_config_user_agent`, defaulting to `"npm"` when it can't be determined.
    */
   protected detectPackageManager(): PackageManager {
     const userAgent = process.env.npm_config_user_agent;
@@ -256,6 +271,8 @@ export abstract class VexFrameworkInstaller {
 
   /**
    * Generate a secure random secret for Better Auth
+   *
+   * @returns A 64-character hex string (32 random bytes) suitable for `BETTER_AUTH_SECRET`.
    */
   protected generateAuthSecret(): string {
     return crypto.randomBytes(32).toString('hex');
@@ -282,6 +299,8 @@ export abstract class VexFrameworkInstaller {
    * Configure the Better Auth organizations plugin.
    * When enabled, replaces placeholders with organization import and plugin.
    * When disabled, removes the placeholder lines.
+   *
+   * @param enabled - Whether the organizations (multi-tenant) plugin should be wired into `convex/auth/plugins/index.ts`.
    */
   protected async configureOrganizations(enabled: boolean): Promise<void> {
     const pluginsPath = path.join(this.targetPath, 'convex/auth/plugins/index.ts');
@@ -309,6 +328,8 @@ export abstract class VexFrameworkInstaller {
 
   /**
    * Main orchestration method for project initialization
+   *
+   * @param options - Resolved project options from CLI flags and prompts, driving every scaffolding step (template copy, overlay, port, auth, README, git, install).
    */
   async initProject(options: ProjectOptions): Promise<void> {
     // Step 1: Copy base template files

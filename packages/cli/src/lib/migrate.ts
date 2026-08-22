@@ -2,6 +2,7 @@
 import type { MigrationOp, RemovedFieldInfo, VexConfig } from "@vexcms/core";
 import { logger } from "./logger.js";
 
+/** Options for backfilling `vex_status` on documents in versioned collections. */
 export interface BackfillVersionStatusOptions {
   /** Convex deployment URL. */
   convexUrl: string;
@@ -9,6 +10,7 @@ export interface BackfillVersionStatusOptions {
   config: VexConfig;
 }
 
+/** Options for executing a batch of field migration operations. */
 export interface MigrateOptions {
   /** Convex deployment URL. */
   convexUrl: string;
@@ -16,6 +18,7 @@ export interface MigrateOptions {
   operations: MigrationOp[];
 }
 
+/** Options for removing fields from existing Convex documents. */
 export interface RemovalOptions {
   /** Convex deployment URL. */
   convexUrl: string;
@@ -52,6 +55,7 @@ async function getClient(convexUrl: string): Promise<any> {
  *
  * The caller must ensure the schema is already deployed (via `pushSchema`)
  * before calling this function.
+ * @param options - Convex deployment URL and the migration operations to run.
  */
 export async function executeMigration(options: MigrateOptions): Promise<void> {
   const { convexUrl, operations } = options;
@@ -76,7 +80,7 @@ export async function executeMigration(options: MigrateOptions): Promise<void> {
       );
 
       try {
-        do {
+        while (true) {
           const result: { patched: number; isDone: boolean; cursor: string } =
             await withTimeout(
               client.mutation("vex/migrate:backfillField" as any, {
@@ -92,7 +96,7 @@ export async function executeMigration(options: MigrateOptions): Promise<void> {
           cursor = result.cursor;
 
           if (result.isDone) break;
-        } while (true);
+        }
 
         if (totalPatched > 0) {
           logger.success(
@@ -122,6 +126,7 @@ export async function executeMigration(options: MigrateOptions): Promise<void> {
  *
  * The caller must ensure the interim schema (with removed fields as optional)
  * is already deployed (via `pushSchema`) before calling this function.
+ * @param options - Convex deployment URL and the fields to strip from documents.
  */
 export async function executeFieldRemoval(
   options: RemovalOptions,
@@ -146,7 +151,7 @@ export async function executeFieldRemoval(
       logger.info(`Removing field "${field}" from "${table}" documents`);
 
       try {
-        do {
+        while (true) {
           const result: { patched: number; isDone: boolean; cursor: string } =
             await withTimeout(
               client.mutation("vex/migrate:removeField" as any, {
@@ -161,7 +166,7 @@ export async function executeFieldRemoval(
           cursor = result.cursor;
 
           if (result.isDone) break;
-        } while (true);
+        }
 
         if (totalPatched > 0) {
           logger.success(
@@ -195,6 +200,7 @@ export async function executeFieldRemoval(
  *
  * Safe to run on every schema push — the mutation only patches documents
  * missing `vex_status`, so most runs will patch 0 documents.
+ * @param options - Convex deployment URL and the VEX config used to find versioned collections.
  */
 export async function backfillVersionStatus(
   options: BackfillVersionStatusOptions,
@@ -222,7 +228,7 @@ export async function backfillVersionStatus(
       let totalPatched = 0;
 
       try {
-        do {
+        while (true) {
           const result: { patched: number; isDone: boolean; cursor: string } =
             await withTimeout(
               client.mutation("vex/versions:backfillVersionStatus" as any, {
@@ -236,7 +242,7 @@ export async function backfillVersionStatus(
           cursor = result.cursor;
 
           if (result.isDone) break;
-        } while (true);
+        }
 
         if (totalPatched > 0) {
           logger.success(

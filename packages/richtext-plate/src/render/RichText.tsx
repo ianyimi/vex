@@ -35,6 +35,13 @@ import { getStaticComponents } from "./staticComponents";
  * import { RichText } from "@vexcms/richtext/render";
  * <RichText content={doc.body} className="prose" />
  * ```
+ *
+ * @param props - Render props: the `RichTextDocument` to render, an
+ *   optional wrapper `className`, and an optional `resolveMedia` callback
+ *   (currently unsupported here — logs a warning if provided).
+ * @returns `null` when `content` is empty, otherwise a `PlateStatic` tree
+ *   built from `content` using the static components from
+ *   `getStaticComponents()`.
  */
 export function RichText(props: VexRenderComponentProps) {
   const { content, className, resolveMedia } = props;

@@ -9,6 +9,15 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "../styles/utils";
 
+/**
+ * Breadcrumb separator icon between crumb links. Points toward the sidebar
+ * (`ChevronRight` when the sidebar sits on the left, `ChevronLeft` otherwise)
+ * so the chevron visually leads back to the collapsed nav.
+ *
+ * @param props - Whether the sidebar is on the left, plus the remaining
+ *   `lucide-react` SVG props forwarded to the rendered chevron icon.
+ * @returns The chevron icon (`ChevronRight` or `ChevronLeft`) for this position.
+ */
 export function Divider(props: { left: boolean } & LucideProps & RefAttributes<SVGSVGElement>) {
   const { left, ...svgProps } = props;
   if (left) {
@@ -17,6 +26,16 @@ export function Divider(props: { left: boolean } & LucideProps & RefAttributes<S
   return <ChevronLeft {...svgProps} />;
 }
 
+/**
+ * Top admin nav bar rendering the breadcrumb trail for the current
+ * collection/global/document, from `Home` down to the active document
+ * (using its `currentDocument.title`/`name` once fetched, or its id as a
+ * fallback while loading).
+ *
+ * @param props - The active admin layout config, plus the active collection
+ *   slug and document id used to resolve the breadcrumb trail.
+ * @returns The breadcrumb nav, ordered per the configured sidebar side.
+ */
 export default function AdminTopNav(props: AdminLayoutProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {

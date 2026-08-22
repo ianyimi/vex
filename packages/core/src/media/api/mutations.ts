@@ -135,6 +135,10 @@ export async function deleteMedia<TDataModel extends GenericDataModel = GenericD
       config: args.config,
       id: args.mediaId as GenericId<CollectionSlug>,
     });
+    // Pass the stored media document: a per-document delete rule cannot be
+    // evaluated without it, and omitting it makes such a rule unsatisfiable
+    // (the capability probe trips and the default `all` scope resolves `false`).
+    const doc = await args.ctx.db.get(args.mediaId as GenericId<CollectionSlug>);
     hasPermission({
       throwOnDenied: true,
       access: args.config.access,
@@ -142,6 +146,7 @@ export async function deleteMedia<TDataModel extends GenericDataModel = GenericD
       organization: args.auth?.organization,
       resource,
       action: CRUD_ACTIONS.delete,
+      data: doc ?? undefined,
     });
   }
   const adapter = args.config.storage?.adapters.find((a) => a.name === args.adapter);

@@ -30,6 +30,10 @@ const LOCK_FILES: Array<{ file: string; pm: PackageManager }> = [
 /**
  * Detect the package manager. Checks lock files in `cwd` first, then
  * walks up the directory tree. Falls back to npx if nothing is found.
+ * @param cwd - Directory to start the lockfile search from.
+ * @returns The detected package manager's invocation (`cmd` plus any
+ * wrapper `args`, e.g. `pnpm exec`) used to run `convex` through it;
+ * `{ cmd: "npx", args: [] }` when no lockfile is found up the tree.
  */
 function detectPackageManager(cwd: string): PackageManager {
   let dir = resolve(cwd);
@@ -50,6 +54,12 @@ function detectPackageManager(cwd: string): PackageManager {
 /**
  * Spawn `convex dev` with piped stdout/stderr so we can detect
  * deployment events. Output is forwarded to the console.
+ * @param cwd - Directory to run `convex dev` in; also used to detect the
+ * package manager to spawn it through.
+ * @returns The spawned, detached child process. It is also stored as the
+ * module-level singleton so `waitForDeploy` and `killConvexDev` can await
+ * or terminate it later; it resolves nothing itself and may still be
+ * starting up when this returns.
  */
 export function startConvexDev(cwd: string): ChildProcess {
   const pm = detectPackageManager(cwd);
@@ -123,6 +133,14 @@ export function startConvexDev(cwd: string): ChildProcess {
  *
  * Returns `true` if deployment succeeded, `false` if it failed or timed out.
  * If no convex dev process is running, falls back to running `convex dev --once`.
+ * @param cwd - Directory to run the standalone fallback push in when no
+ * `convex dev` process is currently managed.
+ * @param timeoutMs - Milliseconds to wait for the next deploy event before
+ * giving up and resolving `false`. Defaults to 60 seconds.
+ * @returns A promise that resolves `true` once the managed `convex dev`
+ * process reports a successful deploy, or `false` if it reports failure,
+ * the wait times out, or (when no process is managed) the standalone push
+ * fails.
  */
 export function waitForDeploy(
   cwd: string,
@@ -150,7 +168,12 @@ export function waitForDeploy(
   });
 }
 
-/** Resolve all pending waitForDeploy() promises. */
+/**
+ * Resolve every pending `waitForDeploy()` promise with the given outcome
+ * and clear the pending list.
+ * @param ok - The deploy outcome to resolve each pending promise with;
+ * `true` for a successful deploy, `false` for a failure.
+ */
 function flushResolvers(ok: boolean) {
   const resolvers = deployResolvers;
   deployResolvers = [];
@@ -188,8 +211,12 @@ export async function killConvexDev(): Promise<void> {
 }
 
 /**
- * Standalone push using `convex dev --once` or `convex deploy`.
- * Used when no convex dev process is running (--once mode, deploy, migrate).
+ * Push the current schema by running `convex dev --once` (typecheck and
+ * codegen disabled). Used as the fallback push when `waitForDeploy` is
+ * called without a managed `convex dev` process — e.g. `vex dev --once`,
+ * or a schema migration that does not override `pushSchema`.
+ * @param cwd - Directory to run the `convex` command in.
+ * @returns `true` if the push succeeded, `false` otherwise.
  */
 function pushSchemaStandalone(cwd: string): boolean {
   return runConvexCommand(cwd, ["dev", "--once", "--typecheck", "disable", "--codegen", "disable"]);
@@ -197,6 +224,8 @@ function pushSchemaStandalone(cwd: string): boolean {
 
 /**
  * Run `convex deploy` to push to production.
+ * @param cwd - Directory to run the `convex deploy` command in.
+ * @returns `true` if the deploy succeeded, `false` otherwise.
  */
 export function deployToProduction(cwd: string): boolean {
   return runConvexCommand(cwd, ["deploy"]);

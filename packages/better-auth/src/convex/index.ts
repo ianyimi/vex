@@ -43,7 +43,12 @@ export type AuthDbApiOptions<DataModel extends GenericDataModel> = {
  * This follows the exact same pattern as queryApi/mutationApi in @vexcms/core.
  * The returned functions are proper Convex FunctionReferences available as
  * internal.auth.db.dbCreate, etc. in the user's Convex API.
- * @param options
+ * @param options - The user's Convex schema plus their `internalMutation`
+ *   and `internalQuery` builders, used to construct the auth DB functions.
+ * @returns An object exposing `dbCreate`, `dbFindOne`, `dbFindMany`,
+ *   `dbCount`, `dbUpdate`, `dbUpdateMany`, `dbDelete`, and `dbDeleteMany` as
+ *   internal Convex function references, ready to re-export from the
+ *   user's Convex API.
  */
 export function authDbApi<DataModel extends GenericDataModel>(
   options: AuthDbApiOptions<DataModel>,

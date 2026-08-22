@@ -6,7 +6,6 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
     exclude: [
       "src/lib/generateCollectionFiles.test.ts",
-      "src/schema/generateSchema.test.ts",
     ],
     passWithNoTests: true,
   },

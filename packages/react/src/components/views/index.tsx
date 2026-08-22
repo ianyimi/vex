@@ -5,3 +5,4 @@ export * from "./GlobalEditView";
 export * from "./MediaCollectionListView";
 export * from "./MediaCollectionEditView";
 export * from "./CollectionEditView";
+export * from "./UnauthorizedView";

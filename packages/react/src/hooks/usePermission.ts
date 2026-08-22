@@ -7,14 +7,11 @@ import { useVexAuth } from "../context/VexAuthContext";
 /**
  * Client-side permission check for UI affordances (advisory — server guards enforce).
  *
- * @param props.resource - Subject slug (collection/global/media/`adminPanel`).
- * @param props.action - Action to check.
- * @param props.data - The concrete document for an exact per-doc check (edit views).
- * @param props.scope - Which question to ask when `data` is omitted and the
- *   matrix check is a callback: `"all"` (default) → `false` (fail-closed),
- *   `"any"` → `true` (sidebar/list gating), `"doc"` → throws, for edit views
- *   that must supply the document. See `PERMISSION_SCOPES`.
- * @returns boolean — `false` when no `access`/`user` (fail-closed).
+ * @param props - The resource/action to check (plus optional `data` for an
+ *   exact per-doc check, and `scope` for how to resolve a callback matrix
+ *   entry when `data` is omitted); see `HasPermissionProps` in `@vexcms/core`
+ *   for the full property set.
+ * @returns `false` when no `access`/`user` (fail-closed).
  */
 export function usePermission<
   TSubjects extends Record<string, SubjectEntry> = Record<string, SubjectEntry>,

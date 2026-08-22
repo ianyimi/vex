@@ -14,14 +14,22 @@ import { resolveConvexUrl } from "../lib/resolveConvexUrl.js";
 import { traceImports } from "../lib/traceImports.js";
 import { createWatcher } from "../lib/watcher.js";
 
-/**
- *
- */
+/** Options controlling how `vex dev` runs. */
 export interface DevOptions {
   once?: boolean;
   cwd?: string;
 }
 
+/**
+ * Run the `vex dev` workflow: load the config, generate the Convex schema,
+ * patch `convex/tsconfig.json` for path aliases, start `convex dev`, and
+ * watch the config's transitive imports to regenerate the schema on change.
+ *
+ * With `options.once`, generates and pushes the schema a single time (via a
+ * standalone `convex dev --once` push) instead of starting the long-running
+ * watch loop.
+ * @param options - Run-mode and working-directory overrides for the dev command.
+ */
 export async function devCommand(options: DevOptions = {}) {
   const cwd = options.cwd
     ? resolve(process.cwd(), options.cwd)

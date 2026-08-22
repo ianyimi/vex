@@ -1,5 +1,6 @@
 import { watch, type FSWatcher } from "chokidar";
 
+/** Handle for a file-watching session that tracks a mutable set of paths. */
 export interface Watcher {
   on(event: "change" | "add" | "unlink", cb: (path: string) => void): void;
   on(event: "all", cb: (eventName: string, path: string) => void): void;
@@ -7,6 +8,13 @@ export interface Watcher {
   close(): Promise<void>;
 }
 
+/**
+ * Create a chokidar-backed file watcher over an initial set of paths, tracking
+ * unlinked files so they can be re-added if they reappear (e.g. an editor's
+ * save-as-rename-and-recreate cycle).
+ * @param paths - Initial list of file paths to watch.
+ * @returns A `Watcher` handle for listening to events and updating the watched paths.
+ */
 export function createWatcher(paths: string[]): Watcher {
   const currentPaths = new Set(paths);
   const unlinked = new Set<string>();

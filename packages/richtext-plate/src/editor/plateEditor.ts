@@ -48,6 +48,11 @@ function resolveFeatures(input?: FeatureInput): VexEditorFeature[] {
  *   editor: plateEditor(),
  * });
  * ```
+ *
+ * @param options - Editor configuration; currently just which features to enable.
+ * @returns A `VexEditorAdapter` whose `editorComponent` lazy-loads
+ *   `PlateEditorField` (pre-bound to the resolved `features`) and whose
+ *   `renderComponent` is the static `RichText` renderer.
  */
 export function plateEditor(options: PlateEditorOptions = {}): VexEditorAdapter {
   const features = resolveFeatures(options.features);

@@ -54,6 +54,8 @@ function stripJsonComments(input: string): string {
  * Handles patterns like:
  *   "~/*": ["./src/*"]   → alias: { "~": "/abs/path/to/src" }
  *   "@convex/*": ["./convex/*"] → alias: { "@convex": "/abs/path/to/convex" }
+ * @param startDir - Directory to start searching upward from.
+ * @returns The directory containing `tsconfig.json`, or `startDir` if none is found up to the filesystem root.
  */
 function findTsconfigDir(startDir: string): string {
   let dir = startDir;
@@ -110,6 +112,7 @@ function createJitiOptions(cwd: string): JitiOptions {
  * Load .env.local into process.env so that vex.config.ts and its
  * transitive imports (e.g. auth options using process.env.BETTER_AUTH_SECRET)
  * can resolve environment variables when run from the CLI.
+ * @param cwd - Project directory to look for `.env.local` in.
  */
 function loadDotEnv(cwd: string): void {
   const envPath = resolve(cwd, ".env.local");
@@ -148,6 +151,7 @@ function loadDotEnv(cwd: string): void {
  * On first run (new project), this file doesn't exist yet but schema.ts imports it.
  * Creates an empty placeholder that exports nothing — the generate step will
  * overwrite it with the real schema immediately after config loads.
+ * @param cwd - Project directory containing the `convex` folder.
  */
 function ensureSchemaFileExists(cwd: string): void {
   const schemaPath = resolve(cwd, "convex/vex.schema.ts");
@@ -168,6 +172,12 @@ function ensureSchemaFileExists(cwd: string): void {
   }
 }
 
+/**
+ * Load and validate the project's `vex.config.ts` (or equivalent), resolving
+ * environment variables and tsconfig path aliases via jiti before evaluating it.
+ * @param configPath - Absolute path to the vex config file.
+ * @returns The evaluated, validated `VexConfig` object.
+ */
 export async function loadConfig(configPath: string): Promise<VexConfig> {
   const cwd = dirname(configPath);
 
@@ -201,7 +211,11 @@ export async function loadConfig(configPath: string): Promise<VexConfig> {
   return config as VexConfig;
 }
 
-/** Create a jiti instance for import resolution (used by traceImports). */
+/**
+ * Create a jiti instance for import resolution (used by traceImports).
+ * @param configPath - Absolute path to the vex config file, used to derive the project root and jiti alias config.
+ * @returns A configured jiti instance for resolving the config's imports.
+ */
 export function createResolver(configPath: string) {
   const cwd = dirname(configPath);
   return createJiti(configPath, createJitiOptions(cwd));
@@ -215,6 +229,7 @@ export function createResolver(configPath: string) {
  *
  * Call this after starting Convex dev to ensure the bundler can resolve
  * `~/...` and `@convex/...` imports in Convex function files.
+ * @param cwd - Project directory containing the `convex` folder.
  */
 export function patchConvexTsconfig(cwd: string): void {
   const tsconfigPath = resolve(cwd, "convex/tsconfig.json");

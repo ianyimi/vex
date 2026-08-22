@@ -98,9 +98,10 @@ export {
   CollectionEditView,
   GlobalEditView,
   GlobalsListView,
+  UnauthorizedView,
 } from "./components";
 
-export type { AdminUser, AdminLayoutProps, AppSidebarProps } from "./components";
+export type { AdminUser, AdminLayoutProps, AppSidebarProps, UnauthorizedViewProps } from "./components";
 
 // Context
 export {

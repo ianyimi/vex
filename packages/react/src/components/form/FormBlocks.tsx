@@ -286,6 +286,14 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
     field.handleChange(updated);
   }
 
+  // NOTE: an unfinished hoist of the per-block `canEdit` hook lived here. It was
+  // unused (the inner `usePermission` at the block level shadows it) and removed
+  // to unblock typecheck. Completing the hoist is a behaviour decision, not a
+  // mechanical move: the inner call omits `scope`, so it defaults to `all`
+  // (pessimistic — a per-document rule disables the controls), whereas the
+  // hoisted version passed `scope: "any"` (optimistic — controls stay enabled).
+  // Pick one deliberately, then move the single call out of the render callback
+  // to also settle the Rules-of-Hooks violation at line ~344.
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       {/* Empty state */}
@@ -318,17 +326,16 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                     className="border-destructive/40 text-destructive rounded-sm border px-3 py-2 text-sm"
                   >
                     Unknown block type: <code>{blockSlug}</code>
-                    {!readOnly && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => field.removeValue(index)}
-                        className="ml-2"
-                      >
-                        <TrashIcon className="size-3.5" />
-                      </Button>
-                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      disabled={readOnly}
+                      onClick={() => field.removeValue(index)}
+                      className="ml-2"
+                    >
+                      <TrashIcon className="size-3.5" />
+                    </Button>
                   </div>
                 );
               }
@@ -429,29 +436,21 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
       {/* Add button */}
       {!readOnly && (
         <div className="flex items-center gap-2">
-          {fieldDef.blocks.length === 1 ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handleAdd(fieldDef.blocks[0]!)}
-              disabled={atMax}
-              icon="Plus"
-            >
-              Add {singular}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={openEditor}
-              disabled={atMax}
-              icon="Plus"
-            >
-              Add {singular}
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (fieldDef.blocks.length === 1) {
+                return handleAdd(fieldDef.blocks[0]!);
+              }
+              openEditor();
+            }}
+            disabled={atMax}
+            icon="Plus"
+          >
+            Add {singular}
+          </Button>
           {atMax && (
             <span className="text-muted-foreground text-xs">
               Maximum {fieldDef.max} {plural} reached

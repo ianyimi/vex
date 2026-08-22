@@ -19,14 +19,7 @@ export default [
   },
   {
     files: ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"],
-    ignores: [
-      "**/*.test.ts",
-      "**/*.test.tsx",
-      "**/dist/**",
-      "**/node_modules/**",
-      "packages/react/**",
-      "packages/next/**",
-    ],
+    ignores: ["**/*.test.ts", "**/*.test.tsx", "**/dist/**", "**/node_modules/**"],
     plugins: {
       "@typescript-eslint": tsPlugin,
       jsdoc: jsdocPlugin,
@@ -41,6 +34,11 @@ export default [
       },
     },
     rules: {
+      // An empty `catch {}` is a deliberate "best effort, ignore failure"
+      // pattern here (e.g. optional code formatters in the CLI, where a failed
+      // formatter must fall through to returning the source unchanged). Empty
+      // blocks of every other kind stay errors.
+      "no-empty": ["error", { allowEmptyCatch: true }],
       // JSDoc enforcement - CRITICAL for v1 rebuild
       "jsdoc/require-jsdoc": [
         "error",
@@ -131,16 +129,14 @@ export default [
     },
   },
   {
-    // Browser-facing packages use DOM globals (fetch, File, Response, etc.).
-    // TypeScript's type checker already validates these via tsconfig lib — ESLint's
-    // no-undef can't read tsconfig lib so it false-positives on browser globals.
-    files: [
-      "packages/file-storage-convex/src/**/*.ts",
-      "packages/react/src/**/*.ts",
-      "packages/react/src/**/*.tsx",
-      "packages/next/src/**/*.ts",
-      "packages/next/src/**/*.tsx",
-    ],
+    // `no-undef` is off for ALL TypeScript. TypeScript's own checker validates
+    // identifiers against tsconfig `lib`/`types`, which ESLint cannot read — so
+    // the rule only ever false-positives here, on DOM globals (`fetch`, `File`,
+    // `document`), Node globals (`__dirname`, `setTimeout`, `URL`), and the
+    // `React` UMD global under `jsx: react-jsx`. This is the typescript-eslint
+    // recommendation; keeping it on for a subset just hid real findings behind
+    // noise. Applies to tests too, which the typed block above excludes.
+    files: ["**/*.ts", "**/*.tsx"],
     rules: {
       "no-undef": "off",
     },

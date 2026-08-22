@@ -116,8 +116,7 @@ export async function copyTemplate(framework: string, targetPath: string): Promi
 /**
  * Overlays additional files onto an existing target directory, merging and overwriting as needed.
  *
- * @param overlayDir - The absolute path to the overlay directory containing files to merge
- * @param targetDir - The absolute path to the target directory to overlay onto
+ * @param props - The overlay source and destination directories; files in `overlayDir` are copied into `targetDir`, overwriting existing files.
  * @returns Promise that resolves when the overlay is complete
  */
 export async function overlayTemplate({ overlayDir, targetDir }: { overlayDir: string; targetDir: string }): Promise<void> {
