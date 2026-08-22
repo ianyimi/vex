@@ -77,10 +77,13 @@ export function defineAccess<
   // itself cannot be validated here (auth-adapter fields merge later, inside
   // `defineConfig`), so validation is limited to the config's own shape.
   if (props.userCollectionSlug.length === 0) {
-    throw new VexAccessConfigError(`userCollectionSlug must not be empty`);
+    throw new VexAccessConfigError(`userCollectionSlug cannot be empty`);
   }
   if (props.userRolesField.length === 0) {
-    throw new VexAccessConfigError(`userRolesField must not be empty`);
+    throw new VexAccessConfigError(`userRolesField cannot be empty`);
+  }
+  if (props.anonRole !== undefined && props.anonRole.length === 0) {
+    throw new VexAccessConfigError(`anonRole must not be empty if provided`);
   }
 
   const resourceSlugs = new Set<string>(props.resources.map((resource) => resource.slug));
@@ -121,6 +124,7 @@ export function defineAccess<
   }
 
   return Object.freeze({
+    anonRole: props.anonRole,
     enabled: props.enabled ?? true,
     roles: props.roles,
     defaultPermissionMode: props.defaultPermissionMode ?? PERMISSION_MODES.allow,

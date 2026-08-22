@@ -1081,3 +1081,118 @@ describe("hasPermission — scope: doc vs any vs all", () => {
     ).toThrow("boom from callback body");
   });
 });
+
+
+/**
+ * anonRole fallback fixture: sessionless callers and role-less users resolve
+ * to the configured `anonRole` instead of hard-deny. Mirrors the maprios
+ * public-access pattern: anon may create contact submissions and read only
+ * published articles.
+ */
+const anonAccess = defineAccess({
+  roles: ["admin", "user"] as const,
+  resources: [articles],
+  anonRole: "user",
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    admin: { [WILDCARD_KEY]: true },
+    user: {
+      articles: {
+        create: true,
+        read: ({ data }) =>
+          typeof data === "object" && data !== null && "status" in data
+            ? data.status === "published"
+            : false,
+        update: false,
+      },
+    },
+  },
+});
+
+describe("hasPermission — anonRole fallback", () => {
+  it("grants the anon role's boolean permissions to a caller with no user", () => {
+    expect(
+      hasPermission({ access: anonAccess, user: {}, resource: "articles", action: "create" }),
+    ).toBe(true);
+  });
+
+  it("runs the anon role's callback checks against data", () => {
+    expect(
+      hasPermission({
+        access: anonAccess,
+        user: {},
+        resource: "articles",
+        action: "read",
+        data: { status: "published" },
+      }),
+    ).toBe(true);
+    expect(
+      hasPermission({
+        access: anonAccess,
+        user: {},
+        resource: "articles",
+        action: "read",
+        data: { status: "draft" },
+      }),
+    ).toBe(false);
+  });
+
+  it("denies the anon role's explicit-false actions", () => {
+    expect(
+      hasPermission({ access: anonAccess, user: {}, resource: "articles", action: "update" }),
+    ).toBe(false);
+  });
+
+  it("falls back for a user document whose roles field is missing (anonymous-plugin user)", () => {
+    expect(
+      hasPermission({
+        access: anonAccess,
+        user: { _id: "anon1", isAnonymous: true },
+        resource: "articles",
+        action: "create",
+      }),
+    ).toBe(true);
+  });
+
+  it("falls back for an empty roles array", () => {
+    expect(
+      hasPermission({ access: anonAccess, user: asUser([]), resource: "articles", action: "create" }),
+    ).toBe(true);
+  });
+
+  it("explicit roles win over the fallback — an admin is not narrowed to anon grants", () => {
+    expect(
+      hasPermission({
+        access: anonAccess,
+        user: asUser("admin"),
+        resource: "articles",
+        action: "update",
+      }),
+    ).toBe(true);
+  });
+
+  it("a caller holding a real role does not also gain anon grants", () => {
+    // "ghost" is not a known role; roles are non-empty so no fallback applies.
+    expect(
+      hasPermission({
+        access: anonAccess,
+        user: asUser("ghost"),
+        resource: "articles",
+        action: "create",
+      }),
+    ).toBe(false);
+  });
+
+  it("non-string roles garbage falls back to the anon role", () => {
+    expect(
+      hasPermission({ access: anonAccess, user: asUser(42), resource: "articles", action: "create" }),
+    ).toBe(true);
+  });
+
+  it("without anonRole configured, an empty-roles caller is still denied", () => {
+    expect(
+      hasPermission({ access, user: {}, resource: "articles", action: "read" }),
+    ).toBe(false);
+  });
+});

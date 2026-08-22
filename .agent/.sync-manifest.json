@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at_sha": "aa56f385cb68ac94d76ba77cb27366592efc4a64",
+  "generated_at_sha": "bde8141b69f6f0f0982973cb1257fd54fcc98b88",
   "entries": [
     {
       "path": ".agent/context-rules.yaml",
@@ -93,6 +93,12 @@
       "platform": "claude"
     },
     {
+      "path": ".claude/commands/resume-session.md",
+      "kind": "generated",
+      "target_or_hash": "8b70dd63dba0bcf40410323be4713fc841d8304bf1dbaefdcb302f007b1cd34a",
+      "platform": "claude"
+    },
+    {
       "path": ".claude/commands/summary-prompt.md",
       "kind": "generated",
       "target_or_hash": "b8fd812eb917ad6c9fca6eb078786db97f23ac21054306e5956c6660d6d55c64",
@@ -180,6 +186,12 @@
       "path": ".omp/agents/polish.md",
       "kind": "generated",
       "target_or_hash": "123abae1bdfc76c9b29f3694e19ac969ce1dc25475ca85c0dd806eaf84f65a58",
+      "platform": "omp"
+    },
+    {
+      "path": ".omp/agents/resume-session.md",
+      "kind": "generated",
+      "target_or_hash": "6269c5480b6323755696c871cf1fa58c45486c05397c1e6e988ed4e6c8044558",
       "platform": "omp"
     },
     {
@@ -756,6 +768,12 @@
       "path": ".omp/prompts/research.md",
       "kind": "generated",
       "target_or_hash": "cd05c3f06e0e54e9b475d0ce8c72a1748229ae6b17508b8d9297f91fec765551",
+      "platform": "omp"
+    },
+    {
+      "path": ".omp/prompts/resume-session.md",
+      "kind": "generated",
+      "target_or_hash": "2d770f2b72e964d6151dd68de6e43eea5e1e47dd7cb631b6dde24e8882419d92",
       "platform": "omp"
     },
     {

@@ -268,6 +268,14 @@ export interface VexAccessConfigInput<
   /** Default: `true`. Turn access control on or off. */
   enabled?: boolean;
 
+  /**
+   * OPTIONAL. Role applied when a caller's roles resolve empty — no session,
+   * or an anonymous user (e.g. Better Auth anonymous plugin) whose
+   * `userRolesField` is unset. Explicit roles always win over this fallback.
+   * Omitted → empty roles deny, exactly as before.
+   */
+  anonRole?: TRoles[number];
+
   /** Role identifiers; keys of the `permissions` matrix. */
   roles: TRoles;
 
@@ -341,6 +349,11 @@ export interface VexAccessConfig<
 > {
   /** Default: `true`. Turn access control on or off. */
   enabled: boolean;
+
+  /**
+   * The allback role when there is no user.
+   */
+  anonRole?: string;
 
   /** Role names known to the system. */
   roles: readonly string[];

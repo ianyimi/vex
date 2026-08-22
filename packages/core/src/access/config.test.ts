@@ -115,6 +115,36 @@ describe("defineAccess — userRolesField", () => {
   });
 });
 
+describe("defineAccess — anonRole", () => {
+  it("stores anonRole on the resolved config", () => {
+    const access = defineAccess({
+      ...baseInput,
+      roles: ["admin", "user"] as const,
+      anonRole: "user",
+      permissions: { admin: { [WILDCARD_KEY]: true }, user: {} },
+    });
+    expect(access.anonRole).toBe("user");
+  });
+
+  it("leaves anonRole undefined when omitted", () => {
+    const access = defineAccess({
+      ...baseInput,
+      permissions: { admin: { [WILDCARD_KEY]: true } },
+    });
+    expect(access.anonRole).toBeUndefined();
+  });
+
+  it("rejects an empty anonRole with VexAccessConfigError", () => {
+    expect(() =>
+      defineAccess({
+        ...baseInput,
+        anonRole: "" as never,
+        permissions: { admin: { [WILDCARD_KEY]: true } },
+      }),
+    ).toThrow(VexAccessConfigError);
+  });
+});
+
 describe("defineAccess — customResources", () => {
   it("does not warn when referencing a declared custom resource", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});

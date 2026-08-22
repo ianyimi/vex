@@ -39,11 +39,20 @@ If the user says "it worked before X":
    `harness struct --check` if it looks stale.
 4. **Load `references/debug-hierarchy.md`** — this project's known fragile areas, most-likely
    first. Check any area intersecting the symptom before generic exploration.
-5. **Form ONE hypothesis** naming the introducing commit or decision. Verify it (targeted diff,
-   reproduction, or a focused test) before writing any fix.
-6. **Propose the minimal fix.** Prefer adjusting the introducing change over patching symptoms
-   downstream. State the root cause in one sentence.
-7. **Verify** with the project's check commands (`.agent/docs/product/dev-processes.md`).
-8. **Record it.** Append root cause + fix to today's log entry ("Problems hit"). If the bug
-   revealed a lasting anti-pattern, suggest adding it to `docs/standards/anti-patterns.md`
-   (mind its 40-line budget).
+5. **Build the reproduction loop.** Before forming any hypothesis: one command that goes
+   red on this bug. Tighten it until it is fast, sharp, and deterministic — a 2-second
+   deterministic loop is the target. Flaky bug? Raise the rate (run it 100× in a loop)
+   until red is reliable. Then minimize: strip the reproduction to the smallest
+   input/config that still fails.
+6. **Form ONE hypothesis** naming the introducing commit or decision. Verify it against
+   the reproduction loop (targeted diff, or a focused run) before writing any fix.
+7. **Instrument if needed.** Temporary logging carries a `[DEBUG-<slug>]` tag so cleanup
+   is a single grep. All instrumentation is removed before done.
+8. **Propose the minimal fix.** Prefer adjusting the introducing change over patching
+   symptoms downstream. State the root cause in one sentence.
+9. **Verify.** The reproduction loop goes green, plus the project's check commands
+   (`.agent/docs/product/dev-processes.md`). If the project has a test suite and the bug
+   had no covering test, add a regression test that would have caught it.
+10. **Record it.** Append root cause + fix to today's log entry ("Problems hit"). If the
+    bug revealed a lasting anti-pattern, suggest adding it to
+    `docs/standards/anti-patterns.md` (mind its 40-line budget).

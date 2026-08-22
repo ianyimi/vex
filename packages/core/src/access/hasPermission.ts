@@ -16,7 +16,7 @@ import type {
  *   disables access control entirely — every check passes.
  * @param user - The authenticated user document. Roles are derived from
  *   `user[access.userRolesField]` (`string` or `string[]`); a missing or empty
- *   value denies. There is no separate roles parameter.
+ *   value falls back to access.anonRole
  * @param organization - The organization document forwarded to callbacks.
  *   Only surfaces when `access.orgCollectionSlug` is configured.
  * @param resource - Subject name — a resource slug, a built-in subject
@@ -100,7 +100,9 @@ export function hasPermission<
       : Array.isArray(rawRoles)
         ? rawRoles.filter((role): role is string => typeof role === "string")
         : [];
-  const knownRoles = userRoles.filter((role) => access.roles.includes(role));
+  const effectiveRoles =
+    userRoles.length === 0 && access.anonRole !== undefined ? [access.anonRole] : userRoles;
+  const knownRoles = effectiveRoles.filter((role) => access.roles.includes(role));
 
   const defaultAllowed = access.defaultPermissionMode === PERMISSION_MODES.allow;
   let allPermissions: boolean | ResolvedFieldPermissions;

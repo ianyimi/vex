@@ -2,8 +2,12 @@
 
 ## The file
 `.agent/docs/session-log/YYYY/MM/YYYY-MM-DD.log.md` — an append-only diary. One file per day,
-one `##` entry per work block. Created/extended only via `harness log append`. The single
-permitted in-place edit is `harness log backfill-sha` filling `**Commit:** (pending)`.
+one `##` entry per work block. Created/extended only via `harness log append`. Three permitted
+in-place edits, nothing else:
+- `harness log backfill-sha` filling `**Commit:** (pending)`.
+- The ledger link `harness log commit-msg` appends as the "committed up to here" marker.
+- Entry-title renames by the commit skill (its "Name sessions after the commit" step):
+  titles only, bodies never.
 
 ## Entry structure (`harness log append` emits this skeleton)
 
@@ -31,6 +35,12 @@ permitted in-place edit is `harness log backfill-sha` filling `**Commit:** (pend
   (automatic in agent-commits mode; message-only leaves it for the next session).
 - Bullets state *why*, not just what. Problems record the resolution, not only the pain.
 - "Where I left off" is for a cold-start reader: current state, next step, watch-outs.
+- **Entry title:** starts as a short work-block description ("session" when auto-created).
+  At commit time the commit skill renames it to the commit title; a session serving several
+  specs accumulates comma-separated commit titles. This maps sessions to commits, so work
+  can be resumed by name (`/resume-session <commit title>`). Never shorten or remove an
+  existing name. A bare name is version 1; only a developer-requested rework appends
+  ` v2`, ` v3`, … (resume-session handles the bump).
 
 ## Commit message + where it lands
 

@@ -28,12 +28,14 @@ This is NOT a fix pass: analyze, verify, report. Only change code if the develop
 3. **Load the project contract.** Active spec's `spec.md` + `spec-tasks.md` (deviations from
    ratified decisions are findings — but deliberate improvements are credits; ask which when
    unclear), `docs/standards/anti-patterns.md` (violations are findings by definition),
-   `preferences.md`, `naming-conventions.md`, and `harness context --for "<topic>"`.
-4. **Verify with tools, not opinions.** Run the narrowest real checks: the touched package's
-   tests (targeted dir first, then package), `tsc --noEmit`, lint on the touched files. A
-   failing test or type error is a confirmed finding; a passing suite bounds how bad anything
-   can be. Quote actual output.
-5. **Hunt the silly-mistake catalog** (each of these has shipped before):
+   `preferences.md`, `naming-conventions.md`, and `harness context --for "<topic>"`. Read
+   every pointer in the **Project Context Map** below first.
+4. **Verify with tools, not opinions.** Run the narrowest real checks the project defines
+   (the Context Map's verify commands, package.json scripts, spec `Verify:` lines): the
+   touched package's tests (targeted dir first, then package), `tsc --noEmit`, lint on the
+   touched files. A failing check is a confirmed finding; a passing suite bounds how bad
+   anything can be. Quote actual output.
+5. **Hunt the silly-mistake catalog** (each of these ships constantly):
    - Async handler computes a result but never `return`s it.
    - Guard gated on the wrong condition — presence of *data* instead of presence of *config*
      (fail-open for unauthenticated/unconfigured paths). Check every guard's negative space:
@@ -42,12 +44,12 @@ This is NOT a fix pass: analyze, verify, report. Only change code if the develop
      on the first element's result).
    - Dead code: helpers written but never wired at the call site; leftover debug/no-op
      statements; unreachable stub comments after a `throw`.
-   - `!x` conflating `false` with `undefined` where the two mean different things
+   - `!x` conflating `false` with `undefined`/`null` where they mean different things
      (explicit deny vs undeclared).
    - Required context not threaded: a function gained a param but one caller doesn't pass it.
    - Type-level: generic defaults that create index signatures (`Record<string, never>`),
-     constraints on map-shaped `infer`s, literal widening from missing `const` type params,
-     casts that paper over a contract change.
+     constraints on map-shaped `infer`s, literal widening from missing `const` type params or
+     `as const`, casts that paper over a contract change.
    - Doc drift: JSDoc/`@param`/`@example` contradicting the current signature or behavior;
      error messages with wrong paths/names.
    - Tests not updated for an API change (or worse: updated to pass without testing the
@@ -59,7 +61,7 @@ This is NOT a fix pass: analyze, verify, report. Only change code if the develop
    the developer needs to know which parts not to churn. Be candid about "silly" mistakes;
    they asked.
 
-## Project Context Map (vexcms — where to look before judging)
+## Project Context Map
 
 - **Active spec** = the contract: `.agent/docs/specs/<id>/spec.md` (via `harness state`).
   Completed steps embed the verified reference implementation — diff against it.

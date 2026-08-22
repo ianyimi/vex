@@ -234,4 +234,27 @@ Spec 34 — Marketing Blocks
 
 Everything else (additional block categories, seed data, admin table views, block defaults) is implementation work using existing framework features, not new framework development.
 
-**Phase 3 in the roadmap (Form Builder → Cross-Component Auth → Teams → API Keys → Hooks) is the right focus.** After that, the maprios migration is primarily content block implementation, not framework work.
+**Implementation order is decided (see below).** After the framework items land, the maprios www migration is primarily content block implementation, not framework work.
+
+---
+
+## Implementation Order (decided 2026-08-21)
+
+RBAC (Spec 16) and Globals (Spec 38) are complete in the rebuild. Remaining work
+runs in this order:
+
+| # | Work | Depends on | Notes |
+|---|---|---|---|
+| 1 | **Public access (anon read + create)** | RBAC (done) | Anonymous visitors must read published pages and submit contact forms. Design: `anonRole` on `defineAccess()` (analogous to `userRolesField`) — when a caller's roles resolve empty (no session, or Better Auth anonymous-plugin user without roles), `hasPermission` falls back to `[anonRole]`. Explicit roles win over the fallback. No matrix changes; adapter-agnostic. Rate limiting: document pattern only for now. |
+| 2 | **Versioning / Drafts** (Spec 07) | — | Moved earlier (was "save for last") because live preview builds on `_vexDrafts`. RBAC-class effort. |
+| 3 | **Live Preview** (Spec 10) | #2 | Needs draft-aware queries. |
+| 4 | **TanStack form context port** (from maprios) | — | Bring maprios form context/hooks paradigm into `@vexcms/react`; export the form hook factory + field component map so users can extend their own `appForm` off the vexcms one. Must land before the form builder, which is built on it. |
+| 5 | **Form Builder** (Spec 24) | #1, #3, #4 | Includes email + textarea field types (pulled out of quick wins — the contact form needs them). Renders form pages via the live-preview mechanism. Honeypot/rate limiting land here. |
+| 6 | **Quick wins** | — | json field, PDF block port, block group categorization, other small items. Deliberately batched at the end. |
+| 7 | **React UI testing framework** | admin surface stable | Exportable suite from `@vexcms/react` for client vitest configs; custom-component tests via the componentHKT registry; full-suite vs custom-only toggle. Device/viewport emulation deferred past first pass. |
+| 8 | **Publish + migrate www** | #1–7 | Publish packages to npm, promote rebuild branch to master, then migrate maprios www against published packages. **Does NOT require multi-component.** |
+| 9 | **Multi-component** (Spec 43a → 43b) | — | Tier 2; blocks only the main-app migration. Deliberately last. |
+
+Hooks system (Spec XX) stays deferred — not needed for content editing at
+migration time. Revisit if the form builder wants `afterCreate` submission
+notifications.

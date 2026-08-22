@@ -29,6 +29,8 @@ harness_model_role: smol
    - `## Do not` — session-specific prohibitions the receiving agent must respect
 2. **Address the receiving agent directly** — imperative voice ("Read X. Then do Y."), zero
    references to "the previous conversation"; every fact must stand alone or cite a file path.
+   **Reference, never copy**: specs, ADRs, commits, diffs, and log entries are cited by path
+   or hash — inline content only when the receiving agent cannot reach the file (and say so).
 3. **Save it** to `.agent/docs/session-log/YYYY/MM/<date>.handoff.md` (same dating as the
    session log; overwrite an earlier handoff from the same day — it is a snapshot, not a diary).
 4. **Print the full prompt** in a single fenced block for copy-paste, followed by the saved

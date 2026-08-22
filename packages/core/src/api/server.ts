@@ -99,7 +99,8 @@ export type { UpsertGlobalServerArgs } from "./globals/upsert.server";
  *   on the first request (see {@link resolveGetAuth}) — a permission matrix
  *   with no caller resolver is a project bug, surfaced immediately.
  * - `getAuth` resolving `undefined` (unauthenticated caller) → checks run
- *   with no user, so no roles resolve and access is denied.
+ *   with no user, so no roles resolve and access is denied, unless access.anonRole
+ *   is configured, in which case that role will be used.
  *
  * Because identity rides the Convex connection token, the same endpoints work
  * unchanged from every runtime: client subscriptions (`useQuery`) on an
@@ -401,7 +402,8 @@ export function globalsApi<
  * - Both configured → returns whatever `getAuth(ctx)` resolves: the caller's
  *   user document and active organization, or `undefined` when the request
  *   is unauthenticated. Downstream checks treat `undefined` as a user with
- *   no roles — deny.
+ *   no roles — deny. If access.anonRole is configured, downstream checks will
+ *   fallback to that role.
  *
  * Identity always derives from the handler's `ctx` (the authenticated Convex
  * connection), never from client-supplied arguments — see
