@@ -21,39 +21,55 @@ const versionRange = `~${version}`;
 
 console.log(`Syncing template versions to ${versionRange}`);
 
-const vexPackages = [
-  "@vexcms/core",
-  "@vexcms/cli",
-  "@vexcms/admin-next",
-  "@vexcms/ui",
-  "@vexcms/richtext",
-  "@vexcms/better-auth",
-  "@vexcms/file-storage-convex",
-];
+// Derive the publishable package list from the workspace itself. A hardcoded
+// list silently rotted through the rebuild rename (@vexcms/ui -> @vexcms/react,
+// @vexcms/admin-next -> @vexcms/next, @vexcms/richtext -> @vexcms/richtext-plate)
+// and stopped matching anything.
+const packagesDir = path.join(root, "packages");
+const vexPackages = fs
+  .readdirSync(packagesDir, { withFileTypes: true })
+  .filter((d) => d.isDirectory())
+  .map((d) => path.join(packagesDir, d.name, "package.json"))
+  .filter((p) => fs.existsSync(p))
+  .map((p) => JSON.parse(fs.readFileSync(p, "utf-8")))
+  .filter((pkg) => pkg.name && !pkg.private)
+  .map((pkg) => pkg.name);
 
-// Find all package.json files in all template directories
-const templatesDir = path.join(root, "packages/create-cli/templates");
-const templateDirs = fs.readdirSync(templatesDir, { withFileTypes: true })
+const templatesDir = path.join(root, "packages/create-vexcms/templates");
+if (!fs.existsSync(templatesDir)) {
+  throw new Error(
+    `Template directory not found: ${templatesDir}\n` +
+      `This script runs during \`pnpm version:packages\`; a wrong path here aborts the release.`
+  );
+}
+
+const templateDirs = fs
+  .readdirSync(templatesDir, { withFileTypes: true })
   .filter((d) => d.isDirectory())
   .map((d) => d.name);
 
 let updated = 0;
+const skipped = [];
 
 for (const dir of templateDirs) {
   const pkgPath = path.join(templatesDir, dir, "package.json");
-  if (!fs.existsSync(pkgPath)) continue;
+  if (!fs.existsSync(pkgPath)) {
+    skipped.push(dir);
+    continue;
+  }
 
   const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
   let changed = false;
 
   for (const name of vexPackages) {
-    if (pkg.dependencies?.[name] && pkg.dependencies[name] !== versionRange) {
-      pkg.dependencies[name] = versionRange;
-      changed = true;
-    }
-    if (pkg.devDependencies?.[name] && pkg.devDependencies[name] !== versionRange) {
-      pkg.devDependencies[name] = versionRange;
-      changed = true;
+    for (const group of ["dependencies", "devDependencies"]) {
+      const current = pkg[group]?.[name];
+      // Leave workspace: specifiers alone — those belong to --monorepo scaffolds.
+      if (!current || current.startsWith("workspace:")) continue;
+      if (current !== versionRange) {
+        pkg[group][name] = versionRange;
+        changed = true;
+      }
     }
   }
 
@@ -62,6 +78,12 @@ for (const dir of templateDirs) {
     console.log(`  ✓ ${dir}/package.json`);
     updated++;
   }
+}
+
+if (skipped.length > 0) {
+  console.warn(
+    `  ! No package.json in template(s): ${skipped.join(", ")} — nothing to sync there.`
+  );
 }
 
 console.log(`Updated ${updated} template(s) → ${versionRange}`);

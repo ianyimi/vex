@@ -1,5 +1,6 @@
 import type {
   AuthCollectionConfig,
+  AuthFieldMeta,
   BaseFieldInput,
   CollectionSlug,
   FieldAdminConfigInput,
@@ -17,7 +18,6 @@ import {
 } from "@vexcms/core";
 import type { BetterAuthOptions, DBFieldAttribute } from "better-auth";
 import { getAuthTables } from "better-auth/db";
-import { AuthFieldMeta } from "../../core/src/auth/types";
 
 /**
  * Options for `betterAuthAdapter()`.

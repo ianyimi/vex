@@ -44,7 +44,12 @@ export * from "./types";
 // AUTH
 // ============================================================================
 
-export { type VexAuthAdapter, type AuthCollectionConfig, VexAuthConfigError } from "./auth/types";
+export {
+  type VexAuthAdapter,
+  type AuthCollectionConfig,
+  type AuthFieldMeta,
+  VexAuthConfigError,
+} from "./auth/types";
 export { mergeAuthCollections } from "./auth/mergeCollections";
 
 // ============================================================================

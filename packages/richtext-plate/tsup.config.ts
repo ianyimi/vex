@@ -7,7 +7,7 @@ export default defineConfig({
     "src/render/index.ts",
   ],
   format: ["esm"],
-  dts: false,
+  dts: false, // Declarations come from `tsc --emitDeclarationOnly` in the build script — tsup's rollup-dts pegs the CPU on this graph.
   sourcemap: true,
   clean: true,
   external: [
