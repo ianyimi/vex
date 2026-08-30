@@ -8,6 +8,7 @@ import { select } from "../fields/select/config";
 import { relationship } from "../fields/relationship/config";
 import { upload } from "../fields/upload/config";
 import { ADMIN_FIELDS } from "../fields/constants";
+import { collectionConfigToInterface } from "./interfaceGen";
 import { slugToPascalCase } from "./utils";
 import { generateVexTypes } from "../types/generateVexTypes";
 
@@ -184,8 +185,8 @@ describe("generateVexTypes — document interfaces", () => {
     expect(output).toContain("views: number");
     expect(output).toContain("published?: boolean");
     expect(output).toContain("publishedAt?: number");
-    expect(output).toContain("status: Status");
-    expect(output).toContain("tags?: TagsOption");
+    expect(output).toContain("status: Status[]");
+    expect(output).toContain("tags?: PostsDocumentTagsOption[]");
   });
 
   it("uses PascalCase slug for interface name (underscore slug)", () => {
@@ -241,5 +242,30 @@ describe("generateVexTypes — DocumentBySlug", () => {
     expect(output).toContain("export type DocumentBySlug = {");
     expect(output).toContain("posts: PostsDocument");
     expect(output).toContain("authors: AuthorsDocument");
+  });
+});
+
+describe("collectionConfigToInterface - select emits an array type", () => {
+  it("matches the array validator a select field actually stores", () => {
+    // `ADMIN_FIELDS.select.validator` is `v.array(v.string())`, so a stored value is
+    // always an array. The generated interface previously named the option union bare
+    // and promised a scalar, which made `insert({ status: "published" })` a runtime
+    // validator error against a type that said it was fine.
+    const collection = defineCollection({
+      slug: "articles",
+      interfaceName: "Article",
+      fields: {
+        status: select({
+          required: true,
+          options: [
+            { label: "Draft", value: "draft" },
+            { label: "Published", value: "published" },
+          ],
+        }),
+      },
+    });
+    const output = collectionConfigToInterface({ collection });
+    expect(output).toContain(`type ArticleStatusOption = "draft" | "published"`);
+    expect(output).toContain("status: ArticleStatusOption[]");
   });
 });

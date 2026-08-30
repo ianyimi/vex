@@ -36,6 +36,46 @@ export interface GenerateOptions {
 }
 
 /**
+ * Generates `vex.types.ts` and writes it next to `vex.config.ts`.
+ *
+ * Split out of {@link generateAndWrite} so `vex generate` can refresh the type
+ * registry without the rest of that function's work — schema emission, Convex
+ * codegen, and a deploy. Those belong to `vex dev`; regenerating types does not
+ * touch the deployment and is safe to run while a `convex dev` watcher is live.
+ *
+ * Failures are logged, not thrown: a type-generation error must not stop schema
+ * generation or a dev loop, and the previous file stays on disk.
+ *
+ * @param props - Input props.
+ * @param props.config - Loaded vex config describing collections and globals.
+ * @param props.configPath - Absolute path to `vex.config.ts`; the types file is
+ *   written beside it.
+ * @param props.cwd - Project root, used to locate the formatter.
+ * @returns `true` when the file changed on disk, `false` when it was already
+ *   up to date or generation failed.
+ */
+export function writeVexTypes(props: {
+  config: VexConfig;
+  configPath: string;
+  cwd: string;
+}): boolean {
+  try {
+    const typesContent = generateVexTypes({ config: props.config });
+    const typesPath = resolve(dirname(props.configPath), "vex.types.ts");
+    const formattedTypes = formatString(typesContent, typesPath, props.cwd);
+    const existingTypes = existsSync(typesPath) ? readFileSync(typesPath, "utf-8") : "";
+    if (existingTypes === formattedTypes) return false;
+    writeFileSync(typesPath, formattedTypes, "utf-8");
+    logger.success("Generated vex.types.ts");
+    return true;
+  } catch (err) {
+    logger.warn("Type generation failed (vex.types.ts)");
+    logger.error("Type generation error", err);
+    return false;
+  }
+}
+
+/**
  * Generates `vex.types.ts` and the vex schema file for `config`, then keeps
  * `convex/schema.ts` and Convex in sync with the result.
  *
@@ -67,22 +107,7 @@ export async function generateAndWrite(
   const vexSchemaPath = resolve(cwd, outputRelPath.replace(/^\//, ""));
   const convexSchemaPath = resolve(cwd, "convex/schema.ts");
 
-  // Generate and write vex.types.ts — always placed next to vex.config.ts
-  try {
-    const typesContent = generateVexTypes({ config });
-    const typesPath = resolve(dirname(configPath), "vex.types.ts");
-    const formattedTypes = formatString(typesContent, typesPath, cwd);
-    const existingTypes = existsSync(typesPath)
-      ? readFileSync(typesPath, "utf-8")
-      : "";
-    if (existingTypes !== formattedTypes) {
-      writeFileSync(typesPath, formattedTypes, "utf-8");
-      logger.success("Generated vex.types.ts");
-    }
-  } catch (err) {
-    logger.warn("Type generation failed (vex.types.ts)");
-    logger.error("Type generation error", err);
-  }
+  writeVexTypes({ config, configPath, cwd });
 
   // Generate the schema content; bail early if there are no collections to emit
   const { update: shouldWriteSchema, contents: schemaContents } =

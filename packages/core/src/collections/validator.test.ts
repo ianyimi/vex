@@ -2,10 +2,7 @@ import { describe, it, expect } from "vitest";
 import { defineCollection, defineConfig } from "../index";
 import { relationship } from "../fields/relationship/config";
 import { text } from "../fields";
-import {
-  collectionConfigToVexSchema,
-  getIncomingRelationships,
-} from "./validator";
+import { collectionConfigToVexSchema, getIncomingRelationships } from "./validator";
 
 // ─── getIncomingRelationships ─────────────────────────────────────────────────
 
@@ -16,9 +13,7 @@ describe("getIncomingRelationships", () => {
       fields: { name: text({ required: true }) },
     });
     const config = defineConfig({ collections: [authors] });
-    expect(getIncomingRelationships({ collection: authors, config })).toEqual(
-      [],
-    );
+    expect(getIncomingRelationships({ collection: authors, config })).toEqual([]);
   });
 
   it("returns the field when another collection has a relationship pointing here", () => {
@@ -93,9 +88,28 @@ describe("getIncomingRelationships", () => {
     });
     const config = defineConfig({ collections: [posts, authors, categories] });
     // posts has a relationship to categories, not to authors
-    expect(getIncomingRelationships({ collection: authors, config })).toEqual(
-      [],
-    );
+    expect(getIncomingRelationships({ collection: authors, config })).toEqual([]);
+  });
+});
+
+describe("collectionConfigToVexSchema — compound index creation", () => {
+  it("builds a compound index properly across multiple fields", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: {
+        author: relationship({ collection: { slug: "authors" }, index: "by_author_title" }),
+        title: text(),
+      },
+      indexes: [
+        {
+          name: "by_author_title",
+          fields: ["author", "title"],
+        },
+      ],
+    });
+    const config = defineConfig({ collections: [posts] });
+    const output = collectionConfigToVexSchema({ collection: posts, config });
+    expect(output).toContain('.index("by_author_title", ["author","title"])');
   });
 });
 

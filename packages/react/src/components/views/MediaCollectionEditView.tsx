@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
-import { vexConvexApi } from "@vexcms/core";
+import { CRUD_ACTIONS, vexConvexApi } from "@vexcms/core";
 import type {
   MediaCollectionConfig,
   MediaCollectionMeta,
@@ -12,7 +12,7 @@ import type {
 import { AppForm } from "../form/AppForm";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
-import { useCollectionForm } from "../../hooks/useCollectionForm";
+import { useCollectionForm, usePermission } from "../../hooks";
 
 /**
  * Props passed to the `CollectionEditView` component.
@@ -110,6 +110,11 @@ export function MediaCollectionEditView<
     },
   });
 
+  const canEdit = usePermission({
+    resource: props.collection.slug,
+    action: CRUD_ACTIONS.update,
+    data: data as {},
+  });
   return (
     <AppForm form={form} className="relative flex flex-col gap-4 pt-4">
       <div className="bg-background sticky top-12 z-10 flex h-16 items-center justify-between">
@@ -159,7 +164,7 @@ export function MediaCollectionEditView<
                 key={fieldKey}
                 name={fieldKey}
                 fieldDef={field}
-                readOnly={field.admin.readOnly}
+                readOnly={field.admin.readOnly || !canEdit}
                 collection={props.collection}
               />
             );

@@ -20,9 +20,17 @@ import {
   themes,
   verification,
   vex_globals,
+  articles,
+  case_studies,
+  changelog,
+  comments,
 } from "./vex.schema";
 
 export default defineSchema({
+  articles,
+  case_studies,
+  changelog,
+  comments,
   vex_globals,
   images,
   team,

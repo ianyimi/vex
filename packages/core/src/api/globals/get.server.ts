@@ -12,6 +12,7 @@ import { buildDepthPopulate } from "../depth";
 import type { Prettify } from "../types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
 import { GenericGlobalsQueryServerArgs } from "./types";
+import { resolveAccessCall } from "../utils";
 
 /**
  * Flattens a raw `vex_globals` DB row into the API-facing flat document.
@@ -42,7 +43,7 @@ export interface GetGlobalServerArgs<
   TGlobalSlug extends GlobalSlug = GlobalSlug,
   TPopulate extends GlobalPopulateShape<TGlobalSlug> = Record<string, never>,
   D extends number = 0,
-> extends GenericGlobalsQueryServerArgs<DataModel> {
+> extends GenericGlobalsQueryServerArgs<DataModel, TGlobalSlug> {
   /** Global slug to fetch. Narrowed to `GlobalSlug` after `vex generate`. */
   slug: TGlobalSlug;
   /** Relationship fields to populate. Mutually exclusive with `depth`. */
@@ -99,12 +100,12 @@ export type GetGlobalReturn<
  */
 export async function getGlobal<
   DataModel extends GenericDataModel,
-  TSlug extends GlobalSlug = GlobalSlug,
-  TPopulate extends GlobalPopulateShape<TSlug> = Record<string, never>,
+  TGlobalSlug extends GlobalSlug = GlobalSlug,
+  TPopulate extends GlobalPopulateShape<TGlobalSlug> = Record<string, never>,
   D extends number = 0,
 >(
-  args: GetGlobalServerArgs<DataModel, TSlug, TPopulate, D>,
-): Promise<GetGlobalReturn<TSlug, TPopulate, D>> {
+  args: GetGlobalServerArgs<DataModel, TGlobalSlug, TPopulate, D>,
+): Promise<GetGlobalReturn<TGlobalSlug, TPopulate, D>> {
   const { ctx, slug, populate, depth, config } = args;
 
   const row = await ctx.db
@@ -112,18 +113,24 @@ export async function getGlobal<
     .withIndex("by_slug", (q) => q.eq("slug", slug as any))
     .first();
 
-  if (!row) return null as GetGlobalReturn<TSlug, TPopulate, D>;
+  if (!row) return null as GetGlobalReturn<TGlobalSlug, TPopulate, D>;
 
   let flat = flattenGlobalRow(row as Record<string, unknown>);
 
   if (args.config?.access !== undefined) {
+    const { access, action, resource } = resolveAccessCall({
+      config: args.config,
+      access: args.access,
+      defaultAction: CRUD_ACTIONS.read,
+      resource: args.slug,
+    });
     hasPermission({
       throwOnDenied: true,
       user: args.auth?.user ?? {},
       organization: args.auth?.organization,
-      access: args.config?.access,
-      resource: args.slug,
-      action: CRUD_ACTIONS.read,
+      access,
+      resource,
+      action,
       data: flat,
     });
   }
@@ -146,5 +153,5 @@ export async function getGlobal<
     flat = populated as Record<string, unknown>;
   }
 
-  return flat as unknown as GetGlobalReturn<TSlug, TPopulate, D>;
+  return flat as unknown as GetGlobalReturn<TGlobalSlug, TPopulate, D>;
 }

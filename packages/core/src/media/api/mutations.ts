@@ -6,7 +6,7 @@ import type {
   GenerateUploadUrlServerArgs,
 } from "./types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
-import { resolveCollectionSlug } from "../../api/utils";
+import { resolveAccessCall, resolveCollectionSlug } from "../../api/utils";
 import { type GenericId } from "convex/values";
 import { CollectionSlug } from "../../types";
 
@@ -36,13 +36,19 @@ export async function generateUploadUrl<TDataModel extends GenericDataModel = Ge
   args: GenerateUploadUrlServerArgs<TDataModel>,
 ): Promise<{ url: string }> {
   if (args.config.access !== undefined) {
+    const { access, action, resource } = resolveAccessCall({
+      config: args.config,
+      access: args.access,
+      defaultAction: CRUD_ACTIONS.create,
+      resource: args.collection,
+    });
     hasPermission({
       throwOnDenied: true,
       user: args.auth?.user ?? {},
       organization: args.auth?.organization,
-      access: args.config.access,
-      resource: args.collection,
-      action: CRUD_ACTIONS.create,
+      access,
+      resource,
+      action,
     });
   }
   const adapter = args.config.storage?.adapters.find((a) => a.name === args.adapter);
@@ -79,13 +85,19 @@ export async function createMediaDocument<TDataModel extends GenericDataModel = 
   args: CreateMediaDocumentServerArgs<TDataModel>,
 ): Promise<string> {
   if (args.config.access !== undefined) {
+    const { access, action, resource } = resolveAccessCall({
+      config: args.config,
+      access: args.access,
+      defaultAction: CRUD_ACTIONS.create,
+      resource: args.collection,
+    });
     hasPermission({
       throwOnDenied: true,
-      access: args.config.access,
+      access,
       user: args.auth?.user ?? {},
       organization: args.auth?.organization,
-      resource: args.collection,
-      action: CRUD_ACTIONS.create,
+      resource,
+      action,
     });
   }
   const adapter = args.config.storage?.adapters.find((a) => a.name === args.adapter);
@@ -135,17 +147,23 @@ export async function deleteMedia<TDataModel extends GenericDataModel = GenericD
       config: args.config,
       id: args.mediaId as GenericId<CollectionSlug>,
     });
+    const { access, action } = resolveAccessCall({
+      config: args.config,
+      access: args.access,
+      defaultAction: CRUD_ACTIONS.delete,
+      resource,
+    });
     // Pass the stored media document: a per-document delete rule cannot be
     // evaluated without it, and omitting it makes such a rule unsatisfiable
     // (the capability probe trips and the default `all` scope resolves `false`).
     const doc = await args.ctx.db.get(args.mediaId as GenericId<CollectionSlug>);
     hasPermission({
       throwOnDenied: true,
-      access: args.config.access,
+      access,
       user: args.auth?.user ?? {},
       organization: args.auth?.organization,
       resource,
-      action: CRUD_ACTIONS.delete,
+      action,
       data: doc ?? undefined,
     });
   }

@@ -6,6 +6,7 @@ import { buildDepthPopulate } from "../depth";
 import { populateDocs } from "../populate";
 import type { GenericQueryServerParams, GetReturn, PopulateShape } from "../types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { resolveAccessCall } from "../utils";
 
 /**
  * Server-side args for `get`.
@@ -66,13 +67,19 @@ export async function get<
 ): Promise<GetReturn<TCollectionSlug, TPopulate, D>> {
   const doc = await args.ctx.db.get(args.id);
   if (doc && args.config?.access !== undefined) {
+    const { access, action, resource } = resolveAccessCall({
+      config: args.config,
+      access: args.access,
+      defaultAction: CRUD_ACTIONS.read,
+      resource: args.collection,
+    });
     hasPermission({
       throwOnDenied: true,
-      access: args.config?.access,
+      access,
       user: args.auth?.user ?? {},
       organization: args.auth?.organization,
-      resource: args.collection,
-      action: CRUD_ACTIONS.read,
+      resource,
+      action,
       data: doc,
     });
   }

@@ -7,7 +7,6 @@ import {
   type InputComponentProps,
   type GenericBlock,
   BaseFieldMeta,
-  CRUD_ACTIONS,
 } from "@vexcms/core";
 import type { TypedFieldApi } from "./createFieldInput";
 import { AppFormContext } from "./AppFormContext";
@@ -22,7 +21,6 @@ import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 import { Accordion, AccordionContent, AccordionItem } from "../ui/accordion";
 import { FormError } from "./FormError";
 import { Draggable, DragHandle, Droppable } from "../ui/dnd";
-import { usePermission } from "../../hooks";
 
 /**
  * Props for the `FormBlocks` component.
@@ -342,10 +340,6 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
 
               const subFields = Object.entries(blockDef.fields);
 
-              const canEdit = usePermission({
-                resource: collection.slug,
-                action: CRUD_ACTIONS.update,
-              });
               return (
                 <Draggable key={itemKey} id={`${name}-${itemKey}`} index={index}>
                   <AccordionItem
@@ -361,7 +355,7 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                         that start inside a <button> parent, so the DragHandle must live
                         outside AccordionPrimitive.Trigger. */}
                     <AccordionPrimitive.Header className="bg-muted/40 flex items-center gap-2 px-3 py-2">
-                      <DragHandle disabled={!canEdit} />
+                      <DragHandle disabled={!readOnly} />
                       <AccordionPrimitive.Trigger className="group/accordion-trigger focus-visible:border-ring focus-visible:ring-ring/50 flex flex-1 items-center gap-2 rounded-md border border-transparent outline-none focus-visible:ring-3 aria-disabled:pointer-events-none aria-disabled:opacity-50">
                         {/* Order number */}
                         <span className="text-muted-foreground w-4 shrink-0 text-center font-mono text-xs tabular-nums">
@@ -379,7 +373,7 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                             type="text"
                             value={(item.blockName as string) ?? ""}
                             onChange={(e) => updateBlockName(index, e.target.value)}
-                            disabled={!canEdit || readOnly}
+                            disabled={readOnly}
                             placeholder={blockDef.label ?? blockDef.blockType}
                             className="placeholder:text-muted-foreground w-full truncate border-none bg-transparent p-0 text-sm font-medium outline-none focus:ring-0 disabled:opacity-50"
                             onClick={(e) => e.stopPropagation()}
@@ -392,7 +386,7 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                         type="button"
                         variant="ghost"
                         size="icon-xs"
-                        disabled={!canEdit || readOnly}
+                        disabled={readOnly}
                         onClick={() => field.removeValue(index)}
                         className="text-muted-foreground hover:text-destructive shrink-0 transition-colors duration-300"
                         aria-label={`Remove ${blockDef.label} block`}

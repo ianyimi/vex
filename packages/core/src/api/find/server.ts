@@ -23,7 +23,17 @@ import type {
   PaginationResult,
   PopulateShape,
 } from "../types";
-import { CRUD_ACTIONS, hasPermission } from "../../access";
+import {
+  AccessFilterFn,
+  CRUD_ACTIONS,
+  hasPermission,
+  type IndexRangeFn,
+  pickQueryIndex,
+  type QueryIndex,
+  resolveAccessConstraint,
+  resolveAccessIndex,
+} from "../../access";
+import { resolveAccessCall } from "../utils";
 
 /**
  * Server-side args for `find`. Extends {@link GenericQueryServerParams}
@@ -185,7 +195,51 @@ export async function find<
 ): Promise<
   FindReturn<TCollectionSlug, TPopulate, D> | FindReturnPaginated<TCollectionSlug, TPopulate, D>
 > {
-  const findQuery = buildQuery<DataModel, TCollectionSlug, TPopulate, D>(args);
+  const { access, action, resource } = resolveAccessCall({
+    config: args.config,
+    access: args.access,
+    defaultAction: CRUD_ACTIONS.read,
+    resource: args.collection,
+  });
+  const accessIndex = resolveAccessIndex({
+    access,
+    user: args.auth?.user ?? null,
+    organization: args.auth?.organization,
+    resource,
+    action,
+  });
+  // `FindServerArgs.withIndex` is a conditional type over `TCollectionSlug`,
+  // which is still an unresolved type parameter here — TypeScript cannot reduce
+  // it, so it stays opaque and will not assign to a concrete object type. The
+  // runtime shape is exactly `{ name, range? }`, which is what `pickQueryIndex`
+  // takes; the index name and range are already checked against the collection
+  // at the public call site.
+  const callerIndex = args.withIndex as { name: string; range?: IndexRangeFn } | undefined;
+  const resolvedIndex = pickQueryIndex({ accessIndex, callerIndex });
+  // Resolve the constraint UNCONDITIONALLY. Two cases were previously missed, both
+  // silent because the per-document `hasPermission` pass still rejected the rows —
+  // correctness held, but the query read them anyway, which is exactly the ragged
+  // page this design exists to remove:
+  //   1. a rule with no index at all (the flat algebra, and the only form an
+  //      action-level wildcard can express) never reached the query;
+  //   2. a rule with an index AND a filter lost its filter half whenever the access
+  //      index won the slot.
+  // `indexAlreadyApplied` is what keeps the range from being applied twice when the
+  // access index did win.
+  const accessFilter = resolveAccessConstraint({
+    access,
+    user: args.auth?.user ?? null,
+    organization: args.auth?.organization,
+    resource,
+    action,
+    indexAlreadyApplied: accessIndex !== undefined && resolvedIndex?.name === accessIndex.name,
+  });
+
+  const findQuery = buildQuery<DataModel, TCollectionSlug, TPopulate, D>({
+    ...args,
+    resolvedIndex,
+    accessFilter,
+  });
 
   // 4. paginate OR take
   let docs;
@@ -194,9 +248,9 @@ export async function find<
     convexPaginationResult = await findQuery.paginate(args.paginationOpts);
     docs = convexPaginationResult.page.filter((d) =>
       hasPermission({
-        access: args.config?.access,
-        resource: args.collection,
-        action: CRUD_ACTIONS.read,
+        access,
+        resource,
+        action,
         data: d,
         user: args.auth?.user ?? {},
         organization: args.auth?.organization,
@@ -205,9 +259,9 @@ export async function find<
   } else if (args.limit) {
     docs = (await findQuery.take(args.limit)).filter((d) =>
       hasPermission({
-        access: args.config?.access,
-        resource: args.collection,
-        action: CRUD_ACTIONS.read,
+        access,
+        resource,
+        action,
         data: d,
         user: args.auth?.user ?? {},
         organization: args.auth?.organization,
@@ -216,9 +270,9 @@ export async function find<
   } else {
     docs = (await findQuery.collect()).filter((d) =>
       hasPermission({
-        access: args.config?.access,
-        resource: args.collection,
-        action: CRUD_ACTIONS.read,
+        access,
+        resource,
+        action,
         data: d,
         user: args.auth?.user ?? {},
         organization: args.auth?.organization,
@@ -253,12 +307,16 @@ export async function find<
           };
         } else {
           // Build same query (with filters) but collect all to count
-          const countQuery = buildQuery(args); // Same filters as main query
+          const countQuery = buildQuery({
+            ...args,
+            resolvedIndex,
+            accessFilter,
+          }); // Same filters as main query
           const totalDocs = (await countQuery.collect()).filter((d) =>
             hasPermission({
-              access: args.config?.access,
-              resource: args.collection,
-              action: CRUD_ACTIONS.read,
+              access,
+              resource,
+              action,
               data: d,
               user: args.auth?.user ?? {},
               organization: args.auth?.organization,
@@ -297,23 +355,32 @@ function buildQuery<
   const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
   const D extends number = 0,
 >(
-  args: FindServerArgs<DataModel, TCollectionSlug, TPopulate, D>,
+  props: FindServerArgs<DataModel, TCollectionSlug, TPopulate, D> & {
+    resolvedIndex?: QueryIndex;
+    accessFilter?: AccessFilterFn;
+  },
 ): QueryInitializer<NamedTableInfo<DataModel, TCollectionSlug>> {
-  const tableName = args.collection;
-  let q = args.ctx.db.query(tableName);
+  const tableName = props.collection;
+  let q = props.ctx.db.query(tableName);
 
   // 1. withIndex — narrows the scan (most efficient).
-  if (args.withIndex) {
+  if (props.resolvedIndex) {
     // @ts-expect-error building query piece by piece from query args
-    q = args.withIndex.range
-      ? q.withIndex(args.withIndex.name, args.withIndex.range)
-      : q.withIndex(args.withIndex.name);
+    q = props.resolvedIndex.range
+      ? q.withIndex(props.resolvedIndex.name, props.resolvedIndex.range)
+      : q.withIndex(props.resolvedIndex.name);
   }
   // 2. order — applied after index selection.
   // @ts-expect-error building query piece by piece from query args
-  if (args.order) q = q.order(args.order);
+  if (props.order) q = q.order(props.order);
   // 3. filter — secondary predicate, full range scan.
-  if (args.filter) q = q.filter(args.filter);
+  if (props.accessFilter && props.filter) {
+    q = q.filter((filterQ) => filterQ.and(props.accessFilter!(filterQ), props.filter!(filterQ)));
+  } else if (props.accessFilter) {
+    q = q.filter(props.accessFilter);
+  } else if (props.filter) {
+    q = q.filter(props.filter);
+  }
 
   return q;
 }

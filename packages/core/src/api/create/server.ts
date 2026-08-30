@@ -9,6 +9,7 @@ import type {
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { resolveAccessCall } from "../utils";
 
 /**
  * Server-side args for `create`.
@@ -59,12 +60,30 @@ export async function create<
   TCollectionSlug extends CollectionSlug,
 >(args: CreateServerArgs<DataModel, TCollectionSlug>): Promise<string> {
   if (args.config.access !== undefined) {
+    // The PAYLOAD is the authorization subject here, unlike `update`/`remove`/`get`,
+    // which authorize against the stored row. There is no stored row yet, and the
+    // payload is exactly what is about to become one — so a per-document rule
+    // (`({ data }) => data.status !== "published"`, say) has to see it. Without this
+    // every payload-dependent rule on `create` denied unconditionally: the capability
+    // probe detected the `data` read and, under the default `scope: "all"`, answered
+    // "cannot hold for every document" — which is the wrong question for a create.
+    //
+    // The payload-hijack concern that makes `update` use the stored row does not
+    // apply: there is nothing to protect from being misrepresented, since the
+    // caller's values ARE the row being authorized.
+    const { access, action, resource } = resolveAccessCall({
+      config: args.config,
+      access: args.access,
+      defaultAction: CRUD_ACTIONS.create,
+      resource: args.collection,
+    });
     hasPermission({
-      access: args.config.access,
+      access,
       user: args.auth?.user ?? {},
       organization: args.auth?.organization,
-      resource: args.collection,
-      action: CRUD_ACTIONS.create,
+      resource,
+      action,
+      data: args.data,
       throwOnDenied: true,
     });
   }

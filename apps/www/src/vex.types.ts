@@ -207,6 +207,27 @@ export interface Page extends VexDocument {
   anotherTest?: AnotherGroupNames
 }
 
+export interface UserDocument extends VexDocument {
+  _id: Id<"user">
+  name: string
+  email: string
+  emailVerified: boolean
+  image?: string
+  createdAt: number
+  updatedAt: number
+  role?: string
+  banned?: boolean
+  banReason?: string
+  banExpires?: number
+  isAnonymous?: boolean
+  userId?: string
+  roles: string[]
+  /**
+   * something for the editor only
+   */
+  newUserFieldTest?: string
+}
+
 export interface Header extends VexDocument {
   _id: Id<"headers">
   /**
@@ -305,21 +326,171 @@ export interface SiteSettings extends VexDocument {
   name: string
 }
 
-export interface UserDocument extends VexDocument {
-  _id: Id<"user">
-  name: string
-  email: string
-  emailVerified: boolean
-  image?: string
-  createdAt: number
-  updatedAt: number
-  role?: string
-  banned?: boolean
-  banReason?: string
-  banExpires?: number
-  isAnonymous?: boolean
-  userId?: string
-  roles: string[]
+type ArticleStatusOption = "draft" | "review" | "published"
+export interface Article extends VexDocument {
+  _id: Id<"articles">
+  /**
+   * Display title, shown as the document heading and in the admin table.
+   */
+  title: string
+  /**
+   * URL path segment. Unique per collection.
+   */
+  slug: string
+  /**
+   * Short summary used in listings and social previews.
+   */
+  excerpt?: string
+  /**
+   * When this document went live. Empty while it is still a draft.
+   */
+  publishedAt?: number
+  /**
+   * User who owns this document. Contributors are scoped to their own rows through
+   * this field.
+   */
+  authorId: Id<"user">[]
+  /**
+   * Editorial workflow state. Only `published` rows are readable by anonymous
+   * visitors.
+   */
+  status?: ArticleStatusOption[]
+  /**
+   * Article body copy. Markdown until rich text lands on this collection.
+   */
+  body?: string
+  /**
+   * Estimated reading time shown under the article heading.
+   */
+  readingMinutes?: number
+  /**
+   * Pins this article to the top of the blog index.
+   */
+  featured?: boolean
+  /**
+   * Hero image displayed above the article body.
+   */
+  coverImage?: Id<"images">[]
+}
+
+type CaseStudyStatusOption = "draft" | "review" | "published"
+export interface CaseStudy extends VexDocument {
+  _id: Id<"case_studies">
+  /**
+   * Display title, shown as the document heading and in the admin table.
+   */
+  title: string
+  /**
+   * URL path segment. Unique per collection.
+   */
+  slug: string
+  /**
+   * Short summary used in listings and social previews.
+   */
+  excerpt?: string
+  /**
+   * When this document went live. Empty while it is still a draft.
+   */
+  publishedAt?: number
+  /**
+   * User who owns this document. Contributors are scoped to their own rows through
+   * this field.
+   */
+  authorId: Id<"user">[]
+  /**
+   * Editorial workflow state. Only `published` rows are readable by anonymous
+   * visitors.
+   */
+  status?: CaseStudyStatusOption[]
+  /**
+   * Company the study is about.
+   */
+  clientName: string
+  /**
+   * Client's industry, used to group studies on the index page.
+   */
+  industry?: string
+  /**
+   * Link to the client's site, shown in the study header.
+   */
+  clientUrl?: string
+  /**
+   * One-line result, e.g. "cut page build time by 60%".
+   */
+  outcomeSummary?: string
+  /**
+   * Internal figure. Never rendered on the public site.
+   */
+  contractValue?: number
+}
+
+type ChangelogEntryStatusOption = "draft" | "review" | "published"
+type ChangelogEntryReleaseTypeOption = "major" | "minor" | "patch"
+export interface ChangelogEntry extends VexDocument {
+  _id: Id<"changelog">
+  /**
+   * Display title, shown as the document heading and in the admin table.
+   */
+  title: string
+  /**
+   * URL path segment. Unique per collection.
+   */
+  slug: string
+  /**
+   * Short summary used in listings and social previews.
+   */
+  excerpt?: string
+  /**
+   * When this document went live. Empty while it is still a draft.
+   */
+  publishedAt?: number
+  /**
+   * User who owns this document. Contributors are scoped to their own rows through
+   * this field.
+   */
+  authorId: Id<"user">[]
+  /**
+   * Editorial workflow state. Only `published` rows are readable by anonymous
+   * visitors.
+   */
+  status?: ChangelogEntryStatusOption[]
+  /**
+   * Semver tag for this release, e.g. `0.4.2`.
+   */
+  version: string
+  /**
+   * Drives the badge colour on the changelog page.
+   */
+  releaseType?: ChangelogEntryReleaseTypeOption[]
+  /**
+   * Surfaces a migration warning above the entry.
+   */
+  breaking?: boolean
+  /**
+   * Markdown list of changes in this release.
+   */
+  notes?: string
+}
+
+export interface Comment extends VexDocument {
+  _id: Id<"comments">
+  /**
+   * User who owns this document. Contributors are scoped to their own rows through
+   * this field.
+   */
+  authorId: Id<"user">[]
+  /**
+   * Comment text as submitted.
+   */
+  body: string
+  /**
+   * Article this comment belongs to.
+   */
+  article: Id<"articles">[]
+  /**
+   * Unapproved comments are hidden from the public site.
+   */
+  approved?: boolean
 }
 
 export interface SessionDocument extends VexDocument {
@@ -462,11 +633,15 @@ export interface NavGlobal extends VexDocumentGlobal<"nav"> {
 
 export type CollectionSlug =
   | "pages"
+  | "user"
   | "headers"
   | "footers"
   | "themes"
   | "site_settings"
-  | "user"
+  | "articles"
+  | "case_studies"
+  | "changelog"
+  | "comments"
   | "session"
   | "account"
   | "verification"
@@ -487,11 +662,15 @@ export type StorageAdapterSlug = "convex"
 
 export type DocumentBySlug = {
   pages: Page
+  user: UserDocument
   headers: Header
   footers: Footer
   themes: Theme
   site_settings: SiteSettings
-  user: UserDocument
+  articles: Article
+  case_studies: CaseStudy
+  changelog: ChangelogEntry
+  comments: Comment
   session: SessionDocument
   account: AccountDocument
   verification: VerificationDocument
@@ -513,11 +692,15 @@ declare module "@vexcms/core" {
   interface GeneratedVexTypes {
     CollectionSlug:
       | "pages"
+      | "user"
       | "headers"
       | "footers"
       | "themes"
       | "site_settings"
-      | "user"
+      | "articles"
+      | "case_studies"
+      | "changelog"
+      | "comments"
       | "session"
       | "account"
       | "verification"
@@ -534,11 +717,15 @@ declare module "@vexcms/core" {
     StorageAdapterSlug: "convex"
     DocumentBySlug: {
       pages: Page
+      user: UserDocument
       headers: Header
       footers: Footer
       themes: Theme
       site_settings: SiteSettings
-      user: UserDocument
+      articles: Article
+      case_studies: CaseStudy
+      changelog: ChangelogEntry
+      comments: Comment
       session: SessionDocument
       account: AccountDocument
       verification: VerificationDocument
@@ -556,7 +743,6 @@ declare module "@vexcms/core" {
     }
     CollectionsFieldTypeMap: {
       pages: {
-        id: "_id"
         text: "title" | "slug" | "content" | "metaTitle" | "metaDescription"
         blocks: "blocks"
         upload: "testImage"
@@ -565,32 +751,54 @@ declare module "@vexcms/core" {
         array: "test" | "test2"
         group: "seo" | "anotherTest"
       }
-      headers: {
-        id: "_id"
-        text: "name" | "logoText" | "logoHref" | "menuItems" | "actionButtons"
-      }
-      footers: {
-        id: "_id"
-        text: "name" | "logoText" | "copyright" | "links" | "socialLinks"
-      }
-      themes: {
-        id: "_id"
-        text:
-          "name" | "fontFamily" | "radius" | "primaryLight" | "primaryDark" | "bgDark" | "bgLight"
-      }
-      site_settings: {
-        id: "_id"
-        text: "name"
-      }
       user: {
-        id: "_id"
-        text: "name" | "email" | "image" | "role" | "banReason" | "userId"
+        text: "name" | "email" | "image" | "role" | "banReason" | "userId" | "newUserFieldTest"
         checkbox: "emailVerified" | "banned" | "isAnonymous"
         date: "createdAt" | "updatedAt" | "banExpires"
         array: "roles"
       }
+      headers: {
+        text: "name" | "logoText" | "logoHref" | "menuItems" | "actionButtons"
+      }
+      footers: {
+        text: "name" | "logoText" | "copyright" | "links" | "socialLinks"
+      }
+      themes: {
+        text:
+          "name" | "fontFamily" | "radius" | "primaryLight" | "primaryDark" | "bgDark" | "bgLight"
+      }
+      site_settings: {
+        text: "name"
+      }
+      articles: {
+        text: "title" | "slug" | "excerpt" | "body"
+        date: "publishedAt"
+        relationship: "authorId" | "coverImage"
+        select: "status"
+        number: "readingMinutes"
+        checkbox: "featured"
+      }
+      case_studies: {
+        text: "title" | "slug" | "excerpt" | "clientName" | "industry" | "outcomeSummary"
+        date: "publishedAt"
+        relationship: "authorId"
+        select: "status"
+        url: "clientUrl"
+        number: "contractValue"
+      }
+      changelog: {
+        text: "title" | "slug" | "excerpt" | "version" | "notes"
+        date: "publishedAt"
+        relationship: "authorId"
+        select: "status" | "releaseType"
+        checkbox: "breaking"
+      }
+      comments: {
+        relationship: "authorId" | "article"
+        text: "body"
+        checkbox: "approved"
+      }
       session: {
-        id: "_id"
         date: "expiresAt" | "createdAt" | "updatedAt"
         text:
           | "token"
@@ -602,7 +810,6 @@ declare module "@vexcms/core" {
           | "activeTeamId"
       }
       account: {
-        id: "_id"
         text:
           | "accountId"
           | "providerId"
@@ -615,38 +822,31 @@ declare module "@vexcms/core" {
         date: "accessTokenExpiresAt" | "refreshTokenExpiresAt" | "createdAt" | "updatedAt"
       }
       verification: {
-        id: "_id"
         text: "identifier" | "value"
         date: "expiresAt" | "createdAt" | "updatedAt"
       }
       organization: {
-        id: "_id"
         text: "name" | "slug" | "logo" | "metadata" | "test"
         date: "createdAt"
       }
       team: {
-        id: "_id"
         text: "name" | "organizationId"
         date: "createdAt" | "updatedAt"
       }
       teamMember: {
-        id: "_id"
         text: "teamId" | "userId"
         date: "createdAt"
       }
       member: {
-        id: "_id"
         text: "organizationId" | "userId" | "role"
         date: "createdAt"
       }
       invitation: {
-        id: "_id"
         text: "organizationId" | "email" | "role" | "teamId" | "status" | "inviterId"
         date: "expiresAt" | "createdAt"
         array: "roles"
       }
       apikey: {
-        id: "_id"
         text:
           | "configId"
           | "name"
@@ -667,12 +867,10 @@ declare module "@vexcms/core" {
         checkbox: "enabled" | "rateLimitEnabled"
       }
       jwks: {
-        id: "_id"
         text: "publicKey" | "privateKey"
         date: "createdAt" | "expiresAt"
       }
       images: {
-        id: "_id"
         text: "filename" | "alt" | "mimeType" | "storageId" | "src"
         number: "size" | "width" | "height"
         checkbox: "deleted"
@@ -680,9 +878,56 @@ declare module "@vexcms/core" {
     }
     GlobalsFieldTypeMap: {
       nav: {
-        id: "_id"
         array: "items"
       }
+    }
+    IndexFieldsBySlug: {
+      pages: { by_slug: readonly ["slug"]; by_themes: readonly ["themes"] }
+      user: { by_email: readonly ["email"] }
+      headers: { by_name: readonly ["name"] }
+      footers: { by_name: readonly ["name"] }
+      themes: { by_name: readonly ["name"] }
+      site_settings: {}
+      articles: {
+        by_slug: readonly ["slug"]
+        by_author: readonly ["authorId"]
+        by_status: readonly ["status"]
+        by_coverImage: readonly ["coverImage"]
+      }
+      case_studies: {
+        by_slug: readonly ["slug"]
+        by_author: readonly ["authorId"]
+        by_status: readonly ["status"]
+      }
+      changelog: {
+        by_slug: readonly ["slug"]
+        by_author: readonly ["authorId"]
+        by_status: readonly ["status"]
+        by_version: readonly ["version"]
+      }
+      comments: { by_author: readonly ["authorId"]; by_article: readonly ["article"] }
+      session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] }
+      account: { by_userId: readonly ["userId"] }
+      verification: { by_identifier: readonly ["identifier"] }
+      organization: { by_slug: readonly ["slug"] }
+      team: { by_organizationId: readonly ["organizationId"] }
+      teamMember: { by_teamId: readonly ["teamId"]; by_userId: readonly ["userId"] }
+      member: { by_organizationId: readonly ["organizationId"]; by_userId: readonly ["userId"] }
+      invitation: { by_organizationId: readonly ["organizationId"]; by_email: readonly ["email"] }
+      apikey: {
+        by_configId: readonly ["configId"]
+        by_referenceId: readonly ["referenceId"]
+        by_key: readonly ["key"]
+      }
+      jwks: {}
+      images: { by_deleted: readonly ["deleted"] }
+    }
+    CustomActionsBySlug: {
+      articles: { query: "listFeatured"; mutation: "publish" }
+    }
+    AuthSlugs: {
+      user: "user"
+      organization: "organization"
     }
   }
 }

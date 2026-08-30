@@ -3,7 +3,19 @@ import { defineConfig } from "@vexcms/core";
 import { convexFileStorage } from "@vexcms/file-storage-convex";
 
 import { authOptions } from "~/auth/options";
-import { footers, headers, images, pages, siteSettings, themes } from "~/vexcms/collections";
+import {
+  articles,
+  caseStudies,
+  changelog,
+  comments,
+  footers,
+  headers,
+  images,
+  pages,
+  siteSettings,
+  themes,
+  users,
+} from "~/vexcms/collections";
 
 import { access } from "./auth/access";
 import { nav } from "./vexcms/globals/nav";
@@ -12,7 +24,9 @@ import { nav } from "./vexcms/globals/nav";
  * VexCMS configuration for the demo/development site.
  *
  * Defines the admin sidebar layout, auth adapter (Better Auth), and all
- * registered collections: pages, headers, footers, themes, and site settings.
+ * registered collections: pages, headers, footers, themes, site settings, and the
+ * editorial set (articles, case studies, changelog, comments) that exercises the
+ * shared access-rule helpers.
  *
  * This config is consumed by `@vexcms/core` during `vex dev` and `vex generate`
  * to produce the Convex schema and TypeScript types.
@@ -31,7 +45,18 @@ const vexConfig = defineConfig({
   storage: {
     adapters: [convexFileStorage({ mediaCollections: [images] })],
   },
-  collections: [pages, headers, footers, themes, siteSettings],
+  collections: [
+    pages,
+    users,
+    headers,
+    footers,
+    themes,
+    siteSettings,
+    articles,
+    caseStudies,
+    changelog,
+    comments,
+  ],
   globals: [nav],
 });
 

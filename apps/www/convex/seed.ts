@@ -1,3 +1,4 @@
+import type { Id } from "./_generated/dataModel"
 import { mutation } from "./_generated/server"
 
 // ============================================================================
@@ -792,3 +793,182 @@ function roadmapBlocks() {
     },
   ]
 }
+
+// ============================================================================
+// EDITORIAL — Seed data for exercising the shared access rules
+// ============================================================================
+
+/**
+ * Seed the editorial collections with rows spanning every access outcome.
+ *
+ * Run from terminal:
+ *   npx convex run seed:editorial
+ *
+ * Assigns authorship to the two oldest users so ownership rules have something to
+ * discriminate on: user A authors the published rows plus one draft, user B authors
+ * the rest. Sign in as each and the same rule set yields visibly different tables.
+ *
+ * What each role should see afterwards, per `~/auth/access.ts`:
+ * - `admin`        — everything.
+ * - `editor`       — everything in articles/case_studies/changelog/comments.
+ * - `contributor`  — only the rows they authored, any status.
+ * - `user`         — only `published` rows, and no comments at all.
+ *
+ * Safe to run multiple times — skips rows whose slug already exists.
+ */
+export const editorial = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const created: string[] = []
+    const skipped: string[] = []
+
+    const users = await ctx.db.query("user").take(2)
+    if (users.length === 0) {
+      throw new Error(
+        "seed:editorial needs at least one user — sign in once, then run this again.",
+      )
+    }
+    // Falls back to the same author when only one user exists: the status rules still
+    // demonstrate, only the ownership split goes flat.
+    const authorA = users[0]._id
+    const authorB = users[1]?._id ?? users[0]._id
+
+    // Generic over the table so the returned id narrows to it — `comments` below needs
+    // a real `Id<"articles">`, not a union across all three. Convex's generated query
+    // types cannot resolve a shared index name through a generic table parameter, so
+    // the table is widened to one concrete literal INSIDE the helper. All three declare
+    // `by_slug` over `["slug"]`, which is what makes that widening sound.
+    type EditorialTable = "articles" | "case_studies" | "changelog"
+    async function insertBySlug<T extends EditorialTable>(
+      table: T,
+      slug: string,
+      data: Record<string, unknown>,
+    ): Promise<Id<T>> {
+      const existing = await ctx.db
+        .query(table as "articles")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .first()
+      if (existing) {
+        skipped.push(`${table}/${slug}`)
+        return existing._id as Id<T>
+      }
+      const id = await ctx.db.insert(table, { slug, ...data } as never)
+      created.push(`${table}/${slug}`)
+      return id
+    }
+
+    // ── Articles ───────────────────────────────────────────────────────────
+    const publishedArticle = await insertBySlug("articles", "why-convex", {
+      title: "Why we built VexCMS on Convex",
+      excerpt: "Reactive queries turn out to be the right primitive for a CMS.",
+      body: "Convex gives us live queries, transactional mutations, and typed indexes.",
+      status: ["published"],
+      publishedAt: Date.now() - 86_400_000 * 14,
+      readingMinutes: 7,
+      featured: true,
+      authorId: [authorA],
+    })
+
+    await insertBySlug("articles", "field-types-deep-dive", {
+      title: "A deep dive on field types",
+      excerpt: "Every field is a value, and that is the whole trick.",
+      body: "Draft in progress.",
+      status: ["draft"],
+      readingMinutes: 12,
+      featured: false,
+      authorId: [authorA],
+    })
+
+    await insertBySlug("articles", "access-control-patterns", {
+      title: "Access control patterns that scale",
+      excerpt: "Define the constraint once, apply it everywhere.",
+      body: "In review.",
+      status: ["review"],
+      readingMinutes: 9,
+      featured: false,
+      authorId: [authorB],
+    })
+
+    // ── Case studies ───────────────────────────────────────────────────────
+    await insertBySlug("case_studies", "maprios", {
+      title: "Maprios cuts publish time by 60%",
+      excerpt: "Migrating off a Node CMS onto Convex.",
+      status: ["published"],
+      publishedAt: Date.now() - 86_400_000 * 30,
+      clientName: "Maprios",
+      industry: "Logistics",
+      clientUrl: "https://maprios.com",
+      outcomeSummary: "Publish-to-live dropped from 90s to 35s.",
+      contractValue: 48_000,
+      authorId: [authorA],
+    })
+
+    await insertBySlug("case_studies", "northwind-rebuild", {
+      title: "Northwind rebuilds its docs site",
+      excerpt: "Unreleased — pricing still under review.",
+      status: ["draft"],
+      clientName: "Northwind",
+      industry: "Manufacturing",
+      outcomeSummary: "Pending sign-off.",
+      contractValue: 22_500,
+      authorId: [authorB],
+    })
+
+    // ── Changelog ──────────────────────────────────────────────────────────
+    await insertBySlug("changelog", "v0-4-0", {
+      title: "Shared access rules",
+      excerpt: "One constraint, many resources.",
+      status: ["published"],
+      publishedAt: Date.now() - 86_400_000 * 3,
+      version: "0.4.0",
+      releaseType: ["minor"],
+      breaking: false,
+      notes: "- composable access checks\n- index pushdown per resource",
+      authorId: [authorA],
+    })
+
+    await insertBySlug("changelog", "v0-5-0", {
+      title: "Versioning and drafts",
+      excerpt: "Unreleased.",
+      status: ["draft"],
+      version: "0.5.0",
+      releaseType: ["minor"],
+      breaking: true,
+      notes: "- draft/publish workflow",
+      authorId: [authorB],
+    })
+
+    // ── Comments ───────────────────────────────────────────────────────────
+    // No `status` field, so only the ownership rules reach these — which is the
+    // partial-overlap case the shared rules are meant to prove.
+    const existingComments = await ctx.db
+      .query("comments")
+      .withIndex("by_article", (q) => q.eq("article", [publishedArticle]))
+      .collect()
+    if (existingComments.length > 0) {
+      skipped.push("comments (already seeded)")
+    } else {
+      await ctx.db.insert("comments", {
+        body: "This matches what we saw migrating our own site.",
+        article: [publishedArticle],
+        approved: true,
+        authorId: [authorB],
+      })
+      await ctx.db.insert("comments", {
+        body: "Awaiting moderation — should be hidden from readers.",
+        article: [publishedArticle],
+        approved: false,
+        authorId: [authorA],
+      })
+      created.push("comments x2")
+    }
+
+    return {
+      authorA,
+      authorB,
+      created,
+      skipped,
+      note: "Sign in as each author and compare the tables: contributor sees only their own rows, user sees only published ones.",
+    }
+  },
+})

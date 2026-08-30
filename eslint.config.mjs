@@ -177,6 +177,19 @@ export default [
       "jsdoc/require-description": "off",
       "jsdoc/require-param": "off",
       "jsdoc/require-returns": "off",
+      // Same reasoning as the main block: the base rule does not understand
+      // TypeScript. Test files are excluded from that block's `files` glob, so
+      // without repeating this they fall back to the base rule — which reports the
+      // parameter names inside a function TYPE annotation, `(f: string) => void`,
+      // as unused variables.
+      "no-unused-vars": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
     },
   },
 ];

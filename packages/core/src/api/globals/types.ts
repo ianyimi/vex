@@ -1,6 +1,7 @@
 import { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
 import { VexConfig } from "../../config";
-import { VexApiAuth } from "../types";
+import { AccessCallOptions, MutationCallActionFor, QueryCallActionFor, VexApiAuth } from "../types";
+import { GlobalSlug } from "../../types";
 
 /**
  * Base server-side args shared by every globals **query** function
@@ -14,7 +15,10 @@ import { VexApiAuth } from "../types";
  *
  * @typeParam TDataModel - The project's generated Convex data model.
  */
-export interface GenericGlobalsQueryServerArgs<TDataModel extends GenericDataModel> {
+export interface GenericGlobalsQueryServerArgs<
+  TDataModel extends GenericDataModel,
+  TGlobalSlug extends GlobalSlug = GlobalSlug,
+> {
   /**
    * Resolved caller identity for permission checks — `{ user, organization? }`,
    * or omitted when access control is off. `user` may be `null` for an
@@ -30,6 +34,8 @@ export interface GenericGlobalsQueryServerArgs<TDataModel extends GenericDataMod
    * resolve the `GlobalConfig` for depth-populate and validation).
    */
   config: VexConfig;
+  /** Per-call access overrides. @see {@link AccessCallOptions} */
+  access?: AccessCallOptions<QueryCallActionFor<TGlobalSlug>>;
 }
 
 /**
@@ -42,7 +48,10 @@ export interface GenericGlobalsQueryServerArgs<TDataModel extends GenericDataMod
  *
  * @typeParam TDataModel - The project's generated Convex data model.
  */
-export interface GenericGlobalsMutationServerArgs<TDataModel extends GenericDataModel> {
+export interface GenericGlobalsMutationServerArgs<
+  TDataModel extends GenericDataModel,
+  TGlobalSlug extends GlobalSlug = GlobalSlug,
+> {
   /**
    * Resolved caller identity for permission checks — `{ user, organization? }`,
    * or omitted when access control is off. `user` may be `null` for an
@@ -58,4 +67,6 @@ export interface GenericGlobalsMutationServerArgs<TDataModel extends GenericData
    * resolve the target `GlobalConfig` for input validation).
    */
   config: VexConfig;
+  /** Per-call access overrides. @see {@link AccessCallOptions} */
+  access?: AccessCallOptions<MutationCallActionFor<TGlobalSlug>>;
 }

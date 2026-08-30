@@ -50,7 +50,7 @@ export function getIncomingRelationships(props: {
   // the picker query targeted an index that was never generated.
   for (const collection of props.config.collections) {
     Object.entries(collection.fields)
-      // eslint-disable-next-line no-unused-vars
+
       .filter(([_fieldKey, field]) => {
         if (field.type === ADMIN_FIELDS.relationship.type) {
           return field.collection.slug === props.collection.slug;
@@ -60,7 +60,7 @@ export function getIncomingRelationships(props: {
         }
         return false;
       })
-      // eslint-disable-next-line no-unused-vars
+
       .forEach(([fieldKey, _field]) => {
         relationships.push({
           fieldKey,
@@ -108,14 +108,24 @@ export function collectionConfigToVexSchema(props: {
   const fieldsBlock = [];
   const indexes = [];
   const searchIndexes: string[] = [];
+  for (const index of props.collection.indexes ?? []) {
+    indexes.push(`\t.index("${index.name}", ${JSON.stringify(index.fields)})`);
+  }
+
   for (const [fieldKey, field] of Object.entries(props.collection.fields)) {
     const validator = adminFieldToValidator({ field });
     fieldsBlock.push(`\t${fieldKey}: ${validator},`);
-    if (field.index) {
-      indexes.push(`\t.index("${field.index}", ["${fieldKey}"])`);
-    } else if (field.type === ADMIN_FIELDS.relationship.type) {
-      indexes.push(`\t.index("by_${fieldKey}", ["${fieldKey}"])`);
+
+    const fieldIndexName = field.index
+      ? field.index
+      : field.type === ADMIN_FIELDS.relationship.type
+        ? `by_${fieldKey}`
+        : undefined;
+    // collection indexes preferred since they can be compound indexes
+    if (fieldIndexName && !props.collection.indexes?.find((i) => i.name === fieldIndexName)) {
+      indexes.push(`\t.index("${fieldIndexName}", ["${fieldKey}"])`);
     }
+
     if (field.type === ADMIN_FIELDS.text.type && field.searchIndex) {
       searchIndexes.push(`\t.searchIndex("${field.searchIndex.name}", {\n
         searchField: "${fieldKey}",

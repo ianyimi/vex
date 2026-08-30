@@ -5,6 +5,45 @@ import {
 import type { VexConfig } from "../config/types";
 import { globalConfigToFieldTypeMap, globalConfigToInterface } from "../globals";
 import { STORAGE_ADAPTER_PROTOCOLS } from "../media";
+import { collectionConfigToIndexFields } from "../collections/indexFields";
+import { CustomActionsInput } from "../access";
+
+/**
+ * Formats one collection's `IndexFieldsBySlug` entry: a `readonly`
+ * field-tuple per declared index name, or `{}` when the collection
+ * declares none — the edge case `IndexNameFor` (`types/generated.ts`)
+ * depends on: `keyof {}` still resolves to `never`, so an index-less slug
+ * widens identically to the old `never`-union form while staying a valid
+ * object type `IndexFieldsFor` can index into.
+ *
+ * @param props - Input props.
+ * @param props.slug - The collection slug this entry is keyed under.
+ * @param props.indexFields - This collection's `collectIndexFields()` result.
+ * @returns One `\t<slug>: { ... }` (or `\t<slug>: {}`) line for the
+ *   `IndexFieldsBySlug` block of the `declare module` augmentation.
+ * @internal
+ */
+function formatIndexFieldsEntry(props: {
+  slug: string;
+  indexFields: Map<string, string[]>;
+}): string {
+  // `{}` rather than `never` for an index-less collection: `keyof {}` is
+  // `never`, so `IndexNameFor` still widens correctly, while `{}` stays a
+  // valid object type that `IndexFieldsFor` can index into.
+  if (props.indexFields.size === 0) return `\t${props.slug}: {}`;
+
+  // Map iteration follows insertion order, which is field declaration order,
+  // so each tuple is positionally correct. Emitted as a `readonly` TUPLE, not
+  // a union — the tuple IS the field-order encoding `ConstraintBuilder`
+  // narrows against, so a single-field index stays a 1-tuple.
+  const entries = [...props.indexFields.entries()]
+    .map(
+      ([indexName, fieldKeys]) =>
+        `${indexName}: readonly [${fieldKeys.map((f) => `"${f}"`).join(", ")}]`,
+    )
+    .join("; ");
+  return `\t${props.slug}: { ${entries} }`;
+}
 
 /**
  * Generates the full contents of `vex.types.ts` from a resolved `VexConfig`.
@@ -99,6 +138,40 @@ export function generateVexTypes(props: { config: VexConfig }): string {
       .join(" | ") ?? "never";
   const storageAdapterSlugType = `export type StorageAdapterSlug = ${storageAdapterSlugs}`;
 
+  // The slugs `defineAccess` was configured with. Emitting them lets core resolve the
+  // project's user/organization DOCUMENT types on its own, so a project's access
+  // helpers can name a check type without threading those two types by hand.
+  // `never` when unset: `AccessCheck` falls back to the wide shapes, exactly as it
+  // does before `vex generate` has run at all.
+  const userSlug = config.access?.userCollectionSlug;
+  const orgSlug = config.access?.orgCollectionSlug;
+  const authSlugs = [
+    `\t\t\tuser: ${userSlug ? `"${userSlug}"` : "never"}`,
+    `\t\t\torganization: ${orgSlug ? `"${orgSlug}"` : "never"}`,
+  ].join("\n");
+
+  const indexFieldsBySlug = allCollections
+    .map((c) =>
+      formatIndexFieldsEntry({
+        slug: c.slug,
+        indexFields: collectionConfigToIndexFields({ collection: c }),
+      }),
+    )
+    .join("\n");
+
+  const customActionsBySlug = Object.entries(config.access?.customActions ?? {})
+    .map(([slug, actions]) => {
+      const query =
+        ((actions as Partial<CustomActionsInput>).query ?? []).map((a) => `"${a}"`).join(" | ") ||
+        "never";
+      const mutation =
+        ((actions as Partial<CustomActionsInput>).mutation ?? [])
+          .map((a) => `"${a}"`)
+          .join(" | ") || "never";
+      return `\t\t\t${slug}: { query: ${query}; mutation: ${mutation} }`;
+    })
+    .join("\n");
+
   const declareModule = `declare module "@vexcms/core" {
     \tinterface GeneratedVexTypes {
     \t\tCollectionSlug: ${collectionSlugs}
@@ -109,6 +182,9 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     \t\tGlobalDocumentBySlug: {\n${globalDocumentsBySlug}\n}
     \t\tCollectionsFieldTypeMap: {\n${collectionsFieldTypeMap}\n}
     \t\tGlobalsFieldTypeMap: {\n${globalsFieldTypeMap}\n}
+    \t\tIndexFieldsBySlug: {\n${indexFieldsBySlug}\n}
+    \t\tCustomActionsBySlug: {\n${customActionsBySlug}\n}
+    \t\tAuthSlugs: {\n${authSlugs}\n}
     \t}
   \n}`;
 

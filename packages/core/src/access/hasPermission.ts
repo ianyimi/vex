@@ -1,10 +1,11 @@
+import type { GenericDocument } from "convex/server";
 import { PERMISSION_MODES, PERMISSION_SCOPES, PermissionScope, WILDCARD_KEY } from "./constants";
+import { createAccessQueryBuilder, readAccessCondition } from "./createAccessQueryBuilder";
+import { accessConstraintsToPredicate, accessFilterTreeToPredicate } from "./compileConstraints";
 import { VexAccessError } from "./types";
 import type {
-  FieldPermissionResult,
   PermissionCallbackProps,
   PermissionCheck,
-  ResolvedFieldPermissions,
   SubjectEntry,
   VexAccessConfig,
 } from "./types";
@@ -23,8 +24,6 @@ import type {
  *   (e.g. `"adminPanel"`), or a custom resource name.
  * @param action - Action on `resource`, typed per subject.
  * @param data - Document/context forwarded to permission callbacks.
- * @param fields - When provided, shapes the result into a per-field map
- *   covering exactly these fields.
  * @param throwOnDenied - When `true`, throws `VexAccessError` instead of
  * @param scope Which question to answer when a role's check is a callback that
  * needs the document and `data` was not supplied:
@@ -48,7 +47,6 @@ export interface HasPermissionProps<
   resource: TSubject;
   action: TSubjects[TSubject]["action"];
   data?: TData;
-  fields?: TSubjects[TSubject]["fields"][];
   throwOnDenied?: boolean;
   scope?: PermissionScope;
 }
@@ -59,27 +57,23 @@ export interface HasPermissionProps<
  *
  * This is the single runtime entry point — every server API guard, admin panel
  * gate, and custom-subject check calls it; the resolution helpers below are
- * module-private. When `fields` is provided, returns a per-field permission
- * map instead of a single boolean.
+ * module-private.
  *
  * Resolution, per role, first hit wins: subject boolean shorthand → explicit
  * action key → subject-level `WILDCARD_KEY` → role-level `WILDCARD_KEY`
  * (undeclared subjects only) → `defaultPermissionMode`. Roles then OR-merge:
- * any role allowing (per field, when `fields` is given) allows.
+ * any role allowing allows.
  *
  * @param props @see {@link HasPermissionProps}
- * @returns `boolean` when `fields` is omitted; `ResolvedFieldPermissions`
- *   (one entry per requested field) when `fields` is provided.
+ * @returns `true` when the action is permitted for the caller.
  * @throws {VexAccessError} When `throwOnDenied` is `true` and access is denied —
- *   carries `resource`, `action`, and (for field checks) the first denied field.
+ *   carries `resource` and `action`.
  *
  * @example
  * ```ts
  * hasPermission({ access, user, resource: "posts", action: "update" }); // boolean
  * hasPermission({ access, user, resource: "posts", action: "delete",
  *   data: post, throwOnDenied: true }); // throws VexAccessError on deny
- * hasPermission({ access, user, resource: "posts", action: "update",
- *   fields: ["title", "slug"] }); // { title: boolean, slug: boolean }
  * ```
  */
 export function hasPermission<
@@ -105,12 +99,12 @@ export function hasPermission<
   const knownRoles = effectiveRoles.filter((role) => access.roles.includes(role));
 
   const defaultAllowed = access.defaultPermissionMode === PERMISSION_MODES.allow;
-  let allPermissions: boolean | ResolvedFieldPermissions;
+  let allPermissions: boolean;
 
   if (knownRoles.length === 0) {
     allPermissions = false;
   } else {
-    const resolved = knownRoles.map((userRole): FieldPermissionResult<string> => {
+    const resolved = knownRoles.map((userRole): boolean => {
       const role = access.permissions[userRole];
       const resource = role?.[props.resource];
 
@@ -144,28 +138,8 @@ export function hasPermission<
       );
     });
 
-    allPermissions = mergeRolePermissions({ resolved, fields: props.fields });
-  }
-
-  if (typeof allPermissions === "object") {
-    // Boolean-only API: every relevant field must be allowed (AND). When the
-    // caller supplies `data`, its keys are the field set being gated;
-    // otherwise the explicitly requested `fields`.
-    const fields = props.data ? Object.keys(props.data) : (props.fields ?? []);
-    for (const field of fields) {
-      if (allPermissions[field] === false) {
-        if (props.throwOnDenied) {
-          throw new VexAccessError({
-            resource: props.resource,
-            action: props.action,
-            field,
-          });
-        }
-        return false;
-      }
-    }
-    // No relevant field was denied → the action is allowed.
-    return true;
+    // OR across roles: holding any role that permits the action is enough.
+    allPermissions = resolved.some(Boolean);
   }
 
   if (allPermissions === false) {
@@ -181,6 +155,108 @@ export function hasPermission<
 }
 
 const CAPABILITY_PROBE = Symbol("vex.capabilityProbe");
+
+/**
+ * True when a resolved check is the constraint object form.
+ *
+ * Presence of `constraints` is the discriminant. This matters here because the
+ * early `typeof check !== "function"` return below treats every non-function as a
+ * boolean or field-mode value — a constrained object has neither `mode` nor
+ * `fields`, so it used to be mistaken for one.
+ *
+ * @param check - The resolved check for one role + action.
+ * @returns `true` when `check` carries a `constraints` callback.
+ * @internal
+ */
+function isConstrainedCheck(
+  check: PermissionCheck,
+): check is Extract<PermissionCheck, { constraints: unknown }> {
+  return typeof check === "object" && check !== null && "constraints" in check;
+}
+
+/**
+ * Evaluates a constraint-form check against one document.
+ *
+ * This is the second half of what makes constraints worth recording as data: the
+ * SAME declaration that compiles to a `withIndex` range or a `.filter()` expression
+ * on the server also interprets directly in JS here, which is what keeps
+ * client-side `usePermission` working with no server round trip (P-004). A closure
+ * could only ever do this half.
+ *
+ * `filter`, when present, is additive — the condition must hold AND the filter must
+ * pass. It is resolved by recursing, so the existing boolean/callback/field-mode
+ * handling owns it.
+ *
+ * @typeParam TData - Document type under test.
+ * @typeParam TUser - User document shape.
+ * @typeParam TOrg - Organization document shape.
+ * @param props - Input props, as `resolvePermissionCheck` received them.
+ * @param props.check - The constraint-form check.
+ * @param props.user - Caller.
+ * @param props.data - Document under test; absent means the quantified path.
+ * @param props.organization - Active organization, when configured.
+ * @param props.resource - Subject slug, for the error message.
+ * @param props.action - Action name, for the error message.
+ * @param props.scope - How to answer when `data` is absent.
+ * @returns Whether this role permits the action on `props.data`.
+ * @throws {VexAccessError} When no `data` was supplied under `scope: "doc"` — a
+ *   constraint is a per-document condition, so there is nothing to answer without
+ *   a document.
+ * @internal
+ */
+function resolveConstrainedCheck<TData, TUser, TOrg>(props: {
+  check: Extract<PermissionCheck, { constraints: unknown }>;
+  user: TUser;
+  data?: TData;
+  organization?: TOrg;
+  resource: string;
+  action: string;
+  scope: PermissionScope;
+}): boolean {
+  const outcome = props.check.constraints({
+    user: props.user,
+    q: createAccessQueryBuilder(),
+    ...(props.organization !== undefined ? { organization: props.organization } : {}),
+  } as unknown as Parameters<typeof props.check.constraints>[0]);
+
+  // A rule may short-circuit to a flat allow/deny rather than building a condition.
+  if (typeof outcome === "boolean") return outcome;
+
+  if (props.data === undefined) {
+    // A condition is inherently per-document — the same situation a data-reading
+    // callback is in, so answer the same quantified question. See `PERMISSION_SCOPES`.
+    if (props.scope === PERMISSION_SCOPES.any) return true;
+    if (props.scope === PERMISSION_SCOPES.all) return false;
+    throw new VexAccessError({
+      resource: props.resource,
+      action: props.action,
+      message:
+        `hasPermission: "${props.resource}.${props.action}" needs a "data" object (its check is a constraint). ` +
+        `Pass "data" for an exact check, or use scope: "any" (nav/list gating) or scope: "all" (bulk actions).`,
+    });
+  }
+
+  const condition = readAccessCondition<GenericDocument>(outcome);
+  // A condition this module cannot read did not come from `q`. Deny rather than
+  // widen: an unreadable condition must never resolve to unrestricted access.
+  if (condition === undefined) return false;
+
+  const doc = props.data as unknown as GenericDocument;
+  const indexHolds =
+    condition.index === undefined ||
+    accessConstraintsToPredicate({ constraints: condition.index.constraints })(doc);
+  const filterHolds =
+    condition.filter === undefined || accessFilterTreeToPredicate({ node: condition.filter })(doc);
+  if (!indexHolds || !filterHolds) return false;
+
+  // `filter` augments the condition; it never replaces it.
+  if (props.check.filter === undefined) return true;
+  return resolvePermissionCheck<TData, TUser, TOrg>({
+    ...props,
+    check: props.check.filter as PermissionCheck,
+  });
+}
+
 /**
  * Resolves one role's `PermissionCheck` into a concrete result: booleans and
  * mode objects pass through; callbacks are invoked with `{ user, data?,
@@ -196,7 +272,7 @@ const CAPABILITY_PROBE = Symbol("vex.capabilityProbe");
  * @returns The check's boolean or field-mode object; for callbacks, the
  *   callback's result with `undefined` normalized to `false`.
  */
-function resolvePermissionCheck<TData, TUser, TOrg, TFieldKeys extends string>(props: {
+function resolvePermissionCheck<TData, TUser, TOrg>(props: {
   check: PermissionCheck;
   user: TUser;
   data?: TData;
@@ -204,9 +280,16 @@ function resolvePermissionCheck<TData, TUser, TOrg, TFieldKeys extends string>(p
   resource: string;
   action: string;
   scope: PermissionScope;
-}): FieldPermissionResult<TFieldKeys> {
+}): boolean {
+  if (isConstrainedCheck(props.check)) {
+    return resolveConstrainedCheck<TData, TUser, TOrg>({
+      ...props,
+      check: props.check,
+    });
+  }
+
   if (typeof props.check !== "function") {
-    return props.check as FieldPermissionResult<TFieldKeys>;
+    return props.check;
   }
 
   const callbackProps = {
@@ -216,7 +299,7 @@ function resolvePermissionCheck<TData, TUser, TOrg, TFieldKeys extends string>(p
   } as PermissionCallbackProps;
   if (props.data !== undefined) {
     const result = props.check(callbackProps);
-    return result === undefined ? false : (result as FieldPermissionResult<TFieldKeys>);
+    return result === undefined ? false : result;
   }
 
   try {
@@ -237,7 +320,7 @@ function resolvePermissionCheck<TData, TUser, TOrg, TFieldKeys extends string>(p
       },
     );
     const result = props.check({ ...callbackProps, data: probe });
-    return result === undefined ? false : (result as FieldPermissionResult<TFieldKeys>);
+    return result === undefined ? false : result;
   } catch (e) {
     const touchedData =
       typeof e === "object" &&
@@ -265,54 +348,22 @@ function resolvePermissionCheck<TData, TUser, TOrg, TFieldKeys extends string>(p
 }
 
 /**
- * Merges one resolved `FieldPermissionResult` per role into a single result —
- * OR across roles (allow wins over deny), per field when `fields` is given.
- *
- * Module-private. Field-map semantics with no `fields` param: allow-mode with
- * nonempty `fields` → `true` ("can touch something"); allow-mode with empty
- * `fields` → `false`; deny-mode with nonempty `fields` → `false` ("something
- * is denied"); deny-mode with empty `fields` → `true`.
- *
- * @returns A single OR-merged boolean when `fields` is omitted; otherwise a
- *   field map keyed by exactly the requested fields.
- */
-function mergeRolePermissions<TFieldKeys extends string>(props: {
-  resolved: Array<FieldPermissionResult<TFieldKeys>>;
-  fields?: TFieldKeys[];
-}): boolean | ResolvedFieldPermissions {
-  const collapse = (check: FieldPermissionResult<TFieldKeys>, field?: TFieldKeys): boolean => {
-    if (typeof check === "boolean") {
-      return check;
-    }
-    if (check.mode === PERMISSION_MODES.allow) {
-      return field === undefined ? check.fields.length > 0 : check.fields.includes(field);
-    }
-    return field === undefined ? check.fields.length === 0 : !check.fields.includes(field);
-  };
-
-  if (props.fields === undefined) {
-    return props.resolved.some((check) => collapse(check));
-  }
-  const result: ResolvedFieldPermissions = {};
-  for (const field of props.fields) {
-    result[field] = props.resolved.some((check) => collapse(check, field));
-  }
-  return result;
-}
-
-/**
  * Resolves a single action's check from a per-action map, consulting the
  * action-level wildcard when the explicit action isn't declared.
  *
- * Module-private — the wildcard precedence lives in exactly one place so
- * `hasPermission` (and any future evaluator, e.g. DB-backed roles) shares it.
- * Presence, not truthiness, decides: an explicit `false` still wins over the
- * wildcard.
+ * The wildcard precedence lives in exactly one place so `hasPermission`,
+ * `resolveAccessIndex`, and any future evaluator (e.g. DB-backed roles) share
+ * it. Presence, not truthiness, decides: an explicit `false` still wins over
+ * the wildcard.
  *
+ * @param props - Input props.
+ * @param props.resource - The per-action map declared for one role + resource.
+ * @param props.action - The action being resolved.
  * @returns The declared check for `action`, else the wildcard's check, else
  *   `undefined` (caller falls through to `defaultPermissionMode`).
+ * @internal
  */
-function resolveActionCheck(props: {
+export function resolveActionCheck(props: {
   resource: Record<string, unknown>;
   action: string;
 }): PermissionCheck | undefined {

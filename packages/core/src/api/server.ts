@@ -26,6 +26,7 @@ import type { GetGlobalReturn, GetGlobalServerArgs } from "./globals/get.server"
 import type { UpsertGlobalServerArgs } from "./globals/upsert.server";
 import type { GenericGlobalsQueryServerArgs } from "./globals/types";
 import type {
+  AccessCallOptions,
   DocReturnItem,
   GetReturn,
   PaginationOptions,
@@ -460,22 +461,7 @@ export async function resolveGetAuth<TDataModel extends GenericDataModel>({
  *
  * @typeParam TArgs - The wrapped function's original server args.
  */
-export type BoundServerArgs<TArgs> = Omit<TArgs, "auth" | "config"> & {
-  /**
-   * Bypass access control for this call only.
-   *
-   * Implemented by handing the underlying function a config whose `access` is
-   * `undefined` — the same "RBAC not configured" path as omitting `access` from
-   * `defineConfig`, so every guard short-circuits and `getAuth` is never called.
-   *
-   * Use for genuinely public reads (rendering a public page by slug, sitemaps),
-   * where an anonymous visitor has no user and would otherwise be denied.
-   * Deliberately explicit and greppable, unlike silently omitting `config`.
-   *
-   * @defaultValue false
-   */
-  skipAccess?: boolean;
-};
+export type BoundServerArgs<TArgs> = Omit<TArgs, "auth" | "config">;
 
 /**
  * Minimal shape the overloaded `find`/`search` wrappers destructure internally.
@@ -485,7 +471,7 @@ export type BoundServerArgs<TArgs> = Omit<TArgs, "auth" | "config"> & {
  */
 type BoundPassthroughArgs<DataModel extends GenericDataModel> = {
   ctx: GenericQueryCtx<DataModel> | GenericMutationCtx<DataModel>;
-  skipAccess?: boolean;
+  access?: AccessCallOptions;
 };
 
 /**
@@ -641,7 +627,7 @@ export interface VexServerApi<DataModel extends GenericDataModel> {
  *       collection: "pages",
  *       withIndex: { name: "by_slug", range: (q) => q.eq("slug", args.slug) },
  *       limit: 1,
- *       skipAccess: true,
+ *       access: { bypass: true },
  *     }),
  * });
  * ```
@@ -656,19 +642,22 @@ export function vexServerApi<DataModel extends GenericDataModel>(options: {
   ) => Promise<VexApiAuth | undefined>;
 }): VexServerApi<DataModel> {
   const { config, getAuth } = options;
-  // Stripping `access` reuses the documented "RBAC not configured" path, so a
-  // `skipAccess` call short-circuits every guard and never invokes `getAuth`.
-  const openConfig: VexConfig = { ...config, access: undefined };
 
   /*
    * Resolves the `{ config, auth }` pair to inject for one call.
    */
   async function inject(
     ctx: GenericQueryCtx<DataModel> | GenericMutationCtx<DataModel>,
-    skipAccess?: boolean,
+    bypassAccess?: boolean,
   ): Promise<{ config: VexConfig; auth: VexApiAuth | undefined }> {
-    const effective = skipAccess === true ? openConfig : config;
-    return { config: effective, auth: await resolveGetAuth({ ctx, config: effective, getAuth }) };
+    // The stripped config is used ONLY to resolve auth: `resolveGetAuth` returns
+    // `undefined` without invoking `getAuth` when RBAC is off, so a bypassed call
+    // costs no session lookup. The ORIGINAL config is what gets forwarded - the raw
+    // function's `resolveAccessCall` enforces the bypass itself, and forwarding the
+    // stripped config would make its dev guard see "bypass set but RBAC off" and
+    // warn spuriously on every legitimate bypass. One enforcement seam, not two.
+    const authConfig: VexConfig = bypassAccess === true ? { ...config, access: undefined } : config;
+    return { config, auth: await resolveGetAuth({ ctx, config: authConfig, getAuth }) };
   }
 
   // Each wrapper below is a generic pass-through, so the spread of `rest` cannot
@@ -678,46 +667,79 @@ export function vexServerApi<DataModel extends GenericDataModel>(options: {
   // casts the underlying server functions already use.
   return {
     get: async (args) => {
-      const { skipAccess, ...rest } = args;
-      return (await get({ ...rest, ...(await inject(rest.ctx, skipAccess)) } as never)) as never;
+      const { access, ...rest } = args;
+      return (await get({
+        access,
+        ...rest,
+        ...(await inject(rest.ctx, access?.bypass)),
+      } as never)) as never;
     },
     // Cast to the overloaded interface: an implementation signature cannot be
     // structurally assignable to two call signatures at once.
     find: (async (args: BoundPassthroughArgs<DataModel>) => {
-      const { skipAccess, ...rest } = args;
-      return (await find({ ...rest, ...(await inject(rest.ctx, skipAccess)) } as never)) as never;
+      const { access, ...rest } = args;
+      return (await find({
+        access,
+        ...rest,
+        ...(await inject(rest.ctx, access?.bypass)),
+      } as never)) as never;
     }) as BoundFind<DataModel>,
     search: (async (args: BoundPassthroughArgs<DataModel>) => {
-      const { skipAccess, ...rest } = args;
-      return (await search({ ...rest, ...(await inject(rest.ctx, skipAccess)) } as never)) as never;
+      const { access, ...rest } = args;
+      return (await search({
+        access,
+        ...rest,
+        ...(await inject(rest.ctx, access?.bypass)),
+      } as never)) as never;
     }) as BoundSearch<DataModel>,
     create: async (args) => {
-      const { skipAccess, ...rest } = args;
-      return await create({ ...rest, ...(await inject(rest.ctx, skipAccess)) } as never);
+      const { access, ...rest } = args;
+      return await create({
+        access,
+        ...rest,
+        ...(await inject(rest.ctx, access?.bypass)),
+      } as never);
     },
     update: async (args) => {
-      const { skipAccess, ...rest } = args;
-      return await update({ ...rest, ...(await inject(rest.ctx, skipAccess)) } as never);
+      const { access, ...rest } = args;
+      return await update({
+        access,
+        ...rest,
+        ...(await inject(rest.ctx, access?.bypass)),
+      } as never);
     },
     remove: async (args) => {
-      const { skipAccess, ...rest } = args;
-      return await remove({ ...rest, ...(await inject(rest.ctx, skipAccess)) } as never);
+      const { access, ...rest } = args;
+      return await remove({
+        access,
+        ...rest,
+        ...(await inject(rest.ctx, access?.bypass)),
+      } as never);
     },
     globals: {
       get: async (args) => {
-        const { skipAccess, ...rest } = args;
+        const { access, ...rest } = args;
         return (await getGlobal({
+          access,
           ...rest,
-          ...(await inject(rest.ctx, skipAccess)),
+          ...(await inject(rest.ctx, access?.bypass)),
         } as never)) as never;
       },
       find: async (args) => {
-        const { skipAccess, ...rest } = args;
-        return await findGlobals({ ...rest, ...(await inject(rest.ctx, skipAccess)) } as never);
+        const { access, ...rest } = args;
+        return await findGlobals({
+          access,
+          ...rest,
+          ...(await inject(rest.ctx, access?.bypass)),
+        } as never);
       },
       upsert: async (args) => {
-        const { skipAccess, ...rest } = args;
-        return await upsertGlobal({ ...rest, ...(await inject(rest.ctx, skipAccess)) } as never);
+        const { access, ...rest } = args;
+        return await upsertGlobal({
+          access,
+          ...rest,
+          ...(await inject(rest.ctx, access?.bypass)),
+        } as never);
       },
     },
   };

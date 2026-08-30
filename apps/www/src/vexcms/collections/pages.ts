@@ -33,6 +33,12 @@ export const pages = defineCollection({
       // defaultPageSize: 2,
     },
   },
+  indexes: [
+    {
+      name: "by_slug_title",
+      fields: ["slug", "title"],
+    },
+  ],
   fields: {
     title: text({
       required: true,

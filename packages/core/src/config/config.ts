@@ -1,3 +1,5 @@
+import { AccessResource } from "../access";
+import { validateAccessConfig } from "../access/validateAccessConstraints";
 import { mergeAuthCollections } from "../auth/mergeCollections";
 import { internalCollections } from "../collections/internal";
 import { validateAndMergeStorageConfig } from "../media";
@@ -55,6 +57,16 @@ export function defineConfig(config?: VexConfigInput): VexConfig {
     collections: collections,
     storageAdapters: config?.storage?.adapters,
   });
+
+  if (config?.access) {
+    const allResources: AccessResource[] = (
+      collections.concat(mediaCollections) as AccessResource[]
+    ).concat(config?.globals ?? []);
+    validateAccessConfig({
+      ...config.access,
+      resources: allResources,
+    });
+  }
 
   return {
     basePath: "/admin",

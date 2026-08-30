@@ -66,5 +66,6 @@ export function globalConfigToFieldTypeMap(props: { global: GlobalConfig }): str
   const interfaceBody = Object.entries(fieldTypeMap)
     .map(([fieldType, fields]) => `\t\t${fieldType}: ${fields.join(" | ")}`)
     .join("\n");
-  return `\t${g.slug}: {\n\t\tid: "_id"\n${interfaceBody}\n\t}`;
+  // See `collectionConfigToFieldTypeMap` for why there is no synthetic `id` entry.
+  return `\t${g.slug}: {\n${interfaceBody}\n\t}`;
 }

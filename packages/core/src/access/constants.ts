@@ -27,6 +27,19 @@ export const DRAFT_ACTIONS = {
 export type DraftAction = (typeof DRAFT_ACTIONS)[keyof typeof DRAFT_ACTIONS];
 
 /**
+ * Actions whose read shape is a query rather than a single-document check —
+ * the only actions an indexed `{ filter, withIndex }` permission check may
+ * target (design doc §3: `withIndex` on `create`/`update`/`delete` would
+ * narrow nothing, since those authorize one document, not a range).
+ */
+export const QUERY_ACTIONS = {
+  read: CRUD_ACTIONS.read,
+  readDrafts: DRAFT_ACTIONS.readDrafts,
+} as const;
+/** Query-shaped action union, derived from {@link QUERY_ACTIONS}. */
+export type QueryAction = (typeof QUERY_ACTIONS)[keyof typeof QUERY_ACTIONS];
+
+/**
  * Field-mode object modes: `allow` = only the listed fields, `deny` = all but
  * the listed fields.
  */

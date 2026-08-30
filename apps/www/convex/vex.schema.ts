@@ -142,8 +142,26 @@ export const pages = defineTable({
     })
   ),
 })
+  .index("by_slug_title", ["slug", "title"])
   .index("by_slug", ["slug"])
   .index("by_themes", ["themes"])
+
+export const user = defineTable({
+  name: v.string(),
+  email: v.string(),
+  emailVerified: v.boolean(),
+  image: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  role: v.optional(v.string()),
+  banned: v.optional(v.boolean()),
+  banReason: v.optional(v.string()),
+  banExpires: v.optional(v.number()),
+  isAnonymous: v.optional(v.boolean()),
+  userId: v.optional(v.string()),
+  roles: v.array(v.string()),
+  newUserFieldTest: v.optional(v.string()),
+}).index("by_email", ["email"])
 
 export const headers = defineTable({
   name: v.string(),
@@ -181,21 +199,78 @@ export const site_settings = defineTable({
   name: v.string(),
 })
 
-export const user = defineTable({
-  name: v.string(),
-  email: v.string(),
-  emailVerified: v.boolean(),
-  image: v.optional(v.string()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-  role: v.optional(v.string()),
-  banned: v.optional(v.boolean()),
-  banReason: v.optional(v.string()),
-  banExpires: v.optional(v.number()),
-  isAnonymous: v.optional(v.boolean()),
-  userId: v.optional(v.string()),
-  roles: v.array(v.string()),
-}).index("by_email", ["email"])
+export const articles = defineTable({
+  title: v.string(),
+  slug: v.string(),
+  excerpt: v.optional(v.string()),
+  publishedAt: v.optional(v.number()),
+  authorId: v.array(v.id("user")),
+  status: v.optional(
+    v.array(v.union(v.literal("draft"), v.literal("review"), v.literal("published")))
+  ),
+  body: v.optional(v.string()),
+  readingMinutes: v.optional(v.number()),
+  featured: v.optional(v.boolean()),
+  coverImage: v.optional(v.array(v.id("images"))),
+})
+  .index("by_slug", ["slug"])
+  .index("by_author", ["authorId"])
+  .index("by_status", ["status"])
+  .index("by_coverImage", ["coverImage"])
+  .searchIndex("search_title", {
+    searchField: "title",
+
+    filterFields: [],
+  })
+
+export const case_studies = defineTable({
+  title: v.string(),
+  slug: v.string(),
+  excerpt: v.optional(v.string()),
+  publishedAt: v.optional(v.number()),
+  authorId: v.array(v.id("user")),
+  status: v.optional(
+    v.array(v.union(v.literal("draft"), v.literal("review"), v.literal("published")))
+  ),
+  clientName: v.string(),
+  industry: v.optional(v.string()),
+  clientUrl: v.optional(v.string()),
+  outcomeSummary: v.optional(v.string()),
+  contractValue: v.optional(v.number()),
+})
+  .index("by_slug", ["slug"])
+  .index("by_author", ["authorId"])
+  .index("by_status", ["status"])
+
+export const changelog = defineTable({
+  title: v.string(),
+  slug: v.string(),
+  excerpt: v.optional(v.string()),
+  publishedAt: v.optional(v.number()),
+  authorId: v.array(v.id("user")),
+  status: v.optional(
+    v.array(v.union(v.literal("draft"), v.literal("review"), v.literal("published")))
+  ),
+  version: v.string(),
+  releaseType: v.optional(
+    v.array(v.union(v.literal("major"), v.literal("minor"), v.literal("patch")))
+  ),
+  breaking: v.optional(v.boolean()),
+  notes: v.optional(v.string()),
+})
+  .index("by_slug", ["slug"])
+  .index("by_author", ["authorId"])
+  .index("by_status", ["status"])
+  .index("by_version", ["version"])
+
+export const comments = defineTable({
+  authorId: v.array(v.id("user")),
+  body: v.string(),
+  article: v.array(v.id("articles")),
+  approved: v.optional(v.boolean()),
+})
+  .index("by_author", ["authorId"])
+  .index("by_article", ["article"])
 
 export const session = defineTable({
   expiresAt: v.number(),

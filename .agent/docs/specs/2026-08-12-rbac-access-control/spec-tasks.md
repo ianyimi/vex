@@ -72,10 +72,14 @@ inputs (exact per-doc `action` mode with the live `currentDocument`); `GlobalEdi
 
 ## 10. Cleanup `[dev]` — [ ]
 
-- [ ] Drop field-mode `{ mode, fields }` from `PermissionCheck`/`FieldPermissionResult`/`mergeRolePermissions`.
+- [x] Drop field-mode `{ mode, fields }` from `PermissionCheck`/`FieldPermissionResult`/`mergeRolePermissions`.
 - [ ] `get`/`getGlobal` return `null` on read-deny (not throw).
 - [ ] `defineConfig`-time access validation (the open Step 4 item).
 - [ ] Doc: `me` as client-UI convenience; confirm `resolveCollectionSlug` JSDoc matches throw.
+- [ ] **Cross-spec:** `2026-08-23-access-index-resolution` adds the
+      `{ filter, withIndex }` object form to `PermissionCheck`. Land the field-mode
+      removal above **in the same pass** as that addition so the union is rewritten
+      once, not twice. Whichever spec reaches this union first owns the migration.
 - Verify: `pnpm --filter @vexcms/core test && pnpm --filter www typecheck`
 
 ## 11. Comprehensive test plan `[dev]` — [ ]

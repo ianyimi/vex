@@ -8,7 +8,9 @@ import { slugToPascalCase } from "./utils";
  * Each generated interface extends `VexDocument` (inheriting `_id` and `_creationTime`)
  * and overrides `_id` with the branded Convex `Id<"slug">` type for that collection.
  * Optional fields (`field.required === false`) are emitted with the `?` modifier.
- * `select` fields with custom options emit a companion type alias above the interface.
+ * `select` fields with custom options emit a companion type alias above the interface,
+ * named `<InterfaceName><FieldKey>Option` so the same field key on two collections does
+ * not produce two aliases with one name. Override with the field's `optionInterfaceName`.
  *
  * @param props - Input props.
  * @param props.collection - The resolved collection definition to convert.
@@ -37,10 +39,29 @@ export function collectionConfigToInterface(props: { collection: CollectionConfi
     .map(([fieldKey, field]) => {
       let fieldType = field.interfaceType;
       if (field.type === ADMIN_FIELDS.select.type) {
-        fieldType = field.optionInterfaceName ?? `${slugToPascalCase({ slug: fieldKey })}Option`;
+        // Qualified by the collection's interface name, not the field key alone.
+        // The field key alone collides whenever two collections declare a `select`
+        // under the same name — `status` on three content collections emitted three
+        // `StatusOption` aliases and broke the generated file. Interface names are
+        // already unique (two collections sharing one would collide on the interface
+        // itself), so qualifying is sufficient without any cross-collection state.
+        //
+        // Safe to rename: this alias is deliberately NOT exported, so nothing outside
+        // the generated file can reference it.
+        const optionName =
+          field.optionInterfaceName ??
+          `${collection.interfaceName}${slugToPascalCase({ slug: fieldKey })}Option`;
         collectionSubTypes.push(
-          `type ${fieldType} = ${field.options.map((o) => `"${o.value}"`).join(" | ")}`,
+          `type ${optionName} = ${field.options.map((o) => `"${o.value}"`).join(" | ")}`,
         );
+        // `[]` matters: a `select` stores `v.array(...)` (see `ADMIN_FIELDS.select`,
+        // whose own `interfaceType` is `string[]`), and substituting the bare union
+        // name here used to drop it — so the generated interface promised a scalar
+        // while the deployed schema rejected one. Inserting the documented value then
+        // failed at runtime with a validator error, and an access constraint written
+        // as `q.eq("status", "published")` typechecked against a shape that can never
+        // match a stored row.
+        fieldType = `${optionName}[]`;
       }
       if (field.type === ADMIN_FIELDS.group.type && field.interfaceName) {
         fieldType = field.interfaceName;
@@ -109,9 +130,11 @@ export function collectionConfigToFieldTypeMap(props: { collection: CollectionCo
     acc += `\t\t${fieldType}: ${fields.join(" | ")}\n`;
     return acc;
   }, "");
-  const interfaceStart = `\t${collection.slug}: {\n
-    \t\tid: "_id"
-    ${interfaceBody}
-    \t}`;
-  return interfaceStart;
+  // No synthetic `id: "_id"` entry: this map is a field-TYPE index, and `_id` is not a
+  // field type. It was only ever here to inject `_id` into the flattened field-key
+  // union that access checks used to consume. That union is gone with the field-mode
+  // API; what survives derives field names from the DOCUMENT (`AccessDocFieldFor`),
+  // which carries `_id` and `_creationTime` on its own. `FieldKeysOfType` bounds its
+  // key to `AdminFieldType`, so this entry was unreachable through the public surface.
+  return `\t${collection.slug}: {\n${interfaceBody}\t}`;
 }

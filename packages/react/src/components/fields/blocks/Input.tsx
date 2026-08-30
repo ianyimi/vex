@@ -23,7 +23,7 @@ import { MODALS } from "../../modals";
  * ```
  */
 export const BlocksFieldInput = createFieldInput<GenericBlock[], {}, BlocksField>(
-  ({ name, collection, fieldDef, field, submissionAttempts }) => {
+  ({ name, collection, readOnly, fieldDef, field, submissionAttempts }) => {
     const [activeField, setActiveField] = useQueryState(MODALS.editBlocks.urlParam, parseAsString);
     const modalOpen = activeField === name;
     async function openEditor() {
@@ -40,7 +40,7 @@ export const BlocksFieldInput = createFieldInput<GenericBlock[], {}, BlocksField
           collection={collection}
           field={field}
           fieldDef={fieldDef}
-          readOnly={fieldDef.admin.readOnly}
+          readOnly={readOnly || fieldDef.admin.readOnly}
           submissionAttempts={submissionAttempts}
           modalOpen={modalOpen}
           openEditor={openEditor}

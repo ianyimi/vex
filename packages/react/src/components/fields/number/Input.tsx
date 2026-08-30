@@ -1,9 +1,8 @@
 "use client";
 
-import { CRUD_ACTIONS, type NumberField } from "@vexcms/core";
+import { type NumberField } from "@vexcms/core";
 import { Input } from "../../ui/input";
 import { createFieldInput, FormDescription, FormLabel, FormError } from "../../form";
-import { usePermission } from "../../../hooks";
 
 /**
  * Number field input component for the admin edit form.
@@ -36,14 +35,13 @@ import { usePermission } from "../../../hooks";
  * ```
  */
 export const NumberFieldInput = createFieldInput<number, {}, NumberField>(
-  ({ name, collection, fieldDef, field, index, submissionAttempts }) => {
-    const canEdit = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.update });
+  ({ name, readOnly, fieldDef, field, index, submissionAttempts }) => {
     return (
       <div className="flex flex-col gap-1.5">
         <FormLabel field={fieldDef} index={index} name={name} />
         <Input
           id={name}
-          disabled={!canEdit}
+          disabled={readOnly}
           type="number"
           value={field.state.value ?? 0}
           onChange={(e) => field.handleChange(Number(e.target.value))}

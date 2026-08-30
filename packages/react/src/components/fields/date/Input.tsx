@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo, useCallback, useRef, useEffect } from "react";
-import { CRUD_ACTIONS, type DateField } from "@vexcms/core";
+import { type DateField } from "@vexcms/core";
 import { createFieldInput, FormError, FormDescription, FormLabel } from "../../form";
 import { DateTimePicker } from "../../ui";
-import { usePermission } from "../../../hooks";
 
 /**
  * Date field input component for the admin edit form.
@@ -37,7 +36,7 @@ import { usePermission } from "../../../hooks";
  * ```
  */
 export const DateFieldInput = createFieldInput<number, {}, DateField>(
-  ({ name, collection, fieldDef, field, index, submissionAttempts }) => {
+  ({ name, readOnly, fieldDef, field, index, submissionAttempts }) => {
     const fieldRef = useRef(field);
     useEffect(() => {
       fieldRef.current = field;
@@ -54,14 +53,13 @@ export const DateFieldInput = createFieldInput<number, {}, DateField>(
       }
     }, []);
 
-    const canEdit = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.update });
     return (
       <div className="flex flex-col gap-1.5">
         <FormLabel field={fieldDef} index={index} name={name} />
         <DateTimePicker
           value={dateValue}
           onChange={handleChange}
-          disabled={!canEdit || fieldDef.admin.readOnly}
+          disabled={readOnly || fieldDef.admin.readOnly}
           clearable
           hideTime={fieldDef.time.hidden}
           use12HourFormat={fieldDef.time.use12HourFormat}

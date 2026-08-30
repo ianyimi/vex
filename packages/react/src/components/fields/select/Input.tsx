@@ -1,6 +1,6 @@
 "use client";
 
-import { CRUD_ACTIONS, type SelectField } from "@vexcms/core";
+import { type SelectField } from "@vexcms/core";
 import { createFieldInput, FormDescription, FormLabel, FormError } from "../../form";
 import {
   MultiSelect,
@@ -10,7 +10,6 @@ import {
   MultiSelectTrigger,
   MultiSelectValue,
 } from "../../ui/multi-select";
-import { usePermission } from "../../../hooks";
 
 /**
  * Select field input component for the admin edit form.
@@ -44,8 +43,7 @@ import { usePermission } from "../../../hooks";
  * ```
  */
 export const SelectFieldInput = createFieldInput<string[], {}, SelectField>(
-  ({ name, collection, fieldDef, field, index, submissionAttempts }) => {
-    const canEdit = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.update });
+  ({ name, readOnly, fieldDef, field, index, submissionAttempts }) => {
     return (
       <div className="flex flex-col gap-1.5">
         <FormLabel field={fieldDef} index={index} name={name} />
@@ -59,7 +57,7 @@ export const SelectFieldInput = createFieldInput<string[], {}, SelectField>(
             onBlur={field.handleBlur}
             name={name}
             aria-readonly={fieldDef.admin.readOnly}
-            disabled={!canEdit}
+            disabled={readOnly}
           >
             <MultiSelectValue placeholder={fieldDef.admin.placeholder} />
           </MultiSelectTrigger>

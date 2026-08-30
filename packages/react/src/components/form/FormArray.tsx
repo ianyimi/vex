@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  CRUD_ACTIONS,
   type ArrayField,
   type ArrayType,
   type BaseFieldMeta,
@@ -17,7 +16,6 @@ import { fieldToInputComponent } from "../fields";
 import { FormError } from "./FormError";
 import { FormLabel } from "./FormLabel";
 import { FormDescription } from "./FormDescription";
-import { usePermission } from "../../hooks";
 
 /**
  * Renders an array field as a dynamic list with add/remove controls.
@@ -88,7 +86,6 @@ export function FormArray<
 
   const items = field.state.value ?? [];
 
-  const canEdit = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.update });
   return (
     <div className="flex flex-col gap-3 rounded-sm border-2 p-2">
       <div className="flex gap-3">
@@ -98,7 +95,7 @@ export function FormArray<
         </div>
         <Button
           type="button"
-          disabled={!canEdit || readOnly}
+          disabled={readOnly}
           variant="outline"
           size="sm"
           onClick={() => field.pushValue(getNewItemDefault())}
@@ -118,7 +115,7 @@ export function FormArray<
           {items.map((_, index) => (
             <Draggable key={index} id={`${name}[${index}]`} index={index}>
               <div className="flex items-center gap-2 px-2">
-                <DragHandle disabled={!canEdit || readOnly} />
+                <DragHandle disabled={readOnly} />
                 <div className="flex-1">
                   <form.Field name={`${name}[${index}]`}>
                     {(subField) => (

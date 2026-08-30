@@ -1,6 +1,7 @@
 import { CollectionSlug } from "../types/generated";
 import { PERMISSION_MODES, ADMIN_CUSTOM_SUBJECTS, WILDCARD_KEY } from "./constants";
 import {
+  CustomActionsInput,
   VexAccessConfigError,
   type AccessResource,
   type CustomResourceInput,
@@ -20,7 +21,7 @@ import {
  *
  * @typeParam TRoles - Tuple of role name literals.
  * @typeParam TResources - Tuple of collection/global configs contributing subjects.
- * @typeParam TCustom - Custom subject declarations (`{ actions, data? }`).
+ * @typeParam TCustomResources - Custom subject declarations (`{ actions, data? }`).
  * @typeParam TUserSlug - Slug literal of the user collection; drives the callback
  *   `user` type via the generated registry.
  * @typeParam TOrgSlug - Slug literal of the organization collection, when
@@ -38,14 +39,17 @@ import {
  *   (`string` or `string[]` value); `hasPermission` reads roles from it.
  * @param props.orgCollectionSlug - Optional org collection slug enabling
  *   org-scoped callbacks.
- * @param props.defaultPermissionMode - Undeclared-permission posture; defaults to
- *   `PERMISSION_MODES.allow`.
  * @param props.permissions - Role → subject → check matrix (see `RolePermissions`).
  * @returns Frozen `VexAccessConfig` carrying the `SubjectMap` phantom for inference.
  * @throws {VexAccessConfigError} When `userCollectionSlug` or `userRolesField` is
  *   empty, when a `customResources` key collides with a resource slug, or when a
- *   `customResources` entry declares an empty `actions` array.
- *
+ *   `customResources` entry declares an empty `actions` array. Also when a rule's
+ *   recorded constraints are not an in-order prefix of a declared index or violate
+ *   Convex's operator rule (see `validateAccessConstraints`), and when a
+ *   `constraints` callback throws while being recorded — every rule's callback runs
+ *   once here, at module load, so a rule that reached past its types surfaces as a
+ *   config error naming the role, resource and action rather than as a bare
+ *   `TypeError` from whichever method was missing.
  * @example
  * ```ts
  * export const access = defineAccess({
@@ -67,12 +71,28 @@ import {
 export function defineAccess<
   const TRoles extends readonly string[],
   const TResources extends readonly AccessResource[],
-  const TCustom extends Record<string, CustomResourceInput> = {},
+  const TCustomResources extends Record<string, CustomResourceInput> = {},
   const TUserSlug extends CollectionSlug = CollectionSlug,
   const TOrgSlug extends CollectionSlug | undefined = undefined,
+  const TCustomActions extends Partial<
+    Record<TResources[number]["slug"] | TUserSlug | Extract<TOrgSlug, string>, CustomActionsInput>
+  > = {},
 >(
-  props: VexAccessConfigInput<TRoles, TResources, TCustom, TUserSlug, TOrgSlug>,
-): VexAccessConfig<SubjectMap<TResources, TCustom>> {
+  props: VexAccessConfigInput<
+    TRoles,
+    TResources,
+    TCustomResources,
+    TUserSlug,
+    TOrgSlug,
+    TCustomActions
+  >,
+): VexAccessConfig<
+  SubjectMap<TResources, TCustomResources, TUserSlug, TOrgSlug, TCustomActions>,
+  TResources,
+  TUserSlug,
+  TOrgSlug,
+  TCustomActions
+> {
   // Hard errors — always run, regardless of NODE_ENV. The user collection
   // itself cannot be validated here (auth-adapter fields merge later, inside
   // `defineConfig`), so validation is limited to the config's own shape.
@@ -86,7 +106,15 @@ export function defineAccess<
     throw new VexAccessConfigError(`anonRole must not be empty if provided`);
   }
 
-  const resourceSlugs = new Set<string>(props.resources.map((resource) => resource.slug));
+  const resourceSlugs = new Set<string>(
+    props.resources
+      .map((resource) => resource.slug)
+      .concat(
+        props.orgCollectionSlug
+          ? [props.userCollectionSlug, props.orgCollectionSlug]
+          : [props.userCollectionSlug],
+      ),
+  );
   for (const [key, customResource] of Object.entries(props.customResources ?? {})) {
     if (resourceSlugs.has(key)) {
       throw new VexAccessConfigError(`customResources "${key}" collides with a resource slug`);
@@ -101,6 +129,8 @@ export function defineAccess<
   if (process.env.NODE_ENV !== "production") {
     const knownSubjects = new Set<string>([
       ...resourceSlugs,
+      props.userCollectionSlug,
+      ...(props.orgCollectionSlug ? [props.orgCollectionSlug] : []),
       ...Object.keys(props.customResources ?? {}),
       ...Object.keys(ADMIN_CUSTOM_SUBJECTS),
     ]);
@@ -127,7 +157,12 @@ export function defineAccess<
     anonRole: props.anonRole,
     enabled: props.enabled ?? true,
     roles: props.roles,
-    defaultPermissionMode: props.defaultPermissionMode ?? PERMISSION_MODES.allow,
+    resources: props.resources,
+    customActions: props.customActions,
+    // Pinned, not defaulted: an allow posture applies at two different fallthrough
+    // points (one of which never consults the role wildcard), which made it an
+    // invisible global grant. Use a role-level `"*": true` instead.
+    defaultPermissionMode: PERMISSION_MODES.deny,
     userCollectionSlug: props.userCollectionSlug,
     userRolesField: props.userRolesField,
     orgCollectionSlug: props.orgCollectionSlug,

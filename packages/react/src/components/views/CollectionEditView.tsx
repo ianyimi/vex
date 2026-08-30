@@ -79,8 +79,11 @@ export function CollectionEditView<
     },
   });
 
-  const canEdit = usePermission({ resource: props.collection.slug, action: CRUD_ACTIONS.update });
-
+  const canEdit = usePermission({
+    resource: props.collection.slug,
+    action: CRUD_ACTIONS.update,
+    data: currentDocument as {},
+  });
   return (
     <AppForm form={form} className="relative">
       <div className="bg-background sticky top-12 z-10 flex h-16 items-center justify-between">
@@ -129,7 +132,7 @@ export function CollectionEditView<
               key={fieldKey}
               name={fieldKey}
               fieldDef={field}
-              readOnly={field.admin.readOnly}
+              readOnly={!canEdit || field.admin.readOnly}
               collection={props.collection}
             />
           );

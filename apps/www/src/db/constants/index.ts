@@ -33,6 +33,37 @@ export const TABLE_SLUG_THEMES = "themes" as const;
 export const TABLE_SLUG_SITE_SETTINGS = "site_settings" as const;
 export const TABLE_SLUG_IMAGES = "images" as const;
 
+// ── Editorial content ───────────────────────────────────────────────────────
+// These four share an access-relevant field shape on purpose: the same
+// `authorId`/`status` field names and indexes, so the composable checks in
+// `~/auth/permissions.ts` read uniformly across them. See `~/auth/access.ts`.
+export const TABLE_SLUG_ARTICLES = "articles" as const;
+export type ArticleDoc = Doc<typeof TABLE_SLUG_ARTICLES>;
+export type ArticleID = Id<typeof TABLE_SLUG_ARTICLES>;
+
+export const TABLE_SLUG_CASE_STUDIES = "case_studies" as const;
+export type CaseStudyDoc = Doc<typeof TABLE_SLUG_CASE_STUDIES>;
+
+export const TABLE_SLUG_CHANGELOG = "changelog" as const;
+export type ChangelogDoc = Doc<typeof TABLE_SLUG_CHANGELOG>;
+
+/** Has `authorId` but NO `status` — proves partial overlap across shared rules. */
+export const TABLE_SLUG_COMMENTS = "comments" as const;
+export type CommentDoc = Doc<typeof TABLE_SLUG_COMMENTS>;
+
+/**
+ * Editorial workflow states, shared verbatim by every editorial collection.
+ *
+ * Declared once here rather than per collection so the `select` options and the
+ * access rules that compare against them cannot drift apart.
+ */
+export const CONTENT_STATUS = {
+  draft: "draft",
+  review: "review",
+  published: "published",
+} as const;
+export type ContentStatus = (typeof CONTENT_STATUS)[keyof typeof CONTENT_STATUS];
+
 export const GLOBAL_SLUG_NAV = "nav" as const;
 
 export const AUTH_PROVIDERS = {

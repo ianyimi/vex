@@ -1,8 +1,11 @@
 import type {
   DocumentByInfo,
+  ExpressionOrValue,
+  FilterBuilder,
   GenericDataModel,
   NamedTableInfo,
   QueryInitializer,
+  TableNamesInDataModel,
 } from "convex/server";
 
 import type { CollectionSlug } from "../../types/generated";
@@ -17,7 +20,8 @@ import type {
   SearchReturn,
   SearchReturnPaginated,
 } from "../types";
-import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { AccessFilterFn, CRUD_ACTIONS, hasPermission, resolveAccessConstraint } from "../../access";
+import { resolveAccessCall } from "../utils";
 
 /**
  * Server-side args for `search`.
@@ -53,6 +57,27 @@ export interface SearchServerArgs<
    * Uses Convex's native `.paginate(opts)` API under the hood.
    */
   paginationOpts?: PaginationOptions;
+  /**
+   * Filter predicate applied after index narrowing. Equivalent to
+   * `.filter(q => q.eq(q.field("published"), true))` on the Convex query.
+   *
+   * Prefer `withIndex` for performance — `filter` scans every document
+   * in the range and is O(n). Use `filter` for secondary conditions that
+   * can't be expressed as index equality ranges.
+   *
+   * @example
+   * ```ts
+   * find({ ctx, collection: "posts", filter: q => q.eq(q.field("published"), true) })
+   * ```
+   */
+  filter?: (
+    q: FilterBuilder<
+      NamedTableInfo<
+        DataModel,
+        TCollectionSlug extends TableNamesInDataModel<DataModel> ? TCollectionSlug : never
+      >
+    >,
+  ) => ExpressionOrValue<boolean>;
 }
 
 // Overload 1: WITHOUT paginationOpts → returns array (most common case)
@@ -113,10 +138,25 @@ export async function search<
 >(
   args: SearchServerArgs<DataModel, TCollectionSlug, TPopulate, D>,
 ): Promise<
-  | SearchReturn<TCollectionSlug, TPopulate, D>
-  | SearchReturnPaginated<TCollectionSlug, TPopulate, D>
+  SearchReturn<TCollectionSlug, TPopulate, D> | SearchReturnPaginated<TCollectionSlug, TPopulate, D>
 > {
-  const searchQuery = buildQuery(args);
+  const { access, action, resource } = resolveAccessCall({
+    config: args.config,
+    access: args.access,
+    defaultAction: CRUD_ACTIONS.read,
+    resource: args.collection,
+  });
+  const accessFilter = resolveAccessConstraint({
+    access,
+    user: args.auth?.user ?? null,
+    organization: args.auth?.organization,
+    resource,
+    action,
+  });
+  const searchQuery = buildQuery({
+    ...args,
+    accessFilter,
+  });
 
   let docs: DocumentByInfo<NamedTableInfo<DataModel, string>>[];
   let convexPaginationResult: Awaited<ReturnType<typeof searchQuery.paginate>> | undefined;
@@ -124,33 +164,33 @@ export async function search<
     convexPaginationResult = await searchQuery.paginate(args.paginationOpts);
     docs = convexPaginationResult.page.filter((d) =>
       hasPermission({
-        access: args.config?.access,
+        access,
         user: args.auth?.user ?? {},
         organization: args.auth?.organization,
-        resource: args.collection,
-        action: CRUD_ACTIONS.read,
+        resource,
+        action,
         data: d,
       }),
     );
   } else if (args.limit) {
     docs = (await searchQuery.take(args.limit)).filter((d) =>
       hasPermission({
-        access: args.config?.access,
+        access,
         user: args.auth?.user ?? {},
         organization: args.auth?.organization,
-        resource: args.collection,
-        action: CRUD_ACTIONS.read,
+        resource,
+        action,
         data: d,
       }),
     );
   } else {
     docs = (await searchQuery.collect()).filter((d) =>
       hasPermission({
-        access: args.config?.access,
+        access,
         user: args.auth?.user ?? {},
         organization: args.auth?.organization,
-        resource: args.collection,
-        action: CRUD_ACTIONS.read,
+        resource,
+        action,
         data: d,
       }),
     );
@@ -178,11 +218,11 @@ export async function search<
         const countQuery = buildQuery(args); // Same search params
         const allDocs = (await countQuery.collect()).filter((d) =>
           hasPermission({
-            access: args.config?.access,
+            access,
             user: args.auth?.user ?? {},
             organization: args.auth?.organization,
-            resource: args.collection,
-            action: CRUD_ACTIONS.read,
+            resource,
+            action,
             data: d,
           }),
         );
@@ -224,12 +264,21 @@ function buildQuery<
   const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
   const D extends number = 0,
 >(
-  args: SearchServerArgs<DataModel, TCollectionSlug, TPopulate, D>,
+  args: SearchServerArgs<DataModel, TCollectionSlug, TPopulate, D> & {
+    accessFilter?: AccessFilterFn;
+  },
 ): QueryInitializer<NamedTableInfo<DataModel, TCollectionSlug>> {
   let q = args.ctx.db.query(args.collection);
   if (args.query) {
     // @ts-expect-error building query piece by piece from query args
     q = q.withSearchIndex(args.searchIndexName, (q) => q.search(args.searchField, args.query));
+  }
+  if (args.accessFilter && args.filter) {
+    q = q.filter((fq) => fq.and(args.accessFilter!(fq), args.filter!(fq)));
+  } else if (args.accessFilter) {
+    q = q.filter(args.accessFilter);
+  } else if (args.filter) {
+    q = q.filter(args.filter);
   }
   return q;
 }

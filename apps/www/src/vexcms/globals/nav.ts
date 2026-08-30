@@ -4,6 +4,9 @@ import { GLOBAL_SLUG_NAV } from "~/db/constants";
 
 export const nav = defineGlobal({
   slug: GLOBAL_SLUG_NAV,
+  admin: {
+    icon: "TableProperties",
+  },
   label: "Nav",
   fields: {
     items: array({

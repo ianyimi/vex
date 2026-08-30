@@ -3,7 +3,7 @@ import type { GenericDataModel } from "convex/server";
 import { GetUrlReturn } from "../types";
 import type { GetUrlServerArgs } from "./types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
-import { resolveCollectionSlug } from "../../api/utils";
+import { resolveAccessCall, resolveCollectionSlug } from "../../api/utils";
 import { GenericId } from "convex/values";
 import { CollectionSlug } from "../../types";
 
@@ -39,13 +39,19 @@ export async function getUrl<TDataModel extends GenericDataModel = GenericDataMo
       config: args.config,
       id: args.mediaId as GenericId<CollectionSlug>,
     });
+    const { access, action } = resolveAccessCall({
+      config: args.config,
+      access: args.access,
+      defaultAction: CRUD_ACTIONS.read,
+      resource,
+    });
     hasPermission({
       throwOnDenied: true,
-      access: args.config.access,
+      access,
       user: args.auth?.user ?? {},
       organization: args.auth?.organization ?? {},
       resource: resource,
-      action: CRUD_ACTIONS.read,
+      action,
     });
   }
   const adapter = args.config.storage?.adapters.find((a) => a.name === args.adapter);

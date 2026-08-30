@@ -36,8 +36,12 @@ harness_model_role: slow
    genuinely novel one); `"uniform"` → let every subagent inherit the session model.
 7. **Naming pass** — scan every file/function/type/variable name in the spec against
    naming-conventions.md; fix mismatches before presenting. Silent step.
-8. **Review build order** — build+test runnable after every step? Every step tagged
+8. **Format pass** — every file path is a `#### <path>` heading above its code block, never
+   bold; heading levels run `#` title → `##` section → `###` step → `#### ` file; code fences
+   balanced and no heading stranded inside one. When stitching subagent output also normalize
+   step-heading tags and strip any `— [ ]` carried over from spec-tasks.md. Silent step.
+9. **Review build order** — build+test runnable after every step? Every step tagged
    `[dev]`/`[agent]`? Files in declaration-before-consumer order?
-9. **Present + update tasks** — spec path, agent/dev split, build-order summary; set frontmatter
-   `touches:` to the paths it will change; run `harness tasks move "<task title>" --to in-progress`
-   (on task-not-found: `harness tasks add "<spec title>" --to in-progress`).
+10. **Present + update tasks** — spec path, agent/dev split, build-order summary; set frontmatter
+    `touches:` to the paths it will change; run `harness tasks move "<task title>" --to in-progress`
+    (on task-not-found: `harness tasks add "<spec title>" --to in-progress`).

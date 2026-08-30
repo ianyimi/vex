@@ -10,6 +10,7 @@ import type { GenericId } from "convex/values";
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { resolveAccessCall } from "../utils";
 
 /**
  * Server-side args for `update`.
@@ -75,13 +76,19 @@ export async function update<
     // for a protected row simply by sending a different `src`). Matches the
     // behaviour of `get`, `find`, and `remove`.
     const doc = await args.ctx.db.get(args.id);
+    const { access, action, resource } = resolveAccessCall({
+      config: args.config,
+      access: args.access,
+      defaultAction: CRUD_ACTIONS.update,
+      resource: args.collection,
+    });
     hasPermission({
       throwOnDenied: true,
-      access: args.config.access,
+      access,
       user: args.auth?.user ?? {},
       organization: args.auth?.organization,
-      resource: args.collection,
-      action: CRUD_ACTIONS.update,
+      resource,
+      action,
       data: doc ?? undefined,
     });
   }

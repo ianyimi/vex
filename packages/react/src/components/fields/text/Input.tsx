@@ -1,9 +1,8 @@
 "use client";
 
-import { CRUD_ACTIONS, type TextField } from "@vexcms/core";
+import { type TextField } from "@vexcms/core";
 import { Input } from "../../ui/input";
 import { createFieldInput, FormDescription, FormLabel, FormError } from "../../form";
-import { usePermission } from "../../../hooks";
 
 /**
  * Text field input component for the admin edit form.
@@ -36,14 +35,13 @@ import { usePermission } from "../../../hooks";
  * ```
  */
 export const TextFieldInput = createFieldInput<string, {}, TextField>(
-  ({ name, collection, fieldDef, field, index, submissionAttempts }) => {
-    const canEdit = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.update });
+  ({ name, readOnly, fieldDef, field, index, submissionAttempts }) => {
     return (
       <div className="flex flex-col gap-1.5">
         <FormLabel index={index} field={fieldDef} name={name} />
         <Input
           id={name}
-          disabled={!canEdit}
+          disabled={readOnly}
           type="text"
           value={field.state.value ?? ""}
           onChange={(e) => field.handleChange(e.target.value)}

@@ -35,7 +35,7 @@ import { createFieldInput, FormArray } from "../../form";
  * ```
  */
 export const ArrayFieldInput = createFieldInput<ArrayType[], {}, ArrayField<ArrayType>>(
-  ({ name, collection, fieldDef, field, index, submissionAttempts }) => {
+  ({ name, collection, readOnly, fieldDef, field, index, submissionAttempts }) => {
     return (
       <div className="flex flex-col gap-1.5">
         <FormArray
@@ -44,7 +44,7 @@ export const ArrayFieldInput = createFieldInput<ArrayType[], {}, ArrayField<Arra
           field={field}
           index={index}
           fieldDef={fieldDef}
-          readOnly={fieldDef.admin.readOnly}
+          readOnly={readOnly || fieldDef.admin.readOnly}
           submissionAttempts={submissionAttempts}
         />
       </div>

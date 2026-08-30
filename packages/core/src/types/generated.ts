@@ -89,6 +89,75 @@ export type DocumentBySlug = GeneratedVexTypes extends {
   : Record<string, unknown>;
 
 /**
+ * Custom query/mutation actions per subject slug, as declared in the project's
+ * `defineAccess({ customActions })` and emitted by `vex generate`.
+ *
+ * - **Before `vex generate`:** resolves to `{}` — no slug has declared custom
+ *   actions, and {@link QueryCallActionFor} falls back to accepting any string.
+ * - **After `vex generate`:** e.g.
+ *   `{ articles: { query: "listFeatured"; mutation: "publish" } }`. A missing
+ *   list emits `never`, so single-list declarations stay exact.
+ */
+export type CustomActionsBySlug = GeneratedVexTypes extends {
+  CustomActionsBySlug: infer C extends Record<string, { query: string; mutation: string }>;
+}
+  ? C
+  : {};
+
+/**
+ * Maps each collection slug to its declared Convex indexes, each as a
+ * `readonly` tuple of field names in declaration order (`.index(name,
+ * [...])` — search indexes excluded, since `withIndex` never targets
+ * those). Field order is exactly what `ConstraintBuilder`
+ * (`access/constraintTypes.ts`) narrows against, so this registry is the
+ * sole source of truth both the constraint builder and `IndexNameFor`
+ * resolve through — no parallel name-union map (supersedes the old
+ * `IndexesBySlug`).
+ *
+ * - **Before `vex generate`:** resolves to
+ *   `Record<string, Record<string, readonly string[]>>`.
+ * - **After `vex generate`:** e.g.
+ *   `{ pages: { by_author_category: readonly ["authorId", "categoryId"] } }`.
+ *   A collection with NO indexed fields maps to `{}`, never `never` — see
+ *   {@link IndexNameFor}.
+ */
+export type IndexFieldsBySlug = GeneratedVexTypes extends {
+  IndexFieldsBySlug: infer I extends Record<string, Record<string, readonly string[]>>;
+}
+  ? I
+  : Record<string, Record<string, readonly string[]>>;
+
+/**
+ * Index-name union for one slug — the keys of its {@link IndexFieldsBySlug}
+ * entry. Widens to `string` pre-generation. An index-less slug's entry is
+ * `{}`, and `keyof {}` is `never`, so this still correctly yields `never`
+ * for that slug post-generation — the same result the old name-union form
+ * gave by emitting `never` directly, reached here through an empty object
+ * instead (an empty object stays a well-typed `keyof` target; a bare
+ * `never` union would not, if `IndexFieldsFor` ever needed to index into
+ * it).
+ *
+ * @internal
+ */
+export type IndexNameFor<S extends string> = S extends keyof IndexFieldsBySlug
+  ? keyof IndexFieldsBySlug[S]
+  : string;
+
+/**
+ * The field tuple for one slug + index name, in declaration order — what
+ * `ConstraintBuilder<TFields, TDoc>` (`access/constraintTypes.ts`) is
+ * instantiated with.
+ *
+ * @typeParam S - Collection slug.
+ * @typeParam N - Index name declared on `S` (a member of `IndexNameFor<S>`).
+ * @see {@link IndexFieldsBySlug}
+ */
+export type IndexFieldsFor<
+  S extends keyof IndexFieldsBySlug,
+  N extends keyof IndexFieldsBySlug[S],
+> = IndexFieldsBySlug[S][N] extends readonly string[] ? IndexFieldsBySlug[S][N] : never;
+
+/**
  * Union of all media collection slugs registered by storage adapters.
  *
  * - **Before `vex generate`:** resolves to `string` — any string is accepted.
@@ -310,3 +379,57 @@ export type GlobalPopulated<
         : GlobalDocumentBySlug[TGlobalSlug][K];
     }
   : never;
+
+/**
+ * The collection slugs `defineAccess` was configured with, as emitted by
+ * `vex generate` from `vex.config.ts`.
+ *
+ * - **Before `vex generate`:** both resolve to `never`.
+ * - **After:** e.g. `{ user: "user"; organization: "organization" }`.
+ *
+ * This exists so core can resolve the project's user and organization DOCUMENT types
+ * without a project passing them in. It is what lets `AccessCheck<S>` take one type
+ * parameter instead of three, so a project's composable access checks need no local
+ * type aliases at all.
+ *
+ * @see {@link GeneratedVexTypes} for the augmentation interface
+ */
+export type AuthSlugs = GeneratedVexTypes extends {
+  AuthSlugs: infer A extends { organization: string; user: string };
+}
+  ? A
+  : { organization: never; user: never };
+
+/**
+ * Document type for slug `S`, or `TFallback` when `S` is not a registered collection.
+ *
+ * `S` is a naked type parameter on purpose: TypeScript narrows a conditional's checked
+ * type only when it is a bare parameter, so writing the lookup inline as
+ * `AuthSlugs["user"] extends keyof DocumentBySlug ? DocumentBySlug[AuthSlugs["user"]]`
+ * fails with "Type 'never' cannot be used as an index type".
+ *
+ * @typeParam S - Collection slug to resolve.
+ * @typeParam TFallback - Resolved type when `S` is not registered.
+ */
+type DocumentForSlug<S, TFallback> = S extends keyof DocumentBySlug ? DocumentBySlug[S] : TFallback;
+
+/**
+ * The project's user document type, resolved through {@link AuthSlugs}.
+ *
+ * Falls back to the wide `Record<string, unknown>` when the registry is unaugmented or
+ * no user collection is configured — the same widening every other pre-generation
+ * lookup uses, so a check stays writable before `vex generate` has run.
+ */
+export type AuthUserDocument = [AuthSlugs["user"]] extends [never]
+  ? Record<string, unknown>
+  : DocumentForSlug<AuthSlugs["user"], Record<string, unknown>>;
+
+/**
+ * The project's organization document type, resolved through {@link AuthSlugs}.
+ *
+ * Resolves to `never` when no organization collection is configured, which is how
+ * `ConstraintsCallbackProps` already signals "no `organization` key on the props".
+ */
+export type AuthOrgDocument = [AuthSlugs["organization"]] extends [never]
+  ? never
+  : DocumentForSlug<AuthSlugs["organization"], never>;

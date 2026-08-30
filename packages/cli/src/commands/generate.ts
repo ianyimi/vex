@@ -8,11 +8,19 @@ import {
   deriveConvexDir,
   generateAndWriteCollectionFiles,
 } from "../lib/generateCollectionFiles.js";
+import { writeVexTypes } from "../lib/generateSchema.js";
 
 /**
- * Run the `vex generate` command: load the config, generate/update the
- * per-collection Convex API files, delete stale ones for removed
- * collections, and run `eslint --fix` over the generated directories.
+ * Run the `vex generate` command: load the config, refresh `vex.types.ts`,
+ * generate/update the per-collection Convex API files, delete stale ones for
+ * removed collections, and run `eslint --fix` over the generated directories.
+ *
+ * Deliberately does NOT emit the Convex schema or deploy — that is `vex dev`'s job,
+ * and running it here would touch a live deployment from a command whose name
+ * promises code generation. Types ARE included: they are derived purely from the
+ * config, cost nothing, and leaving them out made `vex generate` silently produce a
+ * stale registry, which surfaces much later as missing editor completion and index
+ * maps that fall back to `Record<string, readonly string[]>`.
  */
 export async function generateCommand() {
   const cwd = process.cwd();
@@ -20,6 +28,8 @@ export async function generateCommand() {
   logger.info(`Config found: ${configPath}`);
 
   const config = await loadConfig(configPath);
+
+  const typesWritten = writeVexTypes({ config, configPath, cwd });
 
   // Force regeneration by passing through (isUpToDate check still applies,
   // but we want to regenerate even if files exist — user ran this explicitly).
@@ -32,7 +42,11 @@ export async function generateCommand() {
   });
 
   if (written.length === 0 && deleted.length === 0) {
-    logger.info("All collection API files up to date");
+    logger.info(
+      typesWritten
+        ? "Collection API files already up to date"
+        : "Types and collection API files already up to date",
+    );
   } else {
     if (written.length > 0) {
       logger.success(

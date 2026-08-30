@@ -2,6 +2,7 @@ import type { GenericDataModel } from "convex/server";
 import type { VexDocumentGlobal } from "../../types/generated";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
 import type { GenericGlobalsQueryServerArgs } from "./types";
+import { resolveAccessCall } from "../utils";
 
 /**
  * Returns all rows from `vex_globals` as flat documents, ordered by
@@ -33,16 +34,22 @@ export async function findGlobals<DataModel extends GenericDataModel>(
   const { ctx } = args;
   let rows = await ctx.db.query("vex_globals").collect();
   if (args.config.access !== undefined) {
-    rows = rows.filter((r) =>
-      hasPermission({
-        access: args.config.access,
+    rows = rows.filter((r) => {
+      const { access, action, resource } = resolveAccessCall({
+        config: args.config,
+        access: args.access,
+        defaultAction: CRUD_ACTIONS.read,
+        resource: r.slug as string,
+      });
+      return hasPermission({
+        access,
         user: args.auth?.user ?? {},
         organization: args.auth?.organization,
-        resource: r.slug as string,
-        action: CRUD_ACTIONS.read,
+        resource,
+        action,
         data: r.data as Record<string, unknown>,
-      }),
-    );
+      });
+    });
   }
   return rows.map((row: Record<string, unknown>) => {
     const { slug, data, _id, _creationTime } = row;

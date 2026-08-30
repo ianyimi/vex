@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   CollectionConfig,
   type CollectionSlug,
-  CRUD_ACTIONS,
   formatBytes,
   formatMimeType,
   GlobalConfig,
@@ -17,7 +16,6 @@ import { InputTag, TypedFieldApi } from "../../form";
 import { useVexConfig } from "../../../context";
 import { cn } from "../../../styles/utils";
 import { GenericId } from "convex/values";
-import { usePermission } from "../../../hooks";
 
 /**
  * Props for UploadFilledState component.
@@ -31,6 +29,8 @@ export interface UploadFilledStateProps {
   fieldApi: TypedFieldApi<string[]>;
   /** The UploadField of the field being uploaded to. */
   fieldDef: UploadField;
+  /** Whether this field is readOnly or not. */
+  readOnly?: boolean;
   /** Callback to remove a specific media ID (or all if no ID provided). */
   onRemove: (mediaId?: string) => void;
   /** Callback to reorder items (multi only). */
@@ -53,10 +53,10 @@ export interface UploadFilledStateProps {
  * @param props - Component props.
  */
 export function UploadFilledState({
-  collection,
   mediaIds,
   fieldDef,
   fieldApi,
+  readOnly = false,
   onRemove,
   onReorder,
   openPicker,
@@ -68,13 +68,6 @@ export function UploadFilledState({
   if (!targetCollectionConfig) {
     throw new Error(`Media collection not configured with slug ${fieldDef.to}`);
   }
-
-  // TODO. currently throws because the resource here is the collection slug
-  // but we dont have access to that information at this point in the code runtime.
-  const canEdit = usePermission({
-    action: CRUD_ACTIONS.update,
-    resource: collection.slug,
-  });
 
   return (
     <div className="flex flex-col gap-2">
@@ -110,7 +103,7 @@ export function UploadFilledState({
             variant="outline"
             size="sm"
             onClick={openPicker}
-            disabled={atLimit || !canEdit}
+            disabled={readOnly || atLimit}
             icon="FilePenLine"
           >
             Edit {targetCollectionConfig.labels.plural}
@@ -120,7 +113,7 @@ export function UploadFilledState({
             className="hover:text-destructive transition-all duration-300"
             size="sm"
             onClick={() => fieldApi.setValue([])}
-            disabled={!canEdit}
+            disabled={readOnly}
             icon="X"
           >
             Clear

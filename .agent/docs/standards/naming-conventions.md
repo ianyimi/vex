@@ -4,12 +4,12 @@
 
 - **Hooks:** `useXxx` (`useCollectionForm`, `usePaginatedQuery`). A context with a companion hook lives as ONE file in `hooks/` named after the hook (`hooks/useFrameworkComponents.ts`).
 - **Event handlers:** `onXxx` for props (`onSubmit`, `onSelectionChange`); `handleXxx` for internal functions (`handleBulkDelete`).
-- **Booleans:** `isXxx` for state (`isMounted`, `isPending`, `isMobile`), `hasXxx` for possession (`_hasDraft`). Config flags may be bare nouns per Convex/Payload convention (`required`, `hidden`).
+- **Booleans:** `isXxx` for state (`isMounted`, `isPending`, `isMobile`), `hasXxx` for possession (`hasDraft`). Config flags may be bare nouns per Convex/Payload convention (`required`, `hidden`).
 - **Components:** PascalCase, descriptive suffixes: `XxxView` (admin views), `XxxModal`, `XxxProvider`, `XxxLayout`. Adapter prefixes: `Next*` for `@vexcms/next` (`NextAdminPage`), `Vex*` reserved for framework-agnostic APIs from core/react.
 - **Types:** plain `Xxx` for resolved shapes, `XxxInput` for user-facing input variants (`VexConfigInput` -> `VexConfig`, `TypesConfigInput` -> `TypesConfig`). Never `IXxx`, `XxxType`, `XxxT`.
 - **Constants:** exported constants SCREAMING_SNAKE (`ADMIN_FIELDS`); file-local camelCase.
 - **Field types:** named for the UI widget, never the data type — `checkbox()` not `boolean()`, `select()` not `string()`.
-- **Convex functions:** mutation payload arg is `data` (never `fields`); collection param is `collection:` (never `slug:`); generated admin mutations use `adminXxx` verb prefix (`adminSaveDraft`, `adminPublish`).
+- **Convex functions:** mutation payload arg is `data` (never `fields`); collection param is `collection:` (never `slug:`). Factory-registered API functions use bare operation names matching their factory export (`find`, `get`, `create`, `update`, `remove`, `globals`, `publish`, `saveDraft`) — no `adminXxx` prefix.
 
 ## File / Folder Rules
 
@@ -58,11 +58,11 @@ rules:
     examples: ["interfaceGen.ts", "generateVexTypes.ts", "baseTypes.ts"]
     counter_examples: ["InterfaceGen.ts", "interface_gen.ts"]
   - id: api-operation-split
-    pattern: '^(client|server)(\.test)?\.ts$'
+    pattern: '^(client|server|types)(\.test)?\.ts$|^[a-z][A-Za-z0-9]*\.(client|server)(\.test)?\.ts$'
     scope: ["packages/core/src/api/*/**"]
-    description: Core API operations are directories named for the operation, split into client.ts and server.ts implementations.
-    examples: ["api/find/client.ts", "api/find/server.ts", "api/create/server.ts"]
-    counter_examples: ["api/find.ts", "api/findClient.ts"]
+    description: Core API dirs split client/server implementations. A single-operation dir is named for the operation and holds client.ts / server.ts; a grouped dir (globals, versions) is named for the resource and prefixes each file with its operation.
+    examples: ["api/find/client.ts", "api/find/server.ts", "api/globals/upsert.server.ts", "api/versions/publish.server.ts", "api/versions/types.ts"]
+    counter_examples: ["api/find.ts", "api/findClient.ts", "api/versions/publishServer.ts"]
   - id: cli-command-verbs
     pattern: '^[a-z][a-zA-Z0-9]*\.ts$'
     scope: ["packages/cli/src/commands/**"]
@@ -82,9 +82,9 @@ rules:
     examples: ["form/AppFormContext.ts", "context/VexConfigContext.ts"]
     counter_examples: ["app-form-context.ts", "AppForm.ts (missing suffix)"]
   - id: auth-file-roles
-    pattern: '^(access|client|hasPermission|options|permissions|plugins|server|serverUtils|types)\.tsx?$'
+    pattern: '^(access|client|hasPermission|options|permissions|plugins|server|serverUtils|types)(\.typecheck)?\.tsx?$'
     scope: ["apps/www/src/auth/**"]
-    description: Host-app auth files use fixed role names separating client/server/util/config concerns. RBAC adds `access` (the `defineAccess` matrix), `hasPermission` (the app-side check wrapper), and `plugins` (the better-auth plugin list).
+    description: Host-app auth files use fixed role names separating client/server/util/config concerns. RBAC adds `access` (the `defineAccess` matrix), `hasPermission` (the app-side check wrapper), and `plugins` (the better-auth plugin list). A role may carry a `<role>.typecheck.ts` sibling — a pure compile-time assertion file (P-008) that `tsc` enforces; it pins the role's generated/registry-derived types (e.g. `access.typecheck.ts` pins slug-aware action unions).
     examples: ["auth/client.tsx", "auth/server.ts", "auth/serverUtils.ts", "auth/access.ts", "auth/plugins.ts"]
     counter_examples: ["auth/client-auth.tsx", "auth/AuthClient.tsx"]
   - id: vexcms-resource-defs

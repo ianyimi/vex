@@ -30,7 +30,9 @@ export interface PageContentProps {
  */
 export default function PageContent({ page }: PageContentProps) {
   const canSave = hasPermission({ resource: "edit", action: "save", scope: PERMISSION_SCOPES.any });
+  const canPublish = hasPermission({ resource: "articles", action: "publish" });
   console.log("canSave: ", canSave);
+  console.log("canPublish: ", canPublish);
   return (
     <main className="min-h-screen bg-background text-foreground">
       {/* Admin link section */}

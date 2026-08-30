@@ -13,7 +13,7 @@ import { dataType, VexAccessError } from "./types";
 
 const articles = defineCollection({
   slug: "articles",
-  fields: { title: text({ required: true }), slug: text(), status: text() },
+  fields: { title: text({ required: true }), slug: text(), status: text({ index: "by_status" }) },
 });
 
 const users = defineCollection({
@@ -102,7 +102,7 @@ const access = defineAccess({
       articles: {
         create: true,
         read: true,
-        update: { mode: PERMISSION_MODES.allow, fields: ["title", "status"] },
+        update: true,
         delete: ({ data }) => {
           // Registry is unaugmented in core tests — fixture data is wide.
           const post = data as { slug: string };
@@ -161,7 +161,6 @@ const accessDenyDefaults = defineAccess({
   resources: [articles, users],
   userCollectionSlug: "users",
   userRolesField: "roles",
-  defaultPermissionMode: PERMISSION_MODES.deny,
   permissions: {
     editor: { articles: { read: true } },
   },
@@ -193,26 +192,13 @@ const accessWithOrg = defineAccess({
 /** Merge fixture: one mode/boolean combination per role. */
 const mergeAccess = defineAccess({
   roles: [
-    "roleAllowTitle",
-    "roleDenySlug",
-    "roleAllowStatus",
-    "roleDenyTitle",
-    "allowEmptyFields",
-    "denyEmptyFields",
     "boolTrue",
     "boolFalse",
   ] as const,
   resources: [articles, users],
   userCollectionSlug: "users",
   userRolesField: "roles",
-  defaultPermissionMode: PERMISSION_MODES.deny,
   permissions: {
-    roleAllowTitle: { articles: { update: { mode: PERMISSION_MODES.allow, fields: ["title"] } } },
-    roleDenySlug: { articles: { update: { mode: PERMISSION_MODES.deny, fields: ["slug"] } } },
-    roleAllowStatus: { articles: { update: { mode: PERMISSION_MODES.allow, fields: ["status"] } } },
-    roleDenyTitle: { articles: { update: { mode: PERMISSION_MODES.deny, fields: ["title"] } } },
-    allowEmptyFields: { articles: { update: { mode: PERMISSION_MODES.allow, fields: [] } } },
-    denyEmptyFields: { articles: { update: { mode: PERMISSION_MODES.deny, fields: [] } } },
     boolTrue: { articles: true },
     boolFalse: { articles: false },
   },
@@ -224,18 +210,6 @@ describe("hasPermission — no access config", () => {
   it("allows everything when access is undefined", () => {
     expect(
       hasPermission({ access: undefined, user: {}, resource: "articles", action: "read" } as never),
-    ).toBe(true);
-  });
-
-  it("returns true when fields are requested (boolean-only API, system off)", () => {
-    expect(
-      hasPermission({
-        access: undefined,
-        user: {},
-        resource: "articles",
-        action: "update",
-        fields: ["title", "slug"],
-      } as never),
     ).toBe(true);
   });
 
@@ -345,19 +319,21 @@ describe("hasPermission — boolean shorthand and per-action checks", () => {
     ).toBe(false);
   });
 
-  it("an undeclared action on a declared subject falls through to the default (allow)", () => {
-    // editor declares only `read` on users; `create` is undeclared.
+  it("an undeclared action on a declared subject is denied", () => {
+    // editor declares only `read` on users; `create` is undeclared. The posture is
+    // pinned to deny, so declaring a subject states the complete set of things the
+    // role may do to it.
     expect(
       hasPermission({ access, user: asUser("editor"), resource: "users", action: "create" }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it("undeclared subject with no role wildcard falls to the default (allow)", () => {
-    // viewer declares only articles + users and has no role wildcard; the
-    // undeclared reviewQueue subject resolves via defaultPermissionMode (allow).
+  it("undeclared subject with no role wildcard is denied", () => {
+    // viewer declares only articles + users and has no role wildcard, so the
+    // undeclared reviewQueue subject has nothing to grant it.
     expect(
       hasPermission({ access, user: asUser("viewer"), resource: "reviewQueue", action: "approve" }),
-    ).toBe(true);
+    ).toBe(false);
   });
 });
 
@@ -514,12 +490,14 @@ describe("hasPermission — role-level wildcard", () => {
     ).toBe(true);
   });
 
-  it("a declared subject's undeclared action falls to the default, not the role wildcard", () => {
-    // restricted declares articles (only read); create is undeclared on that
-    // subject and resolves via the default (allow) — NOT the role's `false`.
+  it("a declared subject's undeclared action resolves via the posture, not the role wildcard", () => {
+    // restricted declares articles (only read); create is undeclared on that subject.
+    // The role wildcard is NOT consulted here — a declared subject short-circuits it —
+    // so the pinned deny posture answers. Under the old `allow` default this returned
+    // true, which is precisely the invisible grant the posture removal eliminated.
     expect(
       hasPermission({ access, user: asUser("restricted"), resource: "articles", action: "create" }),
-    ).toBe(true);
+    ).toBe(false);
   });
 });
 
@@ -594,92 +572,6 @@ describe("hasPermission — defaultPermissionMode: deny", () => {
   });
 });
 
-describe("hasPermission — fields (boolean AND: every requested field must be allowed)", () => {
-  it("denies when any requested field is not allowed", () => {
-    // editor's update is mode-allow ["title", "status"] — "slug" is outside it.
-    expect(
-      hasPermission({
-        access,
-        user: asUser("editor"),
-        resource: "articles",
-        action: "update",
-        fields: ["title", "slug", "status"],
-      }),
-    ).toBe(false);
-  });
-
-  it("allows when every requested field is allowed", () => {
-    expect(
-      hasPermission({
-        access,
-        user: asUser("editor"),
-        resource: "articles",
-        action: "update",
-        fields: ["title", "status"],
-      }),
-    ).toBe(true);
-    expect(
-      hasPermission({
-        access,
-        user: asUser("editor"),
-        resource: "articles",
-        action: "update",
-        fields: ["title"],
-      }),
-    ).toBe(true);
-  });
-
-  it("boolean checks allow any requested field set", () => {
-    expect(
-      hasPermission({
-        access,
-        user: asUser("poweruser"),
-        resource: "articles",
-        action: "update",
-        fields: ["title", "slug"],
-      }),
-    ).toBe(true);
-  });
-
-  it("no fields param: allow-mode with nonempty fields is true, empty is false", () => {
-    expect(
-      hasPermission({
-        access: mergeAccess,
-        user: asUser("roleAllowTitle"),
-        resource: "articles",
-        action: "update",
-      }),
-    ).toBe(true);
-    expect(
-      hasPermission({
-        access: mergeAccess,
-        user: asUser("allowEmptyFields"),
-        resource: "articles",
-        action: "update",
-      }),
-    ).toBe(false);
-  });
-
-  it("no fields param: deny-mode with nonempty fields is false, empty is true", () => {
-    expect(
-      hasPermission({
-        access: mergeAccess,
-        user: asUser("roleDenySlug"),
-        resource: "articles",
-        action: "update",
-      }),
-    ).toBe(false);
-    expect(
-      hasPermission({
-        access: mergeAccess,
-        user: asUser("denyEmptyFields"),
-        resource: "articles",
-        action: "update",
-      }),
-    ).toBe(true);
-  });
-});
-
 describe("hasPermission — multi-role merge (OR, allow wins)", () => {
   it("any allowing role wins over a denying one", () => {
     // viewer denies users entirely; admin's wildcard allows.
@@ -693,59 +585,11 @@ describe("hasPermission — multi-role merge (OR, allow wins)", () => {
     ).toBe(true);
   });
 
-  it("merges field allow-lists across roles before the AND over requested fields", () => {
-    // roleAllowTitle ∪ roleAllowStatus covers title+status but not slug.
-    expect(
-      hasPermission({
-        access: mergeAccess,
-        user: asUser(["roleAllowTitle", "roleAllowStatus"]),
-        resource: "articles",
-        action: "update",
-        fields: ["title", "status"],
-      }),
-    ).toBe(true);
-    expect(
-      hasPermission({
-        access: mergeAccess,
-        user: asUser(["roleAllowTitle", "roleAllowStatus"]),
-        resource: "articles",
-        action: "update",
-        fields: ["title", "slug", "status"],
-      }),
-    ).toBe(false);
-  });
-
-  it("allow wins over deny for the same field across roles", () => {
-    // roleDenyTitle denies title but allows everything else (deny-mode);
-    // roleAllowTitle allows only title. Union covers both requested fields.
-    expect(
-      hasPermission({
-        access: mergeAccess,
-        user: asUser(["roleAllowTitle", "roleDenyTitle"]),
-        resource: "articles",
-        action: "update",
-        fields: ["title", "slug"],
-      }),
-    ).toBe(true);
-  });
-
-  it("a boolean true role overrides field restrictions from another role", () => {
-    expect(
-      hasPermission({
-        access: mergeAccess,
-        user: asUser(["allowEmptyFields", "boolTrue"]),
-        resource: "articles",
-        action: "update",
-        fields: ["title", "slug"],
-      }),
-    ).toBe(true);
-  });
-
   it("all-denying roles merge to deny", () => {
     expect(
       hasPermission({
         access: mergeAccess,
-        user: asUser(["boolFalse", "allowEmptyFields"]),
+        user: asUser(["boolFalse"]),
         resource: "articles",
         action: "update",
       }),
@@ -770,25 +614,6 @@ describe("hasPermission — throwOnDenied", () => {
     expect(caught).toBeInstanceOf(VexAccessError);
     expect((caught as VexAccessError).resource).toBe("users");
     expect((caught as VexAccessError).action).toBe("read");
-    expect((caught as VexAccessError).field).toBeUndefined();
-  });
-
-  it("throws with the first denied field in fields order", () => {
-    let caught: unknown;
-    try {
-      hasPermission({
-        access,
-        user: asUser("editor"),
-        resource: "articles",
-        action: "update",
-        fields: ["title", "slug", "status"],
-        throwOnDenied: true,
-      });
-    } catch (error) {
-      caught = error;
-    }
-    expect(caught).toBeInstanceOf(VexAccessError);
-    expect((caught as VexAccessError).field).toBe("slug");
   });
 
   it("throws when the user has no known roles", () => {
@@ -844,26 +669,9 @@ describe("VexAccessError — Convex wire serializability", () => {
     const error = caught as VexAccessError;
     expect(error).toBeInstanceOf(VexAccessError);
     expect(error.data.code).toBe("ACCESS_DENIED");
-    expect(error.data.field).toBe(undefined);
-    expect(() => convexToJson(error.data)).not.toThrow();
-  });
-
-  it("field-level denial carries the field and stays serializable", () => {
-    let caught: unknown;
-    try {
-      hasPermission({
-        access,
-        user: asUser("editor"),
-        resource: "articles",
-        action: "update",
-        fields: ["title", "slug", "status"],
-        throwOnDenied: true,
-      });
-    } catch (error) {
-      caught = error;
-    }
-    const error = caught as VexAccessError;
-    expect(error.data.field).toBe("slug");
+    // Every `data` key is always present now — serializability is what matters:
+    // `convexToJson` rejects `undefined`, and an unserializable payload hangs the
+    // client subscription forever.
     expect(() => convexToJson(error.data)).not.toThrow();
   });
 
@@ -1082,7 +890,6 @@ describe("hasPermission — scope: doc vs any vs all", () => {
   });
 });
 
-
 /**
  * anonRole fallback fixture: sessionless callers and role-less users resolve
  * to the configured `anonRole` instead of hard-deny. Mirrors the maprios
@@ -1157,7 +964,12 @@ describe("hasPermission — anonRole fallback", () => {
 
   it("falls back for an empty roles array", () => {
     expect(
-      hasPermission({ access: anonAccess, user: asUser([]), resource: "articles", action: "create" }),
+      hasPermission({
+        access: anonAccess,
+        user: asUser([]),
+        resource: "articles",
+        action: "create",
+      }),
     ).toBe(true);
   });
 
@@ -1186,13 +998,785 @@ describe("hasPermission — anonRole fallback", () => {
 
   it("non-string roles garbage falls back to the anon role", () => {
     expect(
-      hasPermission({ access: anonAccess, user: asUser(42), resource: "articles", action: "create" }),
+      hasPermission({
+        access: anonAccess,
+        user: asUser(42),
+        resource: "articles",
+        action: "create",
+      }),
     ).toBe(true);
   });
 
   it("without anonRole configured, an empty-roles caller is still denied", () => {
+    expect(hasPermission({ access, user: {}, resource: "articles", action: "read" })).toBe(false);
+  });
+});
+
+/**
+ * Constraints-only fixture: a query-shaped `read` rule declared purely as
+ * `{ constraints }`, no `filter` — proves `hasPermission` derives the
+ * per-document check from the SAME declaration `resolveAccessIndex` compiles
+ * to a range from (design invariant: one condition, two consumers).
+ */
+const constraintsOnlyAccess = defineAccess({
+  roles: ["contributor"] as const,
+  resources: [articles],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    contributor: {
+      articles: {
+        read: {
+          constraints: ({ q }) => q.withIndex("by_status", (iq) => iq.eq("status", "published")),
+        },
+      },
+    },
+  },
+});
+
+describe("hasPermission — constraints-only rule (no filter)", () => {
+  it("allows a document that satisfies the constraint", () => {
     expect(
-      hasPermission({ access, user: {}, resource: "articles", action: "read" }),
+      hasPermission({
+        access: constraintsOnlyAccess,
+        user: asUser("contributor"),
+        resource: "articles",
+        action: "read",
+        data: { title: "Live", slug: "live", status: "published" } as never,
+      }),
+    ).toBe(true);
+  });
+
+  it("denies a document that does not satisfy the constraint", () => {
+    expect(
+      hasPermission({
+        access: constraintsOnlyAccess,
+        user: asUser("contributor"),
+        resource: "articles",
+        action: "read",
+        data: { title: "Draft", slug: "draft", status: "draft" } as never,
+      }),
+    ).toBe(false);
+  });
+});
+
+/**
+ * Precedence fixture: default DENY, isolates precedence pairs the primary
+ * fixture's "restricted"/"owner" roles don't isolate on their own — subject-level
+ * wildcard vs default, role-level wildcard vs default (undeclared subject only),
+ * and explicit action vs subject-level wildcard in both allow/deny directions.
+ */
+const precedenceDenyDefault = defineAccess({
+  roles: [
+    "subjectWildcardAllow",
+    "roleWildcardAllow",
+    "explicitBeatsSubjectWildcardAllow",
+    "explicitBeatsSubjectWildcardDeny",
+  ] as const,
+  resources: [articles],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    // No explicit `read` — only the subject-level wildcard.
+    subjectWildcardAllow: { articles: { [WILDCARD_KEY]: true } },
+    // `articles` is entirely undeclared for this role — only the role-level wildcard applies.
+    roleWildcardAllow: { [WILDCARD_KEY]: true },
+    // Subject wildcard denies; the explicit `read: true` must still win.
+    explicitBeatsSubjectWildcardAllow: { articles: { [WILDCARD_KEY]: false, read: true } },
+    // Subject wildcard allows; the explicit `read: false` must still win.
+    explicitBeatsSubjectWildcardDeny: { articles: { [WILDCARD_KEY]: true, read: false } },
+  },
+});
+
+/** Precedence fixture: default ALLOW, isolates subject wildcard beating the default in the deny direction. */
+const precedenceAllowDefault = defineAccess({
+  roles: ["subjectWildcardDeny"] as const,
+  resources: [articles],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    subjectWildcardDeny: { articles: { [WILDCARD_KEY]: false } },
+  },
+});
+
+describe("hasPermission — precedence: explicit action > subject wildcard > role wildcard > default", () => {
+  it("subject-level wildcard beats a deny default (allow direction)", () => {
+    expect(
+      hasPermission({
+        access: precedenceDenyDefault,
+        user: asUser("subjectWildcardAllow"),
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(true);
+  });
+
+  it("subject-level wildcard beats an allow default (deny direction)", () => {
+    expect(
+      hasPermission({
+        access: precedenceAllowDefault,
+        user: asUser("subjectWildcardDeny"),
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(false);
+  });
+
+  it("role-level wildcard beats a deny default on an entirely undeclared subject", () => {
+    expect(
+      hasPermission({
+        access: precedenceDenyDefault,
+        user: asUser("roleWildcardAllow"),
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(true);
+  });
+
+  it("an explicit action key beats an allowing subject wildcard (deny direction)", () => {
+    expect(
+      hasPermission({
+        access: precedenceDenyDefault,
+        user: asUser("explicitBeatsSubjectWildcardDeny"),
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(false);
+  });
+
+  it("an explicit action key beats a denying subject wildcard (allow direction)", () => {
+    expect(
+      hasPermission({
+        access: precedenceDenyDefault,
+        user: asUser("explicitBeatsSubjectWildcardAllow"),
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(true);
+  });
+});
+
+/**
+ * Scope × check-form fixture: one role per check form (static true/false, a
+ * callback that never reads `data`, constraints-only, constraints + a separate
+ * top-level `filter`) so each cell of the scope matrix can be exercised without
+ * another form's resolution leaking in. Field-mode checks are intentionally
+ * excluded — that check form is being removed from the API.
+ */
+const scopeMatrixAccess = defineAccess({
+  roles: ["staticAllow", "staticDeny", "ignoresData", "constraintsOnly", "constraintsWithFilter"] as const,
+  resources: [articles],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    staticAllow: { articles: { read: true } },
+    staticDeny: { articles: { read: false } },
+    // Reads only `user` — the capability probe never fires, so scope must
+    // never come into play (and it must never throw under "doc").
+    ignoresData: {
+      articles: { read: ({ user }) => (user as { trusted?: boolean }).trusted === true },
+    },
+    constraintsOnly: {
+      articles: {
+        read: {
+          constraints: ({ q }) => q.withIndex("by_status", (iq) => iq.eq("status", "published")),
+        },
+      },
+    },
+    constraintsWithFilter: {
+      articles: {
+        read: {
+          constraints: ({ q }) => q.withIndex("by_status", (iq) => iq.eq("status", "published")),
+          filter: ({ data }) => (data as { slug?: string }).slug !== "hidden",
+        },
+      },
+    },
+  },
+});
+
+describe("hasPermission — scope × check-form matrix", () => {
+  it('static boolean checks ignore scope entirely, including "doc" with no data', () => {
+    for (const scope of ["doc", "any", "all", undefined] as const) {
+      expect(
+        hasPermission({
+          access: scopeMatrixAccess,
+          user: asUser("staticAllow"),
+          resource: "articles",
+          action: "read",
+          scope,
+        }),
+      ).toBe(true);
+      expect(
+        hasPermission({
+          access: scopeMatrixAccess,
+          user: asUser("staticDeny"),
+          resource: "articles",
+          action: "read",
+          scope,
+        }),
+      ).toBe(false);
+    }
+  });
+
+  it('a callback that never reads data resolves normally under every scope, including "doc" with no data', () => {
+    for (const scope of ["doc", "any", "all", undefined] as const) {
+      const trusted = { _id: "u1", roles: "ignoresData", trusted: true };
+      const untrusted = { _id: "u1", roles: "ignoresData", trusted: false };
+      expect(() =>
+        hasPermission({ access: scopeMatrixAccess, user: trusted, resource: "articles", action: "read", scope }),
+      ).not.toThrow();
+      expect(
+        hasPermission({ access: scopeMatrixAccess, user: trusted, resource: "articles", action: "read", scope }),
+      ).toBe(true);
+      expect(
+        hasPermission({ access: scopeMatrixAccess, user: untrusted, resource: "articles", action: "read", scope }),
+      ).toBe(false);
+    }
+  });
+
+  it('constraints-only rule: scope "any" resolves true and "all" (explicit or omitted) resolves false, without data', () => {
+    expect(
+      hasPermission({
+        access: scopeMatrixAccess,
+        user: asUser("constraintsOnly"),
+        resource: "articles",
+        action: "read",
+        scope: PERMISSION_SCOPES.any,
+      }),
+    ).toBe(true);
+    expect(
+      hasPermission({
+        access: scopeMatrixAccess,
+        user: asUser("constraintsOnly"),
+        resource: "articles",
+        action: "read",
+        scope: PERMISSION_SCOPES.all,
+      }),
+    ).toBe(false);
+    expect(
+      hasPermission({ access: scopeMatrixAccess, user: asUser("constraintsOnly"), resource: "articles", action: "read" }),
+    ).toBe(false);
+  });
+
+  it('constraints-only rule: scope "doc" throws VexAccessError without data', () => {
+    let caught: unknown;
+    try {
+      hasPermission({
+        access: scopeMatrixAccess,
+        user: asUser("constraintsOnly"),
+        resource: "articles",
+        action: "read",
+        scope: PERMISSION_SCOPES.doc,
+      });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(VexAccessError);
+    expect((caught as VexAccessError).resource).toBe("articles");
+    expect((caught as VexAccessError).action).toBe("read");
+  });
+
+  it("constraints + a separate top-level filter: the filter is additive — index condition AND filter must both hold", () => {
+    // Satisfies the index condition but fails the filter.
+    expect(
+      hasPermission({
+        access: scopeMatrixAccess,
+        user: asUser("constraintsWithFilter"),
+        resource: "articles",
+        action: "read",
+        data: { status: "published", slug: "hidden" } as never,
+      }),
+    ).toBe(false);
+    // Satisfies both.
+    expect(
+      hasPermission({
+        access: scopeMatrixAccess,
+        user: asUser("constraintsWithFilter"),
+        resource: "articles",
+        action: "read",
+        data: { status: "published", slug: "visible" } as never,
+      }),
+    ).toBe(true);
+    // Fails the index condition outright — the filter is never reached.
+    expect(
+      hasPermission({
+        access: scopeMatrixAccess,
+        user: asUser("constraintsWithFilter"),
+        resource: "articles",
+        action: "read",
+        data: { status: "draft", slug: "visible" } as never,
+      }),
+    ).toBe(false);
+  });
+
+  it("constraints + a separate top-level filter: no data still resolves via the outer scope, ignoring the filter half", () => {
+    expect(
+      hasPermission({
+        access: scopeMatrixAccess,
+        user: asUser("constraintsWithFilter"),
+        resource: "articles",
+        action: "read",
+        scope: PERMISSION_SCOPES.any,
+      }),
+    ).toBe(true);
+    expect(() =>
+      hasPermission({
+        access: scopeMatrixAccess,
+        user: asUser("constraintsWithFilter"),
+        resource: "articles",
+        action: "read",
+        scope: PERMISSION_SCOPES.doc,
+      }),
+    ).toThrow(VexAccessError);
+  });
+});
+
+/**
+ * Deep constraint-object fixture: isolates the index-half, the filter-half
+ * (both `q.withIndex(...).filter(...)` chained onto ONE condition, and `q.filter(...)`
+ * with no index at all on a non-query-shaped action), a boolean short-circuit from
+ * the `constraints` callback, and nested `and`/`or`/`not` per-document interpretation.
+ * `create`/`update`/`delete` are NOT query-shaped (DD 14), so their `q` has no
+ * `withIndex` — only `read` gets the full query builder.
+ */
+const constraintFormsAccess = defineAccess({
+  roles: ["indexPlusInlineFilter", "predicateOnly", "booleanShortCircuit", "combinators", "notCombinator"] as const,
+  resources: [articles],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    // Both halves chained onto the SAME condition — query-shaped `read`.
+    indexPlusInlineFilter: {
+      articles: {
+        read: {
+          constraints: ({ q }) =>
+            q.withIndex("by_status", (iq) => iq.eq("status", "published")).filter((f) => f.neq("slug", "hidden")),
+        },
+      },
+    },
+    // Filter-half only — `create` is not query-shaped, so `q` has no `withIndex`.
+    predicateOnly: {
+      articles: {
+        create: {
+          constraints: ({ q }) => q.filter((f) => f.eq("authorId", "u1")),
+        },
+      },
+    },
+    // The constraints callback short-circuits to a flat boolean for one caller
+    // shape and a predicate condition for another.
+    booleanShortCircuit: {
+      articles: {
+        delete: {
+          constraints: ({ user, q }) => {
+            const caller = user as { isAdmin?: boolean };
+            if (caller.isAdmin) return true;
+            return q.filter((f) => f.eq("status", "published"));
+          },
+        },
+      },
+    },
+    combinators: {
+      articles: {
+        update: {
+          constraints: ({ q }) =>
+            q.filter((f) => f.and(f.eq("status", "published"), f.or(f.eq("slug", "a"), f.eq("slug", "b")))),
+        },
+      },
+    },
+    notCombinator: {
+      articles: {
+        update: {
+          constraints: ({ q }) => q.filter((f) => f.not(f.eq("status", "archived"))),
+        },
+      },
+    },
+  },
+});
+
+describe("hasPermission — constraint-object forms: index half, filter half, both, short-circuit, combinators", () => {
+  it("both halves chained onto one condition: index AND inline filter must both hold", () => {
+    expect(
+      hasPermission({
+        access: constraintFormsAccess,
+        user: asUser("indexPlusInlineFilter"),
+        resource: "articles",
+        action: "read",
+        data: { status: "published", slug: "visible" } as never,
+      }),
+    ).toBe(true);
+    expect(
+      hasPermission({
+        access: constraintFormsAccess,
+        user: asUser("indexPlusInlineFilter"),
+        resource: "articles",
+        action: "read",
+        data: { status: "published", slug: "hidden" } as never,
+      }),
+    ).toBe(false);
+    // Index half fails outright — the inline filter never rescues it.
+    expect(
+      hasPermission({
+        access: constraintFormsAccess,
+        user: asUser("indexPlusInlineFilter"),
+        resource: "articles",
+        action: "read",
+        data: { status: "draft", slug: "visible" } as never,
+      }),
+    ).toBe(false);
+  });
+
+  it("filter-half only (no index) on a non-query-shaped action interprets per-document", () => {
+    expect(
+      hasPermission({
+        access: constraintFormsAccess,
+        user: asUser("predicateOnly"),
+        resource: "articles",
+        action: "create",
+        data: { authorId: "u1" } as never,
+      }),
+    ).toBe(true);
+    expect(
+      hasPermission({
+        access: constraintFormsAccess,
+        user: asUser("predicateOnly"),
+        resource: "articles",
+        action: "create",
+        data: { authorId: "u2" } as never,
+      }),
+    ).toBe(false);
+  });
+
+  it("a boolean short-circuit from the constraints callback bypasses scope entirely — never throws, never needs data", () => {
+    const admin = { _id: "u1", roles: "booleanShortCircuit", isAdmin: true };
+    expect(() =>
+      hasPermission({
+        access: constraintFormsAccess,
+        user: admin,
+        resource: "articles",
+        action: "delete",
+        scope: PERMISSION_SCOPES.doc,
+      }),
+    ).not.toThrow();
+    expect(
+      hasPermission({ access: constraintFormsAccess, user: admin, resource: "articles", action: "delete" }),
+    ).toBe(true);
+  });
+
+  it("when the callback does not short-circuit, the resulting condition falls back to the normal scope handling", () => {
+    const nonAdmin = { _id: "u1", roles: "booleanShortCircuit", isAdmin: false };
+    expect(
+      hasPermission({
+        access: constraintFormsAccess,
+        user: nonAdmin,
+        resource: "articles",
+        action: "delete",
+        data: { status: "published" } as never,
+      }),
+    ).toBe(true);
+    expect(
+      hasPermission({
+        access: constraintFormsAccess,
+        user: nonAdmin,
+        resource: "articles",
+        action: "delete",
+        data: { status: "draft" } as never,
+      }),
+    ).toBe(false);
+    expect(
+      hasPermission({
+        access: constraintFormsAccess,
+        user: nonAdmin,
+        resource: "articles",
+        action: "delete",
+        scope: PERMISSION_SCOPES.any,
+      }),
+    ).toBe(true);
+    expect(() =>
+      hasPermission({
+        access: constraintFormsAccess,
+        user: nonAdmin,
+        resource: "articles",
+        action: "delete",
+        scope: PERMISSION_SCOPES.doc,
+      }),
+    ).toThrow(VexAccessError);
+  });
+
+  it("nested and/or combinators interpret correctly per document", () => {
+    const user = asUser("combinators");
+    expect(
+      hasPermission({ access: constraintFormsAccess, user, resource: "articles", action: "update", data: { status: "published", slug: "a" } as never }),
+    ).toBe(true);
+    expect(
+      hasPermission({ access: constraintFormsAccess, user, resource: "articles", action: "update", data: { status: "published", slug: "b" } as never }),
+    ).toBe(true);
+    // Neither branch of the `or` matches.
+    expect(
+      hasPermission({ access: constraintFormsAccess, user, resource: "articles", action: "update", data: { status: "published", slug: "c" } as never }),
+    ).toBe(false);
+    // The `and`'s other operand fails even though the `or` would match.
+    expect(
+      hasPermission({ access: constraintFormsAccess, user, resource: "articles", action: "update", data: { status: "draft", slug: "a" } as never }),
+    ).toBe(false);
+  });
+
+  it("a not combinator negates its inner predicate per document", () => {
+    const user = asUser("notCombinator");
+    expect(
+      hasPermission({ access: constraintFormsAccess, user, resource: "articles", action: "update", data: { status: "archived" } as never }),
+    ).toBe(false);
+    expect(
+      hasPermission({ access: constraintFormsAccess, user, resource: "articles", action: "update", data: { status: "published" } as never }),
+    ).toBe(true);
+  });
+});
+
+/** Fixture: "ghost" is declared in `roles` (selectable via `userRolesField`) but
+ * has no entry at all in `permissions` — a shape TypeScript would normally
+ * reject, forced via `as never` to mirror a config assembled dynamically. */
+const noPermissionsEntryAccess = defineAccess({
+  roles: ["admin", "ghost"] as const,
+  resources: [articles],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    admin: { articles: { read: true } },
+  } as never,
+});
+
+describe("hasPermission — multi-role resolution edge cases", () => {
+  it("a known role with no entry in `permissions` falls through to the default, not a hard deny", () => {
+    expect(
+      hasPermission({ access: noPermissionsEntryAccess, user: asUser("ghost"), resource: "articles", action: "read" }),
+    ).toBe(false); // defaultPermissionMode is deny here
+  });
+
+  it("a denying role's explicit action loses to an allowing role's subject wildcard — precedence composes with the OR merge", () => {
+    expect(
+      hasPermission({
+        access: precedenceDenyDefault,
+        user: asUser(["explicitBeatsSubjectWildcardDeny", "subjectWildcardAllow"]),
+        resource: "articles",
+        action: "read",
+      }),
+    ).toBe(true);
+  });
+});
+
+/** Fixture: the constraints callback throws for a specific caller shape at
+ * REQUEST time, not at config time — config-time validation (`defineAccess`)
+ * runs it with `user: {}`, which never sets `forceThrow`. */
+const throwingConstraintAccess = defineAccess({
+  roles: ["contributor"] as const,
+  resources: [articles],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    contributor: {
+      articles: {
+        read: {
+          constraints: ({ user, q }) => {
+            const caller = user as { forceThrow?: boolean };
+            if (caller.forceThrow) {
+              throw new RangeError("boom from constraints callback");
+            }
+            return q.withIndex("by_status", (iq) => iq.eq("status", "published"));
+          },
+        },
+      },
+    },
+  },
+});
+
+describe("hasPermission — constrained check throwing at request time", () => {
+  it("propagates the raw error uncaught — never swallowed and never converted to a clean deny", () => {
+    expect(() =>
+      hasPermission({
+        access: throwingConstraintAccess,
+        user: { _id: "u1", roles: "contributor", forceThrow: true },
+        resource: "articles",
+        action: "read",
+        data: { status: "published", slug: "x" } as never,
+      }),
+    ).toThrow("boom from constraints callback");
+  });
+
+  it("does not throw for a caller that never trips the callback's own throw condition", () => {
+    expect(
+      hasPermission({
+        access: throwingConstraintAccess,
+        user: { _id: "u1", roles: "contributor" },
+        resource: "articles",
+        action: "read",
+        data: { status: "published", slug: "x" } as never,
+      }),
+    ).toBe(true);
+  });
+});
+
+/**
+ * Custom actions at request time. The authoring side is typed in `types.test.ts`;
+ * this block proves the resolver actually enforces them — `hasPermission` looks up
+ * actions by plain string, so a custom verb must behave exactly like a CRUD one,
+ * including wildcard fallthrough and fail-closed denial.
+ */
+const customActionAccess = defineAccess({
+  roles: ["publisher", "lister", "wild", "userLister"] as const,
+  resources: [articles, users],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  customActions: {
+    articles: { query: ["listFeatured"], mutation: ["publish"] },
+    // Declared on the USER collection, which is an auth subject synthesized from
+    // the registry rather than a listed resource.
+    users: { query: ["listActive"] },
+  },
+  permissions: {
+    publisher: { articles: { publish: true, listFeatured: false } },
+    lister: {
+      articles: {
+        listFeatured: ({ data }) => (data as { featured?: boolean })?.featured === true,
+      },
+    },
+    wild: { articles: { [WILDCARD_KEY]: true } },
+    userLister: { users: { listActive: true } },
+  },
+});
+
+
+
+describe("hasPermission — custom actions", () => {
+  it("grants a custom mutation action from a boolean rule", () => {
+    expect(
+      hasPermission({
+        access: customActionAccess,
+        user: { _id: "u1", roles: "publisher" },
+        resource: "articles",
+        action: "publish",
+      }),
+    ).toBe(true);
+  });
+
+  it("denies a custom query action explicitly set to false", () => {
+    expect(
+      hasPermission({
+        access: customActionAccess,
+        user: { _id: "u1", roles: "publisher" },
+        resource: "articles",
+        action: "listFeatured",
+      }),
+    ).toBe(false);
+  });
+
+  it("runs a callback rule on a custom action, with the document passed through", () => {
+    expect(
+      hasPermission({
+        access: customActionAccess,
+        user: { _id: "u1", roles: "lister" },
+        resource: "articles",
+        action: "listFeatured",
+        data: { featured: true } as never,
+      }),
+    ).toBe(true);
+    expect(
+      hasPermission({
+        access: customActionAccess,
+        user: { _id: "u1", roles: "lister" },
+        resource: "articles",
+        action: "listFeatured",
+        data: { featured: false } as never,
+      }),
+    ).toBe(false);
+  });
+
+  it("covers a custom action with the action-level wildcard", () => {
+    expect(
+      hasPermission({
+        access: customActionAccess,
+        user: { _id: "u1", roles: "wild" },
+        resource: "articles",
+        action: "publish",
+      }),
+    ).toBe(true);
+  });
+
+  // An undeclared custom action resolves through exactly the same chain as an
+  // undeclared built-in — subject wildcard, then the posture. Asserting both verbs
+  // together is the point: custom actions get no special-casing.
+  it("denies an undeclared custom action, like an undeclared built-in", () => {
+    const user = { _id: "u1", roles: "lister" };
+    expect(
+      hasPermission({ access: customActionAccess, user, resource: "articles", action: "publish" }),
+    ).toBe(false);
+    expect(
+      hasPermission({ access: customActionAccess, user, resource: "articles", action: "delete" }),
+    ).toBe(false);
+    // A declared grant still wins. `lister`'s rule is a callback, so the document is
+    // required: without it the capability probe answers the `scope: "all"` question
+    // ("may they do this to EVERY document") and correctly resolves false.
+    expect(
+      hasPermission({
+        access: customActionAccess,
+        user,
+        resource: "articles",
+        action: "listFeatured",
+        data: { featured: true } as never,
+      }),
+    ).toBe(true);
+  });
+
+  it("enforces a custom action declared on the user collection", () => {
+    expect(
+      hasPermission({
+        access: customActionAccess,
+        user: { _id: "u1", roles: "userLister" },
+        resource: "users",
+        action: "listActive",
+      }),
+    ).toBe(true);
+    // Under the deny posture a role that never grants it is refused — proving the
+    // auth-subject custom action is genuinely resolved, not blanket-allowed.
+    expect(
+      hasPermission({
+        access: customActionAccess,
+        user: { _id: "u1", roles: "lister" },
+        resource: "users",
+        action: "listActive",
+      }),
+    ).toBe(false);
+  });
+});
+
+/**
+ * `defaultPermissionMode` has no input field — `defineAccess` pins it to deny. The
+ * allow branch it feeds is still live in `hasPermission` and `resolveAccessRule`, so it
+ * is exercised here from a hand-assembled resolved config. Without this, retained code
+ * would ship with zero coverage.
+ */
+describe("hasPermission — the retained allow posture", () => {
+  const allowPosture = {
+    ...customActionAccess,
+    defaultPermissionMode: PERMISSION_MODES.allow,
+  };
+
+  it("allows an undeclared action, built-in or custom", () => {
+    const user = { _id: "u1", roles: "lister" };
+    expect(
+      hasPermission({ access: allowPosture, user, resource: "articles", action: "delete" }),
+    ).toBe(true);
+    expect(
+      hasPermission({ access: allowPosture, user, resource: "articles", action: "publish" }),
+    ).toBe(true);
+  });
+
+  it("still honours an explicit deny under the allow posture", () => {
+    expect(
+      hasPermission({
+        access: allowPosture,
+        user: { _id: "u1", roles: "publisher" },
+        resource: "articles",
+        action: "listFeatured",
+      }),
     ).toBe(false);
   });
 });

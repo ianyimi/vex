@@ -271,6 +271,11 @@ export interface CollectionConfigInput<
   fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
   /** Override the PascalCase interface name used in generated TypeScript types. Inferred from `slug` by `defineCollection` if omitted. */
   interfaceName?: string;
+  /** Index definitions that create indexes on this collection in Convex. */
+  indexes?: {
+    name: string;
+    fields: NoInfer<TFieldSlug>[];
+  }[];
   meta?: TCollectionMeta;
 }
 
@@ -302,5 +307,10 @@ export interface CollectionConfig<
   fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
   /** PascalCase identifier derived from `slug`, used as the TypeScript interface name in generated types (e.g. `"posts"` → `"Posts"`). */
   interfaceName: string;
+  /** Index definitions that create indexes on this collection in Convex. */
+  indexes?: {
+    name: string;
+    fields: NoInfer<TFieldSlug>[];
+  }[];
   meta: TCollectionMeta;
 }

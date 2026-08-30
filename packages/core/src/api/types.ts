@@ -17,9 +17,15 @@ import {
   TextFieldType,
   type AdminFieldType,
 } from "../fields";
-import type { CollectionsFieldTypeMap, CollectionSlug, DocumentBySlug } from "../types/generated";
+import type {
+  CollectionsFieldTypeMap,
+  CollectionSlug,
+  CustomActionsBySlug,
+  DocumentBySlug,
+} from "../types/generated";
 import { VexDocument } from "./convex";
 import { VexConfig } from "../config";
+import { QueryAction, DraftAction, CrudAction } from "../access";
 
 /**
  * Forces TypeScript to eagerly evaluate a mapped/conditional type into a
@@ -28,6 +34,70 @@ import { VexConfig } from "../config";
  * expanded `{ _id: ...; parent: Post[]; ... }` form.
  */
 export type Prettify<T> = { [K in keyof T]: T[K] } & {};
+
+/**
+ * Per-call access options. Server-side only — NEVER accept these from a registered
+ * Convex function's `args`: an action no role declares falls through to
+ * `defaultPermissionMode` (default `allow`), so a client-chosen action reads anything.
+ *
+ * @typeParam A - Action union accepted for this call shape.
+ */
+export interface AccessCallOptions<A extends string = string> {
+  /**
+   * Permission action to check instead of the function's natural verb. Use for custom
+   * actions (`listFeatured`) and for draft reads (`readDrafts`).
+   *
+   * @defaultValue the function's natural verb (`read`, `create`, `update`, `delete`)
+   */
+  action?: A;
+  /**
+   * Skip RBAC for this call entirely. Also skips `getAuth`, so a public read costs no
+   * session lookup.
+   *
+   * @defaultValue false
+   */
+  bypass?: boolean;
+}
+
+/**
+ * Actions a query-shaped call may check. `(string & {})` keeps literal autocomplete.
+ *
+ * NOT `| DraftAction`: `QueryAction` already carries `readDrafts` (the only
+ * query-shaped draft verb), so adding the full draft union would offer
+ * `saveDraft`/`publish`/`unpublish` - mutation verbs - in every query position.
+ */
+export type QueryCallAction = QueryAction | (string & {});
+
+/** Actions a mutation-shaped call may check. The draft verbs minus `readDrafts`. */
+export type MutationCallAction = CrudAction | Exclude<DraftAction, QueryAction> | (string & {});
+
+/** Custom actions of one kind declared for slug `S` in the generated registry. @internal */
+type CustomCallActionsFor<
+  S extends string,
+  K extends "query" | "mutation",
+> = S extends keyof CustomActionsBySlug
+  ? CustomActionsBySlug[S] extends Record<K, infer A extends string>
+    ? A
+    : never
+  : never;
+
+/**
+ * Actions a query-shaped call on collection `S` may check.
+ *
+ * Pre-generation the registry is `{}`, so this collapses to {@link QueryCallAction} —
+ * arbitrary strings stay accepted, which is what lets core's own tests exercise custom
+ * actions against an unaugmented registry. Post-generation the `(string & {})` arm is
+ * REPLACED by the slug's declared union: a custom verb autocompletes exactly where it
+ * is declared and is a compile error everywhere else.
+ */
+export type QueryCallActionFor<S extends string> = [keyof CustomActionsBySlug] extends [never]
+  ? QueryCallAction
+  : QueryAction | CustomCallActionsFor<S, "query">;
+
+/** Mutation-shaped counterpart of {@link QueryCallActionFor}. */
+export type MutationCallActionFor<S extends string> = [keyof CustomActionsBySlug] extends [never]
+  ? MutationCallAction
+  : CrudAction | Exclude<DraftAction, QueryAction> | CustomCallActionsFor<S, "mutation">;
 
 // ── Generic args base types ─────────────────────────────────────────────────
 //
@@ -142,6 +212,8 @@ export interface GenericQueryServerParams<
   TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
   D extends number = 0,
 > {
+  /** Per-call access overrides. @see {@link AccessCallOptions} */
+  access?: AccessCallOptions<QueryCallActionFor<TCollectionSlug>>;
   /** The auth config of the current user making the query.
    * @example
    * ```ts
@@ -189,7 +261,12 @@ export interface GenericMutationClientParams {
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
  */
-export interface GenericMutationServerParams<DataModel extends GenericDataModel> {
+export interface GenericMutationServerParams<
+  DataModel extends GenericDataModel,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> {
+  /** Per-call access overrides. @see {@link AccessCallOptions} */
+  access?: AccessCallOptions<MutationCallActionFor<TCollectionSlug>>;
   /** The auth config of the current user making the query.
    * @example
    * ```ts

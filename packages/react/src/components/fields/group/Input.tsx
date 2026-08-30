@@ -22,7 +22,7 @@ import { createFieldInput, FormGroup } from "../../form";
  * ```
  */
 export const GroupFieldInput = createFieldInput<Record<string, unknown>, {}, GroupField>(
-  ({ name, collection, fieldDef, field, index, submissionAttempts }) => {
+  ({ name, collection, readOnly, fieldDef, field, index, submissionAttempts }) => {
     return (
       <div className="flex flex-col gap-1.5">
         <FormGroup
@@ -31,7 +31,7 @@ export const GroupFieldInput = createFieldInput<Record<string, unknown>, {}, Gro
           field={field}
           fieldDef={fieldDef}
           index={index}
-          readOnly={fieldDef.admin.readOnly}
+          readOnly={readOnly || fieldDef.admin.readOnly}
           submissionAttempts={submissionAttempts}
         />
       </div>

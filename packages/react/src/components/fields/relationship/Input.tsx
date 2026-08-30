@@ -9,8 +9,8 @@ import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
 import { useDebounceValue } from "@ts-hooks-kit/core";
 import { useQueries } from "@tanstack/react-query";
-import { CRUD_ACTIONS, type VexDocument } from "@vexcms/core";
-import { usePermission, useRelationshipPickerOptions } from "../../../hooks";
+import { type VexDocument } from "@vexcms/core";
+import { useRelationshipPickerOptions } from "../../../hooks";
 import { useVexConfig } from "../../../context/VexConfigContext";
 import { resolveRelationshipPreview } from "./preview";
 import { get } from "@vexcms/core/client";
@@ -29,7 +29,7 @@ export const RelationshipFieldInput = createFieldInput<
   string[],
   CollectionFieldMeta,
   RelationshipField<CollectionFieldMeta>
->(({ name, collection, fieldDef, field, index, submissionAttempts }) => {
+>(({ name, readOnly, fieldDef, field, index, submissionAttempts }) => {
   // `createFieldInput`'s render context provides { name, fieldDef, readOnly,
   // field, submissionAttempts } — no `config`. Read the live VexConfig from the
   // existing AdminLayout-provided context instead.
@@ -90,7 +90,7 @@ export const RelationshipFieldInput = createFieldInput<
   // —— Lifted verbatim from master lines 165–202 ——
   const handleSelect = React.useCallback(
     (docId: string) => {
-      if (fieldDef.admin.readOnly) return;
+      if (readOnly || fieldDef.admin.readOnly) return;
       const current: string[] = field.state.value ?? [];
       if (isMany) {
         field.handleChange(
@@ -103,19 +103,18 @@ export const RelationshipFieldInput = createFieldInput<
         setOpen(false);
       }
     },
-    [field, isMany, fieldDef.admin.readOnly],
+    [field, isMany, readOnly, fieldDef.admin.readOnly],
   );
 
   const handleRemove = React.useCallback(
     (docId: string) => {
-      if (fieldDef.admin.readOnly) return;
+      if (readOnly || fieldDef.admin.readOnly) return;
       const current: string[] = field.state.value ?? [];
       field.handleChange(isMany ? current.filter((id: string) => id !== docId) : []);
     },
-    [field, isMany, fieldDef.admin.readOnly],
+    [field, isMany, readOnly, fieldDef.admin.readOnly],
   );
 
-  const canEdit = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.update });
   return (
     <div className="flex flex-col gap-1.5">
       <FormLabel field={fieldDef} index={index} name={name} />
@@ -133,7 +132,7 @@ export const RelationshipFieldInput = createFieldInput<
                 type="button"
                 onClick={() => handleRemove(doc._id)}
                 className="hover:text-destructive"
-                disabled={!canEdit || fieldDef.admin.readOnly}
+                disabled={!readOnly || fieldDef.admin.readOnly}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -145,7 +144,7 @@ export const RelationshipFieldInput = createFieldInput<
       <Popover
         open={open}
         onOpenChange={(v) => {
-          if (!fieldDef.admin.readOnly) setOpen(v);
+          if (!readOnly && !fieldDef.admin.readOnly) setOpen(v);
         }}
       >
         {/* —— Trigger styled like an input: master lines 231–256 ——
@@ -156,7 +155,7 @@ export const RelationshipFieldInput = createFieldInput<
           render={
             <Button
               variant="outline"
-              disabled={!canEdit || fieldDef.admin.readOnly}
+              disabled={readOnly || fieldDef.admin.readOnly}
               className="w-full justify-between font-normal"
             />
           }

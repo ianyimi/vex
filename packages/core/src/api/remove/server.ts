@@ -4,6 +4,7 @@ import type { GenericId } from "convex/values";
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { resolveAccessCall } from "../utils";
 
 /**
  * Server-side args for `remove`.
@@ -75,13 +76,19 @@ export async function remove<
   async function removeById(id: GenericId<TCollectionSlug>): Promise<void> {
     if (args.config.access !== undefined) {
       const doc = await args.ctx.db.get(id);
+      const { access, action, resource } = resolveAccessCall({
+        config: args.config,
+        access: args.access,
+        defaultAction: CRUD_ACTIONS.delete,
+        resource: args.collection,
+      });
       hasPermission({
         throwOnDenied: true,
-        access: args.config.access,
+        access,
         user: args.auth?.user ?? {},
         organization: args.auth?.organization,
-        resource: args.collection,
-        action: CRUD_ACTIONS.delete,
+        resource,
+        action,
         data: doc ?? undefined,
       });
     }

@@ -34,7 +34,9 @@ export const getIndex = query({
       id: "jd7c3tr2ssz89pzdyx65by5k0n86razb" as PageID,
       // Public read: rendered by `src/app/page.tsx` for anonymous visitors, who
       // have no roles and would therefore be denied (`get` throws on denial).
-      skipAccess: true,
+      access: {
+        bypass: true,
+      },
     });
   },
 });
@@ -67,7 +69,9 @@ export const getBySlug = query({
       limit: 1,
       // Public read: rendered by `src/app/[slug]/page.tsx` for anonymous
       // visitors, who have no roles and would otherwise be filtered out.
-      skipAccess: true,
+      access: {
+        bypass: true,
+      },
     });
   },
 });

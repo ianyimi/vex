@@ -2,9 +2,9 @@
 
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { GlobalEditViewProps, vexConvexApi } from "@vexcms/core";
+import { CRUD_ACTIONS, GlobalEditViewProps, vexConvexApi } from "@vexcms/core";
 import { AppForm } from "../form";
-import { useGlobalForm } from "../../hooks";
+import { useGlobalForm, usePermission } from "../../hooks";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 
@@ -37,6 +37,11 @@ export function GlobalEditView({ global, initialData }: GlobalEditViewProps) {
     return <p>Global document not found.</p>;
   }
 
+  const canEdit = usePermission({
+    resource: global.slug,
+    action: CRUD_ACTIONS.update,
+    data: globalDoc as {},
+  });
   return (
     <AppForm form={form} className="relative">
       <div className="mb-6 flex items-center justify-between pt-4">
@@ -49,7 +54,7 @@ export function GlobalEditView({ global, initialData }: GlobalEditViewProps) {
                 type="submit"
                 className="transition-all duration-300"
                 isPending={isPending}
-                disabled={isDefaultValue}
+                disabled={isDefaultValue || !canEdit}
               >
                 Save
               </Button>
@@ -57,7 +62,7 @@ export function GlobalEditView({ global, initialData }: GlobalEditViewProps) {
                 type="button"
                 variant="outline"
                 className="transition-all duration-300"
-                disabled={isDefaultValue}
+                disabled={isDefaultValue || !canEdit}
                 onClick={() => {
                   form.reset();
                 }}
@@ -80,7 +85,7 @@ export function GlobalEditView({ global, initialData }: GlobalEditViewProps) {
               key={fieldKey}
               name={fieldKey}
               fieldDef={field}
-              readOnly={field.admin.readOnly}
+              readOnly={!canEdit || field.admin.readOnly}
               collection={global}
             />
           );

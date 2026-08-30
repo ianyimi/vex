@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  addLeadingSlash,
-  ClientVexConfig,
-  CRUD_ACTIONS,
-  PERMISSION_SCOPES,
-} from "@vexcms/core";
+import { addLeadingSlash, ClientVexConfig, CRUD_ACTIONS, PERMISSION_SCOPES } from "@vexcms/core";
 import {
   Sidebar,
   SidebarContent,

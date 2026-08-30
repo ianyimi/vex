@@ -22,16 +22,33 @@ const schema = defineSchema({
     parent: v.optional(v.array(v.id("posts"))), // self-ref for depth tests
   })
     .searchIndex("search_title", { searchField: "title" })
-    .index("by_featured", ["featured"]),
+    .index("by_featured", ["featured"])
+    .index("by_slug", ["slug"]),
 
   authors: defineTable({
     name: v.string(),
+    // `slug` + `by_slug` mirror `posts` EXACTLY — same field name, same single-field
+    // tuple. That is what makes the two tables a valid target for one shared access
+    // rule: an index name is only shared if every resource declares it, and the field
+    // tuples must match or the positional builder terminates at the shortest.
+    slug: v.optional(v.string()),
     organization: v.optional(v.array(v.id("organizations"))),
-  }).searchIndex("search_name", { searchField: "name" }),
+  })
+    .searchIndex("search_name", { searchField: "name" })
+    .index("by_slug", ["slug"]),
 
   organizations: defineTable({
     name: v.string(),
   }),
+
+  // The user table `defineAccess`'s `userCollectionSlug` points at. Without it the
+  // resolved user type is `unknown`, and a rule factory's `user: Record<string,
+  // unknown>` parameter cannot accept `unknown` — parameter contravariance — so
+  // factory-authored permissions fail to assign for a reason no real app hits.
+  users: defineTable({
+    name: v.string(),
+    roles: v.optional(v.string()),
+  }).index("by_name", ["name"]),
 
   vex_globals: defineTable({
     slug: v.string(),
@@ -70,6 +87,7 @@ declare module "@vexcms/core" {
       posts: DocumentByName<FixtureDM, "posts">;
       authors: DocumentByName<FixtureDM, "authors">;
       organizations: DocumentByName<FixtureDM, "organizations">;
+      users: DocumentByName<FixtureDM, "users">;
     };
     CollectionsFieldTypeMap: {
       posts: {
@@ -78,11 +96,14 @@ declare module "@vexcms/core" {
         checkbox: "featured";
       };
       authors: {
-        text: "name";
+        text: "name" | "slug";
         relationship: "organization";
       };
       organizations: {
         text: "name";
+      };
+      users: {
+        text: "name" | "roles";
       };
     };
   }

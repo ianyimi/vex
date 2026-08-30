@@ -5,6 +5,7 @@ import type { GlobalSlug } from "../../types/generated";
 import { getGlobalInputSchema } from "../../globals/utils";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
 import { GenericGlobalsMutationServerArgs } from "./types";
+import { resolveAccessCall } from "../utils";
 
 /** System keys stripped from flat input before writing to DB. */
 const STRIPPED_KEYS = new Set(["_id", "_creationTime", "_slug"]);
@@ -17,10 +18,10 @@ const STRIPPED_KEYS = new Set(["_id", "_creationTime", "_slug"]);
  */
 export interface UpsertGlobalServerArgs<
   DataModel extends GenericDataModel,
-  TSlug extends GlobalSlug = GlobalSlug,
-> extends GenericGlobalsMutationServerArgs<DataModel> {
+  TGlobalSlug extends GlobalSlug = GlobalSlug,
+> extends GenericGlobalsMutationServerArgs<DataModel, TGlobalSlug> {
   /** The global slug to upsert. Must match a registered global in config. */
-  slug: TSlug;
+  slug: TGlobalSlug;
   /**
    * User field data. May be the full flat document (system keys `_id`,
    * `_creationTime`, `_slug` are stripped server-side) or just the field
@@ -67,13 +68,19 @@ export async function upsertGlobal<
   }
 
   if (args.config.access !== undefined) {
+    const { access, action, resource } = resolveAccessCall({
+      config: args.config,
+      access: args.access,
+      defaultAction: CRUD_ACTIONS.read,
+      resource: args.slug,
+    });
     hasPermission({
       throwOnDenied: true,
-      access: args.config.access,
+      access,
       user: args.auth?.user ?? {},
       organization: args.auth?.organization,
-      resource: args.slug,
-      action: CRUD_ACTIONS.update,
+      resource,
+      action,
     });
   }
 
