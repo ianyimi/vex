@@ -59,14 +59,22 @@ bump to the commit type.
 
 ## Storage & where it lands
 
-- **`.agent/docs/commits/MM-DD-YYYY.md` (ledger) holds the FULL message** to copy from — plain
-  Markdown, **no ``` code fence** (strip the one `harness log commit-msg` adds). One `## HH:MM`
-  section per commit.
-- **`.agent/docs/session-log/.../YYYY-MM-DD.commit.md`** — raw source for `git commit -F`
-  (agent-commits mode). Same content, no fence.
-- **The session-log entry never duplicates the message.** It carries the session's decisions
-  (add them if missing); after them, leave one link to the ledger as the "committed up to here"
-  marker: `_Commit → [<subject>](../../../commits/MM-DD-YYYY.md)_`.
+- **`.agent/docs/commits/MM-DD-YYYY.md` (ledger) holds the FULL message(s)** to copy from —
+  plain Markdown, **no ``` code fence** (strip the one `harness log commit-msg` adds). One
+  `## HH:MM — <commit title>` section per commit, in commit order, each with its raw-file
+  path and a copy-pasteable `git add … && git commit -F …` block naming that commit's exact
+  files.
+- **`.agent/docs/session-log/.../YYYY-MM-DD.commit.md`** — raw source for `git commit -F`.
+  A day with several commits numbers the rest `YYYY-MM-DD.commit.2.md`, `.commit.3.md`, …
+  in commit order. `harness log commit-msg` only ever writes the first; the others are
+  written by hand.
+- **One day, several commits.** Split when concerns are independent (see "Mixed change?"
+  above). File lists across commits MUST be disjoint and MUST cover every path in
+  `git status`. Harness bookkeeping — session log, ledger, standards, `state.md`,
+  `tasks.md`, `.sync-manifest.json` — rides the LAST commit; it spans the whole run.
+- **The session-log entry never duplicates the message.** It carries that session's
+  decisions (add them if missing); after them, leave one link to the ledger as the
+  "committed up to here" marker: `_Committed → [<subject>](../../../commits/MM-DD-YYYY.md)_`.
 
 ## Examples
 

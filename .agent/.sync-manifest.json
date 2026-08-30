@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at_sha": "bde8141b69f6f0f0982973cb1257fd54fcc98b88",
+  "generated_at_sha": "07924dee9cee298da633e7314e4bb776dea8f87e",
   "entries": [
     {
       "path": ".agent/context-rules.yaml",
@@ -17,7 +17,7 @@
     {
       "path": ".claude/commands/commit.md",
       "kind": "generated",
-      "target_or_hash": "187d5a6022579239c8918fbd7296d777c2109eb1006a19b2dce7be635f8ff58b",
+      "target_or_hash": "b0ea9a09d3c9c0d1683832a26a0a07885c521ec503311dc60f7994ddf706b24e",
       "platform": "claude"
     },
     {
@@ -149,7 +149,7 @@
     {
       "path": ".omp/agents/commit.md",
       "kind": "generated",
-      "target_or_hash": "0cb2dd6c415e623f6aa83752628913568b10c88de51836777553b8463271a082",
+      "target_or_hash": "905a6fc7d5cbc6ad2b409b0029b2aa1acdd8785b1751ead6f517fdbe4d5c7faa",
       "platform": "omp"
     },
     {
@@ -701,7 +701,7 @@
     {
       "path": ".omp/prompts/commit.md",
       "kind": "generated",
-      "target_or_hash": "8fef23302631d28140402eabbc1315c39dc6c5c403ca8d3fb50b775f9e961f08",
+      "target_or_hash": "3d6e80836c6f43c09d079d52064f2126bdcac261607b7f74126dd0c7afa62025",
       "platform": "omp"
     },
     {

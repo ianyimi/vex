@@ -6,8 +6,16 @@ one `##` entry per work block. Created/extended only via `harness log append`. T
 in-place edits, nothing else:
 - `harness log backfill-sha` filling `**Commit:** (pending)`.
 - The ledger link `harness log commit-msg` appends as the "committed up to here" marker.
-- Entry-title renames by the commit skill (its "Name sessions after the commit" step):
+- Entry-title renames by the commit skill (its "Name sessions after their commit" step):
   titles only, bodies never.
+
+## Retroactive entries
+A work block that ended without logging still gets a full entry — the commit skill writes it
+at commit time from the diff, the spec, and `git log`. It is a normal entry with one addition:
+a blockquote directly under the `**Commit:**` line saying it was logged retroactively and that
+the body is reconstructed rather than transcribed. A cold-start reader must never have to
+guess which entries are recollection and which are evidence. Reconstruct only what the
+artifacts support; everything else is `(not captured this session)`.
 
 ## Entry structure (`harness log append` emits this skeleton)
 
