@@ -1,21 +1,8 @@
 import { icons, type LucideProps } from "lucide-react";
 import type { ComponentPropsWithRef } from "react";
+import type { LucideIconName } from "@vexcms/core";
 
-/**
- * Union of all valid Lucide icon name strings (e.g. `"FileText"`, `"Users"`, `"Settings"`).
- *
- * Derived from the `lucide-react` icons export map — every exported icon name
- * is a valid value. IDE autocomplete lists all ~1000 options.
- *
- * @example
- * ```ts
- * const icon: LucideIconName = "FileText"; // ✅
- * const bad: LucideIconName = "NotAnIcon"; // ❌ type error
- * ```
- *
- * @see {@link Icon} for the component that renders a `LucideIconName`
- */
-export type LucideIconName = keyof typeof icons;
+export type { LucideIconName };
 
 /**
  * Props for the `Icon` component.
@@ -32,6 +19,8 @@ export type IconProps = ComponentPropsWithRef<"svg"> &
     name: LucideIconName;
   };
 
+const warnedNames = new Set<string>();
+
 /**
  * Renders a Lucide icon by name.
  *
@@ -41,8 +30,10 @@ export type IconProps = ComponentPropsWithRef<"svg"> &
  * `className` is extracted and merged through `cn()` before being passed to the
  * underlying icon component.
  *
- * Returns `null` silently if `name` does not match a known icon, so invalid
- * strings from dynamic data (e.g. CMS content) do not throw at runtime.
+ * Returns `null` if `name` does not match a known icon, so a bad string from
+ * untyped data cannot throw at runtime. Because {@link LucideIconName} is exact,
+ * that can only happen via an unchecked cast or `any`, so outside production the
+ * miss is reported once per name with `console.warn`.
  *
  * @param props - Icon props. See {@link IconProps} for all fields.
  * @returns The rendered SVG icon, or `null` if the name is unrecognised.
@@ -59,13 +50,23 @@ export type IconProps = ComponentPropsWithRef<"svg"> &
  * <Icon name="Settings" strokeWidth={1.5} className="size-5" />
  *
  * // Dynamically from a collection's admin.icon string
- * <Icon name={collection.admin.icon as LucideIconName} className="size-4" />
+ * <Icon name={collection.admin.icon} className="size-4" />
  * ```
  *
  * @see {@link LucideIconName} for the full set of valid icon names
  */
 export function Icon({ name, className, ...rest }: IconProps) {
   const LucideIcon = icons[name];
-  if (!LucideIcon) return null;
+  if (!LucideIcon) {
+    if (process.env.NODE_ENV !== "production" && !warnedNames.has(name)) {
+      warnedNames.add(name);
+      console.warn(
+        `<Icon name="${name}" /> is not a Lucide icon and rendered nothing. ` +
+          `Use the canonical PascalCase name from https://lucide.dev/icons — ` +
+          `alias exports ("AlertCircle") and "*Icon" duplicates ("UsersIcon") are not valid.`,
+      );
+    }
+    return null;
+  }
   return <LucideIcon className={className} {...rest} />;
 }

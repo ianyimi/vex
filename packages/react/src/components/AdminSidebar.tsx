@@ -118,7 +118,6 @@ export function AppSidebar(props: AppSidebarProps) {
                     >
                       {collection.admin.icon && (
                         <div>
-                          {/* @ts-expect-error Lucide Icon names match here, unknown lsp error */}
                           <Icon name={collection.admin.icon} size={12} />
                         </div>
                       )}
@@ -143,7 +142,6 @@ export function AppSidebar(props: AppSidebarProps) {
                     >
                       {global.admin.icon && (
                         <div>
-                          {/* @ts-expect-error Lucide Icon names match here, unknown lsp error */}
                           <Icon name={global.admin.icon} size={12} />
                         </div>
                       )}
@@ -168,7 +166,6 @@ export function AppSidebar(props: AppSidebarProps) {
                     >
                       {mediaCollection.admin.icon && (
                         <div>
-                          {/* @ts-expect-error Lucide Icon names match here, unknown lsp error */}
                           <Icon name={mediaCollection.admin.icon} size={12} />
                         </div>
                       )}

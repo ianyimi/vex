@@ -1,18 +1,26 @@
-import type icons from "lucide-react";
+import type { icons } from "lucide-react";
 
 /**
  * Valid Lucide icon name string (e.g. `"FileText"`, `"Users"`, `"Settings"`).
  *
- * Use the PascalCase icon name as exported by `lucide-react`.
+ * Derived from the `icons` map exported by `lucide-react` — the same map the
+ * `Icon` component in `@vexcms/react` indexes at render time. This is
+ * deliberately narrower than the set of names `lucide-react` exports as
+ * components: alias exports (`AlertCircle` → `CircleAlert`), the `*Icon`
+ * suffixed duplicates (`UsersIcon`), and non-icon exports (`createLucideIcon`,
+ * `icons`, `Icon`) are absent from the map and would render nothing.
+ *
+ * Use the canonical PascalCase name as listed on the Lucide site.
  * @see https://lucide.dev/icons
  *
  * @example
  * ```ts
- * const icon: LucideIconName = "FileText"; // ✅
- * const bad: LucideIconName = "NotAnIcon"; // ❌ won't render
+ * const icon: LucideIconName = "CircleAlert";  // ✅ canonical, renders
+ * const alias: LucideIconName = "AlertCircle"; // ❌ alias export, not in `icons`
+ * const bad: LucideIconName = "NotAnIcon";     // ❌ not an icon at all
  * ```
  *
- * @see the `Icon` component from lucide-react that renders a `LucideIconName`
+ * @see the `Icon` component from `@vexcms/react` that renders a `LucideIconName`
  */
 export type LucideIconName = keyof typeof icons;
 
