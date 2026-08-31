@@ -61,7 +61,7 @@ The docs site serves [llms.txt](https://llmstxt.org) indexes for AI coding agent
 
 ### Schema & Field System
 
-Define content types with a fully typed field system. Vex ships 11 field types:
+Define content types with a fully typed field system. Vex ships 12 field types:
 
 | Field          | Description                                          |
 | -------------- | ----------------------------------------------------- |
@@ -76,6 +76,7 @@ Define content types with a fully typed field system. Vex ships 11 field types:
 | `array`        | Repeatable list of a nested field type                 |
 | `group`        | Named set of sub-fields stored as a nested object       |
 | `blocks`       | Ordered list of typed content blocks (flexible layout) |
+| `color`        | CSS colour string (hex/rgb/hsl/oklch) or theme-token reference |
 
 **Coming soon:** `richtext` (Plate.js), `json`, `email`, `textarea`, `tabs`, and `ui` (non-persisted display/action fields) — see the [roadmap](apps/docs/src/content/docs/roadmap.md).
 
@@ -150,6 +151,10 @@ export const siteSettings = defineGlobal({
   admin: { group: "Site Builder" },
 });
 ```
+
+### Theming
+
+Themes are content: a `themes` collection of `color()` fields covering the full shadcn token set, an active-theme selector on the `siteSettings` global, and `buildThemeCss` injecting the palette as CSS custom properties — server-rendered for first paint, updated live on save. See the theming guide on the docs site.
 
 ### Media & Storage Adapters
 

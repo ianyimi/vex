@@ -9,7 +9,7 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · 🔭 Exploring
 
 ## Shipped
 
-- ✅ 11 field types — `text`, `number`, `checkbox`, `select`, `date`, `url`, `relationship`, `upload`, `array`, `group`, `blocks`
+- ✅ 12 field types — `text`, `number`, `checkbox`, `select`, `date`, `url`, `relationship`, `upload`, `array`, `group`, `blocks`, `color`
 - ✅ Convex schema + type codegen
 - ✅ Real-time admin panel
 - ✅ DataTable with pagination, `totalDocs`, bulk operations
@@ -18,7 +18,7 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · 🔭 Exploring
 - ✅ Access index resolution — `{ constraints }` rules compile to `withIndex` ranges inside Convex queries
 - ✅ `anonRole` fallback for unauthenticated callers
 - ✅ Globals (`defineGlobal`)
-- ✅ Custom theme system
+- ✅ Database-driven theming — `themes` collection, active-theme selector, `buildThemeCss` custom-property injection
 - ✅ Better Auth integration
 - ✅ Convex file storage
 - ✅ TypeDoc API reference
