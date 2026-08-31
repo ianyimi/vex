@@ -20,7 +20,7 @@
     "lint:fix": "eslint --fix packages/*/src/**/*.{ts,tsx}"
   },
   "devDependencies": {
-    "@changesets/cli": "2.30.0",
+    "@changesets/cli": "catalog:",
     "@eslint/js": "catalog:",
     "@typescript-eslint/eslint-plugin": "catalog:",
     "@typescript-eslint/parser": "catalog:",
@@ -28,7 +28,7 @@
     "eslint": "catalog:",
     "eslint-plugin-jsdoc": "catalog:",
     "prettier": "catalog:",
-    "turbo": "^2.8.10",
+    "turbo": "catalog:",
     "typescript": "catalog:"
   },
   "engines": {
@@ -38,6 +38,16 @@
   "pnpm": {
     "patchedDependencies": {
       "@convex-dev/better-auth@0.11.5": "patches/@convex-dev__better-auth@0.11.5.patch"
+    },
+    "overrides": {
+      "@better-auth/passkey": "1.6.23"
+    },
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "@convex-dev/better-auth>better-auth": "1.6.23",
+        "better-call": "2",
+        "typescript": "6"
+      }
     }
   }
 }

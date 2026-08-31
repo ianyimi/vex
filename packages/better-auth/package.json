@@ -24,9 +24,9 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "better-auth": "catalog:",
-    "convex": "catalog:",
-    "@vexcms/core": "workspace:*"
+    "@vexcms/core": "workspace:^",
+    "better-auth": "catalog:peers",
+    "convex": "catalog:peers"
   },
   "devDependencies": {
     "@types/node": "catalog:",

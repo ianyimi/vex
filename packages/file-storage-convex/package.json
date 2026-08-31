@@ -35,7 +35,7 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "@vexcms/core": "workspace:*",
-    "convex": "catalog:"
+    "@vexcms/core": "workspace:^",
+    "convex": "catalog:peers"
   }
 }

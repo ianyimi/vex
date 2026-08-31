@@ -41,30 +41,34 @@
     "lucide-react": "catalog:"
   },
   "devDependencies": {
+    "@convex-dev/react-query": "catalog:",
     "@tanstack/react-form": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "@tanstack/react-table": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
+    "convex": "catalog:",
     "next": "catalog:",
     "nuqs": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",
     "tsup": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "zod": "catalog:"
   },
   "peerDependencies": {
-    "@convex-dev/react-query": "catalog:",
-    "@tanstack/react-form": "catalog:",
-    "@tanstack/react-query": "catalog:",
-    "@tanstack/react-table": "catalog:",
-    "convex": "catalog:",
-    "next": ">=14.0.0",
-    "nuqs": "catalog:",
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0",
-    "zod": "catalog:"
+    "@convex-dev/react-query": "catalog:peers",
+    "@tanstack/react-form": "catalog:peers",
+    "@tanstack/react-query": "catalog:peers",
+    "@tanstack/react-table": "catalog:peers",
+    "convex": "catalog:peers",
+    "next": "catalog:peers",
+    "nuqs": "catalog:peers",
+    "react": "catalog:peers",
+    "react-dom": "catalog:peers",
+    "zod": "catalog:peers"
   }
 }

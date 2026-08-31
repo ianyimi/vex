@@ -50,7 +50,7 @@
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
+    "react": "catalog:peers",
+    "react-dom": "catalog:peers"
   }
 }

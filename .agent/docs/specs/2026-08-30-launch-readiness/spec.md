@@ -2,7 +2,7 @@
 
 Two working days (Sat 08-30, Sun 08-31), Mon 09-01 as buffer. Execution is
 LLM-driven and parallelizable; this doc is the plan agent specs get written from.
-**Only WP-0 is implemented.** Everything else is plan.
+**WP-0 and WP-A are implemented.** Everything else is plan.
 
 ## Objective
 
@@ -44,12 +44,12 @@ Anything not serving one of those four is out of scope this weekend.
 | Live scaffolder templates empty | `templates/{base-nextjs,marketing-site}/` hold only a README stub |
 | Scaffolder tests falsely green | `integration.test.ts` guards every case with `if (!fs.existsSync(...)) return;` |
 | `cli` runs zero tests | `No test files found`; its one test file is excluded from typecheck *and* unmatched by vitest |
-| `catalog:` breaks under npm | `npm pack` keeps `"nanoid": "catalog:"`; `pnpm pack` resolves it. **Publishing must go through pnpm** |
+| `catalog:` breaks under npm | `npm pack` keeps `"nanoid": "catalog:"`; `pnpm pack` resolves it. **Publishing must go through pnpm.** ✅ WP-A ships `scripts/check-packed-manifests.mjs --packed`, which fails on any unresolved `catalog:`/`workspace:` in a packed manifest — WP-1 step 4 should call it rather than write a second script |
 | `docs` would publish to npm | `apps/docs/package.json` named `docs`, not private, not changeset-ignored |
 | Not in prerelease mode | no `.changeset/pre.json` |
 | No LICENSE despite README | README claims "MIT Licensed. Free forever." |
-| Auth catalog is unbounded upward | `better-auth: ^1.5.0` resolves to **1.7.2**; only the lockfile pins 1.6.23 |
-| Auth peers already mismatched | `@convex-dev/better-auth@0.11.5` peers `>=1.5.0 <1.6.0`; installed is 1.6.23. Masked by `strict-peer-dependencies=false`. Works today. |
+| Auth catalog is unbounded upward | `better-auth: ^1.5.0` resolves to **1.7.2**; only the lockfile pins 1.6.23. ✅ **Fixed by WP-A** — catalog now pins `better-auth: 1.6.23` exactly, and `catalogs.peers` publishes `">=1.6.23 <1.7.0"` so the 1.7.x peer wall is expressed rather than accidental |
+| Auth peers already mismatched | `@convex-dev/better-auth@0.11.5` peers `>=1.5.0 <1.6.0`; installed is 1.6.23. Masked by `strict-peer-dependencies=false`. Works today. **Update 08-30:** now scoped to a single `allowedVersions` entry instead of a repo-wide suppression — strict peers verified passing (WP-A step 6). 0.12.5 peers `>=1.6.11 <1.7.0`, which 1.6.23 already satisfies |
 | `rebuild` is a fast-forward of `master` | `master-only: 0`, `rebuild-only: 66`; `git merge-base --is-ancestor master rebuild` → true |
 | Only 2 config refs to `master` | `.changeset/config.json:19`, `.github/workflows/release.yml:6` |
 | Adapters are the existing extension pattern | core exports `VexAuthAdapter`, `VexStorageAdapter`, `StorageAdapterProtocol`; react exports `StorageAdapterContextProvider`; `@vexcms/file-storage-convex` is a concrete adapter |
@@ -105,7 +105,7 @@ That is better than rebuild's single giant `switch` in `PageContent.tsx`.
 ```mermaid
 graph LR
   WP0["WP-0 dts + sync ✅"] --> WP1["WP-1 release integrity"]
-  WPA["WP-A pin deps + harden"] --> WPC["WP-C color field"]
+  WPA["WP-A pin deps + harden ✅"] --> WPC["WP-C color field"]
   WPC --> WP2["WP-2 CLI + templates"]
   WPA --> WP5
   WP1 --> WP5["WP-5 publish alphas"]
@@ -153,15 +153,72 @@ Needs a changeset before release.
 
 ---
 
-## WP-A — Dependency pinning & supply-chain hardening
+## WP-A — Dependency pinning & supply-chain hardening ✅ DONE
+
+Implemented 2026-08-30 in 7 task groups — spec:
+`.agent/docs/specs/2026-08-30-wpa-dependency-pinning/`. A1, A2 and A3 all
+landed, plus two things this plan did not anticipate (see "Delivered" below).
 
 Threat model (developer's own framing): if an upstream package is compromised,
 a loose range in the catalog or a peer dep can pull malware into this repo — or
 into every downstream consumer — without anyone approving it. Every version
 change should be a deliberate, reviewable diff.
 
-Must land **before WP-5**, because published manifests inherit these values and
-consumers cannot be un-shipped.
+Landed **before WP-5** as required, since published manifests inherit these
+values and consumers cannot be un-shipped.
+
+### Delivered
+
+| # | Outcome | Evidence |
+| --- | --- | --- |
+| A1 | Default catalog is 85 entries, **all exact**, sorted. 63 values pinned; 6 dead entries and 1 unused dependency (`@tanstack/zod-form-adapter`, imported nowhere) deleted; 4 stragglers swept in (`react-dropzone`, `apps/www`'s `convex`, `turbo`, `@changesets/cli`) | `grep` for ranges in `pnpm-workspace.yaml` returns nothing; no resolution moved (pinned values were read from the lockfile) |
+| A2 | New `catalogs.peers` (12 range entries); all 32 `peerDependencies` across 7 packages repointed; `@vexcms/core` peers changed `workspace:*` → `workspace:^` | Packed `@vexcms/core` publishes `convex: ">=1.44.0 <2"`, `lucide-react: ">=0.577.0 <1"`, deps exact (`nanoid: 5.1.16`) |
+| A3 | `minimumReleaseAge: 4320` + `minimumReleaseAgeExclude: ["@vexcms/*"]`, and `onlyBuiltDependencies: []` as an explicit lifecycle-script gate | `pnpm config get` reads both back; clean re-resolve still succeeds |
+| **new** | **`strictPeerDependencies: true`** — the blanket `strict-peer-dependencies=false` is gone, replaced by 3 scoped `allowedVersions` entries + 1 `override`. Achieved **without** the auth upgrade, so D1 is untouched | A plain `pnpm install` exits 0; removing any one rule makes it exit 1 |
+| **new** | `scripts/check-packed-manifests.mjs` — two enforceable invariants (catalog sweep + packed-manifest shape). WP-1 step 4's planned CI assertion should call this rather than add a second script | Baseline was **30 violations**; now **0** |
+
+Verification: `build` 10/10, `typecheck` 14/14, **933 tests**, both script gates
+green. Changeset `bound-published-peer-ranges.md` covers all 8 publishable
+packages.
+
+**Objective #1 proved end to end.** A scratch consumer on **convex 1.45.0**
+`npm i`-ing the packed tarball installs clean (42 packages); the same probe
+against the pre-WP-A exact peers fails with `npm ERESOLVE`. That is
+"`npm i @vexcms/core@alpha` works" demonstrated rather than asserted.
+
+### Corrections this plan got wrong
+
+Executing WP-A falsified four claims made while planning it. Full detail lives
+in the child spec; the load-bearing ones for the remaining work packages:
+
+1. **`convex: ^1.44.0` in `apps/www` was a live build break, not hygiene.** A
+   lockfile-less resolve gave `convex` 1.44.0 **and** 1.45.0, and `www#build`
+   died on `TS2322: GenericQueryCtx<{ user … }> is not assignable to
+   GenericQueryCtx<GenericDataModel>`. Two copies of Convex's types are two
+   nominally distinct type sets. WP-3 must keep `apps/www` on `catalog:`.
+2. **Peer ranges duplicate type-bearing libraries unless every peer is also a
+   `catalog:` devDependency.** pnpm auto-installs an unsatisfied peer at the
+   range's *maximum*. `packages/react` declared none of its 7 peers as devDeps
+   (while `packages/core` already declared all 6), so `@tanstack/react-query`
+   resolved to both 5.101.2 and 5.102.8 and `docs#build` failed. 10 devDeps
+   added across `react`/`next`/`cli`. **Any new package must follow core's
+   pattern.**
+3. **"Nothing can silently move" was overstated.** Pinning the catalog pins
+   *direct* dependencies only; ~250 transitive packages float without the
+   lockfile. `pnpm-lock.yaml` remains the sole pin on the transitive closure —
+   which is why it is committed and why CI must keep `--frozen-lockfile`.
+4. **`strict-peer-dependencies` in `.npmrc` is a no-op in pnpm 10.** Set there,
+   a plain install *printed* the unmet peer and still exited 0. It must be
+   `strictPeerDependencies: true` in `pnpm-workspace.yaml`. Any future install
+   setting belongs in that file, not `.npmrc`.
+
+### Original plan (retained for rationale)
+
+A1–A3 below are the *pre-implementation* analysis. Counts and version numbers in
+them are as-audited on 2026-08-30 morning and are no longer the current state —
+read "Delivered" above for that. They are kept because the reasoning (why peers
+must stay ranges, why `minimumReleaseAge` beats pinning for transitives) is the
+justification for the shipped config.
 
 ### A1 — Bound the catalog (69 of 88 entries are ranges)
 
@@ -269,15 +326,36 @@ tree. Pinning covers intent; `minimumReleaseAge` covers blast radius.
 - **`.npmrc` sets `save-exact=true`** — `pnpm add` already writes exact versions;
   the catalog carets were hand-authored.
 
-### Deferred (documented, not done)
+### Deferred (documented, not done) — re-verified 2026-08-30
 
-`@convex-dev/better-auth` → 0.12.5 unlocks `better-auth` 1.6.30 and fixes the
-peer mismatch properly, but requires re-authoring
-`patches/@convex-dev__better-auth@0.11.5.patch`. Verified: the upstream bug
-(`#422`, Convex routing on `x-forwarded-host`) is **still present** in 0.12.5 at
-`dist/nextjs/index.js:36`, and the patch will **not** rebase — the second hunk's
-context (`mutableHeaders`, `getToken(siteUrl`) no longer exists because
-`convexBetterAuthNextJs` was restructured. Revisit after the meetup.
+Spec: `.agent/docs/specs/2026-08-30-wpa-dependency-pinning/`.
+
+`@convex-dev/better-auth` → 0.12.5 is **still deferred**, but three claims in
+the original note were wrong and are corrected here:
+
+| Original claim | Re-verified finding |
+| --- | --- |
+| Patch "will **not** rebase — the second hunk's context no longer exists" | **Wrong.** `git apply --check` against the 0.12.5 tarball: hunk 1 fails (0.12.5 renamed `newRequest.headers` → `headers`), **hunk 2 applies cleanly at offset +15**. Re-authoring is a two-line job. |
+| 0.12.5 "fixes the peer mismatch properly" — implying it is needed for strict peers | **Insufficient.** 0.12.5's peer (`better-auth >=1.6.11 <1.7.0`) does accept our 1.6.23, but a scratch install with `--strict-peer-dependencies` on 0.12.5 + 1.6.30 **still fails**. The dominant obstacle is `@daveyplate/better-auth-ui@3.4.0`'s 34 non-optional peers. |
+| — (not previously known) | **`strict-peer-dependencies=true` is reachable today on 0.11.5 with the patch untouched.** Measured: install exit 0, build 10/10, 933 tests. See WP-A spec step 6. So D1 and strict peers are **not** in conflict. |
+
+Upstream status: **0.12.5 is still latest** (published 64 days ago; nothing has
+shipped since the incident). PR #423 is **open and unmerged**, and issue #424
+argues it is incomplete. The `#422` defect is present in 0.12.5 in **both**
+halves — `dist/nextjs/index.js:36` sets `x-forwarded-host`, and `getToken`
+(`dist/utils/index.js:42`) rewrites `host` without deleting it while
+`cachedGetToken` passes inbound headers through verbatim. Our patch already
+covers both halves, which is more than PR #423's first revision did.
+
+**The Convex edge appears rolled back.** Re-ran the issue's control matrix
+against `cheery-warbler-575.convex.site` on 2026-08-30: `/api/auth/ok` returns
+**200** and `/api/auth/convex/token` returns **401** under every header
+combination, including `x-forwarded-host` set to an unrelated host. The empty
+404 is gone. Two caveats from the issue thread still apply — this is one
+network at one moment, and the original rollout was gradual enough that a
+single immutable deployment served both a 200 and a 404 within the same minute.
+**Keep the patch.** It is inert while the edge ignores the header and it is the
+difference between working and not if the ingress change ships again.
 
 ---
 
@@ -298,9 +376,14 @@ Blocks WP-5 **and WP-B**. Mechanical; highest risk reduction per minute.
    `latest: 0.0.19`, `alpha: 0.1.0-alpha.x`.
 4. **Force pnpm at publish.** `npm pack` does not resolve `catalog:`; a published
    manifest containing `"nanoid": "catalog:"` is uninstallable
-   (`Unsupported URL Type "catalog:"`). Confirm changesets invokes `pnpm publish`
-   and add a CI assertion that greps a packed tarball's manifest for `catalog:`
-   and fails if found.
+   (`Unsupported URL Type "catalog:"`). Confirm changesets invokes `pnpm publish`.
+   **The CI assertion already exists — do not write a second one.** WP-A shipped
+   `scripts/check-packed-manifests.mjs`; its `--packed` check packs all 8
+   publishable packages with pnpm and fails on any unresolved
+   `catalog:`/`workspace:` value, plus any exact peer or ranged dependency. This
+   step is reduced to wiring `node scripts/check-packed-manifests.mjs` into the
+   release workflow.
+   *Accept:* the workflow fails when a manifest leaks `catalog:`.
 5. **LICENSE + metadata — Apache-2.0 (D9).** Concretely:
    - Add root `LICENSE` with the full Apache-2.0 text.
    - Add a root `NOTICE` file (Apache-2.0 convention; carries the copyright line
@@ -677,7 +760,7 @@ belongs.
 retitled **"Built on"** (Convex, Next.js, Better Auth, Plate, TanStack) →
 `stats` with **only honest numbers** (11 field types, 8 packages, 0 database
 config — no invented user counts) → `feature` ×6 (Convex-native codegen,
-end-to-end types, real-time admin, RBAC + field-level access, globals,
+end-to-end types, real-time admin, RBAC + indexed access constraints, globals,
 page-builder blocks) → `HowItWorks` → `codeShowcase` → `faq` → `cta`.
 
 **Omit `testimonial` and `pricing`.** An empty testimonial reads worse than none;
@@ -700,17 +783,22 @@ Seed content:
 
 - **Shipped** — 11 field types · Convex schema + type codegen · real-time admin
   panel · DataTable with pagination, `totalDocs`, bulk operations · media library
-  · RBAC with document + field-level access and per-call `access.action`/`bypass`
-  · `anonRole` fallback · globals · custom theme system · Better Auth integration
-  · Convex file storage · TypeDoc API reference · CLI (`vex dev` / `vex generate`)
-  · `create-vexcms` scaffolder
-- **In progress** *(specs written)* — versioning & drafts · access index
-  resolution · per-collection Convex codegen
-- **Planned** — `richtext` field · `json` / `email` / `textarea` fields · block
-  group categorization · lifecycle hooks · content scheduling · API keys · team
-  management · TanStack Start adapter · S3/R2 storage adapters · form builder ·
-  plugin system
+  · RBAC with document-level access, indexed `{ constraints }` rules, and
+  per-call `access.action`/`bypass` · access index resolution (constraints
+  compile to `withIndex` ranges) · `anonRole` fallback · globals · custom theme
+  system · Better Auth integration · Convex file storage · TypeDoc API reference
+  · CLI (`vex dev` / `vex generate`) · `create-vexcms` scaffolder
+- **In progress** — versioning & drafts
+- **Planned** — `richtext` field · `json` / `email` / `textarea` fields ·
+  `tabs` / `ui` fields · form builder · block group categorization · lifecycle
+  hooks · content scheduling · API keys · team management · TanStack Start
+  adapter · S3/R2 storage adapters · plugin system
 - **Exploring** — multi-component workspaces · analytics adapter (WP-7)
+
+*(Corrected per developer review 2026-08-30, WP-4 spec DD 12: access index
+resolution is shipped; per-collection Convex codegen has no plans; "specs
+written" ≠ in progress; form builder directly after the additional fields.
+Field-level access removed by the 2026-08-25 constraint-builder spec.)*
 
 Do not list anything as shipped that docs contradict —
 `apps/docs/src/content/docs/roadmap.md:53` marks RBAC "❓ TBD" when it's fully

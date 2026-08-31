@@ -64,11 +64,11 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "@convex-dev/react-query": "catalog:",
-    "@tanstack/react-query": "catalog:",
-    "@tanstack/react-table": "catalog:",
-    "convex": "catalog:",
-    "lucide-react": "catalog:",
-    "react": ">=18.0.0"
+    "@convex-dev/react-query": "catalog:peers",
+    "@tanstack/react-query": "catalog:peers",
+    "@tanstack/react-table": "catalog:peers",
+    "convex": "catalog:peers",
+    "lucide-react": "catalog:peers",
+    "react": "catalog:peers"
   }
 }

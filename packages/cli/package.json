@@ -28,13 +28,14 @@
     "jiti": "catalog:"
   },
   "peerDependencies": {
-    "@vexcms/core": "workspace:*",
-    "convex": ">=1.0.0"
+    "@vexcms/core": "workspace:^",
+    "convex": "catalog:peers"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "@vexcms/core": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",
+    "convex": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

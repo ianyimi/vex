@@ -31,7 +31,6 @@
     "@hello-pangea/dnd": "catalog:",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-table": "catalog:",
-    "@tanstack/zod-form-adapter": "^0.42.1",
     "@ts-hooks-kit/core": "catalog:",
     "@uiw/react-color-sketch": "catalog:",
     "@vexcms/better-auth": "workspace:*",
@@ -42,18 +41,18 @@
     "date-fns": "catalog:",
     "lucide-react": "catalog:",
     "react-day-picker": "catalog:",
-    "react-dropzone": "^15.0.0",
+    "react-dropzone": "catalog:",
     "tailwind-merge": "catalog:",
     "zod": "catalog:"
   },
   "peerDependencies": {
-    "@convex-dev/react-query": "catalog:",
-    "@tanstack/react-query": ">=5.0.0",
-    "convex": ">=1.0.0",
-    "next": ">=14.0.0",
-    "nuqs": "catalog:",
-    "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
+    "@convex-dev/react-query": "catalog:peers",
+    "@tanstack/react-query": "catalog:peers",
+    "convex": "catalog:peers",
+    "next": "catalog:peers",
+    "nuqs": "catalog:peers",
+    "react": "catalog:peers",
+    "react-dom": "catalog:peers"
   },
   "peerDependenciesMeta": {
     "next": {
@@ -61,13 +60,18 @@
     }
   },
   "devDependencies": {
+    "@convex-dev/react-query": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "@testing-library/react": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "convex": "catalog:",
     "jsdom": "catalog:",
+    "next": "catalog:",
+    "nuqs": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",
