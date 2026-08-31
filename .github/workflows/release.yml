@@ -39,6 +39,9 @@ jobs:
       - name: Test Packages
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" test
 
+      - name: Check Packed Manifests
+        run: node scripts/check-packed-manifests.mjs
+
       - name: Create Release PR or Publish
         id: changesets
         uses: changesets/action@v1

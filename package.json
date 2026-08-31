@@ -15,7 +15,7 @@
     "clear": "rm -rf apps/www/.next apps/www/node_modules/.cache",
     "changeset": "changeset",
     "version:packages": "changeset version && node scripts/sync-template-versions.mjs",
-    "release": "pnpm --filter \"@vexcms/*\" --filter \"create-vexcms\" build && changeset publish",
+    "release": "pnpm --filter \"@vexcms/*\" --filter \"create-vexcms\" build && pnpm publish -r --no-git-checks --tag alpha && changeset tag",
     "lint": "eslint packages/*/src/**/*.{ts,tsx}",
     "lint:fix": "eslint --fix packages/*/src/**/*.{ts,tsx}"
   },

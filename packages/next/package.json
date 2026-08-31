@@ -1,6 +1,25 @@
 {
   "name": "@vexcms/next",
   "version": "0.1.0-alpha.1",
+  "description": "Next.js adapter and admin routes for VexCMS",
+  "keywords": [
+    "cms",
+    "headless-cms",
+    "convex",
+    "typescript",
+    "nextjs"
+  ],
+  "license": "Apache-2.0",
+  "author": "Isaiah Anyimi",
+  "homepage": "https://docs.vexcms.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianyimi/vex.git",
+    "directory": "packages/next"
+  },
+  "sideEffects": [
+    "*.css"
+  ],
   "files": [
     "dist",
     "styles.css"
@@ -27,7 +46,8 @@
     "./styles": "./styles.css"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "alpha"
   },
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",

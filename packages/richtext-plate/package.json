@@ -1,6 +1,24 @@
 {
   "name": "@vexcms/richtext-plate",
   "version": "0.1.0-alpha.1",
+  "description": "Plate rich-text editor integration for VexCMS",
+  "keywords": [
+    "cms",
+    "headless-cms",
+    "convex",
+    "typescript",
+    "richtext",
+    "plate"
+  ],
+  "license": "Apache-2.0",
+  "author": "Isaiah Anyimi",
+  "homepage": "https://docs.vexcms.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianyimi/vex.git",
+    "directory": "packages/richtext-plate"
+  },
+  "sideEffects": false,
   "files": [
     "dist"
   ],
@@ -20,7 +38,8 @@
     }
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "alpha"
   },
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",

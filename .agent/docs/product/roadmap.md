@@ -37,7 +37,7 @@ Pure content/component work once Milestone 1 lands:
 > Sources: `roadmap.md` (monetization strategy v2),
 > `v0.1.0-launch-roadmap.md` "Post-v1 Backlog", `multi-component-architecture.md`.
 
-**License / monetization:** MIT core forever (all fields, admin panel, CLI, drafts, RBAC,
+**License / monetization:** Apache-2.0 core forever (all fields, admin panel, CLI, drafts, RBAC,
 live preview, hooks). Enterprise features ship as separate BSL/commercial packages in a
 private-repo git submodule (`packages/enterprise`). Flat annual per-company license.
 Additional revenue tiers: Convex partnership (referral/sponsorship/Stack listing), support

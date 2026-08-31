@@ -1,6 +1,24 @@
 {
   "name": "@vexcms/react",
   "version": "0.1.0-alpha.1",
+  "description": "React admin components and hooks for VexCMS",
+  "keywords": [
+    "cms",
+    "headless-cms",
+    "convex",
+    "typescript",
+    "react",
+    "admin"
+  ],
+  "license": "Apache-2.0",
+  "author": "Isaiah Anyimi",
+  "homepage": "https://docs.vexcms.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianyimi/vex.git",
+    "directory": "packages/react"
+  },
+  "sideEffects": false,
   "type": "module",
   "exports": {
     ".": {
@@ -80,6 +98,7 @@
     "vitest": "catalog:"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "alpha"
   }
 }

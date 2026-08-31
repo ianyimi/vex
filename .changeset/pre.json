@@ -1,0 +1,18 @@
+{
+  "mode": "pre",
+  "tag": "alpha",
+  "initialVersions": {
+    "docs": "0.1.0-alpha.1",
+    "www": "0.1.0",
+    "@vexcms/better-auth": "0.1.0-alpha.1",
+    "@vexcms/cli": "0.1.0-alpha.1",
+    "@vexcms/core": "0.1.0-alpha.1",
+    "create-vexcms": "0.1.0-alpha.1",
+    "@vexcms/file-storage-convex": "0.1.0-alpha.1",
+    "@vexcms/next": "0.1.0-alpha.1",
+    "@vexcms/react": "0.1.0-alpha.1",
+    "@vexcms/richtext-plate": "0.1.0-alpha.1",
+    "@vexcms/tsconfig": "0.0.0"
+  },
+  "changesets": []
+}

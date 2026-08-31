@@ -1,6 +1,23 @@
 {
   "name": "@vexcms/file-storage-convex",
   "version": "0.1.0-alpha.1",
+  "description": "Convex file-storage adapter for VexCMS uploads",
+  "keywords": [
+    "cms",
+    "headless-cms",
+    "convex",
+    "typescript",
+    "storage"
+  ],
+  "license": "Apache-2.0",
+  "author": "Isaiah Anyimi",
+  "homepage": "https://docs.vexcms.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianyimi/vex.git",
+    "directory": "packages/file-storage-convex"
+  },
+  "sideEffects": false,
   "files": [
     "dist"
   ],
@@ -15,7 +32,8 @@
     }
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "alpha"
   },
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
