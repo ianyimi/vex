@@ -493,7 +493,8 @@ serves both).
 
 **The honest sequencing point:** this split is worth doing *regardless* of SpacetimeDB —
 it's what makes `@vexcms/svelte`, a Postgres/Drizzle backend, or any future adapter possible,
-and it enforces the boundary `.rebuild/FRAMEWORK-AGNOSTIC-CORE.md` already claims. But it is
+and it enforces the boundary `packages/core/src/fields/*` already keeps in practice
+(zero framework imports — see `.agent/docs/standards/core/adding-a-field-type.md`). But it is
 a large refactor of the M1 critical path, and M1 is what blocks the maprios migration.
 
 **Suggested order:** ship v0.1.0 on Convex → do the `core`/`backend-convex` split as its own

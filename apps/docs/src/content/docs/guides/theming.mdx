@@ -1,0 +1,218 @@
+---
+title: Theming
+description: Database-driven theming — a themes collection of shadcn design tokens built from color() fields, an active-theme selector in a global, and buildThemeCss injecting the palette as CSS custom properties at first paint.
+---
+
+VexCMS supports **database-driven theming**: the site's palette lives in a
+`themes` collection editors can modify from the admin panel, one theme is
+selected in a global, and the chosen tokens are injected as CSS custom
+properties — server-rendered for first paint, updated live on save. This is
+exactly how the VexCMS site itself is themed.
+
+## Building blocks from `@vexcms/core`
+
+- **`THEME_COLOR_TOKENS`** — the 32 shadcn colour-token keys, camelCased, each
+  mapped to its custom property (`cardForeground` → `--card-foreground`).
+- **`THEME_SHARED_TOKENS`** — scheme-independent tokens read from the theme
+  document root: `radius` → `--radius`, `fontFamily` → `--font-sans`.
+- **`EMBER_LIGHT` / `EMBER_DARK`** — a complete starter palette (oklch), so a
+  freshly created theme forks a working look instead of presenting 32 empty
+  pickers.
+- **`buildThemeCss({ theme, scope })`** — turns a theme document into
+  stylesheet text: `:root { --background: …; }` plus a `.dark { … }` block.
+- **`ThemeColorTokenKey`, `ColorField`, `ThemeScope`** — the types used below.
+
+## 1. A token-field factory
+
+One `color()` field per token, per colour scheme, pinned to `format: "oklch"`
+(the notation the stylesheet declares its tokens in, so stored values
+interpolate with no conversion) and defaulted from the starter palette:
+
+```ts
+// src/vexcms/collections/themeColors.ts
+import {
+  color,
+  EMBER_DARK,
+  EMBER_LIGHT,
+  THEME_COLOR_TOKENS,
+  type ColorField,
+  type ThemeColorTokenKey,
+} from "@vexcms/core";
+
+const DEFAULTS = { light: EMBER_LIGHT, dark: EMBER_DARK };
+
+/** Derives a label from a token key: "cardForeground" → "Card Foreground". */
+function tokenLabel(key: string): string {
+  const spaced = key.replace(/([A-Z])/g, " $1").replace(/(\d+)/g, " $1");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/** The shadcn design-token set as color() fields for one colour scheme. */
+export function themeColors(mode: "dark" | "light"): Record<ThemeColorTokenKey, ColorField> {
+  const fields = {} as Record<ThemeColorTokenKey, ColorField>;
+  for (const key of Object.keys(THEME_COLOR_TOKENS) as ThemeColorTokenKey[]) {
+    fields[key] = color({
+      format: "oklch",
+      label: tokenLabel(key),
+      defaultValue: DEFAULTS[mode][key],
+    });
+  }
+  return fields;
+}
+```
+
+Note the token-defining fields do **not** set `themeColors: true` — a token
+whose value is `var(--primary)` written back to `--primary` is a
+custom-property cycle, which CSS discards. That option is for *other* fields
+(a block's background override, say) that should follow the palette.
+
+## 2. The themes collection
+
+Light and dark schemes are `group()` fields of the factory's output; shared
+tokens sit at the document root:
+
+```ts
+// src/vexcms/collections/themes.ts
+import { defineCollection, group, text } from "@vexcms/core";
+
+import { themeColors } from "./themeColors";
+
+export const themes = defineCollection({
+  slug: "themes",
+  interfaceName: "Theme",
+  admin: { useAsTitle: "name", icon: "Palette" },
+  fields: {
+    name: text({ label: "Theme Name", required: true, index: "by_name" }),
+    fontFamily: text({
+      label: "Font Family",
+      defaultValue: "Geist, Inter, system-ui, sans-serif",
+      description: "Applied to --font-sans. The first available font wins.",
+    }),
+    radius: text({
+      label: "Border Radius",
+      defaultValue: "4px",
+      description: "Applied to --radius. Any CSS length.",
+    }),
+    light: group({
+      label: "Light Mode",
+      description: "Tokens emitted under :root.",
+      fields: themeColors("light"),
+    }),
+    dark: group({
+      label: "Dark Mode",
+      description: "Tokens emitted under .dark.",
+      fields: themeColors("dark"),
+    }),
+  },
+});
+```
+
+## 3. Selecting the active theme
+
+A `relationship` on the `siteSettings` global picks the theme; a Convex query
+resolves it through the [Local API](/guides/local-api/). RBAC is bypassed
+deliberately — a site's palette is public by definition, and an anonymous
+visitor must get the same colours as a signed-in editor:
+
+```ts
+// convex/theme.ts
+import { getGlobal } from "@vexcms/core/server";
+import config from "../src/vex.config";
+import type { Doc, Id } from "./_generated/dataModel";
+import { query } from "./_generated/server";
+
+export const getActive = query({
+  handler: async (ctx): Promise<Doc<"themes"> | null> => {
+    const settings = await getGlobal({
+      ctx,
+      config,
+      slug: "siteSettings",
+      access: { bypass: true },
+    });
+    if (!settings) return null;
+
+    // relationship always stores an array of ids — hasMany only controls
+    // how many the admin picker lets you choose.
+    const reference = settings.activeTheme as string[] | undefined;
+    const themeId = reference?.[0];
+    if (!themeId) return null;
+
+    return await ctx.db.get(themeId as Id<"themes">);
+  },
+});
+```
+
+## 4. Injecting the CSS
+
+A server component fetches the active theme and inlines `buildThemeCss`'s
+output, so the first paint is already themed — no flash of unthemed content:
+
+```tsx
+// src/components/ThemeStyle.tsx
+import { api } from "@convex/_generated/api";
+import { fetchQuery } from "convex/nextjs";
+
+import { buildThemeCss, type ThemeScope } from "@vexcms/core";
+
+export async function ThemeStyle(props: { scope?: ThemeScope }) {
+  const scope = props.scope ?? "site";
+
+  let theme: Record<string, unknown> | null = null;
+  try {
+    theme = await fetchQuery(api.theme.getActive);
+  } catch {
+    // No deployment reachable at build time — fall back to the static stylesheet.
+    return null;
+  }
+  if (!theme) return null;
+
+  const css = buildThemeCss({ theme, scope });
+  if (!css) return null;
+
+  // `precedence` opts into React 19 style hoisting: this lands in <head>
+  // before first paint instead of mid-body.
+  return (
+    <style
+      dangerouslySetInnerHTML={{ __html: css }}
+      href={`vex-theme-${scope}`}
+      precedence="high"
+    />
+  );
+}
+```
+
+Render `<ThemeStyle />` in the root layout. When no theme is active (or Convex
+is unreachable at build time) it renders nothing and the app falls back to its
+static stylesheet unchanged.
+
+### Site vs admin scope
+
+`buildThemeCss` supports two scopes forming a specificity ladder no injection
+order can upset: `"site"` emits `:root` (0,1,0) and `.dark`; `"admin"` emits
+`:root:root` (0,2,0) and `.dark:root:root`. Emit the site theme once for the
+whole document and the admin theme from the admin layout only, and the admin
+block wins exactly where it renders — letting the admin panel carry its own
+palette (or, by default, adopt the site's).
+
+### Live updates
+
+`<ThemeStyle />` covers first paint only. For edits to go live without a
+reload, add a small client component subscribing to the same query (Convex's
+reactive `useQuery`) that rewrites the injected `<style>` element's text with
+`buildThemeCss` on change — saving a colour in the admin panel then restyles
+the site in real time.
+
+## Gotchas
+
+- **`format: "oklch"` for token fields.** Custom properties accept any colour
+  notation, but storing the notation your stylesheet already uses means values
+  are written through verbatim — no conversion, no drift.
+- **`themeColors: true` is for consumers, not definers.** Token-defining
+  fields storing `var(--token)` create a custom-property cycle CSS silently
+  discards.
+- **`.dark` must sit on `<html>`.** `buildThemeCss` emits `.dark` as a
+  compound selector on the assumption it's on the root element (which *is*
+  `:root`), never a descendant.
+- **Font stacks degrade, not break.** `--font-sans` is commonly also set by
+  the host's font loader at equal specificity — the later declaration wins,
+  and a stack naming an unloaded font falls through to the next entry.

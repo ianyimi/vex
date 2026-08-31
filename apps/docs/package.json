@@ -12,7 +12,8 @@
   "dependencies": {
     "@astrojs/starlight": "catalog:",
     "astro": "catalog:",
-    "sharp": "catalog:"
+    "sharp": "catalog:",
+    "starlight-llms-txt": "catalog:"
   },
   "devDependencies": {
     "starlight-typedoc": "catalog:",

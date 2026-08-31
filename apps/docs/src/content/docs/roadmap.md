@@ -1,69 +1,50 @@
 ---
 title: Roadmap
-description: Track the progress of the VexCMS rebuild toward v0.1.0 stable.
+description: What's shipped, in progress, planned, and being explored for VexCMS v0.1.0-alpha.
 ---
 
-VexCMS is currently in active development on the `rebuild` branch. Everything is `0.1.0-alpha` until the core feature set is stable enough for a real release.
+VexCMS is under active development. Everything ships as `0.1.0-alpha` until the core feature set is stable enough for a v0.1.0 release.
 
-Status key: ✅ Done · 🔄 In progress · 📋 Planned · ❓ TBD
+Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · 🔭 Exploring
 
-## Core Foundation
+## Shipped
 
-Field system, schema generation, React adapter, CLI tooling, docs site.
+- ✅ 12 field types — `text`, `number`, `checkbox`, `select`, `date`, `url`, `relationship`, `upload`, `array`, `group`, `blocks`, `color`
+- ✅ Convex schema + type codegen
+- ✅ Real-time admin panel
+- ✅ DataTable with pagination, `totalDocs`, bulk operations
+- ✅ Media library
+- ✅ RBAC with document-level access, indexed `{ constraints }` rules, and per-call `access.action` / `access.bypass`
+- ✅ Access index resolution — `{ constraints }` rules compile to `withIndex` ranges inside Convex queries
+- ✅ `anonRole` fallback for unauthenticated callers
+- ✅ Globals (`defineGlobal`)
+- ✅ Database-driven theming — `themes` collection, active-theme selector, `buildThemeCss` custom-property injection
+- ✅ Better Auth integration
+- ✅ Convex file storage
+- ✅ TypeDoc API reference
+- ✅ CLI — `vex dev` / `vex generate`
+- ✅ `create-vexcms` scaffolder
 
-| Feature | Status |
-|---|---|
-| Text field — Convex validator + Zod input schema | ✅ |
-| HKT framework adapter (`defineFrameworkAdapter`) | ✅ |
-| CLI schema generation from `vex.config.ts` | 🔄 |
-| CLI watch mode (auto-regenerate on config change) | 🔄 |
-| React adapter — `TextInput` + `TextCell` components | 🔄 |
-| Starlight docs site + TypeDoc API reference | 🔄 |
+## In progress
 
-## Admin UI
+- 🔄 Versioning & drafts
 
-Working admin interface for text fields. Data table list view and document edit form.
+## Planned
 
-| Feature | Status |
-|---|---|
-| Data table list view (TanStack Table) | 📋 |
-| Document edit form | 📋 |
-| Next.js page + layout components | 📋 |
-| Admin route setup in Next app | 📋 |
+- 📋 `richtext` field
+- 📋 `json` / `email` / `textarea` fields
+- 📋 `tabs` / `ui` fields
+- 📋 Form builder
+- 📋 Block group categorization
+- 📋 Lifecycle hooks
+- 📋 Content scheduling
+- 📋 API keys
+- 📋 Team management
+- 📋 TanStack Start adapter
+- 📋 S3 / R2 storage adapters
+- 📋 Plugin system
 
-## Additional Field Types
+## Exploring
 
-| Feature | Status |
-|---|---|
-| Number field | 📋 |
-| Checkbox / boolean field | 📋 |
-| Select field | 📋 |
-| Textarea field | 📋 |
-| Date field | 📋 |
-
-## Auth
-
-Better Auth integration for admin authentication.
-
-| Feature | Status |
-|---|---|
-| Better Auth adapter | 📋 |
-| Login / session management | 📋 |
-| First-user setup flow | 📋 |
-| RBAC | ❓ |
-
-## Media
-
-| Feature | Status |
-|---|---|
-| Storage adapter interface | 📋 |
-| Media library UI | 📋 |
-| Image field type | 📋 |
-
-## Drafts + Publishing
-
-| Feature | Status |
-|---|---|
-| Draft state on documents | 📋 |
-| Publish / unpublish actions | 📋 |
-| Scheduled publishing | ❓ |
+- 🔭 Multi-component workspaces
+- 🔭 Analytics adapter — per-document and per-block metrics surfaced directly in the admin panel

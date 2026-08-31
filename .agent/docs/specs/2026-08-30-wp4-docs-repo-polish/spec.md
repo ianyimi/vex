@@ -2406,6 +2406,16 @@ starlightLlmsTxt({
 ~~~
 
 `projectName` defaults to the Starlight `title` (`VexCMS`) — no need to set it.
+
+**3 — site (discovered during implementation).** The plugin refuses to run
+without Astro's `site` option (it emits absolute URLs; this also silences the
+long-standing `@astrojs/sitemap` warning). Developer chose the canonical URL
+2026-08-30. At the top of `defineConfig`:
+
+~~~js
+site: 'https://docs.vexcms.dev',
+~~~
+
 The plugin renders `/llms.txt` (index), `/llms-full.txt` (complete docs), and
 `/llms-small.txt` (compact) from the docs content at build time; the generated
 TypeDoc API pages are included automatically since they are part of the content

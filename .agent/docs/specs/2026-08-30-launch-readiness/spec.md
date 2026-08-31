@@ -113,7 +113,7 @@ graph LR
   WP5 --> WP3
   WP1 --> WPB["WP-B promote branch"]
   WP3 --> WP6["WP-6 deploy + rehearse"]
-  WP4["WP-4 docs + repo polish"] --> WP6
+  WP4["WP-4 docs + repo polish ✅"] --> WP6
   WPB --> WP6
 ```
 
@@ -921,9 +921,19 @@ no demo.
 
 ---
 
-## WP-4 — Docs and repo polish
+## WP-4 — Docs and repo polish ✅ DONE
 
 Fully parallel and independent — the safest first batch to hand to agents.
+
+**Completed 2026-08-30** via the dedicated spec
+`2026-08-30-wp4-docs-repo-polish` (9 task groups, 33/33 steps) — it supersedes
+the item list below, which is kept as originally planned. Beyond this list it
+also shipped: `guides/local-api.mdx` + constraints-first RBAC docs, a
+coming-soon fields page, `llms.txt`/`llms-full.txt`/`llms-small.txt` via
+`starlight-llms-txt` (site: `https://docs.vexcms.dev`), and the `mediaApi`
+JSDoc fix that made the docs build warning-free. Remaining: GitHub social
+preview + README admin screenshot — the developer's final pre-launch asset
+pass after WP-6.
 
 1. **README field table** — replace 13 rows with the real 11; drop
    `imageUrl`/`richtext`/`json`/`ui`, add `group` and `url`. The sample at

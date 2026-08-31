@@ -1,0 +1,153 @@
+---
+title: group field
+description: Stores a named set of sub-fields as a single nested Convex object — for grouping related fields like SEO metadata, addresses, or settings panels without flattening the schema.
+---
+
+A `group()` field stores a named set of sub-fields as a single nested Convex
+`v.object({...})`. Each sub-field respects its own `required` setting —
+required sub-fields emit bare validators (e.g. `v.string()`), optional ones
+emit `v.optional(v.string())`. Sub-fields accept any VexCMS field builder,
+including nested `group()` or `array()` fields, for arbitrarily deep structures.
+
+Common uses: SEO metadata, address blocks, settings panels, and any set of
+related fields you want editors to see together without polluting the
+top-level document shape. `group` is also the composable building block used
+for sub-structure inside `blocks()` block definitions and `array()` items.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `fields` | `Record<string, AdminField>` | — | **Required.** Sub-fields that form the object's shape. Accepts any VexCMS field builder, including nested `group()` or `array()`. |
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
+| `defaultValue` | `Record<string, unknown>` | `{}` | Pre-filled object shown in the admin form when creating a new document. |
+| `defaultOpen` | `boolean` | `true` | Whether the accordion fieldset starts open in the admin form. Set `false` for secondary or rarely-edited groups (e.g. SEO metadata) to reduce visual noise. |
+| `interfaceName` | `string` | — | Optional TypeScript type alias name. When set, `generateVexTypes` emits a named `export type <interfaceName> = { ... }` instead of inlining the object shape wherever this group is referenced. |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders every sub-field input as non-interactive. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Alignment used for this field's column in the list-view table. |
+
+## Schema output
+
+```ts
+// Optional group (default — required: false)
+seo: v.optional(v.object({ title: v.string(), description: v.optional(v.string()), ogImage: v.optional(v.string()) }))
+
+// Required group
+shippingAddress: v.object({ street: v.string(), city: v.string(), postalCode: v.string() })
+
+// Nested group inside a group — each level respects its own `required`
+address: v.optional(v.object({
+  street: v.optional(v.string()),
+  coordinates: v.optional(v.object({ lat: v.optional(v.number()), lng: v.optional(v.number()) })),
+}))
+```
+
+## Usage
+
+```ts
+import { defineCollection, group, text, url, number } from "@vexcms/core";
+
+const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text({ required: true }),
+
+    // Basic group — SEO metadata kept together in its own accordion
+    seo: group({
+      label: "SEO",
+      fields: {
+        title: text({ required: true }),
+        description: text(),
+        ogImage: url(),
+      },
+    }),
+
+    // Collapsed by default — secondary field, reduces visual noise on load
+    advanced: group({
+      label: "Advanced",
+      defaultOpen: false,
+      fields: {
+        priority: number({ defaultValue: 0 }),
+        pinned: text(),
+      },
+    }),
+
+    // Named type alias — emits `export type Address = { ... }` instead of
+    // inlining the object shape into PostsDocument
+    shippingAddress: group({
+      label: "Shipping Address",
+      interfaceName: "Address",
+      fields: {
+        street: text({ required: true }),
+        city: text({ required: true }),
+        postalCode: text({ required: true }),
+      },
+    }),
+  },
+});
+```
+
+## Nesting inside blocks
+
+Sub-fields are ordinary VexCMS fields, so a `group()` nests inside a
+`defineBlock()` the same way it nests inside a collection:
+
+```ts
+import { defineBlock, blocks, defineCollection, group, text, url } from "@vexcms/core";
+
+const ctaBlock = defineBlock({
+  slug: "cta",
+  label: "Call to Action",
+  fields: {
+    heading: text({ required: true }),
+    button: group({
+      label: "Button",
+      fields: {
+        label: text({ required: true }),
+        href: url({ required: true }),
+      },
+    }),
+  },
+});
+
+const pages = defineCollection({
+  slug: "pages",
+  fields: {
+    body: blocks({ blocks: [ctaBlock] }),
+  },
+});
+```
+
+## TypeScript output
+
+Named groups (`interfaceName` set) are hoisted to a standalone type alias by
+`generateVexTypes`; unnamed groups are inlined:
+
+```ts
+// Named group — standalone alias
+export type Address = { street: string; city: string; postalCode: string };
+
+// Generated document interface — the named group is referenced by name,
+// the unnamed `seo` group is inlined
+export interface PostsDocument extends VexDocument {
+  _id: Id<"posts">;
+  seo?: { title: string; description?: string; ogImage?: string };
+  shippingAddress: Address;
+  // ...other fields
+}
+```
+
+## Admin UI
+
+The group field renders as a collapsible accordion fieldset in the edit form,
+starting open or closed per `defaultOpen`. Each sub-field is rendered with the
+same input component it would use standalone, addressed via TanStack Form
+dot-notation (e.g. `"seo.title"`); `readOnly` propagates to every sub-field.
+Sorting is disabled in the list-view table — the cell renders a compact
+`{ n keys }` badge instead of a full object preview, since nested object data
+isn't meaningfully summarized in a table cell.

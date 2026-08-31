@@ -1,0 +1,145 @@
+---
+title: upload field
+description: Stores references to uploaded files in a media collection — hero images, galleries, and file attachments — with a drag-and-drop uploader and library picker in the admin panel.
+---
+
+An `upload()` field stores one or more Convex `Id` references pointing to
+documents in a **media collection** — a collection created via a storage
+adapter's `defineMediaCollection()` (e.g. `@vexcms/file-storage-convex`). The
+generated Convex schema always emits `v.array(v.id("<to-slug>"))` regardless
+of `hasMany` — `hasMany` is a UI-only hint that switches the admin panel
+between a single-file and multi-file picker, mirroring how `relationship()`
+handles `hasMany`.
+
+At `defineConfig()` time, `to` is validated against the media collections
+registered by every configured storage adapter; referencing an unregistered
+collection throws `VexStorageConfigError`. After running `vex generate`, `to`
+is typed as `MediaCollectionSlug` — a compile-time union of every registered
+media collection slug — so an invalid reference is also a TypeScript error.
+
+Common uses: featured/hero images, photo galleries, PDF or document
+attachments, and any field that needs to reference an uploaded file instead
+of storing raw string data.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `to` | `MediaCollectionSlug` | *(required)* | Slug of the target media collection, defined via a storage adapter's `defineMediaCollection()`. Validated against `VexConfig.mediaCollections` at `defineConfig()` time. |
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
+| `hasMany` | `boolean` | `false` | UI hint — `false` shows a single-file picker, `true` shows a multi-file picker. Does not change the Convex schema type, which is always `v.array(v.id(...))`. |
+| `min` | `number` | `0` | Minimum number of files. Accepted by the config but not currently enforced by the Zod schema, the Convex validator, or the admin UI. |
+| `max` | `number` | — | Maximum number of files. Enforced only in the admin UI — disables adding more files and shows a `count/max` indicator once reached; not enforced by the Zod schema or Convex validator. |
+| `accept` | `string` | `""` | MIME type restriction passed through to the file input's `accept` attribute, e.g. `"image/*"` or `"image/*, audio/mp4"`. |
+| `defaultValue` | `string[]` | — | Pre-filled array of media document IDs shown when creating a new document. |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders the picker/dropzone as non-interactive — existing files are shown but cannot be added or removed. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Alignment used for this field's column in the list-view table. |
+
+## Schema output
+
+```ts
+// Single reference (hasMany: false, required: false — default)
+featuredImage: v.optional(v.array(v.id("images")))
+
+// Required — still an array regardless of hasMany
+heroImage: v.array(v.id("images"))
+
+// Multi-file gallery (hasMany: true, required: false)
+gallery: v.optional(v.array(v.id("images")))
+```
+
+## Usage
+
+```ts
+import { defineCollection, upload, text } from "@vexcms/core";
+
+const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text({ required: true }),
+
+    // Single required featured image, restricted to image MIME types
+    featuredImage: upload({
+      to: "images",
+      required: true,
+      accept: "image/*",
+    }),
+
+    // Multi-file gallery, capped at 8 images in the admin UI
+    gallery: upload({
+      to: "images",
+      label: "Gallery",
+      hasMany: true,
+      max: 8,
+      accept: "image/*",
+    }),
+
+    // PDF attachment from a separate media collection
+    resume: upload({
+      to: "documents",
+      accept: "application/pdf",
+    }),
+  },
+});
+```
+
+## Media collections and storage adapters
+
+`upload()` fields don't work in isolation — they reference a **media
+collection**, which is registered by a **storage adapter** through
+`defineConfig({ storage: { adapters: [...] } })`. `@vexcms/file-storage-convex`
+is the built-in adapter; any adapter implementing `StorageAdapterBaseInterface`
+(see the [Custom Storage Adapter guide](/guides/custom-storage-adapter/)) works
+the same way.
+
+```ts
+import { defineConfig, defineCollection, upload, text } from "@vexcms/core";
+import { convexFileStorage, defineMediaCollection } from "@vexcms/file-storage-convex";
+
+// `defineMediaCollection()` auto-injects the required base fields
+// (filename, alt, mimeType, size, storageId, deleted) plus the Convex
+// adapter's own fields (src, width, height). `fields` only needs
+// collection-specific additions — or an override of `alt`'s label/description.
+const images = defineMediaCollection({
+  slug: "images",
+  fields: {
+    alt: text({ required: true, label: "Alt text" }),
+  },
+});
+
+const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    featuredImage: upload({ to: "images", required: true }),
+  },
+});
+
+export default defineConfig({
+  collections: [posts],
+  storage: { adapters: [convexFileStorage({ mediaCollections: [images] })] },
+});
+```
+
+`filename`, `mimeType`, `size`, `storageId`, `src`, `width`, and `height` are
+locked at the type level — the `fields` object can only add new keys or
+override `alt`. Multiple storage adapters (and multiple media collections per
+adapter) can be registered simultaneously; `upload({ to })` is validated
+against the combined set from every adapter, not tied to any one adapter.
+
+## Admin UI
+
+The upload field renders a two-part control. The **empty state** shows a
+dropzone ("Drop files here or click to browse") plus a "Browse `<plural>`"
+button that opens a media-library picker modal scoped to the target
+collection; `accept` is applied to the file input. The **filled state** shows
+each attached file via a thumbnail preview with drag-to-reorder and per-file
+removal, plus a `count/max` indicator once `max` is set. `hasMany: false`
+allows only a single selection; `hasMany: true` allows selecting or uploading
+multiple files. In the list-view table, the cell shows the first file's
+thumbnail and filename with a `+N` badge when more than one file is attached;
+sorting is disabled since file references aren't meaningfully sortable.
