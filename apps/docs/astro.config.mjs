@@ -2,9 +2,11 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import starlightTypedoc, { typeDocSidebarGroup } from 'starlight-typedoc';
+import starlightLlmsTxt from 'starlight-llms-txt';
 
 // https://astro.build/config
 export default defineConfig({
+	site: 'https://docs.vexcms.dev',
 	integrations: [
 		starlight({
 			title: 'VexCMS',
@@ -24,6 +26,10 @@ export default defineConfig({
 						// undocumented referenced type, or bad tag fails the build.
 						treatWarningsAsErrors: true,
 					},
+				}),
+				starlightLlmsTxt({
+					description:
+						'Type-safe headless CMS built on Convex — field system, generated schema/types, and a React/Next.js admin panel.',
 				}),
 			],
 			sidebar: [

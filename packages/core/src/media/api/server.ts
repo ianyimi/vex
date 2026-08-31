@@ -23,14 +23,6 @@ import { resolveGetAuth } from "../../api/server";
  * `vexConvexApi.media.generateUploadUrl`, `vexConvexApi.media.createMediaDocument`, etc. in
  * `@vexcms/core/src/convex/index.ts` point at these paths.
  *
- * @param props.config - The user's `VexConfig`.
- * @param props.query - Convex `query` builder. Defaults to `internalQueryGeneric`.
- * @param props.mutation - Convex `mutation` builder. Defaults to `internalMutationGeneric`.
- * @param props.getAuth - Server-side resolver for the current caller: receives
- *   the handler's ctx and returns `{ user, organization? }` (or `undefined`
- *   when unauthenticated). Called once per request, and only when
- *   `config.access` is configured. Never exposed to clients.
- *   Defaults to `internalMutationGeneric`.
  * @returns Registered `getUrl` Convex query, `generateUploadUrl` / `createMediaDocument` / `deleteMedia` Convex mutations.
  * @example
  * ```ts
@@ -52,9 +44,18 @@ export function mediaApi<
   mutation,
   getAuth,
 }: {
+  /** The user's resolved `VexConfig`. */
   config: VexConfig;
+  /** Convex `query` builder from `_generated/server` (or an internal builder to keep endpoints private). */
   query: QueryBuilder<TDataModel, Visibility>;
+  /** Convex `mutation` builder from `_generated/server` (or an internal builder to keep endpoints private). */
   mutation: MutationBuilder<TDataModel, Visibility>;
+  /**
+   * Server-side resolver for the current caller: receives the handler's ctx and
+   * returns `{ user, organization? }` (or `undefined` when unauthenticated).
+   * Called once per request, and only when `config.access` is configured.
+   * Never exposed to clients.
+   */
   getAuth?: (
     ctx: GenericQueryCtx<TDataModel> | GenericMutationCtx<TDataModel>,
   ) => Promise<VexApiAuth | undefined>;

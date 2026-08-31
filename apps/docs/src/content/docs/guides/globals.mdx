@@ -1,0 +1,180 @@
+---
+title: Globals
+description: Singleton documents for site-wide content — settings, navigation, footers — defined with defineGlobal and queried like any other VexCMS document.
+---
+
+VexCMS supports **globals** for content that exists exactly once per project — site
+settings, primary navigation, a footer — as distinct from **collections**, which hold
+many documents. A global is a single flat document reachable by its slug, with its own
+admin edit page but no list view and no relationship-picker target.
+
+## How it works
+
+- `defineGlobal()` builds a `GlobalConfig`, registered via `defineConfig({ globals: [...] })`
+  alongside `collections`.
+- Every global lives in one shared `vex_globals` table, discriminated by `_slug`. The API
+  layer flattens the DB row into a flat document on read (`getGlobal`/`findGlobals`) and
+  re-nests it on write (`updateGlobal`) — so `siteSettings.siteName` reads as a root-level
+  property alongside the system fields `_id`, `_creationTime`, `_slug`.
+- `_id`, `_creationTime`, and `_slug` are reserved field keys — `defineGlobal` rejects them
+  both at compile time and at runtime.
+- Globals accept the same field types as collections (`text`, `number`, `checkbox`,
+  `select`, `date`, `url`, `relationship`, `upload`, `array`, `group`, `blocks`), but can't
+  be a relationship *target* — there's no picker UI for a singleton — and have no
+  `useAsTitle`; the admin page title is always `label`.
+- The admin panel auto-renders an edit view for every registered global. No extra wiring
+  is needed to make a global editable under `/admin`.
+
+## Setup
+
+```ts
+// vex.config.ts
+import { defineConfig, defineGlobal, text, checkbox, relationship } from "@vexcms/core";
+import { themes } from "./collections/themes";
+
+export const siteSettings = defineGlobal({
+  slug: "siteSettings",
+  label: "Site Settings",
+  fields: {
+    siteName: text({ label: "Site Name", required: true }),
+    maintenanceMode: checkbox({ label: "Maintenance Mode" }),
+    activeTheme: relationship({ label: "Active Theme", collection: { slug: "themes" } }),
+  },
+  admin: { group: "Site Builder", icon: "Settings" },
+});
+
+export default defineConfig({
+  collections: [themes],
+  globals: [siteSettings],
+});
+```
+
+`slug` is the lookup key in `vex_globals` and must be unique across every registered
+global. `admin.group` puts the global under a labeled section in the sidebar; omit it to
+leave the global ungrouped.
+
+## Querying a global
+
+Client components use the same tanstack-query wrappers as collections, imported from
+`@vexcms/core/client`:
+
+```tsx
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { getGlobal } from "@vexcms/core/client";
+
+export function SiteHeader() {
+  const { data } = useQuery(getGlobal({ slug: "siteSettings" }));
+  if (!data) return null;
+  return <span>{data.siteName}</span>;
+}
+```
+
+Populate a relationship field the same way `find`/`get` do:
+
+```tsx
+const { data } = useQuery(
+  getGlobal({ slug: "siteSettings", populate: { activeTheme: true } }),
+);
+data?.activeTheme; // resolved theme document | undefined
+```
+
+List every saved global at once — the result is un-narrowed, since each row's `_slug`
+picks a different shape:
+
+```tsx
+import { findGlobals } from "@vexcms/core/client";
+
+const { data } = useQuery(findGlobals());
+data?.map((g) => g._slug); // e.g. ["siteSettings", "nav"]
+```
+
+On the server — a Convex query/mutation handler, or an RSC loader via `fetchQuery` — import
+from `@vexcms/core/server` instead, which takes `ctx` and the resolved `config` rather than
+returning tanstack-query options:
+
+```ts
+// convex/layoutData.ts
+import { query } from "./_generated/server";
+import { getGlobal } from "@vexcms/core/server";
+import config from "../vex.config";
+
+export const layoutData = query({
+  handler: async (ctx) => {
+    const settings = await getGlobal({ ctx, config, slug: "siteSettings" });
+    return { siteName: settings?.siteName };
+  },
+});
+```
+
+## Editing a global
+
+The built-in admin edit view calls `updateGlobal()` internally — reach for it directly only
+when building a custom editing UI:
+
+```tsx
+"use client";
+
+import { useMutation } from "@tanstack/react-query";
+import { updateGlobal } from "@vexcms/core/client";
+
+function SiteNameForm() {
+  const mutation = useMutation({ mutationFn: updateGlobal() });
+
+  return (
+    <button
+      onClick={() => mutation.mutate({ slug: "siteSettings", data: { siteName: "New Name" } })}
+    >
+      Save
+    </button>
+  );
+}
+```
+
+Pass only user field values in `data` — system keys (`_id`, `_creationTime`, `_slug`) are
+stripped server-side if they end up in there.
+
+## A structured global: navigation
+
+`array` and `group` compose on a global exactly the way they do on a collection. This is
+the real `nav` global from the marketing site — an editable, reorderable list of nav links:
+
+```ts
+import { array, defineGlobal, group, text } from "@vexcms/core";
+
+export const nav = defineGlobal({
+  slug: "nav",
+  label: "Nav",
+  admin: { icon: "TableProperties" },
+  fields: {
+    items: array({
+      items: group({
+        fields: {
+          title: text(),
+          href: text(),
+        },
+      }),
+    }),
+  },
+});
+```
+
+## Gotchas
+
+- **Reserved keys.** `_id`, `_creationTime`, `_slug` can't be field keys — a compile error
+  on the offending field, plus a thrown `Error` at runtime for JS callers.
+- **No relationship target.** A global can't be the `collection` of another `relationship()`
+  field — there's no admin picker for a singleton.
+- **`versions.drafts` is parsed but not enforced yet.** `defineGlobal({ versions: { drafts:
+  true } })` type-checks and is stored on the resolved config, but draft/publish workflow
+  for globals isn't implemented — every read returns the live document regardless of this
+  setting.
+- **`interfaceName` defaults from `slug` + a `Global` suffix** (`"siteSettings"` →
+  `"SiteSettingsGlobal"`) — pass `interfaceName` explicitly if you need a different
+  generated TypeScript name.
+- **Client and server globals helpers are separate entry points with the same names.**
+  `@vexcms/core/client` (`getGlobal`, `findGlobals`, `updateGlobal` — tanstack-query based)
+  vs. `@vexcms/core/server` (identical names, `ctx`-based, called from inside Convex
+  functions). Import from whichever matches where the code runs — the client versions
+  forbid `ctx`, the server versions require it, so mixing them up is a type error.

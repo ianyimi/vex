@@ -1,0 +1,246 @@
+---
+title: Local API
+description: Direct, typed server-side data access inside your own Convex functions — the same get/find/search/create/update/remove/globals surface the admin panel runs on, with RBAC enforced on every call.
+---
+
+The **Local API** is VexCMS's server-side data layer — typed `get`/`find`/`search`/
+`create`/`update`/`remove`/`globals` functions you call directly inside your own Convex
+query and mutation handlers. There's no HTTP hop and no separate REST/GraphQL surface: it's
+the same functions the admin panel itself calls, bound once around your project's config and
+auth resolver.
+
+## How it works
+
+- `vexServerApi()` binds your resolved `VexConfig` and an auth resolver once, returning a
+  project-wide `{ get, find, search, create, update, remove, globals }` surface. Every bound
+  function still takes `ctx` (a Convex query or mutation context) — it just no longer needs
+  `config`/`auth` passed per call.
+- When `config.access` is set, every call runs through `hasPermission` before it reads or
+  writes anything — RBAC is enforced **inside** the Local API, not layered on top by your
+  handler.
+- `read`/`readDrafts` rules written as `{ constraints }` on `defineAccess` compile directly
+  into the Convex query these functions issue: an indexed rule becomes `.withIndex(...)`, an
+  unindexed one becomes `.filter(...)` on the same query. See the
+  [Access Control guide](/guides/access-control/) for the constraint forms.
+- `create`/`update`/`delete` authorize against the stored document — or, for `create`, the
+  incoming payload, since there's no stored row yet — before the write executes.
+
+## Setup
+
+```ts
+// convex/vexApi.ts — written once
+import { vexServerApi } from "@vexcms/core/server";
+import { createGetAuth } from "@vexcms/better-auth";
+import config from "../vex.config";
+import type { DataModel } from "./_generated/dataModel";
+
+const getAuth = createGetAuth({
+  userCollectionSlug: "users",
+  orgCollectionSlug: "organizations",
+  sessionCollectionSlug: "session",
+});
+
+export const { get, find, search, create, update, remove, globals } =
+  vexServerApi<DataModel>({ config, getAuth });
+```
+
+`getAuth` resolves `{ user, organization? }` from `ctx` on every call — it's required
+whenever `config.access` is set. Everything below imports from this one file, not from
+`@vexcms/core/server` directly, so `config`/`auth` are only ever supplied here.
+
+## Reading many documents: `find`
+
+```ts
+// convex/posts.ts
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+import { find } from "./vexApi";
+
+// Plain list — defaults to 100 documents, insertion order.
+export const listPosts = query({
+  handler: (ctx) => find({ ctx, collection: "posts" }),
+});
+
+// Narrowed through a declared index — cheaper than a full-table filter.
+export const bySlug = query({
+  args: { slug: v.string() },
+  handler: (ctx, args) =>
+    find({
+      ctx,
+      collection: "posts",
+      withIndex: { name: "by_slug", range: (q) => q.eq("slug", args.slug) },
+      limit: 1,
+    }),
+});
+
+// Cursor-paginated, with a total count on the first page.
+export const paginatedPosts = query({
+  args: { cursor: v.union(v.string(), v.null()) },
+  handler: (ctx, args) =>
+    find({
+      ctx,
+      collection: "posts",
+      paginationOpts: { numItems: 20, cursor: args.cursor, totalDocs: true },
+    }),
+});
+```
+
+Query-chain options apply in order: `withIndex` → `order` → `filter` → `take`/pagination.
+Prefer `withIndex` over `filter` for anything performance-sensitive — `filter` scans every
+document the index range (or full table, absent one) returns.
+
+## Reading one document: `get`
+
+```ts
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+import { get } from "./vexApi";
+
+export const post = query({
+  args: { id: v.id("posts") },
+  handler: (ctx, args) =>
+    get({ ctx, id: args.id, collection: "posts", populate: { author: true } }),
+});
+```
+
+`populate` resolves relationship fields into their target documents — pass the field keys
+you need; omit it and relationship fields stay raw `Id`s.
+
+## Full-text search: `search`
+
+```ts
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+import { search } from "./vexApi";
+
+export const searchPosts = query({
+  args: { query: v.string() },
+  handler: (ctx, args) =>
+    search({
+      ctx,
+      collection: "posts",
+      query: args.query,
+      searchIndexName: "search_title",
+      searchField: "title",
+      limit: 20,
+    }),
+});
+```
+
+`searchIndexName` and `searchField` must match a `.searchIndex()` declared in the generated
+Convex schema. Pass `query: ""` to fall back to a plain `.take()` listing.
+
+## Writing: `create`, `update`, `remove`
+
+```ts
+import { mutation } from "./_generated/server";
+import { v } from "convex/values";
+import { create, update, remove } from "./vexApi";
+
+export const createPost = mutation({
+  args: { data: v.any() },
+  handler: (ctx, args) => create({ ctx, collection: "posts", data: args.data }),
+});
+
+export const updatePost = mutation({
+  args: { id: v.id("posts"), data: v.any() },
+  handler: (ctx, args) => update({ ctx, collection: "posts", id: args.id, data: args.data }),
+});
+
+export const deletePost = mutation({
+  args: { id: v.id("posts") },
+  handler: (ctx, args) => remove({ ctx, collection: "posts", ids: [args.id] }),
+});
+
+// Soft delete: sets the named field instead of removing the row.
+export const archivePost = mutation({
+  args: { id: v.id("posts") },
+  handler: (ctx, args) =>
+    remove({ ctx, collection: "posts", ids: [args.id], softDelete: "archived" }),
+});
+```
+
+`data` is passed through `v.any()` at the network boundary — the CLI's generated types
+validate the shape against your Convex schema at build time, not at the network layer.
+`update`'s `data` is a partial patch: only the keys you pass are written; everything else on
+the document is left alone. `remove` accepts one or many ids in the same call — pass a
+single-element array for one document, or a longer array for a bulk delete.
+
+## Globals: `get`, `find`, `upsert`
+
+```ts
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+import { globals } from "./vexApi";
+
+export const siteSettings = query({
+  handler: (ctx) => globals.get({ ctx, slug: "siteSettings" }),
+});
+
+export const allGlobals = query({
+  handler: (ctx) => globals.find({ ctx }),
+});
+
+export const saveSiteSettings = mutation({
+  args: { data: v.any() },
+  handler: (ctx, args) => globals.upsert({ ctx, slug: "siteSettings", data: args.data }),
+});
+```
+
+See the [Globals guide](/guides/globals/) for the config side (`defineGlobal`) — the
+`globals.*` functions here are the server-side counterpart to that guide's client-side
+`getGlobal`/`findGlobals`/`updateGlobal`, called from inside a Convex handler instead of a
+React component.
+
+## Per-call access overrides: `access.action` / `access.bypass`
+
+Every Local API function accepts one grouped `access` option — server-side only, and never
+forwarded from a client-supplied Convex `args` validator:
+
+```ts
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+import { find } from "./vexApi";
+
+// A genuinely public read, opted out of RBAC explicitly — costs no session lookup.
+export const bySlugPublic = query({
+  args: { slug: v.string() },
+  handler: (ctx, args) =>
+    find({
+      ctx,
+      collection: "posts",
+      withIndex: { name: "by_slug", range: (q) => q.eq("slug", args.slug) },
+      access: { bypass: true },
+    }),
+});
+
+// Checks a custom action instead of the function's natural verb ("read").
+export const featuredPosts = query({
+  handler: (ctx) => find({ ctx, collection: "posts", access: { action: "listFeatured" } }),
+});
+```
+
+`bypass` skips `hasPermission` (and the auth lookup that would otherwise resolve it)
+entirely — use it for a route that's meant to be public, not as a way to route around a
+matrix you haven't finished writing. `action` swaps in a custom action declared via
+`defineAccess`'s `customActions` (or a draft action like `readDrafts`) in place of the
+function's default verb.
+
+## Gotchas
+
+- **Bind once, per project — not per file.** Import `get`/`find`/`search`/`create`/
+  `update`/`remove`/`globals` from your own `convex/vexApi.ts`, never straight from
+  `@vexcms/core/server`, so `config`/`auth` are supplied in exactly one place.
+- **`access.action`/`access.bypass` are for server code you trust, not client input.**
+  Accepting either from a Convex `args` validator lets a caller pick an action no role
+  declared — see the [Access Control guide](/guides/access-control/) for why that's a deny
+  bypass.
+- **`withIndex` beats `filter`.** Both narrow the same query, but `filter` still scans every
+  document in whatever range (or full table) it's given; reach for a declared index first.
+- **`update`'s `data` is a merge patch, not a replacement.** Fields you don't include are
+  left untouched on the document — pass only what changed.
+- **`remove`'s `ids` is always an array**, even for one document (`ids: [id]`) — there's no
+  separate single-delete signature.
+- **Globals write through `upsert`, not `update`.** `globals.upsert` creates the row if one
+  doesn't exist yet and patches it if it does — collections have separate `create`/`update`,
+  globals have one function that does both, since a global is always exactly one document.

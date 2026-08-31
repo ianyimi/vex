@@ -1,40 +1,52 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
-template: splash # Remove or comment out this line to display the site sidebar on this page.
+title: VexCMS
+description: A type-safe headless CMS built natively on Convex — real-time reactivity, generated types, and zero database configuration.
+template: splash
 hero:
-  tagline: Congrats on setting up a new Starlight project!
-  image:
-    file: ../../assets/houston.webp
+  tagline: A type-safe headless CMS, built natively on Convex.
   actions:
-    - text: Example Guide
-      link: /guides/example/
+    - text: Browse the guides
+      link: /guides/auth/
       icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
+    - text: View on GitHub
+      link: https://github.com/ianyimi/vex
       icon: external
       variant: minimal
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Next steps
+VexCMS defines your content model in code — fields, relationships, access
+rules, and blocks — and generates a matching Convex schema, a typed admin
+panel, and typed query/mutation helpers from it. No translation layer, no
+drift between your schema and your types.
+
+## Explore the docs
 
 <CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
+	<Card title="Field types" icon="list-format">
+		Eleven field types, from `text()` and `number()` to `relationship()`,
+		`array()`, `group()`, and `blocks()`. Start with the
+		[text field](/fields/text/), or browse the full set in the sidebar
+		under **Fields**.
 	</Card>
-	<Card title="Change page layout" icon="document">
-		Delete `template: splash` in `src/content/docs/index.mdx` to display a
-		sidebar on this page.
+	<Card title="Authentication" icon="approve-check-circle">
+		Wire up [Better Auth](/guides/auth/) as standard VexCMS collections —
+		users, sessions, accounts, and verification tokens — kept in sync
+		with your auth provider's schema.
 	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
+	<Card title="Custom storage adapters" icon="puzzle">
+		Back file uploads with S3, Cloudinary, or any other provider by
+		implementing `StorageAdapterBaseInterface` — see the
+		[custom storage adapter guide](/guides/custom-storage-adapter/).
 	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
+	<Card title="Roadmap" icon="rocket">
+		See what's shipped, in progress, and planned on the way to `v0.1.0`
+		stable — the [roadmap](/roadmap/).
 	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
+	<Card title="API Reference" icon="open-book">
+		Generated straight from source JSDoc for every published package —
+		`@vexcms/core`, `@vexcms/react`, `@vexcms/next`, `@vexcms/better-auth`,
+		and `@vexcms/file-storage-convex`. Find it in the sidebar.
 	</Card>
 </CardGrid>
