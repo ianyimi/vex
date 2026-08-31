@@ -60,13 +60,13 @@ export function UnauthorizedView({
   children,
 }: UnauthorizedViewProps) {
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
+    <main className="flex min-h-screen items-center justify-center p-6 text-center">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </CardHeader>
-        {children ? <div className="px-6 pb-6 text-sm">{children}</div> : null}
+        {children ? <div className="px-6 py-6 text-sm">{children}</div> : null}
       </Card>
     </main>
   );

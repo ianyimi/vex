@@ -1,4 +1,7 @@
 import type { Id } from "./_generated/dataModel"
+
+import { GLOBAL_SLUG_SITE_SETTINGS } from "~/db/constants"
+
 import { mutation } from "./_generated/server"
 
 // ============================================================================
@@ -32,7 +35,7 @@ export const init = mutation({
       indexField: string,
       lookupValue: string,
       data: Record<string, unknown>,
-      label: string,
+      label: string
     ) {
       const existing = await ctx.db
         .query(table as any)
@@ -46,11 +49,7 @@ export const init = mutation({
       }
     }
 
-    async function insertIfEmpty(
-      table: string,
-      data: Record<string, unknown>,
-      label: string,
-    ) {
+    async function insertIfEmpty(table: string, data: Record<string, unknown>, label: string) {
       const first = await ctx.db.query(table as any).first()
       if (first) {
         skipped.push(label)
@@ -60,96 +59,142 @@ export const init = mutation({
       }
     }
 
-    // ── SITE SETTINGS ──
-    await insertIfEmpty("site_settings", {
-      name: "Vex CMS",
-    }, "site_settings")
+    // ── SITE SETTINGS ── singleton global, stored in vex_globals as { slug, data }
+    const existingSettings = await ctx.db
+      .query("vex_globals")
+      .withIndex("by_slug", (q) => q.eq("slug", GLOBAL_SLUG_SITE_SETTINGS))
+      .first()
+    if (existingSettings) {
+      skipped.push("siteSettings")
+    } else {
+      await ctx.db.insert("vex_globals", {
+        slug: GLOBAL_SLUG_SITE_SETTINGS,
+        data: { name: "Vex CMS", activeTheme: [], adminTheme: [] },
+      })
+      created.push("siteSettings")
+    }
 
     // ── HEADER ──
-    await insertIfMissing("headers", "by_name", "name", "Main Header", {
-      name: "Main Header",
-      logoText: "Vex CMS",
-      logoHref: "/",
-      menuItems: JSON.stringify([
-        { label: "Features", href: "/features" },
-        { label: "Pricing", href: "/pricing" },
-        { label: "Roadmap", href: "/roadmap" },
-        { label: "Docs", href: "/docs" },
-      ]),
-      actionButtons: JSON.stringify([
-        { label: "GitHub", href: "https://github.com/vexcms/vex", variant: "ghost" },
-        { label: "Get Started", href: "/docs", variant: "default" },
-      ]),
-    }, "header")
+    await insertIfMissing(
+      "headers",
+      "by_name",
+      "name",
+      "Main Header",
+      {
+        name: "Main Header",
+        logoText: "Vex CMS",
+        logoHref: "/",
+        menuItems: JSON.stringify([
+          { label: "Features", href: "/features" },
+          { label: "Pricing", href: "/pricing" },
+          { label: "Roadmap", href: "/roadmap" },
+          { label: "Docs", href: "/docs" },
+        ]),
+        actionButtons: JSON.stringify([
+          { label: "GitHub", href: "https://github.com/vexcms/vex", variant: "ghost" },
+          { label: "Get Started", href: "/docs", variant: "default" },
+        ]),
+      },
+      "header"
+    )
 
     // ── FOOTER ──
-    await insertIfMissing("footers", "by_name", "name", "Main Footer", {
-      name: "Main Footer",
-      logoText: "Vex CMS",
-      copyright: "Vex CMS. All rights reserved.",
-      links: JSON.stringify([
-        { label: "Features", href: "/features" },
-        { label: "Pricing", href: "/pricing" },
-        { label: "Roadmap", href: "/roadmap" },
-        { label: "Documentation", href: "/docs" },
-        { label: "GitHub", href: "https://github.com/vexcms/vex" },
-        { label: "npm", href: "https://www.npmjs.com/package/vexcms" },
-        { label: "Convex", href: "https://convex.dev" },
-      ]),
-      socialLinks: JSON.stringify([
-        { platform: "GitHub", href: "https://github.com/vexcms/vex", icon: "Github" },
-        { platform: "X", href: "https://x.com/vexcms", icon: "Twitter" },
-      ]),
-    }, "footer")
+    await insertIfMissing(
+      "footers",
+      "by_name",
+      "name",
+      "Main Footer",
+      {
+        name: "Main Footer",
+        logoText: "Vex CMS",
+        copyright: "Vex CMS. All rights reserved.",
+        links: JSON.stringify([
+          { label: "Features", href: "/features" },
+          { label: "Pricing", href: "/pricing" },
+          { label: "Roadmap", href: "/roadmap" },
+          { label: "Documentation", href: "/docs" },
+          { label: "GitHub", href: "https://github.com/vexcms/vex" },
+          { label: "npm", href: "https://www.npmjs.com/package/vexcms" },
+          { label: "Convex", href: "https://convex.dev" },
+        ]),
+        socialLinks: JSON.stringify([
+          { platform: "GitHub", href: "https://github.com/vexcms/vex", icon: "Github" },
+          { platform: "X", href: "https://x.com/vexcms", icon: "Twitter" },
+        ]),
+      },
+      "footer"
+    )
 
-    // ── THEME — Stark × Ember ──
-    await insertIfMissing("themes", "by_name", "name", "Stark × Ember", {
-      name: "Stark × Ember",
-      fontFamily: "Geist, Inter, system-ui, sans-serif",
-      radius: "0.25rem",
-      primaryLight: "#E8622A",
-      primaryDark: "#F07040",
-      bgDark: "#0A0A0A",
-      bgLight: "#F5F5F5",
-    }, "theme")
+    // ── THEMES ── seeded by `seed:themes`, which also sets the active reference.
 
     // ── PAGES — block-based content ──
 
     // HOME
-    await insertIfMissing("pages", "by_slug", "slug", "home", {
-      title: "Vex CMS — The CMS for Convex",
-      slug: "home",
-      metaTitle: "Vex CMS — The CMS Built for Convex",
-      metaDescription: "A headless content management system powered by Convex. Real-time data, type-safe schemas, and a beautiful admin panel out of the box.",
-      blocks: homeBlocks(),
-    }, "page:home")
+    await insertIfMissing(
+      "pages",
+      "by_slug",
+      "slug",
+      "home",
+      {
+        title: "Vex CMS — The CMS for Convex",
+        slug: "home",
+        metaTitle: "Vex CMS — The CMS Built for Convex",
+        metaDescription:
+          "A headless content management system powered by Convex. Real-time data, type-safe schemas, and a beautiful admin panel out of the box.",
+        blocks: homeBlocks(),
+      },
+      "page:home"
+    )
 
     // FEATURES
-    await insertIfMissing("pages", "by_slug", "slug", "features", {
-      title: "Everything you need to manage content",
-      slug: "features",
-      metaTitle: "Features — Vex CMS",
-      metaDescription: "16 field types, real-time queries, type-safe schemas, live preview, and a beautiful admin panel. Everything you need to manage content.",
-      blocks: featuresBlocks(),
-    }, "page:features")
+    await insertIfMissing(
+      "pages",
+      "by_slug",
+      "slug",
+      "features",
+      {
+        title: "Everything you need to manage content",
+        slug: "features",
+        metaTitle: "Features — Vex CMS",
+        metaDescription:
+          "16 field types, real-time queries, type-safe schemas, live preview, and a beautiful admin panel. Everything you need to manage content.",
+        blocks: featuresBlocks(),
+      },
+      "page:features"
+    )
 
     // PRICING
-    await insertIfMissing("pages", "by_slug", "slug", "pricing", {
-      title: "Simple, transparent pricing",
-      slug: "pricing",
-      metaTitle: "Pricing — Vex CMS",
-      metaDescription: "Vex CMS is open source and free. Enterprise features coming soon.",
-      blocks: pricingBlocks(),
-    }, "page:pricing")
+    await insertIfMissing(
+      "pages",
+      "by_slug",
+      "slug",
+      "pricing",
+      {
+        title: "Simple, transparent pricing",
+        slug: "pricing",
+        metaTitle: "Pricing — Vex CMS",
+        metaDescription: "Vex CMS is open source and free. Enterprise features coming soon.",
+        blocks: pricingBlocks(),
+      },
+      "page:pricing"
+    )
 
     // ROADMAP
-    await insertIfMissing("pages", "by_slug", "slug", "roadmap", {
-      title: "Roadmap",
-      slug: "roadmap",
-      metaTitle: "Roadmap — Vex CMS",
-      metaDescription: "What we've shipped and what's coming next. Vex CMS is actively developed.",
-      blocks: roadmapBlocks(),
-    }, "page:roadmap")
+    await insertIfMissing(
+      "pages",
+      "by_slug",
+      "slug",
+      "roadmap",
+      {
+        title: "Roadmap",
+        slug: "roadmap",
+        metaTitle: "Roadmap — Vex CMS",
+        metaDescription:
+          "What we've shipped and what's coming next. Vex CMS is actively developed.",
+        blocks: roadmapBlocks(),
+      },
+      "page:roadmap"
+    )
 
     return {
       created,
@@ -249,7 +294,8 @@ export const migratePagesToBlocks = mutation({
   args: {},
   handler: async (ctx) => {
     const pages = await ctx.db.query("pages").collect()
-    const results: { slug: string; status: "migrated" | "skipped" | "error"; message: string }[] = []
+    const results: { slug: string; status: "migrated" | "skipped" | "error"; message: string }[] =
+      []
 
     for (const page of pages as any[]) {
       try {
@@ -468,7 +514,11 @@ function homeBlocks() {
       title: "Built on technology you trust",
       logos: [
         { name: "Convex", image: "/logos/convex.svg", link: "https://convex.dev" },
-        { name: "TypeScript", image: "/logos/typescript.svg", link: "https://www.typescriptlang.org" },
+        {
+          name: "TypeScript",
+          image: "/logos/typescript.svg",
+          link: "https://www.typescriptlang.org",
+        },
         { name: "Next.js", image: "/logos/nextjs.svg", link: "https://nextjs.org" },
         { name: "Tailwind", image: "/logos/tailwind.svg", link: "https://tailwindcss.com" },
         { name: "Vercel", image: "/logos/vercel.svg", link: "https://vercel.com" },
@@ -503,7 +553,8 @@ function homeBlocks() {
         },
         {
           question: "Is Vex CMS free?",
-          answer: "Yes, open source and free. You only pay for Convex usage, which has a generous free tier.",
+          answer:
+            "Yes, open source and free. You only pay for Convex usage, which has a generous free tier.",
         },
         {
           question: "How do I get started?",
@@ -604,8 +655,7 @@ function featuresBlocks() {
       blockName: "CLI & Scaffolding",
       icon: "Terminal",
       title: "CLI & Scaffolding",
-      description:
-        "vex dev with watch/generate, and create-vexcms for instant project setup.",
+      description: "vex dev with watch/generate, and create-vexcms for instant project setup.",
     },
     {
       id: crypto.randomUUID(),
@@ -766,8 +816,7 @@ function roadmapBlocks() {
       id: crypto.randomUUID(),
       blockType: "content",
       blockName: "Coming Soon",
-      body:
-        "**Content Scheduling** — Set a publishAt timestamp and content goes live automatically.\n\n**Team Management** — Invite users, assign roles, and manage pending invitations.\n\n**API Keys** — Read-only API tokens for external integrations with configurable rate limiting.\n\n**Audit Log** — Track who changed what and when across all collections and documents.",
+      body: "**Content Scheduling** — Set a publishAt timestamp and content goes live automatically.\n\n**Team Management** — Invite users, assign roles, and manage pending invitations.\n\n**API Keys** — Read-only API tokens for external integrations with configurable rate limiting.\n\n**Audit Log** — Track who changed what and when across all collections and documents.",
       align: ["left"],
       maxWidth: ["wide"],
     },
@@ -775,8 +824,7 @@ function roadmapBlocks() {
       id: crypto.randomUUID(),
       blockType: "content",
       blockName: "Planned",
-      body:
-        "**Environments** — Project-level content branching with staging and production environments.\n\n**Localization** — i18n field variants with per-locale versioning and content translation workflows.\n\n**Approval Workflows** — Review and sign-off steps before content goes live.\n\n**Plugin System** — Extend Vex with community plugins for custom fields, integrations, and admin panel features.",
+      body: "**Environments** — Project-level content branching with staging and production environments.\n\n**Localization** — i18n field variants with per-locale versioning and content translation workflows.\n\n**Approval Workflows** — Review and sign-off steps before content goes live.\n\n**Plugin System** — Extend Vex with community plugins for custom fields, integrations, and admin panel features.",
       align: ["left"],
       maxWidth: ["wide"],
     },
@@ -785,8 +833,7 @@ function roadmapBlocks() {
       blockType: "cta",
       blockName: "Roadmap CTA",
       title: "Want to shape the roadmap?",
-      description:
-        "Join our community and help us prioritize what matters most to you.",
+      description: "Join our community and help us prioritize what matters most to you.",
       buttonLabel: "Join the Discussion",
       buttonHref: "https://github.com/vexcms/vex/discussions",
       variant: ["outline"],
@@ -824,9 +871,7 @@ export const editorial = mutation({
 
     const users = await ctx.db.query("user").take(2)
     if (users.length === 0) {
-      throw new Error(
-        "seed:editorial needs at least one user — sign in once, then run this again.",
-      )
+      throw new Error("seed:editorial needs at least one user — sign in once, then run this again.")
     }
     // Falls back to the same author when only one user exists: the status rules still
     // demonstrate, only the ownership split goes flat.
@@ -842,7 +887,7 @@ export const editorial = mutation({
     async function insertBySlug<T extends EditorialTable>(
       table: T,
       slug: string,
-      data: Record<string, unknown>,
+      data: Record<string, unknown>
     ): Promise<Id<T>> {
       const existing = await ctx.db
         .query(table as "articles")
@@ -969,6 +1014,372 @@ export const editorial = mutation({
       created,
       skipped,
       note: "Sign in as each author and compare the tables: contributor sees only their own rows, user sees only published ones.",
+    }
+  },
+})
+
+// ============================================================================
+// THEMES — full 32-token shadcn palettes
+// ============================================================================
+
+const THEME_PRESETS = [
+  {
+    name: "Stark × Ember",
+    fontFamily: "Geist, Inter, system-ui, sans-serif",
+    radius: "4px",
+    light: {
+      background: "oklch(96.1% 0 0)",
+      foreground: "oklch(13.7% 0 0)",
+      card: "oklch(100% 0 0)",
+      cardForeground: "oklch(13.7% 0 0)",
+      popover: "oklch(100% 0 0)",
+      popoverForeground: "oklch(13.7% 0 0)",
+      primary: "oklch(60.5% 0.175 42)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(98% 0 0)",
+      secondaryForeground: "oklch(13.7% 0 0)",
+      muted: "oklch(98% 0 0)",
+      mutedForeground: "oklch(50.5% 0 0)",
+      accent: "oklch(96% 0.025 42)",
+      accentForeground: "oklch(52% 0.180 40)",
+      destructive: "oklch(57.7% 0.198 27)",
+      destructiveForeground: "oklch(98% 0 0)",
+      border: "oklch(85% 0 0)",
+      input: "oklch(54.6% 0 0)",
+      ring: "oklch(60.5% 0.175 42)",
+      chart1: "oklch(60.5% 0.175 42)",
+      chart2: "oklch(45% 0 0)",
+      chart3: "oklch(72% 0.100 60)",
+      chart4: "oklch(60% 0.040 30)",
+      chart5: "oklch(78% 0 0)",
+      sidebar: "oklch(98% 0 0)",
+      sidebarForeground: "oklch(13.7% 0 0)",
+      sidebarPrimary: "oklch(60.5% 0.175 42)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(96.1% 0 0)",
+      sidebarAccentForeground: "oklch(13.7% 0 0)",
+      sidebarBorder: "oklch(85% 0 0)",
+      sidebarRing: "oklch(60.5% 0.175 42)",
+    },
+    dark: {
+      background: "oklch(13.7% 0 0)",
+      foreground: "oklch(95% 0 0)",
+      card: "oklch(17.4% 0 0)",
+      cardForeground: "oklch(95% 0 0)",
+      popover: "oklch(17.4% 0 0)",
+      popoverForeground: "oklch(95% 0 0)",
+      primary: "oklch(72% 0.175 50)",
+      primaryForeground: "oklch(13.7% 0 0)",
+      secondary: "oklch(20% 0 0)",
+      secondaryForeground: "oklch(95% 0 0)",
+      muted: "oklch(20% 0 0)",
+      mutedForeground: "oklch(70% 0 0)",
+      accent: "oklch(72% 0.175 50 / 0.12)",
+      accentForeground: "oklch(72% 0.175 50)",
+      destructive: "oklch(63% 0.210 27)",
+      destructiveForeground: "oklch(95% 0 0)",
+      border: "oklch(25% 0 0)",
+      input: "oklch(40% 0 0)",
+      ring: "oklch(72% 0.175 50)",
+      chart1: "oklch(72% 0.175 50)",
+      chart2: "oklch(78% 0 0)",
+      chart3: "oklch(78% 0.120 65)",
+      chart4: "oklch(60% 0.060 30)",
+      chart5: "oklch(45% 0 0)",
+      sidebar: "oklch(7% 0 0)",
+      sidebarForeground: "oklch(95% 0 0)",
+      sidebarPrimary: "oklch(72% 0.175 50)",
+      sidebarPrimaryForeground: "oklch(13.7% 0 0)",
+      sidebarAccent: "oklch(20% 0 0)",
+      sidebarAccentForeground: "oklch(95% 0 0)",
+      sidebarBorder: "oklch(25% 0 0)",
+      sidebarRing: "oklch(72% 0.175 50)",
+    },
+  },
+  {
+    name: "Modern Minimal",
+    fontFamily: "Inter, sans-serif",
+    radius: "0.375rem",
+    light: {
+      background: "oklch(100% 0 0)",
+      foreground: "oklch(32.11% 0 0)",
+      card: "oklch(100% 0 0)",
+      cardForeground: "oklch(32.11% 0 0)",
+      popover: "oklch(100% 0 0)",
+      popoverForeground: "oklch(32.11% 0 0)",
+      primary: "oklch(62.31% 0.18801 259.81)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(96.7% 0.00287 264.54)",
+      secondaryForeground: "oklch(44.61% 0.02631 256.8)",
+      muted: "oklch(98.46% 0.00171 247.84)",
+      mutedForeground: "oklch(55.1% 0.02336 264.36)",
+      accent: "oklch(95.14% 0.02503 236.82)",
+      accentForeground: "oklch(37.91% 0.13776 265.52)",
+      destructive: "oklch(63.68% 0.20785 25.33)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(92.76% 0.00581 264.53)",
+      input: "oklch(92.76% 0.00581 264.53)",
+      ring: "oklch(62.31% 0.18801 259.81)",
+      chart1: "oklch(62.31% 0.18801 259.81)",
+      chart2: "oklch(54.61% 0.21521 262.88)",
+      chart3: "oklch(48.82% 0.21717 264.38)",
+      chart4: "oklch(42.44% 0.18087 265.64)",
+      chart5: "oklch(37.91% 0.13776 265.52)",
+      sidebar: "oklch(98.46% 0.00171 247.84)",
+      sidebarForeground: "oklch(32.11% 0 0)",
+      sidebarPrimary: "oklch(62.31% 0.18801 259.81)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(95.14% 0.02503 236.82)",
+      sidebarAccentForeground: "oklch(37.91% 0.13776 265.52)",
+      sidebarBorder: "oklch(92.76% 0.00581 264.53)",
+      sidebarRing: "oklch(62.31% 0.18801 259.81)",
+    },
+    dark: {
+      background: "oklch(20.46% 0 0)",
+      foreground: "oklch(92.19% 0 0)",
+      card: "oklch(26.86% 0 0)",
+      cardForeground: "oklch(92.19% 0 0)",
+      popover: "oklch(26.86% 0 0)",
+      popoverForeground: "oklch(92.19% 0 0)",
+      primary: "oklch(62.31% 0.18801 259.81)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(26.86% 0 0)",
+      secondaryForeground: "oklch(92.19% 0 0)",
+      muted: "oklch(23.93% 0 0)",
+      mutedForeground: "oklch(71.55% 0 0)",
+      accent: "oklch(37.91% 0.13776 265.52)",
+      accentForeground: "oklch(88.23% 0.05706 254.13)",
+      destructive: "oklch(63.68% 0.20785 25.33)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(37.15% 0 0)",
+      input: "oklch(37.15% 0 0)",
+      ring: "oklch(62.31% 0.18801 259.81)",
+      chart1: "oklch(71.37% 0.14338 254.62)",
+      chart2: "oklch(62.31% 0.18801 259.81)",
+      chart3: "oklch(54.61% 0.21521 262.88)",
+      chart4: "oklch(48.82% 0.21717 264.38)",
+      chart5: "oklch(42.44% 0.18087 265.64)",
+      sidebar: "oklch(20.46% 0 0)",
+      sidebarForeground: "oklch(92.19% 0 0)",
+      sidebarPrimary: "oklch(62.31% 0.18801 259.81)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(37.91% 0.13776 265.52)",
+      sidebarAccentForeground: "oklch(88.23% 0.05706 254.13)",
+      sidebarBorder: "oklch(37.15% 0 0)",
+      sidebarRing: "oklch(62.31% 0.18801 259.81)",
+    },
+  },
+  {
+    name: "Violet Bloom",
+    fontFamily: "Plus Jakarta Sans, sans-serif",
+    radius: "1.4rem",
+    light: {
+      background: "oklch(99.4% 0 0)",
+      foreground: "oklch(0% 0 0)",
+      card: "oklch(99.4% 0 0)",
+      cardForeground: "oklch(0% 0 0)",
+      popover: "oklch(99.11% 0 0)",
+      popoverForeground: "oklch(0% 0 0)",
+      primary: "oklch(53.93% 0.27129 286.75)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(95.4% 0.00626 255.48)",
+      secondaryForeground: "oklch(13.44% 0 0)",
+      muted: "oklch(97.02% 0 0)",
+      mutedForeground: "oklch(43.86% 0 0)",
+      accent: "oklch(93.93% 0.02876 266.37)",
+      accentForeground: "oklch(54.45% 0.19034 259.48)",
+      destructive: "oklch(62.9% 0.19024 23.07)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(93% 0.00939 286.22)",
+      input: "oklch(94.01% 0 0)",
+      ring: "oklch(0% 0 0)",
+      chart1: "oklch(74.59% 0.14834 156.45)",
+      chart2: "oklch(53.93% 0.27129 286.75)",
+      chart3: "oklch(73.36% 0.17578 50.55)",
+      chart4: "oklch(58.28% 0.18094 259.73)",
+      chart5: "oklch(55.9% 0 0)",
+      sidebar: "oklch(97.77% 0.00513 247.88)",
+      sidebarForeground: "oklch(0% 0 0)",
+      sidebarPrimary: "oklch(0% 0 0)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(94.01% 0 0)",
+      sidebarAccentForeground: "oklch(0% 0 0)",
+      sidebarBorder: "oklch(94.01% 0 0)",
+      sidebarRing: "oklch(0% 0 0)",
+    },
+    dark: {
+      background: "oklch(22.23% 0.00601 271.14)",
+      foreground: "oklch(95.51% 0 0)",
+      card: "oklch(25.68% 0.00762 274.65)",
+      cardForeground: "oklch(95.51% 0 0)",
+      popover: "oklch(25.68% 0.00762 274.65)",
+      popoverForeground: "oklch(95.51% 0 0)",
+      primary: "oklch(61.32% 0.22941 291.74)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(29.4% 0.01301 272.93)",
+      secondaryForeground: "oklch(95.51% 0 0)",
+      muted: "oklch(29.4% 0.01301 272.93)",
+      mutedForeground: "oklch(70.58% 0 0)",
+      accent: "oklch(27.95% 0.03685 260.03)",
+      accentForeground: "oklch(78.57% 0.11535 246.66)",
+      destructive: "oklch(71.06% 0.16615 22.22)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(32.89% 0.00922 268.38)",
+      input: "oklch(32.89% 0.00922 268.38)",
+      ring: "oklch(61.32% 0.22941 291.74)",
+      chart1: "oklch(80.03% 0.18206 151.71)",
+      chart2: "oklch(61.32% 0.22941 291.74)",
+      chart3: "oklch(80.77% 0.10349 19.57)",
+      chart4: "oklch(66.91% 0.15686 260.11)",
+      chart5: "oklch(70.58% 0 0)",
+      sidebar: "oklch(20.11% 0.00394 286.04)",
+      sidebarForeground: "oklch(95.51% 0 0)",
+      sidebarPrimary: "oklch(61.32% 0.22941 291.74)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(29.4% 0.01301 272.93)",
+      sidebarAccentForeground: "oklch(61.32% 0.22941 291.74)",
+      sidebarBorder: "oklch(32.89% 0.00922 268.38)",
+      sidebarRing: "oklch(61.32% 0.22941 291.74)",
+    },
+  },
+  {
+    name: "T3 Chat",
+    fontFamily: "Geist, Inter, system-ui, sans-serif",
+    radius: "0.5rem",
+    light: {
+      background: "oklch(97.54% 0.00844 325.64)",
+      foreground: "oklch(32.57% 0.11612 325.04)",
+      card: "oklch(97.54% 0.00844 325.64)",
+      cardForeground: "oklch(32.57% 0.11612 325.04)",
+      popover: "oklch(100% 0 0)",
+      popoverForeground: "oklch(32.57% 0.11612 325.04)",
+      primary: "oklch(53.16% 0.14089 355.2)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(86.96% 0.06751 334.9)",
+      secondaryForeground: "oklch(44.48% 0.13406 324.8)",
+      muted: "oklch(93.95% 0.02604 331.55)",
+      mutedForeground: "oklch(49.24% 0.12445 324.45)",
+      accent: "oklch(86.96% 0.06751 334.9)",
+      accentForeground: "oklch(44.48% 0.13406 324.8)",
+      destructive: "oklch(52.48% 0.13678 20.83)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(85.68% 0.08288 328.91)",
+      input: "oklch(85.17% 0.05582 336.6)",
+      ring: "oklch(59.16% 0.21798 0.58)",
+      chart1: "oklch(60.38% 0.23628 344.47)",
+      chart2: "oklch(44.45% 0.22507 300.62)",
+      chart3: "oklch(37.9% 0.04376 226.15)",
+      chart4: "oklch(83.3% 0.11852 88.35)",
+      chart5: "oklch(78.43% 0.12563 59)",
+      sidebar: "oklch(93.6% 0.02881 320.58)",
+      sidebarForeground: "oklch(49.48% 0.19094 354.54)",
+      sidebarPrimary: "oklch(39.63% 0.02513 285.2)",
+      sidebarPrimaryForeground: "oklch(96.68% 0.01243 337.52)",
+      sidebarAccent: "oklch(97.89% 0.00132 106.42)",
+      sidebarAccentForeground: "oklch(39.63% 0.02513 285.2)",
+      sidebarBorder: "oklch(93.83% 0.00255 48.72)",
+      sidebarRing: "oklch(59.16% 0.21798 0.58)",
+    },
+    dark: {
+      background: "oklch(24.09% 0.0201 307.53)",
+      foreground: "oklch(83.98% 0.03874 309.54)",
+      card: "oklch(28.03% 0.02323 307.54)",
+      cardForeground: "oklch(84.56% 0.03016 341.46)",
+      popover: "oklch(15.48% 0.01316 338.9)",
+      popoverForeground: "oklch(96.47% 0.00914 341.8)",
+      primary: "oklch(46.07% 0.18535 4.1)",
+      primaryForeground: "oklch(85.6% 0.06185 346.37)",
+      secondary: "oklch(31.37% 0.03057 310.06)",
+      secondaryForeground: "oklch(84.83% 0.03825 307.96)",
+      muted: "oklch(26.34% 0.02189 309.47)",
+      mutedForeground: "oklch(79.4% 0.0372 307.1)",
+      accent: "oklch(36.49% 0.05079 308.49)",
+      accentForeground: "oklch(96.47% 0.00914 341.8)",
+      destructive: "oklch(22.58% 0.05243 12.61)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(32.86% 0.01535 343.45)",
+      input: "oklch(33.87% 0.0195 332.83)",
+      ring: "oklch(59.16% 0.21798 0.58)",
+      chart1: "oklch(53.16% 0.14089 355.2)",
+      chart2: "oklch(56.33% 0.19123 306.86)",
+      chart3: "oklch(72.27% 0.1502 60.58)",
+      chart4: "oklch(61.93% 0.20294 312.74)",
+      chart5: "oklch(61.18% 0.2093 6.14)",
+      sidebar: "oklch(18.93% 0.01632 331.05)",
+      sidebarForeground: "oklch(86.07% 0.02927 343.66)",
+      sidebarPrimary: "oklch(48.82% 0.21717 264.38)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(23.37% 0.02608 338.2)",
+      sidebarAccentForeground: "oklch(96.74% 0.00133 286.38)",
+      sidebarBorder: "oklch(0% 0 0)",
+      sidebarRing: "oklch(59.16% 0.21798 0.58)",
+    },
+  },
+]
+
+/**
+ * Seed the theme presets and point `siteSettings.activeTheme` at one.
+ *
+ * Run from terminal:
+ *   npx convex run seed:themes
+ *   npx convex run seed:themes '{"activate":"Violet Bloom"}'
+ *
+ * Requires `seed:init` to have run first — that is what creates the
+ * siteSettings global. Safe to run repeatedly: existing themes are skipped by
+ * name, and only the active reference is rewritten. `adminTheme` is left alone,
+ * so the admin panel keeps following the site theme unless you set it by hand.
+ *
+ * @param activate - Theme name to set active. Defaults to "Stark × Ember".
+ */
+export const themes = mutation({
+  args: {},
+  handler: async (ctx, args: { activate?: string }) => {
+    const created: string[] = []
+    const skipped: string[] = []
+
+    for (const preset of THEME_PRESETS) {
+      const existing = await ctx.db
+        .query("themes")
+        .withIndex("by_name", (q) => q.eq("name", preset.name))
+        .first()
+      if (existing) {
+        skipped.push(preset.name)
+      } else {
+        await ctx.db.insert("themes", preset)
+        created.push(preset.name)
+      }
+    }
+
+    const activateName = args.activate ?? "Stark × Ember"
+    const target = await ctx.db
+      .query("themes")
+      .withIndex("by_name", (q) => q.eq("name", activateName))
+      .first()
+    if (!target) {
+      throw new Error(
+        `No theme named "${activateName}". Seeded: ${THEME_PRESETS.map((p) => p.name).join(", ")}.`
+      )
+    }
+
+    const settings = await ctx.db
+      .query("vex_globals")
+      .withIndex("by_slug", (q) => q.eq("slug", GLOBAL_SLUG_SITE_SETTINGS))
+      .first()
+    if (!settings) {
+      throw new Error("siteSettings global not found — run 'npx convex run seed:init' first.")
+    }
+    // The vex_globals schema stores `data: v.any()`; getGlobal owns the real
+    // shape, so name the record type once instead of spreading `any`.
+    const settingsData = (settings.data ?? {}) as Record<string, unknown>
+    await ctx.db.patch(settings._id, {
+      data: { ...settingsData, activeTheme: [target._id] },
+    })
+
+    return {
+      created,
+      skipped,
+      active: activateName,
+      note: "Reload the app — both site and admin follow siteSettings.activeTheme.",
     }
   },
 })

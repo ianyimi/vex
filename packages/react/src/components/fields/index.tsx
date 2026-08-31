@@ -16,6 +16,7 @@ import { cn } from "../../styles/utils";
 import { ColumnDef } from "@tanstack/react-table";
 import { SelectFieldCell, SelectFieldInput, selectFieldToColumnDef } from "./select";
 import { UrlFieldCell, UrlFieldInput, urlFieldToColumnDef } from "./url";
+import { ColorFieldCell, ColorFieldInput, colorFieldToColumnDef } from "./color";
 import {
   RelationshipFieldCell,
   RelationshipFieldInput,
@@ -32,6 +33,7 @@ export * from "./checkbox";
 export * from "./date";
 export * from "./select";
 export * from "./url";
+export * from "./color";
 export * from "./upload";
 export * from "./array";
 export * from "./relationship";
@@ -64,6 +66,9 @@ export const fieldInputComponents: Record<
     InputComponentProps<BaseFieldMeta, AdminField>
   >,
   [ADMIN_FIELDS.url.type]: UrlFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
+  [ADMIN_FIELDS.color.type]: ColorFieldInput as ComponentType<
     InputComponentProps<BaseFieldMeta, AdminField>
   >,
   [ADMIN_FIELDS.relationship.type]: RelationshipFieldInput as ComponentType<
@@ -159,6 +164,7 @@ export const fieldCellComponents: Record<
   [ADMIN_FIELDS.date.type]: DateFieldCell as ComponentType<CellComponentProps<AdminField>>,
   [ADMIN_FIELDS.select.type]: SelectFieldCell as ComponentType<CellComponentProps<AdminField>>,
   [ADMIN_FIELDS.url.type]: UrlFieldCell as ComponentType<CellComponentProps<AdminField>>,
+  [ADMIN_FIELDS.color.type]: ColorFieldCell as ComponentType<CellComponentProps<AdminField>>,
   [ADMIN_FIELDS.relationship.type]: RelationshipFieldCell as ComponentType<
     CellComponentProps<AdminField>
   >,
@@ -212,6 +218,7 @@ export function getCollectionColumnDefs<
   const { collection } = props;
   for (const [fieldKey, fieldDef] of Object.entries(collection.fields)) {
     const isTitleField = fieldKey === collection.admin.useAsTitle;
+    const fieldType: AdminFieldType = fieldDef.type;
     switch (fieldDef.type) {
       case ADMIN_FIELDS.text.type:
         columnDefs.push(
@@ -279,6 +286,17 @@ export function getCollectionColumnDefs<
         );
         break;
 
+      case ADMIN_FIELDS.color.type:
+        columnDefs.push(
+          colorFieldToColumnDef<TData>({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
       case ADMIN_FIELDS.relationship.type:
         columnDefs.push(
           relationshipFieldToColumnDef<TData>({
@@ -334,8 +352,12 @@ export function getCollectionColumnDefs<
         );
         break;
 
-      default:
-        throw new Error("unsupported column def field type");
+      default: {
+        const unhandled: never = fieldDef;
+        throw new Error(
+          `unsupported column def field type: ${fieldType} — ${JSON.stringify(unhandled)}`,
+        );
+      }
     }
   }
   return columnDefs;

@@ -107,7 +107,7 @@ export default function AdminTopNav(props: AdminLayoutProps) {
       <VexLink
         key={crumb.key}
         href={crumb.href}
-        className={cn(isLast ? "text-primary" : "hover:text-primary-hover")}
+        className={cn(isLast ? "text-primary" : "hover:text-primary/90")}
       >
         <span>{crumb.label}</span>
       </VexLink>

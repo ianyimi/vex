@@ -7,6 +7,7 @@ import { CollectionConfig } from "../collections";
 import { Row } from "@tanstack/react-table";
 import { SelectField } from "./select";
 import { UrlField } from "./url";
+import { ColorField } from "./color";
 import { RelationshipField } from "./relationship";
 import { ArrayField, ArrayType } from "./array";
 import { GroupField } from "./group";
@@ -45,6 +46,7 @@ export type CollectionFieldMeta = BaseFieldMeta & {
  * - `DateField` — Unix ms timestamp (publish date, expiry date, event time, etc.)
  * - `SelectField` — single-choice from a predefined set of options
  * - `UrlField` — validated URL string
+ * - `ColorField` — CSS colour string, or a `var(--token)` reference when `themeColors` is on
  * - `RelationshipField` — Convex `Id` reference to a document in another collection
  *
  * @example
@@ -65,6 +67,7 @@ export type AdminField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> =
   | DateField<TFieldMeta>
   | SelectField<TFieldMeta>
   | UrlField<TFieldMeta>
+  | ColorField<TFieldMeta>
   | ArrayField<ArrayType, TFieldMeta>
   | RelationshipField<TFieldMeta>
   | UploadField<TFieldMeta>

@@ -27,6 +27,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    // Offload Turbopack's in-memory compilation cache to disk under memory
+    // pressure (new in 16.3.0, default "auto" — pinned explicitly because
+    // long-lived `next dev` sessions grew to 12GB after ~30h of agent-driven
+    // file churn). Requires the FileSystem cache, which is on by default
+    // (experimental.turbopackFileSystemCacheForDev, default true since 16.1).
+    turbopackMemoryEviction: "auto",
+  },
   turbopack: {
     root: repoRoot,
     resolveAlias: {

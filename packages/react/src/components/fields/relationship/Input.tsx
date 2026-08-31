@@ -163,7 +163,7 @@ export const RelationshipFieldInput = createFieldInput<
           {!isMany && selectedDocs[0] ? (
             <Preview doc={selectedDocs[0]} fieldKey="_id" config={targetCollection as never} />
           ) : (
-            <span className="text-muted-foreground-subtle">
+            <span className="text-muted-foreground">
               {fieldDef.admin.placeholder || `Select ${targetLabel}…`}
             </span>
           )}
@@ -185,7 +185,7 @@ export const RelationshipFieldInput = createFieldInput<
           {/* —— Result list: master lines 258–295, rendered via Preview —— */}
           <div className="max-h-[240px] overflow-y-auto">
             {documents.length === 0 ? (
-              <p className="text-muted-foreground-subtle p-4 text-center text-xs">
+              <p className="text-muted-foreground p-4 text-center text-xs">
                 {isPending ? "Loading…" : "No documents found"}
               </p>
             ) : (

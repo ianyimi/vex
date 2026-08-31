@@ -14,3 +14,4 @@
 - Refresh stale package names in scripts/sync-template-versions.mjs
 - Re-enable tsup `dts: false` across packages when the CPU issue is resolved
 - Dependency pinning & supply-chain hardening (spec 2026-08-30-wpa-dependency-pinning)
+- WP-C color field

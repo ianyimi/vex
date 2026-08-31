@@ -120,7 +120,7 @@ export function UploadFilledState({
           </Button>
           {fieldDef.max && (
             <span
-              className={`${atLimit ? "text-warning" : "text-muted-foreground"} ml-auto font-mono
+              className={`${atLimit ? "text-destructive" : "text-muted-foreground"} ml-auto font-mono
               text-[11px]`}
             >
               {mediaIds.length}/{fieldDef.max}

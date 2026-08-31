@@ -21,6 +21,12 @@ export const ADMIN_FIELDS = {
     validator: "v.string()",
     defaultValue: "",
   },
+  color: {
+    type: "color",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+  },
   number: {
     type: "number",
     interfaceType: "number",
@@ -94,6 +100,9 @@ export type TextFieldType = typeof ADMIN_FIELDS.text.type;
 
 /** Literal type `"url"` — the discriminant value on {@link UrlField}. */
 export type UrlFieldType = typeof ADMIN_FIELDS.url.type;
+
+/** Literal type `"color"` — the discriminant value on {@link ColorField}. */
+export type ColorFieldType = typeof ADMIN_FIELDS.color.type;
 
 /** Literal type `"number"` — the discriminant value on {@link NumberField}. */
 export type NumberFieldType = typeof ADMIN_FIELDS.number.type;

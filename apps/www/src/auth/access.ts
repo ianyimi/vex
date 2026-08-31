@@ -10,10 +10,9 @@ import {
   headers,
   images,
   pages,
-  siteSettings,
   themes,
 } from "~/vexcms/collections";
-import { nav } from "~/vexcms/globals";
+import { nav, siteSettings } from "~/vexcms/globals";
 
 import { ownOnly, readOwn, readPublished } from "./permissions";
 
@@ -29,13 +28,13 @@ export const access = defineAccess({
     headers,
     images,
     pages,
-    siteSettings,
     themes,
     articles,
     caseStudies,
     changelog,
     comments,
     nav,
+    siteSettings,
   ],
   customResources: {
     edit: {
@@ -155,6 +154,12 @@ export const access = defineAccess({
         impersonate: false,
       },
       nav: {
+        "*": true,
+      },
+      siteSettings: {
+        "*": true,
+      },
+      themes: {
         "*": true,
       },
     },

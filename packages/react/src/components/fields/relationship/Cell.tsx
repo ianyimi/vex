@@ -43,13 +43,13 @@ export function RelationshipFieldCell<TData extends TDocument = TDocument>(
 
   // SSR and initial hydration render — consistent placeholder prevents mismatch.
   if (!isMounted) {
-    return <span className="text-[13px] text-muted-foreground-subtle">—</span>;
+    return <span className="text-[13px] text-muted-foreground">—</span>;
   }
 
   const rawValue = row.original[fieldKey] as unknown[] | undefined;
 
   if (!rawValue || rawValue.length === 0) {
-    return <span className="text-[13px] text-muted-foreground-subtle">—</span>;
+    return <span className="text-[13px] text-muted-foreground">—</span>;
   }
 
   const isPopulated =

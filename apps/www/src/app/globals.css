@@ -49,39 +49,23 @@
   /* ── Brand / accents ──────────────────────────────────────────────────── */
   --color-primary:                    var(--primary);            /* ember solid */
   --color-primary-foreground:         var(--primary-foreground);
-  --color-primary-hover:              var(--primary-hover);      /* deeper ember */
-  --color-primary-pressed:            var(--primary-pressed);    /* deepest ember */
   --color-secondary:                  var(--secondary);
   --color-secondary-foreground:       var(--secondary-foreground);
   --color-accent:                     var(--accent);             /* ember tint */
   --color-accent-foreground:          var(--accent-foreground);  /* ember ink */
-  --color-accent-glow:                var(--accent-glow);
-  --color-accent-line:                var(--accent-line);
 
   /* ── Neutral hover & muted ────────────────────────────────────────────── */
-  --color-hover:                      var(--hover);              /* neutral hover */
   --color-muted:                      var(--muted);              /* = --raised */
   --color-muted-foreground:           var(--muted-foreground);
-  --color-muted-foreground-subtle:    var(--muted-foreground-subtle);
-  --color-muted-foreground-faint:     var(--muted-foreground-faint);
 
   /* ── Borders & inputs ─────────────────────────────────────────────────── */
   --color-border:                     var(--border);             /* default separators */
-  --color-border-strong:              var(--border-strong);      /* triggers, kbd */
-  --color-border-soft:                var(--border-soft);        /* faint separators */
   --color-input:                      var(--input);              /* input borders */
   --color-ring:                       var(--ring);               /* solid ember focus */
 
   /* ── Status ───────────────────────────────────────────────────────────── */
-  --color-success:                    var(--success);
-  --color-success-foreground:         var(--success-foreground);
-  --color-success-bg:                 var(--success-bg);
-  --color-warning:                    var(--warning);
-  --color-warning-foreground:         var(--warning-foreground);
-  --color-warning-bg:                 var(--warning-bg);
   --color-destructive:                var(--destructive);
   --color-destructive-foreground:     var(--destructive-foreground);
-  --color-destructive-bg:             var(--destructive-bg);
 
   /* ── Sidebar ──────────────────────────────────────────────────────────── */
   --color-sidebar:                    var(--sidebar);
@@ -140,8 +124,6 @@
   /* Brand — ember on --primary */
   --primary:                     oklch(60.5% 0.175 42);          /* #E8622A */
   --primary-foreground:          oklch(100%  0    0);
-  --primary-hover:               oklch(56.5% 0.180 42);          /* #D45A26 */
-  --primary-pressed:             oklch(52%   0.180 40);          /* #C04E1E */
 
   /* Neutral secondary */
   --secondary:                   oklch(98%   0    0);            /* #FAFAFA */
@@ -150,33 +132,19 @@
   /* Highlight = ember TINT (matches admin.css --accent-tint) */
   --accent:                      oklch(96%   0.025 42);          /* #FEF0E8 */
   --accent-foreground:           oklch(52%   0.180 40);          /* ember ink */
-  --accent-glow:                 oklch(60.5% 0.175 42 / 0.16);
-  --accent-line:                 oklch(60.5% 0.175 42 / 0.24);
 
   /* Neutral hover & muted (= admin.css --hover / --raised) */
-  --hover:                       oklch(96.1% 0    0);            /* #F5F5F5 */
   --muted:                       oklch(98%   0    0);            /* #FAFAFA = raised */
   --muted-foreground:            oklch(50.5% 0    0);            /* #717171 */
-  --muted-foreground-subtle:     oklch(70%   0    0);            /* #A0A0A0 */
-  --muted-foreground-faint:      oklch(85%   0    0);            /* #D4D4D4 */
 
   /* Borders */
   --border:                      oklch(85%   0    0);            /* #D4D4D4 — default */
-  --border-strong:               oklch(64.5% 0    0);            /* #9A9A9A — triggers */
-  --border-soft:                 oklch(92.5% 0    0);            /* #EAEAEA — faint */
   --input:                       oklch(54.6% 0    0);            /* #6B6B6B — inputs */
   --ring:                        oklch(60.5% 0.175 42);          /* solid ember */
 
   /* Status */
-  --success:                     oklch(58%   0.180 145);         /* #16A34A */
-  --success-foreground:          oklch(100%  0    0);
-  --success-bg:                  oklch(94%   0.060 150);         /* #DCFCE7 */
-  --warning:                     oklch(64%   0.140 80);          /* #CA8A04 */
-  --warning-foreground:          oklch(100%  0    0);
-  --warning-bg:                  oklch(95%   0.070 95);          /* #FEF3C7 */
   --destructive:                 oklch(57.7% 0.198 27);          /* #DC2626 */
   --destructive-foreground:      oklch(98%   0    0);
-  --destructive-bg:              oklch(94%   0.040 25);          /* #FEE2E2 */
 
   /* Base radius — used by anything reading var(--radius) directly */
   --radius: 4px;
@@ -224,8 +192,6 @@
   /* Brand */
   --primary:                     oklch(72%   0.175 50);          /* #F07040 */
   --primary-foreground:          oklch(13.7% 0     0);
-  --primary-hover:               oklch(76%   0.180 47);          /* #FF8258 */
-  --primary-pressed:             oklch(68%   0.175 50);
 
   /* Secondary */
   --secondary:                   oklch(20%   0     0);           /* #1E1E1E */
@@ -234,33 +200,19 @@
   /* Highlight — translucent ember tint */
   --accent:                      oklch(72%   0.175 50 / 0.12);
   --accent-foreground:           oklch(72%   0.175 50);          /* ember itself in dark */
-  --accent-glow:                 oklch(72%   0.175 50 / 0.22);
-  --accent-line:                 oklch(72%   0.175 50 / 0.28);
 
   /* Neutral hover & muted */
-  --hover:                       oklch(20%   0     0);           /* #1E1E1E */
   --muted:                       oklch(20%   0     0);           /* = raised in dark */
   --muted-foreground:            oklch(70%   0     0);           /* #A0A0A0 */
-  --muted-foreground-subtle:     oklch(50.5% 0     0);           /* #717171 */
-  --muted-foreground-faint:      oklch(30%   0     0);           /* #3A3A3A */
 
   /* Borders */
   --border:                      oklch(25%   0     0);           /* #2A2A2A */
-  --border-strong:               oklch(38%   0     0);           /* #4A4A4A */
-  --border-soft:                 oklch(18%   0     0);           /* #1C1C1C */
   --input:                       oklch(40%   0     0);           /* #5A5A5A */
   --ring:                        oklch(72%   0.175 50);
 
   /* Status */
-  --success:                     oklch(72%   0.180 145);         /* #22C55E */
-  --success-foreground:          oklch(13.7% 0     0);
-  --success-bg:                  oklch(58%   0.180 145 / 0.14);
-  --warning:                     oklch(78%   0.160 88);          /* #EAB308 */
-  --warning-foreground:          oklch(13.7% 0     0);
-  --warning-bg:                  oklch(64%   0.140 80 / 0.16);
   --destructive:                 oklch(63%   0.210 27);          /* #EF4444 */
   --destructive-foreground:      oklch(95%   0     0);
-  --destructive-bg:              oklch(57.7% 0.198 27 / 0.16);
 
   /* Sidebar */
   --sidebar:                     oklch(7%    0     0);           /* #050505 */

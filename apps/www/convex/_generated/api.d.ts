@@ -16,7 +16,7 @@ import type * as auth_sessions from "../auth/sessions.js";
 import type * as http from "../http.js";
 import type * as pages from "../pages.js";
 import type * as seed from "../seed.js";
-import type * as themes from "../themes.js";
+import type * as theme from "../theme.js";
 import type * as vex from "../vex.js";
 import type * as vex_globals from "../vex/globals.js";
 import type * as vex_media from "../vex/media.js";
@@ -37,7 +37,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   pages: typeof pages;
   seed: typeof seed;
-  themes: typeof themes;
+  theme: typeof theme;
   vex: typeof vex;
   "vex/globals": typeof vex_globals;
   "vex/media": typeof vex_media;

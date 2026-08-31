@@ -183,10 +183,78 @@ export const themes = defineTable({
   name: v.string(),
   fontFamily: v.optional(v.string()),
   radius: v.optional(v.string()),
-  primaryLight: v.optional(v.string()),
-  primaryDark: v.optional(v.string()),
-  bgDark: v.optional(v.string()),
-  bgLight: v.optional(v.string()),
+  light: v.optional(
+    v.object({
+      background: v.optional(v.string()),
+      foreground: v.optional(v.string()),
+      card: v.optional(v.string()),
+      cardForeground: v.optional(v.string()),
+      popover: v.optional(v.string()),
+      popoverForeground: v.optional(v.string()),
+      primary: v.optional(v.string()),
+      primaryForeground: v.optional(v.string()),
+      secondary: v.optional(v.string()),
+      secondaryForeground: v.optional(v.string()),
+      muted: v.optional(v.string()),
+      mutedForeground: v.optional(v.string()),
+      accent: v.optional(v.string()),
+      accentForeground: v.optional(v.string()),
+      destructive: v.optional(v.string()),
+      destructiveForeground: v.optional(v.string()),
+      border: v.optional(v.string()),
+      input: v.optional(v.string()),
+      ring: v.optional(v.string()),
+      chart1: v.optional(v.string()),
+      chart2: v.optional(v.string()),
+      chart3: v.optional(v.string()),
+      chart4: v.optional(v.string()),
+      chart5: v.optional(v.string()),
+      sidebar: v.optional(v.string()),
+      sidebarForeground: v.optional(v.string()),
+      sidebarPrimary: v.optional(v.string()),
+      sidebarPrimaryForeground: v.optional(v.string()),
+      sidebarAccent: v.optional(v.string()),
+      sidebarAccentForeground: v.optional(v.string()),
+      sidebarBorder: v.optional(v.string()),
+      sidebarRing: v.optional(v.string()),
+    })
+  ),
+  dark: v.optional(
+    v.object({
+      background: v.optional(v.string()),
+      foreground: v.optional(v.string()),
+      card: v.optional(v.string()),
+      cardForeground: v.optional(v.string()),
+      popover: v.optional(v.string()),
+      popoverForeground: v.optional(v.string()),
+      primary: v.optional(v.string()),
+      primaryForeground: v.optional(v.string()),
+      secondary: v.optional(v.string()),
+      secondaryForeground: v.optional(v.string()),
+      muted: v.optional(v.string()),
+      mutedForeground: v.optional(v.string()),
+      accent: v.optional(v.string()),
+      accentForeground: v.optional(v.string()),
+      destructive: v.optional(v.string()),
+      destructiveForeground: v.optional(v.string()),
+      border: v.optional(v.string()),
+      input: v.optional(v.string()),
+      ring: v.optional(v.string()),
+      chart1: v.optional(v.string()),
+      chart2: v.optional(v.string()),
+      chart3: v.optional(v.string()),
+      chart4: v.optional(v.string()),
+      chart5: v.optional(v.string()),
+      sidebar: v.optional(v.string()),
+      sidebarForeground: v.optional(v.string()),
+      sidebarPrimary: v.optional(v.string()),
+      sidebarPrimaryForeground: v.optional(v.string()),
+      sidebarAccent: v.optional(v.string()),
+      sidebarAccentForeground: v.optional(v.string()),
+      sidebarBorder: v.optional(v.string()),
+      sidebarRing: v.optional(v.string()),
+    })
+  ),
 })
   .index("by_name", ["name"])
   .searchIndex("search_name", {
@@ -194,10 +262,6 @@ export const themes = defineTable({
 
     filterFields: [],
   })
-
-export const site_settings = defineTable({
-  name: v.string(),
-})
 
 export const articles = defineTable({
   title: v.string(),

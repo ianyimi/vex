@@ -12,13 +12,13 @@ import {
   headers,
   images,
   pages,
-  siteSettings,
   themes,
   users,
 } from "~/vexcms/collections";
 
 import { access } from "./auth/access";
 import { nav } from "./vexcms/globals/nav";
+import { siteSettings } from "./vexcms/globals/siteSettings";
 
 /**
  * VexCMS configuration for the demo/development site.
@@ -51,13 +51,12 @@ const vexConfig = defineConfig({
     headers,
     footers,
     themes,
-    siteSettings,
     articles,
     caseStudies,
     changelog,
     comments,
   ],
-  globals: [nav],
+  globals: [nav, siteSettings],
 });
 
 export default vexConfig;

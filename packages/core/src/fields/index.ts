@@ -13,6 +13,7 @@ export * from "./number";
 export * from "./checkbox";
 export * from "./date";
 export * from "./url";
+export * from "./color";
 export * from "./array";
 export * from "./group";
 export * from "./blocks";

@@ -289,41 +289,88 @@ export interface Theme extends VexDocument {
    */
   name: string
   /**
-   * CSS font-family stack applied to the body. First available font is used.
+   * CSS font-family stack applied to --font-sans. The first available font wins, so
+   * a stack naming an unloaded font degrades rather than breaking.
    */
   fontFamily?: string
   /**
-   * Base border radius in rem. Applied to the shadcn --radius CSS custom property.
+   * Applied to the --radius custom property. Any CSS length.
    */
   radius?: string
   /**
-   * Primary brand color for light mode. Hex format. Applied to --primary and its
-   * OKLCH conversion.
+   * Tokens emitted under :root.
    */
-  primaryLight?: string
+  light?: {
+    background?: string
+    foreground?: string
+    card?: string
+    cardForeground?: string
+    popover?: string
+    popoverForeground?: string
+    primary?: string
+    primaryForeground?: string
+    secondary?: string
+    secondaryForeground?: string
+    muted?: string
+    mutedForeground?: string
+    accent?: string
+    accentForeground?: string
+    destructive?: string
+    destructiveForeground?: string
+    border?: string
+    input?: string
+    ring?: string
+    chart1?: string
+    chart2?: string
+    chart3?: string
+    chart4?: string
+    chart5?: string
+    sidebar?: string
+    sidebarForeground?: string
+    sidebarPrimary?: string
+    sidebarPrimaryForeground?: string
+    sidebarAccent?: string
+    sidebarAccentForeground?: string
+    sidebarBorder?: string
+    sidebarRing?: string
+  }
   /**
-   * Primary brand color for dark mode. Hex format. Applied to --primary when dark
-   * mode is active.
+   * Tokens emitted under .dark.
    */
-  primaryDark?: string
-  /**
-   * Page background for dark mode. Hex format. Applied to --background when dark
-   * mode is active.
-   */
-  bgDark?: string
-  /**
-   * Page background for light mode. Hex format. Applied to --background when light
-   * mode is active.
-   */
-  bgLight?: string
-}
-
-export interface SiteSettings extends VexDocument {
-  _id: Id<"site_settings">
-  /**
-   * Global site name used as fallback for logo text, page titles, and meta tags.
-   */
-  name: string
+  dark?: {
+    background?: string
+    foreground?: string
+    card?: string
+    cardForeground?: string
+    popover?: string
+    popoverForeground?: string
+    primary?: string
+    primaryForeground?: string
+    secondary?: string
+    secondaryForeground?: string
+    muted?: string
+    mutedForeground?: string
+    accent?: string
+    accentForeground?: string
+    destructive?: string
+    destructiveForeground?: string
+    border?: string
+    input?: string
+    ring?: string
+    chart1?: string
+    chart2?: string
+    chart3?: string
+    chart4?: string
+    chart5?: string
+    sidebar?: string
+    sidebarForeground?: string
+    sidebarPrimary?: string
+    sidebarPrimaryForeground?: string
+    sidebarAccent?: string
+    sidebarAccentForeground?: string
+    sidebarBorder?: string
+    sidebarRing?: string
+  }
 }
 
 type ArticleStatusOption = "draft" | "review" | "published"
@@ -631,13 +678,29 @@ export interface NavGlobal extends VexDocumentGlobal<"nav"> {
   }[]
 }
 
+export interface SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings"> {
+  /**
+   * Global site name used as fallback for logo text, page titles, and meta tags.
+   */
+  name: string
+  /**
+   * The theme applied to the public site. Changing it re-skins the site on the next
+   * page load.
+   */
+  activeTheme?: Id<"themes">[]
+  /**
+   * Optional. Leave empty and the admin panel uses the Active Theme; set it to give
+   * the admin its own palette.
+   */
+  adminTheme?: Id<"themes">[]
+}
+
 export type CollectionSlug =
   | "pages"
   | "user"
   | "headers"
   | "footers"
   | "themes"
-  | "site_settings"
   | "articles"
   | "case_studies"
   | "changelog"
@@ -654,7 +717,7 @@ export type CollectionSlug =
   | "jwks"
   | "images"
 
-export type GlobalSlug = "nav"
+export type GlobalSlug = "nav" | "siteSettings"
 
 export type MediaCollectionSlug = "images"
 
@@ -666,7 +729,6 @@ export type DocumentBySlug = {
   headers: Header
   footers: Footer
   themes: Theme
-  site_settings: SiteSettings
   articles: Article
   case_studies: CaseStudy
   changelog: ChangelogEntry
@@ -686,6 +748,7 @@ export type DocumentBySlug = {
 
 export type GlobalDocumentBySlug = {
   nav: NavGlobal
+  siteSettings: SiteSettingsGlobal
 }
 
 declare module "@vexcms/core" {
@@ -696,7 +759,6 @@ declare module "@vexcms/core" {
       | "headers"
       | "footers"
       | "themes"
-      | "site_settings"
       | "articles"
       | "case_studies"
       | "changelog"
@@ -712,7 +774,7 @@ declare module "@vexcms/core" {
       | "apikey"
       | "jwks"
       | "images"
-    GlobalSlug: "nav"
+    GlobalSlug: "nav" | "siteSettings"
     MediaCollectionSlug: "images"
     StorageAdapterSlug: "convex"
     DocumentBySlug: {
@@ -721,7 +783,6 @@ declare module "@vexcms/core" {
       headers: Header
       footers: Footer
       themes: Theme
-      site_settings: SiteSettings
       articles: Article
       case_studies: CaseStudy
       changelog: ChangelogEntry
@@ -740,6 +801,7 @@ declare module "@vexcms/core" {
     }
     GlobalDocumentBySlug: {
       nav: NavGlobal
+      siteSettings: SiteSettingsGlobal
     }
     CollectionsFieldTypeMap: {
       pages: {
@@ -764,11 +826,8 @@ declare module "@vexcms/core" {
         text: "name" | "logoText" | "copyright" | "links" | "socialLinks"
       }
       themes: {
-        text:
-          "name" | "fontFamily" | "radius" | "primaryLight" | "primaryDark" | "bgDark" | "bgLight"
-      }
-      site_settings: {
-        text: "name"
+        text: "name" | "fontFamily" | "radius"
+        group: "light" | "dark"
       }
       articles: {
         text: "title" | "slug" | "excerpt" | "body"
@@ -880,6 +939,10 @@ declare module "@vexcms/core" {
       nav: {
         array: "items"
       }
+      siteSettings: {
+        text: "name"
+        relationship: "activeTheme" | "adminTheme"
+      }
     }
     IndexFieldsBySlug: {
       pages: { by_slug: readonly ["slug"]; by_themes: readonly ["themes"] }
@@ -887,7 +950,6 @@ declare module "@vexcms/core" {
       headers: { by_name: readonly ["name"] }
       footers: { by_name: readonly ["name"] }
       themes: { by_name: readonly ["name"] }
-      site_settings: {}
       articles: {
         by_slug: readonly ["slug"]
         by_author: readonly ["authorId"]

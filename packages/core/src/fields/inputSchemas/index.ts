@@ -1,4 +1,4 @@
-import { ADMIN_FIELDS } from "../constants";
+import { ADMIN_FIELDS, type AdminFieldType } from "../constants";
 import { AdminField } from "../types";
 import { textFieldToInputSchema } from "../text";
 import { numberFieldToInputSchema } from "../number";
@@ -6,6 +6,7 @@ import { checkboxFieldToInputSchema } from "../checkbox";
 import { dateFieldToInputSchema } from "../date";
 import { selectFieldToInputSchema } from "../select";
 import { urlFieldToInputSchema } from "../url";
+import { colorFieldToInputSchema } from "../color";
 import { relationshipFieldToInputSchema } from "../relationship";
 import { arrayFieldToInputSchema } from "../array";
 import { groupFieldToInputSchema } from "../group";
@@ -21,7 +22,9 @@ import { uploadFieldToInputSchema } from "../upload";
  * @param props Input props
  * @param props.field - The resolved field definition to convert
  * @returns A ZodType (e.g. `z.string()`, `z.boolean().optional().default(false)`)
- * @throws An Error if an unrecognized field type is given
+ * @throws An Error if an unrecognized field type is given. Reaching this is a
+ * compile error: the default arm binds the exhausted union to `never`, so a new
+ * member of `AdminField` fails typecheck here until a case is added
  *
  * @see {@link textFieldToInputSchema} for the text field implementation
  * @see {@link numberFieldToInputSchema} for the number field implementation
@@ -29,6 +32,10 @@ import { uploadFieldToInputSchema } from "../upload";
  * @internal
  */
 export function adminFieldToInputSchema(props: { field: AdminField }) {
+  // Captured before the switch narrows `props.field`: inside the default arm the
+  // union is exhausted to `never`, and `never.type` is not a usable string.
+  const fieldType: AdminFieldType = props.field.type;
+
   switch (props.field.type) {
     case ADMIN_FIELDS.text.type:
       return textFieldToInputSchema({ field: props.field });
@@ -42,6 +49,8 @@ export function adminFieldToInputSchema(props: { field: AdminField }) {
       return selectFieldToInputSchema({ field: props.field });
     case ADMIN_FIELDS.url.type:
       return urlFieldToInputSchema({ field: props.field });
+    case ADMIN_FIELDS.color.type:
+      return colorFieldToInputSchema({ field: props.field });
     case ADMIN_FIELDS.relationship.type:
       return relationshipFieldToInputSchema({ field: props.field });
     case ADMIN_FIELDS.array.type:
@@ -52,7 +61,11 @@ export function adminFieldToInputSchema(props: { field: AdminField }) {
       return blocksFieldToInputSchema({ field: props.field });
     case ADMIN_FIELDS.upload.type:
       return uploadFieldToInputSchema({ field: props.field });
-    default:
-      throw new Error("unrecognized field type");
+    default: {
+      const unhandled: never = props.field;
+      throw new Error(
+        `unrecognized field type: ${fieldType} — ${JSON.stringify(unhandled)}`,
+      );
+    }
   }
 }

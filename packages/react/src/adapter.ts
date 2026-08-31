@@ -18,6 +18,8 @@ import {
   SelectFieldCell,
   UrlFieldInput,
   UrlFieldCell,
+  ColorFieldInput,
+  ColorFieldCell,
   CollectionEditView,
   CollectionListView,
   DashboardView,
@@ -91,6 +93,10 @@ export const reactAdapter: FrameworkAdapterInput<ReactHKT> = defineFrameworkAdap
     [ADMIN_FIELDS.url.type]: {
       input: UrlFieldInput,
       cell: UrlFieldCell,
+    },
+    [ADMIN_FIELDS.color.type]: {
+      input: ColorFieldInput,
+      cell: ColorFieldCell,
     },
     [ADMIN_FIELDS.relationship.type]: {
       input: RelationshipFieldInput,

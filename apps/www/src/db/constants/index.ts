@@ -30,7 +30,6 @@ export type PageID = Id<typeof TABLE_SLUG_PAGES>;
 export const TABLE_SLUG_HEADERS = "headers" as const;
 export const TABLE_SLUG_FOOTERS = "footers" as const;
 export const TABLE_SLUG_THEMES = "themes" as const;
-export const TABLE_SLUG_SITE_SETTINGS = "site_settings" as const;
 export const TABLE_SLUG_IMAGES = "images" as const;
 
 // ── Editorial content ───────────────────────────────────────────────────────
@@ -65,6 +64,7 @@ export const CONTENT_STATUS = {
 export type ContentStatus = (typeof CONTENT_STATUS)[keyof typeof CONTENT_STATUS];
 
 export const GLOBAL_SLUG_NAV = "nav" as const;
+export const GLOBAL_SLUG_SITE_SETTINGS = "siteSettings" as const;
 
 export const AUTH_PROVIDERS = {
   apple: "apple",

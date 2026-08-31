@@ -35,7 +35,11 @@ the slice you personally touched and leave the rest dirty.
 
 1. **Read the mode.** `workflow.commit_mode` in `.agent/manifest.json`: `"message-only"`
    (default) or `"agent-commits"`.
-2. **Cluster the working tree into commits.** Group every changed and untracked path into
+2. **Cluster the working tree into commits.** **Project override (P-016): this project
+   commits ONE commit per run covering the entire working tree — do NOT split by concern;
+   write a multi-concern body with bold-headed paragraphs instead. Splitting returns only
+   after the first official release.** The generic guidance below then applies to body
+   structure, not commit count. Group every changed and untracked path into
    the smallest set of coherent commits. One cluster = one concern that a reviewer would
    want to read, revert, or bisect on its own. Signals: the driving spec or work package,
    the type from `references/commit-format.md` (never mix `fix` with `build` when they are

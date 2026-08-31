@@ -125,14 +125,14 @@ export function AdminLayout(props: AdminLayoutProps) {
             <AdminTopNav {...props} />
             <SidebarTrigger
               side={side}
-              className="hover:text-primary-hover transition-colors duration-300"
+              className="hover:text-primary/90 transition-colors duration-300"
             />
           </>
         ) : (
           <>
             <SidebarTrigger
               side={side}
-              className="hover:text-primary-hover transition-colors duration-300"
+              className="hover:text-primary/90 transition-colors duration-300"
             />
             <AdminTopNav {...props} />
           </>

@@ -2,7 +2,7 @@
 
 Two working days (Sat 08-30, Sun 08-31), Mon 09-01 as buffer. Execution is
 LLM-driven and parallelizable; this doc is the plan agent specs get written from.
-**WP-0 and WP-A are implemented.** Everything else is plan.
+**WP-0, WP-A and WP-C are implemented.** Everything else is plan.
 
 ## Objective
 
@@ -27,7 +27,7 @@ Anything not serving one of those four is out of scope this weekend.
 | D5 | **Analytics: script tag now; adapter roadmapped under *Exploring*.** | Adapters are already the established extension mechanism — see WP-7. |
 | D6 | **Promote `rebuild` → `master`, demote old master → `master-v0`.** | Verified a clean fast-forward. See WP-B. |
 | D7 | **Rename `apps/www` → `apps/test`** (the sandbox), then generate the real `apps/www` from the marketing template. | Developer preference. |
-| D8 | **Build `color` only. `ui`, `tabs`, `richtext`, `json` all CUT.** Preceded by the exhaustiveness fix (WP-C step 1). | Measured template usage: color 57 call sites, ui 3, tabs 1, richtext **0**. `ui`/`tabs` change core invariants; `color` is a leaf field. See WP-C. |
+| D8 | **Build `color` only. `ui`, `tabs`, `richtext`, `json` all CUT.** Preceded by the exhaustiveness fix (WP-C step 1). **Amended during WP-C:** the "simplified 7-field `themes.ts`" clause is superseded — themes carry the full shadcn 32-token set × light/dark (via `group`; `ui`/`tabs`/`richtext`/`json` stay cut). A 4-field theme cannot be applied globally: `--background` moves without `--foreground` and breaks contrast. | Measured template usage: color 57 call sites, ui 3, tabs 1, richtext **0**. `ui`/`tabs` change core invariants; `color` is a leaf field. See WP-C. |
 | D9 | **Licence: Apache-2.0.** | Matches the `convex` npm package (verified `npm view convex license`). SPDX-valid, OSI-approved, badges cleanly. FSL covers only `convex-backend`, which has no VexCMS analogue. See WP-1. |
 
 ---
@@ -105,7 +105,7 @@ That is better than rebuild's single giant `switch` in `PageContent.tsx`.
 ```mermaid
 graph LR
   WP0["WP-0 dts + sync ✅"] --> WP1["WP-1 release integrity"]
-  WPA["WP-A pin deps + harden ✅"] --> WPC["WP-C color field"]
+  WPA["WP-A pin deps + harden ✅"] --> WPC["WP-C color field ✅"]
   WPC --> WP2["WP-2 CLI + templates"]
   WPA --> WP5
   WP1 --> WP5["WP-5 publish alphas"]
@@ -515,7 +515,43 @@ alpha publish is verified, not as the mechanism to discover WP-1 bugs. Run
 
 ---
 
-## WP-C — `color` field (+ exhaustiveness hardening)
+## WP-C — `color` field (+ exhaustiveness hardening) ✅ DONE
+
+Implemented 2026-08-31 in 8 task groups — spec:
+`.agent/docs/specs/2026-08-30-wpc-color-field/` (45/45 steps, all verifies
+passed, ten-point manual rehearsal confirmed in-browser by the developer).
+
+### Delivered
+
+| # | Outcome | Evidence |
+| --- | --- | --- |
+| C1 | Design tokens collapsed 48 → shadcn's 32. Measured first: 13 of the 16 extras had **zero** component references; the other 3 (14 call sites) map to `muted-foreground`, `primary/90`, `destructive` | residual-reference grep returns nothing; `globals.css` 315 → 267 lines |
+| C2 | Field dispatch is exhaustive — `never` assertions in both core dispatches + the columnDef switch, plus a 4-test registry-parity net | Negative test executed: a dummy field type failed typecheck at all six predicted sites; reverted |
+| C3 | 12th field type `color()` — `format: "hex"\|"rgb"\|"hsl"\|"oklch"`, alpha, `themeColors` var() picks. Conversion (`serializeColor`/`parseColor`/`ColorValue` + `buildThemeCss`) lives in core with **zero new dependencies** — the sRGB pivot made `@uiw/color-convert` unnecessary | 4096-colour lattice round-trips with 0 drift; OKLCh byte-exact vs Chromium canvas readback |
+| C4 | Theme system end to end in `apps/www` — `themes.ts` 32×2 palette, `siteSettings` global (`activeTheme`/`adminTheme`), `ThemeStyle` (server, first paint) + `ThemeLive` (Convex-reactive, no-reload updates), `(frontend)/layout.tsx` restored, 4 seeded tweakcn palettes | build 10/10 incl. full Next production build; 978 tests; live re-skin confirmed in-browser |
+| C5 | Admin adopts the site theme by default; `adminTheme` opts out via the `:root:root` specificity ladder (0,1,0 < 0,2,0 < 0,3,0) — no injection-order dependence | Manual script steps 4/7/8 |
+
+Scope grew beyond the original plan at the developer's direction: the 32-token
+amendment to D8 (see the decisions table), the token consolidation, the
+siteSettings global conversion, and live updates. `ui` remains cut — the
+theme-import affordance it carried is superseded by seeded presets.
+
+### Corrections this plan got wrong
+
+1. **A dummy `ADMIN_FIELDS` entry is not a sufficient exhaustiveness proof** —
+   the core dispatches switch on the `AdminField` union, not the registry keys;
+   the negative test needs a dummy union member too.
+2. **The planned snippet violated AP-002** (`(props.field as { type: string })`);
+   the shipped guard reads the discriminant into a `const` before the switch.
+3. **`themes.ts` had 4 colour-valued fields, not 7** — `name`/`fontFamily`/
+   `radius` are text. (Then superseded by the 32-token amendment.)
+4. **`vex generate` ignores `--cwd`** — must run from inside `apps/www`.
+5. **The "simplified 7-field theme" (D8) and global theme application are
+   mutually exclusive.** Master themed the admin from the root layout precisely
+   because its theme owned every token. Keeping both required the amendment.
+
+### Original plan (retained for rationale)
+
 
 Gates WP-2: templates must be authored against the final field set, or they get
 rewritten twice. Scope settled by D8 — **`color` only**; `ui`, `tabs`,

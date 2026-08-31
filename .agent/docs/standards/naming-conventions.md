@@ -34,7 +34,7 @@ rules:
     examples: ["useCollectionForm.ts", "usePagination.ts", "use-mobile.ts"]
     counter_examples: ["collection-form-hook.ts", "UseCollectionForm.ts"]
   - id: core-field-module
-    pattern: '^(config|types|validator|inputSchema|constants|index)(\.test)?\.ts$'
+    pattern: '^(config|types|validator|inputSchema|constants|convert|formats|utils|index)(\.test)?\.ts$'
     scope: ["packages/core/src/fields/*/**"]
     description: Each core field dir (lowercase widget name) contains config.ts, types.ts, validator.ts, inputSchema.ts, with colocated .test.ts files.
     examples: ["text/config.ts", "upload/validator.test.ts"]
