@@ -37,6 +37,7 @@ async function scaffold(overrides: {
   bare: boolean;
   monorepo: boolean;
   workspaceRoot?: string | null;
+  orgs?: boolean;
 }): Promise<void> {
   const options: ProjectOptions = { ...YES_DEFAULTS, ...overrides };
   const installer = createInstaller({
@@ -53,6 +54,8 @@ let fullDir: string;
 let monorepoDir: string;
 let monorepoWorkspaceRoot: string;
 let hostCatalog: Record<string, string>;
+let orgsBareDir: string;
+let orgsFullDir: string;
 
 beforeAll(async () => {
   if (!fs.existsSync(baseTemplateDir)) {
@@ -111,6 +114,26 @@ beforeAll(async () => {
     bare: false,
     monorepo: true,
     workspaceRoot: monorepoWorkspaceRoot,
+  });
+
+  orgsBareDir = path.join(tmpRoot, 'orgs-bare-project');
+  fs.ensureDirSync(orgsBareDir);
+  await scaffold({
+    projectName: 'orgs-bare-project',
+    projectDir: orgsBareDir,
+    bare: true,
+    monorepo: false,
+    orgs: true,
+  });
+
+  orgsFullDir = path.join(tmpRoot, 'orgs-full-project');
+  fs.ensureDirSync(orgsFullDir);
+  await scaffold({
+    projectName: 'orgs-full-project',
+    projectDir: orgsFullDir,
+    bare: false,
+    monorepo: false,
+    orgs: true,
   });
 }, 120_000);
 
@@ -303,5 +326,81 @@ describe('vex scripts (base template contract)', () => {
     expect(pkg.scripts['vex:dev']).toBe('vex dev');
     expect(pkg.scripts['vex:generate']).toBe('vex dev --once');
     expect(pkg.scripts['vex:update']).toContain('@vexcms/core@latest');
+  });
+});
+
+describe('organization wiring (--orgs declined vs accepted)', () => {
+  function walkTsFiles(dir: string): string[] {
+    const out: string[] = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === 'node_modules' || entry.name === '.git') continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        out.push(...walkTsFiles(full));
+      } else if (/\.(ts|tsx)$/.test(entry.name)) {
+        out.push(full);
+      }
+    }
+    return out;
+  }
+
+  // convex/schema.ts and src/vex.types.ts are pre-generated codegen fixtures
+  // that ship with every scaffold shaped for organizations unconditionally
+  // (see the comment atop convex/schema.ts) — a real `vex dev` regenerates
+  // both from the project's actual config. They are not part of the
+  // org-wiring surface `configureOrganizations` strips.
+  const GENERATED_FIXTURES: Record<string, true> = {
+    'convex/schema.ts': true,
+    'src/vex.types.ts': true,
+  };
+
+  const ORG_PATTERNS = ['TABLE_SLUG_ORGANIZATIONS', 'resolveOrgs: true', 'OrganizationDoc'];
+
+  it('default (orgs declined) bare and full scaffolds carry none of the organization patterns', () => {
+    for (const dir of [bareDir, fullDir]) {
+      const offenders: string[] = [];
+      for (const file of walkTsFiles(dir)) {
+        const rel = path.relative(dir, file);
+        if (GENERATED_FIXTURES[rel]) continue;
+        const source = fs.readFileSync(file, 'utf-8');
+        for (const pattern of ORG_PATTERNS) {
+          if (source.includes(pattern)) {
+            offenders.push(`"${pattern}" in ${rel}`);
+          }
+        }
+      }
+      expect(offenders).toEqual([]);
+    }
+  });
+
+  it('default (orgs declined) scaffolds resolve every createGetAuth call with resolveOrgs: false and no orgCollectionSlug', () => {
+    for (const dir of [bareDir, fullDir]) {
+      for (const rel of ['convex/vex.ts', 'convex/vex/globals.ts', 'convex/vex/media.ts']) {
+        const source = fs.readFileSync(path.join(dir, rel), 'utf-8');
+        expect(source).toContain('resolveOrgs: false');
+        expect(source).not.toContain('orgCollectionSlug');
+      }
+    }
+    const fullApi = fs.readFileSync(path.join(fullDir, 'src/vexcms/api.ts'), 'utf-8');
+    expect(fullApi).toContain('resolveOrgs: false');
+    expect(fullApi).not.toContain('orgCollectionSlug');
+  });
+
+  it('--orgs accepted bare and full scaffolds keep every organization pattern', () => {
+    for (const dir of [orgsBareDir, orgsFullDir]) {
+      const sources = walkTsFiles(dir).map((file) => fs.readFileSync(file, 'utf-8'));
+      const combined = sources.join('\n');
+      for (const pattern of ORG_PATTERNS) {
+        expect(combined).toContain(pattern);
+      }
+    }
+  });
+
+  it('--orgs accepted scaffolds enable the organization plugin in convex/auth/plugins/index.ts', () => {
+    for (const dir of [orgsBareDir, orgsFullDir]) {
+      const plugins = fs.readFileSync(path.join(dir, 'convex/auth/plugins/index.ts'), 'utf-8');
+      expect(plugins).toContain('import { organization } from "better-auth/plugins"');
+      expect(plugins).toContain('organization(),');
+    }
   });
 });

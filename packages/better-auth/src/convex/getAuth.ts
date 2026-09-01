@@ -11,18 +11,21 @@ import type { CollectionSlug, VexApiAuth } from "@vexcms/core";
  * `identity.sessionId` (appended to every token by the plugin) → session
  * document → `session.activeOrganizationId` → organization document.
  * Documents are read fresh on every request, so role changes and
- * `identity.sessionId` (appended to every token by the plugin) → session
- * document → `session.activeOrganizationId` → organization document.
- * Documents are read fresh on every request, so role changes and
  * org switches apply immediately — claims are only used as ids, never
  * as authorization data.
+ *
+ * `orgCollectionSlug` is only required when `resolveOrgs` is true — a
+ * project with organizations disabled can omit it entirely. Passing
+ * `resolveOrgs: true` without an `orgCollectionSlug` skips org resolution
+ * (same as `resolveOrgs: false`) rather than throwing, since the omission
+ * is a config mistake, not a request-time error worth failing loudly for.
  *
  * @returns { user, organization }, @see {@link VexApiAuth}
  *
  */
 export function createGetAuth<TCollectionSlug extends CollectionSlug = CollectionSlug>(props: {
   userCollectionSlug: TCollectionSlug;
-  orgCollectionSlug: TCollectionSlug;
+  orgCollectionSlug?: TCollectionSlug;
   sessionCollectionSlug: TCollectionSlug;
   resolveOrgs?: boolean;
 }) {
@@ -42,14 +45,15 @@ export function createGetAuth<TCollectionSlug extends CollectionSlug = Collectio
       return { user }; // token for a deleted user → deny
     }
 
-    if (!props.resolveOrgs) {
+    if (!props.resolveOrgs || !props.orgCollectionSlug) {
       return { user };
     }
+    const orgCollectionSlug = props.orgCollectionSlug;
     const sessionId = identity.sessionId as GenericId<TCollectionSlug> | undefined;
     const session = sessionId ? await ctx.db.get(props.sessionCollectionSlug, sessionId) : null;
     const orgId = session?.activeOrganizationId as GenericId<TCollectionSlug> | undefined;
     const organization = orgId
-      ? ((await ctx.db.get(props.orgCollectionSlug, orgId)) ?? undefined)
+      ? ((await ctx.db.get(orgCollectionSlug, orgId)) ?? undefined)
       : undefined;
 
     return { user, organization };

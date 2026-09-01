@@ -31,9 +31,17 @@ NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
 NEXT_PUBLIC_CONVEX_SITE_URL=https://your-deployment.convex.site
 ```
 
-Then, in the [Convex Dashboard](https://dashboard.convex.dev) → Settings →
-Environment Variables, add `BETTER_AUTH_SECRET` (same value as `.env.local`)
-and `SITE_URL` (`http://localhost:3010` for local dev).
+Better Auth runs inside your Convex deployment, not in the Next.js server —
+it does **not** read `.env.local`. Set the same two values on the
+deployment itself:
+
+```bash
+npx convex env set SITE_URL http://localhost:3010
+npx convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
+```
+
+Skipping this step is the most common cause of a `403` on your first sign-in
+attempt.
 
 ### 4. Run the dev servers
 

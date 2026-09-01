@@ -16,6 +16,14 @@ import path from 'path';
 import type { ProjectOptions, PackageManager } from './types.js';
 import { copyTemplate, overlayTemplate } from '../helpers/fileOperations.js';
 import { readWorkspaceCatalog, rewriteManifestForMonorepo } from '../helpers/monorepo.js';
+import {
+  stripOrgFromGetAuthCall,
+  stripOrgFromAuthApi,
+  stripOrgFromAccess,
+  stripOrgFromAuthContext,
+  stripOrgFromHasPermission,
+  stripOrgFromDbConstants,
+} from './string-utils.js';
 
 /**
  * Abstract base class for framework-specific installers
@@ -341,33 +349,89 @@ export abstract class VexFrameworkInstaller {
 
   /**
    * Configure the Better Auth organizations plugin.
-   * When enabled, replaces placeholders with organization import and plugin.
-   * When disabled, removes the placeholder lines.
+   * When enabled, replaces placeholders with organization import and plugin,
+   * and leaves every org-aware file (`createGetAuth` call sites, `access.ts`,
+   * `AuthContext.tsx`, `hasPermission.ts`, `convex/auth/api.ts`,
+   * `db/constants/index.ts`) untouched.
+   * When disabled, removes the placeholder lines AND strips organization
+   * wiring from those same files down to the org-free shape — the
+   * templates ship org-enabled by default (so `--orgs` needs no surgery),
+   * so the default (orgs-declined) path has to actively cut it.
    *
-   * @param enabled - Whether the organizations (multi-tenant) plugin should be wired into `convex/auth/plugins/index.ts`.
+   * @param enabled - Whether the organizations (multi-tenant) plugin should stay wired.
    */
   protected async configureOrganizations(enabled: boolean): Promise<void> {
     const pluginsPath = path.join(this.targetPath, 'convex/auth/plugins/index.ts');
 
-    if (!await fs.pathExists(pluginsPath)) return;
+    if (await fs.pathExists(pluginsPath)) {
+      let content = await fs.readFile(pluginsPath, 'utf-8');
 
-    let content = await fs.readFile(pluginsPath, 'utf-8');
+      if (enabled) {
+        content = content.replace(
+          '// {{ORGANIZATIONS_IMPORT}}',
+          'import { organization } from "better-auth/plugins"'
+        );
+        content = content.replace(
+          '  // {{ORGANIZATIONS_PLUGIN}}',
+          '  organization(),'
+        );
+      } else {
+        content = content.replace(/.*\/\/ \{\{ORGANIZATIONS_IMPORT\}\}\n?/, '');
+        content = content.replace(/.*\/\/ \{\{ORGANIZATIONS_PLUGIN\}\}\n?/, '');
+      }
 
-    if (enabled) {
-      content = content.replace(
-        '// {{ORGANIZATIONS_IMPORT}}',
-        'import { organization } from "better-auth/plugins"'
-      );
-      content = content.replace(
-        '  // {{ORGANIZATIONS_PLUGIN}}',
-        '  organization(),'
-      );
-    } else {
-      content = content.replace(/.*\/\/ \{\{ORGANIZATIONS_IMPORT\}\}\n?/, '');
-      content = content.replace(/.*\/\/ \{\{ORGANIZATIONS_PLUGIN\}\}\n?/, '');
+      await fs.writeFile(pluginsPath, content);
     }
 
-    await fs.writeFile(pluginsPath, content);
+    if (!enabled) {
+      await this.stripOrganizationWiring();
+    }
+  }
+
+  /**
+   * Rewrites every scaffolded file that references organizations down to
+   * its org-free shape. Called by `configureOrganizations(false)` — the
+   * `--orgs`-declined default. Templates ship org-ENABLED (so `--orgs`
+   * requires no surgery); this is what makes the default scaffold buildable
+   * once the generated registry drops org tables on the first `vex dev`
+   * regen. Every transform throws loudly when its expected pattern is
+   * missing (template drift), rather than silently no-opping.
+   *
+   * `src/vexcms/api.ts` only exists in full (marketing-site overlay)
+   * scaffolds — skipped, not required, for `--bare`.
+   */
+  protected async stripOrganizationWiring(): Promise<void> {
+    const requiredFiles: Array<{
+      rel: string;
+      transform: (filePath: string, content: string) => string;
+    }> = [
+      { rel: 'convex/vex.ts', transform: stripOrgFromGetAuthCall },
+      { rel: 'convex/vex/globals.ts', transform: stripOrgFromGetAuthCall },
+      { rel: 'convex/vex/media.ts', transform: stripOrgFromGetAuthCall },
+      { rel: 'convex/auth/api.ts', transform: stripOrgFromAuthApi },
+      { rel: 'src/auth/access.ts', transform: stripOrgFromAccess },
+      { rel: 'src/context/AuthContext.tsx', transform: stripOrgFromAuthContext },
+      { rel: 'src/auth/hasPermission.ts', transform: stripOrgFromHasPermission },
+      { rel: 'src/db/constants/index.ts', transform: stripOrgFromDbConstants },
+    ];
+
+    for (const file of requiredFiles) {
+      const filePath = path.join(this.targetPath, file.rel);
+      if (!(await fs.pathExists(filePath))) {
+        throw new Error(
+          `configureOrganizations: required file "${file.rel}" is missing from the scaffold — template drift?`
+        );
+      }
+      const content = await fs.readFile(filePath, 'utf-8');
+      await fs.writeFile(filePath, file.transform(filePath, content));
+    }
+
+    // Full scaffolds only — the marketing-site overlay adds this file.
+    const apiPath = path.join(this.targetPath, 'src/vexcms/api.ts');
+    if (await fs.pathExists(apiPath)) {
+      const content = await fs.readFile(apiPath, 'utf-8');
+      await fs.writeFile(apiPath, stripOrgFromGetAuthCall(apiPath, content));
+    }
   }
 
   /**

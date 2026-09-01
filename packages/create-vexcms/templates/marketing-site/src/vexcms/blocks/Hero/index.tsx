@@ -2,34 +2,15 @@
 
 import type { BlockComponentProps } from "@vexcms/react"
 
+import { buttonVariants, cn } from "@vexcms/react"
 import { ArrowRight } from "lucide-react"
 import Link from "next/link"
-import { buttonVariants, cn } from "@vexcms/react"
 
-import { AnimatedGroup } from "~/components/motion-primitives/animated-group"
+import { AnimatedGroup, AnimatedItem } from "~/components/motion-primitives/animated-group"
 import { TextEffect } from "~/components/motion-primitives/text-effect"
 
 export { heroBlock } from "./config"
 
-const transitionVariants = {
-  item: {
-    hidden: {
-      filter: "blur(12px)",
-      opacity: 0,
-      y: 12,
-    },
-    visible: {
-      filter: "blur(0px)",
-      opacity: 1,
-      transition: {
-        type: "spring",
-        bounce: 0.3,
-        duration: 1.5,
-      },
-      y: 0,
-    },
-  },
-}
 
 export default function HeroBlock({ block }: BlockComponentProps) {
   const {
@@ -59,10 +40,7 @@ export default function HeroBlock({ block }: BlockComponentProps) {
           <div className="mx-auto max-w-7xl px-6">
             <div className="text-center sm:mx-auto lg:mr-auto">
               {badgeText && badgeLink && (
-                <AnimatedGroup
-                  // @ts-expect-error motion-primitives Variants type is stricter than the local transitionVariants shape
-                  variants={transitionVariants}
-                >
+                <AnimatedItem>
                   <Link
                     className="hover:bg-background dark:hover:border-t-border bg-muted group mx-auto flex w-fit items-center gap-4 rounded-full border p-1 pl-4 shadow-md shadow-zinc-950/5 transition-colors duration-300 dark:border-t-white/5 dark:shadow-zinc-950"
                     href={badgeLink}
@@ -80,14 +58,12 @@ export default function HeroBlock({ block }: BlockComponentProps) {
                       </div>
                     </div>
                   </Link>
-                </AnimatedGroup>
+                </AnimatedItem>
               )}
 
               <TextEffect
                 as="h1"
                 className="mt-8 text-6xl text-balance md:text-7xl lg:mt-16 xl:text-[5.25rem]"
-                preset="fade-in-blur"
-                speedSegment={0.3}
               >
                 {heading ?? ""}
               </TextEffect>
@@ -96,39 +72,29 @@ export default function HeroBlock({ block }: BlockComponentProps) {
                 className="mx-auto mt-8 max-w-2xl text-lg text-balance text-muted-foreground"
                 delay={0.5}
                 per="line"
-                preset="fade-in-blur"
-                speedSegment={0.3}
               >
                 {subheading ?? ""}
               </TextEffect>
 
               <AnimatedGroup
                 className="mt-12 flex flex-col items-center justify-center gap-2 md:flex-row"
-                // @ts-expect-error motion-primitives Variants type is stricter than the local transitionVariants shape
-                variants={{
-                  container: {
-                    visible: {
-                      transition: {
-                        delayChildren: 0.75,
-                        staggerChildren: 0.05,
-                      },
-                    },
-                  },
-                  ...transitionVariants,
-                }}
+                delay={0.75}
               >
                 <div className="bg-foreground/10 rounded-[calc(var(--radius-xl)+0.125rem)] border p-0.5">
                   <Link
-                    href={primaryCtaHref ?? "/"}
                     className={cn(buttonVariants({ size: "lg" }), "rounded-xl px-5 text-base")}
+                    href={primaryCtaHref ?? "/"}
                   >
                     <span className="text-nowrap">{primaryCtaLabel}</span>
                   </Link>
                 </div>
                 {secondaryCtaLabel && (
                   <Link
+                    className={cn(
+                      buttonVariants({ variant: "ghost", size: "lg" }),
+                      "h-10.5 rounded-xl px-5"
+                    )}
                     href={secondaryCtaHref ?? "/"}
-                    className={cn(buttonVariants({ variant: "ghost", size: "lg" }), "h-10.5 rounded-xl px-5")}
                   >
                     <span className="text-nowrap">{secondaryCtaLabel}</span>
                   </Link>

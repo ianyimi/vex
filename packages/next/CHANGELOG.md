@@ -1,5 +1,12 @@
 # @vexcms/admin-next
 
+## 0.1.0-alpha.3
+
+### Patch Changes
+
+- @vexcms/react@0.1.0-alpha.3
+- @vexcms/core@0.1.0-alpha.3
+
 ## 0.1.0-alpha.2
 
 ### Minor Changes

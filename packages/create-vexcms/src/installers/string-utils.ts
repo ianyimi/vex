@@ -517,3 +517,311 @@ export function getProvidersRequiringExtraConfig(
     })
     .filter(provider => provider.requiresExtraConfig === true);
 }
+
+/**
+ * Asserts `oldBlock` is present in `content`, then replaces it with
+ * `newBlock`. Throws instead of silently no-opping when the template has
+ * drifted from the pattern this transform expects — org-declined scaffolds
+ * must never ship with stale organization wiring because a marker moved.
+ *
+ * @param filePath - Absolute path, used only for the thrown error message.
+ * @param content - File contents to transform.
+ * @param oldBlock - Exact substring expected to exist in `content`.
+ * @param newBlock - Replacement substring.
+ * @param label - Short description of the pattern, used in the error message.
+ * @returns `content` with the first occurrence of `oldBlock` replaced.
+ */
+function assertAndReplace(
+  filePath: string,
+  content: string,
+  oldBlock: string,
+  newBlock: string,
+  label: string
+): string {
+  if (!content.includes(oldBlock)) {
+    throw new Error(
+      `configureOrganizations: expected pattern "${label}" not found in ${filePath} — template drift?`
+    );
+  }
+  return content.replace(oldBlock, newBlock);
+}
+
+/**
+ * Strips organization wiring from a `createGetAuth({...})` call site —
+ * `convex/vex.ts`, `convex/vex/globals.ts`, `convex/vex/media.ts`, and (full
+ * scaffolds only) `src/vexcms/api.ts` all share this exact shape: an
+ * `orgCollectionSlug: TABLE_SLUG_ORGANIZATIONS,` prop, a `resolveOrgs: true,`
+ * flag, and `TABLE_SLUG_ORGANIZATIONS` in the `~/db/constants` import.
+ * Removes the prop and the import entirely (no placeholder — `getAuth.ts`'s
+ * `orgCollectionSlug` is optional) and flips `resolveOrgs` to `false`.
+ *
+ * @param filePath - Absolute path, used only for thrown error messages.
+ * @param content - File contents to transform.
+ * @returns The transformed content with every org reference removed.
+ */
+export function stripOrgFromGetAuthCall(filePath: string, content: string): string {
+  const importPattern =
+    /import \{ TABLE_SLUG_ORGANIZATIONS, TABLE_SLUG_SESSIONS, TABLE_SLUG_USERS \} from "~\/db\/constants";?/;
+  const importMatch = content.match(importPattern);
+  if (!importMatch) {
+    throw new Error(
+      `configureOrganizations: expected the TABLE_SLUG_ORGANIZATIONS db/constants import in ${filePath} — template drift?`
+    );
+  }
+
+  let result = assertAndReplace(
+    filePath,
+    content,
+    importMatch[0],
+    importMatch[0].replace('TABLE_SLUG_ORGANIZATIONS, ', ''),
+    'TABLE_SLUG_ORGANIZATIONS db/constants import'
+  );
+
+  const orgPropPattern = /\n[ \t]*orgCollectionSlug: TABLE_SLUG_ORGANIZATIONS,/;
+  const orgPropMatch = result.match(orgPropPattern);
+  if (!orgPropMatch) {
+    throw new Error(
+      `configureOrganizations: expected an "orgCollectionSlug: TABLE_SLUG_ORGANIZATIONS," line in ${filePath} — template drift?`
+    );
+  }
+  result = assertAndReplace(filePath, result, orgPropMatch[0], '', 'orgCollectionSlug prop');
+
+  result = assertAndReplace(
+    filePath,
+    result,
+    'resolveOrgs: true,',
+    'resolveOrgs: false,',
+    'resolveOrgs: true'
+  );
+
+  return result;
+}
+
+/**
+ * Simplifies `convex/auth/api.ts`'s `getUserOrg` query for org-declined
+ * scaffolds: drops the `noOrgs` arg, the organization lookup, and the now
+ * unused `OrganizationID`/`TABLE_SLUG_ORGANIZATIONS`/`convex/values` imports.
+ *
+ * @param filePath - Absolute path, used only for thrown error messages.
+ * @param content - File contents to transform.
+ * @returns The transformed content with organization resolution removed.
+ */
+export function stripOrgFromAuthApi(filePath: string, content: string): string {
+  let result = assertAndReplace(
+    filePath,
+    content,
+    'import { get } from "@vexcms/core/server";\n' +
+      'import { v } from "convex/values";\n' +
+      '\n' +
+      'import {\n' +
+      '  type OrganizationID,\n' +
+      '  type SessionID,\n' +
+      '  TABLE_SLUG_ORGANIZATIONS,\n' +
+      '  TABLE_SLUG_SESSIONS,\n' +
+      '  TABLE_SLUG_USERS,\n' +
+      '  type UserID,\n' +
+      '} from "~/db/constants";',
+    'import { get } from "@vexcms/core/server";\n' +
+      '\n' +
+      'import { type SessionID, TABLE_SLUG_SESSIONS, TABLE_SLUG_USERS, type UserID } from "~/db/constants";',
+    'auth/api.ts imports'
+  );
+
+  result = assertAndReplace(
+    filePath,
+    result,
+    'export const getUserOrg = query({\n' +
+      '  args: {\n' +
+      '    noOrgs: v.optional(v.boolean()),\n' +
+      '  },\n' +
+      '  handler: async (ctx, args) => {\n' +
+      '    const empty = { user: null, organization: undefined };\n' +
+      '    const identity = await ctx.auth.getUserIdentity();\n' +
+      '    if (!identity) {\n' +
+      '      return empty;\n' +
+      '    }\n' +
+      '    const session = await get({\n' +
+      '      ctx,\n' +
+      '      id: identity.sessionId as SessionID,\n' +
+      '      collection: TABLE_SLUG_SESSIONS,\n' +
+      '    });\n' +
+      '    if (!session) {\n' +
+      '      return empty;\n' +
+      '    }\n' +
+      '    const user = await get({ ctx, id: identity.subject as UserID, collection: TABLE_SLUG_USERS });\n' +
+      '    if (!user) {\n' +
+      '      return empty;\n' +
+      '    }\n' +
+      '    if (!session.activeOrganizationId || args.noOrgs) {\n' +
+      '      return { user, organization: undefined };\n' +
+      '    }\n' +
+      '    const organization = await get({\n' +
+      '      ctx,\n' +
+      '      id: session.activeOrganizationId as OrganizationID,\n' +
+      '      collection: TABLE_SLUG_ORGANIZATIONS,\n' +
+      '    });\n' +
+      '    return { user, organization: organization ?? undefined };\n' +
+      '  },\n' +
+      '});',
+    'export const getUserOrg = query({\n' +
+      '  args: {},\n' +
+      '  handler: async (ctx) => {\n' +
+      '    const empty = { user: null, organization: undefined };\n' +
+      '    const identity = await ctx.auth.getUserIdentity();\n' +
+      '    if (!identity) {\n' +
+      '      return empty;\n' +
+      '    }\n' +
+      '    const session = await get({\n' +
+      '      ctx,\n' +
+      '      id: identity.sessionId as SessionID,\n' +
+      '      collection: TABLE_SLUG_SESSIONS,\n' +
+      '    });\n' +
+      '    if (!session) {\n' +
+      '      return empty;\n' +
+      '    }\n' +
+      '    const user = await get({ ctx, id: identity.subject as UserID, collection: TABLE_SLUG_USERS });\n' +
+      '    if (!user) {\n' +
+      '      return empty;\n' +
+      '    }\n' +
+      '    return { user, organization: undefined };\n' +
+      '  },\n' +
+      '});',
+    'auth/api.ts getUserOrg body'
+  );
+
+  return result;
+}
+
+/**
+ * Drops `orgCollectionSlug` and its `TABLE_SLUG_ORGANIZATIONS` import from
+ * `src/auth/access.ts`'s `defineAccess` config.
+ *
+ * @param filePath - Absolute path, used only for thrown error messages.
+ * @param content - File contents to transform.
+ * @returns The transformed content with the org resource slug removed.
+ */
+export function stripOrgFromAccess(filePath: string, content: string): string {
+  let result = assertAndReplace(
+    filePath,
+    content,
+    'import {\n' +
+      '  TABLE_SLUG_ORGANIZATIONS,\n' +
+      '  TABLE_SLUG_USERS,\n' +
+      '  USER_ROLES,\n' +
+      '} from "~/db/constants"',
+    'import { TABLE_SLUG_USERS, USER_ROLES } from "~/db/constants"',
+    'access.ts db/constants import'
+  );
+
+  result = assertAndReplace(
+    filePath,
+    result,
+    '\n  orgCollectionSlug: TABLE_SLUG_ORGANIZATIONS,',
+    '',
+    'access.ts orgCollectionSlug prop'
+  );
+
+  return result;
+}
+
+/**
+ * Drops the `organization`/`OrganizationDoc` surface from
+ * `src/context/AuthContext.tsx` — `CurrentAuth`, `AuthProvider`'s `value`
+ * prop, and the `~/db/constants` import all carry it.
+ *
+ * @param filePath - Absolute path, used only for thrown error messages.
+ * @param content - File contents to transform.
+ * @returns The transformed content with the organization field removed.
+ */
+export function stripOrgFromAuthContext(filePath: string, content: string): string {
+  let result = assertAndReplace(
+    filePath,
+    content,
+    'import { type OrganizationDoc, type UserDoc } from "~/db/constants";',
+    'import { type UserDoc } from "~/db/constants";',
+    'AuthContext.tsx db/constants import'
+  );
+
+  result = assertAndReplace(
+    filePath,
+    result,
+    'export interface CurrentAuth {\n' +
+      '  organization?: OrganizationDoc;\n' +
+      '  user: null | UserDoc; // null → unauthenticated → no roles → deny\n' +
+      '}',
+    'export interface CurrentAuth {\n' +
+      '  user: null | UserDoc; // null → unauthenticated → no roles → deny\n' +
+      '}',
+    'AuthContext.tsx CurrentAuth interface'
+  );
+
+  result = assertAndReplace(
+    filePath,
+    result,
+    '  value: {\n' +
+      '    organization?: OrganizationDoc;\n' +
+      '    user: null | UserDoc; // null → unauthenticated → no roles → deny\n' +
+      '  };',
+    '  value: {\n' + '    user: null | UserDoc; // null → unauthenticated → no roles → deny\n' + '  };',
+    'AuthContext.tsx AuthProvider value prop'
+  );
+
+  result = assertAndReplace(
+    filePath,
+    result,
+    '/** @returns the current caller `{ user, organization }` from the server layout. */',
+    '/** @returns the current caller `{ user }` from the server layout. */',
+    'AuthContext.tsx useAuth JSDoc'
+  );
+
+  return result;
+}
+
+/**
+ * Drops `organization` from `src/auth/hasPermission.ts`'s `useAuth()`
+ * destructure and the `hasPermissionCore` call it feeds.
+ *
+ * @param filePath - Absolute path, used only for thrown error messages.
+ * @param content - File contents to transform.
+ * @returns The transformed content with the organization argument removed.
+ */
+export function stripOrgFromHasPermission(filePath: string, content: string): string {
+  return assertAndReplace(
+    filePath,
+    content,
+    '  const { user, organization } = useAuth();\n' +
+      '  return hasPermissionCore({\n' +
+      '    access,\n' +
+      '    user,\n' +
+      '    organization,\n' +
+      '    ...props,\n' +
+      '  });',
+    '  const { user } = useAuth();\n' +
+      '  return hasPermissionCore({\n' +
+      '    access,\n' +
+      '    user,\n' +
+      '    ...props,\n' +
+      '  });',
+    'hasPermission.ts useAuth destructure + hasPermissionCore call'
+  );
+}
+
+/**
+ * Drops the `TABLE_SLUG_ORGANIZATIONS`/`OrganizationDoc`/`OrganizationID`
+ * block from `src/db/constants/index.ts`.
+ *
+ * @param filePath - Absolute path, used only for thrown error messages.
+ * @param content - File contents to transform.
+ * @returns The transformed content with the organization table removed.
+ */
+export function stripOrgFromDbConstants(filePath: string, content: string): string {
+  return assertAndReplace(
+    filePath,
+    content,
+    '\nexport const TABLE_SLUG_ORGANIZATIONS = "organization" as const\n' +
+      'export type OrganizationDoc = Doc<typeof TABLE_SLUG_ORGANIZATIONS>\n' +
+      'export type OrganizationID = Id<typeof TABLE_SLUG_ORGANIZATIONS>\n',
+    '',
+    'db/constants/index.ts organization table block'
+  );
+}

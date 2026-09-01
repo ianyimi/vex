@@ -8,16 +8,16 @@
     "allowSyntheticDefaultImports": true,
     "target": "ESNext",
     "lib": ["ES2023", "dom", "dom.iterable"],
+    "types": ["node"],
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "isolatedModules": true,
     "noEmit": true,
-    "baseUrl": ".",
     "paths": {
       "~/*": ["../src/*"],
       "@convex/*": ["./*"]
     }
   },
-  "include": ["./**/*"],
+  "include": ["./**/*", "../src/vex.types.ts"],
   "exclude": ["./_generated"]
 }

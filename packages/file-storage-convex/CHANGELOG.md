@@ -1,5 +1,7 @@
 # @vexcms/file-storage-convex
 
+## 0.1.0-alpha.3
+
 ## 0.1.0-alpha.2
 
 ### Patch Changes

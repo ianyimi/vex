@@ -227,6 +227,14 @@ export function createResolver(configPath: string) {
  * This function reads the existing file, adds the required paths if missing,
  * and writes it back.
  *
+ * Never injects `baseUrl` — it's deprecated in TypeScript 6/7 and errors
+ * under `moduleResolution: "Bundler"`; a `baseUrl` of exactly `"."` left
+ * over from an older scaffold is actively deleted (self-heal). Also
+ * ensures `../src/vex.types.ts` is listed in `include` — Convex rewrites
+ * this file on every provisioning pass and would otherwise drop it,
+ * making the project's `GeneratedVexTypes` module augmentation invisible
+ * to the convex program.
+ *
  * Call this after starting Convex dev to ensure the bundler can resolve
  * `~/...` and `@convex/...` imports in Convex function files.
  * @param cwd - Project directory containing the `convex` folder.
@@ -242,9 +250,11 @@ export function patchConvexTsconfig(cwd: string): void {
     const compilerOptions = tsconfig.compilerOptions ?? {};
     let changed = false;
 
-    // Ensure baseUrl
-    if (!compilerOptions.baseUrl) {
-      compilerOptions.baseUrl = ".";
+    // Self-heal: baseUrl is deprecated in TS6/7 and was never required —
+    // paths below resolve fine without it. Only drop the exact value this
+    // patcher used to inject, never a user's deliberate custom baseUrl.
+    if (compilerOptions.baseUrl === ".") {
+      delete compilerOptions.baseUrl;
       changed = true;
     }
 
@@ -265,6 +275,15 @@ export function patchConvexTsconfig(cwd: string): void {
     if (!lib.includes("dom.iterable")) {
       lib.push("dom.iterable");
       compilerOptions.lib = lib;
+      changed = true;
+    }
+
+    // Ensure the generated vex.types.ts augmentation is part of the convex
+    // program — Convex rewrites `include` on every provisioning pass.
+    const include: string[] = tsconfig.include ?? [];
+    if (!include.includes("../src/vex.types.ts")) {
+      include.push("../src/vex.types.ts");
+      tsconfig.include = include;
       changed = true;
     }
 

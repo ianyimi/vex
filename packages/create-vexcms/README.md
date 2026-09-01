@@ -114,9 +114,17 @@ replacing the generated placeholder values so the app stops pointing at
 
 The installer writes `.env.local` with a generated `BETTER_AUTH_SECRET`,
 `NEXT_PUBLIC_SITE_URL`, and `SITE_URL` already filled in — only the two Convex URLs above need
-replacing for local dev. In the [Convex Dashboard](https://dashboard.convex.dev), add
-`BETTER_AUTH_SECRET` and `SITE_URL` under **Settings → Environment Variables** using the same
-values so server-side auth checks and email links resolve correctly.
+replacing for local dev.
+
+Better Auth runs *inside* the Convex deployment, not the Next.js server, so it never reads
+`.env.local`. Push the same two values to the deployment itself:
+
+```bash
+npx convex env set SITE_URL http://localhost:3010
+npx convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
+```
+
+Skipping this step is the most common cause of a `403` on the first sign-in attempt.
 
 ### 3. Run the dev servers
 

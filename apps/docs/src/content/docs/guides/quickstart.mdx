@@ -30,6 +30,16 @@ The first run links or creates your Convex deployment and prints your real
 replacing the scaffolded `https://placeholder.convex.cloud` / `.convex.site` placeholders, then
 stop the process.
 
+Better Auth runs inside the Convex deployment, not the Next.js server, so it never reads
+`.env.local`. Push the same `SITE_URL` and `BETTER_AUTH_SECRET` values to the deployment itself:
+
+```bash
+npx convex env set SITE_URL http://localhost:3010
+npx convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
+```
+
+Skipping this step is the most common cause of a `403` on your first sign-in attempt.
+
 ## Run the dev servers
 
 ```bash
