@@ -110,7 +110,10 @@ export function MediaUploadForm({
         const createdIds = await Promise.all(
           files.map(async (fileData) => {
             // 1. Generate upload URL
-            const { url } = await generateUploadUrl({ adapter: adapterName });
+            const { url } = await generateUploadUrl({
+              adapter: adapterName,
+              collection: collectionConfig.slug,
+            });
 
             // 2. Upload file to Convex storage
             const uploadResponse = await fetch(url, {

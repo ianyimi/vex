@@ -32,7 +32,7 @@ export const footerBlock = defineBlock({
         { label: "Pricing", href: "/pricing" },
         { label: "Roadmap", href: "/roadmap" },
         { label: "Documentation", href: "/docs" },
-        { label: "GitHub", href: "https://github.com/vexcms/vex" },
+        { label: "GitHub", href: "https://github.com/ianyimi/vex" },
         { label: "npm", href: "https://www.npmjs.com/package/@vexcms/core" },
         { label: "Convex", href: "https://convex.dev" },
       ],
@@ -50,7 +50,7 @@ export const footerBlock = defineBlock({
         },
       }),
       defaultValue: [
-        { platform: "GitHub", href: "https://github.com/vexcms/vex", icon: "Github" },
+        { platform: "GitHub", href: "https://github.com/ianyimi/vex", icon: "Github" },
         { platform: "X", href: "https://x.com/vexcms", icon: "Twitter" },
       ],
     }),

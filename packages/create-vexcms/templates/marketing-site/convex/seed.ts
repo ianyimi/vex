@@ -7,6 +7,13 @@ import {
   TABLE_SLUG_PAGES,
   TABLE_SLUG_THEMES,
 } from "~/db/constants"
+import {
+  BLOCK_SLUG_CTA,
+  BLOCK_SLUG_FAQ,
+  BLOCK_SLUG_FEATURES,
+  BLOCK_SLUG_HOW_IT_WORKS,
+  BLOCK_SLUG_ROADMAP,
+} from "~/vexcms/blocks/constants"
 import config from "~/vex.config"
 
 import { internalMutation } from "./_generated/server"
@@ -391,7 +398,7 @@ export const init = internalMutation({
               { label: "Docs", href: "/docs" },
             ],
             actionButtons: [
-              { label: "GitHub", href: "https://github.com/vexcms/vex", variant: ["ghost"] },
+              { label: "GitHub", href: "https://github.com/ianyimi/vex", variant: ["ghost"] },
               { label: "Get Started", href: "/docs", variant: ["default"] },
             ],
           },
@@ -421,7 +428,7 @@ export const init = internalMutation({
               { label: "Roadmap", href: "/roadmap" },
               { label: "Documentation", href: "/docs" },
             ],
-            socialLinks: [{ platform: "GitHub", href: "https://github.com/vexcms/vex", icon: "Github" }],
+            socialLinks: [{ platform: "GitHub", href: "https://github.com/ianyimi/vex", icon: "Github" }],
           },
         ],
       })
@@ -443,7 +450,7 @@ export const init = internalMutation({
             blockType: "hero",
             blockName: "Hero",
             id: "home-hero",
-            badgeText: "Now in public beta",
+            badgeText: "Now in public alpha",
             badgeLink: "/docs",
             heading: "The CMS built for Convex",
             subheading:
@@ -451,7 +458,7 @@ export const init = internalMutation({
             primaryCtaLabel: "Get Started",
             primaryCtaHref: "/docs",
             secondaryCtaLabel: "View on GitHub",
-            secondaryCtaHref: "https://github.com/vexcms/vex",
+            secondaryCtaHref: "https://github.com/ianyimi/vex",
           },
           {
             blockType: "features",
@@ -598,7 +605,7 @@ export const init = internalMutation({
             id: "home-faq",
             heading: "Frequently Asked Questions",
             subheading: "Everything you need to know about Vex CMS and building with Convex.",
-            supportLink: "https://github.com/vexcms/vex/issues",
+            supportLink: "https://github.com/ianyimi/vex/issues",
             items: [
               {
                 question: "What is Vex CMS?",
@@ -635,12 +642,246 @@ export const init = internalMutation({
             subheading: "Get started in minutes with create-vexcms. Real-time content management powered by Convex.",
             actions: [
               { label: "Get Started", href: "/docs" },
-              { label: "View on GitHub", href: "https://github.com/vexcms/vex" },
+              { label: "View on GitHub", href: "https://github.com/ianyimi/vex" },
             ],
           },
         ],
       })
       created.push("page:home")
+    }
+
+    const existingFeatures = await ctx.db
+      .query(TABLE_SLUG_PAGES)
+      .withIndex("by_slug", (q) => q.eq("slug", "features"))
+      .first()
+    if (existingFeatures) {
+      skipped.push("page:features")
+    } else {
+      await ctx.db.insert(TABLE_SLUG_PAGES, {
+        title: "Features",
+        slug: "features",
+        blocks: [
+          {
+            blockType: BLOCK_SLUG_FEATURES,
+            blockName: "Features",
+            id: "features-features",
+            heading: "Everything you need to manage content",
+            subheading:
+              "Built on Convex's real-time infrastructure with a developer experience that doesn't compromise on power.",
+            features: [
+              {
+                title: "Real-Time by Default",
+                description:
+                  "Every query is live. Content updates appear instantly across all connected clients — no polling, no webhooks.",
+                icon: "Zap",
+              },
+              {
+                title: "Type-Safe Schemas",
+                description:
+                  "Define your collections with TypeScript. Vex generates Convex schemas, Zod validators, and typed queries automatically.",
+                icon: "Shield",
+              },
+              {
+                title: "Developer First",
+                description:
+                  "Code-first configuration, CLI tooling, and a clean API. Build with the tools you already know and love.",
+                icon: "Code",
+              },
+            ],
+          },
+          {
+            blockType: BLOCK_SLUG_HOW_IT_WORKS,
+            blockName: "How It Works",
+            id: "features-how-it-works",
+            heading: "Get started in minutes",
+            subheading:
+              "From zero to a fully functional CMS in four steps. No boilerplate, no config files to wrestle with.",
+            steps: [
+              {
+                icon: "Terminal",
+                title: "Scaffold your project",
+                description:
+                  "Run npx create-vexcms@latest to get a Next.js app with Convex, authentication, and the admin panel pre-configured.",
+              },
+              {
+                icon: "Code",
+                title: "Define your schema",
+                description:
+                  "Use defineCollection() and field helpers to declare your content model in TypeScript. Vex generates your Convex schema, types, and queries automatically.",
+              },
+              {
+                icon: "LayoutGrid",
+                title: "Build with blocks",
+                description:
+                  "Compose pages from reusable content blocks. Each block is a React component with a typed config — drag, drop, and edit inline from the admin panel.",
+              },
+              {
+                icon: "Rocket",
+                title: "Deploy and go live",
+                description:
+                  "Push to Convex and deploy your Next.js app. Real-time content updates flow to every connected client instantly — no cache invalidation needed.",
+              },
+            ],
+          },
+          {
+            blockType: BLOCK_SLUG_CTA,
+            blockName: "CTA",
+            id: "features-cta",
+            heading: "Ready to build with Vex CMS?",
+            subheading:
+              "Get started in minutes with create-vexcms. Real-time content management powered by Convex.",
+            actions: [
+              { label: "Get Started", href: "/docs" },
+              { label: "View on GitHub", href: "https://github.com/ianyimi/vex" },
+            ],
+          },
+        ],
+      })
+      created.push("page:features")
+    }
+
+    const existingRoadmapPage = await ctx.db
+      .query(TABLE_SLUG_PAGES)
+      .withIndex("by_slug", (q) => q.eq("slug", "roadmap"))
+      .first()
+    if (existingRoadmapPage) {
+      skipped.push("page:roadmap")
+    } else {
+      await ctx.db.insert(TABLE_SLUG_PAGES, {
+        title: "Roadmap",
+        slug: "roadmap",
+        blocks: [
+          {
+            blockType: BLOCK_SLUG_ROADMAP,
+            blockName: "Roadmap",
+            id: "roadmap-roadmap",
+            heading: "Roadmap",
+            subheading:
+              "What we've shipped and what's coming next. Vex CMS is actively developed — here's where we're headed.",
+            items: [
+              {
+                feature: "12 Field Types",
+                description:
+                  "text, url, color, number, checkbox, date, select, relationship, array, group, blocks, and upload — no richtext, json, or tabs yet.",
+                status: ["shipped"],
+              },
+              {
+                feature: "Convex Schema Codegen",
+                description:
+                  "vex dev / vex generate write your Convex schema, TypeScript types, and Zod validators from defineCollection() — no hand-written schema.ts.",
+                status: ["shipped"],
+              },
+              {
+                feature: "Real-Time Admin Panel",
+                description:
+                  "DataTable with pagination, live totalDocs, and bulk operations — every list view is a Convex subscription.",
+                status: ["shipped"],
+              },
+              {
+                feature: "Media Library",
+                description:
+                  "Convex file storage adapter with a searchable, paginated media picker built into every upload field.",
+                status: ["shipped"],
+              },
+              {
+                feature: "RBAC & Access Control",
+                description:
+                  "Document-level access rules, indexed constraints that compile to withIndex ranges, per-call access.action/bypass overrides, and an anonRole fallback for public reads.",
+                status: ["shipped"],
+              },
+              {
+                feature: "Custom Theme System",
+                description:
+                  "Database-driven themes with light/dark mode, 32 shadcn tokens per mode, and OKLCH color support — live-updates with zero page reload.",
+                status: ["shipped"],
+              },
+              {
+                feature: "Better Auth Integration",
+                description:
+                  "Email/password and OAuth out of the box, with organizations and API keys as opt-in plugins.",
+                status: ["shipped"],
+              },
+              {
+                feature: "CLI & Scaffolder",
+                description:
+                  "vex dev, vex generate, and create-vexcms for instant project setup — bare or full marketing-site templates.",
+                status: ["shipped"],
+              },
+              {
+                feature: "Versioning & Drafts",
+                description: "Draft/publish workflow with live preview — in active development.",
+                status: ["coming-soon"],
+              },
+              {
+                feature: "Richtext, JSON, Email & Textarea Fields",
+                description:
+                  "Plate.js-powered rich text, plus structured JSON, email, and multi-line text inputs.",
+                status: ["planned"],
+              },
+              {
+                feature: "Form Builder & Lifecycle Hooks",
+                description:
+                  "Composable form fields beyond content editing, plus beforeChange/afterChange hooks for custom side effects.",
+                status: ["planned"],
+              },
+              {
+                feature: "Team Management & API Keys",
+                description:
+                  "Invite users, assign roles, and issue scoped read-only API tokens for external integrations.",
+                status: ["planned"],
+              },
+            ],
+          },
+          {
+            blockType: BLOCK_SLUG_FAQ,
+            blockName: "FAQ",
+            id: "roadmap-faq",
+            heading: "Frequently Asked Questions",
+            subheading: "Everything you need to know about Vex CMS and building with Convex.",
+            supportLink: "https://github.com/ianyimi/vex/issues",
+            items: [
+              {
+                question: "What is Vex CMS?",
+                answer:
+                  "Vex CMS is a headless content management system built on Convex. It provides real-time data, type-safe schemas, RBAC, and a beautiful admin panel — all configured with TypeScript.",
+              },
+              {
+                question: "How is Vex different from other headless CMS platforms?",
+                answer:
+                  "Vex is powered by Convex's real-time database, so content updates are instant across all clients — no polling, no webhooks. Your schema is defined in code, giving you full type safety from database to frontend.",
+              },
+              {
+                question: "Do I need to know Convex to use Vex CMS?",
+                answer:
+                  "Basic familiarity helps, but Vex handles most of the complexity for you. The CLI generates your Convex schema, queries, and types automatically from your collection definitions.",
+              },
+              {
+                question: "Is Vex CMS free?",
+                answer:
+                  "Yes — Vex CMS is open source and free to use. You only pay for your Convex usage, which has a generous free tier for most projects.",
+              },
+              {
+                question: "How do I get started?",
+                answer:
+                  "Run npx create-vexcms@latest to scaffold a new project with Vex CMS pre-configured — Next.js app, Convex backend, authentication, and admin panel in under a minute.",
+              },
+            ],
+          },
+          {
+            blockType: BLOCK_SLUG_CTA,
+            blockName: "CTA",
+            id: "roadmap-cta",
+            heading: "Ready to build with Vex CMS?",
+            subheading:
+              "Get started in minutes with create-vexcms. Real-time content management powered by Convex.",
+            actions: [
+              { label: "Get Started", href: "/docs" },
+              { label: "View on GitHub", href: "https://github.com/ianyimi/vex" },
+            ],
+          },
+        ],
+      })
+      created.push("page:roadmap")
     }
 
     return { created, skipped }

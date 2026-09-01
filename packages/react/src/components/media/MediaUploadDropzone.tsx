@@ -52,7 +52,10 @@ export function MediaUploadDropzone(props: MediaUploadDropzoneProps) {
       }
 
       // 1. Get upload URL from adapter
-      const { url } = await generateUploadUrl({ adapter: props.adapterName });
+      const { url } = await generateUploadUrl({
+        adapter: props.adapterName,
+        collection: props.targetCollection,
+      });
 
       const { storageId } = await adapterUploadFile(file, url);
 

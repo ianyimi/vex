@@ -1,38 +1,24 @@
 import type { ReactNode } from "react"
 
-import { fetchQuery } from "convex/nextjs"
+import { FirstAdminBootstrap } from "~/components/FirstAdminBootstrap"
 
-import { api } from "@convex/_generated/api"
-
-import { SiteFooter } from "~/components/SiteFooter"
-import { SiteHeader } from "~/components/SiteHeader"
-import { ThemeStyle } from "~/components/ThemeStyle"
-
-export default async function FrontendLayout({
+/**
+ * Frontend shell: first-admin bootstrap + the `@auth` parallel slot only.
+ * The marketing chrome (header/footer) lives in the nested `(site)` group so
+ * auth routes (`/auth/sign-in`, sign-up, …) render standalone — themed via
+ * the root layout, but without the site navigation wrapped around the form.
+ */
+export default function FrontendLayout({
   auth,
   children,
 }: Readonly<{
   auth: ReactNode
   children: ReactNode
 }>) {
-  let headerData: Record<string, unknown> | null = null
-  let footerData: Record<string, unknown> | null = null
-
-  try {
-    ;[headerData, footerData] = await Promise.all([
-      fetchQuery(api.headers.getFirst),
-      fetchQuery(api.footers.getFirst),
-    ])
-  } catch {
-    // Convex not available — fall back to client-only fetch
-  }
-
   return (
     <>
-      <ThemeStyle />
-      <SiteHeader initialData={headerData} />
-      <main>{children}</main>
-      <SiteFooter initialData={footerData} />
+      <FirstAdminBootstrap />
+      {children}
       {auth}
     </>
   )

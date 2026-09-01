@@ -8,7 +8,7 @@ export const heroBlock = defineBlock({
   fields: {
     badgeText: text({
       label: "Badge Text",
-      defaultValue: "Now in public beta",
+      defaultValue: "Now in public alpha",
       description: "Small text shown in the announcement badge",
     }),
     badgeLink: text({
@@ -42,7 +42,7 @@ export const heroBlock = defineBlock({
     }),
     secondaryCtaHref: text({
       label: "Secondary CTA Link",
-      defaultValue: "https://github.com/vexcms/vex",
+      defaultValue: "https://github.com/ianyimi/vex",
     }),
   },
   admin: {

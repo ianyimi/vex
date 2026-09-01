@@ -54,7 +54,7 @@ export const headerBlock = defineBlock({
         },
       }),
       defaultValue: [
-        { label: "GitHub", href: "https://github.com/vexcms/vex", variant: "ghost" },
+        { label: "GitHub", href: "https://github.com/ianyimi/vex", variant: "ghost" },
         { label: "Get Started", href: "/docs", variant: "default" },
       ],
     }),

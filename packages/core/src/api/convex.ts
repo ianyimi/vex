@@ -163,6 +163,7 @@ export interface VexRemoveArgs {
 export interface VexMediaGenerateUploadUrlArgs {
   [key: string]: unknown;
   adapter: string;
+  collection: string;
 }
 
 /** Return for `api.vex.media.generateUploadUrl`. */

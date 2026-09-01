@@ -7,6 +7,8 @@ import { Geist, Geist_Mono } from "next/font/google"
 
 import ClientProviders from "~/components/providers/client"
 import ServerProviders from "~/components/providers/server"
+import { ThemeLive } from "~/components/ThemeLive"
+import { ThemeStyle } from "~/components/ThemeStyle"
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -30,15 +32,25 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html className={`${geistSans.variable} ${geistMono.variable} antialiased`} lang="en" suppressHydrationWarning>
+    <html
+      className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      lang="en"
+      suppressHydrationWarning
+    >
       <head>
-        {/* Applies the persisted light/dark class before first paint —
-            without it the admin flashes light before the saved mode lands. */}
+        {/* ThemeScript applies the persisted light/dark class before first
+            paint (no flash); ThemeStyle server-renders the active site theme
+            once for the whole app — the admin layout re-emits its own scope
+            at higher specificity, so `siteSettings.adminTheme` opts out. */}
         <ThemeScript />
+        <ThemeStyle />
       </head>
       <body>
         <ServerProviders>
-          <ClientProviders>{children}</ClientProviders>
+          <ClientProviders>
+            <ThemeLive />
+            {children}
+          </ClientProviders>
         </ServerProviders>
       </body>
     </html>

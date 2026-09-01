@@ -137,7 +137,7 @@ function BlockPickerDialog(props: {
         </div>
         <div className="max-h-72 overflow-y-auto px-2 pb-3">
           {filtered.length === 0 ? (
-            <p className="text-muted-foreground py-6 text-center text-sm">No blocks found</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">No blocks found</p>
           ) : (
             <div className="space-y-0.5">
               {filtered.map((blockDef) => {
@@ -166,23 +166,23 @@ function BlockPickerDialog(props: {
                         )}
                       >
                         {isSelected && (
-                          <Icon name="Check" className="text-primary-foreground size-3" />
+                          <Icon name="Check" className="size-3 text-primary-foreground" />
                         )}
                       </div>
                     )}
-                    <div className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-sm">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-muted">
                       {blockDef.admin?.icon ? (
                         <Icon
                           name={blockDef.admin.icon as any}
-                          className="text-muted-foreground size-4"
+                          className="size-4 text-muted-foreground"
                         />
                       ) : (
-                        <LayersIcon className="text-muted-foreground size-4" />
+                        <LayersIcon className="size-4 text-muted-foreground" />
                       )}
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{blockDef.label}</p>
-                      <p className="text-muted-foreground truncate text-xs">
+                      <p className="truncate text-xs text-muted-foreground">
                         {blockDef.blockType}
                         {Object.keys(blockDef.fields).length > 0 &&
                           ` · ${Object.keys(blockDef.fields).length} field${
@@ -198,7 +198,7 @@ function BlockPickerDialog(props: {
         </div>
         {props.multiselect && selectedBlocks.size > 0 && (
           <div className="flex items-center justify-between border-t px-4 pt-2 pb-4">
-            <span className="text-muted-foreground text-sm">{selectedBlocks.size} selected</span>
+            <span className="text-sm text-muted-foreground">{selectedBlocks.size} selected</span>
             <Button onClick={handleAddBlocks} size="sm">
               Add {selectedBlocks.size} block{selectedBlocks.size === 1 ? "" : "s"}
             </Button>
@@ -296,9 +296,9 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
     <div className={cn("flex flex-col gap-3", className)}>
       {/* Empty state */}
       {items.length === 0 && (
-        <div className="border-border rounded-sm border-2 border-dashed py-8 text-center">
-          <LayersIcon className="text-muted-foreground mx-auto mb-2 size-8" />
-          <p className="text-muted-foreground text-sm">No {plural} yet.</p>
+        <div className="rounded-sm border-2 border-dashed border-border py-8 text-center">
+          <LayersIcon className="mx-auto mb-2 size-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No {plural} yet.</p>
         </div>
       )}
 
@@ -321,7 +321,7 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                 return (
                   <div
                     key={itemKey}
-                    className="border-destructive/40 text-destructive rounded-sm border px-3 py-2 text-sm"
+                    className="rounded-sm border border-destructive/40 px-3 py-2 text-sm text-destructive"
                   >
                     Unknown block type: <code>{blockSlug}</code>
                     <Button
@@ -354,16 +354,16 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                         Trigger, never nested inside it. @hello-pangea/dnd blocks drags
                         that start inside a <button> parent, so the DragHandle must live
                         outside AccordionPrimitive.Trigger. */}
-                    <AccordionPrimitive.Header className="bg-muted/40 flex items-center gap-2 px-3 py-2">
-                      <DragHandle disabled={!readOnly} />
-                      <AccordionPrimitive.Trigger className="group/accordion-trigger focus-visible:border-ring focus-visible:ring-ring/50 flex flex-1 items-center gap-2 rounded-md border border-transparent outline-none focus-visible:ring-3 aria-disabled:pointer-events-none aria-disabled:opacity-50">
+                    <AccordionPrimitive.Header className="flex items-center gap-2 bg-muted/40 px-3 py-2">
+                      <DragHandle disabled={readOnly} />
+                      <AccordionPrimitive.Trigger className="group/accordion-trigger flex flex-1 items-center gap-2 rounded-md border border-transparent outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:pointer-events-none aria-disabled:opacity-50">
                         {/* Order number */}
-                        <span className="text-muted-foreground w-4 shrink-0 text-center font-mono text-xs tabular-nums">
+                        <span className="w-4 shrink-0 text-center font-mono text-xs text-muted-foreground tabular-nums">
                           {index + 1}
                         </span>
                         {/* Type badge */}
                         <div className="shrink-0 p-0.5">
-                          <span className="text-muted-foreground bg-muted shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px]">
+                          <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
                             {blockDef.blockType}
                           </span>
                         </div>
@@ -375,12 +375,12 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                             onChange={(e) => updateBlockName(index, e.target.value)}
                             disabled={readOnly}
                             placeholder={blockDef.label ?? blockDef.blockType}
-                            className="placeholder:text-muted-foreground w-full truncate border-none bg-transparent p-0 text-sm font-medium outline-none focus:ring-0 disabled:opacity-50"
+                            className="w-full truncate border-none bg-transparent p-0 text-sm font-medium outline-none placeholder:text-muted-foreground focus:ring-0 disabled:opacity-50"
                             onClick={(e) => e.stopPropagation()}
                           />
                         </div>
-                        <ChevronDownIcon className="text-muted-foreground pointer-events-none ml-auto size-4 shrink-0 self-center group-aria-expanded/accordion-trigger:hidden" />
-                        <ChevronUpIcon className="text-muted-foreground pointer-events-none hidden size-4 shrink-0 self-center group-aria-expanded/accordion-trigger:inline" />
+                        <ChevronDownIcon className="pointer-events-none ml-auto size-4 shrink-0 self-center text-muted-foreground group-aria-expanded/accordion-trigger:hidden" />
+                        <ChevronUpIcon className="pointer-events-none hidden size-4 shrink-0 self-center text-muted-foreground group-aria-expanded/accordion-trigger:inline" />
                       </AccordionPrimitive.Trigger>
                       <Button
                         type="button"
@@ -388,7 +388,7 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                         size="icon-xs"
                         disabled={readOnly}
                         onClick={() => field.removeValue(index)}
-                        className="text-muted-foreground hover:text-destructive shrink-0 transition-colors duration-300"
+                        className="shrink-0 text-muted-foreground transition-colors duration-300 hover:text-destructive"
                         aria-label={`Remove ${blockDef.label} block`}
                       >
                         <TrashIcon className="size-3.5" />
@@ -399,7 +399,7 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                     <AccordionContent className="px-3 pt-3">
                       <div className="flex flex-col gap-4 pt-3">
                         {subFields.length === 0 ? (
-                          <p className="text-muted-foreground text-sm italic">
+                          <p className="text-sm text-muted-foreground italic">
                             This block has no configurable fields.
                           </p>
                         ) : (
@@ -446,7 +446,7 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
             Add {singular}
           </Button>
           {atMax && (
-            <span className="text-muted-foreground text-xs">
+            <span className="text-xs text-muted-foreground">
               Maximum {fieldDef.max} {plural} reached
             </span>
           )}

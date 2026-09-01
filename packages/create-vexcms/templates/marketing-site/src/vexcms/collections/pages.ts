@@ -21,6 +21,9 @@ export const pages = defineCollection({
       required: true,
     }),
     blocks: blocks({
+      admin: {
+        defaultCollapsed: true,
+      },
       blocks: pageBlocks,
       interfaceName: "PageBlock",
       label: "Content",

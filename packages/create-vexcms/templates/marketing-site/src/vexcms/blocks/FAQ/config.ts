@@ -18,7 +18,7 @@ export const faqBlock = defineBlock({
     }),
     supportLink: text({
       label: "Support Link",
-      defaultValue: "https://github.com/vexcms/vex/issues",
+      defaultValue: "https://github.com/ianyimi/vex/issues",
       description: "URL to contact support page",
     }),
     items: array({

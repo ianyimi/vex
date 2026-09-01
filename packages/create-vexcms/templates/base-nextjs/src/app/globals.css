@@ -25,15 +25,16 @@
 @import "shadcn/tailwind.css";
 @import "@vexcms/next/styles";
 
-/* Workspace source scan (belt-and-suspenders — normal dev relies on tsup
-   watchers rebuilding each package dist/, which Tailwind already scans via
-   @vexcms/next/styles). These two lines also point Tailwind at the raw
-   .tsx so classes appear immediately even if a tsup watcher dies. They
-   are workspace-relative and resolve only inside this monorepo. */
-@source "../../../../packages/react/src/**/*.ts";
-@source "../../../../packages/react/src/**/*.tsx";
-@source "../../../../packages/next/src/**/*.ts";
-@source "../../../../packages/next/src/**/*.tsx";
+/* Scan the installed @vexcms packages for class candidates (their dist output
+   ships alongside this app in node_modules; @vexcms/next/styles above pulls
+   the stylesheet, these make sure every utility used by the admin UI exists).
+   Globbed to `*.js` only — the same `dist` directories also carry `.map`
+   sourcemaps and `.d.ts` declaration files, and Tailwind's scanner extracts
+   garbage "class candidates" from their base64/binary-ish content and emits
+   unparseable CSS, exactly like the raw `public/` binary assets below. */
+@source "../../node_modules/@vexcms/react/dist/**/*.js";
+@source "../../node_modules/@vexcms/next/dist/**/*.js";
+@source not "../../public";
 
 @custom-variant dark (&:is(.dark *));
 
