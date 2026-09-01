@@ -1,0 +1,648 @@
+import { getGlobal, upsertGlobal } from "@vexcms/core/server"
+
+import {
+  GLOBAL_SLUG_SITE_SETTINGS,
+  TABLE_SLUG_FOOTERS,
+  TABLE_SLUG_HEADERS,
+  TABLE_SLUG_PAGES,
+  TABLE_SLUG_THEMES,
+} from "~/db/constants"
+import config from "~/vex.config"
+
+import { internalMutation } from "./_generated/server"
+
+/**
+ * The 4 tweakcn theme presets, lifted verbatim from
+ * `apps/test/convex/seed.ts`'s `THEME_PRESETS` (32-token light/dark palettes
+ * matching `themeColors.ts`'s `ThemeColorTokenKey` set).
+ */
+const THEME_PRESETS = [
+  {
+    name: "Stark × Ember",
+    fontFamily: "Geist, Inter, system-ui, sans-serif",
+    radius: "4px",
+    light: {
+      background: "oklch(96.1% 0 0)",
+      foreground: "oklch(13.7% 0 0)",
+      card: "oklch(100% 0 0)",
+      cardForeground: "oklch(13.7% 0 0)",
+      popover: "oklch(100% 0 0)",
+      popoverForeground: "oklch(13.7% 0 0)",
+      primary: "oklch(60.5% 0.175 42)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(98% 0 0)",
+      secondaryForeground: "oklch(13.7% 0 0)",
+      muted: "oklch(98% 0 0)",
+      mutedForeground: "oklch(50.5% 0 0)",
+      accent: "oklch(96% 0.025 42)",
+      accentForeground: "oklch(52% 0.180 40)",
+      destructive: "oklch(57.7% 0.198 27)",
+      destructiveForeground: "oklch(98% 0 0)",
+      border: "oklch(85% 0 0)",
+      input: "oklch(54.6% 0 0)",
+      ring: "oklch(60.5% 0.175 42)",
+      chart1: "oklch(60.5% 0.175 42)",
+      chart2: "oklch(45% 0 0)",
+      chart3: "oklch(72% 0.100 60)",
+      chart4: "oklch(60% 0.040 30)",
+      chart5: "oklch(78% 0 0)",
+      sidebar: "oklch(98% 0 0)",
+      sidebarForeground: "oklch(13.7% 0 0)",
+      sidebarPrimary: "oklch(60.5% 0.175 42)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(96.1% 0 0)",
+      sidebarAccentForeground: "oklch(13.7% 0 0)",
+      sidebarBorder: "oklch(85% 0 0)",
+      sidebarRing: "oklch(60.5% 0.175 42)",
+    },
+    dark: {
+      background: "oklch(13.7% 0 0)",
+      foreground: "oklch(95% 0 0)",
+      card: "oklch(17.4% 0 0)",
+      cardForeground: "oklch(95% 0 0)",
+      popover: "oklch(17.4% 0 0)",
+      popoverForeground: "oklch(95% 0 0)",
+      primary: "oklch(72% 0.175 50)",
+      primaryForeground: "oklch(13.7% 0 0)",
+      secondary: "oklch(20% 0 0)",
+      secondaryForeground: "oklch(95% 0 0)",
+      muted: "oklch(20% 0 0)",
+      mutedForeground: "oklch(70% 0 0)",
+      accent: "oklch(72% 0.175 50 / 0.12)",
+      accentForeground: "oklch(72% 0.175 50)",
+      destructive: "oklch(63% 0.210 27)",
+      destructiveForeground: "oklch(95% 0 0)",
+      border: "oklch(25% 0 0)",
+      input: "oklch(40% 0 0)",
+      ring: "oklch(72% 0.175 50)",
+      chart1: "oklch(72% 0.175 50)",
+      chart2: "oklch(78% 0 0)",
+      chart3: "oklch(78% 0.120 65)",
+      chart4: "oklch(60% 0.060 30)",
+      chart5: "oklch(45% 0 0)",
+      sidebar: "oklch(7% 0 0)",
+      sidebarForeground: "oklch(95% 0 0)",
+      sidebarPrimary: "oklch(72% 0.175 50)",
+      sidebarPrimaryForeground: "oklch(13.7% 0 0)",
+      sidebarAccent: "oklch(20% 0 0)",
+      sidebarAccentForeground: "oklch(95% 0 0)",
+      sidebarBorder: "oklch(25% 0 0)",
+      sidebarRing: "oklch(72% 0.175 50)",
+    },
+  },
+  {
+    name: "Modern Minimal",
+    fontFamily: "Inter, sans-serif",
+    radius: "0.375rem",
+    light: {
+      background: "oklch(100% 0 0)",
+      foreground: "oklch(32.11% 0 0)",
+      card: "oklch(100% 0 0)",
+      cardForeground: "oklch(32.11% 0 0)",
+      popover: "oklch(100% 0 0)",
+      popoverForeground: "oklch(32.11% 0 0)",
+      primary: "oklch(62.31% 0.18801 259.81)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(96.7% 0.00287 264.54)",
+      secondaryForeground: "oklch(44.61% 0.02631 256.8)",
+      muted: "oklch(98.46% 0.00171 247.84)",
+      mutedForeground: "oklch(55.1% 0.02336 264.36)",
+      accent: "oklch(95.14% 0.02503 236.82)",
+      accentForeground: "oklch(37.91% 0.13776 265.52)",
+      destructive: "oklch(63.68% 0.20785 25.33)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(92.76% 0.00581 264.53)",
+      input: "oklch(92.76% 0.00581 264.53)",
+      ring: "oklch(62.31% 0.18801 259.81)",
+      chart1: "oklch(62.31% 0.18801 259.81)",
+      chart2: "oklch(54.61% 0.21521 262.88)",
+      chart3: "oklch(48.82% 0.21717 264.38)",
+      chart4: "oklch(42.44% 0.18087 265.64)",
+      chart5: "oklch(37.91% 0.13776 265.52)",
+      sidebar: "oklch(98.46% 0.00171 247.84)",
+      sidebarForeground: "oklch(32.11% 0 0)",
+      sidebarPrimary: "oklch(62.31% 0.18801 259.81)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(95.14% 0.02503 236.82)",
+      sidebarAccentForeground: "oklch(37.91% 0.13776 265.52)",
+      sidebarBorder: "oklch(92.76% 0.00581 264.53)",
+      sidebarRing: "oklch(62.31% 0.18801 259.81)",
+    },
+    dark: {
+      background: "oklch(20.46% 0 0)",
+      foreground: "oklch(92.19% 0 0)",
+      card: "oklch(26.86% 0 0)",
+      cardForeground: "oklch(92.19% 0 0)",
+      popover: "oklch(26.86% 0 0)",
+      popoverForeground: "oklch(92.19% 0 0)",
+      primary: "oklch(62.31% 0.18801 259.81)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(26.86% 0 0)",
+      secondaryForeground: "oklch(92.19% 0 0)",
+      muted: "oklch(23.93% 0 0)",
+      mutedForeground: "oklch(71.55% 0 0)",
+      accent: "oklch(37.91% 0.13776 265.52)",
+      accentForeground: "oklch(88.23% 0.05706 254.13)",
+      destructive: "oklch(63.68% 0.20785 25.33)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(37.15% 0 0)",
+      input: "oklch(37.15% 0 0)",
+      ring: "oklch(62.31% 0.18801 259.81)",
+      chart1: "oklch(71.37% 0.14338 254.62)",
+      chart2: "oklch(62.31% 0.18801 259.81)",
+      chart3: "oklch(54.61% 0.21521 262.88)",
+      chart4: "oklch(48.82% 0.21717 264.38)",
+      chart5: "oklch(42.44% 0.18087 265.64)",
+      sidebar: "oklch(20.46% 0 0)",
+      sidebarForeground: "oklch(92.19% 0 0)",
+      sidebarPrimary: "oklch(62.31% 0.18801 259.81)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(37.91% 0.13776 265.52)",
+      sidebarAccentForeground: "oklch(88.23% 0.05706 254.13)",
+      sidebarBorder: "oklch(37.15% 0 0)",
+      sidebarRing: "oklch(62.31% 0.18801 259.81)",
+    },
+  },
+  {
+    name: "Violet Bloom",
+    fontFamily: "Plus Jakarta Sans, sans-serif",
+    radius: "1.4rem",
+    light: {
+      background: "oklch(99.4% 0 0)",
+      foreground: "oklch(0% 0 0)",
+      card: "oklch(99.4% 0 0)",
+      cardForeground: "oklch(0% 0 0)",
+      popover: "oklch(99.11% 0 0)",
+      popoverForeground: "oklch(0% 0 0)",
+      primary: "oklch(53.93% 0.27129 286.75)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(95.4% 0.00626 255.48)",
+      secondaryForeground: "oklch(13.44% 0 0)",
+      muted: "oklch(97.02% 0 0)",
+      mutedForeground: "oklch(43.86% 0 0)",
+      accent: "oklch(93.93% 0.02876 266.37)",
+      accentForeground: "oklch(54.45% 0.19034 259.48)",
+      destructive: "oklch(62.9% 0.19024 23.07)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(93% 0.00939 286.22)",
+      input: "oklch(94.01% 0 0)",
+      ring: "oklch(0% 0 0)",
+      chart1: "oklch(74.59% 0.14834 156.45)",
+      chart2: "oklch(53.93% 0.27129 286.75)",
+      chart3: "oklch(73.36% 0.17578 50.55)",
+      chart4: "oklch(58.28% 0.18094 259.73)",
+      chart5: "oklch(55.9% 0 0)",
+      sidebar: "oklch(97.77% 0.00513 247.88)",
+      sidebarForeground: "oklch(0% 0 0)",
+      sidebarPrimary: "oklch(0% 0 0)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(94.01% 0 0)",
+      sidebarAccentForeground: "oklch(0% 0 0)",
+      sidebarBorder: "oklch(94.01% 0 0)",
+      sidebarRing: "oklch(0% 0 0)",
+    },
+    dark: {
+      background: "oklch(22.23% 0.00601 271.14)",
+      foreground: "oklch(95.51% 0 0)",
+      card: "oklch(25.68% 0.00762 274.65)",
+      cardForeground: "oklch(95.51% 0 0)",
+      popover: "oklch(25.68% 0.00762 274.65)",
+      popoverForeground: "oklch(95.51% 0 0)",
+      primary: "oklch(61.32% 0.22941 291.74)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(29.4% 0.01301 272.93)",
+      secondaryForeground: "oklch(95.51% 0 0)",
+      muted: "oklch(29.4% 0.01301 272.93)",
+      mutedForeground: "oklch(70.58% 0 0)",
+      accent: "oklch(27.95% 0.03685 260.03)",
+      accentForeground: "oklch(78.57% 0.11535 246.66)",
+      destructive: "oklch(71.06% 0.16615 22.22)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(32.89% 0.00922 268.38)",
+      input: "oklch(32.89% 0.00922 268.38)",
+      ring: "oklch(61.32% 0.22941 291.74)",
+      chart1: "oklch(80.03% 0.18206 151.71)",
+      chart2: "oklch(61.32% 0.22941 291.74)",
+      chart3: "oklch(80.77% 0.10349 19.57)",
+      chart4: "oklch(66.91% 0.15686 260.11)",
+      chart5: "oklch(70.58% 0 0)",
+      sidebar: "oklch(20.11% 0.00394 286.04)",
+      sidebarForeground: "oklch(95.51% 0 0)",
+      sidebarPrimary: "oklch(61.32% 0.22941 291.74)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(29.4% 0.01301 272.93)",
+      sidebarAccentForeground: "oklch(61.32% 0.22941 291.74)",
+      sidebarBorder: "oklch(32.89% 0.00922 268.38)",
+      sidebarRing: "oklch(61.32% 0.22941 291.74)",
+    },
+  },
+  {
+    name: "T3 Chat",
+    fontFamily: "Geist, Inter, system-ui, sans-serif",
+    radius: "0.5rem",
+    light: {
+      background: "oklch(97.54% 0.00844 325.64)",
+      foreground: "oklch(32.57% 0.11612 325.04)",
+      card: "oklch(97.54% 0.00844 325.64)",
+      cardForeground: "oklch(32.57% 0.11612 325.04)",
+      popover: "oklch(100% 0 0)",
+      popoverForeground: "oklch(32.57% 0.11612 325.04)",
+      primary: "oklch(53.16% 0.14089 355.2)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(86.96% 0.06751 334.9)",
+      secondaryForeground: "oklch(44.48% 0.13406 324.8)",
+      muted: "oklch(93.95% 0.02604 331.55)",
+      mutedForeground: "oklch(49.24% 0.12445 324.45)",
+      accent: "oklch(86.96% 0.06751 334.9)",
+      accentForeground: "oklch(44.48% 0.13406 324.8)",
+      destructive: "oklch(52.48% 0.13678 20.83)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(85.68% 0.08288 328.91)",
+      input: "oklch(85.17% 0.05582 336.6)",
+      ring: "oklch(59.16% 0.21798 0.58)",
+      chart1: "oklch(60.38% 0.23628 344.47)",
+      chart2: "oklch(44.45% 0.22507 300.62)",
+      chart3: "oklch(37.9% 0.04376 226.15)",
+      chart4: "oklch(83.3% 0.11852 88.35)",
+      chart5: "oklch(78.43% 0.12563 59)",
+      sidebar: "oklch(93.6% 0.02881 320.58)",
+      sidebarForeground: "oklch(49.48% 0.19094 354.54)",
+      sidebarPrimary: "oklch(39.63% 0.02513 285.2)",
+      sidebarPrimaryForeground: "oklch(96.68% 0.01243 337.52)",
+      sidebarAccent: "oklch(97.89% 0.00132 106.42)",
+      sidebarAccentForeground: "oklch(39.63% 0.02513 285.2)",
+      sidebarBorder: "oklch(93.83% 0.00255 48.72)",
+      sidebarRing: "oklch(59.16% 0.21798 0.58)",
+    },
+    dark: {
+      background: "oklch(24.09% 0.0201 307.53)",
+      foreground: "oklch(83.98% 0.03874 309.54)",
+      card: "oklch(28.03% 0.02323 307.54)",
+      cardForeground: "oklch(84.56% 0.03016 341.46)",
+      popover: "oklch(15.48% 0.01316 338.9)",
+      popoverForeground: "oklch(96.47% 0.00914 341.8)",
+      primary: "oklch(46.07% 0.18535 4.1)",
+      primaryForeground: "oklch(85.6% 0.06185 346.37)",
+      secondary: "oklch(31.37% 0.03057 310.06)",
+      secondaryForeground: "oklch(84.83% 0.03825 307.96)",
+      muted: "oklch(26.34% 0.02189 309.47)",
+      mutedForeground: "oklch(79.4% 0.0372 307.1)",
+      accent: "oklch(36.49% 0.05079 308.49)",
+      accentForeground: "oklch(96.47% 0.00914 341.8)",
+      destructive: "oklch(22.58% 0.05243 12.61)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(32.86% 0.01535 343.45)",
+      input: "oklch(33.87% 0.0195 332.83)",
+      ring: "oklch(59.16% 0.21798 0.58)",
+      chart1: "oklch(53.16% 0.14089 355.2)",
+      chart2: "oklch(56.33% 0.19123 306.86)",
+      chart3: "oklch(72.27% 0.1502 60.58)",
+      chart4: "oklch(61.93% 0.20294 312.74)",
+      chart5: "oklch(61.18% 0.2093 6.14)",
+      sidebar: "oklch(18.93% 0.01632 331.05)",
+      sidebarForeground: "oklch(86.07% 0.02927 343.66)",
+      sidebarPrimary: "oklch(48.82% 0.21717 264.38)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(23.37% 0.02608 338.2)",
+      sidebarAccentForeground: "oklch(96.74% 0.00133 286.38)",
+      sidebarBorder: "oklch(0% 0 0)",
+      sidebarRing: "oklch(59.16% 0.21798 0.58)",
+    },
+  },
+]
+
+/**
+ * Initialize a fresh scaffold with a complete marketing site: the 4 theme
+ * presets ("Stark × Ember" active by default), site settings, a header, a
+ * footer, and a fully assembled home page built from every block's shipped
+ * defaults.
+ *
+ * Safe to run repeatedly — every insert is guarded by an existence check
+ * keyed on a natural identifier (theme/header/footer name, page slug, or the
+ * `siteSettings` singleton), so re-running after hand-edits in the admin
+ * panel never duplicates or clobbers them.
+ *
+ * Run from terminal: `npx convex run seed:init`
+ */
+export const init = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const created: string[] = []
+    const skipped: string[] = []
+
+    let activeThemeId: string | null = null
+    for (const preset of THEME_PRESETS) {
+      const existing = await ctx.db
+        .query(TABLE_SLUG_THEMES)
+        .withIndex("by_name", (q) => q.eq("name", preset.name))
+        .first()
+      if (existing) {
+        skipped.push(`theme:${preset.name}`)
+        if (preset.name === "Stark × Ember") activeThemeId = existing._id
+        continue
+      }
+      const id = await ctx.db.insert(TABLE_SLUG_THEMES, preset)
+      created.push(`theme:${preset.name}`)
+      if (preset.name === "Stark × Ember") activeThemeId = id
+    }
+
+    const existingSettings = await getGlobal({
+      ctx,
+      config,
+      slug: GLOBAL_SLUG_SITE_SETTINGS,
+      access: { bypass: true },
+    })
+    if (existingSettings) {
+      skipped.push("siteSettings")
+    } else {
+      await upsertGlobal({
+        ctx,
+        config,
+        slug: GLOBAL_SLUG_SITE_SETTINGS,
+        data: {
+          name: "My Site",
+          description: "Built with Vex CMS.",
+          activeTheme: activeThemeId ? [activeThemeId] : [],
+        },
+        access: { bypass: true },
+      })
+      created.push("siteSettings")
+    }
+
+    const existingHeader = await ctx.db
+      .query(TABLE_SLUG_HEADERS)
+      .withIndex("by_name", (q) => q.eq("name", "Main Header"))
+      .first()
+    if (existingHeader) {
+      skipped.push("header")
+    } else {
+      await ctx.db.insert(TABLE_SLUG_HEADERS, {
+        name: "Main Header",
+        content: [
+          {
+            blockType: "header",
+            blockName: "Site Header",
+            id: "main-header",
+            logoText: "My Site",
+            logoHref: "/",
+            menuItems: [
+              { label: "Features", href: "/features" },
+              { label: "Roadmap", href: "/roadmap" },
+              { label: "Docs", href: "/docs" },
+            ],
+            actionButtons: [
+              { label: "GitHub", href: "https://github.com/vexcms/vex", variant: ["ghost"] },
+              { label: "Get Started", href: "/docs", variant: ["default"] },
+            ],
+          },
+        ],
+      })
+      created.push("header")
+    }
+
+    const existingFooter = await ctx.db
+      .query(TABLE_SLUG_FOOTERS)
+      .withIndex("by_name", (q) => q.eq("name", "Main Footer"))
+      .first()
+    if (existingFooter) {
+      skipped.push("footer")
+    } else {
+      await ctx.db.insert(TABLE_SLUG_FOOTERS, {
+        name: "Main Footer",
+        content: [
+          {
+            blockType: "footer",
+            blockName: "Site Footer",
+            id: "main-footer",
+            logoText: "My Site",
+            copyright: "My Site. All rights reserved.",
+            links: [
+              { label: "Features", href: "/features" },
+              { label: "Roadmap", href: "/roadmap" },
+              { label: "Documentation", href: "/docs" },
+            ],
+            socialLinks: [{ platform: "GitHub", href: "https://github.com/vexcms/vex", icon: "Github" }],
+          },
+        ],
+      })
+      created.push("footer")
+    }
+
+    const existingHome = await ctx.db
+      .query(TABLE_SLUG_PAGES)
+      .withIndex("by_slug", (q) => q.eq("slug", "home"))
+      .first()
+    if (existingHome) {
+      skipped.push("page:home")
+    } else {
+      await ctx.db.insert(TABLE_SLUG_PAGES, {
+        title: "Home",
+        slug: "home",
+        blocks: [
+          {
+            blockType: "hero",
+            blockName: "Hero",
+            id: "home-hero",
+            badgeText: "Now in public beta",
+            badgeLink: "/docs",
+            heading: "The CMS built for Convex",
+            subheading:
+              "Vex CMS gives you a full-featured content management system powered by Convex — real-time data, type-safe schemas, and a beautiful admin panel out of the box.",
+            primaryCtaLabel: "Get Started",
+            primaryCtaHref: "/docs",
+            secondaryCtaLabel: "View on GitHub",
+            secondaryCtaHref: "https://github.com/vexcms/vex",
+          },
+          {
+            blockType: "features",
+            blockName: "Features",
+            id: "home-features",
+            heading: "Everything you need to manage content",
+            subheading:
+              "Built on Convex's real-time infrastructure with a developer experience that doesn't compromise on power.",
+            features: [
+              {
+                title: "Real-Time by Default",
+                description:
+                  "Every query is live. Content updates appear instantly across all connected clients — no polling, no webhooks.",
+                icon: "Zap",
+              },
+              {
+                title: "Type-Safe Schemas",
+                description:
+                  "Define your collections with TypeScript. Vex generates Convex schemas, Zod validators, and typed queries automatically.",
+                icon: "Shield",
+              },
+              {
+                title: "Developer First",
+                description:
+                  "Code-first configuration, CLI tooling, and a clean API. Build with the tools you already know and love.",
+                icon: "Code",
+              },
+            ],
+          },
+          {
+            blockType: "how_it_works",
+            blockName: "How It Works",
+            id: "home-how-it-works",
+            heading: "Get started in minutes",
+            subheading: "From zero to a fully functional CMS in four steps. No boilerplate, no config files to wrestle with.",
+            steps: [
+              {
+                icon: "Terminal",
+                title: "Scaffold your project",
+                description:
+                  "Run npx create-vexcms@latest to get a Next.js app with Convex, authentication, and the admin panel pre-configured.",
+              },
+              {
+                icon: "Code",
+                title: "Define your schema",
+                description:
+                  "Use defineCollection() and field helpers to declare your content model in TypeScript. Vex generates your Convex schema, types, and queries automatically.",
+              },
+              {
+                icon: "LayoutGrid",
+                title: "Build with blocks",
+                description:
+                  "Compose pages from reusable content blocks. Each block is a React component with a typed config — drag, drop, and edit inline from the admin panel.",
+              },
+              {
+                icon: "Rocket",
+                title: "Deploy and go live",
+                description:
+                  "Push to Convex and deploy your Next.js app. Real-time content updates flow to every connected client instantly.",
+              },
+            ],
+          },
+          {
+            blockType: "roadmap",
+            blockName: "Roadmap",
+            id: "home-roadmap",
+            heading: "Roadmap",
+            subheading:
+              "What we've shipped and what's coming next. Vex CMS is actively developed — here's where we're headed.",
+            items: [
+              {
+                feature: "12 Field Types",
+                description:
+                  "text, url, color, number, checkbox, date, select, relationship, array, group, blocks, and upload — no richtext, json, or tabs yet.",
+                status: ["shipped"],
+              },
+              {
+                feature: "Convex Schema Codegen",
+                description:
+                  "vex dev / vex generate write your Convex schema, TypeScript types, and Zod validators from defineCollection() — no hand-written schema.ts.",
+                status: ["shipped"],
+              },
+              {
+                feature: "Real-Time Admin Panel",
+                description:
+                  "DataTable with pagination, live totalDocs, and bulk operations — every list view is a Convex subscription.",
+                status: ["shipped"],
+              },
+              {
+                feature: "Media Library",
+                description:
+                  "Convex file storage adapter with a searchable, paginated media picker built into every upload field.",
+                status: ["shipped"],
+              },
+              {
+                feature: "RBAC & Access Control",
+                description:
+                  "Document-level access rules, indexed constraints that compile to withIndex ranges, per-call access.action/bypass overrides, and an anonRole fallback for public reads.",
+                status: ["shipped"],
+              },
+              {
+                feature: "Custom Theme System",
+                description:
+                  "Database-driven themes with light/dark mode, 32 shadcn tokens per mode, and OKLCH color support — live-updates with zero page reload.",
+                status: ["shipped"],
+              },
+              {
+                feature: "Better Auth Integration",
+                description: "Email/password and OAuth out of the box, with organizations and API keys as opt-in plugins.",
+                status: ["shipped"],
+              },
+              {
+                feature: "CLI & Scaffolder",
+                description:
+                  "vex dev, vex generate, and create-vexcms for instant project setup — bare or full marketing-site templates.",
+                status: ["shipped"],
+              },
+              {
+                feature: "Versioning & Drafts",
+                description: "Draft/publish workflow with live preview — in active development.",
+                status: ["coming-soon"],
+              },
+              {
+                feature: "Richtext, JSON, Email & Textarea Fields",
+                description: "Plate.js-powered rich text, plus structured JSON, email, and multi-line text inputs.",
+                status: ["planned"],
+              },
+              {
+                feature: "Form Builder & Lifecycle Hooks",
+                description:
+                  "Composable form fields beyond content editing, plus beforeChange/afterChange hooks for custom side effects.",
+                status: ["planned"],
+              },
+              {
+                feature: "Team Management & API Keys",
+                description: "Invite users, assign roles, and issue scoped read-only API tokens for external integrations.",
+                status: ["planned"],
+              },
+            ],
+          },
+          {
+            blockType: "faq",
+            blockName: "FAQ",
+            id: "home-faq",
+            heading: "Frequently Asked Questions",
+            subheading: "Everything you need to know about Vex CMS and building with Convex.",
+            supportLink: "https://github.com/vexcms/vex/issues",
+            items: [
+              {
+                question: "What is Vex CMS?",
+                answer:
+                  "Vex CMS is a headless content management system built on Convex. It provides real-time data, type-safe schemas, RBAC, and a beautiful admin panel — all configured with TypeScript.",
+              },
+              {
+                question: "How is Vex different from other headless CMS platforms?",
+                answer:
+                  "Vex is powered by Convex's real-time database, so content updates are instant across all clients — no polling, no webhooks. Your schema is defined in code, giving you full type safety from database to frontend.",
+              },
+              {
+                question: "Do I need to know Convex to use Vex CMS?",
+                answer:
+                  "Basic familiarity helps, but Vex handles most of the complexity for you. The CLI generates your Convex schema, queries, and types automatically from your collection definitions.",
+              },
+              {
+                question: "Is Vex CMS free?",
+                answer:
+                  "Yes — Vex CMS is open source and free to use. You only pay for your Convex usage, which has a generous free tier for most projects.",
+              },
+              {
+                question: "How do I get started?",
+                answer:
+                  "Run npx create-vexcms@latest to scaffold a new project with Vex CMS pre-configured — Next.js app, Convex backend, authentication, and admin panel in under a minute.",
+              },
+            ],
+          },
+          {
+            blockType: "cta",
+            blockName: "CTA",
+            id: "home-cta",
+            heading: "Ready to build with Vex CMS?",
+            subheading: "Get started in minutes with create-vexcms. Real-time content management powered by Convex.",
+            actions: [
+              { label: "Get Started", href: "/docs" },
+              { label: "View on GitHub", href: "https://github.com/vexcms/vex" },
+            ],
+          },
+        ],
+      })
+      created.push("page:home")
+    }
+
+    return { created, skipped }
+  },
+})

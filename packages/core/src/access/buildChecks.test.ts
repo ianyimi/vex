@@ -12,7 +12,7 @@ import { hasPermission } from "./hasPermission";
 // arguments need `as never` in this file. That is a property of core's test registry,
 // not of the builders: the type-level guarantees — field must lead an index, value must
 // match the field, check is branded to its resource — are proven against a real
-// generated registry in `apps/www`. What is under test here is runtime behaviour.
+// generated registry in `apps/test`. What is under test here is runtime behaviour.
 const posts = defineCollection({
   slug: "posts",
   fields: {

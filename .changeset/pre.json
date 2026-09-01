@@ -3,7 +3,7 @@
   "tag": "alpha",
   "initialVersions": {
     "docs": "0.1.0-alpha.1",
-    "www": "0.1.0",
+    "test": "0.1.0",
     "@vexcms/better-auth": "0.1.0-alpha.1",
     "@vexcms/cli": "0.1.0-alpha.1",
     "@vexcms/core": "0.1.0-alpha.1",
@@ -14,5 +14,22 @@
     "@vexcms/richtext-plate": "0.1.0-alpha.1",
     "@vexcms/tsconfig": "0.0.0"
   },
-  "changesets": []
+  "changesets": [
+    "anon-role-fallback",
+    "bound-published-peer-ranges",
+    "color-field",
+    "create-vexcms-templates",
+    "drop-collection-generation",
+    "drop-collection-query-stub",
+    "globals-system",
+    "lucide-icon-name-exact",
+    "mediaapi-props-jsdoc",
+    "rbac-access-control",
+    "rbac-admin-gate",
+    "render-blocks",
+    "server-api-access-options",
+    "ship-type-declarations",
+    "typedoc-multipackage-docs",
+    "wp1-release-integrity"
+  ]
 }

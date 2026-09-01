@@ -9,7 +9,7 @@ import type { TextField } from "./types";
  * for the Convex schema based on the field's required property.
  *
  * **Important notes:**
- * - minLength/maxLength are runtime validation constraints, NOT schema constraints
+ * - `min`/`max` are runtime validation constraints, NOT schema constraints
  * - They don't affect the generated Convex value type
  * - Validation happens in the admin panel and mutation handlers
  * - The index property is handled separately by index collection logic
@@ -29,7 +29,7 @@ import type { TextField } from "./types";
  * const field2 = text({ required: false })
  * textToValidatorString({ field: field2 })  // "v.optional(v.string())"
  *
- * const field3 = text({ minLength: 3, maxLength: 100 })
+ * const field3 = text({ min: { value: 3 }, max: { value: 100 } })
  * textToValidatorString({ field: field3 })  // "v.optional(v.string())"
  * // Note: Length constraints don't affect schema, handled at validation layer
  * ```

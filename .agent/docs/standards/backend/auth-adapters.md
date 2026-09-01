@@ -1,5 +1,5 @@
 ---
-applies_to: ["packages/better-auth/src/**", "apps/www/convex/auth/**", "apps/www/src/auth/**"]
+applies_to: ["packages/better-auth/src/**", "apps/test/convex/auth/**", "apps/test/src/auth/**"]
 ---
 # Better Auth Adapter
 
@@ -13,6 +13,6 @@ applies_to: ["packages/better-auth/src/**", "apps/www/convex/auth/**", "apps/www
 - The Convex DB adapter (`packages/better-auth/src/convex/adapter.ts:12-50`):
   `convexAdapter(ctx, config?)` delegates CRUD through `ctx.runMutation(anyApi.auth.db.dbCreate, ...)`
   with serialized schema JSON; where-clauses are cleaned (Date → timestamp) before sending.
-- Host app auth files follow fixed names: `apps/www/src/auth/{client,server,serverUtils,options,permissions}.ts`.
+- Host app auth files follow fixed names: `apps/test/src/auth/{client,server,serverUtils,options,permissions}.ts`.
 - better-auth peer version rides the catalog (`^1.5.0`) — keep the adapter peer range in
   sync with `pnpm-workspace.yaml#catalog`.

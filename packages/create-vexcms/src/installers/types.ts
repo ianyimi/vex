@@ -76,4 +76,23 @@ export interface ProjectOptions {
   initGit: boolean
   /** Whether to install dependencies (and run lint/format) after scaffolding. */
   installDependencies: boolean
+  /**
+   * When true, scaffold into `apps/<name>` under the detected pnpm workspace
+   * root and rewrite dependency protocols (`workspace:*` / `catalog:`)
+   * instead of running a standalone install (`--monorepo`).
+   */
+  monorepo: boolean
+  /**
+   * Absolute path to the host pnpm workspace root (the directory containing
+   * `pnpm-workspace.yaml`), resolved by walking up from `cwd` when
+   * `monorepo` is true. `null` outside `--monorepo` mode.
+   */
+  workspaceRoot: string | null
+  /**
+   * When true, every interactive prompt was skipped and answered with its
+   * default (`--yes`, for automation). Scaffolding behavior is fully
+   * captured by the resolved fields above — this flag is recorded for
+   * diagnostics only, nothing downstream branches on it directly.
+   */
+  yes: boolean
 }

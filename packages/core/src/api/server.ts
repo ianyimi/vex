@@ -128,7 +128,7 @@ export type { UpsertGlobalServerArgs } from "./globals/upsert.server";
  *
  * @example
  * ```ts
- * // apps/www/convex/vex.ts
+ * // apps/test/convex/vex.ts
  * import { collectionsApi } from "@vexcms/core/server";
  * import { createGetAuth } from "@vexcms/better-auth/server";
  * import { mutation, query } from "./_generated/server";
@@ -315,7 +315,7 @@ export function collectionsApi<
  *
  * @example
  * ```ts
- * // apps/www/convex/vex.ts
+ * // apps/test/convex/vex.ts
  * import { queryApi, mutationApi, globalsApi } from "@vexcms/core/server";
  * import { query, mutation } from "./_generated/server";
  * import config from "../src/vex.config";

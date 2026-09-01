@@ -164,7 +164,7 @@ export interface TypesConfig {
  *
  * @example
  * ```ts
- * // apps/www/src/app/(vexcms)/admin/clientProviders.tsx
+ * // apps/test/src/app/(vexcms)/admin/clientProviders.tsx
  * import { StorageAdapterContextProvider } from "@vexcms/react";
  * import { uploadFile } from "@vexcms/file-storage-convex/adapter";
  *

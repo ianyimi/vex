@@ -3,13 +3,15 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// LEGACY rebuild-reset helper — repointed to apps/test after the D7 rename.
+// Flagged for deletion post-launch (WP-2 Step 0, 2026-08-31).
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const wwwPkgPath = path.join(__dirname, '..', 'apps', 'www', 'package.json');
+const wwwPkgPath = path.join(__dirname, '..', 'apps', 'test', 'package.json');
 
-console.log('📦 Updating www app dependencies to alpha versions...\n');
+console.log('📦 Updating test app dependencies to alpha versions...\n');
 
 if (!fs.existsSync(wwwPkgPath)) {
-  console.log('❌ ERROR: apps/www/package.json not found');
+  console.log('❌ ERROR: apps/test/package.json not found');
   process.exit(1);
 }
 
@@ -46,5 +48,5 @@ if (pkg.devDependencies) {
 
 fs.writeFileSync(wwwPkgPath, JSON.stringify(pkg, null, 2) + '\n');
 
-console.log('\n✅ Updated apps/www/package.json');
+console.log('\n✅ Updated apps/test/package.json');
 console.log('   All @vexcms/* dependencies now use workspace:*\n');

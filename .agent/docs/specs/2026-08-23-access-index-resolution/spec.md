@@ -12,8 +12,8 @@ touches:
   - packages/core/src/config/types.ts
   - packages/core/src/config/config.ts
   - packages/react/src/hooks/usePaginatedQuery.ts
-  - apps/www/src/auth/access.ts
-  - apps/www/convex/vex.schema.ts
+  - apps/test/src/auth/access.ts
+  - apps/test/convex/vex.schema.ts
   - apps/docs/src/content/docs/guides/access-control.mdx
 prompt_version: 1
 ---

@@ -1,5 +1,191 @@
 # @vexcms/ui
 
+## 0.1.0-alpha.2
+
+### Minor Changes
+
+- 58265ed: Add the `color()` field. Stores a CSS colour string as `v.string()`, with a
+  swatch picker in the admin form and a swatch cell in the list view.
+
+  `format: "hex" | "rgb" | "hsl" | "oklch"` (default `"hex"`) selects the notation
+  the picker writes; validation accepts all four, so changing `format` never
+  invalidates existing documents.
+
+  `color({ themeColors: true })` adds a picker tab listing the host application's
+  CSS custom properties; selecting one stores `var(--token)`, so the colour
+  follows the active colour scheme.
+
+  `@vexcms/core` now exports `serializeColor`, `parseColor` and `ColorValue` — a
+  dependency-free colour conversion layer covering hex, `rgb()`, `hsl()` and
+  `oklch()`, round-trip exact across the 8-bit sRGB space.
+
+  `@vexcms/core` also exports theming utilities from the colour field:
+  `buildThemeCss({ theme, scope })` turns a stored theme document (`light`/`dark`
+  token groups plus `radius`/`fontFamily`) into `:root` / `.dark` stylesheet text,
+  with `scope: "admin"` emitting one specificity rung higher for an admin-panel
+  override. `THEME_COLOR_TOKENS`, `THEME_SHARED_TOKENS`, `ThemeColorTokenKey` and
+  `ThemeScope` are exported alongside.
+
+  `@vexcms/react` components now use only shadcn's 32 design tokens. The
+  non-standard `--primary-hover`, `--muted-foreground-subtle` and `--warning`
+  tokens are replaced by `primary/90`, `muted-foreground` and `destructive`; the
+  other thirteen were unused and are removed. Host apps whose stylesheets declared
+  them can delete them.
+
+  Field-type dispatch is now exhaustive: `adminFieldToValidator`,
+  `adminFieldToInputSchema` and `getCollectionColumnDefs` assert their switches
+  against `never`.
+
+- 24a3058: Add the globals system (spec 35): singleton documents with a flat, typed API.
+
+  - `@vexcms/core`: `defineGlobal` with CollectionConfig-parallel generics and compile-time reserved-key enforcement; shared `vex_globals` table emitted by `generateVexSchema`; `globalsApi` factory registering `globals.get`/`globals.find`/`globals.update` (upsert) with populate/depth; `vex generate` emits `GlobalSlug`, `GlobalDocumentBySlug`, `GlobalsFieldTypeMap`, and flat per-global interfaces into the `GeneratedVexTypes` augmentation.
+  - `@vexcms/react`: `GlobalsListView`, `GlobalEditView`, `useGlobalForm` (mirror of `useCollectionForm`), sidebar globals section, and `AdminTopNav` breadcrumbs for globals routes.
+  - `@vexcms/next`: `NextAdminPage` routes `/admin/globals[/slug]` with config-validated slugs and a not-found state.
+
+- aa56f38: Add RBAC access control (spec 2026-08-12), a config/auth-bound server API, and per-slug return
+  type narrowing for the client wrappers.
+
+  - `@vexcms/core`: new `access/` module — `defineAccess()` builds a role → subject → action matrix
+    typed from the registered collections and globals; `hasPermission()` resolves it at runtime and
+    merges every role the caller holds. `PERMISSION_SCOPES` (`doc` / `any` / `all`) decides how a
+    check that inspects the document is answered when no `data` is supplied — `any` → `true` for
+    nav/list gating, `all` → `false` for bulk affordances (the default, fail-closed), `doc` throws.
+    Every server guard enforces access via `resolveGetAuth`. `vexServerApi()` binds `config` once
+    and resolves `auth` per call so call sites pass neither, with `skipAccess: true` as the
+    explicit opt-out for public reads. Client wrappers (`get`/`find`/`search`/`globals.get`) now
+    narrow to the document of the `collection` slug passed in, honouring `populate` and literal
+    `depth`; `find`/`search` gained array-vs-paginated overloads. Relationship and upload fields
+    generate `Id<"target">[]` instead of `Id<CollectionSlug>[]`, which is what makes populated
+    fields resolve to `Doc<target>[]`.
+  - `@vexcms/react`: `VexAccessContext`, `VexAuthContext`, and `usePermission`; `AdminSidebar`
+    filters collections, globals, and media collections with `scope: "any"`.
+  - `@vexcms/better-auth`: `createGetAuth()` resolves the caller (user + active organization) from
+    the Convex `ctx` for use as `vexServerApi`/`collectionsApi`'s `getAuth`.
+  - `@vexcms/next`: admin layout/page pass the server-resolved caller into the admin UI.
+
+  BREAKING: the globals mutation `globals.update` is renamed `globals.upsert` (endpoint, server
+  function `upsertGlobal`, and client wrapper). Bumped `minor` rather than `major` because these
+  packages are pre-1.0 alpha, consistent with the globals-system changeset.
+
+- bde8141: Enforce the `adminPanel` access gate, fix two authorization defects, and add a single switch for
+  turning RBAC off.
+
+  - `@vexcms/core`: new `canAccessAdminPanel()` answers the `adminPanel.access` gate without
+    callers hand-typing the subject and action — nothing consulted that subject before, so any
+    authenticated caller reached the admin panel regardless of the matrix. `defineAccess()` gains
+    `enabled` (default `true`), checked inside `hasPermission`, so one field on the resolved config
+    turns access control off for the server guards and the admin UI together. **Security fix:**
+    `update` authorized against the caller-supplied patch rather than the stored document, letting
+    a per-document rule be satisfied by the request body; it now fetches and checks the stored row,
+    matching `get`/`find`/`remove`. `deleteMedia` now passes the stored document too, so
+    per-document delete rules are satisfiable.
+  - `@vexcms/react`: new `UnauthorizedView` for callers who fail an access check. `Button` gains
+    `aria-disabled:*` variants so a link-rendered button (`nativeButton={false}`) actually greys
+    out and stops responding — `disabled:*` never matched the rendered `<a>`. `CollectionListView`
+    had its create button's `disabled` prop inverted; bulk delete is now permission-gated in both
+    the collection and media list views.
+  - `@vexcms/cli`: removed the unimplemented `schema/generateSchema.ts` stub (superseded by core's
+    `generateVexSchema`, and already excluded from the package's own test run). JSDoc completed
+    across the package; a `pushSchemaStandalone` description that claimed to run `convex deploy`
+    now matches its actual `dev --once` behavior.
+  - `@vexcms/better-auth`, `@vexcms/richtext-plate`, `create-vexcms`: JSDoc completed on exported
+    symbols; unused imports and bindings removed. No behavior changes.
+
+- Add `RenderBlocks` — a generic, typed dispatcher for `blocks()` field content: a `components`
+  map keyed by `blockType`, each entry narrowed via `Extract<TBlock, { blockType: K }>`, an
+  optional `fallback` for unrecognized block types, and `block.id` as the React key. Exported
+  alongside `RenderBlocksProps`, `BlockComponents`, and `BlockComponentProps`. Replaces the
+  hand-rolled block-type switch every consumer previously wrote — proven against `apps/test`'s
+  `PageContent` — and is what both `create-vexcms` templates use to render page, header, and
+  footer content.
+- 7b1fa3c: Enable a zero-warning multi-package TypeDoc API reference and export supporting API.
+
+  - Export `usePaginatedQuery` (`@vexcms/react`) and `StorageAdapterPresignedUrlInterface` plus its base interface (`@vexcms/core`) as public API.
+  - Fix `RelationshipFieldAdminConfig` to extend the resolved admin base (`FieldAdminConfig`) instead of the input base, so resolved relationship admin properties are correctly required rather than optional.
+
+### Patch Changes
+
+- fb55d58: Publish `peerDependencies` as ranges instead of exact versions.
+
+  `peerDependencies` previously inherited exact versions from the pnpm catalog, so
+  installing alongside a newer `convex`, `lucide-react`, or `@tanstack/react-table`
+  produced a peer conflict. Peers now resolve from a dedicated `peers` catalog of
+  deliberate ranges, and `@vexcms/core` is peered as a compatible range rather
+  than an exact version. `dependencies` are now published as exact versions instead of ranges
+  (`nanoid: 5.1.16`, not `^5.1.11`), so an install cannot silently pick up a
+  different transitive tree than the one tested.
+
+  `@vexcms/next` now declares `next >=15.0.0`, correcting a `>=14.0.0` claim that
+  never held — the admin page awaits `params`, which requires Next 15 typings.
+
+- 4270b82: Fix `LucideIconName` accepting ~4,100 names that render nothing.
+
+  `@vexcms/core` derived the type from a _default_ import of `lucide-react`
+  (`import type icons from "lucide-react"`). `lucide-react` has no default export, so
+  TypeScript synthesized one from the module namespace and `keyof typeof icons` widened to
+  every module export — 5,843 members: alias exports (`AlertCircle`, `AlignCenter`), the
+  `*Icon`-suffixed duplicates (`UsersIcon`), and non-icon exports (`icons`,
+  `createLucideIcon`, `Icon`). None of those are keys of the `icons` map that
+  `<Icon>` indexes at render time, so they type-checked and then rendered `null`.
+
+  Both packages now derive the type from the `icons` map (`import type { icons }`), giving
+  the exact 1,702 canonical names that render. `@vexcms/react` re-exports the core type
+  instead of declaring its own, and the three `@ts-expect-error` directives in
+  `AdminSidebar` that masked the two definitions diverging are gone.
+
+  `<Icon>` still returns `null` for an unresolved name so untyped data cannot throw, but
+  outside production it now reports the miss once per name with `console.warn` instead of
+  failing invisibly.
+
+  Breaking for configs that used an alias or `*Icon` name in `admin.icon`: switch to the
+  canonical name from https://lucide.dev/icons (e.g. `"AlertCircle"` → `"CircleAlert"`,
+  `"UsersIcon"` → `"Users"`). Those values never rendered.
+
+- 9e68058: Ship type declarations. Published packages contained no `.d.ts` at all.
+
+  Every `tsup.config.ts` carried `dts: false` — tsup's rollup-dts pegs the CPU on this
+  dependency graph — so `types: "./dist/index.d.ts"` pointed at a file that was never
+  emitted. Installing any `@vexcms/*` package gave you `any`.
+
+  Declarations now come from `tsc -p tsconfig.build.json --emitDeclarationOnly`, run after
+  tsup in each package's `build` script. `dts: false` stays, deliberately: tsup builds JS,
+  tsc builds types.
+
+  The blocker was TS6059 (`File is not under rootDir`). Workspace deps resolved through the
+  `source` export condition, pulling sibling `src/` into each program. The build configs now
+  set `"customConditions": []` so deps resolve through their published `types` entry
+  instead; Turbo's `dependsOn: ["^build"]` guarantees upstream `dist/` exists first. Dev
+  configs are untouched and still resolve through `source`.
+
+  Also exports `AuthFieldMeta` from `@vexcms/core`. `@vexcms/better-auth` had been importing
+  it through `../../core/src/auth/types`, a cross-package source path that cannot produce a
+  correct declaration.
+
+- b67c8ab: Publish under Apache-2.0 with full package metadata.
+
+  Every published manifest now carries `license: "Apache-2.0"` (root `LICENSE` +
+  `NOTICE` added), `description`, `keywords`, `author`, `homepage`, and
+  `repository` with per-package `directory`. `sideEffects: false` is declared
+  where verified side-effect-free; `@vexcms/next` declares `["*.css"]` because it
+  exports `./styles`. Packages publish to the `alpha` dist-tag
+  (`publishConfig.tag`), leaving `latest` untouched until promotion.
+
+- Updated dependencies [8f75ecb]
+- Updated dependencies [fb55d58]
+- Updated dependencies [58265ed]
+- Updated dependencies
+- Updated dependencies [24a3058]
+- Updated dependencies [4270b82]
+- Updated dependencies [40efb79]
+- Updated dependencies [aa56f38]
+- Updated dependencies [bde8141]
+- Updated dependencies [07924de]
+- Updated dependencies [9e68058]
+- Updated dependencies [7b1fa3c]
+- Updated dependencies [b67c8ab]
+  - @vexcms/core@0.1.0-alpha.2
+  - @vexcms/better-auth@0.1.0-alpha.2
+
 ## 0.0.20
 
 ### Patch Changes

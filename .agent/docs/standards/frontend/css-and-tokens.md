@@ -1,10 +1,10 @@
 ---
-applies_to: ["apps/www/src/app/globals.css", "packages/react/src/styles/**", "packages/next/src/**", "**/*.css"]
+applies_to: ["apps/test/src/app/globals.css", "packages/react/src/styles/**", "packages/next/src/**", "**/*.css"]
 ---
 # CSS & Design Tokens (Tailwind 4)
 
 - Tailwind v4 is CSS-first: tokens are native CSS variables in
-  `apps/www/src/app/globals.css` (`:root` + `.dark` scopes, OKLCH color space).
+  `apps/test/src/app/globals.css` (`:root` + `.dark` scopes, OKLCH color space).
   Semantic names: `--background`, `--foreground`, `--card`, `--primary(-hover/-pressed)`,
   `--accent(-fg/-tint)`, `--border`, `--ring`, sidebar token block.
 - Design source of truth: `.agent/docs/design/claude-design/` (Stark x Ember: graphite + ember

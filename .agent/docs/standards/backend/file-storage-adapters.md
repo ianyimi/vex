@@ -1,5 +1,5 @@
 ---
-applies_to: ["packages/file-storage-convex/src/**", "packages/core/src/media/**", "apps/www/convex/vex/media.ts"]
+applies_to: ["packages/file-storage-convex/src/**", "packages/core/src/media/**", "apps/test/convex/vex/media.ts"]
 ---
 # File Storage Adapters
 
@@ -12,7 +12,7 @@ applies_to: ["packages/file-storage-convex/src/**", "packages/core/src/media/**"
   `size`, `alt?`, `adapterFields?`. `deleteMedia` supports `softDelete?`.
 - Standard media document fields: `alt`, `filename`, `mimeType`, `size`, `storageId`,
   `deleted`, `src` (resolved URL), optional `width`/`height`.
-- Host registration: `apps/www/convex/vex/media.ts:1-7` calls `mediaQueryApi()` +
+- Host registration: `apps/test/convex/vex/media.ts:1-7` calls `mediaQueryApi()` +
   `mediaMutationApi()` factories and re-exports the endpoints.
 - New storage backends (S3/R2/Blob — post-v1 backlog) implement the same adapter surface;
   keep ctx-first signatures and the standard media field set.

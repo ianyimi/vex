@@ -1,5 +1,101 @@
 # @vexcms/admin-next
 
+## 0.1.0-alpha.2
+
+### Minor Changes
+
+- 24a3058: Add the globals system (spec 35): singleton documents with a flat, typed API.
+
+  - `@vexcms/core`: `defineGlobal` with CollectionConfig-parallel generics and compile-time reserved-key enforcement; shared `vex_globals` table emitted by `generateVexSchema`; `globalsApi` factory registering `globals.get`/`globals.find`/`globals.update` (upsert) with populate/depth; `vex generate` emits `GlobalSlug`, `GlobalDocumentBySlug`, `GlobalsFieldTypeMap`, and flat per-global interfaces into the `GeneratedVexTypes` augmentation.
+  - `@vexcms/react`: `GlobalsListView`, `GlobalEditView`, `useGlobalForm` (mirror of `useCollectionForm`), sidebar globals section, and `AdminTopNav` breadcrumbs for globals routes.
+  - `@vexcms/next`: `NextAdminPage` routes `/admin/globals[/slug]` with config-validated slugs and a not-found state.
+
+- aa56f38: Add RBAC access control (spec 2026-08-12), a config/auth-bound server API, and per-slug return
+  type narrowing for the client wrappers.
+
+  - `@vexcms/core`: new `access/` module — `defineAccess()` builds a role → subject → action matrix
+    typed from the registered collections and globals; `hasPermission()` resolves it at runtime and
+    merges every role the caller holds. `PERMISSION_SCOPES` (`doc` / `any` / `all`) decides how a
+    check that inspects the document is answered when no `data` is supplied — `any` → `true` for
+    nav/list gating, `all` → `false` for bulk affordances (the default, fail-closed), `doc` throws.
+    Every server guard enforces access via `resolveGetAuth`. `vexServerApi()` binds `config` once
+    and resolves `auth` per call so call sites pass neither, with `skipAccess: true` as the
+    explicit opt-out for public reads. Client wrappers (`get`/`find`/`search`/`globals.get`) now
+    narrow to the document of the `collection` slug passed in, honouring `populate` and literal
+    `depth`; `find`/`search` gained array-vs-paginated overloads. Relationship and upload fields
+    generate `Id<"target">[]` instead of `Id<CollectionSlug>[]`, which is what makes populated
+    fields resolve to `Doc<target>[]`.
+  - `@vexcms/react`: `VexAccessContext`, `VexAuthContext`, and `usePermission`; `AdminSidebar`
+    filters collections, globals, and media collections with `scope: "any"`.
+  - `@vexcms/better-auth`: `createGetAuth()` resolves the caller (user + active organization) from
+    the Convex `ctx` for use as `vexServerApi`/`collectionsApi`'s `getAuth`.
+  - `@vexcms/next`: admin layout/page pass the server-resolved caller into the admin UI.
+
+  BREAKING: the globals mutation `globals.update` is renamed `globals.upsert` (endpoint, server
+  function `upsertGlobal`, and client wrapper). Bumped `minor` rather than `major` because these
+  packages are pre-1.0 alpha, consistent with the globals-system changeset.
+
+### Patch Changes
+
+- fb55d58: Publish `peerDependencies` as ranges instead of exact versions.
+
+  `peerDependencies` previously inherited exact versions from the pnpm catalog, so
+  installing alongside a newer `convex`, `lucide-react`, or `@tanstack/react-table`
+  produced a peer conflict. Peers now resolve from a dedicated `peers` catalog of
+  deliberate ranges, and `@vexcms/core` is peered as a compatible range rather
+  than an exact version. `dependencies` are now published as exact versions instead of ranges
+  (`nanoid: 5.1.16`, not `^5.1.11`), so an install cannot silently pick up a
+  different transitive tree than the one tested.
+
+  `@vexcms/next` now declares `next >=15.0.0`, correcting a `>=14.0.0` claim that
+  never held — the admin page awaits `params`, which requires Next 15 typings.
+
+- 9e68058: Ship type declarations. Published packages contained no `.d.ts` at all.
+
+  Every `tsup.config.ts` carried `dts: false` — tsup's rollup-dts pegs the CPU on this
+  dependency graph — so `types: "./dist/index.d.ts"` pointed at a file that was never
+  emitted. Installing any `@vexcms/*` package gave you `any`.
+
+  Declarations now come from `tsc -p tsconfig.build.json --emitDeclarationOnly`, run after
+  tsup in each package's `build` script. `dts: false` stays, deliberately: tsup builds JS,
+  tsc builds types.
+
+  The blocker was TS6059 (`File is not under rootDir`). Workspace deps resolved through the
+  `source` export condition, pulling sibling `src/` into each program. The build configs now
+  set `"customConditions": []` so deps resolve through their published `types` entry
+  instead; Turbo's `dependsOn: ["^build"]` guarantees upstream `dist/` exists first. Dev
+  configs are untouched and still resolve through `source`.
+
+  Also exports `AuthFieldMeta` from `@vexcms/core`. `@vexcms/better-auth` had been importing
+  it through `../../core/src/auth/types`, a cross-package source path that cannot produce a
+  correct declaration.
+
+- b67c8ab: Publish under Apache-2.0 with full package metadata.
+
+  Every published manifest now carries `license: "Apache-2.0"` (root `LICENSE` +
+  `NOTICE` added), `description`, `keywords`, `author`, `homepage`, and
+  `repository` with per-package `directory`. `sideEffects: false` is declared
+  where verified side-effect-free; `@vexcms/next` declares `["*.css"]` because it
+  exports `./styles`. Packages publish to the `alpha` dist-tag
+  (`publishConfig.tag`), leaving `latest` untouched until promotion.
+
+- Updated dependencies [8f75ecb]
+- Updated dependencies [fb55d58]
+- Updated dependencies [58265ed]
+- Updated dependencies
+- Updated dependencies [24a3058]
+- Updated dependencies [4270b82]
+- Updated dependencies [40efb79]
+- Updated dependencies [aa56f38]
+- Updated dependencies [bde8141]
+- Updated dependencies
+- Updated dependencies [07924de]
+- Updated dependencies [9e68058]
+- Updated dependencies [7b1fa3c]
+- Updated dependencies [b67c8ab]
+  - @vexcms/core@0.1.0-alpha.2
+  - @vexcms/react@0.1.0-alpha.2
+
 ## 0.0.20
 
 ### Patch Changes

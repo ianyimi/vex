@@ -4,7 +4,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --concurrency 11",
-    "dev:app": "pnpm --filter www dev",
+    "dev:app": "pnpm --filter test dev",
     "dev:vex": "node scripts/vex-dev.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
@@ -12,10 +12,11 @@
     "test:e2e": "turbo run test:e2e",
     "typedoc": "pnpm --filter docs build",
     "clean": "turbo run clean && rm -rf node_modules",
-    "clear": "rm -rf apps/www/.next apps/www/node_modules/.cache",
+    "clear": "rm -rf apps/test/.next apps/test/node_modules/.cache",
     "changeset": "changeset",
     "version:packages": "changeset version && node scripts/sync-template-versions.mjs",
     "release": "pnpm --filter \"@vexcms/*\" --filter \"create-vexcms\" build && pnpm publish -r --no-git-checks --tag alpha && changeset tag",
+    "verify:scaffold": "node scripts/verify-scaffold.mjs",
     "lint": "eslint packages/*/src/**/*.{ts,tsx}",
     "lint:fix": "eslint --fix packages/*/src/**/*.{ts,tsx}"
   },
@@ -27,6 +28,7 @@
     "@vexcms/tsconfig": "workspace:*",
     "eslint": "catalog:",
     "eslint-plugin-jsdoc": "catalog:",
+    "jiti": "catalog:",
     "prettier": "catalog:",
     "turbo": "catalog:",
     "typescript": "catalog:"

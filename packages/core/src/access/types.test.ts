@@ -627,7 +627,7 @@ describe("call-action unions — pre-generation fallback and shape", () => {
   // completion engine — so the permissive fallback accepts every string and the
   // literal halves of these unions are unobservable to a type assertion here. The
   // strict arms ARE observable once the registry is augmented, which is what
-  // `apps/www/src/auth/access.typecheck.ts` pins on every www typecheck.
+  // `apps/test/src/auth/access.typecheck.ts` pins on every www typecheck.
 });
 
 describe("VexAccessConfig — the bare type is a supertype of every concrete config", () => {

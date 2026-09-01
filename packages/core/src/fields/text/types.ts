@@ -30,7 +30,7 @@ import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
  * title: text()
  *
  * // Required slug with length validation and a database index
- * slug: text({ required: true, minLength: 3, maxLength: 100, index: "by_slug" })
+ * slug: text({ required: true, min: { value: 3 }, max: { value: 100 }, index: "by_slug" })
  *
  * // Author name with a placeholder hint shown in the admin form
  * authorName: text({

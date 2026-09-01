@@ -22,7 +22,7 @@ export * from "./uploadFile";
  *
  * @example
  * ```ts
- * // apps/www/app/admin/layout.tsx
+ * // apps/test/app/admin/layout.tsx
  * import { ConvexStorageAdapter } from "@vexcms/file-storage-convex/adapter";
  *
  * const adapter = new ConvexStorageAdapter({ mediaCollections: [images] });

@@ -1,6 +1,8 @@
 # create-vexcms
 
-Scaffolding CLI for [VEX CMS](https://github.com/ianyimi/vex) projects. Creates a complete Next.js application with Convex backend, Better Auth authentication, and an admin panel — ready to run.
+Scaffolding CLI for [VexCMS](https://github.com/ianyimi/vex) projects. Creates a complete
+Next.js application with a Convex backend, Better Auth authentication, and a self-hosted admin
+panel — ready to run.
 
 ## Usage
 
@@ -14,7 +16,7 @@ Or with a project name:
 pnpm create vexcms@latest my-project
 ```
 
-Supports relative paths:
+Supports relative paths, including scaffolding straight into a monorepo app directory:
 
 ```bash
 pnpm create vexcms@latest apps/website
@@ -24,138 +26,146 @@ pnpm create vexcms@latest apps/website
 
 | Flag | Description |
 |------|-------------|
-| `--bare` | Skip the marketing site template. Scaffolds an empty VEX CMS project with no collections. |
-| `--orgs` | Enable multi-tenant organizations (adds Better Auth organizations plugin). |
+| `--bare` | Skip the marketing-site overlay. Scaffolds `base-nextjs` alone — auth, admin panel, media, and no starter collections. |
+| `--orgs` | Enable multi-tenant organizations (adds the Better Auth organizations plugin). |
+| `--monorepo` | Scaffold into `apps/<name>` under the nearest ancestor `pnpm-workspace.yaml` instead of a standalone project. Rewrites `@vexcms/*` dependencies to `workspace:*` and any dependency present in the host workspace's catalog to `catalog:`; every other dependency stays a literal version. Skips `git init` and dependency install — the root workspace owns both. |
+| `--yes` | Accept every interactive prompt's default (bare: no, orgs: no, port: `3010`, no OAuth providers, git init: yes, install: no) — no prompts at all. |
 
 ```bash
-# Empty project with no pre-built collections
+# Empty project, no pre-built collections
 pnpm create vexcms@latest my-app --bare
 
-# Project with organizations support
+# Project with multi-tenant organizations
 pnpm create vexcms@latest my-app --orgs
+
+# Non-interactive, defaults only
+pnpm create vexcms@latest my-app --yes
+
+# Inside a pnpm workspace, catalog-aware
+pnpm create vexcms@latest my-app --monorepo --yes
 ```
 
-## Interactive Prompts
+## Interactive prompts
 
-The CLI walks you through:
+Skipped entirely by `--yes` (each falls back to its default); otherwise the CLI walks you
+through:
 
-1. **Project name** — validates npm package name rules, supports `.` for current directory
-2. **Framework** — Next.js (recommended) or TanStack Start (coming soon)
-3. **Email/password auth** — enable or disable (default: yes)
-4. **OAuth providers** — multi-select from 30+ Better Auth providers (Google, GitHub, Discord, etc.)
-5. **Organizations** — enable multi-tenant support (default: no, skipped if `--orgs` passed)
-6. **Git repository** — initialize git (default: yes)
-7. **Install dependencies** — run package install (default: no)
+1. **Project name** — validates npm package name rules; `.` scaffolds into the current directory
+2. **Framework** — Next.js (TanStack Start is not yet implemented)
+3. **Dev server port** — default `3010`
+4. **Email/password auth** — enable or disable (default: yes)
+5. **Organizations** — multi-tenant support (default: no; skipped if `--orgs` was passed)
+6. **OAuth providers** — multi-select from Better Auth's supported providers
+7. **Git repository** — run `git init` (default: yes; skipped under `--monorepo`)
+8. **Install dependencies** — run the package manager install (default: no; skipped under `--monorepo`)
 
 ## Templates
 
-### Marketing Site (default)
+### `base-nextjs`
 
-Pre-built collections for a marketing website:
+The foundation every scaffold starts from — used alone when `--bare` is passed:
 
-- **Pages** — with title, slug, richtext content, draft/publish versioning, and live preview
-- **Headers** — name, logo upload, sticky option
-- **Footers** — name, richtext content, copyright text
-- **Themes** — name, colors, font family
-- **Site Settings** — site name, description, favicon upload
+- Better Auth wired through `@vexcms/better-auth`, with email/password and any selected OAuth
+  providers
+- Admin panel mounted at `/admin` via `@vexcms/next`
+- Media collection backed by `@vexcms/file-storage-convex`
+- Users collection merged from the auth adapter
+- First-admin bootstrap: the first account created anywhere in the project is auto-promoted to
+  admin (`convex/vex/firstUser.ts`); until then, the home route renders a `WelcomePage` prompting
+  sign-up instead of a `404`
+- No pages, blocks, themes, or site content — `vex.config.ts` ships an empty `collections: []`
+  overlay slot
 
-Also includes:
+### `marketing-site` (default)
 
-- Landing page with sign-in/sign-up flow
-- First-user auto-admin promotion
-- Admin panel onboarding tour (driver.js)
-- Preview routes at `/preview/[slug]` with live preview support
-- Public page routes at `/[slug]` (published pages only)
-- Draft-aware queries using `vexQuery`
+An overlay applied over `base-nextjs` with file-level overwrite, adding a complete marketing
+site:
 
-### Bare (`--bare`)
+- Collections: `pages`, `headers`, `footers`, `themes` (with a `themeColors` sub-shape)
+- Global: `siteSettings` (active theme, admin theme, site name)
+- 8 content blocks (`blocks/<Name>/{config.ts,index.tsx}`) rendered anywhere via `RenderBlocks`
+  from `@vexcms/react` — no hand-rolled block-type switch
+- Theme system: database-driven CSS custom properties (`ThemeStyle` for first paint,
+  `ThemeLive` for live updates), seeded with four starter palettes
+- `convex/seed.ts` — an idempotent `init` mutation seeding site settings, a header, a footer, the
+  starter palettes, and a complete home page from the blocks' own defaults (`pnpm seed`)
 
-Empty VEX CMS project with:
+## Getting started
 
-- Authentication setup (Better Auth + Convex adapter)
-- Admin panel wired at `/admin`
-- Empty `collections: []` in `vex.config.ts`
-- No onboarding tour
-
-## Getting Started
-
-After scaffolding your project:
-
-### 1. Install dependencies
+After scaffolding:
 
 ```bash
 cd my-project
-pnpm install
+pnpm install            # skip if you answered "yes" to install during scaffolding
 ```
 
-### 2. Generate a Better Auth secret
+### 1. Stand up your Convex deployment
 
 ```bash
-pnpm secret:create
+npx convex dev
 ```
 
-This generates a random 32-character string and copies it to your clipboard.
+First run only — links or creates a Convex project and prints your real
+`NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL`. Paste them into `.env.local`,
+replacing the generated placeholder values so the app stops pointing at
+`https://placeholder.convex.cloud`. Leave `Ctrl-C` once it reports functions are ready.
 
-### 3. Configure environment variables
+### 2. Configure environment variables
 
-The CLI creates a `.env.local` file with `NEXT_PUBLIC_SITE_URL` set to your chosen port. Add the auth secret:
+The installer writes `.env.local` with a generated `BETTER_AUTH_SECRET`,
+`NEXT_PUBLIC_SITE_URL`, and `SITE_URL` already filled in — only the two Convex URLs above need
+replacing for local dev. In the [Convex Dashboard](https://dashboard.convex.dev), add
+`BETTER_AUTH_SECRET` and `SITE_URL` under **Settings → Environment Variables** using the same
+values so server-side auth checks and email links resolve correctly.
 
-```env
-# .env.local (auto-generated)
-NEXT_PUBLIC_SITE_URL=http://localhost:3010
-
-# Add manually:
-BETTER_AUTH_SECRET=your-generated-secret-here
-```
-
-### 4. Start VEX dev server
+### 3. Run the dev servers
 
 ```bash
-pnpm vex:dev
+pnpm dev        # Next.js + convex dev + the vex config watcher, together
 ```
 
-This starts the VEX CLI watcher (generates schema, types, and queries) and the Convex dev server. On first run, it will prompt you to create or select a Convex project.
+### 4. Create your admin account
 
-### 5. Add environment variables to Convex
+Open `http://localhost:3010` (or your chosen port) and sign up. The first account created is
+automatically promoted to admin and redirected into `/admin`.
 
-In the [Convex Dashboard](https://dashboard.convex.dev), navigate to your project's **Settings > Environment Variables** and add:
-
-- `BETTER_AUTH_SECRET` — the same secret from step 2
-- `SITE_URL` — `http://localhost:3010` (or your chosen port)
-
-### 6. Start the Next.js dev server
-
-In a separate terminal:
-
-```bash
-pnpm dev
-```
-
-### 7. Create your admin account
-
-Open `http://localhost:3010` in your browser. Click **"Create Admin Account"** to sign up. The first user is automatically promoted to admin and redirected to the admin panel.
-
-### Available Scripts
+### Available scripts
 
 | Script | Description |
 |--------|-------------|
-| `pnpm dev` | Start Next.js development server |
-| `pnpm vex:dev` | Start VEX CLI watcher + Convex dev server |
-| `pnpm vex:generate` | One-shot schema/type/query generation |
-| `pnpm vex:update` | Update all `@vexcms/*` packages to latest |
-| `pnpm secret:create` | Generate a random 32-character secret and copy to clipboard |
+| `pnpm dev` | Start Next.js, `convex dev`, and the `vex` watcher together |
 | `pnpm build` | Production build |
+| `pnpm typecheck` | Type-check the project |
+| `pnpm seed` | Run the marketing-site seed mutation (marketing-site only) |
+| `pnpm secret:create` | Generate a random 32-character secret and copy it to the clipboard |
+
+## Monorepo mode (`--monorepo`)
+
+Run from inside an existing pnpm workspace to scaffold a new app under it instead of a
+standalone project:
+
+```bash
+pnpm create vexcms@latest my-app --monorepo --yes
+```
+
+The installer walks up from the current directory for the nearest `pnpm-workspace.yaml`, targets
+`apps/my-app`, rewrites every `@vexcms/*` dependency to `workspace:*` and any dependency also
+present in the host workspace's catalog to `catalog:` (other dependencies keep literal
+versions), and skips both `git init` and dependency install — the root workspace owns them.
 
 ## Versioning
 
-`create-vexcms` is versioned alongside all `@vexcms/*` packages. Running `pnpm create vexcms@latest` always scaffolds with the latest package versions. You can also pin a specific version:
+`create-vexcms` is versioned alongside every `@vexcms/*` package. Running
+`pnpm create vexcms@latest` always scaffolds with the latest package versions; pin a specific
+release the same way:
 
 ```bash
-pnpm create vexcms@0.0.3
+pnpm create vexcms@0.1.0
 ```
 
-The scaffolded project's `@vexcms/*` dependencies match the version of `create-vexcms` used.
+The scaffolded project's `@vexcms/*` dependencies match the version of `create-vexcms` used to
+generate it.
 
 ## License
 
-MIT
+Apache-2.0

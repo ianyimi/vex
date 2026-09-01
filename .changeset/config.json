@@ -20,7 +20,7 @@
   "updateInternalDependencies": "patch",
   "ignore": [
     "@vexcms/tsconfig",
-    "www",
+    "test",
     "docs"
   ],
   "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {

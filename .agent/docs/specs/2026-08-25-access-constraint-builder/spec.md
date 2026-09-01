@@ -9,8 +9,8 @@ touches:
   - packages/core/src/api/find/server.ts
   - packages/core/src/api/search/server.ts
   - packages/core/src/api/get/server.ts
-  - apps/www/src/auth/access.ts
-  - apps/www/src/vex.types.ts
+  - apps/test/src/auth/access.ts
+  - apps/test/src/vex.types.ts
   - apps/docs/src/content/docs/guides/access-control.mdx
 prompt_version: 1
 ---

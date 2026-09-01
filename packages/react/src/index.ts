@@ -124,6 +124,13 @@ export {
 export { cn } from "./styles/utils";
 export { Icon } from "./components/Icon";
 export type { IconProps, LucideIconName } from "./components/Icon";
+export { RenderBlocks } from "./components/RenderBlocks";
+export type {
+  BlockComponentProps,
+  BlockComponents,
+  RenderableBlock,
+  RenderBlocksProps,
+} from "./components/RenderBlocks";
 
 // shadcn UI primitives
 export * from "./components/ui";

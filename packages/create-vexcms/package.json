@@ -1,6 +1,6 @@
 {
   "name": "create-vexcms",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "description": "Scaffold a new VexCMS project",
   "keywords": [
     "cms",
@@ -44,7 +44,8 @@
     "@inquirer/prompts": "catalog:",
     "ora": "catalog:",
     "sort-package-json": "catalog:",
-    "validate-npm-package-name": "catalog:"
+    "validate-npm-package-name": "catalog:",
+    "yaml": "catalog:"
   },
   "devDependencies": {
     "@types/fs-extra": "catalog:",

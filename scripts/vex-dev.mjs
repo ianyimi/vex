@@ -15,7 +15,7 @@ function startVex() {
   if (restarting) return;
   
   console.log('🚀 Starting vex dev...');
-  vexProcess = spawn('node', ['packages/cli/dist/index.js', 'dev', '--cwd', 'apps/www'], {
+  vexProcess = spawn('node', ['packages/cli/dist/index.js', 'dev', '--cwd', 'apps/test'], {
     cwd: projectRoot,
     stdio: 'inherit'
   });

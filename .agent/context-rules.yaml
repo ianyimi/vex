@@ -2,7 +2,7 @@
 version: 1
 rules:
   - id: std-frontend
-    when: ["**/*.css", "apps/www/src/**", "apps/www/src/app/globals.css", "packages/next/src/**", "packages/next/src/**/*.tsx", "packages/react/src/**", "packages/react/src/components/**", "packages/react/src/components/fields/**", "packages/react/src/components/fields/*/columnDef.tsx", "packages/react/src/components/form/**", "packages/react/src/components/ui/data-table/**", "packages/react/src/components/views/**", "packages/react/src/hooks/useCollectionForm.ts", "packages/react/src/styles/**"]
+    when: ["**/*.css", "apps/test/src/**", "apps/test/src/app/globals.css", "packages/next/src/**", "packages/next/src/**/*.tsx", "packages/react/src/**", "packages/react/src/components/**", "packages/react/src/components/fields/**", "packages/react/src/components/fields/*/columnDef.tsx", "packages/react/src/components/form/**", "packages/react/src/components/ui/data-table/**", "packages/react/src/components/views/**", "packages/react/src/hooks/useCollectionForm.ts", "packages/react/src/styles/**"]
     inject:
       - docs/standards/frontend/README.md
       - docs/standards/frontend/components-and-shadcn.md
@@ -11,7 +11,7 @@ rules:
       - docs/standards/frontend/forms.md
       - docs/standards/frontend/tables.md
   - id: std-backend
-    when: ["apps/www/convex/**", "apps/www/convex/auth/**", "apps/www/convex/vex/media.ts", "apps/www/src/auth/**", "apps/www/src/vex.config.ts", "packages/better-auth/src/**", "packages/cli/src/**", "packages/core/src/api/**", "packages/core/src/media/**", "packages/file-storage-convex/src/**"]
+    when: ["apps/test/convex/**", "apps/test/convex/auth/**", "apps/test/convex/vex/media.ts", "apps/test/src/auth/**", "apps/test/src/vex.config.ts", "packages/better-auth/src/**", "packages/cli/src/**", "packages/core/src/api/**", "packages/core/src/media/**", "packages/file-storage-convex/src/**"]
     inject:
       - docs/standards/backend/README.md
       - docs/standards/backend/auth-adapters.md
@@ -48,6 +48,6 @@ rules:
       - docs/standards/docs/docs-site-conventions.md
       - docs/standards/docs/jsdoc-conventions.md
   - id: naming
-    when: ["!packages/react/src/components/fields/**", "!packages/react/src/components/ui/**", "apps/docs/src/content/docs/*.md", "apps/docs/src/content/docs/*.mdx", "apps/docs/src/content/docs/fields/**", "apps/docs/src/content/docs/guides/**", "apps/www/convex/*.ts", "apps/www/convex/auth/**", "apps/www/convex/vex/**", "apps/www/src/**/*Context.*", "apps/www/src/auth/**", "apps/www/src/vexcms/blocks/**", "apps/www/src/vexcms/collections/**", "packages/*/src/**/*.test.*", "packages/cli/src/**", "packages/cli/src/commands/**", "packages/core/src/**", "packages/core/src/api/*/**", "packages/core/src/fields/*/**", "packages/next/src/**/*.tsx", "packages/react/src/**/*Context.*", "packages/react/src/components/**/*.tsx", "packages/react/src/components/fields/*/**", "packages/react/src/components/ui/**", "packages/react/src/hooks/**", "scripts/**/*.mjs", "scripts/**/*.sh"]
+    when: ["!packages/react/src/components/fields/**", "!packages/react/src/components/ui/**", "apps/docs/src/content/docs/*.md", "apps/docs/src/content/docs/*.mdx", "apps/docs/src/content/docs/fields/**", "apps/docs/src/content/docs/guides/**", "apps/test/convex/*.ts", "apps/test/convex/auth/**", "apps/test/convex/vex/**", "apps/test/src/**/*Context.*", "apps/test/src/auth/**", "apps/test/src/vexcms/blocks/**", "apps/test/src/vexcms/collections/**", "packages/*/src/**/*.test.*", "packages/cli/src/**", "packages/cli/src/commands/**", "packages/core/src/**", "packages/core/src/api/*/**", "packages/core/src/fields/*/**", "packages/next/src/**/*.tsx", "packages/react/src/**/*Context.*", "packages/react/src/components/**/*.tsx", "packages/react/src/components/fields/*/**", "packages/react/src/components/ui/**", "packages/react/src/hooks/**", "scripts/**/*.mjs", "scripts/**/*.sh"]
     inject:
       - docs/standards/naming-conventions.md

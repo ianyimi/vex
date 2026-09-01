@@ -21,9 +21,9 @@ touches:
   - packages/react/src/hooks/useAutosave.ts
   - packages/cli/src/lib/migrate.ts
   - packages/cli/src/lib/generateSchema.ts
-  - apps/www/src/vexcms/collections/pages.ts
-  - apps/www/src/auth/access.ts
-  - apps/www/convex/vex.ts
+  - apps/test/src/vexcms/collections/pages.ts
+  - apps/test/src/auth/access.ts
+  - apps/test/convex/vex.ts
   - apps/docs/src/content/docs/guides/versioning-and-drafts.mdx
 prompt_version: 1
 ---

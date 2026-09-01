@@ -15,6 +15,7 @@ import crypto from 'crypto';
 import path from 'path';
 import type { ProjectOptions, PackageManager } from './types.js';
 import { copyTemplate, overlayTemplate } from '../helpers/fileOperations.js';
+import { readWorkspaceCatalog, rewriteManifestForMonorepo } from '../helpers/monorepo.js';
 
 /**
  * Abstract base class for framework-specific installers
@@ -100,10 +101,11 @@ export abstract class VexFrameworkInstaller {
   }
 
   /**
-   * Update the package.json name field and vex:update script
-   * to match the detected package manager.
+   * Update the package.json name field, the vex:update script (to match the
+   * detected package manager), and README.md's `{{PROJECT_NAME}}` heading.
    *
-   * @param name - npm package name to write into `package.json`'s `name` field.
+   * @param name - npm package name to write into `package.json`'s `name` field
+   *   and to substitute for `{{PROJECT_NAME}}` in `README.md`.
    */
   protected async updatePackageName(name: string): Promise<void> {
     const pkgPath = path.join(this.targetPath, 'package.json');
@@ -118,6 +120,15 @@ export abstract class VexFrameworkInstaller {
     }
 
     await fs.writeJson(pkgPath, pkg, { spaces: 2 });
+
+    // README.md's title carries the same {{PROJECT_NAME}} marker as
+    // package.json's `name` field, but it is plain text, not JSON, so it
+    // needs its own substitution here rather than riding the JSON round-trip.
+    const readmePath = path.join(this.targetPath, 'README.md');
+    if (await fs.pathExists(readmePath)) {
+      const readme = await fs.readFile(readmePath, 'utf-8');
+      await fs.writeFile(readmePath, readme.replace('{{PROJECT_NAME}}', name));
+    }
   }
 
   /**
@@ -140,10 +151,43 @@ export abstract class VexFrameworkInstaller {
     }
     await fs.writeJson(pkgPath, pkg, { spaces: 2 });
 
-    // Create .env.local with site URL and empty auth secret
+    // Create .env.local with a real generated secret and placeholder Convex URLs
+    // so a deployment-less `pnpm typecheck` / `pnpm build` survives env
+    // validation and `new ConvexReactClient(url)` before `npx convex dev` has
+    // ever run.
+    const siteUrl = `http://localhost:${port}`;
     const envLocalPath = path.join(this.targetPath, '.env.local');
-    const envContent = `NEXT_PUBLIC_SITE_URL=http://localhost:${port}\nBETTER_AUTH_SECRET=""\n`;
+    const envContent = [
+      `NEXT_PUBLIC_SITE_URL=${siteUrl}`,
+      `SITE_URL=${siteUrl}`,
+      `BETTER_AUTH_SECRET=${this.generateAuthSecret()}`,
+      `NEXT_PUBLIC_CONVEX_URL=https://placeholder.convex.cloud`,
+      `NEXT_PUBLIC_CONVEX_SITE_URL=https://placeholder.convex.site`,
+      `CONVEX_DEPLOYMENT=`,
+      '',
+    ].join('\n');
     await fs.writeFile(envLocalPath, envContent);
+  }
+
+  /**
+   * Rewrites the scaffolded `package.json` for life inside a host pnpm
+   * workspace (`--monorepo`). `@vexcms/*` dependencies become
+   * `workspace:*`; any other dependency the host's `pnpm-workspace.yaml`
+   * catalog also pins becomes `catalog:`; everything else keeps its
+   * literal, catalog-resolved version. No-op when `options.monorepo` is
+   * false or `options.workspaceRoot` is unset.
+   *
+   * @param options - Resolved project options; only `monorepo`/`workspaceRoot` are consulted.
+   */
+  protected async applyMonorepoRewrite(options: ProjectOptions): Promise<void> {
+    if (!options.monorepo || !options.workspaceRoot) return;
+
+    const pkgPath = path.join(this.targetPath, 'package.json');
+    const manifest = await fs.readJson(pkgPath);
+    const catalog = await readWorkspaceCatalog({ workspaceRoot: options.workspaceRoot });
+    const rewritten = rewriteManifestForMonorepo({ manifest, catalog });
+
+    await fs.writeJson(pkgPath, rewritten, { spaces: 2 });
   }
 
   /**
@@ -460,13 +504,25 @@ export abstract class VexFrameworkInstaller {
       throw error;
     }
 
-    // Step 10: Initialize Git repository (optional)
-    if (options.initGit) {
+    // Step 10.5: Rewrite package.json for the host workspace (--monorepo only)
+    if (options.monorepo) {
+      const monorepoSpinner = ora('Rewriting dependencies for the host workspace...').start();
+      try {
+        await this.applyMonorepoRewrite(options);
+        monorepoSpinner.succeed('Dependencies rewritten for the host workspace');
+      } catch (error) {
+        monorepoSpinner.fail('Failed to rewrite dependencies for the host workspace');
+        throw error;
+      }
+    }
+
+    // Step 10: Initialize Git repository (optional; --monorepo defers to the host repo)
+    if (options.initGit && !options.monorepo) {
       await this.initGitRepo();
     }
 
-    // Step 11: Install dependencies (optional)
-    if (options.installDependencies) {
+    // Step 11: Install dependencies (optional; --monorepo defers to the host's install)
+    if (options.installDependencies && !options.monorepo) {
       await this.installDependencies();
       await this.lintCode();
       await this.formatCode();

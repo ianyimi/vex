@@ -9,8 +9,8 @@ verified_at: 3a18c95eb3bed73e6c218a32a587d4cf36ce9d7a
 | Command | What it does |
 |---------|-------------|
 | `pnpm dev` | Turbo dev across all packages (concurrency 11). Package tsup watchers + Next + Astro. |
-| `pnpm dev:app` | Next.js admin only (`apps/www` on port **3020**). |
-| `pnpm dev:vex` | Runs `@vexcms/cli dev` watching core+cli builds, cwd `apps/www`. |
+| `pnpm dev:app` | Next.js admin only (`apps/test` on port **3020**). |
+| `pnpm dev:vex` | Runs `@vexcms/cli dev` watching core+cli builds, cwd `apps/test`. |
 | `pnpm build` | `turbo run build` — all packages + apps. |
 | `pnpm typecheck` | `turbo run typecheck` across workspace. |
 | `pnpm test` | `turbo run test` — Vitest in every package that has it. |
@@ -69,8 +69,8 @@ Read live output: `tmux capture-pane -t project-vex:0.0 -p -S -100`.
 
 | Service | Start command | Port / Notes |
 |---------|--------------|--------------|
-| Convex dev | Auto-started by `pnpm dev` via `@vexcms/cli` in `apps/www` | Cloud dev deployment, no local port |
-| Next.js (www) | `pnpm dev:app` or part of `pnpm dev` | `http://localhost:3020` |
+| Convex dev | Auto-started by `pnpm dev` via `@vexcms/cli` in `apps/test` | Cloud dev deployment, no local port |
+| Next.js (test) | `pnpm dev:app` or part of `pnpm dev` | `http://localhost:3020` |
 | Astro docs | `pnpm --filter docs dev` | `http://localhost:4321` |
 
 ## Changesets + Release Flow

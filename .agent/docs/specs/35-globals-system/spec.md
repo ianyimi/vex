@@ -8,7 +8,7 @@ touches:
   - packages/core/src/schema/**
   - packages/core/src/config/**
   - packages/react/src/components/**
-  - apps/www/**
+  - apps/test/**
 prompt_version: 1
 ---
 

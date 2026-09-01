@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { parseColor, serializeColor, type ColorValue } from "./convert";
 import { COLOR_FORMATS, type ColorFormat } from "./formats";
 
-/** Ember brand colour from apps/www/src/app/globals.css. */
+/** Ember brand colour from apps/test/src/app/globals.css. */
 const EMBER: ColorValue = { r: 232, g: 98, b: 42, a: 1 };
 
 const FORMATS = Object.values(COLOR_FORMATS).map((entry) => entry.format);

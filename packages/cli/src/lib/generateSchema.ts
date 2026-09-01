@@ -14,7 +14,6 @@ import {
 } from "@vexcms/core";
 
 import { waitForDeploy } from "./convexProcess.js";
-import { generateAndWriteCollectionFiles } from "./generateCollectionFiles.js";
 import { logger } from "./logger.js";
 import { executeMigration, executeFieldRemoval, backfillVersionStatus } from "./migrate.js";
 import { resolveConvexUrl } from "./resolveConvexUrl.js";
@@ -253,9 +252,6 @@ export async function generateAndWrite(
       }
     }
   }
-
-  // Generate typed per-collection query files
-  await generateAndWriteCollectionFiles({ config, cwd });
 
   return { written: true };
 }

@@ -23,7 +23,7 @@ docs:
 frontend:
   README: { description: "(first paragraph missing — add one)", lines: 1 }
   components-and-shadcn: { description: "`packages/react/src/components/ui/` via `npx shadcn@latest add <component>`. Check", lines: 22 }
-  css-and-tokens: { description: "`apps/www/src/app/globals.css` (`:root` + `.dark` scopes, OKLCH color space).", lines: 23 }
+  css-and-tokens: { description: "`apps/test/src/app/globals.css` (`:root` + `.dark` scopes, OKLCH color space).", lines: 23 }
   data-fetching: { description: "spread into `useQuery` — returns a live WebSocket subscription", lines: 22 }
   forms: { description: "(`packages/react/src/components/form/AppForm.tsx`); field inputs are created with", lines: 19 }
   tables: { description: "`DataTable` via `flexRender()` (`packages/react/src/components/ui/data-table/DataTable.tsx`).", lines: 20 }

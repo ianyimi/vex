@@ -387,7 +387,7 @@ export default function AdminPage({
 ```
 
 **`convex/vex/collections.ts`** (copy from the VexCMS template):
-The `list`, `get`, `create`, `update`, and `remove` functions must exist at `vex.collections.*` — that is where `vexConvexApi` points. Copy the template from `apps/www/convex/vex/collections.ts`.
+The `list`, `get`, `create`, `update`, and `remove` functions must exist at `vex.collections.*` — that is where `vexConvexApi` points. Copy the template from `apps/test/convex/vex/collections.ts`.
 
 ---
 

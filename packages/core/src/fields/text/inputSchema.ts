@@ -5,7 +5,7 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 /**
  * Builds a Zod schema for validating a text field value in the admin form.
  *
- * Applies `minLength` and `maxLength` constraints when configured, then
+ * Applies `min`/`max` character-length constraints when configured, then
  * wraps in `.optional()` for non-required fields via `applyBaseInputSchemaMeta`.
  *
  * @param props - Input props.
@@ -14,9 +14,10 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  *
  * @example
  * ```ts
- * const field = text({ required: true, minLength: 3, maxLength: 100 })
+ * const field = text({ required: true, min: { value: 3 }, max: { value: 100 } })
  * textFieldToInputSchema({ field })
- * // → z.string().min(1).min(3).max(100).default("")
+ * // → z.string().min(3).max(100).default("")
+ * // (a configured `min` supersedes the bare `.min(1)` required check)
  * ```
  */
 export function textFieldToInputSchema(props: { field: TextField }): ZodType {

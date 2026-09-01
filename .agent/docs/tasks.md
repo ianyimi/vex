@@ -1,6 +1,7 @@
 ## In Progress
 - RBAC access control (spec 2026-08-12-rbac-access-control)
 - Access index resolution (spec 2026-08-23-access-index-resolution)
+- WP-5 publish alphas
 
 ## Inbox
 - Rename naming outliers: MediaLibaryGrid.tsx, use-mobile.ts, blocks/logo-cloud.ts
@@ -17,3 +18,4 @@
 - WP-C color field
 - WP-4 docs and repo polish (spec 2026-08-30-wp4-docs-repo-polish)
 - WP-1 release integrity
+- WP-2 CLI + templates (spec 2026-08-31-wp2-cli-templates)

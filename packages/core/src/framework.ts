@@ -22,7 +22,7 @@ import { GlobalConfig } from "./globals";
  *
  * Each slot resolves to `ApplyComponent<F, InputComponentProps<MatchingFieldDef>>`, which
  * means the component must accept the input props for that specific field type. This gives
- * the component full autocomplete for field-specific properties (e.g. `fieldDef.maxLength`
+ * the component full autocomplete for field-specific properties (e.g. `fieldDef.max`
  * on the text slot).
  *
  * @see {@link CellComponentProps} for the data table cell props

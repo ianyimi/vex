@@ -1,12 +1,12 @@
 ---
-applies_to: ["packages/core/src/api/**", "apps/www/convex/**"]
+applies_to: ["packages/core/src/api/**", "apps/test/convex/**"]
 ---
 # Convex Function & API Patterns
 
 - Factories: `queryApi(config, query?)` and `mutationApi(config, mutation?)` wrap server
   functions with validators and return registered query/mutation objects
   (`packages/core/src/api/server.ts:38-80` find/get/search; `:120-152` create/update/remove).
-  Host apps call each factory once and re-export (`apps/www/convex/vex.ts:1-6`).
+  Host apps call each factory once and re-export (`apps/test/convex/vex.ts:1-6`).
 - Factories are co-located with the server barrel in `src/api/server.ts` (the
   `@vexcms/core/convex` export), not a separate factory file.
 - Naming: param is `collection: v.string()` (never `table`, never `slug`); mutation payload

@@ -1,10 +1,22 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
 import { copyTemplate, overlayTemplate } from '../helpers/fileOperations.js';
 
 describe('copyTemplate', () => {
+  const templateDir = path.resolve(import.meta.dirname, '../../templates/base-nextjs');
+
+  beforeAll(() => {
+    if (!fs.existsSync(templateDir)) {
+      throw new Error(
+        `templates/base-nextjs is missing at ${templateDir} — Step 3 ` +
+          '(author templates/base-nextjs from apps/test) has not landed. ' +
+          'This suite refuses to pass against an absent template.'
+      );
+    }
+  });
+
   let tmpDir: string;
 
   beforeEach(() => {
@@ -16,29 +28,15 @@ describe('copyTemplate', () => {
   });
 
   it('copies template files to target directory', async () => {
-    const templateDir = path.resolve(
-      import.meta.dirname,
-      '../../templates/base-nextjs'
-    );
-
-    // Only run if the template exists
-    if (!fs.existsSync(templateDir)) return;
-
     const targetDir = path.join(tmpDir, 'output');
     await copyTemplate('nextjs', targetDir);
 
     expect(fs.existsSync(path.join(targetDir, 'package.json'))).toBe(true);
-    expect(fs.existsSync(path.join(targetDir, 'vex.config.ts'))).toBe(true);
+    expect(fs.existsSync(path.join(targetDir, 'vex.config.ts'))).toBe(false);
+    expect(fs.existsSync(path.join(targetDir, 'src/vex.config.ts'))).toBe(true);
   });
 
   it('renames _gitignore to .gitignore', async () => {
-    const templateDir = path.resolve(
-      import.meta.dirname,
-      '../../templates/base-nextjs'
-    );
-
-    if (!fs.existsSync(templateDir)) return;
-
     const targetDir = path.join(tmpDir, 'output');
     await copyTemplate('nextjs', targetDir);
 

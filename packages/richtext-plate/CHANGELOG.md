@@ -1,5 +1,90 @@
 # @vexcms/richtext
 
+## 0.1.0-alpha.2
+
+### Patch Changes
+
+- fb55d58: Publish `peerDependencies` as ranges instead of exact versions.
+
+  `peerDependencies` previously inherited exact versions from the pnpm catalog, so
+  installing alongside a newer `convex`, `lucide-react`, or `@tanstack/react-table`
+  produced a peer conflict. Peers now resolve from a dedicated `peers` catalog of
+  deliberate ranges, and `@vexcms/core` is peered as a compatible range rather
+  than an exact version. `dependencies` are now published as exact versions instead of ranges
+  (`nanoid: 5.1.16`, not `^5.1.11`), so an install cannot silently pick up a
+  different transitive tree than the one tested.
+
+  `@vexcms/next` now declares `next >=15.0.0`, correcting a `>=14.0.0` claim that
+  never held — the admin page awaits `params`, which requires Next 15 typings.
+
+- bde8141: Enforce the `adminPanel` access gate, fix two authorization defects, and add a single switch for
+  turning RBAC off.
+
+  - `@vexcms/core`: new `canAccessAdminPanel()` answers the `adminPanel.access` gate without
+    callers hand-typing the subject and action — nothing consulted that subject before, so any
+    authenticated caller reached the admin panel regardless of the matrix. `defineAccess()` gains
+    `enabled` (default `true`), checked inside `hasPermission`, so one field on the resolved config
+    turns access control off for the server guards and the admin UI together. **Security fix:**
+    `update` authorized against the caller-supplied patch rather than the stored document, letting
+    a per-document rule be satisfied by the request body; it now fetches and checks the stored row,
+    matching `get`/`find`/`remove`. `deleteMedia` now passes the stored document too, so
+    per-document delete rules are satisfiable.
+  - `@vexcms/react`: new `UnauthorizedView` for callers who fail an access check. `Button` gains
+    `aria-disabled:*` variants so a link-rendered button (`nativeButton={false}`) actually greys
+    out and stops responding — `disabled:*` never matched the rendered `<a>`. `CollectionListView`
+    had its create button's `disabled` prop inverted; bulk delete is now permission-gated in both
+    the collection and media list views.
+  - `@vexcms/cli`: removed the unimplemented `schema/generateSchema.ts` stub (superseded by core's
+    `generateVexSchema`, and already excluded from the package's own test run). JSDoc completed
+    across the package; a `pushSchemaStandalone` description that claimed to run `convex deploy`
+    now matches its actual `dev --once` behavior.
+  - `@vexcms/better-auth`, `@vexcms/richtext-plate`, `create-vexcms`: JSDoc completed on exported
+    symbols; unused imports and bindings removed. No behavior changes.
+
+- 9e68058: Ship type declarations. Published packages contained no `.d.ts` at all.
+
+  Every `tsup.config.ts` carried `dts: false` — tsup's rollup-dts pegs the CPU on this
+  dependency graph — so `types: "./dist/index.d.ts"` pointed at a file that was never
+  emitted. Installing any `@vexcms/*` package gave you `any`.
+
+  Declarations now come from `tsc -p tsconfig.build.json --emitDeclarationOnly`, run after
+  tsup in each package's `build` script. `dts: false` stays, deliberately: tsup builds JS,
+  tsc builds types.
+
+  The blocker was TS6059 (`File is not under rootDir`). Workspace deps resolved through the
+  `source` export condition, pulling sibling `src/` into each program. The build configs now
+  set `"customConditions": []` so deps resolve through their published `types` entry
+  instead; Turbo's `dependsOn: ["^build"]` guarantees upstream `dist/` exists first. Dev
+  configs are untouched and still resolve through `source`.
+
+  Also exports `AuthFieldMeta` from `@vexcms/core`. `@vexcms/better-auth` had been importing
+  it through `../../core/src/auth/types`, a cross-package source path that cannot produce a
+  correct declaration.
+
+- b67c8ab: Publish under Apache-2.0 with full package metadata.
+
+  Every published manifest now carries `license: "Apache-2.0"` (root `LICENSE` +
+  `NOTICE` added), `description`, `keywords`, `author`, `homepage`, and
+  `repository` with per-package `directory`. `sideEffects: false` is declared
+  where verified side-effect-free; `@vexcms/next` declares `["*.css"]` because it
+  exports `./styles`. Packages publish to the `alpha` dist-tag
+  (`publishConfig.tag`), leaving `latest` untouched until promotion.
+
+- Updated dependencies [8f75ecb]
+- Updated dependencies [fb55d58]
+- Updated dependencies [58265ed]
+- Updated dependencies
+- Updated dependencies [24a3058]
+- Updated dependencies [4270b82]
+- Updated dependencies [40efb79]
+- Updated dependencies [aa56f38]
+- Updated dependencies [bde8141]
+- Updated dependencies [07924de]
+- Updated dependencies [9e68058]
+- Updated dependencies [7b1fa3c]
+- Updated dependencies [b67c8ab]
+  - @vexcms/core@0.1.0-alpha.2
+
 ## 0.0.20
 
 ### Patch Changes

@@ -20,10 +20,19 @@ By default this includes a full marketing-site starter — pages, blocks, roadma
 
 ```bash
 cd my-site
-pnpm dev        # starts Next.js + convex dev + the vex watcher
+npx convex dev
 ```
 
-Then open `http://localhost:3000/admin`.
+First run only — this links or creates your Convex deployment and prints the real
+`NEXT_PUBLIC_CONVEX_URL`/`NEXT_PUBLIC_CONVEX_SITE_URL`. Paste them into `.env.local`, replacing
+the generated `https://placeholder.convex.cloud`/`.convex.site` values; leave `Ctrl-C` for now.
+
+```bash
+pnpm dev        # Next.js + convex dev + the vex watcher, together
+```
+
+Open `http://localhost:3010` (or your chosen port). Sign up — the first account is automatically
+promoted to admin and redirected into `/admin`.
 
 ### Manual setup
 

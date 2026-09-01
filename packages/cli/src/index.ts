@@ -34,7 +34,7 @@ switch (command) {
     break;
 
   case "generate":
-    generateCommand().catch((err) => {
+    generateCommand({ cwd }).catch((err) => {
       logger.error("Fatal error", err);
       process.exit(1);
     });
@@ -50,10 +50,11 @@ Commands:
                       next dev) in a separate terminal.
   deploy [options]    Generate schema, auto-migrate if enabled, and deploy
                       to production. Replaces \`convex deploy\` in CI.
-  generate            Regenerate typed collection API files and run eslint --fix.
+  generate [options]  Regenerate vex.types.ts from the vex config.
 
-Dev options:
-  --once              Generate schema, push to Convex, and exit
+Options:
+  --once              (dev) Generate schema, push to Convex, and exit
+  --cwd <dir>         Run as if started from <dir>
 `);
     process.exit(command ? 1 : 0);
 }

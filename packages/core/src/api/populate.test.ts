@@ -37,7 +37,7 @@ describe("populateDocs", () => {
       const post = await ctx.db.get(postId);
       return populateDocs(ctx, [post!], { author: true } as PopulateShape);
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const populated = (result as any[])[0].author as DocumentBySlug["authors"][];
     expect(populated[0].name).toBe("Lena Park");
   });
@@ -60,7 +60,7 @@ describe("populateDocs", () => {
         author: { populate: { organization: true } },
       } as PopulateShape);
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const author = ((result as any[])[0].author as DocumentBySlug["authors"][])[0];
     expect((author.organization as unknown as DocumentBySlug["organizations"][])[0].name).toBe("Vex Inc");
   });
@@ -104,7 +104,7 @@ describe("populateDocs", () => {
         },
       } as PopulateShape);
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     let cursor: any = result[0];
     for (let i = 1; i <= 4; i++) {
       cursor = cursor.parent[0];
@@ -124,7 +124,7 @@ describe("populateDocs", () => {
       return populateDocs(ctx, [post!], { author: true } as PopulateShape);
     });
     expect(result[0]).toMatchObject({ title: "Solo", slug: "solo" });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     expect((result as any[])[0].author).toBeUndefined();
   });
 
@@ -142,7 +142,7 @@ describe("populateDocs", () => {
       const post = await ctx.db.get(postId);
       return populateDocs(ctx, [post!], { author: true } as PopulateShape);
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     expect(((result as any[])[0].author as DocumentBySlug["authors"][]).length).toBe(0);
   });
 });

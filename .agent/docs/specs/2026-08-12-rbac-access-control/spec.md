@@ -12,10 +12,10 @@ touches:
   - "packages/react/src/components/{AdminSidebar,AdminTopNav}.tsx"
   - "packages/react/src/components/views/**"
   - "packages/react/src/context/**"
-  - "apps/www/src/auth/access.ts"
-  - "apps/www/src/vex.config.ts"
-  - "apps/www/convex/vex.ts"
-  - "apps/www/convex/vex/**"
+  - "apps/test/src/auth/access.ts"
+  - "apps/test/src/vex.config.ts"
+  - "apps/test/convex/vex.ts"
+  - "apps/test/convex/vex/**"
 prompt_version: 1
 ---
 

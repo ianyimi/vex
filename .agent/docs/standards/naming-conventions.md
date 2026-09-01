@@ -71,25 +71,25 @@ rules:
     counter_examples: ["commands/dev-server.ts", "commands/StartDev.ts"]
   - id: convex-resource-files
     pattern: '^[a-z][a-zA-Z0-9.]*\.ts$'
-    scope: ["apps/www/convex/*.ts", "apps/www/convex/auth/**", "apps/www/convex/vex/**"]
+    scope: ["apps/test/convex/*.ts", "apps/test/convex/auth/**", "apps/test/convex/vex/**"]
     description: Convex function files are camelCase resource/action nouns.
     examples: ["convex/media.ts", "convex/collections.ts", "convex/auth/db.ts"]
     counter_examples: ["convex/media-operations.ts", "convex/GetMedia.ts"]
   - id: react-context-suffix
     pattern: '^[A-Z][A-Za-z0-9]*Context\.tsx?$'
-    scope: ["packages/react/src/**/*Context.*", "apps/www/src/**/*Context.*"]
+    scope: ["packages/react/src/**/*Context.*", "apps/test/src/**/*Context.*"]
     description: React Context definition files are PascalCase with a Context suffix; a context with a companion hook lives instead as one hooks/useXxx.ts file.
     examples: ["form/AppFormContext.ts", "context/VexConfigContext.ts"]
     counter_examples: ["app-form-context.ts", "AppForm.ts (missing suffix)"]
   - id: auth-file-roles
     pattern: '^(access|client|hasPermission|options|permissions|plugins|server|serverUtils|types)(\.typecheck)?\.tsx?$'
-    scope: ["apps/www/src/auth/**"]
+    scope: ["apps/test/src/auth/**"]
     description: Host-app auth files use fixed role names separating client/server/util/config concerns. RBAC adds `access` (the `defineAccess` matrix), `hasPermission` (the app-side check wrapper), and `plugins` (the better-auth plugin list). A role may carry a `<role>.typecheck.ts` sibling — a pure compile-time assertion file (P-008) that `tsc` enforces; it pins the role's generated/registry-derived types (e.g. `access.typecheck.ts` pins slug-aware action unions).
     examples: ["auth/client.tsx", "auth/server.ts", "auth/serverUtils.ts", "auth/access.ts", "auth/plugins.ts"]
     counter_examples: ["auth/client-auth.tsx", "auth/AuthClient.tsx"]
   - id: vexcms-resource-defs
     pattern: '^[a-z][a-zA-Z0-9-]*\.ts$'
-    scope: ["apps/www/src/vexcms/collections/**", "apps/www/src/vexcms/blocks/**"]
+    scope: ["apps/test/src/vexcms/collections/**", "apps/test/src/vexcms/blocks/**"]
     description: Collection and block definitions are camelCase resource names (no PascalCase, no type suffixes). Preferred camelCase; kebab tolerated for legacy files pending rename.
     examples: ["collections/pages.ts", "collections/siteSettings.ts", "blocks/stats.ts"]
     counter_examples: ["collections/PageCollection.ts", "blocks/HeroBlock.ts"]
@@ -111,4 +111,4 @@ rules:
 
 - `packages/react/src/components/media/MediaLibaryGrid.tsx` — typo, should be `MediaLibraryGrid.tsx`.
 - `packages/react/src/hooks/use-mobile.ts` — shadcn-generated kebab outlier among camelCase hooks.
-- `apps/www/src/vexcms/blocks/logo-cloud.ts` — kebab outlier among camelCase block files.
+- `apps/test/src/vexcms/blocks/logo-cloud.ts` — kebab outlier among camelCase block files.

@@ -67,7 +67,7 @@ This is NOT a fix pass: analyze, verify, report. Only change code if the develop
   Completed steps embed the verified reference implementation — diff against it.
 - **Type paradigm — the generated registry**: `packages/core/src/types/generated.ts` defines
   `DocumentBySlug`/`CollectionsFieldTypeMap` etc. as conditionals over `GeneratedVexTypes`,
-  augmented by `vex generate` into the app (`apps/www/src/vex.types.ts`). Two invariants:
+  augmented by `vex generate` into the app (`apps/test/src/vex.types.ts`). Two invariants:
   registry-map `infer` constraints describe the MAP, never the entry type (a failed
   constraint silently collapses the whole registry, errors surface far away); wide fallbacks
   pre-generation are intentional (`Record<string, unknown>`/`string`), and `never`-collapse
@@ -88,6 +88,6 @@ This is NOT a fix pass: analyze, verify, report. Only change code if the develop
 - **Verify commands**: `pnpm --filter @vexcms/core test -- <dir>` (access: 63, api suites),
   `pnpm exec tsc --noEmit` in `packages/core`, `pnpm --filter www typecheck`,
   `pnpm exec eslint <files>` (JSDoc rules are errors: `@returns` required).
-- **Auth file naming**: `apps/www/src/auth/**` allows only
+- **Auth file naming**: `apps/test/src/auth/**` allows only
   `{client,server,serverUtils,options,permissions,types}.*` (naming-conventions.md) — new
   files there are findings.

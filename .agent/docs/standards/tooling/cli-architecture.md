@@ -18,4 +18,4 @@ applies_to: ["packages/cli/src/**", "scripts/vex-dev.mjs"]
   (`convex/vex/api/*`, `convex/vex/model/api/*`) then runs `eslint --fix` over the output
   dirs; unfixable lint warnings are informational (exit 0).
 - CLI command files are camelCase verbs: `commands/{dev,deploy,generate}.ts`.
-- Dev entry for the workspace: `pnpm dev:vex` runs `scripts/vex-dev.mjs` (cwd apps/www).
+- Dev entry for the workspace: `pnpm dev:vex` runs `scripts/vex-dev.mjs` (cwd apps/test).

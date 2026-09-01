@@ -26,7 +26,7 @@ import { resolveGetAuth } from "../../api/server";
  * @returns Registered `getUrl` Convex query, `generateUploadUrl` / `createMediaDocument` / `deleteMedia` Convex mutations.
  * @example
  * ```ts
- * // apps/www/convex/vex/media.ts
+ * // apps/test/convex/vex/media.ts
  * import { createGetAuth } from "@vexcms/better-auth"
  * import { mediaApi } from "@vexcms/core/convex";
  * import { mutation, query } from "../_generated/server";

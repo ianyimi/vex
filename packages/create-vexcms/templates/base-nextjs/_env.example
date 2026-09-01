@@ -1,0 +1,17 @@
+# Since the ".env.local" file is gitignored, use this file to build a new one
+# when you clone the repo. Keep it up to date when you add new variables to
+# `.env.local`.
+
+# This file is committed to version control — never put secrets in it.
+
+# When adding new environment variables, update the schema in "src/env.mjs".
+
+NEXT_PUBLIC_CONVEX_URL=""
+NEXT_PUBLIC_CONVEX_SITE_URL=""
+
+NEXT_PUBLIC_SITE_URL="http://localhost:3010"
+SITE_URL="http://localhost:3010"
+BETTER_AUTH_SECRET=""
+
+# {{ENV_OAUTH_VARS}}
+

@@ -1,5 +1,5 @@
 ---
-applies_to: ["packages/react/src/**", "apps/www/src/**"]
+applies_to: ["packages/react/src/**", "apps/test/src/**"]
 ---
 # Data Fetching (Convex + TanStack Query)
 

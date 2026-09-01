@@ -17,7 +17,7 @@ verified_at: aa56f385cb68ac94d76ba77cb27366592efc4a64
 
 | Name | Path | Purpose |
 |------|------|---------|
-| `www` | `apps/www` | Next.js 16 demo + admin host app (primary dev target, port **3020**) |
+| `test` | `apps/test` | Next.js 16 dogfood + admin host app (primary dev target, port **3020**; the `www` name is reserved for WP-3's scaffolded marketing site) |
 | `docs` | `apps/docs` | Astro 6 + Starlight docs site (port 4321) |
 | `@vexcms/core` | `packages/core` | Framework-agnostic schema, field system, hooks, config, RBAC (`defineCollection`, `defineConfig`, `defineGlobal`, `defineAccess`) |
 | `@vexcms/cli` | `packages/cli` | `vex dev` / codegen / Convex schema generation |

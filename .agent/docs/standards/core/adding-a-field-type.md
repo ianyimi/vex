@@ -35,4 +35,4 @@ Verified against `packages/core/src/fields/upload/` (newest field). Follow in or
 ## Tests + verification
 - Colocate `validator.test.ts` + `inputSchema.test.ts` (see testing/field-type-testing.md).
 - `pnpm --filter @vexcms/core typecheck && pnpm --filter @vexcms/react typecheck`; add the
-  field to a collection in apps/www, render in create modal + list view.
+  field to a collection in apps/test, render in create modal + list view.
