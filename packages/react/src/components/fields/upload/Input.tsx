@@ -88,7 +88,6 @@ export const UploadFieldInput = createFieldInput<string[], {}, UploadField>(
       </>;
     }
 
-    // Empty state
     if (value.length === 0) {
       return (
         <>
@@ -116,7 +115,6 @@ export const UploadFieldInput = createFieldInput<string[], {}, UploadField>(
       );
     }
 
-    // Filled state (single or multi)
     return (
       <>
         <FormLabel name={name} field={fieldDef} />

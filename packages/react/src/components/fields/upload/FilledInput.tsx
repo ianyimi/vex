@@ -216,7 +216,7 @@ function UploadItemRow({
             type="button"
             title="Remove"
             onClick={onRemove}
-            disabled={Boolean(accessError)}
+            disabled={readOnly || Boolean(accessError)}
           >
             <Icon name="X" size={13} />
           </Button>
