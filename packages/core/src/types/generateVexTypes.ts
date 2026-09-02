@@ -87,7 +87,9 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     // Run 'vex dev' or 'vex generate' to update this file.\n
     /* eslint-disable perfectionist/sort-union-types */
     /* eslint-disable perfectionist/sort-interfaces */
-    /* eslint-disable perfectionist/sort-modules */\n\n
+    /* eslint-disable perfectionist/sort-modules */
+    /* eslint-disable perfectionist/sort-object-types */
+    /* eslint-disable @typescript-eslint/no-empty-object-type */\n\n
     import type { Id } from "@convex/_generated/dataModel"
     import type { VexDocument, VexDocumentGlobal } from "@vexcms/core"\n
   `;

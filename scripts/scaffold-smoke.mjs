@@ -115,14 +115,41 @@ export const PROHIBITED_PATTERNS = [
   { label: 'blockStyles', test: (source) => /\bblockStyles\b/.test(source) },
   { label: '_vexDrafts', test: (source) => /_vexDrafts/.test(source) },
   {
-    // Heuristic, not a parser: flags a scalar string literal following any
-    // `defaultValue:` that appears after a `select(` earlier in the same
-    // file. Good enough for a whole-output sweep (Step 4's Verify phrasing
-    // is itself output-wide, not call-scoped).
+    // `select()` stores its value as an array, so a scalar `defaultValue` is
+    // a pre-rebuild leftover.
+    //
+    // Call-scoped by brace balancing, not a whole-file regex. The previous
+    // heuristic flagged any scalar `defaultValue:` appearing anywhere after
+    // the first `select(` in a file, so a config declaring a `select` before
+    // its `text` fields reported a violation for every one of them. Field
+    // order is not an API concern and templates must not be arranged around
+    // a test artifact.
     label: 'scalar select() defaultValue',
-    test: (source) => /select\(\{[\s\S]*?defaultValue:\s*(?!\[)['"]/m.test(source),
+    test: (source) => selectCallBodies(source).some((body) => /defaultValue:\s*(?!\[)['"]/.test(body)),
   },
 ];
+
+/**
+ * Extracts the body of every `select({ … })` call in a source file.
+ *
+ * @param {string} source - File contents.
+ * @returns {string[]} One entry per call, covering only that call's own braces.
+ */
+function selectCallBodies(source) {
+  const bodies = [];
+  const call = /\bselect\(\{/g;
+  let match;
+  while ((match = call.exec(source)) !== null) {
+    let depth = 1;
+    let i = match.index + match[0].length;
+    for (; i < source.length && depth > 0; i += 1) {
+      if (source[i] === '{') depth += 1;
+      else if (source[i] === '}') depth -= 1;
+    }
+    bodies.push(source.slice(match.index + match[0].length, i));
+  }
+  return bodies;
+}
 
 const PLACEHOLDER_RE = /\{\{[A-Z0-9_]+\}\}/g;
 const SKIP_DIRS = new Set(['node_modules', '.git', '.next']);

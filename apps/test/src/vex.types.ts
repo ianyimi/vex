@@ -4,6 +4,8 @@
 /* eslint-disable perfectionist/sort-union-types */
 /* eslint-disable perfectionist/sort-interfaces */
 /* eslint-disable perfectionist/sort-modules */
+/* eslint-disable perfectionist/sort-object-types */
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 
 import type { Id } from "@convex/_generated/dataModel"
 import type { VexDocument, VexDocumentGlobal } from "@vexcms/core"
@@ -42,7 +44,7 @@ export type CtaBlock = {
   description?: string
   buttonLabel?: string
   buttonHref?: string
-  variant?: string[]
+  variant?: ("default" | "outline" | "ghost")[]
 }
 
 export type TestimonialBlock = {
@@ -120,8 +122,8 @@ export type ContentBlock = {
   blockName?: string
   id: string
   body: string
-  align?: string[]
-  maxWidth?: string[]
+  align?: ("left" | "center")[]
+  maxWidth?: ("prose" | "wide" | "full")[]
 }
 
 export type PageBlock =
@@ -693,6 +695,7 @@ export interface SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings"> {
    * the admin its own palette.
    */
   adminTheme?: Id<"themes">[]
+  favicon?: Id<"images">[]
 }
 
 export type CollectionSlug =
@@ -942,6 +945,7 @@ declare module "@vexcms/core" {
       siteSettings: {
         text: "name"
         relationship: "activeTheme" | "adminTheme"
+        upload: "favicon"
       }
     }
     IndexFieldsBySlug: {

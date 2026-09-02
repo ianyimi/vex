@@ -7,3 +7,5 @@ export * from "./useRelationshipPickerOptions";
 export * from "./usePagination";
 export * from "./useTableSelection";
 export * from "./usePaginatedQuery";
+export { useCanAccessAdminPanel } from "./useCanAccessAdminPanel";
+export { ModalSurfaceProvider, useModalSurface } from "./useModalSurface";

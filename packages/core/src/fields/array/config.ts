@@ -1,3 +1,4 @@
+import { childInterfaceType } from "../childInterfaceType";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
 import type { ArrayFieldInput, ArrayField, ArrayType } from "./types";
@@ -62,10 +63,7 @@ export function array<
   // If the items field is a named group, reference its name in the array
   // type rather than inlining the full object type. This keeps generated
   // interfaces readable and lets the named group's own type alias do the work.
-  const itemsInterfaceType =
-    options.items.type === ADMIN_FIELDS.group.type && options.items.interfaceName
-      ? options.items.interfaceName
-      : options.items.interfaceType;
+  const itemsInterfaceType = childInterfaceType(options.items);
 
   return {
     type: ADMIN_FIELDS.array.type,

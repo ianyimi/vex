@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev --concurrency 11",
+    "dev": "turbo run dev --concurrency 12",
     "dev:app": "pnpm --filter test dev",
     "dev:vex": "node scripts/vex-dev.mjs",
     "typecheck": "turbo run typecheck",

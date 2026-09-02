@@ -86,7 +86,7 @@ export function CollectionEditView<
   });
   return (
     <AppForm form={form} className="relative">
-      <div className="bg-background sticky top-12 z-10 flex h-16 items-center justify-between">
+      <div className="sticky top-12 z-10 flex h-16 items-center justify-between bg-background">
         <h1 className="text-2xl font-bold">
           Edit {props.collection.labels.singular} -{" "}
           <span className="text-primary">

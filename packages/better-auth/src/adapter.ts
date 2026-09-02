@@ -93,9 +93,7 @@ const HIDDEN_FIELDS = new Set([
  * });
  * ```
  */
-export function betterAuthAdapter(
-  props?: BetterAuthAdapterOptions,
-): VexAuthAdapter {
+export function betterAuthAdapter(props?: BetterAuthAdapterOptions): VexAuthAdapter {
   const tables = getAuthTables(props?.config ?? {});
   const collections: AuthCollectionConfig[] = [];
   const authCollections = [
@@ -126,9 +124,7 @@ export function betterAuthAdapter(
       extractId: true,
     });
 
-    const authCollectionType = authCollections.find(
-      (ac) => ac.slug === slug,
-    )?.type;
+    const authCollectionType = authCollections.find((ac) => ac.slug === slug)?.type;
     if (authCollectionType) {
       switch (authCollectionType) {
         case "user": {
@@ -162,8 +158,7 @@ export function betterAuthAdapter(
           break;
         }
         case "verification": {
-          const additionalFields =
-            props?.config?.verification?.additionalFields;
+          const additionalFields = props?.config?.verification?.additionalFields;
           addAuthCollectionFields({
             attributes: additionalFields,
             slug,
@@ -183,6 +178,9 @@ export function betterAuthAdapter(
       defineCollection<AuthFieldMeta, AuthCollectionMeta>({
         slug: slug as CollectionSlug,
         fields,
+        admin: {
+          icon: "Lock",
+        },
         meta: isProtected ? { protected: true } : undefined,
       }),
     );
@@ -223,12 +221,7 @@ export function addAuthCollectionFields(props: {
   if (!props.attributes) return;
   for (const [fieldName, attr] of Object.entries(props.attributes)) {
     if (props.extractId === true && fieldName === "id") continue;
-    const field = betterAuthAttrToVexField(
-      fieldName,
-      attr,
-      props.slug,
-      props?.config,
-    );
+    const field = betterAuthAttrToVexField(fieldName, attr, props.slug, props?.config);
     if (field) props.fields[fieldName] = field;
   }
 }
@@ -260,9 +253,7 @@ function betterAuthAttrToVexField(
   if (fieldName === "id") return null;
 
   const isUserTable =
-    tableSlug === authOptions?.user?.modelName ||
-    tableSlug === "user" ||
-    tableSlug === "users";
+    tableSlug === authOptions?.user?.modelName || tableSlug === "user" || tableSlug === "users";
   const isEditable = isUserTable && EDITABLE_FIELDS.has(fieldName);
   const isHidden = HIDDEN_FIELDS.has(fieldName);
 
@@ -277,10 +268,7 @@ function betterAuthAttrToVexField(
   if (Object.keys(admin).length > 0) baseOptions.admin = admin;
   if (!isEditable) baseOptions.meta = { locked: true };
   if (attr.required) baseOptions.required = attr.required;
-  if (
-    attr.defaultValue !== undefined &&
-    typeof attr.defaultValue !== "function"
-  ) {
+  if (attr.defaultValue !== undefined && typeof attr.defaultValue !== "function") {
     baseOptions.defaultValue = attr.defaultValue;
   }
   if (attr.unique || attr.index) {

@@ -18,6 +18,18 @@ describe("generateVexTypes — header", () => {
     const output = generateVexTypes({ config });
     expect(output.split("\n")[0]).toBe(HEADER);
   });
+
+  it("suppresses no-empty-object-type, because the empty maps are load-bearing", () => {
+    // `CustomActionsBySlug: {}` and an index-less table's `{}` are not sloppy
+    // emissions that should become `Record<string, never>`. Core branches on
+    // `[keyof CustomActionsBySlug] extends [never]` (api/types.ts) to keep the
+    // pre-generation action union permissive; `Record<string, never>` makes
+    // `keyof` resolve to `string`, flips that conditional, and breaks every
+    // caller naming a custom action. The lint rule is wrong about generated
+    // output here, so the emitter disables it rather than changing the type.
+    const output = generateVexTypes({ config: defineConfig() });
+    expect(output).toContain("/* eslint-disable @typescript-eslint/no-empty-object-type */");
+  });
 });
 
 // ─── document interfaces ──────────────────────────────────────────────────────

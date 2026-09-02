@@ -1,6 +1,7 @@
 "use client";
 
 import { type SelectField } from "@vexcms/core";
+import { useModalSurface } from "../../../hooks/useModalSurface";
 import { createFieldInput, FormDescription, FormLabel, FormError } from "../../form";
 import {
   MultiSelect,
@@ -21,6 +22,12 @@ import {
  * The `name` prop is the field key from the collection config (e.g. `"status"`).
  * It connects the input to the form field with that key in `form.defaultValues`.
  * When `fieldDef.hasMany` is `false`, only one option may be selected at a time.
+ *
+ * Fields are rendered generically by `RenderFieldInputComponents`, so there is
+ * no prop channel to tell this input it sits in a dialog. It reads
+ * `useModalSurface()` instead, which `Modal` provides: inside a dialog the
+ * popover joins that surface's focus trap, and everywhere else it stays
+ * non-modal so it does not lock page scroll and snap the view to the top.
  *
  * @example
  * ```tsx
@@ -44,10 +51,15 @@ import {
  */
 export const SelectFieldInput = createFieldInput<string[], {}, SelectField>(
   ({ name, readOnly, fieldDef, field, index, submissionAttempts }) => {
+    // Inside a dialog the popover must be modal so it joins that dialog's
+    // focus trap; on a normal page it must not be, because a modal popover
+    // locks page scroll and snaps the view to the top.
+    const isOnModalSurface = useModalSurface();
     return (
       <div className="flex flex-col gap-1.5">
         <FormLabel field={fieldDef} index={index} name={name} />
         <MultiSelect
+          modal={isOnModalSurface}
           onValuesChange={field.handleChange}
           single={!fieldDef.hasMany}
           values={field.state.value}

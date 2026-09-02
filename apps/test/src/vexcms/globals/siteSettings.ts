@@ -1,6 +1,6 @@
-import { defineGlobal, relationship, text } from "@vexcms/core";
+import { defineGlobal, relationship, text, upload } from "@vexcms/core";
 
-import { GLOBAL_SLUG_SITE_SETTINGS, TABLE_SLUG_THEMES } from "~/db/constants";
+import { GLOBAL_SLUG_SITE_SETTINGS, TABLE_SLUG_IMAGES, TABLE_SLUG_THEMES } from "~/db/constants";
 
 /**
  * Site-wide settings — a singleton, so a global rather than a collection.
@@ -21,8 +21,7 @@ export const siteSettings = defineGlobal({
     name: text({
       label: "Site Name",
       required: true,
-      description:
-        "Global site name used as fallback for logo text, page titles, and meta tags.",
+      description: "Global site name used as fallback for logo text, page titles, and meta tags.",
     }),
     activeTheme: relationship({
       collection: { slug: TABLE_SLUG_THEMES },
@@ -37,6 +36,9 @@ export const siteSettings = defineGlobal({
       label: "Admin Theme",
       description:
         "Optional. Leave empty and the admin panel uses the Active Theme; set it to give the admin its own palette.",
+    }),
+    favicon: upload({
+      to: TABLE_SLUG_IMAGES,
     }),
   },
 });

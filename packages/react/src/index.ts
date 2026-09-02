@@ -114,6 +114,9 @@ export {
 
 // Hooks
 export {
+  ModalSurfaceProvider,
+  useCanAccessAdminPanel,
+  useModalSurface,
   usePaginatedQuery,
   type UsePaginatedQueryProps,
   type UsePaginatedQueryReturn,

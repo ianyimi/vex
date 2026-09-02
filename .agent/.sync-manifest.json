@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at_sha": "24a6034ab6ff5b26b2253e7dde20923a08e59c04",
+  "generated_at_sha": "f7aab31e2bac2f637bf9b38756caeb016c042164",
   "entries": [
     {
       "path": ".agent/context-rules.yaml",
@@ -113,7 +113,7 @@
     {
       "path": ".claude/commands/template-sync.md",
       "kind": "generated",
-      "target_or_hash": "dc6acd6918ba320b2cba7769c6fb7a8f84d2e3c76184b9c6d55a457702ddcdaa",
+      "target_or_hash": "683b30f789199519a28092ab11f815d37edd0a1cf944666caeddcb1e7ac14f09",
       "platform": "claude"
     },
     {
@@ -215,7 +215,7 @@
     {
       "path": ".omp/agents/template-sync.md",
       "kind": "generated",
-      "target_or_hash": "eab2a39dda7d3fb8308dc6fcfec026141356f6053d4e35b0f343f1ef631ce346",
+      "target_or_hash": "aa1d640d581475c9302a54146f8d9d1bb63335f98d4ec4d96b88b976f40b6d1d",
       "platform": "omp"
     },
     {
@@ -803,7 +803,7 @@
     {
       "path": ".omp/prompts/template-sync.md",
       "kind": "generated",
-      "target_or_hash": "d3debdb1fdc98d91042f46b307eef422852d0f19aa0ad4f0cedccad2ae619c0f",
+      "target_or_hash": "5de7c37d2abed49889c2e8a6f7d63496996aa91544794adef0040a09b34933ef",
       "platform": "omp"
     },
     {

@@ -44,6 +44,7 @@ export function MultiSelect({
   defaultValues,
   onValuesChange,
   single = false,
+  modal = false,
 }: {
   children: ReactNode;
   values?: string[];
@@ -51,6 +52,22 @@ export function MultiSelect({
   // eslint-disable-next-line no-unused-vars
   onValuesChange?: (values: string[]) => void;
   single?: boolean;
+  /**
+   * Opt into modal popover behaviour — focus trap **and page scroll lock**.
+   *
+   * Defaults to `false`, and a form field must leave it that way. Base UI
+   * engages `useScrollLock` on `modal === true`, which sets
+   * `body { position: relative }` and then compensates by writing
+   * `body.scrollTop`. When the page scrolls on `<html>` rather than `<body>` —
+   * the normal case — that compensation misses, `html.scrollTop` collapses to
+   * 0, and the page snaps to the top. The trigger goes offscreen and the
+   * popover immediately closes, which makes any select below the fold
+   * impossible to use.
+   *
+   * Set it only when the select is rendered inside an already-modal surface
+   * (a dialog), matching `SimpleTimePicker`'s `modal` prop.
+   */
+  modal?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [internalValues, setInternalValues] = useState(
@@ -96,7 +113,7 @@ export function MultiSelect({
         onItemAdded,
       }}
     >
-      <Popover open={open} onOpenChange={setOpen} modal={true}>
+      <Popover open={open} onOpenChange={setOpen} modal={modal}>
         {children}
       </Popover>
     </MultiSelectContext>
@@ -265,6 +282,57 @@ export function MultiSelectContent({
   children: ReactNode;
 } & Omit<ComponentPropsWithoutRef<typeof Command>, "children">) {
   const canSearch = typeof search === "object" ? true : search;
+  const { open } = useMultiSelectContext();
+  const commandRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // The popup's content is kept at `display: none` until floating-ui has
+  // positioned the popup, then revealed, focused, and scrolled — all from
+  // here, because timing cannot be trusted.
+  //
+  // A floating popup is positioned a frame or two AFTER it mounts; until
+  // then it sits wherever the portal put it — the end of <body>, often
+  // thousands of pixels from the trigger. Two things try to reach into it
+  // during that window, and each natively scrolls the PAGE to the popup's
+  // pre-position location (measured: a 1341px jump that threw the trigger
+  // off the bottom of the viewport):
+  //
+  // 1. cmdk scrollIntoView()s its highlighted item in a layout effect at
+  //    mount. scrollIntoView walks every scrollable ancestor and has no
+  //    preventScroll option — it cannot be made safe, only made a no-op:
+  //    an element with no boxes (display: none) is skipped per spec.
+  // 2. Initial focus of an inner tabbable. Base UI preventScrolls only the
+  //    popup element itself; the search input would get a plain focus().
+  //    Focus is applied here instead, with `preventScroll: true`, after
+  //    reveal (a display: none element is not focusable).
+  //
+  // Once positioned, the popup is fully inside the viewport (flip/shift),
+  // so the post-reveal inner-list scroll satisfies every ancestor without
+  // moving the page.
+  useEffect(() => {
+    if (!open) return;
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        // Resolved inside the frame: the popup subtree may mount a tick
+        // after `open` flips, so the ref is not trustworthy at effect time.
+        const content = contentRef.current;
+        if (!content) return;
+        content.style.removeProperty("display");
+        content
+          .querySelector<HTMLElement>("[data-slot=command-input], [data-multiselect-focus]")
+          ?.focus({ preventScroll: true });
+        content
+          .querySelector<HTMLElement>("[cmdk-item][aria-selected='true']")
+          ?.scrollIntoView({ block: "nearest" });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      contentRef.current?.style.setProperty("display", "none");
+    };
+  }, [open]);
 
   return (
     <>
@@ -273,26 +341,32 @@ export function MultiSelectContent({
           <CommandList>{children}</CommandList>
         </Command>
       </div>
-      <PopoverContent className="w-(--anchor-width) p-0">
-        <Command {...props}>
-          {canSearch ? (
-            <CommandInput
-              placeholder={
-                typeof search === "object" ? search.placeholder : undefined
-              }
-            />
-          ) : (
-            <button autoFocus className="sr-only" />
-          )}
-          <CommandList>
-            {canSearch && (
-              <CommandEmpty>
-                {typeof search === "object" ? search.emptyMessage : undefined}
-              </CommandEmpty>
+      <PopoverContent className="w-(--anchor-width) p-0" initialFocus={false}>
+        {/* Hidden until positioned; revealed by the effect above. */}
+        <div ref={contentRef} style={{ display: "none" }}>
+          <Command {...props} ref={commandRef}>
+            {canSearch ? (
+              <CommandInput
+                placeholder={
+                  typeof search === "object" ? search.placeholder : undefined
+                }
+              />
+            ) : (
+              // Focus target for keyboard navigation when there is no search
+              // input. Focused by the effect above — never via `autoFocus`,
+              // which fires on mount, strictly before positioning.
+              <button data-multiselect-focus className="sr-only" type="button" />
             )}
-            {children}
-          </CommandList>
-        </Command>
+            <CommandList>
+              {canSearch && (
+                <CommandEmpty>
+                  {typeof search === "object" ? search.emptyMessage : undefined}
+                </CommandEmpty>
+              )}
+              {children}
+            </CommandList>
+          </Command>
+        </div>
       </PopoverContent>
     </>
   );

@@ -1,3 +1,4 @@
+import { childInterfaceType } from "../childInterfaceType";
 import { ADMIN_FIELDS } from "../constants";
 import { slugToPascalCase } from "../../collections/utils";
 import type { BlockConfigInput, BlockConfig, BlocksFieldInput, BlocksField } from "./types";
@@ -161,11 +162,7 @@ function buildBlockInterfaceType(props: {
   const frameworkKeys = `blockType: "${props.slug}"; blockName?: string; id: string`;
   const userEntries = Object.entries(props.fields)
     .map(([key, field]) => {
-      const typeStr =
-        field.type === ADMIN_FIELDS.group.type && field.interfaceName
-          ? field.interfaceName
-          : field.interfaceType;
-      return `${key}${field.required ? "" : "?"}: ${typeStr}`;
+      return `${key}${field.required ? "" : "?"}: ${childInterfaceType(field)}`;
     })
     .join("; ");
   return userEntries ? `{ ${frameworkKeys}; ${userEntries} }` : `{ ${frameworkKeys} }`;

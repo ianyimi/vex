@@ -2871,7 +2871,25 @@ export const roadmapBlock = defineBlock({
         },
         {
           feature: "Versioning & Drafts",
-          description: "Draft/publish workflow with live preview — in active development.",
+          description: "Draft/publish workflow with autosave and version history — in active development.",
+          status: "coming-soon",
+        },
+        {
+          feature: "Live Preview",
+          description:
+            "Side-by-side preview of draft content against the real frontend before publishing — builds on the drafts infrastructure.",
+          status: "coming-soon",
+        },
+        {
+          feature: "Form Builder & Lifecycle Hooks",
+          description:
+            "Composable form fields beyond content editing, plus beforeChange/afterChange hooks for custom side effects.",
+          status: "coming-soon",
+        },
+        {
+          feature: "Field Input Consistency Pass",
+          description:
+            "Touch-ups across field inputs — starting with the relationship field — for consistent interaction patterns in the admin panel.",
           status: "coming-soon",
         },
         {
@@ -2880,14 +2898,14 @@ export const roadmapBlock = defineBlock({
           status: "planned",
         },
         {
-          feature: "Form Builder & Lifecycle Hooks",
-          description:
-            "Composable form fields beyond content editing, plus beforeChange/afterChange hooks for custom side effects.",
+          feature: "Team Management & API Keys",
+          description: "Invite users, assign roles, and issue scoped read-only API tokens for external integrations.",
           status: "planned",
         },
         {
-          feature: "Team Management & API Keys",
-          description: "Invite users, assign roles, and issue scoped read-only API tokens for external integrations.",
+          feature: "React Package Testing Suite",
+          description:
+            "Exportable Vitest suite from @vexcms/react for testing custom field components and admin extensions in consumer projects.",
           status: "planned",
         },
       ],
@@ -3785,24 +3803,42 @@ export const init = internalMutation({
               },
               {
                 feature: "Versioning & Drafts",
-                description: "Draft/publish workflow with live preview — in active development.",
-                status: "coming-soon",
+                description: "Draft/publish workflow with autosave and version history — in active development.",
+                status: ["coming-soon"],
               },
               {
-                feature: "Richtext, JSON, Email & Textarea Fields",
-                description: "Plate.js-powered rich text, plus structured JSON, email, and multi-line text inputs.",
-                status: "planned",
+                feature: "Live Preview",
+                description:
+                  "Side-by-side preview of draft content against the real frontend before publishing — builds on the drafts infrastructure.",
+                status: ["coming-soon"],
               },
               {
                 feature: "Form Builder & Lifecycle Hooks",
                 description:
                   "Composable form fields beyond content editing, plus beforeChange/afterChange hooks for custom side effects.",
-                status: "planned",
+                status: ["coming-soon"],
+              },
+              {
+                feature: "Field Input Consistency Pass",
+                description:
+                  "Touch-ups across field inputs — starting with the relationship field — for consistent interaction patterns in the admin panel.",
+                status: ["coming-soon"],
+              },
+              {
+                feature: "Richtext, JSON, Email & Textarea Fields",
+                description: "Plate.js-powered rich text, plus structured JSON, email, and multi-line text inputs.",
+                status: ["planned"],
               },
               {
                 feature: "Team Management & API Keys",
                 description: "Invite users, assign roles, and issue scoped read-only API tokens for external integrations.",
-                status: "planned",
+                status: ["planned"],
+              },
+              {
+                feature: "React Package Testing Suite",
+                description:
+                  "Exportable Vitest suite from @vexcms/react for testing custom field components and admin extensions in consumer projects.",
+                status: ["planned"],
               },
             ],
           },

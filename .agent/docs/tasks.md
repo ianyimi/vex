@@ -2,6 +2,7 @@
 - RBAC access control (spec 2026-08-12-rbac-access-control)
 - Access index resolution (spec 2026-08-23-access-index-resolution)
 - WP-5 publish alphas
+- Build the real www marketing site (spec 2026-09-01-www-content-spec; Step 11 seed rewrite remains)
 
 ## Inbox
 - Rename naming outliers: MediaLibaryGrid.tsx, use-mobile.ts, blocks/logo-cloud.ts

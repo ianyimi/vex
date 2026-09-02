@@ -28,13 +28,15 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · 🔭 Exploring
 ## In progress
 
 - 🔄 Versioning & drafts
+- 🔄 Live preview
 
 ## Planned
 
+- 📋 Form builder
+- 📋 Field input consistency pass — relationship field and others get consistent interaction patterns
 - 📋 `richtext` field
 - 📋 `json` / `email` / `textarea` fields
 - 📋 `tabs` / `ui` fields
-- 📋 Form builder
 - 📋 Block group categorization
 - 📋 Lifecycle hooks
 - 📋 Content scheduling
@@ -43,6 +45,7 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · 🔭 Exploring
 - 📋 TanStack Start adapter
 - 📋 S3 / R2 storage adapters
 - 📋 Plugin system
+- 📋 React package testing suite
 
 ## Exploring
 

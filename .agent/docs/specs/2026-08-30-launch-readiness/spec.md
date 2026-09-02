@@ -759,7 +759,39 @@ deployed site. Do not improvise on stage.
 
 ---
 
-## WP-3 — Apps split and the www site
+## WP-3 — Apps split and the www site 🔄 IN PROGRESS
+
+**Status (2026-09-02).** The rename landed in WP-2 step 0. `apps/www` is
+scaffolded from the published marketing template
+(`create-vexcms www --monorepo`), linked as workspace member 13, and builds
+clean. The design is implemented and the site renders all three routes against
+a live Convex deployment. Execution moved to a dedicated child spec —
+`.agent/docs/specs/2026-09-01-www-content-spec/` — which supersedes the
+`### Site IA` and `### Home composition` sections below:
+
+- **IA narrowed to 3 designed pages** (`/` `/features` `/roadmap`).
+  `/changelog`, `/blog` and `/vs-payload` are cut with reasons recorded in the
+  child spec; `/pricing` was already a non-goal.
+- **11 blocks** — the 8 original plus `Stats`, `CodeShowcase` (the
+  `codeShowcase` block below, shiki-highlighted in a server component) and
+  `Split`. `Hero` gained `variant`/`installCommand`; `Roadmap.status` grew to
+  five values (`shipped | in-progress | planned | exploring | future`).
+- **Roadmap is defaults-driven, not a `roadmapItems` collection.** The
+  `### /roadmap` section below proposed a collection; the child spec keeps the
+  block's `items` array, which is editable from the admin panel and needs no
+  new collection. Amended decision.
+- **Five template defects found by running the scaffold** — `turbopack.root`
+  breaking `--monorepo` builds, a `(frontend)/page.tsx` route collision hiding
+  the marketing home, base's fail-closed proxy gating the public site,
+  `anyApi` in user-project code, and `<img src={uploadField}>` never resolving
+  media ids. All fixed and ported.
+- **Still open:** the child spec's Step 11 — rewriting `convex/seed.ts` with
+  the real per-page content (the 33 roadmap items, the six Features cards, both
+  CodeShowcase pane pairs, the three `/features` Splits) and running the four
+  audits (light theme, reduced motion, keyboard, empty media library). The seed
+  currently carries scaffold placeholder copy.
+
+D4's dependency flip and the deploy itself remain WP-6.
 
 ### Rename
 
@@ -824,17 +856,26 @@ Seed content:
   compile to `withIndex` ranges) · `anonRole` fallback · globals · custom theme
   system · Better Auth integration · Convex file storage · TypeDoc API reference
   · CLI (`vex dev` / `vex generate`) · `create-vexcms` scaffolder
-- **In progress** — versioning & drafts
-- **Planned** — `richtext` field · `json` / `email` / `textarea` fields ·
-  `tabs` / `ui` fields · form builder · block group categorization · lifecycle
-  hooks · content scheduling · API keys · team management · TanStack Start
-  adapter · S3/R2 storage adapters · plugin system
+- **In progress** — versioning & drafts · live preview
+- **Planned** — form builder · field input consistency pass (relationship
+  field and others get consistent interaction patterns) · `richtext` field ·
+  `json` / `email` / `textarea` fields · `tabs` / `ui` fields · block group
+  categorization · lifecycle hooks · content scheduling · API keys · team
+  management · TanStack Start adapter · S3/R2 storage adapters · plugin
+  system · React package testing suite
 - **Exploring** — multi-component workspaces · analytics adapter (WP-7)
 
 *(Corrected per developer review 2026-08-30, WP-4 spec DD 12: access index
 resolution is shipped; per-collection Convex codegen has no plans; "specs
 written" ≠ in progress; form builder directly after the additional fields.
 Field-level access removed by the 2026-08-25 constraint-builder spec.)*
+
+*(Updated per developer review 2026-09-01: live preview added to In progress
+— it builds directly on the versioning & drafts work already underway. Form
+builder and a field-input consistency pass (relationship field and others,
+for consistent interaction patterns) moved to the front of Planned as the
+next tier after live preview. React package testing suite added to Planned
+as a pre-release requirement.)*
 
 Do not list anything as shipped that docs contradict —
 `apps/docs/src/content/docs/roadmap.md:53` marks RBAC "❓ TBD" when it's fully

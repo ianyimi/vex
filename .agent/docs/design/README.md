@@ -39,23 +39,44 @@ This folder contains all design assets for VexCMS. It is structured for use with
     brand-guidelines.md
 ```
 
-**Active design:** `claude-design/` is the current source of truth for both
-the admin UI and the marketing site visuals. The `theme-*/` folders are
-alternative palette options from an earlier exploration; keep them for
-reference but the live `apps/www/src/app/globals.css` is built off
-`claude-design/www/globals.css` (Stark × Ember).
+**Active design — marketing site:** `www/` is the source of truth. It is the
+2026-09-01 design-agent handoff against
+`.agent/docs/specs/2026-09-01-www-content-spec/`, and it is normative for
+`apps/www` and for `packages/create-vexcms/templates/marketing-site`.
+
+```
+www/
+  design-spec.txt          ← READ FIRST. 21 sections, every block normative.
+  VexCMS-Design-Spec.html  ← same content, rendered. JS-driven; use the .txt for tooling.
+  theme.stark-ember.json   ← loads into the `themes` collection unchanged
+  globals.tokens.css       ← the non-per-theme `@theme` block for globals.css
+  shiki.stark-ember.json   ← 5-colour shiki theme for the code panes
+  README.md                ← handoff notes, build order, two confirmed deviations
+```
+
+**Active design — admin UI:** `claude-design/admin/` remains the source of truth.
+
+**Superseded:** `claude-design/www/` — an earlier exploration. Its mockups are
+factually stale (they show a pricing page, "16 field types", and drafts/versions
+as shipped) and must not be used for content. Retained only for
+`claude-design/www/assets/` (logos, favicon, admin screenshots), which are still
+live assets. The `theme-*/` folders are earlier palette explorations; the shipped
+palette is `www/theme.stark-ember.json`.
 
 > ⚠️ Claude Design's CSS files (`admin.css`, `site.css`) use **different token
 > names** for the same concepts as the project's shadcn `globals.css`. Do not
 > copy them into the project. See `claude-design/README.md` for the full
 > translation table.
 
-## How to use with Claude Design
+## How to use
 
-1. Read `claude-design/README.md` first — it has the token translation table and file guide.
-2. For admin UI: reference `claude-design/admin/` JSX files when porting screens to React.
-3. For marketing site: reference `claude-design/www/` JSX files and `site.css` for visual specs.
-4. When a theme is selected, copy its `globals.css` to `apps/www/src/app/globals.css`.
+1. Marketing site: read `www/design-spec.txt`. Section B is normative per block;
+   section C is only the seed order.
+2. Admin UI: reference `claude-design/admin/` JSX when porting screens.
+3. The palette is a **database record**, not a stylesheet — load
+   `www/theme.stark-ember.json` into the `themes` collection. Do not copy a
+   `globals.css` over the app's; only `www/globals.tokens.css` (the non-per-theme
+   `@theme` block) is pasted in.
 
 ## Competitor Color Map (for reference)
 

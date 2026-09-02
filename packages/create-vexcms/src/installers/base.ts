@@ -26,6 +26,18 @@ import {
 } from './string-utils.js';
 
 /**
+ * Dependencies only the marketing overlay needs.
+ *
+ * Kept out of base's `package.json` so a `--bare` scaffold does not install
+ * them. `--monorepo` rewrites these to `catalog:` afterwards, so the range
+ * here is only what a standalone scaffold resolves.
+ */
+const MARKETING_DEPENDENCIES = {
+  /** Render-time syntax highlighting for the CodeShowcase and Split blocks. */
+  shiki: '^4.4.3',
+} as const;
+
+/**
  * Abstract base class for framework-specific installers
  * Implements the Template Method pattern for project initialization
  */
@@ -106,6 +118,36 @@ export abstract class VexFrameworkInstaller {
     }
 
     await overlayTemplate({ overlayDir, targetDir: this.targetPath });
+  }
+
+  /**
+   * Apply the parts of the marketing overlay that copying files cannot express.
+   *
+   * `overlayTemplate` only adds and overwrites — it has no way to remove a
+   * base file, and it does not touch `package.json`. Two things therefore
+   * have to happen here:
+   *
+   * 1. **Delete base's `(frontend)/page.tsx`.** It and the overlay's
+   *    `(frontend)/(site)/page.tsx` both resolve to `/`. Next picks base's,
+   *    so the marketing home page is unreachable and every scaffold shows the
+   *    bare bootstrap `WelcomePage` instead of the seeded site. The `(site)`
+   *    route group owns `/` in a marketing scaffold.
+   * 2. **Add `shiki`.** The CodeShowcase and Split blocks highlight at render
+   *    time in a server component. It is a marketing-only dependency, so it
+   *    is added here rather than carried in base's `package.json` where a
+   *    `--bare` scaffold would install it for nothing.
+   */
+  protected async finalizeMarketingOverlay(): Promise<void> {
+    const homeRoute = path.join(this.targetPath, 'src/app/(frontend)/page.tsx');
+    await fs.remove(homeRoute);
+
+    const pkgPath = path.join(this.targetPath, 'package.json');
+    const pkg = await fs.readJson(pkgPath);
+    pkg.dependencies = { ...pkg.dependencies, shiki: MARKETING_DEPENDENCIES.shiki };
+    pkg.dependencies = Object.fromEntries(
+      Object.entries(pkg.dependencies).sort(([a], [b]) => a.localeCompare(b)),
+    );
+    await fs.writeJson(pkgPath, pkg, { spaces: 2 });
   }
 
   /**
@@ -455,6 +497,7 @@ export abstract class VexFrameworkInstaller {
       const overlaySpinner = ora('Applying marketing site template...').start();
       try {
         await this.applyTemplateOverlay('marketing-site');
+        await this.finalizeMarketingOverlay();
         overlaySpinner.succeed('Marketing site template applied');
       } catch (error) {
         overlaySpinner.fail('Failed to apply template overlay');

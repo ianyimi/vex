@@ -3,6 +3,7 @@
 import { ComponentPropsWithRef } from "react";
 import { Dialog } from "../ui/dialog";
 import { useQueryState, parseAsBoolean } from "nuqs";
+import { ModalSurfaceProvider } from "../../hooks/useModalSurface";
 
 /**
  * URL-state-driven modal wrapper.
@@ -40,7 +41,7 @@ export function Modal({
         }
       }}
     >
-      {children}
+      <ModalSurfaceProvider>{children}</ModalSurfaceProvider>
     </Dialog>
   );
 }

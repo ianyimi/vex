@@ -1,3 +1,4 @@
+import { childInterfaceType } from "../childInterfaceType";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
 import { adminFieldToJSDocComment } from "../utils";
@@ -92,11 +93,7 @@ function buildInterfaceType(fields: GroupFieldInput["fields"]): string {
   const entries = Object.entries(fields)
     .map(([key, field]) => {
       const jsdocComment = adminFieldToJSDocComment({ field });
-      const typeStr =
-        field.type === ADMIN_FIELDS.group.type && field.interfaceName
-          ? field.interfaceName
-          : field.interfaceType;
-      return `\n${jsdocComment}${key}${field.required ? "" : "?"}: ${typeStr}`;
+      return `\n${jsdocComment}${key}${field.required ? "" : "?"}: ${childInterfaceType(field)}`;
     })
     .join("; ");
   return `{ ${entries} }`;
