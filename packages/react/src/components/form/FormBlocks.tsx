@@ -270,7 +270,25 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
   const { singular, plural } = fieldDef.labels;
   const atMax = !!fieldDef.max && items.length >= fieldDef.max;
 
-  const defaultOpenBlockIds = computeDefaultOpenBlocks(items, fieldDef.admin.defaultCollapsed);
+  // Controlled accordion open-state. `items` can populate asynchronously
+  // (the owning document loading after first mount) and Base UI's Accordion
+  // warns when an *uncontrolled* `defaultValue` changes after init — so this
+  // tracks which item ids have already been accounted for and opens any
+  // newly-appeared ones (first load, or a block just added) according to
+  // `admin.defaultCollapsed`, while the user's manual toggles persist.
+  const itemIdsKey = items.map((item) => item.id as string).join(",");
+  const [openBlockIds, setOpenBlockIds] = useState<string[]>(() =>
+    computeDefaultOpenBlocks(items, fieldDef.admin.defaultCollapsed),
+  );
+  const [trackedIdsKey, setTrackedIdsKey] = useState(itemIdsKey);
+  if (itemIdsKey !== trackedIdsKey) {
+    const trackedIds = new Set(trackedIdsKey ? trackedIdsKey.split(",") : []);
+    const newIds = items.map((item) => item.id as string).filter((id) => !trackedIds.has(id));
+    setTrackedIdsKey(itemIdsKey);
+    if (newIds.length > 0 && !fieldDef.admin.defaultCollapsed) {
+      setOpenBlockIds((prev) => [...prev, ...newIds]);
+    }
+  }
 
   function handleAdd(blockDef: BlockConfig) {
     field.pushValue(buildDefaultBlock(blockDef));
@@ -304,7 +322,7 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
 
       {/* Block list — single shared Accordion */}
       {items.length > 0 && (
-        <Accordion multiple={true} defaultValue={defaultOpenBlockIds} className="w-full">
+        <Accordion multiple={true} value={openBlockIds} onValueChange={setOpenBlockIds} className="w-full">
           <Droppable
             id={name}
             div={{ className: "gap-0" }}

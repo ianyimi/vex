@@ -1,6 +1,18 @@
 import type { NextConfig } from "next"
 
-import "./src/env.mjs"
+import { env } from "./src/env.mjs"
+
+// Convex file storage URLs (`next/image` sources for uploaded media) are
+// served from `<deployment>.convex.cloud` — derive the hostname from the
+// validated NEXT_PUBLIC_CONVEX_URL so scaffolds work without a manual
+// next.config.ts edit. Falls back to an empty list when the URL is unset or
+// unparsable (e.g. a deployment-less build with SKIP_ENV_VALIDATION set).
+let convexImageRemotePatterns: NonNullable<NextConfig["images"]>["remotePatterns"] = []
+try {
+  convexImageRemotePatterns = [{ hostname: new URL(env.NEXT_PUBLIC_CONVEX_URL).hostname }]
+} catch {
+  // No deployment yet — leave remotePatterns empty.
+}
 
 const nextConfig: NextConfig = {
   devIndicators: {
@@ -16,11 +28,9 @@ const nextConfig: NextConfig = {
     root: import.meta.dirname,
   },
   images: {
-    remotePatterns: [
-      // Add your Convex deployment's hostname here once `npx convex dev` has
-      // run — Convex file storage URLs are served from `<deployment>.convex.cloud`,
-      // e.g. { hostname: "your-deployment-575.convex.cloud" }.
-    ],
+    // Additional remote image hosts (e.g. an external CMS or CDN) can be
+    // added here alongside the auto-derived Convex hostname above.
+    remotePatterns: convexImageRemotePatterns,
   },
 }
 

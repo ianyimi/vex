@@ -15,26 +15,6 @@
     "@vexcms/tsconfig": "0.0.0"
   },
   "changesets": [
-    "anon-role-fallback",
-    "bound-published-peer-ranges",
-    "color-field",
-    "convex-tsconfig-patcher",
-    "create-vexcms-templates",
-    "drop-collection-generation",
-    "drop-collection-query-stub",
-    "globals-system",
-    "lucide-icon-name-exact",
-    "mediaapi-props-jsdoc",
-    "optional-org-collection-slug",
-    "org-conditional-scaffold",
-    "rbac-access-control",
-    "rbac-admin-gate",
-    "render-blocks",
-    "server-api-access-options",
-    "ship-type-declarations",
-    "template-theme-and-scan-fixes",
-    "typedoc-multipackage-docs",
-    "upload-url-collection-scope",
-    "wp1-release-integrity"
+    "media-and-scaffold-fixes"
   ]
 }

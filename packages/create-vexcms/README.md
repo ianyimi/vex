@@ -110,6 +110,10 @@ First run only — links or creates a Convex project and prints your real
 replacing the generated placeholder values so the app stops pointing at
 `https://placeholder.convex.cloud`. Leave `Ctrl-C` once it reports functions are ready.
 
+`next.config.ts` derives `images.remotePatterns` from `NEXT_PUBLIC_CONVEX_URL`
+automatically, so `next/image` picks up the real deployment's hostname without any
+further edits.
+
 ### 2. Configure environment variables
 
 The installer writes `.env.local` with a generated `BETTER_AUTH_SECRET`,

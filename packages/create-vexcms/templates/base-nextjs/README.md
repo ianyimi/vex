@@ -31,6 +31,10 @@ NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
 NEXT_PUBLIC_CONVEX_SITE_URL=https://your-deployment.convex.site
 ```
 
+`next.config.ts` reads `NEXT_PUBLIC_CONVEX_URL` at build/start time and adds that
+deployment's hostname to `images.remotePatterns` automatically, so `next/image` can serve
+uploaded media without a manual edit.
+
 Better Auth runs inside your Convex deployment, not in the Next.js server —
 it does **not** read `.env.local`. Set the same two values on the
 deployment itself:

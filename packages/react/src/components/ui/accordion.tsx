@@ -31,7 +31,7 @@ function AccordionTrigger({
   ...props
 }: { postIconChildren?: ReactNode } & AccordionPrimitive.Trigger.Props) {
   return (
-    <AccordionPrimitive.Header className="flex">
+    <AccordionPrimitive.Header className="flex items-center">
       <AccordionPrimitive.Trigger
         data-slot="accordion-trigger"
         className={cn(
@@ -49,8 +49,14 @@ function AccordionTrigger({
           data-slot="accordion-trigger-icon"
           className="pointer-events-none self-center hidden shrink-0 group-aria-expanded/accordion-trigger:inline"
         />
-        {postIconChildren}
       </AccordionPrimitive.Trigger>
+      {/* Rendered as a Header sibling, NOT inside AccordionPrimitive.Trigger —
+          Trigger renders a native <button>, so nesting another interactive
+          element (e.g. a <Button>) inside it produces invalid
+          `<button> cannot be a descendant of <button>` HTML and hydration
+          errors. It also keeps the action clickable without needing
+          `e.stopPropagation()` to avoid toggling the accordion. */}
+      {postIconChildren}
     </AccordionPrimitive.Header>
   );
 }
