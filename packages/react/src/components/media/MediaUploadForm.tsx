@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";
@@ -62,15 +62,8 @@ export interface MediaUploadFormProps {
  * Uploads all files in parallel with Promise.all, shows progress as fraction
  * (e.g. "2/5"), and auto-closes modal on success.
  *
- * **Key behavior:**
- * - Does NOT upload immediately on file selection
- * - Stages files using TanStack Form array field API (field.pushValue)
- * - Lets user edit metadata via form.Field components
- * - Uploads on "Create & select" button click
- * - Single-select mode (multi={false}): only one file at a time
- * - Multi-select mode (multi={true}): multiple files, "Add more" button
- *
  * @param props - Component props.
+ * @returns The dropzone empty state, or the staged-files accordion form.
  */
 export function MediaUploadForm({
   fieldDef,
@@ -202,6 +195,27 @@ export function MediaUploadForm({
         {(filesField) => {
           const files = filesField.state.value ?? [];
 
+          // Controlled accordion open-state — must be called on every render
+          // of this render-prop, unconditionally and before any early
+          // return, so hook order stays stable whether or not files are
+          // staged yet (Rules of Hooks). Files can be appended after the
+          // accordion has already mounted (multi-select "Add more" / a
+          // second drag-drop), and an *uncontrolled* Base UI Accordion warns
+          // when its `defaultValue` changes post-init — so this tracks which
+          // file ids have already been accounted for and opens newly staged
+          // ones, while the user's manual toggles persist.
+          const fileIdsKey = files.map((f) => f.id).join(",");
+          const [openIds, setOpenIds] = useState<string[]>(() => files.map((f) => f.id));
+          const [trackedIdsKey, setTrackedIdsKey] = useState(fileIdsKey);
+          if (fileIdsKey !== trackedIdsKey) {
+            const trackedIds = new Set(trackedIdsKey ? trackedIdsKey.split(",") : []);
+            const newIds = files.map((f) => f.id).filter((id) => !trackedIds.has(id));
+            setTrackedIdsKey(fileIdsKey);
+            if (newIds.length > 0) {
+              setOpenIds((prev) => [...prev, ...newIds]);
+            }
+          }
+
           // Empty state - show dropzone
           if (files.length === 0) {
             return (
@@ -249,7 +263,7 @@ export function MediaUploadForm({
           return (
             <>
               <div className="flex max-h-[420px] flex-col gap-4 overflow-y-auto">
-                <Accordion multiple defaultValue={files.map((f) => f.id)}>
+                <Accordion multiple value={openIds} onValueChange={setOpenIds}>
                   {files.map((fileData, index) => (
                     <AccordionItem key={fileData.id} value={fileData.id}>
                       <AccordionTrigger

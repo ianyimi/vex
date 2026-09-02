@@ -2,9 +2,9 @@
 
 import { type DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 import { GripVertical } from "lucide-react";
-import { ComponentPropsWithoutRef } from "react";
+import { ComponentPropsWithoutRef, useContext } from "react";
 import { cn } from "../../../styles/utils";
-import { useDraggableInstanceContext } from "./Draggable";
+import { DraggableInstanceContext } from "./Draggable";
 import { useDndContext } from "./DndProvider";
 
 export function DragHandle({
@@ -18,7 +18,16 @@ export function DragHandle({
   disabled?: boolean;
 } & ComponentPropsWithoutRef<"div">) {
   const dnd = useDndContext();
-  if (!dnd.mounted || disabled) {
+  // Read the Draggable ancestor's context directly (nullable) instead of the
+  // throwing `useDraggableInstanceContext` — rows that render outside a
+  // `Draggable` wrapper (e.g. a non-reorderable single-value list item) are
+  // a normal, supported case, not a misuse error. Only degrade to the
+  // static/inert render below when there's genuinely no way to get real
+  // drag handle props.
+  const draggableCtx = useContext(DraggableInstanceContext);
+  const inactive = !dnd.mounted || disabled || (!dragHandlePropsProp && !draggableCtx);
+
+  if (inactive) {
     if (children) {
       return (
         <div
@@ -39,8 +48,7 @@ export function DragHandle({
     );
   }
 
-  const ctx = useDraggableInstanceContext();
-  const resolvedProps = dragHandlePropsProp ?? ctx.dragHandleProps ?? {};
+  const resolvedProps = dragHandlePropsProp ?? draggableCtx?.dragHandleProps ?? {};
 
   if (children) {
     return (

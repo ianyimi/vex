@@ -15,6 +15,7 @@
     "@vexcms/tsconfig": "0.0.0"
   },
   "changesets": [
+    "admin-accordion-draghandle-fixes",
     "media-and-scaffold-fixes"
   ]
 }
