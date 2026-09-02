@@ -21,6 +21,7 @@
     "generated-types-lint-header",
     "marketing-template-design",
     "media-and-scaffold-fixes",
+    "secure-session-cookie-prefix",
     "select-scroll-lock-and-admin-gate",
     "sticky-global-edit-header"
   ]

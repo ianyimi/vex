@@ -1,5 +1,15 @@
 # www
 
+## 0.1.1-alpha.2
+
+### Patch Changes
+
+- @vexcms/core@0.1.0-alpha.9
+- @vexcms/react@0.1.0-alpha.9
+- @vexcms/next@0.1.0-alpha.9
+- @vexcms/better-auth@0.1.0-alpha.9
+- @vexcms/file-storage-convex@0.1.0-alpha.9
+
 ## 0.1.1-alpha.1
 
 ### Patch Changes
