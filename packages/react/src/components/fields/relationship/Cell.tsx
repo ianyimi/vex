@@ -29,6 +29,8 @@ import { resolveRelationshipPreview } from "./preview";
  * after mount, the first client render always matches the server output.
  *
  * @param props - Standard cell component props.
+ * @returns A placeholder em-dash before mount; otherwise the resolved preview,
+ *   an item count, or an em-dash for an empty relationship.
  */
 export function RelationshipFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<RelationshipField, TData>,

@@ -9,6 +9,8 @@ const pulseKeyframes = `
 
 /**
  * Loading placeholder shown in the editor while an image is being uploaded.
+ *
+ * @returns A pulsing "Uploading image…" placeholder block.
  */
 export function ImagePlaceholder() {
   return (

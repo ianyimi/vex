@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useCallback, useState, useRef, useEffect } from "react";
+import React, { useCallback, useState, useRef, useEffect, Fragment } from "react";
+import type { ReactNode } from "react";
 import { useEditorRef, useEditorSelector } from "platejs/react";
 import { toggleList, ListStyleType } from "@platejs/list";
 import { upsertLink } from "@platejs/link";
@@ -40,7 +41,12 @@ const separatorStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
-/** Returns true when the selection is inside a block of the given type. */
+/**
+ * Reports whether the current selection is inside a block of the given type.
+ *
+ * @param type - The block type to match (e.g. `"blockquote"`, `"code_block"`).
+ * @returns `true` when the selection is inside a matching block.
+ */
 function useIsBlockActive(type: string) {
   return useEditorSelector(
     (ed) => !!ed.api.block({ match: { type } }),
@@ -75,6 +81,11 @@ const tooltipStyles = `
 .vex-tb-wrap:hover > .vex-tb-tip { display: block; }
 `;
 
+/**
+ * Instant CSS-only tooltip shown on hover of its wrapping `.vex-tb-wrap` element.
+ *
+ * @returns A span carrying the tooltip text, positioned via `tooltipStyles`.
+ */
 function Tip({ text }: { text: string }) {
   return <span className="vex-tb-tip">{text}</span>;
 }
@@ -96,6 +107,12 @@ const MARK_META: Record<
   code: { label: "mono", shortcut: "Ctrl+E" },
 };
 
+/**
+ * Toolbar button that toggles a text mark (bold, italic, underline,
+ * strikethrough, or code) on the current selection.
+ *
+ * @returns The mark toggle button with its active state and shortcut tooltip.
+ */
 function MarkButton({ markType }: { markType: string }) {
   const editor = useEditorRef();
   const meta = MARK_META[markType]!;
@@ -146,6 +163,13 @@ const HEADING_LABELS: Record<string, string> = {
   h6: "Heading 6",
 };
 
+/**
+ * Toolbar dropdown for setting the current block to a paragraph or one of
+ * heading levels H1–H6, closing on selection or on an outside click.
+ *
+ * @returns The heading level trigger button and, while open, the dropdown
+ *   listbox of paragraph and heading options.
+ */
 function HeadingDropdown() {
   const editor = useEditorRef();
   const [open, setOpen] = useState(false);
@@ -284,6 +308,12 @@ function HeadingDropdown() {
 // Block toggle button (blockquote, code block)
 // ---------------------------------------------------------------------------
 
+/**
+ * Toolbar button that toggles the current block between paragraph and the
+ * given block type (e.g. blockquote).
+ *
+ * @returns The block toggle button with its active state and tooltip.
+ */
 function BlockButton({
   blockType,
   label,
@@ -323,6 +353,12 @@ function BlockButton({
 // Code block button (uses Plate's toggleCodeBlock for multiline support)
 // ---------------------------------------------------------------------------
 
+/**
+ * Toolbar button that toggles a multiline code block at the current
+ * selection via Plate's `toggleCodeBlock`.
+ *
+ * @returns The code block toggle button with its active state and tooltip.
+ */
 function CodeBlockButton() {
   const editor = useEditorRef();
   const isActive = useIsBlockActive("code_block");
@@ -354,6 +390,12 @@ function CodeBlockButton() {
 // List buttons
 // ---------------------------------------------------------------------------
 
+/**
+ * Toolbar button that toggles an ordered or unordered list at the current
+ * selection.
+ *
+ * @returns The list toggle button with its active state and tooltip.
+ */
 function ListButton({
   ordered,
   label,
@@ -401,6 +443,12 @@ function ListButton({
 // Link button
 // ---------------------------------------------------------------------------
 
+/**
+ * Toolbar button that opens a URL input popover and applies the entered
+ * link to the current selection via Plate's `upsertLink`.
+ *
+ * @returns The link trigger button and, while open, the URL input popover.
+ */
 function LinkButton() {
   const editor = useEditorRef();
   const [showInput, setShowInput] = useState(false);
@@ -513,6 +561,12 @@ function LinkButton() {
 
 const MAX_TABLE_SIZE = 6;
 
+/**
+ * Toolbar button that opens a size-picker grid and inserts a table of the
+ * chosen row/column count at the current selection.
+ *
+ * @returns The table trigger button and, while open, the size-picker grid.
+ */
 function TableButton() {
   const editor = useEditorRef();
   const [open, setOpen] = useState(false);
@@ -625,6 +679,12 @@ function TableButton() {
   );
 }
 
+/**
+ * Toolbar button that inserts a horizontal rule followed by a new empty
+ * paragraph at the current selection.
+ *
+ * @returns The horizontal rule insert button.
+ */
 function HorizontalRuleButton() {
   const editor = useEditorRef();
 
@@ -660,6 +720,11 @@ function HorizontalRuleButton() {
 // Separator
 // ---------------------------------------------------------------------------
 
+/**
+ * Vertical divider rendered between toolbar button groups.
+ *
+ * @returns A thin vertical bar styled with `separatorStyle`.
+ */
 function Separator() {
   return <div style={separatorStyle} />;
 }
@@ -675,6 +740,14 @@ interface ToolbarProps {
 const featureSet = (features: VexEditorFeature[]) =>
   new Set(features.map((f) => f.key));
 
+/**
+ * Formatting toolbar for the Plate editor. Renders mark, block, list, and
+ * insert button groups, each separated by a `Separator`, restricted to the
+ * groups whose underlying `features` are enabled.
+ *
+ * @returns The toolbar with its enabled button groups, or `null` when no
+ *   feature enables any group.
+ */
 export function Toolbar({ features }: ToolbarProps) {
   const enabled = featureSet(features);
 
@@ -701,7 +774,54 @@ export function Toolbar({ features }: ToolbarProps) {
     return null;
   }
 
-  let needsSep = false;
+  // Each enabled group contributes one node; separators are derived from
+  // position when joining, rather than from a flag mutated mid-render.
+  const groups: ReactNode[] = [];
+
+  if (hasMarks) {
+    groups.push(
+      <>
+        {MARK_KEYS.filter((k) => enabled.has(k)).map((k) => (
+          <MarkButton key={k} markType={k} />
+        ))}
+      </>,
+    );
+  }
+
+  if (hasBlocks) {
+    groups.push(
+      <>
+        {enabled.has("heading") && <HeadingDropdown />}
+        {enabled.has("blockquote") && (
+          <BlockButton
+            blockType="blockquote"
+            label={"\u201C"}
+            tooltip="Blockquote"
+          />
+        )}
+        {enabled.has("codeBlock") && <CodeBlockButton />}
+      </>,
+    );
+  }
+
+  if (hasLists) {
+    groups.push(
+      <>
+        <ListButton ordered={false} label="•" tooltip="Bullet list" />
+        <ListButton ordered label="1." tooltip="Numbered list" />
+      </>,
+    );
+  }
+
+  if (hasInserts) {
+    groups.push(
+      <>
+        {enabled.has("link") && <LinkButton />}
+        {enabled.has("horizontalRule") && <HorizontalRuleButton />}
+        {enabled.has("table") && <TableButton />}
+      </>,
+    );
+  }
 
   return (
     <>
@@ -717,52 +837,12 @@ export function Toolbar({ features }: ToolbarProps) {
         alignItems: "center",
       }}
     >
-      {/* ── Marks ── */}
-      {hasMarks && (
-        <>
-          {MARK_KEYS.filter((k) => enabled.has(k)).map((k) => (
-            <MarkButton key={k} markType={k} />
-          ))}
-          {(needsSep = true) && null}
-        </>
-      )}
-
-      {/* ── Blocks ── */}
-      {hasBlocks && (
-        <>
-          {needsSep && <Separator />}
-          {enabled.has("heading") && <HeadingDropdown />}
-          {enabled.has("blockquote") && (
-            <BlockButton
-              blockType="blockquote"
-              label={"\u201C"}
-              tooltip="Blockquote"
-            />
-          )}
-          {enabled.has("codeBlock") && <CodeBlockButton />}
-          {(needsSep = true) && null}
-        </>
-      )}
-
-      {/* ── Lists ── */}
-      {hasLists && (
-        <>
-          {needsSep && <Separator />}
-          <ListButton ordered={false} label="•" tooltip="Bullet list" />
-          <ListButton ordered label="1." tooltip="Numbered list" />
-          {(needsSep = true) && null}
-        </>
-      )}
-
-      {/* ── Insert ── */}
-      {hasInserts && (
-        <>
-          {needsSep && <Separator />}
-          {enabled.has("link") && <LinkButton />}
-          {enabled.has("horizontalRule") && <HorizontalRuleButton />}
-          {enabled.has("table") && <TableButton />}
-        </>
-      )}
+      {groups.map((group, index) => (
+        <Fragment key={index}>
+          {index > 0 && <Separator />}
+          {group}
+        </Fragment>
+      ))}
     </div>
     </>
   );

@@ -43,6 +43,7 @@ interface MediaPickerProps {
  * Matches the `MediaModalShell` design: modal header with icon + title + close, tabs, content area, footer.
  *
  * @param props — Media picker component props.
+ * @returns The tabbed modal dialog (Library + Upload tabs).
  */
 export function MediaPicker({
   field,

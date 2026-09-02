@@ -11,6 +11,7 @@ interface UseImageUploadProps {
   }) => Promise<string>;
 }
 
+/** Result of a successful image upload — URL, media document id, and optional metadata. */
 export interface UploadResult {
   url: string;
   mediaId: string;
@@ -37,7 +38,12 @@ function getImageDimensions(file: File): Promise<{ width: number; height: number
 
 /**
  * Hook that provides a function to upload an image file to the media collection.
- * Returns { uploadFile: null, isEnabled: false } if media collection is not configured.
+ *
+ * @param props - Media collection slug and the upload URL / document creation
+ *   callbacks used to perform the upload.
+ * @returns `uploadFile` — the upload function, or `null` when `mediaCollection`,
+ *   `generateUploadUrl`, and `createMediaDocument` are not all provided — and
+ *   `isEnabled`, which reports whether uploads are configured.
  */
 export function useImageUpload(props: UseImageUploadProps) {
   const { mediaCollection, generateUploadUrl, createMediaDocument } = props;

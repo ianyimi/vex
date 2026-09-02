@@ -7,10 +7,13 @@ import { cn } from "../../styles/utils";
  *
  * Hidden when `field.description` is empty or absent — the parent `Activity`
  * component handles the conditional rendering with an animated transition.
+ * Any remaining props (e.g. `id` for `aria-describedby`) are forwarded to the
+ * `<p>` element.
  *
- * @param field - The resolved field definition. Reads `field.description`.
- * @param className - Additional CSS classes on the `<p>` element.
- * @param pProps - Remaining props forwarded to the `<p>` element (e.g. `id` for `aria-describedby`).
+ * @param props - Component props.
+ * @param props.field - The resolved field definition. Reads `field.description`.
+ * @param props.className - Additional CSS classes on the `<p>` element.
+ * @returns The description `<p>`, hidden via `Activity` when there is no description.
  */
 export function FormDescription({
   field,

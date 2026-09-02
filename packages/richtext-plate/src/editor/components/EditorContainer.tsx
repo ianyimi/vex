@@ -83,6 +83,8 @@ const editorStyles = `
 /**
  * Wrapper container for the rich text editor.
  * Uses CSS variables to match the host application's theme.
+ *
+ * @returns The labeled, styled wrapper containing the editor children.
  */
 export function EditorContainer({
   children,

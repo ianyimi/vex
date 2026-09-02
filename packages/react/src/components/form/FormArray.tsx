@@ -49,6 +49,12 @@ import { FormDescription } from "./FormDescription";
  *   "array" // mode
  * )
  * ```
+ *
+ * @param props - Component props.
+ * @returns The array's items list (draggable, with per-item remove controls
+ *   and an add button), or a "No items yet." message when empty.
+ * @throws {Error} When rendered outside `<AppForm>`, or when `fieldDef.items.type`
+ *   has no registered input component.
  */
 export function FormArray<
   TArrayType extends ArrayType = string,

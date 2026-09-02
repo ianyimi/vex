@@ -216,6 +216,12 @@ function MediaTab({
 
 /**
  * Image insertion popover — matches the existing media picker size (w-80 / 320px).
+ *
+ * @param props - Insert/close callbacks, plus optional media-library results
+ *   and search/pagination handlers. When `mediaResults` is provided, the
+ *   popover shows a "Media Library" / "URL" tab switcher; otherwise it shows
+ *   only the URL tab.
+ * @returns The image insertion popover with its tab(s).
  */
 export function ImageUpload(props: ImageUploadProps) {
   const hasMedia = props.mediaResults !== undefined;

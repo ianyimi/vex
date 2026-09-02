@@ -11,6 +11,9 @@ import type { CellComponentProps, GroupField, TDocument } from "@vexcms/core";
  * A full inline object preview is intentionally out of scope here — the list
  * view is not the right place for nested object data.
  *
+ * @param props - Component props.
+ * @returns The key-count badge, or an em-dash placeholder when the value is absent.
+ *
  * @example
  * ```tsx
  * <GroupFieldCell value={{ title: "Hello", body: "World" }} ... />

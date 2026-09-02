@@ -51,6 +51,8 @@ export interface UploadFilledStateProps {
  * - Matches the `UploadMulti` design
  *
  * @param props - Component props.
+ * @returns The list of item rows (draggable when `hasMany` and `onReorder` are
+ *   provided), plus edit/clear controls and a count indicator in multi mode.
  */
 export function UploadFilledState({
   mediaIds,
@@ -138,6 +140,9 @@ export function UploadFilledState({
  * Individual item row in upload field.
  *
  * @param props - Component props.
+ * @returns The row's drag handle, thumbnail, filename/mime/size metadata (or
+ *   skeletons while loading, or an access-error message), alt-text badge, and
+ *   a remove button.
  */
 function UploadItemRow({
   mediaId,

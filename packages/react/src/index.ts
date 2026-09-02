@@ -202,6 +202,9 @@ export type CollectionConfig<
  *
  * Drop-in replacement for `@vexcms/core`'s `relationship` — same behaviour,
  * but `options.admin.components.preview` is typed as a React `ComponentType`.
+ *
+ * @param options - Relationship field configuration.
+ * @returns The resolved relationship field definition.
  */
 export function relationship<
   TFieldMeta extends {} = {},
@@ -218,6 +221,9 @@ export function relationship<
  * Drop-in replacement for `@vexcms/core`'s `defineCollection` — same
  * behaviour, but `admin.components.preview` is typed as a React
  * `ComponentType<RelationshipPreviewProps<TCollectionSlug>>`.
+ *
+ * @param config - Collection configuration.
+ * @returns The resolved collection configuration.
  */
 export function defineCollection<
   TFieldMeta extends {} = {},

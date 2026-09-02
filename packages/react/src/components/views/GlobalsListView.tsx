@@ -3,6 +3,15 @@
 import { Card, CardDescription, CardHeader, CardTitle } from "../ui";
 import { ClientVexConfig } from "@vexcms/core";
 
+/**
+ * Landing page listing every configured global as a clickable card.
+ *
+ * Each card links to `/admin/globals/{slug}` for that global's edit view.
+ *
+ * @param props - Component props.
+ * @param props.config - The client-side Vex config; reads `config.globals`.
+ * @returns The grid of global cards.
+ */
 export function GlobalsListView({ config }: { config: ClientVexConfig }) {
   return (
     <div className="relative">

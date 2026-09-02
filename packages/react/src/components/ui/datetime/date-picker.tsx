@@ -254,7 +254,7 @@ export function DateTimePicker({
   }, [displayValue, hideTime, use12HourFormat]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={modal}>
       <PopoverTrigger
         nativeButton={false}
         render={

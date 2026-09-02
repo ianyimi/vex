@@ -25,6 +25,9 @@ import { GenericId } from "convex/values";
  *
  * @param props - Component props.
  * @param props.value - Array of media document IDs.
+ * @returns An em-dash placeholder when empty, a loading label while the
+ *   referenced media document is fetching, or a thumbnail + filename (with a
+ *   `+N` badge for additional items).
  */
 export function UploadFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<UploadField, TData, CollectionConfig>,

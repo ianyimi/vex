@@ -160,6 +160,8 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
  *
  * Reads the `src` URL from the document; falls back to a placeholder tile when
  * the document has no resolvable image URL.
+ *
+ * @returns A TanStack Table column definition rendering the preview thumbnail.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mediaPreviewColumn(): ColumnDef<TDocument<VexMediaDocument>, any> {

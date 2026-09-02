@@ -5,7 +5,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { VexDocument } from "@vexcms/core";
 import { useMemo, useState } from "react";
 import { Checkbox } from "../checkbox";
-import { DataTableBulkActions } from "./DataTableBulkActions";
 import { Button } from "../button";
 import { BulkDeleteModal } from "./DeleteManyModal";
 
@@ -147,7 +146,8 @@ export interface DataTableProps<TData extends { _id: string }> {
  * ```
  *
  * @see {@link react/src!usePaginatedQuery} - Hook for managing pagination state
- * @see {@link DataTableBulkActions} - Bulk action bar component
+ * @see DataTableBulkActions - Bulk action bar component (exported for callers to
+ *   render themselves; not yet wired into this component's own selection UI).
  * @see {@link BulkDeleteModal} - Confirmation modal component
  */
 export function DataTable<TData extends VexDocument>({

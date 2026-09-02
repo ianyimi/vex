@@ -71,6 +71,12 @@ const componentMap: Record<string, any> = {
 /**
  * Given an array of VexEditorFeature objects, returns the plugins
  * and component overrides for createPlateEditor.
+ *
+ * @param features - The enabled editor features; each feature key maps to
+ *   zero or more Plate plugins via `featurePluginMap`.
+ * @returns The Plate plugins to register (always including the base
+ *   paragraph and image-placeholder plugins) and the `components` override
+ *   map pairing element types with their React renderers.
  */
 export function createPluginsFromFeatures(features: VexEditorFeature[]): {
   plugins: any[];

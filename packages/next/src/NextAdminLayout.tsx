@@ -30,7 +30,8 @@ import { cookies } from "next/headers";
  * @param props.config - The resolved VexCMS config from `vex.config.ts` (raw)
  * @param props.children - The page content from `[[...slug]]/page.tsx`
  * @param props.user - Current user for the admin shell
- *
+ * @returns The rendered admin shell, wrapping `children` in the sanitized-config
+ * client boundary ({@link NextAdminLayoutClient}).
  * @example
  * ```tsx
  * // app/admin/layout.tsx

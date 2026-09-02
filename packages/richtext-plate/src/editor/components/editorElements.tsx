@@ -5,7 +5,12 @@ import type React from "react";
 import { PlateElement, type PlateElementProps, useEditorRef } from "platejs/react";
 import { ImagePlaceholder } from "./image/ImagePlaceholder";
 
-/** Horizontal rule — void element. */
+/**
+ * Horizontal rule — void element.
+ *
+ * @param props - The Plate element props for the `hr` node.
+ * @returns The rendered horizontal rule wrapped in `PlateElement`.
+ */
 export function HrElement(props: PlateElementProps) {
   return (
     <PlateElement {...props}>
@@ -23,7 +28,11 @@ export function HrElement(props: PlateElementProps) {
   );
 }
 
-/** Table — renders PlateElement as <table>. */
+/**
+ * Table — renders PlateElement as `<table>`.
+ *
+ * @returns The table's rows wrapped in a `<table><tbody>` `PlateElement`.
+ */
 export function TableElement({ children, ...rest }: PlateElementProps) {
   return (
     <PlateElement
@@ -41,7 +50,11 @@ export function TableElement({ children, ...rest }: PlateElementProps) {
   );
 }
 
-/** Table row — renders PlateElement as <tr>. */
+/**
+ * Table row — renders PlateElement as `<tr>`.
+ *
+ * @returns The row's cells wrapped in a `<tr>` `PlateElement`.
+ */
 export function TableRowElement({ children, ...rest }: PlateElementProps) {
   return (
     <PlateElement {...rest} as="tr">
@@ -50,7 +63,12 @@ export function TableRowElement({ children, ...rest }: PlateElementProps) {
   );
 }
 
-/** Table cell — renders PlateElement as <td> or <th>. */
+/**
+ * Table cell — renders PlateElement as `<td>` or `<th>`.
+ *
+ * @returns The cell content wrapped in a `<td>` or `<th>` `PlateElement`,
+ *   using `<th>` (with header styling) when the element type is `"th"`.
+ */
 export function TableCellElement({ children, ...rest }: PlateElementProps) {
   const element = rest.element as {
     type?: string;
@@ -90,7 +108,12 @@ export function TableCellElement({ children, ...rest }: PlateElementProps) {
  */
 type ImageAlign = "left" | "center" | "right";
 
-/** PlateElement wrapper style — float for wrap modes, clear for block modes. */
+/**
+ * PlateElement wrapper style — float for wrap modes, clear for block modes.
+ *
+ * @param align - The image's alignment mode.
+ * @returns The CSS for the wrapping element matching that alignment.
+ */
 function getPlateElementStyle(align?: ImageAlign): React.CSSProperties {
   if (align === "left") {
     return { float: "left", width: "auto", marginRight: 16, marginBottom: 8, clear: "left" };
@@ -104,7 +127,14 @@ function getPlateElementStyle(align?: ImageAlign): React.CSSProperties {
   return { clear: "both" };
 }
 
-/** Inner container style. */
+/**
+ * Inner container style.
+ *
+ * @param width - The image's stored width in pixels, if resized.
+ * @param align - The image's alignment mode.
+ * @returns The CSS for the image's inner container, sized and centered
+ *   according to `width` and `align`.
+ */
 function getImageContainerStyle(width?: number, align?: ImageAlign): React.CSSProperties {
   const base: React.CSSProperties = {
     position: "relative",
@@ -170,7 +200,14 @@ function ControlBtn({
   );
 }
 
-/** Image — void element with click-to-select controls, resize, and alignment. */
+/**
+ * Image — void element with click-to-select controls, resize, and alignment.
+ *
+ * @param props - The Plate element props for the image node; `props.element`
+ *   carries `url`, `alt`, `width`, and `align`.
+ * @returns The image (or a placeholder when no URL is set) with, while
+ *   selected, an alignment control bar and a drag-to-resize handle.
+ */
 export function ImageElement(props: PlateElementProps) {
   const editor = useEditorRef();
   const element = props.element as {
@@ -341,7 +378,12 @@ export function ImageElement(props: PlateElementProps) {
   );
 }
 
-/** Upload placeholder — void element shown while an image is uploading. */
+/**
+ * Upload placeholder — void element shown while an image is uploading.
+ *
+ * @param props - The Plate element props for the placeholder node.
+ * @returns The rendered `ImagePlaceholder` wrapped in `PlateElement`.
+ */
 export function ImagePlaceholderElement(props: PlateElementProps) {
   return (
     <PlateElement {...props}>

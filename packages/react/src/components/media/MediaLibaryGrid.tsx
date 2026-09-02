@@ -39,6 +39,7 @@ export interface MediaLibraryGridProps {
  * 4-column grid with tiles showing FilePreview + filename + metadata.
  *
  * @param props - Component props.
+ * @returns The search bar, results grid with selection state, and a "Load more" button when there are more results.
  */
 export function MediaLibraryGrid({
   targetCollectionConfig,

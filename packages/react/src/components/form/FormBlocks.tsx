@@ -47,7 +47,13 @@ export interface FormBlocksProps {
   className?: string;
 }
 
-/** Builds the default value object for a new block of the given type. */
+/**
+ * Builds the default value object for a new block of the given type.
+ *
+ * @param blockDef - The block config to build a default value for.
+ * @returns A new block object with a fresh `id`, `blockType`, `blockName`,
+ *   and each sub-field initialised to its `defaultValue` (or `null`).
+ */
 function buildDefaultBlock(blockDef: BlockConfig): GenericBlock {
   const fieldDefaults = Object.fromEntries(
     Object.entries(blockDef.fields).map(([key, subField]) => [key, subField.defaultValue ?? null]),
@@ -65,6 +71,10 @@ function buildDefaultBlock(blockDef: BlockConfig): GenericBlock {
  *
  * If `admin.defaultCollapsed` is true, all blocks start collapsed (returns []).
  * Otherwise, all blocks start open.
+ *
+ * @param items - The current array of blocks.
+ * @param defaultCollapsed - Whether blocks should start collapsed (`fieldDef.admin.defaultCollapsed`).
+ * @returns The block IDs that should be open by default.
  */
 function computeDefaultOpenBlocks(items: GenericBlock[], defaultCollapsed: boolean): string[] {
   if (defaultCollapsed) return [];
@@ -234,6 +244,8 @@ function BlockPickerDialog(props: {
  *
  * `blockType`, `blockName`, and `id` are never rendered as editable sub-field inputs.
  *
+ * @param props - Component props.
+ * @returns The accordion of blocks with a searchable block picker for adding new ones.
  * @throws {Error} When rendered outside `<AppForm>` and no form context is available.
  */
 export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({

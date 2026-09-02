@@ -12,7 +12,7 @@ import { CheckboxFieldCell } from "./Cell";
  * @param props.fieldDef - Resolved checkbox field definition
  * @param props.fieldKey - Field key from `collection.fields`
  * @param props.isTitleField - Whether this is the title field (`useAsTitle`)
- * @param props.collection
+ * @param props.collection - Collection configuration for the field's collection.
  * @returns TanStack Table column definition typed to `boolean`
  *
  * @example

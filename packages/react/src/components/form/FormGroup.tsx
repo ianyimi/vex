@@ -26,6 +26,9 @@ import { useAccordionDndState } from "../ui/dnd";
  * @throws {Error} When rendered outside `<AppForm>` and no form context is
  *   available (same constraint as `FormArray`).
  *
+ * @param props - Component props.
+ * @returns The collapsible fieldset accordion with one input per sub-field.
+ *
  * @example
  * ```tsx
  * <FormGroup

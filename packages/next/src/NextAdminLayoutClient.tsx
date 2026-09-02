@@ -32,6 +32,9 @@ import { AdminLayout, type AdminUser } from "@vexcms/react";
  * @param props.config - Sanitized config, safe to serialize across the boundary
  * @param props.children - The page content from `[[...slug]]/page.tsx`
  * @param props.user - Current user for the admin shell
+ * @returns The admin shell rendered from `children`, wrapped in `NuqsAdapter`
+ * and the shared `AdminLayout`, wired with the active slug/document id derived
+ * from `usePathname()` and Next.js `Link`/`Image` components.
  */
 export function NextAdminLayoutClient(props: {
   config: ClientVexConfig;

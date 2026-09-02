@@ -30,6 +30,7 @@ interface MediaUploadDropzoneProps {
  * single-file upload calls.
  *
  * @param props — Dropzone component props.
+ * @returns The drag-and-drop / click-to-upload dropzone element.
  */
 export function MediaUploadDropzone(props: MediaUploadDropzoneProps) {
   const queryClient = useQueryClient();

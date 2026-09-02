@@ -31,6 +31,8 @@ export type FilePreviewProps<TDoc extends VexMediaDocument = VexMediaDocument> =
  * Falls back to file icon on image load error (403, 5xx).
  *
  * @param props - Component props.
+ * @returns An `<img>` for images, a MIME-type icon for SVGs/videos/audio/other
+ *   files, or the fallback icon after an image load error.
  */
 export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
   mediaDoc,

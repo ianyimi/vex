@@ -17,8 +17,8 @@
     "version:packages": "changeset version && node scripts/sync-template-versions.mjs",
     "release": "pnpm --filter \"@vexcms/*\" --filter \"create-vexcms\" build && pnpm publish -r --no-git-checks --tag alpha && changeset tag",
     "verify:scaffold": "node scripts/verify-scaffold.mjs",
-    "lint": "eslint packages/*/src/**/*.{ts,tsx}",
-    "lint:fix": "eslint --fix packages/*/src/**/*.{ts,tsx}"
+    "lint": "eslint \"packages/*/src/**/*.{ts,tsx}\"",
+    "lint:fix": "eslint --fix \"packages/*/src/**/*.{ts,tsx}\""
   },
   "devDependencies": {
     "@changesets/cli": "catalog:",

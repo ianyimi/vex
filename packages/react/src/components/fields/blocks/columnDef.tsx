@@ -7,6 +7,13 @@ import { BlocksFieldCell } from "./Cell";
  *
  * Sorting is disabled — blocks fields store heterogeneous arrays which are
  * not meaningfully sortable by Convex indexes.
+ *
+ * @param props - Column generation props.
+ * @param props.fieldDef - Resolved blocks field definition.
+ * @param props.fieldKey - Field key from `collection.fields`.
+ * @param props.collection - Collection configuration for the field's collection.
+ * @param props.isTitleField - Whether this is the title field (`useAsTitle`).
+ * @returns TanStack Table column definition typed to `unknown`.
  */
 export function blocksFieldToColumnDef<TData extends TDocument = TDocument>(props: {
   fieldDef: BlocksField;

@@ -24,6 +24,7 @@ export interface UploadEmptyProps {
  * Matches the `UploadEmpty` design: dropzone with drag-active state + "Browse media library" ghost button below.
  *
  * @param props - Component props.
+ * @returns The dropzone + "Browse media library" button UI.
  */
 export function UploadEmpty({
   onPickerOpen,

@@ -30,6 +30,9 @@ const dangerBtnStyle: React.CSSProperties = {
 
 /**
  * Contextual toolbar that appears when the cursor is inside a table.
+ *
+ * @returns The table editing toolbar (add/delete row, column, and table
+ *   controls) when the selection is inside a table, otherwise `null`.
  */
 export function TableToolbar() {
   const editor = useEditorRef();

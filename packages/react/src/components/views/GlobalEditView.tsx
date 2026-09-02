@@ -8,6 +8,19 @@ import { useGlobalForm, usePermission } from "../../hooks";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 
+/**
+ * Global document edit form.
+ *
+ * Fetches the current value via `vexConvexApi.globals.get` (TanStack Query +
+ * Convex subscription), initialises a `useGlobalForm` instance with the
+ * current field values, and renders an `<AppForm>` with one input component
+ * per field. Submits via `vexConvexApi.globals.upsert`.
+ *
+ * @param props - View props.
+ * @param props.global - The global config whose fields are rendered.
+ * @param props.initialData - Server-prefetched document for SSR hydration.
+ * @returns The edit form, or a not-found message when `global` is falsy.
+ */
 export function GlobalEditView({ global, initialData }: GlobalEditViewProps) {
   // Runtime slug (`global.slug`) — uses the generic endpoint rather than the
   // per-slug `getGlobal()` wrapper. See the note in `CollectionEditView`.

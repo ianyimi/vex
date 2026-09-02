@@ -1,5 +1,5 @@
 /**
- * @vexcms/better-auth package entry point.
+ * Entry point for the `@vexcms/better-auth` package.
  *
  * Integrates [Better Auth](https://better-auth.com/) with VexCMS as the auth backend.
  * Call `betterAuthAdapter()` in `vex.config.ts` to register Better Auth collections

@@ -21,10 +21,10 @@ import { useDndRegistry } from "./DndProvider";
 
 /**
  * Provides the parent droppable's effective type to child Draggable components.
- * Draggable reads this and passes it as `type` to DNDDraggable so that
- * @hello-pangea/dnd's type system prevents cross-list isDraggingOver signals —
- * including the flash that occurs when a nested droppable is geometrically
- * inside an outer droppable and shares the same DragDropContext.
+ * Draggable reads this and passes it as `type` to DNDDraggable, so that the
+ * package @hello-pangea/dnd's type system prevents cross-list isDraggingOver
+ * signals — including the flash that occurs when a nested droppable is
+ * geometrically inside an outer droppable and shares the same DragDropContext.
  */
 export const DroppableTypeContext = createContext<string | null>(null);
 

@@ -13,13 +13,11 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { input, select, confirm, checkbox } from '@inquirer/prompts';
-import ora from 'ora';
 
 import path from 'path';
 import fs from 'fs-extra';
 import { validateProjectName, checkDirectoryExists, isDirectoryEmpty, resolveProjectName } from './utils/validation.js';
-import { displayDirectoryExistsError, displayInvalidNameError, displayDirectoryNotEmptyError, displaySuccessMessage } from './utils/messages.js';
-import { createProjectDirectory, getTargetDirectory } from './helpers/fileOperations.js';
+import { displayInvalidNameError, displayDirectoryNotEmptyError, displaySuccessMessage } from './utils/messages.js';
 import { findWorkspaceRoot } from './helpers/monorepo.js';
 import { createInstaller, getPopularProviders, getAdditionalProviders } from './installers/index.js';
 import type { Framework, ProjectOptions } from './installers/types.js';
