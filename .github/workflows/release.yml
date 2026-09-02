@@ -60,6 +60,23 @@ jobs:
       - name: Check Packed Manifests
         run: node scripts/check-packed-manifests.mjs
 
+      # `.npmrc` reads `_authToken=${NPM_TOKEN}`. A missing or empty repo secret is
+      # substituted silently, npm sends the publish unauthenticated, and the
+      # registry answers `404 Not Found - PUT` (it hides existence from callers it
+      # cannot authorise) — which reads as "the package does not exist" rather than
+      # "you are not logged in". Fail here, before a full build, with the real cause.
+      - name: Verify npm auth
+        run: |
+          if [ -z "${NPM_TOKEN}" ]; then
+            echo "::error::NPM_TOKEN secret is empty or unset — publish would fail with a misleading 404."
+            exit 1
+          fi
+          echo "Authenticated to npm as: $(npm whoami)"
+          npm access list packages 2>/dev/null | grep -E 'create-vexcms|@vexcms' || \
+            echo "::warning::Could not list package permissions; a granular token scoped to @vexcms only will still 404 on the unscoped create-vexcms."
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Create Release PR or Publish
         id: changesets
         uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0

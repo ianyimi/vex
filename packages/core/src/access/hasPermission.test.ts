@@ -1780,3 +1780,95 @@ describe("hasPermission — the retained allow posture", () => {
     ).toBe(false);
   });
 });
+
+/**
+ * Production regression (vexcms.dev, 2026-09-02): the admin panel 500'd with
+ * `TypeError: Cannot read properties of undefined (reading 'email')` thrown from
+ * inside a `constraints` callback. `anonRole` resolves a sessionless caller to a
+ * real role, and that role's rule scoped rows to `user.email` — but no user
+ * existed, and this call site passed `props.user` straight through.
+ */
+const profiles = defineCollection({
+  slug: "profiles",
+  fields: { email: text({ required: true }), status: text({ index: "by_status" }) },
+});
+
+const anonConstraintAccess = defineAccess({
+  anonRole: "user",
+  roles: ["admin", "user"] as const,
+  userRolesField: "roles",
+  userCollectionSlug: "users",
+  resources: [profiles, users],
+  permissions: {
+    admin: { [WILDCARD_KEY]: true },
+    user: {
+      [WILDCARD_KEY]: false,
+      profiles: {
+        [WILDCARD_KEY]: false,
+        // Scoped to the caller — meaningless without one.
+        read: {
+          constraints: ({ user, q }) => {
+            const caller = user as { email?: string };
+            return q.filter((fq) => fq.eq("email", caller.email));
+          },
+        },
+        // Independent of the caller — the read-only `anonRole` case.
+        update: {
+          constraints: ({ q }) => q.filter((fq) => fq.eq("status", "published")),
+        },
+      },
+    },
+  },
+});
+
+describe("constrained rules with no authenticated user", () => {
+  it("denies instead of throwing when the rule reads the absent user", () => {
+    const call = () =>
+      hasPermission({
+        access: anonConstraintAccess,
+        user: null,
+        resource: "profiles",
+        action: "read",
+        data: { email: "someone@example.com" },
+      });
+
+    expect(call).not.toThrow();
+    expect(call()).toBe(false);
+  });
+
+  it("does not widen to rows whose scoped field is absent", () => {
+    // `convexValuesEqual` treats `undefined === undefined`, so a naive `user: {}`
+    // fallback would MATCH this row instead of denying it.
+    expect(
+      hasPermission({
+        access: anonConstraintAccess,
+        user: null,
+        resource: "profiles",
+        action: "read",
+        data: {},
+      }),
+    ).toBe(false);
+  });
+
+  it("still evaluates a rule that never reads the user", () => {
+    expect(
+      hasPermission({
+        access: anonConstraintAccess,
+        user: null,
+        resource: "profiles",
+        action: "update",
+        data: { status: "published" },
+      }),
+    ).toBe(true);
+
+    expect(
+      hasPermission({
+        access: anonConstraintAccess,
+        user: null,
+        resource: "profiles",
+        action: "update",
+        data: { status: "draft" },
+      }),
+    ).toBe(false);
+  });
+});

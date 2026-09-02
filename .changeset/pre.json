@@ -17,6 +17,7 @@
   },
   "changesets": [
     "admin-accordion-draghandle-fixes",
+    "anon-constraint-fail-closed",
     "generated-types-lint-header",
     "marketing-template-design",
     "media-and-scaffold-fixes",

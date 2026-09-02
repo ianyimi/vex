@@ -1,5 +1,13 @@
 # @vexcms/ui
 
+## 0.1.0-alpha.8
+
+### Patch Changes
+
+- Updated dependencies
+  - @vexcms/core@0.1.0-alpha.8
+  - @vexcms/better-auth@0.1.0-alpha.8
+
 ## 0.1.0-alpha.7
 
 ### Patch Changes
