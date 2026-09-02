@@ -32,7 +32,16 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Packages
+        # See release.yml for why these are placeholder values rather than
+        # SKIP_ENV_VALIDATION: `apps/test`'s prerender needs a parseable Convex URL,
+        # so skipping validation alone still fails at page-data collection. Keeping
+        # validation on means an unwired required env var fails the PR.
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" build
+        env:
+          BETTER_AUTH_SECRET: ci-placeholder-not-a-real-secret
+          NEXT_PUBLIC_CONVEX_URL: https://ci-placeholder.convex.cloud
+          NEXT_PUBLIC_CONVEX_SITE_URL: https://ci-placeholder.convex.site
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
       - name: Typecheck Packages
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" typecheck
