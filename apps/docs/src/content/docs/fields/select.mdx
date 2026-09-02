@@ -1,0 +1,91 @@
+---
+title: select field
+description: Stores an array of chosen option values — status labels, categories, tags, and any enumerable choice set.
+---
+
+A `select()` field stores one or more chosen values from a predefined set of
+options. It is used for status labels (draft, published, archived), categories,
+tags, and any field where the value must come from a known list.
+
+Set `hasMany: false` (the default) for a single-selection dropdown.
+Set `hasMany: true` for a multi-select tag/badge picker.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
+| `defaultValue` | `string[]` | `[]` | Pre-filled selection shown in the admin form when creating a new document. |
+| `options` | `{ label: string, value: string, badgeColor?: string }[]` | `[]` | The set of choices available for this field. |
+| `hasMany` | `boolean` | `false` | `false` shows a single-selection dropdown; `true` shows a multi-select badge picker. |
+| `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders the picker as non-interactive. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
+| `admin.placeholder` | `string` | — | Placeholder text shown when no option is selected. |
+| `admin.description` | `string` | — | Helper text displayed below the field input. |
+
+## Schema output
+
+```ts
+// Optional single-select (hasMany: false — default)
+status: v.optional(v.array(v.string()))
+
+// Required single-select
+status: v.array(v.string())
+
+// Multi-select
+tags: v.optional(v.array(v.string()))
+```
+
+## Usage
+
+```ts
+import { defineCollection, select, text } from "@vexcms/core";
+
+const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    // Single-select status field
+    status: select({
+      required: true,
+      options: [
+        { label: "Draft", value: "draft" },
+        { label: "Published", value: "published" },
+        { label: "Archived", value: "archived" },
+      ],
+    }),
+
+    // Multi-select tag field with badge colours
+    tags: select({
+      hasMany: true,
+      options: [
+        { label: "News", value: "news", badgeColor: "#3b82f6" },
+        { label: "Tutorial", value: "tutorial", badgeColor: "#10b981" },
+        { label: "Release", value: "release", badgeColor: "#f59e0b" },
+      ],
+    }),
+
+    // Category with a default selection
+    category: select({
+      defaultValue: ["general"],
+      options: [
+        { label: "General", value: "general" },
+        { label: "Tech", value: "tech" },
+      ],
+    }),
+  },
+});
+```
+
+## Admin UI
+
+With `hasMany: false`, the select field renders as a dropdown combobox in the
+edit form. With `hasMany: true`, it renders as a tag/badge picker where options
+can be added and removed individually. `badgeColor` is used for the tag background
+color in multi-select mode. In the list-view table, selected values are shown as
+comma-separated labels or coloured badges depending on the admin cell renderer.

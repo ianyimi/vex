@@ -1,6 +1,17 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "paths": {}
-  }
+    "paths": {},
+    // Resolve workspace deps through their published `types` entry (dist/*.d.ts)
+    // rather than the `source` condition. Consuming sibling *source* here would
+    // pull those files into this program, outside `rootDir` (TS6059), and is why
+    // declaration emit was previously disabled. Turbo's `dependsOn: ["^build"]`
+    // guarantees upstream dist/ exists first.
+    "customConditions": []
+  },
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/test/**"
+  ]
 }

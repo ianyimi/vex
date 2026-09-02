@@ -1,0 +1,75 @@
+---
+title: number field
+description: Stores numeric values — prices, quantities, ratings, ages, counts, and any numeric data.
+---
+
+A `number()` field stores a numeric value. It is used for prices, quantities,
+ratings, ages, counts, percentages, and any data that is naturally a number.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
+| `defaultValue` | `number` | `0` | Pre-filled value shown in the admin form when creating a new document. |
+| `min` | `{ value: number, error?: string }` | — | Minimum allowed numeric value. |
+| `max` | `{ value: number, error?: string }` | — | Maximum allowed numeric value. |
+| `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders the input as non-interactive. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
+| `admin.placeholder` | `string` | — | Placeholder text shown when the input is empty. |
+| `admin.description` | `string` | — | Helper text displayed below the field input. |
+
+## Schema output
+
+```ts
+// Optional (required: false — default)
+price: v.optional(v.number())
+
+// Required with value constraints
+quantity: v.number()
+
+// With a database index
+quantity: v.number(),
+.index("by_quantity", ["quantity"])
+```
+
+## Usage
+
+```ts
+import { defineCollection, number, text } from "@vexcms/core";
+
+const products = defineCollection({
+  slug: "products",
+  fields: {
+    // Minimal — label inferred from key ("Price")
+    price: number(),
+
+    // Required quantity with a minimum of 1 and a database index
+    quantity: number({ required: true, min: { value: 1 }, index: "by_quantity" }),
+
+    // Rating capped between 0 and 5 with custom error messages
+    rating: number({
+      min: { value: 0, error: "Rating cannot be negative" },
+      max: { value: 5, error: "Rating cannot exceed 5" },
+      admin: { width: "half" },
+    }),
+
+    // Pre-filled default score
+    score: number({ defaultValue: 100 }),
+  },
+});
+```
+
+## Admin UI
+
+The number field renders as a single-line `<input type="number">` in the edit
+form. `min` and `max` constraints are validated both in the form UI and at the
+Convex schema level. In the list-view table, the raw numeric value is displayed.
+Numbers that represent currency or quantities are commonly right-aligned via
+`admin.cellAlignment: "right"`.

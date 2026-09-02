@@ -1,0 +1,86 @@
+---
+title: date field
+description: Stores a Unix timestamp in milliseconds — publish dates, expiry dates, event times, and timestamps.
+---
+
+A `date()` field stores a Unix timestamp in milliseconds. It renders as a
+calendar date picker with an optional time-of-day selector in the admin panel.
+Common uses include published dates, expiry dates, event start times, and
+creation timestamps.
+
+The time picker can be hidden entirely for date-only fields, configured for
+12-hour (AM/PM) or 24-hour format, and granularly controlled to show or hide
+hour, minute, and second selectors.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
+| `defaultValue` | `number` | — | Pre-filled Unix timestamp (ms) shown in the admin form when creating a new document. |
+| `min` | `number` | — | Minimum allowed Unix timestamp (ms). |
+| `max` | `number` | — | Maximum allowed Unix timestamp (ms). |
+| `time.hidden` | `boolean` | `false` | Hide the time picker, showing only the calendar date selector. |
+| `time.use12HourFormat` | `boolean` | `true` | Display time in 12-hour AM/PM format (`true`) or 24-hour format (`false`). |
+| `time.timePicker.hour` | `boolean` | `true` | Show the hour selector in the time picker. |
+| `time.timePicker.minute` | `boolean` | `true` | Show the minute selector in the time picker. |
+| `time.timePicker.second` | `boolean` | `false` | Show the seconds selector in the time picker. |
+| `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders the picker as non-interactive. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
+| `admin.placeholder` | `string` | — | Placeholder text shown when the input is empty. |
+| `admin.description` | `string` | — | Helper text displayed below the field input. |
+
+## Schema output
+
+```ts
+// Optional date with time picker (default)
+publishedAt: v.optional(v.number())
+
+// Required event date
+startsAt: v.number()
+
+// With a database index
+startsAt: v.number(),
+.index("by_starts_at", ["startsAt"])
+```
+
+## Usage
+
+```ts
+import { defineCollection, date, text } from "@vexcms/core";
+
+const events = defineCollection({
+  slug: "events",
+  fields: {
+    // Minimal — label inferred from key ("Published At")
+    publishedAt: date(),
+
+    // Required event date with a database index
+    eventDate: date({ required: true, index: "by_event_date" }),
+
+    // Date-only picker (hide the time UI entirely)
+    expiresOn: date({ time: { hidden: true } }),
+
+    // Appointment in 24-hour format, shown in the sidebar
+    appointmentAt: date({
+      required: true,
+      time: { use12HourFormat: false },
+      admin: { position: "sidebar", width: "half" },
+    }),
+  },
+});
+```
+
+## Admin UI
+
+The date field renders as a calendar popover with an attached time picker in
+the edit form. When `time.hidden` is `true`, only the calendar appears. The
+time picker respects `use12HourFormat` and shows/hides hour, minute, and second
+selectors according to `timePicker`. In the list-view table, the timestamp is
+formatted as a human-readable date string.

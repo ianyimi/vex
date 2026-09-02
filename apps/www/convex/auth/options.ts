@@ -1,7 +1,4 @@
-import { type DataModel } from "@convex/_generated/dataModel"
-import schema from "@convex/schema"
-import { type BetterAuthOptions } from "better-auth"
-import { type GenericActionCtx } from "convex/server"
+import type { BetterAuthOptions } from "better-auth"
 
 import {
   TABLE_SLUG_ACCOUNTS,
@@ -11,10 +8,9 @@ import {
   USER_ROLES,
 } from "~/db/constants"
 
-import { convexAdapter } from "./adapter"
-import betterAuthPlugins from "./plugins"
+import { createPlugins } from "./plugins"
 
-export const betterAuthOptions: BetterAuthOptions = {
+export const authOptions: BetterAuthOptions = {
   account: {
     modelName: TABLE_SLUG_ACCOUNTS,
   },
@@ -22,10 +18,7 @@ export const betterAuthOptions: BetterAuthOptions = {
   emailAndPassword: {
         enabled: true
       },
-  logger: {
-    disabled: false,
-  },
-  plugins: betterAuthPlugins,
+  plugins: createPlugins(),
   secret: process.env.BETTER_AUTH_SECRET,
   session: {
     modelName: TABLE_SLUG_SESSIONS,
@@ -33,7 +26,7 @@ export const betterAuthOptions: BetterAuthOptions = {
   trustedOrigins: [process.env.SITE_URL!],
   user: {
     additionalFields: {
-      role: {
+      roles: {
         type: "string[]",
         defaultValue: [USER_ROLES.user],
         required: true,
@@ -44,21 +37,4 @@ export const betterAuthOptions: BetterAuthOptions = {
   verification: {
     modelName: TABLE_SLUG_VERIFICATIONS,
   },
-}
-
-export function buildBetterAuthOptions({
-  ctx,
-  optionsOnly = false,
-}: {
-  ctx: GenericActionCtx<DataModel>
-  optionsOnly?: boolean
-}) {
-  return {
-    ...betterAuthOptions,
-    database: convexAdapter(ctx, schema),
-    logger: {
-      ...betterAuthOptions.logger,
-      disabled: optionsOnly,
-    },
-  }
 }

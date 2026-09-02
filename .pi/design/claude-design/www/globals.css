@@ -1,0 +1,386 @@
+/* =========================================================================
+   VexCMS — globals.css
+   Stark × Ember design tokens packaged for a shadcn (Tailwind v4) project.
+
+   USAGE (shadcn / Tailwind v4):
+   ─────────────────────────────
+   1.  Replace the entire contents of `app/globals.css` (or
+       `src/app/globals.css`) with this file.
+   2.  Ensure your <html> has `class="dark"` (or wrap in a class) for dark
+       mode. shadcn's existing toggle works as-is — this file uses the
+       same `.dark` selector.
+   3.  Make sure Geist + Geist Mono are loaded. If you use Next.js, the
+       `next/font/google` Geist + Geist_Mono setup is already correct;
+       otherwise the @import below loads them directly.
+   4.  Tailwind utility classes like `bg-background`, `text-foreground`,
+       `border-border`, `ring-ring`, `bg-primary`, etc. all map to the
+       semantic vars defined here.
+
+   COLOR FORMAT
+   ────────────
+   All theme colors are exposed in `oklch()` so Tailwind v4's `@theme`
+   block can read them. Hex equivalents are kept in comments for tooling.
+
+   ========================================================================= */
+
+@import "tailwindcss";
+
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap");
+
+/* -------------------------------------------------------------------------
+   1.  TOKENS — non-semantic source-of-truth values
+   ------------------------------------------------------------------------- */
+:root {
+  /* ── BRAND — Ember Orange scale ─────────────────────────────────────── */
+  --vex-primary:        oklch(0.640 0.176  41); /* #E8622A — light primary  */
+  --vex-primary-hover:  oklch(0.595 0.176  41); /* #D45A26                  */
+  --vex-primary-bright: oklch(0.700 0.165  44); /* #F07040 — dark primary   */
+  --vex-primary-dark:   oklch(0.555 0.176  41); /* #C04E1E — pressed        */
+  --vex-primary-tint:   oklch(0.965 0.024  47); /* #FEF0E8 — bg wash        */
+  --vex-on-primary:     oklch(1 0 0);           /* #FFFFFF                  */
+
+  /* ── SURFACE — pure neutral (Stark) ─────────────────────────────────── */
+  --vex-surface-900:    oklch(0.115 0 0);  /* #0A0A0A */
+  --vex-surface-800:    oklch(0.165 0 0);  /* #141414 */
+  --vex-surface-700:    oklch(0.200 0 0);  /* #1E1E1E */
+  --vex-surface-600:    oklch(0.245 0 0);  /* #2A2A2A */
+  --vex-sidebar-dark:   oklch(0.080 0 0);  /* #050505 */
+  --vex-code-bg-dark:   oklch(0.140 0 0);  /* #111111 */
+
+  --vex-surface-50:     oklch(0.985 0 0);  /* #FAFAFA */
+  --vex-surface-100:    oklch(0.970 0 0);  /* #F5F5F5 */
+  --vex-white:          oklch(1 0 0);
+
+  /* ── INK — pure neutral grayscale ───────────────────────────────────── */
+  --vex-ink:            oklch(0.115 0 0);  /* #0A0A0A */
+  --vex-ink-secondary:  oklch(0.235 0 0);  /* #2E2E2E */
+  --vex-ink-muted:      oklch(0.515 0 0);  /* #717171 */
+  --vex-ink-subtle:     oklch(0.665 0 0);  /* #A0A0A0 */
+  --vex-ink-faint:      oklch(0.840 0 0);  /* #D4D4D4 */
+
+  /* ── BORDER ─────────────────────────────────────────────────────────── */
+  --vex-border-light:   oklch(0.910 0 0);  /* #E4E4E4 */
+  --vex-border-dark:    oklch(0.245 0 0);  /* #2A2A2A */
+
+  /* ── SEMANTIC STATUS ────────────────────────────────────────────────── */
+  --vex-success:        oklch(0.605 0.180 142);   /* #16A34A */
+  --vex-success-tint:   oklch(0.945 0.060 142);   /* #DCFCE7 */
+  --vex-success-ink:    oklch(0.520 0.180 142);   /* #15803D */
+
+  --vex-warning:        oklch(0.625 0.160  82);   /* #CA8A04 — DEEP GOLD,
+                                                     not amber, distinct
+                                                     from primary           */
+  --vex-warning-tint:   oklch(0.955 0.080  90);   /* #FEF3C7 */
+  --vex-warning-ink:    oklch(0.420 0.140  82);   /* #854D0E */
+
+  --vex-destructive:    oklch(0.600 0.230  29);   /* #DC2626 */
+  --vex-destructive-tint:oklch(0.940 0.040  29);  /* #FEE2E2 */
+  --vex-destructive-ink: oklch(0.460 0.180  29);  /* #991B1B */
+
+  /* ── RADII — Stark: very sharp ──────────────────────────────────────── */
+  --vex-radius-none:    0;
+  --vex-radius-sm:      1px;
+  --vex-radius-md:      2px;   /* buttons, inputs */
+  --vex-radius-lg:      4px;   /* cards, code blocks */
+  --vex-radius-xl:      8px;   /* modals, dialogs */
+  --vex-radius-full:    9999px;
+
+  /* shadcn radius — wired to 4px so <Card>, <Popover>, etc. are sharp   */
+  --radius:             0.25rem;
+
+  /* ── SPACING — 4px base ─────────────────────────────────────────────── */
+  --vex-space-xs:        4px;
+  --vex-space-sm:        8px;
+  --vex-space-md:       16px;
+  --vex-space-lg:       24px;
+  --vex-space-xl:       40px;
+  --vex-space-2xl:      80px;   /* desktop section padding */
+  --vex-space-3xl:     120px;
+
+  /* ── SHADOWS — light mode only; dark = none ─────────────────────────── */
+  --vex-shadow-xs:      0 1px 2px rgba(10,10,10,0.04);
+  --vex-shadow-sm:      0 1px 3px rgba(10,10,10,0.08);
+  --vex-shadow-md:      0 4px 12px rgba(10,10,10,0.08);
+  --vex-shadow-lg:      0 12px 32px rgba(10,10,10,0.12);
+  --vex-shadow-focus:   0 0 0 3px rgba(232,98,42,0.28);
+
+  /* ── LAYOUT ─────────────────────────────────────────────────────────── */
+  --vex-max-content:   1280px;
+  --vex-admin-sidebar:  260px;
+
+  /* ── FONTS — ONE typeface (Stark rule) ──────────────────────────────── */
+  --vex-font-sans:      "Geist", "Inter", system-ui, -apple-system,
+                        "Segoe UI", Roboto, sans-serif;
+  --vex-font-mono:      "Geist Mono", "JetBrains Mono", ui-monospace,
+                        SFMono-Regular, Menlo, monospace;
+  --vex-font-display:   var(--vex-font-sans);
+
+  /* ── MOTION ─────────────────────────────────────────────────────────── */
+  --vex-ease:           cubic-bezier(.2, .8, .2, 1);
+  --vex-dur-fast:       120ms;
+  --vex-dur-base:       180ms;
+  --vex-dur-slow:       260ms;
+
+  /* =====================================================================
+     2.  SEMANTIC ALIASES — what shadcn / app code references
+     =====================================================================
+     These match the shadcn variable contract exactly. Tailwind utility
+     classes like `bg-background`, `text-foreground`, `bg-primary`, etc.
+     resolve through the @theme block at the bottom of this file.
+     ===================================================================== */
+  --background:         var(--vex-surface-100);         /* page bg          */
+  --foreground:         var(--vex-ink);
+
+  --card:               var(--vex-white);
+  --card-foreground:    var(--vex-ink);
+
+  --popover:            var(--vex-white);
+  --popover-foreground: var(--vex-ink);
+
+  --primary:            var(--vex-primary);
+  --primary-foreground: var(--vex-on-primary);
+
+  --secondary:          var(--vex-surface-100);         /* subtle pressed   */
+  --secondary-foreground: var(--vex-ink);
+
+  --muted:              var(--vex-surface-100);
+  --muted-foreground:   var(--vex-ink-muted);
+
+  --accent:             var(--vex-primary-tint);        /* hover/wash       */
+  --accent-foreground:  var(--vex-primary-dark);
+
+  --destructive:        var(--vex-destructive);
+  --destructive-foreground: var(--vex-on-primary);
+
+  --success:            var(--vex-success);
+  --success-foreground: var(--vex-on-primary);
+
+  --warning:            var(--vex-warning);
+  --warning-foreground: var(--vex-on-primary);
+
+  --border:             var(--vex-border-light);
+  --input:              var(--vex-border-light);
+  --ring:               var(--vex-primary);
+
+  /* shadcn chart palette — derived from neutrals + ember (no rainbow)   */
+  --chart-1:            var(--vex-primary);
+  --chart-2:            var(--vex-ink-secondary);
+  --chart-3:            var(--vex-ink-muted);
+  --chart-4:            var(--vex-success);
+  --chart-5:            var(--vex-warning);
+
+  /* shadcn sidebar tokens (admin shell)                                 */
+  --sidebar:                   var(--vex-surface-50);
+  --sidebar-foreground:        var(--vex-ink);
+  --sidebar-primary:           var(--vex-primary);
+  --sidebar-primary-foreground:var(--vex-on-primary);
+  --sidebar-accent:            var(--vex-primary-tint);
+  --sidebar-accent-foreground: var(--vex-primary-dark);
+  --sidebar-border:            var(--vex-border-light);
+  --sidebar-ring:              var(--vex-primary);
+}
+
+/* -------------------------------------------------------------------------
+   3.  DARK MODE — flip every semantic alias
+   ------------------------------------------------------------------------- */
+.dark {
+  --background:         var(--vex-surface-900);
+  --foreground:         oklch(0.955 0 0);                /* #F4F4F4 */
+
+  --card:               var(--vex-surface-700);
+  --card-foreground:    oklch(0.955 0 0);
+
+  --popover:            var(--vex-surface-700);
+  --popover-foreground: oklch(0.955 0 0);
+
+  --primary:            var(--vex-primary-bright);       /* #F07040 */
+  --primary-foreground: var(--vex-on-primary);
+
+  --secondary:          var(--vex-surface-800);
+  --secondary-foreground: oklch(0.955 0 0);
+
+  --muted:              var(--vex-surface-800);
+  --muted-foreground:   var(--vex-ink-subtle);
+
+  --accent:             oklch(0.700 0.165 44 / 0.12);    /* primary @12% */
+  --accent-foreground:  var(--vex-primary-bright);
+
+  --destructive:        var(--vex-destructive);
+  --destructive-foreground: var(--vex-on-primary);
+
+  --success:            var(--vex-success);
+  --success-foreground: var(--vex-on-primary);
+
+  --warning:            var(--vex-warning);
+  --warning-foreground: var(--vex-on-primary);
+
+  --border:             var(--vex-border-dark);
+  --input:              var(--vex-border-dark);
+  --ring:               var(--vex-primary-bright);
+
+  --vex-shadow-xs:      none;
+  --vex-shadow-sm:      none;
+  --vex-shadow-md:      none;
+  --vex-shadow-lg:      none;
+  --vex-shadow-focus:   0 0 0 3px rgba(240,112,64,0.35);
+
+  --chart-1:            var(--vex-primary-bright);
+  --chart-2:            oklch(0.840 0 0);
+  --chart-3:            oklch(0.665 0 0);
+  --chart-4:            var(--vex-success);
+  --chart-5:            var(--vex-warning);
+
+  --sidebar:                   var(--vex-sidebar-dark);
+  --sidebar-foreground:        oklch(0.955 0 0);
+  --sidebar-primary:           var(--vex-primary-bright);
+  --sidebar-primary-foreground:var(--vex-on-primary);
+  --sidebar-accent:            oklch(0.700 0.165 44 / 0.12);
+  --sidebar-accent-foreground: var(--vex-primary-bright);
+  --sidebar-border:            var(--vex-border-dark);
+  --sidebar-ring:              var(--vex-primary-bright);
+}
+
+/* -------------------------------------------------------------------------
+   4.  TAILWIND v4 @theme — exposes vars as utility classes
+       (Drop this into globals.css for shadcn v4 / Tailwind 4 projects.
+       If you're on Tailwind 3, the utility mapping happens in
+       tailwind.config.ts instead — keep the CSS vars above and ignore
+       this @theme block.)
+   ------------------------------------------------------------------------- */
+@theme inline {
+  --color-background:         var(--background);
+  --color-foreground:         var(--foreground);
+  --color-card:               var(--card);
+  --color-card-foreground:    var(--card-foreground);
+  --color-popover:            var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary:            var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary:          var(--secondary);
+  --color-secondary-foreground:var(--secondary-foreground);
+  --color-muted:              var(--muted);
+  --color-muted-foreground:   var(--muted-foreground);
+  --color-accent:             var(--accent);
+  --color-accent-foreground:  var(--accent-foreground);
+  --color-destructive:        var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success:            var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning:            var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border:             var(--border);
+  --color-input:              var(--input);
+  --color-ring:               var(--ring);
+  --color-chart-1:            var(--chart-1);
+  --color-chart-2:            var(--chart-2);
+  --color-chart-3:            var(--chart-3);
+  --color-chart-4:            var(--chart-4);
+  --color-chart-5:            var(--chart-5);
+  --color-sidebar:            var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary:    var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:     var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:     var(--sidebar-border);
+  --color-sidebar-ring:       var(--sidebar-ring);
+
+  --font-sans:                var(--vex-font-sans);
+  --font-mono:                var(--vex-font-mono);
+
+  --radius-sm:                calc(var(--radius) - 2px);
+  --radius-md:                calc(var(--radius) - 1px);
+  --radius-lg:                var(--radius);
+  --radius-xl:                calc(var(--radius) + 4px);
+}
+
+/* -------------------------------------------------------------------------
+   5.  BASE — body, focus, selection
+   ------------------------------------------------------------------------- */
+@layer base {
+  * { border-color: var(--border); }
+
+  html {
+    font-family: var(--vex-font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--vex-font-sans);
+    font-feature-settings: "ss01" 1, "cv11" 1;
+  }
+
+  code, pre, kbd, samp {
+    font-family: var(--vex-font-mono);
+  }
+
+  /* Focus ring — Ember orange, 2px outline + 3px halo            */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Selection — ember at 22% (light) / 24% (dark)                */
+  ::selection {
+    background-color: rgba(232,98,42,0.22);
+  }
+  .dark ::selection {
+    background-color: rgba(240,112,64,0.24);
+  }
+}
+
+/* -------------------------------------------------------------------------
+   6.  TYPOGRAPHY UTILITY CLASSES (optional, framework-agnostic)
+   ------------------------------------------------------------------------- */
+.vex-display {
+  font-family: var(--vex-font-sans);
+  font-size: 4.5rem;       /* 72px */
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+.vex-h1 { font-family: var(--vex-font-sans); font-size: 3rem;    font-weight: 700; line-height: 1.15; letter-spacing: -0.03em;  }
+.vex-h2 { font-family: var(--vex-font-sans); font-size: 2.25rem; font-weight: 700; line-height: 1.20; letter-spacing: -0.025em; }
+.vex-h3 { font-family: var(--vex-font-sans); font-size: 1.875rem;font-weight: 600; line-height: 1.25; letter-spacing: -0.02em;  }
+.vex-h4 { font-family: var(--vex-font-sans); font-size: 1.5rem;  font-weight: 600; line-height: 1.30; letter-spacing: -0.015em; }
+.vex-body-lg { font-size: 1.125rem; line-height: 1.65; }
+.vex-body-md { font-size: 1rem;     line-height: 1.65; }
+.vex-body-sm { font-size: 0.875rem; line-height: 1.55; }
+.vex-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.vex-code {
+  font-family: var(--vex-font-mono);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  font-feature-settings: "ss01" 1, "calt" 1;
+}
+.vex-inline-code {
+  font-family: var(--vex-font-mono);
+  font-size: 0.875em;
+  background: var(--vex-primary-tint);
+  color: var(--vex-primary-dark);
+  padding: 1px 6px;
+  border-radius: var(--vex-radius-sm);
+}
+.dark .vex-inline-code {
+  background: rgb(240 112 64 / 0.18);
+  color: var(--vex-primary-bright);
+}
+
+/* -------------------------------------------------------------------------
+   7.  RESPONSIVE BREAKPOINTS (informational — Tailwind owns these)
+       sm  640  / md  768  / lg  1024 / xl  1280 / 2xl 1536
+       Section padding adjusts naturally:
+         mobile: 48px
+         tablet: 64px
+         desktop: 80–120px
+   ------------------------------------------------------------------------- */

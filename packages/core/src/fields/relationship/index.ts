@@ -1,3 +1,5 @@
+// Re-export the factory function
 export * from "./config";
-export * from "./columnDef";
-export * from "./schemaValueType";
+export * from "./types";
+export * from "./validator";
+export * from "./inputSchema";

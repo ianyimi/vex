@@ -1,0 +1,111 @@
+---
+title: Authentication
+description: Integrate Better Auth with VexCMS to manage users, sessions, accounts, and verification tokens as standard collections.
+---
+
+VexCMS supports authentication via **auth adapters**. An auth adapter
+introspects your auth provider's schema and converts it into standard Vex
+collections that are merged with your user-defined collections.
+
+## How it works
+
+Auth adapters implement the `VexAuthAdapter` interface. They expose:
+
+- `name` — provider identifier (e.g. `"better-auth"`)
+- `collections` — auth collections (user, session, account, verification, etc.)
+- `userCollection` — the slug of the collection that stores user documents
+
+These collections are passed to `defineConfig({ auth: … })` and merged
+automatically with your user-defined collections via
+`mergeAuthCollections`.
+
+## Merge behavior
+
+Auth collections merge with user-defined collections following these rules:
+
+1. **Protected collections** — auth collections marked as `protected` cannot be
+   overridden by user-defined collections with the same slug. Attempting to do
+   so throws a `VexAuthConfigError`.
+2. **Locked fields** — fields on auth collections with `meta.locked: true` are
+   preserved during merge. User-defined fields with the same key are ignored.
+3. **Unlocked fields** — user-defined fields override or extend auth fields.
+4. **User-only collections** — user-defined collections with no matching auth
+   collection are added as-is.
+5. **Auth-only collections** — auth collections with no matching user
+   collection are appended at the end.
+
+## Better Auth
+
+The `@vexcms/better-auth` package provides a `betterAuthAdapter()` that
+introspects a [Better Auth](https://www.better-auth.com/) configuration and
+converts its tables into Vex collections.
+
+### Setup
+
+```ts
+// auth/options.ts
+import { betterAuthAdapter } from "@vexcms/better-auth";
+
+export const authOptions = {
+  // your Better Auth configuration
+};
+
+// vex.config.ts
+import { defineConfig } from "@vexcms/core";
+import { betterAuthAdapter } from "@vexcms/better-auth";
+import { authOptions } from "./auth/options";
+
+export default defineConfig({
+  auth: betterAuthAdapter({ config: authOptions }),
+  collections: [posts, authors],
+});
+```
+
+### Field mapping
+
+`betterAuthAdapter()` maps Better Auth `DBFieldAttribute` types to Vex field
+builders:
+
+| Better Auth type | Vex field |
+|------------------|-----------|
+| `string` | `text()` |
+| `boolean` | `checkbox()` |
+| `number` | `number()` |
+| `date`, `timestamp` | `date()` |
+| `json` | `text()` (fallback) |
+| `string[]` (enum) | `select()` |
+| `references` | `relationship()` |
+
+System fields are automatically marked as `admin.readOnly` and `meta.locked`.
+Sensitive fields (`hashedPassword`, `twoFactorSecret`, etc.) are hidden from
+the admin UI with `admin.hidden: true`.
+
+### Extending the user collection
+
+The user collection is **not** protected, so you can extend it with
+user-defined fields:
+
+```ts
+const user = defineCollection({
+  slug: "user",
+  fields: {
+    bio: text(),
+    publicProfile: checkbox({ defaultValue: true }),
+  },
+});
+
+export default defineConfig({
+  auth: betterAuthAdapter({ config: authOptions }),
+  collections: [user, posts],
+});
+```
+
+Locked fields (email, emailVerified, createdAt, etc.) are preserved. Your
+unlocked fields (`bio`, `publicProfile`) are merged in.
+
+### Admin UI behavior
+
+Auth collections appear in the admin sidebar alongside user-defined
+collections. System fields are read-only and cannot be edited. User-editable
+fields (name, email, image, role, etc.) can be modified through the standard
+document edit form.

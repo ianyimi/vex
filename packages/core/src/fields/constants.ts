@@ -1,9 +1,123 @@
-export const TEXT_VALUETYPE = "v.string()" as const;
-export const NUMBER_VALUETYPE = "v.number()" as const;
-export const CHECKBOX_VALUETYPE = "v.boolean()" as const;
-export const DATE_VALUETYPE = "v.number()" as const;
-export const IMAGEURL_VALUETYPE = "v.string()" as const;
-export const JSON_VALUETYPE = "v.any()" as const;
-export const RICHTEXT_VALUETYPE = "v.any()" as const;
+/**
+ * Convex schema value type constants for field types.
+ *
+ * These constants define the base Convex validator strings for each field type.
+ * They're used by schema generation logic to build the Convex schema.
+ *
+ * @internal
+ */
 
-export type { Alignment } from "../types/fields";
+/** Convex schema metadata for each supported field type, keyed by field type name. */
+export const ADMIN_FIELDS = {
+  text: {
+    type: "text",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+  },
+  url: {
+    type: "url",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+  },
+  color: {
+    type: "color",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+  },
+  number: {
+    type: "number",
+    interfaceType: "number",
+    validator: "v.number()",
+    defaultValue: 0,
+  },
+  checkbox: {
+    type: "checkbox",
+    interfaceType: "boolean",
+    validator: "v.boolean()",
+    defaultValue: false,
+  },
+  date: {
+    type: "date",
+    interfaceType: "number",
+    validator: "v.number()",
+    defaultValue: undefined,
+  },
+  select: {
+    type: "select",
+    interfaceType: "string[]",
+    validator: "v.array(\nv.string()\n)",
+    defaultValue: [] as string[],
+  },
+  relationship: {
+    type: "relationship",
+    interfaceType: "Id<CollectionSlug>[]",
+    validator: "v.array(\nv.string()\n)",
+    defaultValue: [] as string[],
+  },
+  array: {
+    type: "array",
+    interfaceType: "unknown[]",
+    validator: "v.array(\nv.any()\n)",
+    defaultValue: [],
+  },
+  group: {
+    type: "group",
+    interfaceType: "Record<string, any>",
+    validator: "v.object({})",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    defaultValue: {} as Record<string, any>,
+  },
+  blocks: {
+    type: "blocks",
+    interfaceType: "Record<string, any>[]", // placeholder - blocks() overridses per instance
+    validator: "v.array(v.any())", // placeholder - blocksFieldToValidator builds dynamically
+    defaultValue: [],
+  },
+  upload: {
+    type: "upload",
+    interfaceType: "Id<MediaCollectionSlug>[]",
+    validator: "v.array(\nv.string()\n)",
+    defaultValue: undefined,
+  },
+  // richtext: {
+  //   type: "richtext",
+  //   validator: "v.any()",
+  //   defaultValue: {},
+  // },
+} as const;
+/** Union of all supported field type name strings (e.g. `"text"` | `"number"` | `"checkbox"` | ...). */
+export type AdminFieldType = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["type"];
+/** Union of all Convex validator strings for the supported field types (e.g. `"v.string()"` | `"v.number()"` | ...). */
+export type AdminFieldValidator = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["validator"];
+/** Union of all TypeScript type strings corresponding to the supported field types (e.g. `"string"` | `"number"` | ...). */
+export type AdminFieldTsType = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["interfaceType"];
+
+/** Literal type `"text"` — the discriminant value on {@link TextField}. */
+export type TextFieldType = typeof ADMIN_FIELDS.text.type;
+
+/** Literal type `"url"` — the discriminant value on {@link UrlField}. */
+export type UrlFieldType = typeof ADMIN_FIELDS.url.type;
+
+/** Literal type `"color"` — the discriminant value on {@link ColorField}. */
+export type ColorFieldType = typeof ADMIN_FIELDS.color.type;
+
+/** Literal type `"number"` — the discriminant value on {@link NumberField}. */
+export type NumberFieldType = typeof ADMIN_FIELDS.number.type;
+
+/** Literal type `"checkbox"` — the discriminant value on {@link CheckboxField}. */
+export type CheckboxFieldType = typeof ADMIN_FIELDS.checkbox.type;
+
+/** Literal type `"date"` — the discriminant value on {@link DateField}. */
+export type DateFieldType = typeof ADMIN_FIELDS.date.type;
+
+/** Literal type `"select"` — the discriminant value on {@link SelectField}. */
+export type SelectFieldType = typeof ADMIN_FIELDS.select.type;
+
+/** Literal type `"relationship"` — the discriminant value on {@link RelationshipField}. */
+export type RelationshipFieldType = typeof ADMIN_FIELDS.relationship.type;
+
+/** Literal type `"array"` — the discriminant value on {@link ArrayField}. */
+export type ArrayFieldType = typeof ADMIN_FIELDS.array.type;

@@ -1,0 +1,66 @@
+---
+title: Quickstart
+description: Scaffold a complete Next.js + Convex + VexCMS project and reach a signed-in admin panel in under five minutes.
+---
+
+VexCMS ships a scaffolding CLI that generates a complete Next.js + Convex project — auth, admin
+panel, and (by default) a marketing site starter — ready to run.
+
+## Scaffold a project
+
+```bash
+pnpm create vexcms@latest my-site
+```
+
+By default this includes the full marketing-site starter: pages, headers, footers, themes, and a
+seeded home page built from the shipped content blocks. Pass `--bare` for an empty project with
+no starter collections, or `--orgs` to enable multi-tenant organizations. See the
+[`create-vexcms` flags reference](https://github.com/ianyimi/vex/blob/master/packages/create-vexcms/README.md)
+for the full list, including `--monorepo` and `--yes`.
+
+## Stand up your deployment
+
+```bash
+cd my-site
+npx convex dev
+```
+
+The first run links or creates your Convex deployment and prints your real
+`NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL`. Copy them into `.env.local`,
+replacing the scaffolded `https://placeholder.convex.cloud` / `.convex.site` placeholders, then
+stop the process.
+
+`next.config.ts` derives `images.remotePatterns` from `NEXT_PUBLIC_CONVEX_URL` automatically,
+so `next/image` picks up the real deployment's hostname without any further edits.
+
+Better Auth runs inside the Convex deployment, not the Next.js server, so it never reads
+`.env.local`. Push the same `SITE_URL` and `BETTER_AUTH_SECRET` values to the deployment itself:
+
+```bash
+npx convex env set SITE_URL http://localhost:3010
+npx convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
+```
+
+Skipping this step is the most common cause of a `403` on your first sign-in attempt.
+
+## Run the dev servers
+
+```bash
+pnpm dev
+```
+
+This starts Next.js, `convex dev`, and the `vex` config watcher together. Open
+`http://localhost:3010` (or the port you chose while scaffolding).
+
+## Create your admin account
+
+Sign up from the landing page. The **first** account created is automatically promoted to admin
+and redirected into `/admin` — every VexCMS project boots from an empty database with no
+pre-seeded credentials.
+
+## Next steps
+
+- Define your own content in `vex.config.ts` — see the [field types](/fields/text/) reference.
+- Wire OAuth providers or organizations — see the [authentication guide](/guides/auth/).
+- Adding VexCMS to an existing Next.js + Convex app instead of scaffolding fresh? See the root
+  [README's manual setup section](https://github.com/ianyimi/vex#manual-setup).

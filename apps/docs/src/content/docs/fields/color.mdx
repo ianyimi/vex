@@ -1,0 +1,92 @@
+---
+title: color field
+description: Stores a CSS colour string — hex, rgb, hsl, or oklch — with a swatch picker in the admin panel, and optional theme-token references for values that follow the site's palette.
+---
+
+A `color()` field stores a CSS colour string. `format` decides which notation
+the picker writes — `"hex"` (default), `"rgb"`, `"hsl"`, or `"oklch"` — and
+with `themeColors` enabled the field may instead store a CSS custom-property
+reference like `var(--primary)`, which resolves per colour scheme at render
+time.
+
+Common uses: theme palettes, per-document accent colours, and block background
+overrides. The [Theming guide](/guides/theming/) shows the full
+database-driven theme system built on this field.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
+| `defaultValue` | `string` | `""` | Pre-filled colour shown in the admin form when creating a new document. Does not affect existing database values. |
+| `format` | `"hex" \| "rgb" \| "hsl" \| "oklch"` | `"hex"` | The notation the picker **writes**. Validation is deliberately wider: every supported notation is accepted on save, so changing `format` never invalidates existing documents — it governs new writes, not stored history. |
+| `themeColors` | `boolean` | `false` | When `true`, the picker gains a **Theme** tab listing the CSS custom properties declared by the host app's stylesheet; selecting one stores a `var(--token)` reference instead of a literal colour. |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders the picker as non-interactive. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Alignment of the swatch in the list-view table column. |
+
+## Schema output
+
+Colour fields are stored as plain strings in Convex — the notation (and the
+`var(--token)` alternative allowed by `themeColors`) is enforced at the admin
+form layer, not in the database schema. Changing `format` therefore never
+triggers a schema migration.
+
+```ts
+// Optional (default — required: false)
+accentColor: v.optional(v.string())
+
+// Required
+brandColor: v.string()
+```
+
+## Usage
+
+```ts
+import { color, defineCollection } from "@vexcms/core";
+
+export const themes = defineCollection({
+  slug: "themes",
+  fields: {
+    // Minimal — label inferred from the key ("Brand Color"), stored as hex
+    brandColor: color(),
+
+    // Stored as oklch so the front end can interpolate it directly
+    primaryLight: color({
+      format: "oklch",
+      required: true,
+      defaultValue: "oklch(65.7% 0.179 40.9)",
+    }),
+
+    // Half-width, offering the host app's design tokens as a second picker tab
+    overlayTint: color({ themeColors: true, admin: { width: "half" } }),
+  },
+});
+```
+
+Pick the notation the front end consumes. A theme collection feeding CSS
+custom properties should use `"oklch"` so stored values interpolate directly
+into custom properties with no conversion step.
+
+## Theme-token references
+
+With `themeColors: true` the picker offers the site's own design tokens, and
+the stored value is a reference — `var(--primary)` — rather than a literal.
+The admin panel renders inside the host app, so the tokens on offer are the
+site's real tokens.
+
+**Leave `themeColors` off on the fields that *define* the tokens.** A field
+whose value is written back out as `--primary: var(--primary)` is a
+custom-property cycle, which CSS discards at computed-value time.
+
+## Admin UI
+
+The field renders a swatch button that opens a Sketch-style picker
+(`@uiw/react-color-sketch`) alongside a free-text input, so any valid notation
+can also be typed or pasted directly. With `themeColors` enabled the picker
+carries a second **Theme** tab listing the host app's custom properties. In
+the list-view table the cell shows a colour swatch beside the stored value.

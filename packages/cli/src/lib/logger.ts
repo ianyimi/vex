@@ -7,6 +7,7 @@ const RESET = "\x1b[0m";
 
 const PREFIX = `${CYAN}[vex]${RESET}`;
 
+/** Colorized console logger for CLI output, prefixed with `[vex]`. */
 export const logger = {
   info(msg: string) {
     console.log(`${PREFIX} ${msg}`);

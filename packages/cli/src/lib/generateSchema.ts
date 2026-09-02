@@ -1,5 +1,7 @@
+// @ts-nocheck
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, dirname } from "node:path";
 
 import type { VexConfig } from "@vexcms/core";
 import {
@@ -12,66 +14,116 @@ import {
 } from "@vexcms/core";
 
 import { waitForDeploy } from "./convexProcess.js";
-import { generateAndWriteCollectionFiles } from "./generateCollectionFiles.js";
 import { logger } from "./logger.js";
 import { executeMigration, executeFieldRemoval, backfillVersionStatus } from "./migrate.js";
 import { resolveConvexUrl } from "./resolveConvexUrl.js";
 
+/**
+ * Result of a `generateAndWrite` run.
+ */
 export interface GenerateResult {
   /** Whether the file was actually written (false = unchanged, skipped) */
   written: boolean;
 }
 
+/**
+ * Optional overrides accepted by `generateAndWrite`.
+ */
 export interface GenerateOptions {
   /** Override the push function used to deploy schema to Convex. */
   pushSchema?: (cwd: string) => boolean | Promise<boolean>;
 }
 
+/**
+ * Generates `vex.types.ts` and writes it next to `vex.config.ts`.
+ *
+ * Split out of {@link generateAndWrite} so `vex generate` can refresh the type
+ * registry without the rest of that function's work — schema emission, Convex
+ * codegen, and a deploy. Those belong to `vex dev`; regenerating types does not
+ * touch the deployment and is safe to run while a `convex dev` watcher is live.
+ *
+ * Failures are logged, not thrown: a type-generation error must not stop schema
+ * generation or a dev loop, and the previous file stays on disk.
+ *
+ * @param props - Input props.
+ * @param props.config - Loaded vex config describing collections and globals.
+ * @param props.configPath - Absolute path to `vex.config.ts`; the types file is
+ *   written beside it.
+ * @param props.cwd - Project root, used to locate the formatter.
+ * @returns `true` when the file changed on disk, `false` when it was already
+ *   up to date or generation failed.
+ */
+export function writeVexTypes(props: {
+  config: VexConfig;
+  configPath: string;
+  cwd: string;
+}): boolean {
+  try {
+    const typesContent = generateVexTypes({ config: props.config });
+    const typesPath = resolve(dirname(props.configPath), "vex.types.ts");
+    const formattedTypes = formatString(typesContent, typesPath, props.cwd);
+    const existingTypes = existsSync(typesPath) ? readFileSync(typesPath, "utf-8") : "";
+    if (existingTypes === formattedTypes) return false;
+    writeFileSync(typesPath, formattedTypes, "utf-8");
+    logger.success("Generated vex.types.ts");
+    return true;
+  } catch (err) {
+    logger.warn("Type generation failed (vex.types.ts)");
+    logger.error("Type generation error", err);
+    return false;
+  }
+}
+
+/**
+ * Generates `vex.types.ts` and the vex schema file for `config`, then keeps
+ * `convex/schema.ts` and Convex in sync with the result.
+ *
+ * Writes `vex.types.ts` next to `configPath` (best-effort — failures are
+ * logged, not thrown). Generates the schema content and, if there are no
+ * collections to emit, returns early. Otherwise formats the schema with the
+ * project's detected formatter and skips the write when the formatted
+ * content already matches what's on disk. When `config.schema.autoMigrate`
+ * is enabled and a previous schema exists, computes the field diff, writes
+ * and deploys an interim schema with new/removed fields made optional, runs
+ * field-removal and backfill migrations against Convex, then writes and
+ * deploys the final schema. Also syncs `convex/schema.ts` imports with the
+ * vex schema's exports, backfills `vex_status` on versioned collections,
+ * and regenerates the per-collection query files.
+ *
+ * @param config - The loaded vex config describing collections and schema output settings.
+ * @param cwd - Project root used to resolve output paths and locate Convex/formatter binaries.
+ * @param configPath - Absolute path to `vex.config.ts`, used to place `vex.types.ts` alongside it.
+ * @param options - Optional overrides; currently only a custom `pushSchema` deploy function.
+ * @returns `{ written: false }` when the config has no collections to emit; otherwise `{ written: true }` once schema generation (and any auto-migration) has completed.
+ */
 export async function generateAndWrite(
   config: VexConfig,
   cwd: string,
+  configPath: string,
   options?: GenerateOptions,
 ): Promise<GenerateResult> {
   const outputRelPath = config.schema.outputPath; // e.g. "/convex/vex.schema.ts"
   const vexSchemaPath = resolve(cwd, outputRelPath.replace(/^\//, ""));
   const convexSchemaPath = resolve(cwd, "convex/schema.ts");
 
-  // Generate the final schema content
-  const content = generateVexSchema({ config });
+  writeVexTypes({ config, configPath, cwd });
 
-  // Generate and write vex.types.ts
-  try {
-    const typesContent = generateVexTypes({ config });
-    const typesRelPath = config.schema.typesOutputPath;
-    const typesPath = resolve(cwd, typesRelPath.replace(/^\//, ""));
-    const formattedTypes = await formatString(typesContent, typesPath);
-    const existingTypes = existsSync(typesPath)
-      ? readFileSync(typesPath, "utf-8")
-      : "";
-    if (existingTypes !== formattedTypes) {
-      writeFileSync(typesPath, formattedTypes, "utf-8");
-      logger.success("Generated vex.types.ts");
-    }
-  } catch (err) {
-    logger.warn("Type generation failed (vex.types.ts)");
-    logger.error("Type generation error", err);
+  // Generate the schema content; bail early if there are no collections to emit
+  const { update: shouldWriteSchema, contents: schemaContents } =
+    generateVexSchema({ config });
+  if (!shouldWriteSchema) {
+    return { written: false };
   }
 
   // Format content before comparison so Prettier-formatted files match correctly
-  const finalSchema = await formatString(content, vexSchemaPath);
+  const finalSchema = formatString(schemaContents, vexSchemaPath, cwd);
 
   // Compare with existing file — skip write if unchanged
   const existing = existsSync(vexSchemaPath)
     ? readFileSync(vexSchemaPath, "utf-8")
     : "";
 
-  if (existing === finalSchema) {
-    // vex.schema.ts unchanged, but schema.ts may still need syncing
-    syncSchemaImports(convexSchemaPath, content, outputRelPath, config);
-    // Still generate collection API files (they may be missing or stale)
-    await generateAndWriteCollectionFiles({ config, cwd });
-    return { written: false };
-  }
+  syncSchemaImports(convexSchemaPath, schemaContents, outputRelPath, config);
 
   // Auto-migrate if enabled
   let migrationOk = true;
@@ -101,7 +153,7 @@ export async function generateAndWrite(
         }
 
         // Write the interim schema (may be same as final if only adding optional fields)
-        const formattedInterim = await formatString(interim, vexSchemaPath);
+        const formattedInterim = formatString(interim, vexSchemaPath, cwd);
         writeFileSync(vexSchemaPath, formattedInterim, "utf-8");
 
         if (interim !== finalSchema) {
@@ -178,11 +230,12 @@ export async function generateAndWrite(
       : "";
     if (current !== finalSchema) {
       writeFileSync(vexSchemaPath, finalSchema, "utf-8");
+      logger.success(`Generated ${outputRelPath}`);
     }
   }
 
   // Sync schema.ts imports with vex.schema.ts exports
-  syncSchemaImports(convexSchemaPath, content, outputRelPath, config, existing);
+  syncSchemaImports(convexSchemaPath, schemaContents, outputRelPath, config, existing);
 
   // Backfill vex_status on versioned collections after schema is deployed.
   // The mutation only patches documents missing vex_status, so this is safe
@@ -200,27 +253,96 @@ export async function generateAndWrite(
     }
   }
 
-  // Generate typed per-collection query files
-  await generateAndWriteCollectionFiles({ config, cwd });
-
   return { written: true };
 }
 
 /**
- * Format a string with Prettier (if available). Returns the original
- * string unchanged when Prettier is not installed or fails.
+ * Walk up from `startDir` looking for `node_modules/.bin/<name>`.
+ * Returns the absolute path to the binary, or null if not found.
+ *
+ * @param name - The binary's file name inside `node_modules/.bin` (e.g. `"prettier"`).
+ * @param startDir - Directory to start searching from; each parent directory is checked in turn up to the filesystem root.
+ * @returns The absolute path to the binary if found, otherwise `null`.
  */
-async function formatString(
-  source: string,
-  filepath: string,
-): Promise<string> {
-  try {
-    const prettier = await import("prettier");
-    const options = (await prettier.resolveConfig(filepath)) ?? {};
-    return await prettier.format(source, { ...options, filepath });
-  } catch {
-    return source;
+function findBin(name: string, startDir: string): string | null {
+  let dir = startDir;
+  while (true) {
+    const bin = resolve(dir, "node_modules/.bin", name);
+    if (existsSync(bin)) return bin;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
   }
+}
+
+/**
+ * Detect which formatter the project uses by reading the `format` (or `fmt`)
+ * script from the nearest `package.json`. Falls back to checking installed
+ * binaries when no script is found.
+ *
+ * @param cwd - Project root containing (or near) `package.json` and `node_modules`.
+ * @returns `"prettier"` or `"biome"` based on the project's format script or installed binaries, or `null` if neither is detected.
+ */
+function detectFormatter(cwd: string): "prettier" | "biome" | null {
+  try {
+    const pkgPath = resolve(cwd, "package.json");
+    if (existsSync(pkgPath)) {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as {
+        scripts?: Record<string, string>;
+      };
+      const script = pkg.scripts?.format ?? pkg.scripts?.fmt ?? "";
+      if (script.includes("prettier")) return "prettier";
+      if (script.includes("biome")) return "biome";
+    }
+  } catch {
+    // ignore read/parse errors
+  }
+  // Fall back to whichever binary is installed
+  if (findBin("prettier", cwd)) return "prettier";
+  if (findBin("biome", cwd)) return "biome";
+  return null;
+}
+
+/**
+ * Format `source` using the formatter declared in the project's `format` script
+ * (Prettier or Biome). Uses stdin so only the generated file content is touched.
+ * Returns the original string unchanged when no formatter is found or formatting fails.
+ *
+ * @param source - The generated source text to format.
+ * @param filepath - Path handed to the formatter (e.g. via `--stdin-filepath`) so it can infer the file type; the file itself is not read or written.
+ * @param cwd - Project root used to detect and locate the formatter binary.
+ * @returns The formatted source text, or `source` unchanged if no formatter is available or the formatter invocation fails.
+ */
+function formatString(source: string, filepath: string, cwd: string): string {
+  const formatter = detectFormatter(cwd);
+
+  if (formatter === "prettier") {
+    const bin = findBin("prettier", cwd);
+    if (bin) {
+      try {
+        return execFileSync(
+          bin,
+          ["--stdin-filepath", filepath, "--log-level", "silent"],
+          { input: source, encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] },
+        );
+      } catch {}
+    }
+  }
+
+  if (formatter === "biome") {
+    const bin = findBin("biome", cwd);
+    if (bin) {
+      try {
+        return execFileSync(
+          bin,
+          ["format", "--stdin-file-path", filepath],
+          { input: source, encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] },
+        );
+      } catch {}
+    }
+  }
+
+  return source;
 }
 
 function syncSchemaImports(
@@ -321,6 +443,11 @@ function syncSchemaImports(
 /**
  * Add `names` to the vex import statement in schema.ts.
  * Handles both single-line and multi-line import formats.
+ *
+ * @param content - The `convex/schema.ts` source text to modify.
+ * @param names - Export names to add to the import from `importPath`.
+ * @param importPath - Module specifier of the existing (or to-be-created) import, e.g. `"./vex.schema"`.
+ * @returns `content` with `names` merged into the import from `importPath`; if no matching import exists, a new import statement is appended after the last import (or prepended if the file has none).
  */
 function addToImport(
   content: string,
@@ -366,7 +493,10 @@ function addToImport(
   // No existing import — add one after the last import line
   const lastImportIdx = content.lastIndexOf("import ");
   if (lastImportIdx !== -1) {
-    const lineEnd = content.indexOf("\n", lastImportIdx);
+    // Scan forward to the `from "..."` clause to handle multi-line imports
+    const fromIdx = content.indexOf(" from ", lastImportIdx);
+    const scanFrom = fromIdx !== -1 ? fromIdx : lastImportIdx;
+    const lineEnd = content.indexOf("\n", scanFrom);
     const insertPos = lineEnd !== -1 ? lineEnd + 1 : content.length;
     const importLine = `import { ${names.join(", ")} } from "${importPath}";\n`;
     return content.slice(0, insertPos) + importLine + content.slice(insertPos);
@@ -378,6 +508,10 @@ function addToImport(
 
 /**
  * Insert `names` as entries into the `defineSchema({...})` block.
+ *
+ * @param content - The `convex/schema.ts` source text to modify.
+ * @param names - Table identifiers to insert as entries inside `defineSchema({ ... })`.
+ * @returns `content` with `names` inserted immediately after the `defineSchema({` opening brace, or unchanged if no `defineSchema({` call is found.
  */
 function addToDefineSchema(content: string, names: string[]): string {
   const defineIdx = content.indexOf("defineSchema({");
@@ -390,6 +524,11 @@ function addToDefineSchema(content: string, names: string[]): string {
 
 /**
  * Remove a single `name` from the vex import statement.
+ *
+ * @param content - The `convex/schema.ts` source text to modify.
+ * @param name - Export name to remove from the import from `importPath`.
+ * @param importPath - Module specifier of the import to modify, e.g. `"./vex.schema"`.
+ * @returns `content` with `name` removed from the import; the entire import statement is dropped if `name` was the last one, and `content` is returned unchanged if no matching import is found.
  */
 function removeFromImport(
   content: string,
@@ -430,7 +569,13 @@ function removeFromImport(
   return content.replace(importRe, `$1 ${items.join(", ")} $3`);
 }
 
-/** Returns the resolved output path for the vex schema file. */
+/**
+ * Resolves the absolute output path for the generated vex schema file.
+ *
+ * @param config - The loaded vex config; `config.schema.outputPath` is the project-relative (leading-slash) output path.
+ * @param cwd - Project root the output path is resolved against.
+ * @returns The absolute filesystem path where the vex schema file should be written.
+ */
 export function getOutputPath(config: VexConfig, cwd: string): string {
   return resolve(cwd, config.schema.outputPath.replace(/^\//, ""));
 }

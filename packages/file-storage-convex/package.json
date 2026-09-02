@@ -1,31 +1,50 @@
 {
   "name": "@vexcms/file-storage-convex",
-  "version": "0.0.20",
+  "version": "0.1.0-alpha.7",
+  "description": "Convex file-storage adapter for VexCMS uploads",
+  "keywords": [
+    "cms",
+    "headless-cms",
+    "convex",
+    "typescript",
+    "storage"
+  ],
+  "license": "Apache-2.0",
+  "author": "Isaiah Anyimi",
+  "homepage": "https://docs.vexcms.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianyimi/vex.git",
+    "directory": "packages/file-storage-convex"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
+  },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
     "dev": "tsup --watch",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "peerDependencies": {
-    "convex": "catalog:",
-    "@vexcms/core": "workspace:*"
-  },
   "devDependencies": {
+    "@types/node": "catalog:",
     "@vexcms/core": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",
     "convex": "catalog:",
@@ -33,7 +52,8 @@
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
-  "publishConfig": {
-    "access": "public"
+  "peerDependencies": {
+    "@vexcms/core": "workspace:^",
+    "convex": "catalog:peers"
   }
 }

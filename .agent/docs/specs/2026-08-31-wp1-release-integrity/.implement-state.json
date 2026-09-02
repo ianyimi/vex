@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "slug": "2026-08-31-wp1-release-integrity",
+  "updated": "2026-08-31T12:28:30.144Z",
+  "groups": {
+    "Step 1": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": []
+    },
+    "Step 2": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "npm notice",
+        "npm notice Publishing to https://registry.npmjs.org/ with tag latest and public access (dry-run)",
+        "npm warn Unknown project config \"shamefully-hoist\". This will stop working in the next major version of npm.",
+        "npm notice",
+        "npm notice 📦  @vexcms/next@0.1.0-alpha.1",
+        "npm notice Tarball Contents",
+        "npm notice 3.6kB README.md",
+        "npm notice 718B dist/index.d.ts",
+        "npm notice 629B dist/index.d.ts.map",
+        "npm notice 2.2kB dist/NextAdminLayout.d.ts",
+        "npm notice 498B dist/NextAdminLayout.d.ts.map",
+        "npm notice 743B dist/NextAdminLayout.js",
+        "npm notice 3.5kB dist/NextAdminLayout.js.map",
+        "npm notice 744B dist/NextAdminLayout.mjs",
+        "npm notice 3.5kB dist/NextAdminLayout.mjs.map",
+        "npm notice 1.6kB dist/NextAdminLayoutClient.d.ts",
+        "npm notice 524B dist/NextAdminLayoutClient.d.ts.map",
+        "npm notice 987B dist/NextAdminLayoutClient.js",
+        "npm notice 3.3kB dist/NextAdminLayoutClient.js.map",
+        "npm notice 988B dist/NextAdminLayoutClient.mjs",
+        "npm notice 3.3kB dist/NextAdminLayoutClient.mjs.map",
+        "npm notice 1.5kB dist/NextAdminPage.d.ts",
+        "npm notice 391B dist/NextAdminPage.d.ts.map",
+        "npm notice 4.1kB dist/NextAdminPage.js",
+        "npm notice 8.3kB dist/NextAdminPage.js.map",
+        "npm notice 4.1kB dist/NextAdminPage.mjs",
+        "npm notice 8.3kB dist/NextAdminPage.mjs.map",
+        "npm notice 2.0kB package.json",
+        "npm notice 409B styles.css",
+        "npm notice Tarball Details",
+        "npm notice name: @vexcms/next",
+        "npm notice version: 0.1.0-alpha.1",
+        "npm notice filename: vexcms-next-0.1.0-alpha.1.tgz",
+        "npm notice package size: 11.6 kB",
+        "npm notice unpacked size: 56.0 kB",
+        "npm notice shasum: 3b78b3e7f89e6892d7292cb86f232fa29b4b7208",
+        "npm notice integrity: sha512-/EK2xi9CMwmrJ[...]fgsB3x3xtUVoA==",
+        "npm notice total files: 23",
+        "npm notice",
+        "npm notice Publishing to https://registry.npmjs.org/ with tag latest and public access (dry-run)"
+      ]
+    },
+    "Step 3": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "✓ packed manifests"
+      ]
+    }
+  }
+}

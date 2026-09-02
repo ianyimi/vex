@@ -1,0 +1,69 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "customConditions": [
+      "source"
+    ],
+    "paths": {
+      "~/*": [
+        "./src/*"
+      ],
+      "@convex/*": [
+        "./convex/*"
+      ],
+      "@vexcms/react": [
+        "../../packages/react/src/index.ts"
+      ],
+      "@vexcms/file-storage-convex": [
+        "../../packages/convex/src/index.ts"
+      ],
+      "@vexcms/core": [
+        "../../packages/core/src/index.ts"
+      ],
+      "@vexcms/next/server": [
+        "../../packages/next/src/NextAdminPage.tsx"
+      ],
+      "@vexcms/next/client": [
+        "../../packages/next/src/NextAdminLayout.tsx"
+      ],
+      "@vexcms/better-auth": [
+        "../../packages/better-auth/src/index.ts"
+      ],
+      "@vexcms/better-auth/convex": [
+        "../../packages/better-auth/src/convex/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

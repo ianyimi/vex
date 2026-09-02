@@ -1,0 +1,376 @@
+---
+title: Access Control (RBAC)
+description: Role-based permissions for collections, globals, and custom actions with defineAccess — index-pushed constraint rules, deny-by-default posture, per-call server overrides, and a read-only public admin via anonRole.
+---
+
+VexCMS ships role-based access control via `defineAccess()` — a single permission matrix
+covering every collection, global, and custom action, enforced on the server API and
+available (advisory) on the client for UI gating.
+
+## How it works
+
+- `defineAccess({ roles, resources, userCollectionSlug, userRolesField, permissions })`
+  builds a `VexAccessConfig`, wired in via `defineConfig({ access })`.
+- `resources` lists the collections/globals contributing **subjects** to the matrix; each
+  gets the CRUD actions (`create`, `read`, `update`, `delete`) automatically, plus draft
+  actions when the resource declares `versions.drafts: true`.
+- `permissions` is `role → subject → check`. A check is `{ constraints, filter? }` (the
+  recommended default — see below), a plain callback, or a static `boolean`.
+- **Deny-by-default, with no config knob.** An undeclared role/subject/action combination
+  always resolves to deny — there is no `defaultPermissionMode` input. An allow-everything
+  posture is written explicitly as a role-level wildcard: `admin: { "*": true }`.
+- **Resolution order per role** (first match wins): subject boolean shorthand → explicit
+  action key → subject-level `"*"` → role-level `"*"` (undeclared subjects only) →
+  deny. A caller holding multiple roles OR-merges every role's answer — any role that
+  allows, allows.
+- **`userRolesField`** names the field on the user document holding role(s) (`string` or
+  `string[]`) — callers never pass roles directly; they always ride the resolved user
+  document.
+
+## Setup
+
+```ts
+// vex.config.ts
+import { defineAccess, defineConfig, defineCollection, relationship, select, text } from "@vexcms/core";
+
+export const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text({ required: true }),
+    status: select({
+      index: "by_status",
+      options: [
+        { label: "Draft", value: "draft" },
+        { label: "Published", value: "published" },
+      ],
+    }),
+    authorId: relationship({ collection: { slug: "users" } }),
+  },
+});
+
+export const access = defineAccess({
+  roles: ["admin", "editor", "user"],
+  resources: [posts],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    admin: { "*": true },
+    editor: { "*": false, posts: true },
+    user: { "*": false, posts: { read: true } },
+  },
+});
+
+export default defineConfig({
+  collections: [posts],
+  access,
+});
+```
+
+## Permission check shapes
+
+Three forms, in the order you should reach for them.
+
+### 1. `{ constraints, filter? }` — reach for this first
+
+Whenever a rule can be expressed as field comparisons, write it as `constraints`. The
+comparison rides directly into the Convex query the [Local API](/guides/local-api/) issues
+instead of pulling every row into JS and discarding what fails a check: on `read`/
+`readDrafts` it compiles to `.withIndex(...)` when the field is indexed, or `.filter(...)`
+on the query when it isn't; on `create`/`update`/`delete` — which authorize one document,
+not a range — it compiles to a per-document predicate. Either way the narrowing happens
+inside the database query the Local API runs, not as a second pass over already-fetched
+documents.
+
+Read, pushed through a declared index — `q` is positional and checks field order against
+the index at compile time:
+
+```ts
+posts: {
+  read: {
+    constraints: ({ user, q }) =>
+      q.withIndex("by_authorId", (ix) => ix.eq("authorId", user._id)),
+  },
+}
+```
+
+Read, unindexed — still compiles into the query's own `.filter()`, not a JS scan-and-discard:
+
+```ts
+posts: {
+  read: {
+    constraints: ({ q }) => q.filter((f) => f.eq("status", "published")),
+  },
+}
+```
+
+Mutations get the same `constraints` shape, minus `withIndex` — there's no query to narrow
+for a single document, so the callback's `q` exposes only `.filter()`:
+
+```ts
+posts: {
+  update: {
+    constraints: ({ user, q }) => q.filter((f) => f.eq("authorId", user._id)),
+  },
+  delete: {
+    constraints: ({ user, q }) => q.filter((f) => f.eq("authorId", user._id)),
+  },
+}
+```
+
+The outer object's `filter` property is a **separate, optional** per-document JS callback
+that augments `constraints` for whatever field comparisons can't express — quoting the
+type's own doc comment: "array membership, string operations, cross-table reads, all
+outside `FilterBuilder`'s surface, so they stay callbacks permanently." `filter` never
+substitutes for `constraints`; it only adds to it:
+
+```ts
+posts: {
+  read: {
+    constraints: ({ q }) => q.filter((f) => f.gt("viewCount", 1000)),
+    filter: ({ data }) => data.tags.includes("featured"),
+  },
+}
+```
+
+### 2. A plain callback — the escape hatch
+
+Reach for a bare callback only when the rule genuinely can't be expressed as field
+comparisons — the cases `constraints`/`filter` can't reach, or a rule that needs to inspect
+`organization` or run arbitrary logic. `data` is the concrete document when the caller
+supplies one (edit views), or omitted for a quantified check (nav/list gating), in which
+case `scope` decides how to answer:
+
+```ts
+posts: {
+  read: true,
+  create: true,
+  update: ({ user, data }) => data?.authorId === user._id,
+  delete: ({ user, data }) => data?.authorId === user._id,
+}
+```
+
+### 3. Boolean shorthand — the static case
+
+For a rule with no per-document or per-caller variation at all — allow everyone, or deny
+everyone — skip both of the above:
+
+```ts
+permissions: {
+  admin: { "*": true },
+  editor: { "*": false, posts: true },
+}
+```
+
+## Read-only public admin via `anonRole`
+
+`anonRole` supplies a fallback role when the caller has no session at all — the exact
+mechanism behind a public, read-only admin panel with zero auth friction:
+
+```ts
+export const access = defineAccess({
+  roles: ["admin", "guest"],
+  anonRole: "guest",
+  resources: [posts],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    admin: { "*": true },
+    guest: {
+      "*": false,
+      posts: { read: true },
+      adminPanel: { access: true, impersonate: false },
+    },
+  },
+});
+```
+
+`anonRole` only applies when the caller's resolved roles are genuinely empty — an
+authenticated user with a declared role always keeps their own role. A route guard that
+checks admin-panel access, rather than redirecting an anonymous visitor away outright, is
+what makes this work end to end:
+
+```ts
+import { canAccessAdminPanel } from "@vexcms/core";
+import { redirect } from "next/navigation";
+
+// Inside your admin route, after resolving `auth` server-side. `auth.user` may be
+// `null` here — an anonymous visitor is a valid caller; `anonRole` supplies the
+// fallback role instead of the route redirecting them out.
+if (!canAccessAdminPanel({ access: config.access, user: auth.user, organization: auth.organization })) {
+  redirect("/unauthorized");
+}
+```
+
+A direct mutation attempt from that same anonymous caller is still rejected server-side —
+`guest` never declares `create`/`update`/`delete`, so those actions fall through the
+deny-by-default posture. Don't combine `anonRole` with an auth provider's anonymous-session
+plugin (e.g. Better Auth's anonymous plugin): that plugin creates a real signed-in user, so
+the caller's roles are no longer empty and `anonRole` never fires — the two are mutually
+exclusive.
+
+## Enforcing checks
+
+**Server (the enforcement point).** `hasPermission` is the single runtime entry point;
+the [Local API](/guides/local-api/) (`vexServerApi`) calls it for you on every
+collection/global operation:
+
+```ts
+// convex/vexApi.ts — written once
+import { vexServerApi } from "@vexcms/core/server";
+import config from "../vex.config";
+import type { DataModel } from "./_generated/dataModel";
+import { getAuth } from "./vexContext";
+
+export const { get, find, search, create, update, remove, globals } =
+  vexServerApi<DataModel>({ config, getAuth });
+```
+
+Per-call overrides ride one grouped `access: { action?, bypass? }` param on these raw server
+functions — never expose it in a client-callable Convex `args` validator, since an action no
+role declares falls through to deny only if the SERVER chose it:
+
+```ts
+// convex/posts.ts
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+import { find } from "./vexApi";
+
+// A genuinely public read, opted out of RBAC explicitly — costs no session lookup.
+export const bySlug = query({
+  args: { slug: v.string() },
+  handler: (ctx, args) =>
+    find({
+      ctx,
+      collection: "posts",
+      withIndex: { name: "by_slug", range: (q) => q.eq("slug", args.slug) },
+      access: { bypass: true },
+    }),
+});
+
+// Checks a custom action instead of the function's natural verb ("read").
+export const featured = query({
+  handler: (ctx) =>
+    find({ ctx, collection: "posts", access: { action: "listFeatured" } }),
+});
+```
+
+**Client, inside the admin panel.** `usePermission` from `@vexcms/react` reads the access
+config from `VexAccessProvider` — your project mounts it once around the admin route,
+passing the same `access` config directly (a client-bundle import, not the serialized page
+prop, since callbacks don't survive RSC serialization):
+
+```tsx
+// app/admin/clientProviders.tsx
+"use client";
+
+import { VexAccessProvider } from "@vexcms/react";
+import { access } from "../../vex.config";
+
+export function AdminClientProviders({ children }: { children: React.ReactNode }) {
+  return <VexAccessProvider access={access}>{children}</VexAccessProvider>;
+}
+```
+
+```tsx
+import { usePermission } from "@vexcms/react";
+import { CRUD_ACTIONS } from "@vexcms/core";
+
+function NewPostButton() {
+  const canCreate = usePermission({ resource: "posts", action: CRUD_ACTIONS.create });
+  return <button disabled={!canCreate}>New Post</button>;
+}
+```
+
+**Client, in your own app UI outside the admin panel.** Don't call
+`hasPermission` from `@vexcms/core` raw at every call site — build a one-file
+wrapper that closes over your access config and auth context once, so call
+sites never fetch `user`/`organization` themselves. This is the pattern the
+VexCMS site itself uses:
+
+```tsx
+// src/auth/hasPermission.ts — written once
+"use client";
+
+import { hasPermission as hasPermissionCore, type HasPermissionProps } from "@vexcms/core";
+
+import { useAuth } from "~/context/AuthContext";
+
+import { access } from "./access";
+
+type Subjects = NonNullable<typeof access.__subjects>;
+
+/** Client-side permission check for UI affordances (advisory — server guards enforce). */
+export function hasPermission<TSubject extends keyof Subjects, TData extends object = object>(
+  props: Omit<HasPermissionProps<Subjects, TSubject, TData>, "access" | "organization" | "user">,
+): boolean {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { user, organization } = useAuth();
+  return hasPermissionCore({
+    access,
+    user,
+    organization,
+    ...props,
+  });
+}
+```
+
+Call sites stay one-liners with full slug-aware inference on `resource`/`action`
+(that's what typing the wrapper against the `__subjects` phantom buys — see the
+`Omit` above):
+
+```tsx
+import { hasPermission } from "~/auth/hasPermission";
+
+hasPermission({ resource: "posts", action: "update", data: post });
+```
+
+Either client path is **advisory only** — hiding or disabling a button is a UX affordance,
+not enforcement. The server guard is what actually protects the data.
+
+## Custom actions and resources
+
+Actions beyond CRUD, and subjects that aren't a collection or global:
+
+```ts
+export const access = defineAccess({
+  roles: ["admin", "editor"],
+  resources: [posts],
+  customActions: {
+    posts: { query: ["listFeatured"], mutation: ["publish"] },
+  },
+  customResources: {
+    apiKeys: { actions: ["create", "revoke"] },
+  },
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    admin: { "*": true },
+    editor: { "*": false, posts: { read: true, listFeatured: true }, apiKeys: false },
+  },
+});
+```
+
+## Gotchas
+
+- **`constraints` before `filter`, `filter` before a bare callback.** A field comparison
+  that a bare callback expresses as `({ data }) => data.status === "published"` reads every
+  matching row into JS just to throw most of them away; the same rule as `constraints`
+  compiles into the query itself. Reach for a callback only once `constraints`/`filter`
+  genuinely can't express the check.
+- **Deny-by-default has no override knob.** There is no `defaultPermissionMode` input field
+  — express an allow-everything posture as a role-level `"*": true`, which is greppable
+  per-role instead of an invisible global default.
+- **`anonRole` and an auth provider's anonymous-session plugin don't mix.** The plugin
+  creates a real user with a non-empty role set, so `anonRole`'s empty-roles condition never
+  fires.
+- **Client checks are advisory, full stop.** `usePermission`/`hasPermission` on the client
+  gate UI only; the server API (`vexServerApi` / `hasPermission` inside a Convex handler) is
+  the actual enforcement point, and is what you should test against.
+- **`access.action`/`access.bypass` are server-function parameters, never Convex `args`.**
+  Accepting them from a client-supplied `args` validator lets a caller pick an action no
+  role declared, which falls through to deny only when the choice is trusted — i.e. only
+  when it comes from your own server code.
+- **`adminPanel` is a built-in subject**, not a resource you declare — `canAccessAdminPanel`
+  checks `adminPanel.access` for you so the subject key and action are never hand-spelled.
+  It's the gate for reaching `/admin` at all, separate from the per-collection checks
+  reached once inside.

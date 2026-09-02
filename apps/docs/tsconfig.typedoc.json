@@ -1,0 +1,25 @@
+{
+  "extends": "../../packages/tsconfig/react-library.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "rootDir": "../..",
+    "skipLibCheck": true
+  },
+  "include": [
+    "../../packages/core/src/**/*",
+    "../../packages/react/src/**/*",
+    "../../packages/next/src/**/*",
+    "../../packages/better-auth/src/**/*",
+    "../../packages/file-storage-convex/src/**/*"
+  ],
+  "exclude": [
+    "../../packages/**/*.test.ts",
+    "../../packages/**/*.test.tsx",
+    "../../packages/**/test/**",
+    "../../packages/**/tests/**",
+    "../../packages/**/__tests__/**",
+    "../../packages/**/convex/**",
+    "../../packages/**/dist/**"
+  ]
+}

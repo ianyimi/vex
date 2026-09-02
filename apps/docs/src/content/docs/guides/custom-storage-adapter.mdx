@@ -1,0 +1,155 @@
+---
+title: Custom Storage Adapter
+description: Build a custom storage adapter for VexCMS to support S3, Cloudinary, or any other file backend.
+---
+
+VexCMS supports custom storage adapters through the `StorageAdapterBaseInterface`. This guide walks you through building a complete adapter, with examples for both the **presigned URL** protocol (used by Convex) and a hypothetical S3 direct-upload adapter.
+
+## Protocol types
+
+VexCMS supports three upload protocols:
+
+| Protocol | Description | Use case |
+|----------|-------------|----------|
+| `presigned-url` (default) | Server generates a short-lived URL, client POSTs directly to storage | Convex Storage API |
+| `direct-upload` (planned) | Client uploads directly to storage with credentials embedded in the request body or headers | S3, Cloudinary (with signed requests) |
+| `streaming` (planned) | Resumable upload sessions for large files | Backblaze B2, Wasabi (with multipart) |
+
+**Important:** Only `presigned-url` is currently supported in the admin UI. If you build an adapter using a different protocol, **you must submit a PR** to add the necessary client-side support in `@vexcms/core` and `@vexcms/react`.
+
+## The interface
+
+Every adapter must implement:
+
+```ts
+import type { StorageAdapterBaseInterface } from "@vexcms/core";
+
+interface MyStorageAdapter extends StorageAdapterBaseInterface {
+  // Required fields: name, type, mediaCollections, admin.softDelete
+  
+  generateUploadUrl(ctx): Promise<{ url: string; storageId?: string }>;
+  
+  createMediaDocument(
+    ctx, 
+    { collectionSlug, storageId, filename, mimeType, size, alt?, adapterFields? }
+  ): Promise<string>; // Returns the media document ID
+  
+  deleteMedia(
+    ctx, 
+    { collectionSlug, mediaId, softDelete? }
+  ): Promise<boolean>; // Returns true if deleted
+  
+  getUrl(
+    ctx, 
+    { collectionSlug, mediaId }
+  ): Promise<{ url: string; error?: never } | { url?: never; error: string }>;
+  
+  uploadFile(file, uploadUrl): Promise<{ storageId: string; url?: string }>;
+}
+```
+
+## Example 1: Presigned URL adapter (Convex-style)
+
+This is the pattern used by `@vexcms/file-storage-convex`. The server generates a presigned URL, the client POSTs to it directly (bypassing your API), then calls `createMediaDocument` with the returned storage ID.
+
+```ts
+import { StorageAdapterPresignedUrl } from "@vexcms/core";
+import type { MediaCollectionConfig, GenericMutationCtx, GenericQueryCtx } from "@vexcms/core";
+
+export class MyPresignedAdapter extends StorageAdapterPresignedUrl {
+  readonly name = "my-storage"; // Must match the adapter slug in your config
+  
+  async generateUploadUrl(ctx: GenericMutationCtx) {
+    // Server-side: call your storage provider's generateUploadUrl API
+    const url = await myStorageProvider.generatePresignedPost(); // Returns { url, fields }
+    return { url };
+  }
+
+  async createMediaDocument(
+    ctx: GenericMutationCtx, 
+    args: { collectionSlug: string; storageId: string; filename: string; mimeType: string; size: number }
+  ): Promise<string> {
+    // Server-side: insert a document into the media collection table
+    return await ctx.db.insert(args.collectionSlug, { ...args });
+  }
+
+  async deleteMedia(
+    ctx: GenericMutationCtx, 
+    args: { collectionSlug: string; mediaId: string }
+  ): Promise<boolean> {
+    // Server-side: delete the document and optionally remove from storage provider
+    await ctx.db.delete(args.mediaId);
+    
+    // Optionally delete the file from your storage provider:
+    await myStorageProvider.deleteFile(args.storageId); // You'd need to fetch storageId from the doc
+    
+    return true;
+  }
+
+  async getUrl(
+    ctx: GenericQueryCtx, 
+    args: { collectionSlug: string; mediaId: string }
+  ): Promise<{ url?: never; error: string }> {
+    // Server-side: generate a serving URL for the file (e.g., CloudFront signed URLs)
+    const doc = await ctx.db.get(args.mediaId); // You'd need to fetch the document
+    if (!doc) return { error: "Media not found" };
+    
+    const url = await myStorageProvider.getSignedUrl(doc.storageId); // Returns a signed URL
+    return { url };
+  }
+
+  async uploadFile(file: File, uploadUrl: string): Promise<{ storageId?: never; url?: never }> {
+    // Client-side (browser): POST the file to the presigned URL directly
+    
+    const formData = new FormData();
+    
+    // Append all fields from the presigned URL response (e.g., AWS S3 requires these)
+    // The exact fields depend on your storage provider's presigned URL format
+    
+    formData.append("file", file);
+    
+    const response = await fetch(uploadUrl, { method: "POST", body: formData });
+    
+    if (!response.ok) throw new Error("Upload failed");
+    
+    // Parse the response to extract storageId (format depends on provider)
+    const data = await response.json(); // e.g., { Key: "abc123.jpg" }
+    const storageId = data.Key; // Or however your provider returns the ID
+    
+    return { url: `https://cdn.example.com/${storageId}` };
+  }
+
+  // Required fields (set in constructor or as class properties)
+  
+  mediaCollections: MediaCollectionConfig[] = []; // Populated by defineMediaAdapter
+  
+  admin = { softDelete: false };
+}
+
+// Factory function (recommended) to create adapter instances with media collections
+  
+export interface MyAdapterOptions {
+  storageProvider: any; // Your configured storage provider instance
+}
+
+export function myStorageAdapter(options: MyAdapterOptions) {
+  const adapter = new MyPresignedAdapter();
+  
+  // Process media collections and tag them with the storage adapter name
+  
+  return {
+    type: "presigned-url" as const, // Must match STORAGE_ADAPTER_PROTOCOLS.presignedUrl
+    name: "my-storage",
+    
+    // Process media collections and tag them with the storage adapter name
+    
+  };
+
+// Factory function (recommended) to create adapter instances with media collections
+  
+export interface MyAdapterOptions {
+  storageProvider: any; // Your configured storage provider instance
+}
+
+export function myStorageAdapter(options: MyAdapterOptions) {
+  const adapter = new MyPresignedAdapter();

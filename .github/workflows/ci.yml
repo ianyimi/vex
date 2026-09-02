@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Packages
+        # See release.yml for why these are placeholder values rather than
+        # SKIP_ENV_VALIDATION: `apps/test`'s prerender needs a parseable Convex URL,
+        # so skipping validation alone still fails at page-data collection. Keeping
+        # validation on means an unwired required env var fails the PR.
+        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" build
+        env:
+          BETTER_AUTH_SECRET: ci-placeholder-not-a-real-secret
+          NEXT_PUBLIC_CONVEX_URL: https://ci-placeholder.convex.cloud
+          NEXT_PUBLIC_CONVEX_SITE_URL: https://ci-placeholder.convex.site
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+
+      - name: Typecheck Packages
+        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" typecheck
+
+      - name: Test Packages
+        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" test
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Check Packed Manifests
+        run: node scripts/check-packed-manifests.mjs
+
+      - name: Check Packed Manifests (packed)
+        run: node scripts/check-packed-manifests.mjs --packed

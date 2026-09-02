@@ -1,0 +1,94 @@
+{
+  "name": "@vexcms/next",
+  "version": "0.1.0-alpha.7",
+  "description": "Next.js adapter and admin routes for VexCMS",
+  "keywords": [
+    "cms",
+    "headless-cms",
+    "convex",
+    "typescript",
+    "nextjs"
+  ],
+  "license": "Apache-2.0",
+  "author": "Isaiah Anyimi",
+  "homepage": "https://docs.vexcms.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianyimi/vex.git",
+    "directory": "packages/next"
+  },
+  "sideEffects": [
+    "*.css"
+  ],
+  "files": [
+    "dist",
+    "styles.css"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./server": {
+      "source": "./src/NextAdminPage.tsx",
+      "import": "./dist/NextAdminPage.js",
+      "types": "./dist/NextAdminPage.d.ts"
+    },
+    "./client": {
+      "source": "./src/NextAdminLayout.tsx",
+      "import": "./dist/NextAdminLayout.js",
+      "types": "./dist/NextAdminLayout.d.ts"
+    },
+    "./styles": "./styles.css"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
+  },
+  "scripts": {
+    "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "dev": "tsup --watch --no-clean",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json"
+  },
+  "dependencies": {
+    "@vexcms/core": "workspace:*",
+    "@vexcms/react": "workspace:*",
+    "lucide-react": "catalog:"
+  },
+  "devDependencies": {
+    "@convex-dev/react-query": "catalog:",
+    "@tanstack/react-form": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-table": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vexcms/tsconfig": "workspace:*",
+    "convex": "catalog:",
+    "next": "catalog:",
+    "nuqs": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@convex-dev/react-query": "catalog:peers",
+    "@tanstack/react-form": "catalog:peers",
+    "@tanstack/react-query": "catalog:peers",
+    "@tanstack/react-table": "catalog:peers",
+    "convex": "catalog:peers",
+    "next": "catalog:peers",
+    "nuqs": "catalog:peers",
+    "react": "catalog:peers",
+    "react-dom": "catalog:peers",
+    "zod": "catalog:peers"
+  }
+}

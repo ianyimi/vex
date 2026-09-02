@@ -1,11 +1,23 @@
 {
   "extends": "@vexcms/tsconfig/base.json",
   "compilerOptions": {
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "outDir": "dist",
     "rootDir": "src",
     "paths": {
-      "@vexcms/core": ["../../packages/core/src/index.ts"]
-    }
+      "@vexcms/core": [
+        "../../packages/core/src/index.ts"
+      ]
+    },
+    "types": [
+      "node"
+    ]
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }

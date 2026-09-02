@@ -1,5 +1,66 @@
 # @vexcms/file-storage-convex
 
+## 0.1.0-alpha.7
+
+## 0.1.0-alpha.6
+
+## 0.1.0-alpha.5
+
+## 0.1.0-alpha.4
+
+## 0.1.0-alpha.3
+
+## 0.1.0-alpha.2
+
+### Patch Changes
+
+- fb55d58: Publish `peerDependencies` as ranges instead of exact versions.
+
+  `peerDependencies` previously inherited exact versions from the pnpm catalog, so
+  installing alongside a newer `convex`, `lucide-react`, or `@tanstack/react-table`
+  produced a peer conflict. Peers now resolve from a dedicated `peers` catalog of
+  deliberate ranges, and `@vexcms/core` is peered as a compatible range rather
+  than an exact version. `dependencies` are now published as exact versions instead of ranges
+  (`nanoid: 5.1.16`, not `^5.1.11`), so an install cannot silently pick up a
+  different transitive tree than the one tested.
+
+  `@vexcms/next` now declares `next >=15.0.0`, correcting a `>=14.0.0` claim that
+  never held — the admin page awaits `params`, which requires Next 15 typings.
+
+- 9e68058: Ship type declarations. Published packages contained no `.d.ts` at all.
+
+  Every `tsup.config.ts` carried `dts: false` — tsup's rollup-dts pegs the CPU on this
+  dependency graph — so `types: "./dist/index.d.ts"` pointed at a file that was never
+  emitted. Installing any `@vexcms/*` package gave you `any`.
+
+  Declarations now come from `tsc -p tsconfig.build.json --emitDeclarationOnly`, run after
+  tsup in each package's `build` script. `dts: false` stays, deliberately: tsup builds JS,
+  tsc builds types.
+
+  The blocker was TS6059 (`File is not under rootDir`). Workspace deps resolved through the
+  `source` export condition, pulling sibling `src/` into each program. The build configs now
+  set `"customConditions": []` so deps resolve through their published `types` entry
+  instead; Turbo's `dependsOn: ["^build"]` guarantees upstream `dist/` exists first. Dev
+  configs are untouched and still resolve through `source`.
+
+  Also exports `AuthFieldMeta` from `@vexcms/core`. `@vexcms/better-auth` had been importing
+  it through `../../core/src/auth/types`, a cross-package source path that cannot produce a
+  correct declaration.
+
+- 7b1fa3c: Enable a zero-warning multi-package TypeDoc API reference and export supporting API.
+
+  - Export `usePaginatedQuery` (`@vexcms/react`) and `StorageAdapterPresignedUrlInterface` plus its base interface (`@vexcms/core`) as public API.
+  - Fix `RelationshipFieldAdminConfig` to extend the resolved admin base (`FieldAdminConfig`) instead of the input base, so resolved relationship admin properties are correctly required rather than optional.
+
+- b67c8ab: Publish under Apache-2.0 with full package metadata.
+
+  Every published manifest now carries `license: "Apache-2.0"` (root `LICENSE` +
+  `NOTICE` added), `description`, `keywords`, `author`, `homepage`, and
+  `repository` with per-package `directory`. `sideEffects: false` is declared
+  where verified side-effect-free; `@vexcms/next` declares `["*.css"]` because it
+  exports `./styles`. Packages publish to the `alpha` dist-tag
+  (`publishConfig.tag`), leaving `latest` untouched until promotion.
+
 ## 0.0.20
 
 ### Patch Changes

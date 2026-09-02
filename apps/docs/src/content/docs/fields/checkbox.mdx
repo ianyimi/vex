@@ -1,0 +1,66 @@
+---
+title: checkbox field
+description: Stores boolean values — feature flags, opt-in toggles, published states, and on/off settings.
+---
+
+A `checkbox()` field stores a boolean `true`/`false` value. It is ideal for
+feature flags, published states, opt-in toggles, visibility flags, and any
+setting that has exactly two states.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
+| `defaultValue` | `boolean` | `false` | Pre-filled value shown in the admin form when creating a new document. |
+| `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders the checkbox as non-interactive. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
+| `admin.placeholder` | `string` | — | Placeholder text (not typically used for checkboxes). |
+| `admin.description` | `string` | — | Helper text displayed below the field input. |
+
+## Schema output
+
+```ts
+// Optional (required: false — default)
+featured: v.optional(v.boolean())
+
+// Required, checked by default
+published: v.boolean()
+
+// With a database index
+archived: v.boolean(),
+.index("by_archived", ["archived"])
+```
+
+## Usage
+
+```ts
+import { defineCollection, checkbox, text } from "@vexcms/core";
+
+const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    // Minimal — label inferred from key ("Published")
+    published: checkbox(),
+
+    // Checked by default, shown in the sidebar
+    featured: checkbox({ defaultValue: true, admin: { position: "sidebar", width: "half" } }),
+
+    // Indexed flag for fast admin queries
+    archived: checkbox({ index: "by_archived" }),
+  },
+});
+```
+
+## Admin UI
+
+The checkbox field renders as a toggle switch (or native checkbox) in the edit
+form. In the list-view table, the value is displayed as a checked/unchecked
+indicator. Checkboxes are commonly placed in the sidebar with `width: "half"` so
+two flags can sit side-by-side.

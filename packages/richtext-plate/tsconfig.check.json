@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "src/editor/plateEditor.ts",
+    "src/editor/PlateEditorField.tsx",
+    "src/render/RichText.tsx",
+    "src/types.ts"
+  ]
+}

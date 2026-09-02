@@ -1,3 +1,8 @@
-export { color } from "./config";
-export { colorToValueTypeString } from "./schemaValueType";
-export { colorColumnDef } from "./columnDef";
+// Re-export the factory function
+export * from "./config";
+export * from "./convert";
+export * from "./formats";
+export * from "./types";
+export * from "./utils";
+export * from "./validator";
+export * from "./inputSchema";

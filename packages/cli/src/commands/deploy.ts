@@ -18,7 +18,7 @@ export async function deployCommand(): Promise<void> {
   // Use `convex deploy` for all schema pushes (interim + final)
   const pushSchema = (pushCwd: string) => deployToProduction(pushCwd);
 
-  const result = await generateAndWrite(config, cwd, { pushSchema });
+  const result = await generateAndWrite(config, cwd, configPath, { pushSchema });
   if (result.written) {
     logger.success(`Generated ${config.schema.outputPath}`);
   } else {

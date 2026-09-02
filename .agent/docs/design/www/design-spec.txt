@@ -1,0 +1,896 @@
+VexCMS
+DESIGN SPECIFICATION · MARKETING SITE · V1
+Stark × Ember, specified.
+
+Every page, every block, every token for the VexCMS marketing site — which is also the default pnpm create vexcms template. Tailwind v4 + Base UI, semantic tokens only, no motion library, no media required.
+
+3 pages
+11 blocks
+12 field types
+32 tokens × 2
+0 media assets
+A · FOUNDATIONS
+How to read this
+Layout & rhythm
+Type & radius
+Motion kit
+B · BLOCKS
+Header & Footer
+Hero — full / compact
+Stats
+Features
+CodeShowcase
+Split
+HowItWorks
+FAQ
+CTA
+Roadmap
+C · PAGES
+/
+/features
+/roadmap
+D · HANDOFF
+Theme document
+Extra @theme tokens
+Build order
+Deviations
+00 — HOW TO READ THIS
+Three rules that resolve every ambiguity.
+Tokens decide colour
+
+If a surface, text, or border colour is named in this document it is a semantic token. Any hex you see here is documentation of the theme document's values, never something to type into a component. Code-pane colours are the one exception and live in @theme, not in the theme record.
+
+Fields decide content
+
+Every element below maps to a field on its block. Nothing is hand-authored per page. Where a design wants a list, it is an array(group{…}); where it wants emphasis inside prose, it does without — there is no rich text.
+
+Every block stands alone
+
+Each block owns its own vertical padding and its own container. Two of any block stacked in any order must read correctly, on a page this document never describes. Section B is therefore normative; section C is only a seed order.
+
+Specimens in this document render dark. The marketing site is dark by default (a light theme is one admin edit away and every specimen below is token-only, so it survives the swap). Specimens are drawn at desktop proportions; the spec rows beneath each one carry the mobile and tablet values.
+
+01 — LAYOUT & VERTICAL RHYTHM
+One container, one rhythm, three breakpoints.
+BREAKPOINTS
+Mobile < 640 · tablet 768–1024 (md/lg) · desktop ≥ 1280 (xl). Nothing changes above xl except centring.
+CONTAINER
+mx-auto w-full max-w-[1280px] px-5 md:px-8 xl:px-10 — 20 / 32 / 40px gutters. Prose-only sections nest a second measure: max-w-[46rem] (736px), never wider, so body copy stays at 62–72 characters.
+SECTION PADDING
+Standard block: py-14 md:py-20 xl:py-28 (56 / 80 / 112px). Quiet blocks (Stats, compact Hero): py-10 md:py-14 xl:py-16. CTA is the only block that gets py-16 md:py-24 xl:py-32. Adjacent blocks never collapse padding — the double gap is intentional and is what makes 80px of whitespace read as structure.
+SECTION SEAMS
+No block paints its own background except Stats and CTA (bg-card, full-bleed, border-y border-border). Everything else sits on bg-background. Max two surfaces visible per scroll — that is the "1–2 background colours" rule.
+GRID & GAPS
+Card grids: gap-4 md:gap-5 xl:gap-6 (16 / 20 / 24px). Text-to-element stacks use a 4px scale: 8 / 12 / 16 / 24 / 40. Heading-to-subheading is always 16px; subheading-to-content is always 40px on desktop, 28px below md.
+SECTION HEADER
+One pattern, every block that has heading + subheading: left-aligned, max-w-[36rem], h2 then subheading in text-muted-foreground, 40px above the content. Centred section headers are used only in FAQ and CTA. When subheading is blank the gap drops from 40px to 32px — the h2 does not grow to compensate.
+02 — TYPE SCALE & RADIUS
+Geist only. Weight does the work.
+DISPLAY · H1 HERO · 40 / 56 / 72PX · 800 · 1.02 · -0.04EM
+The CMS that thinks in types.
+H1 INTERIOR · 32 / 40 / 48PX · 700 · 1.12 · -0.03EM
+Everything comes from one schema.
+H2 SECTION · 26 / 30 / 36PX · 700 · 1.18 · -0.025EM
+Write the config. Get the types.
+H3 CARD TITLE · 17 / 17 / 18PX · 600 · 1.35 · -0.01EM
+Convex-native codegen
+LEAD · 17 / 18 / 19PX · 400 · 1.6 · MUTED-FOREGROUND · 62–72CH
+A headless CMS built natively on Convex. Declare your collections in TypeScript and Vex generates the Convex schema, the types, and the queries — no translation layer.
+BODY · 15 / 15 / 15PX · 400 · 1.65 · MUTED-FOREGROUND · 64CH MAX
+Fields, relationships, and query return types are checked from the database to the component. Rename a field and the compiler names every call site.
+EYEBROW / LABEL · 12PX · 500 · +0.08EM · UPPERCASE · MUTED-FOREGROUND
+ACCESS CONTROL
+MONO · CODE 13 / 13.5PX · 1.7 · FILENAMES & CHIPS 12PX
+export const featuresBlock = defineBlock({ slug: "features" })
+TAILWIND MAP
+display text-[40px] md:text-[56px] xl:text-[72px] font-extrabold leading-[1.02] tracking-[-0.04em] · h1 text-[32px] md:text-4xl xl:text-5xl font-bold tracking-[-0.03em] · h2 text-[26px] md:text-3xl xl:text-4xl font-bold tracking-[-0.025em] · h3 text-[17px] xl:text-lg font-semibold · lead text-[17px] md:text-lg xl:text-[19px] leading-[1.6] · body text-[15px] leading-[1.65] · label text-xs font-medium uppercase tracking-[0.08em].
+CASING
+Sentence case everywhere, headlines end in a period. Uppercase is reserved for the 12px tracked label. Numerals in Stats and tables use tabular-nums.
+RADIUS USAGE
+--radius: 4px. Buttons, inputs, chips, code-pane chrome buttons → rounded-sm (2px). Cards, code panes, accordion items, media frames → rounded-md (4px). Sheet / dialog / mobile menu → rounded-lg (8px). Badges, status pills, avatars → rounded-4xl. Nothing on the site uses xl–3xl; a theme that raises --radius to 12px must still leave pills as pills.
+BORDERS & SHADOW
+border border-border, 1px, always. Light mode adds shadow-xs to cards and shadow-md to popovers/sheets; dark mode has no box-shadow at all (dark:shadow-none) and separates surfaces by background value only. No coloured borders except ring-ring focus and destructive inputs.
+03 — MOTION
+Two keyframes, one easing, one blessed loop.
+
+Everything below uses the shipped AnimatedGroup / AnimatedItem / TextEffect kit. No section adds a new keyframe except the two declared here, and no element animates on scroll — entrances fire on mount, which keeps every block a server component.
+
+/* globals.css — the only additions to the shipped kit */
+
+@keyframes livepulse {          /* the one decorative loop: In-progress dot */
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+.live-dot { animation: livepulse 2s var(--ease-emphasized) infinite; }
+
+/* stagger contract — set on the group, read by each item */
+.reveal-group > * { --reveal-delay: calc(var(--reveal-stagger, 60ms) * var(--i, 0)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .item, .live-dot, .reveal-group > * { animation: none !important; }
+  /* reduced motion is a full stop, not a shortened duration:
+     final state is painted immediately, opacity 1, no blur, no translate */
+}
+ENTRANCE BUDGET
+Above the fold only. Hero (full) animates: badge 0ms → h1 by word 80ms + 40ms/word → subheading 280ms → CTA row 380ms → install row 460ms. Hero (compact) animates h1 and subheading only, 0 / 100ms, no word split. Every other block on the page renders static — a page whose sixth section fades in on mount is a page that flashes on refresh.
+INTERACTION
+transition-colors duration-[180ms] ease-[var(--ease-emphasized)] on every interactive surface. Background and border colour and opacity only — never width, never scale, never a shadow change. Active state is translate-y-px. Accordion and mobile sheet use tw-animate-css height/opacity utilities at 200ms.
+FOCUS-VISIBLE
+Global: outline-2 outline-offset-2 outline-ring plus ring-[3px] ring-ring/28 on filled controls. Never removed, never restyled per block, and it must be visible against both bg-background and the code-pane surface.
+PART B
+Every block, in isolation.
+
+Each entry is normative on its own. Specimens render dark at desktop proportions; the rows carry mobile and tablet.
+
+04 — HEADER · SITE CHROME
+A rule that appears when you scroll.
+SPECIMEN · SCROLL-TOP STATE
+H-16 · TRANSPARENT
+VexCMS
+Features
+Roadmap
+Docs
+Admin demo
+GitHub
+Get started
+SPECIMEN · SCROLLED STATE
+H-14 · BG-BACKGROUND/70 · BACKDROP-BLUR-MD · BORDER-B
+VexCMS
+Features
+Roadmap
+Docs
+Admin demo
+GitHub
+Get started
+MOBILE < 640
+VexCMS
+Features
+Roadmap
+Docs
+Admin demo
+GitHub
+Get started
+FIELDS
+logoText → wordmark, Geist 800, 15px, -0.03em, text-foreground. logoImage renders instead at h-5 w-auto when present; the 16px chevron glyph is inline SVG in the layout, not media, so a fresh scaffold always has a mark. menuItems → nav links. actionButtons[].variant maps 1:1 to Button variants.
+LAYOUT
+sticky top-0 z-50. Inner: container, flex items-center justify-between, height h-14 mobile / h-16 at md, dropping to h-14 once scrolled. Left cluster gap-10 (logo + nav); nav links gap-1 with 10px inner padding so the hover chip has room. Nav is hidden md:flex; below md a Sheet slides from the top, rounded-lg, 44px minimum row height, actions stacked full-width at the bottom behind a Separator.
+SCROLL STATE
+At scrollY === 0: no background, no border. Past 8px: bg-background/70 backdrop-blur-md border-b border-border, transitioning background/height over 180ms. This is the only client-side listener on the page (passive, rAF-throttled); the mobile trigger and the sheet are the only other client code in the chrome.
+STATES
+Nav link rest text-muted-foreground → hover text-foreground bg-accent (rounded-sm), no underline. Current route: text-foreground + bg-accent held. External links (Docs, Admin demo, GitHub) carry no icon — the destination table is in the footer. Focus-visible per §03. Active translate-y-px.
+OVERFLOW
+7+ menu items at md: nav switches to the mobile Sheet at lg instead — never wrap the bar to two lines, never shrink the type. Zero action buttons: the right cluster disappears and nav stays left. Zero menu items: logo left, actions right, no nav.
+05 — HERO · VARIANT FULL & COMPACT
+One headline, one command, no illustration.
+SPECIMEN · VARIANT "FULL"
+MIN-H-[90VH] · CENTRED
+v0.1.0-alpha — now on npm
+→
+The CMS that thinks in types.
+
+A headless CMS built natively on Convex. Declare your collections in TypeScript and Vex generates the Convex schema, the types, and the queries — no translation layer. Every edit reaches every subscriber in milliseconds.
+
+Read the docs
+View on GitHub
+$
+pnpm create vexcms@latest
+⧉
+SPECIMEN · VARIANT "COMPACT"
+LEFT-ALIGNED BAND · BORDER-B
+FEATURES
+Everything comes from one schema.
+
+Collections, the Convex tables behind them, the TypeScript types, the Zod validators, the admin forms, and the access rules are all derived from the same declaration.
+
+FULL · LAYOUT
+min-h-[90vh], container, flex flex-col items-center justify-center text-center, padding pt-24 pb-16 / md:pt-32 pb-20 / xl:pt-40 pb-28 (the header is transparent over it, so top padding absorbs the 64px bar). Measures: h1 max-w-[18ch], subheading max-w-[60ch] — both centred. Stack: badge → 32px → h1 → 28px → sub → 40px → CTAs → 28px → install row (mobile 24 / 20 / 32 / 20).
+FULL · BACKGROUND
+Replaces the sourced radial gradients with a token-safe pair: (1) a 1px hairline grid, background-image: linear-gradient(to right, var(--color-border) 1px, transparent 1px) at 80px pitch, masked to 22% opacity and faded out by mask-image: radial-gradient(ellipse at 50% 0%, black, transparent 70%); (2) one bg-primary/10 blur-[120px] ellipse, 640×320, centred behind the h1. Both are aria-hidden, absolutely positioned, and derive entirely from tokens, so a light theme softens rather than breaks them. No image, ever.
+BADGE
+bg-card border-border rounded-4xl, 13px/500 text-muted-foreground, padding py-[5px] pl-3 pr-[6px], trailing 20px bg-primary/14 text-primary circle holding ArrowRight at 12px. Renders as a link only when badgeLink is set; hover then lifts the border to border-primary/40 and the arrow circle to bg-primary/22. Blank badgeText removes the badge and its 32px gap outright.
+INSTALL ROW
+Client component (the only one in the hero). inline-flex, bg-[--color-code-bg] border-border rounded-sm, mono 13px, dimmed $ prompt in text-muted-foreground that is aria-hidden and excluded from the copied string. Copy control is Button size="icon-xs" variant="ghost" with Copy → Check for 1.6s, text-primary while confirmed, with an aria-live="polite" "Copied" for screen readers and a Tooltip at md+. Below 640 the row goes flex w-full with the command truncating at overflow-x-auto, never wrapping to two lines.
+CTAS
+Primary Button size="lg" default variant, bg-primary text-primary-foreground, hover bg-primary/90 — text colour never changes. Secondary variant="outline", hover bg-accent text-accent-foreground. Row is flex gap-3, flex-col w-full max-w-[320px] below 640 with primary first. Secondary CTA fields blank → single button, row stays centred.
+COMPACT · LAYOUT
+No min-h, no install row, no decorative background, no CTAs (both CTA field pairs are left blank in the seed; if filled they render as a size="default" row 32px under the subheading). Left-aligned, pt-28 pb-10 / md:pt-32 pb-14 / xl:pt-36 pb-16, closed with border-b border-border so the page below starts against a rule. badgeText renders as the eyebrow label — 12px/500/+0.08em uppercase text-muted-foreground, no pill, no arrow, 20px above the h1. h1 max-w-[24ch], subheading max-w-[64ch].
+OVERFLOW
+The h1 is sized so the home headline sets on two lines at desktop; a three-line headline is a valid state — text-wrap: balance on h1, pretty on the subheading, and no min-h on the text column, so it grows downward without touching the badge or CTA spacing. Never clamp or truncate hero copy. Blank subheading: h1 to CTAs collapses to 32px.
+MOTION
+Per §03. <TextEffect per="word" delay={0.08} stagger={0.04}> on the h1 only; everything else is a single AnimatedItem. Reduced motion paints the final state with no animation. The decorative background never animates.
+06 — STATS · NEW
+Four numbers on a raised band.
+SPECIMEN · 4 ITEMS, NO HEADING
+BG-CARD · BORDER-Y · 4 COLS
+12
+field types
+text, url, number, checkbox, select, date, color, upload, relationship, group, array, blocks
+8
+published packages
+core, react, next, cli, better-auth, file-storage-convex, richtext-plate, create-vexcms
+0
+database config
+Convex is the database. There is no connection string
+1
+command to start
+pnpm create vexcms@latest scaffolds Next.js, Convex, auth, and the admin panel
+MIXED WIDTHS
+0
+12
+~30s
+99.9%
+LAYOUT
+Full-bleed bg-card border-y border-border; container inside. Padding py-10 md:py-14 xl:py-16 — deliberately shorter than a standard block, because this band is a caption on the hero, not a section. Grid: 1 col mobile / 2 cols at md / 4 cols at xl — grid-cols-1 md:grid-cols-2 xl:grid-cols-4. Separation is a 1px border-border divider, not a gap: divide-y md:divide-y-0 md:divide-x with px-0 md:px-8 and py-6 md:py-0 per cell. At md the 2×2 grid needs a horizontal divider between rows too (md:divide-y on the row wrapper); first cell in each row drops its left border.
+TYPE
+value: text-[40px] md:text-5xl xl:text-[56px] font-extrabold leading-none tracking-[-0.04em] tabular-nums text-foreground. It is Geist, not mono — the number is a headline. label: 15px/600 text-foreground, 14px above. description: 13.5px/1.55 text-muted-foreground max-w-[30ch], 8px above.
+STRING VALUES
+value is a string and is rendered as one: no min-w, no fixed digit count, no count-up animation. Cells are items-start and values are top-aligned to the cell, not baseline-aligned to each other, so "0", "12" and "~30s" all sit correctly (see the mixed-width strip above). Values longer than 6 characters drop to text-4xl — a length the seed never reaches, but the template must survive it. Never suffix or prefix a unit in the renderer; the unit belongs in the string.
+EMPTY & OVERFLOW
+No heading (the home case): the grid is the whole section, no top spacing added. With a heading, the standard left-aligned section header sits 40px above the grid and the band keeps its bg-card. Blank description: cell is value + label only; siblings do not stretch to match — ragged cell heights are correct here because the divider is vertical. 1 item: single cell, left-aligned, no dividers, md:grid-cols-2 leaves the right half empty rather than centring. 5–12 items: xl:grid-cols-4 wraps to further rows; row 2+ gets a top divider. No entrance animation on this block.
+07 — FEATURES
+Six cards, hairline-joined.
+SPECIMEN · 6 ITEMS
+3 COLS · GAP-PX HAIRLINE
+Built for the way you already work.
+
+Familiar collection patterns, with the generation step done for you.
+
+✦
+Convex-native codegen
+
+vex dev writes your Convex schema, TypeScript interfaces, and Zod validators straight from defineCollection(). There is no hand-maintained schema.ts
+
+◆
+End-to-end types
+
+Fields, relationships, and query return types are checked from the database to the component. Rename a field and the compiler names every call site
+
+◉
+Real-time admin panel
+
+Every list view is a Convex subscription. Pagination, live totalDocs, and bulk operations update without a refetch
+
+⌂
+RBAC with indexed access
+
+Document-level rules with { constraints } that compile to withIndex ranges inside the query, plus per-call overrides and an anonymous-role fallback
+
+▤
+Globals and themes
+
+defineGlobal() gives you singletons like site settings. Themes are a collection — 32 shadcn tokens × light and dark, stored as oklch and applied on first paint
+
+▦
+Page-builder blocks
+
+A blocks field composes typed content blocks into a discriminated union. Each block is a config plus a React renderer, colocated
+
+LAYOUT
+Standard padding py-14 md:py-20 xl:py-28, container, left section header at max-w-[36rem], 40px above the grid. Grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3. Instead of a gap the grid is a hairline mesh: wrapper gap-px bg-border border border-border rounded-md overflow-hidden, each cell bg-background p-6. That is the deviation from the sourced Tailark card grid and it is deliberate: 1px seams read as precision tooling, and they remove six drop shadows that dark mode is not allowed to have.
+CARD INTERIOR
+Icon frame 32px, border border-border rounded-sm, Icon size-4 text-primary centred, 16px above the title. Title 17px/600 (xl:text-lg) text-foreground. Description 14px/1.6 text-muted-foreground, 8px above, no measure cap (the cell is the measure), text-wrap: pretty. Cells stretch to the tallest in the row; content is top-aligned. This is the one place ember appears six times on a page — permitted because the icon is 16px and monochrome elsewhere.
+ICONS
+Lucide names, verified against icons: Wand · ShieldCheck · Radio · Lock · Boxes · LayoutGrid. Blank or unresolvable icon: the 32px frame is dropped entirely (not left empty) and the title moves to the top of the cell. A mixed array — some icons, some not — is a valid state and looks intentional because titles stay top-aligned.
+STATES
+Cards are not links and take no hover. If a future href field is added, hover is bg-accent on the cell and nothing else — no lift, no border colour change.
+EMPTY & OVERFLOW
+1 item: one full-width cell — acceptable, because the mesh border makes it read as a panel rather than a stranded card. 2 items at xl: two cells, third column empty; do not centre. 12 items: 4 rows of 3, no pagination, no "show more". Blank subheading: header gap 32px. A three-line h2 is fine — max-w-[36rem] makes it likely and the 40px gap below is fixed.
+08 — CODESHOWCASE · NEW · THE ARGUMENT
+The config, and the file it wrote.
+
+This is the most important section on the site, so it gets the most chrome discipline: two panes, identical height, one seam between them, the generated pane visually marked as machine output. Highlighting is shiki at render time in a server component — the client ships no highlighter.
+
+SPECIMEN · 2 PANES
+SIDE BY SIDE · SHARED FRAME
+Write the config. Get the types.
+
+Two files from this site. The left one is hand-written; the right one is generated by vex dev and never edited.
+
+YOU WRITE
+src/vexcms/blocks/Features/config.ts
+ts
+⧉
+export const featuresBlock = defineBlock({
+  slug: BLOCK_SLUG_FEATURES,
+  label: "Features",
+  fields: {
+    heading: text({ label: "Heading", required: true }),
+    subheading: text({ label: "Subheading" }),
+    features: array({
+      label: "Features",
+      required: true,
+      items: group({
+        fields: {
+          title: text({ label: "Title", required: true }),
+          description: text({ required: true }),
+          icon: text({ label: "Icon" }),
+        },
+      }),
+    }),
+  },
+  admin: { icon: "LayoutGrid" },
+})
+VEX GENERATES
+src/vex.types.ts
+ts
+⧉
+/* AUTO-GENERATED BY VEX CMS — DO NOT EDIT */
+
+export type FeaturesBlock = {
+  blockType: "features"
+  blockName?: string
+  id: string
+  heading: string
+  subheading?: string
+  features: {
+    title: string
+    description: string
+    /**
+     * Lucide icon name
+     */
+    icon?: string
+  }[]
+}
+One declaration, twenty-two lines.
+Regenerated on every save. Never edited by hand.
+3+ PANES → TAB SET
+Collection
+Access rule
+Generated query
+convex/collections/posts.ts
+export const posts = defineCollection({ slug: "posts", fields: { title: text({ required: true }) } })
+LAYOUT
+Standard padding, container, left section header. Two panes: one shared frame — border border-border rounded-md overflow-hidden — split grid xl:grid-cols-[1fr_1px_1fr] with a bg-border seam, so the pairing reads as one artefact rather than two cards. Below xl the panes stack (grid-cols-1) with a horizontal seam and the second pane keeps its own chrome bar — the reading order (write → generate) is preserved. items-stretch; panes match height, the shorter one padding out with pane background, never with filler code.
+PANE CHROME
+Bar h-10, bg-card border-b border-border px-3.5, flex items-center justify-between gap-3. Left: label as 11px/500/+0.08em uppercase — text-primary on the authored pane, text-muted-foreground on every other pane (that single colour difference is the whole "hand-written vs generated" signal); then filename in mono 12px text-muted-foreground truncate. Right: language chip, mono 11px, border border-border rounded-sm px-1.5 py-0.5, lowercase as authored; then the copy button, size="icon-xs" variant="ghost", same copied-state behaviour as the hero install row. Below sm the filename hides before the chip does.
+CODE BODY
+Surface bg-[--color-code-bg] (a non-theme @theme token, §D) — code stays dark in both themes on purpose. p-4 mobile / px-4 py-[18px] desktop, mono 12.5px desktop and 12px mobile, leading-[1.7], tab-size: 2. No line numbers — they add 40px of noise and nothing is ever referenced by line. No traffic-light dots.
+LONG LINES
+Never wrapped, never truncated: the pre is overflow-x-auto overscroll-x-contain with white-space: pre, and each pane scrolls independently. The scrollbar is styled thin with a --color-code-border thumb and only occupies space when needed. Panes cap at max-h-[560px] (420px below md) and then scroll vertically inside the frame; the frame itself never grows past that, so a 400-line paste cannot destroy the page rhythm. Mandatory grid guard: the split is grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] and both pane columns carry min-w-0. Without it a 1fr track resolves to minmax(auto,1fr), the pre's longest line sets the min-content width, the columns overflow the frame, and overflow-x-auto never engages — the code is clipped instead of scrolling. Same guard on the tab-mode panel and on the Split media: "code" column. Horizontal scroll containers get tabindex="0" and a role="region" label so keyboard users can reach them.
+CAPTION
+Optional caption sits outside the frame, 12px below, 13px/1.55 text-muted-foreground, aligned to its own pane's column. If no pane has a caption the row is not rendered. If one of two has one, the other column stays empty — captions are per-pane annotations, not a shared footer.
+3+ PANES
+Tabs from @vexcms/react, one TabsTrigger per pane using label. The TabsList replaces the chrome bar inside the same frame: h-10 bg-card border-b border-border px-2, triggers 13px/500 rounded-sm px-3 py-[5px], rest text-muted-foreground, hover text-foreground, selected bg-background text-foreground with a 1px bg-primary underline via inset shadow. The active pane's filename moves to the right end of the list. Tab panels are all rendered server-side and hidden with hidden, so switching costs no request; the frame takes the tallest pane's height to stop the page jumping. One pane: the frame renders alone, full width, no tabs. Zero panes: the block renders nothing at all, not an empty frame.
+SOURCING NOTE
+Magic UI's code-comparison supplies the shiki-in-a-server-component approach and the two-pane frame; its next-themes hook is dropped (shiki is invoked once with the dark theme because the pane is always dark), its filename-bar icons are dropped, and its diff highlighting is not used — this section compares two files, not two revisions.
+09 — SPLIT · NEW
+Argument left, evidence right. Then swap.
+SPECIMEN · MEDIA "CODE", POSITION RIGHT
+12-COL · 5 / 1 / 6
+FIELDS
+Twelve field types. One generator.
+
+Every field is a function. It declares its admin input, its Convex column, its TypeScript type, and its Zod validator at once, so the four can never drift apart.
+
+▤
+array and group nest arbitrarily
+▦
+a blocks field generates a typed union
+◐
+color stores oklch and feeds the theme system
+src/vexcms/collections/posts.ts
+ts
+export const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text({ required: true }),
+    author: relationship({ to: "users" }),
+    theme: color({ label: "Accent" }),
+    sections: blocks({ blocks: [hero, features] }),
+  },
+})
+MEDIA "NONE" — THE GRACEFUL FALLBACK
+BEYOND CONTENT
+Globals, themes, and blocks are collections too.
+
+Nothing in Vex is a special case bolted onto the side. Site settings, the theme record, and the page-builder blocks are all declared with the same helpers.
+
+▤
+singletons
+◐
+32 tokens × light and dark
+⚡
+applied server-side on first paint, live-updated when edited
+LAYOUT
+Standard padding, container. Desktop grid xl:grid-cols-[5fr_6fr] gap-14 items-center — the media column is the wider one, because a code pane needs 60–70 characters and the text column reads better at 46rem. Tablet: same two columns at md:grid-cols-2 gap-10 items-start. Mobile: single column, gap-8, text always first regardless of mediaPosition. mediaPosition: "left" is xl:grid-cols-[6fr_5fr] with order classes on the two children — never a reversed source order, so the reading order stays text-first for assistive tech.
+TEXT COLUMN
+Eyebrow (12px/500/+0.08em uppercase text-muted-foreground) → 16px → h2 (section scale, max-w-[20ch] at xl) → 16px → body at 16px/1.65 text-muted-foreground max-w-[46rem] → 28px → bullets. Blank eyebrow: h2 starts the column, no reserved space.
+BULLETS
+flex flex-col gap-3.5; each row flex gap-3 items-start with a fixed 16px icon slot (Icon size-4 text-primary mt-[3px] shrink-0) and 15px/1.6 text-foreground text. No ul markers — the icon is the marker; semantically it is still ul/li with list-none. Missing icon: the slot holds a 4px bg-primary rounded-4xl dot instead, keeping the 16px indent so mixed arrays stay aligned. Icons used: Layers · Blocks · Palette · Lock · KeyRound · Globe · Boxes · Zap — all verified. 8+ bullets: the list becomes md:grid-cols-2 gap-x-8 inside the text column. 0 bullets: body copy alone, no empty gap.
+MEDIA: CODE
+The CodeShowcase pane, minus the uppercase label: border border-border rounded-md, h-10 chrome bar carrying codeFilename + language chip + copy button, body on --color-code-bg, max-h-[460px] then scroll. Same shiki server pass. No filename: the bar keeps the chip and copy button right-aligned. This is the variant the seed uses and the only one a scaffolded project sees.
+MEDIA: IMAGE / NONE
+image: VexImage in a rounded-md border border-border overflow-hidden bg-card frame, aspect-[4/3], object-cover, 1px inset border to keep light screenshots from bleeding into the surface. If media: "image" but image is empty — the fresh-scaffold case — the block falls through to none. Never a placeholder box, never a broken frame. none: the row becomes xl:grid-cols-[7fr_5fr] with bullets moving into the right column as a divided list (border-l border-border pl-7, rows py-3 separated by border-b border-border, last row none) — see the second specimen. With no media and no bullets the block collapses to a single 46rem prose column, left-aligned, which is a legitimate quiet section rather than a hole.
+STACKING
+Consecutive Splits alternate mediaPosition by field value, not by an :nth-child rule — the editor must be able to break the alternation. Each keeps full padding, so two Splits are separated by 224px of whitespace at desktop and no divider. On /features the three Splits run right / left / right.
+10 — HOWITWORKS
+A numbered rail, not a timeline graphic.
+SPECIMEN · 4 STEPS
+DESKTOP: 4-COL RAIL
+From empty directory to live content.
+01
+▸
+Scaffold your project
+
+pnpm create vexcms@latest gives you a Next.js app with Convex, Better Auth, and the admin panel already wired
+
+02
+‹›
+Define your schema
+
+Declare collections with defineCollection() and the field helpers. vex dev watches and regenerates your Convex schema, types, and validators
+
+03
+▦
+Build with blocks
+
+Compose pages from typed content blocks. Each block is a config plus a renderer, edited from the admin panel
+
+04
+↗
+Deploy and go live
+
+Push to Convex, deploy the Next.js app. Content changes propagate to every subscriber with no cache invalidation
+
+LAYOUT
+Standard padding, container, left section header. Desktop: grid xl:grid-cols-4 gap-8 on a border-t border-border pt-6 rail. Tablet md:grid-cols-2 gap-x-8 gap-y-10. Mobile: vertical list, each step border-t border-border pt-4 with gap-8 — the rule sits above each step, which is the mobile equivalent of the horizontal rail. Origin UI's timeline supplies the connector idea; its radix-ui Slot.Root is removed (concrete elements, no polymorphism) and its dot-and-line SVG is replaced by border utilities, which cost nothing and theme correctly.
+STEP HEAD
+flex items-center gap-2.5: index in mono 12px/500 text-primary, zero-padded and generated by the renderer (not a field); a flex-1 h-px bg-border connector; then the step's Icon size-4 text-muted-foreground. The connector is what makes four cards read as a sequence, and it is the reason the icon sits right rather than left. Last step's connector is retained — it points at the CTA that follows.
+TYPE & ICONS
+Title 17px/600 text-foreground, 16px under the head. Description 14px/1.6 text-muted-foreground, 8px under the title. Icons: Terminal · Code · LayoutGrid · Rocket (note: Code2 does not exist). Blank icon: the connector runs to the full cell width; nothing else moves.
+EMPTY & OVERFLOW
+1 step: one cell at max-w-[46rem], index 01, no connector. 5–8 steps: grid wraps; indices keep counting; row 2 gets its own border-t. 12 steps: switch to xl:grid-cols-3 above 8 items so descriptions keep a 40-character measure. Blank descriptions: titles alone, cells stay top-aligned, rail unaffected. No entrance animation — this section is usually below the fold.
+11 — FAQ
+Question left, answer under it.
+SPECIMEN · 6 ITEMS, FIRST OPEN
+2-COL: HEADER / ACCORDION
+Questions we keep getting.
+
+Anything missing? Open an issue on GitHub — that is the fastest way to get an answer.
+
+Open an issue
+→
+What is VexCMS?
+−
+
+A headless CMS built natively on Convex. You declare collections in TypeScript; Vex generates the Convex schema, the types, the validators, and the admin forms from that one declaration.
+
+How is this different from other headless CMS platforms?
++
+Do I need to know Convex?
++
+Is it production ready?
++
+Which frameworks does it support?
++
+What does it cost?
++
+LAYOUT
+Standard padding, container. Desktop grid xl:grid-cols-[4fr_7fr] gap-14 items-start — header column sticky-free, left; accordion right. Tablet and mobile: single column, header above, 32px gap. The header column is the one exception to "FAQ is centred" — a 2-column FAQ puts six answers in a 68ch measure instead of a 90ch one, and it fills the left third that would otherwise be white space.
+ITEMS
+Accordion from @vexcms/react (Base UI), single-open, first item open by default, collapsible. Items are rules, not cards: border-t border-border on the list, border-b border-border per item, no radius, no background. Trigger: flex w-full items-start justify-between gap-6 py-[18px] text-left, question 16px/500 text-foreground, indicator Plus→Minus at size-4, text-muted-foreground at rest and text-primary when open (no rotation — a swapped glyph beats a spun chevron at this radius). Answer: 15px/1.65 text-muted-foreground max-w-[68ch] pb-[18px] pt-3, indented to the question, not to the indicator.
+STATES
+Trigger hover: question stays text-foreground, indicator goes text-foreground; no background fill (a full-width hover band at 6 items reads as noise). Focus-visible: standard ring, inset by 2px so it does not sit on the rules. Open/close via tw-animate-css height + opacity, 200ms, --ease-emphasized; disabled under reduced motion, where the panel simply appears. Whole row is the hit target, minimum 52px tall.
+SUPPORT LINK
+Rendered in the header column, 20px below the subheading: Button variant="link", 15px/500 text-primary, trailing ArrowRight size-4, underline on hover only. Label is fixed copy in the renderer ("Open an issue") because the field stores only the href. Blank supportLink: link and its gap disappear.
+OVERFLOW
+1 item: two rules and one row — acceptable. 12 items: the list keeps going; no pagination, no search, no "see all". A question that wraps to three lines pushes the indicator to stay top-aligned (items-start), never centred against the block. Long answers are unstyled prose — no rich text, so no lists inside an answer; if an answer needs a list, it becomes several FAQ items.
+12 — CTA
+The page's last surface.
+SPECIMEN · 2 ACTIONS
+BG-CARD · BORDER-Y · CENTRED
+Start with a schema. Ship in an hour.
+
+Scaffold a Next.js + Convex project with authentication, the admin panel, and this marketing site already seeded.
+
+Read the docs
+View on GitHub
+LAYOUT
+Full-bleed bg-card border-y border-border, container inside, text-center. Padding py-16 md:py-24 xl:py-32 — the largest on the site; it is the only block permitted more air than a standard section, and it is what separates the page from the footer. Heading at h1-interior scale (text-[28px] md:text-4xl xl:text-[40px]), max-w-[24ch] mx-auto; subheading 17px text-muted-foreground max-w-[60ch] mx-auto, 20px below; actions 36px below.
+ACTIONS
+actions has no variant field, so the renderer assigns by index: first is default, every subsequent one is outline. size="lg", flex flex-wrap justify-center gap-3. Below 640: flex-col w-full max-w-[320px] mx-auto. 1 action: single centred button. 0 actions: the block still renders as a closing statement — heading and subheading only, which is why the CTA carries no border-radius panel that would look empty. 4+ actions wrap to a second row at the same gap; do not shrink to size="sm".
+ADJACENCY
+Because CTA and Stats share bg-card, they must never be adjacent — the seed never does it, and if an editor makes it happen the shared border-y keeps the seam legible. The footer sits directly under the CTA with no gap; its own border-t is suppressed when it follows a bordered block (double 1px rules are the one seam artefact to avoid).
+13 — ROADMAP · FOUR STATUSES
+Two shipped items look like a list. Two in-progress items look like news.
+
+33 items in four buckets of wildly different size. The design solves that by giving each bucket a different density instead of a different colour: In progress gets cards, Planned and Exploring get rows, Shipped gets a two-column dense checklist.
+
+SPECIMEN · GROUPED, ABRIDGED
+IN PROGRESS → PLANNED → EXPLORING → SHIPPED
+All 33
+Shipped 15
+In progress 2
+Planned 14
+Exploring 2
+IN PROGRESS
+2
+Versioning & drafts
+
+Document history with draft and published states, and a publish action in the admin panel.
+
+Live preview
+
+Edit a document beside a rendering of the page it appears on.
+
+PLANNED
+14
+○
+Form builder
+Collect submissions with generated validation.
+○
+richtext field
+○
+Lifecycle hooks
+○
+TanStack Start adapter
+A second framework adapter beside Next.js.
+EXPLORING
+2
+Multi-component workspaces
+Analytics adapter
+✓
+SHIPPED
+15
+✓
+12 field types
+✓
+Convex schema and type codegen
+✓
+Real-time admin panel
+✓
+DataTable with pagination and bulk operations
+✓
+Media library
+✓
+RBAC with indexed access
+GROUPING
+The renderer buckets items by status and prints groups in a fixed order: In progress → Planned → Exploring → Shipped. That is a deliberate departure from the brief's listed order: In progress is the most interesting bucket and the page's news, Shipped is 15 items of reassurance that people skim. Array order within a bucket is preserved exactly as authored. An empty bucket prints nothing — no "0" header. Group gap 44px; group header to content 20px (cards) or 16px (rows).
+GROUP HEADER
+flex items-center gap-3: status Badge → count in mono 12px text-muted-foreground → flex-1 h-px bg-border. Headings are the badges themselves (each h3 sr-only text supplies the accessible name), which is why no group needs a 30px title competing with the page h1.
+FOUR STATUSES
+All four use the same Badge geometry — rounded-4xl px-2.5 py-[3px], 12px/500/+0.04em uppercase — and differ only in border, fill, and leading glyph, so no second accent hue is introduced. In progress: border-primary/40 bg-primary/12 text-primary + 5px bg-primary dot running livepulse (the one blessed loop). Planned: border-border text-muted-foreground, transparent, hollow 5px ring dot. Exploring: border-dashed border-border text-muted-foreground, no dot — dashed is the "not committed" signal. Shipped: bg-card border-border text-muted-foreground + Check size-3 text-primary. Status is never conveyed by colour alone — glyph, border style, and bucket position all carry it.
+DENSITY PER BUCKET
+In progress — cards: grid md:grid-cols-2 gap-4, bg-card border border-border rounded-md p-5, feature 17px/600, description 14px/1.6 muted. Planned — rows: grid md:grid-cols-2 gap-x-10, each flex gap-3 py-[11px] border-b border-border, feature 15px, description 13.5px muted on the line below, hollow-circle glyph. Exploring — chips: flex flex-wrap gap-2, border-dashed border-border rounded-sm px-3 py-[7px], 14px muted; a description, if present, becomes a Tooltip and the chip gets cursor-help. Shipped — checklist: grid md:grid-cols-2 xl:grid-cols-2 gap-x-10, rows py-2 border-b border-border/60, 14.5px text-muted-foreground — smaller and quieter than every other bucket on purpose; descriptions are rendered but at 13px, and 15 rows occupy about 320px.
+FILTER
+A Tabs row above the groups — All 33 · Shipped 15 · In progress 2 · Planned 14 · Exploring 2 — h-10 border-b border-border, triggers 13px/500 rounded-sm px-3 py-[5px], selected bg-accent text-foreground. Counts come from the array, never hardcoded. It is the only client component on the page; with all groups rendered server-side and toggled by hidden, filtering costs no request and the page works with JS disabled (all groups visible). Fewer than 8 items total: the tab row is not rendered. Below md it becomes a horizontally scrollable row (ScrollArea), never a Select.
+EMPTY & OVERFLOW
+No description (common): the row is one line and the glyph stays baseline-aligned to it — because rows are rules rather than cards, a mixed list of 1-line and 2-line rows reads as a table, not as breakage. All 33 items with descriptions: the page grows; no truncation, no clamping. A single item in a bucket: cards go full width at md rather than sitting half-empty (md:grid-cols-2 only when the bucket has ≥2 items). A feature name that wraps to two lines is fine at every density. Padding py-14 md:py-20 xl:py-24; mobile collapses every grid to one column.
+14 — FOOTER · SITE CHROME
+One rule, one row of links, one line of law.
+SPECIMEN · 8 LINKS, 1 SOCIAL
+WRAPPING ROW · NOT A 4-COL SITEMAP
+VexCMS
+Features
+Roadmap
+Docs
+Quickstart
+Admin demo
+npm
+Licence
+Convex
+© 2026 VexCMS. Apache-2.0 licensed.
+⌥
+LAYOUT
+border-t border-border (suppressed after a bordered block), py-12 md:py-14, container. Row 1: flex items-start justify-between gap-12 — logo left, links right as a flex flex-wrap gap-x-7 gap-y-2 justify-end max-w-[640px] row; closed with border-b border-border pb-8. Row 2: copyright left, socials right, pt-5. Mobile: everything stacks left-aligned, links become a 2-column grid, socials sit under the copyright with 20px gap. Tailark's footer three supplies the wrapping-link-row idea; its multi-column sitemap is dropped because the links field is one flat array with no group labels — an invented 4-column grouping would be content the CMS cannot express.
+TYPE & STATES
+Links 14px text-muted-foreground → hover text-foreground, no underline (the row is dense; eight underlines is noise). Copyright 13px text-muted-foreground, prefixed with © {year} generated at render. Socials: 32px Button variant="ghost" size="icon-sm" with border border-border rounded-sm, Icon size-4 resolved from icon ("Github"), falling back to the platform string as a 13px text link if the icon name does not resolve — the footer never renders an empty square. aria-label comes from platform.
+EMPTY STATES
+No logoImage: wordmark + inline chevron, as in the header. No links: row 1 is the logo alone and its bottom rule is dropped, leaving a single-line footer. No socialLinks: copyright sits alone, still left-aligned. 20+ links wrap to three lines and the row keeps justify-end at md+.
+PART C
+Three pages, in order.
+
+Section order, variant, and the surface each block paints. Everything else is in Part B — these are seed compositions, not new designs.
+
+15 — PAGE · /
+What it is, what's true, how to start.
+
+Seven blocks. Surface alternates exactly twice, so the whole scroll has two background values.
+
+01
+Hero · full
+Badge → npm. h1 “The CMS that thinks in types.” Install row pnpm create vexcms@latest. CTAs: docs quickstart (primary), GitHub (outline). Hairline grid + one primary blur ellipse behind.
+bg-background
+min-h-[90vh]
+02
+Stats
+No heading — four dividers do the talking. 12 field types · 8 published packages · 0 database config · 1 command to start.
+bg-card
+border-y · py-16
+03
+Features
+Six cards, hairline mesh, 3 cols at xl. Icons Wand · ShieldCheck · Radio · Lock · Boxes · LayoutGrid.
+bg-background
+py-28
+04
+CodeShowcase
+“Write the config. Get the types.” Two panes in one frame: config.ts (label in primary) beside vex.types.ts with its auto-generated banner as the first comment line. The page's centre of gravity — nothing above or below it competes for attention.
+bg-background
+py-28
+05
+HowItWorks
+Four steps on the numbered rail. Terminal · Code · LayoutGrid · Rocket.
+bg-background
+py-28
+06
+FAQ
+“Questions we keep getting.” Six items; “Is it production ready?” answers no — alpha, with versioning, drafts, and live preview named as in progress. Support link → issues.
+bg-background
+py-28
+07
+CTA
+“Start with a schema. Ship in an hour.” Two actions. Footer follows immediately, border suppressed.
+bg-card
+border-y · py-32
+16 — PAGE · /FEATURES
+One schema, argued three ways.
+
+Three Splits alternate right / left / right. The page must stand alone for search traffic, so Features repeats verbatim.
+
+01
+Hero · compact
+Eyebrow “Features”, h1 “Everything comes from one schema.”, subheading naming the six derived artefacts. Closes with a rule.
+bg-background
+border-b
+02
+Features
+The same six cards, same order, same icons.
+bg-background
+py-28
+03
+Split · code right
+Fields → “Twelve field types. One generator.” Bullets Layers · Blocks · Palette. Pane: a defineCollection using text, relationship, color, blocks.
+bg-background
+py-28
+04
+Split · code left
+Access control → “Access rules that compile to indexes.” Bullets Lock · KeyRound · Globe (the anon-role fallback is what makes the read-only /admin demo possible).
+bg-background
+py-28
+05
+Split · code right
+Beyond content → “Globals, themes, and blocks are collections too.” Bullets Boxes · Palette · Zap.
+bg-background
+py-28
+06
+CodeShowcase
+“One rule. Two consumers.” Access rule as authored beside the generated query signature. Two panes, same frame treatment as home.
+bg-background
+py-28
+07
+CTA
+Identical to home — same field values, seeded twice, not shared.
+bg-card
+border-y · py-32
+17 — PAGE · /ROADMAP
+33 items, four densities.
+
+The shortest page and the one most likely to be checked twice a month. No hero decoration, no CTA above the list.
+
+01
+Hero · compact
+Eyebrow “Roadmap”, h1 “Shipped, in progress, and being explored.”, subheading stating 0.1.0-alpha and that this page is edited from the admin panel.
+bg-background
+border-b
+02
+Roadmap
+Tab filter, then buckets: In progress 2 (cards) → Planned 14 (two-column rows) → Exploring 2 (dashed chips) → Shipped 15 (dense checklist). Status wording is load-bearing: versioning, drafts, and live preview appear only under In progress, and richtext, json, tabs, hooks, scheduling, API keys, teams, TanStack, S3/R2, plugins, and the testing suite only under Planned.
+bg-background
+py-24
+03
+CTA
+Identical to home.
+bg-card
+border-y · py-32
+PART D
+Handoff.
+18 — THEME DOCUMENT
+Stark × Ember, tightened.
+
+Loads into the themes collection with no transformation. All 32 keys present in both maps. The palette keeps its position — pure-neutral chrome, one warm ember voice — and moves only where contrast or hierarchy demanded it.
+
+LIGHT SURFACES
+DARK SURFACES
+{
+  "name": "Stark × Ember",
+  "fontFamily": "Geist, Inter, system-ui, sans-serif",
+  "radius": "4px",
+  "light": {
+    "background":               "oklch(96.1% 0 0)",
+    "foreground":               "oklch(13.7% 0 0)",
+    "card":                     "oklch(100% 0 0)",
+    "cardForeground":           "oklch(13.7% 0 0)",
+    "popover":                  "oklch(100% 0 0)",
+    "popoverForeground":        "oklch(13.7% 0 0)",
+    "primary":                  "oklch(58% 0.185 40)",
+    "primaryForeground":        "oklch(100% 0 0)",
+    "secondary":                "oklch(92.5% 0 0)",
+    "secondaryForeground":      "oklch(20% 0 0)",
+    "muted":                    "oklch(93.5% 0 0)",
+    "mutedForeground":          "oklch(48% 0 0)",
+    "accent":                   "oklch(96.5% 0.022 40)",
+    "accentForeground":         "oklch(38% 0.14 40)",
+    "destructive":              "oklch(57.7% 0.215 27)",
+    "destructiveForeground":    "oklch(100% 0 0)",
+    "border":                   "oklch(89.5% 0 0)",
+    "input":                    "oklch(89.5% 0 0)",
+    "ring":                     "oklch(58% 0.185 40)",
+    "chart1":                   "oklch(58% 0.185 40)",
+    "chart2":                   "oklch(68% 0.15 55)",
+    "chart3":                   "oklch(76% 0.11 70)",
+    "chart4":                   "oklch(45% 0 0)",
+    "chart5":                   "oklch(72% 0 0)",
+    "sidebar":                  "oklch(100% 0 0)",
+    "sidebarForeground":        "oklch(13.7% 0 0)",
+    "sidebarPrimary":           "oklch(58% 0.185 40)",
+    "sidebarPrimaryForeground": "oklch(100% 0 0)",
+    "sidebarAccent":            "oklch(96.5% 0.022 40)",
+    "sidebarAccentForeground":  "oklch(38% 0.14 40)",
+    "sidebarBorder":            "oklch(89.5% 0 0)",
+    "sidebarRing":              "oklch(58% 0.185 40)"
+  },
+  "dark": {
+    "background":               "oklch(13.7% 0 0)",
+    "foreground":               "oklch(96% 0 0)",
+    "card":                     "oklch(17.4% 0 0)",
+    "cardForeground":           "oklch(96% 0 0)",
+    "popover":                  "oklch(20.5% 0 0)",
+    "popoverForeground":        "oklch(96% 0 0)",
+    "primary":                  "oklch(68% 0.178 40)",
+    "primaryForeground":        "oklch(14% 0 0)",
+    "secondary":                "oklch(24% 0 0)",
+    "secondaryForeground":      "oklch(96% 0 0)",
+    "muted":                    "oklch(22% 0 0)",
+    "mutedForeground":          "oklch(66% 0 0)",
+    "accent":                   "oklch(68% 0.178 40 / 0.14)",
+    "accentForeground":         "oklch(78% 0.13 45)",
+    "destructive":              "oklch(63% 0.2 27)",
+    "destructiveForeground":    "oklch(14% 0 0)",
+    "border":                   "oklch(26.5% 0 0)",
+    "input":                    "oklch(30% 0 0)",
+    "ring":                     "oklch(68% 0.178 40)",
+    "chart1":                   "oklch(68% 0.178 40)",
+    "chart2":                   "oklch(76% 0.14 55)",
+    "chart3":                   "oklch(84% 0.1 72)",
+    "chart4":                   "oklch(55% 0 0)",
+    "chart5":                   "oklch(35% 0 0)",
+    "sidebar":                  "oklch(9.5% 0 0)",
+    "sidebarForeground":        "oklch(96% 0 0)",
+    "sidebarPrimary":           "oklch(68% 0.178 40)",
+    "sidebarPrimaryForeground": "oklch(14% 0 0)",
+    "sidebarAccent":            "oklch(68% 0.178 40 / 0.14)",
+    "sidebarAccentForeground":  "oklch(78% 0.13 45)",
+    "sidebarBorder":            "oklch(26.5% 0 0)",
+    "sidebarRing":              "oklch(68% 0.178 40)"
+  }
+}
+Token moved
+RATIONALE
+CONTRAST
+primary (light)
+60.5% → 58%, C .175 → .185
+Matches the design system's Ember Orange exactly (#E8622A) and buys enough darkness for white button text at 15px/600. Still clearly not Convex's orange.
+3.6:1
+white on primary, AA large / bold
+primaryForeground (dark)
+white → oklch(14% 0 0)
+The only reversal of a design-system rule, and it is a legibility fix: white on the brightened dark-mode orange is 2.6:1 and fails everywhere. Near-black on it passes AA at any size. The button reads as a solid ember chip, which is also the stronger look on a near-black page.
+6.0:1
+was 2.6:1
+mutedForeground
+light 48% · dark 66%
+Body copy is muted-foreground across the whole site, so it has to clear AA for normal text rather than merely look grey. Both values are the lightest/darkest that still do.
+4.9:1 · 5.1:1
+border
+light 85% → 89.5% · dark 25% → 26.5%
+This design leans on 1px rules for structure — hairline card meshes, dividers, seams. At 85% the light border was heavy enough to read as a grid drawing; 89.5% matches the system's #E4E4E4 and lets a six-cell mesh recede. Dark nudged up so a seam is still visible against card.
+1.4:1 · 1.5:1
+non-text, ≥1.3 target
+accentForeground
+added, both modes
+The old palette gave accent a tint with no matching ink, so any hovered nav item inherited body colour. Ember-tinted ink keeps hover states on-brand and legible on the wash.
+7.2:1 · 6.8:1
+on accent
+input
+dark 30% vs border 26.5%
+Form inputs need to be findable against a card without a fill; a slightly brighter stroke does it without adding a second surface value.
+1.7:1
+chart1–5
+ember ramp + 2 neutrals
+The site has no charts, but the admin panel does and the theme is shared. A ramp from ember through gold to two neutrals keeps the single-accent rule instead of introducing five hues.
+n/a
+sidebar (dark) 9.5%
+Darker than the page, per the system: the admin rail recedes. Unused by marketing, correct for /admin.
+n/a
+
+Unchanged from the current values: background, foreground, card, radius, fontFamily, and dark accent's alpha approach. Contrast figures are computed on the sRGB renderings of these oklch values and rounded down.
+
+19 — ADDITIONAL @THEME TOKENS
+Not per-theme, so not in the record.
+
+These belong in globals.css under @theme. The code-pane palette is intentionally fixed: the pane stays dark under a light theme, which is the one deliberate exception to "the theme decides colour", and it means shiki runs once per build with one theme.
+
+@theme {
+  /* motion */
+  --ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 260ms;
+
+  /* radius scale — --radius comes from the theme record */
+  --radius-sm: 2px;  --radius-md: 4px;  --radius-lg: 8px;
+  --radius-xl: 12px; --radius-2xl: 16px; --radius-3xl: 20px; --radius-4xl: 9999px;
+
+  /* shadow — light mode only; every use is paired with dark:shadow-none */
+  --shadow-xs: 0 1px 2px rgb(10 10 10 / 0.04);
+  --shadow-sm: 0 1px 3px rgb(10 10 10 / 0.08);
+  --shadow-md: 0 4px 12px rgb(10 10 10 / 0.08);
+  --shadow-lg: 0 12px 32px rgb(10 10 10 / 0.12);
+
+  /* section rhythm — used by every block's padding utilities */
+  --spacing-section: 3.5rem;     /* 56px  mobile  */
+  --spacing-section-md: 5rem;    /* 80px  tablet  */
+  --spacing-section-xl: 7rem;    /* 112px desktop */
+
+  /* code pane — fixed in both themes */
+  --color-code-bg:      oklch(11% 0 0);
+  --color-code-chrome:  oklch(15.5% 0 0);
+  --color-code-border:  oklch(24% 0 0);
+  --color-code-fg:      oklch(84% 0 0);
+  --color-code-dim:     oklch(52% 0 0);   /* comments, prompts */
+  --color-code-key:     oklch(72% 0.16 42); /* keywords, primitives, booleans */
+  --color-code-ident:   oklch(96% 0 0);   /* functions, type names */
+  --color-code-string:  oklch(70% 0 0);   /* strings, slugs */
+  --color-code-punct:   oklch(45% 0 0);
+}
+SHIKI MAPPING
+Build a minimal shiki theme whose scopes point at the five code colours above rather than shipping a stock theme: comment → dim · keyword, storage.type, constant.language, support.type.primitive → key · entity.name.function, entity.name.type, support.class → ident · string, constant.numeric → string · punctuation, meta.brace → punct · everything else → code-fg. Five colours is the whole palette: ember appears only on keywords, which is why a config file reads as ember-accented and a generated type file reads as almost entirely neutral — the visual argument of the CodeShowcase section.
+FONTS
+next/font/google — Geist (400/500/600/700/800) as --font-sans, Geist_Mono (400/500) as --font-mono, both display: "swap". The theme record's fontFamily string is the fallback stack applied as a custom property, so an editor can change the family without a redeploy. Mono is enabled with font-feature-settings: "ss01" 1, "calt" 1.
+BASE LAYER
+::selection → bg-primary/22, colour inherited. Prose links inside text field output: text-primary, underline-offset-4, decoration-current/40 → full on hover. scroll-behavior: smooth only outside reduced motion. A skip to content link in the layout, visually hidden until focused, sits above the sticky header.
+20 — BUILD ORDER
+Coherent at every step.
+01
+Theme + @theme tokens. Load the theme record, apply the 32 properties server-side, add §19 to globals.css. Verify a dark/light swap on a bare page before any block exists — every later step assumes it.
+02
+Chrome: Header + Footer. Sticky behaviour, mobile sheet, wrapping footer row. Now every route has a frame and nothing looks unfinished.
+03
+Hero, both variants. Build compact first (it is the simpler shape and unblocks the two interior pages), then full with the install row and the decorative background. At the end of this step all three routes render a real page-header.
+04
+CodeShowcase. The hardest and most important block, and the source of the shared pane primitive Split needs. Do the shiki server pass, the pane chrome, the copy button, the long-line scroll, and the tab mode here — not in a later refactor.
+05
+CTA, then Features. CTA is 30 minutes and closes all three pages. Features gives home and /features their body. Home is now shippable: hero → features → code → CTA reads as a complete site.
+06
+Stats, HowItWorks, FAQ. Three independent, low-risk blocks that finish the home page. Stats first — it is the only other bg-card band and it validates the surface rhythm.
+07
+Split. Reuses step 4's pane. Build code, then none, then image with its fall-through. Completes /features.
+08
+Roadmap. Last, because it is the only block with real branching logic and it blocks nothing else. Statuses and grouping before the tab filter; the page must be correct with JS disabled first.
+09
+Seed, then audit. Run the idempotent seed. Then four passes: theme swap to light on all three pages; prefers-reduced-motion; keyboard-only traversal including the code panes' scroll regions; and a fresh-scaffold check with the media library emptied — no section may look broken.
+21 — DEVIATIONS
+Everywhere I left the brief.
+Features card grid
+Tailark Mist features/two uses gapped cards with shadow. Replaced by a 1px hairline mesh (gap-px bg-border). Reason: dark mode is forbidden shadows, so gapped cards lose all separation there; the mesh reads identically in both modes and suits sharp radii.
+Hero background
+The sourced hero-section/five radial gradients are replaced by a token-derived hairline grid plus one bg-primary/10 blur. Reason: the originals bake in palette colours and break on a theme swap; the design system also bans gradients on chrome. Its logo row is dropped as instructed (no customer logos exist, and none may be designed for).
+FAQ is two columns
+Veil faqs/two centres the header over a narrow accordion. Split into header-left / accordion-right. Reason: it gives the support link a home, holds answers at a 68ch measure, and stops the centred-heading pattern from appearing three times on one page.
+Timeline → rail
+Origin UI's timeline dots-and-lines are replaced by border utilities and a mono index. Reason: its radix-ui Slot.Root had to go anyway (converted to concrete elements, no Base UI render prop needed), and a horizontal four-up rail suits a four-step install flow better than a vertical timeline, which implies duration.
+Roadmap group order
+Rendered In progress → Planned → Exploring → Shipped, not the brief's Shipped-first order. Reason: the brief itself says In progress is the most interesting bucket and Shipped is skimmed. Putting 15 shipped rows above the 2 rows people came for buries the news. Statuses, labels, and claims are unchanged.
+Dark primary ink
+Dark-mode primaryForeground is near-black, against the design system's "white on the primary button, never gray" rule. Reason: white on oklch(68% 0.178 40) is 2.6:1 and fails AA at any size. Near-black is 6.0:1. The rule's intent — never muddy grey ink on orange — is preserved.
+Code panes stay dark
+Pane surfaces come from fixed @theme tokens, not the theme record, so they do not follow a light theme. Reason: the brief permits code-pane colours as additional non-per-theme tokens; it also means shiki highlights once at build with one theme and the client ships nothing. A light theme therefore shows dark code panes — deliberate, and consistent with the design system's "code blocks are the hero visual".
+CodeShowcase chrome
+Magic UI's next-themes dependency, filename icons, and diff highlighting are all dropped; a shared frame with one seam replaces two separate cards, and the authored pane's label is the only element carrying text-primary. Reason: this section compares two files, not two revisions, and the label colour is a cheaper "human vs machine" signal than any badge.
+Footer sitemap
+Mist footer/three's labelled multi-column groups are replaced by a single wrapping row. Reason: links is one flat array with no group field — column headings would be content the CMS cannot store.
+Copy tightened
+Two additions, no factual change: a Features section header ("Built for the way you already work." / "Familiar collection patterns, with the generation step done for you.") and a HowItWorks heading ("From empty directory to live content."), because both blocks require heading and the brief supplies only their card copy. FAQ answers are phrased to keep versioning, drafts, live preview, and rich text explicitly unshipped, and the licence is stated as Apache-2.0 throughout — including in the design system's own README, which says MIT and is wrong.
+Not designed
+No pricing, blog, changelog, testimonials, comparison table, logo wall, star count, or download figure — and no empty slot where one could go. Quartz was not opened or referenced.

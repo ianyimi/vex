@@ -5,12 +5,12 @@
   "fixed": [
     [
       "@vexcms/core",
+      "@vexcms/react",
+      "@vexcms/next",
       "@vexcms/cli",
       "@vexcms/better-auth",
-      "@vexcms/admin-next",
-      "@vexcms/ui",
-      "@vexcms/richtext",
       "@vexcms/file-storage-convex",
+      "@vexcms/richtext-plate",
       "create-vexcms"
     ]
   ],
@@ -18,5 +18,12 @@
   "access": "public",
   "baseBranch": "master",
   "updateInternalDependencies": "patch",
-  "ignore": ["@vexcms/tsconfig", "www", "demo"]
+  "ignore": [
+    "@vexcms/tsconfig",
+    "test",
+    "docs"
+  ],
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true
+  }
 }

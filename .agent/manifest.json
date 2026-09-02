@@ -1,0 +1,108 @@
+{
+  "schema_version": "1.0",
+  "project": "vexcms",
+  "description": "Type-safe headless CMS built on Convex — field system, generated schema/types, and a React/Next.js admin panel",
+  "harness": {
+    "base_version": "0.1.0"
+  },
+  "platforms": {
+    "active": [
+      "omp",
+      "claude"
+    ]
+  },
+  "workflow": {
+    "default_tier": "high-care",
+    "importance": "high",
+    "developer_implements": true,
+    "post_implement_polish": true,
+    "commit_mode": "message-only"
+  },
+  "modules": {
+    "specs": true,
+    "tasks": true,
+    "session_log": true,
+    "roadmap": true,
+    "design": true,
+    "decisions": true,
+    "research": true,
+    "env_manifest": true,
+    "naming_conventions": true
+  },
+  "standards_domains": [
+    "frontend",
+    "backend",
+    "core",
+    "testing",
+    "tooling",
+    "docs"
+  ],
+  "dependencies": [
+    {
+      "package": "convex",
+      "version": "1.42.1",
+      "repo": "github.com/get-convex/convex-js"
+    },
+    {
+      "package": "better-auth",
+      "version": "1.6.23",
+      "repo": "github.com/better-auth/better-auth"
+    },
+    {
+      "package": "@convex-dev/better-auth",
+      "version": "0.11.5",
+      "repo": "github.com/get-convex/better-auth"
+    },
+    {
+      "package": "convex-helpers",
+      "version": "0.1.120",
+      "repo": "github.com/get-convex/convex-helpers"
+    },
+    {
+      "package": "platejs",
+      "version": "52.3.21",
+      "repo": "github.com/udecode/plate"
+    },
+    {
+      "package": "@tanstack/react-form",
+      "version": "1.33.1",
+      "repo": "github.com/TanStack/form"
+    },
+    {
+      "package": "@base-ui/react",
+      "version": "1.2.0",
+      "repo": "github.com/mui/base-ui"
+    },
+    {
+      "package": "zod",
+      "version": "4.4.3",
+      "repo": "github.com/colinhacks/zod"
+    },
+    {
+      "package": "@tanstack/react-table",
+      "version": "8.21.3",
+      "repo": "github.com/TanStack/table"
+    }
+  ],
+  "doctor": {
+    "budgets": {
+      "preferences_lines": 80,
+      "anti_patterns_lines": 40,
+      "skill_lines": 150,
+      "agents_md_directives_lines": 20
+    },
+    "stale_spec_days": 14
+  },
+  "repo": {
+    "type": "bare-git-worktrees"
+  },
+  "models": {
+    "subagent_selection": "dynamic",
+    "advisor": true,
+    "tiers": {
+      "frontier": "anthropic/claude-fable-5",
+      "standard": "anthropic/claude-sonnet-5",
+      "cheap": "anthropic/claude-haiku-4-5"
+    }
+  }
+}

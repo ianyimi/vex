@@ -1,0 +1,103 @@
+/* ==========================================================================
+   VexCMS marketing site — non-per-theme tokens + motion kit
+   Paste into src/app/globals.css. The 32 colour tokens do NOT belong here:
+   they come from the themes collection and are applied server-side.
+   ========================================================================== */
+
+@theme {
+  /* motion */
+  --ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 260ms;
+
+  /* radius scale — --radius itself comes from the theme record (4px) */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 20px;
+  --radius-4xl: 9999px;
+
+  /* shadow — LIGHT MODE ONLY; every use is paired with dark:shadow-none */
+  --shadow-xs: 0 1px 2px rgb(10 10 10 / 0.04);
+  --shadow-sm: 0 1px 3px rgb(10 10 10 / 0.08);
+  --shadow-md: 0 4px 12px rgb(10 10 10 / 0.08);
+  --shadow-lg: 0 12px 32px rgb(10 10 10 / 0.12);
+
+  /* section rhythm */
+  --spacing-section: 3.5rem;    /* 56px  mobile  */
+  --spacing-section-md: 5rem;   /* 80px  tablet  */
+  --spacing-section-xl: 7rem;   /* 112px desktop */
+
+  /* code pane — fixed in both themes (panes stay dark under a light theme) */
+  --color-code-bg: oklch(11% 0 0);
+  --color-code-chrome: oklch(15.5% 0 0);
+  --color-code-border: oklch(24% 0 0);
+  --color-code-fg: oklch(84% 0 0);
+  --color-code-dim: oklch(52% 0 0);        /* comments, shell prompts        */
+  --color-code-key: oklch(72% 0.16 42);    /* keywords, primitives, booleans */
+  --color-code-ident: oklch(96% 0 0);      /* functions, type names          */
+  --color-code-string: oklch(70% 0 0);     /* strings, slugs                 */
+  --color-code-punct: oklch(45% 0 0);
+}
+
+/* --------------------------------------------------------------------------
+   Entrance kit — already shipped as <AnimatedGroup> / <AnimatedItem> /
+   <TextEffect>. Reproduced here for reference; do not duplicate.
+   -------------------------------------------------------------------------- */
+@keyframes reveal {
+  from { opacity: 0; filter: blur(12px); transform: translateY(12px); }
+  to   { opacity: 1; filter: blur(0);    transform: translateY(0); }
+}
+.item {
+  animation: reveal 1.1s cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation-delay: var(--reveal-delay, 0s);
+}
+
+/* stagger contract — set on the group, read by each item */
+.reveal-group > * {
+  --reveal-delay: calc(var(--reveal-stagger, 60ms) * var(--i, 0));
+}
+
+/* the ONE decorative loop: the Roadmap "In progress" status dot */
+@keyframes livepulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+.live-dot { animation: livepulse 2s var(--ease-emphasized) infinite; }
+
+/* Reduced motion is a full stop, not a shortened duration. */
+@media (prefers-reduced-motion: reduce) {
+  .item,
+  .live-dot,
+  .reveal-group > * { animation: none !important; }
+  html { scroll-behavior: auto; }
+}
+
+/* --------------------------------------------------------------------------
+   Base layer
+   -------------------------------------------------------------------------- */
+@layer base {
+  ::selection { background-color: color-mix(in oklch, var(--color-primary) 22%, transparent); }
+
+  /* links inside text-field output */
+  .prose-field a {
+    color: var(--color-primary);
+    text-decoration-line: underline;
+    text-underline-offset: 4px;
+    text-decoration-color: color-mix(in oklch, currentColor 40%, transparent);
+  }
+  .prose-field a:hover { text-decoration-color: currentColor; }
+
+  /* focus-visible — never removed, never restyled per block */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  code, pre { font-feature-settings: "ss01" 1, "calt" 1; tab-size: 2; }
+
+  html { scroll-behavior: smooth; }
+}

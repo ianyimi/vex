@@ -1,0 +1,57 @@
+{
+  "name": "create-vexcms",
+  "version": "0.1.0-alpha.7",
+  "description": "Scaffold a new VexCMS project",
+  "keywords": [
+    "cms",
+    "headless-cms",
+    "convex",
+    "typescript",
+    "create",
+    "scaffold"
+  ],
+  "license": "Apache-2.0",
+  "author": "Isaiah Anyimi",
+  "homepage": "https://docs.vexcms.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianyimi/vex.git",
+    "directory": "packages/create-vexcms"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "bin": {
+    "create-vexcms": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "dev": "tsup src/index.ts --format esm --watch",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "chalk": "catalog:",
+    "commander": "catalog:",
+    "execa": "catalog:",
+    "fs-extra": "catalog:",
+    "@inquirer/prompts": "catalog:",
+    "ora": "catalog:",
+    "sort-package-json": "catalog:",
+    "validate-npm-package-name": "catalog:",
+    "yaml": "catalog:"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "catalog:",
+    "@types/validate-npm-package-name": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

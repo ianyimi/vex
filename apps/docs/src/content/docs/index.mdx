@@ -1,0 +1,52 @@
+---
+title: VexCMS
+description: A type-safe headless CMS built natively on Convex — real-time reactivity, generated types, and zero database configuration.
+template: splash
+hero:
+  tagline: A type-safe headless CMS, built natively on Convex.
+  actions:
+    - text: Browse the guides
+      link: /guides/auth/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/ianyimi/vex
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+VexCMS defines your content model in code — fields, relationships, access
+rules, and blocks — and generates a matching Convex schema, a typed admin
+panel, and typed query/mutation helpers from it. No translation layer, no
+drift between your schema and your types.
+
+## Explore the docs
+
+<CardGrid stagger>
+	<Card title="Field types" icon="list-format">
+		Twelve field types, from `text()` and `number()` to `relationship()`,
+		`group()`, `blocks()`, and `color()`. Start with the
+		[text field](/fields/text/), or browse the full set in the sidebar
+		under **Fields**.
+	</Card>
+	<Card title="Authentication" icon="approve-check-circle">
+		Wire up [Better Auth](/guides/auth/) as standard VexCMS collections —
+		users, sessions, accounts, and verification tokens — kept in sync
+		with your auth provider's schema.
+	</Card>
+	<Card title="Custom storage adapters" icon="puzzle">
+		Back file uploads with S3, Cloudinary, or any other provider by
+		implementing `StorageAdapterBaseInterface` — see the
+		[custom storage adapter guide](/guides/custom-storage-adapter/).
+	</Card>
+	<Card title="Roadmap" icon="rocket">
+		See what's shipped, in progress, and planned on the way to `v0.1.0`
+		stable — the [roadmap](/roadmap/).
+	</Card>
+	<Card title="API Reference" icon="open-book">
+		Generated straight from source JSDoc for every published package —
+		`@vexcms/core`, `@vexcms/react`, `@vexcms/next`, `@vexcms/better-auth`,
+		and `@vexcms/file-storage-convex`. Find it in the sidebar.
+	</Card>
+</CardGrid>

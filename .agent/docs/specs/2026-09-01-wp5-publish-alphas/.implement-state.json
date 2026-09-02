@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "slug": "2026-09-01-wp5-publish-alphas",
+  "updated": "2026-09-01T08:59:07.043Z",
+  "groups": {
+    "Step 1": {
+      "attempts": 3,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "  180:11  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "/Users/zaye/Documents/Projects/vex.git/dev/packages/core/src/media/types.ts",
+        "  193:11  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  258:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  363:11  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "/Users/zaye/Documents/Projects/vex.git/dev/packages/react/src/hooks/useCollectionForm.ts",
+        "  50:5  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  51:5  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  52:5  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  53:5  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  54:5  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  55:5  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  56:5  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  57:5  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  58:5  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  59:5  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  60:5  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "/Users/zaye/Documents/Projects/vex.git/dev/packages/react/src/hooks/useGlobalForm.ts",
+        "  36:5   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  36:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  36:15  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  36:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  36:25  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  36:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  36:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  36:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  36:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  36:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  36:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "/Users/zaye/Documents/Projects/vex.git/dev/packages/richtext-plate/src/editor/PlateEditorField.tsx",
+        "   67:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "   68:68  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  132:52  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  142:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "/Users/zaye/Documents/Projects/vex.git/dev/packages/richtext-plate/src/render/RichText.tsx",
+        "  85:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "/Users/zaye/Documents/Projects/vex.git/dev/packages/richtext-plate/src/render/staticComponents.ts",
+        "  27:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "  37:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any",
+        "✖ 101 problems (0 errors, 101 warnings)"
+      ]
+    },
+    "Step 2": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": []
+    },
+    "Step 3": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": []
+    }
+  }
+}

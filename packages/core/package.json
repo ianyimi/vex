@@ -1,21 +1,57 @@
 {
   "name": "@vexcms/core",
-  "version": "0.0.20",
-  "type": "module",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
+  "version": "0.1.0-alpha.7",
+  "description": "Convex-native headless CMS core: field factories, schema generation, and typed collection APIs",
+  "keywords": [
+    "cms",
+    "headless-cms",
+    "convex",
+    "typescript"
+  ],
+  "license": "Apache-2.0",
+  "author": "Isaiah Anyimi",
+  "homepage": "https://docs.vexcms.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianyimi/vex.git",
+    "directory": "packages/core"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "files": [
     "dist"
   ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server": {
+      "source": "./src/api/server.ts",
+      "types": "./dist/api/server.d.ts",
+      "import": "./dist/api/server.js"
+    },
+    "./client": {
+      "source": "./src/api/client.ts",
+      "types": "./dist/api/client.d.ts",
+      "import": "./dist/api/client.js"
+    },
+    "./convex": {
+      "source": "./src/api/server.ts",
+      "types": "./dist/api/server.d.ts",
+      "import": "./dist/api/server.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
+  },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "dev": "node --watch-path src watch.mjs",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "test": "vitest run",
@@ -23,26 +59,33 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "zod": "^3.24.0"
-  },
-  "peerDependencies": {
-    "@tanstack/react-table": "catalog:",
-    "convex": "catalog:",
-    "react": ">=18.0.0"
+    "nanoid": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@convex-dev/react-query": "catalog:",
+    "@edge-runtime/vm": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "@tanstack/react-table": "catalog:",
-    "@types/node": "^20.19.33",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "convex": "catalog:",
+    "convex-helpers": "catalog:",
+    "convex-test": "catalog:",
+    "lucide-react": "catalog:",
     "react": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
-  "publishConfig": {
-    "access": "public"
+  "peerDependencies": {
+    "@convex-dev/react-query": "catalog:peers",
+    "@tanstack/react-query": "catalog:peers",
+    "@tanstack/react-table": "catalog:peers",
+    "convex": "catalog:peers",
+    "lucide-react": "catalog:peers",
+    "react": "catalog:peers"
   }
 }

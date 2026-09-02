@@ -1,0 +1,45 @@
+/**
+ * @vexcms/react styles
+ *
+ * Add to your app's global CSS:
+ *   @import "@vexcms/react/styles";
+ *
+ * Or use @vexcms/next/styles which includes this automatically.
+ *
+ * All component styles use your app's CSS variables
+ * (--background, --foreground, --primary, etc.) so colours stay
+ * consistent with your own theme.
+ *
+ * Sidebar variable defaults use the Stark × Ember palette.
+ * Override any variable in your own globals.css :root { } block —
+ * unlayered :root declarations win over these @layer base defaults.
+ */
+@source "./dist/**/*.js";
+
+/* ── Sidebar defaults — Stark × Ember ──────────────────────────────────────
+   Light: near-white raised surface (#FAFAFA), ember primary accent.
+   Dark:  near-black surface (#050505), hotter ember for contrast.
+   ────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    --sidebar: oklch(98% 0 0); /* #FAFAFA */
+    --sidebar-foreground: oklch(13.7% 0 0);
+    --sidebar-border: oklch(89% 0 0);
+    --sidebar-ring: oklch(68.5% 0.165 45); /* ember */
+    --sidebar-primary: oklch(68.5% 0.165 45); /* ember */
+    --sidebar-primary-foreground: oklch(100% 0 0);
+    --sidebar-accent: oklch(94.5% 0 0); /* hover bg */
+    --sidebar-accent-foreground: oklch(13.7% 0 0);
+  }
+
+  .dark {
+    --sidebar: oklch(10.5% 0 0); /* #050505 */
+    --sidebar-foreground: oklch(96.1% 0 0);
+    --sidebar-border: oklch(28% 0 0);
+    --sidebar-ring: oklch(72% 0.175 50); /* hotter ember */
+    --sidebar-primary: oklch(72% 0.175 50);
+    --sidebar-primary-foreground: oklch(13.7% 0 0);
+    --sidebar-accent: oklch(22.5% 0 0);
+    --sidebar-accent-foreground: oklch(96.1% 0 0);
+  }
+}

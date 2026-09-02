@@ -1,9 +1,28 @@
 {
   "name": "@vexcms/better-auth",
-  "version": "0.0.20",
+  "version": "0.1.0-alpha.7",
+  "description": "better-auth adapter for VexCMS on Convex",
+  "keywords": [
+    "cms",
+    "headless-cms",
+    "convex",
+    "typescript",
+    "auth",
+    "better-auth"
+  ],
+  "license": "Apache-2.0",
+  "author": "Isaiah Anyimi",
+  "homepage": "https://docs.vexcms.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianyimi/vex.git",
+    "directory": "packages/better-auth"
+  },
+  "sideEffects": false,
   "type": "module",
   "exports": {
     ".": {
+      "source": "./src/index.ts",
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
@@ -14,7 +33,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
     "dev": "tsup --watch",
     "clean": "rm -rf dist",
     "coverage": "vitest run --coverage",
@@ -23,19 +42,25 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "better-auth": ">=1.4.9 <1.5.0",
-    "@vexcms/core": "workspace:*"
+    "@vexcms/core": "workspace:^",
+    "better-auth": "catalog:peers",
+    "convex": "catalog:peers"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
     "@vexcms/core": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "better-auth": "catalog:",
+    "convex": "catalog:",
+    "convex-helpers": "catalog:",
+    "convex-test": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "alpha"
   }
 }

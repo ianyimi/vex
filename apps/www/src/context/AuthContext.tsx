@@ -1,0 +1,27 @@
+"use client";
+
+import { createContext, useContext } from "react";
+
+import { type UserDoc } from "~/db/constants";
+
+export interface CurrentAuth {
+  user: null | UserDoc; // null → unauthenticated → no roles → deny
+}
+export const AuthContext = createContext<CurrentAuth>({ user: null });
+
+export function AuthProvider(props: {
+  children: React.ReactNode;
+  value: {
+    user: null | UserDoc; // null → unauthenticated → no roles → deny
+  };
+}) {
+  return <AuthContext.Provider value={props.value}>{props.children}</AuthContext.Provider>;
+}
+/** @returns the current caller `{ user }` from the server layout. */
+export function useAuth(): CurrentAuth {
+  const context = useContext(AuthContext);
+  if (context === null) {
+    throw new Error("useAuth must be used within a AuthProvider");
+  }
+  return context;
+}

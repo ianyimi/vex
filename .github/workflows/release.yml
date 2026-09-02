@@ -14,34 +14,55 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20
+          node-version: 22
           cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Lint
+        run: pnpm lint
+
       - name: Build Packages
-        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" build
+        # `apps/test` runs `next build`, which needs env at two points: the
+        # `@t3-oss/env-nextjs` parse when `next.config.ts` loads, and the Convex
+        # client during prerender/page-data collection. A CI runner has no
+        # deployment, so both fail. `SKIP_ENV_VALIDATION` only silences the first —
+        # measured: the build then still dies at "Failed to collect page data".
+        # Placeholder values clear both AND keep validation enabled, so a newly
+        # added required env var that nobody wired up still fails this step.
+        # `apps/test` is the sandbox app and is never deployed (`.changeset` ignore
+        # list), so the inlined NEXT_PUBLIC_* placeholders reach no real artifact.
+        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" build
+        env:
+          BETTER_AUTH_SECRET: ci-placeholder-not-a-real-secret
+          NEXT_PUBLIC_CONVEX_URL: https://ci-placeholder.convex.cloud
+          NEXT_PUBLIC_CONVEX_SITE_URL: https://ci-placeholder.convex.site
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
       - name: Typecheck Packages
-        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" typecheck
+        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" typecheck
 
       - name: Test Packages
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" test
 
+      - name: Check Packed Manifests
+        run: node scripts/check-packed-manifests.mjs
+
       - name: Create Release PR or Publish
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           version: pnpm version:packages
           publish: pnpm release
@@ -50,3 +71,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"

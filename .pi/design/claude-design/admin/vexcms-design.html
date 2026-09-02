@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VexCMS — Admin design exploration</title>
+<link rel="stylesheet" href="admin.css" />
+<style>
+  body { margin: 0; font-family: var(--vex-font-sans, system-ui), sans-serif; background: #f0eee9; }
+  /* Wrapper used inside artboards so the admin shell fills its frame. */
+  .ab-fill { width: 100%; height: 100%; overflow: hidden; background: var(--page); }
+  .ab-fill.dark { background: #0A0A0A; }
+  .ab-scroll { width: 100%; height: 100%; overflow: auto; background: var(--page); }
+  /* Static (non-functional) clones of full views inside artboards need fixed dims */
+  .ab-frame { position: relative; width: 100%; height: 100%; overflow: hidden; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="primitives.jsx"></script>
+<script type="text/babel" src="fields.jsx"></script>
+<script type="text/babel" src="relationship.jsx"></script>
+<script type="text/babel" src="shell.jsx"></script>
+<script type="text/babel" src="upload.jsx"></script>
+<script type="text/babel" src="screens.jsx"></script>
+<script type="text/babel" src="studies.jsx"></script>
+<script type="text/babel" src="mobile.jsx"></script>
+<script type="text/babel" src="prototype.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+/* Helper: wraps a static admin layout for an artboard so it doesn't try to scroll
+   beyond the artboard's fixed height. */
+function ABShell({ activeKey = "posts", page, dark = false, collapsed = false }) {
+  return (
+    <div data-screen-label={"Shell"} className={"ab-fill" + (dark ? " dark" : "")}>
+      <AdminLayout
+        dark={dark}
+        sidebar={<Sidebar activeKey={activeKey} collapsed={collapsed} />}
+        page={page}
+      />
+    </div>
+  );
+}
+
+/* For the live prototype frame: fills the artboard fully. */
+function ProtoFrame() {
+  return (
+    <div className="ab-fill vex-admin" data-screen-label={"00 Live prototype"}>
+      <VexPrototype />
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <DesignCanvas>
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 0 · LIVE PROTOTYPE
+          ───────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="prototype"
+        title="VexCMS · live prototype"
+        subtitle="Click around. ⌘K opens the create modal. The demo switcher in the top-right swaps views.">
+        <DCArtboard id="proto-light" label="Light · interactive" width={1280} height={820}>
+          <ProtoFrame />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 1 · CORE SCREENS
+          ───────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="core"
+        title="Core screens"
+        subtitle="The three views every CMS lives or dies by — workspace, list, edit.">
+
+        <DCArtboard id="dashboard" label="Dashboard" width={1280} height={820}>
+          <ABShell activeKey="dashboard" page={<DashboardView />} />
+        </DCArtboard>
+
+        <DCArtboard id="posts-list" label="Collection list · default" width={1280} height={820}>
+          <ABShell activeKey="posts" page={<PostsListView />} />
+        </DCArtboard>
+
+        <DCArtboard id="posts-list-bulk" label="Collection list · bulk select" width={1280} height={820}>
+          <ABShell activeKey="posts" page={<PostsListView withBulk />} />
+        </DCArtboard>
+
+        <DCArtboard id="edit-single" label="Edit · single column (720 max)" width={1280} height={1100}>
+          <ABShell activeKey="posts" page={<EditViewSingle />} />
+        </DCArtboard>
+
+        <DCArtboard id="edit-twocol" label="Edit · two column · meta sidebar" width={1280} height={1100}>
+          <ABShell activeKey="posts" page={<EditViewTwoCol />} />
+        </DCArtboard>
+
+        <DCArtboard id="edit-rail" label="Edit · collapsed icon rail" width={1280} height={1100}>
+          <ABShell activeKey="posts" page={<EditViewCollapsedRail />} />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 2 · CREATE & DIALOGS
+          ───────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="dialogs"
+        title="Create & dialogs"
+        subtitle="A required-fields-only modal that respects the schema. Full editor opens after save.">
+
+        <DCArtboard id="create-modal" label="Create document modal" width={1280} height={820}>
+          <div className="ab-frame vex-admin">
+            <ABShell activeKey="posts" page={<PostsListView />} />
+            <CreateModal />
+          </div>
+        </DCArtboard>
+
+        <DCArtboard id="picker-open" label="Edit · with relationship picker open" width={1280} height={1100}>
+          <ABShell activeKey="posts" page={<EditViewSingle pickerOpen />} />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 3 · FIELDS — one artboard per field type, with input states + cell renderings + notes
+          ───────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="field-text"
+        title="Text field"
+        subtitle="Single-line, multiline, mono — the most common field. Input states + table cell renderings.">
+        <DCArtboard id="study-text" label="text" width={1080} height={1180}>
+          <div className="ab-scroll vex-admin"><TextStudy /></div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="field-number"
+        title="Number field"
+        subtitle="Tabular numerals, stepper, prefix/suffix for currency and units.">
+        <DCArtboard id="study-number" label="number" width={1080} height={840}>
+          <div className="ab-scroll vex-admin"><NumberStudy /></div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="field-check"
+        title="Checkbox field"
+        subtitle="Single boolean, group, indeterminate. Cells render as compact dot+label.">
+        <DCArtboard id="study-check" label="checkbox" width={1080} height={920}>
+          <div className="ab-scroll vex-admin"><CheckStudy /></div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="field-select"
+        title="Select field"
+        subtitle="Single choice from a fixed list. Status is the canonical example.">
+        <DCArtboard id="study-select" label="select" width={1080} height={960}>
+          <div className="ab-scroll vex-admin"><SelectStudy /></div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="field-date"
+        title="Date field"
+        subtitle="Date and date+time. Cells use absolute format with optional relative tag.">
+        <DCArtboard id="study-date" label="date" width={1080} height={880}>
+          <div className="ab-scroll vex-admin"><DateStudy /></div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="field-url"
+        title="URL field"
+        subtitle="External and internal links. Inputs show verification status; cells split host and path.">
+        <DCArtboard id="study-url" label="url" width={1080} height={880}>
+          <div className="ab-scroll vex-admin"><UrlStudy /></div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="field-relationship"
+        title="Relationship field"
+        subtitle="The most-used surface in any CMS — three patterns by context, plus all trigger and cell states.">
+        <DCArtboard id="study-rel" label="relationship" width={1080} height={1900}>
+          <div className="ab-scroll vex-admin"><RelationshipStudy /></div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="field-upload"
+        title="Upload field"
+        subtitle="References a media collection. Dropzone, library picker, single + array, progress, error, cell — every state.">
+        <DCArtboard id="study-upload" label="upload" width={1080} height={1640}>
+          <div className="ab-scroll vex-admin"><UploadStudy /></div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="media-picker"
+        title="Media picker"
+        subtitle="Opens from any upload field or the 'Browse library' link. Select existing or upload new; multi-select for array fields.">
+        <DCArtboard id="picker-single" label="Picker · single select" width={1280} height={820}>
+          <div className="ab-frame vex-admin">
+            <ABShell activeKey="posts" page={<EditViewSingle />} />
+            <div className="vex-overlay" style={{ position: "absolute", zIndex: 100 }}>
+              <MediaPicker collection="images" selected={["img_03"]} />
+            </div>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="picker-multi" label="Picker · multi select" width={1280} height={820}>
+          <div className="ab-frame vex-admin">
+            <ABShell activeKey="posts" page={<EditViewSingle />} />
+            <div className="vex-overlay" style={{ position: "absolute", zIndex: 100 }}>
+              <MediaPicker collection="images" multi selected={["img_01", "img_03", "img_06"]} />
+            </div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="media-create"
+        title="Create media document"
+        subtitle="The Edit action on an upload field opens a tabbed modal: pick from the media collection, or upload a file and fill the new media document (required name + file, optional alt, adapter-declared fields).">
+        <DCArtboard id="mm-library" label="Modal · Library tab" width={1080} height={620}>
+          <div className="ab-scroll vex-admin"><MediaModalStudy /></div>
+        </DCArtboard>
+        <DCArtboard id="mm-create-inshell" label="Create · in edit-page context" width={1280} height={860}>
+          <div className="ab-frame vex-admin">
+            <ABShell activeKey="posts" page={<EditViewSingle />} />
+            <div className="vex-overlay" style={{ position: "absolute", zIndex: 100 }}>
+              <MediaModalCreateForm />
+            </div>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="media-library"
+        title="Media library"
+        subtitle="The list view for a media collection — grid of assets instead of a table. Sidebar gains a dedicated Media section.">
+        <DCArtboard id="library-grid" label="Library · grid" width={1280} height={900}>
+          <ABShell activeKey="images" page={<MediaLibraryPage />} />
+        </DCArtboard>
+        <DCArtboard id="library-inspector" label="Library · asset inspector" width={1280} height={900}>
+          <ABShell activeKey="images" page={<MediaLibraryPage withInspector />} />
+        </DCArtboard>
+        <DCArtboard id="library-bulk" label="Library · bulk select" width={1280} height={900}>
+          <ABShell activeKey="images" page={<MediaLibraryPage bulk />} />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 5 · EMPTY STATES
+          ───────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="empty"
+        title="Empty states"
+        subtitle="A moment to point somewhere useful.">
+        <DCArtboard id="empty-all" label="Empty patterns" width={1080} height={780}>
+          <div className="ab-scroll vex-admin">
+            <EmptyStudies />
+          </div>
+        </DCArtboard>
+        <DCArtboard id="empty-collection" label="Collection · empty in shell" width={1280} height={820}>
+          <ABShell activeKey="posts" page={<PostsListView empty />} />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 6 · RESPONSIVE
+          ───────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="responsive"
+        title="Responsive"
+        subtitle="Tablet collapses the nav to an icon rail; phone reformats the table as cards.">
+
+        <DCArtboard id="tablet-list" label="Tablet · 1024 · icon rail" width={1024} height={780}>
+          <TabletList />
+        </DCArtboard>
+
+        <DCArtboard id="mobile-list" label="Mobile · 390 · cards" width={390} height={760}>
+          <div className="ab-fill vex-admin" style={{ position: "relative" }}>
+            <MobilePostsList />
+          </div>
+        </DCArtboard>
+
+        <DCArtboard id="mobile-edit" label="Mobile · 390 · stacked form" width={390} height={760}>
+          <div className="ab-fill vex-admin">
+            <MobileEdit />
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 7 · DARK MODE
+          ───────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="dark"
+        title="Dark mode"
+        subtitle="Same surface, dropped to graphite. Accent stays warm.">
+        <DCArtboard id="dark-dashboard" label="Dashboard · dark" width={1280} height={820}>
+          <ABShell activeKey="dashboard" dark page={<DashboardView />} />
+        </DCArtboard>
+        <DCArtboard id="dark-list" label="Posts list · dark" width={1280} height={820}>
+          <ABShell activeKey="posts" dark page={<PostsListView />} />
+        </DCArtboard>
+        <DCArtboard id="dark-edit" label="Edit · dark" width={1280} height={1100}>
+          <ABShell activeKey="posts" dark page={<EditViewTwoCol />} />
+        </DCArtboard>
+      </DCSection>
+
+      {/* ─────────────────────────────────────────────────────────────
+          SECTION 8 · NOTES
+          ───────────────────────────────────────────────────────────── */}
+      <DCSection
+        id="notes"
+        title="Design notes"
+        subtitle="A few decisions worth calling out.">
+        <DCArtboard id="note-system" label="The system" width={520} height={420}>
+          <div style={{ padding: 28, fontSize: 13.5, lineHeight: 1.55, color: "#2a251f", height: "100%", overflow: "auto", background: "#fff" }}>
+            <div style={{ fontSize: 11, fontFamily: "ui-monospace, monospace", color: "#a39684", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>System</div>
+            <h3 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 600 }}>One canvas, two surfaces</h3>
+            <p style={{ margin: "0 0 10px" }}>The admin is a list of <b>collections</b> and a <b>document editor</b>. Everything else is a variation of those two.</p>
+            <p style={{ margin: "0 0 10px" }}>The list keeps the table dense and quiet — selectable, filterable, sortable. The editor centers the form at 720px and pushes meta to the right rail (or hides it behind an icon).</p>
+            <p style={{ margin: 0, color: "#666" }}>The orange accent is reserved for primary action, active selection, and the "live" indicator. Nothing else gets it.</p>
+          </div>
+        </DCArtboard>
+
+        <DCArtboard id="note-rels" label="On relationships" width={520} height={420}>
+          <div style={{ padding: 28, fontSize: 13.5, lineHeight: 1.55, color: "#2a251f", height: "100%", overflow: "auto", background: "#fff" }}>
+            <div style={{ fontSize: 11, fontFamily: "ui-monospace, monospace", color: "#a39684", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Relationships</div>
+            <h3 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 600 }}>Three patterns, picked by context</h3>
+            <p style={{ margin: "0 0 8px" }}><b>Popover</b> — single ref, short hasMany. The default.</p>
+            <p style={{ margin: "0 0 8px" }}><b>Side panel</b> — long hasMany or curated lists where ordering matters. Persistent until dismissed.</p>
+            <p style={{ margin: 0 }}><b>Inline drawer</b> — polymorphic refs. Pick a kind first, then a doc. The picker stays in the form's flow so you don't lose context.</p>
+          </div>
+        </DCArtboard>
+
+        <DCArtboard id="note-live" label="On live data" width={520} height={420}>
+          <div style={{ padding: 28, fontSize: 13.5, lineHeight: 1.55, color: "#2a251f", height: "100%", overflow: "auto", background: "#fff" }}>
+            <div style={{ fontSize: 11, fontFamily: "ui-monospace, monospace", color: "#a39684", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Live</div>
+            <h3 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 600 }}>Convex is reactive — say so</h3>
+            <p style={{ margin: "0 0 10px" }}>The "Convex · Live" pip in the sidebar isn't decoration; when a coworker edits a doc you have open, the form updates under your cursor.</p>
+            <p style={{ margin: 0 }}>The table reflects writes the moment they land. No polling, no manual refresh. The unsaved-changes dot in the topbar is the only thing that's optimistic.</p>
+          </div>
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+</body>
+</html>

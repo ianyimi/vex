@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 
 import { createResolver } from "./loadConfig.js";
 
@@ -20,6 +20,9 @@ const IMPORT_RE =
  * - `node_modules` paths (external packages)
  * - `_generated` paths (Convex codegen output)
  * - The output file itself (prevents infinite regeneration loops)
+ * @param entryPath - Path to the file to start tracing imports from (typically the vex config).
+ * @param outputPath - Path of the generated file to exclude from the results, avoiding self-referential watch loops.
+ * @returns The deduplicated list of local file paths reachable from `entryPath`, including `entryPath` itself.
  */
 export function traceImports(
   entryPath: string,
@@ -61,7 +64,18 @@ export function traceImports(
         }
       }
 
-      if (resolved.includes("node_modules")) continue;
+      if (resolved.includes("node_modules")) {
+        // Follow symlinks — pnpm workspace packages resolve through node_modules
+        // but symlink to packages/ in the monorepo. Include those so changes to
+        // local packages trigger a re-run without needing to touch vex.config.ts.
+        try {
+          const real = realpathSync(resolved);
+          if (real.includes("node_modules")) continue;
+          resolved = real;
+        } catch {
+          continue;
+        }
+      }
       if (resolved.includes("_generated")) continue;
       if (resolved === outputPath) continue;
 

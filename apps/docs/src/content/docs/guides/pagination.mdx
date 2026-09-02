@@ -1,0 +1,189 @@
+---
+title: Pagination
+description: Cursor-based Load More pagination for VexCMS collections with usePaginatedQuery, DataTable, and per-collection page-size configuration.
+---
+
+The admin panel's list views use a cursor-based **Load More** pattern, not page-number
+pagination. `usePaginatedQuery` accumulates pages fetched from Convex's native cursor
+pagination on the server, while a smaller client page size slices a visible window out of
+what's already been fetched — so clicking Load More against data that's already in memory
+never round-trips to the server.
+
+## How it works
+
+- The server fetches in batches of `paginationOpts.numItems` (a Convex cursor page) via
+  `find({ collection, paginationOpts })`.
+- The hook accumulates every document fetched from the server so far, then slices that
+  buffer into the visible page at `clientPageSize` boundaries. Clicking Load More first
+  exhausts the already-fetched buffer client-side; only once the buffer runs out does it
+  advance the server cursor and issue a new fetch.
+- `totalDocs` is requested via `paginationOpts.totalDocs: true` and is computed only on the
+  FIRST page. It resolves to a `number` on success, `null` when the collection exceeds
+  Convex's ~32k-document transaction scan limit, and `undefined` before it's loaded or when
+  not requested.
+- `initialData` (typically a server-fetched first page) seeds the first render with no
+  loading flash — this is what the Next.js admin page passes into the list view before
+  hydration.
+
+## Setup: per-collection page size
+
+`admin.table` on `defineCollection` controls the defaults `usePaginatedQuery` reads:
+
+```ts
+import { defineCollection, text } from "@vexcms/core";
+
+export const posts = defineCollection({
+  slug: "posts",
+  fields: { title: text({ required: true }) },
+  admin: {
+    table: {
+      defaultPageSize: 25, // client-visible rows revealed per Load More click
+      serverPageSize: 100, // rows fetched from Convex per server round-trip
+      pageSizeOptions: [10, 25, 50, 100],
+      defaultSort: { field: "_creationTime", order: "desc" },
+      bulkActions: { delete: true },
+    },
+  },
+});
+```
+
+`serverPageSize` should be `>= defaultPageSize`. The built-in admin list view computes the
+server fetch size as `Math.max(serverPageSize, defaultPageSize)`, so a single Load More
+click never needs an extra server round-trip just to fill one client page.
+
+## Basic usage: a custom list outside the admin panel
+
+Row types are never hand-rolled — `vex generate` (and `vex dev`) writes an
+interface for every collection and global into your project's `vex.types.ts`,
+named by the collection's `interfaceName` (`posts` → `Post` here). Import the
+generated type; if the shape drifts from your config, regeneration fixes it and
+the compiler tells you.
+
+`usePaginatedQuery` doesn't require the admin panel or `DataTable` — this is a self-contained
+"Load more posts" list for a public page:
+
+```tsx
+"use client";
+
+import { usePaginatedQuery } from "@vexcms/react";
+import type { Post } from "~/vex.types";
+
+export function PostList() {
+  const pagination = usePaginatedQuery<Post>({
+    query: {
+      collection: "posts",
+      paginationOpts: { numItems: 20, cursor: null },
+    },
+  });
+
+  return (
+    <>
+      <ul>
+        {pagination.results.map((post) => (
+          <li key={post._id}>{post.title}</li>
+        ))}
+      </ul>
+      {!pagination.isDone && (
+        <button onClick={pagination.loadMore} disabled={pagination.isPending}>
+          {pagination.isPending ? "Loading…" : "Load more"}
+        </button>
+      )}
+    </>
+  );
+}
+```
+
+## A table view: usePaginatedQuery + DataTable
+
+You know which collection you're rendering, so hardcode its slug and use its
+generated row type — the same wiring the built-in `CollectionListView` uses,
+specialized to one collection. Page sizes read from the collection's own
+config rather than being repeated inline:
+
+```tsx
+"use client";
+
+import type { ColumnDef } from "@tanstack/react-table";
+import { DataTable, usePaginatedQuery } from "@vexcms/react";
+import type { Post } from "~/vex.types";
+import { posts } from "~/vexcms/collections/posts";
+
+const columns: ColumnDef<Post>[] = [
+  { accessorKey: "title", header: "Title" },
+  { accessorKey: "status", header: "Status" },
+];
+
+const numItems = Math.max(
+  posts.admin.table.serverPageSize,
+  posts.admin.table.defaultPageSize,
+);
+
+export function PostsTable() {
+  const pagination = usePaginatedQuery<Post>({
+    query: {
+      collection: "posts",
+      paginationOpts: { numItems, totalDocs: true, cursor: null },
+    },
+    clientPageSize: posts.admin.table.defaultPageSize,
+  });
+
+  return (
+    <DataTable
+      data={pagination.results}
+      columns={columns}
+      isDone={pagination.isDone}
+      onLoadMore={pagination.loadMore}
+      isLoadingMore={pagination.isPending}
+      totalCount={pagination.totalDocs}
+    />
+  );
+}
+```
+
+## Showing the total count
+
+`totalDocs` needs its "over the count limit" case handled explicitly — it's `null`, not
+`0`, once the collection passes 32k documents:
+
+```tsx
+<p>
+  {pagination.isPending
+    ? "Loading…"
+    : pagination.totalDocs != null
+      ? `${pagination.totalDocs.toLocaleString()} documents`
+      : "10,000+ documents"}
+</p>
+```
+
+## Seeding the first render from the server
+
+Pass a server-fetched first page as `initialData` so the client hook renders immediately
+instead of showing a loading state on mount — this mirrors what the Next.js admin route
+does before handing off to the client component:
+
+```ts
+// app/posts/page.tsx (server component)
+import { fetchQuery } from "convex/nextjs";
+import { vexConvexApi } from "@vexcms/core";
+
+const initialData = await fetchQuery(vexConvexApi.findPaginated, {
+  collection: "posts",
+  paginationOpts: { numItems: 20, totalDocs: true, cursor: null },
+});
+```
+
+Pass `initialData` straight into `usePaginatedQuery({ initialData, query, clientPageSize })`
+on the client — it's only consulted on the very first render (`cursor === null`).
+
+## Gotchas
+
+- **`loadMore` takes no arguments.** Page size is fixed for the hook's lifetime via
+  `clientPageSize`/`paginationOpts.numItems`, not passed per call.
+- **`isPending` covers both "first load" and "Load More in flight."** There's no separate
+  loading flag — a first-render skeleton and a Load More spinner read the same boolean.
+- **`totalDocs` is captured once, from the first page's response, and cached client-side.**
+  It does not update if documents are created or deleted afterward without a full re-mount
+  of the hook.
+- **`DataTable`'s `totalCount` prop is the hook's `totalDocs` field, renamed.** The
+  component prop and the hook's return field don't share a name — double-check which one
+  you're threading through when composing a custom list view.

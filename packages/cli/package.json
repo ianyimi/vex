@@ -1,6 +1,23 @@
 {
   "name": "@vexcms/cli",
-  "version": "0.0.20",
+  "version": "0.1.0-alpha.7",
+  "description": "VexCMS CLI: dev server orchestration and type generation",
+  "keywords": [
+    "cms",
+    "headless-cms",
+    "convex",
+    "typescript",
+    "cli"
+  ],
+  "license": "Apache-2.0",
+  "author": "Isaiah Anyimi",
+  "homepage": "https://docs.vexcms.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianyimi/vex.git",
+    "directory": "packages/cli"
+  },
+  "sideEffects": false,
   "type": "module",
   "bin": {
     "vex": "./dist/index.js"
@@ -17,29 +34,31 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "dev": "node --watch-path src watch.mjs",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "test": "vitest run"
   },
   "dependencies": {
-    "chokidar": "^4.0.0",
-    "jiti": "^2.4.0"
+    "chokidar": "catalog:",
+    "jiti": "catalog:"
   },
   "peerDependencies": {
-    "@vexcms/core": "workspace:*",
-    "convex": ">=1.0.0"
+    "@vexcms/core": "workspace:^",
+    "convex": "catalog:peers"
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
+    "@types/node": "catalog:",
     "@vexcms/core": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",
+    "convex": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "tag": "alpha"
   }
 }

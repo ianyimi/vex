@@ -54,12 +54,25 @@ function stripJsonComments(input: string): string {
  * Handles patterns like:
  *   "~/*": ["./src/*"]   → alias: { "~": "/abs/path/to/src" }
  *   "@convex/*": ["./convex/*"] → alias: { "@convex": "/abs/path/to/convex" }
+ * @param startDir - Directory to start searching upward from.
+ * @returns The directory containing `tsconfig.json`, or `startDir` if none is found up to the filesystem root.
  */
+function findTsconfigDir(startDir: string): string {
+  let dir = startDir;
+  while (true) {
+    if (existsSync(resolve(dir, "tsconfig.json"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) return startDir; // filesystem root — give up
+    dir = parent;
+  }
+}
+
 function buildAliasFromTsconfig(cwd: string): Record<string, string> {
   const alias: Record<string, string> = {};
+  const tsconfigDir = findTsconfigDir(cwd);
 
   try {
-    const raw = readFileSync(resolve(cwd, "tsconfig.json"), "utf-8");
+    const raw = readFileSync(resolve(tsconfigDir, "tsconfig.json"), "utf-8");
     const tsconfig = JSON.parse(stripJsonComments(raw));
     const paths: Record<string, string[]> = tsconfig?.compilerOptions?.paths;
     if (!paths) return alias;
@@ -71,7 +84,7 @@ function buildAliasFromTsconfig(cwd: string): Record<string, string> {
       // Only map wildcard patterns: "foo/*" → ["./bar/*"]
       if (pattern.endsWith("/*") && target.endsWith("/*")) {
         const key = pattern.slice(0, -2); // "~" or "@convex"
-        const value = resolve(cwd, target.slice(0, -2)); // absolute path
+        const value = resolve(tsconfigDir, target.slice(0, -2)); // absolute path
         alias[key] = value;
       }
     }
@@ -99,6 +112,7 @@ function createJitiOptions(cwd: string): JitiOptions {
  * Load .env.local into process.env so that vex.config.ts and its
  * transitive imports (e.g. auth options using process.env.BETTER_AUTH_SECRET)
  * can resolve environment variables when run from the CLI.
+ * @param cwd - Project directory to look for `.env.local` in.
  */
 function loadDotEnv(cwd: string): void {
   const envPath = resolve(cwd, ".env.local");
@@ -137,6 +151,7 @@ function loadDotEnv(cwd: string): void {
  * On first run (new project), this file doesn't exist yet but schema.ts imports it.
  * Creates an empty placeholder that exports nothing — the generate step will
  * overwrite it with the real schema immediately after config loads.
+ * @param cwd - Project directory containing the `convex` folder.
  */
 function ensureSchemaFileExists(cwd: string): void {
   const schemaPath = resolve(cwd, "convex/vex.schema.ts");
@@ -157,6 +172,12 @@ function ensureSchemaFileExists(cwd: string): void {
   }
 }
 
+/**
+ * Load and validate the project's `vex.config.ts` (or equivalent), resolving
+ * environment variables and tsconfig path aliases via jiti before evaluating it.
+ * @param configPath - Absolute path to the vex config file.
+ * @returns The evaluated, validated `VexConfig` object.
+ */
 export async function loadConfig(configPath: string): Promise<VexConfig> {
   const cwd = dirname(configPath);
 
@@ -190,7 +211,11 @@ export async function loadConfig(configPath: string): Promise<VexConfig> {
   return config as VexConfig;
 }
 
-/** Create a jiti instance for import resolution (used by traceImports). */
+/**
+ * Create a jiti instance for import resolution (used by traceImports).
+ * @param configPath - Absolute path to the vex config file, used to derive the project root and jiti alias config.
+ * @returns A configured jiti instance for resolving the config's imports.
+ */
 export function createResolver(configPath: string) {
   const cwd = dirname(configPath);
   return createJiti(configPath, createJitiOptions(cwd));
@@ -202,8 +227,17 @@ export function createResolver(configPath: string) {
  * This function reads the existing file, adds the required paths if missing,
  * and writes it back.
  *
+ * Never injects `baseUrl` — it's deprecated in TypeScript 6/7 and errors
+ * under `moduleResolution: "Bundler"`; a `baseUrl` of exactly `"."` left
+ * over from an older scaffold is actively deleted (self-heal). Also
+ * ensures `../src/vex.types.ts` is listed in `include` — Convex rewrites
+ * this file on every provisioning pass and would otherwise drop it,
+ * making the project's `GeneratedVexTypes` module augmentation invisible
+ * to the convex program.
+ *
  * Call this after starting Convex dev to ensure the bundler can resolve
  * `~/...` and `@convex/...` imports in Convex function files.
+ * @param cwd - Project directory containing the `convex` folder.
  */
 export function patchConvexTsconfig(cwd: string): void {
   const tsconfigPath = resolve(cwd, "convex/tsconfig.json");
@@ -216,9 +250,11 @@ export function patchConvexTsconfig(cwd: string): void {
     const compilerOptions = tsconfig.compilerOptions ?? {};
     let changed = false;
 
-    // Ensure baseUrl
-    if (!compilerOptions.baseUrl) {
-      compilerOptions.baseUrl = ".";
+    // Self-heal: baseUrl is deprecated in TS6/7 and was never required —
+    // paths below resolve fine without it. Only drop the exact value this
+    // patcher used to inject, never a user's deliberate custom baseUrl.
+    if (compilerOptions.baseUrl === ".") {
+      delete compilerOptions.baseUrl;
       changed = true;
     }
 
@@ -239,6 +275,15 @@ export function patchConvexTsconfig(cwd: string): void {
     if (!lib.includes("dom.iterable")) {
       lib.push("dom.iterable");
       compilerOptions.lib = lib;
+      changed = true;
+    }
+
+    // Ensure the generated vex.types.ts augmentation is part of the convex
+    // program — Convex rewrites `include` on every provisioning pass.
+    const include: string[] = tsconfig.include ?? [];
+    if (!include.includes("../src/vex.types.ts")) {
+      include.push("../src/vex.types.ts");
+      tsconfig.include = include;
       changed = true;
     }
 

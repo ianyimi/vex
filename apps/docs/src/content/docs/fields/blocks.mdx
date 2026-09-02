@@ -1,0 +1,196 @@
+---
+title: blocks field
+description: Stores an ordered, heterogeneous list of typed content blocks — hero sections, feature grids, rich-media rows, and any modular page-layout structure.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+A `blocks()` field stores an ordered, heterogeneous list of typed block objects.
+Each block carries a `blockType` discriminant (e.g. `"heading"`, `"image"`,
+`"cta"`) that identifies which block definition it matches, plus an `id` for
+stable React reconciliation and an optional `blockName` for user-editable labels.
+
+Common uses: page builders, hero sections, feature grids, FAQ accordions,
+rich-media rows, and any modular content layout where editors mix and reorder
+different content types.
+
+The admin panel renders a dynamic collapsible list with a searchable block-type
+picker dialog. Each block item shows an inline name input, a type badge, and
+sub-field inputs for the block's own fields.
+
+## Defining blocks
+
+Before using `blocks()`, define each block type with `defineBlock()`:
+
+```ts
+import { defineBlock, text, select, number } from "@vexcms/core";
+
+const headingBlock = defineBlock({
+  slug: "heading",
+  label: "Heading",
+  admin: { icon: "heading" },
+  fields: {
+    level: select({
+      options: [
+        { label: "H1", value: "h1" },
+        { label: "H2", value: "h2" },
+        { label: "H3", value: "h3" },
+      ],
+    }),
+    text: text({ required: true }),
+  },
+});
+
+const imageBlock = defineBlock({
+  slug: "image",
+  label: "Image",
+  admin: { icon: "image" },
+  fields: {
+    url: text({ required: true, admin: { placeholder: "https://..." } }),
+    alt: text({ required: true }),
+    width: number(),
+  },
+});
+```
+
+Three keys are **injected automatically** on every block item and must not
+appear in the `fields` object: `blockType`, `blockName`, and `id`.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `blocks` | `BlockConfig[]` | — | **Required.** Array of block definitions created via `defineBlock()`. |
+| `interfaceName` | `string` | — | Optional TypeScript union alias name. When set, emits a named union type (e.g. `PageBlock[]`) instead of an inline union. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
+| `defaultValue` | `Record<string, unknown>[]` | `[]` | Pre-filled array shown in the admin form when creating a new document. |
+| `min.value` | `number` | — | Minimum number of block items. Zod-enforced; does not affect the generated Convex schema. |
+| `min.error` | `string` | — | Error message shown when the array has fewer than `min.value` items. |
+| `max.value` | `number` | — | Maximum number of block items. When reached, the "Add" button is disabled in the admin UI. |
+| `max.error` | `string` | — | Error message shown when the array has more than `max.value` items. |
+| `labels.singular` | `string` | `"Block"` | Label for a single item in add/remove controls (e.g. "Add Section"). |
+| `labels.plural` | `string` | `"Blocks"` | Label shown in the field header and empty state. |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders add/remove controls as non-interactive. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Alignment of the block count in the list-view table cell. |
+
+## Schema output
+
+```ts
+// Optional blocks array (default — required: false)
+body: v.optional(v.array(v.union(
+  v.object({ blockType: v.literal("heading"), blockName: v.optional(v.string()), id: v.string(), level: v.optional(v.string()), text: v.optional(v.string()) }),
+  v.object({ blockType: v.literal("image"), blockName: v.optional(v.string()), id: v.string(), url: v.optional(v.string()), alt: v.optional(v.string()), width: v.optional(v.number()) }),
+)))
+
+// Required blocks array with min/max
+body: v.array(v.union(
+  v.object({ blockType: v.literal("heading"), blockName: v.optional(v.string()), id: v.string(), level: v.optional(v.string()), text: v.optional(v.string()) }),
+  v.object({ blockType: v.literal("image"), blockName: v.optional(v.string()), id: v.string(), url: v.optional(v.string()), alt: v.optional(v.string()), width: v.optional(v.number()) }),
+)).min(1).max(10)
+
+// Single block type (no union — simpler schema)
+hero: v.array(v.object({ blockType: v.literal("hero"), blockName: v.optional(v.string()), id: v.string(), title: v.optional(v.string()), subtitle: v.optional(v.string()) }))
+```
+
+## Usage
+
+```ts
+import { defineCollection, blocks, defineBlock, text, select, number } from "@vexcms/core";
+
+// Define reusable block types
+const headingBlock = defineBlock({
+  slug: "heading",
+  label: "Heading",
+  admin: { icon: "heading" },
+  fields: {
+    level: select({ options: [{ label: "H1", value: "h1" }, { label: "H2", value: "h2" }] }),
+    text: text({ required: true }),
+  },
+});
+
+const paragraphBlock = defineBlock({
+  slug: "paragraph",
+  label: "Paragraph",
+  admin: { icon: "align-left" },
+  fields: { content: text({ required: true }) },
+});
+
+const spacerBlock = defineBlock({
+  slug: "spacer",
+  label: "Spacer",
+  admin: { icon: "move-vertical" },
+  fields: { height: number({ defaultValue: 24 }) },
+});
+
+const pages = defineCollection({
+  slug: "pages",
+  fields: {
+    // Basic blocks field with multiple block types
+    body: blocks({
+      blocks: [headingBlock, paragraphBlock, spacerBlock],
+    }),
+
+    // Named union alias with min/max constraints
+    sections: blocks({
+      label: "Page Sections",
+      interfaceName: "PageSection",
+      blocks: [headingBlock, paragraphBlock],
+      min: { value: 1, error: "At least one section is required." },
+      max: { value: 20 },
+      labels: { singular: "Section", plural: "Sections" },
+    }),
+
+    // Pre-filled default blocks
+    hero: blocks({
+      blocks: [headingBlock],
+      defaultValue: [
+        { blockType: "heading", id: "init-hero", level: "h1", text: "Welcome" },
+      ],
+    }),
+  },
+});
+```
+
+## Admin UI
+
+The blocks field renders as a dynamic collapsible list. An empty state shows
+a placeholder icon with "No [plural] yet." text. Each block item displays a
+drag handle, order number, type badge, and an inline `blockName` input for
+renaming. Sub-fields for the block are rendered when the item is expanded,
+using the same input components as standalone fields.
+
+A searchable dialog handles block-type selection when multiple block types
+are configured; a single block type skips the dialog and adds directly.
+The "Add [singular]" button is disabled when the `max` constraint is reached.
+Validation errors from `min`/`max` appear below the field after a submission
+attempt or when the form is touched.
+
+## TypeScript output
+
+When you use `defineBlock()` and `blocks()`, VexCMS generates TypeScript types
+automatically:
+
+```ts
+// Generated interface for the blocks field
+export type BodyBlock = HeadingBlock | ParagraphBlock | SpacerBlock;
+
+// Generated document interface
+export interface PagesDocument extends VexDocument {
+  _id: Id<"pages">;
+  body: BodyBlock[];
+  // ...other fields
+}
+
+// Each individual block type
+export type HeadingBlock = { blockType: "heading"; blockName?: string; id: string; level?: "h1" | "h2"; text?: string };
+export type ParagraphBlock = { blockType: "paragraph"; blockName?: string; id: string; content?: string };
+export type SpacerBlock = { blockType: "spacer"; blockName?: string; id: string; height?: number };
+```
+
+Set `interfaceName` on the blocks field to use a named union alias instead of
+the generated `BodyBlock[]` type.

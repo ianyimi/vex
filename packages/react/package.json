@@ -1,0 +1,104 @@
+{
+  "name": "@vexcms/react",
+  "version": "0.1.0-alpha.7",
+  "description": "React admin components and hooks for VexCMS",
+  "keywords": [
+    "cms",
+    "headless-cms",
+    "convex",
+    "typescript",
+    "react",
+    "admin"
+  ],
+  "license": "Apache-2.0",
+  "author": "Isaiah Anyimi",
+  "homepage": "https://docs.vexcms.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ianyimi/vex.git",
+    "directory": "packages/react"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles": "./styles.css"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "styles.css"
+  ],
+  "source": "./dist/**/*.js",
+  "scripts": {
+    "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@base-ui/react": "catalog:",
+    "@hello-pangea/dnd": "catalog:",
+    "@tanstack/react-form": "catalog:",
+    "@tanstack/react-table": "catalog:",
+    "@ts-hooks-kit/core": "catalog:",
+    "@uiw/react-color-sketch": "catalog:",
+    "@vexcms/better-auth": "workspace:*",
+    "@vexcms/core": "workspace:*",
+    "class-variance-authority": "catalog:",
+    "clsx": "catalog:",
+    "cmdk": "catalog:",
+    "date-fns": "catalog:",
+    "lucide-react": "catalog:",
+    "react-day-picker": "catalog:",
+    "react-dropzone": "catalog:",
+    "tailwind-merge": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@convex-dev/react-query": "catalog:peers",
+    "@tanstack/react-query": "catalog:peers",
+    "convex": "catalog:peers",
+    "next": "catalog:peers",
+    "nuqs": "catalog:peers",
+    "react": "catalog:peers",
+    "react-dom": "catalog:peers"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@convex-dev/react-query": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vexcms/tsconfig": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "convex": "catalog:",
+    "jsdom": "catalog:",
+    "next": "catalog:",
+    "nuqs": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
+  }
+}

@@ -8,6 +8,8 @@ import { resolve } from "node:path";
  * 1. `CONVEX_URL` env var
  * 2. `NEXT_PUBLIC_CONVEX_URL` env var
  * 3. `.env.local` file in `cwd`
+ * @param cwd - Project directory to look for a `.env.local` file in.
+ * @returns The resolved Convex deployment URL, or `null` if none was found.
  */
 export function resolveConvexUrl(cwd: string): string | null {
   // Check environment variables first

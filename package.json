@@ -3,27 +3,53 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev --concurrency 11",
-    "dev:app": "pnpm --filter www dev",
-    "dev:vex": "pnpm --filter www exec vex dev",
+    "dev": "turbo run dev --concurrency 12",
+    "dev:app": "pnpm --filter test dev",
+    "dev:vex": "node scripts/vex-dev.mjs",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "coverage": "turbo run coverage",
     "test:e2e": "turbo run test:e2e",
+    "typedoc": "pnpm --filter docs build",
     "clean": "turbo run clean && rm -rf node_modules",
+    "clear": "rm -rf apps/test/.next apps/test/node_modules/.cache",
     "changeset": "changeset",
     "version:packages": "changeset version && node scripts/sync-template-versions.mjs",
-    "release": "pnpm --filter \"@vexcms/*\" --filter \"create-vexcms\" build && changeset publish"
+    "release": "pnpm --filter \"@vexcms/*\" --filter \"create-vexcms\" build && pnpm publish -r --no-git-checks --tag alpha && changeset tag",
+    "verify:scaffold": "node scripts/verify-scaffold.mjs",
+    "lint": "eslint \"packages/*/src/**/*.{ts,tsx}\"",
+    "lint:fix": "eslint --fix \"packages/*/src/**/*.{ts,tsx}\""
   },
   "devDependencies": {
-    "@changesets/cli": "2.30.0",
+    "@changesets/cli": "catalog:",
+    "@eslint/js": "catalog:",
+    "@typescript-eslint/eslint-plugin": "catalog:",
+    "@typescript-eslint/parser": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
+    "eslint": "catalog:",
+    "eslint-plugin-jsdoc": "catalog:",
+    "jiti": "catalog:",
     "prettier": "catalog:",
-    "turbo": "^2.8.10",
+    "turbo": "catalog:",
     "typescript": "catalog:"
   },
-  "packageManager": "pnpm@10.30.2+sha512.36cdc707e7b7940a988c9c1ecf88d084f8514b5c3f085f53a2e244c2921d3b2545bc20dd4ebe1fc245feec463bb298aecea7a63ed1f7680b877dc6379d8d0cb4",
   "engines": {
     "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@10.30.2+sha512.36cdc707e7b7940a988c9c1ecf88d084f8514b5c3f085f53a2e244c2921d3b2545bc20dd4ebe1fc245feec463bb298aecea7a63ed1f7680b877dc6379d8d0cb4",
+  "pnpm": {
+    "patchedDependencies": {
+      "@convex-dev/better-auth@0.11.5": "patches/@convex-dev__better-auth@0.11.5.patch"
+    },
+    "overrides": {
+      "@better-auth/passkey": "1.6.23"
+    },
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "@convex-dev/better-auth>better-auth": "1.6.23",
+        "better-call": "2",
+        "typescript": "6"
+      }
+    }
   }
 }

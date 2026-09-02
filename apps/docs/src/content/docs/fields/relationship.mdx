@@ -1,0 +1,128 @@
+---
+title: relationship field
+description: Stores Convex Id references pointing to documents in another registered collection, with a searchable picker in the admin panel.
+---
+
+A `relationship()` field stores one or more Convex `Id` references pointing to
+documents in another registered collection. The generated Convex schema always
+emits `v.array(v.id("slug"))` — `hasMany` is a UI-only hint that controls
+whether the admin picker allows a single selection or multiple. VexCMS
+auto-generates a `.index("by_<fieldKey>", ["<fieldKey>"])` for every relationship
+field, and adds a `.searchIndex("search_<useAsTitle>", …)` on the target
+collection whenever one of its fields is referenced — so the picker's search
+works out of the box with no extra config.
+
+After running `vex generate`, passing an unregistered collection slug is a
+compile-time error.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `collection.slug` | `CollectionSlug` | *(required)* | Slug of the target collection. Must be a registered collection in `defineConfig`. |
+| `hasMany` | `boolean` | `false` | UI hint — `false` shows a single-selection picker, `true` shows a multi-selection picker. Does not change the Convex schema type. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema and the form allows leaving it empty. |
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders the picker as non-interactive — value is visible but cannot be changed. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
+| `admin.components.preview` | Component | — | Per-field override for the relationship preview renderer. Wins over the target collection's `admin.components.preview`. |
+
+## Schema output
+
+```ts
+// Single reference (hasMany: false, required: true)
+author: v.array(v.id("authors"))
+
+// Single reference (hasMany: false, required: false — default)
+author: v.optional(v.array(v.id("authors")))
+
+// Multi-reference (hasMany: true, required: false)
+tags: v.optional(v.array(v.id("tags")))
+```
+
+Auto-generated indexes:
+
+```ts
+// For every relationship field — added automatically, no config needed
+.index("by_author", ["author"])
+
+// On the *target* collection — added when another collection links to it
+// and useAsTitle is not a system field
+.searchIndex("search_title", { searchField: "title", filterFields: [] })
+```
+
+## Usage
+
+```ts
+import { defineCollection, relationship, text } from "@vexcms/core";
+
+// Single reference — stores the author's Id
+const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    title: text({ required: true }),
+    author: relationship({ collection: { slug: "authors" } }),
+  },
+});
+
+// Multi-reference — stores an array of tag Ids
+const articles = defineCollection({
+  slug: "articles",
+  fields: {
+    title: text({ required: true }),
+    tags: relationship({
+      collection: { slug: "tags" },
+      hasMany: true,
+      required: false,
+    }),
+  },
+});
+```
+
+## Custom preview component
+
+By default the picker and list table show the target document's `useAsTitle`
+field. Override the renderer at the **collection level** (applies everywhere
+that collection appears as a relationship target) or at the **field level**
+(overrides the collection default for just that field).
+
+```ts
+// Collection-level preview — applied everywhere "authors" is a relationship target
+const authors = defineCollection({
+  slug: "authors",
+  fields: { name: text({ required: true }), avatar: url() },
+  admin: {
+    useAsTitle: "name",
+    components: {
+      // React: AuthorPreview must accept RelationshipPreviewProps
+      preview: AuthorPreview,
+    },
+  },
+});
+
+// Field-level override — only applies to the `author` field on `posts`
+const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    author: relationship({
+      collection: { slug: "authors" },
+      admin: {
+        components: { preview: CompactAuthorPreview },
+      },
+    }),
+  },
+});
+```
+
+## Admin UI
+
+The relationship field renders as a searchable combobox picker in the edit form.
+Typing into the picker searches the target collection's `useAsTitle` field via
+the auto-generated search index. When `hasMany: false`, selecting a result
+replaces the current value; when `hasMany: true`, results are added to the
+selection list and can be removed individually. In the list-view table, the cell
+renders each referenced document's preview component (or title field as a
+fallback).

@@ -1,3 +1,5 @@
-export { blocks } from "./config";
-export { blocksToValueTypeString } from "./schemaValueType";
-export { blocksColumnDef } from "./columnDef";
+// Re-export the factory function
+export * from "./config";
+export * from "./types";
+export * from "./validator";
+export * from "./inputSchema";

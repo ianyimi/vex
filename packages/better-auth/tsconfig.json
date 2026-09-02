@@ -1,5 +1,5 @@
 {
-  "extends": "@vexcms/tsconfig/base.json",
+  "extends": "@vexcms/tsconfig/react-library.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",

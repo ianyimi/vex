@@ -1,0 +1,522 @@
+# @vexcms/ui
+
+## 0.1.0-alpha.7
+
+### Patch Changes
+
+- 84f09e4: Fix `select` fields being unusable below the fold, and add a client hook for
+  gating admin affordances.
+
+  **Root cause.** Opening a `select` field on a scrolled admin page threw the
+  viewport violently — measured on the real component as a 1341px jump that
+  moved the trigger off the bottom of the screen. A floating popup is positioned
+  by floating-ui a frame or two after it mounts; until then it sits wherever the
+  portal put it — the end of `<body>`, thousands of pixels from the trigger. Two
+  things reached into the popup during that window, and each natively scrolls
+  the page to the popup's pre-position location:
+
+  1. **cmdk** `scrollIntoView({ block: "nearest" })`s its highlighted item in a
+     layout effect at mount — captured with a stack trace
+     (`pageScroll 1380 → 39`). `scrollIntoView` walks every scrollable ancestor
+     and has no `preventScroll` option; it cannot be made safe, only made a
+     no-op.
+  2. **Initial focus.** Base UI prevents scrolling only when focusing the popup
+     element itself; inner tabbables like the search input get a plain
+     `focus()`. The `search={false}` branch was worse — a mount-time
+     `<button autoFocus>`, which fires strictly before positioning.
+
+  `MultiSelectContent` now keeps its content at `display: none` until the popup
+  is positioned — an element with no boxes is skipped by `scrollIntoView` per
+  spec — then reveals it, focuses the search input (or the hidden keyboard
+  target) with `preventScroll: true`, and performs the highlighted-item scroll
+  itself inside the now-in-viewport popup. Regression tests pin that focus still
+  lands on open. Verified against the live admin edit form: zero page movement
+  with the trigger at the top, middle, and bottom of the viewport, through full
+  open → pick → close cycles.
+
+  **`MultiSelect` gains a `modal` prop** (default `false`). The popover was
+  hardcoded modal, which locks page scroll — wrong for a form field on a normal
+  page, needed inside a dialog so the popover joins that surface's focus trap.
+  Fields are rendered generically with no prop channel, so the new
+  `ModalSurfaceProvider` / `useModalSurface` pair carries it: `Modal` provides
+  the surface and `SelectFieldInput` reads it.
+
+  **New: `useCanAccessAdminPanel()`.** Evaluates the same `canAccessAdminPanel`
+  predicate the admin route runs server-side, so an "Admin" link in site chrome
+  cannot offer a destination that redirects to `/unauthorized`. Fails closed on
+  missing access config or missing user — `hasPermission` alone returns `true`
+  with no config, which is correct server-side ("RBAC not configured") and wrong
+  client-side, where the same absence just means "no provider on this public
+  route".
+
+- 84f09e4: `GlobalEditView`'s header and form controls are now sticky, matching
+  `CollectionEditView`: the title row pins below the admin top bar (`sticky top-12`
+  over an opaque `bg-background`) so Save/Reset stay reachable while scrolling a
+  long global — previously they scrolled away, which a global like `siteSettings`
+  hits immediately once it carries SEO, theme, and social field groups.
+- Updated dependencies [84f09e4]
+  - @vexcms/core@0.1.0-alpha.7
+  - @vexcms/better-auth@0.1.0-alpha.7
+
+## 0.1.0-alpha.6
+
+### Patch Changes
+
+- Admin edit-form fixes found while dogfooding a live scaffold post-alpha.5.
+
+  `FormBlocks` and `MediaUploadForm`'s block/file accordions are now controlled
+  (`value`/`onValueChange`) instead of recomputing an uncontrolled `defaultValue`
+  from live item state every render. Base UI's Accordion logs "A component is
+  changing the default value state of an uncontrolled Accordion after being
+  initialized" whenever that recomputed array differs from what it captured at
+  mount — real whenever items load asynchronously (the owning document arriving
+  after first mount) or files are appended after the accordion already
+  mounted (multi-select "Add more" / a second drag-drop). Newly-appeared item
+  ids still open according to `admin.defaultCollapsed`, and the user's manual
+  toggles persist.
+
+  `DragHandle` no longer throws `useDraggableInstanceContext must be called
+from within a Draggable component` when it renders outside a `Draggable`
+  ancestor — e.g. `FilledInput`'s single-value (non-`hasMany`) upload rows,
+  which render a `DragHandle` for layout alignment but were never wrapped in
+  `Draggable`. It now reads the ancestor context directly (nullable) and falls
+  back to the same static/inert render already used when DnD isn't mounted or
+  the handle is disabled, instead of requiring every caller to guarantee a
+  `Draggable` wrapper.
+  - @vexcms/core@0.1.0-alpha.6
+  - @vexcms/better-auth@0.1.0-alpha.6
+
+## 0.1.0-alpha.5
+
+### Patch Changes
+
+- Three small fixes found while dogfooding a live scaffold post-alpha.4.
+
+  `FilledInput`'s per-item remove button now respects the upload field's
+  `readOnly` config (`disabled={readOnly || Boolean(accessError)}`) instead of
+  only disabling on an access error — collection views that mark the field
+  read-only could still delete uploaded media.
+
+  `AccordionTrigger`'s `postIconChildren` now render as a `Header` sibling
+  instead of nested inside `AccordionPrimitive.Trigger`. The Trigger renders a
+  native `<button>`, so a `<Button>` (or other interactive element) passed as
+  `postIconChildren` produced invalid `<button>` nesting and a hydration error;
+  moving it outside also drops the need for `e.stopPropagation()` to keep the
+  action clickable without toggling the accordion.
+
+  `create-vexcms`'s `base-nextjs` template auto-derives `next.config.ts`'s
+  `images.remotePatterns` Convex hostname from `NEXT_PUBLIC_CONVEX_URL` instead
+  of leaving a commented-out placeholder for the developer to fill in by hand;
+  falls back to an empty list when the URL is unset or unparsable (e.g. a
+  deployment-less build with `SKIP_ENV_VALIDATION`).
+  - @vexcms/core@0.1.0-alpha.5
+  - @vexcms/better-auth@0.1.0-alpha.5
+
+## 0.1.0-alpha.4
+
+### Minor Changes
+
+- b111985: `generateUploadUrl` now carries the target collection: `VexMediaGenerateUploadUrlArgs` gains a
+  required `collection` field, and `MediaUploadForm`/`MediaUploadDropzone` pass the target
+  collection slug through, so storage adapters can scope upload URLs per collection.
+  `FormBlocks` also fixes the inverted drag-handle guard (`disabled={!readOnly}` →
+  `disabled={readOnly}`), which disabled block reordering exactly when the form was editable.
+
+### Patch Changes
+
+- Updated dependencies [b111985]
+  - @vexcms/core@0.1.0-alpha.4
+  - @vexcms/better-auth@0.1.0-alpha.4
+
+## 0.1.0-alpha.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @vexcms/better-auth@0.1.0-alpha.3
+  - @vexcms/core@0.1.0-alpha.3
+
+## 0.1.0-alpha.2
+
+### Minor Changes
+
+- 58265ed: Add the `color()` field. Stores a CSS colour string as `v.string()`, with a
+  swatch picker in the admin form and a swatch cell in the list view.
+
+  `format: "hex" | "rgb" | "hsl" | "oklch"` (default `"hex"`) selects the notation
+  the picker writes; validation accepts all four, so changing `format` never
+  invalidates existing documents.
+
+  `color({ themeColors: true })` adds a picker tab listing the host application's
+  CSS custom properties; selecting one stores `var(--token)`, so the colour
+  follows the active colour scheme.
+
+  `@vexcms/core` now exports `serializeColor`, `parseColor` and `ColorValue` — a
+  dependency-free colour conversion layer covering hex, `rgb()`, `hsl()` and
+  `oklch()`, round-trip exact across the 8-bit sRGB space.
+
+  `@vexcms/core` also exports theming utilities from the colour field:
+  `buildThemeCss({ theme, scope })` turns a stored theme document (`light`/`dark`
+  token groups plus `radius`/`fontFamily`) into `:root` / `.dark` stylesheet text,
+  with `scope: "admin"` emitting one specificity rung higher for an admin-panel
+  override. `THEME_COLOR_TOKENS`, `THEME_SHARED_TOKENS`, `ThemeColorTokenKey` and
+  `ThemeScope` are exported alongside.
+
+  `@vexcms/react` components now use only shadcn's 32 design tokens. The
+  non-standard `--primary-hover`, `--muted-foreground-subtle` and `--warning`
+  tokens are replaced by `primary/90`, `muted-foreground` and `destructive`; the
+  other thirteen were unused and are removed. Host apps whose stylesheets declared
+  them can delete them.
+
+  Field-type dispatch is now exhaustive: `adminFieldToValidator`,
+  `adminFieldToInputSchema` and `getCollectionColumnDefs` assert their switches
+  against `never`.
+
+- 24a3058: Add the globals system (spec 35): singleton documents with a flat, typed API.
+
+  - `@vexcms/core`: `defineGlobal` with CollectionConfig-parallel generics and compile-time reserved-key enforcement; shared `vex_globals` table emitted by `generateVexSchema`; `globalsApi` factory registering `globals.get`/`globals.find`/`globals.update` (upsert) with populate/depth; `vex generate` emits `GlobalSlug`, `GlobalDocumentBySlug`, `GlobalsFieldTypeMap`, and flat per-global interfaces into the `GeneratedVexTypes` augmentation.
+  - `@vexcms/react`: `GlobalsListView`, `GlobalEditView`, `useGlobalForm` (mirror of `useCollectionForm`), sidebar globals section, and `AdminTopNav` breadcrumbs for globals routes.
+  - `@vexcms/next`: `NextAdminPage` routes `/admin/globals[/slug]` with config-validated slugs and a not-found state.
+
+- aa56f38: Add RBAC access control (spec 2026-08-12), a config/auth-bound server API, and per-slug return
+  type narrowing for the client wrappers.
+
+  - `@vexcms/core`: new `access/` module — `defineAccess()` builds a role → subject → action matrix
+    typed from the registered collections and globals; `hasPermission()` resolves it at runtime and
+    merges every role the caller holds. `PERMISSION_SCOPES` (`doc` / `any` / `all`) decides how a
+    check that inspects the document is answered when no `data` is supplied — `any` → `true` for
+    nav/list gating, `all` → `false` for bulk affordances (the default, fail-closed), `doc` throws.
+    Every server guard enforces access via `resolveGetAuth`. `vexServerApi()` binds `config` once
+    and resolves `auth` per call so call sites pass neither, with `skipAccess: true` as the
+    explicit opt-out for public reads. Client wrappers (`get`/`find`/`search`/`globals.get`) now
+    narrow to the document of the `collection` slug passed in, honouring `populate` and literal
+    `depth`; `find`/`search` gained array-vs-paginated overloads. Relationship and upload fields
+    generate `Id<"target">[]` instead of `Id<CollectionSlug>[]`, which is what makes populated
+    fields resolve to `Doc<target>[]`.
+  - `@vexcms/react`: `VexAccessContext`, `VexAuthContext`, and `usePermission`; `AdminSidebar`
+    filters collections, globals, and media collections with `scope: "any"`.
+  - `@vexcms/better-auth`: `createGetAuth()` resolves the caller (user + active organization) from
+    the Convex `ctx` for use as `vexServerApi`/`collectionsApi`'s `getAuth`.
+  - `@vexcms/next`: admin layout/page pass the server-resolved caller into the admin UI.
+
+  BREAKING: the globals mutation `globals.update` is renamed `globals.upsert` (endpoint, server
+  function `upsertGlobal`, and client wrapper). Bumped `minor` rather than `major` because these
+  packages are pre-1.0 alpha, consistent with the globals-system changeset.
+
+- bde8141: Enforce the `adminPanel` access gate, fix two authorization defects, and add a single switch for
+  turning RBAC off.
+
+  - `@vexcms/core`: new `canAccessAdminPanel()` answers the `adminPanel.access` gate without
+    callers hand-typing the subject and action — nothing consulted that subject before, so any
+    authenticated caller reached the admin panel regardless of the matrix. `defineAccess()` gains
+    `enabled` (default `true`), checked inside `hasPermission`, so one field on the resolved config
+    turns access control off for the server guards and the admin UI together. **Security fix:**
+    `update` authorized against the caller-supplied patch rather than the stored document, letting
+    a per-document rule be satisfied by the request body; it now fetches and checks the stored row,
+    matching `get`/`find`/`remove`. `deleteMedia` now passes the stored document too, so
+    per-document delete rules are satisfiable.
+  - `@vexcms/react`: new `UnauthorizedView` for callers who fail an access check. `Button` gains
+    `aria-disabled:*` variants so a link-rendered button (`nativeButton={false}`) actually greys
+    out and stops responding — `disabled:*` never matched the rendered `<a>`. `CollectionListView`
+    had its create button's `disabled` prop inverted; bulk delete is now permission-gated in both
+    the collection and media list views.
+  - `@vexcms/cli`: removed the unimplemented `schema/generateSchema.ts` stub (superseded by core's
+    `generateVexSchema`, and already excluded from the package's own test run). JSDoc completed
+    across the package; a `pushSchemaStandalone` description that claimed to run `convex deploy`
+    now matches its actual `dev --once` behavior.
+  - `@vexcms/better-auth`, `@vexcms/richtext-plate`, `create-vexcms`: JSDoc completed on exported
+    symbols; unused imports and bindings removed. No behavior changes.
+
+- Add `RenderBlocks` — a generic, typed dispatcher for `blocks()` field content: a `components`
+  map keyed by `blockType`, each entry narrowed via `Extract<TBlock, { blockType: K }>`, an
+  optional `fallback` for unrecognized block types, and `block.id` as the React key. Exported
+  alongside `RenderBlocksProps`, `BlockComponents`, and `BlockComponentProps`. Replaces the
+  hand-rolled block-type switch every consumer previously wrote — proven against `apps/test`'s
+  `PageContent` — and is what both `create-vexcms` templates use to render page, header, and
+  footer content.
+- 7b1fa3c: Enable a zero-warning multi-package TypeDoc API reference and export supporting API.
+
+  - Export `usePaginatedQuery` (`@vexcms/react`) and `StorageAdapterPresignedUrlInterface` plus its base interface (`@vexcms/core`) as public API.
+  - Fix `RelationshipFieldAdminConfig` to extend the resolved admin base (`FieldAdminConfig`) instead of the input base, so resolved relationship admin properties are correctly required rather than optional.
+
+### Patch Changes
+
+- fb55d58: Publish `peerDependencies` as ranges instead of exact versions.
+
+  `peerDependencies` previously inherited exact versions from the pnpm catalog, so
+  installing alongside a newer `convex`, `lucide-react`, or `@tanstack/react-table`
+  produced a peer conflict. Peers now resolve from a dedicated `peers` catalog of
+  deliberate ranges, and `@vexcms/core` is peered as a compatible range rather
+  than an exact version. `dependencies` are now published as exact versions instead of ranges
+  (`nanoid: 5.1.16`, not `^5.1.11`), so an install cannot silently pick up a
+  different transitive tree than the one tested.
+
+  `@vexcms/next` now declares `next >=15.0.0`, correcting a `>=14.0.0` claim that
+  never held — the admin page awaits `params`, which requires Next 15 typings.
+
+- 4270b82: Fix `LucideIconName` accepting ~4,100 names that render nothing.
+
+  `@vexcms/core` derived the type from a _default_ import of `lucide-react`
+  (`import type icons from "lucide-react"`). `lucide-react` has no default export, so
+  TypeScript synthesized one from the module namespace and `keyof typeof icons` widened to
+  every module export — 5,843 members: alias exports (`AlertCircle`, `AlignCenter`), the
+  `*Icon`-suffixed duplicates (`UsersIcon`), and non-icon exports (`icons`,
+  `createLucideIcon`, `Icon`). None of those are keys of the `icons` map that
+  `<Icon>` indexes at render time, so they type-checked and then rendered `null`.
+
+  Both packages now derive the type from the `icons` map (`import type { icons }`), giving
+  the exact 1,702 canonical names that render. `@vexcms/react` re-exports the core type
+  instead of declaring its own, and the three `@ts-expect-error` directives in
+  `AdminSidebar` that masked the two definitions diverging are gone.
+
+  `<Icon>` still returns `null` for an unresolved name so untyped data cannot throw, but
+  outside production it now reports the miss once per name with `console.warn` instead of
+  failing invisibly.
+
+  Breaking for configs that used an alias or `*Icon` name in `admin.icon`: switch to the
+  canonical name from https://lucide.dev/icons (e.g. `"AlertCircle"` → `"CircleAlert"`,
+  `"UsersIcon"` → `"Users"`). Those values never rendered.
+
+- 9e68058: Ship type declarations. Published packages contained no `.d.ts` at all.
+
+  Every `tsup.config.ts` carried `dts: false` — tsup's rollup-dts pegs the CPU on this
+  dependency graph — so `types: "./dist/index.d.ts"` pointed at a file that was never
+  emitted. Installing any `@vexcms/*` package gave you `any`.
+
+  Declarations now come from `tsc -p tsconfig.build.json --emitDeclarationOnly`, run after
+  tsup in each package's `build` script. `dts: false` stays, deliberately: tsup builds JS,
+  tsc builds types.
+
+  The blocker was TS6059 (`File is not under rootDir`). Workspace deps resolved through the
+  `source` export condition, pulling sibling `src/` into each program. The build configs now
+  set `"customConditions": []` so deps resolve through their published `types` entry
+  instead; Turbo's `dependsOn: ["^build"]` guarantees upstream `dist/` exists first. Dev
+  configs are untouched and still resolve through `source`.
+
+  Also exports `AuthFieldMeta` from `@vexcms/core`. `@vexcms/better-auth` had been importing
+  it through `../../core/src/auth/types`, a cross-package source path that cannot produce a
+  correct declaration.
+
+- b67c8ab: Publish under Apache-2.0 with full package metadata.
+
+  Every published manifest now carries `license: "Apache-2.0"` (root `LICENSE` +
+  `NOTICE` added), `description`, `keywords`, `author`, `homepage`, and
+  `repository` with per-package `directory`. `sideEffects: false` is declared
+  where verified side-effect-free; `@vexcms/next` declares `["*.css"]` because it
+  exports `./styles`. Packages publish to the `alpha` dist-tag
+  (`publishConfig.tag`), leaving `latest` untouched until promotion.
+
+- Updated dependencies [8f75ecb]
+- Updated dependencies [fb55d58]
+- Updated dependencies [58265ed]
+- Updated dependencies
+- Updated dependencies [24a3058]
+- Updated dependencies [4270b82]
+- Updated dependencies [40efb79]
+- Updated dependencies [aa56f38]
+- Updated dependencies [bde8141]
+- Updated dependencies [07924de]
+- Updated dependencies [9e68058]
+- Updated dependencies [7b1fa3c]
+- Updated dependencies [b67c8ab]
+  - @vexcms/core@0.1.0-alpha.2
+  - @vexcms/better-auth@0.1.0-alpha.2
+
+## 0.0.20
+
+### Patch Changes
+
+- ba4663b: - Fix `hasPermission` returning denied for empty fields array (creating globals with no fields)
+  - Fix `mergeRolePermissions` treating empty fields as denied instead of falling through to boolean
+  - Fix `resolvePermissionCheck` returning empty object for empty fields
+  - Fix `defineAccess` validation warning on `admin` permission key (built-in, not a resource)
+  - Fix `sanitizeConfigForClient` stripping `access` property (contains functions that can't serialize across RSC boundary)
+  - Fix auto-generated delete mutations not passing document data to `hasPermission` (dynamic callbacks received undefined)
+  - Fix auto-generated update mutations not fetching existing document for permission checks
+  - Fix auto-generated create mutations not passing fields data to `hasPermission`
+  - Add `VexPlugin` type and plugin execution in `defineConfig`
+  - Add `buildSiteMetadata` for framework-agnostic SEO metadata merging
+  - Add `VexGlobal` slug type parameter for defineAccess autocomplete on globals
+  - Add `admin` permission resource on roles for admin panel access control
+  - Add `checkAdminAccess` function
+  - Add `normalizeSlug` pattern (strips leading slashes, treats / and /home as home)
+  - Fix sidebar hydration mismatch (localStorage read moved to useEffect)
+  - Add external link button to live preview toolbar
+  - Fix `useLocalStorage` hydration mismatch (defer localStorage read to useEffect)
+  - Fix `GlobalEditView` creating documents with empty fields (now uses generateFormDefaultValues)
+  - Add per-document delete permission check in CollectionsView (greyed out delete button)
+  - Add duplicate document button to CollectionEditView
+  - Add globals to dashboard view
+  - Add "View Site" link on dashboard
+  - Add server-side prefetch support (initialData props on all views)
+  - Convert GlobalEditView to TanStack Query
+  - Fix `convex/tsconfig.json` path aliases being overwritten by Convex during project provisioning (file watcher patches it back)
+  - Add `ensureSchemaFileExists` placeholder for first-run bootstrap
+  - Add `patchConvexTsconfig` to ensure ~/\* and @convex/\* aliases exist
+  - Add marketing-site template (8 blocks, SSR prefetch, ThemeStyle, icon picker, access config)
+  - Add `convex/tsconfig.json` with path aliases to base template
+  - Add `culori` and `motion` dependencies to base template
+  - Add anonymous auth plugin for demo site template
+  - Fix missing ThemeImport, accordion, colorConvert files in template
+  - Fix collections index removing site_settings (moved to globals)
+  - Update admin layout with checkAdminAccess enforcement
+  - Update proxy.ts and serverUtils.ts for \_\_Secure- cookie prefix
+  - Remove legacy permissions.ts, replace with defineAccess
+  - Deploy marketing site with SSR, SEO metadata, theme CSS injection
+  - Add WelcomePage bootstrap flow (first user promotion)
+  - Add admin button in header using checkAdminAccess
+  - Fix vex.config.ts access import path
+  - Move ThemeStyle to root layout (covers admin + frontend)
+  - New demo site with anonymous auth, daily reset cron, permissive access
+  - Protected page deletion (home, features, pricing, roadmap cannot be deleted)
+  - Reset countdown banner before midnight UTC
+  - Auto anonymous sign-in on first visit
+
+- Updated dependencies [ba4663b]
+  - @vexcms/core@0.0.20
+
+## 0.0.19
+
+### Patch Changes
+
+- 70a9c37: fix permissions bug and hydration error bug
+- Updated dependencies [70a9c37]
+  - @vexcms/core@0.0.19
+
+## 0.0.18
+
+### Patch Changes
+
+- 959b166: fix checkPermissions bug that wasnt respecting proper config for certain scenarios
+- Updated dependencies [959b166]
+  - @vexcms/core@0.0.18
+
+## 0.0.17
+
+### Patch Changes
+
+- 82a0384: update dashboard view to show globals, update default admin permissions to allow full access to all default tables in site template
+- Updated dependencies [82a0384]
+  - @vexcms/core@0.0.17
+
+## 0.0.16
+
+### Patch Changes
+
+- d71661c: update next to 16.2.1 in catalog
+- Updated dependencies [d71661c]
+  - @vexcms/core@0.0.16
+
+## 0.0.15
+
+### Patch Changes
+
+- 12b02aa: fix: strip access config from sanitized client config as it includes functions
+- Updated dependencies [12b02aa]
+  - @vexcms/core@0.0.15
+
+## 0.0.14
+
+### Patch Changes
+
+- 7227569: fix: add back onboarding flow for site template in create cli package
+- 46dd320: fix: add utils to resolve slugs in pages collection for site template
+- Updated dependencies [7227569]
+- Updated dependencies [46dd320]
+  - @vexcms/core@0.0.14
+
+## 0.0.13
+
+### Patch Changes
+
+- b72d981: added dom.iterable to convex tsconfig lib in templates
+- Updated dependencies [b72d981]
+  - @vexcms/core@0.0.13
+
+## 0.0.12
+
+### Patch Changes
+
+- fff842b: create cli: add tsconfig json for convex in all templates
+- Updated dependencies [fff842b]
+  - @vexcms/core@0.0.12
+
+## 0.0.11
+
+### Patch Changes
+
+- d2191b0: fix: add missing dependencies in package json file for marketing site template in create cli
+- Updated dependencies [d2191b0]
+  - @vexcms/core@0.0.11
+
+## 0.0.10
+
+### Patch Changes
+
+- 2c61dab: add missing template files for marketing site scaffold in create cli
+- Updated dependencies [2c61dab]
+  - @vexcms/core@0.0.10
+
+## 0.0.9
+
+### Patch Changes
+
+- 7d11f3c: 0.0.9
+- Updated dependencies [7d11f3c]
+  - @vexcms/core@0.0.9
+
+## 0.0.8
+
+### Patch Changes
+
+- f8a86a1: lock @convex-dev/better-auth package to 0.10.11 since 0.10.13 doesnt work
+- Updated dependencies [f8a86a1]
+  - @vexcms/core@0.0.8
+
+## 0.0.7
+
+### Patch Changes
+
+- 5c4b116: update template package versions, add a script that updates teh template package json versions for @vexcms packages to match the current version being published that happens on version:packages
+- Updated dependencies [5c4b116]
+  - @vexcms/core@0.0.7
+
+## 0.0.6
+
+### Patch Changes
+
+- 9acf057: update tsconfig so its not using workspace configs for files that dont exist outside of the workspace when in the project dev setup
+- Updated dependencies [9acf057]
+  - @vexcms/core@0.0.6
+
+## 0.0.5
+
+### Patch Changes
+
+- bfe4eef: update create vexcms package to ship dotfiles w underscore prefixes, then rename then back after pulling from package repo
+- Updated dependencies [bfe4eef]
+  - @vexcms/core@0.0.5
+
+## 0.0.4
+
+### Patch Changes
+
+- 91be00e: update package readmes, add installation and getting started instructions, add version selection and port specification for create vexcms package
+- Updated dependencies [91be00e]
+  - @vexcms/core@0.0.4
+
+## 0.0.3
+
+### Patch Changes
+
+- a1ca6dd: added the create vexcms cli package for scaffolding new projects using vexcms and all packages. www apps folder is working representation of this cli. added some bug fixes around versioning for collections w drafts enabled. some livePreview x versioning bug fixes. updated onboarding experience for the marketing site template w driver.js for an onboarding tour on first user sign in for each user. automatically make first user in convex db the admin user and autoredirect to the admin panel.
+- Updated dependencies [a1ca6dd]
+  - @vexcms/core@0.0.3
+
+## 0.0.2
+
+### Patch Changes
+
+- 8218c73: add package readmes
+- Updated dependencies [8218c73]
+  - @vexcms/core@0.0.2

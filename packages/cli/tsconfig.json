@@ -3,6 +3,9 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
+    "types": [
+      "node"
+    ],
     "paths": {
       "@vexcms/core": [
         "../../packages/core/src/index.ts"

@@ -1,0 +1,78 @@
+{
+  "milestones": [
+    {
+      "version": "0.1.0-alpha",
+      "label": "Core Foundation",
+      "status": "in_progress",
+      "description": "Field system, schema generation, React adapter, CLI tooling, docs site.",
+      "features": [
+        { "name": "Text field — Convex validator + Zod input schema", "status": "done" },
+        { "name": "HKT framework adapter (defineFrameworkAdapter)", "status": "done" },
+        { "name": "CLI schema generation from vex.config.ts", "status": "in_progress" },
+        { "name": "CLI watch mode (auto-regenerate on config change)", "status": "in_progress" },
+        { "name": "React adapter — TextInput + TextCell components", "status": "done" },
+        { "name": "Starlight docs site + TypeDoc API reference", "status": "in_progress" },
+        { "name": "Roadmap page", "status": "in_progress" }
+      ]
+    },
+    {
+      "version": "0.1.0-alpha (continued)",
+      "label": "Admin UI — Data Table + Edit Form",
+      "status": "in_progress",
+      "description": "Working admin interface for text fields. Data table list view and document edit form.",
+      "features": [
+        { "name": "Data table list view (TanStack Table)", "status": "in_progress" },
+        { "name": "Document edit form", "status": "done" },
+        { "name": "Next.js page + layout components", "status": "done" },
+        { "name": "Admin route setup in Next app", "status": "done" }
+      ]
+    },
+    {
+      "version": "0.1.0-alpha (continued)",
+      "label": "Additional Field Types",
+      "status": "planned",
+      "description": "Expand beyond text to cover the most common CMS field types.",
+      "features": [
+        { "name": "Number field", "status": "planned" },
+        { "name": "Checkbox / boolean field", "status": "planned" },
+        { "name": "Select field", "status": "planned" },
+        { "name": "Textarea field", "status": "planned" },
+        { "name": "Date field", "status": "planned" }
+      ]
+    },
+    {
+      "version": "0.1.0-alpha (continued)",
+      "label": "Auth",
+      "status": "planned",
+      "description": "Better Auth integration for admin authentication.",
+      "features": [
+        { "name": "Better Auth adapter", "status": "planned" },
+        { "name": "Login / session management", "status": "planned" },
+        { "name": "First-user setup flow", "status": "planned" },
+        { "name": "RBAC", "status": "tbd" }
+      ]
+    },
+    {
+      "version": "0.1.0-alpha (continued)",
+      "label": "Media",
+      "status": "planned",
+      "description": "Media library with storage adapter pattern.",
+      "features": [
+        { "name": "Storage adapter interface", "status": "planned" },
+        { "name": "Media library UI", "status": "planned" },
+        { "name": "Image field type", "status": "planned" }
+      ]
+    },
+    {
+      "version": "0.1.0-alpha (continued)",
+      "label": "Drafts + Publishing",
+      "status": "planned",
+      "description": "Draft/publish workflow for content.",
+      "features": [
+        { "name": "Draft state on documents", "status": "planned" },
+        { "name": "Publish / unpublish actions", "status": "planned" },
+        { "name": "Scheduled publishing", "status": "tbd" }
+      ]
+    }
+  ]
+}

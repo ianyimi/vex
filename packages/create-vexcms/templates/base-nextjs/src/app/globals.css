@@ -1,0 +1,267 @@
+/* ============================================================================
+   VexCMS · globals.css — Stark × Ember (shadcn-faithful translation)
+   ----------------------------------------------------------------------------
+   Source of design intent: .agent/docs/design/claude-design/admin.css (Claude Design
+   export). That file uses bespoke tokens (--page, --fg-muted, --line-bold,
+   --accent / --accent-tint / --accent-ink, …); this file translates them
+   into shadcn-named tokens so every React component in @vexcms/react keeps
+   working with no per-component overrides.
+
+   Read .agent/docs/design/claude-design/README.md before editing.
+
+   Key semantic decisions (different from naive shadcn):
+   - Brand CTA  → --primary       (admin.css `--accent`)        ember solid
+   - Highlight  → --accent        (admin.css `--accent-tint`)   ember tint
+   - Ink/active → --accent-fg     (admin.css `--accent-ink`)    deep ember
+   - Default surfaces (--card, --popover) = SAME tone (admin.css `--surface`)
+   - --muted / --raised = third elevation level (admin.css `--raised`)
+     used for table headers, modal foots, hover bgs, badge.muted.
+
+   All values are oklch.
+   ============================================================================ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@vexcms/next/styles";
+
+/* Scan the installed @vexcms packages for class candidates (their dist output
+   ships alongside this app in node_modules; @vexcms/next/styles above pulls
+   the stylesheet, these make sure every utility used by the admin UI exists).
+   Globbed to `*.js` only — the same `dist` directories also carry `.map`
+   sourcemaps and `.d.ts` declaration files, and Tailwind's scanner extracts
+   garbage "class candidates" from their base64/binary-ish content and emits
+   unparseable CSS, exactly like the raw `public/` binary assets below. */
+@source "../../node_modules/@vexcms/react/dist/**/*.js";
+@source "../../node_modules/@vexcms/next/dist/**/*.js";
+@source not "../../public";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* ── Surfaces ─────────────────────────────────────────────────────────── */
+  --color-background:                 var(--background);
+  --color-foreground:                 var(--foreground);
+  --color-card:                       var(--card);
+  --color-card-foreground:            var(--card-foreground);
+  --color-popover:                    var(--popover);
+  --color-popover-foreground:         var(--popover-foreground);
+
+  /* ── Brand / accents ──────────────────────────────────────────────────── */
+  --color-primary:                    var(--primary);            /* ember solid */
+  --color-primary-foreground:         var(--primary-foreground);
+  --color-secondary:                  var(--secondary);
+  --color-secondary-foreground:       var(--secondary-foreground);
+  --color-accent:                     var(--accent);             /* ember tint */
+  --color-accent-foreground:          var(--accent-foreground);  /* ember ink */
+
+  /* ── Neutral hover & muted ────────────────────────────────────────────── */
+  --color-muted:                      var(--muted);              /* = --raised */
+  --color-muted-foreground:           var(--muted-foreground);
+
+  /* ── Borders & inputs ─────────────────────────────────────────────────── */
+  --color-border:                     var(--border);             /* default separators */
+  --color-input:                      var(--input);              /* input borders */
+  --color-ring:                       var(--ring);               /* solid ember focus */
+
+  /* ── Status ───────────────────────────────────────────────────────────── */
+  --color-destructive:                var(--destructive);
+  --color-destructive-foreground:     var(--destructive-foreground);
+
+  /* ── Sidebar ──────────────────────────────────────────────────────────── */
+  --color-sidebar:                    var(--sidebar);
+  --color-sidebar-foreground:         var(--sidebar-foreground);
+  --color-sidebar-primary:            var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:             var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:             var(--sidebar-border);
+  --color-sidebar-ring:               var(--sidebar-ring);
+
+  /* ── Charts ───────────────────────────────────────────────────────────── */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* ── Fonts ────────────────────────────────────────────────────────────── */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* ── Radii — Vex is sharp ─────────────────────────────────────────────── */
+  --radius-sm:  2px;   /* controls: buttons, inputs, menu items, type chips */
+  --radius-md:  4px;   /* cards, popovers, table wraps */
+  --radius-lg:  8px;   /* modals, dialogs */
+  --radius-xl:  12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 20px;
+  --radius-4xl: 9999px; /* pill badges & avatars */
+
+  /* ── Shadows ──────────────────────────────────────────────────────────── */
+  --shadow-xs:  var(--shadow-xs-val);
+  --shadow-sm:  var(--shadow-sm-val);
+  --shadow-md:  var(--shadow-md-val);
+  --shadow-lg:  var(--shadow-lg-val);
+  --shadow-pop: var(--shadow-pop-val);
+
+  /* ── Motion ───────────────────────────────────────────────────────────── */
+  --ease-emphasized: cubic-bezier(.2, .8, .2, 1);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   LIGHT — Stark × Ember
+   page #F5F5F5 · surface #FFFFFF · raised #FAFAFA · fg #0A0A0A
+   ──────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Surfaces — three elevation levels */
+  --background:                  oklch(96.1% 0    0);            /* #F5F5F5 */
+  --foreground:                  oklch(13.7% 0    0);            /* #0A0A0A */
+  --card:                        oklch(100%  0    0);            /* #FFFFFF */
+  --card-foreground:             oklch(13.7% 0    0);
+  --popover:                     oklch(100%  0    0);            /* same as card */
+  --popover-foreground:          oklch(13.7% 0    0);
+
+  /* Brand — ember on --primary */
+  --primary:                     oklch(60.5% 0.175 42);          /* #E8622A */
+  --primary-foreground:          oklch(100%  0    0);
+
+  /* Neutral secondary */
+  --secondary:                   oklch(98%   0    0);            /* #FAFAFA */
+  --secondary-foreground:        oklch(13.7% 0    0);
+
+  /* Highlight = ember TINT (matches admin.css --accent-tint) */
+  --accent:                      oklch(96%   0.025 42);          /* #FEF0E8 */
+  --accent-foreground:           oklch(52%   0.180 40);          /* ember ink */
+
+  /* Neutral hover & muted (= admin.css --hover / --raised) */
+  --muted:                       oklch(98%   0    0);            /* #FAFAFA = raised */
+  --muted-foreground:            oklch(50.5% 0    0);            /* #717171 */
+
+  /* Borders */
+  --border:                      oklch(85%   0    0);            /* #D4D4D4 — default */
+  --input:                       oklch(54.6% 0    0);            /* #6B6B6B — inputs */
+  --ring:                        oklch(60.5% 0.175 42);          /* solid ember */
+
+  /* Status */
+  --destructive:                 oklch(57.7% 0.198 27);          /* #DC2626 */
+  --destructive-foreground:      oklch(98%   0    0);
+
+  /* Base radius — used by anything reading var(--radius) directly */
+  --radius: 4px;
+
+  /* Sidebar */
+  --sidebar:                     oklch(98%   0     0);           /* #FAFAFA */
+  --sidebar-foreground:          oklch(13.7% 0     0);
+  --sidebar-primary:             oklch(60.5% 0.175 42);          /* ember */
+  --sidebar-primary-foreground:  oklch(100%  0     0);
+  --sidebar-accent:              oklch(96.1% 0     0);
+  --sidebar-accent-foreground:   oklch(13.7% 0     0);
+  --sidebar-border:              oklch(85%   0     0);
+  --sidebar-ring:                oklch(60.5% 0.175 42);
+
+  /* Charts */
+  --chart-1: oklch(60.5% 0.175 42);
+  --chart-2: oklch(45%   0     0);
+  --chart-3: oklch(72%   0.100 60);
+  --chart-4: oklch(60%   0.040 30);
+  --chart-5: oklch(78%   0     0);
+
+  /* Shadows — soft elevation in light */
+  --shadow-xs-val:  0 1px 2px  rgba(10, 10, 10, 0.04);
+  --shadow-sm-val:  0 1px 3px  rgba(10, 10, 10, 0.08);
+  --shadow-md-val:  0 4px 12px rgba(10, 10, 10, 0.08);
+  --shadow-lg-val:  0 12px 32px rgba(10, 10, 10, 0.12);
+  --shadow-pop-val: 0 12px 28px rgba(10, 10, 10, 0.14),
+                    0 1px 3px   rgba(10, 10, 10, 0.06);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   DARK — Stark × Ember dark
+   page #0A0A0A · surface #141414 · raised #1E1E1E · fg #F4F4F4
+   Hotter ember (#F07040) for contrast. No flat shadows.
+   ──────────────────────────────────────────────────────────────────────────── */
+.dark {
+  /* Surfaces */
+  --background:                  oklch(13.7% 0     0);           /* #0A0A0A */
+  --foreground:                  oklch(95%   0     0);           /* #F4F4F4 */
+  --card:                        oklch(17.4% 0     0);           /* #141414 */
+  --card-foreground:             oklch(95%   0     0);
+  --popover:                     oklch(17.4% 0     0);           /* same as card */
+  --popover-foreground:          oklch(95%   0     0);
+
+  /* Brand */
+  --primary:                     oklch(72%   0.175 50);          /* #F07040 */
+  --primary-foreground:          oklch(13.7% 0     0);
+
+  /* Secondary */
+  --secondary:                   oklch(20%   0     0);           /* #1E1E1E */
+  --secondary-foreground:        oklch(95%   0     0);
+
+  /* Highlight — translucent ember tint */
+  --accent:                      oklch(72%   0.175 50 / 0.12);
+  --accent-foreground:           oklch(72%   0.175 50);          /* ember itself in dark */
+
+  /* Neutral hover & muted */
+  --muted:                       oklch(20%   0     0);           /* = raised in dark */
+  --muted-foreground:            oklch(70%   0     0);           /* #A0A0A0 */
+
+  /* Borders */
+  --border:                      oklch(25%   0     0);           /* #2A2A2A */
+  --input:                       oklch(40%   0     0);           /* #5A5A5A */
+  --ring:                        oklch(72%   0.175 50);
+
+  /* Status */
+  --destructive:                 oklch(63%   0.210 27);          /* #EF4444 */
+  --destructive-foreground:      oklch(95%   0     0);
+
+  /* Sidebar */
+  --sidebar:                     oklch(7%    0     0);           /* #050505 */
+  --sidebar-foreground:          oklch(95%   0     0);
+  --sidebar-primary:             oklch(72%   0.175 50);
+  --sidebar-primary-foreground:  oklch(13.7% 0     0);
+  --sidebar-accent:              oklch(20%   0     0);
+  --sidebar-accent-foreground:   oklch(95%   0     0);
+  --sidebar-border:              oklch(25%   0     0);
+  --sidebar-ring:                oklch(72%   0.175 50);
+
+  /* Charts */
+  --chart-1: oklch(72%   0.175 50);
+  --chart-2: oklch(78%   0     0);
+  --chart-3: oklch(78%   0.120 65);
+  --chart-4: oklch(60%   0.060 30);
+  --chart-5: oklch(45%   0     0);
+
+  /* Shadows — flat in dark; only overlays use --shadow-pop */
+  --shadow-xs-val:  none;
+  --shadow-sm-val:  none;
+  --shadow-md-val:  none;
+  --shadow-lg-val:  none;
+  --shadow-pop-val: 0 18px 40px rgba(0, 0, 0, 0.55),
+                    0 1px 0 var(--border) inset;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "ss01" 1,
+      "cv11" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Pangea dnd placeholder — thin dashed line instead of full-height gap */
+[data-rfd-placeholder] {
+  height: 3px !important;
+  min-height: 3px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  border-top: 2px dashed var(--border) !important;
+}
+
