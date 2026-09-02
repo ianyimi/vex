@@ -12,10 +12,15 @@
     "@vexcms/next": "0.1.0-alpha.1",
     "@vexcms/react": "0.1.0-alpha.1",
     "@vexcms/richtext-plate": "0.1.0-alpha.1",
-    "@vexcms/tsconfig": "0.0.0"
+    "@vexcms/tsconfig": "0.0.0",
+    "www": "0.1.0"
   },
   "changesets": [
     "admin-accordion-draghandle-fixes",
-    "media-and-scaffold-fixes"
+    "generated-types-lint-header",
+    "marketing-template-design",
+    "media-and-scaffold-fixes",
+    "select-scroll-lock-and-admin-gate",
+    "sticky-global-edit-header"
   ]
 }
