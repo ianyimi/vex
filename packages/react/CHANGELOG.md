@@ -1,5 +1,21 @@
 # @vexcms/ui
 
+## 0.1.0-alpha.4
+
+### Minor Changes
+
+- b111985: `generateUploadUrl` now carries the target collection: `VexMediaGenerateUploadUrlArgs` gains a
+  required `collection` field, and `MediaUploadForm`/`MediaUploadDropzone` pass the target
+  collection slug through, so storage adapters can scope upload URLs per collection.
+  `FormBlocks` also fixes the inverted drag-handle guard (`disabled={!readOnly}` →
+  `disabled={readOnly}`), which disabled block reordering exactly when the form was editable.
+
+### Patch Changes
+
+- Updated dependencies [b111985]
+  - @vexcms/core@0.1.0-alpha.4
+  - @vexcms/better-auth@0.1.0-alpha.4
+
 ## 0.1.0-alpha.3
 
 ### Patch Changes

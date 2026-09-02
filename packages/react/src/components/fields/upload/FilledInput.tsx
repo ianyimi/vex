@@ -76,6 +76,7 @@ export function UploadFilledState({
           {mediaIds.map((id, index) => (
             <Draggable key={id} id={id} index={index}>
               <UploadItemRow
+                readOnly={readOnly}
                 mediaId={id}
                 collection={targetCollectionConfig.slug}
                 onRemove={() => onRemove(id)}
@@ -88,6 +89,7 @@ export function UploadFilledState({
         <div>
           {mediaIds.map((id) => (
             <UploadItemRow
+              readOnly={readOnly}
               key={id}
               mediaId={id}
               collection={targetCollectionConfig.slug}
@@ -110,10 +112,10 @@ export function UploadFilledState({
           </Button>
           <Button
             variant="ghost"
-            className="hover:text-destructive transition-all duration-300"
+            className="transition-all duration-300 hover:text-destructive"
             size="sm"
             onClick={() => fieldApi.setValue([])}
-            disabled={readOnly}
+            disabled={readOnly || mediaIds.length === 0}
             icon="X"
           >
             Clear
@@ -141,9 +143,11 @@ function UploadItemRow({
   mediaId,
   onRemove,
   showDragHandle = false,
+  readOnly,
   collection,
 }: {
   mediaId: string;
+  readOnly: boolean;
   onRemove: () => void;
   collection: CollectionSlug;
   showDragHandle?: boolean;
@@ -159,17 +163,17 @@ function UploadItemRow({
 
   const accessError = (error as ReturnType<typeof useQuery<any, VexAccessError>>["error"])?.data;
   return (
-    <div className="border-border flex items-center justify-between rounded border-2 px-2">
+    <div className="flex items-center justify-between rounded border-2 border-border px-2">
       <div className="flex w-full items-center gap-2 font-mono">
         <DragHandle
           className={cn(!showDragHandle && "opacity-0 pointer-events-none")}
-          disabled={Boolean(accessError)}
+          disabled={readOnly || Boolean(accessError)}
         />
         {!mediaDoc ? (
           !accessError ? (
             <Skeleton className="h-12 w-12" />
           ) : (
-            <p className="text-destructive w-full text-center">{accessError.message}</p>
+            <p className="w-full text-center text-destructive">{accessError.message}</p>
           )
         ) : (
           <FilePreview mediaDoc={mediaDoc} size={44} radius={3} isPending={isPending} />
@@ -208,7 +212,7 @@ function UploadItemRow({
         <div className="acts">
           <Button
             variant="ghost"
-            className="hover:text-destructive transition-colors duration-300"
+            className="transition-colors duration-300 hover:text-destructive"
             type="button"
             title="Remove"
             onClick={onRemove}

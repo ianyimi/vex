@@ -74,6 +74,7 @@ export const UploadFieldInput = createFieldInput<string[], {}, UploadField>(
         {value.length > 0 ? (
           <UploadFilledState
             collection={collection}
+            readOnly={readOnly}
             mediaIds={value}
             fieldApi={field}
             fieldDef={fieldDef}
@@ -81,7 +82,7 @@ export const UploadFieldInput = createFieldInput<string[], {}, UploadField>(
             openPicker={openPicker}
           />
         ) : (
-          <div className="text-muted-foreground text-sm">—</div>
+          <div className="text-sm text-muted-foreground">—</div>
         )}
         ;
       </>;
@@ -93,6 +94,7 @@ export const UploadFieldInput = createFieldInput<string[], {}, UploadField>(
         <>
           <FormLabel name={name} field={fieldDef} />
           <UploadEmpty
+            readOnly={readOnly}
             onPickerOpen={openPicker}
             fieldDef={fieldDef}
             targetCollectionConfig={targetCollectionConfig}
@@ -119,6 +121,7 @@ export const UploadFieldInput = createFieldInput<string[], {}, UploadField>(
       <>
         <FormLabel name={name} field={fieldDef} />
         <UploadFilledState
+          readOnly={readOnly}
           collection={collection}
           mediaIds={value}
           fieldApi={field}

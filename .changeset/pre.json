@@ -32,7 +32,9 @@
     "render-blocks",
     "server-api-access-options",
     "ship-type-declarations",
+    "template-theme-and-scan-fixes",
     "typedoc-multipackage-docs",
+    "upload-url-collection-scope",
     "wp1-release-integrity"
   ]
 }
