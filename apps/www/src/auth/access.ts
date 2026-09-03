@@ -1,41 +1,48 @@
-import { defineAccess } from "@vexcms/core"
+import { defineAccess } from "@vexcms/core";
 
-import { TABLE_SLUG_USERS, USER_ROLES } from "~/db/constants"
-import { images, users } from "~/vexcms/collections"
+import { TABLE_SLUG_USERS, USER_ROLES } from "~/db/constants";
+import { images, pages, users } from "~/vexcms/collections";
+import { siteSettings } from "~/vexcms/globals";
 
 /**
  * Access control (RBAC) for the admin panel and every registered collection.
  *
- * `admin` gets unrestricted access. `user` can read and update only their own
- * profile row and cannot reach the admin panel. Add a resource here whenever
- * you register a new collection in `vex.config.ts`.
+ * `admin` gets unrestricted access. `user` is the public demo role — it may
+ * open the admin panel and *read* `pages` and `siteSettings`, and nothing
+ * else. `anonRole: user` is what extends that to a caller carrying no `roles`
+ * entry at all, which is every anonymous session minted by
+ * `AdminDemoButton`. Write actions stay denied by the `"*": false` default, so
+ * the panel is read-only for anyone who is not an admin.
  *
- * @see https://vexcms.dev/docs/access-control
+ * Add a resource here whenever you register a new collection in
+ * `vex.config.ts`.
+ *
+ * @see https://docs.vexcms.dev/guides/access-control/
  */
 export const access = defineAccess({
   anonRole: USER_ROLES.user,
   roles: Object.values(USER_ROLES),
   userRolesField: "roles",
   userCollectionSlug: TABLE_SLUG_USERS,
-  resources: [images, users],
+  resources: [images, users, pages, siteSettings],
   permissions: {
     [USER_ROLES.admin]: {
       "*": true,
     },
     [USER_ROLES.user]: {
       "*": false,
-      adminPanel: {
-        access: false,
-      },
-      user: {
+      pages: {
         "*": false,
-        read: {
-          constraints: ({ user, q }) => q.withIndex("by_email", (fq) => fq.eq("email", user.email)),
-        },
-        update: {
-          constraints: ({ user, q }) => q.filter((fq) => fq.eq("email", user.email)),
-        },
+        read: true,
+      },
+      adminPanel: {
+        access: true,
+        impersonate: false,
+      },
+      siteSettings: {
+        "*": false,
+        read: true,
       },
     },
   },
-})
+});

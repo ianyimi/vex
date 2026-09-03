@@ -59,7 +59,7 @@ export function ComponentExample() {
       </div>
 
       <code className="bg-muted text-muted-foreground rounded-lg px-4 py-2 font-mono text-sm">
-        npx create-vexcms@latest
+        npx create-vexcms@alpha
       </code>
     </div>
   );

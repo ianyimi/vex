@@ -1,5 +1,53 @@
 # create-vexcms
 
+## 0.1.0-alpha.10
+
+### Patch Changes
+
+- Sync both templates with `apps/www`, which is the source of truth for the
+  marketing overlay.
+
+  **The scaffolded favicon was Next.js's own mark.**
+  `base-nextjs/public/favicons/favicon.ico` shipped the framework's default
+  black circle and white triangle, so every scaffolded project put Next's logo
+  in the tab strip. It is now the VexCMS chevron at 16/32/48, and the marketing
+  overlay adds `public/favicon.svg` plus
+  `public/favicons/apple-touch-icon.png` with `src/app/layout.tsx` declaring
+  all three — SVG first, since every current engine reads `image/svg+xml` and
+  the `.ico` only serves older ones. These are placeholder branding in exactly
+  the sense `BrandMark` and the seeded "VexCMS" site name already were; the
+  layout's doc comment says which files to replace and why two must stay
+  raster.
+
+  **Install copy pointed at a tag that would downgrade the project.** The
+  marketing seed, `Hero`, `FAQ` and `HowItWorks` defaults, and base's
+  `component-example.tsx` all told users to run `create vexcms@latest`. Only
+  the `0.1.0-alpha.*` line carries the current API; `latest` still resolves to
+  the old `0.0.20` release. Every install string now uses `@alpha`.
+
+  **Docs links resolved to nothing.** The `Header`, `Footer` and `CTA` block
+  defaults linked a relative `/docs`, which no scaffolded route serves. They
+  now point at `https://docs.vexcms.dev`.
+
+  **`CodeShowcase` logged a React key warning on every render.** Its pane map
+  returned a bare `<>` with keys on the fragment's children, which React does
+  not count — now a keyed `Fragment`.
+
+  **The home code showcase demonstrates the wrong thing.** It paired a block
+  definition with the interface generated from it. It now shows a blog `posts`
+  collection beside the Convex schema `vex dev` emits from it, taken verbatim
+  from the generator — including the `by_author` index vex infers from the
+  relationship.
+
+  **Not synced, deliberately.** `apps/www`'s always-visible admin button and
+  its `AdminDemoButton` stay in the app. It works by minting a Better Auth
+  anonymous session, which is right for a public demo of the CMS and wrong for
+  a user's own project: base's access matrix sets `adminPanel.access: false`
+  for the `user` role, so the button would land a visitor on `/unauthorized`,
+  and granting the access instead would make every scaffolded project's panel
+  publicly readable. The template keeps its `useCanAccessAdminPanel()` gate,
+  and the seeded header keeps an `Admin` nav item as the owner's route in.
+
 ## 0.1.0-alpha.9
 
 ### Patch Changes

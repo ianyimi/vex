@@ -34,9 +34,25 @@ const geistMono = Geist_Mono({
   weight: ["400", "500"],
 })
 
+/**
+ * `icons.icon` lists the SVG first: browsers pick the last format they
+ * understand, and every current engine understands `image/svg+xml`, so the
+ * `.ico` only serves older ones. All three assets are the ember chevron from
+ * `BrandMark` — placeholder branding, exactly like `BrandMark` itself and the
+ * "VexCMS" site name in `convex/seed.ts`. Replace `public/favicon.svg`,
+ * `public/favicons/favicon.ico` and `public/favicons/apple-touch-icon.png`
+ * with your own mark; `.ico` and `apple-touch-icon` must stay raster, since
+ * older browsers and iOS home-screen icons do not accept SVG.
+ */
 export const metadata: Metadata = {
   description: "Built with VexCMS",
-  icons: { icon: "/favicons/favicon.ico" },
+  icons: {
+    apple: "/favicons/apple-touch-icon.png",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicons/favicon.ico", sizes: "16x16 32x32 48x48" },
+    ],
+  },
   title: "VexCMS",
 }
 

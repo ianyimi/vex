@@ -10,15 +10,15 @@ import {
   SheetContent,
   SheetTitle,
   SheetTrigger,
-  useCanAccessAdminPanel,
 } from "@vexcms/react"
-import { Menu, Settings } from "lucide-react"
+import { Menu } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 
 import type { HeaderBlock } from "~/vex.types"
 
+import { AdminDemoButton } from "~/components/AdminDemoButton"
 import { BrandMark } from "~/components/BrandMark"
 import { Container } from "~/components/Container"
 import { MediaImage } from "~/components/MediaImage"
@@ -44,12 +44,6 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
   const { actionButtons, logoHref, logoImage, logoText, menuItems } = block as HeaderBlock
 
   const pathname = usePathname()
-  // Same predicate the `/admin` route runs server-side, so this link can never
-  // offer a destination that redirects to `/unauthorized`. Reading a role off
-  // the session by hand was the previous approach and never matched: roles are
-  // stored in `access.userRolesField` ("roles"), not better-auth's scalar
-  // `user.role`, so the button rendered for nobody.
-  const canAccessAdmin = useCanAccessAdminPanel()
 
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -160,22 +154,11 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
             </div>
           ) : null}
 
-          {/* Template affordance, not part of the marketing design: a signed-in
-              admin gets a direct route to the panel even when the seeded nav
-              does not list one. */}
-          {canAccessAdmin ? (
-            <Link
-              className={cn(
-                buttonVariants({ size: "sm", variant: "outline" }),
-                navClass,
-                "gap-1.5 active:translate-y-px"
-              )}
-              href="/admin"
-            >
-              <Settings className="size-3.5" />
-              Admin
-            </Link>
-          ) : null}
+          {/* Template affordance, not part of the marketing design: a direct
+              route into the panel even when the seeded nav does not list one.
+              Visible to everyone — the panel itself is read-only for anyone
+              without an admin role. */}
+          <AdminDemoButton className={navClass} />
 
           {items.length > 0 || actions.length > 0 ? (
             <Sheet onOpenChange={setIsMenuOpen} open={isMenuOpen}>
@@ -206,30 +189,29 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
                   ))}
                 </nav>
 
-                {actions.length > 0 ? (
-                  <>
-                    <Separator className="my-4" />
-                    <div className="flex flex-col gap-2 px-2 pb-2">
-                      {actions.map((action) => (
-                        <Link
-                          className={cn(
-                            buttonVariants({
-                              size: "default",
-                              variant:
-                                (action.variant?.[0]) ?? "default",
-                            }),
-                            "w-full"
-                          )}
-                          href={action.href}
-                          key={`sheet-${action.label}-${action.href}`}
-                          onClick={() => setIsMenuOpen(false)}
-                        >
-                          {action.label}
-                        </Link>
-                      ))}
-                    </div>
-                  </>
-                ) : null}
+                {/* The separator is unconditional now: the admin affordance
+                    below it always renders, so this row is never empty even
+                    when the seeded header carries no action buttons. */}
+                <Separator className="my-4" />
+                <div className="flex flex-col gap-2 px-2 pb-2">
+                  {actions.map((action) => (
+                    <Link
+                      className={cn(
+                        buttonVariants({
+                          size: "default",
+                          variant: (action.variant?.[0]) ?? "default",
+                        }),
+                        "w-full"
+                      )}
+                      href={action.href}
+                      key={`sheet-${action.label}-${action.href}`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      {action.label}
+                    </Link>
+                  ))}
+                  <AdminDemoButton className="w-full" size="default" />
+                </div>
               </SheetContent>
             </Sheet>
           ) : null}

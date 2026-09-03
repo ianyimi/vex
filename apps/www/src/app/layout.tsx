@@ -34,9 +34,22 @@ const geistMono = Geist_Mono({
   weight: ["400", "500"],
 })
 
+/**
+ * `icons.icon` lists the SVG first: browsers pick the last format they
+ * understand, and every current engine understands `image/svg+xml`, so the
+ * `.ico` only serves older ones. Both are the ember chevron from
+ * `BrandMark` — the scaffold shipped Next.js's own black-triangle `.ico`
+ * here, which is what put the wrong mark in the tab strip.
+ */
 export const metadata: Metadata = {
   description: "Built with VexCMS",
-  icons: { icon: "/favicons/favicon.ico" },
+  icons: {
+    apple: "/favicons/apple-touch-icon.png",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicons/favicon.ico", sizes: "16x16 32x32 48x48" },
+    ],
+  },
   title: "VexCMS",
 }
 

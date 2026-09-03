@@ -4,8 +4,8 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --concurrency 12",
-    "dev:app": "pnpm --filter test dev",
-    "dev:vex": "node scripts/vex-dev.mjs",
+    "dev:test": "pnpm --filter test dev",
+    "dev:www:vex": "pnpm --filter www exec vex dev",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "coverage": "turbo run coverage",

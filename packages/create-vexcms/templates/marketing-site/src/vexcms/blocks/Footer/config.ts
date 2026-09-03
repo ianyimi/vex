@@ -33,7 +33,7 @@ export const footerBlock = defineBlock({
         { label: "Features", href: "/features" },
         { label: "Pricing", href: "/pricing" },
         { label: "Roadmap", href: "/roadmap" },
-        { label: "Documentation", href: "/docs" },
+        { label: "Documentation", href: "https://docs.vexcms.dev" },
         { label: "GitHub", href: "https://github.com/ianyimi/vex" },
         { label: "npm", href: "https://www.npmjs.com/package/@vexcms/core" },
         { label: "Convex", href: "https://convex.dev" },

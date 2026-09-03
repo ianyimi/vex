@@ -1,6 +1,6 @@
 {
   "name": "www",
-  "version": "0.1.1-alpha.2",
+  "version": "0.1.1-alpha.3",
   "private": true,
   "scripts": {
     "build": "next build",
@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "vex:dev": "vex dev",
     "vex:generate": "vex dev --once",
-    "vex:update": "npm install @vexcms/core@latest @vexcms/react@latest @vexcms/next@latest @vexcms/better-auth@latest @vexcms/file-storage-convex@latest @vexcms/cli@latest"
+    "vex:update": "npm install @vexcms/core@alpha @vexcms/react@alpha @vexcms/next@alpha @vexcms/better-auth@alpha @vexcms/file-storage-convex@alpha @vexcms/cli@alpha"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",

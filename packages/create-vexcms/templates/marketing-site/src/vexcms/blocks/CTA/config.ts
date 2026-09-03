@@ -26,7 +26,7 @@ export const ctaBlock = defineBlock({
         },
       }),
       defaultValue: [
-        { label: "Get Started", href: "/docs" },
+        { label: "Get Started", href: "https://docs.vexcms.dev/guides/quickstart/" },
         { label: "View on GitHub", href: "https://github.com/ianyimi/vex" },
       ],
     }),

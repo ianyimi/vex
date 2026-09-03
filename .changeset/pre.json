@@ -17,6 +17,7 @@
   },
   "changesets": [
     "admin-accordion-draghandle-fixes",
+    "admin-sidebar-view-site",
     "anon-constraint-fail-closed",
     "generated-types-lint-header",
     "marketing-template-design",

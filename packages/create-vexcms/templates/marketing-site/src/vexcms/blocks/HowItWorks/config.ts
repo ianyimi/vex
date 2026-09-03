@@ -35,7 +35,7 @@ export const howItWorksBlock = defineBlock({
           icon: "Terminal",
           title: "Scaffold your project",
           description:
-            "Run npx create-vexcms@latest to get a Next.js app with Convex, authentication, and the admin panel pre-configured.",
+            "Run npx create-vexcms@alpha to get a Next.js app with Convex, authentication, and the admin panel pre-configured.",
         },
         {
           icon: "Code",

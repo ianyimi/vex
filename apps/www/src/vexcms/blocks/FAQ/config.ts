@@ -60,7 +60,7 @@ export const faqBlock = defineBlock({
         {
           question: "How do I get started?",
           answer:
-            "Run `npx create-vexcms@latest` to scaffold a new project with Vex CMS pre-configured. The CLI sets up your Next.js app, Convex backend, authentication, and admin panel in under a minute.",
+            "Run `npx create-vexcms@alpha` to scaffold a new project with Vex CMS pre-configured. The CLI sets up your Next.js app, Convex backend, authentication, and admin panel in under a minute.",
         },
       ],
     }),

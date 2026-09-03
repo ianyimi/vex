@@ -35,7 +35,7 @@ export const headerBlock = defineBlock({
         { label: "Features", href: "/features" },
         { label: "Pricing", href: "/pricing" },
         { label: "Roadmap", href: "/roadmap" },
-        { label: "Docs", href: "/docs" },
+        { label: "Docs", href: "https://docs.vexcms.dev" },
       ],
     }),
     actionButtons: array({
@@ -58,7 +58,11 @@ export const headerBlock = defineBlock({
       }),
       defaultValue: [
         { label: "GitHub", href: "https://github.com/ianyimi/vex", variant: "ghost" },
-        { label: "Get Started", href: "/docs", variant: "default" },
+        {
+          label: "Get Started",
+          href: "https://docs.vexcms.dev/guides/quickstart/",
+          variant: "default",
+        },
       ],
     }),
   },

@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/core",
-  "version": "0.1.0-alpha.9",
+  "version": "0.1.0-alpha.10",
   "description": "Convex-native headless CMS core: field factories, schema generation, and typed collection APIs",
   "keywords": [
     "cms",

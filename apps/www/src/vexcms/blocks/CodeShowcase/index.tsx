@@ -1,6 +1,7 @@
 import type { BlockComponentProps } from "@vexcms/react"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@vexcms/react"
+import { Fragment } from "react"
 
 import type { CodeShowcaseBlock } from "~/vex.types"
 
@@ -62,19 +63,21 @@ export default function CodeShowcaseBlock({ block }: BlockComponentProps) {
           // columns is what lets the panes scroll instead of overflowing.
           <div className="grid items-stretch overflow-hidden rounded-md border border-border xl:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)]">
             {items.map((pane, index) => (
-              <>
+              // The keyed Fragment is what React needs: keys on the children
+              // inside a bare `<>` do not count, so this logged "Each child in
+              // a list should have a unique key prop" on every render.
+              <Fragment key={`${pane.label}-${index}`}>
                 {index > 0 ? (
-                  <div aria-hidden className="bg-border max-xl:h-px xl:w-px" key={`seam-${index}`} />
+                  <div aria-hidden className="bg-border max-xl:h-px xl:w-px" />
                 ) : null}
                 <CodePane
                   code={pane.code}
                   filename={pane.filename}
-                  key={`${pane.label}-${index}`}
                   label={pane.label}
                   language={pane.language}
                   tone={readTone(pane.authored)}
                 />
-              </>
+              </Fragment>
             ))}
           </div>
         )}
@@ -82,15 +85,12 @@ export default function CodeShowcaseBlock({ block }: BlockComponentProps) {
         {hasCaption ? (
           <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)]">
             {items.map((pane, index) => (
-              <>
-                {index > 0 ? <div aria-hidden key={`caption-seam-${index}`} /> : null}
-                <p
-                  className="text-[13px] leading-[1.55] text-muted-foreground"
-                  key={`caption-${index}`}
-                >
+              <Fragment key={`caption-${pane.label}-${index}`}>
+                {index > 0 ? <div aria-hidden /> : null}
+                <p className="text-[13px] leading-[1.55] text-muted-foreground">
                   {pane.caption ?? ""}
                 </p>
-              </>
+              </Fragment>
             ))}
           </div>
         ) : null}

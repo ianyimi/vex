@@ -39,7 +39,7 @@ export const heroBlock = defineBlock({
     }),
     installCommand: text({
       label: "Install Command",
-      defaultValue: "pnpm create vexcms@latest",
+      defaultValue: "pnpm create vexcms@alpha",
       description:
         "Optional. Renders a copy-to-clipboard command row under the CTAs. Full variant only.",
     }),
