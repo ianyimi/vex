@@ -1,4 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm vex:deploy && pnpm build"
+  "buildCommand": "pnpm convex deploy && pnpm build"
 }

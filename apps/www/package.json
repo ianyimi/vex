@@ -12,7 +12,6 @@
     "seed:reinit": "convex run seed:reinit",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "vex:deploy": "vex deploy",
     "vex:dev": "vex dev",
     "vex:generate": "vex dev --once",
     "vex:update": "npm install @vexcms/core@alpha @vexcms/react@alpha @vexcms/next@alpha @vexcms/better-auth@alpha @vexcms/file-storage-convex@alpha @vexcms/cli@alpha"

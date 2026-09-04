@@ -91,7 +91,7 @@ see `convex/vex/firstUser.ts`. From there, "Go to Admin Panel" opens `/admin`.
 pnpm dev              # Start the Next.js dev server
 pnpm vex:dev           # Start VexCMS's schema watcher + convex dev
 pnpm vex:generate      # Regenerate the Convex schema and types once
-pnpm vex:deploy        # Generate the schema and deploy Convex to production
+pnpm deploy:convex     # Deploy the Convex functions to production
 pnpm seed              # Seed missing documents only (fresh deployment)
 pnpm seed:reinit       # Reconcile every seeded document against seed.ts
 pnpm build             # Build for production
@@ -110,7 +110,7 @@ pnpm secret:create     # Generate a Better Auth secret
 
 ## Deployment
 
-`vercel.json` sets the build command to `pnpm vex:deploy && pnpm build`, so
+`vercel.json` sets the build command to `pnpm deploy:convex && pnpm build`, so
 **every Vercel build deploys the Convex functions before building the app.**
 This is not optional plumbing. `next build` alone leaves the Convex deployment
 running whatever function code was last pushed, and a stale deployment fails in
@@ -125,8 +125,20 @@ two ways that both look like something else:
 For that build command to work, set **`CONVEX_DEPLOY_KEY`** in the Vercel
 project's environment variables — generate it from the Convex Dashboard under
 *Settings → Deploy keys* for the **production** deployment. Without it
-`vex deploy` fails and the build stops, which is the intended behaviour: a
+`convex deploy` fails and the build stops, which is the intended behaviour: a
 deploy that silently skipped the backend is worse than one that fails loudly.
+
+**Why `convex deploy` and not `vex deploy`.** `vex deploy` does more — it
+regenerates the schema and runs any auto-migration before deploying — but the
+`vex` binary comes from `@vexcms/cli`, a workspace dependency whose `bin` points
+at `packages/cli/dist/index.js`. `dist` is gitignored, so on a fresh CI clone
+that target does not exist until the CLI is built and the build dies with
+`sh: vex: command not found`. `convex` is a published dependency of this app, so
+its binary is present the moment `pnpm install` finishes. Nothing is lost by
+using it directly: the three generated artifacts (`convex/vex.schema.ts`,
+`convex/schema.ts`, `src/vex.types.ts`) are committed, so `convex deploy` ships
+the same schema `vex deploy` would have produced. Keep them current with
+`pnpm vex:generate` — `turbo typecheck` fails if they drift.
 
 Also required, once, in the Convex Dashboard:
 
