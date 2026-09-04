@@ -1,5 +1,15 @@
 # Vex CMS
 
+> [!WARNING]
+> VexCMS is pre-release software, published only under the `alpha` npm dist-tag
+> (`0.1.0-alpha.x`) — the `latest` tag on npm still points at an old, unrelated
+> `0.0.20` line, so installs must use an explicit tag: `pnpm create vexcms@alpha`.
+> Use it for experiments and evaluation only; do not put it behind production
+> traffic or real user data. Breaking changes land between alpha releases without
+> deprecation cycles, and there is no migration path between alphas. See the
+> [roadmap](apps/docs/src/content/docs/roadmap.md) (published at
+> [docs.vexcms.dev](https://docs.vexcms.dev)) for what is and is not shipped.
+
 A type-safe headless CMS built natively on [Convex](https://convex.dev). Vex generates your Convex schema and typed query/mutation API from a single config file, with a self-hosted Next.js admin panel for editing content.
 
 <!-- TODO(WP-6): admin panel screenshot/GIF here -->
@@ -13,7 +23,7 @@ A type-safe headless CMS built natively on [Convex](https://convex.dev). Vex gen
 Scaffold a complete Next.js + Convex + Vex project:
 
 ```bash
-pnpm create vexcms@latest my-site
+pnpm create vexcms@alpha my-site
 ```
 
 By default this includes a full marketing-site starter — pages, blocks, roadmap and changelog collections, auth, and a seeded read-only admin panel. Pass `--bare` for an empty project with no starter collections, or `--orgs` to enable multi-tenant organizations.

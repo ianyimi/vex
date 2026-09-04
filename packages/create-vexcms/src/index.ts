@@ -7,7 +7,7 @@
  * Forked from create-z3-app.
  *
  * Usage:
- *   pnpm create vexcms@latest [project-name] [--bare] [--orgs]
+ *   pnpm create vexcms@alpha [project-name] [--bare] [--orgs]
  */
 
 import { Command } from 'commander';

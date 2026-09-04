@@ -2,7 +2,6 @@
 
 import { addLeadingSlash, ClientVexConfig, CRUD_ACTIONS, PERMISSION_SCOPES } from "@vexcms/core";
 import {
-  Button,
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -102,25 +101,7 @@ export function AppSidebar(props: AppSidebarProps) {
       <SidebarHeader className="flex h-12 justify-center border-b">
         <div className="flex items-center justify-between">
           <span className="px-2 font-mono text-sm font-semibold tracking-tight">VexCMS Admin</span>
-          <div className="flex items-center gap-1">
-            {/* Way back out to the site this panel manages. The panel is mounted
-                under `basePath` inside the host app, so the site root is always
-                "/" — no configured site URL to read, and nothing to get stale.
-                `nativeButton={false}` is required whenever `render` supplies an
-                anchor: Base UI then emits `aria-disabled` instead of the
-                `disabled` attribute, which is what `buttonVariants` styles. */}
-            <Button
-              nativeButton={false}
-              render={<VexLink href="/" />}
-              size="icon"
-              variant="outline"
-              icon="ExternalLink"
-              iconPosition="center"
-            >
-              <span className="sr-only">View site</span>
-            </Button>
-            <ThemeToggle />
-          </div>
+          <ThemeToggle />
         </div>
       </SidebarHeader>
       <SidebarContent>

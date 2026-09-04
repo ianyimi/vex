@@ -1,5 +1,15 @@
 # create-vexcms
 
+> [!WARNING]
+> `create-vexcms` is pre-release software, published only under the `alpha` npm
+> dist-tag (`0.1.0-alpha.x`) — the `latest` tag on npm still points at an old,
+> unrelated `0.0.20` line, so always scaffold with an explicit tag:
+> `pnpm create vexcms@alpha`. Use it for experiments and evaluation only; the
+> projects it scaffolds should not carry production traffic or real user data.
+> Breaking changes land between alpha releases without deprecation cycles, and
+> there is no migration path between alphas. See the
+> [roadmap](https://docs.vexcms.dev) for what is and is not shipped.
+
 Scaffolding CLI for [VexCMS](https://github.com/ianyimi/vex) projects. Creates a complete
 Next.js application with a Convex backend, Better Auth authentication, and a self-hosted admin
 panel — ready to run.
@@ -7,19 +17,19 @@ panel — ready to run.
 ## Usage
 
 ```bash
-pnpm create vexcms@latest
+pnpm create vexcms@alpha
 ```
 
 Or with a project name:
 
 ```bash
-pnpm create vexcms@latest my-project
+pnpm create vexcms@alpha my-project
 ```
 
 Supports relative paths, including scaffolding straight into a monorepo app directory:
 
 ```bash
-pnpm create vexcms@latest apps/website
+pnpm create vexcms@alpha apps/website
 ```
 
 ## Flags
@@ -33,16 +43,16 @@ pnpm create vexcms@latest apps/website
 
 ```bash
 # Empty project, no pre-built collections
-pnpm create vexcms@latest my-app --bare
+pnpm create vexcms@alpha my-app --bare
 
 # Project with multi-tenant organizations
-pnpm create vexcms@latest my-app --orgs
+pnpm create vexcms@alpha my-app --orgs
 
 # Non-interactive, defaults only
-pnpm create vexcms@latest my-app --yes
+pnpm create vexcms@alpha my-app --yes
 
 # Inside a pnpm workspace, catalog-aware
-pnpm create vexcms@latest my-app --monorepo --yes
+pnpm create vexcms@alpha my-app --monorepo --yes
 ```
 
 ## Interactive prompts
@@ -157,7 +167,7 @@ Run from inside an existing pnpm workspace to scaffold a new app under it instea
 standalone project:
 
 ```bash
-pnpm create vexcms@latest my-app --monorepo --yes
+pnpm create vexcms@alpha my-app --monorepo --yes
 ```
 
 The installer walks up from the current directory for the nearest `pnpm-workspace.yaml`, targets
@@ -168,11 +178,12 @@ versions), and skips both `git init` and dependency install — the root workspa
 ## Versioning
 
 `create-vexcms` is versioned alongside every `@vexcms/*` package. Running
-`pnpm create vexcms@latest` always scaffolds with the latest package versions; pin a specific
-release the same way:
+`pnpm create vexcms@alpha` always scaffolds with the newest pre-release. The npm
+`latest` tag still points at an old, unrelated `0.0.20` line, so `@alpha` — or an
+exact version — is the only way to get the current API:
 
 ```bash
-pnpm create vexcms@0.1.0
+pnpm create vexcms@0.1.0-alpha.10
 ```
 
 The scaffolded project's `@vexcms/*` dependencies match the version of `create-vexcms` used to

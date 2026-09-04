@@ -91,6 +91,9 @@ see `convex/vex/firstUser.ts`. From there, "Go to Admin Panel" opens `/admin`.
 pnpm dev              # Start the Next.js dev server
 pnpm vex:dev           # Start VexCMS's schema watcher + convex dev
 pnpm vex:generate      # Regenerate the Convex schema and types once
+pnpm vex:deploy        # Generate the schema and deploy Convex to production
+pnpm seed              # Seed missing documents only (fresh deployment)
+pnpm seed:reinit       # Reconcile every seeded document against seed.ts
 pnpm build             # Build for production
 pnpm typecheck         # Type check without emitting
 pnpm lint              # Lint
@@ -107,9 +110,39 @@ pnpm secret:create     # Generate a Better Auth secret
 
 ## Deployment
 
-1. `npx convex deploy`
-2. In the Convex Dashboard, set `SITE_URL` to your production domain (keep
-   `BETTER_AUTH_SECRET` the same, or rotate it and update both places).
-3. Deploy the Next.js app (e.g. Vercel) with `NEXT_PUBLIC_CONVEX_URL`,
-   `NEXT_PUBLIC_CONVEX_SITE_URL`, `NEXT_PUBLIC_SITE_URL`, and
-   `BETTER_AUTH_SECRET` set to their production values.
+`vercel.json` sets the build command to `pnpm vex:deploy && pnpm build`, so
+**every Vercel build deploys the Convex functions before building the app.**
+This is not optional plumbing. `next build` alone leaves the Convex deployment
+running whatever function code was last pushed, and a stale deployment fails in
+two ways that both look like something else:
+
+- `convex run seed:init` executes the **old** `seed.ts`, so reseeding appears to
+  do nothing — the site keeps rendering superseded content.
+- Access control enforces the **old** `access.ts` matrix, so the Next.js route
+  (fresh from Vercel) admits a caller that the Convex queries then deny. The
+  panel renders and every collection reports access denied.
+
+For that build command to work, set **`CONVEX_DEPLOY_KEY`** in the Vercel
+project's environment variables — generate it from the Convex Dashboard under
+*Settings → Deploy keys* for the **production** deployment. Without it
+`vex deploy` fails and the build stops, which is the intended behaviour: a
+deploy that silently skipped the backend is worse than one that fails loudly.
+
+Also required, once, in the Convex Dashboard:
+
+1. Set `SITE_URL` to your production domain. It is a **Convex** environment
+   variable, not a Vercel one — `convex/auth/options.ts` reads it for `baseURL`
+   and `trustedOrigins`.
+2. Keep `BETTER_AUTH_SECRET` identical to the Vercel value, or rotate it in
+   both places together.
+
+And in Vercel: `NEXT_PUBLIC_CONVEX_URL` (ends in `.convex.cloud`),
+`NEXT_PUBLIC_CONVEX_SITE_URL` (ends in `.convex.site`), `NEXT_PUBLIC_SITE_URL`,
+and `BETTER_AUTH_SECRET`. Swapping the two Convex URLs fails the build with
+"Invalid deployment address".
+
+### Updating seeded content
+
+`seed:init` only inserts rows that are absent, so editing `convex/seed.ts` does
+not change a deployment that is already seeded. Use `pnpm seed:reinit` to
+reconcile every seeded document in place against the current file.

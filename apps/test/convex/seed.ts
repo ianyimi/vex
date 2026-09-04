@@ -558,7 +558,7 @@ function homeBlocks() {
         },
         {
           question: "How do I get started?",
-          answer: "Run npx create-vexcms@latest to scaffold a new project in under a minute.",
+          answer: "Run npx create-vexcms@alpha to scaffold a new project in under a minute.",
         },
       ],
     },

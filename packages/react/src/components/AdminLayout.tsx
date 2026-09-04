@@ -9,11 +9,13 @@ import {
 import { VexAuthProvider, VexConfigContext } from "../context";
 import { AppSidebar } from "./AdminSidebar";
 import {
+  Button,
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
   TooltipProvider,
   ThemeProvider,
+  VexLink,
 } from "./ui";
 import AdminTopNav from "./AdminTopNav";
 
@@ -75,6 +77,43 @@ export interface AdminLayoutProps {
 }
 
 /**
+ * Link back out to the site this admin panel manages, rendered in the
+ * `AdminLayout` topbar so it stays visible even when the sidebar is
+ * collapsed (it used to live in `AppSidebar`'s header and disappeared with
+ * the sidebar).
+ *
+ * `href` is hardcoded to `"/"` rather than a configured site URL: the panel
+ * is mounted under `config.basePath` inside the host app, so the site it
+ * manages is always at the root — there is no site URL on `ClientVexConfig`
+ * to read, and nothing to go stale. The topbar's existing "Home" breadcrumb
+ * points at `basePath` (the panel dashboard itself), not the site, so this
+ * button is the only way out.
+ *
+ * `nativeButton={false}` is required whenever `render` supplies an anchor —
+ * Base UI then emits `aria-disabled` instead of the `disabled` attribute,
+ * which is what `buttonVariants` actually styles.
+ *
+ * @param props - Component props
+ * @param props.className - Optional class override for positioning (e.g. `"ml-auto"`)
+ * @returns <ViewSiteButton className="ml-auto" />
+ */
+function ViewSiteButton({ className }: { className?: string }) {
+  return (
+    <Button
+      nativeButton={false}
+      render={<VexLink href="/" />}
+      size="icon"
+      variant="outline"
+      icon="ExternalLink"
+      iconPosition="center"
+      className={className}
+    >
+      <span className="sr-only">View site</span>
+    </Button>
+  );
+}
+
+/**
  * Admin panel layout shell.
  *
  * Provides `FrameworkComponentsContext` (for `VexLink`/`VexImage`) and
@@ -123,6 +162,7 @@ export function AdminLayout(props: AdminLayoutProps) {
         {side === "right" ? (
           <>
             <AdminTopNav {...props} />
+            <ViewSiteButton />
             <SidebarTrigger
               side={side}
               className="hover:text-primary/90 transition-colors duration-300"
@@ -135,6 +175,7 @@ export function AdminLayout(props: AdminLayoutProps) {
               className="hover:text-primary/90 transition-colors duration-300"
             />
             <AdminTopNav {...props} />
+            <ViewSiteButton className="ml-auto" />
           </>
         )}
       </header>

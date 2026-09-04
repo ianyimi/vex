@@ -21,6 +21,7 @@ import type { HeaderBlock } from "~/vex.types"
 import { AdminDemoButton } from "~/components/AdminDemoButton"
 import { BrandMark } from "~/components/BrandMark"
 import { Container } from "~/components/Container"
+import { LogoutButton } from "~/components/LogoutButton"
 import { MediaImage } from "~/components/MediaImage"
 
 export { headerBlock } from "./config"
@@ -159,6 +160,7 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
               Visible to everyone — the panel itself is read-only for anyone
               without an admin role. */}
           <AdminDemoButton className={navClass} />
+          <LogoutButton className={navClass} />
 
           {items.length > 0 || actions.length > 0 ? (
             <Sheet onOpenChange={setIsMenuOpen} open={isMenuOpen}>
@@ -211,6 +213,7 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
                     </Link>
                   ))}
                   <AdminDemoButton className="w-full" size="default" />
+                  <LogoutButton className="w-full" size="default" />
                 </div>
               </SheetContent>
             </Sheet>

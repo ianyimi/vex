@@ -9,7 +9,7 @@ The foundational package for [VEX CMS](https://github.com/ianyimi/vex) — a hea
 The easiest way to get started is with the `create-vexcms` CLI:
 
 ```bash
-pnpm create vexcms@latest
+pnpm create vexcms@alpha
 ```
 
 This scaffolds a complete project with all `@vexcms/*` packages, authentication, and an admin panel. See the [create-vexcms README](https://www.npmjs.com/package/create-vexcms) for full setup instructions.

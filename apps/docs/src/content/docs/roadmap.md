@@ -5,7 +5,7 @@ description: What's shipped, in progress, planned, and being explored for VexCMS
 
 VexCMS is under active development. Everything ships as `0.1.0-alpha` until the core feature set is stable enough for a v0.1.0 release.
 
-Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · 🔭 Exploring
+Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · ⏳ Future · 🔭 Exploring
 
 ## Shipped
 
@@ -38,14 +38,19 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · 🔭 Exploring
 - 📋 `json` / `email` / `textarea` fields
 - 📋 `tabs` / `ui` fields
 - 📋 Block group categorization
-- 📋 Lifecycle hooks
 - 📋 Content scheduling
 - 📋 API keys
 - 📋 Team management
 - 📋 TanStack Start adapter
 - 📋 S3 / R2 storage adapters
-- 📋 Plugin system
-- 📋 React package testing suite
+- 📋 React package testing suite — component and hook coverage for `@vexcms/react`; required before the v0.1.0 launch
+
+## Future
+
+Committed, but not yet scheduled — distinct from `Exploring`, which is still open research. These are the items the site's roadmap block marks `future`.
+
+- ⏳ Lifecycle hooks — `beforeChange` / `afterChange` around document writes
+- ⏳ Plugin system
 
 ## Exploring
 
