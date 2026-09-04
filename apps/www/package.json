@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "deploy:convex": "convex deploy",
     "dev": "next dev --port=3030",
     "format": "prettier --write .",
     "lint": "eslint .",

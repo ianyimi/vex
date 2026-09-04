@@ -110,11 +110,23 @@ pnpm secret:create     # Generate a Better Auth secret
 
 ## Deployment
 
-`vercel.json` sets the build command to `pnpm deploy:convex && pnpm build`, so
-**every Vercel build deploys the Convex functions before building the app.**
-This is not optional plumbing. `next build` alone leaves the Convex deployment
-running whatever function code was last pushed, and a stale deployment fails in
-two ways that both look like something else:
+`vercel.json` sets the build command to
+`pnpm turbo run build --filter=www^... && pnpm deploy:convex && pnpm build`, so
+**every Vercel build builds this app's workspace dependencies, deploys the
+Convex functions, and only then builds the app.** All three steps are
+load-bearing.
+
+**Why the `turbo` step.** Vercel starts from a fresh clone, so `packages/*/dist`
+does not exist, and every `@vexcms/*` package resolves through an `exports` map
+pointing into `dist` — `@vexcms/core`'s `./server` subpath is
+`./dist/api/server.js`. Without it `convex deploy` cannot bundle
+(`Could not resolve "@vexcms/core/server"`) and `next build` fails the same way
+moments later. `--filter=www^...` selects this app's dependencies and excludes
+the app itself, so nothing is built twice.
+
+**Why the deploy step.** `next build` alone leaves the Convex deployment running
+whatever function code was last pushed, and a stale backend fails in two ways
+that both look like something else:
 
 - `convex run seed:init` executes the **old** `seed.ts`, so reseeding appears to
   do nothing — the site keeps rendering superseded content.
@@ -122,23 +134,32 @@ two ways that both look like something else:
   (fresh from Vercel) admits a caller that the Convex queries then deny. The
   panel renders and every collection reports access denied.
 
-For that build command to work, set **`CONVEX_DEPLOY_KEY`** in the Vercel
-project's environment variables — generate it from the Convex Dashboard under
-*Settings → Deploy keys* for the **production** deployment. Without it
-`convex deploy` fails and the build stops, which is the intended behaviour: a
-deploy that silently skipped the backend is worse than one that fails loudly.
+Set **`CONVEX_DEPLOY_KEY`** in the Vercel project's environment variables —
+generate it from the Convex Dashboard under *Settings → Deploy keys* for the
+**production** deployment. Without it `convex deploy` fails and the build stops,
+which is the intended behaviour: a deploy that silently skipped the backend is
+worse than one that fails loudly.
 
 **Why `convex deploy` and not `vex deploy`.** `vex deploy` does more — it
-regenerates the schema and runs any auto-migration before deploying — but the
-`vex` binary comes from `@vexcms/cli`, a workspace dependency whose `bin` points
-at `packages/cli/dist/index.js`. `dist` is gitignored, so on a fresh CI clone
-that target does not exist until the CLI is built and the build dies with
-`sh: vex: command not found`. `convex` is a published dependency of this app, so
-its binary is present the moment `pnpm install` finishes. Nothing is lost by
-using it directly: the three generated artifacts (`convex/vex.schema.ts`,
-`convex/schema.ts`, `src/vex.types.ts`) are committed, so `convex deploy` ships
-the same schema `vex deploy` would have produced. Keep them current with
-`pnpm vex:generate` — `turbo typecheck` fails if they drift.
+regenerates the schema and runs any auto-migration first — but its binary comes
+from `@vexcms/cli`, whose `bin` points at `packages/cli/dist/index.js`. On a
+fresh clone that file does not exist, so `pnpm install` cannot even create the
+shim (it warns `Failed to create bin … .bin/vex`) and the build dies with
+`sh: vex: command not found`. The `turbo` step now builds the CLI too, so
+`vex deploy` *would* work — but nothing is gained: the three generated artifacts
+(`convex/vex.schema.ts`, `convex/schema.ts`, `src/vex.types.ts`) are committed,
+so `convex deploy` ships the same schema, and `turbo typecheck` already fails if
+they drift. Keep them current with `pnpm vex:generate`.
+
+### Verifying a deploy change before pushing
+
+Run **`pnpm check:vercel`** from the repo root. It copies the files a fresh clone
+would have — including uncommitted work, excluding every build output — installs
+with `--frozen-lockfile`, and runs the exact `buildCommand` from `vercel.json`
+with the push replaced by a resolution-only `convex/**` bundle. Both deploy
+failures this setup has had were invisible in a normal working copy and
+reproduce there in one run. It cannot check the push itself, which needs
+`CONVEX_DEPLOY_KEY`.
 
 Also required, once, in the Convex Dashboard:
 
