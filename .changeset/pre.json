@@ -20,6 +20,7 @@
     "admin-sidebar-view-site",
     "admin-topnav-view-site",
     "anon-constraint-fail-closed",
+    "anon-role-hardening-and-docs-cleanup",
     "generated-types-lint-header",
     "marketing-template-design",
     "media-and-scaffold-fixes",
