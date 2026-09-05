@@ -1,5 +1,7 @@
 import type { BetterAuthOptions } from "better-auth"
 
+import { anonRoleDatabaseHook } from "@vexcms/better-auth"
+
 import {
   TABLE_SLUG_ACCOUNTS,
   TABLE_SLUG_SESSIONS,
@@ -15,6 +17,13 @@ export const authOptions: BetterAuthOptions = {
     modelName: TABLE_SLUG_ACCOUNTS,
   },
   baseURL: process.env.SITE_URL,
+  databaseHooks: {
+    // Ties Better Auth's anonymous-plugin users to `access.anonRole` (see
+    // `~/auth/access.ts`) by stamping the same role explicitly, rather than
+    // relying solely on `roles`' `defaultValue` below — which every new user
+    // gets regardless of `isAnonymous`, anon-plugin or not.
+    user: anonRoleDatabaseHook(USER_ROLES.user),
+  },
   emailAndPassword: {
         enabled: true
       },

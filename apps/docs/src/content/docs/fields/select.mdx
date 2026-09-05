@@ -1,11 +1,11 @@
 ---
 title: select field
-description: Stores an array of chosen option values — status labels, categories, tags, and any enumerable choice set.
+description: Stores an array of chosen option values — categories, tiers, tags, and any enumerable choice set.
 ---
 
 A `select()` field stores one or more chosen values from a predefined set of
-options. It is used for status labels (draft, published, archived), categories,
-tags, and any field where the value must come from a known list.
+options. It is used for categories, tiers, tags, and any field where the value must come
+from a known list.
 
 Set `hasMany: false` (the default) for a single-selection dropdown.
 Set `hasMany: true` for a multi-select tag/badge picker.
@@ -33,10 +33,10 @@ Set `hasMany: true` for a multi-select tag/badge picker.
 
 ```ts
 // Optional single-select (hasMany: false — default)
-status: v.optional(v.array(v.string()))
+tier: v.optional(v.array(v.string()))
 
 // Required single-select
-status: v.array(v.string())
+tier: v.array(v.string())
 
 // Multi-select
 tags: v.optional(v.array(v.string()))
@@ -50,13 +50,13 @@ import { defineCollection, select, text } from "@vexcms/core";
 const posts = defineCollection({
   slug: "posts",
   fields: {
-    // Single-select status field
-    status: select({
+    // Single-select field
+    tier: select({
       required: true,
       options: [
-        { label: "Draft", value: "draft" },
-        { label: "Published", value: "published" },
-        { label: "Archived", value: "archived" },
+        { label: "Free", value: "free" },
+        { label: "Pro", value: "pro" },
+        { label: "Enterprise", value: "enterprise" },
       ],
     }),
 

@@ -126,7 +126,7 @@ export async function getGlobal<
     });
     hasPermission({
       throwOnDenied: true,
-      user: args.auth?.user ?? {},
+      user: args.auth?.user ?? null,
       organization: args.auth?.organization,
       access,
       resource,

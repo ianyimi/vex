@@ -37,11 +37,11 @@ export const posts = defineCollection({
   slug: "posts",
   fields: {
     title: text({ required: true }),
-    status: select({
-      index: "by_status",
+    visibility: select({
+      index: "by_visibility",
       options: [
-        { label: "Draft", value: "draft" },
-        { label: "Published", value: "published" },
+        { label: "Public", value: "public" },
+        { label: "Members only", value: "members" },
       ],
     }),
     authorId: relationship({ collection: { slug: "users" } }),
@@ -98,7 +98,7 @@ Read, unindexed — still compiles into the query's own `.filter()`, not a JS sc
 ```ts
 posts: {
   read: {
-    constraints: ({ q }) => q.filter((f) => f.eq("status", "published")),
+    constraints: ({ q }) => q.filter((f) => f.eq("visibility", "public")),
   },
 }
 ```
@@ -353,7 +353,7 @@ export const access = defineAccess({
 ## Gotchas
 
 - **`constraints` before `filter`, `filter` before a bare callback.** A field comparison
-  that a bare callback expresses as `({ data }) => data.status === "published"` reads every
+  that a bare callback expresses as `({ data }) => data.visibility === "public"` reads every
   matching row into JS just to throw most of them away; the same rule as `constraints`
   compiles into the query itself. Reach for a callback only once `constraints`/`filter`
   genuinely can't express the check.

@@ -629,15 +629,6 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
     title: text({ label: "Title", required: true }),
     slug: text({ label: "Slug", required: true, index: "by_slug" }),
     excerpt: text({ label: "Excerpt" }),
-    status: select({
-      label: "Status",
-      options: [
-        { label: "Draft", value: "draft" },
-        { label: "Published", value: "published" },
-      ],
-      defaultValue: ["draft"],
-    }),
-    publishedAt: date({ label: "Published At" }),
     featured: checkbox({ label: "Featured" }),
     readingMinutes: number({ label: "Reading Minutes" }),
     coverImage: upload({ to: "images", label: "Cover Image" }),
@@ -669,8 +660,6 @@ export const posts = defineTable({
   title: v.string(),
   slug: v.string(),
   excerpt: v.optional(v.string()),
-  status: v.optional(v.array(v.union(v.literal("draft"), v.literal("published")))),
-  publishedAt: v.optional(v.number()),
   featured: v.optional(v.boolean()),
   readingMinutes: v.optional(v.number()),
   coverImage: v.optional(v.array(v.id("images"))),
@@ -1012,7 +1001,6 @@ export const posts = defineTable({
     avatar: upload({ to: "images", label: "Avatar" }),
     rating: number({ label: "Rating" }),
     featured: checkbox({ label: "Featured" }),
-    publishedAt: date({ label: "Published At" }),
     plan: select({
       label: "Plan",
       options: [
@@ -1046,7 +1034,6 @@ export const testimonials = defineTable({
   avatar: v.optional(v.array(v.id("images"))),
   rating: v.optional(v.number()),
   featured: v.optional(v.boolean()),
-  publishedAt: v.optional(v.number()),
   plan: v.optional(v.array(v.union(v.literal("free"), v.literal("pro"), v.literal("enterprise")))),
 }).index("by_company", ["company"])`,
           },

@@ -3,6 +3,7 @@ import { PERMISSION_MODES, WILDCARD_KEY } from "./constants";
 import { resolveActionCheck } from "./hasPermission";
 import type { AccessConditionResult } from "./constraintTypes";
 import { createAccessQueryBuilder, readAccessCondition } from "./createAccessQueryBuilder";
+import { createUserReadSentinel } from "./userReadSentinel";
 import type { AccessCondition } from "./createAccessQueryBuilder";
 import {
   accessConstraintsToFilter,
@@ -115,13 +116,24 @@ function classifyRole(props: {
   if (check === true) return { kind: "unrestricted" };
   if (!isConstrainedCheck(check)) return { kind: "opaque" };
 
+  // A rule keyed to the caller has nothing to scope to when there is no caller
+  // (`resolveConstrainedCheck`'s sentinel comment has the full rationale) — the
+  // same guard runs here so this query-shaping pass can never disagree with
+  // `hasPermission`'s per-document pass about which rows a rule describes.
+  const { user, wasRead: userWasRead } = createUserReadSentinel<Record<string, unknown>>(
+    props.user,
+  );
   const outcome: boolean | AccessConditionResult = check.constraints({
-    user: props.user ?? {},
+    user,
     q: createAccessQueryBuilder(),
     ...(props.access.orgCollectionSlug !== undefined
       ? { organization: props.organization }
       : {}),
   } as unknown as Parameters<typeof check.constraints>[0]);
+
+  // The rule asked who the caller is and there is no answer — deny, matching
+  // `hasPermission`'s per-document verdict for the same rule and caller.
+  if (userWasRead()) return { kind: "deny" };
 
   // The callback may short-circuit to a flat allow/deny instead of returning a
   // condition — a rule reading `({ user, q }) => user.isAdmin || q.filter(…)` is the

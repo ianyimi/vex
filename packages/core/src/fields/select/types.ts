@@ -30,11 +30,11 @@ import { BaseField, BaseFieldInput } from "../baseTypes";
  * @example
  * ```ts
  * // Single-select status
- * status: select({
+ * tier: select({
  *   required: true,
  *   options: [
- *     { label: "Draft", value: "draft" },
- *     { label: "Published", value: "published" },
+ *     { label: "Free", value: "free" },
+ *     { label: "Pro", value: "pro" },
  *   ],
  * })
  *

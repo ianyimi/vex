@@ -48,7 +48,7 @@ export async function getUrl<TDataModel extends GenericDataModel = GenericDataMo
     hasPermission({
       throwOnDenied: true,
       access,
-      user: args.auth?.user ?? {},
+      user: args.auth?.user ?? null,
       organization: args.auth?.organization ?? {},
       resource: resource,
       action,

@@ -85,7 +85,7 @@ export async function remove<
       hasPermission({
         throwOnDenied: true,
         access,
-        user: args.auth?.user ?? {},
+        user: args.auth?.user ?? null,
         organization: args.auth?.organization,
         resource,
         action,

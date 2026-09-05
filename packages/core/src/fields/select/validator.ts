@@ -16,7 +16,7 @@ import type { SelectField } from "./types";
  *
  * @example
  * ```ts
- * const field1 = select({ required: true, options: [{ label: "Draft", value: "draft" }, { label: "Published", value: "published" }] })
+ * const field1 = select({ required: true, options: [{ label: "Free", value: "free" }, { label: "Pro", value: "pro" }] })
  * selectFieldToValidator({ field: field1 })
  * // → 'v.array(v.union(v.literal("draft"), v.literal("published")))'
  *
