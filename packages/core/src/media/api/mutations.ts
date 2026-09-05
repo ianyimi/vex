@@ -44,7 +44,7 @@ export async function generateUploadUrl<TDataModel extends GenericDataModel = Ge
     });
     hasPermission({
       throwOnDenied: true,
-      user: args.auth?.user ?? {},
+      user: args.auth?.user ?? null,
       organization: args.auth?.organization,
       access,
       resource,
@@ -94,7 +94,7 @@ export async function createMediaDocument<TDataModel extends GenericDataModel = 
     hasPermission({
       throwOnDenied: true,
       access,
-      user: args.auth?.user ?? {},
+      user: args.auth?.user ?? null,
       organization: args.auth?.organization,
       resource,
       action,
@@ -160,7 +160,7 @@ export async function deleteMedia<TDataModel extends GenericDataModel = GenericD
     hasPermission({
       throwOnDenied: true,
       access,
-      user: args.auth?.user ?? {},
+      user: args.auth?.user ?? null,
       organization: args.auth?.organization,
       resource,
       action,

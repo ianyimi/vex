@@ -43,7 +43,7 @@ export async function findGlobals<DataModel extends GenericDataModel>(
       });
       return hasPermission({
         access,
-        user: args.auth?.user ?? {},
+        user: args.auth?.user ?? null,
         organization: args.auth?.organization,
         resource,
         action,

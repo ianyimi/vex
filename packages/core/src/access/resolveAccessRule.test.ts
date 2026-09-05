@@ -249,6 +249,38 @@ describe("resolveAccessIndex — anon via anonRole", () => {
   });
 });
 
+describe("resolveAccessIndex/resolveAccessConstraint — a caller-scoped rule reached with no caller", () => {
+  // `contributor`'s rule keys its index to `user._id` (see the fixture above). A
+  // config that (mis)assigns `anonRole: "contributor"` reaches that rule for a
+  // sessionless caller — exactly the shape `createUserReadSentinel` guards: the
+  // rule reads `user`, there is no user, so both resolvers must deny rather than
+  // compile `eq("authorId", undefined)`, which Convex reads as "field is absent"
+  // and would silently widen the query instead of narrowing it.
+  const misconfigured = { ...access, anonRole: "contributor" };
+
+  it("resolveAccessIndex returns undefined instead of an index keyed on undefined", () => {
+    expect(
+      resolveAccessIndex({
+        access: misconfigured,
+        user: null,
+        resource: "pages",
+        action: "read",
+      }),
+    ).toBeUndefined();
+  });
+
+  it("resolveAccessConstraint returns undefined for the same caller and rule", () => {
+    expect(
+      resolveAccessConstraint({
+        access: misconfigured,
+        user: null,
+        resource: "pages",
+        action: "read",
+      }),
+    ).toBeUndefined();
+  });
+});
+
 describe("resolveAccessIndex — a constraints callback that short-circuits", () => {
   it("returns undefined when the callback resolves to true — an unrestricted caller must not be narrowed", () => {
     expect(

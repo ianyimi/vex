@@ -1,81 +1,59 @@
-# @vexcms/ui
+# @vexcms/react
 
-The shared UI component library for [VEX CMS](https://github.com/ianyimi/vex). Provides form components, field renderers, UI primitives, and layout utilities used by the admin panel.
+React admin components and hooks for [VexCMS](https://github.com/ianyimi/vex). Provides field input/cell components, admin panel layout and view components, block rendering, and UI primitives used to build a VexCMS admin panel.
 
 ## Installation
 
 ```bash
-pnpm add @vexcms/ui
+pnpm add @vexcms/react@alpha
 ```
-
-## Form System
-
-### AppForm
-
-The main form component that renders collection fields with validation:
-
-```tsx
-import { AppForm } from "@vexcms/ui"
-
-<AppForm
-  schema={zodSchema}
-  fieldEntries={fields}
-  defaultValues={values}
-  onSubmit={handleSubmit}
-/>
-```
-
-**Props:** `schema`, `fieldEntries`, `defaultValues`, `onSubmit`, `submitAllFields`, `formId`, `uploadFieldStates`, `renderRichTextField`, `onDirtyChange`, `onValuesChange`, `getValuesRef`
-
-### Form Hooks
-
-| Hook | Description |
-|------|-------------|
-| `useVexField` | Access/modify individual field state (value, errors, readOnly) |
-| `useVexForm` | Form-level state (submit, reset, isDirty, isValid) |
-| `useVexFormFields` | Work with multiple fields at once |
-
-### VexFormProvider
-
-Context provider for form state management, wrapping TanStack React Form.
 
 ## Field Components
 
-Auto-rendered by `AppForm` based on field type:
+`@vexcms/react` currently exports input/cell components for the `text` field type:
 
 | Component | Field Type |
 |-----------|-----------|
-| `TextField` | `text` |
-| `NumberField` | `number` |
-| `CheckboxFieldForm` | `checkbox` |
-| `SelectField` | `select` (single) |
-| `MultiSelectField` | `select` (hasMany) |
-| `DateField` | `date` |
-| `ImageUrlField` | `imageUrl` |
-| `UploadField` | `upload` |
-| `BlocksField` | `blocks` (with drag-and-drop reordering) |
-| `UIField` | `ui` (custom render) |
+| `TextFieldInput` | `text` |
+| `TextFieldCell` | `text` |
 
-## UI Primitives
+Input/cell components for the other field types (`url`, `number`, `checkbox`, `select`, `date`, `color`, `upload`, `relationship`, `group`, `array`, `blocks`) exist internally and power the built-in admin panel views (see below), but are not yet exported from the package root.
 
-28 reusable components built on [Base UI](https://base-ui.com/):
+## Admin Panel Views
 
-**Inputs & Forms:** Button, Input, Label, CheckboxField, Select, SelectNative, MultiSelect, DatePicker, Calendar
+Pre-built views and layout used by the generated admin panel:
 
-**Layout:** Avatar, Badge, Breadcrumb, Separator, Skeleton, Sidebar, Sheet, Pagination
+| Export | Description |
+|--------|-------------|
+| `AdminLayout` | Top-level admin shell (sidebar + nav) |
+| `AppSidebar` | Admin panel navigation sidebar |
+| `DashboardView` | Admin dashboard landing view |
+| `CollectionListView` | List view for a collection's documents |
+| `CollectionEditView` | Create/edit view for a single document |
+| `MediaCollectionListView` | List view for the media library |
+| `MediaCollectionEditView` | Edit view for a single media document |
+| `GlobalsListView` | List view for globals |
+| `GlobalEditView` | Edit view for a single global |
+| `UnauthorizedView` | Rendered when a user lacks admin panel access |
 
-**Overlays:** Dialog, Popover, Tooltip, DropdownMenu, Collapsible
+## Context & Hooks
 
-**Data:** DataTable (TanStack Table integration)
-
-**Media:** MediaPicker, UploadDropzone, CreateMediaModal, FilePreview
+| Export | Description |
+|--------|-------------|
+| `VexConfigContext` / `useVexConfig` | Access the resolved VexCMS config |
+| `VexAccessProvider` / `useVexAuth` | Auth/session context for the admin panel |
+| `useCanAccessAdminPanel` | Check whether the current user may access the admin panel |
+| `usePermission` | Check a specific permission |
+| `usePaginatedQuery` | Convex paginated query hook used by list views |
+| `useModalSurface` / `ModalSurfaceProvider` | Shared modal stacking/state |
+| `StorageAdapterContextProvider` | Provides the configured file-storage adapter |
 
 ## RenderBlocks
 
 Renders an ordered list of blocks based on a component map:
 
 ```tsx
-import { RenderBlocks } from "@vexcms/ui"
+import { RenderBlocks } from "@vexcms/react"
 
 <RenderBlocks
   blocks={page.content}
@@ -84,17 +62,21 @@ import { RenderBlocks } from "@vexcms/ui"
 />
 ```
 
-## Live Preview
+## UI Primitives
 
-Components for content preview during editing:
+Reusable UI primitives re-exported from `@vexcms/react`, including `Accordion`, `Badge`, `Button`, `Card`, `Checkbox`, `Dialog`, `DropdownMenu`, `Input`, `Label`, `Popover`, `ScrollArea`, `Select`, `Separator`, `Sheet`, `Sidebar`, `Skeleton`, `Table`, `Tabs`, `Tooltip`, `VexLink`, and `VexImage`, plus a `DataTable` (TanStack Table integration), date/time pickers, drag-and-drop helpers, and `Icon`/theme utilities (`ThemeProvider`, `ThemeToggle`, `ThemeScript`).
 
-| Export | Description |
-|--------|-------------|
-| `LivePreviewPanel` | Iframe preview panel |
-| `BreakpointSelector` | Responsive breakpoint controls |
-| `PreviewToggleButton` | Toggle preview on/off |
-| `useVexPreview` | Preview state management hook |
+## Config Helpers
+
+`relationship()` and `defineCollection()` are re-exported with React-specific type slots bound (e.g. `RelationshipPreviewProps`) so config authored with `@vexcms/react` gets React component types without importing `@vexcms/core` directly.
+
+## Roadmap
+
+Live preview, and versioning/drafts are not yet implemented — see the [roadmap](https://docs.vexcms.dev) for status.
 
 ## Peer Dependencies
 
-- `react` / `react-dom` — React 18+
+- `react` / `react-dom`
+- `convex`, `@convex-dev/react-query`, `@tanstack/react-query`
+- `nuqs`
+- `next` (optional)

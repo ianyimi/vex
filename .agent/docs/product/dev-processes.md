@@ -18,7 +18,7 @@ verified_at: 3a18c95eb3bed73e6c218a32a587d4cf36ce9d7a
 | `pnpm coverage` | `turbo run coverage` — v8 coverage report. |
 | `pnpm lint` / `pnpm lint:fix` | ESLint over `packages/*/src/**/*.{ts,tsx}`. |
 | `pnpm changeset` | Create a changeset entry for release notes. |
-| `pnpm version:packages` | `changeset version` + sync template versions script. |
+| `pnpm version:packages` | `changeset version` + sync script (template dep ranges + `apps/www` version). |
 | `pnpm release` | Build publishable packages + `changeset publish`. |
 
 ## Per-Package Commands
@@ -78,5 +78,5 @@ Read live output: `tmux capture-pane -t project-vex:0.0 -p -S -100`.
 1. Feature/fix commit lands.
 2. `pnpm changeset` — select affected packages, pick bump type, write description.
 3. Changeset lives in `.changeset/*.md` until release.
-4. `pnpm version:packages` bumps versions + updates template version refs.
+4. `pnpm version:packages` bumps versions + updates template version refs + syncs `apps/www/package.json#version`.
 5. `pnpm release` builds and publishes `@vexcms/*` + `create-vexcms` to npm (needs `NPM_TOKEN`).

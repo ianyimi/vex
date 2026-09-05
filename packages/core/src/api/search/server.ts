@@ -165,7 +165,7 @@ export async function search<
     docs = convexPaginationResult.page.filter((d) =>
       hasPermission({
         access,
-        user: args.auth?.user ?? {},
+        user: args.auth?.user ?? null,
         organization: args.auth?.organization,
         resource,
         action,
@@ -176,7 +176,7 @@ export async function search<
     docs = (await searchQuery.take(args.limit)).filter((d) =>
       hasPermission({
         access,
-        user: args.auth?.user ?? {},
+        user: args.auth?.user ?? null,
         organization: args.auth?.organization,
         resource,
         action,
@@ -187,7 +187,7 @@ export async function search<
     docs = (await searchQuery.collect()).filter((d) =>
       hasPermission({
         access,
-        user: args.auth?.user ?? {},
+        user: args.auth?.user ?? null,
         organization: args.auth?.organization,
         resource,
         action,
@@ -219,7 +219,7 @@ export async function search<
         const allDocs = (await countQuery.collect()).filter((d) =>
           hasPermission({
             access,
-            user: args.auth?.user ?? {},
+            user: args.auth?.user ?? null,
             organization: args.auth?.organization,
             resource,
             action,

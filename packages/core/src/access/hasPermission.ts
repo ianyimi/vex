@@ -2,6 +2,7 @@ import type { GenericDocument } from "convex/server";
 import { PERMISSION_MODES, PERMISSION_SCOPES, PermissionScope, WILDCARD_KEY } from "./constants";
 import { createAccessQueryBuilder, readAccessCondition } from "./createAccessQueryBuilder";
 import { accessConstraintsToPredicate, accessFilterTreeToPredicate } from "./compileConstraints";
+import { createUserReadSentinel } from "./userReadSentinel";
 import { VexAccessError } from "./types";
 import type {
   PermissionCallbackProps,
@@ -214,37 +215,11 @@ function resolveConstrainedCheck<TData, TUser, TOrg>(props: {
   scope: PermissionScope;
 }): boolean {
   // An unauthenticated caller still reaches here, because `anonRole` resolves them
-  // to a real role — and that role's rules may be constrained. Two shapes have to
-  // be told apart, and neither may crash:
-  //
-  //   1. The rule scopes rows to the caller (`fq.eq("email", user.email)`). With no
-  //      user there is nothing to scope to, so it must DENY. Passing `{}` would
-  //      instead compile `eq("email", undefined)`, and `convexValuesEqual` treats
-  //      `undefined === undefined`, so the range would match every row whose field
-  //      is absent — a silent widening, which is worse than the TypeError it
-  //      replaces.
-  //   2. The rule ignores the caller (`fq.eq("published", true)`). That is the
-  //      read-only `anonRole` case and must keep working.
-  //
-  // A recording sentinel separates them: if evaluating the callback never read a
-  // property off `user`, the rule was user-independent and its outcome stands.
-  let userWasRead = false;
-  const user =
-    props.user ??
-    (new Proxy(
-      {},
-      {
-        get: (_target, key) => {
-          // `then` is probed by promise-resolution machinery, not by the rule.
-          if (key !== "then") userWasRead = true;
-          return undefined;
-        },
-        has: (_target, key) => {
-          if (key !== "then") userWasRead = true;
-          return false;
-        },
-      },
-    ) as TUser);
+  // to a real role — and that role's rules may be constrained.
+  // `createUserReadSentinel` tells apart a rule that scopes to the caller (must
+  // deny with no caller) from one that ignores the caller (must keep working
+  // unauthenticated) — see its docstring for why.
+  const { user, wasRead: userWasRead } = createUserReadSentinel<TUser>(props.user);
 
   const outcome = props.check.constraints({
     user,
@@ -254,7 +229,7 @@ function resolveConstrainedCheck<TData, TUser, TOrg>(props: {
 
   // The rule asked who the caller is and there is no answer — deny, rather than
   // compile a condition built from `undefined`.
-  if (userWasRead) return false;
+  if (userWasRead()) return false;
 
   // A rule may short-circuit to a flat allow/deny rather than building a condition.
   if (typeof outcome === "boolean") return outcome;

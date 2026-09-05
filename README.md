@@ -106,20 +106,20 @@ export const posts = defineCollection({
   slug: "posts",
   admin: {
     useAsTitle: "title",
-    table: { defaultColumns: ["title", "status"] },
+    table: { defaultColumns: ["title", "category"] },
     group: "Content",
   },
   fields: {
     title: text({ label: "Title", required: true }),
     slug: text({ label: "Slug", required: true, index: "by_slug" }),
     author: relationship({ collection: { slug: "users" } }),
-    status: select({
-      label: "Status",
+    category: select({
+      label: "Category",
       required: true,
-      defaultValue: ["draft"],
+      defaultValue: ["engineering"],
       options: [
-        { label: "Draft", value: "draft" },
-        { label: "Published", value: "published" },
+        { label: "Engineering", value: "engineering" },
+        { label: "Design", value: "design" },
       ],
     }),
   },

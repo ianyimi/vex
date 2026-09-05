@@ -58,7 +58,9 @@ export function GlobalEditView({ global, initialData }: GlobalEditViewProps) {
   return (
     <AppForm form={form} className="relative">
       <div className="sticky top-12 z-10 mb-6 flex items-center justify-between bg-background pt-4">
-        <h1 className="text-2xl font-bold">Edit Global - {global.label}</h1>
+        <h1 className="text-2xl font-bold">
+          Edit Global - <span className="text-primary">{global.label}</span>
+        </h1>
         <form.Subscribe
           selector={(state) => state.isDefaultValue}
           children={(isDefaultValue) => (

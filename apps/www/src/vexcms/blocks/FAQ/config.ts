@@ -35,7 +35,7 @@ export const faqBlock = defineBlock({
         {
           question: "What is Vex CMS?",
           answer:
-            "Vex CMS is a headless content management system built on Convex. It provides real-time data, type-safe schemas, draft/publish workflows, live preview, and a beautiful admin panel — all configured with TypeScript.",
+            "Vex CMS is a headless content management system built on Convex. It provides real-time data, type-safe schemas, database-driven theming, role-based access control, and a full admin panel — all configured in TypeScript. Versioning, drafts, and live preview are in progress; see the roadmap.",
         },
         {
           question: "How is Vex different from other headless CMS platforms?",

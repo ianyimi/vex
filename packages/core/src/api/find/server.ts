@@ -252,7 +252,7 @@ export async function find<
         resource,
         action,
         data: d,
-        user: args.auth?.user ?? {},
+        user: args.auth?.user ?? null,
         organization: args.auth?.organization,
       }),
     );
@@ -263,7 +263,7 @@ export async function find<
         resource,
         action,
         data: d,
-        user: args.auth?.user ?? {},
+        user: args.auth?.user ?? null,
         organization: args.auth?.organization,
       }),
     );
@@ -274,7 +274,7 @@ export async function find<
         resource,
         action,
         data: d,
-        user: args.auth?.user ?? {},
+        user: args.auth?.user ?? null,
         organization: args.auth?.organization,
       }),
     );
@@ -318,7 +318,7 @@ export async function find<
               resource,
               action,
               data: d,
-              user: args.auth?.user ?? {},
+              user: args.auth?.user ?? null,
               organization: args.auth?.organization,
             }),
           );

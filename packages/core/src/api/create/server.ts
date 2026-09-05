@@ -79,7 +79,7 @@ export async function create<
     });
     hasPermission({
       access,
-      user: args.auth?.user ?? {},
+      user: args.auth?.user ?? null,
       organization: args.auth?.organization,
       resource,
       action,

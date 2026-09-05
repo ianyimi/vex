@@ -33,11 +33,11 @@ import type { SelectFieldInput, SelectField } from "./types";
  * posts: defineCollection({
  *   fields: {
  *     // Single-select status field
- *     status: select({
+ *     tier: select({
  *       required: true,
  *       options: [
- *         { label: "Draft", value: "draft" },
- *         { label: "Published", value: "published" },
+ *         { label: "Free", value: "free" },
+ *         { label: "Pro", value: "pro" },
  *       ],
  *     }),
  *

@@ -15,11 +15,11 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  *
  * @example
  * ```ts
- * const field = select({ required: true, options: [{ label: "Draft", value: "draft" }, { label: "Published", value: "published" }] })
+ * const field = select({ required: true, options: [{ label: "Free", value: "free" }, { label: "Pro", value: "pro" }] })
  * selectFieldToInputSchema({ field })
  * // → z.array(z.enum(["draft", "published"])).default([])
  *
- * const singleField = select({ hasMany: false, options: [{ label: "Draft", value: "draft" }] })
+ * const singleField = select({ hasMany: false, options: [{ label: "Free", value: "free" }] })
  * selectFieldToInputSchema({ field: singleField })
  * // → z.array(z.enum(["draft"])).max(1, "Only one value may be selected.").default([])
  * ```

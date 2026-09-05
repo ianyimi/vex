@@ -1,87 +1,85 @@
-# @vexcms/admin-next
+# @vexcms/next
 
-The admin panel for [VEX CMS](https://github.com/ianyimi/vex), built for Next.js. Provides a complete content management interface with collection CRUD, media management, versioning, live preview, access control, and user impersonation.
+The Next.js adapter for [VEX CMS](https://github.com/ianyimi/vex). Provides the server and client components that render the admin panel — collection CRUD, media management, and role-based access control — plus config functions re-exported from `@vexcms/react`.
 
 ## Installation
 
 ```bash
-pnpm add @vexcms/admin-next
+pnpm add @vexcms/next@alpha
 ```
 
 ## Quick Setup
 
 ```tsx
-// app/admin/[[...path]]/page.tsx
-import { AdminLayout, AdminPage } from "@vexcms/admin-next"
+// app/admin/layout.tsx
+import { NextAdminLayout } from "@vexcms/next/client"
 import config from "@/vex.config"
+import { getCurrentUser } from "@/auth/serverUtils"
 
-export default function Admin({ params }) {
+export default async function AdminRootLayout({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser()
   return (
-    <AdminLayout config={config} user={user}>
-      <AdminPage config={config} path={params.path} />
-    </AdminLayout>
+    <NextAdminLayout config={config} user={user ?? undefined}>
+      {children}
+    </NextAdminLayout>
   )
 }
 ```
+
+```tsx
+// app/admin/[[...path]]/page.tsx
+import { NextAdminPage } from "@vexcms/next/server"
+import config from "@/vex.config"
+
+export default function AdminPage({
+  params,
+}: {
+  params: Promise<{ path?: string[] }>
+}) {
+  return <NextAdminPage config={config} params={params} />
+}
+```
+
+`NextAdminPage` and `NextAdminLayout` are exported from separate subpaths (`/server` and `/client`) rather than the package root, because an async server component and a `"use client"` component cannot share one bundle.
 
 ## Features
 
 ### Collection Management
 
-- **List view** — Paginated data table with search, sorting, bulk delete, and configurable columns
-- **Edit view** — Auto-generated forms from collection schema with field validation via TanStack React Form
-- **Create/delete** — Dialogs for document creation and deletion with permission checks
-- **Bidirectional pagination** — Instant access to first and last pages
+- **List view** — Data table with Load More pagination, row selection, and bulk delete
+- **Edit view** — Auto-generated forms from the collection schema, submitted via TanStack React Form
+- **Create dialog** — Modal for document creation, gated by a `create` permission check
 
 ### Media Management
 
 - **Grid/list views** — Browse media files with thumbnails
-- **Upload** — Drag-and-drop upload with file type detection
-- **Media picker** — Inline picker for upload and relationship fields with search and pagination
-- **Image dimensions** — Auto-detected on upload
+- **Upload** — Drag-and-drop or click-to-upload through the collection's configured storage adapter
+- **Media picker** — Inline picker for upload fields, with a client-side search filter and Load More pagination
 
-### Versioning & Drafts
+### Roadmap note
 
-- **Draft/publish workflow** — Status badges, publish/unpublish actions
-- **Version history** — Dropdown to view, restore, or delete previous versions
-- **Autosave** — Configurable auto-save interval for draft documents
-
-### Live Preview
-
-- **Side-by-side panel** — Preview content changes in an iframe alongside the editor
-- **Responsive breakpoints** — Test at different screen sizes
-- **Snapshot system** — Transient preview data without saving to database
+Versioning, drafts, and live preview are not implemented yet — both are in progress on the [roadmap](https://docs.vexcms.dev). A global's `versions.drafts` option parses and is stored on the resolved config, but it is not enforced: every read still returns the live document. See [docs.vexcms.dev](https://docs.vexcms.dev) for current status.
 
 ### Access Control
 
-- **Permission provider** — React context for role-based access control
-- **Field-level permissions** — Read-only fields based on user roles
-- **Collection-level permissions** — Control create, read, update, delete per collection
-- **UI enforcement** — Buttons and actions hidden/disabled based on permissions
-
-### User Impersonation
-
-- **Impersonation banner** — Shows when an admin is viewing as another user
-- **User switching** — Select from impersonatable users list
+- **Access provider** — `VexAccessProvider` supplies the RBAC access matrix to the admin panel via React context
+- **Collection-level permissions** — `usePermission` gates create, read, update, and delete per collection and per global
+- **UI enforcement** — Buttons and actions are disabled or hidden when the current user lacks permission
 
 ### Admin Layout
 
-- **Sidebar navigation** — Collections grouped by `admin.group`, with auth and media sections
-- **Theme support** — Light/dark mode
-- **User menu** — Profile, sign out, impersonation controls
+- **Sidebar navigation** — Links grouped into Collections, Globals, and Media sections
+- **Theme support** — Light, dark, and system modes via `ThemeToggle`
 
 ## Exports
 
-| Export | Description |
-|--------|-------------|
-| `AdminPage` | Main routing component — renders the correct view based on URL path |
-| `AdminLayout` | Server-side layout wrapper with sidebar and theme |
-| `PermissionProvider` | React context provider for RBAC |
-| `usePermission` | Hook to check a single action permission |
-| `usePermissions` | Hook to check all CRUD permissions for a resource |
-| `usePermissionContext` | Hook to access the full permission context |
-| `ImpersonationBanner` | Banner component for admin impersonation |
-| `useMediaPickerState` | Hook for media picker state management |
+| Export | From | Description |
+|--------|------|-------------|
+| `NextAdminPage` | `@vexcms/next/server` | Async server component that routes the admin panel by URL path (dashboard, list, edit) |
+| `NextAdminLayout` | `@vexcms/next/client` | Client component rendering the admin shell (sidebar, theme, breadcrumbs) around page content |
+| `defineConfig`, `defineCollection`, `relationship`, `text`, `number`, `select`, `date`, `url`, `checkbox` | `@vexcms/next` | Config functions re-exported from `@vexcms/react` |
+
+The compiled stylesheet is available at `@vexcms/next/styles`.
 
 ## Peer Dependencies
 

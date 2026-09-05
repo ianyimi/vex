@@ -46,6 +46,7 @@ export {
   createBetterAuthAdapter,
   convexAdapter,
   createGetAuth,
+  anonRoleDatabaseHook,
   type CreateBetterAuthAdapterArgs,
   type CreateBetterAuthAdapterResult,
 } from "./convex";

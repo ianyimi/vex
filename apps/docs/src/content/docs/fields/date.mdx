@@ -40,7 +40,7 @@ hour, minute, and second selectors.
 
 ```ts
 // Optional date with time picker (default)
-publishedAt: v.optional(v.number())
+remindAt: v.optional(v.number())
 
 // Required event date
 startsAt: v.number()
@@ -58,8 +58,8 @@ import { defineCollection, date, text } from "@vexcms/core";
 const events = defineCollection({
   slug: "events",
   fields: {
-    // Minimal — label inferred from key ("Published At")
-    publishedAt: date(),
+    // Minimal — label inferred from key ("Remind At")
+    remindAt: date(),
 
     // Required event date with a database index
     eventDate: date({ required: true, index: "by_event_date" }),
