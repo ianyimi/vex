@@ -7,7 +7,8 @@ import schema from "../test/convex/schema";
 import type { VexConfig } from "../../config";
 import { create } from "./server";
 import { defineAccess } from "../../access/config";
-import { defineCollection, text, checkbox } from "../../index";
+import type { AdminField } from "../../fields";
+import { checkbox, defineCollection, number, text } from "../../index";
 import { VexAccessError, WILDCARD_KEY } from "../../access";
 
 
@@ -372,5 +373,93 @@ describe("create (server) — payload-dependent rules (documented contract, curr
       }),
     );
     expect(typeof id).toBe("string");
+  });
+});
+
+describe("create (server) — updatedAt stamp", () => {
+  const stampedConfig = {
+    collections: [
+      defineCollection({
+        slug: "posts",
+        fields: { title: text(), slug: text(), featured: checkbox() },
+      }),
+    ],
+  } as unknown as VexConfig;
+
+  test("stamps updatedAt on insert when the collection declares the field", async () => {
+    const t = convexTest(schema, modules);
+    const before = Date.now();
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await create({
+        collection: "posts",
+        config: stampedConfig,
+        ctx,
+        data: { slug: "hello", title: "Hello" },
+      });
+      const doc = await ctx.db.get(id as never);
+      expect(doc?.updatedAt).toBeGreaterThanOrEqual(before);
+    });
+  });
+
+  test("does not stamp when no registered collection matches the slug", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await create({
+        collection: "posts",
+        config: fixtureConfig,
+        ctx,
+        data: { slug: "hello", title: "Hello" },
+      });
+      const doc = await ctx.db.get(id as never);
+      expect(doc?.updatedAt).toBeUndefined();
+    });
+  });
+
+  test("does not stamp a collection that opted out with timestamps: false", async () => {
+    const t = convexTest(schema, modules);
+    const optedOut = {
+      collections: [
+        defineCollection({
+          slug: "posts",
+          fields: { title: text(), slug: text() },
+          timestamps: false,
+        }),
+      ],
+    } as unknown as VexConfig;
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await create({
+        collection: "posts",
+        config: optedOut,
+        ctx,
+        data: { slug: "hello", title: "Hello" },
+      });
+      const doc = await ctx.db.get(id as never);
+      expect(doc?.updatedAt).toBeUndefined();
+    });
+  });
+
+  test("does not stamp over a locked updatedAt — the auth adapter owns that value", async () => {
+    const t = convexTest(schema, modules);
+    // Typed as a widened Record, exactly like `betterAuthAdapter` builds it —
+    // a field literal would (correctly) trip `defineCollection`'s
+    // compile-time reserved-key guard.
+    const authFields: Record<string, AdminField> = {
+      slug: text(),
+      title: text(),
+      updatedAt: number({ meta: { locked: true }, required: false }),
+    };
+    const authShaped = {
+      collections: [defineCollection({ slug: "posts", fields: authFields })],
+    } as unknown as VexConfig;
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await create({
+        collection: "posts",
+        config: authShaped,
+        ctx,
+        data: { slug: "hello", title: "Hello" },
+      });
+      const doc = await ctx.db.get(id as never);
+      expect(doc?.updatedAt).toBeUndefined();
+    });
   });
 });

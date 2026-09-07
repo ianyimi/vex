@@ -1,10 +1,10 @@
 "use client";
 
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { CRUD_ACTIONS, GlobalEditViewProps, vexConvexApi } from "@vexcms/core";
 import { AppForm } from "../form";
-import { useGlobalForm, usePermission } from "../../hooks";
+import { useGlobalForm, usePermission, useVexMutation } from "../../hooks";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 
@@ -29,8 +29,14 @@ export function GlobalEditView({ global, initialData }: GlobalEditViewProps) {
     initialData,
   });
 
-  const { mutateAsync, isPending } = useMutation({
-    mutationFn: useConvexMutation(vexConvexApi.globals.upsert),
+  const { mutateAsync, isPending } = useVexMutation({
+    collection: global.slug,
+    // A global has no per-document identity, so one change carrying the
+    // upserted data is enough — a global's mapper keys on the slug, which
+    // travels as `collection`, and may ignore `doc` entirely.
+    getChanges: ({ args }) => [{ after: args.data }],
+    mutationFn: vexConvexApi.globals.upsert,
+    operation: "upsert",
   });
 
   const form = useGlobalForm({

@@ -135,6 +135,7 @@ export interface Image extends VexDocument {
   src: string
   width?: number
   height?: number
+  updatedAt?: number
 }
 
 export type CollectionSlug =
@@ -263,7 +264,7 @@ declare module "@vexcms/core" {
       }
       images: {
         text: "filename" | "alt" | "mimeType" | "storageId" | "src"
-        number: "size" | "width" | "height"
+        number: "size" | "width" | "height" | "updatedAt"
         checkbox: "deleted"
       }
     }

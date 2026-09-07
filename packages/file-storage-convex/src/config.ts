@@ -58,7 +58,10 @@ export function defineMediaCollection<
 ): MediaCollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, TComponent> {
   const userFields = config.fields ?? {};
 
-  const fields: MediaCollectionConfig<TFieldMeta, TCollectionMeta>["fields"] = {
+  // Typed as the INPUT `fields` shape, not `MediaCollectionConfig["fields"]`:
+  // the resolved type also carries the reserved `updatedAt` slot
+  // `defineCollection` injects, and this map is what gets handed IN.
+  const fields: Record<string, AdminField<TFieldMeta>> = {
     // Required base fields — user fields spread after so label/description overrides work
     filename: text({
       required: true,
@@ -77,18 +80,37 @@ export function defineMediaCollection<
     ...userFields,
   };
 
-  return defineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, TComponent>({
+  // `TFieldSlug` is deliberately NOT forwarded here. `defineCollection`'s
+  // parameter is a conditional type on it (the reserved-key guard), and a
+  // conditional over an unresolved generic cannot be checked at this call
+  // site. `string` is the truthful argument anyway: `fields` above is a
+  // widened `Record<string, ...>`, exactly like the auth adapter's call. The
+  // outer signature keeps `TFieldSlug` because that describes the caller's own
+  // user fields, which is what the returned config must stay typed by.
+  const resolved = defineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, string, TComponent>({
     ...config,
-    fields: fields,
+    fields,
     meta: {
       ...config.meta,
       storageAdapter: "convex",
     } as TCollectionMeta,
     admin: {
-      useAsTitle: "filename" as TFieldSlug,
+      useAsTitle: "filename",
       ...config.admin,
     },
   });
+
+  // Through `unknown`: `defineCollection` stamps `collectionSlug` into
+  // `TFieldMeta` and resolves `TFieldSlug` to `string`, so the two generic
+  // instantiations do not overlap structurally even though the runtime value
+  // is exactly what the declared return type describes.
+  return resolved as unknown as MediaCollectionConfig<
+    TFieldMeta,
+    TCollectionMeta,
+    TCollectionSlug,
+    TFieldSlug,
+    TComponent
+  >;
 }
 
 /**

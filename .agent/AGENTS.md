@@ -24,5 +24,6 @@ advisor's harness change-sets instead of self-tracking requirement shifts mid-ta
 - Mission: `.agent/docs/product/mission.md`
 - Tech stack: `.agent/docs/product/tech-stack.md`
 - Dev processes: `.agent/docs/product/dev-processes.md`
+- Feature backlog (assessed but deferred work): `.agent/docs/product/backlog.md`
 - Standards: `.agent/docs/standards/`
 - Current state: run `harness state`

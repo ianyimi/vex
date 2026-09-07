@@ -8,7 +8,6 @@ import { Geist, Geist_Mono } from "next/font/google"
 import ClientProviders from "~/components/providers/client"
 import ServerProviders from "~/components/providers/server"
 import { ThemeLive } from "~/components/ThemeLive"
-import { ThemeStyle } from "~/components/ThemeStyle"
 
 /**
  * Geist carries the whole type system — display through body — so weight is
@@ -66,11 +65,12 @@ export default function RootLayout({
     >
       <head>
         {/* ThemeScript applies the persisted light/dark class before first
-            paint (no flash); ThemeStyle server-renders the active site theme
+            paint (no flash). ThemeStyle moved to `(frontend)/(site)/layout.tsx`:
+            it reads Convex, and the root must stay free of Convex reads so its
+            routes can prerender. Admin keeps its own `<ThemeStyle scope="admin" />`
             once for the whole app — the admin layout re-emits its own scope
             at higher specificity, so `siteSettings.adminTheme` opts out. */}
         <ThemeScript />
-        <ThemeStyle />
       </head>
       <body>
         <ServerProviders>

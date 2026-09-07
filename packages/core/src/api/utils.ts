@@ -111,3 +111,44 @@ export function resolveCollectionSlug<DataModel extends GenericDataModel>(props:
   // Note: `config.collections` is small and `normalizeId` is a local syscall (no DB round
   // trip), so looping it once per `get`/`update`/`remove` request is cheap.
 }
+
+/**
+ * Adds the auto-maintained `updatedAt` timestamp to a write payload, when the
+ * target collection carries the field `defineCollection` injects.
+ *
+ * Shared by `create` and `update` so the two write paths cannot drift on when
+ * a document gets stamped.
+ *
+ * Skipped in three cases, all deliberate:
+ * - The slug matches no registered collection — nothing declares the column,
+ *   and Convex's schema validation would reject the write.
+ * - The collection opted out with `{ timestamps: false }`, so `fields` has no
+ *   `updatedAt` entry.
+ * - The field is `meta.locked` — that is better-auth's OWN `updatedAt`,
+ *   populated from the auth table's real schema attribute. Its adapter owns
+ *   that value, so vexcms must never write it.
+ *
+ * @param props - The resolved config, target collection slug, and the payload
+ *   exactly as the caller sent it.
+ * @returns The payload, with `updatedAt` set to now when the collection
+ *   carries an unlocked `updatedAt` field; otherwise the payload unchanged.
+ */
+export function stampUpdatedAt<TData>(props: {
+  collection: CollectionSlug;
+  config: VexConfig;
+  data: TData;
+}): TData {
+  const collection = props.config.collections.find((c) => c.slug === props.collection);
+  const field = collection?.fields.updatedAt;
+  if (field === undefined) {
+    return props.data;
+  }
+  // `meta` is generic over `TFieldMeta`, so `locked` is not on its static
+  // shape. Read it through a validated boundary rather than asserting: only a
+  // literal `true` counts, anything else stamps.
+  const meta: Record<string, unknown> = field.meta;
+  if (meta.locked === true) {
+    return props.data;
+  }
+  return { ...props.data, updatedAt: Date.now() };
+}

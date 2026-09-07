@@ -28,16 +28,12 @@ export interface PageContentProps {
 export function PageContent({ slug, initialData }: PageContentProps) {
   const normalizedSlug = slug && slug.length > 0 ? slug : "home"
 
-  const { data: pages, isPending } = useQuery({
+  const { data: pages } = useQuery({
     ...convexQuery(api.pages.getBySlug, { slug: normalizedSlug }),
     initialData,
   })
 
   const page = pages?.[0]
-
-  if (isPending && initialData === undefined) {
-    return null
-  }
 
   if (!page) {
     return <WelcomePage />

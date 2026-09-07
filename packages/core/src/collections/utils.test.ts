@@ -50,7 +50,31 @@ describe("getCollectionDefaultValues", () => {
       },
     });
     const defaults = getCollectionDefaultValues({ collection });
-    expect(defaults).toEqual({ title: "", slug: "" });
+    // `updatedAt` is injected by `defineCollection`, and is deliberately
+    // `undefined` rather than `0` on create — an unsaved document has no
+    // update time.
+    expect(defaults).toEqual({ title: "", slug: "", updatedAt: undefined });
+  });
+
+  it("uses the stored updatedAt when editing an existing document", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+    });
+    const defaults = getCollectionDefaultValues({
+      collection,
+      document: { _creationTime: 1, _id: "d1", title: "Hello", updatedAt: 1234 },
+    });
+    expect(defaults.updatedAt).toBe(1234);
+  });
+
+  it("omits updatedAt entirely for a collection that opted out", () => {
+    const collection = defineCollection({
+      slug: "log",
+      fields: { message: text({ required: true }) },
+      timestamps: false,
+    });
+    expect(getCollectionDefaultValues({ collection })).toEqual({ message: "" });
   });
 
   it("returns 0 as default for number fields", () => {

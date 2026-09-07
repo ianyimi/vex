@@ -12,7 +12,7 @@ import config from "~/vex.config"
  *
  * Mirrors `apps/test/src/vexcms/api.ts`'s `vexServerApi` binding.
  */
-export const { get, find, search, create, remove, update, globals } = vexServerApi<DataModel>({
+export const { get, find, search, create, remove, update, globals, publishedSlugs } = vexServerApi<DataModel>({
   config,
   getAuth: createGetAuth({
     orgCollectionSlug: TABLE_SLUG_ORGANIZATIONS,

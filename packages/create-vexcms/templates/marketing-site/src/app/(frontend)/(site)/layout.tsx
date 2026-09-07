@@ -1,12 +1,13 @@
 import type { ReactNode } from "react"
 
 import { api } from "@convex/_generated/api"
-import { fetchQuery } from "convex/nextjs"
 
 import type { FootersDocument, HeadersDocument } from "~/vex.types"
 
 import { SiteFooter } from "~/components/SiteFooter"
 import { SiteHeader } from "~/components/SiteHeader"
+import { ThemeStyle } from "~/components/ThemeStyle"
+import { vex } from "~/lib/vex"
 
 /**
  * Marketing chrome: header + footer around every site page. Auth routes live
@@ -22,8 +23,8 @@ export default async function SiteLayout({
 
   try {
     ;[headerData, footerData] = await Promise.all([
-      fetchQuery(api.headers.getFirst),
-      fetchQuery(api.footers.getFirst),
+      vex.query(api.headers.getFirst),
+      vex.query(api.footers.getFirst),
     ])
   } catch {
     // Convex not available — fall back to client-only fetch
@@ -31,6 +32,7 @@ export default async function SiteLayout({
 
   return (
     <>
+      <ThemeStyle />
       {/* Sits above the sticky header so it is the first tab stop on every
           page. Visually hidden until focused. */}
       <a

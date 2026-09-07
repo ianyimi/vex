@@ -4,6 +4,7 @@ import { MediaCollectionConfig, VexStorageAdapter } from "../media";
 import { StorageAdapterSlug } from "../types";
 import { GlobalConfig } from "../globals";
 import { VexAccessConfig } from "../access";
+import { VexRoutesConfig } from "../routes";
 
 /**
  * User-facing configuration input for the VexCMS admin panel.
@@ -251,6 +252,18 @@ export interface VexConfigInput {
   schema?: SchemaConfigInput;
   types?: TypesConfigInput;
   /**
+   * Maps documents to the public paths that render them. Omit for a project
+   * with no public pages, or whose public pages read no CMS documents.
+   *
+   * Cache revalidation is its first consumer — a save purges the paths `map`
+   * returns — but the same answer also drives admin "View page" links, sitemap
+   * URLs, and preview links, so it is named for what it describes rather than
+   * for one user of it.
+   *
+   * @see {@link VexRoutesConfig} for all available options
+   */
+  routes?: VexRoutesConfig;
+  /**
    * Auth adapter to register authentication collections (user, session,
    * account, verification, etc.) alongside user-defined collections.
    *
@@ -303,6 +316,11 @@ export interface VexConfig {
   /** Resolved schema generation configuration — always fully populated after defaults are applied. */
   schema: SchemaConfig;
   types: TypesConfig;
+  /**
+   * Resolved route map. `undefined` when the project never configured
+   * `routes` — it is opt-in.
+   */
+  routes?: VexRoutesConfig;
   /**
    * Auth adapter registered with this config. Auth collections are merged
    * with user-defined collections — protected collections and locked fields

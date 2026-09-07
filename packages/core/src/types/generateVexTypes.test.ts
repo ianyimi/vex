@@ -589,3 +589,29 @@ describe("generateVexTypes - index-less collections", () => {
     expect(output).not.toContain("site_settings: never");
   });
 });
+
+// ─── injected updatedAt field ─────────────────────────────────────────────────
+
+describe("generateVexTypes — injected updatedAt field", () => {
+  it("emits updatedAt?: number on every generated document interface", () => {
+    const config = defineConfig({
+      collections: [
+        defineCollection({ slug: "posts", fields: { title: text({ required: true }) } }),
+      ],
+    });
+    expect(generateVexTypes({ config })).toContain("updatedAt?: number");
+  });
+
+  it("omits updatedAt when the collection opts out with timestamps: false", () => {
+    const config = defineConfig({
+      collections: [
+        defineCollection({
+          slug: "log",
+          fields: { message: text({ required: true }) },
+          timestamps: false,
+        }),
+      ],
+    });
+    expect(generateVexTypes({ config })).not.toContain("updatedAt");
+  });
+});

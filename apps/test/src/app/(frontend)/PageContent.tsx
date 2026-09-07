@@ -1,11 +1,9 @@
 "use client";
-import { PERMISSION_SCOPES } from "@vexcms/core";
 import { RenderBlocks, type BlockComponents } from "@vexcms/react";
 import Link from "next/link";
 
 import type { Page, PageBlock } from "~/vex.types.ts";
 
-import { hasPermission } from "~/auth/hasPermission";
 
 /**
  * Props for the `PageContent` component.
@@ -30,10 +28,6 @@ export interface PageContentProps {
  * @param props.page - The page document to render.
  */
 export default function PageContent({ page }: PageContentProps) {
-  const canSave = hasPermission({ resource: "edit", action: "save", scope: PERMISSION_SCOPES.any });
-  const canPublish = hasPermission({ resource: "articles", action: "publish" });
-  console.log("canSave: ", canSave);
-  console.log("canPublish: ", canPublish);
   return (
     <main className="min-h-screen bg-background text-foreground">
       {/* Admin link section */}

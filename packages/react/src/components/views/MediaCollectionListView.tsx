@@ -1,6 +1,5 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
 import {
   CRUD_ACTIONS,
   PERMISSION_SCOPES,
@@ -18,9 +17,8 @@ import { CreateMediaModal } from "../modals/CreateMediaModal";
 import { useVexConfig } from "../../context/VexConfigContext";
 import { getCollectionColumnDefs } from "../fields";
 import { FilePreview } from "../media/FilePreview";
-import { usePaginatedQuery, usePermission } from "../../hooks";
+import { usePaginatedQuery, usePermission, useVexMutation } from "../../hooks";
 import { DataTable } from "../ui";
-import { useConvexMutation } from "@convex-dev/react-query";
 
 /**
  * Props for the `MediaCollectionListView` component.
@@ -66,15 +64,11 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
   const collection =
     liveConfig?.mediaCollections.find((c) => c.slug === props.collection.slug) ?? props.collection;
 
-  const deleteMediaMutation = useMutation({ mutationFn: useConvexMutation(vexConvexApi.remove) });
-  async function handleBulkDelete(selectedIds: string[]) {
-    await deleteMediaMutation.mutateAsync({ ids: selectedIds, collection: props.collection.slug });
-  }
-
   const numItems = Math.max(
     props.collection.admin.table.serverPageSize,
     props.collection.admin.table.defaultPageSize,
   );
+
   const pagination = usePaginatedQuery<VexMediaDocument>({
     query: {
       collection: props.collection.slug,
@@ -89,6 +83,24 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
     initialData: props.initialData,
     clientPageSize: props.collection.admin.table.defaultPageSize,
   });
+
+  // Declared after `pagination` because `getChanges` reads its loaded rows: a
+  // deleted document cannot be re-read server-side, so the pre-delete state
+  // has to travel with the request.
+  const deleteMediaMutation = useVexMutation({
+    collection: props.collection.slug,
+    getChanges: ({ args }) =>
+      args.ids.flatMap((id) => {
+        const row = pagination.results.find((doc) => doc._id === id);
+        return row === undefined ? [] : [{ before: row }];
+      }),
+    mutationFn: vexConvexApi.remove,
+    operation: "remove",
+  });
+
+  async function handleBulkDelete(selectedIds: string[]) {
+    await deleteMediaMutation.mutateAsync({ ids: selectedIds, collection: props.collection.slug });
+  }
 
   const columns = [
     mediaPreviewColumn(),

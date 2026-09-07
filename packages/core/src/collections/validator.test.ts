@@ -371,3 +371,25 @@ describe("collectionConfigToVexSchema — auto search index", () => {
     expect(count).toBe(2); // not 3
   });
 });
+
+// ─── injected updatedAt field ─────────────────────────────────────────────────
+
+describe("collectionConfigToVexSchema — injected updatedAt field", () => {
+  it("emits v.optional(v.number()) for the injected updatedAt field", () => {
+    const posts = defineCollection({ slug: "posts", fields: { title: text() } });
+    const config = defineConfig({ collections: [posts] });
+    const contents = collectionConfigToVexSchema({ collection: posts, config });
+    expect(contents).toContain("updatedAt: v.optional(v.number()),");
+  });
+
+  it("does not emit updatedAt when timestamps: false", () => {
+    const log = defineCollection({
+      slug: "log",
+      fields: { message: text() },
+      timestamps: false,
+    });
+    const config = defineConfig({ collections: [log] });
+    const contents = collectionConfigToVexSchema({ collection: log, config });
+    expect(contents).not.toContain("updatedAt");
+  });
+});

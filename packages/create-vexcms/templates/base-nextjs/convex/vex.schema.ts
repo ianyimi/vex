@@ -130,6 +130,7 @@ export const images = defineTable({
   src: v.string(),
   width: v.optional(v.number()),
   height: v.optional(v.number()),
+  updatedAt: v.optional(v.number()),
 })
   .index("by_deleted", ["deleted"])
   .searchIndex("search_filename", {
