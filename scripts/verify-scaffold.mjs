@@ -14,27 +14,42 @@
  *   node scripts/verify-scaffold.mjs             pack + scaffold both templates, install/typecheck/build each
  *   node scripts/verify-scaffold.mjs --keep      preserve the tmp pack/scaffold dirs for debugging
  *   node scripts/verify-scaffold.mjs --negative  AP-013 self-test: corrupt one override mapping and confirm
- *                                                 the pipeline (correctly) fails — see the file-level note
- *                                                 above `runNegativeSelfTest` for why exit is always 1
+ *                                                the pipeline (correctly) fails — see the file-level note
+ *                                                above `runNegativeSelfTest` for why exit is always 1
+ *   node scripts/verify-scaffold.mjs --negative-routes
+ *                                                AP-013 self-test for the route-table assertion: forces
+ *                                                `marketing-site`'s home route dynamic and confirms
+ *                                                `assertScaffoldRoutes` (correctly) reports it unprerendered
+ *                                                — see `runNegativeRoutesSelfTest`. Exits 1 when detection
+ *                                                worked and 0 when it did not, so the `! ...` form in the
+ *                                                spec's Verify passes only if the assertion is real.
+ *
+ * Each template's own `pnpm build` output is also asserted now, past "it compiled": the
+ * public routes named in `TEMPLATES` must appear in `.next/prerender-manifest.json`, and
+ * (for templates that ship the generated SEO routes) `/sitemap.xml`/`/robots.txt` must be
+ * structurally valid — 200, parseable, non-empty. Per AP-012 this never asserts seeded slug
+ * content: this gate has no live Convex deployment and builds with placeholder env (P-020).
  *
  * Precondition (not performed here — a stale dist would silently pack stale
  * code): `pnpm --filter "@vexcms/*" --filter create-vexcms build`.
  *
- * Exits non-zero if any template's install/typecheck/build fails, or if the
- * negative self-test is requested (see above).
+ * Exits non-zero if any template's install/typecheck/build fails, or if either
+ * self-test (`--negative`, `--negative-routes`) is requested (see above).
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import net from "node:net";
 import { fileURLToPath } from "node:url";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const cliArgs = process.argv.slice(2);
 const keep = cliArgs.includes("--keep");
 const negative = cliArgs.includes("--negative");
+const negativeRoutes = cliArgs.includes("--negative-routes");
 
 /**
  * Derives the publishable package list from the workspace itself — a
@@ -144,6 +159,121 @@ function runStep(label, command, args, cwd) {
 }
 
 /**
+ * Extends a template's build proof past "it compiled": reads which routes
+ * the build actually prerendered from `.next/prerender-manifest.json` — a
+ * static-analysis fact, unaffected by whether the page's own data fetch
+ * succeeds — and, for templates that ship the generated SEO routes, boots
+ * `next start` just long enough to confirm `/sitemap.xml` and `/robots.txt`
+ * are structurally valid: 200, parseable, non-empty.
+ *
+ * Never asserts seeded slug content: the packed-tarball scaffold this gate
+ * builds has no live Convex deployment and builds against placeholder env
+ * (P-020), under which `publishedSlugs` throws and `createVexSitemap`
+ * degrades to its static entries only (AP-012).
+ *
+ * @param {string} projectDir absolute path to the scaffolded, already-built project
+ * @param {{ staticRoutes: string[], seoRoutes: boolean }} template
+ * @returns {Promise<Array<{ label: string, ok: boolean }>>}
+ */
+async function assertScaffoldRoutes(projectDir, template) {
+  const steps = [];
+  const record = (label, ok, detail = "") => {
+    console.log(`    ${ok ? "\u2713" : "\u2717"} ${label}${ok || !detail ? "" : ` \u2014 ${detail}`}`);
+    steps.push({ label: `route: ${label}`, ok });
+  };
+
+  console.log("  \u2192 route-table + SEO-route assertions");
+
+  let prerendered = [];
+  try {
+    const manifestPath = path.join(projectDir, ".next", "prerender-manifest.json");
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
+    prerendered = Object.keys(manifest.routes ?? {});
+  } catch (error) {
+    record("read prerender-manifest.json", false, error.message);
+    return steps;
+  }
+
+  for (const route of template.staticRoutes) {
+    record(
+      `${route} is prerendered`,
+      prerendered.includes(route),
+      `manifest has: ${prerendered.join(", ") || "(none)"}`,
+    );
+  }
+
+  if (!template.seoRoutes) return steps;
+
+  let server;
+  try {
+    const port = await freePort();
+    const base = `http://127.0.0.1:${port}`;
+    server = spawn("pnpm", ["run", "start", "--port", String(port)], {
+      cwd: projectDir,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    const deadline = Date.now() + 60_000;
+    let ready = false;
+    while (Date.now() < deadline && !ready) {
+      try {
+        ready = (await fetch(base, { redirect: "manual" })).status > 0;
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
+    if (!ready) throw new Error(`server did not become ready on ${base}`);
+
+    const sitemapRes = await fetch(`${base}/sitemap.xml`);
+    record("/sitemap.xml returns 200", sitemapRes.status === 200, `got ${sitemapRes.status}`);
+    const sitemapBody = await sitemapRes.text();
+    // Structure only, deliberately NOT `<loc>` content. This gate scaffolds
+    // with placeholder env and no Convex deployment, so `publishedSlugs`
+    // throws and `createVexSitemap` degrades to `[]` by design (P-020) — an
+    // empty `<urlset>` is the CORRECT output here, and asserting at least one
+    // `<loc>` would be a criterion this environment can never satisfy
+    // (AP-012). `verify-seo-routes.mjs` asserts real slugs against `apps/www`,
+    // which has a live deployment.
+    record(
+      "/sitemap.xml is a well-formed urlset",
+      /<\?xml/.test(sitemapBody) && /<urlset[\s>]/.test(sitemapBody),
+    );
+
+    const robotsRes = await fetch(`${base}/robots.txt`);
+    record("/robots.txt returns 200", robotsRes.status === 200, `got ${robotsRes.status}`);
+    const robotsBody = await robotsRes.text();
+    record(
+      "/robots.txt names a user-agent and a sitemap",
+      /user-agent:/i.test(robotsBody) && /sitemap:/i.test(robotsBody),
+    );
+  } catch (error) {
+    record("SEO route harness", false, error.message);
+  } finally {
+    if (server?.pid) {
+      try {
+        process.kill(-server.pid, "SIGTERM");
+      } catch {
+        server.kill("SIGTERM");
+      }
+    }
+  }
+
+  return steps;
+}
+
+/** @returns {Promise<number>} A TCP port currently free on the loopback interface. */
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.on("error", reject);
+    srv.listen(0, "127.0.0.1", () => {
+      const { port } = srv.address();
+      srv.close(() => resolve(port));
+    });
+  });
+}
+
+/**
  * Points every packed package's dependents at its local tarball instead of
  * the registry, via `pnpm.overrides` — this is what makes the install
  * actually exercise what would ship, rather than whatever `@vexcms/*`
@@ -172,12 +302,14 @@ function injectOverrides(projectDir, tarballs) {
  * Scaffolds one template via the built CLI, injects tarball overrides, then
  * runs install/typecheck/build — stopping at the first failing step so a
  * broken scaffold doesn't spend minutes typechecking a project that never
- * installed.
+ * installed. On a successful build, also runs the route-table + SEO-route
+ * assertions (`assertScaffoldRoutes`) so this gate proves more than "it
+ * compiled".
  *
- * @param {{ key: string, label: string, bare: boolean, cliEntry: string, scaffoldRoot: string, tarballs: Map<string, string> }} params
- * @returns {{ key: string, label: string, steps: Array<{ label: string, ok: boolean }> }}
+ * @param {{ key: string, label: string, bare: boolean, staticRoutes: string[], seoRoutes: boolean, cliEntry: string, scaffoldRoot: string, tarballs: Map<string, string> }} params
+ * @returns {Promise<{ key: string, label: string, steps: Array<{ label: string, ok: boolean }> }>}
  */
-function runTemplate({ key, label, bare, cliEntry, scaffoldRoot, tarballs }) {
+async function runTemplate({ key, label, bare, staticRoutes, seoRoutes, cliEntry, scaffoldRoot, tarballs }) {
   console.log(`\n=== ${label} ===`);
   const steps = [];
   const ok = (step) => {
@@ -207,8 +339,15 @@ function runTemplate({ key, label, bare, cliEntry, scaffoldRoot, tarballs }) {
     ["pnpm typecheck", ["run", "typecheck"]],
     ["pnpm build", ["run", "build"]],
   ];
+  let built = true;
   for (const [stepLabel, args] of remainingSteps) {
-    if (!ok(runStep(stepLabel, "pnpm", args, projectDir))) break;
+    built = ok(runStep(stepLabel, "pnpm", args, projectDir));
+    if (!built) break;
+  }
+
+  if (built) {
+    const routeSteps = await assertScaffoldRoutes(projectDir, { staticRoutes, seoRoutes });
+    for (const step of routeSteps) ok(step);
   }
 
   return { key, label, steps };
@@ -217,11 +356,26 @@ function runTemplate({ key, label, bare, cliEntry, scaffoldRoot, tarballs }) {
 /**
  * Templates exercised by the gate — `bare: true` drives the CLI's `--bare`
  * flag (base-nextjs shape, no marketing overlay), `bare: false` scaffolds
- * the full marketing-site overlay on top of it (Contract 2).
+ * the full marketing-site overlay on top of it (Contract 2). `staticRoutes`
+ * and `seoRoutes` feed `assertScaffoldRoutes`: the former is the set of
+ * public routes expected to prerender, the latter gates whether the
+ * `/sitemap.xml`/`/robots.txt` server-boot assertions run at all.
  */
 const TEMPLATES = [
-  { key: "base-nextjs", label: "templates/base-nextjs (--bare)", bare: true },
-  { key: "marketing-site", label: "templates/marketing-site (full)", bare: false },
+  {
+    key: "base-nextjs",
+    label: "templates/base-nextjs (--bare)",
+    bare: true,
+    staticRoutes: ["/", "/unauthorized"],
+    seoRoutes: false,
+  },
+  {
+    key: "marketing-site",
+    label: "templates/marketing-site (full)",
+    bare: false,
+    staticRoutes: ["/"],
+    seoRoutes: true,
+  },
 ];
 
 /**
@@ -312,7 +466,99 @@ function runNegativeSelfTest({ publishables, cliEntry }) {
   }
 }
 
-function main() {
+/**
+ * AP-013 self-test for the route-table assertion specifically — as distinct
+ * from `runNegativeSelfTest`'s override-corruption self-test above.
+ * Scaffolds `marketing-site` for real, deliberately forces its home route
+ * dynamic before building, and confirms `assertScaffoldRoutes` (correctly)
+ * reports `/` as not prerendered. Without this, `assertScaffoldRoutes` could
+ * report every route green unconditionally and nothing here would notice.
+ *
+ * Unlike `runNegativeSelfTest`, the exit code here is meaningful, because the
+ * spec's Verify wraps this mode in `!`:
+ * - detection worked -> 1 -> `!` succeeds -> gate passes.
+ * - detection failed -> 0 -> `!` fails -> gate fails.
+ * Returning 1 unconditionally would let a broken route assertion pass CI
+ * forever, defeating the purpose of the self-test.
+ *
+ * @param {{ publishables: Array<{ dir: string, name: string }>, cliEntry: string }} params
+ * @returns {Promise<number>} 1 when the assertion caught the forced-dynamic
+ *   regression, 0 when it failed to
+ */
+async function runNegativeRoutesSelfTest({ publishables, cliEntry }) {
+  console.log(
+    "Negative routes self-test: scaffold templates/marketing-site for real, force its home\n" +
+      "route dynamic, and confirm the route-table assertion (correctly) reports it as not\n" +
+      "prerendered \u2014 proving assertScaffoldRoutes is not a vacuous pass (AP-013)."
+  );
+
+  const packRoot = fs.mkdtempSync(path.join(os.tmpdir(), "vex-verify-negative-routes-pack-"));
+  const scaffoldRoot = fs.mkdtempSync(path.join(os.tmpdir(), "vex-verify-negative-routes-scaffold-"));
+
+  try {
+    const tarballs = packPublishables(publishables, packRoot);
+    const template = TEMPLATES.find((t) => t.key === "marketing-site");
+
+    const scaffolded = runStep(
+      "scaffold (create-vexcms --yes)",
+      "node",
+      [cliEntry, template.key, "--yes"],
+      scaffoldRoot,
+    );
+    if (!scaffolded.ok) throw new Error("scaffold step failed \u2014 cannot run the routes self-test");
+
+    const projectDir = path.join(scaffoldRoot, template.key);
+    const pagePath = path.join(projectDir, "src/app/(frontend)/(site)/page.tsx");
+    const original = fs.readFileSync(pagePath, "utf-8");
+    fs.writeFileSync(pagePath, `export const dynamic = "force-dynamic";\n\n${original}`);
+
+    injectOverrides(projectDir, tarballs);
+
+    for (const [stepLabel, args] of [
+      ["pnpm install", ["install", "--no-frozen-lockfile"]],
+      ["pnpm build", ["run", "build"]],
+    ]) {
+      const step = runStep(stepLabel, "pnpm", args, projectDir);
+      if (!step.ok) throw new Error(`${stepLabel} failed before the route assertion could run`);
+    }
+
+    // `seoRoutes: false` here — this self-test only needs the route-table
+    // check, not a full server boot for the sitemap/robots assertions.
+    const routeSteps = await assertScaffoldRoutes(projectDir, { staticRoutes: template.staticRoutes, seoRoutes: false });
+    const homeStep = routeSteps.find((step) => step.label === "route: / is prerendered");
+
+    // Exit codes are chosen for the `! node scripts/verify-scaffold.mjs
+    // --negative-routes` form the spec's Verify uses, where `!` inverts them:
+    // - detection WORKED  -> exit 1 -> `!` succeeds -> the gate passes.
+    // - detection FAILED  -> exit 0 -> `!` fails    -> the gate fails.
+    // Returning 1 unconditionally would make `!` pass either way, so a broken
+    // assertion could never fail CI — which is the exact vacuity this
+    // self-test exists to rule out.
+    if (homeStep?.ok) {
+      console.error(
+        "\n\u2717 CRITICAL: assertScaffoldRoutes reported `/` as prerendered after it was forced\n" +
+          "dynamic. The route-table assertion cannot be trusted to catch a real prerendering\n" +
+          "regression. Exiting 0 so the `! ...` gate treats this as a failure."
+      );
+      return 0;
+    }
+
+    console.log(
+      "\n\u2713 negative routes self-test passed: assertScaffoldRoutes correctly reported `/`\n" +
+        "as not prerendered once it was forced dynamic. Exiting 1 so the `! ...` gate passes."
+    );
+    return 1;
+  } finally {
+    if (keep) {
+      console.log(`--keep: preserved ${packRoot} and ${scaffoldRoot}`);
+    } else {
+      fs.rmSync(packRoot, { recursive: true, force: true });
+      fs.rmSync(scaffoldRoot, { recursive: true, force: true });
+    }
+  }
+}
+
+async function main() {
   console.log("verify-scaffold: packed-tarball demo gate\n");
 
   const publishables = readPublishablePackages();
@@ -321,6 +567,10 @@ function main() {
 
   if (negative) {
     process.exit(runNegativeSelfTest({ publishables, cliEntry }));
+  }
+
+  if (negativeRoutes) {
+    process.exit(await runNegativeRoutesSelfTest({ publishables, cliEntry }));
   }
 
   const packRoot = fs.mkdtempSync(path.join(os.tmpdir(), "vex-verify-pack-"));
@@ -334,9 +584,10 @@ function main() {
       console.log(`  \u2713 ${name} \u2192 ${tarball}`);
     }
 
-    const results = TEMPLATES.map((template) =>
-      runTemplate({ ...template, cliEntry, scaffoldRoot, tarballs })
-    );
+    const results = [];
+    for (const template of TEMPLATES) {
+      results.push(await runTemplate({ ...template, cliEntry, scaffoldRoot, tarballs }));
+    }
 
     exitCode = printSummary(results);
   } finally {
@@ -352,7 +603,7 @@ function main() {
 }
 
 try {
-  main();
+  await main();
 } catch (error) {
   console.error(`\nverify-scaffold: ${error.message}`);
   process.exit(1);

@@ -19,6 +19,7 @@ import type {
 import type { FindServerArgs } from "./find/server";
 import type { GetServerArgs } from "./get/server";
 import type { SearchServerArgs } from "./search/server";
+import type { PublishedSlug, PublishedSlugsServerArgs } from "./publishedSlugs/server";
 import type { CreateServerArgs } from "./create/server";
 import type { UpdateServerArgs } from "./update/server";
 import type { RemoveServerArgs } from "./remove/server";
@@ -36,6 +37,7 @@ import type {
 import { find } from "./find/server";
 import { get } from "./get/server";
 import { search } from "./search/server";
+import { publishedSlugs } from "./publishedSlugs/server";
 import { create } from "./create/server";
 import { update } from "./update/server";
 import { remove } from "./remove/server";
@@ -56,6 +58,9 @@ export type { GetServerArgs } from "./get/server";
 
 export { search } from "./search/server";
 export type { SearchServerArgs } from "./search/server";
+
+export { publishedSlugs } from "./publishedSlugs/server";
+export type { PublishedSlug, PublishedSlugsServerArgs } from "./publishedSlugs/server";
 
 export { create } from "./create/server";
 export type { CreateServerArgs } from "./create/server";
@@ -555,6 +560,14 @@ export interface VexServerApi<DataModel extends GenericDataModel> {
   remove: <TCollectionSlug extends CollectionSlug>(
     args: BoundServerArgs<RemoveServerArgs<DataModel, TCollectionSlug>>,
   ) => Promise<void>;
+  /**
+   * List every document's slug + `_creationTime`, for sitemap generation and
+   * `generateStaticParams`. Always bypasses RBAC — a sitemap has no caller
+   * identity to filter by.
+   */
+  publishedSlugs: <TCollectionSlug extends CollectionSlug>(
+    args: BoundServerArgs<PublishedSlugsServerArgs<DataModel, TCollectionSlug>>,
+  ) => Promise<PublishedSlug[]>;
   globals: {
     /** Fetch one global as a flat document. */
     get: <
@@ -716,6 +729,10 @@ export function vexServerApi<DataModel extends GenericDataModel>(options: {
         ...(await inject(rest.ctx, access?.bypass)),
       } as never);
     },
+    // No `inject()`: `PublishedSlugsServerArgs` carries no `config`/`auth`, and
+    // `publishedSlugs` always reaches `find` with `access: { bypass: true }`, so
+    // there is nothing for the factory to resolve before forwarding.
+    publishedSlugs: (args) => publishedSlugs(args),
     globals: {
       get: async (args) => {
         const { access, ...rest } = args;

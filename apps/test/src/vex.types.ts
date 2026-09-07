@@ -207,6 +207,7 @@ export interface Page extends VexDocument {
    */
   seo?: SEO
   anotherTest?: AnotherGroupNames
+  updatedAt?: number
 }
 
 export interface UserDocument extends VexDocument {
@@ -254,6 +255,7 @@ export interface Header extends VexDocument {
    * default, outline, ghost.
    */
   actionButtons?: string
+  updatedAt?: number
 }
 
 export interface Footer extends VexDocument {
@@ -281,6 +283,7 @@ export interface Footer extends VexDocument {
    * icon: string }. Icon maps to a Lucide icon name.
    */
   socialLinks?: string
+  updatedAt?: number
 }
 
 export interface Theme extends VexDocument {
@@ -373,6 +376,7 @@ export interface Theme extends VexDocument {
     sidebarBorder?: string
     sidebarRing?: string
   }
+  updatedAt?: number
 }
 
 type ArticleStatusOption = "draft" | "review" | "published"
@@ -420,6 +424,7 @@ export interface Article extends VexDocument {
    * Hero image displayed above the article body.
    */
   coverImage?: Id<"images">[]
+  updatedAt?: number
 }
 
 type CaseStudyStatusOption = "draft" | "review" | "published"
@@ -471,6 +476,7 @@ export interface CaseStudy extends VexDocument {
    * Internal figure. Never rendered on the public site.
    */
   contractValue?: number
+  updatedAt?: number
 }
 
 type ChangelogEntryStatusOption = "draft" | "review" | "published"
@@ -519,6 +525,7 @@ export interface ChangelogEntry extends VexDocument {
    * Markdown list of changes in this release.
    */
   notes?: string
+  updatedAt?: number
 }
 
 export interface Comment extends VexDocument {
@@ -540,6 +547,7 @@ export interface Comment extends VexDocument {
    * Unapproved comments are hidden from the public site.
    */
   approved?: boolean
+  updatedAt?: number
 }
 
 export interface SessionDocument extends VexDocument {
@@ -671,6 +679,7 @@ export interface Image extends VexDocument {
   src: string
   width?: number
   height?: number
+  updatedAt?: number
 }
 
 export interface NavGlobal extends VexDocumentGlobal<"nav"> {
@@ -815,6 +824,7 @@ declare module "@vexcms/core" {
         relationship: "themes"
         array: "test" | "test2"
         group: "seo" | "anotherTest"
+        number: "updatedAt"
       }
       user: {
         text: "name" | "email" | "image" | "role" | "banReason" | "userId" | "newUserFieldTest"
@@ -824,20 +834,23 @@ declare module "@vexcms/core" {
       }
       headers: {
         text: "name" | "logoText" | "logoHref" | "menuItems" | "actionButtons"
+        number: "updatedAt"
       }
       footers: {
         text: "name" | "logoText" | "copyright" | "links" | "socialLinks"
+        number: "updatedAt"
       }
       themes: {
         text: "name" | "fontFamily" | "radius"
         group: "light" | "dark"
+        number: "updatedAt"
       }
       articles: {
         text: "title" | "slug" | "excerpt" | "body"
         date: "publishedAt"
         relationship: "authorId" | "coverImage"
         select: "status"
-        number: "readingMinutes"
+        number: "readingMinutes" | "updatedAt"
         checkbox: "featured"
       }
       case_studies: {
@@ -846,7 +859,7 @@ declare module "@vexcms/core" {
         relationship: "authorId"
         select: "status"
         url: "clientUrl"
-        number: "contractValue"
+        number: "contractValue" | "updatedAt"
       }
       changelog: {
         text: "title" | "slug" | "excerpt" | "version" | "notes"
@@ -854,11 +867,13 @@ declare module "@vexcms/core" {
         relationship: "authorId"
         select: "status" | "releaseType"
         checkbox: "breaking"
+        number: "updatedAt"
       }
       comments: {
         relationship: "authorId" | "article"
         text: "body"
         checkbox: "approved"
+        number: "updatedAt"
       }
       session: {
         date: "expiresAt" | "createdAt" | "updatedAt"
@@ -934,7 +949,7 @@ declare module "@vexcms/core" {
       }
       images: {
         text: "filename" | "alt" | "mimeType" | "storageId" | "src"
-        number: "size" | "width" | "height"
+        number: "size" | "width" | "height" | "updatedAt"
         checkbox: "deleted"
       }
     }

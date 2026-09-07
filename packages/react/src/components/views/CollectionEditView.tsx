@@ -1,14 +1,15 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
 import { CRUD_ACTIONS, vexConvexApi } from "@vexcms/core";
 import type { CollectionEditViewProps, CollectionSlug } from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
+import { RevalidateButton } from "../RevalidateButton";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 import { useCollectionForm } from "../../hooks/useCollectionForm";
-import { usePermission } from "../../hooks";
+import { usePermission, useVexMutation } from "../../hooks";
 
 /**
  * Collection document edit form.
@@ -63,8 +64,15 @@ export function CollectionEditView<
     return <p>Document not found.</p>;
   }
 
-  const { mutateAsync, isPending } = useMutation({
-    mutationFn: useConvexMutation(vexConvexApi.update),
+  const { mutateAsync, isPending } = useVexMutation({
+    collection: props.collection.slug,
+    // The edit view holds both states: the loaded document, and that document
+    // merged with the submitted values.
+    getChanges: ({ args }) => [
+      { after: { ...currentDocument, ...args.data }, before: currentDocument },
+    ],
+    mutationFn: vexConvexApi.update,
+    operation: "update",
   });
   const form = useCollectionForm({
     document: currentDocument,
@@ -97,6 +105,7 @@ export function CollectionEditView<
           selector={(state) => state.isDefaultValue}
           children={(isDefaultValue) => (
             <div className="flex gap-2">
+              <RevalidateButton collection={props.collection.slug} doc={currentDocument} />
               <Button
                 type="submit"
                 className="transition-all duration-300"

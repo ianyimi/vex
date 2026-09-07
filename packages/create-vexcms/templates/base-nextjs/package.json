@@ -24,11 +24,11 @@
     "@t3-oss/env-nextjs": "0.13.11",
     "@tanstack/react-form": "1.33.1",
     "@tanstack/react-query": "5.101.2",
-    "@vexcms/better-auth": "~0.1.0-alpha.12",
-    "@vexcms/core": "~0.1.0-alpha.12",
-    "@vexcms/file-storage-convex": "~0.1.0-alpha.12",
-    "@vexcms/next": "~0.1.0-alpha.12",
-    "@vexcms/react": "~0.1.0-alpha.12",
+    "@vexcms/better-auth": "~0.1.0-alpha.13",
+    "@vexcms/core": "~0.1.0-alpha.13",
+    "@vexcms/file-storage-convex": "~0.1.0-alpha.13",
+    "@vexcms/next": "~0.1.0-alpha.13",
+    "@vexcms/react": "~0.1.0-alpha.13",
     "better-auth": "1.6.23",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
@@ -52,7 +52,7 @@
     "@types/node": "20.19.43",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
-    "@vexcms/cli": "~0.1.0-alpha.12",
+    "@vexcms/cli": "~0.1.0-alpha.13",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "9.39.5",
     "eslint-config-next": "15.5.9",
@@ -63,5 +63,17 @@
     "tailwindcss": "4.3.2",
     "typescript": "6.0.3",
     "typescript-eslint": "8.63.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@better-auth/passkey": "1.6.23"
+    },
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "@convex-dev/better-auth>better-auth": "1.6.23",
+        "better-call": "2",
+        "typescript": "6"
+      }
+    }
   }
 }

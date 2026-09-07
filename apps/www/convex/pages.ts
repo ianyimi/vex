@@ -1,7 +1,7 @@
 import { v } from "convex/values"
 
 import { TABLE_SLUG_PAGES } from "~/db/constants"
-import { find } from "~/vexcms/api"
+import { find, publishedSlugs as readPublishedSlugs } from "~/vexcms/api"
 
 import { query } from "./_generated/server"
 
@@ -26,6 +26,25 @@ export const getBySlug = query({
       },
       limit: 1,
       access: { bypass: true },
+    })
+  },
+})
+
+/**
+ * Returns `{ slug, createdAt, updatedAt? }` for every page document.
+ *
+ * Consumed by `app/sitemap.ts` and, once Step 7 lands, `[slug]/page.tsx`'s
+ * `generateStaticParams`. Access is bypassed for the same reason `getBySlug`
+ * bypasses it: both are read at build time and by anonymous crawlers, neither
+ * of which carries a session.
+ */
+export const publishedSlugs = query({
+  args: {},
+  handler: async (ctx) => {
+    return await readPublishedSlugs({
+      access: { bypass: true },
+      collection: TABLE_SLUG_PAGES,
+      ctx,
     })
   },
 })

@@ -29,6 +29,14 @@ const vexConfig = defineConfig({
   },
   collections: [users, pages, headers, footers, themes],
   globals: [siteSettings],
+  routes: {
+    map: ({ collection, doc }) => {
+      if (collection !== pages.slug) return []
+      const { slug } = doc
+      if (typeof slug !== "string") return []
+      return [slug === "home" ? "/" : `/${slug}`]
+    },
+  },
 })
 
 export default vexConfig

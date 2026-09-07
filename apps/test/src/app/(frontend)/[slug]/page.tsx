@@ -6,8 +6,6 @@ import { notFound } from "next/navigation";
 
 import PageContent from "../PageContent";
 
-export const dynamic = "force-dynamic";
-
 /**
  * Generates Open Graph and `<title>` metadata for a public page.
  *

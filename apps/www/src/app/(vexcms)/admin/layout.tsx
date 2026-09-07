@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { NextAdminLayout } from "@vexcms/next/client";
 
 import { getCurrentUser } from "~/auth/serverUtils";
+import { AuthServerProvider } from "~/components/providers/auth";
 import { ThemeLive } from "~/components/ThemeLive";
 import { ThemeStyle } from "~/components/ThemeStyle";
 import config from "~/vex.config";
@@ -21,12 +22,17 @@ import { ClientProviders } from "./clientProviders";
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
   return (
-    <ClientProviders>
-      <ThemeStyle scope="admin" />
-      <ThemeLive scope="admin" />
-      <NextAdminLayout config={config} user={user ?? undefined}>
-        {children}
-      </NextAdminLayout>
-    </ClientProviders>
+    // Mounted here rather than in the root layout: its `getToken()` cookie read
+    // forced every route in the app dynamic. Admin routes are meant to be
+    // dynamic, so this is the correct home for it.
+    <AuthServerProvider>
+      <ClientProviders>
+        <ThemeStyle scope="admin" />
+        <ThemeLive scope="admin" />
+        <NextAdminLayout config={config} user={user ?? undefined}>
+          {children}
+        </NextAdminLayout>
+      </ClientProviders>
+    </AuthServerProvider>
   );
 }

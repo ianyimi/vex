@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { defineConfig, defineCollection, text, upload } from "../";
-import type { VexStorageAdapter, MediaCollectionConfig } from "../";
+import type { VexStorageAdapter, MediaCollectionConfig, VexRouteMapper } from "../";
 import { VexStorageConfigError } from "../media";
 
 // ── Minimal inline mock adapter ──────────────────────────────────────────────
@@ -132,5 +132,24 @@ describe("defineConfig with storage adapters", () => {
         storage: { adapters: [adapter1, adapter2] },
       }),
     ).toThrow(VexStorageConfigError);
+  });
+});
+
+// ── Revalidate defaults ────────────────────────────────────────────────────
+
+describe("defineConfig — revalidate defaults", () => {
+  it("leaves revalidate undefined when omitted", () => {
+    const config = defineConfig();
+    expect(config.routes).toBeUndefined();
+  });
+
+  it("passes a supplied routes config through untouched", () => {
+    const map: VexRouteMapper = () => [];
+    const config = defineConfig({ routes: { map } });
+    expect(config.routes).toEqual({ map });
+  });
+
+  it("leaves routes undefined when the project never configured it", () => {
+    expect(defineConfig({}).routes).toBeUndefined();
   });
 });

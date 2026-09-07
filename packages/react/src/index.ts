@@ -222,6 +222,11 @@ export function relationship<
  * behaviour, but `admin.components.preview` is typed as a React
  * `ComponentType<RelationshipPreviewProps<TCollectionSlug>>`.
  *
+ * The parameter type is derived from core's own signature rather than
+ * restated, so core's reserved-field-key guard (naming a field `updatedAt` is
+ * a compile error) reaches callers of this wrapper too, and cannot drift from
+ * it.
+ *
  * @param config - Collection configuration.
  * @returns The resolved collection configuration.
  */
@@ -231,7 +236,15 @@ export function defineCollection<
   TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends CollectionSlug = CollectionSlug,
 >(
-  config: CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug>,
+  config: Parameters<
+    typeof coreDefineCollection<
+      TFieldMeta,
+      TCollectionMeta,
+      TCollectionSlug,
+      TFieldSlug,
+      ReactHKT
+    >
+  >[0],
 ): CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug> {
   return coreDefineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, ReactHKT>(
     config,

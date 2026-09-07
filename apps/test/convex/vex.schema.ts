@@ -141,6 +141,7 @@ export const pages = defineTable({
       ),
     })
   ),
+  updatedAt: v.optional(v.number()),
 })
   .index("by_slug_title", ["slug", "title"])
   .index("by_slug", ["slug"])
@@ -169,6 +170,7 @@ export const headers = defineTable({
   logoHref: v.optional(v.string()),
   menuItems: v.optional(v.string()),
   actionButtons: v.optional(v.string()),
+  updatedAt: v.optional(v.number()),
 }).index("by_name", ["name"])
 
 export const footers = defineTable({
@@ -177,6 +179,7 @@ export const footers = defineTable({
   copyright: v.optional(v.string()),
   links: v.optional(v.string()),
   socialLinks: v.optional(v.string()),
+  updatedAt: v.optional(v.number()),
 }).index("by_name", ["name"])
 
 export const themes = defineTable({
@@ -255,6 +258,7 @@ export const themes = defineTable({
       sidebarRing: v.optional(v.string()),
     })
   ),
+  updatedAt: v.optional(v.number()),
 })
   .index("by_name", ["name"])
   .searchIndex("search_name", {
@@ -276,6 +280,7 @@ export const articles = defineTable({
   readingMinutes: v.optional(v.number()),
   featured: v.optional(v.boolean()),
   coverImage: v.optional(v.array(v.id("images"))),
+  updatedAt: v.optional(v.number()),
 })
   .index("by_slug", ["slug"])
   .index("by_author", ["authorId"])
@@ -301,6 +306,7 @@ export const case_studies = defineTable({
   clientUrl: v.optional(v.string()),
   outcomeSummary: v.optional(v.string()),
   contractValue: v.optional(v.number()),
+  updatedAt: v.optional(v.number()),
 })
   .index("by_slug", ["slug"])
   .index("by_author", ["authorId"])
@@ -321,6 +327,7 @@ export const changelog = defineTable({
   ),
   breaking: v.optional(v.boolean()),
   notes: v.optional(v.string()),
+  updatedAt: v.optional(v.number()),
 })
   .index("by_slug", ["slug"])
   .index("by_author", ["authorId"])
@@ -332,6 +339,7 @@ export const comments = defineTable({
   body: v.string(),
   article: v.array(v.id("articles")),
   approved: v.optional(v.boolean()),
+  updatedAt: v.optional(v.number()),
 })
   .index("by_author", ["authorId"])
   .index("by_article", ["article"])
@@ -465,6 +473,7 @@ export const images = defineTable({
   src: v.string(),
   width: v.optional(v.number()),
   height: v.optional(v.number()),
+  updatedAt: v.optional(v.number()),
 })
   .index("by_deleted", ["deleted"])
   .searchIndex("search_filename", {

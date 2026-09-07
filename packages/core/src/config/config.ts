@@ -95,5 +95,10 @@ export function defineConfig(config?: VexConfigInput): VexConfig {
       outputPath: "/src/vex.types.ts",
       ...config?.types,
     },
+    // Opt-in: left `undefined` when the project never configured it, so every
+    // Passed through untouched: there is no sensible default route map, and no
+    // other key in the block to default. Left `undefined` when the project
+    // never configured it, so every consumer reads `config.routes?.map`.
+    routes: config?.routes,
   };
 }

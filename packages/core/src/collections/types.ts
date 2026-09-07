@@ -1,5 +1,5 @@
 import { AdminField } from "../fields";
-import { CoreAdminField } from "./constants";
+import { CoreAdminField, ReservedCollectionFieldKey } from "./constants";
 import type { ApplyComponent, ComponentHKT } from "../fields";
 import type { CollectionSlug } from "../types/generated";
 import { TDocument } from "../api/convex";
@@ -277,6 +277,20 @@ export interface CollectionConfigInput<
     fields: NoInfer<TFieldSlug>[];
   }[];
   meta?: TCollectionMeta;
+  /**
+   * When `false`, opts this collection out of the auto-maintained `updatedAt`
+   * timestamp `defineCollection` otherwise injects into every collection's
+   * `fields`. Use for a collection that genuinely must not carry one — an
+   * append-only log, or a table whose shape is dictated by an external system.
+   *
+   * Naming a field `updatedAt` yourself is a compile-time error in
+   * `defineCollection`'s signature (`[TFieldSlug & ReservedCollectionFieldKey]
+   * extends [never]`), mirroring `GlobalConfigInput`'s identical
+   * `ReservedGlobalFieldKey` guard.
+   *
+   * @defaultValue `true`
+   */
+  timestamps?: boolean;
 }
 
 /**
@@ -303,8 +317,16 @@ export interface CollectionConfig<
     /** Plural display name (e.g. `"Posts"`). */
     plural: string;
   };
-  /** Resolved field definitions for this collection. */
-  fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
+  /**
+   * Resolved field definitions for this collection.
+   *
+   * The `ReservedCollectionFieldKey` half covers the `updatedAt` field
+   * `defineCollection` injects. It is `Partial` because `{ timestamps: false }`
+   * opts out, so reading it must be null-checked — the same reason
+   * `stampUpdatedAt` treats an absent entry as "do not stamp".
+   */
+  fields: Partial<Record<ReservedCollectionFieldKey, AdminField<TFieldMeta>>> &
+    Record<TFieldSlug, AdminField<TFieldMeta>>;
   /** PascalCase identifier derived from `slug`, used as the TypeScript interface name in generated types (e.g. `"posts"` → `"Posts"`). */
   interfaceName: string;
   /** Index definitions that create indexes on this collection in Convex. */

@@ -10,7 +10,7 @@ import type { GenericId } from "convex/values";
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
-import { resolveAccessCall } from "../utils";
+import { resolveAccessCall, stampUpdatedAt } from "../utils";
 
 /**
  * Server-side args for `update`.
@@ -92,5 +92,13 @@ export async function update<
       data: doc ?? undefined,
     });
   }
-  await args.ctx.db.patch(args.id, args.data);
+  // Same rule as `create`, via the shared helper. A patch that touches only
+  // bookkeeping still bumps `updatedAt`: there is no way to tell "no
+  // observable change" from a genuine edit at this layer.
+  const data = stampUpdatedAt({
+    collection: args.collection,
+    config: args.config,
+    data: args.data,
+  });
+  await args.ctx.db.patch(args.id, data);
 }

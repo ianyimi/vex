@@ -9,16 +9,15 @@ import {
   type CollectionSlug,
 } from "@vexcms/core";
 import { Button } from "../ui/button";
+import { RevalidateButton } from "../RevalidateButton";
 import { VexLink } from "../ui/VexLink";
 import { MODALS } from "../modals/constants";
 import { CreateDocumentModal } from "../modals";
 import { useVexConfig } from "../../context/VexConfigContext";
 import { getCollectionColumnDefs } from "../fields";
-import { usePaginatedQuery, usePermission } from "../../hooks";
+import { usePaginatedQuery, usePermission, useVexMutation } from "../../hooks";
 import { useMemo } from "react";
 import { DataTable } from "../ui";
-import { useConvexMutation } from "@convex-dev/react-query";
-import { useMutation } from "@tanstack/react-query";
 
 /**
  * Collection list view component.
@@ -75,7 +74,19 @@ export function CollectionListView<
     return getCollectionColumnDefs({ collection });
   }, [collection]);
 
-  const removeMutation = useMutation({ mutationFn: useConvexMutation(vexConvexApi.remove) });
+  const removeMutation = useVexMutation({
+    collection: collection.slug,
+    // A bulk delete affects N documents, so it sends one change per row. The
+    // rows are already loaded here, and a deleted document cannot be re-read
+    // server-side — which is why the pre-delete state travels in `before`.
+    getChanges: ({ args }) =>
+      args.ids.flatMap((id) => {
+        const row = pagination.results.find((doc) => doc._id === id);
+        return row === undefined ? [] : [{ before: row }];
+      }),
+    mutationFn: vexConvexApi.remove,
+    operation: "remove",
+  });
 
   async function handleBulkDelete(selectedIds: string[]) {
     await removeMutation.mutateAsync({ ids: selectedIds, collection: collection.slug });
@@ -99,15 +110,20 @@ export function CollectionListView<
               : `${pagination.results.length} document${pagination.results.length === 1 ? "" : "s"}`}
           </p>
         </div>
-        <Button
-          nativeButton={false}
-          disabled={!canCreate}
-          render={
-            <VexLink href={`/admin/${collection.slug}?${MODALS.createDocument.urlParam}=true`} />
-          }
-        >
-          + New {collection.labels.singular}
-        </Button>
+        {/* Grouped so the header's `justify-between` keeps the title left and
+            both controls right, instead of spreading three children apart. */}
+        <div className="flex items-center gap-2">
+          <RevalidateButton collection={collection.slug} />
+          <Button
+            nativeButton={false}
+            disabled={!canCreate}
+            render={
+              <VexLink href={`/admin/${collection.slug}?${MODALS.createDocument.urlParam}=true`} />
+            }
+          >
+            + New {collection.labels.singular}
+          </Button>
+        </div>
       </div>
 
       <DataTable

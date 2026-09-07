@@ -26,3 +26,33 @@ export const CORE_ADMIN_FIELDS = {
  */
 export type CoreAdminField =
   (typeof CORE_ADMIN_FIELDS)[keyof typeof CORE_ADMIN_FIELDS]["slug"];
+
+/**
+ * Field keys that {@link defineCollection} injects onto every collection's
+ * `fields` map and that therefore cannot be used as user-defined field names.
+ *
+ * Unlike {@link CORE_ADMIN_FIELDS} — native Convex system columns present on
+ * every document regardless of any field declaration — these are ordinary
+ * `fields` entries `defineCollection` adds itself, and so ARE subject to
+ * Convex schema validation. Conflating the two would put `updatedAt` in the
+ * same union as `_id`/`_creationTime`, which is wrong on both counts.
+ */
+export const RESERVED_COLLECTION_FIELDS = {
+  /** Auto-maintained last-write timestamp, stamped by `create`/`update` on every write. */
+  updatedAt: {
+    slug: "updatedAt",
+  },
+} as const;
+
+/**
+ * Union of the field slugs {@link defineCollection} injects and therefore
+ * reserves. Resolves to `"updatedAt"`.
+ *
+ * A user-defined field using one of these keys is a compile-time error in
+ * `defineCollection` and a runtime error for JS callers that bypass the type
+ * system — mirroring `defineGlobal`'s `ReservedGlobalFieldKey` guard.
+ *
+ * @see {@link RESERVED_COLLECTION_FIELDS} for the full map of reserved keys
+ */
+export type ReservedCollectionFieldKey =
+  (typeof RESERVED_COLLECTION_FIELDS)[keyof typeof RESERVED_COLLECTION_FIELDS]["slug"];

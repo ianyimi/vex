@@ -55,6 +55,20 @@ export interface UpsertGlobalServerArgs<
  *   globalConfig: config.globals.find((g) => g.slug === "siteSettings")!,
  * });
  * ```
+ *
+ * Globals deliberately carry no auto-maintained `updatedAt`, unlike every
+ * collection (`defineCollection` injects one, and `create`/`update` stamp it).
+ * `vex_globals` is a single `{ slug, data }` table shared by every registered
+ * global — there is no per-global `defineTable` generated from
+ * `GlobalConfig.fields`, so there is no column to stamp. Every global's user
+ * fields live inside the one `data: v.any()` blob, validated only by a
+ * per-global Zod schema at the API layer, never by a Convex column.
+ *
+ * Stashing the timestamp inside `data` instead is not equivalent: both
+ * `STRIPPED_KEYS` and `getGlobalInputSchema`'s Zod schema would have to learn
+ * about a field no `GlobalConfigInput` declares, entangling a per-collection
+ * concern with the globals system's separate flat-document machinery. That is
+ * a design of its own, not a one-line addition.
  */
 export async function upsertGlobal<
   DataModel extends GenericDataModel,

@@ -1,0 +1,278 @@
+---
+title: Caching, sitemaps and revalidation
+description: Cached Convex reads for prerenderable public pages, generated sitemap.xml/robots.txt/metadata, and path-based revalidation triggered from the admin panel.
+---
+
+Public pages read Convex through a cached client so Next.js can prerender them at build time
+and serve them from the CDN. `@vexcms/next`'s `cache` and `seo` entry points, plus a
+`routes.map` function in `vex.config.ts`, are what make that possible without hand-writing the
+plumbing per project.
+
+## Why public pages can prerender at all
+
+Two things used to force every route in a VexCMS project to render dynamically on every
+request, even a page that read no data:
+
+- **A cookie read in the root layout.** `AuthServerProvider` calls `getToken()`, which reads a
+  cookie — and a cookie read anywhere in a route's render path opts the whole route out of
+  static rendering. Mount it only where it's actually needed (the `/admin` route group), not in
+  a provider shared by every route.
+- **`fetchQuery` from `convex/nextjs` hard-codes `cache: "no-store"`.** It's built for dynamic
+  routes; using it in a page you want prerendered forces the route dynamic no matter what else
+  the page does.
+
+Removing both is what lets a page with real data fetching build as a static `○` route instead
+of a per-request `ƒ` one.
+
+## The shared read client
+
+`createVexServerClient` (`@vexcms/next/cache`) wraps Convex's HTTP client in a `React.cache`,
+so every `.query()` call it makes within one request dedupes against every other call with the
+same arguments — a page component and its `generateMetadata` reading the same document collapse
+into a single round trip. That dedupe only works if every server read shares **one** client
+instance: `React.cache` memoises per client, so two files that each call
+`createVexServerClient()` build two independent caches that never dedupe with each other, and a
+page plus its metadata function end up making the same Convex call twice.
+
+Every project exports exactly one instance, conventionally from `src/lib/vex.ts`:
+
+```ts
+import { createVexServerClient } from "@vexcms/next/cache";
+
+import { env } from "~/env.mjs";
+
+export const vex = createVexServerClient({ url: env.NEXT_PUBLIC_CONVEX_URL });
+```
+
+Import `vex` everywhere a server component, layout, or route handler needs to read Convex —
+never call `createVexServerClient` a second time, and never call `fetchQuery` from
+`convex/nextjs` on a path you want prerenderable.
+
+A public page then reads through it and returns a real 404 for a document that doesn't exist,
+rather than a 200 with an empty body:
+
+```tsx
+import { api } from "@convex/_generated/api";
+import { notFound } from "next/navigation";
+
+import { vex } from "~/lib/vex";
+
+export default async function PublicPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const initialData = await vex.query(api.pages.getBySlug, { slug });
+
+  if (initialData.length === 0) {
+    notFound();
+  }
+
+  return <PageContent initialData={initialData} slug={slug} />;
+}
+```
+
+## The revalidate window must be an inline literal
+
+Next reads a route's `export const revalidate` by static analysis, before any module in the
+route executes — so it accepts only an inline numeric literal, never a member expression or an
+imported constant. Measured: both `vexConfig.routes.revalidateSeconds` and a plain imported
+`const REVALIDATE_SECONDS = 3600` fail the build with `"Invalid segment configuration export
+detected"`. `revalidateSeconds` doesn't exist as a config option for this reason — a key no
+adapter could ever honor is worse than no key, since it reads as configuration while silently
+doing nothing.
+
+```ts
+// Next requires this to be an inline literal — it is read by static analysis
+// before any module executes, so neither a `vexConfig` member expression nor
+// an imported constant is accepted ("Invalid segment configuration export").
+// 3600s = 1 hour: the backstop for writes that never reached the purge route
+// (Convex dashboard edits, `npx convex import`), since every admin-panel write
+// purges this path immediately.
+export const revalidate = 3600;
+```
+
+Write this in every route that reads Convex and should serve from the CDN between purges — the
+number is the ISR backstop, not the primary invalidation mechanism (see below).
+
+## Path-based revalidation
+
+`vex.config.ts`'s `routes.map` maps one written document to the public paths it affects.
+`resolveTargets` calls it once for the document's `before` state and once for its `after` state
+on an update, so renaming a page's slug purges both the old path and the new one without the
+map itself having to know it's part of a rename:
+
+```ts
+const vexConfig = defineConfig({
+  // …
+  routes: {
+    map: ({ collection, doc }) => {
+      if (collection !== pages.slug) return [];
+      const { slug } = doc;
+      if (typeof slug !== "string") return [];
+      return [slug === "home" ? "/" : `/${slug}`];
+    },
+  },
+});
+```
+
+`map` is the only key `routes` takes — there is no `revalidateSeconds` here; the ISR
+window lives as the inline literal in each route instead, where Next requires it.
+
+### The revalidate route
+
+`createVexRevalidateRoute` (`@vexcms/next/cache`) turns that map into `POST
+/api/vex/revalidate`. It's **session-authorized, not secret-authorized**: the caller must
+already hold a session, and the route re-checks `hasPermission` against the affected collection
+server-side before purging anything — no shared secret or environment variable is involved.
+
+```ts
+// src/app/api/vex/revalidate/route.ts
+export const { POST } = createVexRevalidateRoute({
+  config,
+  getAuth: () => fetchAuthQuery(api.auth.api.getUserOrg, {}),
+  getToken,
+  listCollection: async (collection) => {
+    if (collection !== "pages") return [];
+    const entries = await vex.query(api.pages.publishedSlugs, {});
+    return entries.map(({ slug }) => ({ slug }));
+  },
+});
+```
+
+Four props wire the route to your app:
+
+- **`config`** — the resolved `VexConfig`, so the route can look up `access` and each
+  collection's `routes.map`.
+- **`getToken`** — reads the caller's session token for the current request; a falsy return is
+  treated as "no session" and the route responds `401`.
+- **`getAuth`** — resolves `{ user, organization? }` for the permission check.
+- **`listCollection`** — required for the "Revalidate all" button. Without it, a
+  collection-wide purge request purges nothing and reports an error in the response instead of
+  silently succeeding. `.map(({ slug }) => ({ slug }))` is required here too: the return type is
+  `Partial<VexDocument>`, and `PublishedSlug` is an interface with no index signature, so it
+  does not structurally satisfy that without narrowing to the fields the route map actually reads.
+
+### Automatic vs. manual purging
+
+Every admin-panel write purges its own paths automatically: `useVexMutation`
+(`@vexcms/react`) POSTs to the revalidate route after its underlying Convex mutation succeeds,
+fire-and-forget — a failed purge is a stale page, but a failed save is lost work, so the purge
+never delays or fails the mutation the caller is waiting on.
+
+The **`RevalidateButton`** (`@vexcms/react`) covers what an automatic purge can't reach: a
+Convex dashboard edit, `npx convex import`, a streaming import, or a tab that closed mid-request
+— none of those run application code, so nothing purges automatically. It's user-initiated, so
+unlike the automatic purge it renders the request's pending state and surfaces a failure instead
+of swallowing it:
+
+```tsx
+// Purge the document currently open in an edit view
+<RevalidateButton collection={collection.slug} doc={currentDocument} />
+
+// Purge every path in the collection, from a list view
+<RevalidateButton collection={collection.slug} />
+```
+
+Both call the same route through `useVexRevalidate` — there is one purge path, two triggers.
+
+## Static params, sitemaps, robots, and metadata
+
+`@vexcms/next/seo` turns a Convex `publishedSlugs`-shaped query into the pieces a public site
+needs, without a bespoke reducer per project. Every one of these degrades gracefully rather than
+failing the build when Convex is unreachable — CI builds with placeholder env, and a build must
+not fail because a live deployment wasn't available to enumerate.
+
+- **`vexStaticParams`** builds `generateStaticParams` output for a slug-driven route, returning
+  `[]` — never throwing — when the read fails:
+
+  ```ts
+  export async function generateStaticParams() {
+    const entries = await vexStaticParams({
+      client: vex,
+      getSlug: (item: { slug: string }) => item.slug,
+      paramName: "slug",
+      query: api.pages.publishedSlugs,
+    });
+
+    return entries.filter((entry) => entry.slug !== "home");
+  }
+  ```
+
+- **`createVexSitemap`** returns `app/sitemap.ts`'s default export and degrades to a root-only
+  sitemap on a read failure:
+
+  ```ts
+  // src/app/sitemap.ts
+  export default createVexSitemap({
+    client: vex,
+    query: api.pages.publishedSlugs,
+    toUrl: (slug) => (slug === "home" ? env.NEXT_PUBLIC_SITE_URL : `${env.NEXT_PUBLIC_SITE_URL}/${slug}`),
+    getSlug: (item) => item.slug,
+  });
+  ```
+
+  `getUpdatedAt` is safe to pass: it is resolved per item, and any entry whose value is
+  missing or non-finite is emitted with no `<lastmod>` rather than an unparseable one. That
+  matters because `updatedAt` exists on every content collection but is only populated by a
+  write through the admin panel or API — seeded and imported rows have none.
+
+- **`createVexRobots`** returns `app/robots.ts`'s default export. It takes no Convex read at all
+  — it's purely static:
+
+  ```ts
+  // src/app/robots.ts
+  export default createVexRobots({
+    siteUrl: env.NEXT_PUBLIC_SITE_URL,
+    disallow: ["/admin", "/api"],
+  });
+  ```
+
+- **`vexMetadata`** formats a `Metadata` object (title, description, `metadataBase`, canonical
+  link, conditional OG image) but does **not** fetch anything — resolving and merging
+  page-level and site-level SEO fields is your app's job, typically in a small
+  `generatePageMetadata` helper that calls `vex.query` and passes the result through:
+
+  ```ts
+  const metadata = vexMetadata({
+    title,
+    description,
+    siteUrl: env.NEXT_PUBLIC_SITE_URL,
+    path: canonicalPath,
+    imageUrl: ogImageUrl,
+  });
+  ```
+
+  Title and description are always set; only `openGraph.images` depends on `imageUrl`
+  resolving. Never gate the whole `openGraph` block on the image — a page with no image
+  published should still carry an OG title and description.
+
+## `updatedAt` and sitemap `lastmod`
+
+`defineCollection` auto-injects an optional `updatedAt: number` field, stamped on every
+`create`/`update`, into every collection that isn't `meta.protected` or an auth-adapter table
+that already owns the column. Opt a collection out explicitly with `{ timestamps: false }` when
+its shape must match something external (an append-only log, a table an auth adapter dictates).
+
+This is what a sitemap's `getUpdatedAt` (above) reads, and it's collection-only:
+
+- **Globals carry no `updatedAt`.** `defineGlobal` doesn't inject the field, so a global-backed
+  page (a settings singleton, say) has no per-document timestamp to surface in a sitemap or an
+  SEO `<lastmod>`.
+- **Auth-adapter tables never receive the injected version.** `betterAuthAdapter` populates its
+  own locked `updatedAt` from the auth provider's real schema attribute where one exists;
+  `defineCollection` leaves an already-declared field alone rather than overwriting it.
+
+## What's deliberately out of scope
+
+- **No server-side dispatch.** A Convex-write-triggered purge with no admin panel open at all
+  is deferred — the admin panel already carries a signed-in session, and there's no
+  design here for authorizing a purge with no request originating from one.
+- **No CLI or API-key auth mode.** A `vex revalidate` command would need its own credential (a
+  service-account token sitting in a CI/host environment), which is strictly worse than the
+  session-only design this system is built around.
+- **`/admin` and every auth route are deliberately never cached.** They're disallowed in
+  `robots.ts` and read through `fetchQuery`/dynamic rendering, not the shared `vex` client —
+  caching an authenticated, per-user surface behind a shared CDN entry is the wrong trade in
+  either direction.
+- **A Convex dashboard edit, `npx convex import`, or a streaming import never runs application
+  code**, so nothing purges automatically for any of them. That's exactly what the manual
+  **Revalidate** button and the `export const revalidate` ISR window exist to cover — the button
+  for "purge now", the window as a backstop for whichever write nobody caught in time.

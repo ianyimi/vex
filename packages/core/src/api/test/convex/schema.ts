@@ -16,6 +16,9 @@ const schema = defineSchema({
     title: v.string(),
     slug: v.string(),
     body: v.optional(v.string()),
+    // Declared because `create`/`update` now stamp it; `convex-test` enforces
+    // this fixture exactly as a real deployment would.
+    updatedAt: v.optional(v.number()),
     featured: v.optional(v.boolean()),
     deleted: v.optional(v.boolean()), // For soft delete tests
     author: v.optional(v.array(v.id("authors"))),

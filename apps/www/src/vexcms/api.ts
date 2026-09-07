@@ -12,11 +12,12 @@ import config from "~/vex.config"
  *
  * Mirrors `apps/test/src/vexcms/api.ts`'s `vexServerApi` binding.
  */
-export const { get, find, search, create, remove, update, globals } = vexServerApi<DataModel>({
-  config,
-  getAuth: createGetAuth({
-    userCollectionSlug: TABLE_SLUG_USERS,
-    sessionCollectionSlug: TABLE_SLUG_SESSIONS,
-    resolveOrgs: false,
-  }),
-})
+export const { create, find, get, globals, publishedSlugs, remove, search, update } =
+  vexServerApi<DataModel>({
+    config,
+    getAuth: createGetAuth({
+      resolveOrgs: false,
+      sessionCollectionSlug: TABLE_SLUG_SESSIONS,
+      userCollectionSlug: TABLE_SLUG_USERS,
+    }),
+  })
