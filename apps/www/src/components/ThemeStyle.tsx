@@ -1,6 +1,7 @@
-import { api } from "@convex/_generated/api"
-import { buildThemeCss, type ThemeScope } from "@vexcms/core"
-import { fetchQuery } from "convex/nextjs"
+import { api } from "@convex/_generated/api";
+import { buildThemeCss, type ThemeScope } from "@vexcms/core";
+
+import { vex } from "~/lib/vex";
 
 /**
  * Server component that inlines a theme's CSS custom properties.
@@ -33,19 +34,23 @@ import { fetchQuery } from "convex/nextjs"
  * @returns A `<style>` element, or `null`.
  */
 export async function ThemeStyle(props: { scope?: ThemeScope }) {
-  const scope = props.scope ?? "site"
+  const scope = props.scope ?? "site";
 
-  let theme: null | Record<string, unknown> = null
+  let theme: null | Record<string, unknown> = null;
   try {
-    theme = await fetchQuery(scope === "admin" ? api.theme.getAdmin : api.theme.getActive)
+    theme = await vex.query(scope === "admin" ? api.theme.getAdmin : api.theme.getActive);
   } catch {
     // No deployment reachable at build time — fall back to globals.css.
-    return null
+    return null;
   }
-  if (!theme) {return null}
+  if (!theme) {
+    return null;
+  }
 
-  const css = buildThemeCss({ theme, scope })
-  if (!css) {return null}
+  const css = buildThemeCss({ theme, scope });
+  if (!css) {
+    return null;
+  }
 
   // `precedence` opts into React 19 style hoisting, so this lands in <head>
   // before first paint instead of mid-body.
@@ -55,5 +60,5 @@ export async function ThemeStyle(props: { scope?: ThemeScope }) {
       href={`vex-theme-${scope}`}
       precedence="high"
     />
-  )
+  );
 }

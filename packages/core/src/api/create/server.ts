@@ -9,7 +9,7 @@ import type {
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
-import { resolveAccessCall } from "../utils";
+import { resolveAccessCall, stampUpdatedAt } from "../utils";
 
 /**
  * Server-side args for `create`.
@@ -87,9 +87,17 @@ export async function create<
       throwOnDenied: true,
     });
   }
+  // Stamped AFTER the access check above, never before: `hasPermission`'s
+  // payload-dependent rules must see exactly what the caller sent, not a value
+  // this function added.
+  const data = stampUpdatedAt({
+    collection: args.collection,
+    config: args.config,
+    data: args.data,
+  });
   const id = await args.ctx.db.insert(
     args.collection as TableNamesInDataModel<DataModel>,
-    args.data,
+    data,
   );
   return id;
 }

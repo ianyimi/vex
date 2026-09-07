@@ -605,10 +605,22 @@ function SidebarMenuSkeleton({
 }: React.ComponentProps<"div"> & {
   showIcon?: boolean
 }) {
-  // Random width between 50 to 90%.
-  const [width] = React.useState(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`
-  })
+  // Varied widths make a list of skeleton rows read as text rather than as
+  // identical bars, so the variety is deliberate — but it must not come from
+  // `Math.random()` in render. A `useState` initializer runs during render on
+  // both the server and the client, so a random value produces a different
+  // width in each pass and React reports a hydration mismatch. It also blocks
+  // prerendering outright once `cacheComponents` is enabled ("Next.js
+  // encountered the unstable value `Math.random()`").
+  //
+  // `useId` is stable across server and client for a given element by design,
+  // so hashing it keeps per-row variety while staying deterministic.
+  const id = React.useId()
+  let hash = 0
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0
+  }
+  const width = `${(Math.abs(hash) % 41) + 50}%`
 
   return (
     <div

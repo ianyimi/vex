@@ -1,7 +1,7 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
 import { CRUD_ACTIONS, vexConvexApi } from "@vexcms/core";
 import type {
   MediaCollectionConfig,
@@ -12,7 +12,7 @@ import type {
 import { AppForm } from "../form/AppForm";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
-import { useCollectionForm, usePermission } from "../../hooks";
+import { useCollectionForm, usePermission, useVexMutation } from "../../hooks";
 
 /**
  * Props passed to the `CollectionEditView` component.
@@ -94,8 +94,13 @@ export function MediaCollectionEditView<
     return <p>Document not found.</p>;
   }
 
-  const { mutateAsync, isPending } = useMutation({
-    mutationFn: useConvexMutation(vexConvexApi.update),
+  const { mutateAsync, isPending } = useVexMutation({
+    collection: props.collection.slug,
+    getChanges: ({ args }) => [
+      { after: { ...currentDocument, ...args.data }, before: currentDocument },
+    ],
+    mutationFn: vexConvexApi.update,
+    operation: "update",
   });
   const form = useCollectionForm({
     document: currentDocument,

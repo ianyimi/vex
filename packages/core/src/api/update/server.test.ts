@@ -447,6 +447,71 @@ describe("update (server) — access enforcement", () => {
 });
 
 /** Runs `fn` inside a fresh `convexTest` transaction. */
+describe("update (server) — updatedAt stamp", () => {
+  const stampedConfig = {
+    collections: [
+      defineCollection({
+        slug: "posts",
+        fields: { title: text(), slug: text() },
+      }),
+    ],
+  } as unknown as VexConfig;
+
+  test("stamps updatedAt on patch when the collection declares the field", async () => {
+    await withTransaction(async (ctx) => {
+      const id = await ctx.db.insert("posts", { slug: "old", title: "Old" });
+      const before = Date.now();
+      await update({
+        collection: "posts",
+        config: stampedConfig,
+        ctx,
+        data: { title: "New" },
+        id,
+      });
+      const doc = await ctx.db.get(id);
+      expect(doc?.updatedAt).toBeGreaterThanOrEqual(before);
+    });
+  });
+
+  test("bumps updatedAt on a later patch, so the value tracks the last write", async () => {
+    await withTransaction(async (ctx) => {
+      const id = await ctx.db.insert("posts", { slug: "old", title: "Old" });
+      await update({
+        collection: "posts",
+        config: stampedConfig,
+        ctx,
+        data: { title: "First" },
+        id,
+      });
+      const first = (await ctx.db.get(id))?.updatedAt;
+      await update({
+        collection: "posts",
+        config: stampedConfig,
+        ctx,
+        data: { title: "Second" },
+        id,
+      });
+      const second = (await ctx.db.get(id))?.updatedAt;
+      expect(second).toBeGreaterThanOrEqual(first as number);
+    });
+  });
+
+  test("does not stamp when no registered collection matches the slug", async () => {
+    await withTransaction(async (ctx) => {
+      const id = await ctx.db.insert("posts", { slug: "old", title: "Old" });
+      await update({
+        collection: "posts",
+        config: fixtureConfig,
+        ctx,
+        data: { title: "New" },
+        id,
+      });
+      const doc = await ctx.db.get(id);
+      expect(doc?.updatedAt).toBeUndefined();
+    });
+  });
+});
+
 async function withTransaction(
   fn: (ctx: GenericMutationCtx<GenericDataModel>) => Promise<void>,
 ): Promise<void> {

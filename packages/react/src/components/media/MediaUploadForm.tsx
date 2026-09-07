@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";
+import { useVexMutation } from "../../hooks";
 import { vexConvexApi, formatBytes, formatMimeType } from "@vexcms/core";
 import type { MediaCollectionConfig, UploadField } from "@vexcms/core";
 import { Button, Icon, Input, Label } from "../ui";
@@ -80,8 +81,14 @@ export function MediaUploadForm({
     mutationFn: useConvexMutation(vexConvexApi.media.generateUploadUrl),
   });
 
-  const { mutateAsync: createMediaDoc } = useMutation({
-    mutationFn: useConvexMutation(vexConvexApi.media.createMediaDocument),
+  // Migrated for the same reason as `MediaUploadDropzone`'s copy: this creates
+  // a document, so an affected public page must be purged. `generateUploadUrl`
+  // above writes nothing and stays on a plain mutation.
+  const { mutateAsync: createMediaDoc } = useVexMutation({
+    collection: collectionConfig.slug,
+    getChanges: ({ args, result }) => [{ after: { ...args, _id: result } }],
+    mutationFn: vexConvexApi.media.createMediaDocument,
+    operation: "create",
   });
 
   // Initialize TanStack Form with array field

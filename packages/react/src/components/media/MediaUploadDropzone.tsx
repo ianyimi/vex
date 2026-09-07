@@ -6,6 +6,7 @@ import { StorageAdapterSlug, vexConvexApi } from "@vexcms/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { useStorageAdapterMap } from "../../context";
+import { useVexMutation } from "../../hooks";
 
 /**
  * Props for the MediaUploadDropzone component.
@@ -39,8 +40,13 @@ export function MediaUploadDropzone(props: MediaUploadDropzoneProps) {
     mutationFn: useConvexMutation(vexConvexApi.media.generateUploadUrl),
   });
 
-  const { mutateAsync: createMediaDocument } = useMutation({
-    mutationFn: useConvexMutation(vexConvexApi.media.createMediaDocument),
+  // Only this one is migrated: `generateUploadUrl` mints a signed URL and
+  // writes no document, so there is nothing for it to purge.
+  const { mutateAsync: createMediaDocument } = useVexMutation({
+    collection: props.targetCollection,
+    getChanges: ({ args, result }) => [{ after: { ...args, _id: result } }],
+    mutationFn: vexConvexApi.media.createMediaDocument,
+    operation: "create",
   });
 
   const storageAdapterMap = useStorageAdapterMap();

@@ -14,6 +14,17 @@ export const CRUD_ACTIONS = {
 export type CrudAction = (typeof CRUD_ACTIONS)[keyof typeof CRUD_ACTIONS];
 
 /**
+ * The CRUD actions that mutate a document, i.e. {@link CrudAction} without
+ * `"read"`.
+ *
+ * Lives here beside {@link CrudAction} rather than in the revalidation module
+ * because it is plain CRUD vocabulary, not a revalidation concept — cache
+ * invalidation is simply its first consumer (a read never invalidates a
+ * cached path, so `resolveTargets` accepts only these three).
+ */
+export type CrudWriteAction = Exclude<CrudAction, typeof CRUD_ACTIONS.read>;
+
+/**
  * Draft workflow actions — present on a resource subject only when its config
  * declares `versions.drafts: true` (globals today; collections with Spec 36).
  */

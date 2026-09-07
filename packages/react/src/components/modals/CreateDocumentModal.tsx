@@ -7,10 +7,9 @@ import { CollectionConfig, CollectionSlug } from "@vexcms/core";
 import { MODALS } from "./constants";
 import { AppForm } from "../form";
 import { useCollectionForm } from "../../hooks/useCollectionForm";
+import { useVexMutation } from "../../hooks";
 import { RenderFieldInputComponents } from "../fields";
 import { vexConvexApi } from "@vexcms/core";
-import { useMutation } from "@tanstack/react-query";
-import { useConvexMutation } from "@convex-dev/react-query";
 import { parseAsBoolean, useQueryState } from "nuqs";
 
 /**
@@ -39,8 +38,13 @@ export function CreateDocumentModal<TSlug extends CollectionSlug = CollectionSlu
   // eslint-disable-next-line no-unused-vars
   const [_, setOpen] = useQueryState(MODALS.createDocument.urlParam, parseAsBoolean);
 
-  const { mutateAsync, isPending } = useMutation({
-    mutationFn: useConvexMutation(vexConvexApi.create),
+  const { mutateAsync, isPending } = useVexMutation({
+    collection: collection.slug,
+    // A create has no prior state; `result` is the new document's id, which the
+    // submitted values alone cannot supply.
+    getChanges: ({ args, result }) => [{ after: { ...args.data, _id: result } }],
+    mutationFn: vexConvexApi.create,
+    operation: "create",
   });
 
   const form = useCollectionForm({

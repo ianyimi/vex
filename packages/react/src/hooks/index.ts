@@ -9,3 +9,5 @@ export * from "./useTableSelection";
 export * from "./usePaginatedQuery";
 export { useCanAccessAdminPanel } from "./useCanAccessAdminPanel";
 export { ModalSurfaceProvider, useModalSurface } from "./useModalSurface";
+export * from "./useVexMutation";
+export * from "./useVexRevalidate";

@@ -2,10 +2,13 @@ import { ThemeProvider } from "@vexcms/react";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { type PropsWithChildren } from "react";
 
-import { AuthServerProvider } from "./auth";
 
 /**
- * Server-side provider shell.
+ * Server-side provider shell: theme context + the nuqs URL-state adapter.
+ *
+ * `AuthServerProvider` used to wrap `NuqsAdapter` here, putting a `getToken()`
+ * cookie read on every route's render path. It now mounts directly in
+ * `app/(vexcms)/admin/layout.tsx`, the only route group that needs it.
  *
  * Deliberately does **not** mount `ConvexClientProvider` — `ClientProviders`
  * renders it, and `ClientProviders` is nested inside this component, so its
@@ -23,9 +26,7 @@ import { AuthServerProvider } from "./auth";
 export default function ServerProviders({ children }: PropsWithChildren) {
   return (
     <ThemeProvider defaultTheme="system">
-      <AuthServerProvider>
-        <NuqsAdapter>{children}</NuqsAdapter>
-      </AuthServerProvider>
+      <NuqsAdapter>{children}</NuqsAdapter>
     </ThemeProvider>
   );
 }

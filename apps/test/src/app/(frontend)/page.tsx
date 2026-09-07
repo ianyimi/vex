@@ -6,8 +6,6 @@ import { notFound } from "next/navigation"
 
 import PageContent from "./PageContent"
 
-export const dynamic = "force-dynamic"
-
 export async function generateMetadata(): Promise<Metadata> {
   const page = await fetchQuery(api.pages.getIndex)
 

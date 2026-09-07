@@ -86,3 +86,17 @@ export type {
   Populated,
   PopulateShape,
 } from "@vexcms/core";
+
+// Cache / SEO surface — server-only, no client context, so these are safe in
+// this RSC-imported root barrel. Also reachable via the "@vexcms/next/cache"
+// and "@vexcms/next/seo" subpaths.
+export { createVexServerClient } from "./cache/createVexServerClient";
+export type { VexServerClientOptions, VexServerClient } from "./cache/types";
+export { createVexRobots } from "./seo/createVexRobots";
+export { createVexSitemap } from "./seo/createVexSitemap";
+export { vexMetadata } from "./seo/vexMetadata";
+export { vexStaticParams } from "./seo/vexStaticParams";
+export { createVexRevalidateRoute } from "./cache/createVexRevalidateRoute";
+export type { CreateVexRevalidateRouteProps } from "./cache/createVexRevalidateRoute";
+export type {
+} from "./cache/types";

@@ -1,6 +1,7 @@
 import { api } from "@convex/_generated/api"
 import { buildThemeCss, type ThemeScope } from "@vexcms/core"
-import { fetchQuery } from "convex/nextjs"
+
+import { vex } from "~/lib/vex"
 
 /**
  * Server component that inlines a theme's CSS custom properties.
@@ -37,7 +38,7 @@ export async function ThemeStyle(props: { scope?: ThemeScope }) {
 
   let theme: null | Record<string, unknown> = null
   try {
-    theme = await fetchQuery(scope === "admin" ? api.theme.getAdmin : api.theme.getActive)
+    theme = await vex.query(scope === "admin" ? api.theme.getAdmin : api.theme.getActive)
   } catch {
     // No deployment reachable at build time — fall back to globals.css.
     return null

@@ -9,6 +9,13 @@ export default defineConfig([
     entry: {
       NextAdminPage: "src/NextAdminPage.tsx",
       NextAdminLayout: "src/NextAdminLayout.tsx",
+      // The root barrel carried only type re-exports until the cache/SEO
+      // surface landed; it now has value exports, so it needs JS emitted or
+      // the `"."` export condition resolves to a missing file. Same for the
+      // two new subpath barrels.
+      "cache/index": "src/cache/index.ts",
+      index: "src/index.ts",
+      "seo/index": "src/seo/index.ts",
     },
     format: ["esm"],
     tsconfig: "tsconfig.build.json",

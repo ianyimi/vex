@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/next",
-  "version": "0.1.0-alpha.12",
+  "version": "0.1.0-alpha.13",
   "description": "Next.js adapter and admin routes for VexCMS",
   "keywords": [
     "cms",
@@ -43,6 +43,16 @@
       "import": "./dist/NextAdminLayout.js",
       "types": "./dist/NextAdminLayout.d.ts"
     },
+    "./cache": {
+      "source": "./src/cache/index.ts",
+      "import": "./dist/cache/index.js",
+      "types": "./dist/cache/index.d.ts"
+    },
+    "./seo": {
+      "source": "./src/seo/index.ts",
+      "import": "./dist/seo/index.js",
+      "types": "./dist/seo/index.d.ts"
+    },
     "./styles": "./styles.css"
   },
   "publishConfig": {
@@ -53,7 +63,10 @@
     "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
     "dev": "tsup --watch --no-clean",
     "clean": "rm -rf dist",
-    "typecheck": "tsc --noEmit -p tsconfig.check.json"
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@vexcms/core": "workspace:*",
@@ -69,6 +82,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
     "convex": "catalog:",
     "next": "catalog:",
     "nuqs": "catalog:",
@@ -77,6 +91,7 @@
     "tailwindcss": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
+    "vitest": "catalog:",
     "zod": "catalog:"
   },
   "peerDependencies": {

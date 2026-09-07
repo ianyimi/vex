@@ -109,3 +109,29 @@ describe("updateGlobal (server)", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("upsertGlobal (server) — updatedAt", () => {
+  // Pins the deliberate gap as a checked contract rather than a silent one.
+  // `vex_globals` is a single `{ slug, data }` table shared by every registered
+  // global — there is no per-global `defineTable` generated from its fields, so
+  // there is no column to stamp. Stashing the value inside the `data` blob is
+  // not equivalent: `STRIPPED_KEYS` and each global's Zod input schema would
+  // both have to learn about a field no `GlobalConfigInput` declares.
+  it("never writes an updatedAt key — globals cannot carry one", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await upsertGlobal({
+        config: fixtureConfig,
+        ctx,
+        data: { siteName: "My Site" },
+        slug: "siteSettings",
+      });
+    });
+    const rows = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.query("vex_globals").collect(),
+    );
+    const stored = rows[0].data;
+    expect(stored).toBeTypeOf("object");
+    expect(Object.keys(stored as object)).not.toContain("updatedAt");
+  });
+});

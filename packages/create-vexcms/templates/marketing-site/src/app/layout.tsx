@@ -8,7 +8,6 @@ import { Geist, Geist_Mono } from "next/font/google"
 import ClientProviders from "~/components/providers/client"
 import ServerProviders from "~/components/providers/server"
 import { ThemeLive } from "~/components/ThemeLive"
-import { ThemeStyle } from "~/components/ThemeStyle"
 
 /**
  * Geist carries the whole type system — display through body — so weight is
@@ -68,12 +67,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* ThemeScript applies the persisted light/dark class before first
-            paint (no flash); ThemeStyle server-renders the active site theme
-            once for the whole app — the admin layout re-emits its own scope
-            at higher specificity, so `siteSettings.adminTheme` opts out. */}
+        {/* Applies the persisted light/dark class before first paint (no
+            flash). Site theming now renders in `(frontend)/(site)/layout.tsx`
+            — the admin layout re-emits its own scope for `/admin`. */}
         <ThemeScript />
-        <ThemeStyle />
       </head>
       <body>
         <ServerProviders>
