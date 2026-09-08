@@ -19,3 +19,5 @@ applies_to: ["packages/*/tsup.config.ts", "packages/*/package.json"]
   at real dist output.
 - Exports fields are locked down — no accidental deep imports; every entry maps
   source/types/import explicitly.
+
+- **One bundle graph per package when entries share stateful modules.** `@vexcms/react` builds `.` and `./testing` from a SINGLE config with `splitting: true`, deliberately overriding the array-of-configs guidance above: two invocations cannot share a chunk, so a module-scope `createContext` gets evaluated twice and a consumer mounting components from one entry cannot see providers from the other. See ADR-009.

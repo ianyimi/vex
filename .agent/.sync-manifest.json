@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "generated_at_sha": "6ae46ba9fc09292d30fd7bb35dc1d6e33961dce0",
+  "generated_at_sha": "737805913b5ead20d57f72a6ba6e2674f97bacf3",
   "entries": [
     {
       "path": ".agent/context-rules.yaml",
       "kind": "generated",
-      "target_or_hash": "7cdf5c5ae1a2368f2870b91967bcac135dc93311b56d9cde16eb2fdc6dc1388f",
+      "target_or_hash": "fb516d5534e2cbf90982591b64f25db9cd547b8717fe4fca5c373a97af41fa47",
       "platform": "core"
     },
     {
@@ -341,11 +341,17 @@
     {
       "path": ".omp/instructions/naming-25.instructions.md",
       "kind": "generated",
-      "target_or_hash": "5b5cf5aae50a840404062ef7c60590c9d6c1809fbca10704c21f4b84faa9b3d8",
+      "target_or_hash": "b0556c9521566a1047cea93d4cc79547e962bcdf7b048994e9edcafe1c18bc5d",
       "platform": "omp"
     },
     {
       "path": ".omp/instructions/naming-26.instructions.md",
+      "kind": "generated",
+      "target_or_hash": "5b5cf5aae50a840404062ef7c60590c9d6c1809fbca10704c21f4b84faa9b3d8",
+      "platform": "omp"
+    },
+    {
+      "path": ".omp/instructions/naming-27.instructions.md",
       "kind": "generated",
       "target_or_hash": "653b685259d43cc4c69328ccecc5b608d228bc93515e7ba58c06657b892441f1",
       "platform": "omp"
@@ -611,43 +617,61 @@
     {
       "path": ".omp/instructions/std-testing-0.instructions.md",
       "kind": "generated",
-      "target_or_hash": "fffc14efce9cbffc37a990b4ed6bab0d2babc30eb92cc679c160aa8d2ef557f6",
+      "target_or_hash": "6341b2c23f22bfacd01d3004d261cdc0d9528370728848e0e56427adfe699885",
       "platform": "omp"
     },
     {
       "path": ".omp/instructions/std-testing-1.instructions.md",
       "kind": "generated",
-      "target_or_hash": "37598d761b0a26ef7aac6382bb127efb49c52a71c5bc53488e59f1d59c9c1240",
+      "target_or_hash": "2e117f100ffeee56d7e47683b470149437d6f01e72e51a7762b051b47b06c01d",
       "platform": "omp"
     },
     {
       "path": ".omp/instructions/std-testing-2.instructions.md",
       "kind": "generated",
-      "target_or_hash": "d1271ab84bdf4627778076be0967eff4b5df581a5a517f8f4d52067a61857e0c",
+      "target_or_hash": "99bf68b1404e2ea672216a5e236a19c7a307295b73f104f1e5a2961294843e29",
       "platform": "omp"
     },
     {
       "path": ".omp/instructions/std-testing-3.instructions.md",
       "kind": "generated",
-      "target_or_hash": "de432e4a242b6cd40b890e34e44ba2a443d64c9e4c8bdf49696045a9df68fa61",
+      "target_or_hash": "69d4812e13f39948dc56d15fc0997598f537df12cc54fb816a24d30d729178f3",
       "platform": "omp"
     },
     {
       "path": ".omp/instructions/std-testing-4.instructions.md",
       "kind": "generated",
-      "target_or_hash": "5066a20e4fbe11c612c9b1a257651d0dc0abcce63a96849ea730952747da691c",
+      "target_or_hash": "e3c5b45ce1fa4a7d89e47836caab3463bceb33aac02303fd83f61ef1015802aa",
       "platform": "omp"
     },
     {
       "path": ".omp/instructions/std-testing-5.instructions.md",
       "kind": "generated",
-      "target_or_hash": "3ef614baf068a16eda22a112acc6bcc936866952e9d2184b2200dca052d95388",
+      "target_or_hash": "4dba4828a9f54da74ec1e4e8d619b4187f972c55f4e547ce38aa74af97ddab91",
       "platform": "omp"
     },
     {
       "path": ".omp/instructions/std-testing-6.instructions.md",
       "kind": "generated",
-      "target_or_hash": "0327d687e1874470b0c6ef5028a3d3e725e60ff9c35f2f7737f977e33c406be9",
+      "target_or_hash": "7100b3b51bee784ddf960fac5e9cfce2e293dd76e71db00c16ffdeaee381a09d",
+      "platform": "omp"
+    },
+    {
+      "path": ".omp/instructions/std-testing-7.instructions.md",
+      "kind": "generated",
+      "target_or_hash": "bcec6deb11259a9f681f60c2de4841a3a31a2f921af9772cb1b3a3ba995519d5",
+      "platform": "omp"
+    },
+    {
+      "path": ".omp/instructions/std-testing-8.instructions.md",
+      "kind": "generated",
+      "target_or_hash": "eaf4e8f72b8b3495d1d1b57a22c16241c96331426064fc9711a1f7f1206923c1",
+      "platform": "omp"
+    },
+    {
+      "path": ".omp/instructions/std-testing-9.instructions.md",
+      "kind": "generated",
+      "target_or_hash": "eab1c885ba90a2ac2275d01d0bf87bce62b8d44e56276d1f6ddc6d7a80b381f9",
       "platform": "omp"
     },
     {

@@ -1,7 +1,11 @@
 "use client";
 
 import type { BlocksField, GenericBlock } from "@vexcms/core";
-import { createFieldInput, FormDescription, FormLabel, FormError, FormBlocks } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormDescription } from "../../form/FormDescription";
+import { FormLabel } from "../../form/FormLabel";
+import { FormError } from "../../form/FormError";
+import { FormBlocks } from "../../form/FormBlocks";
 import { parseAsString, useQueryState } from "nuqs";
 import { MODALS } from "../../modals";
 

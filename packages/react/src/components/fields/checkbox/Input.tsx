@@ -1,7 +1,10 @@
 "use client";
 
 import { type CheckboxField } from "@vexcms/core";
-import { createFieldInput, FormLabel, FormDescription, FormError } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormLabel } from "../../form/FormLabel";
+import { FormDescription } from "../../form/FormDescription";
+import { FormError } from "../../form/FormError";
 import { Checkbox } from "../../ui/checkbox";
 
 /**

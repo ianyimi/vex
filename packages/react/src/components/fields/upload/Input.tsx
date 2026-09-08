@@ -1,7 +1,8 @@
 "use client";
 
 import type { UploadField } from "@vexcms/core";
-import { createFieldInput, FormLabel } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormLabel } from "../../form/FormLabel";
 import { MediaPicker } from "../../media";
 import { useVexConfig } from "../../../context";
 import { UploadEmpty } from "./EmptyInput";

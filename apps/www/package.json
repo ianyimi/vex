@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "coverage": "vitest run --coverage",
     "deploy:convex": "convex deploy",
     "dev": "next dev --port=3030",
     "format": "prettier --write .",
@@ -12,6 +13,7 @@
     "seed": "convex run seed:init",
     "seed:reinit": "convex run seed:reinit",
     "start": "next start",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "vex:dev": "vex dev",
     "vex:generate": "vex dev --once",
@@ -52,19 +54,26 @@
     "@eslint/eslintrc": "catalog:",
     "@next/eslint-plugin-next": "catalog:",
     "@tailwindcss/postcss": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vexcms/cli": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
     "eslint": "catalog:",
     "eslint-config-next": "catalog:",
     "eslint-plugin-import-x": "catalog:",
     "eslint-plugin-perfectionist": "catalog:",
     "eslint-plugin-react-hooks": "catalog:",
+    "jsdom": "catalog:",
     "prettier": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "catalog:"
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:",
+    "vitest-axe": "catalog:"
   }
 }

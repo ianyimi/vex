@@ -2,7 +2,10 @@
 
 import { type SelectField } from "@vexcms/core";
 import { useModalSurface } from "../../../hooks/useModalSurface";
-import { createFieldInput, FormDescription, FormLabel, FormError } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormDescription } from "../../form/FormDescription";
+import { FormLabel } from "../../form/FormLabel";
+import { FormError } from "../../form/FormError";
 import {
   MultiSelect,
   MultiSelectContent,

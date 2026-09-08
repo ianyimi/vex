@@ -16,6 +16,10 @@ export default defineConfig([
       "cache/index": "src/cache/index.ts",
       index: "src/index.ts",
       "seo/index": "src/seo/index.ts",
+      // Test kit re-export (`@vexcms/next/testing`) — runs in a vitest/Node
+      // process, never in a React Server Components graph, so it belongs in
+      // this no-banner entry, not the "use client" block below.
+      "testing/index": "src/testing/index.ts",
     },
     format: ["esm"],
     tsconfig: "tsconfig.build.json",
@@ -32,6 +36,7 @@ export default defineConfig([
       "lucide-react",
       "@vexcms/core",
       "@vexcms/react",
+      "@vexcms/react/testing",
       // Keep the client leaf as a separate module so its "use client" banner
       // survives — do not inline it into the server bundle.
       "./NextAdminLayoutClient",

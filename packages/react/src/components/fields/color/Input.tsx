@@ -12,7 +12,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Input } from "../../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
-import { createFieldInput, FormDescription, FormLabel, FormError } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormDescription } from "../../form/FormDescription";
+import { FormLabel } from "../../form/FormLabel";
+import { FormError } from "../../form/FormError";
 import { readThemeColorTokens, type ThemeColorToken } from "./utils";
 
 /** Colour the picker opens on when the field holds no parseable value. */

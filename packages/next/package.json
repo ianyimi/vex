@@ -53,6 +53,11 @@
       "import": "./dist/seo/index.js",
       "types": "./dist/seo/index.d.ts"
     },
+    "./testing": {
+      "source": "./src/testing/index.ts",
+      "import": "./dist/testing/index.js",
+      "types": "./dist/testing/index.d.ts"
+    },
     "./styles": "./styles.css"
   },
   "publishConfig": {

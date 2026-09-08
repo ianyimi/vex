@@ -26,7 +26,12 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./styles": "./styles.css"
+    "./styles": "./styles.css",
+    "./testing": {
+      "source": "./src/testing/index.ts",
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js"
+    }
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -66,27 +71,54 @@
   "peerDependencies": {
     "@convex-dev/react-query": "catalog:peers",
     "@tanstack/react-query": "catalog:peers",
+    "@testing-library/jest-dom": "catalog:peers",
+    "@testing-library/react": "catalog:peers",
+    "@testing-library/user-event": "catalog:peers",
     "convex": "catalog:peers",
+    "convex-test": "catalog:peers",
     "next": "catalog:peers",
     "nuqs": "catalog:peers",
     "react": "catalog:peers",
-    "react-dom": "catalog:peers"
+    "react-dom": "catalog:peers",
+    "vitest": "catalog:peers",
+    "vitest-axe": "catalog:peers"
   },
   "peerDependenciesMeta": {
     "next": {
+      "optional": true
+    },
+    "@testing-library/jest-dom": {
+      "optional": true
+    },
+    "@testing-library/react": {
+      "optional": true
+    },
+    "@testing-library/user-event": {
+      "optional": true
+    },
+    "convex-test": {
+      "optional": true
+    },
+    "vitest": {
+      "optional": true
+    },
+    "vitest-axe": {
       "optional": true
     }
   },
   "devDependencies": {
     "@convex-dev/react-query": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "convex": "catalog:",
+    "convex-test": "catalog:",
     "jsdom": "catalog:",
     "next": "catalog:",
     "nuqs": "catalog:",
@@ -95,7 +127,8 @@
     "tailwindcss": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "vitest-axe": "catalog:"
   },
   "publishConfig": {
     "access": "public",

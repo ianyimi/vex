@@ -3,7 +3,10 @@
 import * as React from "react";
 import { X } from "lucide-react";
 import type { CollectionFieldMeta, CollectionSlug, RelationshipField } from "@vexcms/core";
-import { createFieldInput, FormDescription, FormLabel, FormError } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormDescription } from "../../form/FormDescription";
+import { FormLabel } from "../../form/FormLabel";
+import { FormError } from "../../form/FormError";
 import { Popover, PopoverTrigger, PopoverContent } from "../../ui/popover";
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
