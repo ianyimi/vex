@@ -239,27 +239,31 @@ export function MultiSelectValue({
         className,
       )}
     >
-      {[...selectedValues].map((value) => (
-        <Badge
-          variant="outline"
-          data-selected-item
-          className="group flex items-center gap-1"
-          key={value}
-          onClick={
-            clickToRemove
-              ? (e) => {
-                  e.stopPropagation();
-                  toggleValue(value);
-                }
-              : undefined
-          }
-        >
-          {items.get(value) ?? value}
-          {clickToRemove && (
-            <XIcon className="size-2 text-muted-foreground group-hover:text-destructive" />
-          )}
-        </Badge>
-      ))}
+      {[...selectedValues].map((value) => {
+        const label = items.get(value) ?? value;
+        return (
+          <Badge
+            variant="outline"
+            data-selected-item
+            className="group flex items-center gap-1"
+            key={value}
+            aria-label={clickToRemove ? `Remove ${label}` : undefined}
+            onClick={
+              clickToRemove
+                ? (e) => {
+                    e.stopPropagation();
+                    toggleValue(value);
+                  }
+                : undefined
+            }
+          >
+            {label}
+            {clickToRemove && (
+              <XIcon className="size-2 text-muted-foreground group-hover:text-destructive" />
+            )}
+          </Badge>
+        );
+      })}
       <Badge
         style={{
           display: overflowAmount > 0 && !shouldWrap ? "block" : "none",

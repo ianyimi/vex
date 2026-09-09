@@ -51,6 +51,7 @@ export const TextFieldInput = createFieldInput<string, {}, TextField>(
           onBlur={field.handleBlur}
           placeholder={fieldDef.admin.placeholder}
           readOnly={fieldDef.admin.readOnly}
+          aria-required={fieldDef.required}
         />
         <FormDescription field={fieldDef} />
         <FormError field={field} submissionAttempts={submissionAttempts} />

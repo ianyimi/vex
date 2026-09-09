@@ -68,10 +68,12 @@ export const SelectFieldInput = createFieldInput<string[], {}, SelectField>(
           values={field.state.value}
         >
           <MultiSelectTrigger
+            id={name}
             className="w-full"
             onBlur={field.handleBlur}
             name={name}
             aria-readonly={fieldDef.admin.readOnly}
+            aria-required={fieldDef.required}
             disabled={readOnly}
           >
             <MultiSelectValue placeholder={fieldDef.admin.placeholder} />

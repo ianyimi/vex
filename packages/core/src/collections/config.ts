@@ -170,7 +170,6 @@ export function defineCollection<
     fields,
     admin: {
       useAsTitle: "_id",
-      components: {},
       ...input.admin,
       table: {
         defaultPageSize: 10,

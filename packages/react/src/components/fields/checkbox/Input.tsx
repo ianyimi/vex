@@ -44,13 +44,15 @@ export const CheckboxFieldInput = createFieldInput<boolean, {}, CheckboxField>(
         <div className="flex gap-2">
           <Checkbox
             id={name}
+            aria-labelledby={`${name}-label`}
+            required={fieldDef.required}
             readOnly={readOnly || fieldDef.admin.readOnly}
             disabled={readOnly || fieldDef.admin.readOnly}
-            checked={field.state.value}
+            checked={field.state.value ?? false}
             onCheckedChange={(checked) => field.handleChange(checked)}
             onBlur={field.handleBlur}
           />
-          <FormLabel field={fieldDef} index={index} name={name} hideRequired />
+          <FormLabel field={fieldDef} index={index} name={name} />
         </div>
         <FormDescription field={fieldDef} />
         <FormError field={field} submissionAttempts={submissionAttempts} />

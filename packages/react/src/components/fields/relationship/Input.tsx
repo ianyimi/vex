@@ -135,7 +135,7 @@ export const RelationshipFieldInput = createFieldInput<
                 type="button"
                 onClick={() => handleRemove(doc._id)}
                 className="hover:text-destructive"
-                disabled={!readOnly || fieldDef.admin.readOnly}
+                disabled={readOnly || fieldDef.admin.readOnly}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -155,10 +155,14 @@ export const RelationshipFieldInput = createFieldInput<
              element, not Radix's `asChild`. Pass a Button element to `render`
              and Base UI clones its props onto the trigger. */}
         <PopoverTrigger
+          role="combobox"
+          onBlur={field.handleBlur}
           render={
             <Button
+              id={name}
               variant="outline"
               disabled={readOnly || fieldDef.admin.readOnly}
+              aria-required={fieldDef.required}
               className="w-full justify-between font-normal"
             />
           }

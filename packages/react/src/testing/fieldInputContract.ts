@@ -71,15 +71,31 @@ export interface FieldInputContractOptions<
 /**
  * `AppForm` narrowed to the two props this harness passes.
  *
- * One documented boundary cast instead of fighting `AppForm`'s 12 inferred
- * generic parameters: its `form` prop is `AnyFormApi`, whose validator slots
- * all default to `undefined`, so a form carrying the `onSubmit` validator this
- * harness needs instantiates them as `unknown` and is not assignable — and
- * neither is a bare `AnyFormApi`, because those narrow defaults are not
- * assignable to the concrete instantiation `AppForm` infers (the AP-006
- * pattern). Every pre-existing test passes a validator-less form, which is why
- * this never surfaced. Recorded as a finding; retyping `AppForm` is production
- * work and out of this spec's scope.
+ * Spec 2026-09-07 Step 2 widened `AnyFormApi`'s validator-slot generics to
+ * default to their own declared bound (`undefined | FormValidateOrFn<TFormData>`)
+ * instead of the narrower `undefined`, per AP-006 — see `AppFormContext.ts`.
+ * That fix does not reach this cast. `createElement(AppForm, props)` passes
+ * `AppForm` as a bare, uninstantiated generic function reference; TypeScript
+ * resolves `createElement`'s own type parameter by erasing EVERY one of
+ * `AppForm`'s generics — including `TFormData` itself, not just the
+ * validator slots — to `unknown` before it ever looks at the `props`
+ * argument. A concrete form's `options.validators.onSubmit: (props: { value:
+ * { title: string } }) => ...` then fails against the erased `(props: {
+ * value: unknown }) => ...` on the contravariant `value` parameter,
+ * regardless of what `AnyFormApi` declares as its default. Verified directly
+ * against the installed `@tanstack/react-form` version in an isolated
+ * checkout: even a direct, non-`createElement` assignment of a form carrying
+ * an actual validator (`const wide: AnyFormApi = formWithOnSubmitValidator`)
+ * still fails separately, because TanStack's own `UnwrapFormValidateOrFnForInner`
+ * collapses any abstract, non-literal validator-generic bound to `undefined`
+ * when computing `FormState.errorMap` — so a real validator's return type
+ * (e.g. `"required" | undefined`) is never assignable back to it, no matter
+ * how `AnyFormApi`'s type parameters default. JSX (`<AppForm form={form}>`)
+ * never hits either problem — it infers `AppForm`'s generics straight from
+ * the concrete `form` argument — but this harness is a `.ts` file building a
+ * dynamic component tree and cannot use JSX syntax. Retyping `AppForm`/
+ * `AnyFormApi` to route around TanStack's internal error-extraction is
+ * production work and stays out of this spec's scope.
  */
 const AppFormBoundary = AppForm as unknown as ComponentType<{
   form: unknown;
@@ -152,17 +168,39 @@ function withFieldDef<TField extends AdminField>(
 }
 
 /**
+ * Whether `control` is a resolved-by-fallback element with no single DOM
+ * value to drive generically: a popover-opening trigger (`role="combobox"`,
+ * e.g. `date`'s `DateTimePicker`), or a multi-state field's `role="group"`
+ * wrapper (e.g. `upload`, whose empty/filled/read-only states don't all
+ * have one focusable control for `getControl` to resolve to `id`-first).
+ * Neither has a text-entry mode or a meaningful `.value`; their real
+ * interaction model is exercised by the field type's own `extra` block, the
+ * same reason `setControlValue`/`expectControlValue` already skip `BUTTON`/
+ * file inputs rather than guessing an interaction model that would just be
+ * wrong.
+ *
+ * @param control - The rendered control element to inspect.
+ * @returns Whether `control` is a combobox trigger or a group wrapper.
+ */
+function isPopoverTriggerControl(control: Element): boolean {
+  const role = control.getAttribute("role");
+  return role === "combobox" || role === "group";
+}
+
+/**
  * Best-effort generic interaction used by every value-mutating assertion below.
  * Handles the two control shapes a fixture is guaranteed to be able to drive
  * generically — a plain text-like control, and a checkbox/radio — and is a
- * deliberate no-op for anything else (file inputs, custom comboboxes): those
- * get their real interaction model exercised by the field type's own `extra`,
- * not a generic guess that would just be wrong.
+ * deliberate no-op for anything else (file inputs, `BUTTON`s, popover
+ * triggers like `date`'s combobox): those get their real interaction model
+ * exercised by the field type's own `extra`, not a generic guess that would
+ * just be wrong.
  *
  * @param user - The `userEvent` instance driving the interaction.
  * @param control - The rendered control element to interact with.
  * @param value - The value to set on `control`.
  */
+
 async function setControlValue(
   user: UserEvent,
   control: HTMLElement,
@@ -176,7 +214,7 @@ async function setControlValue(
     }
     return;
   }
-  if (input.type === "file" || control.tagName === "BUTTON") {
+  if (input.type === "file" || control.tagName === "BUTTON" || isPopoverTriggerControl(control)) {
     return;
   }
   if (control.tagName === "INPUT" || control.tagName === "TEXTAREA") {
@@ -209,14 +247,27 @@ async function attemptEdit(user: UserEvent, control: HTMLElement, value: unknown
 
 /**
  * Asserts the control's own DOM value/checked state — not the form's — matches `expected`.
+ * No-ops for a popover-trigger control (see {@link isPopoverTriggerControl}): it has
+ * no DOM "value" to assert against.
  *
  * @param control - The rendered control element to inspect.
  * @param expected - The value the control's DOM state should reflect.
  */
 function expectControlValue(control: HTMLElement, expected: unknown): void {
+  if (isPopoverTriggerControl(control)) return;
   const input = control as HTMLInputElement;
   if (input.type === "checkbox" || input.type === "radio") {
     expect(input.checked).toBe(Boolean(expected));
+    return;
+  }
+  if (input.type === "file") return;
+  // jest-dom's `toHaveValue` coerces its own expected argument against the
+  // control's type — a `type="number"` input demands a `number` (or
+  // `undefined`/`null` for "empty"), not a stringified one, or the matcher
+  // itself throws a type-mismatch failure that has nothing to do with the
+  // component under test.
+  if (input.type === "number") {
+    expect(control).toHaveValue(expected === undefined || expected === null ? undefined : Number(expected));
     return;
   }
   expect(control).toHaveValue(expected === undefined || expected === null ? "" : String(expected));
@@ -253,7 +304,21 @@ function hasInertSignal(control: Element): boolean {
  * whenever another element's accessible name embeds the field label — measured
  * on `color`, whose swatch button is named "Pick a colour for Brand Color",
  * making every such query ambiguous and failing 15 tests for a reason that had
- * nothing to do with the component.
+ * nothing to do with the component. Container fields (array/group/blocks) hit
+ * the SAME trap from a different angle: nested sub-fields' own labels routinely
+ * share a singular/plural substring with the container's own label (fixture
+ * measured: array's "Tags" vs its item type's "Tag") — resolved by matching
+ * `[role="group"][aria-labelledby="${FIELD_NAME}-label"]` directly instead of
+ * falling through to the ambiguous substring lookup.
+ *
+ * `checkbox` is a deliberate special case: Base UI's `Checkbox.Root` puts the
+ * `id` prop on its visually-hidden, `aria-hidden="true"` native `<input>`
+ * (so `<label for>` native click-delegation still works and this suite's
+ * `.type`/`.checked`-based generic assertions have a real form element to
+ * inspect), not on the visible `role="checkbox"` element — the two-element
+ * split is intentional, not a defect (`checkbox/Input.tsx` also forwards
+ * Base UI's own `required` prop, which it mirrors onto both elements as the
+ * native `required` attribute and the visible element's `aria-required`).
  *
  * @param container - The rendered form's root element to search within.
  * @param labelText - The field's accessible label text, used as a fallback lookup.
@@ -262,7 +327,31 @@ function hasInertSignal(control: Element): boolean {
 export function getControl(container: HTMLElement, labelText: string): HTMLElement {
   const byId = container.querySelector<HTMLElement>(`#${FIELD_NAME}`);
   if (byId) return byId;
+  const group = container.querySelector<HTMLElement>(
+    `[role="group"][aria-labelledby="${FIELD_NAME}-label"]`,
+  );
+  if (group) return group;
   return screen.getByLabelText(labelText, { exact: false });
+}
+
+/**
+ * Resolves the accessible label node for either labelling pattern this suite
+ * supports: a single-control field's `<label for={FIELD_NAME}>` (`FormLabel`),
+ * or a container field's `role="group"` wrapper whose `aria-labelledby`
+ * resolves to a plain labelled node (array/group/blocks — no single control
+ * for `htmlFor` to point at).
+ *
+ * @param container - The rendered form's root element to search within.
+ * @returns The resolved label node, or `null` if neither pattern is present.
+ */
+function getLabelNode(container: HTMLElement): HTMLElement | null {
+  const labelEl = container.querySelector<HTMLElement>(`label[for="${FIELD_NAME}"]`);
+  if (labelEl) return labelEl;
+
+  const group = container.querySelector<HTMLElement>('[role="group"]');
+  const labelledBy = group?.getAttribute("aria-labelledby");
+  if (!labelledBy) return null;
+  return container.querySelector<HTMLElement>(`#${labelledBy}`);
 }
 
 /**
@@ -293,8 +382,17 @@ function renderField<TField extends AdminField, TValue>(props: {
     // set" / transport errors without these), and `blocks` reads nuqs. Inert for
     // the field types that read none of them. Held in state so each mounted
     // harness gets exactly one client instance across re-renders.
+    //
+    // No shared-contract assertion here ever reads resolved query content —
+    // upload's own dedicated Cell/preview-content tests and relationship's own
+    // picker-search tests both mount through a real convex-test bridge instead
+    // (their own `extra` blocks), not this generic harness. A `queryFn` that
+    // never resolves keeps the pending/Skeleton state deterministic: without
+    // one, React Query logs "No queryFn was passed" on every render. Executor
+    // form, not `Promise.withResolvers()`: this package's `lib` target is
+    // ES2022, which predates it.
     const [queryClient] = useState(() => new QueryClient({
-      defaultOptions: { queries: { retry: false } },
+      defaultOptions: { queries: { retry: false, queryFn: () => new Promise<never>(() => {}) } },
     }));
     const [convexClient] = useState(() => new ConvexReactClient("https://example.convex.cloud"));
     const f = useForm({
@@ -403,7 +501,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
 
   describe(`${fixture.fieldType} field input contract`, () => {
     // ── 1. Label ────────────────────────────────────────────────────────────
-    it("renders a label associated with the input via htmlFor/id", () => {
+    it('renders a label associated with the input via htmlFor/id, or (for container fields with no single control) a labelled role="group"', () => {
       const { container } = renderField({
         Component,
         fieldDef: fixture.fieldDef,
@@ -412,15 +510,37 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
         initialValue: fixture.valid,
       });
 
-      expect(container.querySelector("label")).toHaveAttribute("for", FIELD_NAME);
-      expect(getControl(container, label)).toHaveAttribute("id", FIELD_NAME);
+      // Scoped to THIS field's own `for`, not the first `<label>` anywhere in
+      // the container — a container field (array/group/blocks) renders each
+      // nested sub-field's own real `<label for="testField[0]">` inside it,
+      // which a bare `querySelector("label")` would find first and
+      // misidentify as this field's own labelling pattern.
+      const labelEl = container.querySelector(`label[for="${FIELD_NAME}"]`);
+      if (labelEl) {
+        expect(getControl(container, label)).toHaveAttribute("id", FIELD_NAME);
+        return;
+      }
+
+      const group = container.querySelector('[role="group"]');
+      expect(group).not.toBeNull();
+      const labelledBy = group?.getAttribute("aria-labelledby");
+      expect(labelledBy).toBeTruthy();
+      const labelNode = labelledBy ? container.querySelector(`#${labelledBy}`) : null;
+      expect(labelNode).not.toBeNull();
+      expect(labelNode?.textContent).toContain(label);
     });
 
     it("falls back to the field name when fieldDef.label is empty", () => {
       const fieldDef = withFieldDef(fixture.fieldDef, { label: "" });
       renderField({ Component, fieldDef, collection, readOnly: false, initialValue: fixture.valid });
 
-      expect(screen.getByLabelText(FIELD_NAME, { exact: false })).toBeInTheDocument();
+      // `checkbox`-shaped controls associate the SAME label text with two
+      // elements (the visible `role="checkbox"` via `aria-labelledby`, and
+      // its `aria-hidden` native input via `<label for>`) — both real,
+      // neither wrong, so pick whichever isn't hidden from assistive tech.
+      const matches = screen.getAllByLabelText(FIELD_NAME, { exact: false });
+      const visible = matches.find((el) => el.getAttribute("aria-hidden") !== "true") ?? matches[0];
+      expect(visible).toBeInTheDocument();
     });
 
     it("prefixes the label with a 1-based index when `index` is supplied (nested rendering)", () => {
@@ -434,7 +554,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       });
 
       const expected = `[3] - ${label}${fixture.fieldDef.required ? "*" : ""}`;
-      expect(container.querySelector("label")?.textContent).toBe(expected);
+      expect(getLabelNode(container)?.textContent).toBe(expected);
     });
 
     it("shows a required-asterisk in the label when the field is required", () => {
@@ -447,7 +567,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
         initialValue: fixture.valid,
       });
 
-      expect(container.querySelector("label")?.textContent).toBe(
+      expect(getLabelNode(container)?.textContent).toBe(
         `${fieldDef.label || FIELD_NAME}*`,
       );
     });
@@ -462,7 +582,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
         initialValue: fixture.valid,
       });
 
-      expect(container.querySelector("label")?.textContent).toBe(fieldDef.label || FIELD_NAME);
+      expect(getLabelNode(container)?.textContent).toBe(fieldDef.label || FIELD_NAME);
     });
 
     it("marks the control as required for assistive tech when the field is required", () => {
@@ -476,6 +596,12 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       const { container } = renderField({ Component, fieldDef, collection, readOnly: false, initialValue: fixture.valid });
 
       const control = getControl(container, fieldDef.label || FIELD_NAME);
+      // `aria-required` is not an ARIA-allowed attribute on `role="group"`
+      // (multi-state fields like `upload`, and the `array`/`group`/`blocks`
+      // containers) — required-ness is communicated there through the
+      // required asterisk in the group's own accessible name instead,
+      // already covered by the "shows/hides a required-asterisk" tests.
+      if (control.getAttribute("role") === "group") return;
       const marked =
         control.hasAttribute("required") || control.getAttribute("aria-required") === "true";
       expect(marked).toBe(true);
@@ -522,6 +648,9 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       const { container } = renderField({ Component, fieldDef, collection, readOnly: false, initialValue: fixture.empty });
 
       const control = getControl(container, fieldDef.label || FIELD_NAME);
+      if (isPopoverTriggerControl(control)) return;
+      const controlInput = control as HTMLInputElement;
+      if (["checkbox", "radio", "file"].includes(controlInput.type)) return;
       expect(control).toHaveAttribute("placeholder", "Contract placeholder probe");
     });
 
@@ -619,6 +748,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       });
 
       const control = getControl(container, label);
+      if (isPopoverTriggerControl(control) || (control as HTMLInputElement).type === "file") return;
       await user.click(screen.getByRole("button", { name: /submit/i }));
       expect(await screen.findByText(errorMessage)).toBeVisible();
 
@@ -684,6 +814,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       });
 
       const control = getControl(container, label);
+      if (isPopoverTriggerControl(control) || (control as HTMLInputElement).type === "file") return;
       await setControlValue(user, control, fixture.valid);
       expect(getForm().getFieldValue(FIELD_NAME)).toStrictEqual(fixture.valid);
     });
@@ -698,8 +829,22 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       });
 
       const control = getControl(container, label);
+      // Container fields (array/group/blocks — no single control, per the
+      // label test above) have no element whose blur meaningfully marks the
+      // WHOLE container field touched; each nested sub-field already wires
+      // its own `field.handleBlur` independently. Same skip precedent as
+      // "marks the control as required for assistive tech" above.
+      if (control.getAttribute("role") === "group") return;
+      // `checkbox`-shaped controls resolve `control` to an `aria-hidden`
+      // native input (see `getControl`'s doc) — real focus/blur lands on the
+      // sibling `role="checkbox"` element instead, which is what carries the
+      // `onBlur` handler these field types actually wire.
+      const blurTarget =
+        control.getAttribute("aria-hidden") === "true"
+          ? (container.querySelector<HTMLElement>('[role="checkbox"], [role="radio"]') ?? control)
+          : control;
       expect(getForm().getFieldMeta(FIELD_NAME)?.isTouched).toBe(false);
-      fireEvent.blur(control);
+      fireEvent.blur(blurTarget);
       expect(getForm().getFieldMeta(FIELD_NAME)?.isTouched).toBe(true);
     });
 

@@ -240,15 +240,16 @@ runFieldInputContractSuite({
         expect(await screen.findByText("Quantity cannot exceed 100.")).toBeInTheDocument();
       });
 
-      // Real finding from reading numberFieldToInputSchema directly: every
-      // branch ends in `.default(field.defaultValue)`, applied
-      // unconditionally — not gated behind `!field.required` the way
-      // `applyBaseInputSchemaMeta`'s `.optional()` is. A missing value is
-      // therefore replaced by the default and validated as THAT, never
-      // rejected as "required", even though this fixture's field is required.
-      it("the real schema accepts a missing value despite required: true — .default() is unconditional", () => {
+      // CORE-1 (fixed in Step 1): `numberFieldToInputSchema` no longer
+      // applies `.default()` when `field.required` — required fields return
+      // early on the plain `z.number({ error: requiredError })` chain, so a
+      // missing value is now correctly rejected instead of silently
+      // defaulted and validated as `0`.
+      it("the real schema rejects a missing value when required: true, with the field's own required message", () => {
         const schema = numberFieldToInputSchema({ field: options.fixture.fieldDef });
-        expect(schema.safeParse(undefined)).toMatchObject({ success: true, data: 0 });
+        const result = schema.safeParse(undefined);
+        expect(result.success).toBe(false);
+        expect(result.error?.issues[0]?.message).toBe("This field is required.");
       });
     });
   },

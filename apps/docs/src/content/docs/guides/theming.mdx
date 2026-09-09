@@ -145,21 +145,29 @@ export const getActive = query({
 ## 4. Injecting the CSS
 
 A server component fetches the active theme and inlines `buildThemeCss`'s
-output, so the first paint is already themed — no flash of unthemed content:
+output, so the first paint is already themed — no flash of unthemed content.
+Read it through the same shared `vex` client (`createVexServerClient`, from
+[Caching, sitemaps & revalidation](/guides/caching-and-seo/)) that your public
+pages use, never `fetchQuery` from `convex/nextjs` — `ThemeStyle` typically
+renders from a layout shared by every public route, so a `fetchQuery` call
+here forces the *entire* site dynamic, not just this component. See
+[It's the whole render tree, not just the page](/guides/caching-and-seo/#its-the-whole-render-tree-not-just-the-page)
+for why:
 
 ```tsx
 // src/components/ThemeStyle.tsx
 import { api } from "@convex/_generated/api";
-import { fetchQuery } from "convex/nextjs";
 
 import { buildThemeCss, type ThemeScope } from "@vexcms/core";
+
+import { vex } from "~/lib/vex";
 
 export async function ThemeStyle(props: { scope?: ThemeScope }) {
   const scope = props.scope ?? "site";
 
   let theme: Record<string, unknown> | null = null;
   try {
-    theme = await fetchQuery(api.theme.getActive);
+    theme = await vex.query(api.theme.getActive);
   } catch {
     // No deployment reachable at build time — fall back to the static stylesheet.
     return null;
@@ -181,9 +189,10 @@ export async function ThemeStyle(props: { scope?: ThemeScope }) {
 }
 ```
 
-Render `<ThemeStyle />` in the root layout. When no theme is active (or Convex
-is unreachable at build time) it renders nothing and the app falls back to its
-static stylesheet unchanged.
+Render `<ThemeStyle />` from a layout every public route shares — not necessarily the
+true root layout; keep that free of Convex reads too if it also wraps `/admin`. When no
+theme is active (or Convex is unreachable at build time) it renders nothing and the app
+falls back to its static stylesheet unchanged.
 
 ### Site vs admin scope
 

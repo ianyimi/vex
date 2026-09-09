@@ -14,7 +14,6 @@ import { Droppable, Draggable, DragHandle } from "../ui/dnd";
 import { TrashIcon } from "lucide-react";
 import { fieldToInputComponent } from "../fields";
 import { FormError } from "./FormError";
-import { FormLabel } from "./FormLabel";
 import { FormDescription } from "./FormDescription";
 
 /**
@@ -35,7 +34,6 @@ import { FormDescription } from "./FormDescription";
  * const ArrayFieldInput = createFieldInput<ArrayType[], ArrayField<ArrayType>>(
  *   ({ name, fieldDef, field, submissionAttempts }) => (
  *     <div className="flex flex-col gap-1.5">
- *       <FormLabel field={fieldDef} name={name} />
  *       <FormArray
  *         name={name}
  *         field={field}
@@ -43,7 +41,6 @@ import { FormDescription } from "./FormDescription";
  *         readOnly={fieldDef.admin.readOnly}
  *         submissionAttempts={submissionAttempts}
  *       />
- *       <FormDescription field={fieldDef} />
  *     </div>
  *   ),
  *   "array" // mode
@@ -91,24 +88,44 @@ export function FormArray<
   }
 
   const items = field.state.value ?? [];
+  const atMax = !!fieldDef.max && items.length >= fieldDef.max.value;
 
   return (
-    <div className="flex flex-col gap-3 rounded-sm border-2 p-2">
+    <div
+      role="group"
+      aria-labelledby={`${name}-label`}
+      aria-disabled={readOnly}
+      className="flex flex-col gap-3 rounded-sm border-2 p-2"
+    >
       <div className="flex gap-3">
         <div>
-          <FormLabel field={fieldDef} index={index} name={name} />
+          <span
+            id={`${name}-label`}
+            className="relative flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+          >
+            {index !== undefined ? `[${index + 1}] - ` : ""}
+            {fieldDef.label || name}
+            {fieldDef.required && <span className="text-red-500">*</span>}
+          </span>
           <FormDescription field={fieldDef} />
         </div>
-        <Button
-          type="button"
-          disabled={readOnly}
-          variant="outline"
-          size="sm"
-          onClick={() => field.pushValue(getNewItemDefault())}
-          icon="Plus"
-        >
-          Add {fieldDef.labels.singular}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            disabled={readOnly || atMax}
+            variant="outline"
+            size="sm"
+            onClick={() => field.pushValue(getNewItemDefault())}
+            icon="Plus"
+          >
+            Add {fieldDef.labels.singular}
+          </Button>
+          {atMax && (
+            <span className="text-xs text-muted-foreground">
+              Maximum {fieldDef.max?.value} {fieldDef.labels.plural} reached
+            </span>
+          )}
+        </div>
       </div>
       {items.length > 0 ? (
         <Droppable
@@ -130,7 +147,6 @@ export function FormArray<
                         collection={collection}
                         fieldDef={itemFieldDef}
                         readOnly={readOnly}
-                        index={index}
                       />
                     )}
                   </form.Field>
@@ -142,7 +158,7 @@ export function FormArray<
                   disabled={readOnly}
                   onClick={() => field.removeValue(index)}
                   className="text-muted-foreground hover:text-destructive shrink-0 transition-all duration-300"
-                  aria-label={`Remove item ${index + 1}`}
+                  aria-label={`Remove item ${index + 1} from ${fieldDef.label || name}`}
                 >
                   <TrashIcon className="size-4" />
                 </Button>

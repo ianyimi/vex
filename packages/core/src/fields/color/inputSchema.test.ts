@@ -111,15 +111,15 @@ describe("colorFieldToInputSchema", () => {
     expect(schema.safeParse("nope").success).toBe(false);
   });
 
-  it("applies an explicit default on a required field", () => {
+  it("a required field's defaultValue does not exempt it from the required check (CORE-1)", () => {
     const schema = colorFieldToInputSchema({
       field: color({ required: true, defaultValue: "#E8622A" }),
     });
     const result = schema.safeParse(undefined);
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data).toBe("#E8622A");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("This field is required.");
     }
   });
 });

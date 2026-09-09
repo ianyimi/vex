@@ -174,4 +174,15 @@ describe("numberFieldToInputSchema", () => {
     // Note: Exact metadata access depends on Zod's internal structure
     // This test verifies the schema was created with metadata
   });
+
+  it("rejects a missing value on a required field with a 'required' message", () => {
+    const field = number({ required: true, defaultValue: 0 });
+    const schema = numberFieldToInputSchema({ field });
+
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/required/i);
+    }
+  });
 });

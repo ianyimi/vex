@@ -25,7 +25,7 @@ import { DateTimePicker } from "../../ui";
  *   <DateFieldInput name="publishedAt" fieldDef={publishedAtField} readOnly={false} />
  * </AppForm>
  *
- * // Explicit field prop — TypedFieldApi<number>, works outside AppForm
+ * // Explicit field prop — TypedFieldApi<number | undefined>, works outside AppForm
  * <form.Field name="publishedAt">
  *   {(field) => (
  *     <DateFieldInput
@@ -38,7 +38,7 @@ import { DateTimePicker } from "../../ui";
  * </form.Field>
  * ```
  */
-export const DateFieldInput = createFieldInput<number, {}, DateField>(
+export const DateFieldInput = createFieldInput<number | undefined, {}, DateField>(
   ({ name, readOnly, fieldDef, field, index, submissionAttempts }) => {
     const fieldRef = useRef(field);
     useEffect(() => {
@@ -50,23 +50,37 @@ export const DateFieldInput = createFieldInput<number, {}, DateField>(
       [field.state.value],
     );
 
+    const minDate = useMemo(
+      () => (fieldDef.min !== undefined ? new Date(fieldDef.min) : undefined),
+      [fieldDef.min],
+    );
+
+    const maxDate = useMemo(
+      () => (fieldDef.max !== undefined ? new Date(fieldDef.max) : undefined),
+      [fieldDef.max],
+    );
+
     const handleChange = useCallback((date: Date | undefined) => {
-      if (date) {
-        fieldRef.current.handleChange(date.getTime());
-      }
+      fieldRef.current.handleChange(date ? date.getTime() : undefined);
     }, []);
 
     return (
       <div className="flex flex-col gap-1.5">
         <FormLabel field={fieldDef} index={index} name={name} />
         <DateTimePicker
+          id={name}
           value={dateValue}
           onChange={handleChange}
+          onBlur={field.handleBlur}
           disabled={readOnly || fieldDef.admin.readOnly}
           clearable
           hideTime={fieldDef.time.hidden}
           use12HourFormat={fieldDef.time.use12HourFormat}
           timePicker={fieldDef.time.timePicker}
+          min={minDate}
+          max={maxDate}
+          aria-required={fieldDef.required}
+          aria-labelledby={`${name}-label`}
         />
         <FormDescription field={fieldDef} />
         <FormError field={field} submissionAttempts={submissionAttempts} />

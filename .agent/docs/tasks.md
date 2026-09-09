@@ -4,6 +4,7 @@
 - WP-5 publish alphas
 - Build the real www marketing site (spec 2026-09-01-www-content-spec; seed rewrite and both code-showcase pairings done — the three `/features` Split blocks remain)
 - Field-level RBAC permissions
+- React coverage expansion - 50% to 80% first-party, list-view + views + shell + modals + media + hooks (spec 2026-09-08-react-coverage-expansion)
 
 ## Inbox
 - Rename naming outliers: MediaLibaryGrid.tsx, use-mobile.ts, blocks/logo-cloud.ts
@@ -24,3 +25,4 @@
 - WP-2 CLI + templates (spec 2026-08-31-wp2-cli-templates)
 - SEO prerendering and admin-panel revalidation
 - React test suite for @vexcms/react — 12 field types, exported testing kit, apps dogfooding (spec 2026-09-04-react-test-suite)
+- React test suite fixes

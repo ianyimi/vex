@@ -106,7 +106,7 @@ export const ColorFieldInput = createFieldInput<string, {}, ColorField>(
         <div className="flex items-center gap-2">
           <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger
-              nativeButton={false}
+              nativeButton={true}
               render={(triggerProps) => (
                 <button
                   {...triggerProps}
@@ -193,6 +193,7 @@ export const ColorFieldInput = createFieldInput<string, {}, ColorField>(
             onBlur={field.handleBlur}
             placeholder={fieldDef.admin.placeholder || FORMAT_PLACEHOLDERS[fieldDef.format]}
             readOnly={fieldDef.admin.readOnly}
+            aria-required={fieldDef.required}
           />
         </div>
         <FormDescription field={fieldDef} />

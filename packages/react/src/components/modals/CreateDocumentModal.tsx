@@ -30,10 +30,14 @@ import { parseAsBoolean, useQueryState } from "nuqs";
  * <CreateDocumentModal collection={postsCollection} />
  * ```
  */
-export function CreateDocumentModal<TSlug extends CollectionSlug = CollectionSlug>({
+export function CreateDocumentModal<
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TSlug extends CollectionSlug = CollectionSlug,
+>({
   collection,
 }: {
-  collection: CollectionConfig<TSlug>;
+  collection: CollectionConfig<TFieldMeta, TCollectionMeta, TSlug>;
 }) {
   // eslint-disable-next-line no-unused-vars
   const [_, setOpen] = useQueryState(MODALS.createDocument.urlParam, parseAsBoolean);

@@ -97,24 +97,24 @@ runFieldInputContractSuite({
         expect(await submit(fieldDef, "x".repeat(6))).toBe("Bio can be at most 5 characters.");
       });
 
-      it("required + min (no max): a missing value fails with the min-length message, not the required one — inputSchema.ts's `if (field.min)` branch unconditionally reassigns the schema, dropping the required branch's message", async () => {
+      it("required + min (no max): a missing value fails with the required message — CORE-1 fixed: min/max compose onto the required branch instead of reassigning over it", async () => {
         const fieldDef = text({ label: "Bio", required: true, min: { value: 3 } });
-        expect(await submit(fieldDef, undefined)).toBe("This field is too short.");
+        expect(await submit(fieldDef, undefined)).toBe("This field is required.");
       });
 
-      it("required + max only (no min): a missing value silently PASSES validation — the sibling `else if (field.max)` branch drops the required check entirely, not just its message", async () => {
+      it("required + max only (no min): a missing value fails with the required message, not silently passing", async () => {
         const fieldDef = text({ label: "Bio", required: true, max: { value: 10 } });
-        expect(await submit(fieldDef, undefined)).toBe("");
+        expect(await submit(fieldDef, undefined)).toBe("This field is required.");
       });
 
-      it("required + min AND max together: a missing value still fails with the min-length message, not the required one", async () => {
+      it("required + min AND max together: a missing value still fails with the required message", async () => {
         const fieldDef = text({
           label: "Bio",
           required: true,
           min: { value: 3 },
           max: { value: 10 },
         });
-        expect(await submit(fieldDef, undefined)).toBe("This field is too short.");
+        expect(await submit(fieldDef, undefined)).toBe("This field is required.");
       });
 
       it('a plain required field with no min/max keeps "This field is required." for a missing value', async () => {

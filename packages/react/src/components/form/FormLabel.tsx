@@ -9,6 +9,7 @@ export function FormLabel({
   field,
   index,
   hideRequired = false,
+  id = `${name}-label`,
   className,
   ...labelProps
 }: {
@@ -20,7 +21,7 @@ export function FormLabel({
   const label = field.label || name;
   const numeric = index !== undefined ? `[${index + 1}] - ` : "";
   return (
-    <Label htmlFor={name} className={cn("relative", className)} {...labelProps}>
+    <Label id={id} htmlFor={name} className={cn("relative", className)} {...labelProps}>
       {numeric}
       {label}
       {!hideRequired && field.required && (

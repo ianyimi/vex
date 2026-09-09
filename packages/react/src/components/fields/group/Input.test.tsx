@@ -66,7 +66,7 @@ runFieldInputContractSuite({
         render(
           <GroupHarness fieldDef={groupFieldFixture.fieldDef} collection={collection} initialValue={groupFieldFixture.valid} />,
         );
-        expect(screen.getByLabelText("Title")).toBeVisible();
+        expect(screen.getByLabelText("Title", { exact: false })).toBeVisible();
       });
 
       it("starts collapsed when defaultOpen: false, and expands on clicking the trigger", async () => {
@@ -78,9 +78,12 @@ runFieldInputContractSuite({
         const user = userEvent.setup();
         render(<GroupHarness fieldDef={collapsedFieldDef} collection={collection} initialValue={{ title: "Hi" }} />);
 
-        expect(screen.getByLabelText("Title")).not.toBeVisible();
+        // Base UI's `AccordionContent` unmounts collapsed content entirely
+        // (no `keepMounted`), not just hides it — `queryByLabelText` (never
+        // throws on zero matches) is the correct query here.
+        expect(screen.queryByLabelText("Title", { exact: false })).not.toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: /details/i }));
-        expect(screen.getByLabelText("Title")).toBeVisible();
+        expect(screen.getByLabelText("Title", { exact: false })).toBeVisible();
       });
 
       it("shows the singular/plural sub-field count — '1 field' for one sub-field, 'N fields' for several", () => {
@@ -153,11 +156,11 @@ runFieldInputContractSuite({
       it("preserves a sub-field's value across a collapse→expand cycle", async () => {
         const user = userEvent.setup();
         render(<GroupHarness fieldDef={groupFieldFixture.fieldDef} collection={collection} initialValue={{}} />);
-        await user.type(screen.getByLabelText("Title"), "Persisted");
+        await user.type(screen.getByLabelText("Title", { exact: false }), "Persisted");
         await user.click(screen.getByRole("button", { name: /details/i }));
-        expect(screen.getByLabelText("Title")).not.toBeVisible();
+        expect(screen.queryByLabelText("Title", { exact: false })).not.toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: /details/i }));
-        expect(screen.getByLabelText("Title")).toHaveValue("Persisted");
+        expect(screen.getByLabelText("Title", { exact: false })).toHaveValue("Persisted");
       });
 
       it("cascades readOnly to a sub-field via its own admin.readOnly, even when the group itself is editable — FormGroup ORs the two sources, unlike FormArray's item pass-through", () => {
@@ -173,7 +176,7 @@ runFieldInputContractSuite({
             readOnly={false}
           />,
         );
-        expect(screen.getByLabelText("Title")).toBeDisabled();
+        expect(screen.getByLabelText("Title", { exact: false })).toBeDisabled();
       });
     });
   },

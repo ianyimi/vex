@@ -75,4 +75,26 @@ describe("blocksFieldToInputSchema", () => {
     ];
     expect(schema.safeParse(twoItems).success).toBe(false);
   });
+
+  it("rejects a missing value on a required field with a 'required' message", () => {
+    const field = blocks({ blocks: [headingBlock], required: true });
+    const schema = blocksFieldToInputSchema({ field });
+
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/required/i);
+    }
+  });
+
+  it("rejects an explicit empty array on a required field", () => {
+    const field = blocks({ blocks: [headingBlock], required: true });
+    const schema = blocksFieldToInputSchema({ field });
+
+    const result = schema.safeParse([]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/required/i);
+    }
+  });
 });

@@ -76,18 +76,22 @@ export function colorFieldToInputSchema(props: { field: ColorField }): ZodType {
   const { field } = props;
   const pattern = colorPattern({ themeColors: field.themeColors });
   const message = colorMessage({ field });
+  const requiredError = "This field is required.";
 
-  let inputSchema: ZodType = z.string().regex(pattern, message);
   if (field.required) {
-    inputSchema = z.string().min(1, "This field is required.").regex(pattern, message);
-    if (field.defaultValue) {
-      inputSchema = inputSchema.default(field.defaultValue);
-    }
-  } else if (field.defaultValue !== undefined) {
-    inputSchema = z
-      .union([z.string().regex(pattern, message), z.literal("")])
-      .default(field.defaultValue);
+    const inputSchema = z
+      .string({ error: requiredError })
+      .min(1, requiredError)
+      .regex(pattern, message);
+    return applyBaseInputSchemaMeta({ field, inputSchema });
   }
+
+  const inputSchema =
+    field.defaultValue !== undefined
+      ? z
+          .union([z.string().regex(pattern, message), z.literal("")])
+          .default(field.defaultValue)
+      : z.string().regex(pattern, message);
 
   return applyBaseInputSchemaMeta({ field, inputSchema });
 }

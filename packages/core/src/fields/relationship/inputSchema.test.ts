@@ -45,15 +45,17 @@ describe("relationshipFieldToInputSchema", () => {
     expect(schema.safeParse({}).success).toBe(false);
   });
 
-  it("defaults undefined to [] for required fields", () => {
+  it("rejects a missing value on a required field with a 'required' message (CORE-1)", () => {
     const field = relationship({
       collection: { slug: "authors" },
       required: true,
     });
     const schema = relationshipFieldToInputSchema({ field });
     const result = schema.safeParse(undefined);
-    expect(result.success).toBe(true);
-    if (result.success) expect(result.data).toEqual([]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/required/i);
+    }
   });
 
   it("defaults undefined to [] for optional fields", () => {

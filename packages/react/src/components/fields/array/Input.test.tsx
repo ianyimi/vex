@@ -164,7 +164,14 @@ runFieldInputContractSuite({
             initialValue={arrayFieldFixture.valid}
           />,
         );
-        const inputs = screen.getAllByLabelText("Tag") as HTMLInputElement[];
+        // `exact: false`: each item's label text is "Tag*" (required
+        // asterisk appended by `FormLabel`), never a bare exact "Tag". Also
+        // matches the array's OWN group label ("Tags" contains "Tag"), so
+        // filter to real `<input>` elements — the array's group wrapper is a
+        // `<div>`.
+        const inputs = screen
+          .getAllByLabelText("Tag", { exact: false })
+          .filter((el): el is HTMLInputElement => el.tagName === "INPUT");
         expect(inputs.map((el) => el.id)).toEqual(["testField[0]", "testField[1]"]);
         expect(inputs.map((el) => el.value)).toEqual(arrayFieldFixture.valid);
       });
@@ -183,7 +190,11 @@ runFieldInputContractSuite({
             readOnly={false}
           />,
         );
-        const input = screen.getByLabelText("Score") as HTMLInputElement;
+        // `exact: false` (asterisk in label) + filter to `<input>` (the
+        // array's own "Scores" group label substring-matches "Score" too).
+        const input = screen
+          .getAllByLabelText("Score", { exact: false })
+          .find((el): el is HTMLInputElement => el.tagName === "INPUT")!;
         // TextFieldInput's own two independent readOnly sources: the PROP
         // sets `disabled` (false here — FormArray forwarded `readOnly={false}`
         // unmodified), the item's own `fieldDef.admin.readOnly` sets the
@@ -210,9 +221,13 @@ runFieldInputContractSuite({
             initialValue={["First tag", "Second tag"]}
           />,
         );
-        await user.click(screen.getByRole("button", { name: "Remove item 1" }));
-        expect(screen.getByRole("button", { name: "Remove item 1" })).toBeInTheDocument();
-        expect(screen.getByLabelText("Tag")).toHaveValue("Second tag");
+        await user.click(screen.getByRole("button", { name: "Remove item 1 from Tags" }));
+        expect(screen.getByRole("button", { name: "Remove item 1 from Tags" })).toBeInTheDocument();
+        expect(
+          screen
+            .getAllByLabelText("Tag", { exact: false })
+            .find((el) => el.tagName === "INPUT"),
+        ).toHaveValue("Second tag");
       });
 
       it("exposes an active drag handle per item when there is more than one, and degrades every handle to the inert affordance when the array is readOnly", () => {

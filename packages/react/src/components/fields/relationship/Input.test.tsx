@@ -12,9 +12,7 @@ import { convexTest } from "convex-test";
 import { describe, test, expect } from "vitest";
 import {
   defineConfig,
-  defineCollection,
   sanitizeConfigForClient,
-  text,
   type ClientVexConfig,
   type CollectionFieldMeta,
   type RelationshipField,
@@ -115,10 +113,6 @@ function FieldLevelPreview({ doc }: RelationshipPreviewProps) {
   return <span>Field preview: {String((doc as Record<string, unknown>).title)}</span>;
 }
 
-function CollectionLevelPreview({ doc }: RelationshipPreviewProps) {
-  return <span>Collection preview: {String((doc as Record<string, unknown>).title)}</span>;
-}
-
 runFieldInputContractSuite({
   fixture: relationshipFieldFixture,
   Component: RelationshipFieldInput,
@@ -132,7 +126,7 @@ runFieldInputContractSuite({
 
           expect(await screen.findByText(/unknown collection/i)).toBeInTheDocument();
           expect(screen.getByText("documents", { selector: "code" })).toBeInTheDocument();
-          expect(screen.queryByRole("button", { name: /select document/i })).not.toBeInTheDocument();
+          expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
         });
       });
 
@@ -147,7 +141,7 @@ runFieldInputContractSuite({
           expect(searchQueries()[0]?.state.fetchStatus).toBe("idle");
           expect(searchQueries()[0]?.state.dataUpdatedAt).toBe(0);
 
-          await user.click(screen.getByRole("button", { name: /select document/i }));
+          await user.click(screen.getByRole("combobox"));
 
           await waitFor(() => expect(searchQueries()[0]?.state.status).toBe("success"));
           expect(searchQueries()[0]?.state.dataUpdatedAt).toBeGreaterThan(0);
@@ -157,7 +151,7 @@ runFieldInputContractSuite({
           const user = userEvent.setup();
           await renderRelationship();
 
-          await user.click(screen.getByRole("button", { name: /select document/i }));
+          await user.click(screen.getByRole("combobox"));
           expect(await screen.findByText("Alpha")).toBeInTheDocument();
           expect(screen.getByText("Bravo")).toBeInTheDocument();
           expect(screen.getByText("Charlie")).toBeInTheDocument();
@@ -187,7 +181,7 @@ runFieldInputContractSuite({
             ),
           });
 
-          await user.click(screen.getByRole("button", { name: /select document/i }));
+          await user.click(screen.getByRole("combobox"));
           // `getAllByRole("button")` also matches Base UI's `role="button"`
           // focus-guard spans used for its focus trap — real interactive
           // controls are the only actual `<button>` elements, so scope to
@@ -207,7 +201,7 @@ runFieldInputContractSuite({
 
         test("renders a loading indicator while the picker query is pending, then the seeded documents once it resolves", async () => {
           await renderRelationship();
-          const trigger = screen.getByRole("button", { name: /select document/i });
+          const trigger = screen.getByRole("combobox");
 
           // `fireEvent.click` (unlike `userEvent.click`) does not await anything
           // beyond synchronous React updates, so the very next synchronous
@@ -229,7 +223,7 @@ runFieldInputContractSuite({
           const user = userEvent.setup();
           await renderRelationship();
 
-          await user.click(screen.getByRole("button", { name: /select document/i }));
+          await user.click(screen.getByRole("combobox"));
           expect(await screen.findByText("Alpha")).toBeInTheDocument();
 
           const search = screen.getByPlaceholderText(/search document/i);
@@ -245,7 +239,7 @@ runFieldInputContractSuite({
           const user = userEvent.setup();
           await renderRelationship({ seedTitles: ["Alpha", "Bravo"] });
 
-          await user.click(screen.getByRole("button", { name: /select document/i }));
+          await user.click(screen.getByRole("combobox"));
           const row = await screen.findByRole("button", { name: /alpha/i });
 
           await user.click(row);
@@ -259,20 +253,16 @@ runFieldInputContractSuite({
           const user = userEvent.setup();
           const { container } = await renderRelationship({ seedTitles: ["Alpha", "Bravo"] });
 
-          await user.click(screen.getByRole("button", { name: /select document/i }));
+          await user.click(screen.getByRole("combobox"));
           await user.click(await screen.findByRole("button", { name: /alpha/i }));
           await waitFor(() => expect(screen.getAllByText("Alpha")).toHaveLength(2));
 
           // The chip's × button is icon-only (lucide `X`, `aria-hidden`) with no
           // accessible name of its own, so it's queried by its distinguishing
-          // class rather than role/name. Intent, mirroring `handleRemove`'s own
-          // guard (`if (readOnly || fieldDef.admin.readOnly) return;`): enabled
-          // while the field is editable, disabled only when `readOnly` or
-          // `fieldDef.admin.readOnly` is true. The JSX instead reads
-          // `disabled={!readOnly || fieldDef.admin.readOnly}` — inverted on the
-          // `readOnly` prop — so in this editable render (`readOnly={false}`)
-          // the button is actually disabled and the next assertion is expected
-          // to FAIL, surfacing the defect per Change B rather than softening it.
+          // class rather than role/name. Enabled while the field is editable,
+          // disabled only when `readOnly` or `fieldDef.admin.readOnly` is true —
+          // mirrors `handleRemove`'s own guard
+          // (`if (readOnly || fieldDef.admin.readOnly) return;`) exactly (UI-10).
           const removeButton = container.querySelector<HTMLButtonElement>(
             "button.hover\\:text-destructive",
           );
@@ -289,11 +279,19 @@ runFieldInputContractSuite({
           };
           await renderRelationship({ fieldDef: singleFieldDef, seedTitles: ["Alpha", "Bravo"] });
 
-          await user.click(screen.getByRole("button", { name: /select document/i }));
+          const trigger = screen.getByRole("combobox");
+          await user.click(trigger);
           await user.click(within(popoverContent()).getByRole("button", { name: "Alpha" }));
 
-          expect(screen.queryByPlaceholderText(/search document/i)).not.toBeInTheDocument();
-          expect(await screen.findByRole("button", { name: /alpha/i })).toBeInTheDocument();
+          // Base UI's `Popover.Popup` unmounts only after its CSS exit
+          // animation completes (`data-closed:animate-out`, `popover.tsx`),
+          // so a synchronous assertion right after the click races the
+          // animation-driven unmount — a harness timing gap, not a
+          // component defect. `waitFor` lets it settle.
+          await waitFor(() => {
+            expect(screen.queryByPlaceholderText(/search document/i)).not.toBeInTheDocument();
+          });
+          expect(await within(trigger).findByText("Alpha")).toBeInTheDocument();
         });
 
         test("single-select: choosing a second document replaces the first rather than adding to it", async () => {
@@ -304,15 +302,19 @@ runFieldInputContractSuite({
           };
           await renderRelationship({ fieldDef: singleFieldDef, seedTitles: ["Alpha", "Bravo"] });
 
-          await user.click(screen.getByRole("button", { name: /select document/i }));
+          const trigger = screen.getByRole("combobox");
+          await user.click(trigger);
           await user.click(within(popoverContent()).getByRole("button", { name: "Alpha" }));
-          const trigger = await screen.findByRole("button", { name: /alpha/i });
+          await waitFor(() => expect(within(trigger).queryByText("Alpha")).toBeInTheDocument());
 
           await user.click(trigger);
           await user.click(within(popoverContent()).getByRole("button", { name: "Bravo" }));
 
-          expect(await screen.findByRole("button", { name: /bravo/i })).toBeInTheDocument();
-          expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+          expect(await within(trigger).findByText("Bravo")).toBeInTheDocument();
+          // Same Base UI exit-animation lag documented above.
+          await waitFor(() => {
+            expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+          });
         });
 
         test("single-select: choosing the currently-selected document again clears the value", async () => {
@@ -323,15 +325,21 @@ runFieldInputContractSuite({
           };
           await renderRelationship({ fieldDef: singleFieldDef, seedTitles: ["Alpha", "Bravo"] });
 
-          await user.click(screen.getByRole("button", { name: /select document/i }));
+          const trigger = screen.getByRole("combobox");
+          await user.click(trigger);
           await user.click(within(popoverContent()).getByRole("button", { name: "Alpha" }));
-          const trigger = await screen.findByRole("button", { name: /alpha/i });
+          await waitFor(() => expect(within(trigger).queryByText("Alpha")).toBeInTheDocument());
 
           await user.click(trigger);
           await user.click(within(popoverContent()).getByRole("button", { name: "Alpha" }));
 
-          expect(await screen.findByRole("button", { name: /select document/i })).toBeInTheDocument();
-          expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+          expect(await within(trigger).findByText(/select document/i)).toBeInTheDocument();
+          // Same Base UI exit-animation lag as above — the popover's row list
+          // (which also renders "Alpha" as a candidate's preview label) can
+          // still be mid-unmount right after the closing click.
+          await waitFor(() => {
+            expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+          });
         });
 
         test("a selected id that no longer resolves (e.g. a deleted document) is silently dropped from the chip list", async () => {
@@ -348,33 +356,9 @@ runFieldInputContractSuite({
         });
       });
 
-      describe("resolveRelationshipPreview precedence (Decision 11)", () => {
-        test("collection-level admin.components.preview overrides the default text preview when the field has none", async () => {
+      describe("resolveRelationshipPreview (ARCH-1)", () => {
+        test("field-level admin.components.preview overrides the default text preview", async () => {
           const user = userEvent.setup();
-          const collectionWithPreview = defineCollection({
-            slug: "documents",
-            labels: { singular: "Document", plural: "Documents" },
-            fields: { title: text({ required: true }) },
-            admin: { useAsTitle: "title", components: { preview: CollectionLevelPreview } },
-          });
-          await renderRelationship({
-            config: sanitizeConfigForClient(defineConfig({ collections: [collectionWithPreview] })),
-            seedTitles: ["Alpha"],
-          });
-
-          await user.click(screen.getByRole("button", { name: /select document/i }));
-          expect(await screen.findByText("Collection preview: Alpha")).toBeInTheDocument();
-          expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
-        });
-
-        test("field-level admin.components.preview overrides the collection-level preview", async () => {
-          const user = userEvent.setup();
-          const collectionWithPreview = defineCollection({
-            slug: "documents",
-            labels: { singular: "Document", plural: "Documents" },
-            fields: { title: text({ required: true }) },
-            admin: { useAsTitle: "title", components: { preview: CollectionLevelPreview } },
-          });
           const fieldDefWithPreview: RelationshipField<CollectionFieldMeta> = {
             ...relationshipFieldFixture.fieldDef,
             admin: {
@@ -384,13 +368,12 @@ runFieldInputContractSuite({
           };
           await renderRelationship({
             fieldDef: fieldDefWithPreview,
-            config: sanitizeConfigForClient(defineConfig({ collections: [collectionWithPreview] })),
             seedTitles: ["Alpha"],
           });
 
-          await user.click(screen.getByRole("button", { name: /select document/i }));
+          await user.click(screen.getByRole("combobox"));
           expect(await screen.findByText("Field preview: Alpha")).toBeInTheDocument();
-          expect(screen.queryByText("Collection preview: Alpha")).not.toBeInTheDocument();
+          expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
         });
       });
     });

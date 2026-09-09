@@ -374,6 +374,7 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                 <Draggable key={itemKey} id={`${name}-${itemKey}`} index={index}>
                   <AccordionItem
                     value={itemKey}
+                    disabled={readOnly}
                     className={cn(
                       "rounded-sm border-t border-r-2 border-l-2 border-border bg-background overflow-hidden",
                       index === 0 && "border-t-2",

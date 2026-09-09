@@ -100,4 +100,26 @@ describe("selectFieldToInputSchema", () => {
     // Verify schema was created — metadata is attached internally by applyBaseInputSchemaMeta
     expect(schema._def).toBeDefined();
   });
+
+  it("rejects a missing value on a required field with a 'required' message", () => {
+    const field = select({ required: true, options: OPTIONS });
+    const schema = selectFieldToInputSchema({ field });
+
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/required/i);
+    }
+  });
+
+  it("rejects an explicit empty array on a required field", () => {
+    const field = select({ required: true, hasMany: true, options: OPTIONS });
+    const schema = selectFieldToInputSchema({ field });
+
+    const result = schema.safeParse([]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/required/i);
+    }
+  });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
@@ -166,7 +166,14 @@ runFieldInputContractSuite({
         await user.click(within(dialog).getByText("Heading"));
         await user.click(within(dialog).getByRole("button", { name: "Add 2 blocks" }));
 
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        // Base UI's Dialog.Popup unmounts only after its CSS exit animation
+        // completes (`data-closed:animate-out`), so a synchronous assertion
+        // right after the click races the animation-driven unmount — a
+        // harness timing gap, not a component defect (same class as the
+        // Popover case documented in relationship/Input.test.tsx).
+        await waitFor(() => {
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
         const values = JSON.parse(screen.getByTestId("value-probe").textContent ?? "[]") as { blockType: string }[];
         // BlockPickerDialog's handleAddBlocks filters `props.blockDefs` (the
         // field's own registration order) by the selected set — it does not
@@ -206,7 +213,7 @@ runFieldInputContractSuite({
         // Starts open (`admin.defaultCollapsed` defaults to `false`) — collapse it first.
         await user.click(trigger);
         expect(trigger).toHaveAttribute("aria-expanded", "false");
-        expect(screen.getByLabelText("Text")).not.toBeVisible();
+        expect(screen.queryByLabelText("Text")).not.toBeInTheDocument();
 
         const blockNameInput = screen.getByDisplayValue("Paragraph");
         await user.clear(blockNameInput);
@@ -331,7 +338,9 @@ runFieldInputContractSuite({
 
         await user.keyboard("{Escape}");
 
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        await waitFor(() => {
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
         expect(screen.getByTestId("value-probe")).toHaveTextContent("[]");
       });
 

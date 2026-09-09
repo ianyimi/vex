@@ -177,13 +177,12 @@ runFieldInputContractSuite({
         expect(screen.queryByText("Invalid URL")).not.toBeInTheDocument();
       });
 
-      // Real finding from reading urlFieldToInputSchema directly: the
-      // required branch is `z.url().min(1, "This field is required.")` — the
-      // url-format check runs BEFORE the length check in that chain, and an
-      // empty string fails the format check too (`new URL("")` throws), so
-      // issues[0] — the one FormError displays — is "Invalid URL", not "This
-      // field is required.", for an empty required url field.
-      it('shows "Invalid URL" (not "This field is required.") as the first error when the required field is left empty', async () => {
+      // CORE-2 (fixed in Step 1): `urlFieldToInputSchema`'s required branch
+      // is now `z.string({ error: requiredError }).min(1, requiredError).pipe(z.url())`
+      // — `.min(1)` runs on the plain string and short-circuits the pipe, so
+      // an empty required field correctly reports "This field is required."
+      // instead of "Invalid URL".
+      it('shows "This field is required." (not "Invalid URL") when the required field is left empty', async () => {
         const user = userEvent.setup();
         render(
           <UrlBoundaryHarness
@@ -193,8 +192,8 @@ runFieldInputContractSuite({
           />,
         );
         await user.click(screen.getByRole("button", { name: "Save" }));
-        expect(await screen.findByText("Invalid URL")).toBeInTheDocument();
-        expect(screen.queryByText("This field is required.")).not.toBeInTheDocument();
+        expect(await screen.findByText("This field is required.")).toBeInTheDocument();
+        expect(screen.queryByText("Invalid URL")).not.toBeInTheDocument();
       });
     });
   },

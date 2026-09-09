@@ -7,7 +7,6 @@ import { fieldToInputComponent } from "../fields";
 import { cn } from "../../styles/utils";
 import { TypedFieldApi } from "./createFieldInput";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
-import { FormLabel } from "./FormLabel";
 import { FormDescription } from "./FormDescription";
 import { FormError } from "./FormError";
 import { useAccordionDndState } from "../ui/dnd";
@@ -74,13 +73,23 @@ export function FormGroup<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
       className={cn("rounded-sm border-2 border-border", className)}
       value={openItems}
       onValueChange={handleValueChange}
+      role="group"
+      aria-labelledby={`${name}-label`}
+      aria-disabled={readOnly}
     >
-      <AccordionItem value={itemValue}>
+      <AccordionItem value={itemValue} disabled={readOnly}>
         {/* Trigger — label + sub-field count */}
         <AccordionTrigger className="flex gap-4 px-3 text-sm font-medium hover:no-underline">
           <div className="flex flex-col self-center">
             <span className="flex items-center gap-2">
-              <FormLabel field={fieldDef} index={index} name={name} />
+              <span
+                id={`${name}-label`}
+                className="relative flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+              >
+                {index !== undefined ? `[${index + 1}] - ` : ""}
+                {fieldDef.label || name}
+                {fieldDef.required && <span className="text-red-500">*</span>}
+              </span>
               <span className="text-muted-foreground text-xs font-normal">
                 {subFieldCount} {subFieldCount === 1 ? "field" : "fields"}
               </span>

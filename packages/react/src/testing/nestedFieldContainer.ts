@@ -66,9 +66,13 @@ const stubClientConfig = {
 /**
  * `AppForm` narrowed to the two props this harness passes — the same
  * documented AP-006 boundary cast as `fieldInputContract.ts`'s own
- * `AppFormBoundary`: `AppForm`'s `form` prop is `AnyFormApi`, whose 12
- * validator-slot generics don't resolve against a concrete `useForm()`
- * instantiation.
+ * `AppFormBoundary`, including its Step 2 finding: widening `AnyFormApi`'s
+ * validator-slot defaults does not unlock removing this cast, because
+ * `createElement(AppForm, props)` erases ALL of `AppForm`'s generics —
+ * `TFormData` included — to `unknown` before checking `props`, independent
+ * of what `AnyFormApi` declares as a default. See `fieldInputContract.ts`
+ * for the full write-up and the verified TanStack Form internals
+ * (`UnwrapFormValidateOrFnForInner`) that independently block it.
  */
 const AppFormBoundary = AppForm as unknown as ComponentType<{
   form: unknown;
@@ -170,7 +174,21 @@ function renderContainer(props: {
   const formRef: { current: AnyFormApi | undefined } = { current: undefined };
 
   function Harness() {
-    const [queryClient] = useState(() => new QueryClient());
+    // The "network-via-react-query" child category (upload) never has its
+    // resolved doc/search-result content asserted on here — only container-
+    // level behavior (readOnly cascade, seed/remove, a11y). A `queryFn` that
+    // never resolves keeps that pending/Skeleton state deterministic: without
+    // one, React Query logs "No queryFn was passed" on every render, and
+    // whatever eventually settles the query updates state outside `act(...)`,
+    // after the test's synchronous assertions finish.
+    // ES2022 lib target (packages/tsconfig/react-library.json) has no
+    // Promise.withResolvers, so this stays executor-form.
+    const [queryClient] = useState(
+      () =>
+        new QueryClient({
+          defaultOptions: { queries: { queryFn: () => new Promise<never>(() => {}) } },
+        }),
+    );
     const [convexClient] = useState(() => new ConvexReactClient("https://example.convex.cloud"));
     const form = useForm({ defaultValues: { [FIELD_NAME]: props.initialValue } });
     formRef.current = form as AnyFormApi;
@@ -273,7 +291,17 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
             });
             const controls = dom.querySelectorAll("button, input, select, textarea");
             expect(controls.length).toBeGreaterThan(0);
-            controls.forEach((el) => expect(el).toBeDisabled());
+            controls.forEach((el) => {
+              // Base UI's `AccordionTrigger` implements a "focusable-when-
+              // disabled" pattern: it signals inert state via
+              // `aria-disabled="true"`, not the native `disabled` attribute
+              // (`FormGroup.tsx`/`FormBlocks.tsx` wire `AccordionItem`'s own
+              // `disabled` prop, which Base UI's `useButton` maps to
+              // `aria-disabled` for exactly this reason) — every other
+              // control still uses the real `disabled` attribute.
+              const inert = el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true";
+              expect(inert).toBe(true);
+            });
           });
         } else {
           const { fieldDef, labels } = buildItemContainerFieldDef({ container, childFixture });
@@ -319,7 +347,7 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
 
             const removeButton =
               container === "array"
-                ? screen.getByRole("button", { name: "Remove item 1" })
+                ? screen.getByRole("button", { name: "Remove item 1 from Items" })
                 : screen.getByRole("button", { name: "Remove Block block" });
             await user.click(removeButton);
 
@@ -349,7 +377,14 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
             });
             const controls = dom.querySelectorAll("button, input, select, textarea");
             expect(controls.length).toBeGreaterThan(0);
-            controls.forEach((el) => expect(el).toBeDisabled());
+            controls.forEach((el) => {
+              // Same Base UI "focusable-when-disabled" AccordionTrigger
+              // pattern as the `group` branch above — `blocks`' own
+              // `AccordionItem` (`FormBlocks.tsx`) signals inert state via
+              // `aria-disabled`, not the native `disabled` attribute.
+              const inert = el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true";
+              expect(inert).toBe(true);
+            });
           });
         }
       });

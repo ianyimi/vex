@@ -17,4 +17,26 @@ describe("uploadFieldToInputSchema", () => {
     expect(() => schema.parse(["doc_123"])).not.toThrow();
     expect(() => schema.parse(undefined)).not.toThrow();
   });
+
+  it("rejects a missing value on a required field with a 'required' message", () => {
+    const field = upload({ to: "images", required: true });
+    const schema = uploadFieldToInputSchema({ field });
+
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/required/i);
+    }
+  });
+
+  it("rejects an explicit empty array on a required field", () => {
+    const field = upload({ to: "images", required: true });
+    const schema = uploadFieldToInputSchema({ field });
+
+    const result = schema.safeParse([]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/required/i);
+    }
+  });
 });
