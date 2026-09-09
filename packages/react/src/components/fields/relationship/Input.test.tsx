@@ -268,7 +268,19 @@ runFieldInputContractSuite({
           );
           expect(removeButton).not.toBeDisabled();
           await user.click(removeButton!);
-          await waitFor(() => expect(screen.getAllByText("Alpha")).toHaveLength(1));
+          // Assert the CHIP is gone, not a global "Alpha" count. The × sits
+          // outside the popover, so clicking it also triggers Base UI's
+          // outside-press dismissal and the candidate list unmounts once its CSS
+          // exit animation finishes. A `getAllByText("Alpha")` count races that
+          // unmount — 1 while the list is still mounted, 0 after — and 0 makes
+          // `getAllByText` THROW ("Unable to find an element with the text:
+          // Alpha") rather than compare, so `waitFor` retries until it times out.
+          // That is how this passed locally and failed on slower CI runners. The
+          // chip renders from the field value, so no × means the document is no
+          // longer selected, which is what this test is about.
+          await waitFor(() =>
+            expect(container.querySelector("button.hover\\:text-destructive")).toBeNull(),
+          );
         });
 
         test("single-select: choosing a document sets the trigger preview and closes the popover", async () => {
