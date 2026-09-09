@@ -28,7 +28,7 @@ compile-time error.
 | `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
 | `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
 | `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
-| `admin.components.preview` | Component | — | Per-field override for the relationship preview renderer. Wins over the target collection's `admin.components.preview`. |
+| `admin.components.preview` | Component | — | Per-field override for the relationship preview renderer — the only supported location for a custom preview. |
 
 ## Schema output
 
@@ -85,24 +85,17 @@ const articles = defineCollection({
 ## Custom preview component
 
 By default the picker and list table show the target document's `useAsTitle`
-field. Override the renderer at the **collection level** (applies everywhere
-that collection appears as a relationship target) or at the **field level**
-(overrides the collection default for just that field).
+field. Override the renderer via `admin.components.preview` on the
+`relationship()` field itself — this is the only supported override location.
+A target collection cannot set its own default preview: the admin panel reads
+collection configs from `ClientVexConfig`, which `sanitizeConfigForClient`
+produces by replacing every function — including component references —
+with `null` before the config ever reaches a client component. A
+collection-level `admin.components.preview` would therefore always resolve to
+`null` in the browser, so the field is the only place a custom preview can
+live.
 
 ```ts
-// Collection-level preview — applied everywhere "authors" is a relationship target
-const authors = defineCollection({
-  slug: "authors",
-  fields: { name: text({ required: true }), avatar: url() },
-  admin: {
-    useAsTitle: "name",
-    components: {
-      // React: AuthorPreview must accept RelationshipPreviewProps
-      preview: AuthorPreview,
-    },
-  },
-});
-
 // Field-level override — only applies to the `author` field on `posts`
 const posts = defineCollection({
   slug: "posts",

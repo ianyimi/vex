@@ -7,13 +7,19 @@ import type { GroupField } from "./types";
  * Builds a Zod schema for validating a group field value in the admin form.
  *
  * Constructs a `z.object({...})` where each key maps to the sub-field's own
- * Zod schema via `adminFieldToInputSchema`. Sub-field defaults and optionality
- * are handled recursively. The outer object receives `.optional()` when
- * `field.required` is `false` via `applyBaseInputSchemaMeta`.
+ * Zod schema via `adminFieldToInputSchema`; sub-field defaults and
+ * optionality are handled recursively. Required groups attach
+ * `{ error: "This field is required." }` to the base `z.object()` call and
+ * never receive `.default()` — previously an unconditional
+ * `.default(field.defaultValue ?? {})` meant a missing group value silently
+ * passed the required check (CORE-1). Non-required groups keep
+ * `.default(field.defaultValue ?? {})`. The outer object also receives
+ * `.optional()` when `field.required` is `false` via
+ * `applyBaseInputSchemaMeta`.
  *
  * @param props - Input props.
  * @param props.field - The resolved group field definition.
- * @returns A Zod object schema with a `.default({})` and optionality applied.
+ * @returns A Zod object schema with optionality applied.
  *
  * @example
  * ```ts
@@ -36,7 +42,9 @@ export function groupFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
     ]),
   );
 
-  const schema = z.object(subSchemas).default(field.defaultValue ?? {});
+  const schema: ZodType = field.required
+    ? z.object(subSchemas, { error: "This field is required." })
+    : z.object(subSchemas).default(field.defaultValue ?? {});
 
   return applyBaseInputSchemaMeta({ field, inputSchema: schema });
 }

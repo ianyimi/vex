@@ -1,7 +1,13 @@
 "use client";
 
-import type { CellComponentProps, TDocument } from "@vexcms/core";
-import type { DateField } from "@vexcms/core";
+import {
+  addLeadingSlash,
+  TDocument,
+  type CellComponentProps,
+  type DateField,
+} from "@vexcms/core";
+import { VexLink } from "../../ui";
+import { useVexConfig } from "../../../context/VexConfigContext";
 
 /**
  * Date field cell component for the data-table list view.
@@ -21,9 +27,15 @@ import type { DateField } from "@vexcms/core";
 export function DateFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<DateField, TData>,
 ) {
-  if (!props.value) {
-    return null;
-  }
+  if (props.value === undefined || props.value === null) return <span>—</span>;
+  const config = useVexConfig();
+  const basePath = addLeadingSlash(config.basePath);
   const date = new Date(props.value);
-  return <span>{date.toDateString()}</span>;
+  const content = <span>{date.toDateString()}</span>;
+  if (!props.isTitleField) return content;
+  return (
+    <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+      {content}
+    </VexLink>
+  );
 }

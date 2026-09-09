@@ -1,7 +1,8 @@
 "use client";
 
 import type { GroupField } from "@vexcms/core";
-import { createFieldInput, FormGroup } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormGroup } from "../../form/FormGroup";
 
 /**
  * Group field input component for the admin edit form.

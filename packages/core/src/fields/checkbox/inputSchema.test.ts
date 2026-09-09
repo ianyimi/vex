@@ -50,4 +50,15 @@ describe("checkboxFieldToInputSchema", () => {
 
     expect(schema._def).toBeDefined();
   });
+
+  it("rejects a missing value on a required field with a 'required' message", () => {
+    const field = checkbox({ required: true });
+    const schema = checkboxFieldToInputSchema({ field });
+
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/required/i);
+    }
+  });
 });

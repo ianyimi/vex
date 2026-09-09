@@ -6,6 +6,8 @@ import { useCallback } from "react";
  * Props for UploadEmpty component.
  */
 export interface UploadEmptyProps {
+  /** The field's name — applied as the dropzone input's `id` so the `FormLabel` (`htmlFor={name}`) associates with it. */
+  name: string;
   /** Callback to open the media picker modal. */
   onPickerOpen: () => void;
   /** Callback when files are selected via dropzone (NOT uploaded yet). */
@@ -16,6 +18,39 @@ export interface UploadEmptyProps {
   targetCollectionConfig: MediaCollectionConfig;
   /** Whether the field is read-only. */
   readOnly?: boolean;
+  /** Called when the dropzone input loses focus — wired to `field.handleBlur`. */
+  onBlur?: () => void;
+}
+
+/**
+ * Checks whether a file matches an HTML `accept` attribute pattern list —
+ * mirrors the native `<input type="file" accept="...">` matching semantics
+ * (comma-separated file extensions, MIME types, or `type/*` wildcards).
+ *
+ * @param file - The candidate file.
+ * @param accept - The `accept` attribute value, e.g. `"image/*, .pdf"`.
+ * @returns `true` when `accept` is empty or the file matches one of its patterns.
+ */
+function fileMatchesAccept(file: File, accept: string): boolean {
+  const patterns = accept
+    .split(",")
+    .map((pattern) => pattern.trim().toLowerCase())
+    .filter(Boolean);
+  if (patterns.length === 0) return true;
+
+  const fileName = file.name.toLowerCase();
+  const mimeType = file.type.toLowerCase();
+  const mimeCategory = mimeType.split("/")[0];
+
+  return patterns.some((pattern) => {
+    if (pattern.startsWith(".")) {
+      return fileName.endsWith(pattern);
+    }
+    if (pattern.endsWith("/*")) {
+      return mimeCategory === pattern.slice(0, -2);
+    }
+    return mimeType === pattern;
+  });
 }
 
 /**
@@ -27,23 +62,27 @@ export interface UploadEmptyProps {
  * @returns The dropzone + "Browse media library" button UI.
  */
 export function UploadEmpty({
+  name,
   onPickerOpen,
   onFilesSelected,
   fieldDef,
   targetCollectionConfig,
   readOnly,
+  onBlur,
 }: UploadEmptyProps) {
   const handleDrop = useCallback(
     async (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       if (readOnly) return;
 
-      const files = Array.from(e.dataTransfer.files);
+      const files = Array.from(e.dataTransfer.files).filter((file) =>
+        fileMatchesAccept(file, fieldDef.accept),
+      );
       if (files.length > 0) {
         await onFilesSelected(files);
       }
     },
-    [onFilesSelected, readOnly],
+    [fieldDef.accept, onFilesSelected, readOnly],
   );
 
   const handleFileInput = useCallback(
@@ -65,12 +104,16 @@ export function UploadEmpty({
           p-8 text-center transition-colors hover:border-primary"
       >
         <input
+          id={name}
           type="file"
-          multiple
+          multiple={fieldDef.hasMany}
           onChange={handleFileInput}
+          onBlur={onBlur}
           className="absolute inset-0 cursor-pointer opacity-0"
           disabled={readOnly}
           accept={fieldDef.accept}
+          aria-required={fieldDef.required}
+          aria-labelledby={`${name}-label`}
         />
         <div className="pointer-events-none space-y-2">
           <div className="text-muted-foreground">

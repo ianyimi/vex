@@ -1,7 +1,7 @@
 "use client";
 
 import { convexQuery } from "@convex-dev/react-query";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type {
   CollectionConfig,
   RelationshipField,
@@ -56,6 +56,7 @@ export function useRelationshipPickerOptions(
       args as never,
     ),
     enabled: opts?.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 
   return {

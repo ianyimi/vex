@@ -32,16 +32,34 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Packages
-        # See release.yml for why these are placeholder values rather than
-        # SKIP_ENV_VALIDATION: `apps/test`'s prerender needs a parseable Convex URL,
-        # so skipping validation alone still fails at page-data collection. Keeping
-        # validation on means an unwired required env var fails the PR.
-        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" build
+        # `apps/test`'s public routes PRERENDER at build time (see
+        # `apps/test/src/app/(frontend)/(site)/page.tsx`, which reads through the
+        # cached `vex` client with `revalidate = 3600` instead of the old dynamic
+        # `fetchQuery`), so `next build` performs real Convex reads.
+        #
+        # Placeholder values cannot satisfy that. `*.convex.cloud` resolves through
+        # wildcard DNS, so a made-up subdomain answers `POST /api/query` with a
+        # bodyless 404; the Convex client throws an empty-message error and Next
+        # reports only `Error occurred prerendering page "/"` with a digest and no
+        # cause. These therefore point at the project's real shared test deployment
+        # (the same one used locally, separate from dev and prod), which answers.
+        #
+        # An empty deployment is fine — `getBySlug` returning `[]` reaches
+        # `notFound()`, which prerenders the 404 page and does not fail the build.
+        # Only unreachability breaks it.
+        run: |
+          for var in BETTER_AUTH_SECRET NEXT_PUBLIC_CONVEX_URL NEXT_PUBLIC_CONVEX_SITE_URL NEXT_PUBLIC_SITE_URL; do
+            if [ -z "$(printenv "$var")" ]; then
+              echo "::error::$var is empty. Add it under Settings → Secrets and variables → Actions → Secrets. Without it apps/test's prerender fails with an unexplained digest."
+              exit 1
+            fi
+          done
+          pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" build
         env:
-          BETTER_AUTH_SECRET: ci-placeholder-not-a-real-secret
-          NEXT_PUBLIC_CONVEX_URL: https://ci-placeholder.convex.cloud
-          NEXT_PUBLIC_CONVEX_SITE_URL: https://ci-placeholder.convex.site
-          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+          NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
 
       - name: Typecheck Packages
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" typecheck

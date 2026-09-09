@@ -2,7 +2,10 @@
 
 import { type NumberField } from "@vexcms/core";
 import { Input } from "../../ui/input";
-import { createFieldInput, FormDescription, FormLabel, FormError } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormDescription } from "../../form/FormDescription";
+import { FormLabel } from "../../form/FormLabel";
+import { FormError } from "../../form/FormError";
 
 /**
  * Number field input component for the admin edit form.
@@ -41,13 +44,18 @@ export const NumberFieldInput = createFieldInput<number, {}, NumberField>(
         <FormLabel field={fieldDef} index={index} name={name} />
         <Input
           id={name}
-          disabled={readOnly}
+          disabled={readOnly || fieldDef.admin.readOnly}
           type="number"
           value={field.state.value ?? 0}
-          onChange={(e) => field.handleChange(Number(e.target.value))}
+          onChange={(e) =>
+            field.handleChange(
+              e.target.value === "" ? (undefined as unknown as number) : Number(e.target.value),
+            )
+          }
           onBlur={field.handleBlur}
           placeholder={fieldDef.admin.placeholder}
           readOnly={fieldDef.admin.readOnly}
+          aria-required={fieldDef.required}
         />
         <FormDescription field={fieldDef} />
         <FormError field={field} submissionAttempts={submissionAttempts} />

@@ -5,23 +5,28 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 /**
  * Builds a Zod schema for validating a select field value in the admin form.
  *
- * Validates that submitted values are arrays containing only defined option values.
- * When `hasMany` is false, limits the array to a maximum of one item.
- * Wraps in `.optional()` for non-required fields via `applyBaseInputSchemaMeta`.
+ * Validates that submitted values are arrays containing only defined option
+ * values. When `hasMany` is false, limits the array to a maximum of one
+ * item. Required fields attach `{ error: "This field is required." }` to the
+ * base `z.array()` call and add `.min(1, "This field is required.")`, so a
+ * missing value *and* an explicitly-submitted empty array are both rejected —
+ * select previously had zero length enforcement for required fields
+ * (CORE-1). Required fields never receive `.default()`; non-required fields
+ * keep `.default(field.defaultValue)`.
  *
  * @param props - Input props.
  * @param props.field - The resolved select field definition
- * @returns A Zod array schema constrained to valid option values, with a baked-in `.default(field.defaultValue)` and optionality applied
+ * @returns A Zod array schema constrained to valid option values, with optionality applied
  *
  * @example
  * ```ts
  * const field = select({ required: true, options: [{ label: "Free", value: "free" }, { label: "Pro", value: "pro" }] })
  * selectFieldToInputSchema({ field })
- * // → z.array(z.enum(["draft", "published"])).default([])
+ * // → z.array(z.enum(["free", "pro"]), { error: "This field is required." }).min(1, "This field is required.")
  *
  * const singleField = select({ hasMany: false, options: [{ label: "Free", value: "free" }] })
  * selectFieldToInputSchema({ field: singleField })
- * // → z.array(z.enum(["draft"])).max(1, "Only one value may be selected.").default([])
+ * // → z.array(z.enum(["free"])).max(1, "Only one value may be selected.").default([])
  * ```
  */
 export function selectFieldToInputSchema(props: {
@@ -36,14 +41,21 @@ export function selectFieldToInputSchema(props: {
       ? z.enum(optionValues as [string, ...string[]])
       : z.string();
 
-  let inputSchema = z.array(itemSchema).default(field.defaultValue);
+  const requiredError = "This field is required.";
+  let inputSchema = field.required
+    ? z.array(itemSchema, { error: requiredError }).min(1, requiredError)
+    : z.array(itemSchema);
 
   if (!field.hasMany) {
-    inputSchema = z
-      .array(itemSchema)
-      .max(1, "Only one value may be selected.")
-      .default(field.defaultValue);
+    inputSchema = inputSchema.max(1, "Only one value may be selected.");
   }
 
-  return applyBaseInputSchemaMeta({ field, inputSchema });
+  if (field.required) {
+    return applyBaseInputSchemaMeta({ field, inputSchema });
+  }
+
+  return applyBaseInputSchemaMeta({
+    field,
+    inputSchema: inputSchema.default(field.defaultValue),
+  });
 }

@@ -169,4 +169,15 @@ describe("textFieldToInputSchema", () => {
     // Note: Exact metadata access depends on Zod's internal structure
     // This test verifies the schema was created with metadata
   });
+
+  it("rejects a missing value on a required field with a 'required' message", () => {
+    const field = text({ required: true, defaultValue: "test" });
+    const schema = textFieldToInputSchema({ field });
+
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/required/i);
+    }
+  });
 });

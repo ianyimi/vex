@@ -13,6 +13,13 @@ import { FormAsyncValidateOrFn, FormValidateOrFn } from "@tanstack/react-form";
  *
  * The `name` prop on each input must match the corresponding key in `form.defaultValues`.
  *
+ * The `<form>` is `noValidate`: this app's own Zod schemas (via `adminFieldToInputSchema`)
+ * are the single source of truth for validation messages, rendered through `FormError`.
+ * Any field that also sets a native HTML constraint attribute (e.g. `checkbox`'s
+ * `required`, kept for its ARIA/semantic value) would otherwise trigger the browser's
+ * own constraint-validation UI on submit — which blocks the submit event entirely
+ * before this app's `onSubmit` validator ever runs, so the custom message never renders.
+ *
  * @param props - Component props.
  * @param props.form - The TanStack Form instance created by `useForm`. Provided to all
  *   descendant field input components via `AppFormContext`.
@@ -66,6 +73,7 @@ export function AppForm<
       <DndProvider>
         <form
           className={props.className}
+          noValidate
           onSubmit={(e) => {
             e.preventDefault();
             e.stopPropagation();

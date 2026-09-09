@@ -40,10 +40,10 @@ rules:
     examples: ["text/config.ts", "upload/validator.test.ts"]
     counter_examples: ["text/textConfig.ts", "upload/validator.spec.ts"]
   - id: react-field-module
-    pattern: '^(Input|Cell|EmptyInput|FilledInput|columnDef|preview|index|types|utils|constants)\.(tsx|ts)$'
+    pattern: '^(Input|Cell|EmptyInput|FilledInput|columnDef|preview|index|types|utils|constants|testFixture)\.(tsx|ts)$'
     scope: ["packages/react/src/components/fields/*/**"]
-    description: Each react field dir mirrors the core field name and contains Input.tsx, Cell.tsx, columnDef.tsx (+ index.ts barrel).
-    examples: ["text/Cell.tsx", "upload/FilledInput.tsx", "blocks/columnDef.tsx"]
+    description: Each react field dir mirrors the core field name and contains Input.tsx, Cell.tsx, columnDef.tsx (+ index.ts barrel), plus testFixture.ts exporting that field type's FieldFixture and any field-specific test helper. A field type owns everything about itself in one folder; testing/fixtures/index.ts only aggregates.
+    examples: ["text/Cell.tsx", "upload/FilledInput.tsx", "blocks/columnDef.tsx", "text/testFixture.ts"]
     counter_examples: ["text/TextCell.tsx", "upload/input.tsx"]
   - id: tests-colocated
     pattern: '\.test\.tsx?$'
@@ -57,6 +57,12 @@ rules:
     description: Non-component TypeScript files are camelCase (or established lowercase names like constants.ts).
     examples: ["interfaceGen.ts", "generateVexTypes.ts", "baseTypes.ts"]
     counter_examples: ["InterfaceGen.ts", "interface_gen.ts"]
+  - id: react-testing-kit-camel
+    pattern: '^[a-z][A-Za-z0-9]*\.(ts|tsx)$|^index\.tsx?$'
+    scope: ["packages/react/src/testing/**"]
+    description: The exported testing kit (factories, shared harness, the fixture registry/type) is camelCase — it ships as plain functions, not components, even where a file contains JSX. Per-field-type fixture DATA does not live here; it lives in each field's own components/fields/<type>/testFixture.ts.
+    examples: ["fieldInputContract.ts", "nestedFieldContainer.ts", "harness/accessFixtures.ts", "fixtures/index.ts"]
+    counter_examples: ["FieldInputContract.ts", "fixtures/text.ts (per-type data belongs in the field's own folder)"]
   - id: api-operation-split
     pattern: '^(client|server|types)(\.test)?\.ts$|^[a-z][A-Za-z0-9]*\.(client|server)(\.test)?\.ts$'
     scope: ["packages/core/src/api/*/**"]

@@ -107,6 +107,8 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
     ...getCollectionColumnDefs<VexMediaDocument>({ collection }),
   ];
 
+  const canCreate = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.create });
+
   const canDelete = usePermission({
     resource: collection.slug,
     action: CRUD_ACTIONS.delete,
@@ -127,6 +129,7 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
         </div>
         <Button
           nativeButton={false}
+          disabled={!canCreate}
           render={
             <VexLink href={`/admin/${collection.slug}?${MODALS.uploadMedia.urlParam}=true`} />
           }

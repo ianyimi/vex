@@ -39,6 +39,28 @@ describe("urlFieldToInputSchema", () => {
     expect(schema.safeParse("https://example.com").success).toBe(true);
   });
 
+  it("rejects a missing value on a required field with a 'required' message", () => {
+    const field = url({ required: true });
+    const schema = urlFieldToInputSchema({ field });
+
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/required/i);
+    }
+  });
+
+  it("reports 'required' rather than 'Invalid URL' on an empty required field (CORE-2)", () => {
+    const field = url({ required: true });
+    const schema = urlFieldToInputSchema({ field });
+
+    const result = schema.safeParse("");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("This field is required.");
+    }
+  });
+
   it("includes metadata (label, description)", () => {
     const field = url({
       required: true,

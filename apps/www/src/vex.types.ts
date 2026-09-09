@@ -202,6 +202,7 @@ export interface PagesDocument extends VexDocument {
    */
   metaDescription?: string
   ogImage?: Id<"images">[]
+  updatedAt?: number
 }
 export type HeaderBlock = {
   blockType: "header"
@@ -225,6 +226,7 @@ export interface HeadersDocument extends VexDocument {
   _id: Id<"headers">
   name: string
   content?: HeaderBlock[]
+  updatedAt?: number
 }
 export type FooterBlock = {
   blockType: "footer"
@@ -251,6 +253,7 @@ export interface FootersDocument extends VexDocument {
   _id: Id<"footers">
   name: string
   content?: FooterBlock[]
+  updatedAt?: number
 }
 
 export interface Theme extends VexDocument {
@@ -343,6 +346,7 @@ export interface Theme extends VexDocument {
     sidebarBorder?: string
     sidebarRing?: string
   }
+  updatedAt?: number
 }
 
 export interface SessionDocument extends VexDocument {
@@ -426,6 +430,7 @@ export interface Image extends VexDocument {
   src: string
   width?: number
   height?: number
+  updatedAt?: number
 }
 
 export interface SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings"> {
@@ -549,18 +554,22 @@ declare module "@vexcms/core" {
         text: "title" | "slug" | "metaTitle" | "metaDescription"
         blocks: "blocks"
         upload: "ogImage"
+        number: "updatedAt"
       }
       headers: {
         text: "name"
         blocks: "content"
+        number: "updatedAt"
       }
       footers: {
         text: "name"
         blocks: "content"
+        number: "updatedAt"
       }
       themes: {
         text: "name" | "fontFamily" | "radius"
         group: "light" | "dark"
+        number: "updatedAt"
       }
       session: {
         date: "expiresAt" | "createdAt" | "updatedAt"
@@ -608,7 +617,7 @@ declare module "@vexcms/core" {
       }
       images: {
         text: "filename" | "alt" | "mimeType" | "storageId" | "src"
-        number: "size" | "width" | "height"
+        number: "size" | "width" | "height" | "updatedAt"
         checkbox: "deleted"
       }
     }

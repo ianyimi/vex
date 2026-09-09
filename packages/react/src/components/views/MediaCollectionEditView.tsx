@@ -136,7 +136,7 @@ export function MediaCollectionEditView<
                 type="submit"
                 className="transition-all duration-300"
                 isPending={isPending}
-                disabled={isDefaultValue}
+                disabled={!canEdit || isDefaultValue}
               >
                 Save
               </Button>
@@ -144,7 +144,7 @@ export function MediaCollectionEditView<
                 type="button"
                 variant="outline"
                 className="transition-all duration-300"
-                disabled={isDefaultValue}
+                disabled={!canEdit || isDefaultValue}
                 onClick={() => {
                   form.reset();
                 }}

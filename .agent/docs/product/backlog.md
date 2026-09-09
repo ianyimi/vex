@@ -108,3 +108,84 @@ its diff reviewable.
 
 **Detail.** Found via a member-set scan over all 148 exported interfaces in
 `packages/*/src`; re-runnable if more are suspected.
+
+---
+
+## `CodePane` as a sync, pre-highlighted component (async Server Component inside a live-reactive Client tree)
+
+**What.** `apps/www/src/components/CodePane.tsx` is a deliberately-async Server
+Component — its own JSDoc: "shiki runs here and the client receives only
+markup." It's rendered by `CodeShowcaseBlock` and `Split`
+(`apps/www/src/vexcms/blocks/{CodeShowcase,Split}/index.tsx`), both dispatched
+generically by `RenderBlocks` from inside `PageContent.tsx` — which is
+`"use client"` (line 1), for its live Convex `useQuery`. An async component
+reachable from a Client Component subtree (not passed down as pre-rendered
+`children` from an ancestor Server Component) is unsupported: React logs
+`<CodePane> is an async Client Component. Only Server Components can be async
+at the moment`, plus a `suspended by an uncached promise` warning per call
+(`highlightCode(...)` creates a fresh, uncached promise every invocation).
+
+**Why.** Confirmed non-fatal today — loaded the dev server and both code panes
+on `/` render fully, correctly highlighted (verified in the DOM). It works
+because the first render happens during SSR, before hydration. React's own
+wording ("not yet supported **at the moment**") flags this as a real crack
+that a future React/Next upgrade could turn into an actual failure, not a
+false alarm.
+
+**Lift.** ~6 files in `apps/www` — `CodePane.tsx` (drop `async`, accept
+pre-rendered `html` instead of `code`+`language`), `CodeShowcase/index.tsx`
+and `Split/index.tsx` (thread `html` through instead of raw fields), both
+`(site)/page.tsx` routes (pre-highlight every code pane in `initialData` via a
+new server-side helper before handing it to `PageContent`), and
+`PageContent.tsx` (carry the pre-highlighted data down). Same change then
+needs mirroring into `packages/create-vexcms/templates/marketing-site` per
+the template-sync convention (`apps/www` is that template's source of truth).
+
+**Why deferred.** The fix has a real behavior tradeoff, not just a
+refactor: code panes stop being live-reactive — editing a
+CodeShowcase/Split block's code in the admin panel would not re-highlight
+until the next full page load/revalidation, since highlighting moves to
+request-time server rendering instead of running on every client re-render.
+Developer chose to defer rather than accept that tradeoff inside an unrelated
+commit.
+
+**Detail.** Found while investigating a developer-reported console error
+during the 2026-09-08 SSG-parity session; no dedicated research doc yet — the
+diagnosis above is the full assessment.
+
+---
+
+## Decorative-image escape hatch for media alt text
+
+**What.** A distinct way to declare `alt=""` as *deliberately* decorative — not
+just "nobody filled this in yet" — on `VexMediaDocument`.
+
+**Why.** `MEDIA-2`
+(`.agent/docs/specs/2026-09-08-react-coverage-expansion/BUGS-REPORT.md`) fixed
+`FilePreview`'s dead alt-text fallback (`??` never firing on a required
+`string`, so every unset-alt image rendered `alt=""`) by falling back to the
+filename whenever `alt` is empty: `mediaDoc.alt || mediaDoc.filename`. That
+fix is unconditional — it also overwrites a real, W3C-recommended `alt=""` on
+a genuinely decorative image (a divider, a background texture) with the
+filename, which screen readers then read aloud. Empty string is the only
+value `alt` can hold today, so "unset" and "deliberately decorative" are
+indistinguishable and the fix necessarily picks one meaning.
+
+**Lift.** Unassessed. The type change alone is small — `VexMediaDocument.alt`
+would need a way to express "decorative" distinct from `""` (e.g.
+`alt: string | null` with `null` reserved for decorative, matching the
+report's own suggestion) — but it is a breaking change to a published type,
+touches the upload path that seeds `alt` from the filename at creation
+time (`MediaUploadDropzone.tsx`), and needs an admin-panel affordance for a
+user to actually mark an image decorative rather than just leaving the field
+blank.
+
+**Why deferred.** Report open question #4, ratified out of scope for the
+`2026-09-08-react-bug-fixes` fix spec: fixing the dead fallback was in scope,
+designing a new "decorative" signal on top of it was not. The fallback fix
+ships now because it strictly improves the common case (alt text nobody
+filled in); the escape hatch needs its own design pass.
+
+**Detail.** `MEDIA-2` in
+`.agent/docs/specs/2026-09-08-react-coverage-expansion/BUGS-REPORT.md`, open
+question #4 in the same file.

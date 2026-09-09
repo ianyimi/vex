@@ -6,20 +6,27 @@ import { adminFieldToInputSchema } from "../inputSchemas";
 /**
  * Builds a Zod schema for validating an array field value in the admin form.
  *
- * Wraps the nested item schema in `z.array(…)`, applies `min`/`max` item count
- * constraints when configured, then wraps in `.optional()` for non-required
- * fields via `applyBaseInputSchemaMeta`. The item schema is built
- * recursively by delegating to `adminFieldToInputSchema` for the nested field.
+ * Wraps the nested item schema (built recursively via `adminFieldToInputSchema`)
+ * in `z.array(…)`, then composes `min`/`max` item-count constraints onto the
+ * same chain built for `required`, rather than reassigning over it — a
+ * required field with `min`/`max` configured keeps every check. Required
+ * fields attach `{ error: "This field is required." }` to the base
+ * `z.array()` call and add `.min(1, "This field is required.")`, replacing
+ * the previous dead `superRefine` (it only ever checked for `undefined`/
+ * `null`, which the previously-unconditional `.default()` had already
+ * substituted away before the refine ran, and it never checked emptiness at
+ * all) (CORE-1). Required fields never receive `.default()`; non-required
+ * fields keep `.default(field.defaultValue ?? [])`.
  *
  * @param props - Input props.
  * @param props.field - The resolved array field definition
- * @returns A Zod array schema with item count constraints, a baked-in `.default(field.defaultValue)`, and optionality applied
+ * @returns A Zod array schema with item count constraints and optionality applied
  *
  * @example
  * ```ts
  * const field = array({ items: text(), required: true })
  * arrayFieldToInputSchema({ field })
- * // → z.array(z.string()).superRefine(...).default([])
+ * // → z.array(z.string(), { error: "This field is required." }).min(1, "This field is required.")
  * ```
  *
  * @example
@@ -37,56 +44,24 @@ export function arrayFieldToInputSchema<
 
   const fieldMinError = field.min?.error ?? "This field is too short.";
   const fieldMaxError = field.max?.error ?? "This field is too long.";
+  const requiredError = "This field is required.";
 
   const itemsInputSchema = adminFieldToInputSchema({ field: field.items });
-  let inputSchema = z.array(itemsInputSchema).default(field.defaultValue ?? []);
-  if (field.required) {
-    // Use superRefine which has more control over issues
-    inputSchema = z
-      .array(itemsInputSchema)
-      .superRefine((val, ctx) => {
-        if (val === undefined || val === null) {
-          ctx.addIssue({
-            code: "custom",
-            message: "This field is required.",
-          });
-        }
-      })
-      .default(field.defaultValue ?? []);
-  }
+
+  let arraySchema = field.required
+    ? z.array(itemsInputSchema, { error: requiredError }).min(1, requiredError)
+    : z.array(itemsInputSchema);
+
   if (field.min) {
-    if (field.max) {
-      inputSchema = z
-        .array(itemsInputSchema)
-        .min(field.min.value, fieldMinError)
-        .max(field.max.value, fieldMaxError)
-        .default(field.defaultValue ?? []);
-    } else {
-      inputSchema = z
-        .array(itemsInputSchema)
-        .min(field.min.value, fieldMinError)
-        .default(field.defaultValue ?? []);
-    }
-  } else if (field.max) {
-    inputSchema = z
-      .array(itemsInputSchema)
-      .max(field.max.value, fieldMaxError)
-      .default(field.defaultValue ?? []);
+    arraySchema = arraySchema.min(field.min.value, fieldMinError);
+  }
+  if (field.max) {
+    arraySchema = arraySchema.max(field.max.value, fieldMaxError);
   }
 
-  let finalSchema = inputSchema;
+  const inputSchema: ZodType = field.required
+    ? arraySchema
+    : arraySchema.default(field.defaultValue ?? []);
 
-  // Apply default value for non-required fields
-  if (!field.required && field.defaultValue !== undefined) {
-    // @ts-expect-error matching default types here
-    finalSchema = inputSchema.default(field.defaultValue);
-  }
-
-  // @ts-expect-error matching inputSchema types
-  finalSchema = applyBaseInputSchemaMeta({
-    field,
-    inputSchema: finalSchema,
-  });
-
-  return finalSchema;
+  return applyBaseInputSchemaMeta({ field, inputSchema });
 }

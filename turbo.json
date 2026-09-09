@@ -1,5 +1,8 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "cacheDir": ".turbo/cache",
+  "cacheMaxAge": "14d",
+  "cacheMaxSize": "5GB",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

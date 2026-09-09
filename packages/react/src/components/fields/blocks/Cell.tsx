@@ -1,6 +1,14 @@
 "use client";
 
-import type { CellComponentProps, BlocksField, GenericBlock, TDocument } from "@vexcms/core";
+import {
+  addLeadingSlash,
+  type CellComponentProps,
+  type BlocksField,
+  type GenericBlock,
+  TDocument,
+} from "@vexcms/core";
+import { VexLink } from "../../ui";
+import { useVexConfig } from "../../../context/VexConfigContext";
 
 /**
  * Blocks field cell component for the admin list-table view.
@@ -14,6 +22,8 @@ export function BlocksFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<BlocksField, TData>,
 ) {
   const value = props.value as GenericBlock[] | null | undefined;
+  const config = useVexConfig();
+  const basePath = addLeadingSlash(config.basePath);
 
   if (!value || !Array.isArray(value) || value.length === 0) {
     return <span className="text-muted-foreground">—</span>;
@@ -21,9 +31,16 @@ export function BlocksFieldCell<TData extends TDocument = TDocument>(
 
   const { singular, plural } = props.fieldDef.labels;
 
-  return (
-    <span className="text-xs text-muted-foreground">
+  const preview = JSON.stringify(value);
+  const content = (
+    <span className="text-xs text-muted-foreground" title={preview}>
       {value.length} {value.length === 1 ? singular : plural}
     </span>
+  );
+  if (!props.isTitleField) return content;
+  return (
+    <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+      {content}
+    </VexLink>
   );
 }

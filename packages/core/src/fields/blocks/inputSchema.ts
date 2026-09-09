@@ -9,9 +9,15 @@ import type { BlocksField } from "./types";
  * Each block type becomes a `z.object()` with `blockType: z.literal(slug)`,
  * `blockName: z.string().optional()`, and `id: z.string()` as framework
  * keys, plus the block's own sub-field schemas from `adminFieldToInputSchema`.
- * Multiple block types use `z.discriminatedUnion("blockType", [...])`. A single
- * block type uses a plain `z.array(z.object(...))`. `min`/`max` are enforced on
- * the outer array when set.
+ * Multiple block types use `z.discriminatedUnion("blockType", [...])`. A
+ * single block type uses a plain `z.array(z.object(...))`. Required fields
+ * attach `{ error: "This field is required." }` to the base `z.array()` call
+ * and add `.min(1, "This field is required.")`, composed onto (not
+ * overwriting) the configured `field.min`/`field.max`, so a required blocks
+ * field with no length constraint of its own — previously zero enforcement —
+ * now rejects a missing or empty value (CORE-1). Required fields never
+ * receive `.default()`; non-required fields keep
+ * `.default(field.defaultValue ?? [])`.
  *
  * @param props - Input props.
  * @param props.field - The resolved blocks field definition.
@@ -45,17 +51,27 @@ export function blocksFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
       : // @ts-expect-error mismatched zod types, works in practice
         z.discriminatedUnion("blockType", blockSchemas);
 
-  let schema = z.array(itemSchema);
+  const requiredError = "This field is required.";
+  let arraySchema = field.required
+    ? z.array(itemSchema, { error: requiredError }).min(1, requiredError)
+    : z.array(itemSchema);
 
   if (field.min) {
-    schema = schema.min(field.min, `At least ${field.min} ${field.labels.plural} required.`);
+    arraySchema = arraySchema.min(
+      field.min,
+      `At least ${field.min} ${field.labels.plural} required.`,
+    );
   }
   if (field.max) {
-    schema = schema.max(field.max, `No more than ${field.max} ${field.labels.plural} allowed.`);
+    arraySchema = arraySchema.max(
+      field.max,
+      `No more than ${field.max} ${field.labels.plural} allowed.`,
+    );
   }
 
-  // @ts-expect-error mismatched zod types, works in practice
-  schema = schema.default(field.defaultValue ?? []);
+  const schema: ZodType = field.required
+    ? arraySchema
+    : arraySchema.default(field.defaultValue ?? []);
 
   return applyBaseInputSchemaMeta({ field, inputSchema: schema });
 }

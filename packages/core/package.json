@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/core",
-  "version": "0.1.0-alpha.13",
+  "version": "0.1.0-alpha.14",
   "description": "Convex-native headless CMS core: field factories, schema generation, and typed collection APIs",
   "keywords": [
     "cms",
@@ -60,6 +60,7 @@
   },
   "dependencies": {
     "nanoid": "catalog:",
+    "pluralize-esm": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

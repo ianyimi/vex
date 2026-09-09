@@ -1,0 +1,254 @@
+{
+  "version": 1,
+  "slug": "2026-09-04-react-test-suite",
+  "updated": "2026-09-08T02:56:39.417Z",
+  "groups": {
+    "Step 1": {
+      "attempts": 4,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "+ @vexcms/tsconfig 0.0.0 <- packages/tsconfig",
+        "+ eslint 9.39.5",
+        "+ eslint-plugin-jsdoc 50.8.0",
+        "+ jiti 2.7.0",
+        "+ prettier 3.9.5",
+        "+ turbo 2.10.4",
+        "+ typescript 6.0.3",
+        "╭ Warning ─────────────────────────────────────────────────────────────────────╮",
+        "│                                                                              │",
+        "│   Ignored build scripts: core-js@3.49.0, esbuild@0.27.0, esbuild@0.27.7,     │",
+        "│   msw@2.15.0, sharp@0.34.5, unrs-resolver@1.12.2.                            │",
+        "│   Run \"pnpm approve-builds\" to pick which dependencies should be allowed     │",
+        "│   to run scripts.                                                            │",
+        "│                                                                              │",
+        "╰──────────────────────────────────────────────────────────────────────────────╯",
+        "Done in 14.5s using pnpm v10.30.2",
+        "> @vexcms/react@0.1.0-alpha.13 build /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
+        "CLI Building entry: {\"testing/index\":\"src/testing/index.ts\"}",
+        "CLI Using tsconfig: tsconfig.json",
+        "CLI tsup v8.5.1",
+        "CLI Using tsup config: /Users/zaye/Documents/Projects/vex.git/dev/packages/react/tsup.config.ts",
+        "CLI Building entry: src/index.ts",
+        "CLI Using tsconfig: tsconfig.json",
+        "CLI tsup v8.5.1",
+        "CLI Using tsup config: /Users/zaye/Documents/Projects/vex.git/dev/packages/react/tsup.config.ts",
+        "CLI Target: es2022",
+        "ESM Build start",
+        "CLI Target: es2022",
+        "CLI Cleaning output folder",
+        "ESM Build start",
+        "ESM dist/testing/index.js     33.00 B",
+        "ESM dist/testing/index.js.map 71.00 B",
+        "ESM ⚡️ Build success in 41ms",
+        "ESM dist/index.js     336.97 KB",
+        "ESM dist/index.js.map 735.75 KB",
+        "ESM ⚡️ Build success in 33ms",
+        "> @vexcms/react@0.1.0-alpha.13 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "4 tests, 0 failed — recorded to findings.md"
+      ]
+    },
+    "Step 10": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "\u001b[1m\u001b[30m\u001b[46m RUN \u001b[49m\u001b[39m\u001b[22m \u001b[36mv4.1.10 \u001b[39m\u001b[90m/Users/zaye/Documents/Projects/vex.git/dev/packages/react\u001b[39m",
+        " \u001b[32m✓\u001b[39m src/testing/convex/bridge.test.tsx \u001b[2m(\u001b[22m\u001b[2m1 test\u001b[22m\u001b[2m)\u001b[22m\u001b[32m 19\u001b[2mms\u001b[22m\u001b[39m",
+        "\u001b[2m Test Files \u001b[22m \u001b[1m\u001b[32m1 passed\u001b[39m\u001b[22m\u001b[90m (1)\u001b[39m",
+        "\u001b[2m      Tests \u001b[22m \u001b[1m\u001b[32m1 passed\u001b[39m\u001b[22m\u001b[90m (1)\u001b[39m",
+        "\u001b[2m   Start at \u001b[22m 19:05:52",
+        "\u001b[2m   Duration \u001b[22m 337ms\u001b[2m (transform 23ms, setup 60ms, import 54ms, tests 19ms, environment 147ms)\u001b[22m"
+      ]
+    },
+    "Step 11": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "40 tests, 21 failed — recorded to findings.md"
+      ]
+    },
+    "Step 12": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "481 tests, 259 failed — recorded to findings.md",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  1 passed (1)",
+        "      Tests  1 passed (1)",
+        "   Start at  19:25:52",
+        "   Duration  428ms (transform 94ms, setup 69ms, import 135ms, tests 2ms, environment 160ms)"
+      ]
+    },
+    "Step 13": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "10 tests, 0 failed — recorded to findings.md"
+      ]
+    },
+    "Step 14": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/react@0.1.0-alpha.13 build /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
+        "CLI Building entry: {\"testing/index\":\"src/testing/index.ts\"}",
+        "CLI Using tsconfig: tsconfig.json",
+        "CLI tsup v8.5.1",
+        "CLI Using tsup config: /Users/zaye/Documents/Projects/vex.git/dev/packages/react/tsup.config.ts",
+        "CLI Building entry: src/index.ts",
+        "CLI Using tsconfig: tsconfig.json",
+        "CLI tsup v8.5.1",
+        "CLI Using tsup config: /Users/zaye/Documents/Projects/vex.git/dev/packages/react/tsup.config.ts",
+        "CLI Target: es2022",
+        "ESM Build start",
+        "CLI Target: es2022",
+        "CLI Cleaning output folder",
+        "ESM Build start",
+        "ESM dist/index.js     336.97 KB",
+        "ESM dist/index.js.map 735.75 KB",
+        "ESM ⚡️ Build success in 38ms",
+        "ESM dist/testing/index.js     211.16 KB",
+        "ESM dist/testing/index.js.map 498.82 KB",
+        "ESM ⚡️ Build success in 63ms",
+        "> @vexcms/react@0.1.0-alpha.13 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> tsc --noEmit -p tsconfig.check.json"
+      ]
+    },
+    "Step 15": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "711 tests, 366 failed — recorded to findings.md"
+      ]
+    },
+    "Step 16": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "⚠️  WARN   tech-stack.md lists `packages/create-vexcms` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `packages/tsconfig` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `1.44.0` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@convex-dev/better-auth` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@convex-dev/react-query` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@base-ui/react` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `lucide-react` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@vexcms/richtext-plate` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `apps/docs` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@vitest/coverage-v8` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `convex-test` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@testing-library/react` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@typescript-eslint` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "ℹ️  INFO   tech-stack.md last verified at aa56f385cb68ac94d76ba77cb27366592efc4a64",
+        "          → review it, then update verified_at to the current sha",
+        "ℹ️  INFO   Spec 2026-08-18-client-wrapper-return-types: open checkboxes, no commits on its paths in 14 days",
+        "✅ OK     decisions-inconsistent",
+        "✅ OK     naming-violations",
+        "✅ OK     structure-stale",
+        "⚠️  WARN   .agent/docs/standards/testing/react-test-factories.md not in index.yml",
+        "          → harness index rebuild",
+        "✅ OK     shims-stale",
+        "✅ OK     context-rules-stale",
+        "✅ OK     stale-dependencies",
+        "✅ OK     context-coverage",
+        "ℹ️  INFO   .agent is a real directory — tracked per-worktree, it can drift and merge-conflict",
+        "          → move it to ../agents and re-run `harness install` to link it centrally"
+      ]
+    },
+    "Step 2": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  1 passed (1)",
+        "      Tests  2 passed (2)",
+        "   Start at  19:06:04",
+        "   Duration  406ms (transform 17ms, setup 60ms, import 104ms, tests 39ms, environment 146ms)"
+      ]
+    },
+    "Step 3": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  1 passed (1)",
+        "      Tests  6 passed (6)",
+        "   Start at  19:06:04",
+        "   Duration  385ms (transform 81ms, setup 58ms, import 114ms, tests 13ms, environment 144ms)"
+      ]
+    },
+    "Step 4": {
+      "attempts": 4,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/react@0.1.0-alpha.13 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> tsc --noEmit -p tsconfig.check.json"
+      ]
+    },
+    "Step 5": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "38 tests, 10 failed — recorded to findings.md"
+      ]
+    },
+    "Step 6": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "139 tests, 33 failed — recorded to findings.md"
+      ]
+    },
+    "Step 7": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "42 tests, 16 failed — recorded to findings.md"
+      ]
+    },
+    "Step 8": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "40 tests, 20 failed — recorded to findings.md"
+      ]
+    },
+    "Step 9": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "39 tests, 24 failed — recorded to findings.md"
+      ]
+    }
+  }
+}
