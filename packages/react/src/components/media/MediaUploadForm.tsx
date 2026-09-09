@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";
@@ -27,6 +27,174 @@ export interface MediaUploadFormProps {
   onComplete: (mediaIds: string[]) => void;
   /** Called when user cancels upload or closes modal. */
   onCancel: () => void;
+}
+
+/** One staged file's metadata, as {@link StagedFilesEditor} reads it. */
+interface StagedFileSummary {
+  /** Client-side id, stable for the life of the staged entry. */
+  id: string;
+  /** Editable filename shown in the accordion trigger. */
+  filename: string;
+  /** Auto-detected MIME type. */
+  mimeType: string;
+  /** File size in bytes. */
+  size: number;
+}
+
+/**
+ * Props for {@link StagedFilesEditor}.
+ *
+ * Deliberately free of TanStack Form types: the form is reached through plain
+ * callbacks and a `renderFileFields` render prop, so this component owns real
+ * hooks without depending on the form's generic parameters.
+ */
+interface StagedFilesEditorProps {
+  /** The staged files, in display order. */
+  files: StagedFileSummary[];
+  /** Removes the staged file at `index` from the form's array field. */
+  onRemove: (index: number) => void;
+  /** Renders the per-file metadata inputs (the form's own `Field`s). */
+  renderFileFields: (index: number) => ReactNode;
+  /** Whether the form is mid-submit — disables every control. */
+  isSubmitting: boolean;
+  /** Whether an "Add more" affordance belongs in the footer. */
+  multi: boolean;
+  /** Plural collection label used by the "Add" button. */
+  pluralLabel: string;
+  /** Ref for the hidden file input the "Add" button clicks. */
+  fileInputRef: RefObject<HTMLInputElement | null>;
+  /** `accept` for the hidden file input. */
+  accept: string | undefined;
+  /** Whether the hidden file input accepts multiple files. */
+  allowMultipleFiles: boolean;
+  /** Change handler for the hidden file input. */
+  onFileInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  /** Dismisses the form. */
+  onCancel: () => void;
+  /** Submits the form. */
+  onSubmit: () => void;
+}
+
+/**
+ * Step 2 of the upload flow: one accordion panel per staged file.
+ *
+ * A real component rather than an inline branch of `form.Field`'s render prop
+ * because it owns `useState`. A render prop is called by its parent during
+ * that parent's render, so hooks inside it belong to the parent's instance and
+ * their count varies with whichever branch the prop returns — which is what
+ * made React log "Rendered fewer hooks than expected" and fall back from
+ * concurrent to synchronous rendering whenever files were staged or cleared.
+ *
+ * The accordion is controlled: files can be appended after it has already
+ * mounted (multi-select "Add more", a second drag-drop), and an *uncontrolled*
+ * Base UI Accordion warns when its `defaultValue` changes post-init. Newly
+ * staged ids are opened as they appear while the user's manual toggles persist.
+ *
+ * @param props - See {@link StagedFilesEditorProps}.
+ * @returns The staged-file accordion plus the step-2 footer.
+ */
+function StagedFilesEditor({
+  files,
+  onRemove,
+  renderFileFields,
+  isSubmitting,
+  multi,
+  pluralLabel,
+  fileInputRef,
+  accept,
+  allowMultipleFiles,
+  onFileInputChange,
+  onCancel,
+  onSubmit,
+}: StagedFilesEditorProps) {
+  const fileIdsKey = files.map((f) => f.id).join(",");
+  const [openIds, setOpenIds] = useState<string[]>(() => files.map((f) => f.id));
+  const [trackedIdsKey, setTrackedIdsKey] = useState(fileIdsKey);
+
+  if (fileIdsKey !== trackedIdsKey) {
+    const trackedIds = new Set(trackedIdsKey ? trackedIdsKey.split(",") : []);
+    const newIds = files.map((f) => f.id).filter((id) => !trackedIds.has(id));
+    setTrackedIdsKey(fileIdsKey);
+    if (newIds.length > 0) {
+      setOpenIds((prev) => [...prev, ...newIds]);
+    }
+  }
+
+  return (
+    <>
+      <div className="flex max-h-[420px] flex-col gap-4 overflow-y-auto">
+        <Accordion multiple value={openIds} onValueChange={setOpenIds}>
+          {files.map((fileData, index) => (
+            <AccordionItem key={fileData.id} value={fileData.id}>
+              <AccordionTrigger
+                postIconChildren={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onRemove(index)}
+                    className="text-destructive hover:text-destructive/60 ml-4"
+                    disabled={isSubmitting}
+                    icon="Trash"
+                  />
+                }
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-mono text-muted-foreground tabular-nums">
+                    {index + 1}
+                  </span>
+                  <Icon name="Image" size={14} />
+                  <span className="truncate max-w-[200px] text-sm font-medium">
+                    {fileData.filename}
+                  </span>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {formatMimeType(fileData.mimeType)} · {formatBytes(fileData.size)}
+                  </span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="flex flex-col gap-4 pt-3">{renderFileFields(index)}</div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-border bg-muted/30 py-3">
+        {multi && (
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isSubmitting}
+              className="self-start"
+              icon="Plus"
+            >
+              Add {pluralLabel}
+            </Button>
+            <Input
+              ref={fileInputRef}
+              type="file"
+              multiple={allowMultipleFiles}
+              accept={accept}
+              onChange={onFileInputChange}
+              className="hidden"
+            />
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={onSubmit} disabled={isSubmitting}>
+            {isSubmitting ? "Uploading..." : `Create & select (${files.length})`}
+          </Button>
+        </div>
+      </div>
+    </>
+  );
 }
 
 // /**
@@ -202,27 +370,6 @@ export function MediaUploadForm({
         {(filesField) => {
           const files = filesField.state.value ?? [];
 
-          // Controlled accordion open-state — must be called on every render
-          // of this render-prop, unconditionally and before any early
-          // return, so hook order stays stable whether or not files are
-          // staged yet (Rules of Hooks). Files can be appended after the
-          // accordion has already mounted (multi-select "Add more" / a
-          // second drag-drop), and an *uncontrolled* Base UI Accordion warns
-          // when its `defaultValue` changes post-init — so this tracks which
-          // file ids have already been accounted for and opens newly staged
-          // ones, while the user's manual toggles persist.
-          const fileIdsKey = files.map((f) => f.id).join(",");
-          const [openIds, setOpenIds] = useState<string[]>(() => files.map((f) => f.id));
-          const [trackedIdsKey, setTrackedIdsKey] = useState(fileIdsKey);
-          if (fileIdsKey !== trackedIdsKey) {
-            const trackedIds = new Set(trackedIdsKey ? trackedIdsKey.split(",") : []);
-            const newIds = files.map((f) => f.id).filter((id) => !trackedIds.has(id));
-            setTrackedIdsKey(fileIdsKey);
-            if (newIds.length > 0) {
-              setOpenIds((prev) => [...prev, ...newIds]);
-            }
-          }
-
           // Empty state - show dropzone
           if (files.length === 0) {
             return (
@@ -266,130 +413,61 @@ export function MediaUploadForm({
             );
           }
 
-          // Files staged - show accordion forms
+          // Files staged — the accordion editor is its own component so its
+          // open-state hooks are not called from inside this render prop.
           return (
-            <>
-              <div className="flex max-h-[420px] flex-col gap-4 overflow-y-auto">
-                <Accordion multiple value={openIds} onValueChange={setOpenIds}>
-                  {files.map((fileData, index) => (
-                    <AccordionItem key={fileData.id} value={fileData.id}>
-                      <AccordionTrigger
-                        postIconChildren={
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => filesField.removeValue(index)}
-                            className="text-destructive hover:text-destructive/60 ml-4"
-                            disabled={form.state.isSubmitting}
-                            icon="Trash"
-                          />
-                        }
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-mono text-muted-foreground tabular-nums">
-                            {index + 1}
-                          </span>
-                          <Icon name="Image" size={14} />
-                          <span className="truncate max-w-[200px] text-sm font-medium">
-                            {fileData.filename}
-                          </span>
-                          <span className="ml-auto text-xs text-muted-foreground">
-                            {formatMimeType(fileData.mimeType)} · {formatBytes(fileData.size)}
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="flex flex-col gap-4 pt-3">
-                          {/* Filename field */}
-                          <form.Field name={`files[${index}].filename`}>
-                            {(field) => (
-                              <div className="space-y-1.5">
-                                <Label htmlFor={field.name} className="text-xs font-medium">
-                                  Filename{" "}
-                                  {collectionConfig.fields.alt?.required && (
-                                    <span className="text-destructive">*</span>
-                                  )}
-                                </Label>
-                                <Input
-                                  id={field.name}
-                                  value={field.state.value}
-                                  onChange={(e) => field.handleChange(e.target.value)}
-                                  className="h-9 text-sm"
-                                />
-                              </div>
-                            )}
-                          </form.Field>
+            <StagedFilesEditor
+              files={files}
+              onRemove={(index) => filesField.removeValue(index)}
+              isSubmitting={form.state.isSubmitting}
+              multi={multi}
+              pluralLabel={collectionConfig.labels.plural}
+              fileInputRef={fileInputRef}
+              accept={fieldDef.accept}
+              allowMultipleFiles={fieldDef.hasMany ?? false}
+              onFileInputChange={handleFileInputChange}
+              onCancel={onCancel}
+              onSubmit={() => form.handleSubmit()}
+              renderFileFields={(index) => (
+                <>
+                  <form.Field name={`files[${index}].filename`}>
+                    {(field) => (
+                      <div className="space-y-1.5">
+                        <Label htmlFor={field.name} className="text-xs font-medium">
+                          Filename{" "}
+                          {collectionConfig.fields.alt?.required && (
+                            <span className="text-destructive">*</span>
+                          )}
+                        </Label>
+                        <Input
+                          id={field.name}
+                          value={field.state.value}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                    )}
+                  </form.Field>
 
-                          {/* Alt text field */}
-                          <form.Field name={`files[${index}].alt`}>
-                            {(field) => (
-                              <div className="space-y-1.5">
-                                <Label htmlFor={field.name} className="text-xs font-medium">
-                                  Alt text
-                                </Label>
-                                <Input
-                                  id={field.name}
-                                  value={field.state.value}
-                                  onChange={(e) => field.handleChange(e.target.value)}
-                                  placeholder="Describe the image"
-                                  className="h-9 text-sm"
-                                />
-                              </div>
-                            )}
-                          </form.Field>
-
-                          {/* TODO: Render other fields from collection.fields using fieldToInputComponent */}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </div>
-
-              <div className="flex items-center justify-between border-t border-border bg-muted/30 py-3">
-                {multi && (
-                  <div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={form.state.isSubmitting}
-                      className="self-start"
-                      icon="Plus"
-                    >
-                      Add {collectionConfig.labels.plural}
-                    </Button>
-                    <Input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple={fieldDef.hasMany}
-                      accept={fieldDef.accept}
-                      onChange={handleFileInputChange}
-                      className="hidden"
-                    />
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={onCancel}
-                    disabled={form.state.isSubmitting}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => form.handleSubmit()}
-                    disabled={form.state.isSubmitting}
-                  >
-                    {form.state.isSubmitting ? "Uploading..." : `Create & select (${files.length})`}
-                  </Button>
-                </div>
-              </div>
-            </>
+                  <form.Field name={`files[${index}].alt`}>
+                    {(field) => (
+                      <div className="space-y-1.5">
+                        <Label htmlFor={field.name} className="text-xs font-medium">
+                          Alt text
+                        </Label>
+                        <Input
+                          id={field.name}
+                          value={field.state.value}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          placeholder="Describe the image"
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                    )}
+                  </form.Field>
+                </>
+              )}
+            />
           );
         }}
       </form.Field>

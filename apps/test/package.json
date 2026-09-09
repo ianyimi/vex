@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
+    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+    "coverage": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run --coverage",
     "secret:create": "openssl rand -base64 32 | tr -d '\\n' | tee /dev/stderr | pbcopy && echo '\\n✓ Secret copied to clipboard'"
   },
   "dependencies": {
@@ -45,20 +47,27 @@
     "@eslint/eslintrc": "catalog:",
     "@next/eslint-plugin-next": "catalog:",
     "@tailwindcss/postcss": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vexcms/cli": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
     "babel-plugin-react-compiler": "catalog:",
     "eslint": "catalog:",
     "eslint-config-next": "catalog:",
     "eslint-plugin-import-x": "catalog:",
     "eslint-plugin-perfectionist": "catalog:",
     "eslint-plugin-react-hooks": "catalog:",
+    "jsdom": "catalog:",
     "prettier": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "catalog:"
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:",
+    "vitest-axe": "catalog:"
   },
   "packageManager": "pnpm@10.26.1+sha512.664074abc367d2c9324fdc18037097ce0a8f126034160f709928e9e9f95d98714347044e5c3164d65bd5da6c59c6be362b107546292a8eecb7999196e5ce58fa"
 }

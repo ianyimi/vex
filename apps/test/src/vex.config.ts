@@ -57,6 +57,21 @@ const vexConfig = defineConfig({
     comments,
   ],
   globals: [nav, siteSettings],
+  routes: {
+    // One document at a time. `resolveTargets` calls this once for `before`
+    // and once for `after` on an update, so a slug rename purges the old path
+    // too without the map looping over both itself.
+    map: ({ collection, doc }) => {
+      if (collection !== pages.slug) {
+        return [];
+      }
+      const { slug } = doc;
+      if (typeof slug !== "string") {
+        return [];
+      }
+      return [slug === "home" ? "/" : `/${slug}`];
+    },
+  },
 });
 
 export default vexConfig;

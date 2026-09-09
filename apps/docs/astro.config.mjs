@@ -36,6 +36,13 @@ export default defineConfig({
 				{ label: 'Introduction', slug: 'index' },
 				{ label: 'Roadmap', slug: 'roadmap' },
 				{
+					label: 'Next.js',
+					items: [
+						{ label: 'Quickstart', slug: 'guides/quickstart' },
+						{ label: 'Caching, sitemaps & revalidation', slug: 'guides/caching-and-seo' },
+					],
+				},
+				{
 					label: 'Guides',
 					autogenerate: { directory: 'guides' },
 				},

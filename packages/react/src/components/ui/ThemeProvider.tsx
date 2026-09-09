@@ -31,6 +31,55 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 const STORAGE_KEY = "vex-theme";
 
 /**
+ * Reads the persisted theme, tolerating an absent or throwing Web Storage.
+ *
+ * `localStorage` is not universally reachable from a browser-like context:
+ * Safari's private mode and any "block all cookies" setting make the property
+ * access itself throw a `SecurityError`, and a jsdom/worker test environment
+ * can expose the global without a backing store at all. An unguarded read
+ * throws during the mount effect, which unmounts the whole admin shell — a
+ * persisted colour preference is not worth that, so a failed read degrades to
+ * "no stored preference" and leaves `defaultTheme` in place.
+ *
+ * Reached through `window`, never the bare global: Node exposes its own
+ * experimental `globalThis.localStorage` that logs
+ * "localStorage is not available because --localstorage-file was not provided"
+ * on first touch, so a bare reference turns every server render into a warning.
+ *
+ * @param storageKey - The `localStorage` key holding the persisted theme.
+ * @returns The stored theme, or `null` when unset, invalid, or unreadable.
+ */
+function readStoredTheme(storageKey: string): Theme | null {
+  try {
+    const stored =
+      typeof window === "undefined" ? null : window.localStorage?.getItem(storageKey);
+    return stored === "light" || stored === "dark" || stored === "system" ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Persists the theme, tolerating an absent or throwing Web Storage.
+ *
+ * Same failure modes as {@link readStoredTheme}, plus `QuotaExceededError`.
+ * A failed write only costs persistence across reloads — the in-memory theme
+ * still applies — so it is swallowed rather than propagated into the click
+ * handler that triggered it.
+ *
+ * @param storageKey - The `localStorage` key to write.
+ * @param theme - The theme to persist.
+ */
+function writeStoredTheme(storageKey: string, theme: Theme): void {
+  try {
+    if (typeof window === "undefined") return;
+    window.localStorage?.setItem(storageKey, theme);
+  } catch {
+    // Persistence is best-effort; the applied theme is already in React state.
+  }
+}
+
+/**
  * Framework-agnostic theme provider.
  *
  * Manages the `.dark` class on `<html>` and persists the user's preference to
@@ -66,10 +115,10 @@ export function ThemeProvider({
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
 
-  // Load theme from localStorage on mount
+  // Load the persisted theme on mount, if it is readable at all.
   useEffect(() => {
-    const stored = localStorage.getItem(storageKey) as Theme | null;
-    if (stored === "light" || stored === "dark" || stored === "system") {
+    const stored = readStoredTheme(storageKey);
+    if (stored) {
       setThemeState(stored);
     }
   }, [storageKey]);
@@ -102,7 +151,7 @@ export function ThemeProvider({
 
   function setTheme(newTheme: Theme) {
     setThemeState(newTheme);
-    localStorage.setItem(storageKey, newTheme);
+    writeStoredTheme(storageKey, newTheme);
   }
 
   return (

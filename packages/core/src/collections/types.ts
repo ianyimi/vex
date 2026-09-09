@@ -1,6 +1,6 @@
 import { AdminField } from "../fields";
 import { CoreAdminField, ReservedCollectionFieldKey } from "./constants";
-import type { ApplyComponent, ComponentHKT } from "../fields";
+import type { ComponentHKT } from "../fields";
 import type { CollectionSlug } from "../types/generated";
 import { TDocument } from "../api/convex";
 import { LucideIconName } from "../utils";
@@ -156,7 +156,7 @@ export interface CollectionTableConfig {
  */
 export interface AdminCollectionConfigInput<
   TFieldSlug extends string = CoreAdminField,
-  TComponent extends ComponentHKT = ComponentHKT,
+  _TComponent extends ComponentHKT = ComponentHKT,
 > {
   /**
    * The field whose value is displayed as the document's human-readable title
@@ -168,21 +168,6 @@ export interface AdminCollectionConfigInput<
    * index (`search_<field>`) for fast admin queries. Omit to fall back to `"_id"`.
    */
   useAsTitle?: CoreAdminField | NoInfer<TFieldSlug>;
-  /**
-   * Custom component overrides for rendering this collection's docs in
-   * relationship contexts (picker rows, table cells, selected-value chips).
-   *
-   * Override per-relationship via `RelationshipFieldInput.admin.components.preview`.
-   *
-   * Slot type is `ApplyComponent<F, RelationshipPreviewProps>` — in pure-core
-   * context (`F = ComponentHKT`) this resolves to `unknown`. In React context
-   * (`F = ReactHKT`, exposed via `@vexcms/react`) this resolves to
-   * `ComponentType<RelationshipPreviewProps>`.
-   */
-  components?: {
-    /** Component used to render a doc of this collection as a relationship preview. */
-    preview?: ApplyComponent<TComponent, RelationshipPreviewProps>;
-  };
   /**
    * A valid Lucide icon name for this collection in the admin sidebar
    * See https://lucide.dev/icons/
@@ -201,13 +186,10 @@ export interface AdminCollectionConfigInput<
  */
 export interface AdminCollectionConfig<
   TFieldSlug extends string = CoreAdminField,
-  TComponent extends ComponentHKT = ComponentHKT,
+  _TComponent extends ComponentHKT = ComponentHKT,
 > {
   /** The field used as the document's human-readable title in the admin panel. */
   useAsTitle: CoreAdminField | NoInfer<TFieldSlug>;
-  components: {
-    preview?: ApplyComponent<TComponent, RelationshipPreviewProps>;
-  };
   icon?: LucideIconName;
   /**
    * Data table configuration for list view.

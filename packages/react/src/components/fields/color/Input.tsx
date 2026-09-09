@@ -12,7 +12,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Input } from "../../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
-import { createFieldInput, FormDescription, FormLabel, FormError } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormDescription } from "../../form/FormDescription";
+import { FormLabel } from "../../form/FormLabel";
+import { FormError } from "../../form/FormError";
 import { readThemeColorTokens, type ThemeColorToken } from "./utils";
 
 /** Colour the picker opens on when the field holds no parseable value. */
@@ -103,7 +106,7 @@ export const ColorFieldInput = createFieldInput<string, {}, ColorField>(
         <div className="flex items-center gap-2">
           <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger
-              nativeButton={false}
+              nativeButton={true}
               render={(triggerProps) => (
                 <button
                   {...triggerProps}
@@ -190,6 +193,7 @@ export const ColorFieldInput = createFieldInput<string, {}, ColorField>(
             onBlur={field.handleBlur}
             placeholder={fieldDef.admin.placeholder || FORMAT_PLACEHOLDERS[fieldDef.format]}
             readOnly={fieldDef.admin.readOnly}
+            aria-required={fieldDef.required}
           />
         </div>
         <FormDescription field={fieldDef} />

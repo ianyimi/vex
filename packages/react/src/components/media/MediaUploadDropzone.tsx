@@ -1,12 +1,30 @@
 "use client";
 
 import { useCallback } from "react";
-import { useDropzone } from "react-dropzone"; // or custom implementation
+import { useDropzone, type Accept } from "react-dropzone"; // or custom implementation
 import { StorageAdapterSlug, vexConvexApi } from "@vexcms/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { useStorageAdapterMap } from "../../context";
 import { useVexMutation } from "../../hooks";
+
+/**
+ * MIME types this dropzone accepts, keyed the way react-dropzone's `useDropzone({ accept })`
+ * option requires (`Record<mimeType, extension[]>`; extensions are unused here, only the
+ * key is matched). `@vexcms/core`'s `MediaCollectionConfig` carries no per-collection
+ * accepted-types setting today — unlike `UploadField.accept` at the field level
+ * (`fields/upload/Input.tsx`) — so this is a fixed safe-media allowlist covering the
+ * categories a real upload actually produces, plus the browser's generic "unknown binary"
+ * fallback (`application/octet-stream`), which every legitimate large/opaque upload can
+ * carry when the browser can't infer a specific type.
+ */
+const MEDIA_UPLOAD_ACCEPT: Accept = {
+  "image/*": [],
+  "video/*": [],
+  "audio/*": [],
+  "application/pdf": [],
+  "application/octet-stream": [],
+};
 
 /**
  * Props for the MediaUploadDropzone component.
@@ -27,8 +45,8 @@ interface MediaUploadDropzoneProps {
  * Uses the adapter's generateUploadUrl() to get a presigned URL, POSTs the file,
  * then calls createMediaDocument() to create the media document.
  *
- * Batch upload: multiple files are uploaded in parallel via `Promise.all` on
- * single-file upload calls.
+ * Single-file: only the first dropped/selected file is uploaded, matching
+ * `fields/upload/EmptyInput.tsx`'s single-select `slice(0, 1)` truncation.
  *
  * @param props — Dropzone component props.
  * @returns The drag-and-drop / click-to-upload dropzone element.
@@ -90,24 +108,30 @@ export function MediaUploadDropzone(props: MediaUploadDropzoneProps) {
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
-      // Batch upload: Promise.all on single-file upload
-      const uploadPromises = acceptedFiles.map(async (file) => {
-        const mediaId = await uploadFile(file);
-        return mediaId;
-      });
+      // Single-file dropzone: `useDropzone`'s own `multiple`/`maxFiles` gate
+      // can only accept-or-reject an ENTIRE drop, never keep a subset of it —
+      // verified against react-dropzone@15.0.0's `setFiles`, which empties
+      // `acceptedFiles` outright once the count exceeds what's allowed. A
+      // same-batch multi-file drop is therefore truncated to the first file
+      // here instead, matching `fields/upload/EmptyInput.tsx`'s
+      // `files.slice(0, 1)`.
+      const [file] = acceptedFiles;
+      if (!file) return;
 
-      const results = await Promise.all(uploadPromises);
-      // For single-file dropzone, call onUploadComplete with the first result
-      if (results.length > 0) {
-        props.onUploadComplete(results[0]);
-      }
+      const mediaId = await uploadFile(file);
+      props.onUploadComplete(mediaId);
     },
-    [props.targetCollection, props.onUploadComplete, uploadFile],
+    [props.onUploadComplete, uploadFile],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    multiple: false,
+    // `multiple: true` so react-dropzone's own count gate never fires and
+    // discards every dropped file before `onDrop` runs — `onDrop` above does
+    // the actual "keep only the first file" truncation. `accept` still
+    // filters by MIME type independently of `multiple`.
+    multiple: true,
+    accept: MEDIA_UPLOAD_ACCEPT,
   });
 
   return (

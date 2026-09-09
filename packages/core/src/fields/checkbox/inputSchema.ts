@@ -5,8 +5,12 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 /**
  * Builds a Zod schema for validating a checkbox field value in the admin form.
  *
- * Checkbox fields are always boolean — there are no required/optional semantics
- * beyond wrapping in `.optional()` for non-required fields. No min/max constraints.
+ * Checkbox fields are always boolean. Required fields attach
+ * `{ error: "This field is required." }` to the base `z.boolean()` call and
+ * never receive `.default()` — previously an unconditional
+ * `.default(field.defaultValue)` meant `true`, `false`, *and* a missing value
+ * all passed a "required" checkbox (CORE-1). Optional fields keep
+ * `.default(field.defaultValue)`.
  *
  * @param props - Input props.
  * @param props.field - The resolved checkbox field definition
@@ -16,11 +20,11 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  * ```ts
  * const field = checkbox({ required: true })
  * checkboxFieldToInputSchema({ field })
- * // → z.boolean()
+ * // → z.boolean({ error: "This field is required." })
  *
  * const optionalField = checkbox()
  * checkboxFieldToInputSchema({ field: optionalField })
- * // → z.boolean().optional().default(false)
+ * // → z.boolean().default(false)
  * ```
  */
 export function checkboxFieldToInputSchema(props: {
@@ -28,7 +32,9 @@ export function checkboxFieldToInputSchema(props: {
 }): ZodType {
   const { field } = props;
 
-  const inputSchema = z.boolean().default(field.defaultValue);
+  const inputSchema = field.required
+    ? z.boolean({ error: "This field is required." })
+    : z.boolean().default(field.defaultValue);
 
   return applyBaseInputSchemaMeta({ field, inputSchema });
 }

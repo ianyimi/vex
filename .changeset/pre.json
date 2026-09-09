@@ -21,6 +21,7 @@
     "admin-topnav-view-site",
     "anon-constraint-fail-closed",
     "anon-role-hardening-and-docs-cleanup",
+    "core-label-singularization",
     "generated-types-lint-header",
     "marketing-template-design",
     "media-and-scaffold-fixes",

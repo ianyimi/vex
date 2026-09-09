@@ -1,6 +1,8 @@
 ---
 title: Quickstart
 description: Scaffold a complete Next.js + Convex + VexCMS project and reach a signed-in admin panel in under five minutes.
+sidebar:
+  hidden: true
 ---
 
 VexCMS ships a scaffolding CLI that generates a complete Next.js + Convex project — auth, admin
@@ -62,5 +64,9 @@ pre-seeded credentials.
 
 - Define your own content in `vex.config.ts` — see the [field types](/fields/text/) reference.
 - Wire OAuth providers or organizations — see the [authentication guide](/guides/auth/).
+- Building a public site (blog, marketing pages) meant to prerender and serve from the CDN?
+  See [Caching, sitemaps & revalidation](/guides/caching-and-seo/) — the scaffolded
+  marketing-site starter already wires all of it; that guide explains how, and what to add
+  yourself on a `--bare` project or an existing app.
 - Adding VexCMS to an existing Next.js + Convex app instead of scaffolding fresh? See the root
   [README's manual setup section](https://github.com/ianyimi/vex#manual-setup).

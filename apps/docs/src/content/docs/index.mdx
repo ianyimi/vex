@@ -5,8 +5,8 @@ template: splash
 hero:
   tagline: A type-safe headless CMS, built natively on Convex.
   actions:
-    - text: Browse the guides
-      link: /guides/auth/
+    - text: Quickstart
+      link: /guides/quickstart/
       icon: right-arrow
     - text: View on GitHub
       link: https://github.com/ianyimi/vex
@@ -24,11 +24,20 @@ drift between your schema and your types.
 ## Explore the docs
 
 <CardGrid stagger>
+	<Card title="Quickstart" icon="download">
+		Scaffold a complete Next.js + Convex + VexCMS project in under five
+		minutes — see the [Next.js quickstart](/guides/quickstart/).
+	</Card>
 	<Card title="Field types" icon="list-format">
 		Twelve field types, from `text()` and `number()` to `relationship()`,
 		`group()`, `blocks()`, and `color()`. Start with the
 		[text field](/fields/text/), or browse the full set in the sidebar
 		under **Fields**.
+	</Card>
+	<Card title="Static rendering & revalidation" icon="cloud-download">
+		Public pages prerender and serve from the CDN, with path-based
+		revalidation triggered from the admin panel — see
+		[Caching, sitemaps & revalidation](/guides/caching-and-seo/).
 	</Card>
 	<Card title="Authentication" icon="approve-check-circle">
 		Wire up [Better Auth](/guides/auth/) as standard VexCMS collections —

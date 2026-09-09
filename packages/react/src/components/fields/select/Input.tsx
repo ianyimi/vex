@@ -2,7 +2,10 @@
 
 import { type SelectField } from "@vexcms/core";
 import { useModalSurface } from "../../../hooks/useModalSurface";
-import { createFieldInput, FormDescription, FormLabel, FormError } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormDescription } from "../../form/FormDescription";
+import { FormLabel } from "../../form/FormLabel";
+import { FormError } from "../../form/FormError";
 import {
   MultiSelect,
   MultiSelectContent,
@@ -65,10 +68,12 @@ export const SelectFieldInput = createFieldInput<string[], {}, SelectField>(
           values={field.state.value}
         >
           <MultiSelectTrigger
+            id={name}
             className="w-full"
             onBlur={field.handleBlur}
             name={name}
             aria-readonly={fieldDef.admin.readOnly}
+            aria-required={fieldDef.required}
             disabled={readOnly}
           >
             <MultiSelectValue placeholder={fieldDef.admin.placeholder} />

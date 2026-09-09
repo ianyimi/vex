@@ -2,7 +2,10 @@
 
 import { type TextField } from "@vexcms/core";
 import { Input } from "../../ui/input";
-import { createFieldInput, FormDescription, FormLabel, FormError } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormDescription } from "../../form/FormDescription";
+import { FormLabel } from "../../form/FormLabel";
+import { FormError } from "../../form/FormError";
 
 /**
  * Text field input component for the admin edit form.
@@ -48,6 +51,7 @@ export const TextFieldInput = createFieldInput<string, {}, TextField>(
           onBlur={field.handleBlur}
           placeholder={fieldDef.admin.placeholder}
           readOnly={fieldDef.admin.readOnly}
+          aria-required={fieldDef.required}
         />
         <FormDescription field={fieldDef} />
         <FormError field={field} submissionAttempts={submissionAttempts} />

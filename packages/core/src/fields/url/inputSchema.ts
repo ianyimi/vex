@@ -1,15 +1,26 @@
-import { z, type ZodDefault, type ZodLiteral, type ZodUnion, type ZodURL, type ZodType } from "zod";
+import { z, type ZodType } from "zod";
 import { UrlField } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 
 /**
  * Builds a Zod schema for validating a URL field value in the admin form.
  *
- * Enforces URL format via `z.url()`. Required fields add a `.min(1)` check.
- * `.default(field.defaultValue)` is applied only when `defaultValue` is explicitly
- * set on the field — unlike `text()`, the url field has no implicit empty-string
- * default. Wraps in `.optional()` for non-required fields via
+ * Required fields check emptiness *before* URL format:
+ * `z.string({ error: "This field is required." }).min(1, "This field is
+ * required.").pipe(z.url())` — the `.min(1)` stage runs on the plain string
+ * and short-circuits the pipe, so an empty required field reports "This
+ * field is required." instead of "Invalid URL" (CORE-2; previously
+ * `z.url().min(1, ...)` ran the format check first, and `new URL("")`
+ * always threw before `.min()` ever ran). Required fields never receive
+ * `.default()` — unlike `text()`, the url field has no implicit
+ * empty-string default even when non-required. `.default(field.defaultValue)`
+ * is applied only for non-required fields with an explicit `defaultValue`.
+ * Wraps in `.optional()` for non-required fields via
  * `applyBaseInputSchemaMeta`.
+ *
+ * *Pinned, unchanged behaviour* (verified before and after this fix):
+ * `z.url()` trims whitespace, imposes no protocol restriction (`mailto:`/
+ * `ftp://` pass), and requires an absolute URL.
  *
  * @param props - Input props.
  * @param props.field - The resolved URL field definition.
@@ -18,30 +29,32 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  *
  * @example
  * ```ts
- * // Required — rejects empty string and non-URLs
+ * // Required — rejects a missing/empty value with "This field is required.", not "Invalid URL"
  * urlFieldToInputSchema({ field: url({ required: true }) })
- * // → z.url().min(1, "This field is required.").optional() — no default
  *
  * // Optional with explicit default
  * urlFieldToInputSchema({ field: url({ required: false, defaultValue: "https://example.com" }) })
- * // → z.url().default("https://example.com").optional()
+ * // → z.union([z.url(), z.literal("")]).default("https://example.com")
  * ```
  */
 export function urlFieldToInputSchema(props: { field: UrlField }): ZodType {
   const { field } = props;
+  const requiredError = "This field is required.";
 
-  let inputSchema:
-    | ZodURL
-    | ZodDefault<ZodURL>
-    | ZodDefault<ZodUnion<readonly [ZodURL, ZodLiteral<"">]>> = z.url();
   if (field.required) {
-    inputSchema = z.url().min(1, "This field is required.");
-    if (field.defaultValue) {
-      inputSchema = z.url().min(1, "This field is required.").default(field.defaultValue);
-    }
-  } else if (field.defaultValue !== undefined) {
-    inputSchema = z.union([z.url(), z.literal("")]).default(field.defaultValue);
+    return applyBaseInputSchemaMeta({
+      field,
+      inputSchema: z
+        .string({ error: requiredError })
+        .min(1, requiredError)
+        .pipe(z.url()),
+    });
   }
+
+  const inputSchema =
+    field.defaultValue !== undefined
+      ? z.union([z.url(), z.literal("")]).default(field.defaultValue)
+      : z.url();
 
   return applyBaseInputSchemaMeta({ field, inputSchema });
 }

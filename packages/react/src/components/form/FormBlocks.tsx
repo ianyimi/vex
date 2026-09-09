@@ -371,9 +371,18 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
               const subFields = Object.entries(blockDef.fields);
 
               return (
-                <Draggable key={itemKey} id={`${name}-${itemKey}`} index={index}>
+                // `isDragDisabled` when read-only — see `FormArray`'s own note:
+                // it nulls `dragHandleProps` so the library stops expecting a
+                // registered handle the inert read-only `DragHandle` never renders.
+                <Draggable
+                  key={itemKey}
+                  id={`${name}-${itemKey}`}
+                  index={index}
+                  isDragDisabled={readOnly}
+                >
                   <AccordionItem
                     value={itemKey}
+                    disabled={readOnly}
                     className={cn(
                       "rounded-sm border-t border-r-2 border-l-2 border-border bg-background overflow-hidden",
                       index === 0 && "border-t-2",

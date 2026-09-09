@@ -3,7 +3,10 @@
 import * as React from "react";
 import { X } from "lucide-react";
 import type { CollectionFieldMeta, CollectionSlug, RelationshipField } from "@vexcms/core";
-import { createFieldInput, FormDescription, FormLabel, FormError } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormDescription } from "../../form/FormDescription";
+import { FormLabel } from "../../form/FormLabel";
+import { FormError } from "../../form/FormError";
 import { Popover, PopoverTrigger, PopoverContent } from "../../ui/popover";
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
@@ -132,7 +135,7 @@ export const RelationshipFieldInput = createFieldInput<
                 type="button"
                 onClick={() => handleRemove(doc._id)}
                 className="hover:text-destructive"
-                disabled={!readOnly || fieldDef.admin.readOnly}
+                disabled={readOnly || fieldDef.admin.readOnly}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -152,10 +155,14 @@ export const RelationshipFieldInput = createFieldInput<
              element, not Radix's `asChild`. Pass a Button element to `render`
              and Base UI clones its props onto the trigger. */}
         <PopoverTrigger
+          role="combobox"
+          onBlur={field.handleBlur}
           render={
             <Button
+              id={name}
               variant="outline"
               disabled={readOnly || fieldDef.admin.readOnly}
+              aria-required={fieldDef.required}
               className="w-full justify-between font-normal"
             />
           }

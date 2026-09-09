@@ -29,18 +29,14 @@ describe("dateFieldToInputSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("required schema provides a numeric default (Date.now())", () => {
-    const before = Date.now();
+  it("rejects a missing value on a required field with a 'required' message (CORE-1)", () => {
     const field = date({ required: true });
     const schema = dateFieldToInputSchema({ field });
-    const after = Date.now();
 
     const result = schema.safeParse(undefined);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(typeof result.data).toBe("number");
-      expect(result.data as number).toBeGreaterThanOrEqual(before);
-      expect(result.data as number).toBeLessThanOrEqual(after);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/required/i);
     }
   });
 

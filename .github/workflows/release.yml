@@ -37,19 +37,26 @@ jobs:
       - name: Build Packages
         # `apps/test` runs `next build`, which needs env at two points: the
         # `@t3-oss/env-nextjs` parse when `next.config.ts` loads, and the Convex
-        # client during prerender/page-data collection. A CI runner has no
-        # deployment, so both fail. `SKIP_ENV_VALIDATION` only silences the first —
-        # measured: the build then still dies at "Failed to collect page data".
-        # Placeholder values clear both AND keep validation enabled, so a newly
-        # added required env var that nobody wired up still fails this step.
-        # `apps/test` is the sandbox app and is never deployed (`.changeset` ignore
-        # list), so the inlined NEXT_PUBLIC_* placeholders reach no real artifact.
-        run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" build
+        # client during prerender. Placeholder values only clear the first —
+        # since its public routes became statically prerendered they perform real
+        # Convex reads, and a made-up `*.convex.cloud` subdomain still resolves
+        # through wildcard DNS only to answer `/api/query` with a bodyless 404,
+        # which surfaces as `Error occurred prerendering page "/"` with a digest
+        # and no cause. These point at the real shared test deployment instead.
+        # See ci.yml for the same block and the full reasoning.
+        run: |
+          for var in BETTER_AUTH_SECRET NEXT_PUBLIC_CONVEX_URL NEXT_PUBLIC_CONVEX_SITE_URL NEXT_PUBLIC_SITE_URL; do
+            if [ -z "$(printenv "$var")" ]; then
+              echo "::error::$var is empty. Add it under Settings → Secrets and variables → Actions → Secrets."
+              exit 1
+            fi
+          done
+          pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" build
         env:
-          BETTER_AUTH_SECRET: ci-placeholder-not-a-real-secret
-          NEXT_PUBLIC_CONVEX_URL: https://ci-placeholder.convex.cloud
-          NEXT_PUBLIC_CONVEX_SITE_URL: https://ci-placeholder.convex.site
-          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          NEXT_PUBLIC_CONVEX_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_URL }}
+          NEXT_PUBLIC_CONVEX_SITE_URL: ${{ secrets.NEXT_PUBLIC_CONVEX_SITE_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
 
       - name: Typecheck Packages
         run: pnpm --filter "@vexcms/*" --filter "create-vexcms" --filter "docs" --filter "test" typecheck

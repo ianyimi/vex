@@ -160,6 +160,7 @@ export const pages = defineTable({
   metaTitle: v.optional(v.string()),
   metaDescription: v.optional(v.string()),
   ogImage: v.optional(v.array(v.id("images"))),
+  updatedAt: v.optional(v.number()),
 }).index("by_slug", ["slug"])
 
 export const headers = defineTable({
@@ -188,6 +189,7 @@ export const headers = defineTable({
       })
     )
   ),
+  updatedAt: v.optional(v.number()),
 }).index("by_name", ["name"])
 
 export const footers = defineTable({
@@ -210,6 +212,7 @@ export const footers = defineTable({
       })
     )
   ),
+  updatedAt: v.optional(v.number()),
 }).index("by_name", ["name"])
 
 export const themes = defineTable({
@@ -288,6 +291,7 @@ export const themes = defineTable({
       sidebarRing: v.optional(v.string()),
     })
   ),
+  updatedAt: v.optional(v.number()),
 }).index("by_name", ["name"])
 
 export const session = defineTable({
@@ -370,6 +374,7 @@ export const images = defineTable({
   src: v.string(),
   width: v.optional(v.number()),
   height: v.optional(v.number()),
+  updatedAt: v.optional(v.number()),
 })
   .index("by_deleted", ["deleted"])
   .searchIndex("search_filename", {

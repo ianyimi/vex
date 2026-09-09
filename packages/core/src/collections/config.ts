@@ -1,6 +1,8 @@
+import pluralize from "pluralize-esm";
+
 import { AdminField, CollectionFieldMeta, ComponentHKT, number } from "../fields";
 import { CollectionSlug } from "../types";
-import { toTitleCase, plural } from "../utils";
+import { toTitleCase } from "../utils";
 import { ReservedCollectionFieldKey } from "./constants";
 import { CollectionConfig, CollectionConfigInput } from "./types";
 import { slugToPascalCase } from "./utils";
@@ -43,8 +45,9 @@ function populateCollectionFieldMeta<
 /**
  * Resolves a raw collection config input into a fully-populated `CollectionConfig`.
  *
- * Fills in any missing `labels` by deriving them from the `slug` — converting it
- * to title case for `singular` and further pluralising it for `plural`.
+ * Fills in any missing `labels` by deriving them from the `slug` — singularizing
+ * then title-casing it for `singular`, and title-casing the slug itself for
+ * `plural` (slugs are plural by convention).
  *
  * @param config - The raw collection configuration supplied by the caller.
  * @returns The resolved `CollectionConfig` with all defaults applied.
@@ -170,7 +173,6 @@ export function defineCollection<
     fields,
     admin: {
       useAsTitle: "_id",
-      components: {},
       ...input.admin,
       table: {
         defaultPageSize: 10,
@@ -190,8 +192,8 @@ export function defineCollection<
       },
     },
     labels: {
-      singular: toTitleCase(input.slug),
-      plural: plural(toTitleCase(input.slug)),
+      singular: toTitleCase(pluralize.singular(input.slug)),
+      plural: toTitleCase(input.slug),
       ...input.labels,
     },
     meta: {

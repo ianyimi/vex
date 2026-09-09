@@ -1,7 +1,8 @@
 "use client";
 
 import type { ArrayField, ArrayType } from "@vexcms/core";
-import { createFieldInput, FormArray } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormArray } from "../../form/FormArray";
 
 /**
  * Array field input component for the admin edit form.

@@ -14,8 +14,9 @@ import { RelationshipPreviewProps } from "../../collections";
  * Admin configuration input specific to a relationship field instance.
  *
  * Extends {@link FieldAdminConfigInput} with a `components` slot that lets a
- * single field override the preview renderer — taking precedence over the target
- * collection's `admin.components.preview`.
+ * single field override the preview renderer. This is the only supported
+ * location for a relationship preview override (ARCH-1) — target collections
+ * do not have their own `admin.components.preview`.
  *
  * @typeParam TCollectionSlug - The target collection slug, inferred from the field's `collection` option.
  * @see {@link RelationshipFieldAdminConfig} for the resolved type after defaults are applied
@@ -27,13 +28,14 @@ export interface RelationshipFieldAdminInput<
 > extends FieldAdminConfigInput {
   /**
    * Custom component overrides specific to this relationship field instance.
-   * These take precedence over the target collection's `admin.components`.
+   * `preview` is currently the only supported override.
    */
   components?: {
     /**
-     * Per-field override for rendering this relationship's docs. Wins over
-     * the target collection's `admin.components.preview`. `TCollectionSlug` is the
-     * *target* slug (`fieldDef.collection.slug`).
+     * Per-field override for rendering this relationship's docs — the only
+     * supported location for a custom preview (ARCH-1: target collections do
+     * not support their own `admin.components.preview`). `TCollectionSlug` is
+     * the *target* slug (`fieldDef.collection.slug`).
      */
     preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TCollectionSlug>>;
   };
@@ -51,13 +53,14 @@ export interface RelationshipFieldAdminConfig<
 > extends FieldAdminConfig {
   /**
    * Custom component overrides specific to this relationship field instance.
-   * These take precedence over the target collection's `admin.components`.
+   * `preview` is currently the only supported override.
    */
   components: {
     /**
-     * Per-field override for rendering this relationship's docs. Wins over
-     * the target collection's `admin.components.preview`. `TCollectionSlug` is the
-     * *target* slug (`fieldDef.collection.slug`).
+     * Per-field override for rendering this relationship's docs — the only
+     * supported location for a custom preview (ARCH-1: target collections do
+     * not support their own `admin.components.preview`). `TCollectionSlug` is
+     * the *target* slug (`fieldDef.collection.slug`).
      */
     preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TCollectionSlug>>;
   };

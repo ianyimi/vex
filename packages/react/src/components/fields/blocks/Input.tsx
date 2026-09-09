@@ -1,7 +1,9 @@
 "use client";
 
 import type { BlocksField, GenericBlock } from "@vexcms/core";
-import { createFieldInput, FormDescription, FormLabel, FormError, FormBlocks } from "../../form";
+import { createFieldInput } from "../../form/createFieldInput";
+import { FormDescription } from "../../form/FormDescription";
+import { FormBlocks } from "../../form/FormBlocks";
 import { parseAsString, useQueryState } from "nuqs";
 import { MODALS } from "../../modals";
 
@@ -23,7 +25,7 @@ import { MODALS } from "../../modals";
  * ```
  */
 export const BlocksFieldInput = createFieldInput<GenericBlock[], {}, BlocksField>(
-  ({ name, collection, readOnly, fieldDef, field, submissionAttempts }) => {
+  ({ name, collection, readOnly, fieldDef, field, index, submissionAttempts }) => {
     const [activeField, setActiveField] = useQueryState(MODALS.editBlocks.urlParam, parseAsString);
     const modalOpen = activeField === name;
     async function openEditor() {
@@ -33,8 +35,20 @@ export const BlocksFieldInput = createFieldInput<GenericBlock[], {}, BlocksField
       await setActiveField(null);
     }
     return (
-      <div className="flex flex-col gap-1.5">
-        <FormLabel field={fieldDef} name={name} />
+      <div
+        className="flex flex-col gap-1.5"
+        role="group"
+        aria-labelledby={`${name}-label`}
+        aria-disabled={readOnly || fieldDef.admin.readOnly}
+      >
+        <span
+          id={`${name}-label`}
+          className="relative flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+        >
+          {index !== undefined ? `[${index + 1}] - ` : ""}
+          {fieldDef.label || name}
+          {fieldDef.required && <span className="text-red-500">*</span>}
+        </span>
         <FormBlocks
           name={name}
           collection={collection}
@@ -47,7 +61,6 @@ export const BlocksFieldInput = createFieldInput<GenericBlock[], {}, BlocksField
           closeEditor={closeEditor}
         />
         <FormDescription field={fieldDef} />
-        <FormError field={field} submissionAttempts={submissionAttempts} />
       </div>
     );
   },

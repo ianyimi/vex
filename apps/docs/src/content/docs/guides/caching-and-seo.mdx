@@ -1,12 +1,61 @@
 ---
 title: Caching, sitemaps and revalidation
 description: Cached Convex reads for prerenderable public pages, generated sitemap.xml/robots.txt/metadata, and path-based revalidation triggered from the admin panel.
+sidebar:
+  hidden: true
 ---
 
 Public pages read Convex through a cached client so Next.js can prerender them at build time
 and serve them from the CDN. `@vexcms/next`'s `cache` and `seo` entry points, plus a
 `routes.map` function in `vex.config.ts`, are what make that possible without hand-writing the
 plumbing per project.
+
+## Setup checklist
+
+The default `pnpm create vexcms` marketing-site starter already wires all of this — read on to
+understand how it works, or to add it yourself to a `--bare` scaffold or an existing project
+once you have a collection of public, slug-addressed documents (pages, posts, docs). Build in
+this order — each step is consumed by the one after it:
+
+```
+src/
+├── lib/vex.ts                        # 1. the shared cached client
+├── vex.config.ts                     # 2. routes.map, for step 6
+└── app/
+    ├── layout.tsx                    # stays free of cookie reads and fetchQuery
+    ├── sitemap.ts                    # 4. createVexSitemap
+    ├── robots.ts                     # 5. createVexRobots (no Convex read at all)
+    ├── api/vex/revalidate/route.ts   # 6. createVexRevalidateRoute
+    └── (site)/                       # or wherever your public routes live
+        ├── layout.tsx                # mount shared server components (a theme
+        │                             #   injector, a footer) here — see the gotcha below
+        ├── page.tsx                  # 3. reads through `vex`, `export const revalidate`
+        └── [slug]/
+            └── page.tsx              # 7. generateStaticParams + generateMetadata
+```
+
+1. **`src/lib/vex.ts`** — the one shared `createVexServerClient` instance (below).
+2. **`vex.config.ts`** — add `routes.map` for the collection driving your public routes (below).
+3. **Page routes** — read through `vex`, call `notFound()` on a missing document, and set an
+   inline `export const revalidate` literal (below).
+4. **`app/sitemap.ts`** — `createVexSitemap`, reading the same collection.
+5. **`app/robots.ts`** — `createVexRobots`; purely static, no dependency on the others.
+6. **`app/api/vex/revalidate/route.ts`** — `createVexRevalidateRoute`, wired to `vex.config.ts`'s
+   `routes.map`. Automatic purging (`useVexMutation`, `RevalidateButton`) then works with no
+   further setup.
+7. **`[slug]/page.tsx`** — `generateStaticParams` (`vexStaticParams`) and `generateMetadata`
+   (`vexMetadata`) for the dynamic segment.
+
+Verify with a real build, not the dev server — `next dev` never shows which routes are static:
+
+```bash
+pnpm build
+```
+
+Check the printed route table for `○`/`●` (static/SSG) on every public route and `ƒ` only on
+`/admin`, auth routes, and the revalidate handler. A public route still showing `ƒ` means
+something in its render path — the page itself or a shared layout — is still reading a cookie
+or calling `fetchQuery`; see the next section.
 
 ## Why public pages can prerender at all
 
@@ -23,6 +72,29 @@ request, even a page that read no data:
 
 Removing both is what lets a page with real data fetching build as a static `○` route instead
 of a per-request `ƒ` one.
+
+### It's the whole render tree, not just the page
+
+Next decides a route's rendering mode from **everything React renders for that request** —
+every layout and every component mounted underneath it, not only the route's own `page.tsx`.
+A server component rendered from a *shared* layout (a theme-CSS injector, a footer reading a
+`siteSettings` global — anything) that calls `fetchQuery` or reads a cookie forces every route
+under that layout dynamic, even sibling routes whose own `page.tsx` reads no data at all or
+reads only through the cached `vex` client.
+
+This is easy to miss: the build still succeeds, nothing errors, the route just silently prints
+as `ƒ` instead of `○`/`●` in the route table. Audit every server component reachable from a
+route you expect to prerender, not only the page component:
+
+```bash
+grep -rn "fetchQuery" src/app src/components
+```
+
+Every hit outside `/admin`, auth routes, and route handlers you've deliberately kept dynamic is
+a candidate. If a route unexpectedly builds dynamic, bisect by swapping its layout for a
+trivial passthrough (`export default function L({ children }) { return children }`) and
+rebuilding — if the route table entry flips to static, the layout (or something it renders,
+transitively) is the cause, not the page.
 
 ## The shared read client
 

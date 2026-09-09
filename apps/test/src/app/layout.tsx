@@ -8,7 +8,6 @@ import { Geist, Geist_Mono } from "next/font/google"
 import ClientProviders from "~/components/providers/client"
 import ServerProviders from "~/components/providers/server"
 import { ThemeLive } from "~/components/ThemeLive"
-import { ThemeStyle } from "~/components/ThemeStyle"
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -31,11 +30,13 @@ export const metadata: Metadata = {
  * in `ServerProviders` (e.g. colour scheme) and `ClientProviders` (Convex, auth,
  * query).
  *
- * `<ThemeStyle />` is here rather than in a route group on purpose: the site's
- * active theme should reach **everything**, admin panel included. The admin
- * layout then re-emits its own theme at higher specificity, so setting
- * `siteSettings.adminTheme` opts the panel out. The `auth` parallel slot moved
- * to `(frontend)/layout.tsx`, which is the group that declares it.
+ * `<ThemeStyle />` moved to `(frontend)/(site)/layout.tsx`: it reads Convex,
+ * and the root must stay free of Convex reads so its routes (`/`, `/[slug]`,
+ * `/sitemap.xml`, `/robots.txt`) can prerender. Admin keeps its own
+ * `<ThemeStyle scope="admin" />` once for the whole app — the admin layout
+ * re-emits its own scope at higher specificity, so `siteSettings.adminTheme`
+ * opts out. The `auth` parallel slot moved to `(frontend)/layout.tsx`, which
+ * is the group that declares it.
  */
 export default function RootLayout({
   children,
@@ -50,7 +51,6 @@ export default function RootLayout({
     >
       <head>
         <ThemeScript />
-        <ThemeStyle />
       </head>
       <body>
         <ServerProviders>

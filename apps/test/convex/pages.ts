@@ -1,8 +1,7 @@
-// import { find, get } from "@vexcms/core/server";
 import { v } from "convex/values";
 
-import { type PageID, TABLE_SLUG_PAGES } from "~/db/constants";
-import { find, get } from "~/vexcms/api";
+import { TABLE_SLUG_PAGES } from "~/db/constants";
+import { find, publishedSlugs as readPublishedSlugs } from "~/vexcms/api";
 
 import { query } from "./_generated/server";
 
@@ -19,24 +18,20 @@ export const list = query({
 });
 
 /**
- * Returns the demo page document by its Convex ID.
+ * Returns `{ slug, createdAt, updatedAt? }` for every page document.
  *
- * Used internally to verify the seed page exists during development.
- * Hard-codes the seed page ID — not suitable for production use.
- *
- * @returns The `Page` document or `undefined` if not found.
+ * Consumed by `app/sitemap.ts` and `[slug]/page.tsx`'s `generateStaticParams`.
+ * Access is bypassed for the same reason `getBySlug` bypasses it: both are
+ * read at build time and by anonymous crawlers, neither of which carries a
+ * session.
  */
-export const getIndex = query({
+export const publishedSlugs = query({
+  args: {},
   handler: async (ctx) => {
-    return await get({
-      ctx,
+    return await readPublishedSlugs({
+      access: { bypass: true },
       collection: TABLE_SLUG_PAGES,
-      id: "jd7c3tr2ssz89pzdyx65by5k0n86razb" as PageID,
-      // Public read: rendered by `src/app/page.tsx` for anonymous visitors, who
-      // have no roles and would therefore be denied (`get` throws on denial).
-      access: {
-        bypass: true,
-      },
+      ctx,
     });
   },
 });

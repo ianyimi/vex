@@ -129,6 +129,30 @@ export type DateTimePickerProps = {
    */
   // eslint-disable-next-line no-unused-vars
   renderTrigger?: (props: DateTimeRenderTriggerProps) => React.ReactNode;
+  /**
+   * The `id` attribute applied to the trigger element that opens the picker —
+   * pair with an external `<label htmlFor>` pointing at the same value.
+   */
+  id?: string;
+  /**
+   * Marks the trigger element as required for assistive technology.
+   * @default false
+   */
+  "aria-required"?: boolean;
+  /**
+   * Points at the id of an external `<label>`/label-like element that names
+   * this trigger — required because a `<div role="combobox">` is not an
+   * HTML labelable element, so a plain `<label htmlFor>` cannot compute its
+   * accessible name even when `id` matches.
+   */
+  "aria-labelledby"?: string;
+  /**
+   * Called when the trigger loses focus — wired to `field.handleBlur` so
+   * TanStack Form's touched-state tracking works the same way every other
+   * field type's control already does.
+   */
+  // eslint-disable-next-line no-unused-vars
+  onBlur?: (event: React.FocusEvent<HTMLElement>) => void;
 };
 
 export type DateTimeRenderTriggerProps = {
@@ -165,6 +189,10 @@ export function DateTimePicker({
   classNames,
   timePicker,
   modal = false,
+  id,
+  "aria-required": ariaRequired,
+  "aria-labelledby": ariaLabelledBy,
+  onBlur,
   ...props
 }: DateTimePickerProps & CalendarProps) {
   const [open, setOpen] = useState(false);
@@ -274,6 +302,12 @@ export function DateTimePicker({
             : (props) => (
                 <div
                   {...props}
+                  id={id}
+                  role="combobox"
+                  aria-required={ariaRequired}
+                  aria-labelledby={ariaLabelledBy}
+                  aria-disabled={disabled}
+                  onBlur={onBlur}
                   className={cn(
                     "flex w-full cursor-pointer items-center h-9 ps-3 pe-1 font-normal border border-input rounded-md text-sm shadow-sm",
                     !displayValue && "text-muted-foreground",

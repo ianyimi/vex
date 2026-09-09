@@ -34,7 +34,7 @@ describe("arrayFieldToInputSchema", () => {
       expect(schema.safeParse([1, "two", 3]).success).toBe(false);
     });
 
-    it("generates required array schema", () => {
+    it("rejects a missing or empty value on a required field with a 'required' message (CORE-1)", () => {
       const itemsField = text({ required: true });
       const field = array({ required: true, items: itemsField });
       const schema = arrayFieldToInputSchema({ field });
@@ -42,10 +42,22 @@ describe("arrayFieldToInputSchema", () => {
       // Should accept valid arrays
       expect(schema.safeParse(["hello"]).success).toBe(true);
 
-      // Zod arrays accept undefined by default (known limitation)
-      // Required check is enforced at form level, not schema level
-      expect(schema.safeParse(undefined).success).toBe(true);
-      // Zod arrays reject null
+      // A required array field now rejects a missing value...
+      const missing = schema.safeParse(undefined);
+      expect(missing.success).toBe(false);
+      if (!missing.success) {
+        expect(missing.error.issues[0].message).toMatch(/required/i);
+      }
+
+      // ...and an explicit empty array, the same way a required text field
+      // rejects an empty string.
+      const empty = schema.safeParse([]);
+      expect(empty.success).toBe(false);
+      if (!empty.success) {
+        expect(empty.error.issues[0].message).toMatch(/required/i);
+      }
+
+      // Zod arrays still reject null outright.
       expect(schema.safeParse(null).success).toBe(false);
     });
 

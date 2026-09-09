@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button, DialogClose, DialogContent, DialogFooter, DialogHeader } from "../ui";
 import { Modal } from "./BaseModal";
 import { CollectionConfig, CollectionSlug } from "@vexcms/core";
@@ -30,13 +30,32 @@ import { parseAsBoolean, useQueryState } from "nuqs";
  * <CreateDocumentModal collection={postsCollection} />
  * ```
  */
-export function CreateDocumentModal<TSlug extends CollectionSlug = CollectionSlug>({
+export function CreateDocumentModal<
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TSlug extends CollectionSlug = CollectionSlug,
+>({
   collection,
 }: {
-  collection: CollectionConfig<TSlug>;
+  collection: CollectionConfig<TFieldMeta, TCollectionMeta, TSlug>;
 }) {
   // eslint-disable-next-line no-unused-vars
   const [_, setOpen] = useQueryState(MODALS.createDocument.urlParam, parseAsBoolean);
+
+  // Guards the window between a submit attempt and `useVexMutation`'s
+  // `isPending`, which only flips true *after* TanStack Form's async field
+  // validation resolves (BUGS-REPORT MODAL-1/MODAL-2). `isSubmittingRef` is
+  // read synchronously inside the capture-phase submit handler below — two
+  // `submit` events fired back-to-back never get a React re-render in
+  // between, so a `disabled`/`dismissible` prop driven only by state cannot
+  // stop the second one. `isSubmitting` mirrors the ref into render so the
+  // submit button and the modal's dismissibility can react to it.
+  const isSubmittingRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const endSubmit = () => {
+    isSubmittingRef.current = false;
+    setIsSubmitting(false);
+  };
 
   const { mutateAsync, isPending } = useVexMutation({
     collection: collection.slug,
@@ -51,19 +70,39 @@ export function CreateDocumentModal<TSlug extends CollectionSlug = CollectionSlu
     collection,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onSubmit: async ({ value }: { value: any }) => {
-      await mutateAsync({ collection: collection.slug, data: value });
+      // `endSubmit` (not a trailing `finally` around the whole body) so the
+      // guard clears *before* `setOpen(null)` clears the URL param — freeing
+      // it after would force an extra render that races the URL-driven
+      // close in `NuqsTestingAdapter`'s memoryless mode.
+      try {
+        await mutateAsync({ collection: collection.slug, data: value });
+      } finally {
+        endSubmit();
+      }
       await setOpen(null);
     },
+    // TanStack Form skips `onSubmit` entirely when validation fails, so the
+    // in-flight guard above needs its own release on that path too.
+    onSubmitInvalid: endSubmit,
   });
 
   const dialogRef = useRef<HTMLDivElement>(null);
 
   return (
-    <Modal urlParam={MODALS.createDocument.urlParam}>
+    <Modal urlParam={MODALS.createDocument.urlParam} dismissible={!isSubmitting}>
       <DialogContent
         ref={dialogRef}
         initialFocus={dialogRef}
         className="flex h-[50svh] w-[50svw] flex-col"
+        onSubmitCapture={(event) => {
+          if (isSubmittingRef.current) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
+          isSubmittingRef.current = true;
+          setIsSubmitting(true);
+        }}
       >
         <AppForm form={form} className="flex h-full flex-col overflow-hidden">
           <DialogHeader className="px-2 pb-4">Create {collection.labels.singular}</DialogHeader>
@@ -74,7 +113,7 @@ export function CreateDocumentModal<TSlug extends CollectionSlug = CollectionSlu
             />
           </div>
           <DialogFooter className="p-1">
-            <Button isPending={isPending} type="submit">
+            <Button isPending={isPending || isSubmitting} type="submit">
               {MODALS.createDocument.label}
             </Button>
             <DialogClose render={<Button variant="outline">Cancel</Button>} />

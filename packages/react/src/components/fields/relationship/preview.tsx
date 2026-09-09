@@ -8,8 +8,14 @@ import type { ComponentType } from "react";
 /**
  * Resolves which preview component to use for a relationship rendering context.
  *
- * Precedence: field-level override > target collection's preview > default.
- * The default renders `doc[useAsTitle] ?? doc._id` as plain text.
+ * Precedence: field-level override, else the default text preview. Target
+ * collections do not support their own preview override — `targetCollection`
+ * is sourced from the sanitized `ClientVexConfig` (`sanitizeConfigForClient`
+ * strips every function, including component references, before the config
+ * reaches the client), so a collection-level `admin.components.preview`
+ * could never resolve to a real component in the browser. The default
+ * renders `doc[useAsTitle] ?? doc._id` as plain text, cut at 77 characters
+ * with the full label on `title`.
  *
  * @param props - Input props.
  * @param props.fieldDef - The resolved relationship field definition.
@@ -21,12 +27,15 @@ export function resolveRelationshipPreview(props: {
   targetCollection: CollectionConfig | undefined;
 }): ComponentType<RelationshipPreviewProps> {
   return (props.fieldDef.admin.components?.preview ??
-    props.targetCollection?.admin.components?.preview ??
     DefaultRelationshipPreview) as ComponentType<RelationshipPreviewProps>;
 }
 
 function DefaultRelationshipPreview({ doc, config }: RelationshipPreviewProps) {
   const useAsTitle = config.admin.useAsTitle;
   const label = String((doc as Record<string, unknown>)[useAsTitle] ?? doc._id);
-  return <span className="text-[13px] text-foreground">{label}</span>;
+  return (
+    <span className="text-[13px] text-foreground" title={label}>
+      {label.length > 77 ? `${label.slice(0, 77)}...` : label}
+    </span>
+  );
 }

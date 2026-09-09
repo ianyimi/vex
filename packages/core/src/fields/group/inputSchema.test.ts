@@ -27,4 +27,17 @@ describe("groupFieldToInputSchema", () => {
     const result = schema.parse(undefined);
     expect(result).toBeDefined();
   });
+
+  it("rejects a missing value on a required field with a 'required' message", () => {
+    const field = group({
+      required: true,
+      fields: { title: text({ required: true }) },
+    });
+    const schema = groupFieldToInputSchema({ field });
+    const result = schema.safeParse(undefined);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/required/i);
+    }
+  });
 });

@@ -12,7 +12,8 @@ import {
 } from "@vexcms/core";
 import { FilePreview } from "../../media/FilePreview";
 import { get } from "@vexcms/core/client";
-import { InputTag, TypedFieldApi } from "../../form";
+import { InputTag } from "../../form/InputTag";
+import { TypedFieldApi } from "../../form/createFieldInput";
 import { useVexConfig } from "../../../context";
 import { cn } from "../../../styles/utils";
 import { GenericId } from "convex/values";
