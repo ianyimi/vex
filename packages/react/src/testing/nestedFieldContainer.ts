@@ -1,6 +1,6 @@
 import { type ComponentType, type ReactNode, createElement, useState } from "react";
 import { useForm } from "@tanstack/react-form";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -281,7 +281,7 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
             expect(formRef.current?.state.values).toEqual({ [FIELD_NAME]: seeded });
           });
 
-          it("cascades readOnly to the nested sub-field", () => {
+          it("cascades readOnly to the nested sub-field", async () => {
             const seeded = buildSeededValue({ container, childFixture });
             const { container: dom } = renderContainer({
               Component,
@@ -289,6 +289,11 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
               readOnly: true,
               initialValue: seeded,
             });
+            // A nested `upload` child renders Base UI's picker dialog, which
+            // settles its portal/backdrop state one tick after render. Without
+            // this flush that update lands after the test body has returned and
+            // React reports it as an unwrapped `act` update on stderr.
+            await act(async () => {});
             const controls = dom.querySelectorAll("button, input, select, textarea");
             expect(controls.length).toBeGreaterThan(0);
             controls.forEach((el) => {
@@ -367,7 +372,7 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
             expect(formRef.current?.state.values).toEqual({ [FIELD_NAME]: seeded });
           });
 
-          it("cascades readOnly to every nested control", () => {
+          it("cascades readOnly to every nested control", async () => {
             const seeded = buildSeededValue({ container, childFixture });
             const { container: dom } = renderContainer({
               Component,
@@ -375,6 +380,8 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
               readOnly: true,
               initialValue: seeded,
             });
+            // Same post-render Base UI dialog settle as the `group` branch above.
+            await act(async () => {});
             const controls = dom.querySelectorAll("button, input, select, textarea");
             expect(controls.length).toBeGreaterThan(0);
             controls.forEach((el) => {

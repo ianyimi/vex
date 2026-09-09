@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
-import type { CellComponentProps, RelationshipField, TDocument } from "@vexcms/core";
+import {
+  addLeadingSlash,
+  type CellComponentProps,
+  type RelationshipField,
+  type TDocument,
+} from "@vexcms/core";
 import { useVexConfig } from "../../../context/VexConfigContext";
+import { VexLink } from "../../ui";
 import { resolveRelationshipPreview } from "./preview";
 
 /**
@@ -42,26 +48,30 @@ export function RelationshipFieldCell<TData extends TDocument = TDocument>(
 
   const { row, fieldDef, fieldKey } = props;
   const config = useVexConfig();
+  const basePath = addLeadingSlash(config.basePath);
+  const href = `${basePath}/${props.collection.slug}/${props.row.original._id}`;
+  const wrap = (content: ReactNode) =>
+    props.isTitleField ? <VexLink href={href}>{content}</VexLink> : content;
 
   // SSR and initial hydration render — consistent placeholder prevents mismatch.
   if (!isMounted) {
-    return <span className="text-[13px] text-muted-foreground">—</span>;
+    return wrap(<span className="text-[13px] text-muted-foreground">—</span>);
   }
 
   const rawValue = row.original[fieldKey] as unknown[] | undefined;
 
   if (!rawValue || rawValue.length === 0) {
-    return <span className="text-[13px] text-muted-foreground">—</span>;
+    return wrap(<span className="text-[13px] text-muted-foreground">—</span>);
   }
 
   const isPopulated =
     typeof rawValue[0] === "object" && rawValue[0] !== null && "_id" in (rawValue[0] as object);
 
   if (!isPopulated) {
-    return (
-      <span className="text-[13px] text-muted-foreground">
+    return wrap(
+      <span className="text-[13px] text-muted-foreground" title={rawValue.join(", ")}>
         {rawValue.length} item{rawValue.length !== 1 ? "s" : ""}
-      </span>
+      </span>,
     );
   }
 
@@ -70,19 +80,19 @@ export function RelationshipFieldCell<TData extends TDocument = TDocument>(
 
   if (docs.length === 1) {
     const Preview = resolveRelationshipPreview({ fieldDef, targetCollection });
-    return (
+    return wrap(
       <Preview
         doc={docs[0]}
         fieldKey={fieldKey}
         config={(targetCollection ?? props.collection) as never}
-      />
+      />,
     );
   }
 
   const pluralLabel = targetCollection?.labels.plural ?? fieldDef.collection.slug;
-  return (
+  return wrap(
     <span className="text-[13px] text-foreground">
       {docs.length} {pluralLabel}
-    </span>
+    </span>,
   );
 }

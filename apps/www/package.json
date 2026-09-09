@@ -1,10 +1,10 @@
 {
   "name": "www",
-  "version": "0.1.0-alpha.13",
+  "version": "0.1.0-alpha.14",
   "private": true,
   "scripts": {
     "build": "next build",
-    "coverage": "vitest run --coverage",
+    "coverage": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run --coverage",
     "deploy:convex": "convex deploy",
     "dev": "next dev --port=3030",
     "format": "prettier --write .",
@@ -13,7 +13,7 @@
     "seed": "convex run seed:init",
     "seed:reinit": "convex run seed:reinit",
     "start": "next start",
-    "test": "vitest run",
+    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
     "typecheck": "tsc --noEmit",
     "vex:dev": "vex dev",
     "vex:generate": "vex dev --once",

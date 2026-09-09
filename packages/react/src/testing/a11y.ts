@@ -1,3 +1,4 @@
+import { act } from "@testing-library/react";
 import { configureAxe } from "vitest-axe";
 
 /**
@@ -93,7 +94,16 @@ export async function expectNoA11yViolations(
   container: Element,
   options?: { rules?: Record<string, { enabled: boolean }> },
 ): Promise<void> {
-  const results = (await runAxe(container, { rules: options?.rules })) as AxeRunResults;
+  // Wrapped in `act`: axe's scan is asynchronous, and a component tree
+  // containing a Base UI dialog (the upload picker, the blocks editor) settles
+  // its portal/backdrop/popup state during that await. Outside `act` React
+  // reports those as "An update to DialogRoot inside a test was not wrapped in
+  // act(...)" on stderr for every a11y case of every field type that renders
+  // one — noise, not a finding, since the scan already sees the settled tree.
+  let results = { violations: [] } as AxeRunResults;
+  await act(async () => {
+    results = (await runAxe(container, { rules: options?.rules })) as AxeRunResults;
+  });
   if (results.violations.length > 0) {
     throw new Error(
       `expected no accessibility violations, found ${results.violations.length}:\n${formatViolations(results.violations)}`,

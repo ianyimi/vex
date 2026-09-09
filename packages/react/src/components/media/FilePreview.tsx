@@ -82,7 +82,7 @@ export function FilePreview<TDoc extends VexMediaDocument = VexMediaDocument>({
     );
   }
 
-  const alt = mediaDoc.alt ?? mediaDoc.filename;
+  const alt = mediaDoc.alt || mediaDoc.filename;
   if (isImage && mediaDoc?.src) {
     return (
       <div

@@ -13,6 +13,12 @@ import { ModalSurfaceProvider } from "../../hooks/useModalSurface";
  *
  * @param props - Component props.
  * @param props.urlParam - The `nuqs` URL parameter key that drives open state.
+ * @param props.dismissible - Whether Escape, a backdrop click, or any
+ *   `DialogClose` trigger (a Cancel button, the corner close icon) may close
+ *   the dialog. Defaults to `true`. Set to `false` while an owned write is
+ *   in flight — Base UI still runs its internal close handling unless the
+ *   change event is canceled, so this vetoes it centrally rather than
+ *   leaving every dismissal vector (Escape/backdrop/Cancel) to guard itself.
  * @param props.children - `DialogContent` and any other `Dialog` children.
  * @returns A `Dialog` whose open state is bound to the URL search parameter.
  *
@@ -26,15 +32,20 @@ import { ModalSurfaceProvider } from "../../hooks/useModalSurface";
 export function Modal({
   urlParam,
   children,
+  dismissible = true,
   ...divProps
-}: { urlParam: string } & ComponentPropsWithRef<"div">) {
+}: { urlParam: string; dismissible?: boolean } & ComponentPropsWithRef<"div">) {
   const [open, setOpen] = useQueryState(urlParam, parseAsBoolean);
   return (
     <Dialog
       {...divProps}
       open={open ?? false}
-      onOpenChange={(open) => {
-        if (open) {
+      onOpenChange={(nextOpen, eventDetails) => {
+        if (!nextOpen && !dismissible) {
+          eventDetails.cancel();
+          return;
+        }
+        if (nextOpen) {
           setOpen(true);
         } else {
           setOpen(null);

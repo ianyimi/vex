@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import type { VexConfig } from "../../config";
 import type { DocumentBySlug } from "../../types/generated";
@@ -661,6 +661,11 @@ describe("find (server) — access constraints", () => {
   });
 
   test("caller's index displaces the access index: constraint still narrows via filter, full page", async () => {
+    // The collision this test sets up is exactly what `pickQueryIndex`'s dev diagnostic
+    // reports ("Access index ... cannot be applied: this query already uses ..."), so the
+    // warning firing is part of the contract under test, not incidental output. Spied and
+    // asserted below instead of left to print on stderr.
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const t = convexTest(schema, modules);
     const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       // Insertion/slug order deliberately interleaves non-featured docs
@@ -697,6 +702,10 @@ describe("find (server) — access constraints", () => {
     expect(docs).toHaveLength(3);
     expect(docs.every((d: any) => d.featured)).toBe(true);
     expect(docs.map((d: any) => d.slug)).toEqual(["c", "d", "e"]);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Access index "by_featured" cannot be applied'),
+    );
+    warnSpy.mockRestore();
   });
 });
 

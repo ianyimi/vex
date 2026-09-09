@@ -332,6 +332,12 @@ describe("defineAccess — dev-mode warnings", () => {
 
 describe("defineAccess — type-level", () => {
   it("rejects an unknown role key in permissions", () => {
+    // This is a COMPILE-time assertion — the `@ts-expect-error` below is the whole test.
+    // Calling `defineAccess` still runs the real runtime path, and vitest's NODE_ENV is
+    // "test", so the dev diagnostic for the deliberately-unknown role also fires and would
+    // print to stderr. Spied and silenced the same way the "dev-mode warnings" block above
+    // does; that block is where the message itself is asserted.
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     defineAccess({
       ...baseInput,
       roles: ["admin"] as const,
@@ -342,6 +348,7 @@ describe("defineAccess — type-level", () => {
         superuser: { [WILDCARD_KEY]: true },
       },
     });
+    warnSpy.mockRestore();
   });
 
   it("rejects an unknown action for a resource subject", () => {
@@ -727,7 +734,12 @@ describe("defineAccess — degenerate configs", () => {
     ).not.toThrow();
   });
 
+  // Both cases below force `withNodeEnv("development")` precisely so the dev diagnostic
+  // path runs, then assert the config still resolves. The warning firing is the point —
+  // "dev warning only" is the contract — so it is spied and silenced rather than left to
+  // print, matching the "dev-mode warnings" block that asserts the message text itself.
   it("does not throw for a permissions entry keyed to a role absent from `roles` (dev warning only)", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(() =>
       withNodeEnv("development", () =>
         defineAccess({
@@ -739,9 +751,12 @@ describe("defineAccess — degenerate configs", () => {
         }),
       ),
     ).not.toThrow();
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 
   it("does not throw for a permissions subject key naming no declared resource (dev warning only)", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(() =>
       withNodeEnv("development", () =>
         defineAccess({
@@ -750,6 +765,8 @@ describe("defineAccess — degenerate configs", () => {
         }),
       ),
     ).not.toThrow();
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 
   it("enabled: false does not short-circuit hard configuration validation — a colliding customResources key still throws", () => {

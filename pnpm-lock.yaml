@@ -207,6 +207,9 @@ catalogs:
     platejs:
       specifier: 52.3.21
       version: 52.3.21
+    pluralize-esm:
+      specifier: 9.0.5
+      version: 9.0.5
     prettier:
       specifier: 3.9.5
       version: 3.9.5
@@ -746,6 +749,9 @@ importers:
       nanoid:
         specifier: 'catalog:'
         version: 5.1.16
+      pluralize-esm:
+        specifier: 'catalog:'
+        version: 9.0.5
       zod:
         specifier: 'catalog:'
         version: 4.4.3
@@ -7333,6 +7339,10 @@ packages:
     peerDependencies:
       react: '>=18.0.0'
       react-dom: '>=18.0.0'
+
+  pluralize-esm@9.0.5:
+    resolution: {integrity: sha512-Kb2dcpMsIutFw2hYrN0EhsAXOUJTd6FVMIxvNAkZCMQLVt9NGZqQczvGpYDxNWCZeCWLHUPxQIBudWzt1h7VVA==}
+    engines: {node: '>=14.0.0'}
 
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
@@ -15803,6 +15813,8 @@ snapshots:
       - react-native
       - scheduler
       - use-sync-external-store
+
+  pluralize-esm@9.0.5: {}
 
   possible-typed-array-names@1.1.0: {}
 

@@ -152,3 +152,40 @@ commit.
 **Detail.** Found while investigating a developer-reported console error
 during the 2026-09-08 SSG-parity session; no dedicated research doc yet — the
 diagnosis above is the full assessment.
+
+---
+
+## Decorative-image escape hatch for media alt text
+
+**What.** A distinct way to declare `alt=""` as *deliberately* decorative — not
+just "nobody filled this in yet" — on `VexMediaDocument`.
+
+**Why.** `MEDIA-2`
+(`.agent/docs/specs/2026-09-08-react-coverage-expansion/BUGS-REPORT.md`) fixed
+`FilePreview`'s dead alt-text fallback (`??` never firing on a required
+`string`, so every unset-alt image rendered `alt=""`) by falling back to the
+filename whenever `alt` is empty: `mediaDoc.alt || mediaDoc.filename`. That
+fix is unconditional — it also overwrites a real, W3C-recommended `alt=""` on
+a genuinely decorative image (a divider, a background texture) with the
+filename, which screen readers then read aloud. Empty string is the only
+value `alt` can hold today, so "unset" and "deliberately decorative" are
+indistinguishable and the fix necessarily picks one meaning.
+
+**Lift.** Unassessed. The type change alone is small — `VexMediaDocument.alt`
+would need a way to express "decorative" distinct from `""` (e.g.
+`alt: string | null` with `null` reserved for decorative, matching the
+report's own suggestion) — but it is a breaking change to a published type,
+touches the upload path that seeds `alt` from the filename at creation
+time (`MediaUploadDropzone.tsx`), and needs an admin-panel affordance for a
+user to actually mark an image decorative rather than just leaving the field
+blank.
+
+**Why deferred.** Report open question #4, ratified out of scope for the
+`2026-09-08-react-bug-fixes` fix spec: fixing the dead fallback was in scope,
+designing a new "decorative" signal on top of it was not. The fallback fix
+ships now because it strictly improves the common case (alt text nobody
+filled in); the escape hatch needs its own design pass.
+
+**Detail.** `MEDIA-2` in
+`.agent/docs/specs/2026-09-08-react-coverage-expansion/BUGS-REPORT.md`, open
+question #4 in the same file.

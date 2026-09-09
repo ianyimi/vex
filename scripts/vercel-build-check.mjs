@@ -64,16 +64,27 @@ const files = execFileSync("git", ["ls-files", "-c", "-o", "--exclude-standard"]
   .filter(Boolean);
 ok(`${files.length} tracked + untracked-not-ignored files`);
 
+// `git ls-files -c` lists the INDEX, so a tracked file deleted in the working
+// tree is still listed while no longer existing on disk. A fresh clone of this
+// tree would not have it either (the deletion is part of the change under
+// test), so skip it rather than crashing the whole check on `statSync`.
+let deleted = 0;
+
 const work = mkdtempSync(join(tmpdir(), "vercel-build-check-"));
 console.log(`  workdir: ${work}`);
 for (const f of files) {
   const src = join(ROOT, f);
+  if (!existsSync(src)) {
+    deleted += 1;
+    continue;
+  }
   const dest = join(work, f);
   mkdirSync(dirname(dest), { recursive: true });
   // `git ls-files -o` collapses a wholly-untracked directory to a single
   // entry with a trailing slash, so entries are not guaranteed to be files.
   cpSync(src, dest, statSync(src).isDirectory() ? { recursive: true } : {});
 }
+if (deleted > 0) ok(`${deleted} tracked file(s) deleted in the working tree — skipped`);
 for (const guard of ["node_modules", "packages/core/dist", "packages/cli/dist"]) {
   if (existsSync(join(work, guard))) bad(`${guard} leaked into the pristine copy`);
 }

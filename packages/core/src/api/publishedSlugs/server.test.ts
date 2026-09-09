@@ -10,6 +10,12 @@ const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
 };
 
+// These calls pass no `access` option on purpose. `publishedSlugs`' own JSDoc tells a real
+// sitemap caller to pass `{ bypass: true }`, but that is for a caller who HAS a resolved
+// config with an access matrix to bypass. No `config` is threaded here, so RBAC is already
+// off and `bypass` would change nothing — `resolveAccessCall` says exactly that on stderr
+// ("the flag changed nothing. Either drop it..."). Slug shaping, not RBAC, is what these
+// tests cover; the bypass path is exercised where a config actually exists.
 describe("publishedSlugs (server)", () => {
   test("returns slug and _creationTime for every document with a string slug", async () => {
     const t = convexTest(schema, modules);
@@ -18,7 +24,6 @@ describe("publishedSlugs (server)", () => {
       await ctx.db.insert("posts", { slug: "second", title: "Second" });
 
       const result = await publishedSlugs({
-        access: { bypass: true },
         collection: "posts",
         ctx,
       });
@@ -41,7 +46,6 @@ describe("publishedSlugs (server)", () => {
       await ctx.db.insert("authors", { name: "Has slug", slug: "has-slug" });
 
       const result = await publishedSlugs({
-        access: { bypass: true },
         collection: "authors",
         ctx,
       });
@@ -58,7 +62,6 @@ describe("publishedSlugs (server)", () => {
       await ctx.db.insert("posts", { slug: "only", title: "Only" });
 
       const result = await publishedSlugs({
-        access: { bypass: true },
         collection: "posts",
         ctx,
       });
@@ -75,7 +78,6 @@ describe("publishedSlugs (server)", () => {
       await ctx.db.insert("posts", { slug: "b", title: "B" });
 
       const result = await publishedSlugs({
-        access: { bypass: true },
         collection: "posts",
         ctx,
         limit: 1,

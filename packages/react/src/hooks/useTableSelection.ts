@@ -78,14 +78,12 @@ export function useTableSelection(props: UseTableSelectionProps = {}): UseTableS
           next.add(id);
         }
 
-        // If no items selected after toggle, reset mode to "none"
-        if (next.size === 0) {
-          setMode("none");
-        } else if (mode === "none") {
-          setMode("page");
-        }
+        // Compute the post-toggle mode into a local so onSelectionChange
+        // reports the state after this change, not the stale closure value.
+        const nextMode: SelectionMode = next.size === 0 ? "none" : mode === "none" ? "page" : mode;
+        setMode(nextMode);
 
-        onSelectionChange?.({ selectedIds: next, mode });
+        onSelectionChange?.({ selectedIds: next, mode: nextMode });
         return next;
       });
     },
@@ -137,16 +135,17 @@ export function useTableSelection(props: UseTableSelectionProps = {}): UseTableS
 
   const isRowSelected = useCallback(
     (id: string) => {
-      if (mode === "all") return true;
-      if (mode === "inverse") return !selectedIds.has(id);
+      // "all" and "inverse" both represent selectedIds as an exclusion
+      // set — "all except these ids" — so a row is selected unless it was
+      // explicitly toggled out.
+      if (mode === "all" || mode === "inverse") return !selectedIds.has(id);
       return selectedIds.has(id);
     },
     [mode, selectedIds],
   );
 
   const getSelectionCount = useCallback(() => {
-    if (mode === "all") return totalCount ?? 0;
-    if (mode === "inverse") return (totalCount ?? 0) - selectedIds.size;
+    if (mode === "all" || mode === "inverse") return (totalCount ?? 0) - selectedIds.size;
     return selectedIds.size;
   }, [mode, selectedIds, totalCount]);
 

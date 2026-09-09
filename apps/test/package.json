@@ -9,8 +9,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "coverage": "vitest run --coverage",
+    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+    "coverage": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run --coverage",
     "secret:create": "openssl rand -base64 32 | tr -d '\\n' | tee /dev/stderr | pbcopy && echo '\\n✓ Secret copied to clipboard'"
   },
   "dependencies": {

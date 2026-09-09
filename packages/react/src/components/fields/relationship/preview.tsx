@@ -14,7 +14,8 @@ import type { ComponentType } from "react";
  * strips every function, including component references, before the config
  * reaches the client), so a collection-level `admin.components.preview`
  * could never resolve to a real component in the browser. The default
- * renders `doc[useAsTitle] ?? doc._id` as plain text.
+ * renders `doc[useAsTitle] ?? doc._id` as plain text, cut at 77 characters
+ * with the full label on `title`.
  *
  * @param props - Input props.
  * @param props.fieldDef - The resolved relationship field definition.
@@ -32,5 +33,9 @@ export function resolveRelationshipPreview(props: {
 function DefaultRelationshipPreview({ doc, config }: RelationshipPreviewProps) {
   const useAsTitle = config.admin.useAsTitle;
   const label = String((doc as Record<string, unknown>)[useAsTitle] ?? doc._id);
-  return <span className="text-[13px] text-foreground">{label}</span>;
+  return (
+    <span className="text-[13px] text-foreground" title={label}>
+      {label.length > 77 ? `${label.slice(0, 77)}...` : label}
+    </span>
+  );
 }

@@ -1,5 +1,11 @@
-import type { CellComponentProps, TDocument } from "@vexcms/core";
-import type { CheckboxField } from "@vexcms/core";
+import {
+  addLeadingSlash,
+  TDocument,
+  type CellComponentProps,
+  type CheckboxField,
+} from "@vexcms/core";
+import { VexLink } from "../../ui";
+import { useVexConfig } from "../../../context/VexConfigContext";
 
 /**
  * Checkbox field cell component for the data-table list view.
@@ -21,5 +27,13 @@ export function CheckboxFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<CheckboxField, TData>,
 ) {
   if (props.value === undefined || props.value === null) return <span>—</span>;
-  return <span>{props.value ? "Yes" : "No"}</span>;
+  const config = useVexConfig();
+  const basePath = addLeadingSlash(config.basePath);
+  const content = <span>{props.value ? "Yes" : "No"}</span>;
+  if (!props.isTitleField) return content;
+  return (
+    <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+      {content}
+    </VexLink>
+  );
 }
