@@ -152,13 +152,21 @@ export function usePaginatedQuery<
   const endIndex = (clientPageIndex + 1) * (clientPageSize ?? query.paginationOpts.numItems);
   const visibleResults = allResults.slice(startIndex, endIndex);
   const needsServerFetch = endIndex >= allResults.length && !isDone;
+  const clientIsDone = isDone && endIndex >= allResults.length;
 
   function loadMore() {
+    // `clientPageIndex` always advances first so an already-accumulated page
+    // is revealed on THIS call, not the next one (HOOK-4): the prior
+    // implementation only advanced the index once the accumulator already
+    // covered the visible window, so a fetch-triggering call revealed
+    // nothing until a second call caught up. A server fetch is still queued
+    // whenever the (pre-advance) window was already at the edge of loaded
+    // data, so the newly-revealed slice keeps filling in behind it.
+    if (clientIsDone) return;
     if (needsServerFetch && result.continueCursor) {
       setCursor(result.continueCursor);
-    } else {
-      setClientPageIndex((prev) => prev + 1);
     }
+    setClientPageIndex((prev) => prev + 1);
   }
 
   // Fetch current page
@@ -166,7 +174,7 @@ export function usePaginatedQuery<
   // at runtime, so it queries the generic paginated endpoint rather than the
   // per-slug `find()` wrapper, which narrows only for a literal slug. The
   // caller asserts the document shape via `TDocument`; see the memo below.
-  const { data, isPending } = useQuery({
+  const { data, isPending, isLoading, isError } = useQuery({
     ...convexQuery(vexConvexApi.findPaginated, {
       ...query,
       paginationOpts: {
@@ -180,20 +188,23 @@ export function usePaginatedQuery<
 
   // Extract pagination result
   const result = useMemo<PaginationResult<TDocument>>(() => {
-    // Empty state for "no data yet" / array response. `continueCursor: ""` is a
-    // falsy placeholder, never a real cursor: it is only read for truthiness in
+    // Empty placeholder for "no data yet". `continueCursor: ""` is a falsy
+    // placeholder, never a real cursor: it is only read for truthiness in
     // `loadMore`, so `setCursor` never receives it and Convex only ever sees
-    // `null` (first page) or a genuine cursor. `isDone: true` is the actual
-    // "no further pages" signal.
+    // `null` (first page) or a genuine cursor. `data` is absent both while
+    // the query is still loading and after it rejects, so `isDone` can't be
+    // inferred from its mere absence (HOOK-6) — it must default to `false`
+    // ("not done") and only the array-response branch below, which is
+    // genuinely a complete non-paginated result, overrides it to `true`.
     const empty = {
       page: [] as TDocument[],
       continueCursor: "",
-      isDone: true,
+      isDone: false,
     };
-    if (!data) return empty;
-    if (Array.isArray(data)) return { ...empty, page: data as TDocument[] };
+    if (isLoading || isError || !data) return empty;
+    if (Array.isArray(data)) return { ...empty, page: data as TDocument[], isDone: true };
     return data as PaginationResult<TDocument>;
-  }, [data]);
+  }, [data, isLoading, isError]);
 
   const { totalDocs } = useTotalDocs({
     initialData: initialData,
@@ -216,7 +227,6 @@ export function usePaginatedQuery<
     }
   }, [result.page, result.isDone, cursor]);
 
-  const clientIsDone = isDone && endIndex >= allResults.length;
   return {
     results: visibleResults,
     totalDocs,

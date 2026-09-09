@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "slug": "2026-09-08-react-coverage-expansion",
+  "updated": "2026-09-09T01:31:19.571Z",
+  "groups": {
+    "Step 1": {
+      "attempts": 5,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "Statements   : 58.27% ( 1102/1891 )"
+      ]
+    },
+    "Step 2": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "34 tests, 5 failed — recorded to findings.md"
+      ]
+    },
+    "Step 3": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "10 tests, 4 failed — recorded to findings.md"
+      ]
+    },
+    "Step 4": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "54 tests, 8 failed — recorded to findings.md"
+      ]
+    },
+    "Step 5": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "80 tests, 30 failed — recorded to findings.md",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  4 passed (4)",
+        "      Tests  18 passed (18)",
+        "   Start at  17:57:39",
+        "   Duration  1.35s (transform 825ms, setup 493ms, import 2.87s, tests 460ms, environment 1.13s)"
+      ]
+    },
+    "Step 6": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "57 tests, 5 failed — recorded to findings.md"
+      ]
+    },
+    "Step 7": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/react@0.1.0-alpha.13 build /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
+        "CLI Building entry: {\"index\":\"src/index.ts\",\"testing/index\":\"src/testing/index.ts\"}",
+        "CLI Using tsconfig: tsconfig.json",
+        "CLI tsup v8.5.1",
+        "CLI Using tsup config: /Users/zaye/Documents/Projects/vex.git/dev/packages/react/tsup.config.ts",
+        "CLI Target: es2022",
+        "CLI Cleaning output folder",
+        "ESM Build start",
+        "ESM dist/index.js              33.14 KB",
+        "ESM dist/testing/index.js      130.71 KB",
+        "ESM dist/chunk-GEW24EZV.js     321.09 KB",
+        "ESM dist/index.js.map          64.86 KB",
+        "ESM dist/testing/index.js.map  343.43 KB",
+        "ESM dist/chunk-GEW24EZV.js.map 697.09 KB",
+        "ESM ⚡️ Build success in 41ms",
+        "906 tests, 35 failed — recorded to findings.md",
+        "33 tests, 0 failed — recorded to findings.md"
+      ]
+    },
+    "Step 8": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `packages/tsconfig` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `1.44.0` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@convex-dev/better-auth` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@convex-dev/react-query` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@base-ui/react` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `lucide-react` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@vexcms/richtext-plate` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `apps/docs` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@vitest/coverage-v8` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `convex-test` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@testing-library/react` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@typescript-eslint` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "ℹ️  INFO   tech-stack.md last verified at aa56f385cb68ac94d76ba77cb27366592efc4a64",
+        "          → review it, then update verified_at to the current sha",
+        "ℹ️  INFO   Spec 2026-08-18-client-wrapper-return-types: open checkboxes, no commits on its paths in 14 days",
+        "✅ OK     decisions-inconsistent",
+        "✅ OK     naming-violations",
+        "ℹ️  INFO   directory-structure.md generated at 60646d3, tree changed since",
+        "          → harness struct",
+        "✅ OK     index-stale",
+        "⚠️  WARN   .agent/ changed since last sync (15 files)",
+        "          → harness sync",
+        "✅ OK     context-rules-stale",
+        "✅ OK     stale-dependencies",
+        "✅ OK     context-coverage",
+        "ℹ️  INFO   .agent is a real directory — tracked per-worktree, it can drift and merge-conflict",
+        "          → move it to ../agents and re-run `harness install` to link it centrally"
+      ]
+    },
+    "Step 9": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": []
+    }
+  }
+}

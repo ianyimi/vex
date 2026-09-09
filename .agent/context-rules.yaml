@@ -31,6 +31,7 @@ rules:
     inject:
       - docs/standards/testing/README.md
       - docs/standards/testing/convex-integration-testing.md
+      - docs/standards/testing/coverage-policy.md
       - docs/standards/testing/field-type-testing.md
       - docs/standards/testing/react-test-factories.md
       - docs/standards/testing/test-structure.md

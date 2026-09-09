@@ -1,6 +1,11 @@
-import type { CellComponentProps, TDocument } from "@vexcms/core";
-import type { SelectField } from "@vexcms/core";
-import { Badge } from "../../ui";
+import {
+  addLeadingSlash,
+  TDocument,
+  type CellComponentProps,
+  type SelectField,
+} from "@vexcms/core";
+import { Badge, VexLink } from "../../ui";
+import { useVexConfig } from "../../../context/VexConfigContext";
 
 /**
  * Select field cell component for the data-table list view.
@@ -21,13 +26,24 @@ import { Badge } from "../../ui";
 export function SelectFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<SelectField, TData>,
 ) {
-  const value = props.value ?? [];
-  const fields = props.fieldDef.options.filter((o) => value.includes(o.value));
-  return (
-    <div className="flex gap-1">
-      {fields.map((f) => (
-        <Badge key={f.value}>{f.label}</Badge>
+  if (props.value === undefined || props.value === null) return <span>—</span>;
+  const config = useVexConfig();
+  const basePath = addLeadingSlash(config.basePath);
+  const fields = props.value
+    .map((v) => props.fieldDef.options.find((o) => o.value === v))
+    .filter((option): option is SelectField["options"][number] => option != null);
+  const joinedLabels = fields.map((f) => f.label).join(", ");
+  const content = (
+    <div className="flex gap-1" title={joinedLabels}>
+      {fields.map((f, index) => (
+        <Badge key={`${f.value}-${index}`}>{f.label}</Badge>
       ))}
     </div>
+  );
+  if (!props.isTitleField) return content;
+  return (
+    <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+      {content}
+    </VexLink>
   );
 }

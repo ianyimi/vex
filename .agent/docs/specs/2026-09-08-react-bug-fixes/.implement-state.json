@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "slug": "2026-09-08-react-bug-fixes",
+  "updated": "2026-09-09T03:46:22.205Z",
+  "groups": {
+    "Step 1": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "No test files found, exiting with code 0",
+        "filter: packages/react/src/components/fields/text/Cell.test.tsx, packages/react/src/components/fields/array/Cell.test.tsx, packages/react/src/components/fields/date/Cell.test.tsx, packages/react/src/components/fields/url/Cell.test.tsx, packages/react/src/components/fields/color/Cell.test.tsx, packages/react/src/components/fields/number/Cell.test.tsx, packages/react/src/components/fields/select/Cell.test.tsx",
+        "include: src/**/*.test.ts, src/**/*.test.tsx",
+        "exclude:  **/node_modules/**, **/.git/**"
+      ]
+    },
+    "Step 10": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "  inputSchema.ts   |     100 |     87.5 |     100 |     100 | 90                ",
+        " src/fields/date   |   83.33 |    66.66 |     100 |   83.33 |                   ",
+        "  inputSchema.ts   |      80 |    66.66 |     100 |      80 | 41,44             ",
+        " src/fields/group  |     100 |    83.33 |     100 |     100 |                   ",
+        "  inputSchema.ts   |     100 |       75 |     100 |     100 | 47                ",
+        " ...s/inputSchemas |   66.66 |     64.7 |     100 |   66.66 |                   ",
+        "  index.ts         |   56.25 |    53.84 |     100 |   56.25 | 53-55,59-66       ",
+        " src/fields/number |    90.9 |     92.3 |     100 |    90.9 |                   ",
+        "  config.ts        |      75 |    83.33 |     100 |      75 | 55                ",
+        "  inputSchema.ts   |   94.11 |       95 |     100 |   94.11 | 58                ",
+        " src/fields/url    |     100 |       75 |     100 |     100 |                   ",
+        "  inputSchema.ts   |     100 |       75 |     100 |     100 | 55                ",
+        " ...lds/validators |   68.42 |    66.66 |     100 |   68.42 |                   ",
+        "  index.ts         |    62.5 |    61.53 |     100 |    62.5 | 55,59,63-68       ",
+        " src/globals       |   69.56 |    56.66 |   77.77 |    73.8 |                   ",
+        "  interfaceGen.ts  |   80.76 |     62.5 |   83.33 |   83.33 | 29,32,37-38       ",
+        "  utils.ts         |   35.71 |     12.5 |      50 |   41.66 | 23-32             ",
+        " src/media         |   78.18 |    54.83 |   71.42 |   83.33 |                   ",
+        "  config.ts        |   94.44 |    80.95 |     100 |   93.93 | 109,114           ",
+        "  utils.ts         |       0 |        0 |       0 |       0 | 19-42             ",
+        " src/media/api     |       0 |        0 |       0 |       0 |                   ",
+        "  mutations.ts     |       0 |        0 |       0 |       0 | 38-174            ",
+        "  queries.ts       |       0 |        0 |       0 |       0 | 36-63             ",
+        "  server.ts        |       0 |      100 |       0 |       0 | 63-147            ",
+        " src/schema        |   76.47 |      100 |      50 |   76.47 |                   ",
+        "  migrate.ts       |       0 |      100 |       0 |       0 | 41-93             ",
+        " src/types         |      94 |    88.46 |   84.21 |   93.47 |                   ",
+        "  ...teVexTypes.ts |      94 |    88.46 |   84.21 |   93.47 | 112,138-139       ",
+        "-------------------|---------|----------|---------|---------|-------------------",
+        "=============================== Coverage summary ===============================",
+        "Statements   : 83.87% ( 1311/1563 )",
+        "Branches     : 81.6% ( 954/1169 )",
+        "Functions    : 82.7% ( 287/347 )",
+        "Lines        : 84.73% ( 1193/1408 )",
+        "================================================================================",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  1 passed (1)",
+        "      Tests  9 passed (9)",
+        "   Start at  20:38:05",
+        "   Duration  2.40s (transform 392ms, setup 58ms, import 1.57s, tests 571ms, environment 147ms)"
+      ]
+    },
+    "Step 11": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `packages/create-vexcms` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `packages/tsconfig` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `1.44.0` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@convex-dev/better-auth` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@convex-dev/react-query` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@base-ui/react` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `lucide-react` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@vexcms/richtext-plate` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `apps/docs` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@vitest/coverage-v8` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `convex-test` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@testing-library/react` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "⚠️  WARN   tech-stack.md lists `@typescript-eslint` but package.json does not declare it",
+        "          → update .agent/docs/product/tech-stack.md",
+        "ℹ️  INFO   tech-stack.md last verified at aa56f385cb68ac94d76ba77cb27366592efc4a64",
+        "          → review it, then update verified_at to the current sha",
+        "ℹ️  INFO   Spec 2026-08-18-client-wrapper-return-types: open checkboxes, no commits on its paths in 14 days",
+        "✅ OK     decisions-inconsistent",
+        "✅ OK     naming-violations",
+        "✅ OK     structure-stale",
+        "✅ OK     index-stale",
+        "✅ OK     shims-stale",
+        "✅ OK     context-rules-stale",
+        "✅ OK     stale-dependencies",
+        "✅ OK     context-coverage",
+        "ℹ️  INFO   .agent is a real directory — tracked per-worktree, it can drift and merge-conflict",
+        "          → move it to ../agents and re-run `harness install` to link it centrally"
+      ]
+    },
+    "Step 2": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "No test files found, exiting with code 0",
+        "filter: packages/react/src/components/fields/number/Cell.test.tsx, packages/react/src/components/fields/checkbox/Cell.test.tsx, packages/react/src/components/fields/date/Cell.test.tsx, packages/react/src/components/fields/select/Cell.test.tsx, packages/react/src/components/fields/upload/Cell.test.tsx, packages/react/src/components/fields/relationship/Cell.test.tsx, packages/react/src/components/fields/array/Cell.test.tsx, packages/react/src/components/fields/group/Cell.test.tsx, packages/react/src/components/fields/blocks/Cell.test.tsx, packages/react/src/components/fields/color/Cell.test.tsx",
+        "include: src/**/*.test.ts, src/**/*.test.tsx",
+        "exclude:  **/node_modules/**, **/.git/**"
+      ]
+    },
+    "Step 3": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "No test files found, exiting with code 0",
+        "filter: packages/react/src/components/fields/relationship/Cell.test.tsx, packages/react/src/components/fields/select/Cell.test.tsx, packages/react/src/components/fields/array/Cell.test.tsx, packages/react/src/components/fields/blocks/Cell.test.tsx, packages/react/src/components/fields/upload/Cell.test.tsx, packages/react/src/components/fields/group/Cell.test.tsx",
+        "include: src/**/*.test.ts, src/**/*.test.tsx",
+        "exclude:  **/node_modules/**, **/.git/**"
+      ]
+    },
+    "Step 4": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  10 passed (10)",
+        "      Tests  90 passed (90)",
+        "   Start at  20:33:37",
+        "   Duration  1.79s (transform 691ms, setup 1.80s, import 2.79s, tests 1.24s, environment 4.49s)"
+      ]
+    },
+    "Step 5": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  1 passed (1)",
+        "      Tests  20 passed (20)",
+        "   Start at  20:33:43",
+        "   Duration  323ms (transform 26ms, setup 61ms, import 29ms, tests 16ms, environment 153ms)"
+      ]
+    },
+    "Step 6": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  3 passed (3)",
+        "      Tests  27 passed (27)",
+        "   Start at  20:35:15",
+        "   Duration  2.17s (transform 903ms, setup 244ms, import 3.51s, tests 1.11s, environment 577ms)"
+      ]
+    },
+    "Step 7": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  3 passed (3)",
+        "      Tests  24 passed (24)",
+        "   Start at  20:38:13",
+        "   Duration  2.64s (transform 1.17s, setup 246ms, import 5.11s, tests 1.38s, environment 584ms)"
+      ]
+    },
+    "Step 8": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  3 passed (3)",
+        "      Tests  22 passed (22)",
+        "   Start at  20:38:21",
+        "   Duration  2.26s (transform 1.34s, setup 240ms, import 5.31s, tests 356ms, environment 578ms)"
+      ]
+    },
+    "Step 9": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  4 passed (4)",
+        "      Tests  36 passed (36)",
+        "   Start at  20:36:16",
+        "   Duration  1.97s (transform 811ms, setup 334ms, import 5.85s, tests 330ms, environment 861ms)"
+      ]
+    }
+  }
+}

@@ -6,7 +6,7 @@ import { useVexConfig } from "../../../context/VexConfigContext";
  * Text field cell component for the data-table list view.
  *
  * Renders the string value of a text field. Null/undefined values show an
- * em-dash placeholder. Values longer than 80 characters are truncated with
+ * em-dash placeholder. Values longer than 77 characters are truncated with
  * the full text shown on hover via the `title` attribute.
  *
  * @param props - Component props
@@ -24,6 +24,7 @@ export function TextFieldCell<TData extends TDocument = TDocument>(
 ) {
   const config = useVexConfig();
   const basePath = addLeadingSlash(config.basePath);
+  if (props.value === undefined || props.value === null) return <span>—</span>;
   if (props.isTitleField) {
     return (
       <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>

@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/react",
-  "version": "0.1.0-alpha.13",
+  "version": "0.1.0-alpha.14",
   "description": "React admin components and hooks for VexCMS",
   "keywords": [
     "cms",
@@ -45,9 +45,9 @@
     "dev": "tsup --watch",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
-    "test": "vitest run",
-    "coverage": "vitest run --coverage",
-    "test:watch": "vitest"
+    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+    "coverage": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run --coverage",
+    "test:watch": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",

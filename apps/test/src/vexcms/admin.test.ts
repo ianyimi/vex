@@ -20,6 +20,12 @@ const pageSlugFixture: FieldFixture<TextField, string> = {
 };
 
 runVexReactSuite({
+  // Dogfood host: `sections` is deliberately OMITTED so this app runs every
+  // `VexSuiteSection` there is — and automatically picks up any section added to
+  // the kit later, which an enumerated list here would silently skip. This is the
+  // one place the whole contract runs against the real built `@vexcms/react`
+  // output, so it is where ADR-009-class dual-context defects surface.
+  // apps/www names a narrower, faster subset instead (see its own admin.test.ts).
   // Real VexAccessConfig this app ships — resolves through the real
   // VexAccessProvider, not a hand-typed stand-in.
   access,

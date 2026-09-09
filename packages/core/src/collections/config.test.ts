@@ -114,3 +114,46 @@ describe("defineCollection — an already-declared updatedAt is left alone", () 
     expect(() => defineCollection({ slug: "user", fields: authFields })).not.toThrow();
   });
 });
+
+describe("defineCollection — label derivation (CORE-LABEL-1)", () => {
+  // `singular` is derived by singularizing the slug before title-casing it;
+  // `plural` is just the title-cased slug itself, since slugs are plural by
+  // convention. `it.each` pins the exact strings so a regression back to
+  // title-casing the raw slug for `singular` (dropping "Posts" instead of
+  // "Post"), or reintroducing `plural()` at this call site (compounding
+  // "Posts" into "Postses"), fails loudly.
+  it.each([
+    // regular
+    ["posts", "Post", "Posts"],
+    ["pages", "Page", "Pages"],
+    // irregular
+    ["people", "Person", "People"],
+    ["children", "Child", "Children"],
+    ["shelves", "Shelf", "Shelves"],
+    // uncountable
+    ["media", "Media", "Media"],
+    ["news", "News", "News"],
+    ["series", "Series", "Series"],
+  ])("derives labels for slug %j when labels are omitted", (slug, singular, plural) => {
+    const collection = defineCollection({ slug, fields: { title: text({ required: true }) } });
+    expect(collection.labels).toEqual({ singular, plural });
+  });
+
+  it("passes explicitly-provided labels through verbatim, untouched by derivation", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      labels: { singular: "Article", plural: "Articles" },
+    });
+    expect(collection.labels).toEqual({ singular: "Article", plural: "Articles" });
+  });
+
+  it("derives the omitted half when only one of singular/plural is provided", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      labels: { singular: "Article" },
+    });
+    expect(collection.labels).toEqual({ singular: "Article", plural: "Posts" });
+  });
+});

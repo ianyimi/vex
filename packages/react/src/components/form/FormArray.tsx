@@ -136,7 +136,18 @@ export function FormArray<
           }}
         >
           {items.map((_, index) => (
-            <Draggable key={index} id={`${name}[${index}]`} index={index}>
+            // `isDragDisabled` when read-only, so @hello-pangea/dnd nulls this
+            // item's `dragHandleProps` and stops expecting a registered handle.
+            // Without it the read-only `DragHandle` renders an inert div with no
+            // handle props while the `Draggable` is still registered, and the
+            // library logs "Unable to find drag handle" invariants on every
+            // read-only render.
+            <Draggable
+              key={index}
+              id={`${name}[${index}]`}
+              index={index}
+              isDragDisabled={readOnly}
+            >
               <div className="flex items-center gap-2 px-2">
                 <DragHandle disabled={readOnly} />
                 <div className="flex-1">
