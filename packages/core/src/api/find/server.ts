@@ -32,6 +32,8 @@ import {
   type QueryIndex,
   resolveAccessConstraint,
   resolveAccessIndex,
+  resolveFieldPermissions,
+  stripDeniedFields,
 } from "../../access";
 import { resolveAccessCall } from "../utils";
 
@@ -279,6 +281,20 @@ export async function find<
       }),
     );
   }
+
+  docs = docs.map((d) =>
+    stripDeniedFields(
+      d,
+      resolveFieldPermissions({
+        access,
+        user: args.auth?.user ?? null,
+        organization: args.auth?.organization,
+        resource,
+        action,
+        data: d,
+      }),
+    ),
+  );
 
   // Explicit populate takes precedence over depth (D11).
   const effectivePopulate =

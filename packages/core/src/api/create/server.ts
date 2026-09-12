@@ -84,6 +84,8 @@ export async function create<
       resource,
       action,
       data: args.data,
+      // No stored row yet, so any denied key present is a violation.
+      changes: args.data,
       throwOnDenied: true,
     });
   }

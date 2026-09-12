@@ -16,7 +16,7 @@ import { useDndContext } from "./DndProvider";
  *   const { itemValue, openItems, handleValueChange } = useAccordionDndState(
  *     name,
  *     index,
- *     fieldDef.defaultOpen !== false,
+ *     !fieldDef.admin.defaultCollapsed,
  *   );
  *
  * For block ITEMS (not the blocks field itself) pass the block's stable data id

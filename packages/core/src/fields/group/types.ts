@@ -1,6 +1,42 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
+import { BaseField, BaseFieldInput, FieldAdminConfig, FieldAdminConfigInput } from "../baseTypes";
 import { AdminField } from "../types";
+
+/**
+ * 'admin' field configuration input for a `group()` field.
+ */
+export interface GroupFieldAdminConfigInput extends FieldAdminConfigInput {
+  /**
+   * Whether the accordion fieldset starts COLLAPSED in the admin form.
+   *
+   * Defaults to `false`, so a group is expanded on load. Set `true` for
+   * secondary or rarely-edited groups (e.g. SEO metadata on a page) to reduce
+   * visual noise.
+   *
+   * Mirrors `blocks()`' option of the same name, and Payload's, so every
+   * collapsible field in a config reads the same way. Note this is the
+   * INVERSE of the top-level `defaultOpen` it replaced: `defaultOpen: false`
+   * is now `admin.defaultCollapsed: true`.
+   *
+   * Collapsing is NAVIGATION, not editing: a caller with read access but no
+   * write access can still expand the group to see its values, and every
+   * sub-field stays individually gated by `readOnly`.
+   */
+  defaultCollapsed?: boolean;
+}
+
+/**
+ * Resolved 'admin' field configuration for a `group()` field.
+ */
+export interface GroupFieldAdminConfig extends FieldAdminConfig {
+  /**
+   * Whether the accordion fieldset starts COLLAPSED in the admin form.
+   *
+   * Always present after `group()` applies its defaults; `false` unless the
+   * field opted in. See {@link GroupFieldAdminConfigInput.defaultCollapsed}.
+   */
+  defaultCollapsed: boolean;
+}
 
 /**
  * Configuration input for a `group()` field.
@@ -15,16 +51,17 @@ import { AdminField } from "../types";
  *   type:        "group",
  *   label:       "",      // inferred from the field key by defineCollection
  *   required:    false,
- *   defaultOpen: true,
  *   defaultValue: {},
  *   admin: {
- *     hidden:        false,
- *     readOnly:      false,
- *     position:      "main",
- *     width:         "full",
- *     cellAlignment: "left",
+ *     hidden:            false,
+ *     readOnly:          false,
+ *     position:          "main",
+ *     width:             "full",
+ *     cellAlignment:     "left",
+ *     defaultCollapsed:  false,
  *   }
  * }
+ * ```
  *
  * @example
  * ```ts
@@ -34,15 +71,15 @@ import { AdminField } from "../types";
  *     title:       text({ required: true }),
  *     description: text(),
  *   },
- *   defaultOpen: false,  // accordion starts collapsed
+ *   // Collapsed on load — secondary metadata, not the primary edit target.
+ *   admin: { defaultCollapsed: true },
  * })
+ * ```
  *
  * @see {@link GroupField} for the resolved output type
  * @see {@link group} for the config function that produces this type
  */
-export interface GroupFieldInput<
-  TFieldMeta extends {} = {},
-> extends BaseFieldInput<TFieldMeta> {
+export interface GroupFieldInput<TFieldMeta extends {} = {}> extends BaseFieldInput<TFieldMeta> {
   /**
    * Sub-fields that form the object's shape.
    *
@@ -53,14 +90,8 @@ export interface GroupFieldInput<
   fields: Record<string, AdminField>;
   /** Pre-filled value shown when creating a new document. Defaults to `{}`. */
   defaultValue?: Record<string, unknown>;
-  /**
-   * Whether the accordion fieldset starts open in the admin form.
-   *
-   * Defaults to `true`. Set `false` for secondary or rarely-edited groups
-   * (e.g. SEO metadata on a page) to reduce visual noise on load.
-   */
-  defaultOpen?: boolean;
   interfaceName?: string;
+  admin?: GroupFieldAdminConfigInput;
 }
 
 /**
@@ -74,16 +105,14 @@ export interface GroupFieldInput<
  * @see {@link GroupFieldInput} for the user-facing input type
  * @see {@link group} for the config function that produces this type
  */
-export interface GroupField<
-  TFieldMeta extends {} = {},
-> extends BaseField<TFieldMeta> {
+export interface GroupField<TFieldMeta extends {} = {}> extends BaseField<TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.group.type;
   /** Display label shown in the admin form. Always set — inferred from field key if not provided. */
   label: string;
   /** Whether this field is required in the database schema. */
   required: boolean;
   /** Resolved admin UI configuration with all defaults applied. */
-  admin: FieldAdminConfig;
+  admin: GroupFieldAdminConfig;
   /**
    * Sub-fields that form the object's shape.
    *
@@ -101,10 +130,4 @@ export interface GroupField<
   interfaceName?: string;
   /** Pre-filled value shown when creating a new document. */
   defaultValue: Record<string, unknown>;
-  /**
-   * Whether the accordion fieldset starts open in the admin form.
-   *
-   * Resolved value after defaults — always `true` unless explicitly set `false`.
-   */
-  defaultOpen: boolean;
 }

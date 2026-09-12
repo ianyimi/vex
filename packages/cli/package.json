@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/cli",
-  "version": "0.1.0-alpha.14",
+  "version": "0.1.0-alpha.16",
   "description": "VexCMS CLI: dev server orchestration and type generation",
   "keywords": [
     "cms",

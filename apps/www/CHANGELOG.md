@@ -1,5 +1,27 @@
 # www
 
+## 0.1.0-alpha.16
+
+### Patch Changes
+
+- Updated dependencies
+  - @vexcms/core@0.1.0-alpha.16
+  - @vexcms/react@0.1.0-alpha.16
+  - @vexcms/better-auth@0.1.0-alpha.16
+  - @vexcms/file-storage-convex@0.1.0-alpha.16
+  - @vexcms/next@0.1.0-alpha.16
+
+## 0.1.0-alpha.15
+
+### Patch Changes
+
+- Updated dependencies
+  - @vexcms/core@0.1.0-alpha.15
+  - @vexcms/react@0.1.0-alpha.15
+  - @vexcms/next@0.1.0-alpha.15
+  - @vexcms/better-auth@0.1.0-alpha.15
+  - @vexcms/file-storage-convex@0.1.0-alpha.15
+
 ## 0.1.0-alpha.14
 
 ### Patch Changes

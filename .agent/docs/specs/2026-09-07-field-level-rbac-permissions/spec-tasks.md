@@ -1,5 +1,5 @@
 ---
-status: draft
+status: in-progress
 spec_id: 2026-09-07-field-level-rbac-permissions
 touches:
   - packages/core/src/access/**
@@ -8,146 +8,110 @@ touches:
   - packages/core/src/api/find/server.ts
   - packages/core/src/api/get/server.ts
   - packages/core/src/api/search/server.ts
-  - packages/react/src/hooks/usePermission.ts
+  - packages/core/src/api/globals/**
+  - packages/core/src/media/api/mutations.ts
+  - packages/next/src/cache/createVexRevalidateRoute.ts
+  - packages/react/src/hooks/**
+  - packages/react/src/components/views/**
+  - apps/www/src/auth/**
+  - apps/test/src/auth/hasPermission.ts
   - apps/docs/src/content/docs/guides/access-control.mdx
-prompt_version: 1
+prompt_version: 2
 ---
 
 # 2026-09-07-field-level-rbac-permissions — Tasks
 
-## Step 1 — Field-permission types and `defineAccess()` config `[dev]`
-Why: Every later step reads or writes this shape; it has to exist and validate before the
-resolver, write path, read path, or client hook can compile against it. This is the
-"runtime only" boundary declaration — the JSDoc here is where we say it plainly, matching
-kitcn's ORM-RLS docs framing.
-Verify: `pnpm --filter @vexcms/core test access/config.test.ts access/types.test.ts`
-- [ ] `packages/core/src/access/types.ts` — add `FieldPermissionCheck<TData, TUser, TOrg>`
-      (`boolean | (props: PermissionCallbackProps<TData, TUser, TOrg>) => boolean`, reusing
-      the existing `PermissionCallbackProps` so field checks take the same `{user, data,
-      organization}` shape as resource-level checks) and `FieldPermissionMap<TFields extends
-      string>` (`Partial<Record<TFields, FieldPermissionCheck>>`). Extend the per-role
-      resource entry type with an optional `fields?: FieldPermissionMap` sibling to the
-      existing boolean/callback/constraint check — additive, does not change the existing
-      union's discriminant.
-- [ ] `packages/core/src/access/config.ts` — `defineAccess()` validates `fields` map keys
-      are non-empty strings (dev-mode warning only, matching the existing undeclared-subject
-      warning posture; do not hard-fail on unknown field names since Convex documents can
-      carry fields the collection schema doesn't declare).
-- [ ] `packages/core/src/access/index.ts` — export `FieldPermissionCheck`,
-      `FieldPermissionMap`.
-- [ ] `packages/core/src/access/config.test.ts` — add cases: `fields` map accepted alongside
-      a boolean/callback resource check; dev warning fires for an empty-string field key.
+Regenerated from `spec.md` (prompt_version 4). The previous version of this file
+described the abandoned `fields?: FieldPermissionMap` sibling on the resource entry,
+which `spec.md`'s Design Decisions 1 and 2 explicitly reject: a field map is only ever a
+filter callback's RETURN value. Step numbering now matches `spec.md`'s Implementation
+section one-to-one.
 
-## Step 2 — `resolveFieldPermissions()` resolver `[dev]`
-Why: One evaluator, reused by the write path, the read path, and the client hook — mirrors
-how `hasPermission()` is the single evaluator for document-level checks. Building this once
-here means steps 3-5 only call it, never re-implement role resolution.
-Verify: `pnpm --filter @vexcms/core test access/resolveFieldPermissions.test.ts`
-- [ ] `packages/core/src/access/resolveFieldPermissions.ts` — `resolveFieldPermissions(props:
-      {access, user, organization?, resource, action, data?}): Record<string, boolean>`.
-      Resolves the caller's roles exactly like `hasPermission()` (roles from
-      `user[access.userRolesField]`, falling back to `access.anonRole` when empty), OR-merges
-      each role's `fields` map (a field is allowed if ANY held role allows it — same
-      merge posture as the resource-level matrix), and evaluates callback entries against
-      `{user, data, organization}`. A field with no entry in any role's map for this
-      resource/action is allowed by default (the field map narrows an already-granted
-      resource-level action; it does not independently gate the whole resource — that stays
-      `hasPermission()`'s job). Returns `{}` when `access` is `undefined` (RBAC off) or the
-      resource has no `fields` map declared for the caller's roles — an empty result means
-      "no restriction," matching the existing "not configured" fail-open posture for the
-      document-level check when access is off.
-- [ ] `packages/core/src/access/resolveFieldPermissions.test.ts` — role OR-merge, callback
-      evaluation against `data`, empty-map fail-open, RBAC-off fail-open, anonRole fallback.
+## Step 1 — Field-permission types
+Why: Every later step reads or writes this shape.
+Verify: `pnpm --filter @vexcms/core exec tsc --noEmit`
+- [x] `access/types.ts` — `FieldPermissionKey`, `FieldPermissionMap`, `FieldMapReturnOf`,
+      `ExcessFieldKeys`, `FieldMapError`, `ValidateFieldMaps`; widen only
+      `BasePermissionCheck`'s CALLBACK return; `VexAccessConfigInput` gains a trailing
+      `TPermissions` inference parameter applied to `permissions`.
+- [x] `access/types.ts` — `VexAccessError` gains an optional `field`, spread in
+      conditionally so the wire payload never carries `undefined`.
+- [x] `access/config.ts` — `defineAccess` gains the matching `TPermissions` parameter.
+      No `const` modifier, and the constraint stays the full `Record<…, RolePermissions<…>>`
+      or every callback prop silently becomes `any`.
 
-## Step 3 — Write-path field enforcement: `create()` / `update()` `[dev]`
-Why: This is the actual enforcement boundary the developer asked to keep at "hasPermission
-code directly" — a field the caller's role can't set throws `VexAccessError` and the whole
-write is rejected, no partial patch. Depends on Step 2's resolver.
-Verify: `pnpm --filter @vexcms/core test api/create/server.test.ts api/update/server.test.ts`
-- [ ] `packages/core/src/api/create/server.ts` — after the existing document-level
-      `hasPermission({..., data: args.data, throwOnDenied: true})` call passes, call
-      `resolveFieldPermissions({access, user, organization, resource, action, data:
-      args.data})` and check every key present in `args.data` against the result; on the
-      first key resolved `false`, throw `VexAccessError` (reuse the existing error shape;
-      extend its `data` payload with the denied field name so the client can render which
-      field was rejected). No field map declared → skip the check entirely (Step 2's
-      empty-result fail-open).
-- [ ] `packages/core/src/api/update/server.ts` — same check, run against the incoming patch
-      keys (`args.data`) with `data` passed as the **stored document** (matches the existing
-      document-level check's `data: doc ?? undefined`, per ADR-002's "check against the
-      stored doc, not the patch" precedent) so a field rule can read prior state (e.g. "owner
-      may edit `price` only while `status` is `draft`").
-- [ ] `packages/core/src/access/types.ts` — extend `VexAccessError`'s `data` payload with an
-      optional `field?: string`, always present-but-possibly-absent per the existing
-      Convex-wire-serializability rule (every key always present, never `undefined` in the
-      wire payload — checked by `hasPermission.test.ts`'s serializability tests).
-- [ ] `packages/core/src/api/create/server.test.ts` / `update/server.test.ts` — add cases:
-      denied field in payload throws `VexAccessError` with `field` set and nothing is
-      written; allowed fields alongside a denied one still reject the whole write (no partial
-      patch); no field map declared → write proceeds unchanged (regression guard against
-      breaking every existing test in these files).
+## Step 2 — Shared resolution, the `hasPermission` fold, `resolveFieldPermissions()`
+Why: The core of the spec. One role walk, two entry points.
+Verify: `pnpm --filter @vexcms/core test src/access`
+- [x] `access/hasPermission.ts` — `HasPermissionProps.changes`; extract the per-role walk
+      into exported `resolveRoleResults`; widen `resolvePermissionCheck` and
+      `resolveConstrainedCheck` to return `boolean | FieldPermissionMap`; fold maps into
+      the boolean answer; add `isPayloadBearingWrite` and `deniedFieldIn`.
+- [x] `access/resolveFieldPermissions.ts` — NEW. `SYSTEM_FIELD_KEYS`,
+      `ResolvedFieldPermissions`, `UNRESTRICTED_FIELDS`, `isFieldPermissionMap`,
+      `resolveFieldPermissions`, `isFieldAllowed`, `stripDeniedFields`.
+- [x] `access/index.ts` — re-export the new module (and `compileConstraints`, which the
+      admin panel's live-merge hook needs for `CONSTRAINT_COMPARATORS`).
+- [x] `access/hasPermission.test.ts`, `access/resolveFieldPermissions.test.ts`,
+      `access/fieldPermissions.types.test.ts`.
 
-## Step 4 — Read-path field stripping: `find()` / `get()` / `search()` `[dev]`
-Why: Same resolver, opposite direction — after the existing per-document `hasPermission()`
-filter decides a document is readable at all, strip the fields the caller's roles can't see.
-Depends on Step 2.
-Verify: `pnpm --filter @vexcms/core test api/find/server.test.ts api/get/server.test.ts api/search/server.test.ts`
-- [ ] `packages/core/src/api/find/server.ts` — after the existing `.filter((d) =>
-      hasPermission(...))` step, map surviving documents through `resolveFieldPermissions()`
-      and delete keys resolved `false` from each returned document (never mutate the object
-      returned by `ctx.db` — shallow-copy before deleting). Empty resolver result → skip the
-      map entirely (no allocation when no field map is declared, keeping the common case at
-      today's cost).
-- [ ] `packages/core/src/api/get/server.ts` — same stripping on the single fetched document,
-      after the existing `hasPermission({throwOnDenied: true, ...})` call succeeds.
-- [ ] `packages/core/src/api/search/server.ts` — same stripping on search results; read this
-      file first to confirm its current per-document access handling before adding the call
-      (its filtering path was not audited in this spec's research and may differ from
-      `find`'s).
-- [ ] `packages/core/src/api/find/server.test.ts` / `get/server.test.ts` /
-      `search/server.test.ts` — add cases: a denied field is absent from the returned
-      document; a field with no rule declared still returns; no field map declared → returned
-      documents are unchanged (regression guard).
+## Step 3 — Write-path call sites: collections
+Why: The enforcement boundary for `create()`/`update()`. One added argument each.
+Verify: `pnpm --filter @vexcms/core test src/api/create/server.test.ts src/api/update/server.test.ts`
+- [x] `api/create/server.ts` — `changes: args.data`.
+- [x] `api/update/server.ts` — `changes: args.data`, `data` stays the STORED document.
+- [x] Tests in both `server.test.ts` files.
 
-## Step 5 — Client field-permission hook `[dev]`
-Why: Admin-panel form gating, advisory only (P-004) — evaluates the same resolver in-browser
-against the bundle-imported access config, no server round trip, exactly like `usePermission`
-does today for resource-level checks. Depends on Step 2 (same resolver, re-exported for
-client bundle use).
-Verify: `pnpm --filter @vexcms/react test usePermission.test.tsx useFieldPermissions.test.tsx`
-- [ ] `packages/react/src/hooks/useFieldPermissions.ts` — new hook,
-      `useFieldPermissions({resource, action, data?}): Record<string, boolean>`, reading
-      `user`/`organization` from `VexAuthContext` and `access` from `VexAccessContext`
-      exactly like `usePermission` does, calling `resolveFieldPermissions()` directly
-      (client-bundle import, not a query — same P-004 pattern as `usePermission`).
-- [ ] `packages/react/src/hooks/index.ts` (or wherever `usePermission` is re-exported) — export
-      `useFieldPermissions`.
-- [ ] `packages/react/src/hooks/useFieldPermissions.test.tsx` — mirrors
-      `usePermission.test.tsx`'s fixture setup; asserts a denied field resolves `false`, an
-      undeclared field resolves `true` (default-allow), RBAC-off resolves every field `true`.
-- [ ] Locate the collection/global edit-form field renderer (grep the admin form component
-      tree for where individual field inputs are rendered per `CollectionConfig`/`GlobalConfig`
-      field list) and gate each field's editable state on `useFieldPermissions()` for the
-      `update` action — disabled, not hidden, so the developer sees the value but can't
-      change it (matches "which fields can this role change" framing, not "which fields
-      exist"). Read the actual component before editing; do not guess its prop shape from
-      this task list.
+## Step 4 — Write-path call site: globals
+Why: A separate enforcement site, and the one the acceptance scenario runs through.
+Verify: `pnpm --filter @vexcms/core test src/api/globals/upsert.server.test.ts`
+- [x] `api/globals/upsert.server.ts` — `changes: userFields`; patch MERGES instead of
+      replacing the `data` blob; validation runs on the merged document.
+- [x] Tests in `upsert.server.test.ts`.
 
-## Step 6 — Documentation `[dev]`
-Why: The runtime-only boundary is a correctness-relevant fact for anyone integrating this —
-same reason kitcn calls it out. Last step: nothing downstream depends on docs text.
+## Step 5 — Read-path shaping
+Why: Same resolver, opposite direction — strip rather than deny.
+Verify: `pnpm --filter @vexcms/core test src/api`
+- [x] `api/find/server.ts`, `api/search/server.ts` — strip the returned page only, never
+      the counting branches.
+- [x] `api/get/server.ts` — strip the single fetched document.
+- [x] `api/globals/get.server.ts`, `api/globals/find.server.ts` — strip the flat document.
+- [x] Tests in each `server.test.ts`.
+
+## Step 6 — Quantified call sites
+Why: Calls passing neither `data` nor `changes` silently flip to DENIED the first time
+anyone declares a field map. All fail closed, so none is a hole — but the symptom is a
+long way from the cause.
+Verify: `pnpm --filter @vexcms/core test src/media` and `pnpm --filter @vexcms/next test src/cache`
+- [x] `media/api/mutations.ts` — `generateUploadUrl` takes `scope: any`;
+      `createMediaDocument` takes real `changes`.
+- [x] `next/src/cache/createVexRevalidateRoute.ts` — `scope: any`.
+- [x] Tests beside the existing media and revalidate-route tests.
+
+## Step 7 — Admin panel: field gating and diff submit
+Why: Advisory client-side gating, plus the diff submit the merge in Step 4 makes safe.
+Verify: `pnpm --filter @vexcms/react test`
+- [x] `hooks/useFieldPermissions.ts`, `hooks/changedValues.ts`, `hooks/useLiveFieldMerge.ts`
+      — NEW; exported from `hooks/index.ts`. `changedValues` MUST read `isDirty`, never
+      `isDefaultValue`.
+- [x] `CollectionEditView`, `GlobalEditView`, `MediaCollectionEditView` — fold
+      `isFieldAllowed` into each input's existing `readOnly`; diff submit in edit mode
+      only; wire `useLiveFieldMerge`.
+- [x] `CollectionListView`, `MediaCollectionListView` — filter column defs by read field
+      permissions resolved with `scope: any`; fix `canCreate` and `RevalidateButton` to
+      pass `scope: any`.
+- [x] Tests: new hook tests plus cases in the existing view tests.
+
+## Step 8 — `apps/www`: anonymous theme selection
+Why: The acceptance scenario the whole spec exists for.
+Verify: manual — see spec.md Step 8's five-point walkthrough.
+- [x] `apps/www/src/auth/access.ts` — `siteSettings.update: () => ({ "*": false, adminTheme: true })`.
+- [x] `apps/www/src/auth/hasPermission.ts`, `apps/test/src/auth/hasPermission.ts` — add
+      `"changes"` to the existing `Omit`.
+
+## Step 9 — Documentation
+Why: The runtime-only boundary is correctness-relevant for anyone integrating this.
 Verify: manual read-through; no build/test gate.
-- [ ] `apps/docs/src/content/docs/guides/access-control.mdx` — add a "Field-level
-      permissions" section: config shape (`fields` map on a resource/role entry), the
-      runtime-only boundary stated explicitly ("enforced in the generated Convex functions
-      and in the admin-panel client bundle; a caller that bypasses both — a hand-rolled
-      Convex function calling `ctx.db` directly — bypasses this the same way it already
-      bypasses `hasPermission()`"), write-time throw-on-denied-field behavior, read-time
-      stripping behavior, and the deferred type-narrowing gap (return types still describe
-      the full document; a caller may receive fewer keys than the type promises when fields
-      are restricted for their role).
-- [ ] `packages/core/README.md` — one-line mention of field-level permissions under the
-      existing RBAC bullet, cross-referencing the docs guide.
-- [ ] `.agent/docs/product/backlog.md` — add an entry for the deferred generic type-narrowing
-      work (caller-asserted field-name union on `find`/`get`/`create`/`update`), so it isn't
-      lost the way the original field-permission removal nearly was.
+- [x] `apps/docs/src/content/docs/guides/access-control.mdx` — "Field-level permissions".
+- [x] `packages/core/README.md` — replace the stale `{ mode, fields }` example.
+- [x] `.agent/docs/product/backlog.md` — the four deferred entries.

@@ -1422,3 +1422,95 @@ describe("find (server) — access call options", () => {
     expect(enforced).toHaveLength(0);
   });
 });
+
+// ── Field-level read shaping (Step 5) ───────────────────────────────────────
+const fieldMapPostsResource = defineCollection({
+  slug: "posts",
+  fields: { title: text(), slug: text() },
+});
+
+const fieldMapAccess = {
+  ...fixtureConfig,
+  access: defineAccess({
+    roles: ["editor"] as const,
+    resources: [fieldMapPostsResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: {
+      editor: {
+        posts: {
+          read: ({ data }: { data?: { slug?: string } }) => ({
+            "*": true,
+            title: data?.slug === "draft",
+          }),
+        },
+      },
+    },
+  }),
+} as unknown as VexConfig;
+
+const noMapAccess = {
+  ...fixtureConfig,
+  access: defineAccess({
+    roles: ["editor"] as const,
+    resources: [fieldMapPostsResource],
+    userCollectionSlug: "users",
+    userRolesField: "roles",
+    permissions: { editor: { posts: { read: true } } },
+  }),
+} as unknown as VexConfig;
+
+const fieldMapAuth = { user: { _id: "u1", roles: "editor" } };
+
+describe("find (server) — field-level read shaping", () => {
+  test("strips a field denied by the read action", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Published", slug: "public" });
+      return find({ ctx, collection: "posts", config: fieldMapAccess, auth: fieldMapAuth } as any);
+    });
+    expect((docs[0] as any).slug).toBe("public");
+    expect((docs[0] as any).title).toBeUndefined();
+  });
+
+  test("returns documents unchanged when the read action declares no map (regression)", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Published", slug: "public" });
+      return find({ ctx, collection: "posts", config: noMapAccess, auth: fieldMapAuth } as any);
+    });
+    expect((docs[0] as any).title).toBe("Published");
+  });
+
+  test("never strips _id or _creationTime", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Published", slug: "public" });
+      return find({ ctx, collection: "posts", config: fieldMapAccess, auth: fieldMapAuth } as any);
+    });
+    expect((docs[0] as any)._id).toBeDefined();
+    expect((docs[0] as any)._creationTime).toBeDefined();
+  });
+
+  test("strips per document when the map's value is an expression over the document", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Draft post", slug: "draft" });
+      await ctx.db.insert("posts", { title: "Published post", slug: "public" });
+      return find({ ctx, collection: "posts", config: fieldMapAccess, auth: fieldMapAuth } as any);
+    });
+    const draft = (docs as any[]).find((d) => d.slug === "draft");
+    const published = (docs as any[]).find((d) => d.slug === "public");
+    expect(draft.title).toBe("Draft post");
+    expect(published.title).toBeUndefined();
+  });
+
+  test("does not DENY a read when the read action returns a map", async () => {
+    const t = convexTest(schema, modules);
+    const docs = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Published", slug: "public" });
+      return find({ ctx, collection: "posts", config: fieldMapAccess, auth: fieldMapAuth } as any);
+    });
+    expect(docs).toHaveLength(1);
+  });
+});

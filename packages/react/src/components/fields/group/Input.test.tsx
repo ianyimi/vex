@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
-import { adminFieldToInputSchema, group, text, type CollectionConfig, type GroupField } from "@vexcms/core";
+import {
+  adminFieldToInputSchema,
+  group,
+  text,
+  type CollectionConfig,
+  type GroupField,
+} from "@vexcms/core";
 import { AppForm } from "../../form/AppForm";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { runFieldInputContractSuite } from "../../../testing/fieldInputContract";
@@ -62,21 +68,33 @@ runFieldInputContractSuite({
     const collection = options.collection ?? testCollection;
 
     describe("group: accordion collapse, sub-field count, dot-notation naming, and per-sub-field error isolation", () => {
-      it("renders its sub-field open by default when defaultOpen is unset", () => {
+      it("renders its sub-field expanded when admin.defaultCollapsed is unset", () => {
         render(
-          <GroupHarness fieldDef={groupFieldFixture.fieldDef} collection={collection} initialValue={groupFieldFixture.valid} />,
+          <GroupHarness
+            fieldDef={groupFieldFixture.fieldDef}
+            collection={collection}
+            initialValue={groupFieldFixture.valid}
+          />,
         );
         expect(screen.getByLabelText("Title", { exact: false })).toBeVisible();
       });
 
-      it("starts collapsed when defaultOpen: false, and expands on clicking the trigger", async () => {
+      it("starts collapsed when admin.defaultCollapsed: true, and expands on clicking the trigger", async () => {
         const collapsedFieldDef = group({
           label: "Details",
           fields: { title: text({ label: "Title", required: true }) },
-          defaultOpen: false,
+          admin: {
+            defaultCollapsed: true,
+          },
         });
         const user = userEvent.setup();
-        render(<GroupHarness fieldDef={collapsedFieldDef} collection={collection} initialValue={{ title: "Hi" }} />);
+        render(
+          <GroupHarness
+            fieldDef={collapsedFieldDef}
+            collection={collection}
+            initialValue={{ title: "Hi" }}
+          />,
+        );
 
         // Base UI's `AccordionContent` unmounts collapsed content entirely
         // (no `keepMounted`), not just hides it — `queryByLabelText` (never
@@ -92,11 +110,15 @@ runFieldInputContractSuite({
           label: "Pair",
           fields: { title: text({ label: "Title" }), subtitle: text({ label: "Subtitle" }) },
         });
-        const one = render(<GroupHarness fieldDef={oneFieldDef} collection={collection} initialValue={{}} />);
+        const one = render(
+          <GroupHarness fieldDef={oneFieldDef} collection={collection} initialValue={{}} />,
+        );
         expect(one.getByRole("button", { name: /solo/i })).toHaveTextContent("1 field");
         one.unmount();
 
-        const two = render(<GroupHarness fieldDef={twoFieldDef} collection={collection} initialValue={{}} />);
+        const two = render(
+          <GroupHarness fieldDef={twoFieldDef} collection={collection} initialValue={{}} />,
+        );
         expect(two.getByRole("button", { name: /pair/i })).toHaveTextContent("2 fields");
       });
 
@@ -155,7 +177,13 @@ runFieldInputContractSuite({
 
       it("preserves a sub-field's value across a collapse→expand cycle", async () => {
         const user = userEvent.setup();
-        render(<GroupHarness fieldDef={groupFieldFixture.fieldDef} collection={collection} initialValue={{}} />);
+        render(
+          <GroupHarness
+            fieldDef={groupFieldFixture.fieldDef}
+            collection={collection}
+            initialValue={{}}
+          />,
+        );
         await user.type(screen.getByLabelText("Title", { exact: false }), "Persisted");
         await user.click(screen.getByRole("button", { name: /details/i }));
         expect(screen.queryByLabelText("Title", { exact: false })).not.toBeInTheDocument();

@@ -64,6 +64,7 @@ Versioning, drafts, and live preview are not implemented yet — both are in pro
 
 - **Access provider** — `VexAccessProvider` supplies the RBAC access matrix to the admin panel via React context
 - **Collection-level permissions** — `usePermission` gates create, read, update, and delete per collection and per global
+- **Field-level permissions** — a per-field access rule hides a read-denied input entirely and renders an update-denied one read-only; edit forms submit only the fields the user actually changed
 - **UI enforcement** — Buttons and actions are disabled or hidden when the current user lacks permission
 
 ### Admin Layout

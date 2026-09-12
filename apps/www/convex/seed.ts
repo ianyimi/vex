@@ -398,26 +398,13 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
   if (existingSettings && mode !== "patch") {
     skipped.push("siteSettings")
   } else {
-    // `upsertGlobal` replaces the whole `data` blob rather than merging field
-    // by field, so patching with only the seeded keys would silently drop
-    // `adminTheme` and every SEO field an editor had set. Carry the existing
-    // values forward and let the seeded ones win. `_`-prefixed keys and
-    // `slug` are dropped on the way through: only `_id`/`_creationTime`/
-    // `_slug` are stripped downstream, and a stray `slug` fails the global's
-    // input schema.
-    const preserved: Record<string, unknown> = {}
-    for (const [key, value] of Object.entries(
-      (existingSettings ?? {}) as Record<string, unknown>
-    )) {
-      if (!key.startsWith("_") && key !== "slug") {
-        preserved[key] = value
-      }
-    }
+    // `upsertGlobal` merges field by field, so passing only the seeded keys
+    // leaves `adminTheme` and every SEO field an editor had set untouched.
     await upsertGlobal({
       ctx,
       config,
       slug: GLOBAL_SLUG_SITE_SETTINGS,
-      data: { ...preserved, ...siteSettingsDoc },
+      data: siteSettingsDoc,
       access: { bypass: true },
     })
     if (existingSettings) {

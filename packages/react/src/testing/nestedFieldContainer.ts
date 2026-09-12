@@ -232,6 +232,24 @@ function renderContainer(props: {
 }
 
 /**
+ * True when `el` is a container's expand/collapse control rather than an
+ * editing control.
+ *
+ * Matches the design system's `data-slot="accordion-trigger"`, which both
+ * implementations carry: `FormGroup` through the `AccordionTrigger` wrapper,
+ * `FormBlocks` on the `AccordionPrimitive.Trigger` it renders directly.
+ *
+ * NOT `aria-expanded` — a nested `select` renders a combobox that also reports
+ * expansion, and that one IS an editing control which must stay disabled.
+ *
+ * @param el - A candidate control from the rendered container.
+ * @returns `true` when the element toggles a disclosure panel.
+ */
+function isDisclosureTrigger(el: Element): boolean {
+  return el.matches('[data-slot="accordion-trigger"]');
+}
+
+/**
  * Call at module top level inside a *.test.tsx file — it calls describe/it itself.
  *
  * @param options - The container type, mounted component, and child field types to nest.
@@ -297,16 +315,44 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
             const controls = dom.querySelectorAll("button, input, select, textarea");
             expect(controls.length).toBeGreaterThan(0);
             controls.forEach((el) => {
+              if (isDisclosureTrigger(el)) return;
               // Base UI's `AccordionTrigger` implements a "focusable-when-
               // disabled" pattern: it signals inert state via
-              // `aria-disabled="true"`, not the native `disabled` attribute
-              // (`FormGroup.tsx`/`FormBlocks.tsx` wire `AccordionItem`'s own
-              // `disabled` prop, which Base UI's `useButton` maps to
-              // `aria-disabled` for exactly this reason) — every other
-              // control still uses the real `disabled` attribute.
-              const inert = el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true";
+              // `aria-disabled="true"` rather than the native attribute, so
+              // both spellings count as inert for every other control.
+              const inert =
+                el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true";
               expect(inert).toBe(true);
             });
+          });
+
+          it("keeps the group's disclosure operable under readOnly", async () => {
+            // Collapsing a group is NAVIGATION, not editing. A caller with
+            // read access but no write access must still be able to open it to
+            // SEE the values; `FormGroup` therefore never passes `readOnly` to
+            // `AccordionItem`'s own `disabled` prop.
+            const seeded = buildSeededValue({ container, childFixture });
+            const { container: dom } = renderContainer({
+              Component,
+              fieldDef,
+              readOnly: true,
+              initialValue: seeded,
+            });
+            await act(async () => {});
+
+            const triggers = Array.from(dom.querySelectorAll("button")).filter(isDisclosureTrigger);
+            expect(triggers.length).toBeGreaterThan(0);
+            triggers.forEach((trigger) => {
+              expect(trigger.hasAttribute("disabled")).toBe(false);
+              expect(trigger.getAttribute("aria-disabled")).not.toBe("true");
+            });
+
+            const trigger = triggers[0]!;
+            const before = trigger.getAttribute("aria-expanded");
+            await act(async () => {
+              trigger.click();
+            });
+            expect(trigger.getAttribute("aria-expanded")).not.toBe(before);
           });
         } else {
           const { fieldDef, labels } = buildItemContainerFieldDef({ container, childFixture });
@@ -385,13 +431,42 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
             const controls = dom.querySelectorAll("button, input, select, textarea");
             expect(controls.length).toBeGreaterThan(0);
             controls.forEach((el) => {
-              // Same Base UI "focusable-when-disabled" AccordionTrigger
-              // pattern as the `group` branch above — `blocks`' own
-              // `AccordionItem` (`FormBlocks.tsx`) signals inert state via
-              // `aria-disabled`, not the native `disabled` attribute.
-              const inert = el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true";
+              if (isDisclosureTrigger(el)) return;
+              // Same Base UI "focusable-when-disabled" pattern as the `group`
+              // branch above: both spellings of inert count.
+              const inert =
+                el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true";
               expect(inert).toBe(true);
             });
+          });
+
+          it(`keeps each ${container} item's disclosure operable under readOnly`, async () => {
+            // Opening an item is NAVIGATION, not editing, so `FormBlocks`
+            // never passes `readOnly` to `AccordionItem`'s `disabled` prop.
+            // Add/remove/drag and every sub-field stay gated — asserted by the
+            // cascade test above, which skips only the trigger.
+            const seeded = buildSeededValue({ container, childFixture });
+            const { container: dom } = renderContainer({
+              Component,
+              fieldDef,
+              readOnly: true,
+              initialValue: seeded,
+            });
+            await act(async () => {});
+
+            const triggers = Array.from(dom.querySelectorAll("button")).filter(isDisclosureTrigger);
+            if (triggers.length === 0) return;
+            triggers.forEach((trigger) => {
+              expect(trigger.hasAttribute("disabled")).toBe(false);
+              expect(trigger.getAttribute("aria-disabled")).not.toBe("true");
+            });
+
+            const trigger = triggers[0]!;
+            const before = trigger.getAttribute("aria-expanded");
+            await act(async () => {
+              trigger.click();
+            });
+            expect(trigger.getAttribute("aria-expanded")).not.toBe(before);
           });
         }
       });

@@ -192,6 +192,19 @@ See the [Globals guide](/guides/globals/) for the config side (`defineGlobal`) �
 `getGlobal`/`findGlobals`/`updateGlobal`, called from inside a Convex handler instead of a
 React component.
 
+`globals.upsert` authorizes the write as `create` or `update` — never `read` — since a
+global's verb depends on whether it has ever been saved, and it merges the payload into the
+stored document rather than replacing it. See
+[Access control](/guides/globals/#access-control) in the Globals guide for the full
+behavior and its migration note.
+
+Every read here also runs the caller's field-level permissions, when the resource declares
+any: `get`/`find`/`globals.get`/`globals.find` strip a denied field out of each returned
+document before it reaches the caller, the same way a field map denies a write inside
+`hasPermission`. See
+[Field-level permissions](/guides/access-control/#field-level-permissions) in the Access
+Control guide.
+
 ## Per-call access overrides: `access.action` / `access.bypass`
 
 Every Local API function accepts one grouped `access` option — server-side only, and never
@@ -241,6 +254,8 @@ function's default verb.
   left untouched on the document — pass only what changed.
 - **`remove`'s `ids` is always an array**, even for one document (`ids: [id]`) — there's no
   separate single-delete signature.
-- **Globals write through `upsert`, not `update`.** `globals.upsert` creates the row if one
-  doesn't exist yet and patches it if it does — collections have separate `create`/`update`,
-  globals have one function that does both, since a global is always exactly one document.
+- **Globals write through `upsert`, not `update`, and it merges.** `globals.upsert` creates
+  the row if one doesn't exist yet and merges into it if it does — collections have separate
+  `create`/`update`, globals have one function that does both, since a global is always
+  exactly one document. It authorizes the write as `create`/`update`, never `read` — see the
+  [Globals guide](/guides/globals/#access-control).

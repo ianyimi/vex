@@ -15,11 +15,21 @@ import { VexAuthProvider } from "../../context/VexAuthContext";
  * One collection, one shared `defineAccess` matrix, three roles — reused by every
  * factory that needs a real RBAC/collection pair to render against instead of a
  * mock. Generalizes the inline setup proven in `hooks/usePermission.test.tsx`.
+ *
+ * Two fields, deliberately: one indexed (`status`, which the doc-scoped role's
+ * constraint ranges over) and one plain (`title`). A single-field collection
+ * cannot express a per-FIELD test at all — field permissions, column filtering
+ * and diff submits each need one field to keep and another to drop — so every
+ * view suite would otherwise have to patch a second field in locally.
+ *
+ * Both are backed by real columns in `testing/convex/schema.ts`, so components
+ * that write through the real `vex:create` mutation still satisfy Convex.
  */
 export const testCollection = defineCollection({
   slug: "posts",
   fields: {
     status: text({ index: "by_status" }),
+    title: text({ required: false }),
   },
 });
 

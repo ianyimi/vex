@@ -65,7 +65,7 @@ export function FormGroup<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
   const { itemValue, openItems, handleValueChange } = useAccordionDndState({
     name,
     index,
-    defaultOpen: fieldDef.defaultOpen !== false,
+    defaultOpen: fieldDef.admin.defaultCollapsed !== true,
   });
 
   return (
@@ -77,7 +77,11 @@ export function FormGroup<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
       aria-labelledby={`${name}-label`}
       aria-disabled={readOnly}
     >
-      <AccordionItem value={itemValue} disabled={readOnly}>
+      {/* Never `disabled={readOnly}`: collapsing a group is NAVIGATION, not
+          editing. A caller with read access but no write access must still be
+          able to open the group to see its values — the sub-fields below carry
+          the readOnly gate individually. */}
+      <AccordionItem value={itemValue}>
         {/* Trigger — label + sub-field count */}
         <AccordionTrigger className="flex gap-4 px-3 text-sm font-medium hover:no-underline">
           <div className="flex flex-col self-center">
@@ -90,7 +94,7 @@ export function FormGroup<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                 {fieldDef.label || name}
                 {fieldDef.required && <span className="text-red-500">*</span>}
               </span>
-              <span className="text-muted-foreground text-xs font-normal">
+              <span className="text-xs font-normal text-muted-foreground">
                 {subFieldCount} {subFieldCount === 1 ? "field" : "fields"}
               </span>
             </span>

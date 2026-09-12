@@ -1,8 +1,9 @@
 import type { GenericDataModel } from "convex/server";
 import type { VexDocumentGlobal } from "../../types/generated";
-import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { CRUD_ACTIONS, hasPermission, resolveFieldPermissions, stripDeniedFields } from "../../access";
 import type { GenericGlobalsQueryServerArgs } from "./types";
 import { resolveAccessCall } from "../utils";
+import { flattenGlobalRow } from "./utils";
 
 /**
  * Returns all rows from `vex_globals` as flat documents, ordered by
@@ -32,14 +33,16 @@ export async function findGlobals<DataModel extends GenericDataModel>(
   args: GenericGlobalsQueryServerArgs<DataModel>,
 ): Promise<VexDocumentGlobal[]> {
   const { ctx } = args;
-  let rows = await ctx.db.query("vex_globals").collect();
+  let rows = (await ctx.db.query("vex_globals").collect()).map((row: Record<string, unknown>) =>
+    flattenGlobalRow(row),
+  );
   if (args.config.access !== undefined) {
-    rows = rows.filter((r) => {
+    rows = rows.filter((doc) => {
       const { access, action, resource } = resolveAccessCall({
         config: args.config,
         access: args.access,
         defaultAction: CRUD_ACTIONS.read,
-        resource: r.slug as string,
+        resource: doc._slug as string,
       });
       return hasPermission({
         access,
@@ -47,12 +50,28 @@ export async function findGlobals<DataModel extends GenericDataModel>(
         organization: args.auth?.organization,
         resource,
         action,
-        data: r.data as Record<string, unknown>,
+        data: doc,
       });
     });
+    rows = rows.map((doc) => {
+      const { access, action, resource } = resolveAccessCall({
+        config: args.config,
+        access: args.access,
+        defaultAction: CRUD_ACTIONS.read,
+        resource: doc._slug as string,
+      });
+      return stripDeniedFields(
+        doc,
+        resolveFieldPermissions({
+          access,
+          user: args.auth?.user ?? null,
+          organization: args.auth?.organization,
+          resource,
+          action,
+          data: doc,
+        }),
+      );
+    });
   }
-  return rows.map((row: Record<string, unknown>) => {
-    const { slug, data, _id, _creationTime } = row;
-    return { _id, _creationTime, _slug: slug, ...(data ?? {}) };
-  }) as VexDocumentGlobal[];
+  return rows as VexDocumentGlobal[];
 }

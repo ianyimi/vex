@@ -1,10 +1,23 @@
 import type { GenericDocument } from "convex/server";
-import { PERMISSION_MODES, PERMISSION_SCOPES, PermissionScope, WILDCARD_KEY } from "./constants";
+import {
+  CRUD_ACTIONS,
+  PERMISSION_MODES,
+  PERMISSION_SCOPES,
+  PermissionScope,
+  WILDCARD_KEY,
+} from "./constants";
 import { createAccessQueryBuilder, readAccessCondition } from "./createAccessQueryBuilder";
-import { accessConstraintsToPredicate, accessFilterTreeToPredicate } from "./compileConstraints";
+import {
+  accessConstraintsToPredicate,
+  accessFilterTreeToPredicate,
+  CONSTRAINT_COMPARATORS,
+} from "./compileConstraints";
 import { createUserReadSentinel } from "./userReadSentinel";
+import { SYSTEM_FIELD_KEYS } from "./resolveFieldPermissions";
 import { VexAccessError } from "./types";
 import type {
+  CustomActionsInput,
+  FieldPermissionMap,
   PermissionCallbackProps,
   PermissionCheck,
   SubjectEntry,
@@ -36,6 +49,17 @@ import type {
  * which is what you want in edit views. Has no effect on static boolean checks,
  * and no effect when `data` is provided (the callback is always run against it).
  * @default "all"
+ * @param changes The keys this operation writes -
+ * the incoming payload on a create, the patch on an update. Supplied by write call sites only.
+ *
+ * Distinct from `data`, which stays the STORED document so a per-document
+ * rule cannot be satisfied by whatever the caller chose to send. When a
+ * role's check resolves to a {@link FieldPermissionMap}, every key here whose
+ * value differs from `data` must be permitted by that map, or access is
+ * denied naming the field.
+ *
+ * Ignored entirely when no field map resolves, so omitting it never changes
+ * an existing call's answer.
  */
 export interface HasPermissionProps<
   TSubjects extends Record<string, SubjectEntry> = Record<string, SubjectEntry>,
@@ -50,6 +74,7 @@ export interface HasPermissionProps<
   data?: TData;
   throwOnDenied?: boolean;
   scope?: PermissionScope;
+  changes?: NoInfer<Partial<TData>>;
 }
 
 /**
@@ -68,13 +93,17 @@ export interface HasPermissionProps<
  * @param props @see {@link HasPermissionProps}
  * @returns `true` when the action is permitted for the caller.
  * @throws {VexAccessError} When `throwOnDenied` is `true` and access is denied —
- *   carries `resource` and `action`.
+ *   carries `resource`, `action`, and `field` when the denial is field-scoped.
+ *   Also thrown, regardless of `throwOnDenied`, when a resolved field map
+ *   cannot be answered from what the caller supplied — see the fold below.
  *
  * @example
  * ```ts
  * hasPermission({ access, user, resource: "posts", action: "update" }); // boolean
  * hasPermission({ access, user, resource: "posts", action: "delete",
  *   data: post, throwOnDenied: true }); // throws VexAccessError on deny
+ * hasPermission({ access, user, resource: "posts", action: "update",
+ *   data: stored, changes: patch }); // field-map aware write check
  * ```
  */
 export function hasPermission<
@@ -84,9 +113,116 @@ export function hasPermission<
 >(props: HasPermissionProps<TSubjects, TSubject, TData>): boolean {
   const { access } = props;
 
-  if (!access || access === undefined || !access.enabled) {
+  if (!access || !access.enabled) {
     return true;
   }
+
+  const scope = props.scope ?? PERMISSION_SCOPES.all;
+  const rolePermissions = resolveRolePermissions({
+    access,
+    user: props.user,
+    data: props.data,
+    organization: props.organization,
+    resource: props.resource,
+    action: props.action,
+    scope,
+  });
+
+  let deniedField: string | undefined;
+
+  const allPermissions = rolePermissions.some((rolePermission) => {
+    if (typeof rolePermission === "boolean") return rolePermission;
+
+    if (props.action === CRUD_ACTIONS.delete) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          `[vexcms] "${props.resource}.delete" resolved to a field map, but delete has no ` +
+            `payload to gate — the map is ignored. Return a boolean from this rule instead.`,
+        );
+      }
+      return true;
+    }
+
+    if (props.changes !== undefined) {
+      const denied = deniedFieldIn<TData>({
+        fieldPermissions: rolePermission,
+        changes: props.changes,
+        stored:
+          props.action === CRUD_ACTIONS.create || props.data === undefined ? undefined : props.data,
+      });
+      if (denied !== undefined) deniedField = denied;
+      return denied === undefined;
+    }
+
+    if (props.data !== undefined) {
+      if (
+        props.throwOnDenied === true &&
+        isPayloadBearingWrite({ access, resource: props.resource, action: props.action })
+      ) {
+        throw new VexAccessError({
+          resource: props.resource,
+          action: props.action,
+          message:
+            `hasPermission: "${props.resource}.${props.action}" resolved to a field map, but no ` +
+            `"changes" was supplied. Pass the payload you intend to write so the map can be ` +
+            `applied, or use resolveFieldPermissions() if you only need to know which fields ` +
+            `are writable.`,
+        });
+      }
+      // A read, or an advisory probe, projects rather than denies.
+      return true;
+    }
+
+    if (scope === PERMISSION_SCOPES.all) return false;
+    if (scope === PERMISSION_SCOPES.any) return true;
+    throw new VexAccessError({
+      resource: props.resource,
+      action: props.action,
+      message:
+        `hasPermission: "${props.resource}.${props.action}" resolved to a field map, which is ` +
+        `a per-field answer. Pass "changes" to authorize a write, "data" to authorize a read, ` +
+        `or use scope: "any" (nav/list gating) or scope: "all" (bulk actions).`,
+    });
+  });
+
+  if (allPermissions === false) {
+    if (props.throwOnDenied) {
+      throw new VexAccessError({
+        resource: props.resource,
+        action: props.action,
+        ...(deniedField !== undefined ? { field: deniedField } : {}),
+      });
+    }
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Resolves one caller's roles to one resolved result per role — the shared
+ * half of {@link hasPermission} and `resolveFieldPermissions`.
+ *
+ * Owns role normalization (`string | string[]`), the `anonRole` fallback, the
+ * known-role filter, resource-entry/wildcard precedence via
+ * {@link resolveActionCheck}, and check resolution (booleans, callbacks, the
+ * data-dependency probe, constraint descriptors, `filter`). Both entry points
+ * inherit those semantics rather than restating them.
+ *
+ * @returns One entry per known role. `boolean` is that role's flat answer; a
+ *   {@link FieldPermissionMap} is its per-field answer. Empty when the caller
+ *   holds no known role.
+ * @internal
+ */
+export function resolveRolePermissions<TData, TOrg>(props: {
+  access: VexAccessConfig;
+  user: Record<string, unknown> | null;
+  data?: TData;
+  organization?: TOrg;
+  resource: string;
+  action: string;
+  scope: PermissionScope;
+}): Array<boolean | FieldPermissionMap> {
+  const { access } = props;
 
   const rawRoles = props.user ? props.user[access.userRolesField] : [];
   const userRoles =
@@ -99,60 +235,114 @@ export function hasPermission<
     userRoles.length === 0 && access.anonRole !== undefined ? [access.anonRole] : userRoles;
   const knownRoles = effectiveRoles.filter((role) => access.roles.includes(role));
 
-  const defaultAllowed = access.defaultPermissionMode === PERMISSION_MODES.allow;
-  let allPermissions: boolean;
-
   if (knownRoles.length === 0) {
-    allPermissions = false;
-  } else {
-    const resolved = knownRoles.map((userRole): boolean => {
-      const role = access.permissions[userRole];
-      const resource = role?.[props.resource];
-
-      let check: PermissionCheck;
-      if (typeof resource === "boolean") {
-        // { posts: true }
-        check = resource;
-      } else if (resource !== null && resource !== undefined && typeof resource === "object") {
-        // { posts: { "*": true, update: () => {}, delete: false } }
-        check =
-          resolveActionCheck({
-            resource: resource as Record<string, unknown>,
-            action: props.action,
-          }) ?? defaultAllowed;
-      } else {
-        // { posts: undefined }
-        const roleWildcard = role?.[WILDCARD_KEY];
-        check = typeof roleWildcard === "boolean" ? roleWildcard : defaultAllowed;
-      }
-
-      return (
-        resolvePermissionCheck({
-          check,
-          user: props.user,
-          data: props.data,
-          organization: access.orgCollectionSlug !== undefined ? props.organization : undefined,
-          resource: props.resource,
-          action: props.action,
-          scope: props.scope ?? PERMISSION_SCOPES.all,
-        }) ?? defaultAllowed
-      );
-    });
-
-    // OR across roles: holding any role that permits the action is enough.
-    allPermissions = resolved.some(Boolean);
+    return [];
   }
 
-  if (allPermissions === false) {
-    if (props.throwOnDenied) {
-      throw new VexAccessError({
+  const defaultAllowed = access.defaultPermissionMode === PERMISSION_MODES.allow;
+
+  return knownRoles.map((userRole): boolean | FieldPermissionMap => {
+    const role = access.permissions[userRole];
+    const resource = role?.[props.resource];
+
+    let check: PermissionCheck;
+    if (typeof resource === "boolean") {
+      check = resource;
+    } else if (resource !== null && resource !== undefined && typeof resource === "object") {
+      check =
+        resolveActionCheck({
+          resource: resource as Record<string, unknown>,
+          action: props.action,
+        }) ?? defaultAllowed;
+    } else {
+      const roleWildcard = role?.[WILDCARD_KEY];
+      check = typeof roleWildcard === "boolean" ? roleWildcard : defaultAllowed;
+    }
+
+    return (
+      resolvePermissionCheck({
+        check,
+        user: props.user,
+        data: props.data,
+        organization: access.orgCollectionSlug !== undefined ? props.organization : undefined,
         resource: props.resource,
         action: props.action,
-      });
-    }
-    return false;
+        scope: props.scope,
+      }) ?? defaultAllowed
+    );
+  });
+}
+
+/**
+ * True when `action` on `resource` carries a payload a resolved field map must
+ * be checked against: `create`/`update`, or any action declared in
+ * `access.customActions[resource].mutation` — the same lookup
+ * `resolveAccessCall` already performs for its undeclared-action warning.
+ *
+ * `delete` is deliberately excluded: a delete has no payload, so a map
+ * resolving on it can never be "missing changes".
+ *
+ * @param props - The resolved config plus the subject and action being checked.
+ * @returns `true` when the action carries a payload a field map must gate.
+ * @internal
+ */
+function isPayloadBearingWrite(props: {
+  access: VexAccessConfig;
+  resource: string;
+  action: string;
+}): boolean {
+  if (props.action === CRUD_ACTIONS.create || props.action === CRUD_ACTIONS.update) {
+    return true;
   }
-  return true;
+  // `customActions` is keyed by the subject-slug union, which narrows to the
+  // declared slugs in a generated project; `resource` is a plain string here.
+  const customActions: Partial<Record<string, CustomActionsInput>> =
+    props.access.customActions ?? {};
+  return customActions[props.resource]?.mutation?.includes(props.action) ?? false;
+}
+
+/**
+ * The first key in `changes` that `map` does not permit, or `undefined` when
+ * every changed key is permitted.
+ *
+ * A key is a violation only when its value CHANGES. The admin forms submit
+ * every field on every save, so presence-based rejection would make an
+ * allow-list map impossible: a save touching one field still carries the rest.
+ * Comparison is content equality because `relationship` and `select` store
+ * arrays, where `===` would report a change on every save.
+ *
+ * @param props - The resolved field map, the change set, and the stored document.
+ * @param props.fieldPermissions - Per-field decisions for this role.
+ * @param props.changes - The keys and values this operation writes.
+ * @param props.stored - The stored document. Omitted on a create, where any
+ *   denied key present is a violation.
+ * @returns The first denied key whose value changed, else `undefined`.
+ * @internal
+ */
+function deniedFieldIn<TData extends Record<string, unknown>>(props: {
+  fieldPermissions: FieldPermissionMap;
+  changes: NoInfer<Partial<TData>>;
+  stored?: TData;
+}): string | undefined {
+  const wildcard = props.fieldPermissions[WILDCARD_KEY] ?? false;
+
+  for (const changedField of Object.keys(props.changes)) {
+    if (SYSTEM_FIELD_KEYS.has(changedField)) continue;
+
+    const permitted = props.fieldPermissions[changedField] ?? wildcard;
+    if (permitted) continue;
+
+    if (
+      props.stored !== undefined &&
+      CONSTRAINT_COMPARATORS.eq(props.changes[changedField], props.stored[changedField])
+    ) {
+      continue;
+    }
+
+    return changedField;
+  }
+
+  return undefined;
 }
 
 const CAPABILITY_PROBE = Symbol("vex.capabilityProbe");
@@ -185,8 +375,8 @@ function isConstrainedCheck(
  * could only ever do this half.
  *
  * `filter`, when present, is additive — the condition must hold AND the filter must
- * pass. It is resolved by recursing, so the existing boolean/callback/field-mode
- * handling owns it.
+ * pass. It is resolved by recursing, so the existing boolean/callback handling owns
+ * it, and a map returned from `filter` propagates out as this check's result.
  *
  * @typeParam TData - Document type under test.
  * @typeParam TUser - User document shape.
@@ -199,7 +389,8 @@ function isConstrainedCheck(
  * @param props.resource - Subject slug, for the error message.
  * @param props.action - Action name, for the error message.
  * @param props.scope - How to answer when `data` is absent.
- * @returns Whether this role permits the action on `props.data`.
+ * @returns Whether this role permits the action on `props.data`, or the field
+ *   map `filter` returned when the condition holds.
  * @throws {VexAccessError} When no `data` was supplied under `scope: "doc"` — a
  *   constraint is a per-document condition, so there is nothing to answer without
  *   a document.
@@ -213,7 +404,7 @@ function resolveConstrainedCheck<TData, TUser, TOrg>(props: {
   resource: string;
   action: string;
   scope: PermissionScope;
-}): boolean {
+}): boolean | FieldPermissionMap {
   // An unauthenticated caller still reaches here, because `anonRole` resolves them
   // to a real role — and that role's rules may be constrained.
   // `createUserReadSentinel` tells apart a rule that scopes to the caller (must
@@ -270,19 +461,19 @@ function resolveConstrainedCheck<TData, TUser, TOrg>(props: {
 }
 
 /**
- * Resolves one role's `PermissionCheck` into a concrete result: booleans and
- * mode objects pass through; callbacks are invoked with `{ user, data?,
- * organization? }`.
+ * Resolves one role's `PermissionCheck` into a concrete result: booleans pass
+ * through; callbacks are invoked with `{ user, data?, organization? }` and may
+ * answer with a {@link FieldPermissionMap} instead of a boolean.
  *
  * Module-private. The caller resolves "not declared" to the configured
  * `defaultPermissionMode` BEFORE calling — `check` is always a real check
  * here. A callback returning `undefined` resolves to `false` (deny), so an
  * inconclusive callback can never be mistaken for an undeclared action.
  *
- * @throws VexAccessError when trying to call hasPermission without passing data
- * when a permission check requires the data to execture and determine the result
- * @returns The check's boolean or field-mode object; for callbacks, the
- *   callback's result with `undefined` normalized to `false`.
+ * @throws {VexAccessError} When the check needs the document to answer, none
+ *   was supplied, and `scope` is `"doc"`.
+ * @returns The check's boolean, or the field map a callback returned, with
+ *   `undefined` normalized to `false`.
  */
 function resolvePermissionCheck<TData, TUser, TOrg>(props: {
   check: PermissionCheck;
@@ -292,7 +483,7 @@ function resolvePermissionCheck<TData, TUser, TOrg>(props: {
   resource: string;
   action: string;
   scope: PermissionScope;
-}): boolean {
+}): boolean | FieldPermissionMap {
   if (isConstrainedCheck(props.check)) {
     return resolveConstrainedCheck<TData, TUser, TOrg>({
       ...props,

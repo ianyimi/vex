@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { convexToJson } from "convex/values";
 import { defineCollection, text } from "../index";
 import { PERMISSION_MODES, PERMISSION_SCOPES, WILDCARD_KEY } from "./constants";
@@ -13,7 +13,11 @@ import { dataType, VexAccessError } from "./types";
 
 const articles = defineCollection({
   slug: "articles",
-  fields: { title: text({ required: true }), slug: text(), status: text({ index: "by_status" }) },
+  fields: {
+    title: text({ required: true }),
+    slug: text(),
+    status: text({ index: "by_status" }),
+  },
 });
 
 const users = defineCollection({
@@ -191,10 +195,7 @@ const accessWithOrg = defineAccess({
 
 /** Merge fixture: one mode/boolean combination per role. */
 const mergeAccess = defineAccess({
-  roles: [
-    "boolTrue",
-    "boolFalse",
-  ] as const,
+  roles: ["boolTrue", "boolFalse"] as const,
   resources: [articles, users],
   userCollectionSlug: "users",
   userRolesField: "roles",
@@ -1164,7 +1165,13 @@ describe("hasPermission — precedence: explicit action > subject wildcard > rol
  * excluded — that check form is being removed from the API.
  */
 const scopeMatrixAccess = defineAccess({
-  roles: ["staticAllow", "staticDeny", "ignoresData", "constraintsOnly", "constraintsWithFilter"] as const,
+  roles: [
+    "staticAllow",
+    "staticDeny",
+    "ignoresData",
+    "constraintsOnly",
+    "constraintsWithFilter",
+  ] as const,
   resources: [articles],
   userCollectionSlug: "users",
   userRolesField: "roles",
@@ -1223,13 +1230,31 @@ describe("hasPermission — scope × check-form matrix", () => {
       const trusted = { _id: "u1", roles: "ignoresData", trusted: true };
       const untrusted = { _id: "u1", roles: "ignoresData", trusted: false };
       expect(() =>
-        hasPermission({ access: scopeMatrixAccess, user: trusted, resource: "articles", action: "read", scope }),
+        hasPermission({
+          access: scopeMatrixAccess,
+          user: trusted,
+          resource: "articles",
+          action: "read",
+          scope,
+        }),
       ).not.toThrow();
       expect(
-        hasPermission({ access: scopeMatrixAccess, user: trusted, resource: "articles", action: "read", scope }),
+        hasPermission({
+          access: scopeMatrixAccess,
+          user: trusted,
+          resource: "articles",
+          action: "read",
+          scope,
+        }),
       ).toBe(true);
       expect(
-        hasPermission({ access: scopeMatrixAccess, user: untrusted, resource: "articles", action: "read", scope }),
+        hasPermission({
+          access: scopeMatrixAccess,
+          user: untrusted,
+          resource: "articles",
+          action: "read",
+          scope,
+        }),
       ).toBe(false);
     }
   });
@@ -1254,7 +1279,12 @@ describe("hasPermission — scope × check-form matrix", () => {
       }),
     ).toBe(false);
     expect(
-      hasPermission({ access: scopeMatrixAccess, user: asUser("constraintsOnly"), resource: "articles", action: "read" }),
+      hasPermission({
+        access: scopeMatrixAccess,
+        user: asUser("constraintsOnly"),
+        resource: "articles",
+        action: "read",
+      }),
     ).toBe(false);
   });
 
@@ -1340,7 +1370,13 @@ describe("hasPermission — scope × check-form matrix", () => {
  * `withIndex` — only `read` gets the full query builder.
  */
 const constraintFormsAccess = defineAccess({
-  roles: ["indexPlusInlineFilter", "predicateOnly", "booleanShortCircuit", "combinators", "notCombinator"] as const,
+  roles: [
+    "indexPlusInlineFilter",
+    "predicateOnly",
+    "booleanShortCircuit",
+    "combinators",
+    "notCombinator",
+  ] as const,
   resources: [articles],
   userCollectionSlug: "users",
   userRolesField: "roles",
@@ -1350,7 +1386,9 @@ const constraintFormsAccess = defineAccess({
       articles: {
         read: {
           constraints: ({ q }) =>
-            q.withIndex("by_status", (iq) => iq.eq("status", "published")).filter((f) => f.neq("slug", "hidden")),
+            q
+              .withIndex("by_status", (iq) => iq.eq("status", "published"))
+              .filter((f) => f.neq("slug", "hidden")),
         },
       },
     },
@@ -1379,7 +1417,9 @@ const constraintFormsAccess = defineAccess({
       articles: {
         update: {
           constraints: ({ q }) =>
-            q.filter((f) => f.and(f.eq("status", "published"), f.or(f.eq("slug", "a"), f.eq("slug", "b")))),
+            q.filter((f) =>
+              f.and(f.eq("status", "published"), f.or(f.eq("slug", "a"), f.eq("slug", "b"))),
+            ),
         },
       },
     },
@@ -1458,7 +1498,12 @@ describe("hasPermission — constraint-object forms: index half, filter half, bo
       }),
     ).not.toThrow();
     expect(
-      hasPermission({ access: constraintFormsAccess, user: admin, resource: "articles", action: "delete" }),
+      hasPermission({
+        access: constraintFormsAccess,
+        user: admin,
+        resource: "articles",
+        action: "delete",
+      }),
     ).toBe(true);
   });
 
@@ -1505,28 +1550,64 @@ describe("hasPermission — constraint-object forms: index half, filter half, bo
   it("nested and/or combinators interpret correctly per document", () => {
     const user = asUser("combinators");
     expect(
-      hasPermission({ access: constraintFormsAccess, user, resource: "articles", action: "update", data: { status: "published", slug: "a" } as never }),
+      hasPermission({
+        access: constraintFormsAccess,
+        user,
+        resource: "articles",
+        action: "update",
+        data: { status: "published", slug: "a" } as never,
+      }),
     ).toBe(true);
     expect(
-      hasPermission({ access: constraintFormsAccess, user, resource: "articles", action: "update", data: { status: "published", slug: "b" } as never }),
+      hasPermission({
+        access: constraintFormsAccess,
+        user,
+        resource: "articles",
+        action: "update",
+        data: { status: "published", slug: "b" } as never,
+      }),
     ).toBe(true);
     // Neither branch of the `or` matches.
     expect(
-      hasPermission({ access: constraintFormsAccess, user, resource: "articles", action: "update", data: { status: "published", slug: "c" } as never }),
+      hasPermission({
+        access: constraintFormsAccess,
+        user,
+        resource: "articles",
+        action: "update",
+        data: { status: "published", slug: "c" } as never,
+      }),
     ).toBe(false);
     // The `and`'s other operand fails even though the `or` would match.
     expect(
-      hasPermission({ access: constraintFormsAccess, user, resource: "articles", action: "update", data: { status: "draft", slug: "a" } as never }),
+      hasPermission({
+        access: constraintFormsAccess,
+        user,
+        resource: "articles",
+        action: "update",
+        data: { status: "draft", slug: "a" } as never,
+      }),
     ).toBe(false);
   });
 
   it("a not combinator negates its inner predicate per document", () => {
     const user = asUser("notCombinator");
     expect(
-      hasPermission({ access: constraintFormsAccess, user, resource: "articles", action: "update", data: { status: "archived" } as never }),
+      hasPermission({
+        access: constraintFormsAccess,
+        user,
+        resource: "articles",
+        action: "update",
+        data: { status: "archived" } as never,
+      }),
     ).toBe(false);
     expect(
-      hasPermission({ access: constraintFormsAccess, user, resource: "articles", action: "update", data: { status: "published" } as never }),
+      hasPermission({
+        access: constraintFormsAccess,
+        user,
+        resource: "articles",
+        action: "update",
+        data: { status: "published" } as never,
+      }),
     ).toBe(true);
   });
 });
@@ -1547,7 +1628,12 @@ const noPermissionsEntryAccess = defineAccess({
 describe("hasPermission — multi-role resolution edge cases", () => {
   it("a known role with no entry in `permissions` falls through to the default, not a hard deny", () => {
     expect(
-      hasPermission({ access: noPermissionsEntryAccess, user: asUser("ghost"), resource: "articles", action: "read" }),
+      hasPermission({
+        access: noPermissionsEntryAccess,
+        user: asUser("ghost"),
+        resource: "articles",
+        action: "read",
+      }),
     ).toBe(false); // defaultPermissionMode is deny here
   });
 
@@ -1642,8 +1728,6 @@ const customActionAccess = defineAccess({
     userLister: { users: { listActive: true } },
   },
 });
-
-
 
 describe("hasPermission — custom actions", () => {
   it("grants a custom mutation action from a boolean rule", () => {
@@ -1744,6 +1828,314 @@ describe("hasPermission — custom actions", () => {
         action: "listActive",
       }),
     ).toBe(false);
+  });
+});
+
+/**
+ * The same action check now resolves either a boolean or a per-field map, and
+ * `hasPermission`'s answer depends entirely on what the caller tells it about
+ * the operation — `changes`, `data`, or neither.
+ *
+ * Named after the spec's `siteSettings` scenario: `adminTheme` is the one
+ * permitted field, `activeTheme` a denied array-valued one (so content- vs
+ * reference-equality is exercised), `name` a plain denied string field, and
+ * `price` a field only the `finance` role grants. None are declared on
+ * `articles`, consistent with every other fixture here: core tests run against
+ * the unaugmented registry, where `FieldPermissionKey` degrades to `string`.
+ */
+const fieldMapAccess = defineAccess({
+  roles: ["editor", "viewer", "finance"] as const,
+  resources: [articles, users],
+  customActions: {
+    articles: { query: ["listFeatured"], mutation: ["publish"] },
+  },
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    editor: {
+      articles: {
+        read: () => ({ "*": false, adminTheme: true }),
+        update: () => ({ adminTheme: true }),
+        delete: () => ({ "*": false, adminTheme: true }),
+        publish: () => ({ "*": false, adminTheme: true }),
+        listFeatured: () => ({ "*": false, adminTheme: true }),
+      },
+    },
+    viewer: {
+      articles: { update: () => ({ "*": false }) },
+    },
+    finance: {
+      articles: { update: () => ({ "*": false, price: true }) },
+    },
+  },
+});
+
+/** Stored document for the fixture above. */
+const storedDoc = { name: "Site", adminTheme: ["t1"], activeTheme: ["t9"], price: 3 };
+
+describe("hasPermission — field maps", () => {
+  it("permits a write that changes only a permitted field", () => {
+    expect(
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+        data: storedDoc,
+        changes: { adminTheme: ["t2"] },
+      }),
+    ).toBe(true);
+  });
+
+  it("permits a write that resends denied fields UNCHANGED", () => {
+    // The full-form-submit case: every field is present, but only
+    // `adminTheme`'s value actually differs. Presence-based rejection fails.
+    expect(
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+        data: storedDoc,
+        changes: { name: "Site", activeTheme: ["t9"], adminTheme: ["t2"] },
+      }),
+    ).toBe(true);
+  });
+
+  it("compares array values by content, not reference", () => {
+    expect(
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+        data: storedDoc,
+        changes: { activeTheme: ["t9"] },
+      }),
+    ).toBe(true);
+  });
+
+  it("denies a write that changes a denied field", () => {
+    expect(
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+        data: storedDoc,
+        changes: { name: "Defaced" },
+      }),
+    ).toBe(false);
+  });
+
+  it("throws naming the denied field under throwOnDenied", () => {
+    let caught: unknown;
+    try {
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+        data: storedDoc,
+        changes: { name: "Defaced" },
+        throwOnDenied: true,
+      });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(VexAccessError);
+    const error = caught as VexAccessError;
+    expect(error.field).toBe("name");
+    expect(error.data.field).toBe("name");
+  });
+
+  it("denies any denied key present when there is no stored document", () => {
+    expect(
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+        changes: { name: "New" },
+      }),
+    ).toBe(false);
+  });
+
+  it("permits a read — a map projects, it does not deny", () => {
+    expect(
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "read",
+        data: storedDoc,
+      }),
+    ).toBe(true);
+  });
+
+  it("denies under the default scope when neither data nor changes is given", () => {
+    expect(
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+      }),
+    ).toBe(false);
+  });
+
+  it("permits under scope 'any' when neither is given", () => {
+    expect(
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+        scope: PERMISSION_SCOPES.any,
+      }),
+    ).toBe(true);
+  });
+
+  it("throws the needs-context error under scope 'doc'", () => {
+    let caught: unknown;
+    try {
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+        scope: PERMISSION_SCOPES.doc,
+      });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(VexAccessError);
+    const { message } = (caught as VexAccessError).data;
+    expect(message).toMatch(/"changes"/);
+    expect(message).toMatch(/"data"/);
+  });
+
+  it("throws when an ENFORCING payload-bearing write resolves a map but omits `changes`", () => {
+    // Must NOT silently resolve via the projecting (read) case — that is the
+    // design's only fail-open.
+    let caught: unknown;
+    try {
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+        data: storedDoc,
+        throwOnDenied: true,
+      });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(VexAccessError);
+    expect((caught as VexAccessError).data.message).toMatch(/"changes"/);
+  });
+
+  it("throws the same way for an enforcing custom mutation action", () => {
+    expect(() =>
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "publish",
+        data: storedDoc,
+        throwOnDenied: true,
+      }),
+    ).toThrow(VexAccessError);
+  });
+
+  it("projects for an ADVISORY update probe, so an edit view gates instead of crashing", () => {
+    // The admin edit views' own call shape: `data` for the per-document rules,
+    // no `changes` because they authorize nothing, and no `throwOnDenied`.
+    // `throwOnDenied` is what separates an enforcement site that forgot
+    // `changes` from a UI asking whether the document is editable at all.
+    expect(
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+        data: storedDoc,
+      }),
+    ).toBe(true);
+  });
+
+  it("does NOT throw for a custom QUERY action that omits `changes`", () => {
+    expect(
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "listFeatured",
+        data: storedDoc,
+      }),
+    ).toBe(true);
+  });
+
+  it("ignores a map on `delete` and warns in dev", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "delete",
+        data: storedDoc,
+      }),
+    ).toBe(true);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it("ignores `changes` entirely when no field map resolves", () => {
+    // Proves the existing call sites, none of which declare a map, are
+    // unaffected.
+    expect(
+      hasPermission({
+        access,
+        user: asUser("poweruser"),
+        resource: "articles",
+        action: "update",
+        changes: { anything: "goes", title: "whatever" },
+      }),
+    ).toBe(true);
+  });
+
+  it("OR-merges across roles before judging the write", () => {
+    expect(
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser(["viewer", "finance"]),
+        resource: "articles",
+        action: "update",
+        data: storedDoc,
+        changes: { price: 2 },
+      }),
+    ).toBe(true);
+  });
+
+  it("keeps VexAccessError.data serializable on a field-scoped denial", () => {
+    let caught: unknown;
+    try {
+      hasPermission({
+        access: fieldMapAccess,
+        user: asUser("editor"),
+        resource: "articles",
+        action: "update",
+        data: storedDoc,
+        changes: { name: "Defaced" },
+        throwOnDenied: true,
+      });
+    } catch (error) {
+      caught = error;
+    }
+    const error = caught as VexAccessError;
+    expect(error.data.field).toBe("name");
+    expect(() => convexToJson(error.data)).not.toThrow();
   });
 });
 

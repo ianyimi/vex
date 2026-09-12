@@ -151,7 +151,9 @@ export const pages = defineCollection({
           items: group({
             label: "Group",
             interfaceName: "InnerGroup",
-            defaultOpen: false,
+            admin: {
+              defaultCollapsed: false,
+            },
             fields: {
               title: text({ description: "test field description", label: "Title" }),
               description: text({ label: "description", description: "another test description" }),

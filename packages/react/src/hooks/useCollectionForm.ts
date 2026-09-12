@@ -8,6 +8,7 @@ import {
   DocumentBySlug,
 } from "@vexcms/core";
 import type { AnyFormApi } from "../components/form/AppFormContext";
+import { pickReadableSchema, pickReadableValues } from "../components/form/readableFields";
 
 /**
  * Creates a TanStack Form instance pre-configured for a VexCMS collection.
@@ -45,6 +46,15 @@ export function useCollectionForm<
   props: {
     collection: CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug>;
     document?: TDocument | null;
+    /**
+     * Field keys the caller may READ, when field-level permissions narrow them.
+     *
+     * A read-denied field is kept out of the form entirely — out of
+     * `defaultValues` and out of the validation schema — so it cannot be seen,
+     * cannot be submitted, and cannot block submission when it is required.
+     * Omit when unrestricted.
+     */
+    readableFieldKeys?: readonly string[];
   } & FormOptions<
     DocumentBySlug[TCollectionSlug],
     any,
@@ -60,14 +70,18 @@ export function useCollectionForm<
     any
   >,
 ): AnyFormApi {
-  const { collection, document, validators, ...formOptions } = props;
+  const { collection, document, validators, readableFieldKeys, ...formOptions } = props;
+  const schema = pickReadableSchema(getCollectionInputSchema({ collection }), readableFieldKeys);
   return useForm({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    defaultValues: getCollectionDefaultValues({ collection, document }) as any,
+    defaultValues: pickReadableValues(
+      getCollectionDefaultValues({ collection, document }),
+      readableFieldKeys,
+    ) as any,
     ...formOptions,
     validators: {
-      onSubmitAsync: getCollectionInputSchema({ collection }),
-      onBlur: getCollectionInputSchema({ collection }),
+      onSubmitAsync: schema,
+      onBlur: schema,
       ...validators,
     },
   }) as AnyFormApi;

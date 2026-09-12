@@ -292,6 +292,68 @@ describe("create (server) — access enforcement", () => {
       ),
     ).rejects.toThrow(VexAccessError);
   });
+
+  test("create rejects a payload carrying a denied field", async () => {
+    const t = convexTest(schema, modules);
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          editor: { posts: { create: () => ({ "*": false, title: true }) } },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    let caught: unknown;
+    try {
+      await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({
+          ctx,
+          collection: "posts",
+          config,
+          auth: { user: { roles: ["editor"] } },
+          // `title` is permitted; `slug` is not — a create has no stored doc
+          // to diff against, so any denied key present is a violation.
+          data: { title: "New Post", slug: "denied-slug" },
+        }),
+      );
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(VexAccessError);
+    expect((caught as VexAccessError).field).toBe("slug");
+  });
+
+  test("create writes normally when the action declares no map (regression)", async () => {
+    const t = convexTest(schema, modules);
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          editor: { posts: { create: true } },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    const id = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({
+        ctx,
+        collection: "posts",
+        config,
+        auth: { user: { roles: ["editor"] } },
+        data: { title: "New Post", slug: "any-slug" },
+      }),
+    );
+    expect(typeof id).toBe("string");
+  });
 });
 
 // ── Regression pin (DD 44) ───────────────────────────────────────────────────

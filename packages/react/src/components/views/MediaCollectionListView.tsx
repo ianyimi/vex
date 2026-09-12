@@ -2,6 +2,7 @@
 
 import {
   CRUD_ACTIONS,
+  isFieldAllowed,
   PERMISSION_SCOPES,
   type MediaCollectionConfig,
   type TDocument,
@@ -17,8 +18,21 @@ import { CreateMediaModal } from "../modals/CreateMediaModal";
 import { useVexConfig } from "../../context/VexConfigContext";
 import { getCollectionColumnDefs } from "../fields";
 import { FilePreview } from "../media/FilePreview";
-import { usePaginatedQuery, usePermission, useVexMutation } from "../../hooks";
+import { useFieldPermissions, usePaginatedQuery, usePermission, useVexMutation } from "../../hooks";
+import { useMemo } from "react";
 import { DataTable } from "../ui";
+
+/**
+ * The field name backing a column, read off TanStack's `accessorKey`.
+ * `undefined` for the preview/select/actions columns, which carry no field
+ * and must never be filtered by read permission.
+ *
+ * @param column - One TanStack column definition.
+ * @returns The backing field name, or `undefined` when the column has none.
+ */
+function columnFieldKey(column: ColumnDef<TDocument<VexMediaDocument>, unknown>): string | undefined {
+  return "accessorKey" in column ? String(column.accessorKey) : undefined;
+}
 
 /**
  * Props for the `MediaCollectionListView` component.
@@ -102,13 +116,28 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
     await deleteMediaMutation.mutateAsync({ ids: selectedIds, collection: props.collection.slug });
   }
 
-  const columns = [
-    mediaPreviewColumn(),
-    ...getCollectionColumnDefs<VexMediaDocument>({ collection }),
-  ];
+  const fieldPermissions = useFieldPermissions({
+    resource: collection.slug,
+    action: CRUD_ACTIONS.read,
+    scope: PERMISSION_SCOPES.any,
+  });
 
-  const canCreate = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.create });
+  const columns = useMemo(
+    () =>
+      [mediaPreviewColumn(), ...getCollectionColumnDefs<VexMediaDocument>({ collection })].filter(
+        (column) => {
+          const key = columnFieldKey(column);
+          return key === undefined || isFieldAllowed(fieldPermissions, key);
+        },
+      ),
+    [collection, fieldPermissions],
+  );
 
+  const canCreate = usePermission({
+    resource: collection.slug,
+    action: CRUD_ACTIONS.create,
+    scope: PERMISSION_SCOPES.any,
+  });
   const canDelete = usePermission({
     resource: collection.slug,
     action: CRUD_ACTIONS.delete,

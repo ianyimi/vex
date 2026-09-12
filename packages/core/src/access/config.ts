@@ -5,6 +5,8 @@ import {
   VexAccessConfigError,
   type AccessResource,
   type CustomResourceInput,
+  type InferDocTypeFromSlug,
+  type RolePermissions,
   type SubjectMap,
   type VexAccessConfig,
   type VexAccessConfigInput,
@@ -77,6 +79,29 @@ export function defineAccess<
   const TCustomActions extends Partial<
     Record<TResources[number]["slug"] | TUserSlug | Extract<TOrgSlug, string>, CustomActionsInput>
   > = {},
+  // No `const` modifier, and the constraint is the full `Record<…, RolePermissions<…>>`
+  // rather than `unknown`: TypeScript contextually types the `permissions` literal from
+  // a type parameter's CONSTRAINT, and that is the only thing keeping
+  // `({ user, data }) => …` callbacks typed instead of implicitly `any`.
+  TPermissions extends Record<
+    TRoles[number],
+    RolePermissions<
+      SubjectMap<TResources, TCustomResources, TUserSlug, TOrgSlug, TCustomActions>,
+      InferDocTypeFromSlug<TUserSlug>,
+      TOrgSlug extends string ? InferDocTypeFromSlug<TOrgSlug> : never,
+      TUserSlug,
+      TOrgSlug
+    >
+  > = Record<
+    TRoles[number],
+    RolePermissions<
+      SubjectMap<TResources, TCustomResources, TUserSlug, TOrgSlug, TCustomActions>,
+      InferDocTypeFromSlug<TUserSlug>,
+      TOrgSlug extends string ? InferDocTypeFromSlug<TOrgSlug> : never,
+      TUserSlug,
+      TOrgSlug
+    >
+  >,
 >(
   props: VexAccessConfigInput<
     TRoles,
@@ -84,7 +109,8 @@ export function defineAccess<
     TCustomResources,
     TUserSlug,
     TOrgSlug,
-    TCustomActions
+    TCustomActions,
+    TPermissions
   >,
 ): VexAccessConfig<
   SubjectMap<TResources, TCustomResources, TUserSlug, TOrgSlug, TCustomActions>,

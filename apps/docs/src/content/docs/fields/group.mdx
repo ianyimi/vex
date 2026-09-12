@@ -22,7 +22,6 @@ for sub-structure inside `blocks()` block definitions and `array()` items.
 | `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
 | `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
 | `defaultValue` | `Record<string, unknown>` | `{}` | Pre-filled object shown in the admin form when creating a new document. |
-| `defaultOpen` | `boolean` | `true` | Whether the accordion fieldset starts open in the admin form. Set `false` for secondary or rarely-edited groups (e.g. SEO metadata) to reduce visual noise. |
 | `interfaceName` | `string` | — | Optional TypeScript type alias name. When set, `generateVexTypes` emits a named `export type <interfaceName> = { ... }` instead of inlining the object shape wherever this group is referenced. |
 | `description` | `string` | — | Helper text shown below the field input. |
 | `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
@@ -30,6 +29,7 @@ for sub-structure inside `blocks()` block definitions and `array()` items.
 | `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
 | `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
 | `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Alignment used for this field's column in the list-view table. |
+| `admin.defaultCollapsed` | `boolean` | `false` | Whether the accordion fieldset starts collapsed in the admin form. Defaults to expanded; set `true` for secondary or rarely-edited groups (e.g. SEO metadata) to reduce visual noise on load. Mirrors `blocks()`' option of the same name, and Payload's. Replaces the former top-level `defaultOpen`, whose polarity was the inverse — `defaultOpen: false` is now `admin.defaultCollapsed: true`. |
 
 ## Schema output
 
@@ -67,10 +67,11 @@ const posts = defineCollection({
       },
     }),
 
-    // Collapsed by default — secondary field, reduces visual noise on load
+    // Collapsed on load — secondary field, reduces visual noise. Groups are
+    // expanded by default, so `true` is the opt-in.
     advanced: group({
       label: "Advanced",
-      defaultOpen: false,
+      admin: { defaultCollapsed: true },
       fields: {
         priority: number({ defaultValue: 0 }),
         pinned: text(),
@@ -145,9 +146,13 @@ export interface PostsDocument extends VexDocument {
 ## Admin UI
 
 The group field renders as a collapsible accordion fieldset in the edit form,
-starting open or closed per `defaultOpen`. Each sub-field is rendered with the
-same input component it would use standalone, addressed via TanStack Form
-dot-notation (e.g. `"seo.title"`); `readOnly` propagates to every sub-field.
+starting expanded unless `admin.defaultCollapsed` is `true`. Each sub-field is
+rendered with the same input component it would use standalone, addressed via
+TanStack Form dot-notation (e.g. `"seo.title"`); `readOnly` propagates to every
+sub-field. Expanding and collapsing is navigation rather than editing, so a
+caller with read access but no write access can still open the group to see its
+values while every sub-field stays non-interactive.
+
 Sorting is disabled in the list-view table — the cell renders a compact
 `{ n keys }` badge instead of a full object preview, since nested object data
 isn't meaningfully summarized in a table cell.
