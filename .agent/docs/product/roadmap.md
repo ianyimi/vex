@@ -1,19 +1,54 @@
 # Roadmap
 
+> **The 0.1.0 launch track lives in `v0.1.0-launch-plan.md`** — ordered specs A–J
+> with acceptance criteria, verified against package source 2026-09-12. That file
+> is what you follow to ship. This file holds milestone framing and the
+> post-launch vision.
+>
 > Source of truth for migration readiness: `maprios-migration-todo.md`
-> (verified against package source 2026-08-04). Launch context:
-> `v0.1.0-launch-roadmap.md` (M1-M8).
+> (verified against package source 2026-08-04).
 
-## Milestone 1 — Tier-1 www migration blockers
+## Milestone 1 — v0.1.0 launch track
 
-Framework gaps that block migrating maprios/www off Payload/MongoDB:
+Ten specs. Full scope, decisions, and acceptance criteria in
+`v0.1.0-launch-plan.md`. Spec IDs are stable labels, not positions.
 
-1. Versioning & drafts (spec 36) — `_status`/`_draftSnapshot`/`_version` fields, `vex_versions` table, adminSaveDraft/Publish/Unpublish/RestoreVersion, autosave, version history panel
-2. ✅ Globals / `defineGlobal` (spec 35) — globals.get query, GlobalEditView, sidebar section — shipped 2026-08-12 (pending manual browser verification)
-3. RBAC / access control — `defineAccess()`, `hasPermission()`, document + field-level permissions, enforcement in generated functions, public (unauthenticated) mutation access
-4. `json` field type; `email` + `textarea` field types
-5. PDF block — upload field `filterOptions` (mime), `Pdf_1` block, react-pdf renderer (port from maprios)
-6. Block group categorization — `admin.group` on `defineBlock()`, grouped picker
+| Order | Spec | Gate |
+|---|---|---|
+| 1 | **A** — Data-table integrity & dead config | Nothing shipped is resolved-but-unread |
+| 2 | **B** — Public API surface | Nothing exported lies about what it does |
+| 3 | **F** — Lifecycle hooks & validation | Extensibility + server-side constraint enforcement |
+| 4 | **C** — Versioning & drafts | The feature the README tells users to wait for |
+| 5 | **D** — Richtext field | The published `richtext-plate` package becomes usable |
+| 6 | **E** — Live preview | Editing feedback loop |
+| 7 | **G** — Field input consistency pass | No input looks half-built |
+| 8 | **H** — Edit-view overhaul | Editing is not hostile |
+| 9 | **I** — List-view overhaul | 200 rows is usable |
+| 10 | **J** — Responsive / mobile UI pass | Final gate before tagging |
+
+**Sequencing principle:** each spec consumes what earlier specs built; no spec
+writes inert code whose only justification is a later spec. That rule put F ahead
+of C (drafts consume the hook and validation pipeline instead of building one for
+F to slot into), turned B2 into a decision document rather than a reserved config
+flag, and moved A's UI-dependent table config into I so nothing is half-wired
+twice.
+
+Hard ordering constraints (only these three are real): **B before F and D** ·
+**F before C/D/G/H/I** · **J last**.
+
+Architecture decisions taken for this track: ADR-010 (hook split — `before*` in the
+write path, `after*` on `convex-helpers` triggers), ADR-011 (one write-validation
+stage; `validate()` server-only and async), ADR-012 (live preview reads unsaved form
+state).
+
+Shipped since the original Milestone 1 framing: ✅ Globals / `defineGlobal` ·
+✅ RBAC document-level access · ✅ Field-level RBAC permissions · ✅ Access index
+resolution · ✅ `anonRole` fallback · ✅ `color` field · ✅ SEO prerendering and
+revalidation · ✅ React test suite and coverage expansion.
+
+Deferred out of 0.1.0 with reasons: `json` / `email` / `textarea` (leaf fields, cheap,
+not gates) · `ui` / `tabs` (change core invariants — see `backlog.md`) · PDF block ·
+block group categorization.
 
 ## Milestone 2 — maprios/www migration
 
@@ -23,13 +58,11 @@ Pure content/component work once Milestone 1 lands:
 - Seed script (Convex `seed` mutation)
 - Drop Payload + MongoDB from maprios www
 
-## Milestone 3 — Multi-component architecture + launch track
+## Milestone 3 — Multi-component architecture
 
 - Multi-component architecture (spec 43a): `defineComponent()`, per-component schema/codegen, workspace routing
 - Cross-component auth/user pattern (spec 43b)
 - maprios main-app migration
-- Branch promotion: rebuild -> master (old master -> archive)
-- v0.1.0 launch track: CLI completion, create-vexcms template, changesets CI/CD, docs site, brand + marketing site, npm release
 
 
 ## Long-term vision (post-launch)

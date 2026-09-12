@@ -249,7 +249,7 @@ hasPermission({ access, user, resource: "posts", action: "delete", data: post, t
 
 ### Pagination & Data Tables
 
-The admin panel's collection list view is a paginated, sortable data table backed by Convex's `usePaginatedQuery`. Page size is configurable per collection:
+The admin panel's collection list view is a paginated data table backed by Convex's `usePaginatedQuery`. Page size is configurable per collection:
 
 ```typescript
 export const posts = defineCollection({
@@ -266,6 +266,8 @@ export const posts = defineCollection({
   },
 });
 ```
+
+> Per-collection **sorting**, **search**, and **column visibility** are on the v0.1.0 launch track — see the [roadmap](apps/docs/src/content/docs/roadmap.md).
 
 ### Authentication (Better Auth)
 
@@ -316,13 +318,13 @@ export default function AdminPage({ params }: { params: Promise<{ path?: string[
 }
 ```
 
-It includes a paginated, searchable data table per collection, Zod-validated edit forms generated from your field config, a media library with an upload dropzone, role-based access control, and sidebar grouping for collection organization.
+It includes a paginated data table per collection, Zod-validated edit forms generated from your field config, a media library with an upload dropzone, role-based access control, and sidebar grouping for collection organization.
 
 ## Architecture
 
 ```
 @vexcms/core                 Schema definitions, fields, access control (RBAC), type/query generation — no Convex dep
-@vexcms/cli                  CLI: schema generation, type generation, file watching, migrations
+@vexcms/cli                  CLI: schema generation, type generation, file watching
 @vexcms/react                Shared admin UI components, hooks, and HKT-bound config re-exports
 @vexcms/next                 Next.js admin panel entry points (NextAdminPage, NextAdminLayout)
 @vexcms/better-auth           Better Auth adapter for Vex (schema extraction + Convex DB adapter)

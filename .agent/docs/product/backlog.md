@@ -303,3 +303,136 @@ needed to prove untouched fields adopt live changes silently. The conflicted-fie
 is a distinct, harder problem that deserves its own spec.
 
 **Detail.** Step 9, `.agent/docs/specs/2026-09-07-field-level-rbac-permissions/spec.md`.
+Scoped deliberately without presence: no viewer-visibility UI, no new
+package installs, nothing beyond the three pieces above. See "Presence, live
+cursors, and per-field collaborative indicators" below for the related but
+separately-scheduled feature this pairs with conceptually.
+
+---
+
+## Presence, live cursors, and per-field collaborative indicators
+
+**What.** A Google-Docs/Figma-style collaborative layer for the admin
+edit view, in three independently-costed pieces:
+
+1. **Viewer facepile.** Avatar stack (max 5 + overflow count) on the
+   collection/global/media edit-view header showing who else has this
+   document open, click → `nuqs`-driven modal listing everyone present.
+   Edit views only, not list views.
+2. **Per-field active-editor indicator.** Border/badge on a field another
+   signed-in user currently has focused — the visual complement to the
+   conflict-resolution feature above.
+3. **Live cursors, visible ambiently, not just to the person editing.** A
+   Figma-style pointer overlay across the form canvas (rides presence
+   directly). Separately: character-level collaborative cursors inside
+   rich-text content — buildable via Plate's own official `@platejs/yjs` +
+   `@slate-yjs/core` (Yjs CRDT + `Awareness`-based cursors already shipped
+   by Plate) paired with a **new, hand-built Convex Yjs-sync provider** for
+   the content channel — Convex has no first-party Yjs product, so this is
+   real component work, but not a research problem: the CRDT and cursor
+   logic already exist upstream, we would only build the transport. Three
+   connection tiers, not one on/off: **ambient** (read + awareness, any
+   viewer with the document open sees everyone's cursor/live edits inline,
+   no fullscreen or focus required — same cost class as the document's own
+   existing live subscription), **hover** (local-only prefetch, unchanged),
+   **authoring** (write authority + local cursor broadcast, gated on field
+   `focus`/`blur`; fullscreen is an independent bigger-viewport view-mode on
+   the same session, not a connection trigger). A collab-enabled field
+   becomes effectively autosaved once opened, which exempts it from the
+   per-field conflict affordance above (Yjs already merges concurrent edits,
+   so there is no local-draft-vs-live fork to present). Blocked until the
+   richtext field itself ships (currently commented out,
+   `packages/core/src/fields/constants.ts:85-89`).
+4. **Follow mode**, including exact scroll-position mirroring, not just
+   jump-to-field. Click another viewer's avatar to track whichever field
+   they have focused; while following, mirror their scroll position inside
+   that field's own bounded scroll container (not the whole page) via a
+   normalized value (scroll fraction or topmost visible node, not raw
+   pixels, so it's independent of the follower's viewport size) carried on
+   the same throttled `Awareness` payload as their cursor — no new
+   transport. Simplified by item 3's ambient tier: the follower is already
+   connected to every field on the document regardless of who they follow,
+   so following is purely "where to point the viewport," not "what to
+   connect to." Real scope of its own: a spectate-not-steal-focus default,
+   and breaking follow on local scroll/click-away.
+
+**Why.** Two editors on the same document today have no signal anyone else is
+even there, let alone which field. Industry-standard affordance for exactly
+this gap.
+
+**Lift.** Unassessed at the implementation level, but the shape is clear:
+facepile and the per-field indicator both ride on the same presence
+subscription (~2-3 days each, mostly UI); the pointer overlay is a similar
+size add-on; the in-editor Yjs-sync provider is the one genuinely large,
+separately-scoped piece — a real Convex component (update batching, snapshot
+compaction, reconnect catch-up, GC) with no official reference to copy. It
+also has two prerequisites of its own, both unrelated to collab: the richtext
+field isn't wired into `@vexcms/core` yet (`VexEditorAdapter`/
+`VexEditorComponentProps` don't exist there, `plateEditor()` has no call
+sites), and `@platejs/yjs` needs `platejs >=53.0.0` while the workspace
+catalog pins `52.3.21` across every `@platejs/*` package.
+
+**Why deferred.** Post-0.1.0. Ships as an **opt-in install**
+(`@convex-dev/presence`, a real Convex component), matching how
+`@vexcms/file-storage-convex` and `@vexcms/better-auth` are already opt-in
+adapters — `@vexcms/core` takes on no presence-aware code, no schema changes.
+Two things need their own design before this is buildable end-to-end: (a) a
+field-input shared wrapper, since today every field type
+(`packages/react/src/components/fields/*/Input.tsx`) assembles its own chrome
+independently — the per-field indicator needs one injection point, not ten;
+(b) `create-vexcms`'s two fixed templates have no variant/flag mechanism for
+"preconfigured with presence" vs. not, so a template offering this needs that
+system built first. Anonymous-user coverage is feasible later without new
+backend work — `defineAccess({ anonRole })` + `anonRoleDatabaseHook` are
+already shipped and proven in `apps/www` (today gating an admin-panel demo
+login, not default-anonymous marketing-site visitors) — but is out of scope
+until this feature actually needs anonymous viewers.
+
+**Detail.** `.agent/docs/research/edit-view-presence-and-viewer-facepile.md`.
+
+---
+
+## `ui` and `tabs` field types
+
+**What.** Two field types from the master-branch API that the rebuild never
+reimplemented: `ui` — a non-persisted field rendering a display or action
+affordance in the form — and `tabs`, which groups child fields into tabbed
+sections while hoisting them into the parent's storage shape.
+
+**Why we want them.** `tabs` is the standard affordance for a long content model;
+`group` produces a collapsible section instead, which is a weaker answer for a
+document with 40 fields. `ui` is how you put a "import theme from JSON" button or
+an inline explanation between fields.
+
+**Measured lift.** Not a leaf-field addition — both change core invariants, which
+is why they cost far more than their surface suggests:
+
+- `ui` is **non-persisted**, so it must be skipped by schema generation, by form
+  validation, *and* by column generation. Every one of those three pipelines
+  currently assumes `fields` maps one-to-one onto stored keys. Adding a field that
+  is not a key means a discriminator threaded through all three.
+- `tabs` **hoists child fields to the parent**. Unlike `group`, whose children
+  nest under one object key, `tabs` children are siblings of the tabs field
+  itself — so schema generation, type generation, default-value collection,
+  `changedValues` diffing, and field-level RBAC's field-map resolution all need to
+  flatten through it.
+
+Measured usage when the decision was taken: `color` 57 call sites, `ui` 3, `tabs`
+1, `richtext` 0 across the marketing template.
+
+**What blocks it.** Nothing external — it is purely a question of whether the
+core-invariant change is worth it. The three `ui()` call sites in the master
+template were the theme-import affordance and were dropped outright; the single
+`tabs` call site was substituted with `group`.
+
+**Why deferred.** Cut with reason in the launch-readiness spec (decision D8) and
+re-ratified for the v0.1.0 track in `v0.1.0-launch-plan.md`'s non-goals. A field
+type that rewrites three pipelines is not a polish item and should not ride along
+behind a release. `textarea`, `email`, and `json` are genuine leaf fields and are
+the cheap way to raise the field count — they are on the public roadmap as
+Planned, while `ui`/`tabs` are published under **Not planned** so users stop
+asking.
+
+**Detail.** Decision D8 and the Non-goals section of
+`.agent/docs/specs/2026-08-30-launch-readiness/spec.md`; the API-delta table in
+the same file records the master→rebuild substitutions.
