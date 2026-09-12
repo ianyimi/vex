@@ -2,6 +2,8 @@ export * from "./constants";
 export * from "./types";
 export * from "./config";
 export * from "./hasPermission";
+export * from "./resolveFieldPermissions";
+export * from "./compileConstraints";
 export * from "./canAccessAdminPanel";
 export * from "./resolveAccessRule";
 export * from "./pickQueryIndex";

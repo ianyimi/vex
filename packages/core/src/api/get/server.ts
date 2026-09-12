@@ -5,7 +5,7 @@ import type { CollectionSlug } from "../../types/generated";
 import { buildDepthPopulate } from "../depth";
 import { populateDocs } from "../populate";
 import type { GenericQueryServerParams, GetReturn, PopulateShape } from "../types";
-import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { CRUD_ACTIONS, hasPermission, resolveFieldPermissions, stripDeniedFields } from "../../access";
 import { resolveAccessCall } from "../utils";
 
 /**
@@ -65,7 +65,7 @@ export async function get<
 >(
   args: GetServerArgs<DataModel, TCollectionSlug, TPopulate, D>,
 ): Promise<GetReturn<TCollectionSlug, TPopulate, D>> {
-  const doc = await args.ctx.db.get(args.id);
+  let doc = await args.ctx.db.get(args.id);
   if (doc && args.config?.access !== undefined) {
     const { access, action, resource } = resolveAccessCall({
       config: args.config,
@@ -82,6 +82,17 @@ export async function get<
       action,
       data: doc,
     });
+    doc = stripDeniedFields(
+      doc,
+      resolveFieldPermissions({
+        access,
+        user: args.auth?.user ?? null,
+        organization: args.auth?.organization,
+        resource,
+        action,
+        data: doc,
+      }),
+    );
   }
 
   // Resolve slug for buildDepthPopulate from the Id (D12).

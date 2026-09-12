@@ -17,16 +17,18 @@ const pages = defineCollection({
 const access = defineAccess({
   permissions: {
     editor: { pages: { create: true, delete: true, read: true, update: true } },
+    fieldEditor: { pages: { update: () => ({ "*": false, title: true }) } },
     viewer: { pages: { read: true } },
   },
   resources: [pages],
-  roles: ["editor", "viewer"] as const,
+  roles: ["editor", "fieldEditor", "viewer"] as const,
   userCollectionSlug: "users",
   userRolesField: "roles",
 });
 
 const editorUser = { _id: "u1", roles: "editor" };
 const viewerUser = { _id: "u2", roles: "viewer" };
+const fieldEditorUser = { _id: "u3", roles: "fieldEditor" };
 
 /** Maps a doc's `slug` to `/pages/<slug>` — a stand-in for a project's route map. */
 const map: VexRouteMapper = ({ collection, doc }) => [`/${collection}/${doc.slug as string}`];
@@ -108,6 +110,26 @@ describe("createVexRevalidateRoute", () => {
 
     expect(response.status).toBe(403);
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("purges when the update action resolves to a field map, since a purge writes no fields (scope: any)", async () => {
+    const route = createVexRevalidateRoute({
+      config: makeConfig(),
+      getAuth: async () => ({ user: fieldEditorUser }),
+      getToken: async () => "token",
+    });
+
+    const response = await route.POST(
+      postRequest({
+        changes: [{ after: page("home") }],
+        collection: "pages",
+        operation: "update",
+      }),
+    );
+    const body = (await response.json()) as VexRevalidateResponse;
+
+    expect(response.status).toBe(200);
+    expect(body.revalidated).toEqual(["/pages/home"]);
   });
 
   it("purges both the pre-rename and post-rename path for one update", async () => {

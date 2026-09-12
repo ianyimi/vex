@@ -5,7 +5,7 @@ import type {
   DeleteMediaServerArgs,
   GenerateUploadUrlServerArgs,
 } from "./types";
-import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { CRUD_ACTIONS, hasPermission, PERMISSION_SCOPES } from "../../access";
 import { resolveAccessCall, resolveCollectionSlug } from "../../api/utils";
 import { type GenericId } from "convex/values";
 import { CollectionSlug } from "../../types";
@@ -49,6 +49,9 @@ export async function generateUploadUrl<TDataModel extends GenericDataModel = Ge
       access,
       resource,
       action,
+      // No document is written here — this asks whether the caller may
+      // create in principle, not against a specific payload.
+      scope: PERMISSION_SCOPES.any,
     });
   }
   const adapter = args.config.storage?.adapters.find((a) => a.name === args.adapter);
@@ -98,6 +101,13 @@ export async function createMediaDocument<TDataModel extends GenericDataModel = 
       organization: args.auth?.organization,
       resource,
       action,
+      changes: {
+        alt: args.alt,
+        filename: args.filename,
+        mimeType: args.mimeType,
+        size: args.size,
+        adapterFields: args.adapterFields,
+      },
     });
   }
   const adapter = args.config.storage?.adapters.find((a) => a.name === args.adapter);

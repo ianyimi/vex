@@ -133,6 +133,7 @@ export function collectionConfigToVexSchema(props: {
       })`);
     }
   }
+
   const relationships = getIncomingRelationships({
     collection: props.collection,
     config: props.config,
@@ -150,6 +151,7 @@ export function collectionConfigToVexSchema(props: {
       filterFields: []
     })`);
   });
+
   return `export const ${props.collection.slug} = defineTable({\n${fieldsBlock.join("\n")}\n
     })${indexes.length > 0 ? `\n${indexes.join("\n")}` : ""}${
       searchIndexes.length > 0 ? `\n${searchIndexes.join("\n")}` : ""

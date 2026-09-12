@@ -444,6 +444,119 @@ describe("update (server) — access enforcement", () => {
       ).rejects.toThrow(VexAccessError);
     });
   });
+
+  test("update allows a save that resends a denied field unchanged", async () => {
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          editor: { posts: { update: () => ({ "*": false, title: true }) } },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    await withTransaction(async (ctx) => {
+      const id = await ctx.db.insert("posts", { title: "a", slug: "s", featured: true });
+      // Full-form submit: `slug`/`featured` are present but unchanged, only
+      // `title` (permitted) actually changes.
+      await update({
+        ctx,
+        id,
+        collection: "posts",
+        config,
+        auth: { user: { roles: ["editor"] } },
+        data: { title: "b", slug: "s", featured: true },
+      });
+      expect((await ctx.db.get(id))?.title).toBe("b");
+    });
+  });
+
+  test("update rejects a save that changes a denied field", async () => {
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          editor: { posts: { update: () => ({ "*": false, title: true }) } },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    await withTransaction(async (ctx) => {
+      const id = await ctx.db.insert("posts", { title: "a", slug: "s", featured: true });
+      let caught: unknown;
+      try {
+        await update({
+          ctx,
+          id,
+          collection: "posts",
+          config,
+          auth: { user: { roles: ["editor"] } },
+          data: { title: "a", slug: "s2", featured: true },
+        });
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(VexAccessError);
+      expect((caught as VexAccessError).field).toBe("slug");
+      expect((await ctx.db.get(id))?.slug).toBe("s");
+    });
+  });
+
+  test("update resolves a per-field expression against the STORED document", async () => {
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          editor: {
+            posts: {
+              // `featured` stands in for a price-like field, gated on the
+              // STORED `slug` standing in for a status field.
+              update: ({ data }: { data?: { slug?: string } }) => ({
+                "*": false,
+                featured: data?.slug === "draft",
+              }),
+            },
+          },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    await withTransaction(async (ctx) => {
+      const id = await ctx.db.insert("posts", { title: "t", slug: "published", featured: false });
+      let caught: unknown;
+      try {
+        await update({
+          ctx,
+          id,
+          collection: "posts",
+          config,
+          auth: { user: { roles: ["editor"] } },
+          // The stored `slug` is still "published" at check time — if the
+          // callback wrongly read the patch's `slug: "draft"` instead,
+          // `featured` would resolve permitted and the denial would land on
+          // `slug` instead.
+          data: { featured: true, slug: "draft" },
+        });
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(VexAccessError);
+      expect((caught as VexAccessError).field).toBe("featured");
+      expect((await ctx.db.get(id))?.featured).toBe(false);
+    });
+  });
 });
 
 /** Runs `fn` inside a fresh `convexTest` transaction. */

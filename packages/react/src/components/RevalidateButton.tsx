@@ -1,7 +1,7 @@
 "use client";
 
 import type { CollectionSlug, VexDocument } from "@vexcms/core";
-import { CRUD_ACTIONS } from "@vexcms/core";
+import { CRUD_ACTIONS, PERMISSION_SCOPES } from "@vexcms/core";
 
 import { usePermission } from "../hooks";
 import { useVexRevalidate } from "../hooks/useVexRevalidate";
@@ -46,7 +46,11 @@ export interface RevalidateButtonProps {
  * ```
  */
 export function RevalidateButton(props: RevalidateButtonProps) {
-  const canRevalidate = usePermission({ action: CRUD_ACTIONS.update, resource: props.collection });
+  const canRevalidate = usePermission({
+    action: CRUD_ACTIONS.update,
+    resource: props.collection,
+    scope: PERMISSION_SCOPES.any,
+  });
   const { error, isPending, purgeCollection, purgeDocument } = useVexRevalidate();
 
   async function handleClick() {

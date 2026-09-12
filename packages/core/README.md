@@ -133,31 +133,37 @@ import { defineAccess } from "@vexcms/core"
 
 const access = defineAccess({
   roles: ["user", "admin"],
-  adminRoles: ["admin"],
-  userCollection: users,
   resources: [posts, users, media],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
   permissions: {
     admin: {
-      posts: true,
-      user: true,
-      media: true,
+      "*": true,
     },
     user: {
+      "*": false,
       posts: {
         create: true,
         read: true,
         update: ({ data, user }) => data.author === user._id,
         delete: false,
       },
-      // Field-level permissions
-      user: {
-        read: { mode: "allow", fields: ["name", "email"] },
-        update: { mode: "deny", fields: ["role", "email"] },
+      // Field-level permissions: a filter callback may return a map instead of a
+      // boolean, restricting the check to specific fields. "*" sets the default
+      // for every field not named explicitly.
+      users: {
+        "*": false,
+        read: true,
+        update: () => ({ "*": false, name: true }),
       },
     },
   },
 })
 ```
+
+See the [Access Control guide](https://docs.vexcms.dev/guides/access-control/) for the full
+permission check shapes, the field-map wildcard rule, and how `hasPermission` resolves a map
+against a write, a read, or a quantified check.
 
 ### Auto-Migration
 

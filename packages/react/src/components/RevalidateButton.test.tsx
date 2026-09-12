@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CRUD_ACTIONS, PERMISSION_SCOPES } from "@vexcms/core";
 
 import { RevalidateButton } from "./RevalidateButton";
 
@@ -99,5 +100,21 @@ describe("RevalidateButton", () => {
     fireEvent.click(screen.getByRole("button"));
 
     await waitFor(() => expect(purgeDocumentMock).toHaveBeenCalledTimes(1));
+  });
+
+  it("checks permission with scope 'any', so a role whose update check returns a field map still succeeds", () => {
+    // Real `hasPermission` answers a quantified check (no `data`/`changes`)
+    // with a field map under `scope: "any"` as `true` — the check that keeps
+    // the button enabled instead of hidden the first time a role declares an
+    // `update` field map. `usePermission` is mocked in this file, so the
+    // regression is pinned by asserting the call shape rather than the
+    // real resolution.
+    render(<RevalidateButton collection="pages" doc={doc} />);
+
+    expect(usePermissionMock).toHaveBeenCalledWith({
+      action: CRUD_ACTIONS.update,
+      resource: "pages",
+      scope: PERMISSION_SCOPES.any,
+    });
   });
 });

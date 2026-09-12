@@ -8,11 +8,13 @@ import { siteSettings } from "~/vexcms/globals";
  * Access control (RBAC) for the admin panel and every registered collection.
  *
  * `admin` gets unrestricted access. `user` is the public demo role — it may
- * open the admin panel and *read* `pages` and `siteSettings`, and nothing
- * else. `anonRole: user` is what extends that to a caller carrying no `roles`
- * entry at all, which is every anonymous session minted by
- * `AdminDemoButton`. Write actions stay denied by the `"*": false` default, so
- * the panel is read-only for anyone who is not an admin.
+ * open the admin panel, *read* `pages`, `themes`, and `siteSettings`, and
+ * *update* only `siteSettings.adminTheme` (every other field on that global
+ * stays denied by the field map's `"*": false`). `anonRole: user` is what
+ * extends that to a caller carrying no `roles` entry at all, which is every
+ * anonymous session minted by `AdminDemoButton`. All other write actions stay
+ * denied by the `"*": false` default, so the panel is otherwise read-only for
+ * anyone who is not an admin.
  *
  * Add a resource here whenever you register a new collection in
  * `vex.config.ts`.
@@ -45,7 +47,8 @@ export const access = defineAccess({
       },
       siteSettings: {
         "*": false,
-        read: true,
+        read: () => ({ adminTheme: true, name: true, description: true }),
+        update: () => ({ adminTheme: true }),
       },
     },
   },

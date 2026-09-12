@@ -20,7 +20,14 @@ import type {
   SearchReturn,
   SearchReturnPaginated,
 } from "../types";
-import { AccessFilterFn, CRUD_ACTIONS, hasPermission, resolveAccessConstraint } from "../../access";
+import {
+  AccessFilterFn,
+  CRUD_ACTIONS,
+  hasPermission,
+  resolveAccessConstraint,
+  resolveFieldPermissions,
+  stripDeniedFields,
+} from "../../access";
 import { resolveAccessCall } from "../utils";
 
 /**
@@ -195,6 +202,20 @@ export async function search<
       }),
     );
   }
+
+  docs = docs.map((d) =>
+    stripDeniedFields(
+      d,
+      resolveFieldPermissions({
+        access,
+        user: args.auth?.user ?? null,
+        organization: args.auth?.organization,
+        resource,
+        action,
+        data: d,
+      }),
+    ),
+  );
 
   const effectivePopulate =
     args.populate ??

@@ -189,3 +189,117 @@ filled in); the escape hatch needs its own design pass.
 **Detail.** `MEDIA-2` in
 `.agent/docs/specs/2026-09-08-react-coverage-expansion/BUGS-REPORT.md`, open
 question #4 in the same file.
+
+---
+
+## Generic type-narrowing on server API signatures for field-level RBAC
+
+**What.** `find`/`get`/`create`/`update` return and argument types keep describing the
+full document type, regardless of which fields a caller's role can actually read or
+write. A caller who knows a field is restricted for the current role has no way to
+narrow the return/argument type themselves — it would need to be caller-asserted, since
+the server cannot statically know per-request role.
+
+**Why.** Field-level permissions (`2026-09-07-field-level-rbac-permissions`) enforces
+restrictions at runtime — stripping denied read fields, denying denied write keys — but
+the TypeScript types on the Local API surface never shrink to match. A caller may
+receive or be allowed fewer keys than the type promises for their role.
+
+**Lift.** Unassessed. Needs a design for how a generic type parameter would carry
+per-role field visibility through `find`/`get`/`create`/`update`'s signatures without
+requiring per-call-site ceremony.
+
+**Why deferred.** DD 15 (`2026-09-07-field-level-rbac-permissions`): type narrowing is
+deferred, not attempted, in favor of shipping runtime enforcement first. Ratified as its
+own follow-up rather than folded into that spec's diff.
+
+**Detail.** DD 15 and Out of Scope,
+`.agent/docs/specs/2026-09-07-field-level-rbac-permissions/spec.md`.
+
+---
+
+## Field-map key checking for untyped consumers
+
+**What.** Promote the dev-mode `console.warn` that fires when a returned field map
+names a key that isn't a real field on the resource — for callers `ValidateFieldMaps`
+cannot check statically, i.e. a plain-JS `vex.config.js` or a permissions matrix
+assembled at runtime — into a hard `VexAccessConfigError`.
+
+**Why.** `ValidateFieldMaps` (a TypeScript compile-time check) catches an unknown field
+key in every TypeScript config. A plain-JS config or a matrix built dynamically at
+runtime has no compiler to catch it, so those consumers only get a warning today — a
+typo like `admnTheme` silently does nothing instead of failing loudly.
+
+**Lift.** Unassessed pending the design question below.
+
+**Why deferred.** Promoting the warning to a hard error needs a decision about
+dynamic/legacy document fields first — a key the map names that isn't in the
+TypeScript document type may still be a legitimate dynamic/legacy field at runtime,
+which a warning currently sidesteps by not blocking anything. Throwing unconditionally
+would need that distinction resolved first.
+
+**Detail.** Step 9, `.agent/docs/specs/2026-09-07-field-level-rbac-permissions/spec.md`.
+
+---
+
+## Versioning/drafts write paths need `changes` for field permissions
+
+**What.** When versioning/drafts lands, its write paths — `saveDraft`, `publish`,
+`unpublish` — must pass `changes` to `hasPermission` the way `create`/`update`/
+`upsertGlobal` already do, or field maps will not be enforced on a draft save.
+
+**Why.** Field-level RBAC denies a write by inspecting the `changes` argument against a
+resolved field map. `DRAFT_ACTIONS` already exists as an action union, but no write
+path implements it yet, so nothing is wired to `changes` today — a role restricting a
+field on `update` gets no equivalent restriction on a draft save until that path exists
+and is built to pass `changes`.
+
+**Lift.** Nothing to do now — no code exists to change. Whoever implements draft write
+paths must include this in that spec's own design, not treat it as a follow-up.
+
+**Why deferred.** Versioning/drafts itself is not shipped (`packages/core/README.md`'s
+"Versioning & Drafts" section: `versions.drafts` parses but is not enforced). This entry
+exists so that future spec doesn't silently drop field-permission parity.
+
+**Detail.** Step 9, `.agent/docs/specs/2026-09-07-field-level-rbac-permissions/spec.md`.
+
+---
+
+## Concurrent-edit conflict-resolution UX
+
+**What.** One future spec, scoped strictly to fields with outstanding unsaved edits.
+Field-level RBAC's Step 7 already handles every other field: an untouched field whose
+value changes elsewhere is adopted silently and becomes the new default, so the editor
+simply sees it update — no icon, no banner, no prompt, because there is no competing
+version. What's left is the genuinely ambiguous case: a field the editor has edited AND
+someone else has changed. Three pieces:
+
+1. **Per-field conflict affordance.** When the live document changes a field the editor
+   has unsaved edits in, mark that field with an info/notice icon and let them switch
+   between the two versions — keep mine, or take the live one and re-apply their edit on
+   top. Both values are already available: the editor's is `form.state.values[key]`, the
+   live one is `options.defaultValues[key]`, which tracks the server (`FormApi.js:92-93`).
+   The detection predicate is the inverse of `useLiveFieldMerge`'s skip condition — a
+   field that is dirty AND whose live value moved is exactly a conflicted field, so the
+   two should share one helper rather than deriving it twice.
+2. **Review-before-save banner.** While any field is conflicted, show a document-level
+   banner and block **Save** until each one is resolved. Resolution is per field, so the
+   banner needs a count and ideally jump-to-field.
+3. **Optimistic-concurrency guard**, to close the window the UI cannot: two editors
+   resolving simultaneously still ends in last-write-wins. A compare-and-swap is
+   feasible for collections, which already carry an auto-maintained `updatedAt`
+   (`defineCollection` injects it, `create`/`update` stamp it), and would need a new
+   field for globals, which deliberately have none (`upsert.server.ts` docstring).
+   Rejecting a stale write turns the race into a retry the banner can drive.
+
+**Why.** Without this, two editors saving the same field at nearly the same time
+silently overwrite each other with no signal to either.
+
+**Lift.** Unassessed — three separable pieces (affordance, banner, CAS guard), each
+independently buildable.
+
+**Why deferred.** Out of scope for `2026-09-07-field-level-rbac-permissions`, which only
+needed to prove untouched fields adopt live changes silently. The conflicted-field case
+is a distinct, harder problem that deserves its own spec.
+
+**Detail.** Step 9, `.agent/docs/specs/2026-09-07-field-level-rbac-permissions/spec.md`.

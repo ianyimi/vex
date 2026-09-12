@@ -2,14 +2,21 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
-import { CRUD_ACTIONS, vexConvexApi } from "@vexcms/core";
+import { CRUD_ACTIONS, isFieldAllowed, vexConvexApi } from "@vexcms/core";
 import type { CollectionEditViewProps, CollectionSlug } from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
 import { RevalidateButton } from "../RevalidateButton";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 import { useCollectionForm } from "../../hooks/useCollectionForm";
-import { usePermission, useVexMutation } from "../../hooks";
+import {
+  useFieldPermissions,
+  useLiveFieldMerge,
+  usePermission,
+  useVexMutation,
+  useVisibleFields,
+} from "../../hooks";
+import { changedValues } from "../form/changedValues";
 
 /**
  * Collection document edit form.
@@ -53,7 +60,7 @@ export function CollectionEditView<
   // slug is a literal at the call site, which is not the case here.
   const { data: currentDocument } = useQuery({
     ...convexQuery(vexConvexApi.get, {
-      id: props.documentId as string,
+      id: props.documentId,
       collection: props.collection.slug,
     }),
     initialData: props.initialData,
@@ -72,25 +79,46 @@ export function CollectionEditView<
       { after: { ...currentDocument, ...args.data }, before: currentDocument },
     ],
     mutationFn: vexConvexApi.update,
-    operation: "update",
+    operation: CRUD_ACTIONS.update,
   });
+  const visibleFields = useVisibleFields({
+    resource: props.collection.slug,
+    fields: props.collection.fields,
+    data: currentDocument,
+  });
+  const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
+
   const form = useCollectionForm({
     document: currentDocument,
     collection: props.collection,
-    onSubmit: async ({ value }: { value: any }) => {
+    readableFieldKeys,
+    onSubmit: async () => {
+      const changes = changedValues(form);
+      if (Object.keys(changes).length === 0) return;
       await mutateAsync({
         id: currentDocument._id,
         collection: props.collection.slug,
-        data: value,
+        data: changes,
       });
       form.reset();
     },
   });
 
+  useLiveFieldMerge({
+    form,
+    document: currentDocument,
+    fieldKeys: readableFieldKeys,
+  });
+
   const canEdit = usePermission({
     resource: props.collection.slug,
     action: CRUD_ACTIONS.update,
-    data: currentDocument as {},
+    data: currentDocument,
+  });
+  const fieldPermissions = useFieldPermissions({
+    resource: props.collection.slug,
+    action: CRUD_ACTIONS.update,
+    data: currentDocument,
   });
   return (
     <AppForm form={form} className="relative">
@@ -130,7 +158,7 @@ export function CollectionEditView<
         />
       </div>
       <div className="space-y-4">
-        {Object.entries(props.collection.fields).map(([fieldKey, field]) => {
+        {visibleFields.map(([fieldKey, field]) => {
           const InputComponent = fieldToInputComponent(field.type);
           if (!InputComponent) {
             // TODO: handle missing component error here
@@ -141,7 +169,9 @@ export function CollectionEditView<
               key={fieldKey}
               name={fieldKey}
               fieldDef={field}
-              readOnly={!canEdit || field.admin.readOnly}
+              readOnly={
+                !canEdit || field.admin.readOnly || !isFieldAllowed(fieldPermissions, fieldKey)
+              }
               collection={props.collection}
             />
           );

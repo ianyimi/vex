@@ -8,6 +8,7 @@ import {
   getGlobalInputSchema,
 } from "@vexcms/core";
 import type { AnyFormApi } from "../components/form/AppFormContext";
+import { pickReadableSchema, pickReadableValues } from "../components/form/readableFields";
 
 /**
  * Creates a TanStack Form instance pre-configured for a VexCMS global.
@@ -31,19 +32,32 @@ export function useGlobalForm<
   props: {
     global: GlobalConfig<TFieldMeta, TGlobalMeta, TGlobalSlug>;
     document?: VexDocumentGlobal | null;
+    /**
+     * Field keys the caller may READ, when field-level permissions narrow them.
+     *
+     * A read-denied field is kept out of the form entirely — out of
+     * `defaultValues` and out of the validation schema — so it cannot be seen,
+     * cannot be submitted, and cannot block submission when it is required.
+     * Omit when unrestricted.
+     */
+    readableFieldKeys?: readonly string[];
   } & FormOptions<
     GlobalDocumentBySlug[TGlobalSlug],
     any, any, any, any, any, any, any, any, any, any, any
   >,
 ): AnyFormApi {
-  const { global, document, validators, ...formOptions } = props;
+  const { global, document, validators, readableFieldKeys, ...formOptions } = props;
+  const schema = pickReadableSchema(getGlobalInputSchema({ global }), readableFieldKeys);
   return useForm({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    defaultValues: getGlobalDefaultValues({ global, document }) as any,
+    defaultValues: pickReadableValues(
+      getGlobalDefaultValues({ global, document }),
+      readableFieldKeys,
+    ) as any,
     ...formOptions,
     validators: {
-      onSubmitAsync: getGlobalInputSchema({ global }),
-      onBlur: getGlobalInputSchema({ global }),
+      onSubmitAsync: schema,
+      onBlur: schema,
       ...validators,
     },
   }) as AnyFormApi;

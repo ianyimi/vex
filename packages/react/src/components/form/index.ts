@@ -1,6 +1,8 @@
 export * from "./AppForm";
 export * from "./AppFormContext";
 export * from "./FieldController";
+export * from "./changedValues";
+export * from "./readableFields";
 
 export * from "./createFieldInput";
 export * from "./FormArray";
