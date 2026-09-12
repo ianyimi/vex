@@ -90,6 +90,7 @@ export async function update<
       resource,
       action,
       data: doc ?? undefined,
+      changes: args.data,
     });
   }
   // Same rule as `create`, via the shared helper. A patch that touches only

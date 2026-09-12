@@ -6,6 +6,7 @@ import { getGlobalInputSchema } from "../../globals/utils";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
 import { GenericGlobalsMutationServerArgs } from "./types";
 import { resolveAccessCall } from "../utils";
+import { flattenGlobalRow } from "./utils";
 
 /** System keys stripped from flat input before writing to DB. */
 const STRIPPED_KEYS = new Set(["_id", "_creationTime", "_slug"]);
@@ -32,12 +33,25 @@ export interface UpsertGlobalServerArgs<
 
 /**
  * Upserts a global document in `vex_globals`. Strips system keys from `data`,
- * validates remaining user fields against the global's Zod schema, then writes
- * `{ slug, data: userFields }` to the DB (re-nesting). Patches if a row
- * already exists for the slug; inserts if not.
+ * merges the remaining user fields onto the stored document, validates that
+ * merged result against the global's Zod schema, then patches only the
+ * changed fields into the stored `data` blob — an omitted field is left
+ * untouched, never deleted. Inserts a new row (from a complete payload) if
+ * none exists yet for the slug.
  *
  * Throws `ConvexError` on Zod validation failure with structured `errors` payload.
  * Server-side only. Import from `@vexcms/core/server`.
+ *
+ * **Authorization.** A global is a singleton, so the verb depends on whether it
+ * has ever been saved: the first write authorizes as `create`, every later one
+ * as `update` — never `read`. That distinction is the whole check: a role
+ * holding only `read` on a global must not be able to overwrite it.
+ * `access.action` overrides both, as everywhere else. A per-field permission
+ * map denies on the first changed key it forbids; a field resent unchanged is
+ * not a violation.
+ *
+ * The check runs before Zod validation, so a denied caller cannot probe the
+ * global's field shape through validation error messages.
  *
  * @typeParam DataModel - Convex data model.
  * @typeParam TSlug - Global slug.
@@ -81,11 +95,23 @@ export async function upsertGlobal<
     throw new ConvexError(`No global registered with slug "${args.slug}"`);
   }
 
+  const existingGlobal = await ctx.db
+    .query("vex_globals")
+    .withIndex("by_slug", (q) => q.eq("slug", slug as never))
+    .first();
+
+  const userFields: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (!STRIPPED_KEYS.has(k)) userFields[k] = v;
+  }
+
+  const storedDoc = existingGlobal ? flattenGlobalRow(existingGlobal) : undefined;
+
   if (args.config.access !== undefined) {
     const { access, action, resource } = resolveAccessCall({
       config: args.config,
       access: args.access,
-      defaultAction: CRUD_ACTIONS.read,
+      defaultAction: existingGlobal ? CRUD_ACTIONS.update : CRUD_ACTIONS.create,
       resource: args.slug,
     });
     hasPermission({
@@ -95,18 +121,16 @@ export async function upsertGlobal<
       organization: args.auth?.organization,
       resource,
       action,
+      data: storedDoc ?? userFields,
+      changes: userFields,
     });
-  }
-
-  // Strip any system keys that arrived in the flat payload
-  const userFields: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(data)) {
-    if (!STRIPPED_KEYS.has(k)) userFields[k] = v;
   }
 
   // Validate against field config's Zod schema
   const schema = getGlobalInputSchema({ global: globalConfig });
-  const result = schema.safeParse(userFields);
+  const storedData = existingGlobal ? (existingGlobal.data as Record<string, unknown>) : undefined;
+  const merged = storedData ? { ...storedData, ...userFields } : userFields;
+  const result = schema.safeParse(merged);
   if (!result.success) {
     throw new ConvexError({
       message: "Global validation failed",
@@ -114,13 +138,10 @@ export async function upsertGlobal<
     });
   }
 
-  const existingGlobal = await ctx.db
-    .query("vex_globals")
-    .withIndex("by_slug", (q) => q.eq("slug", slug as never))
-    .first();
-
   if (existingGlobal) {
-    await ctx.db.patch(existingGlobal._id as never, { data: result.data } as never);
+    await ctx.db.patch(existingGlobal._id as never, {
+      data: { ...(existingGlobal.data as Record<string, unknown>), ...result.data },
+    } as never);
     return existingGlobal._id as string;
   }
 

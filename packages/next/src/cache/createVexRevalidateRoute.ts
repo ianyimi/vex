@@ -8,7 +8,12 @@ import type {
   VexRevalidateRequest,
   VexRevalidateResponse,
 } from "@vexcms/core";
-import { hasPermission, resolveTargets, VEX_REVALIDATE_BATCH_SIZE } from "@vexcms/core";
+import {
+  hasPermission,
+  PERMISSION_SCOPES,
+  resolveTargets,
+  VEX_REVALIDATE_BATCH_SIZE,
+} from "@vexcms/core";
 import { revalidatePath } from "next/cache";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
@@ -142,6 +147,9 @@ export function createVexRevalidateRoute(props: CreateVexRevalidateRouteProps): 
         organization,
         resource: body.collection,
         user,
+        // A purge writes no document fields — this asks whether the caller
+        // may act on the collection at all, not against a specific payload.
+        scope: PERMISSION_SCOPES.any,
       });
       if (!allowed) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });

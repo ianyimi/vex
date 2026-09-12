@@ -3,7 +3,6 @@
 - Access index resolution (spec 2026-08-23-access-index-resolution)
 - WP-5 publish alphas
 - Build the real www marketing site (spec 2026-09-01-www-content-spec; seed rewrite and both code-showcase pairings done — the three `/features` Split blocks remain)
-- Field-level RBAC permissions
 
 ## Inbox
 - Rename naming outliers: MediaLibaryGrid.tsx, use-mobile.ts, blocks/logo-cloud.ts
@@ -27,3 +26,4 @@
 - React test suite fixes
 - React coverage expansion - 50% to 80% first-party, list-view + views + shell + modals + media + hooks (spec 2026-09-08-react-coverage-expansion)
 - React bug fixes - clear all 87 failing assertions across react + core (spec 2026-09-08-react-bug-fixes)
+- Field-level RBAC permissions

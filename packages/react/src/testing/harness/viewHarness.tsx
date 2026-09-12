@@ -25,7 +25,7 @@ import { renderWithVexProviders, testCollection } from "./accessFixtures";
  */
 const testMediaCollection = {
   slug: "images",
-  fields: { alt: text({ required: false }) },
+  fields: { alt: text({ required: false }), filename: text({ required: false }) },
   labels: { singular: "Image", plural: "Images" },
   admin: {
     useAsTitle: "_id",
@@ -42,7 +42,13 @@ const testMediaCollection = {
 const testGlobal = defineGlobal({
   slug: "settings",
   label: "Settings",
-  fields: { siteName: text({ required: false }) },
+  // Two fields for the same reason `testCollection` declares two: a per-FIELD
+  // assertion needs one field to keep and another to drop. `tagline` carries a
+  // declared default so create-mode behaviour is observable too.
+  fields: {
+    siteName: text({ required: false }),
+    tagline: text({ required: false, defaultValue: "Untitled" }),
+  },
 });
 
 /** Default stub client config: one `posts` collection, one `images` media collection, one global. */

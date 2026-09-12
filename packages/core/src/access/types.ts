@@ -35,10 +35,114 @@ import type {
 export type AccessResource = CollectionConfig | GlobalConfig;
 
 /**
- * Single permission check result — boolean shorthand (all/none) or a
- * field-mode object restricting the check to named fields.
- *
+ * Document keys Convex owns, which a field map can neither gate nor strip.
  */
+type SystemFieldKey = "_id" | "_creationTime" | "_slug";
+
+/**
+ * The gateable field names of a document type — its own keys minus the system
+ * keys Convex owns.
+ *
+ * Degrades to `string` when the document type enumerates no keys — the
+ * pre-generation case, where `AccessDocFor` resolves to the wide fallback and
+ * `DeclaredDoc` strips its index signature down to `{}`. Without the
+ * degradation `keyof` would be `never` and EVERY map key would read as excess,
+ * so the validator would reject every map until `vex generate` has run.
+ * Degrading instead collapses both {@link FieldPermissionMap} branches to "any
+ * string-keyed map" and makes the exhaustiveness requirement inert, which is
+ * the same posture `AccessDocFor` already takes.
+ *
+ * @typeParam TData - Document type for the subject.
+ */
+export type FieldPermissionKey<TData> = [Extract<keyof TData, string>] extends [never]
+  ? string
+  : Exclude<Extract<keyof TData, string>, SystemFieldKey>;
+
+/**
+ * A per-field decision for ONE action — what a check resolves to when it
+ * answers *which fields* rather than *whether*.
+ *
+ * Only ever a callback's RETURN value, never a value written on an action: a
+ * document may legitimately carry fields named `constraints` or `filter`, and
+ * in a return position there is nothing to disambiguate against.
+ *
+ * Values are plain booleans. The map is built inside a callback that already
+ * holds `{ user, data, organization }`, so a per-field rule is an ordinary
+ * boolean expression — `activeTheme: user._id === data.ownerId` — rather than a
+ * second callback layer receiving props its enclosing callback already closed
+ * over.
+ *
+ * Two branches, and the union is the enforcement:
+ * - `"*"` present → every other field is optional; the wildcard decides them.
+ * - `"*"` absent → EVERY gateable field must be named.
+ *
+ * So a partial map is a compile error and no field is silently permitted
+ * because it was forgotten. An EXCESS key — a misspelling, or a system key —
+ * is caught too, but not by this type: excess-property checking does not apply
+ * to an object literal returned from a contextually typed arrow, so
+ * {@link ValidateFieldMaps} catches those structurally through `defineAccess`'s
+ * inferred `permissions` literal instead.
+ *
+ * Deliberately NOT a `{ mode, fields }` shape: that existed to drive QUERY
+ * FILTERING through the constraint builder, which Convex cannot express
+ * per-field on an index. This map never touches a query — it is evaluated in
+ * plain JS against an already-fetched document (read path) or the incoming
+ * payload plus the stored document (write path).
+ *
+ * @typeParam TData - Document type for the subject.
+ */
+export type FieldPermissionMap<TData = unknown> =
+  | ({ [W in typeof WILDCARD_KEY]: boolean } & Partial<Record<FieldPermissionKey<TData>, boolean>>)
+  | Partial<Record<FieldPermissionKey<TData>, boolean>>;
+
+/**
+ * The field map a resolved check can return, or `never` when it cannot return
+ * one. Reads through both callback positions: the check itself, and the
+ * `filter` inside a `{ constraints, filter }` descriptor.
+ *
+ * `Extract<R, object>` drops the `boolean | undefined` members of the return
+ * union, leaving only the map — so a boolean-returning callback yields `never`
+ * and validates trivially.
+ *
+ * @internal Type-level only; consumed by {@link ValidateFieldMaps}.
+ */
+export type FieldMapReturnOf<TCheck> = TCheck extends (...args: never[]) => infer R
+  ? Extract<R, object>
+  : TCheck extends { filter: infer F }
+    ? F extends (...args: never[]) => infer R2
+      ? Extract<R2, object>
+      : never
+    : never;
+
+/**
+ * Keys a returned map declares that are not gateable fields of the subject.
+ *
+ * DISTRIBUTES over `TMap`. A branching callback
+ * (`cond ? { "*": true, price: false } : { "*": false }`) infers a UNION of
+ * maps, and `keyof (A | B)` is only the keys common to both — so without
+ * distribution a bad key present in one branch goes unreported.
+ *
+ * @internal
+ */
+export type ExcessFieldKeys<TMap, TAllowed extends string> = [TMap] extends [never]
+  ? never
+  : TMap extends unknown
+    ? Exclude<keyof TMap, TAllowed | typeof WILDCARD_KEY>
+    : never;
+
+/**
+ * The type an offending action entry is replaced with, so the compiler reports
+ * the bad key by name at the exact property.
+ *
+ * A template literal rather than a tuple or object: a tuple made TypeScript
+ * print `Array.prototype.filter`'s overloads whenever the offending property
+ * was itself named `filter`, which is the constraint-descriptor case.
+ *
+ * @internal
+ */
+export type FieldMapError<K> = K extends string
+  ? `✖ field map returns a field not on this resource: "${K}"`
+  : never;
 
 /**
  * Props passed to a permission callback.
@@ -67,11 +171,17 @@ export type PermissionCallbackProps<
  * rule's optional `filter` property also accepts.
  *
  * A callback returning `undefined` is treated as deny — "inconclusive" must never
- * read as an implicit allow. @internal
+ * read as an implicit allow.
+ *
+ * Only the FUNCTION member returns a {@link FieldPermissionMap}. The static
+ * `boolean` member is deliberately not widened, which is what keeps a map off
+ * an action itself and out of collision with `constraints`/`filter`. @internal
  */
 type BasePermissionCheck<TData, TUser, TOrg> =
   | boolean
-  | ((props: PermissionCallbackProps<TData, TUser, TOrg>) => boolean | undefined);
+  | ((
+      props: PermissionCallbackProps<TData, TUser, TOrg>,
+    ) => boolean | undefined | FieldPermissionMap<TData>);
 
 /** A range callback as applied to a Convex query. @internal */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -307,7 +417,7 @@ type ExtractSlug<T> = T extends { slug: infer S extends string } ? S : never;
  * Document type for a slug via the generated registry (collections, then
  * globals; wide fallback pre-generation). @internal
  */
-type InferDocTypeFromSlug<S extends string> = S extends keyof DocumentBySlug
+export type InferDocTypeFromSlug<S extends string> = S extends keyof DocumentBySlug
   ? DocumentBySlug[S]
   : S extends keyof GlobalDocumentBySlug
     ? GlobalDocumentBySlug[S]
@@ -741,6 +851,48 @@ export type RolePermissions<
 };
 
 /**
+ * Replaces every action entry whose returned field map names an unknown field
+ * with a {@link FieldMapError}, leaving every valid entry as it was.
+ *
+ * Exists because excess-property checking does not reach an object literal
+ * returned from a contextually typed arrow. Intersecting the inferred
+ * `permissions` literal with this mapped type turns a bad key into a
+ * STRUCTURAL mismatch instead, which needs no freshness — and it reports the
+ * key by name at the exact property, which freshness would not have.
+ *
+ * Walks role → subject → action and touches nothing else: a `boolean` role
+ * entry, a `boolean` subject entry, a subject key that is not a declared
+ * subject, and the role-level wildcard all pass through unchanged, as does any
+ * check that cannot return a map.
+ *
+ * @typeParam TPermissions - The inferred `permissions` literal.
+ * @typeParam TSubjects - The resolved {@link SubjectMap}.
+ */
+export type ValidateFieldMaps<TPermissions, TSubjects> = {
+  [R in keyof TPermissions]: TPermissions[R] extends object
+    ? {
+        [S in keyof TPermissions[R]]: S extends keyof TSubjects
+          ? TPermissions[R][S] extends object
+            ? {
+                [A in keyof TPermissions[R][S]]: ExcessFieldKeys<
+                  FieldMapReturnOf<TPermissions[R][S][A]>,
+                  FieldPermissionKey<TSubjects[S] extends { data: infer D } ? D : unknown>
+                > extends never
+                  ? TPermissions[R][S][A]
+                  : FieldMapError<
+                      ExcessFieldKeys<
+                        FieldMapReturnOf<TPermissions[R][S][A]>,
+                        FieldPermissionKey<TSubjects[S] extends { data: infer D } ? D : unknown>
+                      >
+                    >;
+              }
+            : TPermissions[R][S]
+          : TPermissions[R][S];
+      }
+    : TPermissions[R];
+};
+
+/**
  * Input shape for the `defineAccess` builder.
  *
  * @typeParam TRoles - Tuple of role name literals.
@@ -748,6 +900,8 @@ export type RolePermissions<
  * @typeParam TCustomResources - Custom resource declarations.
  * @typeParam TUserCollection - `{ slug }` shape naming the user collection.
  * @typeParam TOrgCollection - `{ slug }` shape naming the org collection; `undefined` if absent.
+ * @typeParam TPermissions - The inferred `permissions` literal, which is what
+ *   makes each callback's return type inspectable by {@link ValidateFieldMaps}.
  *
  * @see {@link VexAccessConfig} for the resolved runtime shape.
  */
@@ -760,6 +914,16 @@ export interface VexAccessConfigInput<
   TCustomActions extends Partial<
     Record<TResources[number]["slug"] | TUserSlug | Extract<TOrgSlug, string>, CustomActionsInput>
   > = {},
+  TPermissions = Record<
+    TRoles[number],
+    RolePermissions<
+      SubjectMap<TResources, TCustomResources, TUserSlug, TOrgSlug, TCustomActions>,
+      InferDocTypeFromSlug<TUserSlug>,
+      TOrgSlug extends string ? InferDocTypeFromSlug<TOrgSlug> : never,
+      TUserSlug,
+      TOrgSlug
+    >
+  >,
 > {
   /** Default: `true`. Turn access control on or off. */
   enabled?: boolean;
@@ -803,10 +967,12 @@ export interface VexAccessConfigInput<
     Partial<
       Record<TResources[number]["slug"] | TUserSlug | Extract<TOrgSlug, string>, CustomActionsInput>
     > & {
-      [K in Exclude<
-        keyof TCustomActions,
-        TResources[number]["slug"] | TUserSlug | Extract<TOrgSlug, string>
-      >]: never;
+      [
+        K in Exclude<
+          keyof TCustomActions,
+          TResources[number]["slug"] | TUserSlug | Extract<TOrgSlug, string>
+        >
+      ]: never;
     };
 
   /**
@@ -840,17 +1006,25 @@ export interface VexAccessConfigInput<
   /**
    * Permission matrix: role → subject → check. See {@link RolePermissions}
    * for shapes and wildcard semantics.
+   *
+   * Intersected with {@link ValidateFieldMaps} so a returned field map naming
+   * an unknown field is a compile error at that entry. The bare `TPermissions`
+   * member is what makes the literal inferrable; the constraint on
+   * `TPermissions` (declared on `defineAccess`) is what keeps every callback's
+   * props contextually typed.
    */
-  permissions: Record<
-    TRoles[number],
-    RolePermissions<
-      SubjectMap<TResources, TCustomResources, TUserSlug, TOrgSlug, TCustomActions>,
-      InferDocTypeFromSlug<TUserSlug>,
-      TOrgSlug extends string ? InferDocTypeFromSlug<TOrgSlug> : never,
-      TUserSlug,
-      TOrgSlug
-    >
-  >;
+  permissions: TPermissions &
+    ValidateFieldMaps<
+      TPermissions,
+      SubjectMap<TResources, TCustomResources, TUserSlug, TOrgSlug, TCustomActions>
+    > & {
+      // Exactness guard, same technique as `customActions` above. Inferring
+      // `TPermissions` from the literal is what makes field maps checkable, but
+      // it also means a role key outside `roles` is merely an extra property on
+      // a structural match. Mapping those keys to `never` makes the entry
+      // unassignable at its own key, restoring both the error and its location.
+      [K in Exclude<keyof TPermissions, TRoles[number]>]: never;
+    };
 }
 
 /**
@@ -953,6 +1127,7 @@ export class VexAccessError extends ConvexError<{
   resource: string;
   action: string;
   message: string;
+  field?: string;
 }> {
   /** The subject on which access was denied. */
   resource: string;
@@ -960,29 +1135,39 @@ export class VexAccessError extends ConvexError<{
   /** The denied action. */
   action: string;
 
+  /** The denied field, when the denial is field-scoped. */
+  field?: string;
+
   /**
    * @param options — Structured denial context.
    * @param options.message — Human-readable error message.
    * @param options.resource — Subject name.
    * @param options.action — Action name.
+   * @param options.field — Denied field name, when the denial is field-scoped.
    */
-  constructor(options: { message?: string; resource: string; action: string }) {
+  constructor(options: { message?: string; resource: string; action: string; field?: string }) {
     // `ConvexError.data` MUST be a valid Convex value: `convexToJson` REJECTS
     // `undefined`, and an unserializable payload means Convex cannot deliver the
     // error at all — the client subscription never receives a result and the
     // query hangs in `fetchStatus: "fetching"` forever. Every key here is always
-    // present; if an OPTIONAL key is ever added, omit it when absent — never pass
-    // `undefined`. `message` travels in `data` because `ConvexError` owns
-    // `this.message` (it stringifies `data`).
+    // present-and-defined or absent — `field` is spread in conditionally, never
+    // assigned `undefined`. `message` travels in `data` because `ConvexError`
+    // owns `this.message` (it stringifies `data`).
     super({
       code: "ACCESS_DENIED",
       resource: options.resource,
       action: options.action,
-      message: options.message ?? `Access Denied: ${options.resource}/${options.action}`,
+      message:
+        options.message ??
+        (options.field
+          ? `Access Denied: ${options.resource}/${options.action} (field: ${options.field})`
+          : `Access Denied: ${options.resource}/${options.action}`),
+      ...(options.field !== undefined ? { field: options.field } : {}),
     });
     this.name = "VexAccessError";
     this.resource = options.resource;
     this.action = options.action;
+    this.field = options.field;
   }
 }
 

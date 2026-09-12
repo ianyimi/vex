@@ -55,3 +55,115 @@ describe("getGlobal (server)", () => {
     expect(typeof result?._creationTime).toBe("number");
   });
 });
+
+describe("getGlobal (server) — field-level read shaping", () => {
+  function buildConfig(permissions: Record<string, unknown>): VexConfig {
+    return {
+      globals: [],
+      access: {
+        enabled: true,
+        roles: ["editor"],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        defaultPermissionMode: "deny",
+        resources: [],
+        permissions,
+      },
+    } as unknown as VexConfig;
+  }
+
+  const editorAuth = { user: { roles: ["editor"] } };
+
+  it("strips a field denied by the read action", async () => {
+    const config = buildConfig({
+      editor: { siteSettings: { read: () => ({ "*": true, siteName: false }) } },
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("vex_globals", { slug: "siteSettings", data: { siteName: "My Site" } });
+    });
+    const result = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      getGlobal({ ctx, slug: "siteSettings", config, auth: editorAuth }),
+    )) as VexDocumentGlobal | null;
+    expect(result?.siteName).toBeUndefined();
+  });
+
+  it("returns documents unchanged when the read action declares no map (regression)", async () => {
+    const config = buildConfig({ editor: { siteSettings: { read: true } } });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("vex_globals", { slug: "siteSettings", data: { siteName: "My Site" } });
+    });
+    const result = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      getGlobal({ ctx, slug: "siteSettings", config, auth: editorAuth }),
+    )) as VexDocumentGlobal | null;
+    expect(result?.siteName).toBe("My Site");
+  });
+
+  it("never strips _id, _creationTime, or _slug", async () => {
+    const config = buildConfig({ editor: { siteSettings: { read: () => ({ "*": false }) } } });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("vex_globals", { slug: "siteSettings", data: { siteName: "My Site" } });
+    });
+    const result = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      getGlobal({ ctx, slug: "siteSettings", config, auth: editorAuth }),
+    )) as VexDocumentGlobal | null;
+    expect(result?._id).toBeDefined();
+    expect(result?._creationTime).toBeDefined();
+    expect(result?._slug).toBe("siteSettings");
+    expect(result?.siteName).toBeUndefined();
+  });
+
+  it("strips per document when the map's value is an expression over the document", async () => {
+    const config = buildConfig({
+      editor: {
+        draftPage: {
+          read: ({ data }: { data?: Record<string, unknown> }) => ({
+            "*": true,
+            siteName: data?.status === "draft",
+          }),
+        },
+        publishedPage: {
+          read: ({ data }: { data?: Record<string, unknown> }) => ({
+            "*": true,
+            siteName: data?.status === "draft",
+          }),
+        },
+      },
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("vex_globals", {
+        slug: "draftPage",
+        data: { siteName: "Draft Site", status: "draft" },
+      });
+      await ctx.db.insert("vex_globals", {
+        slug: "publishedPage",
+        data: { siteName: "Live Site", status: "published" },
+      });
+    });
+    const draft = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      getGlobal({ ctx, slug: "draftPage", config, auth: editorAuth }),
+    )) as VexDocumentGlobal | null;
+    const published = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      getGlobal({ ctx, slug: "publishedPage", config, auth: editorAuth }),
+    )) as VexDocumentGlobal | null;
+    expect(draft?.siteName).toBe("Draft Site");
+    expect(published?.siteName).toBeUndefined();
+  });
+
+  it("does not DENY a read when the read action returns a map", async () => {
+    const config = buildConfig({
+      editor: { siteSettings: { read: () => ({ "*": false, siteName: true }) } },
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("vex_globals", { slug: "siteSettings", data: { siteName: "My Site" } });
+    });
+    const result = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      getGlobal({ ctx, slug: "siteSettings", config, auth: editorAuth }),
+    )) as VexDocumentGlobal | null;
+    expect(result).not.toBeNull();
+  });
+});

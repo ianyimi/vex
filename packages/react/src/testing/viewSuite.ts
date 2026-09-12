@@ -3,7 +3,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { fireEvent } from "@testing-library/react";
 import { convexTest } from "convex-test";
 import {
+  defineAccess,
   select,
+  text,
   type PaginationResult,
   type VexAccessConfig,
   type VexDocument,
@@ -43,6 +45,17 @@ import {
  * comment above each constant.
  */
 type RbacMatrix = Record<"none" | "anonymous" | "denied" | "allowed" | "scoped", boolean>;
+
+/**
+ * A fake user carrying the given role — the same shape `usePermission.test.tsx`'s
+ * own `asUser` helper returns, reused here for the field-map/column-filtering
+ * scenarios that need a role outside `testAccess`'s shared matrix.
+ *
+ * @param role - The role the caller holds.
+ * @param _id - The caller's document id.
+ * @returns A user document shaped for `VexAuthProvider`.
+ */
+const asUser = (role: string, _id = "u1"): Record<string, unknown> => ({ _id, roles: role });
 
 /**
  * `testAccess`'s shared matrix (`harness/accessFixtures.ts`) grants role "allowed" a
@@ -105,6 +118,19 @@ function toPage<TDoc extends VexDocument = VexDocument>(docs: TestDoc<"documents
   // and `VexMediaDocument` (the media list view's TDoc) requires media-specific fields none of
   // this suite's seeded rows carry (they only exercise the "no src" fallback rendering path).
   return { page: docs as unknown as TDoc[], continueCursor: "", isDone: true };
+}
+
+/**
+ * The visible `<thead>` column header labels, in column order. `DataTable`
+ * does not emit a `data-column-id` attribute, so header text is the stable
+ * way to assert which columns render — the select column's header is a
+ * `Checkbox` with no text, so it reads as an empty string here.
+ *
+ * @param container - The rendered view's root element.
+ * @returns One entry per `<th>`, in DOM order.
+ */
+function columnHeaderTexts(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll("thead th")).map((th) => th.textContent ?? "");
 }
 
 /**
@@ -227,6 +253,90 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       expect(utils.getAllByRole("row")).toHaveLength(4); // 1 header row + 3 data rows
     });
 
+    it("filters columns by the caller's read field permissions", () => {
+      // `posts` gets a second real field here (`title`, backed by the schema's
+      // own column) so a map can deny one field while leaving another
+      // visible. `viewer` denies `status`; `plain` declares no map at all;
+      // `perDoc`'s check reads `data`, which a whole-table column can't
+      // answer, so `scope: "any"` must keep it rather than hide it.
+      const postsWithTitle = {
+        ...testCollection,
+        fields: { ...testCollection.fields, title: text({ required: false }) },
+      } as unknown as typeof testCollection;
+      const fieldMapAccess = defineAccess({
+        roles: ["viewer", "plain", "perDoc"] as const,
+        resources: [postsWithTitle],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          viewer: { posts: { read: () => ({ "*": true, status: false }) } },
+          plain: { posts: { read: true } },
+          perDoc: {
+            posts: {
+              read: ({ data }) => {
+                // The suite runs against the unaugmented registry, so `data`
+                // arrives as `unknown` rather than the fixture's document.
+                const doc = data as { title?: string } | undefined;
+                return { "*": true, status: doc?.title === "First" };
+              },
+            },
+          },
+        },
+      });
+      // `CollectionListView` prefers `VexConfigContext`'s collection over its own
+      // prop when the slugs match (Fast Refresh support) — the context config
+      // must carry the same extended fixture or the view falls back to
+      // `testClientConfig`'s plain two-field `testCollection`.
+      const config = { ...testClientConfig, collections: [postsWithTitle] };
+
+      const denied = renderView(
+        createElement(CollectionListView, { collection: postsWithTitle, initialData: toPage(docs) }),
+        { convex: t, config, access: fieldMapAccess, auth: { user: asUser("viewer") } },
+      );
+      expect(columnHeaderTexts(denied.container)).toContain("title");
+      expect(columnHeaderTexts(denied.container)).not.toContain("status");
+      // The select column has no field key and must never be filtered out.
+      expect(denied.container.querySelector('thead [data-slot="checkbox"]')).not.toBeNull();
+      denied.unmount();
+
+      const undeclaredMap = renderView(
+        createElement(CollectionListView, { collection: postsWithTitle, initialData: toPage(docs) }),
+        { convex: t, config, access: fieldMapAccess, auth: { user: asUser("plain") } },
+      );
+      expect(columnHeaderTexts(undeclaredMap.container)).toEqual(
+        expect.arrayContaining(["title", "status"]),
+      );
+      undeclaredMap.unmount();
+
+      const perDoc = renderView(
+        createElement(CollectionListView, { collection: postsWithTitle, initialData: toPage(docs) }),
+        { convex: t, config, access: fieldMapAccess, auth: { user: asUser("perDoc") } },
+      );
+      expect(columnHeaderTexts(perDoc.container)).toContain("status");
+    });
+
+    it("shows the New button for a role whose create check returns a field map", () => {
+      // `create` is a quantified check here (no `data`) — under the default
+      // `scope: "all"` a map would deny it outright and hide the button even
+      // though creating is permitted; `scope: "any"` is what CollectionListView
+      // now passes.
+      const createMapAccess = defineAccess({
+        roles: ["mapCreator"] as const,
+        resources: [testCollection],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          mapCreator: { posts: { create: () => ({ "*": false, status: true }) } },
+        },
+      });
+      const utils = renderView(
+        createElement(CollectionListView, { collection: testCollection, initialData: toPage(docs) }),
+        { convex: t, access: createMapAccess, auth: { user: asUser("mapCreator") } },
+      );
+      const newLink = utils.container.querySelector('a[href="/admin/posts?createNew=true"]');
+      expect(newLink).not.toHaveAttribute("aria-disabled");
+    });
+
     runRbacStateSuite({
       render: () =>
         wrapWithViewProviders(
@@ -316,6 +426,115 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
       expect(statusInput.value).toBe("");
     });
 
+    /**
+     * Read-gating: `useVisibleFields` hides a read-denied field's input entirely
+     * (not merely disables it, which is `update`'s own job below) — mirrors
+     * `describeCollectionListView`'s own field-map tests.
+     */
+    it("hides a read-denied field's input while keeping the allowed one visible", async () => {
+      const id = await t.run((ctx) =>
+        ctx.db.insert("documents", { status: "sentinel-denied", title: "visible" }),
+      );
+      const stored = await t.run((ctx) => ctx.db.get(id));
+      const fieldMapAccess = defineAccess({
+        roles: ["gated"] as const,
+        resources: [testCollection],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          gated: { posts: { read: () => ({ "*": false, title: true }) } },
+        },
+      });
+      const utils = renderView(
+        createElement(CollectionEditView, { collection: testCollection, documentId: id, initialData: stored }),
+        { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
+      );
+      expect(utils.container.querySelector("#status")).toBeNull();
+      expect(utils.container.querySelector("#title")).not.toBeNull();
+    });
+
+    it("does not render a read-denied field's stored value anywhere in the form", async () => {
+      // Hidden, not disabled: a disabled input would still carry the value in
+      // its `value` attribute, so this proves the value is unreachable at all.
+      const id = await t.run((ctx) =>
+        ctx.db.insert("documents", { status: "sentinel-denied", title: "visible" }),
+      );
+      const stored = await t.run((ctx) => ctx.db.get(id));
+      const fieldMapAccess = defineAccess({
+        roles: ["gated"] as const,
+        resources: [testCollection],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          gated: { posts: { read: () => ({ "*": false, title: true }) } },
+        },
+      });
+      const utils = renderView(
+        createElement(CollectionEditView, { collection: testCollection, documentId: id, initialData: stored }),
+        { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
+      );
+      expect(utils.container.innerHTML).not.toContain("sentinel-denied");
+    });
+
+    it("renders every field when no read map narrows them", async () => {
+      const id = await t.run((ctx) => ctx.db.insert("documents", { status: "b", title: "a" }));
+      const stored = await t.run((ctx) => ctx.db.get(id));
+      const utils = renderView(
+        createElement(CollectionEditView, { collection: testCollection, documentId: id, initialData: stored }),
+        { convex: t },
+      );
+      expect(utils.container.querySelector("#status")).not.toBeNull();
+      expect(utils.container.querySelector("#title")).not.toBeNull();
+    });
+
+    it("keeps a field visible but read-only when only update denies it", async () => {
+      // Read and update are separate actions: `read: true` must not fall back
+      // to update's own map, or this would wrongly hide `status` too.
+      const id = await t.run((ctx) => ctx.db.insert("documents", { status: "b", title: "a" }));
+      const stored = await t.run((ctx) => ctx.db.get(id));
+      const updateGatedAccess = defineAccess({
+        roles: ["gated"] as const,
+        resources: [testCollection],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          gated: { posts: { read: true, update: () => ({ "*": false, title: true }) } },
+        },
+      });
+      const utils = renderView(
+        createElement(CollectionEditView, { collection: testCollection, documentId: id, initialData: stored }),
+        { convex: t, access: updateGatedAccess, auth: { user: asUser("gated") } },
+      );
+      const statusInput = utils.container.querySelector("#status");
+      const titleInput = utils.container.querySelector("#title");
+      expect(statusInput).not.toBeNull();
+      expect(titleInput).not.toBeNull();
+      expect(statusInput).toBeDisabled();
+      expect(titleInput).not.toBeDisabled();
+    });
+
+    it("still renders every field when the caller has no known role", async () => {
+      const id = await t.run((ctx) =>
+        ctx.db.insert("documents", { status: "sentinel-denied", title: "visible" }),
+      );
+      const stored = await t.run((ctx) => ctx.db.get(id));
+      const fieldMapAccess = defineAccess({
+        roles: ["gated"] as const,
+        resources: [testCollection],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          gated: { posts: { read: () => ({ "*": false, title: true }) } },
+        },
+      });
+      const utils = renderView(
+        createElement(CollectionEditView, { collection: testCollection, documentId: id, initialData: stored }),
+        { convex: t, access: fieldMapAccess, auth: { user: asUser("stranger") } },
+      );
+      expect(utils.container.querySelector("#status")).not.toBeNull();
+      expect(utils.container.querySelector("#title")).not.toBeNull();
+    });
+
     runRbacStateSuite({
       render: () =>
         wrapWithViewProviders(
@@ -386,6 +605,99 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
       const heading = utils.getByRole("heading", { level: 1 });
       expect(heading.textContent).toBe("Edit Global - Settings");
       expect(utils.container.querySelector("#siteName")).not.toBeNull();
+    });
+
+    /**
+     * Read-gating: mirrors `describeCollectionEditView`'s own block above.
+     * Driven through `initialData` — see this suite's doc comment for why.
+     */
+    it("hides a read-denied field's input while keeping the allowed one visible", () => {
+      const stored = { _creationTime: 1, _id: "g1", siteName: "sentinel-denied", tagline: "visible" };
+      const fieldMapAccess = defineAccess({
+        roles: ["gated"] as const,
+        resources: [testClientConfig.globals[0] as never],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          gated: { settings: { read: () => ({ "*": false, tagline: true }) } },
+        } as never,
+      });
+      const utils = renderView(
+        createElement(GlobalEditView, { global: testClientConfig.globals[0], initialData: stored as never }),
+        { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
+      );
+      expect(utils.container.querySelector("#siteName")).toBeNull();
+      expect(utils.container.querySelector("#tagline")).not.toBeNull();
+    });
+
+    it("does not render a read-denied field's stored value anywhere in the form", () => {
+      const stored = { _creationTime: 1, _id: "g1", siteName: "sentinel-denied", tagline: "visible" };
+      const fieldMapAccess = defineAccess({
+        roles: ["gated"] as const,
+        resources: [testClientConfig.globals[0] as never],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          gated: { settings: { read: () => ({ "*": false, tagline: true }) } },
+        } as never,
+      });
+      const utils = renderView(
+        createElement(GlobalEditView, { global: testClientConfig.globals[0], initialData: stored as never }),
+        { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
+      );
+      expect(utils.container.innerHTML).not.toContain("sentinel-denied");
+    });
+
+    it("renders every field when no read map narrows them", () => {
+      const stored = { _creationTime: 1, _id: "g1", siteName: "a", tagline: "b" };
+      const utils = renderView(
+        createElement(GlobalEditView, { global: testClientConfig.globals[0], initialData: stored as never }),
+        { convex: t },
+      );
+      expect(utils.container.querySelector("#siteName")).not.toBeNull();
+      expect(utils.container.querySelector("#tagline")).not.toBeNull();
+    });
+
+    it("keeps a field visible but read-only when only update denies it", () => {
+      const stored = { _creationTime: 1, _id: "g1", siteName: "a", tagline: "b" };
+      const updateGatedAccess = defineAccess({
+        roles: ["gated"] as const,
+        resources: [testClientConfig.globals[0] as never],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          gated: { settings: { read: true, update: () => ({ "*": false, tagline: true }) } },
+        } as never,
+      });
+      const utils = renderView(
+        createElement(GlobalEditView, { global: testClientConfig.globals[0], initialData: stored as never }),
+        { convex: t, access: updateGatedAccess, auth: { user: asUser("gated") } },
+      );
+      const siteNameInput = utils.container.querySelector("#siteName");
+      const taglineInput = utils.container.querySelector("#tagline");
+      expect(siteNameInput).not.toBeNull();
+      expect(taglineInput).not.toBeNull();
+      expect(siteNameInput).toBeDisabled();
+      expect(taglineInput).not.toBeDisabled();
+    });
+
+    it("still renders every field when the caller has no known role", () => {
+      const stored = { _creationTime: 1, _id: "g1", siteName: "sentinel-denied", tagline: "visible" };
+      const fieldMapAccess = defineAccess({
+        roles: ["gated"] as const,
+        resources: [testClientConfig.globals[0] as never],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          gated: { settings: { read: () => ({ "*": false, tagline: true }) } },
+        } as never,
+      });
+      const utils = renderView(
+        createElement(GlobalEditView, { global: testClientConfig.globals[0], initialData: stored as never }),
+        { convex: t, access: fieldMapAccess, auth: { user: asUser("stranger") } },
+      );
+      expect(utils.container.querySelector("#siteName")).not.toBeNull();
+      expect(utils.container.querySelector("#tagline")).not.toBeNull();
     });
 
     runRbacStateSuite({
@@ -602,6 +914,49 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
       expect(utils.queryByRole("button", { name: /delete/i })).toBeNull();
     });
 
+    it("filters columns by the caller's read field permissions", () => {
+      const fieldMapAccess = defineAccess({
+        roles: ["viewer"] as const,
+        resources: [testClientConfig.mediaCollections[0]],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          viewer: { images: { read: () => ({ "*": true, alt: false }) } },
+        },
+      });
+      const utils = renderView(
+        createElement(MediaCollectionListView, {
+          collection: testClientConfig.mediaCollections[0],
+          initialData: toPage<VexMediaDocument>(docs),
+        }),
+        { convex: t, access: fieldMapAccess, auth: { user: asUser("viewer") } },
+      );
+      expect(columnHeaderTexts(utils.container)).not.toContain("alt");
+      // The preview column (no field key) and the select column stay.
+      expect(utils.container.querySelector('thead [data-slot="checkbox"]')).not.toBeNull();
+    });
+
+    it("shows the Upload button for a role whose create check returns a field map", () => {
+      const createMapAccess = defineAccess({
+        roles: ["mapCreator"] as const,
+        resources: [testClientConfig.mediaCollections[0]],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          mapCreator: { images: { create: () => ({ "*": false, alt: true }) } },
+        },
+      });
+      const utils = renderView(
+        createElement(MediaCollectionListView, {
+          collection: testClientConfig.mediaCollections[0],
+          initialData: toPage<VexMediaDocument>(docs),
+        }),
+        { convex: t, access: createMapAccess, auth: { user: asUser("mapCreator") } },
+      );
+      const uploadLink = utils.container.querySelector('a[href="/admin/images?upload=true"]');
+      expect(uploadLink).not.toHaveAttribute("aria-disabled");
+    });
+
     runRbacStateSuite({
       render: () =>
         wrapWithViewProviders(
@@ -676,6 +1031,176 @@ function describeMediaCollectionEditView(options: { access?: VexAccessConfig }):
       });
       return;
     }
+
+    /** Read-gating: mirrors `describeCollectionEditView`'s own block above. */
+    it("hides a read-denied field's input while keeping the allowed one visible", async () => {
+      const id = await t.run((ctx) =>
+        ctx.db.insert("media", {
+          adapter: "convex",
+          alt: "sentinel-denied",
+          collectionSlug: "images",
+          deleted: false,
+          filename: "visible.png",
+          mimeType: "image/png",
+          size: 100,
+          storageId: "s1",
+        }),
+      );
+      const stored = await t.run((ctx) => ctx.db.get(id));
+      const fieldMapAccess = defineAccess({
+        roles: ["gated"] as const,
+        resources: [testClientConfig.mediaCollections[0]],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          gated: { images: { read: () => ({ "*": false, filename: true }) } },
+        },
+      });
+      const utils = renderView(
+        createElement(MediaCollectionEditView, {
+          collection: testClientConfig.mediaCollections[0],
+          documentId: id,
+          initialData: stored as unknown as VexMediaDocument,
+        }),
+        { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
+      );
+      expect(utils.container.querySelector("#alt")).toBeNull();
+      expect(utils.container.querySelector("#filename")).not.toBeNull();
+    });
+
+    it("does not render a read-denied field's stored value anywhere in the form", async () => {
+      const id = await t.run((ctx) =>
+        ctx.db.insert("media", {
+          adapter: "convex",
+          alt: "sentinel-denied",
+          collectionSlug: "images",
+          deleted: false,
+          filename: "visible.png",
+          mimeType: "image/png",
+          size: 100,
+          storageId: "s1",
+        }),
+      );
+      const stored = await t.run((ctx) => ctx.db.get(id));
+      const fieldMapAccess = defineAccess({
+        roles: ["gated"] as const,
+        resources: [testClientConfig.mediaCollections[0]],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          gated: { images: { read: () => ({ "*": false, filename: true }) } },
+        },
+      });
+      const utils = renderView(
+        createElement(MediaCollectionEditView, {
+          collection: testClientConfig.mediaCollections[0],
+          documentId: id,
+          initialData: stored as unknown as VexMediaDocument,
+        }),
+        { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
+      );
+      expect(utils.container.innerHTML).not.toContain("sentinel-denied");
+    });
+
+    it("renders every field when no read map narrows them", async () => {
+      const id = await t.run((ctx) =>
+        ctx.db.insert("media", {
+          adapter: "convex",
+          alt: "a",
+          collectionSlug: "images",
+          deleted: false,
+          filename: "b.png",
+          mimeType: "image/png",
+          size: 100,
+          storageId: "s1",
+        }),
+      );
+      const stored = await t.run((ctx) => ctx.db.get(id));
+      const utils = renderView(
+        createElement(MediaCollectionEditView, {
+          collection: testClientConfig.mediaCollections[0],
+          documentId: id,
+          initialData: stored as unknown as VexMediaDocument,
+        }),
+        { convex: t },
+      );
+      expect(utils.container.querySelector("#alt")).not.toBeNull();
+      expect(utils.container.querySelector("#filename")).not.toBeNull();
+    });
+
+    it("keeps a field visible but read-only when only update denies it", async () => {
+      const id = await t.run((ctx) =>
+        ctx.db.insert("media", {
+          adapter: "convex",
+          alt: "a",
+          collectionSlug: "images",
+          deleted: false,
+          filename: "b.png",
+          mimeType: "image/png",
+          size: 100,
+          storageId: "s1",
+        }),
+      );
+      const stored = await t.run((ctx) => ctx.db.get(id));
+      const updateGatedAccess = defineAccess({
+        roles: ["gated"] as const,
+        resources: [testClientConfig.mediaCollections[0]],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          gated: { images: { read: true, update: () => ({ "*": false, filename: true }) } },
+        },
+      });
+      const utils = renderView(
+        createElement(MediaCollectionEditView, {
+          collection: testClientConfig.mediaCollections[0],
+          documentId: id,
+          initialData: stored as unknown as VexMediaDocument,
+        }),
+        { convex: t, access: updateGatedAccess, auth: { user: asUser("gated") } },
+      );
+      const altInput = utils.container.querySelector("#alt");
+      const filenameInput = utils.container.querySelector("#filename");
+      expect(altInput).not.toBeNull();
+      expect(filenameInput).not.toBeNull();
+      expect(altInput).toBeDisabled();
+      expect(filenameInput).not.toBeDisabled();
+    });
+
+    it("still renders every field when the caller has no known role", async () => {
+      const id = await t.run((ctx) =>
+        ctx.db.insert("media", {
+          adapter: "convex",
+          alt: "sentinel-denied",
+          collectionSlug: "images",
+          deleted: false,
+          filename: "visible.png",
+          mimeType: "image/png",
+          size: 100,
+          storageId: "s1",
+        }),
+      );
+      const stored = await t.run((ctx) => ctx.db.get(id));
+      const fieldMapAccess = defineAccess({
+        roles: ["gated"] as const,
+        resources: [testClientConfig.mediaCollections[0]],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          gated: { images: { read: () => ({ "*": false, filename: true }) } },
+        },
+      });
+      const utils = renderView(
+        createElement(MediaCollectionEditView, {
+          collection: testClientConfig.mediaCollections[0],
+          documentId: id,
+          initialData: stored as unknown as VexMediaDocument,
+        }),
+        { convex: t, access: fieldMapAccess, auth: { user: asUser("stranger") } },
+      );
+      expect(utils.container.querySelector("#alt")).not.toBeNull();
+      expect(utils.container.querySelector("#filename")).not.toBeNull();
+    });
 
     runRbacStateSuite({
       render: () =>

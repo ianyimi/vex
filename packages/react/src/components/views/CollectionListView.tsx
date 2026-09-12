@@ -2,12 +2,15 @@
 
 import {
   CRUD_ACTIONS,
+  isFieldAllowed,
   PERMISSION_SCOPES,
   vexConvexApi,
   type CollectionConfig,
   type CollectionListViewProps,
   type CollectionSlug,
+  type TDocument,
 } from "@vexcms/core";
+import { type ColumnDef } from "@tanstack/react-table";
 import { Button } from "../ui/button";
 import { RevalidateButton } from "../RevalidateButton";
 import { VexLink } from "../ui/VexLink";
@@ -15,9 +18,21 @@ import { MODALS } from "../modals/constants";
 import { CreateDocumentModal } from "../modals";
 import { useVexConfig } from "../../context/VexConfigContext";
 import { getCollectionColumnDefs } from "../fields";
-import { usePaginatedQuery, usePermission, useVexMutation } from "../../hooks";
+import { useFieldPermissions, usePaginatedQuery, usePermission, useVexMutation } from "../../hooks";
 import { useMemo } from "react";
 import { DataTable } from "../ui";
+
+/**
+ * The field name backing a column, read off TanStack's `accessorKey`.
+ * `undefined` for the select/actions columns, which carry no field and must
+ * never be filtered by read permission.
+ *
+ * @param column - One TanStack column definition.
+ * @returns The backing field name, or `undefined` when the column has none.
+ */
+function columnFieldKey(column: ColumnDef<TDocument, unknown>): string | undefined {
+  return "accessorKey" in column ? String(column.accessorKey) : undefined;
+}
 
 /**
  * Collection list view component.
@@ -70,9 +85,21 @@ export function CollectionListView<
     clientPageSize: props.collection.admin.table.defaultPageSize,
   });
 
+  const fieldPermissions = useFieldPermissions({
+    resource: collection.slug,
+    action: CRUD_ACTIONS.read,
+    // Deliberately no `data`: a column is shown or hidden for the whole
+    // table, so the question is "is this field denied for EVERY document",
+    // not "for this one" — `scope: "any"` answers exactly that.
+    scope: PERMISSION_SCOPES.any,
+  });
+
   const columns = useMemo(() => {
-    return getCollectionColumnDefs({ collection });
-  }, [collection]);
+    return getCollectionColumnDefs({ collection }).filter((column) => {
+      const key = columnFieldKey(column);
+      return key === undefined || isFieldAllowed(fieldPermissions, key);
+    });
+  }, [collection, fieldPermissions]);
 
   const removeMutation = useVexMutation({
     collection: collection.slug,
@@ -92,7 +119,11 @@ export function CollectionListView<
     await removeMutation.mutateAsync({ ids: selectedIds, collection: collection.slug });
   }
 
-  const canCreate = usePermission({ resource: collection.slug, action: CRUD_ACTIONS.create });
+  const canCreate = usePermission({
+    resource: collection.slug,
+    action: CRUD_ACTIONS.create,
+    scope: PERMISSION_SCOPES.any,
+  });
   const canDelete = usePermission({
     resource: collection.slug,
     action: CRUD_ACTIONS.delete,

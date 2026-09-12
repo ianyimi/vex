@@ -161,6 +161,137 @@ permissions: {
 }
 ```
 
+## Field-level permissions
+
+Every check shape above resolves a whole document — a role can read or write `posts`, full
+stop. A filter callback (form 2 above, or the `filter` beside `constraints` in form 3) can
+answer with a **field map** instead of a boolean, restricting the check to specific fields
+without any new config surface. `apps/www` uses exactly this to let an anonymous demo caller
+change one field of a global and nothing else:
+
+```ts
+// apps/www/src/auth/access.ts — the `user` role
+siteSettings: {
+  "*": false,
+  read: true,
+  update: () => ({ "*": false, adminTheme: true }),
+},
+```
+
+`read: true` is an ordinary boolean, so public reads of `siteSettings` stay unrestricted —
+maps are per action, and this one is only on `update`. The `update` filter returns
+`{ "*": false, adminTheme: true }` instead of a boolean: `"*": false` denies every field,
+`adminTheme: true` re-allows the one field the picker needs. Nothing else changed — no
+`fields` sibling on the resource entry, no second wiring point, no new `defineAccess` option.
+
+### Why a map is only ever a callback's return value
+
+A field map is never written directly on an action — only returned from a callback, whether
+that callback is the bare form 2 spelling or `filter` beside `constraints` in form 3. That is
+what keeps it unambiguous: a document is free to declare fields named `constraints` or
+`filter`, because a value assigned directly to an action is always a check descriptor and a
+value a callback *returns* is always a field map. It is also why a map's values are plain
+booleans rather than nested checks — the callback already has `{ user, data, organization }`
+in scope, so per-field logic is an ordinary boolean expression evaluated once, not a second
+permission system:
+
+```ts
+update: ({ user, data }) => ({
+  "*": false,
+  adminTheme: true,
+  activeTheme: user._id === data.ownerId && data.status === "draft",
+}),
+```
+
+### The wildcard-or-exhaustive rule
+
+A returned map is checked against the resource's own fields at compile time, with no
+annotation, helper, or `satisfies` needed at the call site — either the map carries a `"*"`
+key, in which case every other field is optional, or it omits `"*"`, in which case every
+field of the document must be named:
+
+```ts
+// Accepted — wildcard present, other fields optional.
+() => ({ "*": false, adminTheme: true })
+// Accepted — no wildcard, so every field of the document is named.
+() => ({ name: false, description: false, activeTheme: false, adminTheme: true /* …all… */ })
+// Rejected — no wildcard, and other fields are missing.
+() => ({ name: false, adminTheme: true })
+// Rejected — "admnTheme" is not a field on this resource.
+() => ({ "*": false, admnTheme: true })
+```
+
+Both polarities read naturally:
+
+```ts
+() => ({ "*": false, adminTheme: true })   // allow-list: only this field
+() => ({ "*": true, adminTheme: false })   // deny-list: everything but this field
+```
+
+Prefer the allow-list form. The reason is a design one, not a safety one: a field added to
+the resource later arrives denied under `"*": false` and has to be granted deliberately, but
+arrives writable under `"*": true`.
+
+### How `hasPermission` answers with a map in play
+
+One function, three cases, and no new call for the common path:
+
+| Call shape | What it means | How a map answers |
+| --- | --- | --- |
+| `changes` present | A write — these are the keys actually being set | Denies on the first changed key the map forbids; resending a field unchanged is not a write to it |
+| `data` present, no `changes` | A read of a concrete document | Projects instead of denying — the caller strips denied keys rather than being refused outright |
+| Neither | A quantified check (nav/list gating) | Falls back to `scope`: the default `"all"` denies, since a map means not every field is permitted; `"any"` allows |
+
+```ts
+// WRITE — changes names the keys being written. Any changed key the map denies → false.
+hasPermission({ access, user, resource: "siteSettings", action: "update",
+  data: storedDoc, changes: { name: "Defaced" } });   // → false (field: "name")
+hasPermission({ access, user, resource: "siteSettings", action: "update",
+  data: storedDoc, changes: { adminTheme: ["t2"] } }); // → true
+
+// READ — no changes, so the map projects instead of denying. Caller strips.
+hasPermission({ access, user, resource: "siteSettings", action: "read", data: storedDoc }); // → true
+
+// QUANTIFIED — neither, so scope decides.
+hasPermission({ access, user, resource: "siteSettings", action: "update" });               // → false
+hasPermission({ access, user, resource: "siteSettings", action: "update", scope: "any" });  // → true
+```
+
+A role with no field map anywhere takes byte-identical paths to today — every existing call
+site that never passes `changes` is unaffected. Denial is reported as a `VexAccessError`
+carrying the usual `{ code: "ACCESS_DENIED", resource, action }` plus an optional `field` —
+present only when the denial is field-scoped:
+
+```json
+{ "code": "ACCESS_DENIED", "resource": "siteSettings", "action": "update", "field": "name" }
+```
+
+A save that changes only `adminTheme` succeeds even though the form resubmits the whole
+document — `name`, `description`, and the rest are violations only if their value actually
+*changed*, not merely present in the payload.
+
+### Admin gating with `useFieldPermissions`
+
+`useFieldPermissions({ resource, action, data })` (`@vexcms/react`) resolves the same map for
+UI gating, the same pattern `usePermission` uses for whole-action gating. For the
+`siteSettings` example it resolves to `{ wildcard: false, fields: { adminTheme: true } }`,
+which the admin panel folds into each input's `readOnly` prop — the Admin Theme picker is the
+only live control, and **Save** stays enabled because the resolver call passes no `changes`
+and so projects rather than denies.
+
+### Runtime-only boundary
+
+Like every other RBAC check, field permissions are enforced in the generated Convex functions
+and the admin-panel bundle — the same boundary `hasPermission()` already has. A hand-rolled
+Convex function that calls `ctx.db` directly bypasses this the same way it already bypasses
+`hasPermission()`.
+
+### What's deferred
+
+`find`/`get`/`create`/`update` return and argument types still describe the full document —
+a caller may receive or be allowed fewer keys than the type promises for their role. Narrowing
+those generic type parameters per role is tracked as a backlog item, not attempted here.
+
 ## Read-only public admin via `anonRole`
 
 `anonRole` supplies a fallback role when the caller has no session at all — the exact

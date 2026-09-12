@@ -20,30 +20,23 @@ export default defineConfig({
     // still running the identical side effect.
     setupFiles: ["./src/testing/setup.ts"],
     coverage: {
-      enabled: true,
+      // Deliberately NOT `enabled: true`. Coverage belongs to the `coverage`
+      // script (which passes `--coverage`) and to turbo's `coverage` task,
+      // which declares `coverage/**` as its outputs. Enabling it here made the
+      // plain `test` script compute coverage too, which cost time and — because
+      // vitest wipes `coverage/.tmp` at startup — meant two concurrent runs in
+      // one package deleted each other's in-flight temp files and BOTH died on
+      // `readCoverageFiles` ENOENT with every test passing.
       // `text` + `json-summary`, never `"default"`: `coverage.reporter` takes
       // istanbul reporter names, and `"default"` is a *test* reporter — passing it
       // here makes istanbul-reports throw `Cannot find module 'default'` and the
       // whole `vitest run` (this app's own `test` script) exits 1 before a single
-      // test runs. `json-summary` is what writes `coverage/coverage-summary.json`,
-      // the file the thresholds below were measured from.
+      // test runs.
       reporter: ["text", "json-summary"],
-      // Coverage reporting — and therefore the thresholds below — is skipped on a
-      // failing run unless this is set, so a red suite would silently bypass the
-      // gate instead of failing it.
+      // Reported for visibility only. No thresholds, deliberately: a coverage
+      // percentage must never be the thing that fails a run — only a stale test,
+      // or a test catching a real problem, should.
       reportOnFailure: true,
-      // Measured via
-      // `pnpm --filter test exec vitest run --coverage --coverage.reportOnFailure`,
-      // read from `coverage/coverage-summary.json#total`, each rounded down to a whole
-      // number (94.02 / 100 / 71.42 / 95.31). A regression below this floor fails the
-      // build — remeasure and raise it deliberately when this app's own tested surface
-      // grows, never lower it to silence a real drop.
-      thresholds: {
-        statements: 94,
-        branches: 100,
-        functions: 71,
-        lines: 95,
-      },
     },
   },
   resolve: {

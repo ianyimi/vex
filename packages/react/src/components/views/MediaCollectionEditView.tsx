@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
-import { CRUD_ACTIONS, vexConvexApi } from "@vexcms/core";
+import { CRUD_ACTIONS, isFieldAllowed, vexConvexApi } from "@vexcms/core";
 import type {
   MediaCollectionConfig,
   MediaCollectionMeta,
@@ -12,7 +12,15 @@ import type {
 import { AppForm } from "../form/AppForm";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
-import { useCollectionForm, usePermission, useVexMutation } from "../../hooks";
+import {
+  useCollectionForm,
+  useFieldPermissions,
+  useLiveFieldMerge,
+  usePermission,
+  useVexMutation,
+  useVisibleFields,
+} from "../../hooks";
+import { changedValues } from "../form/changedValues";
 
 /**
  * Props passed to the `CollectionEditView` component.
@@ -102,17 +110,33 @@ export function MediaCollectionEditView<
     mutationFn: vexConvexApi.update,
     operation: "update",
   });
+  const visibleFields = useVisibleFields({
+    resource: props.collection.slug,
+    fields: props.collection.fields,
+    data: currentDocument,
+  });
+  const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
+
   const form = useCollectionForm({
     document: currentDocument,
     collection: props.collection,
-    onSubmit: async ({ value }: { value: any }) => {
+    readableFieldKeys,
+    onSubmit: async () => {
+      const changes = changedValues(form);
+      if (Object.keys(changes).length === 0) return;
       await mutateAsync({
         id: currentDocument._id,
         collection: props.collection.slug,
-        data: value,
+        data: changes,
       });
       form.reset();
     },
+  });
+
+  useLiveFieldMerge({
+    form,
+    document: currentDocument,
+    fieldKeys: readableFieldKeys,
   });
 
   const canEdit = usePermission({
@@ -120,6 +144,12 @@ export function MediaCollectionEditView<
     action: CRUD_ACTIONS.update,
     data: data as {},
   });
+  const fieldPermissions = useFieldPermissions({
+    resource: props.collection.slug,
+    action: CRUD_ACTIONS.update,
+    data: currentDocument,
+  });
+
   return (
     <AppForm form={form} className="relative flex flex-col gap-4 pt-4">
       <div className="bg-background sticky top-12 z-10 flex h-16 items-center justify-between">
@@ -156,7 +186,7 @@ export function MediaCollectionEditView<
         />
       </div>
       <div className="space-y-4">
-        {Object.entries(props.collection.fields)
+        {visibleFields
           .filter(([_, fieldDef]) => !fieldDef.admin.hidden)
           .map(([fieldKey, field]) => {
             const InputComponent = fieldToInputComponent(field.type);
@@ -169,7 +199,9 @@ export function MediaCollectionEditView<
                 key={fieldKey}
                 name={fieldKey}
                 fieldDef={field}
-                readOnly={field.admin.readOnly || !canEdit}
+                readOnly={
+                  field.admin.readOnly || !canEdit || !isFieldAllowed(fieldPermissions, fieldKey)
+                }
                 collection={props.collection}
               />
             );

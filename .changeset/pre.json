@@ -22,6 +22,7 @@
     "anon-constraint-fail-closed",
     "anon-role-hardening-and-docs-cleanup",
     "core-label-singularization",
+    "field-level-permissions",
     "generated-types-lint-header",
     "marketing-template-design",
     "media-and-scaffold-fixes",

@@ -10,25 +10,10 @@ import type {
 import { populateDocs } from "../populate";
 import { buildDepthPopulate } from "../depth";
 import type { Prettify } from "../types";
-import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { CRUD_ACTIONS, hasPermission, resolveFieldPermissions, stripDeniedFields } from "../../access";
 import { GenericGlobalsQueryServerArgs } from "./types";
 import { resolveAccessCall } from "../utils";
-
-/**
- * Flattens a raw `vex_globals` DB row into the API-facing flat document.
- * Lifts `data` fields to root, renames `slug` → `_slug`.
- * @param row the global document as returned from convex usign a single collection for globals
- * @returns the flattened global object data type including its metadata fields
- */
-function flattenGlobalRow(row: Record<string, unknown>): Record<string, unknown> {
-  const { slug, data, _id, _creationTime } = row as {
-    slug: string;
-    data: Record<string, unknown>;
-    _id: string;
-    _creationTime: number;
-  };
-  return { _id, _creationTime, _slug: slug, ...(data ?? {}) };
-}
+import { flattenGlobalRow } from "./utils";
 
 /**
  * Server-side args for `getGlobal`. Populate and depth are mutually exclusive.
@@ -133,6 +118,17 @@ export async function getGlobal<
       action,
       data: flat,
     });
+    flat = stripDeniedFields(
+      flat,
+      resolveFieldPermissions({
+        access,
+        user: args.auth?.user ?? null,
+        organization: args.auth?.organization,
+        resource,
+        action,
+        data: flat,
+      }),
+    );
   }
 
   // Depth: auto-populate all relationship fields to N levels
