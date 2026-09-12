@@ -380,9 +380,12 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                   index={index}
                   isDragDisabled={readOnly}
                 >
+                  {/* Never `disabled={readOnly}`: opening a block is
+                      NAVIGATION, not editing. The blockName input, drag
+                      handle, remove button and every sub-field below stay
+                      individually gated. */}
                   <AccordionItem
                     value={itemKey}
-                    disabled={readOnly}
                     className={cn(
                       "rounded-sm border-t border-r-2 border-l-2 border-border bg-background overflow-hidden",
                       index === 0 && "border-t-2",
@@ -395,7 +398,10 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                         outside AccordionPrimitive.Trigger. */}
                     <AccordionPrimitive.Header className="flex items-center gap-2 bg-muted/40 px-3 py-2">
                       <DragHandle disabled={readOnly} />
-                      <AccordionPrimitive.Trigger className="group/accordion-trigger flex flex-1 items-center gap-2 rounded-md border border-transparent outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:pointer-events-none aria-disabled:opacity-50">
+                      <AccordionPrimitive.Trigger
+                        data-slot="accordion-trigger"
+                        className="group/accordion-trigger flex flex-1 items-center gap-2 rounded-md border border-transparent outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+                      >
                         {/* Order number */}
                         <span className="w-4 shrink-0 text-center font-mono text-xs text-muted-foreground tabular-nums">
                           {index + 1}

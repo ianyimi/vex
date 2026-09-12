@@ -150,11 +150,12 @@ const access = defineAccess({
       },
       // Field-level permissions: a filter callback may return a map instead of a
       // boolean, restricting the check to specific fields. "*" sets the default
-      // for every field not named explicitly.
+      // for every field not named explicitly — and is optional: a map with no
+      // "*" is still valid, and any field it omits is denied.
       users: {
         "*": false,
         read: true,
-        update: () => ({ "*": false, name: true }),
+        update: () => ({ name: true }),
       },
     },
   },

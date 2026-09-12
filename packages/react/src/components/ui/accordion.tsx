@@ -61,16 +61,37 @@ function AccordionTrigger({
   );
 }
 
+/**
+ * The collapsible panel.
+ *
+ * Animates with a CSS TRANSITION on the inner wrapper's height, driven by Base
+ * UI's own `data-starting-style`/`data-ending-style` attributes and its
+ * `--accordion-panel-height` var — not with the `animate-accordion-*`
+ * keyframes.
+ *
+ * The keyframes were the cause of the open-by-default flash and could not be
+ * salvaged. `tw-animate-css` animates `height: 0` toward
+ * `--radix/bits/reka/kb-accordion-content-height`, none of which Base UI sets
+ * (it publishes `--accordion-panel-height`), so the animation ran from zero to
+ * a bogus end value on mount: measured ~70ms at `height: 0` while the content
+ * was already full height. Withholding the class until after mount only moved
+ * the problem — applying an `animation-*` class to an element that already
+ * matches `data-open` starts the animation at that moment instead.
+ *
+ * A transition has no such failure mode: it interpolates only when the height
+ * actually changes, so a panel that mounts open is simply open, and a panel
+ * that mounts closed is simply closed.
+ */
 function AccordionContent({ className, children, ...props }: AccordionPrimitive.Panel.Props) {
   return (
     <AccordionPrimitive.Panel
       data-slot="accordion-content"
-      className="overflow-hidden text-sm data-open:animate-accordion-down data-closed:animate-accordion-up"
+      className="overflow-hidden text-sm"
       {...props}
     >
       <div
         className={cn(
-          "h-(--accordion-panel-height) pt-0 pb-4 data-ending-style:h-0 data-starting-style:h-0 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
+          "h-(--accordion-panel-height) pt-0 pb-4 transition-[height] duration-200 ease-out data-ending-style:h-0 data-starting-style:h-0 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
           className,
         )}
       >

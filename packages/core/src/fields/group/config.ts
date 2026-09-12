@@ -62,7 +62,6 @@ export function group<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
     label: "",
     required: false,
     defaultValue: {},
-    defaultOpen: true,
     ...options,
 
     // Admin config with all defaults applied
@@ -73,6 +72,7 @@ export function group<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
       width: "full",
       cellAlignment: "left",
       placeholder: "",
+      defaultCollapsed: false,
       ...options?.admin,
     },
     meta: {

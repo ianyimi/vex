@@ -167,22 +167,24 @@ Every check shape above resolves a whole document — a role can read or write `
 stop. A filter callback (form 2 above, or the `filter` beside `constraints` in form 3) can
 answer with a **field map** instead of a boolean, restricting the check to specific fields
 without any new config surface. `apps/www` uses exactly this to let an anonymous demo caller
-change one field of a global and nothing else:
+see most of a global's fields but change only one of them:
 
 ```ts
 // apps/www/src/auth/access.ts — the `user` role
 siteSettings: {
   "*": false,
-  read: true,
-  update: () => ({ "*": false, adminTheme: true }),
+  read: () => ({ adminTheme: true, name: true, description: true }),
+  update: () => ({ adminTheme: true }),
 },
 ```
 
-`read: true` is an ordinary boolean, so public reads of `siteSettings` stay unrestricted —
-maps are per action, and this one is only on `update`. The `update` filter returns
-`{ "*": false, adminTheme: true }` instead of a boolean: `"*": false` denies every field,
-`adminTheme: true` re-allows the one field the picker needs. Nothing else changed — no
-`fields` sibling on the resource entry, no second wiring point, no new `defineAccess` option.
+Neither map carries a `"*"` — see "The wildcard is optional" below — so every field the map
+doesn't name is denied for that action. `read`'s map permits `adminTheme`, `name`, and
+`description`; every other field on the global (`activeTheme`, `favicon`, the SEO fields) is
+unreadable by this role and, per Admin panel gating below, hidden from the edit form
+entirely. `update`'s map permits only `adminTheme`, so `name` and `description` stay
+visible (they're readable) but not editable. Nothing else changed — no `fields` sibling on
+the resource entry, no second wiring point, no new `defineAccess` option.
 
 ### Why a map is only ever a callback's return value
 
@@ -203,34 +205,38 @@ update: ({ user, data }) => ({
 }),
 ```
 
-### The wildcard-or-exhaustive rule
+### The wildcard is optional
 
 A returned map is checked against the resource's own fields at compile time, with no
-annotation, helper, or `satisfies` needed at the call site — either the map carries a `"*"`
-key, in which case every other field is optional, or it omits `"*"`, in which case every
-field of the document must be named:
+annotation, helper, or `satisfies` needed at the call site — an unknown key is rejected
+whether or not the map carries a wildcard. The wildcard itself, `"*"`, is not required:
+
+- **`"*"` present** — it decides every field the map doesn't name explicitly.
+- **`"*"` absent** — the map is a plain partial record. An omitted field is **denied**, the
+  same fail-closed default the rest of RBAC uses: a field the map never mentions never gets
+  through silently, including a field added to the resource later.
 
 ```ts
-// Accepted — wildcard present, other fields optional.
+// Accepted — wildcard present, every other field falls back to it.
 () => ({ "*": false, adminTheme: true })
-// Accepted — no wildcard, so every field of the document is named.
-() => ({ name: false, description: false, activeTheme: false, adminTheme: true /* …all… */ })
-// Rejected — no wildcard, and other fields are missing.
-() => ({ name: false, adminTheme: true })
-// Rejected — "admnTheme" is not a field on this resource.
+// Accepted — no wildcard. Only `adminTheme` is named; every other field,
+// including ones added to the resource later, is denied by omission.
+() => ({ adminTheme: true })
+// Rejected — "admnTheme" is not a field on this resource, wildcard or not.
 () => ({ "*": false, admnTheme: true })
 ```
 
-Both polarities read naturally:
+Both polarities of the wildcard form read naturally:
 
 ```ts
 () => ({ "*": false, adminTheme: true })   // allow-list: only this field
 () => ({ "*": true, adminTheme: false })   // deny-list: everything but this field
 ```
 
-Prefer the allow-list form. The reason is a design one, not a safety one: a field added to
-the resource later arrives denied under `"*": false` and has to be granted deliberately, but
-arrives writable under `"*": true`.
+Prefer a partial map with no wildcard, or an allow-list wildcard map, over a deny-list one.
+The reason is a design one, not a safety one: a field added to the resource later arrives
+denied under either of the first two and has to be granted deliberately, but arrives
+writable under `"*": true`.
 
 ### How `hasPermission` answers with a map in play
 
@@ -239,7 +245,7 @@ One function, three cases, and no new call for the common path:
 | Call shape | What it means | How a map answers |
 | --- | --- | --- |
 | `changes` present | A write — these are the keys actually being set | Denies on the first changed key the map forbids; resending a field unchanged is not a write to it |
-| `data` present, no `changes` | A read of a concrete document | Projects instead of denying — the caller strips denied keys rather than being refused outright |
+| `data` present, no `changes` | A read, or an advisory client-side probe | Projects instead of denying — the caller strips denied keys rather than being refused outright |
 | Neither | A quantified check (nav/list gating) | Falls back to `scope`: the default `"all"` denies, since a map means not every field is permitted; `"any"` allows |
 
 ```ts
@@ -268,16 +274,82 @@ present only when the denial is field-scoped:
 
 A save that changes only `adminTheme` succeeds even though the form resubmits the whole
 document — `name`, `description`, and the rest are violations only if their value actually
-*changed*, not merely present in the payload.
+*changed*, not merely present in the payload. Comparison is content equality, so a
+`relationship`/`select` field storing an array isn't reported as changed just because a
+fresh array was constructed for the payload.
 
-### Admin gating with `useFieldPermissions`
+**`create` has no stored document to diff against.** `data` is undefined on a create call,
+so the "only if changed" leniency above doesn't apply: any denied key present in the
+payload — changed or not, since there is nothing to compare it to — is a violation.
 
-`useFieldPermissions({ resource, action, data })` (`@vexcms/react`) resolves the same map for
-UI gating, the same pattern `usePermission` uses for whole-action gating. For the
-`siteSettings` example it resolves to `{ wildcard: false, fields: { adminTheme: true } }`,
-which the admin panel folds into each input's `readOnly` prop — the Admin Theme picker is the
-only live control, and **Save** stays enabled because the resolver call passes no `changes`
-and so projects rather than denies.
+**Calling a write action without `changes` is a developer error, but only when you also ask
+to be told.** `usePermission({ resource: "siteSettings", action: "update", data })` — the
+call each admin input's `readOnly` prop is built from — passes no `changes` and no
+`throwOnDenied`, so it lands on the "read" row above and *projects*, exactly like a real
+read. That's what keeps **Save** enabled while the map is only resolving individual inputs'
+`readOnly`. Pass `throwOnDenied: true` on that same shape instead — `data` supplied,
+`changes` omitted, on `create`/`update`/a custom mutation action — and `hasPermission`
+throws a `VexAccessError` explaining that `changes` was never supplied, rather than quietly
+answering `true`. Without that guard, a hand-rolled mutation that authorizes with
+`data: doc` and forgets `changes` would land on the projecting case and be allowed to write
+a denied field — the one fail-open in the design, and only reachable by a caller that never
+asked for `throwOnDenied`.
+
+### Admin panel gating
+
+Two hooks from `@vexcms/react`, both advisory client-side reads of the same map
+`hasPermission` would resolve server-side:
+
+- **`useFieldPermissions({ resource, action, data })`** resolves a merged
+  `{ wildcard, fields }` decision for one action — the same shape `resolveFieldPermissions`
+  returns from `@vexcms/core`. For the `siteSettings.update` example above it resolves to
+  `{ wildcard: false, fields: { adminTheme: true } }`. The edit views fold that into each
+  input's existing `readOnly` prop with `isFieldAllowed(fieldPermissions, fieldKey)`, so the
+  Admin Theme picker is the only live control. **Save** stays enabled regardless, because
+  that call passes no `changes` and so projects rather than denies, per above.
+- **`useVisibleFields({ resource, fields, data })`** resolves the same kind of decision for
+  the `read` action and answers a different question: which of the resource's configured
+  fields the edit form should render an input for at all. A read-denied field is dropped
+  from the returned list entirely — hidden, not merely disabled, because a caller who can't
+  read a field's value has no business seeing that it exists. `CollectionEditView`,
+  `GlobalEditView`, and `MediaCollectionEditView` all iterate this list instead of the
+  resource's raw field map.
+
+Hidden and read-only are deliberately different postures for different denials:
+
+| Denial | What the caller sees | Why |
+| --- | --- | --- |
+| `read` denied | The field's input doesn't render at all | Nothing to show — the value was stripped server-side too |
+| `update` denied, `read` allowed | The field's input renders, shows the current value, and is non-interactive | The value is legitimately visible; only changing it is denied |
+
+A read-denied field is also excluded from the form's `defaultValues` and its Zod validation
+schema, not just its rendered input — so a `required` field the caller can't read can never
+silently block **Save**: there's no hidden, invalid field left for a validator to trip on.
+
+**Disclosure controls are never disabled by `readOnly`.** Expanding or collapsing a `group`,
+`array`, or `blocks` field is navigation, not editing — a caller holding `read` but not
+`update` on a field can still open it to see the values underneath. Only the editing
+controls inside stay gated: add/remove/reorder buttons and the leaf inputs themselves.
+
+**List views filter columns the same way.** `CollectionListView` and
+`MediaCollectionListView` resolve `read` field permissions with `scope: "any"` — a column is
+shown or hidden for the whole table, so the question is "denied for every document", not
+"for this one" — and drop a column whose field is denied outright, rather than rendering an
+empty column for everyone.
+
+### Only changed fields are submitted
+
+`CollectionEditView`, `GlobalEditView`, and `MediaCollectionEditView` submit a diff, not the
+whole form: only the top-level fields the user actually edited (tracked via TanStack Form's
+sticky `isDirty` meta, never the live-tracking `isDefaultValue`) go into the mutation's
+`data`. This isn't a security boundary — the server still re-derives the effective change
+set against the stored document — it's what makes the "only if changed" write semantics
+above hold in practice, and what stops two editors on the same document from clobbering
+each other's untouched fields. The companion `useLiveFieldMerge` hook adopts server-side
+changes into any field the current editor hasn't touched, so an untouched field never goes
+stale while someone else's edits land. A create still submits every field: there's no prior
+document for `isDirty` to compare against, and a declared field default would otherwise
+never be written.
 
 ### Runtime-only boundary
 
@@ -285,6 +357,18 @@ Like every other RBAC check, field permissions are enforced in the generated Con
 and the admin-panel bundle — the same boundary `hasPermission()` already has. A hand-rolled
 Convex function that calls `ctx.db` directly bypasses this the same way it already bypasses
 `hasPermission()`.
+
+### Public API surface
+
+Everything above is built from a small set of exports:
+
+- **`@vexcms/core`** — `resolveFieldPermissions` (the read-only "which fields" resolver,
+  sharing `hasPermission`'s role walk so the two can't drift), `isFieldAllowed` (read one
+  field out of a resolved decision), and `stripDeniedFields` (shape a document for a caller
+  before returning it — what `find`/`get`/`search`/`globals.get`/`globals.find` use
+  server-side). `VexAccessError` gained an optional `field`, present only on a field-scoped
+  denial.
+- **`@vexcms/react`** — `useFieldPermissions` and `useVisibleFields`, both described above.
 
 ### What's deferred
 

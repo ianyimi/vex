@@ -135,6 +135,27 @@ function SiteNameForm() {
 Pass only user field values in `data` — system keys (`_id`, `_creationTime`, `_slug`) are
 stripped server-side if they end up in there.
 
+## Access control
+
+When `defineAccess` is configured, `updateGlobal`/`globals.upsert` authorizes writes against
+`create` or `update` — never `read` — because a global is a singleton and the verb depends
+on whether it has ever been saved: the first write for a slug authorizes as `create`, every
+later one as `update`. A role that can `read` a global can no longer write it just from that
+grant; `create` and/or `update` must be granted explicitly. `access.action` overrides this
+the same way it does everywhere else in the Local API.
+
+The write also **merges** the payload into the stored document rather than replacing it: an
+omitted field is left untouched, not deleted. A save carrying only `{ siteName: "New Name" }`
+leaves every other field on `siteSettings` exactly as it was — the merged result is what gets
+validated against the global's Zod schema, so a partial payload is still rejected if the
+document it produces would be invalid.
+
+Field-level permissions apply the same way they do to a collection: an `update` filter
+callback that returns a field map denies on the first changed key it forbids, and a field
+resent with its unchanged value is not a violation. See the
+[Access Control guide](/guides/access-control/#field-level-permissions) for the map shapes
+and the `apps/www` `siteSettings.adminTheme` worked example.
+
 ## A structured global: navigation
 
 `array` and `group` compose on a global exactly the way they do on a collection. This is
@@ -178,3 +199,6 @@ export const nav = defineGlobal({
   vs. `@vexcms/core/server` (identical names, `ctx`-based, called from inside Convex
   functions). Import from whichever matches where the code runs — the client versions
   forbid `ctx`, the server versions require it, so mixing them up is a type error.
+- **A `read` grant no longer authorizes a write.** `updateGlobal`/`globals.upsert` checks
+  `create`/`update`, not `read` — see [Access control](#access-control) above. Upgrading
+  from a version that predates this needs the role's permissions updated explicitly.

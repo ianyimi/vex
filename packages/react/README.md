@@ -44,6 +44,9 @@ Pre-built views and layout used by the generated admin panel:
 | `VexAccessProvider` / `useVexAuth` | Auth/session context for the admin panel |
 | `useCanAccessAdminPanel` | Check whether the current user may access the admin panel |
 | `usePermission` | Check a specific permission |
+| `useFieldPermissions` | Resolve which fields of a resource + action the current user may touch |
+| `useVisibleFields` | The subset of a resource's fields the current user may read — drives which inputs an edit view renders |
+| `useLiveFieldMerge` | Keep a form's untouched fields in sync with the live document while editing |
 | `usePaginatedQuery` | Convex paginated query hook used by list views |
 | `useModalSurface` / `ModalSurfaceProvider` | Shared modal stacking/state |
 | `StorageAdapterContextProvider` | Provides the configured file-storage adapter |

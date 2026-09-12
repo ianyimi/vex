@@ -24,6 +24,7 @@
     "core-label-singularization",
     "field-level-permissions",
     "generated-types-lint-header",
+    "group-default-collapsed",
     "marketing-template-design",
     "media-and-scaffold-fixes",
     "secure-session-cookie-prefix",
