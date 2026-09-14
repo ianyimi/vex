@@ -166,21 +166,6 @@ See the [Access Control guide](https://docs.vexcms.dev/guides/access-control/) f
 permission check shapes, the field-map wildcard rule, and how `hasPermission` resolves a map
 against a write, a read, or a quantified check.
 
-### Auto-Migration
-
-Schema diffing and migration planning helpers. `diffSchema` and `planMigration` are
-exported and real, but their bodies are stubs today — `diffSchema` always returns an
-empty diff and `planMigration` always returns an empty operation list, regardless of
-input. See the [roadmap](https://docs.vexcms.dev); do not rely on these for actual
-backfills yet.
-
-```typescript
-import { diffSchema, planMigration } from "@vexcms/core"
-
-const diff = diffSchema(oldSchema, newSchema)
-const ops = planMigration({ diff, config })
-```
-
 ### Convex Integration Utilities
 
 Generic document CRUD operations (`create`, `find`, `get`, `remove`, `search`) —

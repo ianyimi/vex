@@ -13,6 +13,9 @@ import {
   BLOCK_SLUG_CTA,
   BLOCK_SLUG_FAQ,
   BLOCK_SLUG_FEATURES,
+  BLOCK_SLUG_FOOTER,
+  BLOCK_SLUG_HEADER,
+  BLOCK_SLUG_HERO,
   BLOCK_SLUG_HOW_IT_WORKS,
   BLOCK_SLUG_ROADMAP,
   BLOCK_SLUG_STATS,
@@ -389,7 +392,7 @@ export const init = internalMutation({
         name: "Main Header",
         content: [
           {
-            blockType: "header",
+            blockType: BLOCK_SLUG_HEADER,
             blockName: "Site Header",
             id: "main-header",
             logoText: "VexCMS",
@@ -427,7 +430,7 @@ export const init = internalMutation({
         name: "Main Footer",
         content: [
           {
-            blockType: "footer",
+            blockType: BLOCK_SLUG_FOOTER,
             blockName: "Site Footer",
             id: "main-footer",
             logoText: "VexCMS",
@@ -461,7 +464,7 @@ export const init = internalMutation({
         slug: "home",
         blocks: [
           {
-            blockType: "hero",
+            blockType: BLOCK_SLUG_HERO,
             blockName: "Hero",
             id: "home-hero",
             variant: ["full"],
@@ -507,7 +510,7 @@ export const init = internalMutation({
             ],
           },
           {
-            blockType: "features",
+            blockType: BLOCK_SLUG_FEATURES,
             blockName: "Features",
             id: "home-features",
             heading: "Everything comes from one schema.",
@@ -618,7 +621,7 @@ export const posts = defineTable({
             ],
           },
           {
-            blockType: "how_it_works",
+            blockType: BLOCK_SLUG_HOW_IT_WORKS,
             blockName: "How It Works",
             id: "home-how-it-works",
             heading: "From zero to a live CMS in four steps.",
@@ -651,7 +654,7 @@ export const posts = defineTable({
             ],
           },
           {
-            blockType: "roadmap",
+            blockType: BLOCK_SLUG_ROADMAP,
             blockName: "Roadmap",
             id: "home-roadmap",
             heading: "Roadmap",
@@ -769,7 +772,7 @@ export const posts = defineTable({
             ],
           },
           {
-            blockType: "faq",
+            blockType: BLOCK_SLUG_FAQ,
             blockName: "FAQ",
             id: "home-faq",
             heading: "Questions we keep getting.",
@@ -809,7 +812,7 @@ export const posts = defineTable({
             ],
           },
           {
-            blockType: "cta",
+            blockType: BLOCK_SLUG_CTA,
             blockName: "CTA",
             id: "home-cta",
             heading: "Start with a schema. Ship in an hour.",
@@ -836,7 +839,7 @@ export const posts = defineTable({
         slug: "features",
         blocks: [
           {
-            blockType: "hero",
+            blockType: BLOCK_SLUG_HERO,
             blockName: "Hero",
             id: "features-hero",
             variant: ["compact"],
@@ -937,7 +940,7 @@ export const posts = defineTable({
         slug: "roadmap",
         blocks: [
           {
-            blockType: "hero",
+            blockType: BLOCK_SLUG_HERO,
             blockName: "Hero",
             id: "roadmap-hero",
             variant: ["compact"],

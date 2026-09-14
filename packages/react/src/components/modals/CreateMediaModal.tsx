@@ -41,7 +41,7 @@ export function CreateMediaModal({ collection }: { collection: MediaCollectionCo
 
   return (
     <Modal urlParam={MODALS.uploadMedia.urlParam}>
-      <DialogContent ref={dialogRef} initialFocus={dialogRef} className="w-[50svw] flex flex-col">
+      <DialogContent ref={dialogRef} initialFocus={dialogRef} className="flex w-full flex-col sm:w-[50svw]">
         <DialogHeader className="px-2 pb-4">Upload {collection.labels.singular}</DialogHeader>
         <div className="px-2">
           <MediaUploadDropzone

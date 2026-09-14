@@ -43,6 +43,11 @@
       "source": "./src/api/server.ts",
       "types": "./dist/api/server.d.ts",
       "import": "./dist/api/server.js"
+    },
+    "./internal": {
+      "source": "./src/internal.ts",
+      "types": "./dist/internal.d.ts",
+      "import": "./dist/internal.js"
     }
   },
   "publishConfig": {

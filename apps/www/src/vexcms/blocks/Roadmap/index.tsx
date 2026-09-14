@@ -2,7 +2,7 @@
 
 import type { BlockComponentProps } from "@vexcms/react"
 
-import { cn, ScrollArea, Tabs, TabsList, TabsTrigger, Tooltip, TooltipContent, TooltipTrigger } from "@vexcms/react"
+import { cn, ScrollArea, ScrollBar, Tabs, TabsList, TabsTrigger, Tooltip, TooltipContent, TooltipTrigger } from "@vexcms/react"
 import { Check } from "lucide-react"
 import { useState } from "react"
 
@@ -88,6 +88,7 @@ export default function RoadmapBlock({ block }: BlockComponentProps) {
                   </TabsTrigger>
                 ))}
               </TabsList>
+              <ScrollBar orientation="horizontal" />
             </ScrollArea>
           </Tabs>
         ) : null}

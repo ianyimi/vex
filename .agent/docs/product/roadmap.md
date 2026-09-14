@@ -18,9 +18,9 @@ Ten specs. Full scope, decisions, and acceptance criteria in
 | 1 | **A** — Data-table integrity & dead config | Nothing shipped is resolved-but-unread |
 | 2 | **B** — Public API surface | Nothing exported lies about what it does |
 | 3 | **F** — Lifecycle hooks & validation | Extensibility + server-side constraint enforcement |
-| 4 | **C** — Versioning & drafts | The feature the README tells users to wait for |
-| 5 | **D** — Richtext field | The published `richtext-plate` package becomes usable |
-| 6 | **E** — Live preview | Editing feedback loop |
+| 4 | **E** — Live preview | Editing feedback loop |
+| 5 | **C** — Versioning & drafts | The feature the README tells users to wait for |
+| 6 | **D** — Richtext field | The published `richtext-plate` package becomes usable |
 | 7 | **G** — Field input consistency pass | No input looks half-built |
 | 8 | **H** — Edit-view overhaul | Editing is not hostile |
 | 9 | **I** — List-view overhaul | 200 rows is usable |
@@ -29,9 +29,10 @@ Ten specs. Full scope, decisions, and acceptance criteria in
 **Sequencing principle:** each spec consumes what earlier specs built; no spec
 writes inert code whose only justification is a later spec. That rule put F ahead
 of C (drafts consume the hook and validation pipeline instead of building one for
-F to slot into), turned B2 into a decision document rather than a reserved config
-flag, and moved A's UI-dependent table config into I so nothing is half-wired
-twice.
+F to slot into), put E ahead of C (reading unsaved form state over `postMessage`
+removes the only thing preview needed drafts for), turned B2 into a decision
+document rather than a reserved config flag, and moved A's UI-dependent table
+config into I so nothing is half-wired twice.
 
 Hard ordering constraints (only these three are real): **B before F and D** ·
 **F before C/D/G/H/I** · **J last**.
@@ -39,7 +40,7 @@ Hard ordering constraints (only these three are real): **B before F and D** ·
 Architecture decisions taken for this track: ADR-010 (hook split — `before*` in the
 write path, `after*` on `convex-helpers` triggers), ADR-011 (one write-validation
 stage; `validate()` server-only and async), ADR-012 (live preview reads unsaved form
-state).
+state over `postMessage`, overlaid on the consumer's own query result).
 
 Shipped since the original Milestone 1 framing: ✅ Globals / `defineGlobal` ·
 ✅ RBAC document-level access · ✅ Field-level RBAC permissions · ✅ Access index

@@ -36,9 +36,9 @@ These are the v0.1.0 launch track, in the order they ship.
 - 🔄 Localization design — the storage model and versioning interaction decided before anyone has data to migrate
 - 🔄 Lifecycle hooks — `beforeChange` / `afterChange` / `afterDelete`, plus server-side enforcement of every declarative field constraint
 - 🔄 Custom `validate()` — async, server-side, database-aware (uniqueness checks and cross-document rules)
+- 🔄 Live preview — the preview surface renders your unsaved edits as you type, with no save and no autosave required
 - 🔄 Versioning & drafts
 - 🔄 `richtext` field — Plate.js editor via `@vexcms/richtext-plate`
-- 🔄 Live preview
 - 🔄 Field input consistency pass — relationship field and others get consistent interaction and loading patterns
 - 🔄 Conditional fields — `admin.condition` to show or hide a field based on sibling values
 - 🔄 Edit-view improvements — unsaved-changes guard, duplicate document, duplicate block

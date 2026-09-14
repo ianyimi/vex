@@ -122,7 +122,7 @@ export function CollectionEditView<
   });
   return (
     <AppForm form={form} className="relative">
-      <div className="sticky top-12 z-10 flex h-16 items-center justify-between bg-background">
+      <div className="sticky top-12 z-10 flex min-h-16 flex-wrap items-center justify-between gap-y-2 bg-background">
         <h1 className="text-2xl font-bold">
           Edit {props.collection.labels.singular} -{" "}
           <span className="text-primary">
@@ -132,7 +132,7 @@ export function CollectionEditView<
         <form.Subscribe
           selector={(state) => state.isDefaultValue}
           children={(isDefaultValue) => (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <RevalidateButton collection={props.collection.slug} doc={currentDocument} />
               <Button
                 type="submit"

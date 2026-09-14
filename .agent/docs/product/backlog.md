@@ -436,3 +436,28 @@ asking.
 **Detail.** Decision D8 and the Non-goals section of
 `.agent/docs/specs/2026-08-30-launch-readiness/spec.md`; the API-delta table in
 the same file records the master→rebuild substitutions.
+
+---
+
+## List-view title links are 16px-tall touch targets
+
+**What.** The `useAsTitle` link in every data-table row (`td[table-cell] > a`) renders
+at 16px tall — the text's line box, with no padding — so on a phone the tap target is
+well under the 44px (Apple) / 48dp (Android) guidance. Measured on `/admin/pages` and
+`/admin/themes` at 375 and 390 during the pre-Discord mobile audit
+(`specs/2026-09-13-discord-post-readiness/audit/admin-mobile-matrix.json`).
+
+**Why.** Row titles are the primary navigation into a document; on mobile they are
+the thing people miss-tap.
+
+**Lift.** Small in code — padding or `min-h` on the title link, or making the whole
+cell the link — but it changes row density on desktop too, which is a design call,
+not a Tailwind tweak.
+
+**Why deferred.** The pre-Discord pass was scoped to overflow, clipping, and
+reachability, with Tailwind-only fixes. This is a hit-area decision that belongs
+with spec G (field input consistency) or I (list-view overhaul), where row layout is
+being reconsidered anyway.
+
+**Detail.** `packages/react/src/components/fields/*/Cell.tsx` `isTitleField` branch;
+audit JSON above.

@@ -1,0 +1,120 @@
+{
+  "generated": "2026-09-14T07:23:34.880Z",
+  "method": "Same DOM-measurement method as admin-mobile-matrix.json; PNG capture unavailable in this environment.",
+  "routes": [
+    "/",
+    "/features",
+    "/roadmap"
+  ],
+  "widths": [
+    375,
+    390,
+    768,
+    1024
+  ],
+  "results": {
+    "/": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/features": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    },
+    "/roadmap": {
+      "375": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 1,
+        "offscreenControls": [
+          {
+            "t": "Shipped 11",
+            "l": 345,
+            "r": 435
+          }
+        ]
+      },
+      "390": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 1,
+        "offscreenControls": [
+          {
+            "t": "Shipped 11",
+            "l": 345,
+            "r": 435
+          }
+        ]
+      },
+      "768": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      },
+      "1024": {
+        "overflowX": 0,
+        "culpritsOutsideScrollRegions": 0,
+        "offscreenControls": []
+      }
+    }
+  },
+  "findings": [
+    {
+      "route": "/ and /features",
+      "verdict": "clean",
+      "note": "The only elements past the viewport are syntax tokens inside CodeShowcase's pre.whitespace-pre within div.overflow-auto — the code pane's deliberate horizontal scroll region. Document overflowX=0 at every width."
+    },
+    {
+      "route": "/roadmap @375/390",
+      "verdict": "reachable by design; affordance added",
+      "note": "The 'Shipped' tab trigger sits at 345→435 on a 375 viewport, but its ScrollArea viewport is overflow-x:scroll with scrollWidth 415 > clientWidth 335, so it is reachable by swiping. shadcn ScrollArea renders no horizontal scrollbar unless one is added, so a <ScrollBar orientation=\"horizontal\" /> was added to Roadmap/index.tsx for discoverability. Mirror in Step 5."
+    },
+    {
+      "route": "/ header menu @375",
+      "verdict": "clean",
+      "note": "Full-width menu, 44px-tall nav links, all within viewport."
+    },
+    {
+      "route": "apps/docs @390 (spot-check)",
+      "verdict": "clean",
+      "note": "scrollWidth === clientWidth on the landing page; Starlight is responsive by default."
+    }
+  ],
+  "fixes": [
+    "apps/www/src/vexcms/blocks/Roadmap/index.tsx — import ScrollBar; add <ScrollBar orientation=\"horizontal\" /> inside the tabs ScrollArea."
+  ]
+}
