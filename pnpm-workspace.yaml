@@ -41,6 +41,7 @@ catalog:
   "@typescript-eslint/parser": 8.63.0
   "@uiw/react-color-sketch": 2.9.6
   "@vitest/coverage-v8": 4.1.10
+  "@vercel/analytics": "^2.0.1"
   astro: 6.4.8
   babel-plugin-react-compiler: 1.0.0
   better-auth: 1.6.23

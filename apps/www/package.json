@@ -28,6 +28,7 @@
     "@t3-oss/env-nextjs": "catalog:",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "catalog:",
+    "@vercel/analytics": "catalog:",
     "@vexcms/better-auth": "workspace:*",
     "@vexcms/core": "workspace:*",
     "@vexcms/file-storage-convex": "workspace:*",
