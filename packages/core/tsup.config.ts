@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/api/server.ts", "src/api/client.ts"],
+  entry: ["src/index.ts", "src/api/server.ts", "src/api/client.ts", "src/internal.ts"],
   format: ["esm"],
   // Use the build-only tsconfig so test fixtures (src/api/test/**) are
   // excluded from production .d.ts emission. Their `declare module` blocks

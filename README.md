@@ -10,9 +10,11 @@
 > [roadmap](apps/docs/src/content/docs/roadmap.md) (published at
 > [docs.vexcms.dev](https://docs.vexcms.dev)) for what is and is not shipped.
 
-A type-safe headless CMS built natively on [Convex](https://convex.dev). Vex generates your Convex schema and typed query/mutation API from a single config file, with a self-hosted Next.js admin panel for editing content.
+<p align="center">
+  <img src=".github/assets/preview.png" alt="The VexCMS admin panel editing a Roadmap page: a title, a slug, and an ordered Content field of Hero, Stats, and Roadmap blocks, with the collections and globals sidebar on the right." width="100%">
+</p>
 
-<!-- TODO(WP-6): admin panel screenshot/GIF here -->
+A type-safe headless CMS built natively on [Convex](https://convex.dev). Vex generates your Convex schema and typed query/mutation API from a single config file, with a self-hosted Next.js admin panel for editing content.
 
 **Apache-2.0 Licensed.**
 
@@ -36,6 +38,16 @@ npx convex dev
 First run only — this links or creates your Convex deployment and prints the real
 `NEXT_PUBLIC_CONVEX_URL`/`NEXT_PUBLIC_CONVEX_SITE_URL`. Paste them into `.env.local`, replacing
 the generated `https://placeholder.convex.cloud`/`.convex.site` values; leave `Ctrl-C` for now.
+
+Then set two values on the deployment itself. Better Auth runs inside Convex, not in the
+Next.js server, so it never reads `.env.local`:
+
+```bash
+npx convex env set SITE_URL http://localhost:3010
+npx convex env set BETTER_AUTH_SECRET <the BETTER_AUTH_SECRET value from .env.local>
+```
+
+Skipping this is the most common cause of a `403` on your first sign-in.
 
 ```bash
 pnpm dev        # Next.js + convex dev + the vex watcher, together
@@ -249,7 +261,7 @@ hasPermission({ access, user, resource: "posts", action: "delete", data: post, t
 
 ### Pagination & Data Tables
 
-The admin panel's collection list view is a paginated, sortable data table backed by Convex's `usePaginatedQuery`. Page size is configurable per collection:
+The admin panel's collection list view is a paginated data table backed by Convex's `usePaginatedQuery`. Page size is configurable per collection:
 
 ```typescript
 export const posts = defineCollection({
@@ -266,6 +278,8 @@ export const posts = defineCollection({
   },
 });
 ```
+
+> Per-collection **sorting**, **search**, and **column visibility** are on the v0.1.0 launch track — see the [roadmap](apps/docs/src/content/docs/roadmap.md).
 
 ### Authentication (Better Auth)
 
@@ -316,18 +330,18 @@ export default function AdminPage({ params }: { params: Promise<{ path?: string[
 }
 ```
 
-It includes a paginated, searchable data table per collection, Zod-validated edit forms generated from your field config, a media library with an upload dropzone, role-based access control, and sidebar grouping for collection organization.
+It includes a paginated data table per collection, Zod-validated edit forms generated from your field config, a media library with an upload dropzone, role-based access control, and sidebar grouping for collection organization.
 
 ## Architecture
 
 ```
 @vexcms/core                 Schema definitions, fields, access control (RBAC), type/query generation — no Convex dep
-@vexcms/cli                  CLI: schema generation, type generation, file watching, migrations
+@vexcms/cli                  CLI: schema generation, type generation, file watching
 @vexcms/react                Shared admin UI components, hooks, and HKT-bound config re-exports
 @vexcms/next                 Next.js admin panel entry points (NextAdminPage, NextAdminLayout)
 @vexcms/better-auth           Better Auth adapter for Vex (schema extraction + Convex DB adapter)
 @vexcms/file-storage-convex  Convex file storage adapter and media collection factory
-@vexcms/richtext-plate       Rich text field powered by Plate.js
+@vexcms/richtext-plate       Plate.js rich text editor — built, not yet wired to a `richtext` field (roadmap)
 create-vexcms                Project scaffolding CLI (`pnpm create vexcms`)
 ```
 
@@ -336,7 +350,7 @@ create-vexcms                Project scaffolding CLI (`pnpm create vexcms`)
 - **Database**: [Convex](https://convex.dev) — real-time serverless database
 - **Admin Panel**: [Next.js](https://nextjs.org) (App Router)
 - **Authentication**: [Better Auth](https://better-auth.com)
-- **Rich Text**: [Plate.js](https://platejs.org) (`@vexcms/richtext-plate`)
+- **Rich Text**: [Plate.js](https://platejs.org) (`@vexcms/richtext-plate` — editor built, `richtext` field on the roadmap)
 - **Form Validation**: [Zod](https://zod.dev) + [TanStack Form](https://tanstack.com/form)
 - **Data Table**: [TanStack Table](https://tanstack.com/table)
 - **UI Components**: [shadcn/ui](https://ui.shadcn.com)

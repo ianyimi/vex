@@ -152,16 +152,11 @@ async function seedDocuments(t: ConvexTestInstance, titles: string[]): Promise<T
  * Full-mount `CollectionListView` — the SSR-preview stack transitively rendered here is
  * `DataTable` + `CreateDocumentModal` + `RevalidateButton`, exactly what an admin visits.
  *
- * `canDelete`'s only possible consumer is `DataTable`'s bulk-delete confirmation, but
- * `DataTable.tsx`'s bulk-actions bar (the only UI that ever calls `setDeleteModalOpen(true)`)
- * is commented out — `DataTableBulkActions` is exported but never rendered there. There is
- * therefore no `canDelete`-gated control in the DOM to assert a disabled state against;
- * asserting one would fabricate a query against markup that isn't rendered (RBAC-2 in
- * BUGS-REPORT.md). What IS checkable, and asserted below in a dedicated test, is the actual
- * safe consequence: no destructive control is reachable at all, gated or not — that test also
- * records the wiring requirement for whoever restores the bar. `canCreate` (the "+ New"
- * button) and `RevalidateButton` (the same "posts" resource, `update` action) ARE both
- * directly observable and are what the RBAC suite below gates on.
+ * `canDelete` gates the row-selection checkbox column (`enableRowSelection={canDelete}`),
+ * so its observable consequence is whether a header checkbox exists at all — asserted in
+ * the two dedicated delete-permission tests below. `canCreate` (the "+ New" button) and
+ * `RevalidateButton` (the same "posts" resource, `update` action) are what the RBAC matrix
+ * suite gates on.
  *
  * @param options - Optional caller-supplied access config; see {@link ViewSuiteOptions.access}.
  * @returns Nothing; registers `describe`/`it` blocks as a side effect.
@@ -205,18 +200,39 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       expect(utils.getAllByRole("row")).toHaveLength(1); // header row only
     });
 
-    it("has no reachable destructive control while bulk-delete UI remains unwired", () => {
+    it("shows no selection checkboxes for a role without delete permission", () => {
+      const noDeleteAccess = defineAccess({
+        roles: ["reader"] as const,
+        resources: [testCollection],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          reader: { posts: { read: true, delete: false } },
+        },
+      });
       const utils = renderView(
         createElement(CollectionListView, { collection: testCollection, initialData: toPage(docs) }),
-        { convex: t },
+        { convex: t, access: noDeleteAccess, auth: { user: asUser("reader") } },
       );
-      // `canDelete` (asserted nowhere in this suite — see doc comment above) has no live
-      // consumer: `DataTable.tsx`'s bulk-actions bar, the only UI that ever calls
-      // `setDeleteModalOpen(true)`, is commented out. WIRING FINDING for whoever restores
-      // `DataTableBulkActions`: once it renders again, this suite needs a real
-      // `canDelete`-gated assertion here (mirroring the "+ New" button's `aria-disabled`
-      // check below), not this absence check.
+      expect(utils.container.querySelector('thead [data-slot="checkbox"]')).toBeNull();
       expect(utils.queryByRole("button", { name: /delete/i })).toBeNull();
+    });
+
+    it("shows selection checkboxes for a role with delete permission", () => {
+      const deleterAccess = defineAccess({
+        roles: ["deleter"] as const,
+        resources: [testCollection],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          deleter: { posts: { read: true, delete: true } },
+        },
+      });
+      const utils = renderView(
+        createElement(CollectionListView, { collection: testCollection, initialData: toPage(docs) }),
+        { convex: t, access: deleterAccess, auth: { user: asUser("deleter") } },
+      );
+      expect(utils.container.querySelector('thead [data-slot="checkbox"]')).not.toBeNull();
     });
 
     it("renders without crashing when useAsTitle points at a non-text field", () => {
@@ -269,7 +285,9 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         userCollectionSlug: "users",
         userRolesField: "roles",
         permissions: {
-          viewer: { posts: { read: () => ({ "*": true, status: false }) } },
+          // `delete: true` keeps the selection column mounted, so the assertion below
+          // proves read-field filtering leaves it alone rather than that it never existed.
+          viewer: { posts: { read: () => ({ "*": true, status: false }), delete: true } },
           plain: { posts: { read: true } },
           perDoc: {
             posts: {
@@ -899,19 +917,45 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
       expect(utils.queryAllByRole("row")).toHaveLength(0);
     });
 
-    it("has no reachable destructive control while bulk-delete UI remains unwired", () => {
+    it("shows no selection checkboxes for a role without delete permission", () => {
+      const noDeleteAccess = defineAccess({
+        roles: ["reader"] as const,
+        resources: [testClientConfig.mediaCollections[0]],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          reader: { images: { read: true, delete: false } },
+        },
+      });
       const utils = renderView(
         createElement(MediaCollectionListView, {
           collection: testClientConfig.mediaCollections[0],
           initialData: toPage<VexMediaDocument>(docs),
         }),
-        { convex: t },
+        { convex: t, access: noDeleteAccess, auth: { user: asUser("reader") } },
       );
-      // Same dead-code gap as CollectionListView's own canDelete: `DataTable.tsx`'s
-      // bulk-actions bar is commented out, so there is nothing in the DOM to gate. WIRING
-      // FINDING for whoever restores it: this suite then needs a real canDelete-gated
-      // assertion here.
+      expect(utils.container.querySelector('thead [data-slot="checkbox"]')).toBeNull();
       expect(utils.queryByRole("button", { name: /delete/i })).toBeNull();
+    });
+
+    it("shows selection checkboxes for a role with delete permission", () => {
+      const deleterAccess = defineAccess({
+        roles: ["deleter"] as const,
+        resources: [testClientConfig.mediaCollections[0]],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          deleter: { images: { read: true, delete: true } },
+        },
+      });
+      const utils = renderView(
+        createElement(MediaCollectionListView, {
+          collection: testClientConfig.mediaCollections[0],
+          initialData: toPage<VexMediaDocument>(docs),
+        }),
+        { convex: t, access: deleterAccess, auth: { user: asUser("deleter") } },
+      );
+      expect(utils.container.querySelector('thead [data-slot="checkbox"]')).not.toBeNull();
     });
 
     it("filters columns by the caller's read field permissions", () => {
@@ -921,7 +965,8 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
         userCollectionSlug: "users",
         userRolesField: "roles",
         permissions: {
-          viewer: { images: { read: () => ({ "*": true, alt: false }) } },
+          // `delete: true` keeps the selection column mounted — see the posts twin above.
+          viewer: { images: { read: () => ({ "*": true, alt: false }), delete: true } },
         },
       });
       const utils = renderView(

@@ -7,11 +7,13 @@ import type { VexConfig } from "@vexcms/core";
 import {
   generateVexSchema,
   generateVexTypes,
+} from "@vexcms/core";
+import {
   diffSchema,
   makeFieldsOptional,
   addRemovedFieldsAsOptional,
   planMigration,
-} from "@vexcms/core";
+} from "@vexcms/core/internal";
 
 import { waitForDeploy } from "./convexProcess.js";
 import { logger } from "./logger.js";

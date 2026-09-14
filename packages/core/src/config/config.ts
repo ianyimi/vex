@@ -40,6 +40,8 @@ import { VexConfig, VexConfigInput } from "./types";
  * });
  * ```
  *
+ * @throws Error when `schema.autoMigrate` is `true` — automatic migration is not
+ *   implemented, and enabling it would silently migrate nothing.
  * @see {@link VexConfigInput} for the user-facing input type
  * @see {@link VexConfig} for the resolved return type
  * @see {@link mergeAuthCollections} for auth collection merge logic
@@ -66,6 +68,19 @@ export function defineConfig(config?: VexConfigInput): VexConfig {
       ...config.access,
       resources: allResources,
     });
+  }
+
+  // `autoMigrate` is not declared on `SchemaConfigInput`, so a TypeScript caller cannot
+  // set it — but a JS config, a spread, or a stale project can. The CLI reads it
+  // (`generateSchema.ts`) and would run a full migration orchestration over a diff that
+  // is always empty. Fail at module load rather than silently migrate nothing.
+  const schemaInput = config?.schema as Record<string, unknown> | undefined;
+  if (schemaInput?.autoMigrate === true) {
+    throw new Error(
+      "defineConfig: schema.autoMigrate is not implemented. Schema diffing and field " +
+        "backfill are deferred past v0.1.0 — the diff is empty for every input, so enabling " +
+        "this would silently migrate nothing. Remove the option and apply schema changes manually.",
+    );
   }
 
   return {

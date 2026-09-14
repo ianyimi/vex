@@ -15,8 +15,12 @@ import {
   BLOCK_SLUG_CTA,
   BLOCK_SLUG_FAQ,
   BLOCK_SLUG_FEATURES,
+  BLOCK_SLUG_FOOTER,
+  BLOCK_SLUG_HEADER,
+  BLOCK_SLUG_HERO,
   BLOCK_SLUG_HOW_IT_WORKS,
   BLOCK_SLUG_ROADMAP,
+  BLOCK_SLUG_SPLIT,
   BLOCK_SLUG_STATS,
 } from "~/vexcms/blocks/constants"
 
@@ -392,7 +396,8 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
   })
   const siteSettingsDoc = {
     name: "VexCMS",
-    description: "A headless CMS built natively on Convex.",
+    description:
+      "Define your collections in TypeScript. VexCMS generates the Convex schema and types, and ships a real-time admin panel your whole team can use.",
     activeTheme: activeThemeId ? [activeThemeId] : [],
   }
   if (existingSettings && mode !== "patch") {
@@ -422,7 +427,7 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
     name: "Main Header",
     content: [
       {
-        blockType: "header",
+        blockType: BLOCK_SLUG_HEADER,
         blockName: "Site Header",
         id: "main-header",
         logoText: "VexCMS",
@@ -463,11 +468,11 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
     name: "Main Footer",
     content: [
       {
-        blockType: "footer",
+        blockType: BLOCK_SLUG_FOOTER,
         blockName: "Site Footer",
         id: "main-footer",
         logoText: "VexCMS",
-        copyright: "VexCMS. Apache-2.0 licensed.",
+        copyright: "VexCMS. Apache-2.0 licensed. Built on Convex.",
         links: [
           { label: "Features", href: "/features" },
           { label: "Roadmap", href: "/roadmap" },
@@ -477,6 +482,7 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
           { label: "npm", href: "https://www.npmjs.com/package/@vexcms/core" },
           { label: "Licence", href: "https://github.com/ianyimi/vex/blob/master/LICENSE" },
           { label: "Convex", href: "https://convex.dev" },
+          { label: "Convex docs", href: "https://docs.convex.dev" },
         ],
         socialLinks: [
           { platform: "GitHub", href: "https://github.com/ianyimi/vex", icon: "Github" },
@@ -505,17 +511,17 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
     slug: "home",
     blocks: [
       {
-        blockType: "hero",
+        blockType: BLOCK_SLUG_HERO,
         blockName: "Hero",
         id: "home-hero",
         variant: ["full"],
         installCommand: "pnpm create vexcms@alpha",
-        badgeText: "v0.1.0-alpha — now on npm",
+        badgeText: "Public alpha — now on npm",
         badgeLink: "https://www.npmjs.com/package/@vexcms/core",
-        heading: "The CMS that thinks in types.",
+        heading: "The content backend for everything Convex.",
         subheading:
-          "A headless CMS built natively on Convex. Declare your collections in TypeScript and Vex generates the Convex schema, the types, and the queries — no translation layer. Every edit reaches every subscriber in milliseconds.",
-        primaryCtaLabel: "Read the docs",
+          "Define your collections in TypeScript. Vex generates the Convex schema and types. Your app gets typed queries. Your clients get a real-time admin panel. No API layer. No second database.",
+        primaryCtaLabel: "Get started",
         primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
         secondaryCtaLabel: "View on GitHub",
         secondaryCtaHref: "https://github.com/ianyimi/vex",
@@ -526,6 +532,18 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
         id: "home-stats",
         items: [
           {
+            value: "1",
+            label: "command to a running CMS",
+            description:
+              "pnpm create vexcms@alpha scaffolds Next.js, Convex, auth, and the admin panel in one step",
+          },
+          {
+            value: "0",
+            label: "API layers to maintain",
+            description:
+              "Convex is the database. No connection string, no REST or GraphQL tier in between",
+          },
+          {
             value: "12",
             label: "field types",
             description:
@@ -533,65 +551,54 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
           },
           {
             value: "8",
-            label: "published packages",
+            label: "packages on npm",
             description:
               "core, react, next, cli, better-auth, file-storage-convex, richtext-plate, create-vexcms",
-          },
-          {
-            value: "0",
-            label: "database config",
-            description: "Convex is the database. There is no connection string",
-          },
-          {
-            value: "1",
-            label: "command to start",
-            description:
-              "pnpm create vexcms@alpha scaffolds Next.js, Convex, auth, and the admin panel",
           },
         ],
       },
       {
-        blockType: "features",
+        blockType: BLOCK_SLUG_FEATURES,
         blockName: "Features",
         id: "home-features",
-        heading: "Everything comes from one schema.",
+        heading: "One config. The whole backend.",
         subheading:
-          "Collections, the Convex tables behind them, the TypeScript types, the Zod validators, the admin forms, and the access rules are all derived from the same declaration.",
+          "Your collection definitions are the only place you write your content model. The Convex tables, the TypeScript types, the Zod validators, the admin forms, and the access rules all come from them.",
         features: [
           {
-            title: "Convex-native codegen",
+            title: "Schema and types, generated",
             description:
-              "vex dev writes your Convex schema, TypeScript interfaces, and Zod validators straight from defineCollection(). There is no hand-maintained schema.ts",
+              "vex dev watches your collections and writes the Convex schema, the TypeScript interfaces, and the Zod validators. You never hand-maintain schema.ts again.",
             icon: "Wand",
           },
           {
-            title: "End-to-end types",
+            title: "Typed reads, ready to use",
             description:
-              "Fields, relationships, and query return types are checked from the database to the component. Rename a field and the compiler names every call site",
+              "The packages export find, get, create, update, and remove for both the server and the client. Call them inside your own Convex functions, or through the local API from a server component.",
+            icon: "Plug",
+          },
+          {
+            title: "Types all the way to the component",
+            description:
+              "Fields, relationships, and return shapes are checked from the table to the JSX. Rename a field and the compiler hands you every call site.",
             icon: "ShieldCheck",
           },
           {
-            title: "Real-time admin panel",
+            title: "An admin panel you can hand to a client",
             description:
-              "Every list view is a Convex subscription. Pagination, live totalDocs, and bulk operations update without a refetch",
+              "It is a route in your own app, not a dashboard on someone else's domain. Every list view is a live Convex subscription. Rows and totals update as people work.",
             icon: "Radio",
           },
           {
-            title: "RBAC with indexed access",
+            title: "Access control that runs in the query",
             description:
-              "Document-level rules with { constraints } that compile to withIndex ranges inside the query, plus per-call access.action / access.bypass and an anonRole fallback",
+              "Rules per document and per field. Constraints compile to a withIndex range inside the Convex query. Per-call overrides and an anonymous role are built in.",
             icon: "Lock",
           },
           {
-            title: "Globals and themes",
+            title: "Page building from typed blocks",
             description:
-              "defineGlobal() gives you singletons like site settings. Themes are a collection — 32 shadcn tokens × light and dark, stored as oklch and applied on first paint",
-            icon: "Boxes",
-          },
-          {
-            title: "Page-builder blocks",
-            description:
-              "A blocks field composes typed content blocks into a discriminated union. Each block is a config plus a React renderer, colocated",
+              "A blocks field composes typed content blocks into a discriminated union. Each block pairs one config with one React renderer. This page is built from them.",
             icon: "LayoutGrid",
           },
         ],
@@ -600,9 +607,9 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
         blockType: BLOCK_SLUG_CODE_SHOWCASE,
         blockName: "Code Showcase",
         id: "home-code-showcase",
-        heading: "Write the collection. Get the database.",
+        heading: "You write the collection. Vex writes the schema.",
         subheading:
-          "A blog's Posts collection on the left, hand-written once. On the right, the Convex schema vex dev emits from it — validators, ids, and indexes included, never edited by hand.",
+          "On the left, a blog's Posts collection, written once by hand. On the right, the Convex table vex dev emits from it. Validators, ids, and indexes included. Never edited by hand.",
         panes: [
           {
             label: "You write",
@@ -662,162 +669,132 @@ export const posts = defineTable({
         ],
       },
       {
-        blockType: "how_it_works",
+        blockType: BLOCK_SLUG_SPLIT,
+        blockName: "Built on Convex",
+        id: "home-split-convex",
+        eyebrow: "Built on Convex",
+        heading: "Everything Convex does, your CMS does too.",
+        body: "VexCMS is built for Convex and nothing else. That is the trade. In return, none of the guarantees below are features we had to build. They are Convex's, and they come with the install. Every one is documented on convex.dev.",
+        bullets: [
+          {
+            icon: "Radio",
+            text: "Live queries. Every read is a subscription, so edits land in every open client. Nothing to poll, no cache to invalidate.",
+          },
+          {
+            icon: "ShieldCheck",
+            text: "ACID transactions. A mutation that touches five documents either lands completely or not at all.",
+          },
+          {
+            icon: "Clock",
+            text: "Scheduling and crons. Publish at a time, expire a banner, reindex overnight.",
+          },
+          {
+            icon: "HardDrive",
+            text: "File storage. The media library is Convex storage sitting behind an upload field.",
+          },
+          {
+            icon: "Search",
+            text: "Full-text and vector search over your content, from the same backend that stores it.",
+          },
+          {
+            icon: "Lock",
+            text: "Convex's security and compliance posture, inherited whole rather than re-implemented.",
+          },
+        ],
+        media: ["code"],
+        mediaPosition: ["right"],
+        codeFilename: "convex/posts.ts",
+        codeLanguage: ["ts"],
+        code: `import { find } from "@vexcms/core/server"
+
+import { query } from "./_generated/server"
+
+// An ordinary Convex query. Because it is an ordinary Convex
+// query, every client reading it is subscribed to it — that is
+// Convex's doing, not something VexCMS bolted on top.
+export const featuredPosts = query({
+  args: {},
+  handler: async (ctx) =>
+    find({
+      ctx,
+      collection: "posts",
+      withIndex: { name: "by_featured", range: (q) => q.eq("featured", true) },
+      access: { bypass: true },
+    }),
+})`,
+      },
+      {
+        blockType: BLOCK_SLUG_SPLIT,
+        blockName: "Coming from Payload",
+        id: "home-split-payload",
+        eyebrow: "Coming from Payload",
+        heading: "The config you already know, on a backend that subscribes.",
+        body: "Collections, fields, globals, blocks, access control: the shapes are the ones you already write. Your content modelling carries over. What changes is the layer underneath.",
+        bullets: [
+          {
+            icon: "FileCode",
+            text: "defineCollection and defineGlobal, with the field helpers you expect from a code-first CMS.",
+          },
+          {
+            icon: "Blocks",
+            text: "A blocks field that composes typed content blocks into a real page builder.",
+          },
+          {
+            icon: "Lock",
+            text: "Document- and field-level access control, with constraints that compile to an indexed range.",
+          },
+          {
+            icon: "Image",
+            text: "An upload field over a searchable media library, backed by Convex file storage.",
+          },
+          {
+            icon: "Users",
+            text: "Email, password, and OAuth through Better Auth, with organisations and API keys as plugins.",
+          },
+          {
+            icon: "Database",
+            text: "No database to run, no adapter to pick, no cache to invalidate. Convex is all three.",
+          },
+        ],
+        media: ["none"],
+        mediaPosition: ["right"],
+      },
+      {
+        blockType: BLOCK_SLUG_HOW_IT_WORKS,
         blockName: "How It Works",
         id: "home-how-it-works",
-        heading: "From zero to a live CMS in four steps.",
+        heading: "From nothing to a live CMS in four steps.",
         subheading:
-          "No boilerplate and no config files to wrestle with — the scaffolder wires Convex, auth, and the admin panel for you.",
+          "The scaffolder wires Convex, auth, and the admin panel together. Your part is the field definitions.",
         steps: [
           {
             icon: "Terminal",
-            title: "Scaffold your project",
+            title: "Scaffold the project",
             description:
-              "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
+              "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
           },
           {
             icon: "Code",
-            title: "Define your schema",
+            title: "Define your collections",
             description:
-              "Declare collections with defineCollection() and the field helpers. vex dev watches and regenerates your Convex schema, types, and validators",
+              "Declare fields with defineCollection and the field helpers. vex dev watches the file and regenerates the Convex schema, the types, and the validators as you type",
           },
           {
             icon: "LayoutGrid",
-            title: "Build with blocks",
+            title: "Build the pages",
             description:
-              "Compose pages from typed content blocks. Each block is a config plus a renderer, edited from the admin panel",
+              "Compose pages from typed blocks. Each block pairs one config with one renderer. Editors manage them from the admin panel",
           },
           {
             icon: "Rocket",
-            title: "Deploy and go live",
+            title: "Deploy",
             description:
-              "Push to Convex, deploy the Next.js app. Content changes propagate to every subscriber with no cache invalidation",
+              "Push to Convex and deploy the Next.js app. Every read is a subscription, so content changes reach open clients on their own",
           },
         ],
       },
       {
-        blockType: "roadmap",
-        blockName: "Roadmap",
-        id: "home-roadmap",
-        heading: "Roadmap",
-        subheading:
-          "What we've shipped and what's coming next. VexCMS is actively developed and everything ships as 0.1.0-alpha.",
-        items: [
-          {
-            feature: "12 Field Types",
-            description:
-              "text, url, color, number, checkbox, date, select, relationship, array, group, blocks, and upload — no richtext, json, or tabs yet.",
-            status: ["shipped"],
-          },
-          {
-            feature: "Convex Schema Codegen",
-            description:
-              "vex dev / vex generate write your Convex schema, TypeScript types, and Zod validators from defineCollection() — no hand-written schema.ts.",
-            status: ["shipped"],
-          },
-          {
-            feature: "Real-Time Admin Panel",
-            description:
-              "DataTable with pagination, live totalDocs, and bulk operations — every list view is a Convex subscription.",
-            status: ["shipped"],
-          },
-          {
-            feature: "Media Library",
-            description:
-              "Convex file storage adapter with a searchable, paginated media picker built into every upload field.",
-            status: ["shipped"],
-          },
-          {
-            feature: "RBAC & Access Control",
-            description:
-              "Document-level access rules, indexed constraints that compile to withIndex ranges, per-call access.action/bypass overrides, and an anonRole fallback for public reads.",
-            status: ["shipped"],
-          },
-          {
-            feature: "Custom Theme System",
-            description:
-              "Database-driven themes with light/dark mode, 32 shadcn tokens per mode, and OKLCH color support — live-updates with zero page reload.",
-            status: ["shipped"],
-          },
-          {
-            feature: "Better Auth Integration",
-            description:
-              "Email/password and OAuth out of the box, with organizations and API keys as opt-in plugins.",
-            status: ["shipped"],
-          },
-          {
-            feature: "CLI & Scaffolder",
-            description:
-              "vex dev, vex generate, and create-vexcms for instant project setup — bare or full marketing-site templates.",
-            status: ["shipped"],
-          },
-          {
-            feature: "Versioning & Drafts",
-            description:
-              "Draft/publish workflow with autosave and version history — in active development.",
-            status: ["in-progress"],
-          },
-          {
-            feature: "Live Preview",
-            description:
-              "Side-by-side preview of draft content against the real frontend before publishing — builds on the drafts infrastructure.",
-            status: ["in-progress"],
-          },
-          {
-            feature: "Form Builder",
-            description:
-              "Composable form fields beyond content editing, with generated validation and submission storage.",
-            status: ["planned"],
-          },
-          {
-            feature: "Field Input Consistency Pass",
-            description:
-              "Touch-ups across field inputs — starting with the relationship field — for consistent interaction patterns in the admin panel.",
-            status: ["planned"],
-          },
-          {
-            feature: "Richtext, JSON, Email & Textarea Fields",
-            description:
-              "Plate.js-powered rich text, plus structured JSON, email, and multi-line text inputs.",
-            status: ["planned"],
-          },
-          {
-            feature: "Team Management & API Keys",
-            description:
-              "Invite users, assign roles, and issue scoped read-only API tokens for external integrations.",
-            status: ["planned"],
-          },
-          {
-            feature: "Lifecycle Hooks",
-            description:
-              "beforeChange/afterChange hooks for custom side effects around document writes.",
-            status: ["future"],
-          },
-          {
-            feature: "Analytics Adapter",
-            description: "Per-document and per-block metrics surfaced directly in the admin panel.",
-            status: ["exploring"],
-          },
-          {
-            feature: "Multi-Component Workspaces",
-            description: "Compose several Convex components into one workspace.",
-            status: ["exploring"],
-          },
-          {
-            feature: "Plugin System",
-            description: "Third-party extensions over collections, fields, and admin views.",
-            status: ["future"],
-          },
-          {
-            feature: "React Package Testing Suite",
-            description:
-              "Component and hook coverage for @vexcms/react. Required before the v0.1.0 launch.",
-            status: ["planned"],
-          },
-        ],
-      },
-      {
-        blockType: "faq",
+        blockType: BLOCK_SLUG_FAQ,
         blockName: "FAQ",
         id: "home-faq",
         heading: "Questions we keep getting.",
@@ -827,45 +804,56 @@ export const posts = defineTable({
           {
             question: "What is VexCMS?",
             answer:
-              "A headless CMS built on Convex. You define collections in TypeScript; Vex generates the Convex schema, the TypeScript types, and the queries, and gives you a real-time admin panel over them.",
+              "A headless CMS that runs inside your Convex backend. You define collections in TypeScript. VexCMS generates the Convex schema and types, exports typed read and write functions, and gives your team a real-time admin panel.",
           },
           {
             question: "How is this different from other headless CMS platforms?",
             answer:
-              "Most of them put a REST or GraphQL API in front of a database you configure separately. Vex has no API layer and no database configuration: Convex is the database, your schema is code, and every read is a live subscription.",
+              "Most of them put a REST or GraphQL API in front of a database you configure and pay for separately. VexCMS has neither. Convex is the database and your schema is code. Every read is a live subscription, not a request.",
+          },
+          {
+            question: "Does it generate my queries?",
+            answer:
+              "No. vex dev generates the Convex schema, the TypeScript types, and the Zod validators. The read and write functions — find, get, create, update, remove — ship in the packages. You call them inside your own Convex functions, or through the local API from a server component. Your query layer stays yours.",
+          },
+          {
+            question: "I already use Payload. Why would I switch?",
+            answer:
+              "The config is familiar, so your content modelling transfers. You drop the database to operate, the adapter layer, and the cache invalidation. You pick up everything Convex ships: live queries, transactions, scheduling, file storage, and search.",
           },
           {
             question: "Do I need to know Convex?",
             answer:
-              "Some familiarity helps, but the CLI generates the schema, queries, and types from your collection definitions. You mostly write field declarations.",
+              "It helps, and it pays off. Everything you learn about Convex applies to your app, not to a CMS abstraction. Day to day, you write field definitions and the CLI does the rest.",
           },
           {
             question: "Is it production ready?",
             answer:
-              "No. Everything ships as 0.1.0-alpha. Versioning, drafts, and live preview are in progress. There are 12 field types today; richtext, json, tabs, and ui are planned, not built. See the roadmap.",
+              "Not yet. Ten specs stand between the current alpha and the 0.1.0 tag, in a published order. The big ones: lifecycle hooks with server-side validation, live preview, versioning and drafts, and the richtext field. The roadmap page has the full list.",
           },
           {
             question: "Which frameworks does it support?",
             answer:
-              "The data layer works with any Convex client. The admin panel is Next.js today, via @vexcms/next and @vexcms/react. A TanStack Start adapter is planned.",
+              "The data layer works with any Convex client. The admin panel is Next.js today, through @vexcms/next and @vexcms/react. Those packages also ship prerendering, sitemap and robots helpers, and cache purging on save. A TanStack Start adapter is on the post-launch list.",
           },
           {
             question: "What does it cost?",
             answer:
-              "Nothing. VexCMS is Apache-2.0 licensed. You pay for your Convex usage, which has a free tier.",
+              "The core is Apache-2.0 and stays that way: every field type, the admin panel, the CLI, RBAC, drafts, live preview, and hooks. You pay Convex for usage, and Convex has a free tier. Paid enterprise add-ons come later: environment branching, SSO, approval workflows, audit logs, and localization, as separate packages under a flat annual licence. Nothing free today becomes paid later.",
           },
         ],
       },
       {
-        blockType: "cta",
+        blockType: BLOCK_SLUG_CTA,
         blockName: "CTA",
         id: "home-cta",
-        heading: "Start with a schema. Ship in an hour.",
+        heading: "Scaffold it and see.",
         subheading:
-          "Scaffold a Next.js + Convex project with authentication, the admin panel, and this marketing site already seeded.",
+          "One command gives you a Next.js app, a Convex deployment, auth, the admin panel, and a marketing site like this one. Seeded, editable, and yours.",
         actions: [
-          { label: "Read the docs", href: "https://docs.vexcms.dev/guides/quickstart/" },
+          { label: "Get started", href: "https://docs.vexcms.dev/guides/quickstart/" },
           { label: "View on GitHub", href: "https://github.com/ianyimi/vex" },
+          { label: "Why Convex", href: "https://docs.convex.dev/realtime" },
         ],
       },
     ],
@@ -891,77 +879,128 @@ export const posts = defineTable({
     slug: "features",
     blocks: [
       {
-        blockType: "hero",
+        blockType: BLOCK_SLUG_HERO,
         blockName: "Hero",
         id: "features-hero",
         variant: ["compact"],
-        heading: "Everything comes from one schema.",
+        badgeText: "Features",
+        heading: "Everything that comes out of one collection definition.",
         subheading:
-          "Collections, the Convex tables behind them, the TypeScript types, the Zod validators, the admin forms, and the access rules are all derived from the same declaration.",
-        primaryCtaLabel: "Read the docs",
+          "The Convex tables, the TypeScript types, the Zod validators, the admin forms, the typed read and write functions, and the access rules. Written once, in TypeScript.",
+        primaryCtaLabel: "Get started",
         primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
       },
       {
         blockType: BLOCK_SLUG_FEATURES,
         blockName: "Features",
         id: "features-features",
-        heading: "Everything you need to manage content",
+        heading: "What you get, concretely.",
         subheading:
-          "Built on Convex's real-time infrastructure with a developer experience that doesn't compromise on power.",
+          "Everything below is shipped in the published packages and running in this site's admin panel. Anything still in progress lives on the roadmap.",
         features: [
           {
-            title: "Real-Time by Default",
+            title: "Twelve field types",
             description:
-              "Every query is live. Content updates appear instantly across all connected clients — no polling, no webhooks.",
-            icon: "Zap",
+              "text, url, number, checkbox, select, date, color, upload, relationship, group, array, and blocks. Richtext lands with 0.1.0. json, email, and textarea follow after.",
+            icon: "Type",
           },
           {
-            title: "Type-Safe Schemas",
+            title: "Schema and type generation",
             description:
-              "Define your collections with TypeScript. Vex generates Convex schemas, Zod validators, and typed queries automatically.",
-            icon: "Shield",
+              "vex generate and vex dev write convex/vex.schema.ts, your TypeScript interfaces, and matching Zod validators straight from defineCollection.",
+            icon: "Wand",
           },
           {
-            title: "Developer First",
+            title: "Real-time data tables",
             description:
-              "Code-first configuration, CLI tooling, and a clean API. Build with the tools you already know and love.",
-            icon: "Code",
+              "Pagination, live totals, and bulk operations over a Convex subscription. Two editors working the same collection watch each other's changes arrive.",
+            icon: "Table",
+          },
+          {
+            title: "Media library",
+            description:
+              "An upload field with a searchable, paginated picker over Convex file storage, available anywhere a document takes an image.",
+            icon: "Image",
+          },
+          {
+            title: "Roles, documents, and fields",
+            description:
+              "Rules per collection, per operation, per document, and per field, plus per-call access.action and access.bypass overrides and an anonymous role for public reads.",
+            icon: "Lock",
+          },
+          {
+            title: "Globals for the one-off content",
+            description:
+              "defineGlobal gives you singletons — site settings, a header, a footer — with the same fields, the same forms, and the same access rules as a collection.",
+            icon: "Boxes",
+          },
+          {
+            title: "Database-driven themes",
+            description:
+              "32 shadcn tokens per mode, light and dark, stored as OKLCH and applied on first paint. Change one and every open tab follows without a reload.",
+            icon: "Palette",
+          },
+          {
+            title: "SEO, prerendering, and purge on save",
+            description:
+              "vexMetadata, vexStaticParams, createVexSitemap, and createVexRobots for the public side, plus a revalidate route that drops the cached page when an editor hits save.",
+            icon: "Search",
+          },
+          {
+            title: "A test kit for your own components",
+            description:
+              "@vexcms/react/testing exports the suites we run against every field input. Your custom fields can be held to the same contract.",
+            icon: "CircleCheck",
           },
         ],
       },
       {
-        blockType: BLOCK_SLUG_HOW_IT_WORKS,
-        blockName: "How It Works",
-        id: "features-how-it-works",
-        heading: "Get started in minutes",
-        subheading:
-          "From zero to a fully functional CMS in four steps. No boilerplate, no config files to wrestle with.",
-        steps: [
+        blockType: BLOCK_SLUG_SPLIT,
+        blockName: "Admin panel",
+        id: "features-split-admin",
+        eyebrow: "Admin panel",
+        heading: "A panel you can hand to a client.",
+        body: "The admin panel is a route in your own Next.js app, behind your own auth, on your own domain. It reads the same collection definitions your code does. Add a field and the form updates with no UI work.",
+        bullets: [
           {
-            icon: "Terminal",
-            title: "Scaffold your project",
-            description:
-              "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired",
+            icon: "Radio",
+            text: "Every list view is a Convex subscription, so rows and totals update while you watch.",
           },
           {
-            icon: "Code",
-            title: "Define your schema",
-            description:
-              "Use defineCollection() and field helpers to declare your content model in TypeScript. Vex generates your Convex schema, types, and queries automatically.",
+            icon: "Users",
+            text: "Roles decide what each person can see and change, down to the individual field.",
           },
           {
-            icon: "LayoutGrid",
-            title: "Build with blocks",
-            description:
-              "Compose pages from typed content blocks. Each block is a config plus a renderer, edited from the admin panel",
+            icon: "Palette",
+            text: "Themes live in the database. Branding the panel is content work, not a deploy.",
           },
           {
-            icon: "Rocket",
-            title: "Deploy and go live",
-            description:
-              "Push to Convex and deploy your Next.js app. Real-time content updates flow to every connected client instantly — no cache invalidation needed.",
+            icon: "Image",
+            text: "A media picker with search and pagination over Convex file storage.",
           },
         ],
+        media: ["code"],
+        mediaPosition: ["right"],
+        codeFilename: "app/(vexcms)/admin/[[...path]]/page.tsx",
+        codeLanguage: ["tsx"],
+        code: `import { NextAdminPage } from "@vexcms/next/server"
+import { redirect } from "next/navigation"
+
+import { getToken } from "~/auth/server"
+import config from "~/vex.config"
+
+// The whole panel is one route in your app. Gate it however you
+// gate anything else, then hand it the config you already wrote.
+export default async function AdminPage({
+  params,
+}: {
+  params: Promise<{ path?: string[] }>
+}) {
+  const token = await getToken()
+  if (!token) redirect("/auth/sign-in?redirectTo=/admin")
+
+  return <NextAdminPage config={config} params={params} token={token} />
+}`,
       },
       {
         blockType: BLOCK_SLUG_CODE_SHOWCASE,
@@ -969,7 +1008,7 @@ export const posts = defineTable({
         id: "features-code-showcase",
         heading: "One collection. Every layer, typed.",
         subheading:
-          "A testimonials collection any marketing site would have, and the Convex table vex dev writes from it — validators, media ids, and the index you asked for, none of it written by hand.",
+          "A testimonials collection any marketing site would have, and the Convex table vex dev writes from it. Validators, media ids, and the index you asked for, none of it typed out by hand.",
         panes: [
           {
             label: "You write",
@@ -1027,15 +1066,75 @@ export const testimonials = defineTable({
         ],
       },
       {
+        blockType: BLOCK_SLUG_SPLIT,
+        blockName: "Access control",
+        id: "features-split-access",
+        eyebrow: "Access control",
+        heading: "A scoped read stays scoped, inside the query.",
+        body: "Access rules carry constraints, and constraints compile to a withIndex range on the query itself. The narrowing happens in the database, not in a filter over documents you already paid to read.",
+        bullets: [
+          {
+            icon: "Lock",
+            text: "Rules per collection, per operation, per document, and per field.",
+          },
+          {
+            icon: "Search",
+            text: "Indexed constraints rather than filtering a page of results after the fact.",
+          },
+          {
+            icon: "Users",
+            text: "An anonymous role, so public pages read without a session.",
+          },
+          {
+            icon: "ShieldCheck",
+            text: "Per-call access.action and access.bypass for server code you already trust.",
+          },
+        ],
+        media: ["code"],
+        mediaPosition: ["left"],
+        codeFilename: "src/vexcms/access.ts",
+        codeLanguage: ["ts"],
+        code: `export const access = defineAccess({
+  roles: ["admin", "editor", "guest"] as const,
+  anonRole: "guest",
+  resources: [posts],
+  permissions: {
+    admin: { "*": true },
+    editor: {
+      posts: {
+        // Editors browse their own posts, resolved straight off
+        // the by_author index — no post-read filtering.
+        read: {
+          constraints: ({ user, q }) =>
+            q.withIndex("by_author", (ix) => ix.eq("authorId", user._id)),
+        },
+        update: true,
+      },
+    },
+    guest: {
+      posts: {
+        // Compiles to withIndex("by_status", ix => ix.eq("status", "published"))
+        // on the query itself, so drafts are never read at all.
+        read: {
+          constraints: ({ q }) =>
+            q.withIndex("by_status", (ix) => ix.eq("status", "published")),
+        },
+      },
+    },
+  },
+})`,
+      },
+      {
         blockType: BLOCK_SLUG_CTA,
         blockName: "CTA",
         id: "features-cta",
-        heading: "Start with a schema. Ship in an hour.",
+        heading: "Scaffold it and see.",
         subheading:
-          "Scaffold a Next.js + Convex project with authentication, the admin panel, and this marketing site already seeded.",
+          "One command gives you a Next.js app, a Convex deployment, auth, the admin panel, and a marketing site like this one. Seeded, editable, and yours.",
         actions: [
-          { label: "Read the docs", href: "https://docs.vexcms.dev/guides/quickstart/" },
+          { label: "Get started", href: "https://docs.vexcms.dev/guides/quickstart/" },
           { label: "View on GitHub", href: "https://github.com/ianyimi/vex" },
+          { label: "Why Convex", href: "https://docs.convex.dev/realtime" },
         ],
       },
     ],
@@ -1061,15 +1160,41 @@ export const testimonials = defineTable({
     slug: "roadmap",
     blocks: [
       {
-        blockType: "hero",
+        blockType: BLOCK_SLUG_HERO,
         blockName: "Hero",
         id: "roadmap-hero",
         variant: ["compact"],
-        heading: "Shipped, in progress, and being explored.",
+        badgeText: "Roadmap",
+        heading: "What's shipped, what's next, and what's still an idea.",
         subheading:
-          "VexCMS is under active development. Everything ships as 0.1.0-alpha until the core feature set is stable enough for a v0.1.0 release. This page is edited from the admin panel, not from a source file.",
-        primaryCtaLabel: "Read the docs",
+          "VexCMS is in public alpha. Ten specs stand between the current alpha and the 0.1.0 tag, and they ship in the order below. This page itself is edited in the admin panel, not in a source file.",
+        primaryCtaLabel: "Get started",
         primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
+      },
+      {
+        blockType: BLOCK_SLUG_STATS,
+        blockName: "Stats",
+        id: "roadmap-stats",
+        items: [
+          {
+            value: "11",
+            label: "shipped",
+            description:
+              "Field types, codegen, the admin panel, globals, media, RBAC, themes, auth, SEO, the CLI, and the test kit",
+          },
+          {
+            value: "10",
+            label: "specs to v0.1.0",
+            description:
+              "Each spec consumes what the last one built. The mobile pass is the final gate",
+          },
+          {
+            value: "0.1.0-alpha.16",
+            label: "on npm today",
+            description:
+              "Published from the dev branch. The whole track lands before anything is tagged 0.1.0",
+          },
+        ],
       },
       {
         blockType: BLOCK_SLUG_ROADMAP,
@@ -1077,118 +1202,187 @@ export const testimonials = defineTable({
         id: "roadmap-roadmap",
         heading: "Roadmap",
         subheading:
-          "What we've shipped and what's coming next. VexCMS is actively developed and everything ships as 0.1.0-alpha.",
+          "Shipped means it is in the published packages and running in this site. Planned means it is committed to 0.1.0, listed in the order it ships. Everything past that is an intention, not a promise.",
         items: [
           {
             feature: "12 Field Types",
             description:
-              "text, url, color, number, checkbox, date, select, relationship, array, group, blocks, and upload — no richtext, json, or tabs yet.",
+              "text, url, color, number, checkbox, date, select, relationship, array, group, blocks, and upload.",
             status: ["shipped"],
           },
           {
-            feature: "Convex Schema Codegen",
+            feature: "Convex Schema & Type Codegen",
             description:
-              "vex dev / vex generate write your Convex schema, TypeScript types, and Zod validators from defineCollection() — no hand-written schema.ts.",
+              "vex dev and vex generate write your Convex schema, TypeScript types, and Zod validators from defineCollection. There is no hand-written schema.ts to drift.",
             status: ["shipped"],
           },
           {
             feature: "Real-Time Admin Panel",
             description:
-              "DataTable with pagination, live totalDocs, and bulk operations — every list view is a Convex subscription.",
+              "A data table with pagination, live totals, and bulk operations. Every list view is a Convex subscription. Two people on one collection see each other work.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Globals",
+            description:
+              "defineGlobal singletons for site settings, headers, footers, and anything else there is exactly one of.",
             status: ["shipped"],
           },
           {
             feature: "Media Library",
             description:
-              "Convex file storage adapter with a searchable, paginated media picker built into every upload field.",
+              "A Convex file storage adapter with a searchable, paginated picker built into every upload field.",
             status: ["shipped"],
           },
           {
-            feature: "RBAC & Access Control",
+            feature: "Document & Field-Level RBAC",
             description:
-              "Document-level access rules, indexed constraints that compile to withIndex ranges, per-call access.action/bypass overrides, and an anonRole fallback for public reads.",
+              "Rules per collection, operation, document, and field. Constraints compile to withIndex ranges inside the query. Per-call overrides and an anonRole fallback are built in.",
             status: ["shipped"],
           },
           {
             feature: "Custom Theme System",
             description:
-              "Database-driven themes with light/dark mode, 32 shadcn tokens per mode, and OKLCH color support — live-updates with zero page reload.",
+              "Themes in the database with 32 shadcn tokens per mode, light and dark, stored as OKLCH and applied on first paint. Changing one updates every open tab.",
             status: ["shipped"],
           },
           {
             feature: "Better Auth Integration",
             description:
-              "Email/password and OAuth out of the box, with organizations and API keys as opt-in plugins.",
+              "Email, password, and OAuth out of the box, with organisations and API keys available as plugins.",
+            status: ["shipped"],
+          },
+          {
+            feature: "SEO, Prerendering & Revalidation",
+            description:
+              "vexMetadata, vexStaticParams, createVexSitemap, and createVexRobots, plus a revalidate route that purges the cached page when an editor saves.",
             status: ["shipped"],
           },
           {
             feature: "CLI & Scaffolder",
             description:
-              "vex dev, vex generate, and create-vexcms for instant project setup — bare or full marketing-site templates.",
+              "vex dev, vex generate, and create-vexcms. The scaffolder offers a bare project or a full marketing-site template.",
             status: ["shipped"],
           },
           {
-            feature: "Versioning & Drafts",
+            feature: "React Test Kit",
             description:
-              "Draft/publish workflow with autosave and version history — in active development.",
-            status: ["in-progress"],
+              "@vexcms/react/testing exports the contract suites we run against every field input. Your own custom fields can be held to them too.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Data-Table Integrity & Config Honesty",
+            description:
+              "First in the launch track. Every key under admin.table gets a consumer or gets deleted. No README documents a flag that does nothing.",
+            status: ["planned"],
+          },
+          {
+            feature: "Public API Honesty Pass",
+            description:
+              "Nothing exported may lie about what it does. The auto-migration stubs leave the public surface. The localization model gets decided before anyone has data to migrate.",
+            status: ["planned"],
+          },
+          {
+            feature: "Lifecycle Hooks & Server-Side Validation",
+            description:
+              "beforeChange and afterChange, plus one write-validation stage. min and max become enforced through the Local API, not only in the admin form. An async validate() receives ctx, so transactional uniqueness checks are sound.",
+            status: ["planned"],
           },
           {
             feature: "Live Preview",
             description:
-              "Side-by-side preview of draft content against the real frontend before publishing — builds on the drafts infrastructure.",
-            status: ["in-progress"],
+              "Unsaved form state, streamed over postMessage and overlaid on your real route. The preview is your production page, not a parallel render path. Origin-allowlisted and gated per request.",
+            status: ["planned"],
           },
           {
-            feature: "Form Builder",
+            feature: "Versioning & Drafts",
             description:
-              "Composable form fields beyond content editing, with generated validation and submission storage.",
+              "A real draft and publish workflow. Reads return the published document, readDrafts returns drafts, and publish promotes. Autosave never touches what is live. Prior versions are restorable from the edit view.",
+            status: ["planned"],
+          },
+          {
+            feature: "Richtext Field",
+            description:
+              "A richtext() field in core, wired to the Plate.js editor and renderer that @vexcms/richtext-plate already ships. The @ts-nocheck pragmas go with it.",
             status: ["planned"],
           },
           {
             feature: "Field Input Consistency Pass",
             description:
-              "Touch-ups across field inputs — starting with the relationship field — for consistent interaction patterns in the admin panel.",
+              "Every input gets correct empty, loading, error, and read-only states. The relationship field is the named offender. The media picker finally honours the upload field's accept filter.",
             status: ["planned"],
           },
           {
-            feature: "Richtext, JSON, Email & Textarea Fields",
+            feature: "Edit-View Overhaul",
             description:
-              "Plate.js-powered rich text, plus structured JSON, email, and multi-line text inputs.",
+              "An unsaved-changes guard, so a misclick cannot cost you work. Duplicate for documents and for blocks. A validation summary that jumps to the failing field.",
             status: ["planned"],
+          },
+          {
+            feature: "List-View Overhaul",
+            description:
+              "Per-collection search, sortable columns, column visibility, page-size control, and saved views. Each control ships together with the config key that drives it.",
+            status: ["planned"],
+          },
+          {
+            feature: "Responsive & Mobile Pass",
+            description:
+              "The final gate. Every admin and marketing surface audited at seven widths, from 375 to 1536. No clipped controls, and every primary action reachable on a phone.",
+            status: ["planned"],
+          },
+          {
+            feature: "JSON, Email & Textarea Fields",
+            description:
+              "Deliberately cut from 0.1.0, not forgotten. Leaf fields are cheap to add once the track is done. ui and tabs are a separate question; both change core invariants.",
+            status: ["future"],
+          },
+          {
+            feature: "Content Scheduling",
+            description:
+              "publishAt on a document, promoted by a Convex scheduled function. The scheduling Convex already has, put to work on content.",
+            status: ["future"],
           },
           {
             feature: "Team Management & API Keys",
             description:
-              "Invite users, assign roles, and issue scoped read-only API tokens for external integrations.",
-            status: ["planned"],
-          },
-          {
-            feature: "Lifecycle Hooks",
-            description:
-              "beforeChange/afterChange hooks for custom side effects around document writes.",
+              "A UI for inviting people and assigning roles. Scoped read-only tokens for anything that reads your content from outside.",
             status: ["future"],
           },
           {
-            feature: "Analytics Adapter",
-            description: "Per-document and per-block metrics surfaced directly in the admin panel.",
+            feature: "TanStack Start Adapter",
+            description:
+              "The data layer already works with any Convex client. This is the admin panel and the caching helpers on a second framework.",
+            status: ["future"],
+          },
+          {
+            feature: "S3, R2 & Vercel Blob Adapters",
+            description:
+              "Storage adapters beside the Convex one, for teams whose assets have to live somewhere specific.",
+            status: ["future"],
+          },
+          {
+            feature: "Form Builder",
+            description:
+              "defineFormCollection: fields for collecting input rather than editing content. Generated validation, stored submissions.",
+            status: ["future"],
+          },
+          {
+            feature: "Plugin System",
+            description:
+              "Third-party extensions over collections, fields, and admin views, including custom field types. The panel grows without forking.",
+            status: ["future"],
+          },
+          {
+            feature: "Enterprise Add-Ons",
+            description:
+              "Content branching between environments, SAML and OIDC SSO, approval workflows, a retained audit log, and localization. Separate paid packages on a flat annual licence. The core stays Apache-2.0, and nothing free today moves behind it.",
             status: ["exploring"],
           },
           {
             feature: "Multi-Component Workspaces",
-            description: "Compose several Convex components into one workspace.",
-            status: ["exploring"],
-          },
-          {
-            feature: "Plugin System",
-            description: "Third-party extensions over collections, fields, and admin views.",
-            status: ["future"],
-          },
-          {
-            feature: "React Package Testing Suite",
             description:
-              "Component and hook coverage for @vexcms/react. Required before the v0.1.0 launch.",
-            status: ["planned"],
+              "defineComponent, per-component schema generation, and workspace routing. This is where support for the wider Convex component ecosystem starts.",
+            status: ["exploring"],
           },
         ],
       },
@@ -1196,12 +1390,13 @@ export const testimonials = defineTable({
         blockType: BLOCK_SLUG_CTA,
         blockName: "CTA",
         id: "roadmap-cta",
-        heading: "Start with a schema. Ship in an hour.",
+        heading: "Scaffold it and see.",
         subheading:
-          "Scaffold a Next.js + Convex project with authentication, the admin panel, and this marketing site already seeded.",
+          "One command gives you a Next.js app, a Convex deployment, auth, the admin panel, and a marketing site like this one. Seeded, editable, and yours.",
         actions: [
-          { label: "Read the docs", href: "https://docs.vexcms.dev/guides/quickstart/" },
+          { label: "Get started", href: "https://docs.vexcms.dev/guides/quickstart/" },
           { label: "View on GitHub", href: "https://github.com/ianyimi/vex" },
+          { label: "Why Convex", href: "https://docs.convex.dev/realtime" },
         ],
       },
     ],

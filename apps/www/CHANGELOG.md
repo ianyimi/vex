@@ -1,5 +1,17 @@
 # www
 
+## 0.1.0-alpha.17
+
+### Patch Changes
+
+- Updated dependencies [d7384b6]
+- Updated dependencies [d7384b6]
+  - @vexcms/react@0.1.0-alpha.17
+  - @vexcms/core@0.1.0-alpha.17
+  - @vexcms/next@0.1.0-alpha.17
+  - @vexcms/better-auth@0.1.0-alpha.17
+  - @vexcms/file-storage-convex@0.1.0-alpha.17
+
 ## 0.1.0-alpha.16
 
 ### Patch Changes

@@ -132,7 +132,7 @@ export function CollectionListView<
   return (
     <div className="relative">
       <CreateDocumentModal collection={collection} />
-      <div className="mb-6 flex items-center justify-between pt-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-y-2 pt-4">
         <div>
           <h1 className="text-2xl font-bold">{collection.labels.plural}</h1>
           <p className="text-muted-foreground mt-0.5 text-sm" suppressHydrationWarning>
@@ -143,7 +143,7 @@ export function CollectionListView<
         </div>
         {/* Grouped so the header's `justify-between` keeps the title left and
             both controls right, instead of spreading three children apart. */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <RevalidateButton collection={collection.slug} />
           <Button
             nativeButton={false}
@@ -164,8 +164,8 @@ export function CollectionListView<
         onLoadMore={pagination.loadMore}
         isLoadingMore={pagination.isPending}
         totalCount={pagination.totalDocs}
-        enableRowSelection={true}
-        enableBulkActions={true}
+        enableRowSelection={canDelete}
+        enableBulkActions={canDelete}
         entityName={collection.labels.plural.toLowerCase()}
         onBulkDelete={canDelete ? handleBulkDelete : undefined}
         isDeleting={removeMutation.isPending}

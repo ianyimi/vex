@@ -1,0 +1,898 @@
+{
+  "generated": "2026-09-14T07:07:33.351Z",
+  "method": "DOM measurement via headless Chromium (browser tool). PNG capture is non-functional in this environment (compositor stall — even <h1>hi</h1> hangs), so acceptance is proven by geometry: document scrollWidth vs clientWidth, elements outside the viewport, interactive controls clipped or off-viewport, primary actions reachable. Off-canvas sidebar subtree excluded. Base UI data-starting-style transforms (frozen in this env) removed before measuring.",
+  "widths": [
+    375,
+    390,
+    768,
+    1024
+  ],
+  "apps": {
+    "anonymous": "apps/www :3030 (role: user via sign-up, read-only)",
+    "authenticated": "apps/test :3020 (role: default sign-up, no create)"
+  },
+  "preFix": {
+    "dashboard": {
+      "375": {
+        "overflowX": 0,
+        "offscreen": [],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 6
+      },
+      "390": {
+        "overflowX": 0,
+        "offscreen": [],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 6
+      },
+      "768": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 994,
+            "right": 1002,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1000,
+            "right": 1003,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1004,
+            "right": 1005,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1007,
+            "right": 1008,
+            "w": 1
+          }
+        ],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 10
+      },
+      "1024": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1250,
+            "right": 1258,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1256,
+            "right": 1259,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1260,
+            "right": 1261,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1263,
+            "right": 1264,
+            "w": 1
+          }
+        ],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 10
+      }
+    },
+    "pagesList": {
+      "375": {
+        "overflowX": 0,
+        "offscreen": [],
+        "smallTargets": 3,
+        "clipped": [],
+        "controls": 9
+      },
+      "390": {
+        "overflowX": 0,
+        "offscreen": [],
+        "smallTargets": 3,
+        "clipped": [],
+        "controls": 9
+      },
+      "768": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 994,
+            "right": 1002,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1000,
+            "right": 1003,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1004,
+            "right": 1005,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1007,
+            "right": 1008,
+            "w": 1
+          }
+        ],
+        "smallTargets": 3,
+        "clipped": [],
+        "controls": 13
+      },
+      "1024": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1250,
+            "right": 1258,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1256,
+            "right": 1259,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1260,
+            "right": 1261,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1263,
+            "right": 1264,
+            "w": 1
+          }
+        ],
+        "smallTargets": 3,
+        "clipped": [],
+        "controls": 13
+      }
+    },
+    "pagesEdit": {
+      "375": {
+        "overflowX": 19,
+        "offscreen": [],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 31
+      },
+      "390": {
+        "overflowX": 4,
+        "offscreen": [],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 31
+      },
+      "768": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 994,
+            "right": 1002,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1000,
+            "right": 1003,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1004,
+            "right": 1005,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1007,
+            "right": 1008,
+            "w": 1
+          }
+        ],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 35
+      },
+      "1024": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1250,
+            "right": 1258,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1256,
+            "right": 1259,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1260,
+            "right": 1261,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1263,
+            "right": 1264,
+            "w": 1
+          }
+        ],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 35
+      }
+    },
+    "themesList": {
+      "375": {
+        "overflowX": 16,
+        "offscreen": [],
+        "smallTargets": 4,
+        "clipped": [],
+        "controls": 10
+      },
+      "390": {
+        "overflowX": 0,
+        "offscreen": [],
+        "smallTargets": 4,
+        "clipped": [],
+        "controls": 10
+      },
+      "768": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 994,
+            "right": 1002,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1000,
+            "right": 1003,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1004,
+            "right": 1005,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1007,
+            "right": 1008,
+            "w": 1
+          }
+        ],
+        "smallTargets": 4,
+        "clipped": [],
+        "controls": 14
+      },
+      "1024": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1250,
+            "right": 1258,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1256,
+            "right": 1259,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1260,
+            "right": 1261,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1263,
+            "right": 1264,
+            "w": 1
+          }
+        ],
+        "smallTargets": 4,
+        "clipped": [],
+        "controls": 14
+      }
+    },
+    "themesEdit": {
+      "375": {
+        "overflowX": 0,
+        "offscreen": [],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 78
+      },
+      "390": {
+        "overflowX": 0,
+        "offscreen": [],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 78
+      },
+      "768": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 994,
+            "right": 1002,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1000,
+            "right": 1003,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1004,
+            "right": 1005,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1007,
+            "right": 1008,
+            "w": 1
+          }
+        ],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 82
+      },
+      "1024": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1250,
+            "right": 1258,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1256,
+            "right": 1259,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1260,
+            "right": 1261,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1263,
+            "right": 1264,
+            "w": 1
+          }
+        ],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 82
+      }
+    },
+    "globalsList": {
+      "375": {
+        "overflowX": 0,
+        "offscreen": [],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 5
+      },
+      "390": {
+        "overflowX": 0,
+        "offscreen": [],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 5
+      },
+      "768": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 994,
+            "right": 1002,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1000,
+            "right": 1003,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1004,
+            "right": 1005,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1007,
+            "right": 1008,
+            "w": 1
+          }
+        ],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 9
+      },
+      "1024": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1250,
+            "right": 1258,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1256,
+            "right": 1259,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1260,
+            "right": 1261,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1263,
+            "right": 1264,
+            "w": 1
+          }
+        ],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 9
+      }
+    },
+    "siteSettingsEdit": {
+      "375": {
+        "overflowX": 0,
+        "offscreen": [],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 10
+      },
+      "390": {
+        "overflowX": 0,
+        "offscreen": [],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 10
+      },
+      "768": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 992,
+            "right": 1008,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 994,
+            "right": 1002,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1000,
+            "right": 1003,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1004,
+            "right": 1005,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1007,
+            "right": 1008,
+            "w": 1
+          }
+        ],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 14
+      },
+      "1024": {
+        "overflowX": 0,
+        "offscreen": [
+          {
+            "tag": "div>div>button[dropdown-menu-trigger]>span",
+            "text": "Toggle theme",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>svg",
+            "text": "",
+            "left": 1248,
+            "right": 1264,
+            "w": 16
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1250,
+            "right": 1258,
+            "w": 8
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1256,
+            "right": 1259,
+            "w": 3
+          },
+          {
+            "tag": "button[dropdown-menu-trigger]>span>svg>path",
+            "text": "",
+            "left": 1260,
+            "right": 1261,
+            "w": 1
+          },
+          {
+            "tag": "div>button[dropdown-menu-trigger]>span>span",
+            "text": "Toggle theme",
+            "left": 1263,
+            "right": 1264,
+            "w": 1
+          }
+        ],
+        "smallTargets": 0,
+        "clipped": [],
+        "controls": 14
+      }
+    }
+  },
+  "fixes": [
+    "CollectionEditView / MediaCollectionEditView / GlobalEditView / CollectionListView / MediaCollectionListView — header rows and action groups gain flex-wrap gap-y-2; edit headers h-16 → min-h-16. Root cause of pagesEdit@375 (+19px), pagesEdit@390 (+4px), themesList@375 (+16px): shrink-0 whitespace-nowrap button groups (Revalidate·Save·Cancel = 270px; Revalidate all·+ New Theme = 275px) never wrapped.",
+    "DataTableBulkActions — max-w-[calc(100vw-2rem)] flex-wrap justify-center gap-x-4 gap-y-2, so the bar Step 1 made reachable cannot overflow at 375.",
+    "CreateDocumentModal — w-[50svw] h-[50svh] → w-full h-[80svh] sm:w-[50svw] sm:h-[50svh]. Was a 187px-wide dialog with 115px inputs at 375; now 343px / 263px.",
+    "CreateMediaModal — w-[50svw] → w-full sm:w-[50svw]. Same cause."
+  ],
+  "postFix": {
+    "pagesEdit@375": {
+      "scrollW": 375,
+      "clientW": 375,
+      "innerW": 375
+    },
+    "pagesEdit@390": {
+      "scrollW": 390,
+      "clientW": 390,
+      "innerW": 390
+    },
+    "themesList@375": {
+      "scrollW": 375,
+      "clientW": 375,
+      "innerW": 375
+    },
+    "siteSettings@375": {
+      "scrollW": 375,
+      "clientW": 375,
+      "innerW": 375
+    },
+    "createDocumentModal@375": {
+      "dialogW": 343,
+      "inputW": 263,
+      "pokingOut": 0
+    },
+    "createDocumentModal@390": {
+      "dialogW": 358,
+      "inputW": 277,
+      "pokingOut": 0
+    },
+    "createMediaModal@375": {
+      "dialogW": 343,
+      "pokingOut": 0
+    },
+    "mediaLibraryPicker@375 (nested dialog)": {
+      "dialogW": 321,
+      "pokingOut": 0
+    },
+    "mediaEdit@375": {
+      "scrollW": 375,
+      "clientW": 375
+    },
+    "sidebar 767↔768↔769": "desktop sidebar unmounts at 767, mounts collapsed off-canvas at 768+; no overflow either direction",
+    "mobile Sheet@375 (resting)": {
+      "left": 94,
+      "right": 375,
+      "w": 281,
+      "links": "Pages/Themes/Site Settings all within viewport"
+    }
+  },
+  "falsePositives": [
+    "≥768: 13 offscreen / 4 clipped on every surface = the offcanvas sidebar subtree parked at left=viewportWidth. By design.",
+    "375/390 'clipped': 16px-tall title links in table cells tripped the h<24 touch-target rule. Not clipping; filed as small-target note.",
+    "mobile Sheet initially measured at right=415 (+40px): Base UI data-starting-style translate-x-[2.5rem] never cleared because rAF does not fire in this env. Proven correct at rest by removing the attribute."
+  ],
+  "notAudited": [
+    "MediaUploadForm step 2 (staged-file accordion): react-dropzone staging could not be triggered headlessly (uploadFile + change event did not stage). Verify in Responsively at 375.",
+    "Bulk-actions bar rendered: neither audit account holds delete permission. Fix applied is structural (max-w + wrap); confirm visually with an admin account."
+  ],
+  "observations": [
+    "Sidebar defaults to collapsed at ≥768 with no sidebar_state cookie — a 1024 iPad-landscape visitor sees no nav until they tap the trigger. Product choice, not a mobile defect; flagging.",
+    "The sandbox's new-signup role has no create permission, and apps/www's has no delete — the Discord demo account will show no '+ New' and no checkboxes, which after Step 1 is the correct, clean state."
+  ]
+}

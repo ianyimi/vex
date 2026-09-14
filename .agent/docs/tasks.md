@@ -5,11 +5,24 @@
 - Build the real www marketing site (spec 2026-09-01-www-content-spec; seed rewrite and both code-showcase pairings done — the three `/features` Split blocks remain)
 
 ## Inbox
+### v0.1.0 launch track — work in this order (`.agent/docs/product/v0.1.0-launch-plan.md`)
+### Other
+- 1. A — Data-table integrity & dead config: unreachable bulk delete, bogus `_createdAt` default, `updatedAt` verification, wire `pageSize` options, delete the UI-dependent table config (sorting/columns move to I), README `convex env set` + false sortable/searchable claims, ratify `vex_` table convention
+- 2. B — Public API surface: un-export the 4 migrate stubs + gate `autoMigrate`; localization ADR (decision only, zero production diff)
+- 3. F — Lifecycle hooks & validation: one before-write stage, server-side enforcement of every declarative constraint, `beforeChange`, async `validate()` with `ctx`, `after*` on convex-helpers triggers (ADR-010, ADR-011)
+- 4. E — Live preview: `postMessage` transport + mount handshake, one `<VexLivePreviewProvider>` in the layout owning gate/origin-check/transport, `id → unsaved values` map, `useVexPreview` overlaying the consumer's own query result (optional `useVexQuery` sugar on top); target is the real route, not a preview route; deep merge extracted from `useLiveFieldMerge`; temp-id matching for unsaved-new docs (ADR-012). No drafts or autosave needed. **Prereq: config client/server split spec** — makes `livePreview.url` a function
+- 5. C — Versioning & drafts (existing spec 2026-08-23-versioning-drafts, re-scope first) — calls F's pipeline and reuses its lenient validation mode; must pass `changes` to `hasPermission` on draft writes; adds the draft base layer to E's overlay
+- 6. D — Richtext field: wire the existing 3,219 lines in `richtext-plate`, add `richtext()` + the 2 missing core types, drop 4 `@ts-nocheck`
+- 7. G — Field input consistency pass: relationship field, loading states, media MIME filter, conditional fields
+- 8. H — Edit-view overhaul: unsaved-changes nav guard, duplicate document, duplicate block
+- 9. I — List-view overhaul: search, sort, column visibility, page size, saved views — reintroduces the config A deleted alongside the controls that consume it
+- 10. J — Responsive / mobile UI pass — FINAL gate before tagging
 - Rename naming outliers: MediaLibaryGrid.tsx, use-mobile.ts, blocks/logo-cloud.ts
-- Versioning & drafts (spec 2026-08-23-versioning-drafts)
 - Access constraint builder (spec 2026-08-25-access-constraint-builder)
 - Upload GitHub social preview 1280x640 (deferred from WP-4 step 7; brief in github-page.md)
-- Assessed-but-deferred features now live in `.agent/docs/product/backlog.md` (tag-based cache control, server-side revalidation dispatch, duplicate-type cleanup)
+- Release mechanics before tagging: `changeset pre exit` (15 queued changesets), publish via pnpm, `scripts/verify-scaffold.mjs` green
+- Assessed-but-deferred features live in `.agent/docs/product/backlog.md`
+- Fix scripts/vercel-build-check.mjs: since / prerenders via a live vex.query, the placeholder NEXT_PUBLIC_CONVEX_URL makes the pristine build fail on every run (pre-existing at a180967). Pass through a real dev URL when present, or make HomePage degrade when Convex is unreachable
 
 ## Recently Done
 - Re-enabled starlight-typedoc, multi-package (core/react/next/better-auth/file-storage), 120→0 TypeDoc warnings, treatWarningsAsErrors ON — see ADR-001
@@ -27,3 +40,4 @@
 - React coverage expansion - 50% to 80% first-party, list-view + views + shell + modals + media + hooks (spec 2026-09-08-react-coverage-expansion)
 - React bug fixes - clear all 87 failing assertions across react + core (spec 2026-09-08-react-bug-fixes)
 - Field-level RBAC permissions
+- **Discord show-and-tell readiness (spec 2026-09-13-discord-post-readiness)** — 8 steps: bulk-selection bar, un-export migrate stubs, admin mobile pass 375/390/768/1024, www mobile pass, mirror into create-vexcms templates, OG + social cards [dev], quickstart walk [dev], verification gate

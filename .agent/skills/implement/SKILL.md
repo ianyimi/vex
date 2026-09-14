@@ -21,7 +21,9 @@ harness_model_role: default
 2. For each group that is not `done`, in order:
    a. Run `harness implement <slug> next` — its stdout is your complete working packet.
       Read every file it points to: the spec section, each context file, naming-conventions.md,
-      and `dependencies/registry.md` sources when the packet lists them.
+      and `dependencies/registry.md` sources when the packet lists them. The spec has a
+      `## Probe Findings` section? Read it FIRST — verdicts there are proven facts: corrected
+      claims are binding design, and listed bugs are known terrain, not new discoveries.
    b. Explore the current codebase state, especially files written by prior groups.
    c. Implement every step in order, following the spec exactly. All names must follow
       naming-conventions.md. Never deviate from the spec without asking.
@@ -37,7 +39,19 @@ harness_model_role: default
 ## Platform note
 Claude Code / pi: task groups run serially. Between groups, re-run `status` and read the fresh
 `next` packet instead of relying on memory of earlier groups — the packet is the state.
-OMP: the same serial loop applies; native per-group subagent dispatch is deferred.
+OMP: subagents MAY implement groups, but STRICTLY ONE AT A TIME, in spec order — never a
+parallel batch. Each group builds on the previous group's real output, so concurrent workers
+produce mutually inconsistent implementations (diverging names, shapes, and error contracts
+that each compile alone and fail together). Sequential-subagent protocol:
+1. Spawn one subagent per group, waiting for each to complete before spawning the next.
+2. Each subagent's packet includes: the `next` packet contents, AND a short ground-truth
+   digest of what the PRIOR groups actually produced (final signatures, renamed symbols,
+   corrected assumptions) — the prior subagent's completion summary is the source for this.
+   Prior groups' outputs are FINAL for the current worker: it conforms to them, never
+   re-litigates them.
+3. A worker that discovers a false spec assumption reports it in its summary (P-023); fold
+   the correction into every later group's digest so the divergence propagates forward
+   exactly once.
 
 ## Rules
 - Never proceed past a failed verify without developer approval — the CLI refuses `done`

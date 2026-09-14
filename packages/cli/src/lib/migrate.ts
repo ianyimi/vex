@@ -1,5 +1,6 @@
 // @ts-nocheck
-import type { MigrationOp, RemovedFieldInfo, VexConfig } from "@vexcms/core";
+import type { VexConfig } from "@vexcms/core";
+import type { MigrationOp, RemovedFieldInfo } from "@vexcms/core/internal";
 import { logger } from "./logger.js";
 
 /** Options for backfilling `vex_status` on documents in versioned collections. */

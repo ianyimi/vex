@@ -84,18 +84,19 @@ export interface AdminConfig {
 /**
  * User-facing schema generation configuration for `defineConfig()`.
  *
- * Controls where generated files are written and whether automatic database
- * migrations run when the schema changes. All properties are optional; omitted
- * properties fall back to the defaults listed below.
+ * Controls where the generated `vex.schema.ts` is written. All properties are
+ * optional; omitted properties fall back to the defaults listed below.
  *
  * **Defaults applied by `defineConfig()`:**
  * ```ts
  * {
- *   outputPath:      "/convex/vex.schema.ts", // vex.schema.ts output location
- *   typesOutputPath: "/convex/vex.types.ts",  // vex.types.ts output location
- *   autoMigrate:     false,                   // no auto-migration on schema change
- *   autoRemove:      false,                   // removed tables stay in schema.ts
+ *   outputPath: "/convex/vex.schema.ts", // vex.schema.ts output location
  * }
+ * ```
+ *
+ * Automatic migration on schema change is **not implemented**. `autoMigrate` is
+ * deliberately absent from this type; passing `autoMigrate: true` through an untyped
+ * config throws at `defineConfig()` rather than silently migrating nothing.
  *
  * @see {@link SchemaConfig} for the resolved type after defaults are applied
  */
@@ -119,28 +120,25 @@ export interface SchemaConfig {
 }
 
 /**
- * User-facing schema generation configuration for `defineConfig()`.
+ * User-facing type generation configuration for `defineConfig()`.
  *
- * Controls where generated files are written and whether automatic database
- * migrations run when the schema changes. All properties are optional; omitted
- * properties fall back to the defaults listed below.
+ * Controls where the generated `vex.types.ts` is written. All properties are
+ * optional; omitted properties fall back to the defaults listed below.
  *
  * **Defaults applied by `defineConfig()`:**
  * ```ts
  * {
- *   outputPath:      "/convex/vex.schema.ts", // vex.schema.ts output location
- *   typesOutputPath: "/convex/vex.types.ts",  // vex.types.ts output location
- *   autoMigrate:     false,                   // no auto-migration on schema change
- *   autoRemove:      false,                   // removed tables stay in schema.ts
+ *   outputPath: "/src/vex.types.ts", // vex.types.ts output location
  * }
+ * ```
  *
- * @see {@link SchemaConfig} for the resolved type after defaults are applied
+ * @see {@link TypesConfig} for the resolved type after defaults are applied
  */
 export interface TypesConfigInput {
   /**
    * Path (relative to project root) where `vex.types.ts` is written.
    *
-   * Default: `"/convex/vex.schema.ts"`
+   * Default: `"/src/vex.types.ts"`
    */
   outputPath?: string;
 }

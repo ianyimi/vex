@@ -152,7 +152,7 @@ export function MediaCollectionEditView<
 
   return (
     <AppForm form={form} className="relative flex flex-col gap-4 pt-4">
-      <div className="bg-background sticky top-12 z-10 flex h-16 items-center justify-between">
+      <div className="bg-background sticky top-12 z-10 flex min-h-16 flex-wrap items-center justify-between gap-y-2">
         <h1 className="text-2xl font-bold">
           Edit {props.collection.labels.singular} -{" "}
           {/* @ts-expect-error currentDocument[props.collection.admin.useAsTitle]: string */}
@@ -161,7 +161,7 @@ export function MediaCollectionEditView<
         <form.Subscribe
           selector={(state) => state.isDefaultValue}
           children={(isDefaultValue) => (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 type="submit"
                 className="transition-all duration-300"

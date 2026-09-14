@@ -93,7 +93,7 @@ export function CreateDocumentModal<
       <DialogContent
         ref={dialogRef}
         initialFocus={dialogRef}
-        className="flex h-[50svh] w-[50svw] flex-col"
+        className="flex h-[80svh] w-full flex-col sm:h-[50svh] sm:w-[50svw]"
         onSubmitCapture={(event) => {
           if (isSubmittingRef.current) {
             event.preventDefault();

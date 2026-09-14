@@ -147,7 +147,7 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
     <div>
       <CreateMediaModal collection={collection} />
 
-      <div className="mb-6 flex items-center justify-between pt-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-y-2 pt-4">
         <div>
           <h1 className="text-2xl font-bold">{collection.labels.plural}</h1>
           <p className="text-muted-foreground mt-0.5 text-sm" suppressHydrationWarning>
@@ -186,8 +186,8 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
             onLoadMore={() => pagination.loadMore()}
             isLoadingMore={pagination.isPending}
             totalCount={pagination.totalDocs}
-            enableRowSelection
-            enableBulkActions
+            enableRowSelection={canDelete}
+            enableBulkActions={canDelete}
             entityName={props.collection.labels.plural}
             onBulkDelete={canDelete ? handleBulkDelete : undefined}
             isDeleting={deleteMediaMutation.isPending}

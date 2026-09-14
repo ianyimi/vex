@@ -1,5 +1,5 @@
-import { act, cleanup, render, renderHook, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { VexDocument } from "@vexcms/core";
@@ -7,8 +7,6 @@ import type { VexDocument } from "@vexcms/core";
 import { DataTable } from "../components/ui/data-table/DataTable";
 import { DataTableBulkActions } from "../components/ui/data-table/DataTableBulkActions";
 import { BulkDeleteModal, type BulkDeleteModalProps } from "../components/ui/data-table/DeleteManyModal";
-import { useTableSelection } from "../hooks";
-import type { UseTableSelectionReturn } from "../hooks/useTableSelection";
 
 /** One member per `ui/data-table` file this suite covers. */
 export type DataTableSuiteMember =
@@ -39,9 +37,9 @@ const COLUMNS: ColumnDef<Row>[] = [{ accessorKey: "title", header: "Title" }];
 
 /**
  * Runs the shared contract for `ui/data-table`'s three components: `DataTable`'s row/
- * header rendering, Load-More wiring, and row-selection checkbox column;
- * `DataTableBulkActions`'s selection summary wired to a real `useTableSelection`; and
- * `DeleteManyModal`'s (`BulkDeleteModal`) confirm/cancel wiring.
+ * header rendering, Load-More wiring, row-selection checkbox column, and the bulk-actions
+ * bar it renders while rows are selected; `DataTableBulkActions`'s count/callback contract;
+ * and `DeleteManyModal`'s (`BulkDeleteModal`) confirm/cancel wiring.
  *
  * @param options - Which members to run; defaults to all three.
  */
@@ -109,81 +107,115 @@ export function runDataTableSuite(options?: DataTableSuiteOptions): void {
         expect(checkboxes[1]).toBeChecked();
       });
 
-      // `DataTable`'s own bulk-delete trigger is unreachable through its rendered UI —
-      // `DataTableBulkActions` is only ever imported by this file in a commented-out
-      // block (DataTable.tsx:227-233, matching its own `@see` JSDoc: "not yet wired
-      // into this component's own selection UI"), and nothing else ever calls
-      // `setDeleteModalOpen(true)`. `handleBulkDelete`'s logic and `BulkDeleteModal`'s
-      // own confirm/cancel wiring are each covered directly by their own describe
-      // blocks below instead of through this unreachable path.
+      /**
+       * Selects the first data row through the hidden native `<input type="checkbox">` —
+       * the same jsdom `PointerEvent` gap the checkbox-column test above documents.
+       *
+       * @param container - The rendered `DataTable`'s container.
+       * @param user - The `userEvent` session to click with.
+       */
+      async function selectFirstRow(container: HTMLElement, user: UserEvent) {
+        const hiddenInputs = container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+        await user.click(hiddenInputs[1]!);
+      }
+
+      it("renders no bulk-actions bar while nothing is selected", () => {
+        render(
+          <DataTable data={ROWS} columns={COLUMNS} enableRowSelection enableBulkActions onBulkDelete={vi.fn()} />,
+        );
+        expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
+      });
+
+      it("selecting a row reveals the bar, and confirming deletes exactly the selected ids", async () => {
+        const user = userEvent.setup();
+        const onBulkDelete = vi.fn().mockResolvedValue(undefined);
+        const { container } = render(
+          <DataTable data={ROWS} columns={COLUMNS} enableRowSelection enableBulkActions onBulkDelete={onBulkDelete} />,
+        );
+        await selectFirstRow(container, user);
+        expect(screen.getByText("1 item selected")).toBeInTheDocument();
+
+        // The bar's Delete opens the modal; the modal's own Delete confirms. Both are
+        // named "Delete", so scope the second click to the alertdialog.
+        await user.click(screen.getByRole("button", { name: "Delete" }));
+        const modal = screen.getByRole("alertdialog");
+        await user.click(within(modal).getByRole("button", { name: "Delete" }));
+
+        expect(onBulkDelete).toHaveBeenCalledWith(["doc_1"]);
+        expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
+      });
+
+      it("clear drops the selection and hides the bar", async () => {
+        const user = userEvent.setup();
+        const { container } = render(
+          <DataTable data={ROWS} columns={COLUMNS} enableRowSelection enableBulkActions onBulkDelete={vi.fn()} />,
+        );
+        await selectFirstRow(container, user);
+        await user.click(screen.getByRole("button", { name: "Clear" }));
+        expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
+      });
+
+      it("renders no bar without a bulk-delete handler, even with bulk actions enabled", async () => {
+        const user = userEvent.setup();
+        const { container } = render(
+          <DataTable data={ROWS} columns={COLUMNS} enableRowSelection enableBulkActions />,
+        );
+        await selectFirstRow(container, user);
+        expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+      });
     });
   }
 
   if (only.includes("DataTableBulkActions")) {
     describe("DataTableBulkActions", () => {
       /**
-       * Runs a real `useTableSelection` through zero or more mutating `steps`, each in
-       * its own `act()` — `toggleRow`/`toggleInverseMode` close over `mode` from the
-       * render that created them, so two calls batched into one `act()` would both see
-       * the pre-update `mode` and only the last write would win — then renders
-       * `DataTableBulkActions` against the resulting state.
+       * Renders the bar with spies for both callbacks.
        *
-       * @param steps - Mutating calls against the live selection, applied in order.
-       * @returns The final selection state, an `onDelete` spy, and `rerender` for
-       *   re-rendering after further state changes.
+       * @param props - Per-test overrides; `selectedCount` defaults to 1.
+       * @returns The `onDelete` and `onClear` spies.
        */
-      function renderWithSelection(
-        ...steps: Array<(selection: UseTableSelectionReturn) => void>
-      ) {
-        const hook = renderHook(() => useTableSelection({ totalCount: ROWS.length }));
-        for (const step of steps) {
-          act(() => step(hook.result.current));
-        }
+      function renderBar(props: { selectedCount?: number; isDeleting?: boolean } = {}) {
         const onDelete = vi.fn();
-        const view = render(
-          <DataTableBulkActions selection={hook.result.current} onDelete={onDelete} />,
+        const onClear = vi.fn();
+        render(
+          <DataTableBulkActions
+            selectedCount={props.selectedCount ?? 1}
+            onDelete={onDelete}
+            onClear={onClear}
+            isDeleting={props.isDeleting}
+          />,
         );
-        return { hook, onDelete, rerender: view.rerender };
+        return { onDelete, onClear };
       }
 
-      it("renders nothing when no rows are selected", () => {
-        renderWithSelection();
+      it("renders nothing when selectedCount is 0", () => {
+        renderBar({ selectedCount: 0 });
         expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
       });
 
-      it("pluralizes the selection count and shows the (all in table) qualifier in all mode", () => {
-        renderWithSelection((selection) => selection.toggleSelectAll());
-        expect(screen.getByText(`${ROWS.length} items selected`)).toBeInTheDocument();
-        expect(screen.getByText("(all in table)")).toBeInTheDocument();
-      });
-
-      it("shows the (inverse mode) qualifier for exactly one excluded item", () => {
-        renderWithSelection(
-          (selection) => selection.toggleInverseMode(),
-          (selection) => selection.toggleRow("doc_1"),
+      it("singularizes at 1 and pluralizes above", () => {
+        const { rerender } = render(
+          <DataTableBulkActions selectedCount={1} onDelete={vi.fn()} onClear={vi.fn()} />,
         );
-        expect(screen.getByText("(inverse mode)")).toBeInTheDocument();
+        expect(screen.getByText("1 item selected")).toBeInTheDocument();
+        rerender(<DataTableBulkActions selectedCount={3} onDelete={vi.fn()} onClear={vi.fn()} />);
+        expect(screen.getByText("3 items selected")).toBeInTheDocument();
       });
 
-      it("calls onDelete when Delete is clicked and clearSelection when Clear is clicked", async () => {
+      it("calls onDelete from Delete and onClear from Clear", async () => {
         const user = userEvent.setup();
-        const { hook, onDelete, rerender } = renderWithSelection((s) => s.selectPage(["doc_1"]));
-        await user.click(screen.getByRole("button", { name: /Delete/ }));
+        const { onDelete, onClear } = renderBar();
+        await user.click(screen.getByRole("button", { name: "Delete" }));
         expect(onDelete).toHaveBeenCalledTimes(1);
-
-        await user.click(screen.getByRole("button", { name: /Clear/ }));
-        // `clearSelection` updated the hook's OWN state, not the already-rendered
-        // component's props — re-render with the fresh `hook.result.current` to see it.
-        rerender(<DataTableBulkActions selection={hook.result.current} onDelete={onDelete} />);
-        expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Clear" }));
+        expect(onClear).toHaveBeenCalledTimes(1);
       });
 
       it("disables both buttons while isDeleting is true", () => {
-        const { result } = renderHook(() => useTableSelection({ totalCount: ROWS.length }));
-        act(() => result.current.selectPage(["doc_1"]));
-        render(<DataTableBulkActions selection={result.current} onDelete={vi.fn()} isDeleting />);
-        expect(screen.getByRole("button", { name: /Delete/ })).toBeDisabled();
-        expect(screen.getByRole("button", { name: /Clear/ })).toBeDisabled();
+        renderBar({ isDeleting: true });
+        expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+        expect(screen.getByRole("button", { name: "Clear" })).toBeDisabled();
       });
     });
   }
