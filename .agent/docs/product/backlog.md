@@ -125,12 +125,22 @@ reachable from a Client Component subtree (not passed down as pre-rendered
 at the moment`, plus a `suspended by an uncached promise` warning per call
 (`highlightCode(...)` creates a fresh, uncached promise every invocation).
 
-**Why.** Confirmed non-fatal today — loaded the dev server and both code panes
-on `/` render fully, correctly highlighted (verified in the DOM). It works
-because the first render happens during SSR, before hydration. React's own
-wording ("not yet supported **at the moment**") flags this as a real crack
-that a future React/Next upgrade could turn into an actual failure, not a
-false alarm.
+**Why.** **Now fatal, not a crack (2026-09-14).** Non-fatal only while the first
+render is SSR: the moment the live `useQuery` in `PageContent` delivers a
+document whose `split` or `code_showcase` block differs from the prerendered
+one — a reseed, or any admin edit to a code block while a visitor has the page
+open — React re-renders the async `CodePane` inside the client tree and throws
+**React error #482** ("An unknown Component is an async Client Component"),
+crashing every open tab ~2s after hydration. Reproduced on production after
+`seed:reinit` swapped the home page onto the Split block; a Vercel rebuild
+"fixes" it only because it bakes the new block into the static HTML, until the
+next live change. Note this also means the live-reactivity that motivated
+deferring the fix never actually worked for code panes. Diagnosis:
+`.agent/docs/session-log/2026/09/2026-09-14.log.md`.
+
+**Scope note.** Entirely an `apps/www` (a user project) defect — `RenderBlocks`
+dispatches correctly and nothing in `packages/*` is involved. Workaround until
+fixed: do not edit code blocks in the admin while the site has visitors.
 
 **Lift.** ~6 files in `apps/www` — `CodePane.tsx` (drop `async`, accept
 pre-rendered `html` instead of `code`+`language`), `CodeShowcase/index.tsx`
@@ -461,3 +471,17 @@ being reconsidered anyway.
 
 **Detail.** `packages/react/src/components/fields/*/Cell.tsx` `isTitleField` branch;
 audit JSON above.
+
+---
+
+## Type generation and schema generation are separate code paths
+
+**What.** `generateVexTypes.ts` and `generateVexSchema.ts` walk the field tree independently, so a new field type (or a change to a composite one) can produce a `vex.types.ts` shape that disagrees with `vex.schema.ts`. The last divergence was the cut `tabs` field emitting `Record<string, unknown>` in types but a nested object in the schema, which broke autocomplete in access rules.
+
+**Why.** Every field type added on the launch track (`richtext`, later `json`/`email`/`textarea`) has to be implemented twice and can drift silently.
+
+**Lift.** Unassessed. Either derive `vex.types.ts` from the generated Convex schema, or unify both generators into one walk emitting both outputs.
+
+**Why deferred.** Carried over from a retired Claude Code memory note (`project_type_schema_unification.md`) during the 2026-09-14 repo cleanup; no spec has picked it up. The per-field `validator.test.ts` / `inputSchema.test.ts` pairs are the current guard.
+
+**Detail.** `packages/core/src/schema/generateVexSchema.ts`, `packages/core/src/types/generateVexTypes.ts`.

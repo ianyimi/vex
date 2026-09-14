@@ -103,8 +103,8 @@ rules:
     pattern: '^[A-Za-z][A-Za-z0-9-]*\.(mjs|sh)$'
     scope: ["scripts/**/*.mjs", "scripts/**/*.sh"]
     description: Build/utility scripts are kebab-case .mjs (node) or .sh (shell).
-    examples: ["scripts/vex-dev.mjs", "scripts/reset-packages.mjs", "scripts/rebuild-reset.sh"]
-    counter_examples: ["scripts/vexDev.mjs", "scripts/rebuild_reset.sh"]
+    examples: ["scripts/vex-dev.mjs", "scripts/verify-scaffold.mjs", "scripts/template-diff.mjs"]
+    counter_examples: ["scripts/vexDev.mjs", "scripts/verify_scaffold.mjs"]
   - id: docs-content-kebab
     pattern: '^[a-z0-9]+(-[a-z0-9]+)*\.(mdx|md)$'
     scope: ["apps/docs/src/content/docs/*.md", "apps/docs/src/content/docs/*.mdx", "apps/docs/src/content/docs/guides/**", "apps/docs/src/content/docs/fields/**"]

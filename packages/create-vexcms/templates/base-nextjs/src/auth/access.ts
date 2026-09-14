@@ -11,8 +11,16 @@ import { images, users } from "~/vexcms/collections"
  * Access control (RBAC) for the admin panel and every registered collection.
  *
  * `admin` gets unrestricted access. `user` can read and update only their own
- * profile row and cannot reach the admin panel. Add a resource here whenever
- * you register a new collection in `vex.config.ts`.
+ * profile row, cannot reach the admin panel, and can read `images`. Add a
+ * resource here whenever you register a new collection in `vex.config.ts`.
+ *
+ * `anonRole: user` also covers every unauthenticated public-site request,
+ * including the build-time metadata fetch. `images.read` is what lets the
+ * public site show uploaded media at all: `MediaImage` and
+ * `src/lib/metadata.ts` resolve uploads through the RBAC-gated
+ * `vex/media:getUrl`, so without it anonymous visitors get no images and the
+ * page ships no `og:image`. Narrow it with a `constraints` rule if some media
+ * must stay private; do not remove it.
  *
  * @see https://vexcms.dev/docs/access-control
  */
@@ -31,6 +39,10 @@ export const access = defineAccess({
       "*": false,
       adminPanel: {
         access: false,
+      },
+      images: {
+        "*": false,
+        read: true,
       },
       user: {
         "*": false,

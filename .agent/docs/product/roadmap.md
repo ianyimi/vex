@@ -5,7 +5,7 @@
 > is what you follow to ship. This file holds milestone framing and the
 > post-launch vision.
 >
-> Source of truth for migration readiness: `maprios-migration-todo.md`
+> Source of truth for migration readiness: `../research/legacy-planning/maprios-migration-todo.md`
 > (verified against package source 2026-08-04).
 
 ## Milestone 1 — v0.1.0 launch track
@@ -68,7 +68,7 @@ Pure content/component work once Milestone 1 lands:
 
 ## Long-term vision (post-launch)
 
-> Sources: `roadmap.md` (monetization strategy v2),
+> Sources (in `../research/legacy-planning/`): `roadmap-monetization-strategy-v2.md`,
 > `v0.1.0-launch-roadmap.md` "Post-v1 Backlog", `multi-component-architecture.md`.
 
 **License / monetization:** Apache-2.0 core forever (all fields, admin panel, CLI, drafts, RBAC,
