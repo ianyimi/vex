@@ -1,13 +1,14 @@
-import type { Metadata } from "next"
+import type { Metadata } from "next";
 
-import "./globals.css"
+import "./globals.css";
 
-import { ThemeScript } from "@vexcms/react"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Analytics } from "@vercel/analytics/next";
+import { ThemeScript } from "@vexcms/react";
+import { Geist, Geist_Mono } from "next/font/google";
 
-import ClientProviders from "~/components/providers/client"
-import ServerProviders from "~/components/providers/server"
-import { ThemeLive } from "~/components/ThemeLive"
+import ClientProviders from "~/components/providers/client";
+import ServerProviders from "~/components/providers/server";
+import { ThemeLive } from "~/components/ThemeLive";
 
 /**
  * Geist carries the whole type system — display through body — so weight is
@@ -24,14 +25,14 @@ const geistSans = Geist({
   subsets: ["latin"],
   variable: "--font-sans",
   weight: ["400", "500", "600", "700", "800"],
-})
+});
 
 const geistMono = Geist_Mono({
   display: "swap",
   subsets: ["latin"],
   variable: "--font-geist-mono",
   weight: ["400", "500"],
-})
+});
 
 /**
  * `icons.icon` lists the SVG first: browsers pick the last format they
@@ -50,12 +51,12 @@ export const metadata: Metadata = {
     ],
   },
   title: "VexCMS",
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html
@@ -79,7 +80,8 @@ export default function RootLayout({
             {children}
           </ClientProviders>
         </ServerProviders>
+        <Analytics />
       </body>
     </html>
-  )
+  );
 }
