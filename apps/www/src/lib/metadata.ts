@@ -95,8 +95,15 @@ export async function generatePageMetadata(props: { slug?: string }): Promise<Me
       title,
     }
 
-    if (twitterHandle) {
-      metadata.twitter = { card: "summary_large_image", site: twitterHandle }
+    // Discord, Slack and X pick the large-image layout from `twitter:card`, not
+    // from `og:image` alone — and Next auto-fills `card: "summary"` (a small
+    // thumbnail) whenever `twitter` is omitted. So the card type must be emitted
+    // whenever an image resolved, independently of whether a handle exists.
+    if (ogImageUrl || twitterHandle) {
+      metadata.twitter = {
+        card: ogImageUrl ? "summary_large_image" : "summary",
+        ...(twitterHandle ? { site: twitterHandle } : {}),
+      }
     }
 
     return metadata

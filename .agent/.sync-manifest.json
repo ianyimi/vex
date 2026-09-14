@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at_sha": "a180967599b2dd045bd6591f4bfb065964a3b7dc",
+  "generated_at_sha": "9c9cca5126d0a4778ed1515553e48241ddd7e3bf",
   "entries": [
     {
       "path": ".agent/context-rules.yaml",
@@ -9,130 +9,10 @@
       "platform": "core"
     },
     {
-      "path": ".claude/CLAUDE.md",
-      "kind": "generated",
-      "target_or_hash": "33eb6e909502563f52ad5f03ff78bfed316f83931d4d59ebd6677f556475fa33",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/commit.md",
-      "kind": "generated",
-      "target_or_hash": "b0ea9a09d3c9c0d1683832a26a0a07885c521ec503311dc60f7994ddf706b24e",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/critique.md",
-      "kind": "generated",
-      "target_or_hash": "5ed4d4b310fcd912cd373c75bab2af8579892ba697f16ecef2995b5b90c82d84",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/debug.md",
-      "kind": "generated",
-      "target_or_hash": "78d08345ce7c14e309b3d0b8829a6d50d40f8f707ed9489da402f7279415d6ac",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/dev-spec.md",
-      "kind": "generated",
-      "target_or_hash": "6c5c79b7e2d29ef9a77a7f2b756e9a5d3120464d759077aea7cb0ec3ce40ec59",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/document.md",
-      "kind": "generated",
-      "target_or_hash": "96fb6a5dff16b57526c072b332084c33f5bd0e634b32bd5215782efffae092ed",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/harness-advisor.md",
-      "kind": "generated",
-      "target_or_hash": "b694eaa02108fd39237cd3a720c009983e1e9b3468632e9a7a7cd4cf5396e845",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/harness-config.md",
-      "kind": "generated",
-      "target_or_hash": "70187c5d75172f6db7a9647e60e53ccb834ee489b353649162f3569d8fed1428",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/harness-init.md",
-      "kind": "generated",
-      "target_or_hash": "079f8639b4b38f226c7ef08063591d293e8b138c4e86d7d2e23dac187e2d2bca",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/harness-pull.md",
-      "kind": "generated",
-      "target_or_hash": "8ec83c8834eeecc77fdf1d82a19d84ea0fcffb728fa2ccc5a0feec25619bd10c",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/implement.md",
-      "kind": "generated",
-      "target_or_hash": "5d4a17f9524d4d203cd252a49013a2e1e677eacfbed7040cd6a34ce4bd90341a",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/learn.md",
-      "kind": "generated",
-      "target_or_hash": "25cdc27d10ec081e2299e99649d09b07022fc294f21a6bd215fd1240dc06551d",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/polish.md",
-      "kind": "generated",
-      "target_or_hash": "d80fc327460ba800840f2660ba71f78bc913c96a7af87537120b081f6ecea8b5",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/research.md",
-      "kind": "generated",
-      "target_or_hash": "0c3db0936ab6101da39e16fbcb46ddae1ffda833ba97127dcdba83b5837471d8",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/resume-session.md",
-      "kind": "generated",
-      "target_or_hash": "8b70dd63dba0bcf40410323be4713fc841d8304bf1dbaefdcb302f007b1cd34a",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/summary-prompt.md",
-      "kind": "generated",
-      "target_or_hash": "b8fd812eb917ad6c9fca6eb078786db97f23ac21054306e5956c6660d6d55c64",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/sync-spec.md",
-      "kind": "generated",
-      "target_or_hash": "fa777558d715008acc45c505ffc6ef35ef219b12902128bd94f1210c049ac0bb",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/commands/template-sync.md",
-      "kind": "generated",
-      "target_or_hash": "683b30f789199519a28092ab11f815d37edd0a1cf944666caeddcb1e7ac14f09",
-      "platform": "claude"
-    },
-    {
-      "path": ".claude/settings.json",
-      "kind": "generated",
-      "target_or_hash": "5658ee03aeddd930e1cd4bcdd243aaaa087aad29e44b5aa0a21bacaee5cd96e3",
-      "platform": "claude"
-    },
-    {
       "path": ".gitignore#.agent/dependencies/*",
       "kind": "gitignore-line",
       "target_or_hash": ".agent/dependencies/*",
       "platform": "core"
-    },
-    {
-      "path": ".gitignore#.claude/",
-      "kind": "gitignore-line",
-      "target_or_hash": ".claude/",
-      "platform": "claude"
     },
     {
       "path": ".gitignore#.omp/",

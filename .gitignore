@@ -49,6 +49,5 @@
 
 # >>> harness (managed by `harness sync`) >>>
 .agent/dependencies/*
-.claude/
 .omp/
 # <<< harness <<<

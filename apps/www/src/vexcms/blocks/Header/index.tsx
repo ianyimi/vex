@@ -21,8 +21,8 @@ import type { HeaderBlock } from "~/vex.types"
 import { AdminDemoButton } from "~/components/AdminDemoButton"
 import { BrandMark } from "~/components/BrandMark"
 import { Container } from "~/components/Container"
-import { LogoutButton } from "~/components/LogoutButton"
 import { MediaImage } from "~/components/MediaImage"
+import { SessionButton } from "~/components/SessionButton"
 
 export { headerBlock } from "./config"
 
@@ -133,34 +133,35 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {actions.length > 0 ? (
-            <div className={cn("items-center gap-2", navClass)}>
-              {actions.map((action) => (
-                <Link
-                  className={cn(
-                    buttonVariants({
-                      size: "sm",
-                      variant:
-                        (action.variant?.[0]) ??
-                        "default",
-                    }),
-                    "active:translate-y-px"
-                  )}
-                  href={action.href}
-                  key={`${action.label}-${action.href}`}
-                >
-                  {action.label}
-                </Link>
-              ))}
-            </div>
-          ) : null}
+          {/* The session control leads the row and always occupies its slot
+              (disabled → Sign in / Sign out), so the seeded actions after it
+              never shift once `useSession` resolves. */}
+          <div className={cn("items-center gap-2", navClass)}>
+            <SessionButton />
+            {actions.map((action) => (
+              <Link
+                className={cn(
+                  buttonVariants({
+                    size: "sm",
+                    variant:
+                      (action.variant?.[0]) ??
+                      "default",
+                  }),
+                  "active:translate-y-px"
+                )}
+                href={action.href}
+                key={`${action.label}-${action.href}`}
+              >
+                {action.label}
+              </Link>
+            ))}
+          </div>
 
           {/* Template affordance, not part of the marketing design: a direct
               route into the panel even when the seeded nav does not list one.
               Visible to everyone — the panel itself is read-only for anyone
               without an admin role. */}
           <AdminDemoButton className={navClass} />
-          <LogoutButton className={navClass} />
 
           {items.length > 0 || actions.length > 0 ? (
             <Sheet onOpenChange={setIsMenuOpen} open={isMenuOpen}>
@@ -196,6 +197,7 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
                     when the seeded header carries no action buttons. */}
                 <Separator className="my-4" />
                 <div className="flex flex-col gap-2 px-2 pb-2">
+                  <SessionButton className="w-full" size="default" />
                   {actions.map((action) => (
                     <Link
                       className={cn(
@@ -213,7 +215,6 @@ export default function HeaderBlockRenderer({ block }: BlockComponentProps) {
                     </Link>
                   ))}
                   <AdminDemoButton className="w-full" size="default" />
-                  <LogoutButton className="w-full" size="default" />
                 </div>
               </SheetContent>
             </Sheet>

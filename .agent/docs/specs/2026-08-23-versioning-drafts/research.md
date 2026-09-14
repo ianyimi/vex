@@ -19,7 +19,7 @@ Your most detailed existing plan. Written for the old `master`/`test-app` archit
 - Queries: `getDocumentForEdit`, `listVersions`
 - Admin UI: `StatusBadge`, `VersionHistoryDropdown`, `useAutosave`, updated `CollectionEditView`
 
-### Reference implementation (`.rebuild/reference/core-convex/`)
+### Reference implementation (`reference/core-convex/`)
 
 The actual code that ran in production on master. Has several meaningful differences from the archive spec (see next section). Key files:
 
@@ -259,10 +259,10 @@ Expected to be the largest spec to date. Rough breakdown:
 ## References
 
 - `specs/archive/07-versioning-drafts-spec.md` — original detailed spec (old arch)
-- `.rebuild/reference/core-convex/vexQuery.ts` — `createVexQuery` + `VexDraftsMode` implementation
-- `.rebuild/reference/core-convex/previewSnapshot.ts` — `upsertPreviewSnapshot` / `getPreviewSnapshot`
-- `.rebuild/reference/core-convex/model/collections.ts` — `getDocument` with preview flag
-- `.rebuild/reference/core-valueTypes/generate.ts` — `vex_status` on all tables, `vex_versions` always generated
+- `reference/core-convex/vexQuery.ts` — `createVexQuery` + `VexDraftsMode` implementation
+- `reference/core-convex/previewSnapshot.ts` — `upsertPreviewSnapshot` / `getPreviewSnapshot`
+- `reference/core-convex/model/collections.ts` — `getDocument` with preview flag
+- `reference/core-valueTypes/generate.ts` — `vex_status` on all tables, `vex_versions` always generated
 - `specs/35-globals-system/spec.md` — globals draft scaffolding (Step 9 wires `GlobalEditView` toolbar)
 - `product/roadmap.md` — Spec 07 note on `environmentId` future-proofing
 - `product/v0.1.0-launch-roadmap.md` — M3 (`_vexDrafts` arg in generated queries, live preview)
