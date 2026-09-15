@@ -165,11 +165,15 @@ runFieldInputContractSuite({
           expect(screen.getByText("Alpha")).toBeInTheDocument();
           expect(screen.getByText("Charlie")).toBeInTheDocument();
 
-          await waitFor(() => expect(screen.queryByText("Alpha")).not.toBeInTheDocument(), {
-            timeout: 2000,
+          // Same settle, same reason it must be one wait: the narrowed result
+          // set replaces the placeholder in a single commit. The explicit
+          // `timeout: 2000` this used to carry is now the suite-wide
+          // `asyncUtilTimeout` in `testing/setup.ts`.
+          await waitFor(() => {
+            expect(screen.getByText("Bravo")).toBeInTheDocument();
+            expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+            expect(screen.queryByText("Charlie")).not.toBeInTheDocument();
           });
-          expect(screen.getByText("Bravo")).toBeInTheDocument();
-          expect(screen.queryByText("Charlie")).not.toBeInTheDocument();
         });
 
         test("non-searchable branch: when the target collection's useAsTitle is a system field, the picker lists via find() and ignores the search text", async () => {
@@ -226,8 +230,17 @@ runFieldInputContractSuite({
           const search = screen.getByPlaceholderText(/search document/i);
           await user.type(search, "no-such-document-exists");
 
-          expect(await screen.findByText("No documents found")).toBeInTheDocument();
-          expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+          // One wait covering BOTH halves of the settle. The picker keeps the
+          // previous result set on screen while the new query is in flight
+          // (`placeholderData: keepPreviousData` in `useRelationshipPickerOptions`),
+          // so "Alpha" disappearing and "No documents found" appearing are the
+          // same commit — asserting the second one synchronously after awaiting
+          // the first passed only because that commit happened to land between
+          // them.
+          await waitFor(() => {
+            expect(screen.getByText("No documents found")).toBeInTheDocument();
+            expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+          });
         });
       });
 

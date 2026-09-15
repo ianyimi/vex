@@ -29,10 +29,6 @@ export const createPlugins = () => [
   }),
   anonymous(),
   organization({
-    // Both halves of the org wiring come from the shared descriptor: `teams`
-    // decides whether the `team`/`teamMember` tables exist, so reading it here
-    // keeps the live adapter and the admin panel's declared collections from
-    // drifting (`defineServerConfig` throws when they do).
     teams: { enabled: authSchema.plugins.organization.teams },
     schema: authSchema.plugins.organization.schema,
   }),

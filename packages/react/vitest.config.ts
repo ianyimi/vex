@@ -9,6 +9,12 @@ export default defineConfig({
     // needs. Same module consumers point their own `setupFiles` at.
     setupFiles: ["./src/testing/setup.ts"],
     passWithNoTests: true,
+    // Above `setup.ts`'s 3000ms `asyncUtilTimeout` so a wait that never settles
+    // fails with Testing Library's message naming the element it could not find,
+    // instead of vitest's generic "Test timed out in 5000ms" — which hides WHAT
+    // was being waited on. Not a licence for slow tests: the suite's slowest
+    // file is ~5s for 39 tests, so nothing legitimately approaches this.
+    testTimeout: 15000,
     coverage: {
       // Deliberately NOT `enabled: true`. Coverage belongs to the `coverage`
       // script (which passes `--coverage`) and to turbo's `coverage` task,
