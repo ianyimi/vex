@@ -22,6 +22,7 @@
     "anon-constraint-fail-closed",
     "anon-role-hardening-and-docs-cleanup",
     "bulk-selection-reachable",
+    "config-client-server-split",
     "core-label-singularization",
     "defer-auto-migration",
     "field-level-permissions",
