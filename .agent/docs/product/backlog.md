@@ -435,13 +435,18 @@ core-invariant change is worth it. The three `ui()` call sites in the master
 template were the theme-import affordance and were dropped outright; the single
 `tabs` call site was substituted with `group`.
 
-**Why deferred.** Cut with reason in the launch-readiness spec (decision D8) and
-re-ratified for the v0.1.0 track in `v0.1.0-launch-plan.md`'s non-goals. A field
+**Why deferred.** Cut from the v0.1.0 track in the launch-readiness spec
+(decision D8) and re-ratified in `v0.1.0-launch-plan.md`'s non-goals. A field
 type that rewrites three pipelines is not a polish item and should not ride along
 behind a release. `textarea`, `email`, and `json` are genuine leaf fields and are
-the cheap way to raise the field count — they are on the public roadmap as
-Planned, while `ui`/`tabs` are published under **Not planned** so users stop
-asking.
+the cheap way to raise the field count, so they come first.
+
+**Published status: Planned, not excluded** (corrected 2026-09-15 — the docs
+roadmap had them under **Not planned**, contradicting
+`apps/docs/src/content/docs/fields/coming-soon.mdx`, which lists both as
+near-term field types). Deferred past v0.1.0 is not the same as declined; the
+roadmap says so explicitly, with the core-invariant cost named as the reason
+they are scheduled behind the leaf fields.
 
 **Detail.** Decision D8 and the Non-goals section of
 `.agent/docs/specs/2026-08-30-launch-readiness/spec.md`; the API-delta table in
@@ -485,3 +490,22 @@ audit JSON above.
 **Why deferred.** Carried over from a retired Claude Code memory note (`project_type_schema_unification.md`) during the 2026-09-14 repo cleanup; no spec has picked it up. The per-field `validator.test.ts` / `inputSchema.test.ts` pairs are the current guard.
 
 **Detail.** `packages/core/src/schema/generateVexSchema.ts`, `packages/core/src/types/generateVexTypes.ts`.
+
+---
+
+## Multi-adapter media collections
+
+**What.** Allow a single media collection to route uploads to multiple storage adapters (e.g.,
+local dev to file-storage-local, prod to Convex).
+
+**Why.** Current implementation routes by collection slug at
+`packages/core/src/media/api/mutations.ts:57,113`; supporting multiple adapters per collection
+requires per-document adapter routing and a new `meta.storageAdapterForDocument` field or
+similar to guide the client uploader.
+
+**Lift.** Unassessed.
+
+**Why deferred.** Low priority; the current single-adapter-per-collection model has proved
+workable in practice.
+
+**Detail.** `packages/core/src/media/api/mutations.ts:57,113`.

@@ -142,7 +142,7 @@ const ALL_SECTIONS: readonly VexSuiteSection[] = [
  *   `defineAccess()` result). `CollectionConfig` carries no `access` field of
  *   its own — RBAC is a separate, global matrix keyed by resource slug — so
  *   this cannot be threaded into the field-input loop above; instead it is
- *   proven directly against the real `VexAccessProvider` via
+ *   proven directly against the real `VexConfigProvider` via
  *   `renderWithVexProviders`, giving a project a falsifiable check that its
  *   own access config resolves outside a hand-typed stub. Also forwarded to
  *   `runShellSuite`, `runViewSuite`, `runModalSuite` and `runMediaSuite` — each accepts
@@ -160,7 +160,7 @@ export function runVexReactSuite(options?: {
   if (sections.includes("shell")) {
     if (access) {
       describe("runVexReactSuite — access config", () => {
-        it("resolves the provided VexAccessConfig inside the real VexAccessProvider", () => {
+        it("resolves the provided VexAccessConfig inside the real VexConfigProvider", () => {
           const { container, unmount } = renderWithVexProviders(null, { access });
           expect(container).toBeTruthy();
           unmount();

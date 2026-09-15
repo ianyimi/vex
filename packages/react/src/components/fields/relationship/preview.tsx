@@ -9,11 +9,8 @@ import type { ComponentType } from "react";
  * Resolves which preview component to use for a relationship rendering context.
  *
  * Precedence: field-level override, else the default text preview. Target
- * collections do not support their own preview override — `targetCollection`
- * is sourced from the sanitized `ClientVexConfig` (`sanitizeConfigForClient`
- * strips every function, including component references, before the config
- * reaches the client), so a collection-level `admin.components.preview`
- * could never resolve to a real component in the browser. The default
+ * collections do not support their own preview override — only the field's
+ * `admin.components.preview` is consulted. The default
  * renders `doc[useAsTitle] ?? doc._id` as plain text, cut at 77 characters
  * with the full label on `title`.
  *

@@ -77,10 +77,11 @@ see `convex/vex/firstUser.ts`. From there, "Go to Admin Panel" opens `/admin`.
 │   ├── auth/                   # Auth client + server helpers, access control
 │   ├── components/             # React components
 │   ├── vexcms/collections/     # Collection definitions
-│   ├── vex.config.ts           # VexCMS config
+│   ├── vex.config.ts           # VexCMS client config (collections, globals, access)
+│   ├── vex.config.server.ts    # VexCMS server config (auth adapter, storage adapters)
 │   └── env.mjs                 # Typed environment variables
 ├── convex/                     # Convex backend
-│   ├── auth/                   # Better Auth config + plugins
+│   ├── auth/                   # Better Auth config + plugins (schema.ts, options.ts)
 │   ├── vex/                    # Bootstrap, media, globals endpoints
 │   └── schema.ts               # Database schema
 └── .env.local                  # Environment variables (not committed)

@@ -1,4 +1,4 @@
-import { defineMediaCollection } from "@vexcms/file-storage-convex";
+import { defineMediaCollection } from "@vexcms/file-storage-convex/client";
 
 import { TABLE_SLUG_IMAGES } from "~/db/constants";
 

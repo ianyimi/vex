@@ -6,12 +6,14 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ADMIN_FIELDS,
   adminFieldToInputSchema,
+  defineCollection,
+  defineConfig,
   text,
-  type ClientVexConfig,
-  type MediaCollectionConfig,
   type AdminField,
   type CollectionConfig,
+  type VexClientConfig,
 } from "@vexcms/core";
+import { defineMediaCollection } from "@vexcms/file-storage-convex/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
@@ -117,26 +119,16 @@ const AppFormBoundary = AppForm as unknown as ComponentType<{
  * `collections` carries the relationship fixture's target slug; `mediaCollections`
  * carries the upload fixture's `to` slug.
  */
-const stubClientConfig = {
+const stubClientConfig: VexClientConfig = defineConfig({
   collections: [
-    {
+    defineCollection({
       slug: "documents",
       fields: { title: text({ required: false }) },
-      labels: { singular: "Document", plural: "Documents" },
-      admin: { useAsTitle: "title", components: {} },
-    },
+      admin: { useAsTitle: "title" },
+    }),
   ],
-  mediaCollections: [
-    {
-      slug: "images",
-      fields: { alt: text({ required: false }), filename: text({ required: false }) },
-      labels: { singular: "Image", plural: "Images" },
-      admin: { useAsTitle: "_id", components: {} },
-      meta: { storageAdapter: "convex" },
-    } as unknown as MediaCollectionConfig,
-  ],
-  globals: [],
-} as unknown as ClientVexConfig;
+  mediaCollections: [defineMediaCollection({ slug: "images" })],
+});
 
 /** The `form.defaultValues` key every mounted field is registered under. */
 const FIELD_NAME = "testField";

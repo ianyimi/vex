@@ -2,7 +2,7 @@
 
 import { canAccessAdminPanel } from "@vexcms/core";
 
-import { useVexAccess } from "../context/VexAccessContext";
+import { useVexAccess } from "../context/VexConfigContext";
 import { useVexAuth } from "../context/VexAuthContext";
 
 /**
@@ -31,7 +31,7 @@ export function useCanAccessAdminPanel(): boolean {
   // that legitimately means "RBAC is not configured for this project".
   //
   // In the client the same absence means something else entirely — no
-  // `VexAccessProvider` is mounted on this route, which is the normal state of
+  // `VexConfigProvider` (carrying `access`) is mounted on this route, which is the normal state of
   // every public page. Deferring to `hasPermission` there renders an "Admin"
   // link for anonymous visitors. Absence of information is not permission.
   if (!access || !user) return false;

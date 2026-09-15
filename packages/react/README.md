@@ -40,8 +40,10 @@ Pre-built views and layout used by the generated admin panel:
 
 | Export | Description |
 |--------|-------------|
-| `VexConfigContext` / `useVexConfig` | Access the resolved VexCMS config |
-| `VexAccessProvider` / `useVexAuth` | Auth/session context for the admin panel |
+| `VexConfigContext` / `VexConfigProvider` / `useVexConfig` | Mounts and reads the resolved client-safe VexCMS config — the single provider a project mounts around its admin route; replaces the old separate access/storage providers |
+| `useVexAccess` | Read the `access` config off `useVexConfig()` |
+| `useStorageAdapterMap` | Read the `storage.clientUploads` map off `useVexConfig()` |
+| `VexAuthProvider` / `useVexAuth` | Auth/session context for the admin panel |
 | `useCanAccessAdminPanel` | Check whether the current user may access the admin panel |
 | `usePermission` | Check a specific permission |
 | `useFieldPermissions` | Resolve which fields of a resource + action the current user may touch |
@@ -49,7 +51,6 @@ Pre-built views and layout used by the generated admin panel:
 | `useLiveFieldMerge` | Keep a form's untouched fields in sync with the live document while editing |
 | `usePaginatedQuery` | Convex paginated query hook used by list views |
 | `useModalSurface` / `ModalSurfaceProvider` | Shared modal stacking/state |
-| `StorageAdapterContextProvider` | Provides the configured file-storage adapter |
 
 ## RenderBlocks
 

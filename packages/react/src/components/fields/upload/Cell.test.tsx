@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { TDocument, VexMediaDocument } from "@vexcms/core";
 import { get } from "@vexcms/core/client";
 import type { GenericId } from "convex/values";
-import { makeCellRow, runFieldCellContractSuite } from "../../../testing/fieldCellContract";
+import { makeCellRow, runFieldCellContractSuite, withCellConfig } from "../../../testing/fieldCellContract";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { UploadFieldCell } from "./Cell";
 import { uploadFieldFixture } from "./testFixture";
@@ -43,16 +43,18 @@ runFieldCellContractSuite({
         });
         const row = makeCellRow<TDocument>({ fieldKey: "field", value: options.fixture.valid });
         render(
-          <QueryClientProvider client={queryClient}>
-            <UploadFieldCell
-              value={options.fixture.valid}
-              row={row}
-              fieldDef={options.fixture.fieldDef}
-              fieldKey="field"
-              isTitleField={false}
-              collection={collection}
-            />
-          </QueryClientProvider>,
+          withCellConfig(
+            <QueryClientProvider client={queryClient}>
+              <UploadFieldCell
+                value={options.fixture.valid}
+                row={row}
+                fieldDef={options.fixture.fieldDef}
+                fieldKey="field"
+                isTitleField={false}
+                collection={collection}
+              />
+            </QueryClientProvider>,
+          ),
         );
         expect(screen.getByText("Loading...")).toBeInTheDocument();
       });
@@ -73,16 +75,18 @@ runFieldCellContractSuite({
         const value = ["images_1", "images_2"];
         const row = makeCellRow<TDocument>({ fieldKey: "field", value });
         render(
-          <QueryClientProvider client={queryClient}>
-            <UploadFieldCell
-              value={value}
-              row={row}
-              fieldDef={options.fixture.fieldDef}
-              fieldKey="field"
-              isTitleField={false}
-              collection={collection}
-            />
-          </QueryClientProvider>,
+          withCellConfig(
+            <QueryClientProvider client={queryClient}>
+              <UploadFieldCell
+                value={value}
+                row={row}
+                fieldDef={options.fixture.fieldDef}
+                fieldKey="field"
+                isTitleField={false}
+                collection={collection}
+              />
+            </QueryClientProvider>,
+          ),
         );
         expect(screen.getByText(mediaDoc.filename)).toBeInTheDocument();
         expect(screen.getByText("+1")).toBeInTheDocument();

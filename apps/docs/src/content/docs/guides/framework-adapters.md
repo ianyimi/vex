@@ -136,28 +136,30 @@ Your adapter must supply three view components. These are the high-level content
 
 | View | When rendered | Props |
 |---|---|---|
-| `dashboard` | `/admin` (root) | `DashboardProps` — receives the full `VexConfig` |
-| `collectionListView` | `/admin/:collection` | `CollectionListViewProps` — collection config + optional preloaded docs |
-| `collectionEditView` | `/admin/:collection/:id` or `/admin/:collection/new` | `CollectionEditViewProps` — collection config + optional doc ID and preloaded doc |
+| `dashboard` | `/admin` (root) | `DashboardProps` — empty; the view reads the full config via `useVexConfig()` |
+| `collectionListView` | `/admin/:collection` | `CollectionListViewProps` — collection slug + optional preloaded docs |
+| `collectionEditView` | `/admin/:collection/:id` or `/admin/:collection/new` | `CollectionEditViewProps` — collection slug + optional doc ID and preloaded doc |
 
 **Types:**
 
 ```ts
-interface DashboardProps {
-  config: VexConfig;
+interface DashboardProps {}
+
+interface CollectionListViewProps<TCollectionSlug extends CollectionSlug = CollectionSlug> {
+  collection: TCollectionSlug;
+  initialData?: PaginationResult<VexDocument>;
 }
 
-interface CollectionListViewProps {
-  collection: CollectionConfig;
-  initialData?: VexDocument[];
-}
-
-interface CollectionEditViewProps {
-  collection: CollectionConfig;
-  documentId?: string;
+interface CollectionEditViewProps<TCollectionSlug extends CollectionSlug = CollectionSlug> {
+  collection: TCollectionSlug;
+  documentId: VexDocument["_id"];
   initialData?: VexDocument | null;
 }
 ```
+
+None of the three takes a `config` prop — every view resolves the collection/global it needs by
+slug, reading the full resolved config from `useVexConfig()` (populated by the framework's own
+config provider — see [Step 6](#step-6--implement-the-layout-shell) below).
 
 The React implementations (`DashboardView`, `CollectionListView`, `CollectionEditView`) in `@vexcms/react` use `vexConvexApi` with TanStack Query for live data subscriptions and SSR hydration. Your views can use the same approach or fetch data differently.
 
@@ -200,10 +202,12 @@ The layout shell wraps all admin views with navigation, sidebar, and providers. 
 
 ```ts
 interface AdminLayoutProps {
-  /** The full resolved VexCMS config — forwarded to the sidebar. */
-  config: VexConfig;
-  /** The slug of the active collection for sidebar highlighting. */
+  /** The slug of the currently active collection, for sidebar highlighting. */
   activeSlug?: string;
+  /** The docID of the currently active document, for nav highlighting. */
+  activeDocID?: string;
+  /** The full pathname of the current URL, for the top nav. */
+  pathname: string;
   /** The active view content. */
   children: ReactNode;
   /**
@@ -214,8 +218,15 @@ interface AdminLayoutProps {
     Link?: ComponentType<{ href: string; [key: string]: unknown }>;
     Image?: ComponentType<{ src: string; alt: string; [key: string]: unknown }>;
   };
+  user?: AdminUser;
+  organization?: Record<string, unknown>;
 }
 ```
+
+There is no `config` prop — `AdminLayout` reads the full resolved config from `useVexConfig()`,
+populated by the app's own config provider mounted above it (see
+[Wiring it into an app](#wiring-it-into-an-app) below), not from a prop threaded through the
+layout tree.
 
 **Framework components — the `VexLink` / `VexImage` pattern:**
 
@@ -235,7 +246,7 @@ import { Link as SolidLink } from "@solidjs/router";
 // wrap to normalise href → to if needed
 const RouterLink = ({ href, ...rest }) => <SolidLink to={href} {...rest} />;
 
-<AdminLayout components={{ Link: RouterLink }} config={config}>
+<AdminLayout components={{ Link: RouterLink }} pathname={pathname}>
   {children}
 </AdminLayout>
 ```
@@ -270,7 +281,7 @@ export async function NextAdminPage(props: {
   const { slug = [] } = await props.params;
   const [collectionSlug, documentId] = slug;
 
-  if (!collectionSlug) return <DashboardView config={props.config} />;
+  if (!collectionSlug) return <DashboardView />;
 
   const collection = props.config.collections.find(c => c.slug === collectionSlug);
   if (!collection) return <p>Collection not found.</p>;
@@ -280,11 +291,11 @@ export async function NextAdminPage(props: {
       collection: collectionSlug,
       id: documentId,
     });
-    return <CollectionEditView collection={collection} documentId={documentId} initialData={initialData} />;
+    return <CollectionEditView collection={collectionSlug} documentId={documentId} initialData={initialData} />;
   }
 
   const initialData = await fetchQuery(vexConvexApi.list, { collection: collectionSlug });
-  return <CollectionListView collection={collection} initialData={initialData} />;
+  return <CollectionListView collection={collectionSlug} initialData={initialData} />;
 }
 ```
 
@@ -307,7 +318,7 @@ import NextLink from "next/link";
 import NextImage from "next/image";
 import { AdminLayout } from "@vexcms/react";
 
-export function NextAdminLayout(props: { config: VexConfig; children: ReactNode }) {
+export function NextAdminLayout(props: { children: ReactNode }) {
   const pathname = usePathname();
   // Derive active collection slug from pathname for sidebar highlighting
   const segments = pathname.split("/").filter(Boolean);
@@ -315,7 +326,7 @@ export function NextAdminLayout(props: { config: VexConfig; children: ReactNode 
 
   return (
     <AdminLayout
-      config={props.config}
+      pathname={pathname}
       activeSlug={activeSlug}
       components={{ Link: NextLink, Image: NextImage }}
     >
@@ -324,6 +335,11 @@ export function NextAdminLayout(props: { config: VexConfig; children: ReactNode 
   );
 }
 ```
+
+`AdminLayout` no longer takes a `config` prop — it reads the resolved config from
+`useVexConfig()`, populated by a `VexConfigProvider` your app mounts once around the whole
+admin route tree (see [Wiring it into an app](#wiring-it-into-an-app) below), not threaded
+through the layout component.
 
 **Why `usePathname` instead of route params:** Next.js layouts don't receive the child route's params — only the page component does. Parsing `pathname` is the canonical way to know which collection is active from the layout.
 
@@ -344,12 +360,12 @@ export function NextAdminLayout(props: { config: VexConfig; children: ReactNode 
 
 Here is the minimal setup for the Next.js adapter:
 
-**`vex.config.ts`** (project root):
+**`vex.config.ts`** (client, project root):
 ```ts
 import { defineConfig, defineCollection } from "@vexcms/core";
 import { text } from "@vexcms/core/fields";
 
-export default defineConfig({
+const vexConfig = defineConfig({
   collections: [
     defineCollection({
       slug: "posts",
@@ -360,22 +376,50 @@ export default defineConfig({
     }),
   ],
 });
+
+export default vexConfig;
+```
+
+**`vex.config.server.ts`** (server, project root — the type `NextAdminPage` and Convex functions consume):
+```ts
+import { defineServerConfig } from "@vexcms/core";
+
+import vexConfig from "./vex.config";
+
+export default defineServerConfig({ config: vexConfig });
+```
+
+**`app/admin/clientProviders.tsx`**:
+```tsx
+"use client";
+
+import { VexConfigProvider } from "@vexcms/react";
+import config from "../../../vex.config";
+
+export function ClientProviders({ children }: { children: React.ReactNode }) {
+  return <VexConfigProvider config={config}>{children}</VexConfigProvider>;
+}
 ```
 
 **`app/admin/layout.tsx`**:
 ```tsx
 import { NextAdminLayout } from "@vexcms/next/client";
-import config from "../../../vex.config";
+
+import { ClientProviders } from "./clientProviders";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <NextAdminLayout config={config}>{children}</NextAdminLayout>;
+  return (
+    <ClientProviders>
+      <NextAdminLayout>{children}</NextAdminLayout>
+    </ClientProviders>
+  );
 }
 ```
 
 **`app/admin/[[...slug]]/page.tsx`**:
 ```tsx
 import { NextAdminPage } from "@vexcms/next/server";
-import config from "../../../../vex.config";
+import config from "../../../../vex.config.server";
 
 export default function AdminPage({
   params,

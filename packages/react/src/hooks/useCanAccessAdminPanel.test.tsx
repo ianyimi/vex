@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { VexAccessProvider } from "../context/VexAccessContext";
+import { defineConfig } from "@vexcms/core";
+import { VexConfigProvider } from "../context/VexConfigContext";
 import { VexAuthProvider } from "../context/VexAuthContext";
 import { useCanAccessAdminPanel } from "./useCanAccessAdminPanel";
 
@@ -26,40 +27,32 @@ describe("useCanAccessAdminPanel", () => {
 
   it("is false for an anonymous visitor when an access config is present", () => {
     render(
-      <VexAccessProvider
-        access={{
-          defaultPermissionMode: "deny",
-          enabled: true,
-          permissions: { admin: { "*": true }, user: {} },
-          resources: [],
-          roles: ["admin", "user"],
-          userCollectionSlug: "user",
-          userRolesField: "roles",
-        }}
-      >
-        <Probe />
-      </VexAccessProvider>,
+      <VexConfigProvider config={defineConfig({ access: {
+        defaultPermissionMode: "deny",
+        enabled: true,
+        permissions: { admin: { "*": true }, user: {} },
+        resources: [],
+        roles: ["admin", "user"],
+        userCollectionSlug: "user",
+        userRolesField: "roles",
+      } })}><Probe /></VexConfigProvider>,
     );
     expect(screen.getByTestId("probe").textContent).toBe("false");
   });
 
   it("is true for a user holding a role that grants the admin panel", () => {
     render(
-      <VexAccessProvider
-        access={{
-          defaultPermissionMode: "deny",
-          enabled: true,
-          permissions: { admin: { "*": true }, user: {} },
-          resources: [],
-          roles: ["admin", "user"],
-          userCollectionSlug: "user",
-          userRolesField: "roles",
-        }}
-      >
-        <VexAuthProvider value={{ user: { roles: ["admin"] } }}>
-          <Probe />
-        </VexAuthProvider>
-      </VexAccessProvider>,
+      <VexConfigProvider config={defineConfig({ access: {
+        defaultPermissionMode: "deny",
+        enabled: true,
+        permissions: { admin: { "*": true }, user: {} },
+        resources: [],
+        roles: ["admin", "user"],
+        userCollectionSlug: "user",
+        userRolesField: "roles",
+      } })}><VexAuthProvider value={{ user: { roles: ["admin"] } }}>
+        <Probe />
+      </VexAuthProvider></VexConfigProvider>,
     );
     expect(screen.getByTestId("probe").textContent).toBe("true");
   });

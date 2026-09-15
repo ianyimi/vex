@@ -1,22 +1,17 @@
 "use client";
 
-import { uploadFile } from "@vexcms/file-storage-convex";
-import { StorageAdapterContextProvider, VexAccessProvider } from "@vexcms/react";
+import { VexConfigProvider } from "@vexcms/react";
 
-import { access } from "~/auth/access";
+import config from "~/vex.config";
 
 /**
- * Provides client-side upload functions for VexCMS storage adapters.
+ * Mounts the single `VexConfigProvider` for the admin panel's client tree.
  *
- * This is a "use client" component so that uploadFile is imported and
- * owned on the client — it never crosses the RSC boundary as a prop.
- *
- * Add a new entry here when registering an additional storage adapter.
+ * This is a "use client" component so `vex.config` is imported and owned on
+ * the client — it never crosses the RSC boundary as a prop. `access` and
+ * `storage.clientUploads` (the two fields that used to need their own
+ * providers) are already part of the config this imports.
  */
 export function ClientProviders({ children }: { children: React.ReactNode }) {
-  return (
-    <StorageAdapterContextProvider adapterClients={{ convex: uploadFile }}>
-      <VexAccessProvider access={access}>{children}</VexAccessProvider>
-    </StorageAdapterContextProvider>
-  );
+  return <VexConfigProvider config={config}>{children}</VexConfigProvider>;
 }

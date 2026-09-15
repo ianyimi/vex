@@ -4,7 +4,7 @@ import {
   CRUD_ACTIONS,
   isFieldAllowed,
   PERMISSION_SCOPES,
-  type MediaCollectionConfig,
+  type MediaCollectionSlug,
   type TDocument,
   type VexMediaDocument,
   type PaginationResult,
@@ -38,8 +38,8 @@ function columnFieldKey(column: ColumnDef<TDocument<VexMediaDocument>, unknown>)
  * Props for the `MediaCollectionListView` component.
  */
 export interface MediaCollectionListViewProps<TDoc extends VexMediaDocument = VexMediaDocument> {
-  /** The resolved media collection configuration being listed. */
-  collection: MediaCollectionConfig;
+  /** The slug of the media collection being listed, resolved from `useVexConfig()`. */
+  collection: MediaCollectionSlug;
   /**
    * Pre-fetched documents from the server. Passed as `initialData` to the
    * TanStack Query so the list renders immediately on first load.
@@ -61,31 +61,34 @@ export interface MediaCollectionListViewProps<TDoc extends VexMediaDocument = Ve
  *
  * Renders the *content area only* — wrap it in `AdminLayout`.
  *
- * @param props - View props
- * @param props.collection - The media collection configuration to list
- * @param props.initialData - Pre-fetched documents from the server (for SSR)
- * @returns The media data table, or an empty state when no media exists yet.
+ * @param props - View props.
+ * @param props.collection - The slug of the media collection to list.
+ * @param props.initialData - Pre-fetched documents from the server (for SSR).
+ * @returns The media data table, a not-found message, or an empty state.
+ * @throws Never — resolution failure renders a not-found message instead of throwing.
  *
  * @example
  * ```tsx
- * <MediaCollectionListView collection={imagesCollection} initialData={serverDocs} />
+ * <MediaCollectionListView collection="images" initialData={serverDocs} />
  * ```
  */
 export function MediaCollectionListView(props: MediaCollectionListViewProps) {
-  const liveConfig = useVexConfig();
-  // Prefer the live context collection (updated via Fast Refresh) over the
-  // RSC-serialized prop, falling back to the prop if context isn't available.
-  const collection =
-    liveConfig?.mediaCollections.find((c) => c.slug === props.collection.slug) ?? props.collection;
+  const config = useVexConfig();
+  const collection = config.mediaCollections.find((c) => c.slug === props.collection);
+
+  if (!collection) {
+    // TODO: add proper not found component or screen
+    return <p>Collection not found.</p>;
+  }
 
   const numItems = Math.max(
-    props.collection.admin.table.serverPageSize,
-    props.collection.admin.table.defaultPageSize,
+    collection.admin.table.serverPageSize,
+    collection.admin.table.defaultPageSize,
   );
 
   const pagination = usePaginatedQuery<VexMediaDocument>({
     query: {
-      collection: props.collection.slug,
+      collection: collection.slug,
       depth: 1,
       limit: 100,
       paginationOpts: {
@@ -95,14 +98,14 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
       },
     },
     initialData: props.initialData,
-    clientPageSize: props.collection.admin.table.defaultPageSize,
+    clientPageSize: collection.admin.table.defaultPageSize,
   });
 
   // Declared after `pagination` because `getChanges` reads its loaded rows: a
   // deleted document cannot be re-read server-side, so the pre-delete state
   // has to travel with the request.
   const deleteMediaMutation = useVexMutation({
-    collection: props.collection.slug,
+    collection: collection.slug,
     getChanges: ({ args }) =>
       args.ids.flatMap((id) => {
         const row = pagination.results.find((doc) => doc._id === id);
@@ -112,9 +115,11 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
     operation: "remove",
   });
 
-  async function handleBulkDelete(selectedIds: string[]) {
-    await deleteMediaMutation.mutateAsync({ ids: selectedIds, collection: props.collection.slug });
-  }
+  // An arrow keeps the `if (!collection) return` narrowing above; a nested
+  // `function` declaration would not.
+  const handleBulkDelete = async (selectedIds: string[]) => {
+    await deleteMediaMutation.mutateAsync({ ids: selectedIds, collection: collection.slug });
+  };
 
   const fieldPermissions = useFieldPermissions({
     resource: collection.slug,
@@ -145,7 +150,7 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
   });
   return (
     <div>
-      <CreateMediaModal collection={collection} />
+      <CreateMediaModal collection={collection.slug} />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-y-2 pt-4">
         <div>
@@ -188,7 +193,7 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
             totalCount={pagination.totalDocs}
             enableRowSelection={canDelete}
             enableBulkActions={canDelete}
-            entityName={props.collection.labels.plural}
+            entityName={collection.labels.plural}
             onBulkDelete={canDelete ? handleBulkDelete : undefined}
             isDeleting={deleteMediaMutation.isPending}
             isPending={pagination.isPending}

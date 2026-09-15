@@ -1,35 +1,38 @@
-import { betterAuthAdapter } from "@vexcms/better-auth"
+import { betterAuthCollections } from "@vexcms/better-auth/client"
 import { defineConfig } from "@vexcms/core"
-import { convexFileStorage } from "@vexcms/file-storage-convex"
+import { uploadFile } from "@vexcms/file-storage-convex/client"
 
-import { authOptions } from "@convex/auth/options"
+import { authSchema } from "@convex/auth/schema"
 
 import { access } from "~/auth/access"
 import { images, users } from "~/vexcms/collections"
 
 /**
- * VexCMS configuration for this project.
+ * VexCMS client-safe configuration for this project.
  *
- * Registers the admin sidebar layout, the Better Auth adapter, Convex file
- * storage, and every collection. Add collections/globals here as you define
- * them — `vex dev` / `vex generate` derive the Convex schema and TypeScript
- * types from this file.
+ * Registers the admin sidebar layout and every collection, global, and
+ * media collection. Add collections/globals here as you define them —
+ * `vex dev` / `vex generate` derive the Convex schema and TypeScript types
+ * from this file, and the browser imports it directly via
+ * `VexConfigProvider`, so nothing here may reach a server SDK or an
+ * environment variable.
  *
  * @see defineConfig in @vexcms/core
- * @see betterAuthAdapter in @vexcms/better-auth
+ * @see ./vex.config.server for the auth adapter and storage adapter wiring
  */
 const vexConfig = defineConfig({
   access,
+  authCollections: betterAuthCollections(authSchema),
   admin: {
     sidebar: {
       side: "right",
     },
   },
-  authAdapter: betterAuthAdapter({ config: authOptions }),
   storage: {
-    adapters: [convexFileStorage({ mediaCollections: [images] })],
+    clientUploads: { convex: uploadFile },
   },
   collections: [users],
+  mediaCollections: [images],
 })
 
 export default vexConfig

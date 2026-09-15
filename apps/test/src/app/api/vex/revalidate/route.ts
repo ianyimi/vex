@@ -3,7 +3,7 @@ import { createVexRevalidateRoute } from "@vexcms/next/cache";
 
 import { fetchAuthQuery, getToken } from "~/auth/server";
 import { vex } from "~/lib/vex";
-import config from "~/vex.config";
+import config from "~/vex.config.server";
 
 /**
  * `POST /api/vex/revalidate` — session-authorized path purge for this app.

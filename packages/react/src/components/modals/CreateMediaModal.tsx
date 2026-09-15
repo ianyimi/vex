@@ -2,11 +2,12 @@
 
 import { useRef } from "react";
 import { parseAsBoolean, useQueryState } from "nuqs";
-import type { MediaCollectionConfig, StorageAdapterSlug } from "@vexcms/core";
+import type { MediaCollectionSlug, StorageAdapterSlug } from "@vexcms/core";
 import { Button, DialogClose, DialogContent, DialogFooter, DialogHeader } from "../ui";
 import { Modal } from "./BaseModal";
 import { MODALS } from "./constants";
 import { MediaUploadDropzone } from "../media";
+import { useVexConfig } from "../../context";
 
 /**
  * Modal for uploading media into a media collection.
@@ -21,16 +22,19 @@ import { MediaUploadDropzone } from "../media";
  * an upload completes.
  *
  * @param props - Component props.
- * @param props.collection - The media collection uploads are created in.
- * @returns A URL-state-driven `<Modal>` containing the upload dropzone.
- *
- * @example
- * ```tsx
- * // Rendered inside MediaCollectionListView — opens when ?upload=true
- * <CreateMediaModal collection={imagesCollection} />
- * ```
+ * @param props.collection - The slug of the media collection uploads are created in.
+ * @returns A URL-state-driven `<Modal>` containing the upload dropzone, or `null`
+ *   when `collection` does not resolve against the current config.
+ * @throws Never — resolution failure renders `null` instead of throwing.
  */
-export function CreateMediaModal({ collection }: { collection: MediaCollectionConfig }) {
+export function CreateMediaModal(props: { collection: MediaCollectionSlug }) {
+  const config = useVexConfig();
+  const collection = config.mediaCollections.find((c) => c.slug === props.collection);
+
+  if (!collection) {
+    return null;
+  }
+
   // eslint-disable-next-line no-unused-vars
   const [_, setOpen] = useQueryState(MODALS.uploadMedia.urlParam, parseAsBoolean);
 

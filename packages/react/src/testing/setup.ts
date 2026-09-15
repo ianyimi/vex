@@ -6,6 +6,22 @@
 // shared contract factory started asserting on DOM state.
 import "@testing-library/jest-dom/vitest";
 
+import { configure } from "@testing-library/react";
+
+// Testing Library's default `asyncUtilTimeout` is 1000ms, which every
+// `findBy*`/`waitFor` in this package inherits. That is not enough headroom for
+// the paths that wait on a real debounce timer plus a query round-trip: the
+// relationship picker debounces its search by 200ms (`useDebounceValue`), then
+// issues a convex query, then commits — which settles in ~150-220ms unloaded but
+// races the 1000ms budget on a contended CI runner executing 80 test files in
+// parallel, observed as a flaky "Unable to find an element with the text: No
+// documents found" that passed on re-run with no code change. Raising the floor
+// here fixes the whole class instead of sprinkling per-assertion `timeout:`
+// overrides. Kept well under `testTimeout` (vitest.config.ts) on purpose: when a
+// wait genuinely never settles, Testing Library's error naming the missing
+// element is far better diagnostics than a bare "Test timed out in Nms".
+configure({ asyncUtilTimeout: 3000 });
+
 class ResizeObserverStub {
   disconnect() {}
   observe() {}

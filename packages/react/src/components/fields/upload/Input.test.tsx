@@ -5,13 +5,13 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { useForm } from "@tanstack/react-form";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { adminFieldToInputSchema, text } from "@vexcms/core";
+import { adminFieldToInputSchema, defineConfig, text } from "@vexcms/core";
 import type {
   BaseFieldMeta,
-  ClientVexConfig,
   InputComponentProps,
   MediaCollectionConfig,
   UploadField,
+  VexClientConfig,
 } from "@vexcms/core";
 import type * as ConvexReactQueryModule from "@convex-dev/react-query";
 import type * as HooksModule from "../../../hooks";
@@ -20,7 +20,7 @@ import { runFieldInputContractSuite } from "../../../testing/fieldInputContract"
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { uploadFieldFixture, makeFile } from "./testFixture";
 import { AppForm } from "../../form/AppForm";
-import { StorageAdapterContextProvider, VexConfigContext } from "../../../context";
+import { VexConfigContext } from "../../../context";
 import { UploadFieldInput } from "./Input";
 
 // Mocked around the real modules (not replaced wholesale) so every OTHER test
@@ -59,17 +59,19 @@ function makeMockMediaCollection(): MediaCollectionConfig {
   } as unknown as MediaCollectionConfig;
 }
 
-// Minimal client config — only `mediaCollections` is read on this path
+// Minimal client config — `mediaCollections` is read on this path
 // (`config.mediaCollections.find((mc) => mc.slug === fieldDef.to)` in both
-// `Input.tsx` and `FilledInput.tsx`/`MediaPicker.tsx`).
-const stubClientConfig = {
+// `Input.tsx` and `FilledInput.tsx`/`MediaPicker.tsx`) and `storage.clientUploads`
+// supplies the stub uploader.
+const stubClientConfig: VexClientConfig = defineConfig({
   mediaCollections: [makeMockMediaCollection()],
-} as unknown as ClientVexConfig;
+  storage: { clientUploads: { convex: async () => ({ storageId: "stub-id" }) } },
+});
 
 /**
  * Wraps `UploadFieldInput` with every context it reads outside `<AppForm>`:
  * `VexConfigContext` (media-collection lookup), a nuqs testing adapter (the
- * picker modal's URL-driven open state), a stub `StorageAdapterContextProvider`,
+ * picker modal's URL-driven open state), a stub uploader via `storage.clientUploads`,
  * and the Convex/TanStack Query providers `MediaUploadForm`/`UploadItemRow`
  * need to mount without throwing — the same combination already proven in
  * `media/MediaUploadForm.test.tsx`. Passed as `runFieldInputContractSuite`'s
@@ -100,17 +102,13 @@ function TestUploadFieldInput({
       <QueryClientProvider client={queryClient}>
         <NuqsTestingAdapter>
           <VexConfigContext.Provider value={stubClientConfig}>
-            <StorageAdapterContextProvider
-              adapterClients={{ convex: async () => ({ storageId: "stub-id" }) }}
-            >
-              <UploadFieldInput
-                name={name}
-                fieldDef={fieldDef}
-                readOnly={readOnly}
-                collection={collection}
-                index={index}
-              />
-            </StorageAdapterContextProvider>
+            <UploadFieldInput
+              name={name}
+              fieldDef={fieldDef}
+              readOnly={readOnly}
+              collection={collection}
+              index={index}
+            />
           </VexConfigContext.Provider>
         </NuqsTestingAdapter>
       </QueryClientProvider>

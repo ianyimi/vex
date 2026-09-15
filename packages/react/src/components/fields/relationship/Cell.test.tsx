@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { ClientVexConfig, TDocument } from "@vexcms/core";
+import type { VexClientConfig, TDocument } from "@vexcms/core";
 import { makeCellRow, runFieldCellContractSuite } from "../../../testing/fieldCellContract";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { VexConfigContext } from "../../../context/VexConfigContext";
@@ -17,7 +17,7 @@ import { relationshipFieldFixture, relationshipTargetCollection } from "./testFi
 const stubClientConfig = {
   collections: [relationshipTargetCollection],
   basePath: "/admin",
-} as unknown as ClientVexConfig;
+} as unknown as VexClientConfig;
 
 /**
  * Wraps a node in the stub `VexConfigContext` this cell resolves its target

@@ -54,8 +54,22 @@ diff already lists files. Two shapes:
 
 ## Versioning tie-in (changesets)
 
-Breaking → major · `feat`/`fix` → minor/patch · everything else → patch. Match the changeset
-bump to the commit type.
+**While `.changeset/pre.json` is in `pre` mode (the current `alpha` track): every changeset is
+`patch`, including breaking ones.** Changesets does NOT apply the "0.x major means minor"
+convention — a `major` on `0.1.0-alpha.17` resolves the base to `1.0.0` and ships
+`1.0.0-alpha.18`, and it propagates through dependency bumps to packages the commit never
+touched. `minor` gives `0.2.0-alpha.18`. Only `patch` keeps the base at `0.1.0`, so the alpha
+counter advances and `changeset pre exit` still lands on `0.1.0`. Verify with
+`pnpm changeset status --verbose`, which prints the resulting version per package — run it
+whenever a changeset is added instead of inferring the bump from the commit type. The `!` in
+the subject and the `BREAKING CHANGE:` footer still describe the change honestly; the bump is
+a release-track mechanic, not a statement of severity.
+
+**After 0.1.0 the shift stays** (P-025): `patch` carries what semver calls a minor, `minor`
+carries what semver calls a major (breaking), and `major` is NEVER used without an explicit
+developer decision — the project intends to stay on `v0.x` as long as possible. So the bump
+never follows from the `!` in the subject; pick `patch` unless the change is breaking, and
+`minor` when it is.
 
 ## Storage & where it lands
 

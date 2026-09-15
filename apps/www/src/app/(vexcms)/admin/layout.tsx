@@ -6,7 +6,6 @@ import { getCurrentUser } from "~/auth/serverUtils";
 import { AuthServerProvider } from "~/components/providers/auth";
 import { ThemeLive } from "~/components/ThemeLive";
 import { ThemeStyle } from "~/components/ThemeStyle";
-import config from "~/vex.config";
 
 import { ClientProviders } from "./clientProviders";
 
@@ -29,9 +28,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       <ClientProviders>
         <ThemeStyle scope="admin" />
         <ThemeLive scope="admin" />
-        <NextAdminLayout config={config} user={user ?? undefined}>
-          {children}
-        </NextAdminLayout>
+        <NextAdminLayout user={user ?? undefined}>{children}</NextAdminLayout>
       </ClientProviders>
     </AuthServerProvider>
   );

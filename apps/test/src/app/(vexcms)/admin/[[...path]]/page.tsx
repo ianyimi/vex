@@ -4,7 +4,7 @@ import { canAccessAdminPanel } from "@vexcms/core";
 import { redirect } from "next/navigation";
 
 import { fetchAuthQuery, getToken } from "~/auth/server";
-import config from "~/vex.config";
+import config from "~/vex.config.server";
 
 export const dynamic = "force-dynamic";
 

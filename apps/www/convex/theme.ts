@@ -1,7 +1,7 @@
 import { getGlobal } from "@vexcms/core/server"
 
 import { GLOBAL_SLUG_SITE_SETTINGS, type TABLE_SLUG_THEMES } from "~/db/constants"
-import config from "~/vex.config"
+import config from "~/vex.config.server"
 
 import type { Doc, Id } from "./_generated/dataModel"
 import type { QueryCtx } from "./_generated/server"

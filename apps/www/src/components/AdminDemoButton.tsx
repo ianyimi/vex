@@ -25,9 +25,10 @@ import { signIn, useSession } from "~/auth/client";
  * boundary.
  *
  * Rendered unconditionally, unlike the `useCanAccessAdminPanel()` gate that
- * used to guard it: that hook reads `VexAccessProvider`, which is only mounted
- * inside `/admin`, so on the marketing site it returned `false` for every
- * visitor and the affordance never appeared at all.
+ * used to guard it: that hook reads `useVexAccess()` (`VexConfigContext`),
+ * which is only mounted inside `/admin`, so on the marketing site it
+ * returned `false` for every visitor and the affordance never appeared at
+ * all.
  */
 export function AdminDemoButton({
   className,

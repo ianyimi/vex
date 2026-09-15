@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/react",
-  "version": "0.1.0-alpha.17",
+  "version": "0.1.0-alpha.19",
   "description": "React admin components and hooks for VexCMS",
   "keywords": [
     "cms",
@@ -115,6 +115,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@vexcms/file-storage-convex": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "convex": "catalog:",

@@ -134,7 +134,7 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     .join("\n");
 
   const storageAdapterSlugs =
-    config.storage?.adapters
+    config.storage.adapters
       .filter((a) => a.type === STORAGE_ADAPTER_PROTOCOLS.presignedUrl)
       .map((a) => `"${a.name}"`)
       .join(" | ") ?? "never";

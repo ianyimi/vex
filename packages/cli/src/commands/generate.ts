@@ -1,6 +1,6 @@
 import { loadConfig } from "../lib/loadConfig.js";
 import { logger } from "../lib/logger.js";
-import { resolveConfigPath } from "../lib/resolveConfigPath.js";
+import { isServerConfigPath, resolveConfigPath } from "../lib/resolveConfigPath.js";
 import { writeVexTypes } from "../lib/generateSchema.js";
 
 /**
@@ -18,6 +18,12 @@ import { writeVexTypes } from "../lib/generateSchema.js";
 export async function generateCommand(props?: { cwd?: string }) {
   const cwd = props?.cwd ?? process.cwd();
   const configPath = resolveConfigPath(cwd);
+  if (!isServerConfigPath(configPath)) {
+    logger.error(
+      `vex generate requires vex.config.server.ts. Found only a client config at ${configPath} — add a server config alongside it.`,
+    );
+    process.exit(1);
+  }
   logger.info(`Config found: ${configPath}`);
 
   const config = await loadConfig(configPath);

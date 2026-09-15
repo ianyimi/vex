@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { defineConfig, defineCollection } from "../index";
+import { defineConfig, defineCollection, defineServerConfig } from "../index";
 import { text } from "../fields/text/config";
 import { number } from "../fields/number/config";
 import { checkbox } from "../fields/checkbox/config";
@@ -78,7 +78,7 @@ describe("interfaceType carries the target collection slug", () => {
         themes: relationship({ collection: { slug: "themes" } }),
       },
     });
-    const source = generateVexTypes({ config: defineConfig({ collections: [themes, pages] }) });
+    const source = generateVexTypes({ config: defineServerConfig({ config: defineConfig({ collections: [themes, pages] }) }) });
     expect(source).toContain('themes?: Id<"themes">[]');
     expect(source).not.toContain("Id<CollectionSlug>[]");
   });
@@ -88,7 +88,7 @@ describe("interfaceType carries the target collection slug", () => {
 
 describe("generateVexTypes — header", () => {
   it("always includes the auto-generated header on line 1", () => {
-    const config = defineConfig();
+    const config = defineServerConfig({ config: defineConfig() })
     const output = generateVexTypes({ config });
     expect(output.split("\n")[0]).toBe(HEADER);
   });
@@ -98,7 +98,7 @@ describe("generateVexTypes — header", () => {
 
 describe("generateVexTypes — document interfaces", () => {
   it("generates a document interface for each collection", () => {
-    const config = defineConfig({
+    const config = defineServerConfig({ config: defineConfig({
       collections: [
         defineCollection({
           slug: "posts",
@@ -109,21 +109,21 @@ describe("generateVexTypes — document interfaces", () => {
           fields: { name: text({ required: true }) },
         }),
       ],
-    });
+    }) })
     const output = generateVexTypes({ config });
     expect(output).toContain("export interface PostsDocument extends VexDocument {");
     expect(output).toContain("export interface AuthorsDocument extends VexDocument {");
   });
 
   it("always includes _id and _creationTime in every interface", () => {
-    const config = defineConfig({
+    const config = defineServerConfig({ config: defineConfig({
       collections: [
         defineCollection({
           slug: "posts",
           fields: { title: text({ required: true }) },
         }),
       ],
-    });
+    }) })
     const output = generateVexTypes({ config });
     expect(output).toContain('_id: Id<"posts">');
     expect(output).toContain("extends VexDocument");
@@ -131,34 +131,34 @@ describe("generateVexTypes — document interfaces", () => {
   });
 
   it("generates required fields without ? modifier", () => {
-    const config = defineConfig({
+    const config = defineServerConfig({ config: defineConfig({
       collections: [
         defineCollection({
           slug: "posts",
           fields: { title: text({ required: true }) },
         }),
       ],
-    });
+    }) })
     const output = generateVexTypes({ config });
     expect(output).toContain("title: string");
     expect(output).not.toContain("title?: string");
   });
 
   it("generates optional fields with ? modifier", () => {
-    const config = defineConfig({
+    const config = defineServerConfig({ config: defineConfig({
       collections: [
         defineCollection({
           slug: "posts",
           fields: { excerpt: text({ required: false }) },
         }),
       ],
-    });
+    }) })
     const output = generateVexTypes({ config });
     expect(output).toContain("excerpt?: string");
   });
 
   it("generates all field types correctly in one collection", () => {
-    const config = defineConfig({
+    const config = defineServerConfig({ config: defineConfig({
       collections: [
         defineCollection({
           slug: "posts",
@@ -179,7 +179,7 @@ describe("generateVexTypes — document interfaces", () => {
           },
         }),
       ],
-    });
+    }) })
     const output = generateVexTypes({ config });
     expect(output).toContain("title: string");
     expect(output).toContain("views: number");
@@ -190,14 +190,14 @@ describe("generateVexTypes — document interfaces", () => {
   });
 
   it("uses PascalCase slug for interface name (underscore slug)", () => {
-    const config = defineConfig({
+    const config = defineServerConfig({ config: defineConfig({
       collections: [
         defineCollection({
           slug: "blog_posts",
           fields: { title: text({ required: true }) },
         }),
       ],
-    });
+    }) })
     const output = generateVexTypes({ config });
     expect(output).toContain("export interface BlogPostsDocument extends VexDocument {");
   });
@@ -207,12 +207,12 @@ describe("generateVexTypes — document interfaces", () => {
 
 describe("generateVexTypes — CollectionSlug", () => {
   it("generates a CollectionSlug union type for all slugs", () => {
-    const config = defineConfig({
+    const config = defineServerConfig({ config: defineConfig({
       collections: [
         defineCollection({ slug: "posts", fields: { title: text() } }),
         defineCollection({ slug: "authors", fields: { name: text() } }),
       ],
-    });
+    }) })
     const output = generateVexTypes({ config });
     expect(output).toContain("export type CollectionSlug =");
     expect(output).toContain('"posts"');
@@ -220,9 +220,9 @@ describe("generateVexTypes — CollectionSlug", () => {
   });
 
   it("generates a single-value CollectionSlug for one collection", () => {
-    const config = defineConfig({
+    const config = defineServerConfig({ config: defineConfig({
       collections: [defineCollection({ slug: "posts", fields: { title: text() } })],
-    });
+    }) })
     const output = generateVexTypes({ config });
     expect(output).toContain('export type CollectionSlug = "posts"');
   });
@@ -232,12 +232,12 @@ describe("generateVexTypes — CollectionSlug", () => {
 
 describe("generateVexTypes — DocumentBySlug", () => {
   it("generates a DocumentBySlug mapped type", () => {
-    const config = defineConfig({
+    const config = defineServerConfig({ config: defineConfig({
       collections: [
         defineCollection({ slug: "posts", fields: { title: text() } }),
         defineCollection({ slug: "authors", fields: { name: text() } }),
       ],
-    });
+    }) })
     const output = generateVexTypes({ config });
     expect(output).toContain("export type DocumentBySlug = {");
     expect(output).toContain("posts: PostsDocument");

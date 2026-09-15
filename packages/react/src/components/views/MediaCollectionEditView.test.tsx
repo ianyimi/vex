@@ -35,13 +35,14 @@ describe("MediaCollectionEditView — diff submit", () => {
         filename: "photo.png",
         mimeType: "image/png",
         size: 100,
+        src: "https://example.com/photo.png",
         storageId: "s1",
       }),
     );
     const stored = await t.run((ctx) => ctx.db.get(doc));
     const utils = renderView(
       createElement(MediaCollectionEditView, {
-        collection: testClientConfig.mediaCollections[0],
+        collection: testClientConfig.mediaCollections[0].slug,
         documentId: doc,
         initialData: stored as unknown as VexMediaDocument,
       }),
@@ -66,13 +67,14 @@ describe("MediaCollectionEditView — diff submit", () => {
         filename: "photo.png",
         mimeType: "image/png",
         size: 100,
+        src: "https://example.com/photo.png",
         storageId: "s1",
       }),
     );
     const stored = await t.run((ctx) => ctx.db.get(doc));
     const utils = renderView(
       createElement(MediaCollectionEditView, {
-        collection: testClientConfig.mediaCollections[0],
+        collection: testClientConfig.mediaCollections[0].slug,
         documentId: doc,
         initialData: stored as unknown as VexMediaDocument,
       }),

@@ -2,7 +2,7 @@ import { createGetAuth } from "@vexcms/better-auth";
 import { collectionsApi } from "@vexcms/core/server";
 
 import { TABLE_SLUG_ORGANIZATIONS, TABLE_SLUG_SESSIONS, TABLE_SLUG_USERS } from "~/db/constants";
-import config from "~/vex.config";
+import config from "~/vex.config.server";
 
 import { mutation, query } from "./_generated/server";
 

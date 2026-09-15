@@ -7,6 +7,7 @@ import { ConvexProvider, type ConvexReactClient } from "convex/react";
 import { convexTest } from "convex-test";
 import { NuqsTestingAdapter, type UrlUpdateEvent } from "nuqs/adapters/testing";
 import type { MediaCollectionConfig, VexAccessConfig } from "@vexcms/core";
+import { defineConfig } from "@vexcms/core";
 
 import { renderWithVexProviders, testCollection } from "./harness/accessFixtures";
 import { createFakeConvexClient, type ConvexTestInstance } from "./convex/bridge";
@@ -15,7 +16,6 @@ import { Modal } from "../components/modals/BaseModal";
 import { CreateDocumentModal } from "../components/modals/CreateDocumentModal";
 import { CreateMediaModal } from "../components/modals/CreateMediaModal";
 import { MODALS } from "../components/modals/constants";
-import { StorageAdapterContextProvider } from "../context";
 import { DialogContent, DialogHeader } from "../components/ui";
 import { makeFile } from "../components/fields/upload/testFixture";
 
@@ -72,7 +72,8 @@ function buildConvexStack(t: ConvexTestInstance): {
  * `meta.storageAdapter`.
  *
  * @param overrides - Shallow overrides merged over the defaults.
- * @returns A `MediaCollectionConfig` usable as `CreateMediaModal`'s `collection` prop.
+ * @returns A `MediaCollectionConfig` usable as an entry in `mediaCollections` for
+ *   the config `CreateMediaModal` resolves its `collectionSlug` prop against.
  */
 function makeMockMediaCollection(overrides: Partial<MediaCollectionConfig> = {}): MediaCollectionConfig {
   return {
@@ -215,7 +216,7 @@ function describeCreateDocumentModal(access: VexAccessConfig | undefined) {
               searchParams={options.searchParams}
               onUrlUpdate={options.onUrlUpdate}
             >
-              <CreateDocumentModal collection={testCollection} />
+              <CreateDocumentModal collection={testCollection.slug} />
             </NuqsTestingAdapter>
           </QueryClientProvider>
         </ConvexProvider>,
@@ -365,7 +366,7 @@ function describeCreateDocumentModal(access: VexAccessConfig | undefined) {
  * Registers the `CreateMediaModal` describe block. The real
  * `MediaUploadDropzone` renders inside the modal — the only injected
  * collaborator is the storage adapter's upload function, which is a public
- * `StorageAdapterContextProvider` prop, not a module mock.
+ * config's `storage.clientUploads` map, not a module mock.
  *
  * @param access - RBAC matrix threaded to every render; see {@link RunModalSuiteOptions.access}.
  * @returns Nothing; registers `describe`/`it` blocks as a side effect.
@@ -388,20 +389,26 @@ function describeCreateMediaModal(access: VexAccessConfig | undefined) {
       const t = convexTest(schema, testModules);
       const { queryClient, convexClient } = buildConvexStack(t);
       const uploadFile = vi.fn(async () => ({ storageId: "storage_modal_1" }));
+      const collection = options.collection ?? makeMockMediaCollection();
       const utils = renderWithVexProviders(
         <ConvexProvider client={convexClient}>
           <QueryClientProvider client={queryClient}>
-            <StorageAdapterContextProvider adapterClients={{ convex: uploadFile }}>
-              <NuqsTestingAdapter
-                searchParams={options.searchParams}
-                onUrlUpdate={options.onUrlUpdate}
-              >
-                <CreateMediaModal collection={options.collection ?? makeMockMediaCollection()} />
-              </NuqsTestingAdapter>
-            </StorageAdapterContextProvider>
+            <NuqsTestingAdapter
+              searchParams={options.searchParams}
+              onUrlUpdate={options.onUrlUpdate}
+            >
+              <CreateMediaModal collection={collection.slug} />
+            </NuqsTestingAdapter>
           </QueryClientProvider>
         </ConvexProvider>,
-        { access },
+        {
+          config: defineConfig({
+            collections: [testCollection],
+            mediaCollections: [collection],
+            access,
+            storage: { clientUploads: { convex: uploadFile } },
+          }),
+        },
       );
       return { utils, t, uploadFile };
     }

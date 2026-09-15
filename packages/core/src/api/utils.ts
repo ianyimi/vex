@@ -78,15 +78,27 @@ export function resolveAccessCall<A extends string>(props: {
 
 /**
  * Resolves the collection slug that owns a document `id` by probing
- * `ctx.db.normalizeId` against every registered collection.
+ * `ctx.db.normalizeId` against every registered collection, media collections
+ * included.
  *
  * A Convex `Id` does not expose its table name at runtime. `get/server.ts`'s
  * D12 comment documents the same constraint for depth-populate, where
  * degrading to "unresolvable" is safe (populate is simply skipped). It is
- * NOT safe here — `get`, `update`, and `remove` gate a real permission
- * check — so this resolves the slug via the `ctx.db.normalizeId(tableName, id)`
+ * NOT safe here — both callers gate a real permission check on the result —
+ * so this resolves the slug via the `ctx.db.normalizeId(tableName, id)`
  * syscall instead of string-parsing the id. Unlike the D12 trick, this works
  * identically in `convex-test` and production Convex.
+ *
+ * **Media collections must be probed, not just `config.collections`.** Both
+ * callers — `getUrl` and `deleteMedia` — pass a MEDIA document id by
+ * definition, and `defineConfig` keeps `collections` and `mediaCollections` as
+ * separate arrays (`config/config.ts`). Probing only the former made every
+ * media id unresolvable, so `getUrl` threw for any project that configured
+ * `access` at all: uploaded images silently vanished from public pages
+ * (`MediaImage` renders `null` when the query errors) and no `og:image` was
+ * ever emitted. `validateAccessConfig` already concatenates both arrays when
+ * validating resources, so a media slug is a legitimate permission subject —
+ * this makes the runtime lookup agree with that.
  *
  * @param props.ctx - Query or mutation context — only `ctx.db.normalizeId` is used.
  * @param props.config - The resolved `VexConfig`, to enumerate candidate collections.
@@ -102,14 +114,18 @@ export function resolveCollectionSlug<DataModel extends GenericDataModel>(props:
   config?: VexConfig;
   id: GenericId<CollectionSlug>;
 }): CollectionSlug {
-  for (const c of props.config?.collections ?? []) {
+  const candidates = [
+    ...(props.config?.collections ?? []),
+    ...(props.config?.mediaCollections ?? []),
+  ];
+  for (const c of candidates) {
     if (props.ctx.db.normalizeId(c.slug, props.id) !== null) {
       return c.slug;
     }
   }
   throw new Error("[resolveCollectionSlug]: document id does not match a collection slug");
-  // Note: `config.collections` is small and `normalizeId` is a local syscall (no DB round
-  // trip), so looping it once per `get`/`update`/`remove` request is cheap.
+  // Note: both arrays are small and `normalizeId` is a local syscall (no DB round trip),
+  // so looping them once per `getUrl`/`deleteMedia` request is cheap.
 }
 
 /**

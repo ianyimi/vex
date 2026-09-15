@@ -120,7 +120,7 @@ const MUTATION_HANDLERS: Record<string, FakeMutationHandler> = {
     }),
   // Mints a fixed stand-in for a signed upload URL: no adapter in this kit
   // ever fetches it, the URL is only handed to the caller-supplied
-  // `StorageAdapterContextProvider` upload function.
+  // `storage.clientUploads` upload function.
   "vex/media:generateUploadUrl": async () => ({ url: "https://example.com/fake-upload-url" }),
 };
 

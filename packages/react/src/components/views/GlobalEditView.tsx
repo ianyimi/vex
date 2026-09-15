@@ -15,26 +15,36 @@ import {
 import { changedValues } from "../form/changedValues";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
+import { useVexConfig } from "../../context/VexConfigContext";
 
 /**
  * Global document edit form.
  *
- * Fetches the current value via `vexConvexApi.globals.get` (TanStack Query +
- * Convex subscription), initialises a `useGlobalForm` instance with the
- * current field values, and renders an `<AppForm>` with one input component
- * per field. Submits via `vexConvexApi.globals.upsert`.
- *
  * @param props - View props.
- * @param props.global - The global config whose fields are rendered.
+ * @param props.global - The slug of the global whose fields are rendered.
  * @param props.initialData - Server-prefetched document for SSR hydration.
- * @returns The edit form, or a not-found message when `global` is falsy.
+ * @returns The edit form, or a not-found message when `global` does not resolve.
+ * @throws Never — resolution failure renders a not-found message instead of throwing.
  */
-export function GlobalEditView({ global, initialData }: GlobalEditViewProps) {
+export function GlobalEditView(props: GlobalEditViewProps) {
+  const config = useVexConfig();
+  const global = config.globals.find((g) => g.slug === props.global);
+
+  // Resolved before any hook that reads `global.slug`/`global.fields`: unlike the old
+  // destructured-prop version (where this check sat after 4 hooks, verifying a value
+  // TypeScript already guaranteed truthy), `global` here comes from a runtime `.find()`
+  // and can genuinely be `undefined` — deferring the check would dereference `.slug` on
+  // `undefined` inside the `useQuery` call below.
+  if (!global) {
+    // TODO: add proper not found component or screen
+    return <p>Global document not found.</p>;
+  }
+
   // Runtime slug (`global.slug`) — uses the generic endpoint rather than the
   // per-slug `getGlobal()` wrapper. See the note in `CollectionEditView`.
   const { data: globalDoc } = useQuery({
     ...convexQuery(vexConvexApi.globals.get, { slug: global.slug }),
-    initialData,
+    initialData: props.initialData,
   });
 
   const { mutateAsync, isPending } = useVexMutation({
@@ -75,11 +85,6 @@ export function GlobalEditView({ global, initialData }: GlobalEditViewProps) {
       form.reset();
     },
   });
-
-  if (!global) {
-    // TODO: add proper not found component or screen
-    return <p>Global document not found.</p>;
-  }
 
   useLiveFieldMerge({
     form,

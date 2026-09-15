@@ -1,6 +1,7 @@
 "use client";
 
-import { addLeadingSlash, ClientVexConfig, CRUD_ACTIONS, PERMISSION_SCOPES } from "@vexcms/core";
+import { addLeadingSlash, CRUD_ACTIONS, PERMISSION_SCOPES } from "@vexcms/core";
+import { useVexConfig } from "../context/VexConfigContext";
 import {
   Sidebar,
   SidebarContent,
@@ -23,8 +24,6 @@ import { usePermission } from "../hooks";
  * Props for the `AppSidebar` component.
  */
 export interface AppSidebarProps {
-  /** The full resolved VexCMS config — used to render the collection nav links. */
-  config: ClientVexConfig;
   /**
    * The slug of the currently active collection.
    * Used to set `isActive` on the matching `SidebarMenuButton`.
@@ -55,37 +54,37 @@ export interface AppSidebarProps {
  * Must be rendered inside a `SidebarProvider` — `AdminLayout` provides this.
  *
  * @param props - Sidebar props
- * @param props.config - Full VexCMS config
  * @param props.activeSlug - Slug of the currently active collection
- * @returns <AppSidebar config={vexConfig} activeSlug="posts" />
+ * @returns <AppSidebar activeSlug="posts" />
  *
  * @example
  * ```tsx
  * // Used inside AdminLayout — SidebarProvider and FrameworkComponentsContext are in scope
- * <AppSidebar config={vexConfig} activeSlug="posts" />
+ * <AppSidebar activeSlug="posts" />
  * ```
  */
 export function AppSidebar(props: AppSidebarProps) {
-  const adminRoot = addLeadingSlash(props.config.basePath);
+  const config = useVexConfig();
+  const adminRoot = addLeadingSlash(config.basePath);
 
   // `scope: "any"` — the sidebar asks "may they read at least one document in
   // this collection?", so a per-document check resolves optimistically and the
   // section stays visible; row-level filtering happens in `find`/`get`.
-  const collections = props.config.collections.filter((c) =>
+  const collections = config.collections.filter((c) =>
     usePermission({
       resource: c.slug,
       action: CRUD_ACTIONS.read,
       scope: PERMISSION_SCOPES.any,
     }),
   );
-  const globals = props.config.globals.filter((g) =>
+  const globals = config.globals.filter((g) =>
     usePermission({
       resource: g.slug,
       action: CRUD_ACTIONS.read,
       scope: PERMISSION_SCOPES.any,
     }),
   );
-  const mediaCollections = props.config.mediaCollections.filter((mc) =>
+  const mediaCollections = config.mediaCollections.filter((mc) =>
     usePermission({
       resource: mc.slug,
       action: CRUD_ACTIONS.read,
@@ -95,8 +94,8 @@ export function AppSidebar(props: AppSidebarProps) {
 
   return (
     <Sidebar
-      side={props.config.admin.sidebar.side}
-      collapsible={props.config.admin.sidebar.collapsible}
+      side={config.admin.sidebar.side}
+      collapsible={config.admin.sidebar.collapsible}
     >
       <SidebarHeader className="flex h-12 justify-center border-b">
         <div className="flex items-center justify-between">

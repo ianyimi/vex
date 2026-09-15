@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { TDocument } from "@vexcms/core";
-import { makeCellRow, runFieldCellContractSuite } from "../../../testing/fieldCellContract";
+import { makeCellRow, runFieldCellContractSuite, withCellConfig } from "../../../testing/fieldCellContract";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { CheckboxFieldCell } from "./Cell";
 import { checkboxFieldFixture } from "./testFixture";
@@ -21,14 +21,16 @@ runFieldCellContractSuite({
       ])("renders %s as %s", (value, expected) => {
         const row = makeCellRow<TDocument>({ fieldKey: "field", value });
         render(
-          <CheckboxFieldCell
-            value={value}
-            row={row}
-            fieldDef={options.fixture.fieldDef}
-            fieldKey="field"
-            isTitleField={false}
-            collection={collection}
-          />,
+          withCellConfig(
+            <CheckboxFieldCell
+              value={value}
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
         );
         expect(screen.getByText(expected)).toBeInTheDocument();
       });

@@ -5,6 +5,7 @@ import { AdminLayoutProps } from "./AdminLayout";
 import { VexLink } from "./ui";
 import { ChevronLeft, ChevronRight, LucideProps } from "lucide-react";
 import { addLeadingSlash, vexConvexApi } from "@vexcms/core";
+import { useVexConfig } from "../context/VexConfigContext";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "../styles/utils";
@@ -37,6 +38,7 @@ export function Divider(props: { left: boolean } & LucideProps & RefAttributes<S
  * @returns The breadcrumb nav, ordered per the configured sidebar side.
  */
 export default function AdminTopNav(props: AdminLayoutProps) {
+  const config = useVexConfig();
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -59,13 +61,13 @@ export default function AdminTopNav(props: AdminLayoutProps) {
     ),
   });
 
-  const isLeft = props.config.admin.sidebar.side === "left";
-  const adminRoot = addLeadingSlash(props.config.basePath);
-  const allCollections = props.config.collections.concat(props.config.mediaCollections);
+  const isLeft = config.admin.sidebar.side === "left";
+  const adminRoot = addLeadingSlash(config.basePath);
+  const allCollections = config.collections.concat(config.mediaCollections);
   const activeCollection = allCollections.find((c) => c.slug === props.activeSlug);
   const activeGlobal =
     isGlobals && props.activeDocID
-      ? props.config.globals.find((g) => g.slug === props.activeDocID)
+      ? config.globals.find((g) => g.slug === props.activeDocID)
       : undefined;
   // Only use currentDocument after client mount to avoid SSR/client mismatch.
   // The server may have this data in the React Query cache (from fetchQuery in

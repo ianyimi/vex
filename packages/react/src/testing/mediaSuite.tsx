@@ -5,8 +5,9 @@ import { ConvexQueryClient } from "@convex-dev/react-query";
 import { ConvexProvider, type ConvexReactClient } from "convex/react";
 import { convexTest } from "convex-test";
 import type { MediaCollectionConfig, VexAccessConfig, VexMediaDocument } from "@vexcms/core";
+import { defineConfig } from "@vexcms/core";
 
-import { renderWithVexProviders } from "./harness/accessFixtures";
+import { renderWithVexProviders, testCollection } from "./harness/accessFixtures";
 import { createFakeConvexClient, type ConvexTestInstance } from "./convex/bridge";
 import schema, {
   readTable,
@@ -18,7 +19,6 @@ import schema, {
 import { FilePreview } from "../components/media/FilePreview";
 import { MediaLibraryGrid } from "../components/media/MediaLibaryGrid";
 import { MediaUploadDropzone } from "../components/media/MediaUploadDropzone";
-import { StorageAdapterContextProvider } from "../context";
 import { makeFile } from "../components/fields/upload/testFixture";
 
 /** Member names {@link runMediaSuite}'s `only` option accepts (`MediaLibaryGrid` keeps the source file's existing typo — a rename is tracked separately). */
@@ -48,7 +48,7 @@ export interface RunMediaSuiteOptions {
  * ADR-009 exists to catch. `MediaLibraryGrid` therefore reads real seeded rows
  * from the kit's own `media` table, and `MediaUploadDropzone` runs its real
  * `generateUploadUrl` → adapter → `createMediaDocument` path, with the storage
- * adapter injected through the public `StorageAdapterContextProvider` prop.
+ * adapter injected through the config's `storage.clientUploads` map.
  *
  * @param t - The `convexTest()` instance the components' queries/mutations hit.
  * @returns The connected `QueryClient` and the fake Convex client.
@@ -401,7 +401,7 @@ function describeMediaLibraryGrid(access: VexAccessConfig | undefined) {
  * Registers the `MediaUploadDropzone` describe block. The component's real
  * upload path runs end to end: `generateUploadUrl` and `createMediaDocument`
  * resolve through the convex-test bridge, and the storage adapter is supplied
- * via the public `StorageAdapterContextProvider` prop — no module mocks, so the
+ * via the config's `storage.clientUploads` map — no module mocks, so the
  * same assertions hold in a consumer's process.
  *
  * @param access - RBAC matrix threaded to every render; see {@link RunMediaSuiteOptions.access}.
@@ -423,16 +423,20 @@ function describeMediaUploadDropzone(access: VexAccessConfig | undefined) {
       const utils = renderWithVexProviders(
         <ConvexProvider client={convexClient}>
           <QueryClientProvider client={queryClient}>
-            <StorageAdapterContextProvider adapterClients={{ convex: uploadFile }}>
-              <MediaUploadDropzone
-                targetCollection="images"
-                adapterName="convex"
-                onUploadComplete={onUploadComplete}
-              />
-            </StorageAdapterContextProvider>
+            <MediaUploadDropzone
+              targetCollection="images"
+              adapterName="convex"
+              onUploadComplete={onUploadComplete}
+            />
           </QueryClientProvider>
         </ConvexProvider>,
-        { access },
+        {
+          config: defineConfig({
+            collections: [testCollection],
+            access,
+            storage: { clientUploads: { convex: uploadFile } },
+          }),
+        },
       );
       return { utils, t, uploadFile };
     }

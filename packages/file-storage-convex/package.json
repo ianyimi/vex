@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/file-storage-convex",
-  "version": "0.1.0-alpha.17",
+  "version": "0.1.0-alpha.19",
   "description": "Convex file-storage adapter for VexCMS uploads",
   "keywords": [
     "cms",
@@ -29,6 +29,11 @@
       "source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./client": {
+      "source": "./src/client.ts",
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
     }
   },
   "publishConfig": {

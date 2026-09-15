@@ -48,6 +48,7 @@ These are the v0.1.0 launch track, in the order they ship.
 ## Planned
 
 - 📋 `json` / `email` / `textarea` fields
+- 📋 `tabs` and `ui` fields — a tabbed admin layout for long content models, and non-persisted display/action affordances between fields. Scheduled after the leaf fields above: `ui` is non-persisted, so schema generation, form validation, and column generation all have to skip it, and `tabs` hoists its child fields into the parent, so every tree walk has to flatten through it. Use `group` for nested structure until they land.
 - 📋 Form builder
 - 📋 Block group categorization
 - 📋 Content scheduling
@@ -74,5 +75,4 @@ Committed, but not yet scheduled — distinct from `Exploring`, which is still o
 
 Assessed and deliberately excluded, so you do not have to wonder:
 
-- **`tabs` and `ui` fields.** Both change core invariants rather than adding a leaf field. `ui` is non-persisted, so it has to be skipped by schema generation, form validation, *and* column generation; `tabs` hoists its child fields into the parent. Use `group` for nested structure. If you need a visual grouping affordance, open an issue describing the use case — the current answer is that the cost lands in the framework's core rather than in a field.
 - **`imageUrl` field.** Use `upload` with the media library, or a `url` field.

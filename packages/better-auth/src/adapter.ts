@@ -65,7 +65,12 @@ const HIDDEN_FIELDS = new Set([
  *
  * Introspects Better Auth's full merged schema (base fields + plugin fields
  * + additionalFields) via `getAuthTables()` and converts each table into a
- * standard Vex `CollectionConfig` using Vex field builders.
+ * standard Vex `CollectionConfig` using Vex field builders. Server-only: pass
+ * the resulting `VexAuthAdapter` to `defineServerConfig({ server: { auth: { adapter } } })`,
+ * which also uses its `collections` as the source of truth to verify that the client config's
+ * `authCollections` — built by {@link better-auth/src!betterAuthCollections} from
+ * `@vexcms/better-auth/client` — have not drifted, throwing `VexAuthConfigError` naming the
+ * first divergence.
  *
  * Mappings from Better Auth `DBFieldAttribute` to Vex fields:
  * - `type` → Vex field type (`string`→text, `boolean`→checkbox, `number`→number,
@@ -80,16 +85,23 @@ const HIDDEN_FIELDS = new Set([
  * @param props — Adapter options; pass your Better Auth config object wrapped
  *   in `{ config: authOptions }`. Optional — when omitted, uses default
  *   Better Auth tables with no plugins or additional fields.
- * @returns A `VexAuthAdapter` ready for `defineConfig({ auth: … })`.
+ * @returns A `VexAuthAdapter` ready for `defineServerConfig({ server: { auth: { adapter } } })`.
  *
  * @example
  * ```ts
+ * // vex.config.server.ts
  * import { betterAuthAdapter } from "@vexcms/better-auth";
+ * import { defineServerConfig } from "@vexcms/core";
+ *
  * import { authOptions } from "~/auth/server";
  *
- * export default defineConfig({
- *   auth: betterAuthAdapter({ config: authOptions }),
- *   collections: [posts],
+ * import vexConfig from "./vex.config";
+ *
+ * export default defineServerConfig({
+ *   config: vexConfig,
+ *   server: {
+ *     auth: { adapter: betterAuthAdapter({ config: authOptions }) },
+ *   },
  * });
  * ```
  */

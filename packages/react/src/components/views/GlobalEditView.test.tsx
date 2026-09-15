@@ -28,7 +28,7 @@ describe("GlobalEditView — diff submit", () => {
   it("submits only the changed field once the global has been saved before", async () => {
     const stored = { _creationTime: 1, _id: "g1", siteName: "old name", tagline: "old tagline" };
     const utils = renderView(
-      createElement(GlobalEditView, { global: testClientConfig.globals[0], initialData: stored as never }),
+      createElement(GlobalEditView, { global: testClientConfig.globals[0].slug, initialData: stored as never }),
       { convex: t },
     );
 
@@ -43,7 +43,7 @@ describe("GlobalEditView — diff submit", () => {
   it("does not submit at all when nothing changed on an already-saved global", async () => {
     const stored = { _creationTime: 1, _id: "g1", siteName: "old name", tagline: "old tagline" };
     const utils = renderView(
-      createElement(GlobalEditView, { global: testClientConfig.globals[0], initialData: stored as never }),
+      createElement(GlobalEditView, { global: testClientConfig.globals[0].slug, initialData: stored as never }),
       { convex: t },
     );
 
@@ -60,7 +60,7 @@ describe("GlobalEditView — diff submit", () => {
     // yet" state), so `defaultValues` are the field defaults and nothing is
     // dirty. A diff here would send `{}` and `tagline`'s declared default
     // would never be written.
-    const utils = renderView(createElement(GlobalEditView, { global: testClientConfig.globals[0] }), {
+    const utils = renderView(createElement(GlobalEditView, { global: testClientConfig.globals[0].slug }), {
       convex: t,
     });
 
@@ -106,7 +106,7 @@ describe("GlobalEditView — diff submit", () => {
     const stored = { _creationTime: 1, _id: "g1", siteName: "secret", tagline: "visible" };
 
     const utils = renderView(
-      createElement(GlobalEditView, { global: requiredSiteName, initialData: stored as never }),
+      createElement(GlobalEditView, { global: requiredSiteName.slug, initialData: stored as never }),
       {
         convex: t,
         config: { ...testClientConfig, globals: [requiredSiteName] } as never,

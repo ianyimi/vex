@@ -59,6 +59,42 @@ export default defineConfig({
 })
 ```
 
+### Client / Server Configuration Split
+
+`defineConfig()` resolves a **client-safe** `VexClientConfig` — nothing in it may reach a
+server SDK, an environment variable, or a class instance, since the browser imports this
+module directly (`vex.config.ts`). Auth adapters and storage adapters are server-only, so they
+layer on separately via `defineServerConfig()`, which resolves a `VexConfig` for every
+server-side and Convex reader (`vex.config.server.ts`):
+
+```typescript
+// vex.config.server.ts
+import { betterAuthAdapter } from "@vexcms/better-auth"
+import { defineServerConfig } from "@vexcms/core"
+import { convexFileStorage } from "@vexcms/file-storage-convex"
+
+import { authOptions } from "./auth/options"
+
+import vexConfig from "./vex.config"
+
+export default defineServerConfig({
+  config: vexConfig,
+  server: {
+    auth: { adapter: betterAuthAdapter({ config: authOptions }) },
+    storage: { adapters: [convexFileStorage()] },
+  },
+})
+```
+
+`defineConfig()` validates `config.access` against the resolved collections (including
+`authCollections`) as soon as it runs, since those are already in hand at client-config eval
+time. `defineServerConfig()` validates that every media collection's storage adapter is
+registered, and — when `server.auth.adapter` is registered — throws `VexAuthConfigError` when
+the client config's `authCollections` (built by the auth package's client-safe builder, e.g.
+`betterAuthCollections()` from `@vexcms/better-auth/client`) has drifted from what the live
+auth adapter would produce today. Registering the adapter is optional; omitting `server.auth`
+skips that check.
+
 ### Field Types
 
 12 built-in field types with full TypeScript inference:

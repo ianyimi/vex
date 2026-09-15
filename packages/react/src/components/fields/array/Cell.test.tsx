@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { TDocument } from "@vexcms/core";
-import { makeCellRow, runFieldCellContractSuite } from "../../../testing/fieldCellContract";
+import { makeCellRow, runFieldCellContractSuite, withCellConfig } from "../../../testing/fieldCellContract";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { ArrayFieldCell } from "./Cell";
 import { arrayFieldFixture } from "./testFixture";
@@ -22,14 +22,16 @@ runFieldCellContractSuite({
         const single = [options.fixture.valid[0]!];
         const row = makeCellRow<TDocument>({ fieldKey: "field", value: single });
         const { container } = render(
-          <ArrayFieldCell
-            value={single}
-            row={row}
-            fieldDef={options.fixture.fieldDef}
-            fieldKey="field"
-            isTitleField={false}
-            collection={collection}
-          />,
+          withCellConfig(
+            <ArrayFieldCell
+              value={single}
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
         );
         expect(container).toHaveTextContent(`1 ${options.fixture.fieldDef.labels!.singular}`);
         expect(container.firstElementChild?.getAttribute("title")).toBe(single.join(", "));
@@ -38,14 +40,16 @@ runFieldCellContractSuite({
       it("uses fieldDef.labels.plural for more than one entry", () => {
         const row = makeCellRow<TDocument>({ fieldKey: "field", value: options.fixture.valid });
         const { container } = render(
-          <ArrayFieldCell
-            value={options.fixture.valid}
-            row={row}
-            fieldDef={options.fixture.fieldDef}
-            fieldKey="field"
-            isTitleField={false}
-            collection={collection}
-          />,
+          withCellConfig(
+            <ArrayFieldCell
+              value={options.fixture.valid}
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
         );
         expect(container).toHaveTextContent(
           `${options.fixture.valid.length} ${options.fixture.fieldDef.labels!.plural}`,

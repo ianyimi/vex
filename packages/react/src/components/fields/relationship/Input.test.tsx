@@ -12,11 +12,10 @@ import { convexTest } from "convex-test";
 import { describe, test, expect } from "vitest";
 import {
   defineConfig,
-  sanitizeConfigForClient,
-  type ClientVexConfig,
   type CollectionFieldMeta,
   type RelationshipField,
   type RelationshipPreviewProps,
+  type VexClientConfig,
 } from "@vexcms/core";
 
 import { AppForm } from "../../form/AppForm";
@@ -50,7 +49,7 @@ type SchemaCtx = GenericMutationCtx<DataModelFromSchemaDefinition<typeof schema>
 async function renderRelationship(
   overrides: {
     fieldDef?: RelationshipField<CollectionFieldMeta>;
-    config?: ClientVexConfig;
+    config?: VexClientConfig;
     initialValue?: string[] | ((seededIds: string[]) => string[]);
     seedTitles?: string[];
     afterSeed?: (ctx: SchemaCtx, seededIds: string[]) => Promise<void>;
@@ -74,7 +73,7 @@ async function renderRelationship(
 
   const config =
     overrides.config ??
-    sanitizeConfigForClient(defineConfig({ collections: [relationshipTargetCollection] }));
+    defineConfig({ collections: [relationshipTargetCollection] });
   const fieldDef = overrides.fieldDef ?? relationshipFieldFixture.fieldDef;
   const initialValue =
     typeof overrides.initialValue === "function"
@@ -109,6 +108,50 @@ async function renderRelationship(
 const popoverContent = () =>
   document.querySelector('[data-slot="popover-content"]') as HTMLElement;
 
+/**
+ * Renders everything needed to diagnose a picker that never settled, for use
+ * in a failure message.
+ *
+ * Exists because this one assertion has now failed twice on CI while passing
+ * locally under every condition reproduced so far (settle latency, Node 22,
+ * 200-way CPU oversubscription, slow typing that fires several debounced
+ * queries, 80 in-process repetitions). Testing Library's own error names the
+ * missing text but not WHY it is missing, and the three candidate causes are
+ * distinguishable only from state it does not print:
+ *
+ * - search input empty → the typed text never reached the component
+ * - list still showing "Loading…" → the picker query never settled
+ * - list still showing the seeded rows + a cache entry in `status: "error"` →
+ *   the query REJECTED, and `placeholderData: keepPreviousData` is holding the
+ *   previous result set on screen indefinitely (`useRelationshipPickerOptions`
+ *   returns `isError`, which `Input.tsx` currently ignores)
+ *
+ * @param queryClient - The harness's client, for the picker query's cache state.
+ * @returns A multi-line description; cheap, and only ever built on failure.
+ */
+function describePickerState(queryClient: QueryClient): string {
+  const input = screen.queryByPlaceholderText(/search document/i) as HTMLInputElement | null;
+  const entries = queryClient
+    .getQueryCache()
+    .getAll()
+    .map((q) => {
+      const data = q.state.data;
+      return [
+        `  key=${JSON.stringify(q.queryKey)}`,
+        `status=${q.state.status}`,
+        `fetchStatus=${q.state.fetchStatus}`,
+        `rows=${Array.isArray(data) ? data.length : typeof data}`,
+        `error=${q.state.error ? String(q.state.error) : "none"}`,
+      ].join(" ");
+    });
+  return [
+    `search input value: ${JSON.stringify(input?.value ?? null)}`,
+    `popover text: ${JSON.stringify(popoverContent()?.textContent ?? null)}`,
+    `query cache (${entries.length}):`,
+    ...entries,
+  ].join("\n");
+}
+
 function FieldLevelPreview({ doc }: RelationshipPreviewProps) {
   return <span>Field preview: {String((doc as Record<string, unknown>).title)}</span>;
 }
@@ -121,7 +164,7 @@ runFieldInputContractSuite({
       describe("target collection resolution", () => {
         test("renders the missing-target-collection error instead of crashing when the field's target slug isn't registered", async () => {
           await renderRelationship({
-            config: sanitizeConfigForClient(defineConfig({ collections: [testCollection] })),
+            config: defineConfig({ collections: [testCollection] }),
           });
 
           expect(await screen.findByText(/unknown collection/i)).toBeInTheDocument();
@@ -166,19 +209,21 @@ runFieldInputContractSuite({
           expect(screen.getByText("Alpha")).toBeInTheDocument();
           expect(screen.getByText("Charlie")).toBeInTheDocument();
 
-          await waitFor(() => expect(screen.queryByText("Alpha")).not.toBeInTheDocument(), {
-            timeout: 2000,
+          // Same settle, same reason it must be one wait: the narrowed result
+          // set replaces the placeholder in a single commit. The explicit
+          // `timeout: 2000` this used to carry is now the suite-wide
+          // `asyncUtilTimeout` in `testing/setup.ts`.
+          await waitFor(() => {
+            expect(screen.getByText("Bravo")).toBeInTheDocument();
+            expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+            expect(screen.queryByText("Charlie")).not.toBeInTheDocument();
           });
-          expect(screen.getByText("Bravo")).toBeInTheDocument();
-          expect(screen.queryByText("Charlie")).not.toBeInTheDocument();
         });
 
         test("non-searchable branch: when the target collection's useAsTitle is a system field, the picker lists via find() and ignores the search text", async () => {
           const user = userEvent.setup();
           const { queryClient } = await renderRelationship({
-            config: sanitizeConfigForClient(
-              defineConfig({ collections: [relationshipTargetCollectionByCreationTime] }),
-            ),
+            config: defineConfig({ collections: [relationshipTargetCollectionByCreationTime] }),
           });
 
           await user.click(screen.getByRole("combobox"));
@@ -221,7 +266,7 @@ runFieldInputContractSuite({
 
         test("no documents match the search text renders 'No documents found' instead of an empty list", async () => {
           const user = userEvent.setup();
-          await renderRelationship();
+          const { queryClient } = await renderRelationship();
 
           await user.click(screen.getByRole("combobox"));
           expect(await screen.findByText("Alpha")).toBeInTheDocument();
@@ -229,8 +274,28 @@ runFieldInputContractSuite({
           const search = screen.getByPlaceholderText(/search document/i);
           await user.type(search, "no-such-document-exists");
 
-          expect(await screen.findByText("No documents found")).toBeInTheDocument();
-          expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+          // One wait covering BOTH halves of the settle. The picker keeps the
+          // previous result set on screen while the new query is in flight
+          // (`placeholderData: keepPreviousData` in `useRelationshipPickerOptions`),
+          // so "Alpha" disappearing and "No documents found" appearing are the
+          // same commit — asserting the second one synchronously after awaiting
+          // the first passed only because that commit happened to land between
+          // them.
+          //
+          // Wrapped so a CI-only failure reports the picker's actual state
+          // instead of just the text it could not find — see
+          // {@link describePickerState}.
+          try {
+            await waitFor(() => {
+              expect(screen.getByText("No documents found")).toBeInTheDocument();
+              expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+            });
+          } catch (cause) {
+            throw new Error(
+              `the picker never settled to its empty state.\n${describePickerState(queryClient)}`,
+              { cause },
+            );
+          }
         });
       });
 
