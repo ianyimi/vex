@@ -432,7 +432,7 @@ collection/global operation:
 ```ts
 // convex/vexApi.ts — written once
 import { vexServerApi } from "@vexcms/core/server";
-import config from "../vex.config";
+import config from "../vex.config.server";
 import type { DataModel } from "./_generated/dataModel";
 import { getAuth } from "./vexContext";
 
@@ -469,20 +469,20 @@ export const featured = query({
 });
 ```
 
-**Client, inside the admin panel.** `usePermission` from `@vexcms/react` reads the access
-config from `VexAccessProvider` — your project mounts it once around the admin route,
-passing the same `access` config directly (a client-bundle import, not the serialized page
+**Client, inside the admin panel.** `usePermission` from `@vexcms/react` reads `access` off
+`useVexConfig()` — your project mounts a single `VexConfigProvider` around the admin route,
+importing the whole client-safe config directly (a client-bundle import, not a serialized RSC
 prop, since callbacks don't survive RSC serialization):
 
 ```tsx
 // app/admin/clientProviders.tsx
 "use client";
 
-import { VexAccessProvider } from "@vexcms/react";
-import { access } from "../../vex.config";
+import { VexConfigProvider } from "@vexcms/react";
+import config from "../../vex.config";
 
-export function AdminClientProviders({ children }: { children: React.ReactNode }) {
-  return <VexAccessProvider access={access}>{children}</VexAccessProvider>;
+export function ClientProviders({ children }: { children: React.ReactNode }) {
+  return <VexConfigProvider config={config}>{children}</VexConfigProvider>;
 }
 ```
 

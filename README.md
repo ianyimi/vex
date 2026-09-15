@@ -71,9 +71,9 @@ pnpm add convex react react-dom next zod @tanstack/react-query @tanstack/react-f
 pnpm add -D @vexcms/cli@alpha
 ```
 
-1. Define collections, blocks, and access rules in `vex.config.ts` (see [Schema & Field System](#schema--field-system) below).
-2. Run `vex dev` to generate your Convex schema/types and start `convex dev` in watch mode.
-3. Mount the admin panel at `app/admin/[[...slug]]/page.tsx` using `NextAdminPage` from `@vexcms/next/server`.
+1. Define collections, blocks, and access rules in `vex.config.ts` (client-safe — see [Schema & Field System](#schema--field-system) below), then layer the auth adapter and storage adapters onto it in `vex.config.server.ts` via `defineServerConfig`.
+2. Run `vex dev` to generate your Convex schema/types and start `convex dev` in watch mode — it requires `vex.config.server.ts` to exist alongside `vex.config.ts`.
+3. Mount the admin panel: a `VexConfigProvider` (from `@vexcms/react`, importing `vex.config.ts`) around `app/admin/layout.tsx`, and `NextAdminPage` (from `@vexcms/next/server`, importing `vex.config.server.ts`) at `app/admin/[[...slug]]/page.tsx`.
 4. Query your content from the frontend with the generated, typed Convex API.
 
 ### Building with LLMs
@@ -183,17 +183,19 @@ export const siteSettings = defineGlobal({
 });
 ```
 
-### Theming
-
-Themes are content: a `themes` collection of `color()` fields covering the full shadcn token set, an active-theme selector on the `siteSettings` global, and `buildThemeCss` injecting the palette as CSS custom properties — server-rendered for first paint, updated live on save. See the theming guide on the docs site.
-
 ### Media & Storage Adapters
 
-Media collections come from a storage adapter, not a plain collection. `@vexcms/file-storage-convex` stores files in Convex file storage and adds the required media fields (`filename`, `alt`, `mimeType`, `size`, `storageId`, `src`, plus dimensions) automatically:
+Media collections are declared directly on the **client** config's `mediaCollections`, via a
+storage package's `defineMediaCollection()` (imported from its `/client` entry point).
+`@vexcms/file-storage-convex` stores files in Convex file storage and adds the required media
+fields (`filename`, `alt`, `mimeType`, `size`, `storageId`, `src`, plus dimensions)
+automatically. The adapter instance itself is server-only and registers separately, via
+`defineServerConfig`:
 
 ```typescript
+// vex.config.ts (client)
 import { defineConfig, text } from "@vexcms/core";
-import { convexFileStorage, defineMediaCollection } from "@vexcms/file-storage-convex";
+import { defineMediaCollection } from "@vexcms/file-storage-convex/client";
 
 const images = defineMediaCollection({
   slug: "images",
@@ -201,10 +203,23 @@ const images = defineMediaCollection({
 });
 
 export default defineConfig({
-  storage: { adapters: [convexFileStorage({ mediaCollections: [images] })] },
+  mediaCollections: [images],
   collections: [
     /* posts, pages, ... */
   ],
+});
+```
+
+```typescript
+// vex.config.server.ts (server)
+import { defineServerConfig } from "@vexcms/core";
+import { convexFileStorage } from "@vexcms/file-storage-convex";
+
+import vexConfig from "./vex.config";
+
+export default defineServerConfig({
+  config: vexConfig,
+  server: { storage: { adapters: [convexFileStorage()] } },
 });
 ```
 
@@ -283,19 +298,37 @@ export const posts = defineCollection({
 
 ### Authentication (Better Auth)
 
-Built-in integration with [Better Auth](https://better-auth.com). `betterAuthAdapter()` extracts and merges Better Auth's user/session/account/verification tables into your Vex collections; `authDbApi()` wires the Convex DB adapter:
+Built-in integration with [Better Auth](https://better-auth.com). `betterAuthAdapter()` extracts and merges Better Auth's user/session/account/verification tables into your Vex collections; `authDbApi()` wires the Convex DB adapter. The adapter is server-only, so it's registered on `vex.config.server.ts`; the client config derives the same collections from a plain-data schema description via `betterAuthCollections()` from `@vexcms/better-auth/client`:
 
 ```typescript
-// vex.config.ts
+// vex.config.ts (client)
+import { betterAuthCollections } from "@vexcms/better-auth/client";
 import { defineConfig } from "@vexcms/core";
-import { betterAuthAdapter } from "@vexcms/better-auth";
-import { authOptions } from "./auth/options";
+
+import { authSchema } from "./auth/schema";
 
 export default defineConfig({
-  authAdapter: betterAuthAdapter({ config: authOptions }),
+  authCollections: betterAuthCollections(authSchema),
   collections: [posts],
 });
 ```
+
+```typescript
+// vex.config.server.ts (server)
+import { betterAuthAdapter } from "@vexcms/better-auth";
+import { defineServerConfig } from "@vexcms/core";
+
+import { authOptions } from "./auth/options";
+
+import vexConfig from "./vex.config";
+
+export default defineServerConfig({
+  config: vexConfig,
+  server: { auth: { adapter: betterAuthAdapter({ config: authOptions }) } },
+});
+```
+
+`authSchema` is a client-safe module holding model names, `user.additionalFields`, and the plugin descriptor map; `authOptions` spreads it and adds the secret, base URL, and real plugin instances. See the [Authentication guide](https://docs.vexcms.dev/guides/auth/) for the full pattern, the optional `server.auth.adapter` divergence check, and the modelled-plugin list.
 
 ```typescript
 // convex/auth/db.ts
@@ -323,7 +356,7 @@ A self-hosted Next.js admin panel, mounted directly in your app:
 ```tsx
 // app/admin/[[...slug]]/page.tsx
 import { NextAdminPage } from "@vexcms/next/server";
-import config from "../../../../vex.config";
+import config from "../../../../vex.config.server";
 
 export default function AdminPage({ params }: { params: Promise<{ path?: string[] }> }) {
   return <NextAdminPage config={config} params={params} />;

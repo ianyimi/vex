@@ -5,7 +5,6 @@ import {
   isFieldAllowed,
   PERMISSION_SCOPES,
   vexConvexApi,
-  type CollectionConfig,
   type CollectionListViewProps,
   type CollectionSlug,
   type TDocument,
@@ -44,36 +43,38 @@ function columnFieldKey(column: ColumnDef<TDocument, unknown>): string | undefin
  *
  * This component renders the *content area only* — wrap it in `AdminLayout`.
  *
- * @param props - View props
- * @param props.collection - The collection configuration to list
- * @param props.initialData - Pre-fetched documents from the server (for SSR)
- * @returns The collection data table — header row with document count and "New" button, then a bordered table of all documents.
+ * @param props - View props.
+ * @param props.collection - The slug of the collection to list, resolved
+ *   from `useVexConfig()` — the single provenance for collection config.
+ * @param props.initialData - Pre-fetched documents from the server (for SSR).
+ * @returns The collection data table, or a not-found message when
+ *   `collection` does not resolve against the current config.
+ * @throws Never — resolution failure renders a not-found message instead of throwing.
  *
  * @example
  * ```tsx
- * <CollectionListView collection={postsCollection} initialData={serverDocs} />
+ * <CollectionListView collection="posts" initialData={serverDocs} />
  * ```
  */
 export function CollectionListView<
-  TFieldMeta extends {} = {},
-  TCollectionMeta extends {} = {},
-  TSlug extends CollectionSlug = CollectionSlug,
->(props: CollectionListViewProps<TFieldMeta, TCollectionMeta, TSlug>) {
-  const liveConfig = useVexConfig();
-  // Prefer the live context collection (updated via Fast Refresh) over the
-  // RSC-serialized prop, falling back to the prop if context isn't available.
-  const collection =
-    (liveConfig?.collections.find(
-      (c) => c.slug === props.collection.slug,
-    ) as CollectionConfig<TSlug>) ?? props.collection;
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TDoc extends TDocument = TDocument,
+>(props: CollectionListViewProps<TCollectionSlug, TDoc>) {
+  const config = useVexConfig();
+  const collection = config.collections.find((c) => c.slug === props.collection);
+
+  if (!collection) {
+    // TODO: add proper not found component or screen
+    return <p>Collection not found.</p>;
+  }
 
   const numItems = Math.max(
-    props.collection.admin.table.serverPageSize,
-    props.collection.admin.table.defaultPageSize,
+    collection.admin.table.serverPageSize,
+    collection.admin.table.defaultPageSize,
   );
   const pagination = usePaginatedQuery({
     query: {
-      collection: props.collection.slug,
+      collection: collection.slug,
       depth: 1,
       paginationOpts: {
         numItems,
@@ -82,7 +83,7 @@ export function CollectionListView<
       },
     },
     initialData: props.initialData,
-    clientPageSize: props.collection.admin.table.defaultPageSize,
+    clientPageSize: collection.admin.table.defaultPageSize,
   });
 
   const fieldPermissions = useFieldPermissions({
@@ -115,9 +116,11 @@ export function CollectionListView<
     operation: "remove",
   });
 
-  async function handleBulkDelete(selectedIds: string[]) {
+  // An arrow keeps the `if (!collection) return` narrowing above; a nested
+  // `function` declaration would not.
+  const handleBulkDelete = async (selectedIds: string[]) => {
     await removeMutation.mutateAsync({ ids: selectedIds, collection: collection.slug });
-  }
+  };
 
   const canCreate = usePermission({
     resource: collection.slug,
@@ -131,7 +134,7 @@ export function CollectionListView<
   });
   return (
     <div className="relative">
-      <CreateDocumentModal collection={collection} />
+      <CreateDocumentModal collection={collection.slug} />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-y-2 pt-4">
         <div>
           <h1 className="text-2xl font-bold">{collection.labels.plural}</h1>

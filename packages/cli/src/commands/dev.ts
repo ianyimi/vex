@@ -9,7 +9,7 @@ import {
 import { loadConfig, patchConvexTsconfig } from "../lib/loadConfig.js";
 import { logger } from "../lib/logger.js";
 import { backfillVersionStatus } from "../lib/migrate.js";
-import { resolveConfigPath } from "../lib/resolveConfigPath.js";
+import { isServerConfigPath, resolveConfigPath } from "../lib/resolveConfigPath.js";
 import { resolveConvexUrl } from "../lib/resolveConvexUrl.js";
 import { traceImports } from "../lib/traceImports.js";
 import { createWatcher } from "../lib/watcher.js";
@@ -35,6 +35,12 @@ export async function devCommand(options: DevOptions = {}) {
     ? resolve(process.cwd(), options.cwd)
     : process.cwd();
   const configPath = resolveConfigPath(cwd);
+  if (!isServerConfigPath(configPath)) {
+    logger.error(
+      `vex dev requires vex.config.server.ts. Found only a client config at ${configPath} — add a server config alongside it.`,
+    );
+    process.exit(1);
+  }
   logger.info(`Config found: ${configPath}`);
 
   // Initial generation

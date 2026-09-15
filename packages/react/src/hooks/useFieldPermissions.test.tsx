@@ -12,7 +12,8 @@ import {
 } from "@vexcms/core";
 import { useFieldPermissions } from "./useFieldPermissions";
 import { usePermission } from "./usePermission";
-import { VexAccessProvider } from "../context/VexAccessContext";
+import { defineConfig } from "@vexcms/core";
+import { VexConfigProvider } from "../context/VexConfigContext";
 import { VexAuthProvider } from "../context/VexAuthContext";
 
 // `useFieldPermissions`'s `resource`/`action` are plain `string` (no
@@ -56,13 +57,11 @@ const access = defineAccess({
 
 const asUser = (role: string, _id = "u1"): Record<string, unknown> => ({ _id, roles: role });
 
-/** Wraps a hook render in the real `VexAccessProvider`/`VexAuthProvider` pair. */
+/** Wraps a hook render in the real `VexConfigProvider`/`VexAuthProvider` pair. */
 function Providers(accessConfig: VexAccessConfig | undefined, auth: VexApiAuth) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <VexAccessProvider access={accessConfig}>
-        <VexAuthProvider value={auth}>{children}</VexAuthProvider>
-      </VexAccessProvider>
+      <VexConfigProvider config={defineConfig({ access: accessConfig })}><VexAuthProvider value={auth}>{children}</VexAuthProvider></VexConfigProvider>
     );
   };
 }

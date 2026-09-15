@@ -5,15 +5,16 @@ description: Stores references to uploaded files in a media collection — hero 
 
 An `upload()` field stores one or more Convex `Id` references pointing to
 documents in a **media collection** — a collection created via a storage
-adapter's `defineMediaCollection()` (e.g. `@vexcms/file-storage-convex`). The
+package's `defineMediaCollection()` (e.g. `@vexcms/file-storage-convex/client`)
+and declared directly on the client config's `mediaCollections`. The
 generated Convex schema always emits `v.array(v.id("<to-slug>"))` regardless
 of `hasMany` — `hasMany` is a UI-only hint that switches the admin panel
 between a single-file and multi-file picker, mirroring how `relationship()`
 handles `hasMany`.
 
-At `defineConfig()` time, `to` is validated against the media collections
-registered by every configured storage adapter; referencing an unregistered
-collection throws `VexStorageConfigError`. After running `vex generate`, `to`
+At `defineConfig()` time, `to` is validated against the client config's own
+`mediaCollections` array; referencing an unregistered collection throws
+`VexStorageConfigError`. After running `vex generate`, `to`
 is typed as `MediaCollectionSlug` — a compile-time union of every registered
 media collection slug — so an invalid reference is also a TypeScript error.
 
@@ -90,16 +91,19 @@ const posts = defineCollection({
 
 ## Media collections and storage adapters
 
-`upload()` fields don't work in isolation — they reference a **media
-collection**, which is registered by a **storage adapter** through
-`defineConfig({ storage: { adapters: [...] } })`. `@vexcms/file-storage-convex`
-is the built-in adapter; any adapter implementing `StorageAdapterBaseInterface`
-(see the [Custom Storage Adapter guide](/guides/custom-storage-adapter/)) works
-the same way.
+`upload()` fields don't work in isolation — they reference a **media collection**, declared
+directly on the **client** config's `mediaCollections` via a storage package's
+`defineMediaCollection()` (imported from its `/client` entry point — it's client-safe, unlike
+the adapter itself). The adapter that backs it is registered separately, on the **server**
+config, via `defineServerConfig({ server: { storage: { adapters: [...] } } })`.
+`@vexcms/file-storage-convex` is the built-in adapter; any adapter implementing
+`StorageAdapterBaseInterface` (see the
+[Custom Storage Adapter guide](/guides/custom-storage-adapter/)) works the same way.
 
 ```ts
+// vex.config.ts (client)
 import { defineConfig, defineCollection, upload, text } from "@vexcms/core";
-import { convexFileStorage, defineMediaCollection } from "@vexcms/file-storage-convex";
+import { defineMediaCollection } from "@vexcms/file-storage-convex/client";
 
 // `defineMediaCollection()` auto-injects the required base fields
 // (filename, alt, mimeType, size, storageId, deleted) plus the Convex
@@ -121,7 +125,22 @@ const posts = defineCollection({
 
 export default defineConfig({
   collections: [posts],
-  storage: { adapters: [convexFileStorage({ mediaCollections: [images] })] },
+  mediaCollections: [images],
+});
+```
+
+```ts
+// vex.config.server.ts (server)
+import { defineServerConfig } from "@vexcms/core";
+import { convexFileStorage } from "@vexcms/file-storage-convex";
+
+import vexConfig from "./vex.config";
+
+export default defineServerConfig({
+  config: vexConfig,
+  server: {
+    storage: { adapters: [convexFileStorage()] },
+  },
 });
 ```
 
@@ -129,7 +148,7 @@ export default defineConfig({
 locked at the type level — the `fields` object can only add new keys or
 override `alt`. Multiple storage adapters (and multiple media collections per
 adapter) can be registered simultaneously; `upload({ to })` is validated
-against the combined set from every adapter, not tied to any one adapter.
+against the client config's whole `mediaCollections` array, not tied to any one adapter.
 
 ## Admin UI
 

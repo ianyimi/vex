@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { resolveConfigPath } from "./resolveConfigPath";
+import { isServerConfigPath, resolveConfigPath } from "./resolveConfigPath";
 
 describe("resolveConfigPath", () => {
   let tmpDir: string;
@@ -16,33 +16,47 @@ describe("resolveConfigPath", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("finds vex.config.ts in the project root", () => {
+  it("finds vex.config.server.ts when only the server config exists", () => {
+    writeFileSync(join(tmpDir, "vex.config.server.ts"), "export default {}");
+    expect(resolveConfigPath(tmpDir)).toBe(resolve(tmpDir, "vex.config.server.ts"));
+  });
+
+  it("falls back to vex.config.ts when only the client config exists", () => {
     writeFileSync(join(tmpDir, "vex.config.ts"), "export default {}");
     expect(resolveConfigPath(tmpDir)).toBe(resolve(tmpDir, "vex.config.ts"));
   });
 
-  it("falls back to src/ when the root has no config", () => {
-    mkdirSync(join(tmpDir, "src"));
-    writeFileSync(join(tmpDir, "src", "vex.config.ts"), "export default {}");
-    expect(resolveConfigPath(tmpDir)).toBe(resolve(tmpDir, "src", "vex.config.ts"));
+  it("prefers vex.config.server.ts when both exist", () => {
+    writeFileSync(join(tmpDir, "vex.config.ts"), "export default {}");
+    writeFileSync(join(tmpDir, "vex.config.server.ts"), "export default {}");
+    expect(resolveConfigPath(tmpDir)).toBe(resolve(tmpDir, "vex.config.server.ts"));
   });
 
-  it("prefers any root config over src/ — search dirs are the outer loop", () => {
+  it("prefers a src/ server config over a root client config — family is the outer loop", () => {
     mkdirSync(join(tmpDir, "src"));
-    writeFileSync(join(tmpDir, "src", "vex.config.ts"), "export default {}");
-    writeFileSync(join(tmpDir, "vex.config.mjs"), "export default {}");
-    expect(resolveConfigPath(tmpDir)).toBe(resolve(tmpDir, "vex.config.mjs"));
+    writeFileSync(join(tmpDir, "vex.config.ts"), "export default {}");
+    writeFileSync(join(tmpDir, "src", "vex.config.server.ts"), "export default {}");
+    expect(resolveConfigPath(tmpDir)).toBe(resolve(tmpDir, "src", "vex.config.server.ts"));
   });
 
-  it("throws a message listing every tried path when nothing matches", () => {
+  it("throws an error naming both config families when neither exists", () => {
     let message = "";
     try {
       resolveConfigPath(tmpDir);
     } catch (error) {
       message = (error as Error).message;
     }
-    expect(message).toContain("Could not find vex config");
-    expect(message).toContain(resolve(tmpDir, "vex.config.ts"));
+    expect(message).toContain("vex.config.server.*");
+    expect(message).toContain("vex.config.*");
+    expect(message).toContain(resolve(tmpDir, "vex.config.server.ts"));
     expect(message).toContain(resolve(tmpDir, "src", "vex.config.mjs"));
+  });
+});
+
+describe("isServerConfigPath", () => {
+  it("distinguishes the server family from the client fallback", () => {
+    expect(isServerConfigPath("/app/src/vex.config.server.ts")).toBe(true);
+    expect(isServerConfigPath("/app/vex.config.server.mjs")).toBe(true);
+    expect(isServerConfigPath("/app/src/vex.config.ts")).toBe(false);
   });
 });

@@ -391,7 +391,8 @@ export abstract class VexFrameworkInstaller {
 
   /**
    * Configure the Better Auth organizations plugin.
-   * When enabled, replaces placeholders with organization import and plugin,
+   * When enabled, replaces placeholders with the organization import, plugin
+   * instance, and schema descriptor,
    * and leaves every org-aware file (`createGetAuth` call sites, `access.ts`,
    * `AuthContext.tsx`, `hasPermission.ts`, `convex/auth/api.ts`,
    * `db/constants/index.ts`) untouched.
@@ -423,6 +424,17 @@ export abstract class VexFrameworkInstaller {
       }
 
       await fs.writeFile(pluginsPath, content);
+    }
+
+    // The shared auth schema names the same plugin as a descriptor, so the
+    // admin panel's collections and the server's plugin list stay in step.
+    const schemaPath = path.join(this.targetPath, 'convex/auth/schema.ts');
+    if (await fs.pathExists(schemaPath)) {
+      let content = await fs.readFile(schemaPath, 'utf-8');
+      content = enabled
+        ? content.replace('    // {{ORGANIZATIONS_SCHEMA}}', '    organization: true,')
+        : content.replace(/.*\/\/ \{\{ORGANIZATIONS_SCHEMA\}\}\n?/, '');
+      await fs.writeFile(schemaPath, content);
     }
 
     if (!enabled) {

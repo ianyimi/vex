@@ -1,9 +1,10 @@
 "use client";
 
-import { CRUD_ACTIONS, hasPermission, PERMISSION_SCOPES, type DashboardProps } from "@vexcms/core";
+import { CRUD_ACTIONS, hasPermission, PERMISSION_SCOPES } from "@vexcms/core";
 import { Card, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { useVexAuth } from "../../context";
 import { useVexAccess } from "../../context";
+import { useVexConfig } from "../../context/VexConfigContext";
 import { Activity } from "react";
 
 /**
@@ -16,20 +17,19 @@ import { Activity } from "react";
  * sidebar or layout shell. `VexAdminPage` in `@vexcms/next` wraps it with
  * `AdminLayout`.
  *
- * @param props - Dashboard props
- * @param props.config - The full resolved VexCMS configuration
- * @returns <DashboardView config={vexConfig} />
+ * @returns <DashboardView />
  *
  * @example
  * ```tsx
- * <DashboardView config={vexConfig} />
+ * <DashboardView />
  * ```
  */
-export function DashboardView(props: DashboardProps) {
+export function DashboardView() {
+  const config = useVexConfig();
   const access = useVexAccess();
   const { user, organization } = useVexAuth();
 
-  const collections = props.config.collections.filter((c) =>
+  const collections = config.collections.filter((c) =>
     hasPermission({
       access,
       user,
@@ -40,7 +40,7 @@ export function DashboardView(props: DashboardProps) {
     }),
   );
 
-  const mediaCollections = props.config.mediaCollections.filter((mc) =>
+  const mediaCollections = config.mediaCollections.filter((mc) =>
     hasPermission({
       access,
       user,
@@ -51,7 +51,7 @@ export function DashboardView(props: DashboardProps) {
     }),
   );
 
-  const globals = props.config.globals.filter((g) =>
+  const globals = config.globals.filter((g) =>
     hasPermission({
       access,
       user,
@@ -98,7 +98,7 @@ export function DashboardView(props: DashboardProps) {
       <Activity mode={globals.length > 0 ? "visible" : "hidden"}>
         <h2 className="p-4 pb-2 text-center font-semibold">Globals</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {props.config.globals.map((global) => (
+          {config.globals.map((global) => (
             <a key={global.slug} href={`/admin/globals/${global.slug}`} className="group block">
               <Card className="cursor-pointer transition-shadow group-hover:shadow-md">
                 <CardHeader>

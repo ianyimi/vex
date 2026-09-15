@@ -66,10 +66,10 @@ migration here — rather than later — is what keeps the workspace compiling, 
 the server config's resolved shape is byte-identical to today's `VexConfig`.
 
 Verify:
-- [ ] `pnpm --filter @vexcms/core test` passes, including a new purity test asserting `defineConfig(input)` called twice deep-equals (guards the double module eval)
-- [ ] `defineServerConfig` throws a named error when a media collection names an unregistered adapter
-- [ ] `pnpm build` green across the workspace; `pnpm --filter test typecheck` and `--filter www typecheck` clean
-- [ ] No file outside `apps/*/src/vex.config*.ts` and the templates references `defineConfig` with a server field
+- [x] `pnpm --filter @vexcms/core test` passes, including a new purity test asserting `defineConfig(input)` called twice deep-equals (guards the double module eval)
+- [x] `defineServerConfig` throws a named error when a media collection names an unregistered adapter
+- [x] `pnpm build` green across the workspace; `pnpm --filter test typecheck` and `--filter www typecheck` clean
+- [x] No file outside `apps/*/src/vex.config*.ts` and the templates references `defineConfig` with a server field
 
 ## Step 2 — Split `@vexcms/file-storage-convex` into client and server entries — [agent]
 
@@ -91,9 +91,9 @@ is reachable without the adapter. Adapter-specific field injection is unaffected
 it already happens in `defineMediaCollection` (`config.ts:64-101`), not in the adapter.
 
 Verify:
-- [ ] A scratch script that imports only `@vexcms/file-storage-convex/client` resolves with no `convex/server` in its module graph (assert via `node --experimental-import-meta-resolve` or a bundler trace)
-- [ ] `pnpm --filter @vexcms/file-storage-convex test` passes
-- [ ] Admin panel in `apps/test` still lists the `images` media collection (attach to the developer's running server per P-024)
+- [x] A scratch script that imports only `@vexcms/file-storage-convex/client` resolves with no `convex/server` in its module graph (assert via `node --experimental-import-meta-resolve` or a bundler trace)
+- [x] `pnpm --filter @vexcms/file-storage-convex test` passes
+- [x] Admin panel in `apps/test` still lists the `images` media collection (attach to the developer's running server per P-024)
 
 ## Step 3 — CLI: server config resolution and auth-collection codegen — [dev]
 
@@ -116,10 +116,10 @@ Why: the CLI is the only place that can legally evaluate the auth adapter, and t
 drift check is what stops the generated artifact silently going stale.
 
 Verify:
-- [ ] `rm apps/test/src/vex.auth.ts && pnpm --filter test exec vex generate` regenerates it and the app boots
-- [ ] Editing a `modelName` in `apps/test/src/auth/options.ts` without regenerating makes `defineServerConfig` throw the drift error (negative test, per AP-013)
-- [ ] `vex dev`, `vex generate`, `vex deploy` all resolve `vex.config.server.ts`
-- [ ] `pnpm --filter @vexcms/cli test` passes, including a `resolveConfigPath` case for each precedence branch
+- [x] `rm apps/test/src/vex.auth.ts && pnpm --filter test exec vex generate` regenerates it and the app boots
+- [x] Editing a `modelName` in `apps/test/src/auth/options.ts` without regenerating makes `defineServerConfig` throw the drift error (negative test, per AP-013)
+- [x] `vex dev`, `vex generate`, `vex deploy` all resolve `vex.config.server.ts`
+- [x] `pnpm --filter @vexcms/cli test` passes, including a `resolveConfigPath` case for each precedence branch
 
 ## Step 4 — React: one `VexConfigProvider`, three contexts collapse to one — [agent]
 
@@ -141,10 +141,10 @@ can import its own config into the client graph. Collapsing the three contexts i
 makes that a single mount instead of three.
 
 Verify:
-- [ ] `pnpm --filter @vexcms/react test` passes
-- [ ] The three `as unknown as ClientVexConfig` casts (`viewHarness.tsx:55`, `fieldInputContract.ts:120`, `nestedFieldContainer.ts:62`) are gone, not re-typed
-- [ ] Upload + media picker still work in `apps/test`'s admin panel
-- [ ] `usePermission` gating still hides the same affordances across all five `rbacState` scenarios
+- [x] `pnpm --filter @vexcms/react test` passes
+- [x] The three `as unknown as ClientVexConfig` casts (`viewHarness.tsx:55`, `fieldInputContract.ts:120`, `nestedFieldContainer.ts:62`) are gone, not re-typed
+- [x] Upload + media picker still work in `apps/test`'s admin panel
+- [x] `usePermission` gating still hides the same affordances across all five `rbacState` scenarios
 
 ## Step 5 — Delete every config-shaped prop crossing the RSC boundary — [dev]
 
@@ -164,9 +164,9 @@ Why: this is the actual goal. With one provenance, the eval-#1/eval-#2 identity
 question disappears by construction rather than by audit.
 
 Verify:
-- [ ] `grep` finds no `config: ClientVexConfig` or `collection: CollectionConfig` prop in `packages/react/src/components` or `packages/next/src`
-- [ ] All four admin routes render in `apps/test`: dashboard, collection list, collection edit, global edit
-- [ ] Editing a field's `label` in a collection file hot-reloads the admin table header without a full page reload (the Fast Refresh property `VexConfigContext.ts:10-15` claims)
+- [x] `grep` finds no `config: ClientVexConfig` or `collection: CollectionConfig` prop in `packages/react/src/components` or `packages/next/src`
+- [x] All four admin routes render in `apps/test`: dashboard, collection list, collection edit, global edit
+- [x] Editing a field's `label` in a collection file hot-reloads the admin table header without a full page reload (the Fast Refresh property `VexConfigContext.ts:10-15` claims)
 
 ## Step 6 — Delete the serialization layer — [agent]
 
@@ -180,15 +180,18 @@ Verify:
 Why: leaving it exported is a second convention that will be reached for.
 
 Verify:
-- [ ] `grep -r "sanitizeConfigForClient\|stripNonSerializable\|ClientVexConfig"` returns zero hits outside the docs step
-- [ ] `pnpm build && pnpm test` green
+- [x] `grep -r "sanitizeConfigForClient\|stripNonSerializable\|ClientVexConfig"` returns zero hits outside the docs step
+- [x] `pnpm build && pnpm test` green
 
 ## Step 7 — Scaffold and runtime verification — [dev]
 
-- [ ] `create-vexcms` scaffolds `base-nextjs` in every supported mode and the admin panel loads (AP-020: only a real scaffold run finds template defects)
-- [ ] Same for `marketing-site`, including `seed:init`
-- [ ] A scaffolded app's client bundle contains no `better-auth`, no `BETTER_AUTH_SECRET`, and no Convex server SDK — checked against the real build output, not by inspection
-- [ ] `apps/test` and `apps/www` admin panels: sign in, browse a collection, edit and save a document, upload an image, check a permission-gated affordance
+Why: only a real scaffold run and a live admin session prove the split works end to end.
+
+Verify: manual
+- [x] `create-vexcms` scaffolds `base-nextjs` in every supported mode and the admin panel loads (AP-020: only a real scaffold run finds template defects)
+- [x] Same for `marketing-site`, including `seed:init`
+- [x] A scaffolded app's client bundle contains no `better-auth`, no `BETTER_AUTH_SECRET`, and no Convex server SDK — checked against the real build output, not by inspection
+- [x] `apps/test` and `apps/www` admin panels: sign in, browse a collection, edit and save a document, upload an image, check a permission-gated affordance
 
 ## Step 8 — Documentation — [agent, at commit time]
 
@@ -211,6 +214,55 @@ Run after Steps 1–7 land and touch-ups are done.
   per-document adapter routing; `media/api/mutations.ts:57,113` route by collection).
 
 Verify:
-- [ ] `pnpm --filter docs build` green
-- [ ] No doc shows `defineConfig` with `auth.adapter` or `storage.adapters`, and no doc shows `defineServerConfig` with `schema`, `types`, or `storage.clientUploads`
-- [ ] Quickstart followed start to finish produces a working admin panel
+- [x] `pnpm --filter docs build` green
+- [x] No doc shows `defineConfig` with `auth.adapter` or `storage.adapters`, and no doc shows `defineServerConfig` with `schema`, `types`, or `storage.clientUploads`
+- [x] Quickstart followed start to finish produces a working admin panel
+
+## Step 9 — Auth collections by function, not codegen — [agent]
+
+Amendment (2026-09-15, developer review of Steps 1–8). The generated
+`src/vex.auth.ts` artifact is replaced by a real function the client config calls.
+
+Measured facts that shape it (browser-target esbuild + `tsc --strict` probes):
+`getAuthTables` reads ONLY data (`plugins[].schema`, modelNames/fields/additionalFields,
+`rateLimit`, `secondaryStorage` presence) and accepts plain `{ id, schema }` plugin
+descriptors — 4.6 KB min / 1.1 KB gzip. Instantiating REAL plugin factories client-side
+instead costs +684 KB min / +154 KB gzip, so descriptors are the only viable client path.
+A better-auth client plugin carries no runtime schema (`$InferServerPlugin: {} as …`),
+so `authClient` can never produce collections. Plugin NAMES and per-plugin OPTION types
+are derivable at zero runtime cost via `import type * as P from "better-auth/plugins"`;
+plugin SCHEMA data is not (inconsistent type exposure, and `organization({teams})` adds
+tables at call time).
+
+- `packages/better-auth/src/pluginSchemas.generated.ts` — snapshot of every
+  `better-auth/plugins` factory's `.schema` (plus named variants for option-dependent
+  plugins, e.g. `organization` with teams), written by
+  `packages/better-auth/scripts/genPluginSchemas.ts` (`pnpm gen:auth-schemas`).
+- `packages/better-auth/src/collections.ts` — `betterAuthCollections(props)`:
+  declarative `plugins` record + modelNames/additionalFields + `extraSchema` escape
+  hatch, expanded into plain plugin descriptors and run through the EXISTING
+  `betterAuthAdapter` pipeline (no duplicated conversion logic).
+- `packages/better-auth/src/client.ts` + a `./client` export subpath — the only entry the
+  browser imports; must never reach `./convex`.
+- Plugin-name union derived from the namespace; a compile-time exhaustiveness assertion
+  makes a newly added upstream plugin a typecheck failure inside this package, naming it.
+- Drift moves server-side and loses its artifact: `defineServerConfig` compares the live
+  `auth.adapter.collections` against the client config's declaration and throws
+  `VexAuthConfigError` naming the divergence. `hashAuthCollections`,
+  `VEX_CLI_BOOTSTRAP`, `generateAuthCollections`, `loadConfig`'s two-phase bootstrap,
+  `auth.outputPath`, and every `src/vex.auth.ts` are deleted. Access validation returns
+  to `defineConfig` (the bootstrap hole that forced it server-side is gone).
+- `create-vexcms` drops its post-install `vex generate`; `verify-scaffold.mjs` drops the
+  `vex generate` step; both apps and both templates call the function in `vex.config.ts`.
+
+Why: a generated JSON-shaped module imported by a hand-authored config is the worst part
+of the setup experience, and it exists only to move data the browser can compute from
+~1 KB of descriptors. Auto-update lives in this package (generator + test) instead of in
+every user's project (hash + "run `vex generate`").
+
+Verify:
+- [x] `pnpm --filter @vexcms/better-auth test` passes, including the parity test asserting `betterAuthCollections` equals `betterAuthAdapter({ config })` for every generated plugin entry
+- [x] No `vex.auth.ts` anywhere; `grep -rn "hashAuthCollections\|VEX_CLI_BOOTSTRAP\|generateAuthCollections\|outputPath" packages/core/src packages/cli/src` returns zero auth hits
+- [x] `defineServerConfig` throws `VexAuthConfigError` when `authOptions` and the client config's `betterAuthCollections(...)` call disagree (negative test, per AP-013)
+- [x] A browser-target bundle of a client `vex.config.ts` contains no better-auth plugin code (traced, then the probe deleted)
+- [x] `pnpm build && pnpm test` green; `node scripts/verify-scaffold.mjs` green; `apps/test` admin still lists every auth collection

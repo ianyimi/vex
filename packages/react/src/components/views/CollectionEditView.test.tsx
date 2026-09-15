@@ -30,7 +30,7 @@ describe("CollectionEditView — diff submit", () => {
     const doc = await t.run((ctx) => ctx.db.insert("documents", { status: "b", title: "a" }));
     const stored = await t.run((ctx) => ctx.db.get(doc));
     const utils = renderView(
-      createElement(CollectionEditView, { collection: testCollection, documentId: doc, initialData: stored }),
+      createElement(CollectionEditView, { collection: testCollection.slug, documentId: doc, initialData: stored }),
       { convex: t },
     );
 
@@ -47,7 +47,7 @@ describe("CollectionEditView — diff submit", () => {
     const doc = await t.run((ctx) => ctx.db.insert("documents", { status: "b", title: "a" }));
     const stored = await t.run((ctx) => ctx.db.get(doc));
     const utils = renderView(
-      createElement(CollectionEditView, { collection: testCollection, documentId: doc, initialData: stored }),
+      createElement(CollectionEditView, { collection: testCollection.slug, documentId: doc, initialData: stored }),
       { convex: t },
     );
 
@@ -83,7 +83,7 @@ describe("CollectionEditView — diff submit", () => {
     );
     const stored = await t.run((ctx) => ctx.db.get(id));
     const utils = renderView(
-      createElement(CollectionEditView, { collection: testCollection, documentId: id, initialData: stored }),
+      createElement(CollectionEditView, { collection: testCollection.slug, documentId: id, initialData: stored }),
       { convex: t, access: readGatedAccess, auth: { user: { _id: "u1", roles: "gated" } as never } },
     );
 

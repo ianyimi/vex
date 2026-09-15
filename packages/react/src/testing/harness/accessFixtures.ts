@@ -4,11 +4,13 @@ import { render, type RenderResult } from "@testing-library/react";
 import {
   defineAccess,
   defineCollection,
+  defineConfig,
   text,
   type VexAccessConfig,
   type VexApiAuth,
+  type VexClientConfig,
 } from "@vexcms/core";
-import { VexAccessProvider } from "../../context/VexAccessContext";
+import { VexConfigProvider } from "../../context/VexConfigContext";
 import { VexAuthProvider } from "../../context/VexAuthContext";
 
 /**
@@ -90,28 +92,33 @@ export const testUsers: {
 };
 
 /**
- * Wraps `ui` in the real `VexAccessProvider`/`VexAuthProvider` pair — the same
+ * Wraps `ui` in the real `VexConfigProvider`/`VexAuthProvider` pair — the same
  * providers `usePermission` reads through in the app, so every factory renders
  * against actual RBAC resolution instead of a stubbed context value.
  *
  * @param ui - The tree to render inside both providers.
  * @param options - Optional scenario wiring.
- * @param options.access - The access config to provide; omit to leave RBAC unconfigured.
+ * @param options.config - The client config to provide (carries `access`). Defaults to
+ *   `defineConfig({ collections: [testCollection], access: options.access })`.
+ * @param options.access - Shorthand for the default config's `access`; ignored when
+ *   `options.config` is supplied. Omit both to leave RBAC unconfigured.
  * @param options.auth - The `{ user }` caller to provide; defaults to `{ user: null }`.
  * @returns The `@testing-library/react` render result.
  */
 export function renderWithVexProviders(
   ui: ReactNode,
-  options?: { access?: VexAccessConfig; auth?: VexApiAuth },
+  options?: { config?: VexClientConfig; access?: VexAccessConfig; auth?: VexApiAuth },
 ): RenderResult {
   const auth = options?.auth ?? { user: null };
+  const config =
+    options?.config ?? defineConfig({ collections: [testCollection], access: options?.access });
   // `children` goes in the props object, not positionally: both providers declare
   // `children` as a required prop, and `createElement`'s positional-children overload
   // does not satisfy it for a non-generic component (tsc rejects the third argument
   // even though React assigns it at runtime).
   return render(
-    createElement(VexAccessProvider, {
-      access: options?.access,
+    createElement(VexConfigProvider, {
+      config,
       children: createElement(VexAuthProvider, { value: auth, children: ui }),
     }),
   );

@@ -2,7 +2,7 @@
 
 import { resolveFieldPermissions } from "@vexcms/core";
 import type { PermissionScope, ResolvedFieldPermissions } from "@vexcms/core";
-import { useVexAccess } from "../context/VexAccessContext";
+import { useVexAccess } from "../context/VexConfigContext";
 import { useVexAuth } from "../context/VexAuthContext";
 
 /**

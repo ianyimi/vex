@@ -6,6 +6,8 @@ import { admin, anonymous, organization } from "better-auth/plugins";
 
 import { USER_ROLES } from "~/db/constants";
 
+import { authSchema } from "./schema";
+
 /**
  * Returns a fresh array of Better Auth plugins for each VexCMS auth session.
  *
@@ -27,27 +29,12 @@ export const createPlugins = () => [
   }),
   anonymous(),
   organization({
-    schema: {
-      organization: {
-        additionalFields: {
-          test: {
-            type: "string",
-            input: false,
-            required: false,
-          },
-        },
-      },
-      invitation: {
-        additionalFields: {
-          roles: {
-            type: "string[]",
-            input: true,
-            required: true,
-          },
-        },
-      },
-    },
-    teams: { enabled: true },
+    // Both halves of the org wiring come from the shared descriptor: `teams`
+    // decides whether the `team`/`teamMember` tables exist, so reading it here
+    // keeps the live adapter and the admin panel's declared collections from
+    // drifting (`defineServerConfig` throws when they do).
+    teams: { enabled: authSchema.plugins.organization.teams },
+    schema: authSchema.plugins.organization.schema,
   }),
   apiKey(),
   convex({ authConfig }),

@@ -3,12 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { CRUD_ACTIONS, isFieldAllowed, vexConvexApi } from "@vexcms/core";
-import type {
-  MediaCollectionConfig,
-  MediaCollectionMeta,
-  MediaCollectionSlug,
-  VexMediaDocument,
-} from "@vexcms/core";
+import type { MediaCollectionSlug, VexMediaDocument } from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
@@ -21,22 +16,19 @@ import {
   useVisibleFields,
 } from "../../hooks";
 import { changedValues } from "../form/changedValues";
+import { useVexConfig } from "../../context/VexConfigContext";
 
 /**
- * Props passed to the `CollectionEditView` component.
+ * Props passed to the `MediaCollectionEditView` component.
  *
- * `TCollectionSlug` is inferred from the `collection` prop. After `vex generate` runs,
- * passing a collection of the wrong slug is a compile-time error.
- *
- * @see {@link ViewComponentMap}
+ * `TCollectionSlug` narrows to a literal when the caller supplies one — see
+ * the note on {@link CollectionListViewProps} in `@vexcms/core`.
  */
 export interface MediaCollectionEditViewProps<
-  TFieldMeta extends {} = {},
-  TCollectionMeta extends MediaCollectionMeta = MediaCollectionMeta,
   TCollectionSlug extends MediaCollectionSlug = MediaCollectionSlug,
 > {
-  /** The resolved collection configuration whose fields will be rendered. */
-  collection: MediaCollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug>;
+  /** The slug of the media collection whose fields will be rendered. */
+  collection: TCollectionSlug;
   /**
    * The Convex document ID of the document being edited.
    * Omit for new document creation — the form will be empty.
@@ -50,48 +42,33 @@ export interface MediaCollectionEditViewProps<
 }
 
 /**
- * Collection document edit form.
+ * Media collection document edit form.
  *
- * Fetches the document when editing via `vexConvexApi.get` (TanStack Query +
- * Convex subscription), initialises a `useCollectionForm` instance with the
- * current field values, and renders an `<AppForm>` with one input component per
- * field. Submits via `vexConvexApi.update`. Field inputs connect to the form
- * through `AppFormContext` — no controller prop needed.
- *
- * `TSlug` is inferred from the `collection` prop. After running `vex generate`,
- * passing a collection of one slug where another is expected is a type error.
- *
- * @param props - View props
- * @param props.collection - The collection whose fields are rendered.
+ * @param props - View props.
+ * @param props.collection - The slug of the media collection whose fields are rendered.
  * @param props.documentId - Convex document ID to fetch and edit. Omit for new-document mode.
  * @param props.initialData - Server-prefetched document for SSR hydration. `null` means not found.
- * @returns The edit form, or a not-found message when the document cannot be loaded.
- *
- * @example
- * ```tsx
- * // New document
- * <CollectionEditView collection={postsCollection} />
- *
- * // Editing existing document
- * <CollectionEditView
- *   collection={postsCollection}
- *   documentId="k573abc..."
- *   initialData={serverDoc}
- * />
- * ```
+ * @returns The edit form, or a not-found message.
+ * @throws Never — resolution failure renders a not-found message instead of throwing.
  */
 export function MediaCollectionEditView<
-  TFieldMeta extends {} = {},
-  TCollectionMeta extends MediaCollectionMeta = MediaCollectionMeta,
-  TSlug extends MediaCollectionSlug = MediaCollectionSlug,
->(props: MediaCollectionEditViewProps<TFieldMeta, TCollectionMeta, TSlug>) {
-  // Generic over `TSlug` — see the note in `CollectionEditView`: the slug is a
+  TCollectionSlug extends MediaCollectionSlug = MediaCollectionSlug,
+>(props: MediaCollectionEditViewProps<TCollectionSlug>) {
+  const config = useVexConfig();
+  const collection = config.mediaCollections.find((c) => c.slug === props.collection);
+
+  if (!collection) {
+    // TODO: add proper not found component or screen
+    return <p>Collection not found.</p>;
+  }
+
+  // Generic over `TCollectionSlug` — see the note in `CollectionEditView`: the slug is a
   // runtime value here, so this uses the generic endpoint rather than the
   // per-slug `get()` wrapper.
   const { data } = useQuery({
     ...convexQuery(vexConvexApi.get, {
       id: props.documentId as string,
-      collection: props.collection.slug,
+      collection: collection.slug,
     }),
     initialData: props.initialData,
   });
@@ -103,7 +80,7 @@ export function MediaCollectionEditView<
   }
 
   const { mutateAsync, isPending } = useVexMutation({
-    collection: props.collection.slug,
+    collection: collection.slug,
     getChanges: ({ args }) => [
       { after: { ...currentDocument, ...args.data }, before: currentDocument },
     ],
@@ -111,22 +88,22 @@ export function MediaCollectionEditView<
     operation: "update",
   });
   const visibleFields = useVisibleFields({
-    resource: props.collection.slug,
-    fields: props.collection.fields,
+    resource: collection.slug,
+    fields: collection.fields,
     data: currentDocument,
   });
   const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
 
   const form = useCollectionForm({
     document: currentDocument,
-    collection: props.collection,
+    collection,
     readableFieldKeys,
     onSubmit: async () => {
       const changes = changedValues(form);
       if (Object.keys(changes).length === 0) return;
       await mutateAsync({
         id: currentDocument._id,
-        collection: props.collection.slug,
+        collection: collection.slug,
         data: changes,
       });
       form.reset();
@@ -140,12 +117,12 @@ export function MediaCollectionEditView<
   });
 
   const canEdit = usePermission({
-    resource: props.collection.slug,
+    resource: collection.slug,
     action: CRUD_ACTIONS.update,
     data: data as {},
   });
   const fieldPermissions = useFieldPermissions({
-    resource: props.collection.slug,
+    resource: collection.slug,
     action: CRUD_ACTIONS.update,
     data: currentDocument,
   });
@@ -154,9 +131,9 @@ export function MediaCollectionEditView<
     <AppForm form={form} className="relative flex flex-col gap-4 pt-4">
       <div className="bg-background sticky top-12 z-10 flex min-h-16 flex-wrap items-center justify-between gap-y-2">
         <h1 className="text-2xl font-bold">
-          Edit {props.collection.labels.singular} -{" "}
-          {/* @ts-expect-error currentDocument[props.collection.admin.useAsTitle]: string */}
-          <span className="text-primary">{currentDocument[props.collection.admin.useAsTitle]}</span>
+          Edit {collection.labels.singular} -{" "}
+          {/* @ts-expect-error currentDocument[collection.admin.useAsTitle]: string */}
+          <span className="text-primary">{currentDocument[collection.admin.useAsTitle]}</span>
         </h1>
         <form.Subscribe
           selector={(state) => state.isDefaultValue}
@@ -202,7 +179,7 @@ export function MediaCollectionEditView<
                 readOnly={
                   field.admin.readOnly || !canEdit || !isFieldAllowed(fieldPermissions, fieldKey)
                 }
-                collection={props.collection}
+                collection={collection}
               />
             );
           })}

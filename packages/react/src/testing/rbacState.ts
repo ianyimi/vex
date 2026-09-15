@@ -2,7 +2,7 @@ import { Fragment, createElement } from "react";
 import type { ReactNode } from "react";
 import { describe, it } from "vitest";
 import type { RenderResult } from "@testing-library/react";
-import type { VexAccessConfig } from "@vexcms/core";
+import type { VexAccessConfig, VexClientConfig } from "@vexcms/core";
 import { usePermission } from "../hooks/usePermission";
 import { renderWithVexProviders, testAccess, testCollection, testUsers } from "./harness/accessFixtures";
 
@@ -20,6 +20,13 @@ export interface RbacStateOptions {
   render: (permission: boolean) => ReactNode;
   /** Given the rendered result and which scenario produced it, assert the expected behavior. */
   assert: (utils: RenderResult, scenario: RbacScenario, permission: boolean) => void;
+  /**
+   * Client config threaded to `renderWithVexProviders`. Omit to use its own default
+   * (`defineConfig({ collections: [testCollection], access })`) — pass `testClientConfig`
+   * when `render`'s tree resolves its own config from `useVexConfig()` and needs
+   * `mediaCollections`/`globals` (e.g. `AppSidebar`, `DashboardView`).
+   */
+  config?: VexClientConfig;
 }
 
 const defaultScenarios: RbacScenario[] = [
@@ -61,6 +68,10 @@ export function runRbacStateSuite(options: RbacStateOptions): void {
     for (const scenario of scenarios) {
       it(`resolves the "${scenario.name}" scenario`, () => {
         let permission = false;
+        // `renderWithVexProviders` ignores its own `access` option once `config` is
+        // supplied (see its doc comment), so the scenario's access matrix is merged
+        // onto `options.config` here rather than passed alongside it.
+        const config = options.config ? { ...options.config, access: scenario.access } : undefined;
         const utils = renderWithVexProviders(
           createElement(RbacHarness, {
             render: options.render,
@@ -68,7 +79,11 @@ export function runRbacStateSuite(options: RbacStateOptions): void {
               permission = value;
             },
           }),
-          { access: scenario.access, auth: { user: (scenario.user ?? null) as Record<string, unknown> | null } },
+          {
+            config,
+            access: scenario.access,
+            auth: { user: (scenario.user ?? null) as Record<string, unknown> | null },
+          },
         );
         options.assert(utils, scenario, permission);
       });

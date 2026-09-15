@@ -27,7 +27,7 @@ runVexReactSuite({
   // output, so it is where ADR-009-class dual-context defects surface.
   // apps/www names a narrower, faster subset instead (see its own admin.test.ts).
   // Real VexAccessConfig this app ships — resolves through the real
-  // VexAccessProvider, not a hand-typed stand-in.
+  // VexConfigProvider (config.access), not a hand-typed stand-in.
   access,
   custom: [{ ...pageSlugFixture, Component: TextFieldInput }],
 });

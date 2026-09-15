@@ -1,12 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { ClientVexConfig } from "@vexcms/core";
 import {
   FrameworkComponentsContext,
   type FrameworkComponents,
 } from "../hooks/useFrameworkComponents";
-import { VexAuthProvider, VexConfigContext } from "../context";
+import { useVexConfig } from "../context/VexConfigContext";
+import { VexAuthProvider } from "../context";
 import { AppSidebar } from "./AdminSidebar";
 import {
   Button,
@@ -40,8 +40,6 @@ export interface AdminUser extends Record<string, unknown> {
  * Props for the `AdminLayout` component.
  */
 export interface AdminLayoutProps {
-  /** The full resolved VexCMS config — forwarded to `AppSidebar`. */
-  config: ClientVexConfig;
   /**
    * The slug of the currently active collection.
    * Forwarded to `AppSidebar` for active nav highlighting.
@@ -84,7 +82,7 @@ export interface AdminLayoutProps {
  *
  * `href` is hardcoded to `"/"` rather than a configured site URL: the panel
  * is mounted under `config.basePath` inside the host app, so the site it
- * manages is always at the root — there is no site URL on `ClientVexConfig`
+ * manages is always at the root — there is no site URL on `VexClientConfig`
  * to read, and nothing to go stale. The topbar's existing "Home" breadcrumb
  * points at `basePath` (the panel dashboard itself), not the site, so this
  * button is the only way out.
@@ -123,10 +121,12 @@ function ViewSiteButton({ className }: { className?: string }) {
  *
  * Exported from `@vexcms/react` and used by `NextAdminLayout` in `@vexcms/next`.
  * The consuming framework adapter (e.g. `NextAdminLayout`) is responsible for
- * providing a nuqs adapter before rendering this component.
+ * providing a nuqs adapter before rendering this component. Reads the full
+ * config via `useVexConfig()` — the app's own `VexConfigProvider` mount
+ * already sits above this component in every render tree, so this component
+ * no longer needs to establish its own context value.
  *
  * @param props - Layout props
- * @param props.config - Full VexCMS config
  * @param props.activeSlug - Forwarded to `AppSidebar` for active state
  * @param props.children - The active admin view content
  * @param props.components - Optional framework Link/Image overrides
@@ -135,24 +135,19 @@ function ViewSiteButton({ className }: { className?: string }) {
  * @example
  * ```tsx
  * <AdminLayout
- *   config={vexConfig}
  *   activeSlug="posts"
  *   components={{ Link: NextLink, Image: NextImage }}
  * >
- *   <CollectionListView collection={postsCollection} />
+ *   <CollectionListView collection="posts" />
  * </AdminLayout>
  * ```
  */
 export function AdminLayout(props: AdminLayoutProps) {
-  const side = props.config.admin.sidebar.side;
+  const config = useVexConfig();
+  const side = config.admin.sidebar.side;
 
   const sidebar = (
-    <AppSidebar
-      config={props.config}
-      activeSlug={props.activeSlug}
-      activeDocID={props.activeDocID}
-      user={props.user}
-    />
+    <AppSidebar activeSlug={props.activeSlug} activeDocID={props.activeDocID} user={props.user} />
   );
 
   const content = (
@@ -184,30 +179,28 @@ export function AdminLayout(props: AdminLayoutProps) {
   );
 
   return (
-    <VexConfigContext.Provider value={props.config}>
-      <VexAuthProvider
-        value={{ user: props.user as Record<string, unknown>, organization: props.organization }}
-      >
-        <FrameworkComponentsContext.Provider value={props.components ?? {}}>
-          <ThemeProvider>
-            <TooltipProvider>
-              <SidebarProvider defaultOpen={props.sidebarOpen}>
-                {side === "right" ? (
-                  <>
-                    {content}
-                    {sidebar}
-                  </>
-                ) : (
-                  <>
-                    {sidebar}
-                    {content}
-                  </>
-                )}
-              </SidebarProvider>
-            </TooltipProvider>
-          </ThemeProvider>
-        </FrameworkComponentsContext.Provider>
-      </VexAuthProvider>
-    </VexConfigContext.Provider>
+    <VexAuthProvider
+      value={{ user: props.user as Record<string, unknown>, organization: props.organization }}
+    >
+      <FrameworkComponentsContext.Provider value={props.components ?? {}}>
+        <ThemeProvider>
+          <TooltipProvider>
+            <SidebarProvider defaultOpen={props.sidebarOpen}>
+              {side === "right" ? (
+                <>
+                  {content}
+                  {sidebar}
+                </>
+              ) : (
+                <>
+                  {sidebar}
+                  {content}
+                </>
+              )}
+            </SidebarProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </FrameworkComponentsContext.Provider>
+    </VexAuthProvider>
   );
 }

@@ -2,7 +2,7 @@ import { api } from "@convex/_generated/api"
 import { createVexRevalidateRoute } from "@vexcms/next/cache"
 
 import { fetchAuthQuery, getToken } from "~/auth/server"
-import config from "~/vex.config"
+import config from "~/vex.config.server"
 
 /**
  * `POST /api/vex/revalidate` — session-authorized path purge.

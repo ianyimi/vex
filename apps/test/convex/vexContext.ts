@@ -1,7 +1,7 @@
 import type { GenericQueryCtx, GenericMutationCtx } from "convex/server";
 import type { DataModel } from "./_generated/dataModel";
 import type { VexConfig } from "@vexcms/core";
-import config from "~/vex.config";
+import config from "~/vex.config.server";
 
 /**
  * Extended query context with VexConfig.

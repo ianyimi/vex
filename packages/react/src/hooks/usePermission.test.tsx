@@ -15,7 +15,8 @@ import {
   type VexApiAuth,
 } from "@vexcms/core";
 import { usePermission } from "./usePermission";
-import { VexAccessProvider } from "../context/VexAccessContext";
+import { defineConfig } from "@vexcms/core";
+import { VexConfigProvider } from "../context/VexConfigContext";
 import { VexAuthProvider } from "../context/VexAuthContext";
 
 // React tests run with an unaugmented GeneratedVexTypes registry, same as core's
@@ -117,13 +118,11 @@ const access = defineAccess({
 
 const asUser = (role: string, _id = "u1"): Record<string, unknown> => ({ _id, roles: role });
 
-/** Wraps a hook render in the real `VexAccessProvider`/`VexAuthProvider` pair. */
+/** Wraps a hook render in the real `VexConfigProvider`/`VexAuthProvider` pair. */
 function Providers(access: VexAccessConfig | undefined, auth: VexApiAuth) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <VexAccessProvider access={access}>
-        <VexAuthProvider value={auth}>{children}</VexAuthProvider>
-      </VexAccessProvider>
+      <VexConfigProvider config={defineConfig({ access: access })}><VexAuthProvider value={auth}>{children}</VexAuthProvider></VexConfigProvider>
     );
   };
 }
@@ -458,9 +457,7 @@ describe("usePermission — re-render stability", () => {
     // driven through two different auth values without remounting.
     const authBox: { current: VexApiAuth } = { current: { user: asUser("predicateBuilder", "u1") } };
     const Wrapper = ({ children }: { children: ReactNode }) => (
-      <VexAccessProvider access={access}>
-        <VexAuthProvider value={authBox.current}>{children}</VexAuthProvider>
-      </VexAccessProvider>
+      <VexConfigProvider config={defineConfig({ access: access })}><VexAuthProvider value={authBox.current}>{children}</VexAuthProvider></VexConfigProvider>
     );
 
     const { result, rerender } = renderHook(

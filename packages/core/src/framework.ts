@@ -1,5 +1,3 @@
-import { CollectionConfig } from "./collections";
-import { ClientVexConfig } from "./config";
 import type {
   AdminField,
   ApplyComponent,
@@ -11,7 +9,6 @@ import type {
 import type { VexDocument } from "./api/convex";
 import { CollectionSlug, GlobalSlug, VexDocumentGlobal } from "./types/generated";
 import { PaginationResult } from "./api/types";
-import { GlobalConfig } from "./globals";
 
 /**
  * Maps every field type in the `AdminField` union to the framework's input component type
@@ -45,35 +42,30 @@ export type FieldComponentMap<
 /**
  * Props passed to the admin `Dashboard` view component.
  *
- * The Dashboard receives the full resolved VexCMS config and is responsible
- * for rendering the admin shell — navigation sidebar, header, and a slot for
- * the active view (collection list or edit form).
+ * Empty: `DashboardView` reads the full config from `useVexConfig()` — there
+ * is no longer a server → client boundary for it to cross as a prop.
  *
  * @see {@link ViewComponentMap}
  */
-export interface DashboardProps {
-  /** The full resolved VexCMS configuration. */
-  config: ClientVexConfig;
-}
+export interface DashboardProps {}
 
 /**
  * Props passed to the `CollectionListView` component.
  *
- * `TCollectionSlug` is inferred from the `collection` prop and narrows the collection type
- * to a specific slug after `vex generate` runs. `TDoc` defaults to `VexDocument`
- * and can be narrowed to a generated document interface when the caller has a
- * typed initial data array.
+ * `TCollectionSlug` narrows to a literal collection slug when the caller
+ * supplies one; every real caller in this codebase passes a runtime string
+ * (from a URL segment or a config lookup), so it resolves to the full
+ * `CollectionSlug` union in practice. `TDoc` defaults to `VexDocument` and
+ * can be narrowed when the caller has a typed initial data array.
  *
  * @see {@link ViewComponentMap}
  */
 export interface CollectionListViewProps<
-  TFieldMeta extends {} = {},
-  TCollectionMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
   TDoc extends VexDocument = VexDocument,
 > {
-  /** The resolved collection configuration for the collection being listed. */
-  collection: CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug>;
+  /** The slug of the collection being listed, resolved from `useVexConfig()`. */
+  collection: TCollectionSlug;
   /**
    * Pre-fetched documents from the server. Passed as `initialData` to
    * the TanStack Query so the list renders immediately on first load.
@@ -85,19 +77,17 @@ export interface CollectionListViewProps<
 /**
  * Props passed to the `CollectionEditView` component.
  *
- * `TCollectionSlug` is inferred from the `collection` prop. After `vex generate` runs,
- * passing a collection of the wrong slug is a compile-time error.
+ * `TCollectionSlug` narrows to a literal when the caller supplies one — see
+ * the note on {@link CollectionListViewProps}.
  *
  * @see {@link ViewComponentMap}
  */
 export interface CollectionEditViewProps<
-  TFieldMeta extends {} = {},
-  TCollectionMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
   TDocument extends VexDocument = VexDocument,
 > {
-  /** The resolved collection configuration whose fields will be rendered. */
-  collection: CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug>;
+  /** The slug of the collection whose fields will be rendered, resolved from `useVexConfig()`. */
+  collection: TCollectionSlug;
   /**
    * The Convex document ID of the document being edited.
    * Omit for new document creation — the form will be empty.
@@ -113,19 +103,17 @@ export interface CollectionEditViewProps<
 /**
  * Props passed to the `GlobalEditView` component.
  *
- * `TGlobalSlug` is inferred from the `global` prop. After `vex generate` runs,
- * passing a global config with an unregistered slug is a compile-time error.
+ * `TGlobalSlug` narrows to a literal when the caller supplies one — see the
+ * note on {@link CollectionListViewProps}.
  *
  * @see {@link ViewComponentMap}
  */
 export interface GlobalEditViewProps<
-  TFieldMeta extends {} = {},
-  TGlobalMeta extends {} = {},
   TGlobalSlug extends GlobalSlug = GlobalSlug,
   TDocument extends VexDocumentGlobal = VexDocumentGlobal,
 > {
-  /** The resolved global configuration whose fields will be rendered. */
-  global: GlobalConfig<TFieldMeta, TGlobalMeta, TGlobalSlug>;
+  /** The slug of the global whose fields will be rendered, resolved from `useVexConfig()`. */
+  global: TGlobalSlug;
   /**
    * Pre-fetched document from the server for SSR hydration.
    * `null` explicitly means "no document found". `undefined` means "not loaded yet".
@@ -142,7 +130,7 @@ export interface GlobalEditViewProps<
  * @see {@link FrameworkAdapterInput}
  */
 export type ViewComponentMap<F extends ComponentHKT> = {
-  /** Admin shell component receiving the full VexCMS config. */
+  /** Dashboard view — reads the full VexCMS config from `useVexConfig()`. */
   dashboard: ApplyComponent<F, DashboardProps>;
   /** Collection list view — renders a list of documents for a collection. */
   collectionListView: ApplyComponent<F, CollectionListViewProps>;

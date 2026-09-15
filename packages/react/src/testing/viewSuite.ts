@@ -173,7 +173,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
     if (options.access) {
       it("renders without crashing under the provided access config", () => {
         const { container, unmount } = renderView(
-          createElement(CollectionListView, { collection: testCollection, initialData: toPage(docs) }),
+        createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage(docs) }),
           { convex: t, access: options.access, auth: { user: null } },
         );
         expect(container).toBeTruthy();
@@ -184,7 +184,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
 
     it("renders rows from seeded data", () => {
       const utils = renderView(
-        createElement(CollectionListView, { collection: testCollection, initialData: toPage(docs) }),
+        createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage(docs) }),
         { convex: t },
       );
       expect(utils.getByText("3 documents")).toBeInTheDocument();
@@ -193,7 +193,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
 
     it("renders the empty state with zero documents", () => {
       const utils = renderView(
-        createElement(CollectionListView, { collection: testCollection, initialData: toPage([]) }),
+        createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage([]) }),
         { convex: t },
       );
       expect(utils.getByText("0 documents")).toBeInTheDocument();
@@ -211,7 +211,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionListView, { collection: testCollection, initialData: toPage(docs) }),
+        createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage(docs) }),
         { convex: t, access: noDeleteAccess, auth: { user: asUser("reader") } },
       );
       expect(utils.container.querySelector('thead [data-slot="checkbox"]')).toBeNull();
@@ -229,7 +229,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionListView, { collection: testCollection, initialData: toPage(docs) }),
+        createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage(docs) }),
         { convex: t, access: deleterAccess, auth: { user: asUser("deleter") } },
       );
       expect(utils.container.querySelector('thead [data-slot="checkbox"]')).not.toBeNull();
@@ -263,7 +263,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         // shared fixture's type.
       } as unknown as typeof testCollection;
       const utils = renderView(
-        createElement(CollectionListView, { collection: priorityTitleCollection, initialData: toPage(docs) }),
+        createElement(CollectionListView, { collection: priorityTitleCollection.slug, initialData: toPage(docs) }),
         { convex: t },
       );
       expect(utils.getAllByRole("row")).toHaveLength(4); // 1 header row + 3 data rows
@@ -301,14 +301,13 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
           },
         },
       });
-      // `CollectionListView` prefers `VexConfigContext`'s collection over its own
-      // prop when the slugs match (Fast Refresh support) — the context config
-      // must carry the same extended fixture or the view falls back to
-      // `testClientConfig`'s plain two-field `testCollection`.
+      // CollectionListView resolves its collection from `useVexConfig()` by slug — the
+      // context config must carry the extended `postsWithTitle` fixture, or the view
+      // resolves `testClientConfig`'s plain two-field `testCollection` instead.
       const config = { ...testClientConfig, collections: [postsWithTitle] };
 
       const denied = renderView(
-        createElement(CollectionListView, { collection: postsWithTitle, initialData: toPage(docs) }),
+        createElement(CollectionListView, { collection: postsWithTitle.slug, initialData: toPage(docs) }),
         { convex: t, config, access: fieldMapAccess, auth: { user: asUser("viewer") } },
       );
       expect(columnHeaderTexts(denied.container)).toContain("title");
@@ -318,7 +317,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       denied.unmount();
 
       const undeclaredMap = renderView(
-        createElement(CollectionListView, { collection: postsWithTitle, initialData: toPage(docs) }),
+        createElement(CollectionListView, { collection: postsWithTitle.slug, initialData: toPage(docs) }),
         { convex: t, config, access: fieldMapAccess, auth: { user: asUser("plain") } },
       );
       expect(columnHeaderTexts(undeclaredMap.container)).toEqual(
@@ -327,7 +326,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       undeclaredMap.unmount();
 
       const perDoc = renderView(
-        createElement(CollectionListView, { collection: postsWithTitle, initialData: toPage(docs) }),
+        createElement(CollectionListView, { collection: postsWithTitle.slug, initialData: toPage(docs) }),
         { convex: t, config, access: fieldMapAccess, auth: { user: asUser("perDoc") } },
       );
       expect(columnHeaderTexts(perDoc.container)).toContain("status");
@@ -348,7 +347,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionListView, { collection: testCollection, initialData: toPage(docs) }),
+        createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage(docs) }),
         { convex: t, access: createMapAccess, auth: { user: asUser("mapCreator") } },
       );
       const newLink = utils.container.querySelector('a[href="/admin/posts?createNew=true"]');
@@ -358,7 +357,7 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
     runRbacStateSuite({
       render: () =>
         wrapWithViewProviders(
-          createElement(CollectionListView, { collection: testCollection, initialData: toPage(docs) }),
+          createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage(docs) }),
           { convex: t },
         ),
       assert: (utils, scenario) => {
@@ -405,7 +404,7 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
       it("renders without crashing under the provided access config", () => {
         const { container, unmount } = renderView(
           createElement(CollectionEditView, {
-            collection: testCollection,
+            collection: testCollection.slug,
             documentId: doc._id,
             initialData: doc,
           }),
@@ -420,7 +419,7 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
     it("shows the not-found message when the document does not resolve", () => {
       const utils = renderView(
         createElement(CollectionEditView, {
-          collection: testCollection,
+          collection: testCollection.slug,
           documentId: doc._id,
           initialData: null,
         }),
@@ -436,7 +435,7 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
       // string. Proves the form mounts on the field's own default value instead of crashing
       // on the missing key.
       const utils = renderView(
-        createElement(CollectionEditView, { collection: testCollection, documentId: doc._id, initialData: doc }),
+        createElement(CollectionEditView, { collection: testCollection.slug, documentId: doc._id, initialData: doc }),
         { convex: t },
       );
       const statusInput = utils.container.querySelector("#status") as HTMLInputElement;
@@ -464,7 +463,7 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionEditView, { collection: testCollection, documentId: id, initialData: stored }),
+        createElement(CollectionEditView, { collection: testCollection.slug, documentId: id, initialData: stored }),
         { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
       );
       expect(utils.container.querySelector("#status")).toBeNull();
@@ -488,7 +487,7 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionEditView, { collection: testCollection, documentId: id, initialData: stored }),
+        createElement(CollectionEditView, { collection: testCollection.slug, documentId: id, initialData: stored }),
         { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
       );
       expect(utils.container.innerHTML).not.toContain("sentinel-denied");
@@ -498,7 +497,7 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
       const id = await t.run((ctx) => ctx.db.insert("documents", { status: "b", title: "a" }));
       const stored = await t.run((ctx) => ctx.db.get(id));
       const utils = renderView(
-        createElement(CollectionEditView, { collection: testCollection, documentId: id, initialData: stored }),
+        createElement(CollectionEditView, { collection: testCollection.slug, documentId: id, initialData: stored }),
         { convex: t },
       );
       expect(utils.container.querySelector("#status")).not.toBeNull();
@@ -520,7 +519,7 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionEditView, { collection: testCollection, documentId: id, initialData: stored }),
+        createElement(CollectionEditView, { collection: testCollection.slug, documentId: id, initialData: stored }),
         { convex: t, access: updateGatedAccess, auth: { user: asUser("gated") } },
       );
       const statusInput = utils.container.querySelector("#status");
@@ -546,7 +545,7 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionEditView, { collection: testCollection, documentId: id, initialData: stored }),
+        createElement(CollectionEditView, { collection: testCollection.slug, documentId: id, initialData: stored }),
         { convex: t, access: fieldMapAccess, auth: { user: asUser("stranger") } },
       );
       expect(utils.container.querySelector("#status")).not.toBeNull();
@@ -557,7 +556,7 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
       render: () =>
         wrapWithViewProviders(
           createElement(CollectionEditView, {
-            collection: testCollection,
+            collection: testCollection.slug,
             documentId: doc._id,
             initialData: doc,
           }),
@@ -607,7 +606,7 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
 
     if (options.access) {
       it("renders without crashing under the provided access config", () => {
-        const { container, unmount } = renderView(createElement(GlobalEditView, { global: testClientConfig.globals[0] }), {
+        const { container, unmount } = renderView(createElement(GlobalEditView, { global: testClientConfig.globals[0].slug }), {
           convex: t,
           access: options.access,
           auth: { user: null },
@@ -619,7 +618,7 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
     }
 
     it("renders the default field values when no document has ever been saved", () => {
-      const utils = renderView(createElement(GlobalEditView, { global: testClientConfig.globals[0] }), { convex: t });
+      const utils = renderView(createElement(GlobalEditView, { global: testClientConfig.globals[0].slug }), { convex: t });
       const heading = utils.getByRole("heading", { level: 1 });
       expect(heading.textContent).toBe("Edit Global - Settings");
       expect(utils.container.querySelector("#siteName")).not.toBeNull();
@@ -641,7 +640,7 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
         } as never,
       });
       const utils = renderView(
-        createElement(GlobalEditView, { global: testClientConfig.globals[0], initialData: stored as never }),
+        createElement(GlobalEditView, { global: testClientConfig.globals[0].slug, initialData: stored as never }),
         { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
       );
       expect(utils.container.querySelector("#siteName")).toBeNull();
@@ -660,7 +659,7 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
         } as never,
       });
       const utils = renderView(
-        createElement(GlobalEditView, { global: testClientConfig.globals[0], initialData: stored as never }),
+        createElement(GlobalEditView, { global: testClientConfig.globals[0].slug, initialData: stored as never }),
         { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
       );
       expect(utils.container.innerHTML).not.toContain("sentinel-denied");
@@ -669,7 +668,7 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
     it("renders every field when no read map narrows them", () => {
       const stored = { _creationTime: 1, _id: "g1", siteName: "a", tagline: "b" };
       const utils = renderView(
-        createElement(GlobalEditView, { global: testClientConfig.globals[0], initialData: stored as never }),
+        createElement(GlobalEditView, { global: testClientConfig.globals[0].slug, initialData: stored as never }),
         { convex: t },
       );
       expect(utils.container.querySelector("#siteName")).not.toBeNull();
@@ -688,7 +687,7 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
         } as never,
       });
       const utils = renderView(
-        createElement(GlobalEditView, { global: testClientConfig.globals[0], initialData: stored as never }),
+        createElement(GlobalEditView, { global: testClientConfig.globals[0].slug, initialData: stored as never }),
         { convex: t, access: updateGatedAccess, auth: { user: asUser("gated") } },
       );
       const siteNameInput = utils.container.querySelector("#siteName");
@@ -711,7 +710,7 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
         } as never,
       });
       const utils = renderView(
-        createElement(GlobalEditView, { global: testClientConfig.globals[0], initialData: stored as never }),
+        createElement(GlobalEditView, { global: testClientConfig.globals[0].slug, initialData: stored as never }),
         { convex: t, access: fieldMapAccess, auth: { user: asUser("stranger") } },
       );
       expect(utils.container.querySelector("#siteName")).not.toBeNull();
@@ -719,7 +718,7 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
     });
 
     runRbacStateSuite({
-      render: () => wrapWithViewProviders(createElement(GlobalEditView, { global: testClientConfig.globals[0] }), { convex: t }),
+      render: () => wrapWithViewProviders(createElement(GlobalEditView, { global: testClientConfig.globals[0].slug }), { convex: t }),
       assert: (utils, scenario) => {
         const expected = MATRIX_UNDECLARED[scenario.name as keyof RbacMatrix];
         const siteNameInput = utils.container.querySelector("#siteName");
@@ -749,7 +748,7 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
 function describeGlobalsListView(_options: { access?: VexAccessConfig }): void {
   describe("GlobalsListView", () => {
     it("renders one card per configured global, linking to its edit route", () => {
-      const utils = renderWithVexProviders(createElement(GlobalsListView, { config: testClientConfig }));
+      const utils = renderWithVexProviders(createElement(GlobalsListView, {}), { config: testClientConfig });
       expect(utils.getByText("Settings")).toBeInTheDocument();
       expect(utils.getByText("Edit Global")).toBeInTheDocument();
       const link = utils.container.querySelector('a[href="/admin/globals/settings"]');
@@ -778,7 +777,7 @@ function describeDashboardView(options: { access?: VexAccessConfig }): void {
     if (options.access) {
       it("renders without crashing under the provided access config", () => {
         const { container, unmount } = renderWithVexProviders(
-          createElement(DashboardView, { config: testClientConfig }),
+          createElement(DashboardView, {}),
           { access: options.access, auth: { user: null } },
         );
         expect(container).toBeTruthy();
@@ -788,7 +787,8 @@ function describeDashboardView(options: { access?: VexAccessConfig }): void {
     }
 
     runRbacStateSuite({
-      render: () => createElement(DashboardView, { config: testClientConfig }),
+      config: testClientConfig,
+      render: () => createElement(DashboardView, {}),
       assert: (utils, scenario) => {
         const name = scenario.name as keyof RbacMatrix;
         // `getByText`, not `getByRole`: the heading is always present in the DOM — only its
@@ -881,7 +881,7 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
       it("renders without crashing under the provided access config", () => {
         const { container, unmount } = renderView(
           createElement(MediaCollectionListView, {
-            collection: testClientConfig.mediaCollections[0],
+            collection: testClientConfig.mediaCollections[0].slug,
             initialData: toPage<VexMediaDocument>(docs),
           }),
           { convex: t, access: options.access, auth: { user: null } },
@@ -895,7 +895,7 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
     it("renders rows from seeded data", () => {
       const utils = renderView(
         createElement(MediaCollectionListView, {
-          collection: testClientConfig.mediaCollections[0],
+          collection: testClientConfig.mediaCollections[0].slug,
           initialData: toPage<VexMediaDocument>(docs),
         }),
         { convex: t },
@@ -907,7 +907,7 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
     it("renders the empty state with zero items", () => {
       const utils = renderView(
         createElement(MediaCollectionListView, {
-          collection: testClientConfig.mediaCollections[0],
+          collection: testClientConfig.mediaCollections[0].slug,
           initialData: toPage<VexMediaDocument>([]),
         }),
         { convex: t },
@@ -929,7 +929,7 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
       });
       const utils = renderView(
         createElement(MediaCollectionListView, {
-          collection: testClientConfig.mediaCollections[0],
+          collection: testClientConfig.mediaCollections[0].slug,
           initialData: toPage<VexMediaDocument>(docs),
         }),
         { convex: t, access: noDeleteAccess, auth: { user: asUser("reader") } },
@@ -950,7 +950,7 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
       });
       const utils = renderView(
         createElement(MediaCollectionListView, {
-          collection: testClientConfig.mediaCollections[0],
+          collection: testClientConfig.mediaCollections[0].slug,
           initialData: toPage<VexMediaDocument>(docs),
         }),
         { convex: t, access: deleterAccess, auth: { user: asUser("deleter") } },
@@ -971,7 +971,7 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
       });
       const utils = renderView(
         createElement(MediaCollectionListView, {
-          collection: testClientConfig.mediaCollections[0],
+          collection: testClientConfig.mediaCollections[0].slug,
           initialData: toPage<VexMediaDocument>(docs),
         }),
         { convex: t, access: fieldMapAccess, auth: { user: asUser("viewer") } },
@@ -993,7 +993,7 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
       });
       const utils = renderView(
         createElement(MediaCollectionListView, {
-          collection: testClientConfig.mediaCollections[0],
+          collection: testClientConfig.mediaCollections[0].slug,
           initialData: toPage<VexMediaDocument>(docs),
         }),
         { convex: t, access: createMapAccess, auth: { user: asUser("mapCreator") } },
@@ -1006,7 +1006,7 @@ function describeMediaCollectionListView(options: { access?: VexAccessConfig }):
       render: () =>
         wrapWithViewProviders(
           createElement(MediaCollectionListView, {
-            collection: testClientConfig.mediaCollections[0],
+            collection: testClientConfig.mediaCollections[0].slug,
             initialData: toPage<VexMediaDocument>(docs),
           }),
           { convex: t },
@@ -1063,7 +1063,7 @@ function describeMediaCollectionEditView(options: { access?: VexAccessConfig }):
       it("renders without crashing under the provided access config", () => {
         const { container, unmount } = renderView(
           createElement(MediaCollectionEditView, {
-            collection: testClientConfig.mediaCollections[0],
+            collection: testClientConfig.mediaCollections[0].slug,
             documentId: doc._id,
             // convex-test's seeded doc has no VexMediaDocument fields (mimeType/src/filename);
             // the view only reads `_id` (admin.useAsTitle) and `alt` (its one field) from it.
@@ -1103,7 +1103,7 @@ function describeMediaCollectionEditView(options: { access?: VexAccessConfig }):
       });
       const utils = renderView(
         createElement(MediaCollectionEditView, {
-          collection: testClientConfig.mediaCollections[0],
+          collection: testClientConfig.mediaCollections[0].slug,
           documentId: id,
           initialData: stored as unknown as VexMediaDocument,
         }),
@@ -1138,7 +1138,7 @@ function describeMediaCollectionEditView(options: { access?: VexAccessConfig }):
       });
       const utils = renderView(
         createElement(MediaCollectionEditView, {
-          collection: testClientConfig.mediaCollections[0],
+          collection: testClientConfig.mediaCollections[0].slug,
           documentId: id,
           initialData: stored as unknown as VexMediaDocument,
         }),
@@ -1163,7 +1163,7 @@ function describeMediaCollectionEditView(options: { access?: VexAccessConfig }):
       const stored = await t.run((ctx) => ctx.db.get(id));
       const utils = renderView(
         createElement(MediaCollectionEditView, {
-          collection: testClientConfig.mediaCollections[0],
+          collection: testClientConfig.mediaCollections[0].slug,
           documentId: id,
           initialData: stored as unknown as VexMediaDocument,
         }),
@@ -1198,7 +1198,7 @@ function describeMediaCollectionEditView(options: { access?: VexAccessConfig }):
       });
       const utils = renderView(
         createElement(MediaCollectionEditView, {
-          collection: testClientConfig.mediaCollections[0],
+          collection: testClientConfig.mediaCollections[0].slug,
           documentId: id,
           initialData: stored as unknown as VexMediaDocument,
         }),
@@ -1237,7 +1237,7 @@ function describeMediaCollectionEditView(options: { access?: VexAccessConfig }):
       });
       const utils = renderView(
         createElement(MediaCollectionEditView, {
-          collection: testClientConfig.mediaCollections[0],
+          collection: testClientConfig.mediaCollections[0].slug,
           documentId: id,
           initialData: stored as unknown as VexMediaDocument,
         }),
@@ -1251,7 +1251,7 @@ function describeMediaCollectionEditView(options: { access?: VexAccessConfig }):
       render: () =>
         wrapWithViewProviders(
           createElement(MediaCollectionEditView, {
-            collection: testClientConfig.mediaCollections[0],
+            collection: testClientConfig.mediaCollections[0].slug,
             documentId: doc._id,
             // convex-test's seeded doc has no VexMediaDocument fields (mimeType/src/filename); the view
             // only reads `_id` (admin.useAsTitle) and `alt` (its one field) from it.
@@ -1309,7 +1309,7 @@ function describeAdminSidebar(options: { access?: VexAccessConfig }): void {
       return createElement(
         ThemeProvider,
         null,
-        createElement(SidebarProvider, null, createElement(AppSidebar, { config: testClientConfig })),
+        createElement(SidebarProvider, null, createElement(AppSidebar, {})),
       );
     }
 
@@ -1326,6 +1326,7 @@ function describeAdminSidebar(options: { access?: VexAccessConfig }): void {
     }
 
     runRbacStateSuite({
+      config: testClientConfig,
       render: () => mount(),
       assert: (utils, scenario) => {
         const name = scenario.name as keyof RbacMatrix;
@@ -1369,12 +1370,14 @@ function describeAdminSidebar(options: { access?: VexAccessConfig }): void {
  * internally, whose nav entries ARE permission-filtered — so the active-route assertion below
  * (which asserts the "posts" sidebar entry exists AND is marked active) is only valid against
  * the DEFAULT `testAccess`-driven visibility, not an arbitrary caller-supplied config that may
- * deny "posts" outright. `AdminLayout` also provides its OWN internal
- * `VexConfigContext.Provider`/`VexAuthProvider`/`FrameworkComponentsContext.Provider` (see its
- * render implementation), so an outer `auth` value never reaches its children either — a real
- * per-scenario RBAC-gating test belongs on `AppSidebar` directly (above), which has no such
- * internal provider to shadow it. Same two-mode split as every other member: default drives
- * the real assertions below; a caller-supplied `access` downgrades to a non-crashing mount.
+ * deny "posts" outright. `AdminLayout` no longer wraps its children in its own
+ * `VexConfigContext.Provider` — it reads `useVexConfig()` directly — so the outer
+ * `VexConfigContext` value from `wrapWithViewProviders`/`renderView` flows through unshadowed.
+ * The per-scenario `access`/`auth` assertions below continue to exercise the real resolution
+ * path; `describeAdminSidebar` (above) remains the function documented as owning the
+ * per-scenario RBAC-gating assertion. Same two-mode split as every other member: default
+ * drives the real assertions below; a caller-supplied `access` downgrades to a non-crashing
+ * mount.
  *
  * @param options - Optional caller-supplied access config; see {@link ShellSuiteOptions.access}.
  * @returns Nothing; registers `describe`/`it` blocks as a side effect.
@@ -1402,7 +1405,6 @@ function describeAdminLayout(options: { access?: VexAccessConfig }): void {
       it("renders without crashing under the provided access config", () => {
         const { container, unmount } = renderView(
           createElement(AdminLayout, {
-            config: testClientConfig,
             pathname: "/admin/posts",
             activeSlug: "posts",
             children: createElement("div", null, "content"),
@@ -1420,7 +1422,6 @@ function describeAdminLayout(options: { access?: VexAccessConfig }): void {
         createElement(
           AdminLayout,
           {
-            config: testClientConfig,
             pathname: "/admin/posts",
             activeSlug: "posts",
             components: { Link: StubLink, Image: StubImage },
@@ -1437,7 +1438,6 @@ function describeAdminLayout(options: { access?: VexAccessConfig }): void {
     it("marks the active collection's nav entry and leaves the others inactive", () => {
       const utils = renderView(
         createElement(AdminLayout, {
-          config: testClientConfig,
           pathname: "/admin/posts",
           activeSlug: "posts",
           children: createElement("div", null, "content"),
@@ -1474,7 +1474,6 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
     it("renders the breadcrumb trail for an active collection route", () => {
       const utils = renderView(
         createElement(AdminTopNav, {
-          config: testClientConfig,
           pathname: "/admin/posts",
           activeSlug: "posts",
           children: null,
@@ -1493,7 +1492,6 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
     it('resolves a globals route through the "skip" sentinel with no document fetch', () => {
       const utils = renderView(
         createElement(AdminTopNav, {
-          config: testClientConfig,
           pathname: "/admin/globals/settings",
           activeSlug: "globals",
           activeDocID: "settings",
@@ -1510,7 +1508,6 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
     it("renders only the Home crumb for an unknown collection slug", () => {
       const utils = renderView(
         createElement(AdminTopNav, {
-          config: testClientConfig,
           pathname: "/admin/does-not-exist",
           activeSlug: "does-not-exist",
           children: null,
@@ -1534,7 +1531,6 @@ function describeAdminTopNav(options: { access?: VexAccessConfig }): void {
           FrameworkComponentsContext.Provider,
           { value: { Link: StubLink } as FrameworkComponents },
           createElement(AdminTopNav, {
-            config: testClientConfig,
             pathname: "/admin/posts",
             activeSlug: "posts",
             children: null,

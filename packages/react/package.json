@@ -115,6 +115,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@vexcms/file-storage-convex": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "convex": "catalog:",

@@ -2,7 +2,7 @@ import { generateAndWrite } from "../lib/generateSchema.js";
 import { deployToProduction } from "../lib/convexProcess.js";
 import { loadConfig } from "../lib/loadConfig.js";
 import { logger } from "../lib/logger.js";
-import { resolveConfigPath } from "../lib/resolveConfigPath.js";
+import { isServerConfigPath, resolveConfigPath } from "../lib/resolveConfigPath.js";
 
 /**
  * `vex deploy` — generate schema, auto-migrate if enabled, then run
@@ -11,6 +11,12 @@ import { resolveConfigPath } from "../lib/resolveConfigPath.js";
 export async function deployCommand(): Promise<void> {
   const cwd = process.cwd();
   const configPath = resolveConfigPath(cwd);
+  if (!isServerConfigPath(configPath)) {
+    logger.error(
+      `vex deploy requires vex.config.server.ts. Found only a client config at ${configPath} — add a server config alongside it.`,
+    );
+    process.exit(1);
+  }
   logger.info(`Config found: ${configPath}`);
 
   const config = await loadConfig(configPath);

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { TDocument } from "@vexcms/core";
-import { makeCellRow, runFieldCellContractSuite } from "../../../testing/fieldCellContract";
+import { makeCellRow, runFieldCellContractSuite, withCellConfig } from "../../../testing/fieldCellContract";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { NumberFieldCell } from "./Cell";
 import { numberFieldFixture } from "./testFixture";
@@ -18,14 +18,16 @@ runFieldCellContractSuite({
       it("renders the raw numeric value", () => {
         const row = makeCellRow<TDocument>({ fieldKey: "field", value: options.fixture.valid });
         render(
-          <NumberFieldCell
-            value={options.fixture.valid}
-            row={row}
-            fieldDef={options.fixture.fieldDef}
-            fieldKey="field"
-            isTitleField={false}
-            collection={collection}
-          />,
+          withCellConfig(
+            <NumberFieldCell
+              value={options.fixture.valid}
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
         );
         expect(screen.getByText(String(options.fixture.valid))).toBeInTheDocument();
       });
@@ -37,14 +39,16 @@ runFieldCellContractSuite({
       it("renders 0 as the text \"0\", not the em-dash placeholder", () => {
         const row = makeCellRow<TDocument>({ fieldKey: "field", value: 0 });
         const { container } = render(
-          <NumberFieldCell
-            value={0}
-            row={row}
-            fieldDef={options.fixture.fieldDef}
-            fieldKey="field"
-            isTitleField={false}
-            collection={collection}
-          />,
+          withCellConfig(
+            <NumberFieldCell
+              value={0}
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
         );
         expect(container).toHaveTextContent("0");
         expect(container).not.toHaveTextContent("—");

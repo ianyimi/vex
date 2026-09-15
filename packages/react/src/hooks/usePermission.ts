@@ -1,7 +1,7 @@
 "use client";
 
 import { hasPermission, HasPermissionProps, SubjectEntry } from "@vexcms/core";
-import { useVexAccess } from "../context/VexAccessContext";
+import { useVexAccess } from "../context/VexConfigContext";
 import { useVexAuth } from "../context/VexAuthContext";
 
 /**

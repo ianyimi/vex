@@ -32,7 +32,7 @@ const metaTitleFixture: FieldFixture<TextField, string> = {
 runVexReactSuite({
   sections: ["shell"],
   // Real VexAccessConfig this app ships — resolves through the real
-  // VexAccessProvider, not a hand-typed stand-in.
+  // VexConfigProvider (config.access), not a hand-typed stand-in.
   access,
   custom: [{ ...metaTitleFixture, Component: TextFieldInput }],
 })

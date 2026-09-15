@@ -10,14 +10,13 @@ import {
   GlobalsListView,
   GlobalEditView,
 } from "@vexcms/react";
-import { sanitizeConfigForClient } from "@vexcms/core";
 
 /**
  * VexCMS admin page server component for Next.js.
  *
  * An `async` server component that routes by the `[[...slug]]` catch-all
  * params, prefetches Convex data via `fetchQuery`, and renders the correct
- * view component. Does **not** include a layout wrapper — `VexAdminLayout`
+ * view component. Does **not** include a layout wrapper — `NextAdminLayout`
  * in `app/admin/layout.tsx` owns the persistent shell.
  *
  * **Route mapping:**
@@ -29,22 +28,24 @@ import { sanitizeConfigForClient } from "@vexcms/core";
  * | `[collectionSlug, documentId]` | `CollectionEditView` with preloaded doc |
  *
  * @param props - Component props
- * @param props.config - The resolved VexCMS configuration from `vex.config.ts`
+ * @param props.config - The resolved server `VexConfig`, typically the default export of
+ *   `vex.config.server.ts` — not the client-safe `vex.config.ts`.
  * @param props.params - Next.js 15 async params `{ path?: string[] }`
+ * @param props.token - Optional session token forwarded to `fetchQuery` for authenticated reads.
  * @returns The appropriate admin view for the current URL path.
  *
  * @example
  * ```tsx
  * // app/admin/[[...slug]]/page.tsx
- * import { VexAdminPage } from "@vexcms/next";
- * import config from "../../../../vex.config";
+ * import { NextAdminPage } from "@vexcms/next/server";
+ * import config from "../../../../vex.config.server";
  *
  * export default function AdminPage({
  *   params,
  * }: {
  *   params: Promise<{ path?: string[] }>;
  * }) {
- *   return <VexAdminPage config={config} params={params} />;
+ *   return <NextAdminPage config={config} params={params} />;
  * }
  * ```
  */
@@ -56,21 +57,15 @@ export async function NextAdminPage(props: {
   const { path = [] } = await props.params;
   const [collectionSlug, documentId] = path;
 
-  // Sanitize config for client components (strips storageAdapters, recursively sanitizes mediaCollections)
-  const clientConfig = sanitizeConfigForClient(props.config);
-
   if (!collectionSlug) {
-    return <DashboardView config={clientConfig} />;
+    return <DashboardView />;
   }
 
   if (collectionSlug === "globals") {
     if (!documentId) {
-      return <GlobalsListView config={clientConfig} />;
+      return <GlobalsListView />;
     }
-    // Validate the route param against the registered globals first — the
-    // found config's `slug` carries the narrowed GlobalSlug type, so no cast
-    // of the raw URL segment is needed downstream.
-    const globalConfig = clientConfig.globals.find((g) => g.slug === documentId);
+    const globalConfig = props.config.globals.find((g) => g.slug === documentId);
     if (!globalConfig) {
       return (
         <div>
@@ -84,11 +79,11 @@ export async function NextAdminPage(props: {
       { slug: globalConfig.slug },
       props.token ? { token: props.token } : undefined,
     );
-    return <GlobalEditView global={globalConfig} initialData={global} />;
+    return <GlobalEditView global={globalConfig.slug} initialData={global} />;
   }
 
-  const collection = clientConfig.collections.find((c) => c.slug === collectionSlug);
-  const mediaCollection = clientConfig.mediaCollections.find((mc) => mc.slug === collectionSlug);
+  const collection = props.config.collections.find((c) => c.slug === collectionSlug);
+  const mediaCollection = props.config.mediaCollections.find((mc) => mc.slug === collectionSlug);
 
   if (!collection && !mediaCollection) {
     return (
@@ -104,15 +99,12 @@ export async function NextAdminPage(props: {
   if (mediaCollection && documentId) {
     const initialData = await fetchQuery(
       vexConvexApi.get,
-      {
-        id: documentId,
-        collection: mediaCollection.slug,
-      },
+      { id: documentId, collection: mediaCollection.slug },
       props.token ? { token: props.token } : undefined,
     );
     return (
       <MediaCollectionEditView
-        collection={mediaCollection}
+        collection={mediaCollection.slug}
         documentId={documentId}
         initialData={initialData as VexMediaDocument | null}
       />
@@ -128,17 +120,13 @@ export async function NextAdminPage(props: {
       vexConvexApi.find,
       {
         collection: collectionSlug as CollectionSlug,
-        paginationOpts: {
-          numItems,
-          totalDocs: true,
-          cursor: null,
-        },
+        paginationOpts: { numItems, totalDocs: true, cursor: null },
       },
       props.token ? { token: props.token } : undefined,
     );
     return (
       <MediaCollectionListView
-        collection={mediaCollection}
+        collection={mediaCollection.slug}
         initialData={initialData as PaginationResult<VexMediaDocument>}
       />
     );
@@ -147,15 +135,12 @@ export async function NextAdminPage(props: {
   if (collection && documentId) {
     const initialData = await fetchQuery(
       vexConvexApi.get,
-      {
-        id: documentId,
-        collection: collection.slug,
-      },
+      { id: documentId, collection: collection.slug },
       props.token ? { token: props.token } : undefined,
     );
     return (
       <CollectionEditView
-        collection={collection}
+        collection={collection.slug}
         documentId={documentId}
         initialData={initialData}
       />
@@ -175,13 +160,9 @@ export async function NextAdminPage(props: {
     {
       collection: collectionSlug as CollectionSlug,
       depth: 1,
-      paginationOpts: {
-        cursor: null,
-        numItems,
-        totalDocs: true,
-      },
+      paginationOpts: { cursor: null, numItems, totalDocs: true },
     },
     props.token ? { token: props.token } : undefined,
   );
-  return <CollectionListView collection={collection} initialData={initialData} />;
+  return <CollectionListView collection={collection.slug} initialData={initialData} />;
 }

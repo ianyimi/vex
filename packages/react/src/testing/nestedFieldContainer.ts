@@ -10,18 +10,18 @@ import {
   array,
   blocks,
   defineBlock,
+  defineConfig,
   group,
-  text,
   type AdminField,
   type AdminFieldType,
-  type ClientVexConfig,
   type CollectionConfig,
-  type MediaCollectionConfig,
+  type VexClientConfig,
 } from "@vexcms/core";
+import { defineMediaCollection } from "@vexcms/file-storage-convex/client";
 import type { AnyFormApi } from "../components/form/AppFormContext";
 import { AppForm } from "../components/form/AppForm";
 import { fieldToInputComponent } from "../components/fields";
-import { StorageAdapterContextProvider, VexConfigContext } from "../context";
+import { VexConfigContext } from "../context";
 import { runFieldInputContractSuite } from "./fieldInputContract";
 import { testCollection } from "./harness/accessFixtures";
 import { fieldFixtures } from "./fixtures";
@@ -43,25 +43,14 @@ const CHILD_KEY = "child";
 const BLOCK_SLUG = "block";
 
 /**
- * Minimal stub media collection so a nested "upload" child (which reads
- * `VexConfigContext` to resolve its target media collection) can mount
- * without a real backend — mirrors `components/fields/upload/Input.test.tsx`.
- *
- * @returns A stub media collection config.
+ * Stub client config so a nested "upload" child (which reads `VexConfigContext`
+ * to resolve its target media collection and its adapter's `uploadFile`) can
+ * mount without a real backend.
  */
-function makeStubMediaCollection(): MediaCollectionConfig {
-  return {
-    slug: "images",
-    fields: { alt: text({ required: false }), filename: text({ required: false }) },
-    labels: { singular: "Image", plural: "Images" },
-    admin: { useAsTitle: "_id", components: {} },
-    meta: { storageAdapter: "convex" },
-  } as unknown as MediaCollectionConfig;
-}
-
-const stubClientConfig = {
-  mediaCollections: [makeStubMediaCollection()],
-} as unknown as ClientVexConfig;
+const stubClientConfig: VexClientConfig = defineConfig({
+  mediaCollections: [defineMediaCollection({ slug: "images" })],
+  storage: { clientUploads: { convex: async () => ({ storageId: "stub-id" }) } },
+});
 
 /**
  * `AppForm` narrowed to the two props this harness passes — the same
@@ -204,23 +193,19 @@ function renderContainer(props: {
           null,
           createElement(
             VexConfigContext.Provider,
-            { value: stubClientConfig },
-            createElement(
-              StorageAdapterContextProvider,
-              {
-                adapterClients: { convex: async () => ({ storageId: "stub-id" }) },
-                children: createElement(
-                  AppFormBoundary,
-                  { form } as { form: unknown; children: ReactNode },
-                  createElement(props.Component, {
-                    name: FIELD_NAME,
-                    fieldDef: props.fieldDef,
-                    collection: testCollection,
-                    readOnly: props.readOnly,
-                  }),
-                ),
-              },
-            ),
+            {
+              value: stubClientConfig,
+              children: createElement(
+                AppFormBoundary,
+                { form } as { form: unknown; children: ReactNode },
+                createElement(props.Component, {
+                  name: FIELD_NAME,
+                  fieldDef: props.fieldDef,
+                  collection: testCollection,
+                  readOnly: props.readOnly,
+                }),
+              ),
+            },
           ),
         ),
       ),

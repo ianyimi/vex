@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "slug": "2026-09-12-config-client-server-split",
+  "updated": "2026-09-15T08:19:59.621Z",
+  "groups": {
+    "Step 1": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": []
+    },
+    "Step 2": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": []
+    },
+    "Step 3": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": []
+    },
+    "Step 4": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": []
+    },
+    "Step 5": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": []
+    },
+    "Step 6": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": []
+    },
+    "Step 7": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": null,
+      "last_output_tail": []
+    },
+    "Step 8": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": []
+    },
+    "Step 9": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": []
+    }
+  }
+}

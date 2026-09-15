@@ -6,38 +6,45 @@ import {
   type MediaCollectionSlug,
   type MediaCollectionConfigInput,
   type MediaCollectionConfig,
+  type MediaCollectionMeta,
   type ComponentHKT,
   type AdminField,
   BaseFieldMeta,
 } from "@vexcms/core";
-import { type MediaCollectionMeta } from "@vexcms/core";
-import { ConvexStorageAdapter } from "./adapter";
 
 type MediaCollectionFieldName = string &
   Omit<string, "filename" | "mimeType" | "size" | "deleted" | "src" | "width" | "height">;
 
 /**
- * Resolves a raw collection config input into a fully-populated `CollectionConfig`.
+ * Resolves a raw media collection config input into a fully-populated
+ * `MediaCollectionConfig` tagged `meta.storageAdapter: "convex"`.
  *
- * Fills in any missing `labels` by deriving them from the `slug` — converting it
- * to title case for `singular` and further pluralising it for `plural`.
+ * Injects the Convex-specific base fields (`filename`, `alt`, `mimeType`,
+ * `size`, `storageId`, `deleted`, `src`, `width`, `height`) beneath the
+ * caller's own fields and defaults `admin.useAsTitle` to `filename`. Pure
+ * and client-safe — never touches the Convex SDK — so the result is declared
+ * on the client config's `mediaCollections`.
  *
- * @param config - The raw collection configuration supplied by the caller.
- * @returns The resolved `CollectionConfig` with all defaults applied.
+ * @param config - The raw media collection configuration supplied by the caller.
+ * @returns The resolved `MediaCollectionConfig` with all defaults applied.
  *
  * @example
  * ```ts
- * defineCollection({
- *   slug: "posts",
- *   fields: {
- *     title: text({ required: true }),
- *   },
+ * import { defineMediaCollection } from "@vexcms/file-storage-convex/client";
+ *
+ * const images = defineMediaCollection({
+ *   slug: "images",
+ *   fields: { alt: text({ required: true }) },
  * });
- * // → { slug: "posts", admin: { useAsTitle: "_id" }, labels: { singular: "Post", plural: "Posts" }, fields: { ... } }
+ *
+ * export default defineConfig({
+ *   mediaCollections: [images],
+ *   collections: [posts],
+ * });
  * ```
  *
- * @see {@link core/src!CollectionConfigInput} for the user-facing input type
- * @see {@link core/src!CollectionConfig} for the resolved return type
+ * @see {@link core/src!MediaCollectionConfigInput} for the user-facing input type
+ * @see {@link core/src!MediaCollectionConfig} for the resolved return type
  */
 export function defineMediaCollection<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
@@ -111,47 +118,4 @@ export function defineMediaCollection<
     TFieldSlug,
     TComponent
   >;
-}
-
-/**
- * Options for the convex-file-storage package
- */
-export interface ConvexFileStorageOptions {
-  /** Media collections to register. Required — no default collection is created. */
-  mediaCollections: MediaCollectionConfig[];
-  /** Admin panel config options for @vexcms/file-storage-convex */
-  admin?: {
-    /** When true, delete operations mark media as deleted instead of physically removing files. */
-    softDelete?: boolean;
-  };
-  /** Convex site URL for generating file URLs. Auto-detected from env if omitted. */
-  convexUrl?: string;
-}
-
-/**
- * Creates a Convex file storage adapter for VexCMS.
- *
- * Processes media collections (adds required fields, validates), configures
- * Convex file storage backend, and returns a `VexStorageAdapter`. Every
- * collection is tagged with `meta.storageAdapterName: "convex"`.
- *
- * @param options — Adapter configuration. `mediaCollections` is required.
- * @returns A `VexStorageAdapter` ready for `defineConfig({ storageAdapters: [ ... ] })`.
- *
- * @example
- * ```ts
- * import { convexFileStorage, defineMediaCollection } from "@vexcms/file-storage-convex";
- *
- * const images = defineMediaCollection({
- *   slug: "images",
- *   fields: { alt: text({ required: true }) },
- * });
- *
- * export default defineConfig({
- *   storageAdapters: [convexFileStorage({ mediaCollections: [images] })],
- *   collections: [posts],
- * });
- */
-export function convexFileStorage(options: ConvexFileStorageOptions): ConvexStorageAdapter {
-  return new ConvexStorageAdapter(options);
 }

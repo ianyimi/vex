@@ -1,5 +1,5 @@
 ---
-status: draft
+status: complete
 spec_id: 2026-09-12-config-client-server-split
 touches:
   - packages/core/src/config/**

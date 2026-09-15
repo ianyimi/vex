@@ -7,7 +7,7 @@ import {
   TABLE_SLUG_PAGES,
   TABLE_SLUG_THEMES,
 } from "~/db/constants"
-import config from "~/vex.config"
+import config from "~/vex.config.server"
 import {
   BLOCK_SLUG_CODE_SHOWCASE,
   BLOCK_SLUG_CTA,

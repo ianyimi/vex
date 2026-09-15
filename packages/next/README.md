@@ -11,17 +11,29 @@ pnpm add @vexcms/next@alpha
 ## Quick Setup
 
 ```tsx
+// app/admin/clientProviders.tsx
+"use client"
+import { VexConfigProvider } from "@vexcms/react"
+import config from "@/vex.config"
+
+export function ClientProviders({ children }: { children: React.ReactNode }) {
+  return <VexConfigProvider config={config}>{children}</VexConfigProvider>
+}
+```
+
+```tsx
 // app/admin/layout.tsx
 import { NextAdminLayout } from "@vexcms/next/client"
-import config from "@/vex.config"
 import { getCurrentUser } from "@/auth/serverUtils"
+
+import { ClientProviders } from "./clientProviders"
 
 export default async function AdminRootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
   return (
-    <NextAdminLayout config={config} user={user ?? undefined}>
-      {children}
-    </NextAdminLayout>
+    <ClientProviders>
+      <NextAdminLayout user={user ?? undefined}>{children}</NextAdminLayout>
+    </ClientProviders>
   )
 }
 ```
@@ -29,7 +41,7 @@ export default async function AdminRootLayout({ children }: { children: React.Re
 ```tsx
 // app/admin/[[...path]]/page.tsx
 import { NextAdminPage } from "@vexcms/next/server"
-import config from "@/vex.config"
+import config from "@/vex.config.server"
 
 export default function AdminPage({
   params,
@@ -62,7 +74,7 @@ Versioning, drafts, and live preview are not implemented yet — both are in pro
 
 ### Access Control
 
-- **Access provider** — `VexAccessProvider` supplies the RBAC access matrix to the admin panel via React context
+- **Config provider** — `VexConfigProvider` (`@vexcms/react`) supplies the resolved client config — including `access` and `storage.clientUploads` — to the admin panel via React context, mounted once by your app around the admin route
 - **Collection-level permissions** — `usePermission` gates create, read, update, and delete per collection and per global
 - **Field-level permissions** — a per-field access rule hides a read-denied input entirely and renders an update-denied one read-only; edit forms submit only the fields the user actually changed
 - **UI enforcement** — Buttons and actions are disabled or hidden when the current user lacks permission

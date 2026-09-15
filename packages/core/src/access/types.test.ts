@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defineCollection, defineConfig, text } from "../index";
+import { defineCollection, defineConfig, defineServerConfig, text } from "../index";
 import { WILDCARD_KEY } from "./constants";
 import { defineAccess } from "./config";
 import type { AccessDocFieldFor, AccessDocFor, VexAccessConfig } from "./types";
@@ -51,11 +51,15 @@ function loadAccess<T>(build: () => T): T {
   // invariant in it).
   const resources =
     (access as { resources?: readonly { slug: string }[] }).resources ?? [];
-  defineConfig({
-    // `labels` is the discriminator: collections declare it, globals never do.
-    collections: resources.filter((r) => "labels" in r) as never,
-    globals: resources.filter((r) => !("labels" in r)) as never,
-    access: access as never,
+  // Access validation runs in `defineServerConfig`, which needs the merged
+  // collections the client half resolves.
+  defineServerConfig({
+    config: defineConfig({
+      // `labels` is the discriminator: collections declare it, globals never do.
+      collections: resources.filter((r) => "labels" in r) as never,
+      globals: resources.filter((r) => !("labels" in r)) as never,
+      access: access as never,
+    }),
   });
   return access;
 }

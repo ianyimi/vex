@@ -100,6 +100,17 @@ site:
 - `convex/seed.ts` — an idempotent `init` mutation seeding site settings, a header, a footer, the
   starter palettes, and a complete home page from the blocks' own defaults (`pnpm seed`)
 
+### Configuration
+
+Every scaffold ships two config files: `src/vex.config.ts` — client-safe, holds collections,
+globals, media collections, access rules, and the auth collections
+`betterAuthCollections(authSchema)` derives from `src/auth/schema.ts` — and
+`src/vex.config.server.ts`, which layers the Better Auth adapter and the storage adapter(s)
+onto it via `defineServerConfig`. Nothing is generated for auth: `src/auth/schema.ts` is the
+one source of truth for model names and fields (organizations on or off, per the `--orgs`
+flag) — the client config calls `betterAuthCollections()` on it directly, and
+`src/auth/options.ts` spreads it into the real Better Auth options.
+
 ## Getting started
 
 After scaffolding:

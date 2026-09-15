@@ -6,7 +6,7 @@ import type {
   UploadFileReturn,
 } from "@vexcms/core";
 import { StorageAdapterPresignedUrl, STORAGE_ADAPTER_PROTOCOLS } from "@vexcms/core";
-import { type ConvexFileStorageOptions } from "../config";
+import { type ConvexFileStorageOptions } from "../storage";
 import Methods from "./methods";
 
 import { uploadFile } from "./uploadFile";
@@ -22,11 +22,13 @@ export * from "./uploadFile";
  *
  * @example
  * ```ts
- * // apps/test/app/admin/layout.tsx
- * import { ConvexStorageAdapter } from "@vexcms/file-storage-convex/adapter";
+ * // vex.config.server.ts
+ * import { convexFileStorage } from "@vexcms/file-storage-convex";
  *
- * const adapter = new ConvexStorageAdapter({ mediaCollections: [images] });
- * return <AdminPanel adapterClient={adapter}>{children}</AdminPanel>;
+ * export default defineServerConfig({
+ *   config,
+ *   server: { storage: { adapters: [convexFileStorage()] } },
+ * });
  * ```
  */
 export class ConvexStorageAdapter extends StorageAdapterPresignedUrl {
@@ -38,18 +40,18 @@ export class ConvexStorageAdapter extends StorageAdapterPresignedUrl {
   /**
    * Creates a new `ConvexStorageAdapter` instance.
    *
-   * @param options - Adapter configuration including media collections and soft-delete behaviour.
+   * Takes no collection list — media collections are declared on the client
+   * config (`defineMediaCollection`, `@vexcms/file-storage-convex/client`)
+   * and already carry `meta.storageAdapter: "convex"`. `mediaCollections`
+   * stays an empty array purely to satisfy `VexStorageAdapter`'s abstract
+   * property; nothing reads it anymore.
+   *
+   * @param options - Adapter configuration; every field is optional.
    */
-  constructor(options: ConvexFileStorageOptions) {
+  constructor(options: ConvexFileStorageOptions = {}) {
     super();
     this.admin.softDelete = options.admin?.softDelete ?? false;
-    this.mediaCollections = options.mediaCollections.map((mediaCollection) => ({
-      ...mediaCollection,
-      meta: {
-        ...mediaCollection.meta,
-        storageAdapter: this.name,
-      },
-    }));
+    this.mediaCollections = [];
   }
 
   /**

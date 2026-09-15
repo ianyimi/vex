@@ -1,7 +1,7 @@
 import { ADMIN_FIELDS } from "../fields/constants";
 import { adminFieldToValidator } from "../fields/validators";
 import { CollectionConfig } from "./types";
-import type { VexConfig } from "../config";
+import type { VexClientConfig } from "../config";
 import { CORE_ADMIN_FIELDS } from "./constants";
 
 /**
@@ -39,7 +39,7 @@ export interface IncomingRelationship {
  */
 export function getIncomingRelationships(props: {
   collection: CollectionConfig;
-  config: VexConfig;
+  config: VexClientConfig;
 }): IncomingRelationship[] {
   const relationships: IncomingRelationship[] = [];
   // NOTE: self-references are intentionally INCLUDED. A collection that has
@@ -103,7 +103,7 @@ export function getIncomingRelationships(props: {
  */
 export function collectionConfigToVexSchema(props: {
   collection: CollectionConfig;
-  config: VexConfig;
+  config: VexClientConfig;
 }): string {
   const fieldsBlock = [];
   const indexes = [];

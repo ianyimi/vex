@@ -1,7 +1,7 @@
 import { getGlobal } from "@vexcms/core/server"
 
 import { GLOBAL_SLUG_SITE_SETTINGS } from "~/db/constants"
-import config from "~/vex.config"
+import config from "~/vex.config.server"
 
 import { query } from "./_generated/server"
 

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import type { TDocument } from "@vexcms/core";
-import { makeCellRow, runFieldCellContractSuite } from "../../../testing/fieldCellContract";
+import { makeCellRow, runFieldCellContractSuite, withCellConfig } from "../../../testing/fieldCellContract";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { DateFieldCell } from "./Cell";
 import { dateFieldFixture } from "./testFixture";
@@ -21,14 +21,16 @@ runFieldCellContractSuite({
       const timestamp = Date.UTC(2025, 5, 15, 10, 30);
       const row = makeCellRow<TDocument>({ fieldKey: "field", value: timestamp });
       render(
-        <DateFieldCell
-          value={timestamp}
-          row={row}
-          fieldDef={options.fixture.fieldDef}
-          fieldKey="field"
-          isTitleField={false}
-          collection={collection}
-        />,
+        withCellConfig(
+          <DateFieldCell
+            value={timestamp}
+            row={row}
+            fieldDef={options.fixture.fieldDef}
+            fieldKey="field"
+            isTitleField={false}
+            collection={collection}
+          />,
+        ),
       );
       expect(screen.getByText(new Date(timestamp).toDateString())).toBeInTheDocument();
     });
@@ -40,14 +42,16 @@ runFieldCellContractSuite({
     it("renders a date for a timestamp of 0, since it is a valid date, not an absent value", () => {
       const row = makeCellRow<TDocument>({ fieldKey: "field", value: 0 });
       render(
-        <DateFieldCell
-          value={0}
-          row={row}
-          fieldDef={options.fixture.fieldDef}
-          fieldKey="field"
-          isTitleField={false}
-          collection={collection}
-        />,
+        withCellConfig(
+          <DateFieldCell
+            value={0}
+            row={row}
+            fieldDef={options.fixture.fieldDef}
+            fieldKey="field"
+            isTitleField={false}
+            collection={collection}
+          />,
+        ),
       );
       expect(screen.getByText(new Date(0).toDateString())).toBeInTheDocument();
     });

@@ -1,13 +1,36 @@
-import { createElement, type ComponentType } from "react";
+import { createElement, type ComponentType, type ReactNode } from "react";
 import { cleanup, render, type RenderResult } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Row } from "@tanstack/react-table";
 import { afterEach, describe, expect, it } from "vitest";
+import { defineConfig } from "@vexcms/core";
 import type { AdminField, CellComponentProps, CollectionConfig, TDocument } from "@vexcms/core";
 
 import { expectNoA11yViolations } from "./a11y";
 import { testCollection } from "./harness/accessFixtures";
+import { VexConfigProvider } from "../context/VexConfigContext";
 import type { FieldFixture } from "./fixtures/types";
+
+/**
+ * Stub client config every Cell in this contract renders against — only
+ * `basePath` is read (every Cell's title-column link), so `defineConfig()`'s
+ * bare default is enough.
+ */
+const stubCellConfig = defineConfig();
+
+/**
+ * Wraps `node` in a `VexConfigProvider` carrying {@link stubCellConfig}. Every
+ * Cell component reads `useVexConfig()` for its title-column link's
+ * `basePath`, and `useVexConfig()` now throws with no provider mounted, so
+ * both the base contract's `renderCell` and each type's own `extra` renders
+ * need this wrapper.
+ *
+ * @param node - The node to wrap.
+ * @returns `node` inside a `VexConfigProvider`.
+ */
+export function withCellConfig(node: ReactNode): ReactNode {
+  return createElement(VexConfigProvider, { config: stubCellConfig, children: node });
+}
 
 /** Options for {@link runFieldCellContractSuite}. */
 export interface FieldCellContractOptions<
@@ -122,10 +145,10 @@ function buildOverLengthValue(valid: unknown, threshold: number): unknown {
  *    pass.
  * 2. When `isTitleField` is `true`, wraps the rendered value in a link to
  *    `${addLeadingSlash(config.basePath)}/${collection.slug}/${row.original._id}`.
- *    Reference: `text/Cell.tsx:27-34`. `useVexConfig()` falls back to
- *    `defineConfig()`'s default `basePath: "/admin"` with no provider mounted, so the
- *    expected href is computed the same way here, with no `VexConfigContext.Provider`
- *    needed.
+ *    Reference: `text/Cell.tsx:27-34`. `useVexConfig()` throws with no provider
+ *    mounted, so `renderCell` wraps every render in {@link withCellConfig}
+ *    ({@link stubCellConfig}'s `defineConfig()` default `basePath: "/admin"`),
+ *    and the expected href is computed the same way here.
  * 3. Unless `truncates: false`, a value past the threshold is cut and the full value
  *    appears on a `title` attribute. Reference: `text/Cell.tsx`'s own
  *    `value.length > 77 ? slice(0, 77) + "..." : value` plus `title={props.value}`.
@@ -163,7 +186,9 @@ export function runFieldCellContractSuite<TField extends AdminField, TValue>(
       collection,
     };
     return render(
-      createElement(QueryClientProvider, { client: queryClient }, createElement(Component, cellProps)),
+      withCellConfig(
+        createElement(QueryClientProvider, { client: queryClient }, createElement(Component, cellProps)),
+      ),
     );
   }
 

@@ -173,10 +173,12 @@ function ensureSchemaFileExists(cwd: string): void {
 }
 
 /**
- * Load and validate the project's `vex.config.ts` (or equivalent), resolving
- * environment variables and tsconfig path aliases via jiti before evaluating it.
+ * Load and validate the project's `vex.config.server.ts` (or equivalent),
+ * resolving environment variables and tsconfig path aliases via jiti before
+ * evaluating it.
  * @param configPath - Absolute path to the vex config file.
  * @returns The evaluated, validated `VexConfig` object.
+ * @throws {Error} When the module's default export is not a config object.
  */
 export async function loadConfig(configPath: string): Promise<VexConfig> {
   const cwd = dirname(configPath);
@@ -195,9 +197,7 @@ export async function loadConfig(configPath: string): Promise<VexConfig> {
 
   const jiti = createJiti(configPath, createJitiOptions(cwd));
 
-  const mod = (await jiti.import(configPath)) as
-    | VexConfig
-    | { default: VexConfig };
+  const mod = (await jiti.import(configPath)) as VexConfig | { default: VexConfig };
 
   const config = "default" in mod ? mod.default : mod;
 

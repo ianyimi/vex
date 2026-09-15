@@ -3,11 +3,12 @@
 import { useRef, useState } from "react";
 import { Button, DialogClose, DialogContent, DialogFooter, DialogHeader } from "../ui";
 import { Modal } from "./BaseModal";
-import { CollectionConfig, CollectionSlug } from "@vexcms/core";
+import { type CollectionSlug } from "@vexcms/core";
 import { MODALS } from "./constants";
 import { AppForm } from "../form";
 import { useCollectionForm } from "../../hooks/useCollectionForm";
 import { useVexMutation } from "../../hooks";
+import { useVexConfig } from "../../context/VexConfigContext";
 import { RenderFieldInputComponents } from "../fields";
 import { vexConvexApi } from "@vexcms/core";
 import { parseAsBoolean, useQueryState } from "nuqs";
@@ -21,24 +22,19 @@ import { parseAsBoolean, useQueryState } from "nuqs";
  * Convex `create` mutation on submit. Closes by clearing the URL param.
  *
  * @param props - Component props.
- * @param props.collection - The collection the new document will be created in.
- * @returns A URL-state-driven `<Modal>` containing the creation form.
- *
- * @example
- * ```tsx
- * // Rendered inside CollectionListView — opens automatically when ?createNew=true
- * <CreateDocumentModal collection={postsCollection} />
- * ```
+ * @param props.collection - The slug of the collection the new document will be created in.
+ * @returns A URL-state-driven `<Modal>` containing the creation form, or `null`
+ *   when `collection` does not resolve against the current config.
+ * @throws Never — resolution failure renders `null` instead of throwing.
  */
-export function CreateDocumentModal<
-  TFieldMeta extends {} = {},
-  TCollectionMeta extends {} = {},
-  TSlug extends CollectionSlug = CollectionSlug,
->({
-  collection,
-}: {
-  collection: CollectionConfig<TFieldMeta, TCollectionMeta, TSlug>;
-}) {
+export function CreateDocumentModal(props: { collection: CollectionSlug }) {
+  const config = useVexConfig();
+  const collection = config.collections.find((c) => c.slug === props.collection);
+
+  if (!collection) {
+    return null;
+  }
+
   // eslint-disable-next-line no-unused-vars
   const [_, setOpen] = useQueryState(MODALS.createDocument.urlParam, parseAsBoolean);
 

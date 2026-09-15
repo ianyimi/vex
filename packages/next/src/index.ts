@@ -64,7 +64,9 @@ export type {
   CollectionSlug,
   VexDocument,
   VexConfig,
-  VexConfigInput,
+  VexClientConfig,
+  VexClientConfigInput,
+  VexServerConfigInput,
   RelationshipPreviewProps,
 } from "@vexcms/react";
 

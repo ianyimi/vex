@@ -31,7 +31,9 @@ export type {
   CollectionSlug,
   VexDocument,
   VexConfig,
-  VexConfigInput,
+  VexClientConfig,
+  VexClientConfigInput,
+  VexServerConfigInput,
   RelationshipPreviewProps,
 } from "@vexcms/core";
 import type {
@@ -106,10 +108,11 @@ export type { AdminUser, AdminLayoutProps, AppSidebarProps, UnauthorizedViewProp
 // Context
 export {
   VexConfigContext,
-  VexAccessProvider,
+  VexConfigProvider,
   useVexConfig,
+  useVexAccess,
+  useStorageAdapterMap,
   useVexAuth,
-  StorageAdapterContextProvider,
 } from "./context";
 
 // Hooks

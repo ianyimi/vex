@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { TDocument } from "@vexcms/core";
-import { makeCellRow, runFieldCellContractSuite } from "../../../testing/fieldCellContract";
+import { makeCellRow, runFieldCellContractSuite, withCellConfig } from "../../../testing/fieldCellContract";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { ColorFieldCell } from "./Cell";
 import { colorFieldFixture } from "./testFixture";
@@ -18,14 +18,16 @@ runFieldCellContractSuite({
       it("renders a swatch with the value as its background color, plus the raw value as text", () => {
         const row = makeCellRow<TDocument>({ fieldKey: "field", value: options.fixture.valid });
         const { container } = render(
-          <ColorFieldCell
-            value={options.fixture.valid}
-            row={row}
-            fieldDef={options.fixture.fieldDef}
-            fieldKey="field"
-            isTitleField={false}
-            collection={collection}
-          />,
+          withCellConfig(
+            <ColorFieldCell
+              value={options.fixture.valid}
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
         );
         const swatch = container.querySelector<HTMLElement>('[aria-hidden="true"]');
         expect(swatch?.style.backgroundColor).toBe("rgb(232, 98, 42)"); // #e8622a
@@ -40,14 +42,16 @@ runFieldCellContractSuite({
       it("renders the em-dash placeholder for an empty string, same as for null/undefined", () => {
         const row = makeCellRow<TDocument>({ fieldKey: "field", value: "" });
         const { container } = render(
-          <ColorFieldCell
-            value=""
-            row={row}
-            fieldDef={options.fixture.fieldDef}
-            fieldKey="field"
-            isTitleField={false}
-            collection={collection}
-          />,
+          withCellConfig(
+            <ColorFieldCell
+              value=""
+              row={row}
+              fieldDef={options.fixture.fieldDef}
+              fieldKey="field"
+              isTitleField={false}
+              collection={collection}
+            />,
+          ),
         );
         expect(container).toHaveTextContent("—");
       });

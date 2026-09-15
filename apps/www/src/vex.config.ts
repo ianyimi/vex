@@ -1,33 +1,36 @@
-import { authOptions } from "@convex/auth/options"
-import { betterAuthAdapter } from "@vexcms/better-auth"
+import { betterAuthCollections } from "@vexcms/better-auth/client"
 import { defineConfig } from "@vexcms/core"
-import { convexFileStorage } from "@vexcms/file-storage-convex"
+import { uploadFile } from "@vexcms/file-storage-convex/client"
+
+import { authSchema } from "@convex/auth/schema"
 
 import { access } from "~/auth/access"
 import { footers, headers, images, pages, themes, users } from "~/vexcms/collections"
 import { siteSettings } from "~/vexcms/globals"
 
 /**
- * VexCMS configuration for the marketing site.
+ * VexCMS client-safe configuration for the marketing site.
  *
  * Replaces `templates/base-nextjs`'s bare config wholesale (overlay copy is
  * file-level, not a merge): carries base's `users`/`images` forward unchanged
- * and adds the four marketing collections plus `siteSettings`. `vex dev`/
- * `vex generate` consume this to produce the Convex schema and TypeScript
- * types.
+ * and adds the four marketing collections plus `siteSettings`. Imported
+ * directly by the browser via `VexConfigProvider`.
+ *
+ * @see ./vex.config.server for the auth adapter and storage adapter wiring
  */
 const vexConfig = defineConfig({
   access,
+  authCollections: betterAuthCollections(authSchema),
   admin: {
     sidebar: {
       side: "right",
     },
   },
-  authAdapter: betterAuthAdapter({ config: authOptions }),
   storage: {
-    adapters: [convexFileStorage({ mediaCollections: [images] })],
+    clientUploads: { convex: uploadFile },
   },
   collections: [users, pages, headers, footers, themes],
+  mediaCollections: [images],
   globals: [siteSettings],
   routes: {
     // One document at a time. `resolveTargets` calls this once for `before`

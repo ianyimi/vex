@@ -12,11 +12,10 @@ import { convexTest } from "convex-test";
 import { describe, test, expect } from "vitest";
 import {
   defineConfig,
-  sanitizeConfigForClient,
-  type ClientVexConfig,
   type CollectionFieldMeta,
   type RelationshipField,
   type RelationshipPreviewProps,
+  type VexClientConfig,
 } from "@vexcms/core";
 
 import { AppForm } from "../../form/AppForm";
@@ -50,7 +49,7 @@ type SchemaCtx = GenericMutationCtx<DataModelFromSchemaDefinition<typeof schema>
 async function renderRelationship(
   overrides: {
     fieldDef?: RelationshipField<CollectionFieldMeta>;
-    config?: ClientVexConfig;
+    config?: VexClientConfig;
     initialValue?: string[] | ((seededIds: string[]) => string[]);
     seedTitles?: string[];
     afterSeed?: (ctx: SchemaCtx, seededIds: string[]) => Promise<void>;
@@ -74,7 +73,7 @@ async function renderRelationship(
 
   const config =
     overrides.config ??
-    sanitizeConfigForClient(defineConfig({ collections: [relationshipTargetCollection] }));
+    defineConfig({ collections: [relationshipTargetCollection] });
   const fieldDef = overrides.fieldDef ?? relationshipFieldFixture.fieldDef;
   const initialValue =
     typeof overrides.initialValue === "function"
@@ -121,7 +120,7 @@ runFieldInputContractSuite({
       describe("target collection resolution", () => {
         test("renders the missing-target-collection error instead of crashing when the field's target slug isn't registered", async () => {
           await renderRelationship({
-            config: sanitizeConfigForClient(defineConfig({ collections: [testCollection] })),
+            config: defineConfig({ collections: [testCollection] }),
           });
 
           expect(await screen.findByText(/unknown collection/i)).toBeInTheDocument();
@@ -176,9 +175,7 @@ runFieldInputContractSuite({
         test("non-searchable branch: when the target collection's useAsTitle is a system field, the picker lists via find() and ignores the search text", async () => {
           const user = userEvent.setup();
           const { queryClient } = await renderRelationship({
-            config: sanitizeConfigForClient(
-              defineConfig({ collections: [relationshipTargetCollectionByCreationTime] }),
-            ),
+            config: defineConfig({ collections: [relationshipTargetCollectionByCreationTime] }),
           });
 
           await user.click(screen.getByRole("combobox"));

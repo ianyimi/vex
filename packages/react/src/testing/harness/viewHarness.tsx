@@ -5,35 +5,19 @@ import { ConvexQueryClient } from "@convex-dev/react-query";
 import { ConvexProvider, type ConvexReactClient } from "convex/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import {
+  defineConfig,
   defineGlobal,
   text,
-  type ClientVexConfig,
-  type MediaCollectionConfig,
   type VexAccessConfig,
   type VexApiAuth,
+  type VexClientConfig,
 } from "@vexcms/core";
-import { VexConfigContext } from "../../context/VexConfigContext";
+import { defineMediaCollection } from "@vexcms/file-storage-convex/client";
+import { useVexConfig, VexConfigProvider } from "../../context/VexConfigContext";
 import { createFakeConvexClient, type ConvexTestInstance } from "../convex/bridge";
 import { renderWithVexProviders, testCollection } from "./accessFixtures";
 
-/**
- * Hand-built the same way `fieldInputContract.ts`'s and `nestedFieldContainer.ts`'s own
- * stub media collections are: a media collection is never produced by a public builder
- * function (in production it is derived from a regular collection's storage config by
- * `validateAndMergeStorageConfig`, which needs a real registered storage adapter this test
- * kit does not stand up), so the shape is authored directly.
- */
-const testMediaCollection = {
-  slug: "images",
-  fields: { alt: text({ required: false }), filename: text({ required: false }) },
-  labels: { singular: "Image", plural: "Images" },
-  admin: {
-    useAsTitle: "_id",
-    components: {},
-    table: { defaultPageSize: 10, serverPageSize: 100 },
-  },
-  meta: { storageAdapter: "convex" },
-} as unknown as MediaCollectionConfig;
+const testMediaCollection = defineMediaCollection({ slug: "images" });
 
 /**
  * A global carries none of a media collection's storage complexity, so — unlike
@@ -52,28 +36,18 @@ const testGlobal = defineGlobal({
 });
 
 /** Default stub client config: one `posts` collection, one `images` media collection, one global. */
-export const testClientConfig: ClientVexConfig = {
-  basePath: "/admin",
-  admin: { sidebar: { side: "left", collapsible: "offcanvas" } },
+export const testClientConfig: VexClientConfig = defineConfig({
   collections: [testCollection],
   mediaCollections: [testMediaCollection],
   globals: [testGlobal],
-  schema: { outputPath: "/convex/vex.schema.ts" },
-  types: { outputPath: "/src/vex.types.ts" },
-  // `ClientVexConfig` is `defineConfig()`'s sanitized (function-stripped) output shape, built
-  // directly here rather than round-tripped through `sanitizeConfigForClient(defineConfig())`
-  // — `defineConfig()` derives `mediaCollections` from a real registered storage adapter via
-  // `validateAndMergeStorageConfig`, which is real backend wiring this test kit does not stand
-  // up. Mirrors the established `stubClientConfig` cast in `fieldInputContract.ts`/
-  // `nestedFieldContainer.ts`.
-} as unknown as ClientVexConfig;
+});
 
 /** Options for {@link renderView} and {@link wrapWithViewProviders}. */
 export interface ViewHarnessOptions {
   /** convex-test instance whose seeded data the view reads. */
   convex: ConvexTestInstance;
   /** Client config the view resolves collections/globals from. */
-  config?: ClientVexConfig;
+  config?: VexClientConfig;
   /** RBAC matrix to render against. Omit to leave RBAC unconfigured (every check passes). */
   access?: VexAccessConfig;
   /** The caller to render against. Defaults to `{ user: null }`. */
@@ -81,11 +55,30 @@ export interface ViewHarnessOptions {
 }
 
 /**
- * Wraps `ui` in every provider a view reads OTHER than access/auth: a Convex client backed
+ * Provides `props.config` to the subtree while inheriting `access` from the
+ * enclosing `VexConfigProvider` (mounted by `renderWithVexProviders`), so a
+ * per-scenario RBAC matrix supplied outside this wrapper still governs the
+ * view rendered inside it.
+ *
+ * @param props - The view config to provide and the subtree that consumes it.
+ * @returns The nested config provider.
+ */
+function ViewConfigProvider(props: { config: VexClientConfig; children: ReactNode }) {
+  const outer = useVexConfig();
+  return createElement(VexConfigProvider, {
+    config: { ...props.config, access: outer.access },
+    children: props.children,
+  });
+}
+
+/**
+ * Wraps `ui` in every provider a view reads OTHER than auth: a Convex client backed
  * by `options.convex` via the convex-test bridge, a `QueryClient` wired to that same client
  * (`usePaginatedQuery`/`useQuery` read through this), `NuqsTestingAdapter` (the create-document
  * and media-upload modals read URL state), and `VexConfigContext` (views resolve their live
- * collection/global config from context, falling back to their RSC-serialized prop).
+ * collection/global config from context). The config it mounts inherits `access` from the
+ * enclosing `VexConfigProvider`, so `renderWithVexProviders`'s per-scenario RBAC matrix still
+ * applies.
  *
  * Split out from {@link renderView} so `runRbacStateSuite`'s `render` callback — which must
  * return a `ReactNode`, not call `render()` itself — can wrap a view in exactly these
@@ -114,7 +107,10 @@ export function wrapWithViewProviders(
       createElement(
         NuqsTestingAdapter,
         null,
-        createElement(VexConfigContext.Provider, { value: options.config ?? testClientConfig }, ui),
+        createElement(ViewConfigProvider, {
+          config: options.config ?? testClientConfig,
+          children: ui,
+        }),
       ),
     ),
   );

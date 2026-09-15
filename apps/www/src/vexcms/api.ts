@@ -3,7 +3,7 @@ import { createGetAuth } from "@vexcms/better-auth"
 import { vexServerApi } from "@vexcms/core/server"
 
 import { TABLE_SLUG_SESSIONS, TABLE_SLUG_USERS } from "~/db/constants"
-import config from "~/vex.config"
+import config from "~/vex.config.server"
 
 /**
  * Bound server API — `config`/`getAuth` are threaded once here so

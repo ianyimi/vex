@@ -197,6 +197,13 @@ server-side before purging anything — no shared secret or environment variable
 
 ```ts
 // src/app/api/vex/revalidate/route.ts
+import { api } from "@convex/_generated/api";
+import { createVexRevalidateRoute } from "@vexcms/next/cache";
+
+import { fetchAuthQuery, getToken } from "~/auth/server";
+import config from "~/vex.config.server";
+import { vex } from "~/lib/vex";
+
 export const { POST } = createVexRevalidateRoute({
   config,
   getAuth: () => fetchAuthQuery(api.auth.api.getUserOrg, {}),

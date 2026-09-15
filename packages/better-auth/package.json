@@ -25,6 +25,11 @@
       "source": "./src/index.ts",
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./client": {
+      "source": "./src/client.ts",
+      "import": "./dist/client.js",
+      "types": "./dist/client.d.ts"
     }
   },
   "main": "./dist/index.js",
@@ -39,7 +44,8 @@
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "gen:auth-schemas": "UPDATE_AUTH_SCHEMAS=1 vitest run src/pluginSchemas.test.ts"
   },
   "peerDependencies": {
     "@vexcms/core": "workspace:^",
@@ -47,6 +53,8 @@
     "convex": "catalog:peers"
   },
   "devDependencies": {
+    "@better-auth/api-key": "catalog:",
+    "@convex-dev/better-auth": "catalog:",
     "@types/node": "catalog:",
     "@vexcms/core": "workspace:*",
     "@vexcms/tsconfig": "workspace:*",

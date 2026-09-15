@@ -1,4 +1,4 @@
-import type { VexConfig } from "../config/types";
+import type { VexClientConfig } from "../config/types";
 import { collectionConfigToVexSchema } from "../collections";
 
 function fail(contents: string) {
@@ -10,7 +10,7 @@ function success(contents: string) {
 }
 
 /**
- * Generates the full contents of `vex.schema.ts` from a resolved `VexConfig`.
+ * Generates the full contents of `vex.schema.ts` from a resolved `VexClientConfig`.
  *
  * Returns `{ update: false, contents }` when there are no collections — the output
  * contains only the auto-generated header and no imports or table declarations.
@@ -35,9 +35,9 @@ function success(contents: string) {
  * ```
  *
  * @see {@link collectionConfigToVexSchema} for the per-collection string builder
- * @see {@link VexConfig} for the resolved config shape
+ * @see {@link VexClientConfig} for the resolved config shape
  */
-export function generateVexSchema(props: { config: VexConfig }): {
+export function generateVexSchema(props: { config: VexClientConfig }): {
   update: boolean;
   contents: string;
 } {

@@ -5,7 +5,7 @@ import { createGetAuth } from "@vexcms/better-auth";
 import { vexServerApi } from "@vexcms/core/server";
 
 import { TABLE_SLUG_ORGANIZATIONS, TABLE_SLUG_SESSIONS, TABLE_SLUG_USERS } from "~/db/constants";
-import config from "~/vex.config";
+import config from "~/vex.config.server";
 
 export const { get, find, search, create, remove, update, globals, publishedSlugs } =
   vexServerApi<DataModel>({
