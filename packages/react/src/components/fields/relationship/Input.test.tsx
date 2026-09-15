@@ -108,6 +108,50 @@ async function renderRelationship(
 const popoverContent = () =>
   document.querySelector('[data-slot="popover-content"]') as HTMLElement;
 
+/**
+ * Renders everything needed to diagnose a picker that never settled, for use
+ * in a failure message.
+ *
+ * Exists because this one assertion has now failed twice on CI while passing
+ * locally under every condition reproduced so far (settle latency, Node 22,
+ * 200-way CPU oversubscription, slow typing that fires several debounced
+ * queries, 80 in-process repetitions). Testing Library's own error names the
+ * missing text but not WHY it is missing, and the three candidate causes are
+ * distinguishable only from state it does not print:
+ *
+ * - search input empty → the typed text never reached the component
+ * - list still showing "Loading…" → the picker query never settled
+ * - list still showing the seeded rows + a cache entry in `status: "error"` →
+ *   the query REJECTED, and `placeholderData: keepPreviousData` is holding the
+ *   previous result set on screen indefinitely (`useRelationshipPickerOptions`
+ *   returns `isError`, which `Input.tsx` currently ignores)
+ *
+ * @param queryClient - The harness's client, for the picker query's cache state.
+ * @returns A multi-line description; cheap, and only ever built on failure.
+ */
+function describePickerState(queryClient: QueryClient): string {
+  const input = screen.queryByPlaceholderText(/search document/i) as HTMLInputElement | null;
+  const entries = queryClient
+    .getQueryCache()
+    .getAll()
+    .map((q) => {
+      const data = q.state.data;
+      return [
+        `  key=${JSON.stringify(q.queryKey)}`,
+        `status=${q.state.status}`,
+        `fetchStatus=${q.state.fetchStatus}`,
+        `rows=${Array.isArray(data) ? data.length : typeof data}`,
+        `error=${q.state.error ? String(q.state.error) : "none"}`,
+      ].join(" ");
+    });
+  return [
+    `search input value: ${JSON.stringify(input?.value ?? null)}`,
+    `popover text: ${JSON.stringify(popoverContent()?.textContent ?? null)}`,
+    `query cache (${entries.length}):`,
+    ...entries,
+  ].join("\n");
+}
+
 function FieldLevelPreview({ doc }: RelationshipPreviewProps) {
   return <span>Field preview: {String((doc as Record<string, unknown>).title)}</span>;
 }
@@ -222,7 +266,7 @@ runFieldInputContractSuite({
 
         test("no documents match the search text renders 'No documents found' instead of an empty list", async () => {
           const user = userEvent.setup();
-          await renderRelationship();
+          const { queryClient } = await renderRelationship();
 
           await user.click(screen.getByRole("combobox"));
           expect(await screen.findByText("Alpha")).toBeInTheDocument();
@@ -237,10 +281,21 @@ runFieldInputContractSuite({
           // same commit — asserting the second one synchronously after awaiting
           // the first passed only because that commit happened to land between
           // them.
-          await waitFor(() => {
-            expect(screen.getByText("No documents found")).toBeInTheDocument();
-            expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
-          });
+          //
+          // Wrapped so a CI-only failure reports the picker's actual state
+          // instead of just the text it could not find — see
+          // {@link describePickerState}.
+          try {
+            await waitFor(() => {
+              expect(screen.getByText("No documents found")).toBeInTheDocument();
+              expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+            });
+          } catch (cause) {
+            throw new Error(
+              `the picker never settled to its empty state.\n${describePickerState(queryClient)}`,
+              { cause },
+            );
+          }
         });
       });
 
