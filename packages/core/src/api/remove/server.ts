@@ -1,5 +1,5 @@
-import type { GenericDataModel } from "convex/server";
-import type { GenericId } from "convex/values";
+import type { DocumentByName, GenericDataModel } from "convex/server";
+import { ConvexError, type GenericId } from "convex/values";
 
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
@@ -74,8 +74,9 @@ export async function remove<
   TCollectionSlug extends CollectionSlug = CollectionSlug,
 >(args: RemoveServerArgs<DataModel, TCollectionSlug>): Promise<void> {
   async function removeById(id: GenericId<TCollectionSlug>): Promise<void> {
+    let doc: DocumentByName<DataModel, TCollectionSlug> | null | undefined = undefined;
     if (args.config.access !== undefined) {
-      const doc = await args.ctx.db.get(id);
+      doc = await args.ctx.db.get(id);
       const { access, action, resource } = resolveAccessCall({
         config: args.config,
         access: args.access,
@@ -92,9 +93,28 @@ export async function remove<
         data: doc ?? undefined,
       });
     }
+
     if (args.softDelete) {
       return await args.ctx.db.patch(args.collection, id, { [args.softDelete as never]: true });
     }
+
+    const collection = args.config.collections.find((c) => c.slug === args.collection);
+    if (!collection) {
+      throw new ConvexError(`No collection registered with slug "${args.collection}"`);
+    }
+
+    if (collection.hooks?.beforeDelete && doc !== null) {
+      if (doc === undefined) {
+        doc = await args.ctx.db.get(id);
+      }
+      await collection.hooks.beforeDelete<DataModel>({
+        id: id,
+        doc: doc as never,
+        collection,
+        ctx: args.ctx,
+      });
+    }
+
     return await args.ctx.db.delete(args.collection, id);
   }
 

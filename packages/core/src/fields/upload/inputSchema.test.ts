@@ -39,4 +39,32 @@ describe("uploadFieldToInputSchema", () => {
       expect(result.error.issues[0].message).toMatch(/required/i);
     }
   });
+
+  it("enforces min/max file count regardless of required, skipping only an empty/omitted optional value", () => {
+    const required = upload({ to: "images", required: true, min: 1, max: 2 });
+    const requiredSchema = uploadFieldToInputSchema({ field: required });
+    const belowMin = requiredSchema.safeParse([]);
+    expect(belowMin.success).toBe(false);
+    // Regression: `min` matching the required floor (1) must not make the
+    // configured min message unreachable — `[]` merely failing isn't enough;
+    // the min-specific message must actually be among the issues.
+    if (!belowMin.success) {
+      expect(belowMin.error.issues.map((issue) => issue.message)).toContain(
+        "At least 1 file required.",
+      );
+    }
+    expect(requiredSchema.safeParse(["doc_1"]).success).toBe(true);
+    expect(requiredSchema.safeParse(["doc_1", "doc_2", "doc_3"]).success).toBe(false);
+
+    const optional = upload({ to: "images", min: 2, max: 3 });
+    const optionalSchema = uploadFieldToInputSchema({ field: optional });
+    // Empty/omitted is fine — the field isn't required.
+    expect(optionalSchema.safeParse(undefined).success).toBe(true);
+    expect(optionalSchema.safeParse([]).success).toBe(true);
+    // Regression: min/max is independent of `required` — a *supplied* value
+    // still has to respect the configured file-count bounds.
+    expect(optionalSchema.safeParse(["doc_1"]).success).toBe(false);
+    expect(optionalSchema.safeParse(["doc_1", "doc_2", "doc_3", "doc_4"]).success).toBe(false);
+    expect(optionalSchema.safeParse(["doc_1", "doc_2"]).success).toBe(true);
+  });
 });

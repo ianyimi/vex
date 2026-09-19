@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import type { CollectionSlug } from "../../types/generated";
 import { COLOR_FORMATS } from "./formats";
 import type { ColorFieldInput, ColorField } from "./types";
 
@@ -48,9 +49,12 @@ import type { ColorFieldInput, ColorField } from "./types";
  * @see {@link ColorFieldInput} for the full input type
  * @see {@link ColorField} for the resolved output type
  */
-export function color<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
-  options?: ColorFieldInput<TFieldMeta>,
-): ColorField<TFieldMeta> {
+export function color<
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+>(
+  options?: ColorFieldInput<TFieldMeta, TCollectionSlug>,
+): ColorField<TFieldMeta, TCollectionSlug> {
   return {
     type: ADMIN_FIELDS.color.type,
     interfaceType: ADMIN_FIELDS.color.interfaceType,

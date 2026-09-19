@@ -77,6 +77,8 @@ export { findGlobals } from "./globals/find.server";
 export { upsertGlobal } from "./globals/upsert.server";
 export type { UpsertGlobalServerArgs } from "./globals/upsert.server";
 
+export { createVexMutations } from "./triggers";
+
 /**
  * Registers the full collection CRUD surface — `find`, `get`, `search`,
  * `create`, `update`, `remove` — as Convex endpoints, with RBAC enforcement

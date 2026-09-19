@@ -168,3 +168,28 @@ export function stampUpdatedAt<TData>(props: {
   }
   return { ...props.data, updatedAt: Date.now() };
 }
+
+/**
+ * Structural equality for plain JSON-shaped values (Convex documents contain
+ * no `Date`/`Map`/`Set`), used to detect which fields a `beforeChange` hook
+ * actually changed rather than merely returned under a new reference.
+ *
+ * @param a - The first value to compare.
+ * @param b - The second value to compare.
+ * @returns `true` if `a` and `b` are structurally equal, `false` otherwise.
+ */
+export function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== "object" || a === null || typeof b !== "object" || b === null) return false;
+
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((item, i) => deepEqual(item, b[i]));
+  }
+
+  const aKeys = Object.keys(a as Record<string, unknown>);
+  const bKeys = Object.keys(b as Record<string, unknown>);
+  return (
+    aKeys.length === bKeys.length &&
+    aKeys.every((key) => deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]))
+  );
+}

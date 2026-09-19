@@ -1,6 +1,7 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
+import { BaseField, BaseFieldInput, FieldAdminConfig, FieldValidateProps } from "../baseTypes";
 import { AdminField, BaseFieldMeta } from "../types";
+import type { CollectionSlug } from "../../types/generated";
 
 /**
  * Union of all types allowed as array item values.
@@ -62,7 +63,8 @@ export type ArrayType = string | number | boolean | object;
 export interface ArrayFieldInput<
   TArrayType extends ArrayType = string,
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TFieldMeta> {
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
   labels?: {
     singular: string;
     plural: string;
@@ -88,6 +90,8 @@ export interface ArrayFieldInput<
     /** Maximum array length error message. */
     error?: string;
   };
+  /** Server-only async validation with `value` typed as `TArrayType[]`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, TArrayType[]>): Promise<string | void> | string | void;
 }
 
 /**
@@ -103,7 +107,8 @@ export interface ArrayFieldInput<
 export interface ArrayField<
   TArrayType extends ArrayType = string,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-> extends BaseField<TFieldMeta> {
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseField<TFieldMeta, TCollectionSlug> {
   readonly type: typeof ADMIN_FIELDS.array.type;
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;
@@ -132,4 +137,6 @@ export interface ArrayField<
     /** Maximum allowed array length error message. */
     error?: string;
   };
+  /** Server-only async validation with `value` typed as `TArrayType[]`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, TArrayType[]>): Promise<string | void> | string | void;
 }

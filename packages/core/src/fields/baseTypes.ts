@@ -1,3 +1,6 @@
+import type { GenericDataModel, GenericMutationCtx } from "convex/server";
+import type { CollectionSlug, DocumentByCollectionSlug } from "../types/generated";
+
 /**
  * Content alignment for data table cells.
  */
@@ -47,6 +50,110 @@ export type ComponentEntry = {
   component: (props: any) => unknown;
   props: Record<string, unknown>;
 };
+
+/**
+ * Arguments passed to a field's `validate()` function.
+ *
+ * Every field type overrides `TValue` with its own resolved value type
+ * (`string` for `text`, `number` for `number`, etc.) and `TField` with its
+ * own resolved field config type (`TextField`, `NumberField`, etc.) via its
+ * own `xValidator` factory in `fields/<type>/validator.ts` — these defaults
+ * of `unknown` only show up if you reference the type directly.
+ *
+ * @typeParam TCollectionSlug - The collection this field belongs to. Defaults
+ *   to the full `CollectionSlug` union (every collection's document) when
+ *   unspecified. `fieldValidator` infers this from its `slug` argument — see
+ *   there for the recommended way to get a narrow `doc`.
+ * @typeParam TDataModel - Your project's generated Convex `DataModel`.
+ *   Defaults to `GenericDataModel`; `fieldValidator` accepts it as an
+ *   explicit type argument so `ctx` is fully typed.
+ * @typeParam TField - This field's own resolved config type (e.g.
+ *   `TextField`). Defaults to `unknown`; each field type's `xValidator`
+ *   factory pins it to that field's own type, so `field` is typed without
+ *   an explicit type argument.
+ */
+export interface FieldValidateProps<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TValue = unknown,
+  TDataModel extends GenericDataModel = GenericDataModel,
+  TField = unknown,
+> {
+  value: TValue;
+  doc: DocumentByCollectionSlug<TCollectionSlug>;
+  fieldKey: string;
+  /** This field's own resolved config — the same object `defineCollection` stored under this key. */
+  field: TField;
+  ctx: GenericMutationCtx<TDataModel>;
+}
+
+/**
+ * Custom server-side validation for one field, run after the generated Zod
+ * schema passes. Async and `ctx`-bearing, so a uniqueness check
+ * (`ctx.db.query(...).withIndex(...)`) is sound inside a Convex mutation's
+ * transaction. Returning a non-empty string rejects the write with that
+ * message; `undefined` accepts the value. Never runs on the client.
+ *
+ * @see {@link fieldValidator} to get `doc`/`ctx`/`field` typed against a real
+ * collection, `DataModel`, and field config without touching this type directly.
+ */
+export type FieldValidate<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TValue = unknown,
+  TDataModel extends GenericDataModel = GenericDataModel,
+  TField = unknown,
+> = (
+  props: FieldValidateProps<TCollectionSlug, TValue, TDataModel, TField>,
+) => Promise<string | void> | string | void;
+
+/**
+ * Types a field's `validate()` against a real collection, `DataModel`, and
+ * field config, without threading generics through the field factory
+ * (`text<Meta, "posts">(...)`, which also forces you to spell out `TFieldMeta`).
+ * `TCollectionSlug` is inferred from `slug`; supply `TValue`/`TDataModel`/`TField`
+ * explicitly for a typed `value`/`ctx`/`field`.
+ *
+ * Each field type builds its own narrower wrapper on top of this — e.g.
+ * `textValidator` (`fields/text/validator.ts`) pins `TValue` to `string` and
+ * `TField` to `TextField` — so authoring a field's `validate` never needs
+ * `TValue`/`TField` spelled out by hand.
+ *
+ * @param slug - The collection slug `doc` should be typed as — pass the
+ *   same constant the collection itself is `defineCollection({ slug })`-ed
+ *   with (e.g. `TABLE_SLUG_PAGES`), not a fresh string literal, so a rename
+ *   of one renames the other.
+ * @param fn - The validate function, checked against the real types.
+ * @returns The same function, re-typed to the field's loose public `validate` signature.
+ *
+ * @example
+ * ```ts
+ * import type { DataModel } from "~/convex/_generated/dataModel"
+ *
+ * slug: text({
+ *   validate: textValidator<typeof TABLE_SLUG_PAGES, DataModel>(
+ *     TABLE_SLUG_PAGES,
+ *     async ({ value, doc, ctx, field }) => {
+ *       const existing = await ctx.db
+ *         .query("pages")
+ *         .withIndex("by_slug", (q) => q.eq("slug", value))
+ *         .first();
+ *       if (existing && existing._id !== doc._id) return `${field.label} must be unique.`;
+ *     },
+ *   ),
+ * })
+ * ```
+ */
+export function fieldValidator<
+  TCollectionSlug extends CollectionSlug,
+  TValue = unknown,
+  TDataModel extends GenericDataModel = GenericDataModel,
+  TField = unknown,
+>(
+  slug: TCollectionSlug,
+  fn: FieldValidate<TCollectionSlug, TValue, TDataModel, TField>,
+): FieldValidate<TCollectionSlug, TValue> {
+  void slug;
+  return fn as unknown as FieldValidate<TCollectionSlug, TValue>;
+}
 
 /**
  * Configuration input for a field's admin panel behavior.
@@ -180,7 +287,10 @@ export interface FieldAdminConfig {
  *
  * @see {@link BaseField} for the resolved type after defaults are applied
  */
-export interface BaseFieldInput<TFieldMeta extends {} = {}> {
+export interface BaseFieldInput<
+  TFieldMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> {
   /** Display label for the field in the admin form. */
   label?: string;
   /**
@@ -219,6 +329,11 @@ export interface BaseFieldInput<TFieldMeta extends {} = {}> {
    */
   index?: string;
   meta?: TFieldMeta;
+  /**
+   * Server-only async validation, run after the generated Zod schema passes.
+   * @see {@link FieldValidate}
+   */
+  validate?(props: FieldValidateProps<TCollectionSlug>): Promise<string | void> | string | void;
 }
 
 /**
@@ -229,7 +344,10 @@ export interface BaseFieldInput<TFieldMeta extends {} = {}> {
  *
  * @see {@link BaseFieldInput} for the user-facing input type
  */
-export interface BaseField<TFieldMeta extends {} = {}> {
+export interface BaseField<
+  TFieldMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> {
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;
   /** Whether this field is required in the database schema. */
@@ -257,4 +375,9 @@ export interface BaseField<TFieldMeta extends {} = {}> {
   /** TypeScript type string written to generated document interfaces (e.g. `"string"`, `"number"`, `"string[]"`). */
   interfaceType: string;
   meta: TFieldMeta;
+  /**
+   * Server-only async validation, run after the generated Zod schema passes.
+   * @see {@link FieldValidate}
+   */
+  validate?(props: FieldValidateProps<TCollectionSlug>): Promise<string | void> | string | void;
 }

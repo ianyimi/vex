@@ -106,6 +106,7 @@ runFieldInputContractSuite({
       label: "Sections",
       labels: { singular: "Section", plural: "Sections" },
       blocks: [headingBlock, paragraphBlock],
+      required: true,
       min: 2,
       max: 3,
     });

@@ -28,6 +28,7 @@
     "field-level-permissions",
     "generated-types-lint-header",
     "group-default-collapsed",
+    "lifecycle-hooks-and-field-validation",
     "marketing-template-design",
     "media-and-scaffold-fixes",
     "media-geturl-resolves-media-collections",

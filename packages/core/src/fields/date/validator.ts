@@ -1,5 +1,8 @@
+import type { GenericDataModel } from "convex/server";
 import { ADMIN_FIELDS } from "../constants";
 import { applyBaseValidators } from "../validators/utils";
+import { fieldValidator, type FieldValidate } from "../baseTypes";
+import type { CollectionSlug } from "../../types/generated";
 import type { DateField } from "./types";
 
 /**
@@ -36,4 +39,22 @@ export function dateFieldToValidator(props: { field: DateField }): string {
     field: props.field,
     validator: ADMIN_FIELDS.date.validator,
   });
+}
+
+/**
+ * Types a `date()` field's `validate()` against a real collection and
+ * `DataModel`, with `value` fixed to `number`. @see {@link fieldValidator}
+ *
+ * @param slug - The owning collection's slug, used only to infer `TCollectionSlug`.
+ * @param fn - The validate callback, checked against the collection's real document shape and `value` type.
+ * @returns The same function, re-typed to the field's loose public `validate` signature.
+ */
+export function dateValidator<
+  TCollectionSlug extends CollectionSlug,
+  TDataModel extends GenericDataModel = GenericDataModel,
+>(
+  slug: TCollectionSlug,
+  fn: FieldValidate<TCollectionSlug, number, TDataModel, DateField>,
+): FieldValidate<TCollectionSlug, number> {
+  return fieldValidator<TCollectionSlug, number, TDataModel, DateField>(slug, fn);
 }

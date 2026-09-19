@@ -1,6 +1,5 @@
 "use client";
 
-import { Trash2, X } from "lucide-react";
 import { Button } from "../button";
 
 /**
@@ -49,17 +48,21 @@ export function DataTableBulkActions({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-lg border bg-background px-4 py-3 shadow-lg animate-in slide-in-from-bottom-5">
+    <div className="fixed z-200 top-4 left-1/2 z-50 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-lg border bg-background px-4 py-3 shadow-lg animate-in slide-in-from-bottom-5">
       <span className="text-sm font-medium">
         {selectedCount} {selectedCount === 1 ? "item" : "items"} selected
       </span>
       <div className="flex items-center gap-2">
-        <Button variant="destructive" size="sm" onClick={onDelete} disabled={isDeleting}>
-          <Trash2 className="mr-2 h-4 w-4" />
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={onDelete}
+          disabled={isDeleting}
+          icon="Trash2"
+        >
           Delete
         </Button>
-        <Button variant="outline" size="sm" onClick={onClear} disabled={isDeleting}>
-          <X className="mr-2 h-4 w-4" />
+        <Button variant="outline" size="sm" onClick={onClear} disabled={isDeleting} icon="X">
           Clear
         </Button>
       </div>

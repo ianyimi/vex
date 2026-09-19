@@ -4,7 +4,8 @@ import { globalsApi } from "@vexcms/core/server";
 import { TABLE_SLUG_SESSIONS, TABLE_SLUG_USERS } from "~/db/constants";
 import config from "~/vex.config.server";
 
-import { mutation, query } from "../_generated/server";
+import { query } from "../_generated/server";
+import { vexMutation as mutation } from "../vex";
 
 export const { get, find, upsert } = globalsApi({
   config,

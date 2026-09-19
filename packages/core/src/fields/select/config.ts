@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import type { CollectionSlug } from "../../types/generated";
 import type { SelectFieldInput, SelectField } from "./types";
 
 /**
@@ -57,9 +58,12 @@ import type { SelectFieldInput, SelectField } from "./types";
  * @see {@link SelectFieldInput} for the full input type
  * @see {@link SelectField} for the resolved output type
  */
-export function select<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
-  options?: SelectFieldInput<TFieldMeta>,
-): SelectField<TFieldMeta> {
+export function select<
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+>(
+  options?: SelectFieldInput<TFieldMeta, TCollectionSlug>,
+): SelectField<TFieldMeta, TCollectionSlug> {
   return {
     type: ADMIN_FIELDS.select.type,
     interfaceType: ADMIN_FIELDS.select.interfaceType,

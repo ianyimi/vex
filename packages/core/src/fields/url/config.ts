@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import type { CollectionSlug } from "../../types/generated";
 import type { UrlFieldInput, UrlField } from "./types";
 
 /**
@@ -47,9 +48,12 @@ import type { UrlFieldInput, UrlField } from "./types";
  * @see {@link UrlFieldInput} for the full input type
  * @see {@link UrlField} for the resolved output type
  */
-export function url<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
-  options?: UrlFieldInput<TFieldMeta>,
-): UrlField<TFieldMeta> {
+export function url<
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+>(
+  options?: UrlFieldInput<TFieldMeta, TCollectionSlug>,
+): UrlField<TFieldMeta, TCollectionSlug> {
   return {
     type: ADMIN_FIELDS.url.type,
     interfaceType: ADMIN_FIELDS.url.interfaceType,

@@ -105,7 +105,7 @@ export function fieldToInputComponent(field: AdminFieldType) {
 /**
  * Renders all field input components for a collection's fields.
  *
- * Iterates `fields`, looks up the matching input component from
+ * Iterates `collection.fields`, looks up the matching input component from
  * `fieldInputComponents`, and renders each one. Fields whose type has no
  * registered component are skipped. All remaining `div` props (e.g.
  * `className`) are forwarded to the wrapping `<div>`.
@@ -114,24 +114,32 @@ export function fieldToInputComponent(field: AdminFieldType) {
  * instance from `AppFormContext`.
  *
  * @param props - Component props.
- * @param props.fields - The `fields` object from a `CollectionConfig`.
+ * @param props.collection - The `CollectionConfig` whose fields are rendered.
+ * @param props.fieldKeys - Field keys to render; `undefined` renders every
+ *   field in `collection.fields`. Pair with the same key list passed to
+ *   `useCollectionForm`'s `readableFieldKeys` so a field kept out of the form
+ *   schema/`defaultValues` is also kept out of the rendered inputs — an
+ *   input mounted for a key absent from form state has no value to bind to.
  * @param props.className - Optional CSS class merged with the base `"relative"` class.
- * @returns A `<div>` containing one input component per field in the collection.
+ * @returns A `<div>` containing one input component per rendered field.
  *
  * @example
  * ```tsx
  * <AppForm form={form}>
- *   <RenderFieldInputComponents fields={collection.fields} className="flex flex-col gap-4" />
+ *   <RenderFieldInputComponents collection={collection} className="flex flex-col gap-4" />
  * </AppForm>
  * ```
  */
 export function RenderFieldInputComponents(
-  props: { collection: CollectionConfig } & ComponentPropsWithRef<"div">,
+  props: { collection: CollectionConfig; fieldKeys?: readonly string[] } & ComponentPropsWithRef<"div">,
 ) {
-  const { collection, className, ...divProps } = props;
+  const { collection, fieldKeys, className, ...divProps } = props;
+  const entries = fieldKeys
+    ? Object.entries(collection.fields).filter(([fieldKey]) => fieldKeys.includes(fieldKey))
+    : Object.entries(collection.fields);
   return (
     <div className={cn("relative", className)} {...divProps}>
-      {Object.entries(collection.fields).map(([fieldKey, field]) => {
+      {entries.map(([fieldKey, field]) => {
         const FieldInput = fieldInputComponents[field.type];
         if (!FieldInput) return null;
         return (

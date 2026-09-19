@@ -589,6 +589,39 @@ export interface VerificationDocument extends VexDocument {
   updatedAt: number
 }
 
+export interface ApikeyDocument extends VexDocument {
+  _id: Id<"apikey">
+  configId: string
+  name?: string
+  start?: string
+  referenceId: string
+  prefix?: string
+  key: string
+  refillInterval?: number
+  refillAmount?: number
+  lastRefillAt?: number
+  enabled?: boolean
+  rateLimitEnabled?: boolean
+  rateLimitTimeWindow?: number
+  rateLimitMax?: number
+  requestCount?: number
+  remaining?: number
+  lastRequest?: number
+  expiresAt?: number
+  createdAt: number
+  updatedAt: number
+  permissions?: string
+  metadata?: string
+}
+
+export interface JwksDocument extends VexDocument {
+  _id: Id<"jwks">
+  publicKey: string
+  privateKey: string
+  createdAt: number
+  expiresAt?: number
+}
+
 export interface OrganizationDocument extends VexDocument {
   _id: Id<"organization">
   name: string
@@ -633,39 +666,6 @@ export interface InvitationDocument extends VexDocument {
   createdAt: number
   inviterId: string
   roles: string[]
-}
-
-export interface ApikeyDocument extends VexDocument {
-  _id: Id<"apikey">
-  configId: string
-  name?: string
-  start?: string
-  referenceId: string
-  prefix?: string
-  key: string
-  refillInterval?: number
-  refillAmount?: number
-  lastRefillAt?: number
-  enabled?: boolean
-  rateLimitEnabled?: boolean
-  rateLimitTimeWindow?: number
-  rateLimitMax?: number
-  requestCount?: number
-  remaining?: number
-  lastRequest?: number
-  expiresAt?: number
-  createdAt: number
-  updatedAt: number
-  permissions?: string
-  metadata?: string
-}
-
-export interface JwksDocument extends VexDocument {
-  _id: Id<"jwks">
-  publicKey: string
-  privateKey: string
-  createdAt: number
-  expiresAt?: number
 }
 
 export interface Image extends VexDocument {
@@ -720,13 +720,13 @@ export type CollectionSlug =
   | "session"
   | "account"
   | "verification"
+  | "apikey"
+  | "jwks"
   | "organization"
   | "team"
   | "teamMember"
   | "member"
   | "invitation"
-  | "apikey"
-  | "jwks"
   | "images"
 
 export type GlobalSlug = "nav" | "siteSettings"
@@ -748,13 +748,13 @@ export type DocumentBySlug = {
   session: SessionDocument
   account: AccountDocument
   verification: VerificationDocument
+  apikey: ApikeyDocument
+  jwks: JwksDocument
   organization: OrganizationDocument
   team: TeamDocument
   teamMember: TeamMemberDocument
   member: MemberDocument
   invitation: InvitationDocument
-  apikey: ApikeyDocument
-  jwks: JwksDocument
   images: Image
 }
 
@@ -778,13 +778,13 @@ declare module "@vexcms/core" {
       | "session"
       | "account"
       | "verification"
+      | "apikey"
+      | "jwks"
       | "organization"
       | "team"
       | "teamMember"
       | "member"
       | "invitation"
-      | "apikey"
-      | "jwks"
       | "images"
     GlobalSlug: "nav" | "siteSettings"
     MediaCollectionSlug: "images"
@@ -802,13 +802,13 @@ declare module "@vexcms/core" {
       session: SessionDocument
       account: AccountDocument
       verification: VerificationDocument
+      apikey: ApikeyDocument
+      jwks: JwksDocument
       organization: OrganizationDocument
       team: TeamDocument
       teamMember: TeamMemberDocument
       member: MemberDocument
       invitation: InvitationDocument
-      apikey: ApikeyDocument
-      jwks: JwksDocument
       images: Image
     }
     GlobalDocumentBySlug: {
@@ -902,27 +902,6 @@ declare module "@vexcms/core" {
         text: "identifier" | "value"
         date: "expiresAt" | "createdAt" | "updatedAt"
       }
-      organization: {
-        text: "name" | "slug" | "logo" | "metadata" | "test"
-        date: "createdAt"
-      }
-      team: {
-        text: "name" | "organizationId"
-        date: "createdAt" | "updatedAt"
-      }
-      teamMember: {
-        text: "teamId" | "userId"
-        date: "createdAt"
-      }
-      member: {
-        text: "organizationId" | "userId" | "role"
-        date: "createdAt"
-      }
-      invitation: {
-        text: "organizationId" | "email" | "role" | "teamId" | "status" | "inviterId"
-        date: "expiresAt" | "createdAt"
-        array: "roles"
-      }
       apikey: {
         text:
           | "configId"
@@ -946,6 +925,27 @@ declare module "@vexcms/core" {
       jwks: {
         text: "publicKey" | "privateKey"
         date: "createdAt" | "expiresAt"
+      }
+      organization: {
+        text: "name" | "slug" | "logo" | "metadata" | "test"
+        date: "createdAt"
+      }
+      team: {
+        text: "name" | "organizationId"
+        date: "createdAt" | "updatedAt"
+      }
+      teamMember: {
+        text: "teamId" | "userId"
+        date: "createdAt"
+      }
+      member: {
+        text: "organizationId" | "userId" | "role"
+        date: "createdAt"
+      }
+      invitation: {
+        text: "organizationId" | "email" | "role" | "teamId" | "status" | "inviterId"
+        date: "expiresAt" | "createdAt"
+        array: "roles"
       }
       images: {
         text: "filename" | "alt" | "mimeType" | "storageId" | "src"
@@ -990,17 +990,17 @@ declare module "@vexcms/core" {
       session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] }
       account: { by_userId: readonly ["userId"] }
       verification: { by_identifier: readonly ["identifier"] }
-      organization: { by_slug: readonly ["slug"] }
-      team: { by_organizationId: readonly ["organizationId"] }
-      teamMember: { by_teamId: readonly ["teamId"]; by_userId: readonly ["userId"] }
-      member: { by_organizationId: readonly ["organizationId"]; by_userId: readonly ["userId"] }
-      invitation: { by_organizationId: readonly ["organizationId"]; by_email: readonly ["email"] }
       apikey: {
         by_configId: readonly ["configId"]
         by_referenceId: readonly ["referenceId"]
         by_key: readonly ["key"]
       }
       jwks: {}
+      organization: { by_slug: readonly ["slug"] }
+      team: { by_organizationId: readonly ["organizationId"] }
+      teamMember: { by_teamId: readonly ["teamId"]; by_userId: readonly ["userId"] }
+      member: { by_organizationId: readonly ["organizationId"]; by_userId: readonly ["userId"] }
+      invitation: { by_organizationId: readonly ["organizationId"]; by_email: readonly ["email"] }
       images: { by_deleted: readonly ["deleted"] }
     }
     CustomActionsBySlug: {

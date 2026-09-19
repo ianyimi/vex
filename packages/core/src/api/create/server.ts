@@ -5,11 +5,14 @@ import type {
   GenericDataModel,
   TableNamesInDataModel,
 } from "convex/server";
+import { ConvexError } from "convex/values";
 
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
+import { getCollectionInputSchema, validateFields } from "../../collections";
 import { resolveAccessCall, stampUpdatedAt } from "../utils";
+import { TDocument } from "../convex";
 
 /**
  * Server-side args for `create`.
@@ -59,18 +62,12 @@ export async function create<
   DataModel extends GenericDataModel,
   TCollectionSlug extends CollectionSlug,
 >(args: CreateServerArgs<DataModel, TCollectionSlug>): Promise<string> {
+  const collection = args.config.collections.find((c) => c.slug === args.collection);
+  if (!collection) {
+    throw new ConvexError(`No collection registered with slug "${args.collection}"`);
+  }
+
   if (args.config.access !== undefined) {
-    // The PAYLOAD is the authorization subject here, unlike `update`/`remove`/`get`,
-    // which authorize against the stored row. There is no stored row yet, and the
-    // payload is exactly what is about to become one — so a per-document rule
-    // (`({ data }) => data.status !== "published"`, say) has to see it. Without this
-    // every payload-dependent rule on `create` denied unconditionally: the capability
-    // probe detected the `data` read and, under the default `scope: "all"`, answered
-    // "cannot hold for every document" — which is the wrong question for a create.
-    //
-    // The payload-hijack concern that makes `update` use the stored row does not
-    // apply: there is nothing to protect from being misrepresented, since the
-    // caller's values ARE the row being authorized.
     const { access, action, resource } = resolveAccessCall({
       config: args.config,
       access: args.access,
@@ -84,22 +81,29 @@ export async function create<
       resource,
       action,
       data: args.data,
-      // No stored row yet, so any denied key present is a violation.
       changes: args.data,
       throwOnDenied: true,
     });
   }
-  // Stamped AFTER the access check above, never before: `hasPermission`'s
-  // payload-dependent rules must see exactly what the caller sent, not a value
-  // this function added.
-  const data = stampUpdatedAt({
-    collection: args.collection,
-    config: args.config,
-    data: args.data,
-  });
-  const id = await args.ctx.db.insert(
-    args.collection as TableNamesInDataModel<DataModel>,
-    data,
-  );
+
+  let doc = { ...args.data } as unknown as TDocument;
+  if (collection.hooks?.beforeChange) {
+    doc = await collection.hooks.beforeChange({
+      operation: "create",
+      doc: doc as never,
+      ctx: args.ctx,
+      collection,
+    });
+  }
+
+  const parsed = getCollectionInputSchema({ collection }).safeParse(doc);
+  if (!parsed.success) {
+    throw new ConvexError({ message: "Validation failed", errors: parsed.error.message });
+  }
+
+  await validateFields({ collection, doc, keys: Object.keys(doc), ctx: args.ctx });
+
+  const data = stampUpdatedAt({ collection: args.collection, config: args.config, data: doc });
+  const id = await args.ctx.db.insert(args.collection, data as never);
   return id;
 }

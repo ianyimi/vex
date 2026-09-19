@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
+import { BaseField, BaseFieldInput, FieldAdminConfig, FieldValidateProps } from "../baseTypes";
+import { CollectionSlug } from "../../types";
 
 /**
  * Configuration input for a `text()` field.
@@ -46,7 +47,8 @@ import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
  */
 export interface TextFieldInput<
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TFieldMeta> {
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
@@ -89,6 +91,8 @@ export interface TextFieldInput<
      */
     filterFields: string[];
   };
+  /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<string | void> | string | void;
 }
 
 /**
@@ -101,7 +105,10 @@ export interface TextFieldInput<
  * @see {@link TextFieldInput} for the user-facing input type
  * @see {@link text} for the config function that produces this type
  */
-export interface TextField<TFieldMeta extends {} = {}> extends BaseField<TFieldMeta> {
+export interface TextField<
+  TFieldMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseField<TFieldMeta, TCollectionSlug> {
   readonly type: typeof ADMIN_FIELDS.text.type;
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;
@@ -132,4 +139,6 @@ export interface TextField<TFieldMeta extends {} = {}> extends BaseField<TFieldM
     /** Fields to filter search results by. */
     filterFields: string[];
   };
+  /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<string | void> | string | void;
 }
