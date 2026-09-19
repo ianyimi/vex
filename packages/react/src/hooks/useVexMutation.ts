@@ -8,7 +8,9 @@ import {
   type VexRevalidateChange,
 } from "@vexcms/core";
 import type { DefaultFunctionArgs, FunctionReference } from "convex/server";
+import { type ExternalToast, toast } from "sonner";
 
+import { getVexErrorMessage } from "../lib/errors";
 import { useVexRevalidateConfig } from "../context/VexRevalidateContext";
 
 /**
@@ -31,6 +33,10 @@ export interface UseVexMutationProps<TArgs extends DefaultFunctionArgs, TResult>
   mutationFn: FunctionReference<"mutation", "public", TArgs, TResult>;
   /** Which write this is — echoed to the endpoint alongside `collection`. */
   operation: VexMutationOperation;
+  /** Config for sonner toast on error when this mutation is called. */
+  errorToast?: ExternalToast & {
+    message?: string | React.ReactNode;
+  };
 }
 
 /**
@@ -71,6 +77,13 @@ function chunkChanges(changes: VexRevalidateChange[], size: number): VexRevalida
  * same-origin with the public site and the request rides the admin's own
  * session cookie.
  *
+ * On error — any rejection from the Convex mutation itself, including a
+ * `ConvexError` thrown by field validation, schema validation, or an access
+ * check — pushes an error toast via sonner's `toast.error()` (`getVexErrorMessage`
+ * picks the most specific message available). `toast()` needs no provider to
+ * call, only a mounted `<Toaster>` (from `@vexcms/react`) somewhere to render
+ * into — `AdminLayout` mounts one by default.
+ *
  * @param props - Input props.
  * @returns The same `UseMutationResult` `useMutation` would return, so an
  *   existing call site swaps in this hook without changing how its result is
@@ -89,6 +102,18 @@ export function useVexMutation<TArgs extends DefaultFunctionArgs, TResult>(
 
   return useMutation<TResult, Error, TArgs>({
     mutationFn,
+    onError: (error) => {
+      if (props.errorToast) {
+        const { message, description, position, ...data } = props.errorToast;
+        toast.error(message ?? "Request failed", {
+          description: description ?? getVexErrorMessage(error),
+          position: position ?? "top-right",
+          ...data,
+        });
+        return;
+      }
+      toast.error("Request failed", { description: getVexErrorMessage(error) });
+    },
     // Synchronous on purpose: returning the purge promise would make TanStack
     // Query wait on it before resolving `mutateAsync`.
     onSuccess: (result, args) => {

@@ -22,6 +22,7 @@ export * from "./skeleton";
 export * from "./separator";
 export * from "./popover";
 export * from "./tabs";
+export * from "./sonner";
 
 export * from "../Icon";
 export * from "./ThemeProvider";

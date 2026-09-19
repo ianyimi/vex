@@ -1,4 +1,4 @@
-import { VexDocument } from "../api/convex";
+import { TDocument, VexDocument } from "../api/convex";
 
 /**
  * Empty interface augmented by the generated `vex.types.ts` file.
@@ -87,6 +87,27 @@ export type DocumentBySlug = GeneratedVexTypes extends {
 }
   ? D
   : Record<string, unknown>;
+
+/**
+ * Resolves the generated document interface for one collection slug —
+ * `DocumentBySlug[TCollectionSlug]`, including its `_id`/`_creationTime`
+ * system fields (every generated interface extends `VexDocument`). Falls
+ * back to {@link TDocument} before `vex generate` has run, or for a
+ * collection this project hasn't generated types for yet.
+ *
+ * @example
+ * ```ts
+ * type Post = DocumentByCollectionSlug<"posts"> // → PostsDocument, once generated
+ * ```
+ *
+ * @see {@link DocumentBySlug} for the underlying map
+ */
+export type DocumentByCollectionSlug<TCollectionSlug extends CollectionSlug = CollectionSlug> =
+  GeneratedVexTypes extends { DocumentBySlug: infer D extends Record<string, unknown> }
+    ? TCollectionSlug extends keyof D
+      ? D[TCollectionSlug]
+      : TDocument
+    : TDocument;
 
 /**
  * Custom query/mutation actions per subject slug, as declared in the project's

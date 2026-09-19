@@ -1,3 +1,4 @@
+import { CollectionSlug } from "../../types";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
 import type { TextFieldInput, TextField } from "./types";
@@ -46,9 +47,10 @@ import type { TextFieldInput, TextField } from "./types";
  * @see {@link TextFieldInput} for the full input type
  * @see {@link TextField} for the resolved output type
  */
-export function text<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
-  options?: TextFieldInput<TFieldMeta>,
-): TextField<TFieldMeta> {
+export function text<
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+>(options?: TextFieldInput<TFieldMeta, TCollectionSlug>): TextField<TFieldMeta, TCollectionSlug> {
   return {
     type: ADMIN_FIELDS.text.type,
     interfaceType: ADMIN_FIELDS.text.interfaceType,

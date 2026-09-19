@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { defineAccess } from "../access/config";
 import { defineCollection, text } from "../index";
-import { resolveAccessCall, resolveCollectionSlug } from "./utils";
+import { deepEqual, resolveAccessCall, resolveCollectionSlug } from "./utils";
 
 const articles = defineCollection({
   slug: "articles",
@@ -145,5 +145,25 @@ describe("resolveCollectionSlug", () => {
         id: "g1" as never,
       }),
     ).toThrow(/does not match a collection slug/);
+  });
+});
+
+describe("deepEqual", () => {
+  it("treats two objects with the same content as equal regardless of reference", () => {
+    expect(deepEqual({ a: 1, b: [1, 2] }, { a: 1, b: [1, 2] })).toBe(true);
+  });
+
+  it("detects a changed nested value", () => {
+    expect(deepEqual({ a: 1, b: [1, 2] }, { a: 1, b: [1, 3] })).toBe(false);
+  });
+
+  it("treats primitives by value", () => {
+    expect(deepEqual("x", "x")).toBe(true);
+    expect(deepEqual(1, 2)).toBe(false);
+  });
+
+  it("treats null and undefined as unequal to each other and to objects", () => {
+    expect(deepEqual(null, undefined)).toBe(false);
+    expect(deepEqual(null, {})).toBe(false);
   });
 });

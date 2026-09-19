@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig, FieldAdminConfigInput } from "../baseTypes";
+import { BaseField, BaseFieldInput, FieldAdminConfig, FieldAdminConfigInput, FieldValidateProps } from "../baseTypes";
+import type { CollectionSlug } from "../../types/generated";
 import { AdminField } from "../types";
 
 /**
@@ -79,7 +80,10 @@ export interface GroupFieldAdminConfig extends FieldAdminConfig {
  * @see {@link GroupField} for the resolved output type
  * @see {@link group} for the config function that produces this type
  */
-export interface GroupFieldInput<TFieldMeta extends {} = {}> extends BaseFieldInput<TFieldMeta> {
+export interface GroupFieldInput<
+  TFieldMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
   /**
    * Sub-fields that form the object's shape.
    *
@@ -92,6 +96,8 @@ export interface GroupFieldInput<TFieldMeta extends {} = {}> extends BaseFieldIn
   defaultValue?: Record<string, unknown>;
   interfaceName?: string;
   admin?: GroupFieldAdminConfigInput;
+  /** Server-only async validation with `value` typed as `Record<string, unknown>`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, Record<string, unknown>>): Promise<string | void> | string | void;
 }
 
 /**
@@ -105,7 +111,10 @@ export interface GroupFieldInput<TFieldMeta extends {} = {}> extends BaseFieldIn
  * @see {@link GroupFieldInput} for the user-facing input type
  * @see {@link group} for the config function that produces this type
  */
-export interface GroupField<TFieldMeta extends {} = {}> extends BaseField<TFieldMeta> {
+export interface GroupField<
+  TFieldMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseField<TFieldMeta, TCollectionSlug> {
   readonly type: typeof ADMIN_FIELDS.group.type;
   /** Display label shown in the admin form. Always set — inferred from field key if not provided. */
   label: string;
@@ -130,4 +139,6 @@ export interface GroupField<TFieldMeta extends {} = {}> extends BaseField<TField
   interfaceName?: string;
   /** Pre-filled value shown when creating a new document. */
   defaultValue: Record<string, unknown>;
+  /** Server-only async validation with `value` typed as `Record<string, unknown>`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, Record<string, unknown>>): Promise<string | void> | string | void;
 }

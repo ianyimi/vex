@@ -5,12 +5,14 @@ import type {
   GenericDataModel,
   TableNamesInDataModel,
 } from "convex/server";
-import type { GenericId } from "convex/values";
+import { ConvexError, type GenericId } from "convex/values";
 
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
-import { resolveAccessCall, stampUpdatedAt } from "../utils";
+import { getCollectionInputSchema, validateFields } from "../../collections";
+import { deepEqual, resolveAccessCall, stampUpdatedAt } from "../utils";
+import { TDocument } from "../convex";
 
 /**
  * Server-side args for `update`.
@@ -68,14 +70,13 @@ export async function update<
   DataModel extends GenericDataModel,
   TCollectionSlug extends CollectionSlug,
 >(args: UpdateServerArgs<DataModel, TCollectionSlug>): Promise<void> {
+  const collection = args.config.collections.find((c) => c.slug === args.collection);
+  if (!collection) {
+    throw new ConvexError(`No collection registered with slug "${args.collection}"`);
+  }
+
+  const doc = await args.ctx.db.get(args.id);
   if (args.config.access !== undefined) {
-    // Authorize against the STORED document, never `args.data`. The patch is
-    // caller-controlled, so checking it would let a per-document rule be
-    // satisfied by the payload rather than by the resource being protected
-    // (e.g. `update: ({ data }) => !data.src.includes("example.com")` would pass
-    // for a protected row simply by sending a different `src`). Matches the
-    // behaviour of `get`, `find`, and `remove`.
-    const doc = await args.ctx.db.get(args.id);
     const { access, action, resource } = resolveAccessCall({
       config: args.config,
       access: args.access,
@@ -93,13 +94,36 @@ export async function update<
       changes: args.data,
     });
   }
-  // Same rule as `create`, via the shared helper. A patch that touches only
-  // bookkeeping still bumps `updatedAt`: there is no way to tell "no
-  // observable change" from a genuine edit at this layer.
-  const data = stampUpdatedAt({
-    collection: args.collection,
-    config: args.config,
-    data: args.data,
-  });
-  await args.ctx.db.patch(args.id, data);
+
+  const { _id, _creationTime, ...fields } = (doc ?? {}) as Record<string, unknown>;
+  const mergedFields = { ...fields, ...args.data } as unknown as TDocument;
+
+  let transformedFields: TDocument = mergedFields;
+  if (collection.hooks?.beforeChange) {
+    transformedFields = await collection.hooks.beforeChange({
+      operation: "update",
+      doc: mergedFields as never,
+      ctx: args.ctx,
+      collection,
+    });
+  }
+
+  const changedKeys = new Set(Object.keys(args.data));
+  for (const key of Object.keys(transformedFields)) {
+    if (!deepEqual(transformedFields[key], mergedFields[key])) changedKeys.add(key);
+  }
+
+  const parsed = getCollectionInputSchema({ collection, partial: true }).safeParse(
+    transformedFields,
+  );
+  if (!parsed.success) {
+    throw new ConvexError({ message: "Validation failed", errors: parsed.error.message });
+  }
+  await validateFields({ collection, doc: transformedFields, keys: changedKeys, ctx: args.ctx });
+
+  const patch: Record<string, unknown> = {};
+  for (const key of changedKeys) patch[key] = transformedFields[key];
+
+  const data = stampUpdatedAt({ collection: args.collection, config: args.config, data: patch });
+  await args.ctx.db.patch(args.id, data as never);
 }

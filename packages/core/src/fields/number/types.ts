@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
+import { BaseField, BaseFieldInput, FieldAdminConfig, FieldValidateProps } from "../baseTypes";
+import type { CollectionSlug } from "../../types/generated";
 
 /**
  * Configuration input for a `number()` field.
@@ -48,7 +49,8 @@ import { BaseField, BaseFieldInput, FieldAdminConfig } from "../baseTypes";
  */
 export interface NumberFieldInput<
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TFieldMeta> {
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * Does not affect database values — only the form's initial state.
@@ -68,6 +70,8 @@ export interface NumberFieldInput<
     /** Error message shown when the value exceeds the maximum. */
     error?: string;
   };
+  /** Server-only async validation with `value` typed as `number`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<string | void> | string | void;
 }
 
 /**
@@ -76,7 +80,10 @@ export interface NumberFieldInput<
  * @see {@link NumberFieldInput} for the user-facing input type
  * @see {@link number} for the config function that produces this type
  */
-export interface NumberField<TFieldMeta extends {} = {}> extends BaseField<TFieldMeta> {
+export interface NumberField<
+  TFieldMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseField<TFieldMeta, TCollectionSlug> {
   readonly type: typeof ADMIN_FIELDS.number.type;
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;
@@ -100,4 +107,6 @@ export interface NumberField<TFieldMeta extends {} = {}> extends BaseField<TFiel
     /** Error message shown when the value exceeds the maximum. */
     error?: string;
   };
+  /** Server-only async validation with `value` typed as `number`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<string | void> | string | void;
 }

@@ -158,6 +158,7 @@ describe("numberFieldToInputSchema", () => {
     // Should still enforce constraints when value is provided
     expect(schema.safeParse(10).success).toBe(true);
     expect(schema.safeParse(4).success).toBe(false); // Too small
+    expect(schema.safeParse(51).success).toBe(false); // Too large
   });
 
   it("includes metadata (label, description)", () => {

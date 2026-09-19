@@ -17,9 +17,11 @@ import { parseAsBoolean, useQueryState } from "nuqs";
  * Modal for creating a new document in a collection.
  *
  * Opens when `?createNew=true` is in the URL (see `MODALS.createDocument`).
- * Builds a TanStack Form instance via `useCollectionForm`, renders all
- * collection fields with `<RenderFieldInputComponents>`, and calls the
- * Convex `create` mutation on submit. Closes by clearing the URL param.
+ * Builds a TanStack Form instance via `useCollectionForm`, renders only the
+ * collection's required fields with `<RenderFieldInputComponents>` — a quick
+ * create; non-required fields keep their configured defaults and are filled
+ * in later from the edit view — and calls the Convex `create` mutation on
+ * submit. Closes by clearing the URL param.
  *
  * @param props - Component props.
  * @param props.collection - The slug of the collection the new document will be created in.
@@ -60,10 +62,17 @@ export function CreateDocumentModal(props: { collection: CollectionSlug }) {
     getChanges: ({ args, result }) => [{ after: { ...args.data, _id: result } }],
     mutationFn: vexConvexApi.create,
     operation: "create",
+    errorToast: {
+      message: "some test message here on error",
+    },
   });
 
+  const fieldKeys = Object.entries(collection.fields)
+    .filter(([_fieldKey, fieldDef]) => fieldDef.required)
+    .map(([fieldKey, _fieldDef]) => fieldKey);
   const form = useCollectionForm({
     collection,
+    readableFieldKeys: fieldKeys,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onSubmit: async ({ value }: { value: any }) => {
       // `endSubmit` (not a trailing `finally` around the whole body) so the
@@ -105,6 +114,7 @@ export function CreateDocumentModal(props: { collection: CollectionSlug }) {
           <div className="flex grow flex-col overflow-y-auto px-2">
             <RenderFieldInputComponents
               collection={collection}
+              fieldKeys={fieldKeys}
               className="flex grow flex-col gap-2"
             />
           </div>

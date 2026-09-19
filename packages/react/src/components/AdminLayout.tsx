@@ -13,6 +13,7 @@ import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
+  Toaster,
   TooltipProvider,
   ThemeProvider,
   VexLink,
@@ -179,28 +180,31 @@ export function AdminLayout(props: AdminLayoutProps) {
   );
 
   return (
-    <VexAuthProvider
-      value={{ user: props.user as Record<string, unknown>, organization: props.organization }}
-    >
-      <FrameworkComponentsContext.Provider value={props.components ?? {}}>
-        <ThemeProvider>
-          <TooltipProvider>
-            <SidebarProvider defaultOpen={props.sidebarOpen}>
-              {side === "right" ? (
-                <>
-                  {content}
-                  {sidebar}
-                </>
-              ) : (
-                <>
-                  {sidebar}
-                  {content}
-                </>
-              )}
-            </SidebarProvider>
-          </TooltipProvider>
-        </ThemeProvider>
-      </FrameworkComponentsContext.Provider>
-    </VexAuthProvider>
+    <>
+      <VexAuthProvider
+        value={{ user: props.user as Record<string, unknown>, organization: props.organization }}
+      >
+        <FrameworkComponentsContext.Provider value={props.components ?? {}}>
+          <ThemeProvider>
+            <TooltipProvider>
+              <SidebarProvider defaultOpen={props.sidebarOpen}>
+                {side === "right" ? (
+                  <>
+                    {content}
+                    {sidebar}
+                  </>
+                ) : (
+                  <>
+                    {sidebar}
+                    {content}
+                  </>
+                )}
+              </SidebarProvider>
+            </TooltipProvider>
+          </ThemeProvider>
+        </FrameworkComponentsContext.Provider>
+      </VexAuthProvider>
+      <Toaster />
+    </>
   );
 }

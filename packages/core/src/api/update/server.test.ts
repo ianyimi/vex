@@ -1,4 +1,5 @@
 import { convexTest } from "convex-test";
+import { ConvexError } from "convex/values";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { describe, expect, test } from "vitest";
 
@@ -7,13 +8,18 @@ import schema from "../test/convex/schema";
 import type { VexConfig } from "../../config";
 import { update } from "./server";
 import { defineAccess } from "../../access/config";
-import { defineCollection, text, checkbox } from "../../index";
+import { array, defineCollection, text, checkbox } from "../../index";
 import { VexAccessError, WILDCARD_KEY } from "../../access";
 
+const postsResource = defineCollection({
+  slug: "posts",
+  fields: { title: text(), slug: text(), featured: checkbox() },
+});
 
-// Minimal resolved-config fixture: these server functions only read
-// `config.access` (undefined here → RBAC off) at this layer.
-const fixtureConfig = { collections: [] } as unknown as VexConfig;
+// Minimal resolved-config fixture: registers `posts` so the "collection must
+// be registered" check passes; carries no `required`/`min`/`max`/`validate`,
+// so it changes nothing about what these tests exercise.
+const fixtureConfig = { collections: [postsResource] } as unknown as VexConfig;
 
 const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
@@ -39,7 +45,7 @@ describe("update (server)", () => {
     const t = convexTest(schema, modules);
     const seen: unknown[] = [];
     const guarded = {
-      collections: [],
+      collections: [postsResource],
       access: {
         // `enabled` is required on a hand-built config: `hasPermission` treats a
         // falsy `enabled` as "RBAC off" and allows everything.
@@ -87,7 +93,7 @@ describe("update (server)", () => {
   test("allows the update when the stored doc satisfies the rule", async () => {
     const t = convexTest(schema, modules);
     const guarded = {
-      collections: [],
+      collections: [postsResource],
       access: {
         enabled: true,
         roles: ["editor"],
@@ -115,12 +121,6 @@ describe("update (server)", () => {
       expect((await ctx.db.get(open))?.title).toBe("Renamed");
     });
   });
-});
-
-// ── Access-enforcement fixture ─────────────────────────────────────────────
-const postsResource = defineCollection({
-  slug: "posts",
-  fields: { title: text(), slug: text(), featured: checkbox() },
 });
 
 describe("update (server) — access enforcement", () => {
@@ -608,21 +608,6 @@ describe("update (server) — updatedAt stamp", () => {
       expect(second).toBeGreaterThanOrEqual(first as number);
     });
   });
-
-  test("does not stamp when no registered collection matches the slug", async () => {
-    await withTransaction(async (ctx) => {
-      const id = await ctx.db.insert("posts", { slug: "old", title: "Old" });
-      await update({
-        collection: "posts",
-        config: fixtureConfig,
-        ctx,
-        data: { title: "New" },
-        id,
-      });
-      const doc = await ctx.db.get(id);
-      expect(doc?.updatedAt).toBeUndefined();
-    });
-  });
 });
 
 async function withTransaction(
@@ -631,3 +616,159 @@ async function withTransaction(
   const t = convexTest(schema, modules);
   await t.run(fn);
 }
+
+describe("update (server) — validation and hooks", () => {
+  test("a partial update touching one field does not trip required on absent fields", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }), body: text({ required: true }) },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("posts", { title: "Hi", slug: "hi", body: "Body" } as never),
+    );
+    await t.run((ctx: GenericMutationCtx<GenericDataModel>) => update({ ctx, config, collection: "posts", id: id as never, data: { title: "Hi 2" } }));
+    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    expect(doc?.title).toBe("Hi 2");
+  });
+
+  test("rejects a present field that violates its constraint on a partial update", async () => {
+    const collection = defineCollection({ slug: "posts", fields: { title: text({ max: { value: 5 } }) } });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never),
+    );
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) => update({ ctx, config, collection: "posts", id: id as never, data: { title: "way too long" } })),
+    ).rejects.toThrow(ConvexError);
+  });
+
+  test("rejects an update to a required array field below its configured min", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text(),
+        slug: text(),
+        author: array({ items: text(), required: true, min: { value: 2 } }),
+      },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never),
+    );
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        update({ ctx, config, collection: "posts", id: id as never, data: { author: ["one-author"] } }),
+      ),
+    ).rejects.toThrow(ConvexError);
+  });
+
+  test("accepts a partial update that never touches an optional array field below its own configured min count", async () => {
+    // `required` only governs whether the field may be *empty* — an update
+    // that never touches it at all is unaffected by its `min`.
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text(),
+        slug: text(),
+        author: array({ items: text(), min: { value: 2 } }),
+      },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never),
+    );
+    await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      update({ ctx, config, collection: "posts", id: id as never, data: { title: "Hi 2" } }),
+    );
+    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    expect(doc?.title).toBe("Hi 2");
+  });
+
+  test("rejects an update that supplies an optional array field below its own configured min count", async () => {
+    // Regression: min/max is independent of `required` — `required` governs
+    // whether the field may be *empty*, not whether a *supplied* value must
+    // respect the configured item count (see `array/inputSchema.ts`).
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text(),
+        slug: text(),
+        author: array({ items: text(), min: { value: 2 } }),
+      },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const authorId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("authors", { name: "Ada" } as never),
+    );
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never),
+    );
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        update({ ctx, config, collection: "posts", id: id as never, data: { author: [authorId] } }),
+      ),
+    ).rejects.toThrow(ConvexError);
+  });
+
+  test("accepts an update that supplies an optional array field satisfying its own configured min count", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text(),
+        slug: text(),
+        author: array({ items: text(), min: { value: 2 } }),
+      },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const authorId1 = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("authors", { name: "Ada" } as never),
+    );
+    const authorId2 = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("authors", { name: "Grace" } as never),
+    );
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never),
+    );
+    await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      update({
+        ctx,
+        config,
+        collection: "posts",
+        id: id as never,
+        data: { author: [authorId1, authorId2] },
+      }),
+    );
+    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    expect(doc?.author).toEqual([authorId1, authorId2]);
+  });
+
+  test("beforeChange sees the merged document, so a cross-field rule works on a partial write", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text(), body: text() },
+      hooks: {
+        beforeChange: ({ doc }) => {
+          if (doc.body && doc.title && doc.body === doc.title) {
+            throw new Error("body must differ from title");
+          }
+          return doc;
+        },
+      },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("posts", { title: "Original", slug: "original", body: "Different" } as never),
+    );
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) => update({ ctx, config, collection: "posts", id: id as never, data: { body: "Original" } })),
+    ).rejects.toThrow(/body must differ from title/);
+  });
+});

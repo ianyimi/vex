@@ -18,6 +18,16 @@ import { adminFieldToInputSchema } from "../inputSchemas";
  * all) (CORE-1). Required fields never receive `.default()`; non-required
  * fields keep `.default(field.defaultValue ?? [])`.
  *
+ * `min`/`max` are independent of `required`, but only skip an *empty* array
+ * when the field is optional: an optional field's empty/omitted value
+ * shouldn't fail its own `min`, but a required field's empty value is
+ * already invalid (via `.min(1, requiredError)` above), so its configured
+ * `min`/`max` still runs on `[]` too — otherwise a required field's own
+ * custom `min`/`max` error message could never surface (an empty array is
+ * the only way to violate a `min` in the first place) and only the generic
+ * "This field is required." would ever show. A non-empty array — required
+ * or not — is always checked against a configured `min`/`max`.
+ *
  * @param props - Input props.
  * @param props.field - The resolved array field definition
  * @returns A Zod array schema with item count constraints and optionality applied
@@ -31,9 +41,12 @@ import { adminFieldToInputSchema } from "../inputSchemas";
  *
  * @example
  * ```ts
- * const field = array({ items: number(), min: { value: 1 }, max: { value: 5 } })
- * arrayFieldToInputSchema({ field })
- * // → z.array(z.number()).min(1).max(5).default([])
+ * // Optional field, min/max still enforced once a value is supplied
+ * const field = array({ items: number(), min: { value: 2 }, max: { value: 5 } })
+ * const schema = arrayFieldToInputSchema({ field })
+ * schema.safeParse(undefined)   // → success: [] (skips min/max — empty)
+ * schema.safeParse([1])         // → fails: below min
+ * schema.safeParse([1, 2])      // → success
  * ```
  */
 export function arrayFieldToInputSchema<
@@ -53,10 +66,18 @@ export function arrayFieldToInputSchema<
     : z.array(itemsInputSchema);
 
   if (field.min) {
-    arraySchema = arraySchema.min(field.min.value, fieldMinError);
+    const min = field.min.value;
+    arraySchema = arraySchema.refine(
+      (value) => (!field.required && value.length === 0) || value.length >= min,
+      fieldMinError,
+    );
   }
   if (field.max) {
-    arraySchema = arraySchema.max(field.max.value, fieldMaxError);
+    const max = field.max.value;
+    arraySchema = arraySchema.refine(
+      (value) => (!field.required && value.length === 0) || value.length <= max,
+      fieldMaxError,
+    );
   }
 
   const inputSchema: ZodType = field.required

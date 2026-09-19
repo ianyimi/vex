@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import type { CollectionSlug } from "../../types/generated";
 import type { DateFieldInput, DateField } from "./types";
 
 /**
@@ -55,9 +56,12 @@ import type { DateFieldInput, DateField } from "./types";
  * @see {@link DateFieldInput} for the full input type
  * @see {@link DateField} for the resolved output type
  */
-export function date<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
-  options?: DateFieldInput<TFieldMeta>,
-): DateField<TFieldMeta> {
+export function date<
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+>(
+  options?: DateFieldInput<TFieldMeta, TCollectionSlug>,
+): DateField<TFieldMeta, TCollectionSlug> {
   return {
     type: ADMIN_FIELDS.date.type,
     interfaceType: ADMIN_FIELDS.date.interfaceType,
