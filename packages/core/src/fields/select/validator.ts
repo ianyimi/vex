@@ -1,4 +1,7 @@
+import type { GenericDataModel } from "convex/server";
 import { applyBaseValidators } from "../validators/utils";
+import { fieldValidator, type FieldValidate } from "../baseTypes";
+import type { CollectionSlug } from "../../types/generated";
 import type { SelectField } from "./types";
 
 /**
@@ -34,4 +37,22 @@ export function selectFieldToValidator(props: { field: SelectField }): string {
     .join(", ");
   const validator = `v.array(v.union(${optionLiterals}))`;
   return applyBaseValidators({ field, validator });
+}
+
+/**
+ * Types a `select()` field's `validate()` against a real collection and
+ * `DataModel`, with `value` fixed to `string[]`. @see {@link fieldValidator}
+ *
+ * @param slug - The owning collection's slug, used only to infer `TCollectionSlug`.
+ * @param fn - The validate callback, checked against the collection's real document shape and `value` type.
+ * @returns The same function, re-typed to the field's loose public `validate` signature.
+ */
+export function selectValidator<
+  TCollectionSlug extends CollectionSlug,
+  TDataModel extends GenericDataModel = GenericDataModel,
+>(
+  slug: TCollectionSlug,
+  fn: FieldValidate<TCollectionSlug, string[], TDataModel, SelectField>,
+): FieldValidate<TCollectionSlug, string[]> {
+  return fieldValidator<TCollectionSlug, string[], TDataModel, SelectField>(slug, fn);
 }

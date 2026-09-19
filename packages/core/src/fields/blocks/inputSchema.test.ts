@@ -57,23 +57,55 @@ describe("blocksFieldToInputSchema", () => {
     expect(blocksFieldToInputSchema({ field }).parse(undefined)).toEqual([]);
   });
 
-  it("enforces min constraint", () => {
-    const field = blocks({ blocks: [headingBlock], min: 1 });
+  it("enforces min constraint when required", () => {
+    const field = blocks({ blocks: [headingBlock], required: true, min: 1 });
     const schema = blocksFieldToInputSchema({ field });
-    expect(schema.safeParse([]).success).toBe(false);
+    const result = schema.safeParse([]);
+    expect(result.success).toBe(false);
+    // Regression: `min.value` matching the required floor (1) must not make
+    // the configured min message unreachable — it's not enough for `[]` to
+    // merely fail; the min-specific message must actually be among the issues.
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.message)).toContain(
+        "At least 1 Blocks required.",
+      );
+    }
     expect(
       schema.safeParse([makeItem("heading", { text: "Hi" })]).success,
     ).toBe(true);
   });
 
-  it("enforces max constraint", () => {
-    const field = blocks({ blocks: [headingBlock], max: 1 });
+  it("enforces max constraint when required", () => {
+    const field = blocks({ blocks: [headingBlock], required: true, max: 1 });
     const schema = blocksFieldToInputSchema({ field });
     const twoItems = [
       makeItem("heading", { text: "A" }),
       makeItem("heading", { text: "B" }),
     ];
     expect(schema.safeParse(twoItems).success).toBe(false);
+  });
+
+  it("skips min/max on an optional field only when the value is empty", () => {
+    const field = blocks({ blocks: [headingBlock], min: 1, max: 1 });
+    const schema = blocksFieldToInputSchema({ field });
+    expect(schema.safeParse([]).success).toBe(true);
+  });
+
+  it("still enforces min/max once a non-empty value is supplied, even though the field is optional", () => {
+    // Regression: min/max is independent of `required` — `required` only
+    // governs whether the field may be empty, not whether a *supplied*
+    // value must respect the configured block-count bounds.
+    const field = blocks({ blocks: [headingBlock], min: 2, max: 2 });
+    const schema = blocksFieldToInputSchema({ field });
+    const oneItem = [makeItem("heading", { text: "A" })];
+    const twoItems = [
+      makeItem("heading", { text: "A" }),
+      makeItem("heading", { text: "B" }),
+    ];
+    const threeItems = [...twoItems, makeItem("heading", { text: "C" })];
+    expect(schema.safeParse(oneItem).success).toBe(false);
+    expect(schema.safeParse(threeItems).success).toBe(false);
+    expect(schema.safeParse(twoItems).success).toBe(true);
   });
 
   it("rejects a missing value on a required field with a 'required' message", () => {

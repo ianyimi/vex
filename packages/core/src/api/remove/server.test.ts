@@ -10,10 +10,15 @@ import { defineAccess } from "../../access/config";
 import { defineCollection, text, checkbox } from "../../index";
 import { VexAccessError, WILDCARD_KEY } from "../../access";
 
+const postsResource = defineCollection({
+  slug: "posts",
+  fields: { title: text(), slug: text(), featured: checkbox() },
+});
 
-// Minimal resolved-config fixture: these server functions only read
-// `config.access` (undefined here → RBAC off) at this layer.
-const fixtureConfig = { collections: [] } as unknown as VexConfig;
+// Minimal resolved-config fixture: registers `posts` so the "collection must
+// be registered" check passes; carries no `required`/`min`/`max`/`validate`,
+// so it changes nothing about what these tests exercise.
+const fixtureConfig = { collections: [postsResource] } as unknown as VexConfig;
 
 const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
@@ -79,12 +84,6 @@ describe("remove (server)", () => {
       expect((doc2 as any).deleted).toBe(true);
     });
   });
-});
-
-// ── Access-enforcement fixture ─────────────────────────────────────────────
-const postsResource = defineCollection({
-  slug: "posts",
-  fields: { title: text(), slug: text(), featured: checkbox() },
 });
 
 /** Runs `fn` inside a fresh `convexTest` transaction. */
@@ -463,5 +462,47 @@ describe("remove (server) — access enforcement", () => {
       expect(await ctx.db.get(openId)).not.toBeNull();
       expect(await ctx.db.get(protectedId)).not.toBeNull();
     });
+  });
+});
+
+describe("remove (server) — beforeDelete", () => {
+  test("beforeDelete throwing aborts the delete", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text() },
+      hooks: { beforeDelete: () => { throw new Error("cannot delete"); } },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never));
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) => remove({ ctx, config, collection: "posts", ids: [id as never] })),
+    ).rejects.toThrow(/cannot delete/);
+    const stillThere = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    expect(stillThere).not.toBeNull();
+  });
+
+  test("a soft delete does not run beforeDelete", async () => {
+    let called = false;
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text(), deleted: checkbox() },
+      hooks: { beforeDelete: () => { called = true; } },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never));
+    await t.run((ctx: GenericMutationCtx<GenericDataModel>) => remove({ ctx, config, collection: "posts", ids: [id as never], softDelete: "deleted" }));
+    expect(called).toBe(false);
+  });
+
+  test("afterChange-style cleanup is unaffected: a hard delete with no hooks still removes the row", async () => {
+    const collection = defineCollection({ slug: "posts", fields: { title: text() } });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never));
+    await t.run((ctx: GenericMutationCtx<GenericDataModel>) => remove({ ctx, config, collection: "posts", ids: [id as never] }));
+    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    expect(doc).toBeNull();
   });
 });

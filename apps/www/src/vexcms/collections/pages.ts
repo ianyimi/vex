@@ -1,7 +1,9 @@
-import { blocks, defineCollection, text, upload } from "@vexcms/core"
+import type { DataModel } from "@convex/_generated/dataModel";
 
-import { TABLE_SLUG_IMAGES, TABLE_SLUG_PAGES } from "~/db/constants"
-import { pageBlocks } from "~/vexcms/blocks/config"
+import { blocks, defineCollection, text, textValidator, upload } from "@vexcms/core";
+
+import { TABLE_SLUG_IMAGES, TABLE_SLUG_PAGES } from "~/db/constants";
+import { pageBlocks } from "~/vexcms/blocks/config";
 
 export const pages = defineCollection({
   slug: TABLE_SLUG_PAGES,
@@ -20,6 +22,18 @@ export const pages = defineCollection({
       index: "by_slug",
       label: "Slug",
       required: true,
+      validate: textValidator<typeof TABLE_SLUG_PAGES, DataModel>(
+        TABLE_SLUG_PAGES,
+        async ({ value, doc, ctx }) => {
+          const existing = await ctx.db
+            .query("pages")
+            .withIndex("by_slug", (q) => q.eq("slug", value))
+            .first();
+          if (existing && existing._id !== doc._id) {
+            return `This slug is already in use by the page '${existing.title}'.`;
+          }
+        },
+      ),
     }),
     blocks: blocks({
       admin: {
@@ -58,4 +72,4 @@ export const pages = defineCollection({
     plural: "Pages",
     singular: "Page",
   },
-})
+});

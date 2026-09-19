@@ -1,4 +1,5 @@
 import { convexTest } from "convex-test";
+import { ConvexError } from "convex/values";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { describe, expect, test } from "vitest";
 
@@ -8,13 +9,18 @@ import type { VexConfig } from "../../config";
 import { create } from "./server";
 import { defineAccess } from "../../access/config";
 import type { AdminField } from "../../fields";
-import { checkbox, defineCollection, number, text } from "../../index";
+import { array, checkbox, defineCollection, number, text } from "../../index";
 import { VexAccessError, WILDCARD_KEY } from "../../access";
 
+const postsResource = defineCollection({
+  slug: "posts",
+  fields: { title: text(), slug: text(), featured: checkbox() },
+});
 
-// Minimal resolved-config fixture: these server functions only read
-// `config.access` (undefined here → RBAC off) at this layer.
-const fixtureConfig = { collections: [] } as unknown as VexConfig;
+// Minimal resolved-config fixture: registers `posts` so the "collection must
+// be registered" check passes; carries no `required`/`min`/`max`/`validate`,
+// so it changes nothing about what these tests exercise.
+const fixtureConfig = { collections: [postsResource] } as unknown as VexConfig;
 
 const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
@@ -51,10 +57,6 @@ describe("create (server)", () => {
 });
 
 // ── Access-enforcement fixture ─────────────────────────────────────────────
-const postsResource = defineCollection({
-  slug: "posts",
-  fields: { title: text(), slug: text(), featured: checkbox() },
-});
 
 describe("create (server) — access enforcement", () => {
   test("denies a create when the action check is a static false", async () => {
@@ -463,20 +465,6 @@ describe("create (server) — updatedAt stamp", () => {
     });
   });
 
-  test("does not stamp when no registered collection matches the slug", async () => {
-    const t = convexTest(schema, modules);
-    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const id = await create({
-        collection: "posts",
-        config: fixtureConfig,
-        ctx,
-        data: { slug: "hello", title: "Hello" },
-      });
-      const doc = await ctx.db.get(id as never);
-      expect(doc?.updatedAt).toBeUndefined();
-    });
-  });
-
   test("does not stamp a collection that opted out with timestamps: false", async () => {
     const t = convexTest(schema, modules);
     const optedOut = {
@@ -523,5 +511,131 @@ describe("create (server) — updatedAt stamp", () => {
       const doc = await ctx.db.get(id as never);
       expect(doc?.updatedAt).toBeUndefined();
     });
+  });
+});
+
+describe("create (server) — validation and hooks", () => {
+  test("throws when the collection is not registered in config", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({ ctx, config: { collections: [] } as unknown as VexConfig, collection: "posts", data: { title: "Hello" } }),
+      ),
+    ).rejects.toThrow(/No collection registered/);
+  });
+
+  test("rejects a write that violates a field's max length through the Local API", async () => {
+    const collection = defineCollection({ slug: "posts", fields: { title: text({ max: { value: 5 } }) } });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({ ctx, config, collection: "posts", data: { title: "way too long" } }),
+      ),
+    ).rejects.toThrow(ConvexError);
+  });
+
+  test("rejects a write to a required array field below its configured min, through the Local API", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text(),
+        slug: text(),
+        author: array({ items: text(), required: true, min: { value: 2 } }),
+      },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({
+          ctx,
+          config,
+          collection: "posts",
+          data: { title: "Hello", slug: "hello", author: ["one-author"] },
+        }),
+      ),
+    ).rejects.toThrow(ConvexError);
+  });
+
+  test("accepts a write that omits an optional array field below its own configured min count", async () => {
+    // Regression: `min`/`max` on array/blocks/upload fields used to be enforced
+    // unconditionally, so an optional field's own `[]` default always failed
+    // its own `min` the moment it was left untouched — enforcement is now
+    // gated on `required` (see `array/inputSchema.ts`).
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text(),
+        slug: text(),
+        author: array({ items: text(), min: { value: 2 } }),
+      },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({ ctx, config, collection: "posts", data: { title: "Hello", slug: "hello" } }),
+    );
+    expect(typeof id).toBe("string");
+  });
+
+  test("beforeChange can derive a field the caller never sent", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text(), slug: text() },
+      hooks: { beforeChange: ({ doc }) => ({ ...doc, slug: String(doc.title).toLowerCase() }) },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({ ctx, config, collection: "posts", data: { title: "Hello" } }),
+    );
+    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    expect(doc).toMatchObject({ slug: "hello" });
+  });
+
+  test("a beforeChange-derived field is not denied by a field-map role that can only write the original field", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text(), slug: text() },
+      hooks: { beforeChange: ({ doc }) => ({ ...doc, slug: String(doc.title).toLowerCase() }) },
+    });
+    const config = {
+      collections: [collection],
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [collection],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: { editor: { posts: { create: () => ({ title: true }) } } },
+      }),
+    } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({ ctx, config, collection: "posts", auth: { user: { roles: ["editor"] } }, data: { title: "Hello" } }),
+      ),
+    ).resolves.toEqual(expect.any(String));
+  });
+
+  test("an async validate() rejects a duplicate via a ctx.db query", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        slug: text({
+          validate: async ({ value, ctx }) => {
+            const existing = await ctx.db.query("posts").filter((q) => q.eq(q.field("slug"), value)).first();
+            if (existing) return "Slug must be unique.";
+            return undefined;
+          },
+        }),
+      },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await t.run((ctx: GenericMutationCtx<GenericDataModel>) => create({ ctx, config, collection: "posts", data: { title: "Post", slug: "taken" } }));
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) => create({ ctx, config, collection: "posts", data: { title: "Post", slug: "taken" } })),
+    ).rejects.toThrow(ConvexError);
   });
 });

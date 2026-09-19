@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { AdminField } from "../fields";
 import { defineCollection, number, text } from "../index";
+import { beforeChangeHook } from "./hooks";
 
 describe("defineCollection — updatedAt injection", () => {
   it("injects an optional updatedAt number field by default", () => {
@@ -155,5 +156,22 @@ describe("defineCollection — label derivation (CORE-LABEL-1)", () => {
       labels: { singular: "Article" },
     });
     expect(collection.labels).toEqual({ singular: "Article", plural: "Posts" });
+  });
+});
+
+describe("defineCollection — hooks", () => {
+  it("defaults hooks to an empty object", () => {
+    const posts = defineCollection({ slug: "posts", fields: { title: text() } });
+    expect(posts.hooks).toEqual({});
+  });
+
+  it("passes through provided hooks unchanged", () => {
+    const beforeChange = beforeChangeHook("posts", ({ doc }) => doc);
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text() },
+      hooks: { beforeChange },
+    });
+    expect(posts.hooks.beforeChange).toBe(beforeChange);
   });
 });

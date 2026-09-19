@@ -14,7 +14,7 @@ import { BaseFieldMeta } from "../types";
  * A `.index("by_<fieldKey>", ["<fieldKey>"])` is auto-generated for every relationship
  * field — no explicit `index` property needed.
  *
- * `TCollectionSlug` is inferred from `options.collection`. After running `vex generate`,
+ * `TTargetSlug` is inferred from `options.collection`. After running `vex generate`,
  * passing an unregistered slug is a compile-time error.
  *
  * **Defaults applied:**
@@ -27,7 +27,7 @@ import { BaseFieldMeta } from "../types";
  * - `admin.width` — `"full"`
  * - `admin.cellAlignment` — `"left"`
  *
- * @typeParam TCollectionSlug - Inferred from `options.collection`.
+ * @typeParam TTargetSlug - Inferred from `options.collection`.
  * @param options - Relationship field config. `collection` is required.
  * @returns Resolved relationship field definition with all defaults applied.
  *
@@ -45,16 +45,19 @@ import { BaseFieldMeta } from "../types";
  */
 export function relationship<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
 >(
-  options: RelationshipFieldInput<TFieldMeta, TCollectionSlug, TComponent>,
-): RelationshipField<TFieldMeta, TCollectionSlug, TComponent> {
+  options: RelationshipFieldInput<TFieldMeta, TTargetSlug, TComponent, TCollectionSlug>,
+): RelationshipField<TFieldMeta, TTargetSlug, TComponent, TCollectionSlug> {
   return {
     label: "",
     required: false,
     hasMany: false,
     ...options,
+    min: options.min,
+    max: options.max,
     type: ADMIN_FIELDS.relationship.type,
     // Per-field override of the static `ADMIN_FIELDS.relationship.interfaceType`
     // (`Id<CollectionSlug>[]`): emitting the target slug as a literal is what

@@ -1,5 +1,8 @@
+import type { GenericDataModel } from "convex/server";
 import { adminFieldToValidator } from "../validators";
 import { applyBaseValidators } from "../validators/utils";
+import { fieldValidator, type FieldValidate } from "../baseTypes";
+import type { CollectionSlug } from "../../types/generated";
 import type { ArrayField, ArrayType } from "./types";
 
 /**
@@ -36,4 +39,23 @@ export function arrayFieldToValidator<
     field: props.field,
     validator: `v.array(${itemValidator})`,
   });
+}
+
+/**
+ * Types an `array()` field's `validate()` against a real collection and
+ * `DataModel`, with `value` fixed to `TArrayType[]`. @see {@link fieldValidator}
+ *
+ * @param slug - The owning collection's slug, used only to infer `TCollectionSlug`.
+ * @param fn - The validate callback, checked against the collection's real document shape and `value` type.
+ * @returns The same function, re-typed to the field's loose public `validate` signature.
+ */
+export function arrayValidator<
+  TCollectionSlug extends CollectionSlug,
+  TArrayType extends ArrayType = string,
+  TDataModel extends GenericDataModel = GenericDataModel,
+>(
+  slug: TCollectionSlug,
+  fn: FieldValidate<TCollectionSlug, TArrayType[], TDataModel, ArrayField<TArrayType>>,
+): FieldValidate<TCollectionSlug, TArrayType[]> {
+  return fieldValidator<TCollectionSlug, TArrayType[], TDataModel, ArrayField<TArrayType>>(slug, fn);
 }

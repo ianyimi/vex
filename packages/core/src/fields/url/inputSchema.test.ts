@@ -39,6 +39,18 @@ describe("urlFieldToInputSchema", () => {
     expect(schema.safeParse("https://example.com").success).toBe(true);
   });
 
+  it("still enforces URL format on an optional field once a non-empty value is supplied", () => {
+    // Regression: format/constraint checks are independent of `required` —
+    // `required` only governs whether the field may be empty, not whether a
+    // *supplied* value must be well-formed.
+    const field = url({ required: false, defaultValue: "" });
+    const schema = urlFieldToInputSchema({ field });
+
+    expect(schema.safeParse("not-a-url").success).toBe(false);
+    expect(schema.safeParse("").success).toBe(true);
+    expect(schema.safeParse("https://example.com").success).toBe(true);
+  });
+
   it("rejects a missing value on a required field with a 'required' message", () => {
     const field = url({ required: true });
     const schema = urlFieldToInputSchema({ field });

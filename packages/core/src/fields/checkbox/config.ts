@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import type { CollectionSlug } from "../../types/generated";
 import type { CheckboxFieldInput, CheckboxField } from "./types";
 
 /**
@@ -44,9 +45,12 @@ import type { CheckboxFieldInput, CheckboxField } from "./types";
  * @see {@link CheckboxFieldInput} for the full input type
  * @see {@link CheckboxField} for the resolved output type
  */
-export function checkbox<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
-  options?: CheckboxFieldInput<TFieldMeta>,
-): CheckboxField<TFieldMeta> {
+export function checkbox<
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+>(
+  options?: CheckboxFieldInput<TFieldMeta, TCollectionSlug>,
+): CheckboxField<TFieldMeta, TCollectionSlug> {
   return {
     type: ADMIN_FIELDS.checkbox.type,
     interfaceType: ADMIN_FIELDS.checkbox.interfaceType,

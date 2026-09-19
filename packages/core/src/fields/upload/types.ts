@@ -1,5 +1,5 @@
-import type { BaseField, BaseFieldInput } from "../baseTypes";
-import type { MediaCollectionSlug } from "../../types/generated";
+import type { BaseField, BaseFieldInput, FieldValidateProps } from "../baseTypes";
+import type { CollectionSlug, MediaCollectionSlug } from "../../types/generated";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
 
@@ -9,7 +9,8 @@ import { BaseFieldMeta } from "../types";
  */
 export interface UploadFieldInput<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-> extends BaseFieldInput<TFieldMeta> {
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
   /**
    * The slug of the media collection that stores uploaded files for this field.
    *
@@ -50,6 +51,8 @@ export interface UploadFieldInput<
    * @example 'image/webp, audio/mp3'
    */
   accept?: string;
+  /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<string | void> | string | void;
 }
 
 /**
@@ -57,7 +60,8 @@ export interface UploadFieldInput<
  */
 export interface UploadField<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-> extends BaseField<TFieldMeta> {
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseField<TFieldMeta, TCollectionSlug> {
   readonly type: typeof ADMIN_FIELDS.upload.type;
   to: MediaCollectionSlug;
   /**
@@ -80,4 +84,6 @@ export interface UploadField<
    * Restrict files that can be uploaded by mimeType.
    */
   accept: string;
+  /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<string | void> | string | void;
 }

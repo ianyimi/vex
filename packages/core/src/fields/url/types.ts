@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput } from "../baseTypes";
+import { BaseField, BaseFieldInput, FieldValidateProps } from "../baseTypes";
+import type { CollectionSlug } from "../../types/generated";
 
 /**
  * Configuration input for a `url()` field.
@@ -45,12 +46,15 @@ import { BaseField, BaseFieldInput } from "../baseTypes";
  */
 export interface UrlFieldInput<
   TFieldMeta extends {} = {},
-> extends BaseFieldInput<TFieldMeta> {
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * Does not affect existing database values.
    */
   defaultValue?: string;
+  /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<string | void> | string | void;
 }
 
 /**
@@ -63,11 +67,16 @@ export interface UrlFieldInput<
  * @see {@link UrlFieldInput} for the user-facing input type
  * @see {@link url} for the config function that produces this type
  */
-export interface UrlField<TFieldMeta extends {} = {}> extends BaseField<TFieldMeta> {
+export interface UrlField<
+  TFieldMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseField<TFieldMeta, TCollectionSlug> {
   readonly type: typeof ADMIN_FIELDS.url.type;
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * `undefined` means no default is applied — the input starts empty.
    */
   defaultValue?: string;
+  /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<string | void> | string | void;
 }

@@ -1,9 +1,10 @@
-import { ConvexError } from "convex/values"
+import { ConvexError } from "convex/values";
 
-import { TABLE_SLUG_USERS } from "~/db/constants"
-import { USER_ROLES } from "~/db/constants/auth"
+import { TABLE_SLUG_USERS } from "~/db/constants";
+import { USER_ROLES } from "~/db/constants/auth";
 
-import { mutation, query } from "../_generated/server"
+import { query } from "../_generated/server";
+import { vexMutation as mutation } from "../vex";
 
 /**
  * Check whether the admin panel has been bootstrapped (at least one admin
@@ -12,10 +13,10 @@ import { mutation, query } from "../_generated/server"
 export const isBootstrapped = query({
   args: {},
   handler: async (ctx) => {
-    const allUsers = await ctx.db.query(TABLE_SLUG_USERS).collect()
-    return allUsers.some((user) => user.roles?.includes(USER_ROLES.admin))
+    const allUsers = await ctx.db.query(TABLE_SLUG_USERS).collect();
+    return allUsers.some((user) => user.roles?.includes(USER_ROLES.admin));
   },
-})
+});
 
 /**
  * Promote the current user to admin if no admin exists yet. Called after the
@@ -27,34 +28,34 @@ export const isBootstrapped = query({
 export const promoteFirstAdmin = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity()
+    const identity = await ctx.auth.getUserIdentity();
     if (!identity?.email) {
-      throw new ConvexError("Not authenticated")
+      throw new ConvexError("Not authenticated");
     }
 
     const currentUser = await ctx.db
       .query(TABLE_SLUG_USERS)
       .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first()
+      .first();
 
     if (!currentUser) {
-      throw new ConvexError("User not found")
+      throw new ConvexError("User not found");
     }
 
-    const allUsers = await ctx.db.query(TABLE_SLUG_USERS).collect()
-    const hasAdmin = allUsers.some((user) => user.roles?.includes(USER_ROLES.admin))
+    const allUsers = await ctx.db.query(TABLE_SLUG_USERS).collect();
+    const hasAdmin = allUsers.some((user) => user.roles?.includes(USER_ROLES.admin));
 
     if (hasAdmin) {
-      return { promoted: false }
+      return { promoted: false };
     }
 
-    const currentRoles = currentUser.roles ?? []
+    const currentRoles = currentUser.roles ?? [];
     if (!currentRoles.includes(USER_ROLES.admin)) {
       await ctx.db.patch(currentUser._id, {
         roles: [...currentRoles, USER_ROLES.admin],
-      })
+      });
     }
 
-    return { promoted: true }
+    return { promoted: true };
   },
-})
+});

@@ -7,7 +7,7 @@ import { ConvexProvider, type ConvexReactClient } from "convex/react";
 import { convexTest } from "convex-test";
 import { NuqsTestingAdapter, type UrlUpdateEvent } from "nuqs/adapters/testing";
 import type { MediaCollectionConfig, VexAccessConfig } from "@vexcms/core";
-import { defineConfig } from "@vexcms/core";
+import { defineCollection, defineConfig, text } from "@vexcms/core";
 
 import { renderWithVexProviders, testCollection } from "./harness/accessFixtures";
 import { createFakeConvexClient, type ConvexTestInstance } from "./convex/bridge";
@@ -189,6 +189,22 @@ function describeBaseModal(access: VexAccessConfig | undefined) {
 }
 
 /**
+ * `testCollection` variant with `status` marked `required`. `CreateDocumentModal`
+ * now renders only a collection's required fields (a quick create — non-required
+ * fields keep their configured defaults and are filled in later from the edit
+ * view), so reusing `testCollection` as-is (both fields `required: false`) would
+ * render an empty form with no `#status` control for these tests to type into or
+ * submit through.
+ */
+const createModalTestCollection = defineCollection({
+  slug: testCollection.slug,
+  fields: {
+    status: text({ index: "by_status", required: true }),
+    title: text({ required: false }),
+  },
+});
+
+/**
  * Registers the `CreateDocumentModal` describe block. Every write assertion
  * reads the `documents` table back out of convex-test rather than spying on a
  * mocked mutation, so the same assertions hold inside a consumer's process.
@@ -216,11 +232,11 @@ function describeCreateDocumentModal(access: VexAccessConfig | undefined) {
               searchParams={options.searchParams}
               onUrlUpdate={options.onUrlUpdate}
             >
-              <CreateDocumentModal collection={testCollection.slug} />
+              <CreateDocumentModal collection={createModalTestCollection.slug} />
             </NuqsTestingAdapter>
           </QueryClientProvider>
         </ConvexProvider>,
-        { access },
+        { config: defineConfig({ collections: [createModalTestCollection], access }) },
       );
       return { utils, t };
     }
@@ -242,8 +258,8 @@ function describeCreateDocumentModal(access: VexAccessConfig | undefined) {
 
     it("opens a create form with a control per collection field", async () => {
       renderModal({ searchParams: `?${MODALS.createDocument.urlParam}=true` });
-      // Regression guard (CORE-LABEL-1): `testCollection`'s slug is "posts", and
-      // `defineCollection` (`collections/config.ts`) singularizes a slug before
+      // Regression guard (CORE-LABEL-1): `createModalTestCollection`'s slug is "posts",
+      // and `defineCollection` (`collections/config.ts`) singularizes a slug before
       // title-casing it for the derived `labels.singular` — matching its own JSDoc
       // example, `"posts"` -> `singular: "Post"`.
       expect(await screen.findByText("Create Post")).toBeInTheDocument();

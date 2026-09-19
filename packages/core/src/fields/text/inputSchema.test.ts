@@ -180,4 +180,20 @@ describe("textFieldToInputSchema", () => {
       expect(result.error.issues[0].message).toMatch(/required/i);
     }
   });
+
+  describe("min/max on an optional field", () => {
+    it("skips min/max when the value is omitted (undefined)", () => {
+      const field = text({ min: { value: 3 }, max: { value: 5 }, defaultValue: "" });
+      const schema = textFieldToInputSchema({ field });
+      expect(schema.safeParse(undefined).success).toBe(true);
+    });
+
+    it("still enforces min/max once a non-empty value is supplied, even though the field is optional", () => {
+      const field = text({ min: { value: 3 }, max: { value: 5 }, defaultValue: "" });
+      const schema = textFieldToInputSchema({ field });
+      expect(schema.safeParse("ab").success).toBe(false);
+      expect(schema.safeParse("toolong").success).toBe(false);
+      expect(schema.safeParse("abc").success).toBe(true);
+    });
+  });
 });

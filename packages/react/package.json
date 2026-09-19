@@ -65,6 +65,7 @@
     "lucide-react": "catalog:",
     "react-day-picker": "catalog:",
     "react-dropzone": "catalog:",
+    "sonner": "catalog:",
     "tailwind-merge": "catalog:",
     "zod": "catalog:"
   },

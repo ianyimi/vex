@@ -1,6 +1,9 @@
+import type { GenericDataModel } from "convex/server";
 import { adminFieldToValidator } from "../validators";
 import { applyBaseValidators } from "../validators/utils";
-import type { BlocksField } from "./types";
+import { fieldValidator, type FieldValidate } from "../baseTypes";
+import type { CollectionSlug } from "../../types/generated";
+import type { BlocksField, GenericBlock } from "./types";
 
 /**
  * Converts a blocks field definition to a Convex schema validator string.
@@ -64,4 +67,22 @@ export function blocksFieldToValidator<TFieldMeta extends {} = {}>(props: {
     field,
     validator: `v.array(${itemValidator})`,
   });
+}
+
+/**
+ * Types a `blocks()` field's `validate()` against a real collection and
+ * `DataModel`, with `value` fixed to `GenericBlock[]`. @see {@link fieldValidator}
+ *
+ * @param slug - The owning collection's slug, used only to infer `TCollectionSlug`.
+ * @param fn - The validate callback, checked against the collection's real document shape and `value` type.
+ * @returns The same function, re-typed to the field's loose public `validate` signature.
+ */
+export function blocksValidator<
+  TCollectionSlug extends CollectionSlug,
+  TDataModel extends GenericDataModel = GenericDataModel,
+>(
+  slug: TCollectionSlug,
+  fn: FieldValidate<TCollectionSlug, GenericBlock[], TDataModel, BlocksField>,
+): FieldValidate<TCollectionSlug, GenericBlock[]> {
+  return fieldValidator<TCollectionSlug, GenericBlock[], TDataModel, BlocksField>(slug, fn);
 }

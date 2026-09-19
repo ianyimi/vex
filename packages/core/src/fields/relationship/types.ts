@@ -6,6 +6,7 @@ import {
   ComponentHKT,
   FieldAdminConfig,
   FieldAdminConfigInput,
+  FieldValidateProps,
 } from "../baseTypes";
 import { CollectionSlug } from "../../types/generated";
 import { RelationshipPreviewProps } from "../../collections";
@@ -23,7 +24,7 @@ import { RelationshipPreviewProps } from "../../collections";
  * @see {@link FieldAdminConfigInput} for the base admin properties
  */
 export interface RelationshipFieldAdminInput<
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
 > extends FieldAdminConfigInput {
   /**
@@ -34,10 +35,9 @@ export interface RelationshipFieldAdminInput<
     /**
      * Per-field override for rendering this relationship's docs — the only
      * supported location for a custom preview (ARCH-1: target collections do
-     * not support their own `admin.components.preview`). `TCollectionSlug` is
-     * the *target* slug (`fieldDef.collection.slug`).
+     * not support their own `admin.components.preview`).
      */
-    preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TCollectionSlug>>;
+    preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TTargetSlug>>;
   };
 }
 
@@ -48,7 +48,7 @@ export interface RelationshipFieldAdminInput<
  * @see {@link RelationshipFieldAdminInput} for the user-facing input type
  */
 export interface RelationshipFieldAdminConfig<
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
 > extends FieldAdminConfig {
   /**
@@ -59,10 +59,9 @@ export interface RelationshipFieldAdminConfig<
     /**
      * Per-field override for rendering this relationship's docs — the only
      * supported location for a custom preview (ARCH-1: target collections do
-     * not support their own `admin.components.preview`). `TCollectionSlug` is
-     * the *target* slug (`fieldDef.collection.slug`).
+     * not support their own `admin.components.preview`).
      */
-    preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TCollectionSlug>>;
+    preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TTargetSlug>>;
   };
 }
 
@@ -109,13 +108,14 @@ export interface RelationshipFieldAdminConfig<
  */
 export interface RelationshipFieldInput<
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
-> extends BaseFieldInput<TFieldMeta> {
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
   /** Target collection reference. The slug must match a registered collection in `defineConfig`. */
   collection: {
     /** The slug of the collection this field links to. Must be a registered collection slug. */
-    slug: TCollectionSlug;
+    slug: TTargetSlug;
   };
   /**
    * Whether this field stores multiple references.
@@ -123,8 +123,24 @@ export interface RelationshipFieldInput<
    * @defaultValue false
    */
   hasMany?: boolean;
+  /** Minimum number of related documents required, once a value is supplied. */
+  min?: {
+    /** Minimum reference count. */
+    value: number;
+    /** Minimum reference count error message. */
+    error?: string;
+  };
+  /** Maximum number of related documents allowed. */
+  max?: {
+    /** Maximum reference count. */
+    value: number;
+    /** Maximum reference count error message. */
+    error?: string;
+  };
   admin?: BaseFieldInput["admin"] &
-    RelationshipFieldAdminInput<TCollectionSlug, TComponent>;
+    RelationshipFieldAdminInput<TTargetSlug, TComponent>;
+  /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<string | void> | string | void;
 }
 
 /**
@@ -139,17 +155,34 @@ export interface RelationshipFieldInput<
  */
 export interface RelationshipField<
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
-> extends BaseField<TFieldMeta> {
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseField<TFieldMeta, TCollectionSlug> {
   readonly type: typeof ADMIN_FIELDS.relationship.type;
   /** Target collection reference. */
   collection: {
     /** The slug of the collection this field links to. */
-    slug: TCollectionSlug;
+    slug: TTargetSlug;
   };
   /** Whether this field stores multiple document references. */
   hasMany: boolean;
+  /** Minimum number of related documents required, once a value is supplied. */
+  min?: {
+    /** Minimum reference count. */
+    value: number;
+    /** Minimum reference count error message. */
+    error?: string;
+  };
+  /** Maximum number of related documents allowed. */
+  max?: {
+    /** Maximum reference count. */
+    value: number;
+    /** Maximum reference count error message. */
+    error?: string;
+  };
   admin: BaseField<TFieldMeta>["admin"] &
-    RelationshipFieldAdminConfig<TCollectionSlug, TComponent>;
+    RelationshipFieldAdminConfig<TTargetSlug, TComponent>;
+  /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<string | void> | string | void;
 }

@@ -1,5 +1,8 @@
+import type { GenericDataModel } from "convex/server";
 import { ADMIN_FIELDS } from "../constants";
 import { applyBaseValidators } from "../validators/utils";
+import { fieldValidator, type FieldValidate } from "../baseTypes";
+import type { CollectionSlug } from "../../types/generated";
 import type { UrlField } from "./types";
 
 /**
@@ -39,4 +42,22 @@ export function urlFieldToValidator(props: { field: UrlField }): string {
     field: props.field,
     validator: ADMIN_FIELDS.url.validator,
   });
+}
+
+/**
+ * Types a `url()` field's `validate()` against a real collection and
+ * `DataModel`, with `value` fixed to `string`. @see {@link fieldValidator}
+ *
+ * @param slug - The owning collection's slug, used only to infer `TCollectionSlug`.
+ * @param fn - The validate callback, checked against the collection's real document shape and `value` type.
+ * @returns The same function, re-typed to the field's loose public `validate` signature.
+ */
+export function urlValidator<
+  TCollectionSlug extends CollectionSlug,
+  TDataModel extends GenericDataModel = GenericDataModel,
+>(
+  slug: TCollectionSlug,
+  fn: FieldValidate<TCollectionSlug, string, TDataModel, UrlField>,
+): FieldValidate<TCollectionSlug, string> {
+  return fieldValidator<TCollectionSlug, string, TDataModel, UrlField>(slug, fn);
 }
