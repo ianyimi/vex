@@ -27,6 +27,8 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · ⏳ Future · �
 - ✅ Field-level RBAC permissions — a filter callback may return a field map instead of a boolean
 - ✅ Static prerendering, path-based revalidation, `sitemap.xml` / `robots.txt`
 - ✅ Exported React test kit — run the admin panel's own component suite against your config
+- ✅ Lifecycle hooks — `beforeChange` / `beforeDelete` (inline, may reject a write) and `afterChange` / `afterDelete` (via `convex-helpers` triggers), wired by default in `create-vexcms`'s `base-nextjs` template and both hand-maintained apps
+- ✅ Custom `validate()` — async, server-side, database-aware (uniqueness checks and cross-document rules), enforced on every write. A dedicated `lifecycle-hooks` guide covering both of the above is still to write; see `@vexcms/core`'s README until then.
 
 ## In progress
 
@@ -34,8 +36,6 @@ These are the v0.1.0 launch track, in the order they ship.
 
 - 🔄 Data-table integrity pass — bulk actions and the per-collection `admin.table` options wired end to end
 - 🔄 Localization design — the storage model and versioning interaction decided before anyone has data to migrate
-- 🔄 Lifecycle hooks — `beforeChange` / `afterChange` / `afterDelete`, plus server-side enforcement of every declarative field constraint
-- 🔄 Custom `validate()` — async, server-side, database-aware (uniqueness checks and cross-document rules)
 - 🔄 Live preview — the preview surface renders your unsaved edits as you type, with no save and no autosave required
 - 🔄 Versioning & drafts
 - 🔄 `richtext` field — Plate.js editor via `@vexcms/richtext-plate`

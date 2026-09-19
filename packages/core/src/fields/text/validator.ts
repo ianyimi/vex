@@ -1,5 +1,8 @@
+import type { GenericDataModel } from "convex/server";
 import { ADMIN_FIELDS } from "../constants";
 import { applyBaseValidators } from "../validators/utils";
+import { fieldValidator, type FieldValidate } from "../baseTypes";
+import type { CollectionSlug } from "../../types/generated";
 import type { TextField } from "./types";
 
 /**
@@ -11,7 +14,8 @@ import type { TextField } from "./types";
  * **Important notes:**
  * - `min`/`max` are runtime validation constraints, NOT schema constraints
  * - They don't affect the generated Convex value type
- * - Validation happens in the admin panel and mutation handlers
+ * - Validation happens in the admin panel (client Zod) and in every mutation
+ *   built through `create`/`update` (server Zod, run via the shared write pipeline)
  * - The index property is handled separately by index collection logic
  *
  * This function is used by the CLI during schema generation to build
@@ -41,4 +45,23 @@ export function textFieldToValidator(props: { field: TextField }): string {
     field: props.field,
     validator: ADMIN_FIELDS.text.validator,
   });
+}
+
+/**
+ * Types a `text()` field's `validate()` against a real collection and
+ * `DataModel`, with `value` fixed to `string` — the wrapper `fieldValidator`
+ * for this field type. @see {@link fieldValidator}
+ *
+ * @param slug - The owning collection's slug, used only to infer `TCollectionSlug`.
+ * @param fn - The validate callback, checked against the collection's real document shape and `value` type.
+ * @returns The same function, re-typed to the field's loose public `validate` signature.
+ */
+export function textValidator<
+  TCollectionSlug extends CollectionSlug,
+  TDataModel extends GenericDataModel = GenericDataModel,
+>(
+  slug: TCollectionSlug,
+  fn: FieldValidate<TCollectionSlug, string, TDataModel, TextField>,
+): FieldValidate<TCollectionSlug, string> {
+  return fieldValidator<TCollectionSlug, string, TDataModel, TextField>(slug, fn);
 }

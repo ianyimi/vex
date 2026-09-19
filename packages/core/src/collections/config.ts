@@ -5,6 +5,7 @@ import { CollectionSlug } from "../types";
 import { toTitleCase } from "../utils";
 import { ReservedCollectionFieldKey } from "./constants";
 import { CollectionConfig, CollectionConfigInput } from "./types";
+import type { CollectionHooks } from "./hooks";
 import { slugToPascalCase } from "./utils";
 
 function populateCollectionFieldMeta<
@@ -171,6 +172,7 @@ export function defineCollection<
     interfaceName: slugToPascalCase({ slug: input.slug }) + "Document",
     ...input,
     fields,
+    hooks: (input.hooks ?? {}) as CollectionHooks<TCollectionSlug>,
     admin: {
       useAsTitle: "_id",
       ...input.admin,

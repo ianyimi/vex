@@ -38,14 +38,7 @@ const posts = defineCollection({
 // `read` and `create` are deliberately undeclared: the pinned deny posture refuses
 // them, so anything a call gets back is attributable to the option under test.
 const accessConfig = {
-  collections: [
-    {
-      slug: "posts",
-      fields: { title: { type: "text" } },
-      labels: { singular: "Post", plural: "Posts" },
-      admin: { useAsTitle: "title" },
-    },
-  ],
+  collections: [posts],
   access: defineAccess({
     roles: ["contributor"] as const,
     resources: [posts],

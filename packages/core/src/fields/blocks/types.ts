@@ -1,8 +1,8 @@
 import { ADMIN_FIELDS } from "../constants";
-import type { BaseField, BaseFieldInput, FieldAdminConfigInput } from "../baseTypes";
+import type { BaseField, BaseFieldInput, FieldAdminConfig, FieldAdminConfigInput, FieldValidateProps } from "../baseTypes";
 import type { AdminField } from "../types";
 import { LucideIconName } from "../../utils";
-import type { FieldAdminConfig } from "../baseTypes";
+import type { CollectionSlug } from "../../types/generated";
 
 /**
  * Field names reserved by the blocks system.
@@ -198,10 +198,10 @@ export interface BlockConfig<TBlockMeta extends {} = {}> {
  * @see {@link BlocksField} for the resolved output type
  * @see {@link blocks} for the config function that produces this type
  */
-export interface BlocksFieldInput<TFieldMeta extends {} = {}> extends Omit<
-  BaseFieldInput<TFieldMeta>,
-  "admin"
-> {
+export interface BlocksFieldInput<
+  TFieldMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends Omit<BaseFieldInput<TFieldMeta, TCollectionSlug>, "admin"> {
   admin?: FieldAdminConfigInput & {
     defaultCollapsed?: boolean;
   };
@@ -232,6 +232,8 @@ export interface BlocksFieldInput<TFieldMeta extends {} = {}> extends Omit<
   labels?: { singular: string; plural: string };
   /** Pre-filled value when creating a new document. Defaults to `[]`. */
   defaultValue?: Record<string, unknown>[];
+  /** Server-only async validation with `value` typed as `GenericBlock[]`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, GenericBlock[]>): Promise<string | void> | string | void;
 }
 
 /**
@@ -242,7 +244,8 @@ export interface BlocksFieldInput<TFieldMeta extends {} = {}> extends Omit<
  */
 export interface BlocksField<
   TFieldMeta extends {} = {},
-> extends BaseField<TFieldMeta> {
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> extends BaseField<TFieldMeta, TCollectionSlug> {
   readonly type: typeof ADMIN_FIELDS.blocks.type;
   admin: FieldAdminConfig & {
     defaultCollapsed: boolean;
@@ -259,4 +262,6 @@ export interface BlocksField<
   labels: { singular: string; plural: string };
   /** Pre-filled value when creating a new document. */
   defaultValue: Record<string, unknown>[];
+  /** Server-only async validation with `value` typed as `GenericBlock[]`. @see {@link FieldValidate} */
+  validate?(props: FieldValidateProps<TCollectionSlug, GenericBlock[]>): Promise<string | void> | string | void;
 }

@@ -1,4 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
+import type { CollectionSlug } from "../../types/generated";
 import type { NumberFieldInput, NumberField } from "./types";
 
 /**
@@ -46,9 +47,12 @@ import type { NumberFieldInput, NumberField } from "./types";
  * @see {@link NumberFieldInput} for the full input type
  * @see {@link NumberField} for the resolved output type
  */
-export function number<TFieldMeta extends {} = {}>(
-  options?: NumberFieldInput<TFieldMeta>,
-): NumberField<TFieldMeta> {
+export function number<
+  TFieldMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+>(
+  options?: NumberFieldInput<TFieldMeta, TCollectionSlug>,
+): NumberField<TFieldMeta, TCollectionSlug> {
   if (options?.min?.value && options?.max?.value) {
     if (options.min.value >= options.max.value) {
       // TODO. setup errors that throw in development upon invalid configuration

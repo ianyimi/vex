@@ -2,6 +2,7 @@ import { childInterfaceType } from "../childInterfaceType";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
 import type { ArrayFieldInput, ArrayField, ArrayType } from "./types";
+import type { CollectionSlug } from "../../types/generated";
 
 /**
  * Creates an array field with all defaults applied.
@@ -59,7 +60,8 @@ import type { ArrayFieldInput, ArrayField, ArrayType } from "./types";
 export function array<
   TArrayType extends ArrayType = string,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
->(options: ArrayFieldInput<TArrayType, TFieldMeta>): ArrayField<TArrayType, TFieldMeta> {
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+>(options: ArrayFieldInput<TArrayType, TFieldMeta, TCollectionSlug>): ArrayField<TArrayType, TFieldMeta, TCollectionSlug> {
   // If the items field is a named group, reference its name in the array
   // type rather than inlining the full object type. This keeps generated
   // interfaces readable and lets the named group's own type alias do the work.

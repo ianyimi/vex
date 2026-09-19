@@ -332,4 +332,26 @@ describe("getCollectionInputSchema", () => {
       schema.safeParse({ title: 123, score: "bad", published: "yes" }).success,
     ).toBe(false);
   });
+
+  it("partial mode: an absent required field passes", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }), slug: text({ min: { value: 3 } }) },
+    });
+    const schema = getCollectionInputSchema({ collection, partial: true });
+    expect(schema.safeParse({}).success).toBe(true);
+  });
+
+  it("partial mode: a present field still runs its full validator chain", () => {
+    const collection = defineCollection({ slug: "posts", fields: { slug: text({ min: { value: 3 } }) } });
+    const schema = getCollectionInputSchema({ collection, partial: true });
+    expect(schema.safeParse({ slug: "ab" }).success).toBe(false);
+    expect(schema.safeParse({ slug: "abc" }).success).toBe(true);
+  });
+
+  it("non-partial mode is unchanged: an absent required field fails", () => {
+    const collection = defineCollection({ slug: "posts", fields: { title: text({ required: true }) } });
+    const schema = getCollectionInputSchema({ collection });
+    expect(schema.safeParse({}).success).toBe(false);
+  });
 });

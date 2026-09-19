@@ -4,6 +4,7 @@ import type { ComponentHKT } from "../fields";
 import type { CollectionSlug } from "../types/generated";
 import { TDocument } from "../api/convex";
 import { LucideIconName } from "../utils";
+import type { CollectionHooks, CollectionHooksInput } from "./hooks";
 
 /**
  * Props received by a custom preview component for relationship rendering.
@@ -273,6 +274,10 @@ export interface CollectionConfigInput<
    * @defaultValue `true`
    */
   timestamps?: boolean;
+  /** Lifecycle hooks for this collection. */
+  hooks?: CollectionHooksInput<
+    TCollectionSlug extends CollectionSlug ? TCollectionSlug : CollectionSlug
+  >;
 }
 
 /**
@@ -317,4 +322,6 @@ export interface CollectionConfig<
     fields: NoInfer<TFieldSlug>[];
   }[];
   meta: TCollectionMeta;
+  /** Resolved lifecycle hooks. Always present; defaults to `{}`. */
+  hooks: CollectionHooks<TCollectionSlug>;
 }

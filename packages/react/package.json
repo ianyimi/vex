@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/react",
-  "version": "0.1.0-alpha.19",
+  "version": "0.1.0-alpha.20",
   "description": "React admin components and hooks for VexCMS",
   "keywords": [
     "cms",
@@ -65,6 +65,7 @@
     "lucide-react": "catalog:",
     "react-day-picker": "catalog:",
     "react-dropzone": "catalog:",
+    "sonner": "catalog:",
     "tailwind-merge": "catalog:",
     "zod": "catalog:"
   },

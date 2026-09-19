@@ -72,33 +72,12 @@ runFieldInputContractSuite({
       const boundaryFieldDef = array({
         label: "Scores",
         items: text({ label: "Score", required: true }),
-        min: { value: 1 },
-        max: { value: 2 },
+        required: true,
+        min: { value: 2 },
+        max: { value: 3 },
       });
 
       it("passes validation at exactly the min item count", async () => {
-        const user = userEvent.setup();
-        const { container } = render(
-          <ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a"]} />,
-        );
-        await user.click(screen.getByRole("button", { name: /submit/i }));
-        expect(container.querySelector(".text-destructive")?.textContent).toBeFalsy();
-      });
-
-      it("fails validation one item below min, with the real schema message", async () => {
-        const schema = adminFieldToInputSchema({ field: boundaryFieldDef });
-        const result = schema.safeParse([]);
-        expect(result.success).toBe(false);
-        const message = !result.success ? result.error.issues[0]?.message : undefined;
-        expect(message).toBe("This field is too short.");
-
-        const user = userEvent.setup();
-        render(<ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={[]} />);
-        await user.click(screen.getByRole("button", { name: /submit/i }));
-        expect(await screen.findByText(message!)).toBeInTheDocument();
-      });
-
-      it("passes validation at exactly the max item count", async () => {
         const user = userEvent.setup();
         const { container } = render(
           <ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a", "b"]} />,
@@ -107,15 +86,37 @@ runFieldInputContractSuite({
         expect(container.querySelector(".text-destructive")?.textContent).toBeFalsy();
       });
 
+      it("fails validation one item below min, with the real schema message", async () => {
+        const schema = adminFieldToInputSchema({ field: boundaryFieldDef });
+        const result = schema.safeParse(["a"]);
+        expect(result.success).toBe(false);
+        const message = !result.success ? result.error.issues[0]?.message : undefined;
+        expect(message).toBe("This field is too short.");
+
+        const user = userEvent.setup();
+        render(<ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a"]} />);
+        await user.click(screen.getByRole("button", { name: /submit/i }));
+        expect(await screen.findByText(message!)).toBeInTheDocument();
+      });
+
+      it("passes validation at exactly the max item count", async () => {
+        const user = userEvent.setup();
+        const { container } = render(
+          <ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a", "b", "c"]} />,
+        );
+        await user.click(screen.getByRole("button", { name: /submit/i }));
+        expect(container.querySelector(".text-destructive")?.textContent).toBeFalsy();
+      });
+
       it("fails validation one item above max, with the real schema message, when seeded directly past the limit", async () => {
         const schema = adminFieldToInputSchema({ field: boundaryFieldDef });
-        const result = schema.safeParse(["a", "b", "c"]);
+        const result = schema.safeParse(["a", "b", "c", "d"]);
         expect(result.success).toBe(false);
         const message = !result.success ? result.error.issues[0]?.message : undefined;
         expect(message).toBe("This field is too long.");
 
         const user = userEvent.setup();
-        render(<ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a", "b", "c"]} />);
+        render(<ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a", "b", "c", "d"]} />);
         await user.click(screen.getByRole("button", { name: /submit/i }));
         expect(await screen.findByText(message!)).toBeInTheDocument();
       });
@@ -129,7 +130,7 @@ runFieldInputContractSuite({
         // Asserted to that reasonable, consistent expectation — a failure
         // here documents a real, currently-uncaught inconsistency between
         // the two containers, not a test bug (Change B).
-        render(<ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a", "b"]} />);
+        render(<ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a", "b", "c"]} />);
         expect(screen.getByRole("button", { name: `Add ${boundaryFieldDef.labels.singular}` })).toBeDisabled();
       });
 
@@ -137,6 +138,7 @@ runFieldInputContractSuite({
         const customFieldDef = array({
           label: "Scores",
           items: text({ label: "Score", required: true }),
+          required: true,
           min: { value: 1, error: "Add at least one score." },
           max: { value: 2, error: "No more than two scores." },
         });

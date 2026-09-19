@@ -210,6 +210,72 @@ framework-agnostic. Draft-specific actions (`readDrafts`, `saveDraft`, `publish`
 and drafts themselves are not shipped — see `### Versioning & Drafts` above. There
 is no preview-snapshot management utility.
 
+### Lifecycle Hooks & Validation
+
+Collections run a shared write pipeline: `hasPermission` → `beforeChange` (may transform the
+payload or reject the write by throwing) → the generated Zod schema → each field's own
+`validate()` (async, server-only, receives `ctx` — safe for a `ctx.db` uniqueness query
+because Convex mutations are transactional) → the write → `afterChange` / `afterDelete`.
+`beforeDelete` runs the same way ahead of a hard delete.
+
+```typescript
+import { defineCollection, text, beforeChangeHook, textValidator } from "@vexcms/core"
+import type { DataModel } from "../convex/_generated/dataModel"
+
+const TABLE_SLUG_POSTS = "posts"
+
+const posts = defineCollection({
+  slug: TABLE_SLUG_POSTS,
+  labels: { singular: "Post", plural: "Posts" },
+  fields: {
+    title: text({ label: "Title", required: true }),
+    slug: text({
+      label: "Slug",
+      required: true,
+      validate: textValidator<typeof TABLE_SLUG_POSTS, DataModel>(
+        TABLE_SLUG_POSTS,
+        async ({ value, doc, ctx, field }) => {
+          const existing = await ctx.db
+            .query("posts")
+            .withIndex("by_slug", (q) => q.eq("slug", value))
+            .first()
+          if (existing && existing._id !== doc._id) return `${field.label} must be unique.`
+        },
+      ),
+    }),
+  },
+  hooks: {
+    beforeChange: beforeChangeHook<typeof TABLE_SLUG_POSTS, DataModel>(
+      TABLE_SLUG_POSTS,
+      ({ doc }) => ({ ...doc, slug: doc.slug || doc.title.toLowerCase().replace(/\s+/g, "-") }),
+    ),
+  },
+})
+```
+
+`afterChange` / `afterDelete` are convex-helpers triggers, so they only fire for writes made
+through Convex mutations built with `createVexMutations` — never for a Convex dashboard edit,
+`npx convex import`, or a raw `_generated/server` mutation. Wrap your app's `mutation` /
+`internalMutation` builders once:
+
+```typescript
+// convex/triggers.ts
+import { createVexMutations } from "@vexcms/core/server"
+import { mutation, internalMutation } from "./_generated/server"
+import vexConfig from "../vex.config.server"
+
+export const { mutation: wrappedMutation, internalMutation: wrappedInternalMutation } =
+  createVexMutations({ config: vexConfig, mutation, internalMutation })
+```
+
+then import `mutation/internalMutation` from `./triggers` everywhere a generated
+`collectionsApi`/`globalsApi`/`mediaApi` is built, instead of from `./_generated/server`.
+
+`min`/`max` on `text`, `number`, `date`, `array`, `blocks`, `upload`, and `relationship` are
+enforced here too — a write through the Local API that violates a declared constraint is
+rejected, not just a form. See the [lifecycle hooks guide](https://docs.vexcms.dev) for the
+full hook-coverage caveats and BFS trigger-recursion note.
+
 ### Live Preview
 
 Not shipped. `livePreview: { url }` is accepted on collection/global admin config and

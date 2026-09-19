@@ -13,14 +13,18 @@ const paragraphBlock = defineBlock({
  * generic; nested-child coverage across every field type lives in
  * `runNestedFieldContainerSuite`, not here.
  *
- * `min: 1` makes an empty array fail validation via `blocksFieldToInputSchema`'s
- * outer `z.array(itemSchema).min(...)`.
+ * `required: true` makes an empty array fail validation (`blocksFieldToInputSchema`'s
+ * `.min(1, "This field is required.")`) — `min`/`max` count constraints are only
+ * enforced when the field is required (an optional field's own default is `[]`,
+ * which would otherwise always fail its own `min`), so `min: 1` alone no longer
+ * makes `[]` invalid on an optional field.
  */
 export const blocksFieldFixture: FieldFixture<BlocksField, GenericBlock[]> = {
   fieldType: "blocks",
   fieldDef: blocks({
     label: "Body",
     blocks: [paragraphBlock],
+    required: true,
     min: 1,
   }),
   valid: [{ id: "block-1", blockType: "paragraph", blockName: "Paragraph", text: "Hello world" }],

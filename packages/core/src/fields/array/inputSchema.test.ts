@@ -118,6 +118,28 @@ describe("arrayFieldToInputSchema", () => {
         );
       }
     });
+
+    it("surfaces a custom min message on a required field even when min.value matches the required floor (regression)", () => {
+      // A `min: { value: 1 }` on a required field is a common pattern to get
+      // a friendlier message than the generic "This field is required." —
+      // the only way to violate `min: 1` is an empty array, so the
+      // required-only-skips-when-optional gate must not swallow this case.
+      const itemsField = text({ required: true });
+      const field = array({
+        required: true,
+        items: itemsField,
+        min: { value: 1, error: "Add at least one item." },
+      });
+      const schema = arrayFieldToInputSchema({ field });
+
+      const result = schema.safeParse([]);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.map((issue) => issue.message)).toContain(
+          "Add at least one item.",
+        );
+      }
+    });
   });
 
   describe("max constraint", () => {
@@ -235,8 +257,8 @@ describe("arrayFieldToInputSchema", () => {
 
     it("applies constraints to nested arrays", () => {
       const innerItems = text({ required: true });
-      const innerArray = array({ items: innerItems, max: { value: 3 } });
-      const field = array({ items: innerArray, min: { value: 2 } });
+      const innerArray = array({ items: innerItems, required: true, max: { value: 3 } });
+      const field = array({ items: innerArray, required: true, min: { value: 2 } });
       const schema = arrayFieldToInputSchema({ field });
 
       // Should accept 2-3 nested arrays, each with max 3 items
@@ -267,6 +289,40 @@ describe("arrayFieldToInputSchema", () => {
       if (result.success) {
         expect(result.data).toEqual([1, 2, 3]);
       }
+    });
+  });
+
+  describe("min/max on an optional field", () => {
+    it("skips min/max only when the value is empty or omitted", () => {
+      const itemsField = number({ required: true });
+      const field = array({
+        items: itemsField,
+        min: { value: 2 },
+        max: { value: 3 },
+      });
+      const schema = arrayFieldToInputSchema({ field });
+
+      // Omitted or explicitly empty: not required, so no value at all is fine.
+      expect(schema.safeParse(undefined).success).toBe(true);
+      expect(schema.safeParse([]).success).toBe(true);
+    });
+
+    it("still enforces min/max once a non-empty value is supplied, even though the field is optional", () => {
+      const itemsField = number({ required: true });
+      const field = array({
+        items: itemsField,
+        min: { value: 2 },
+        max: { value: 3 },
+      });
+      const schema = arrayFieldToInputSchema({ field });
+
+      // Regression: min/max is independent of `required` — `required` only
+      // governs whether the field may be empty, not whether a *supplied*
+      // value must respect the configured item-count bounds.
+      expect(schema.safeParse([1]).success).toBe(false);
+      expect(schema.safeParse([1, 2, 3, 4, 5]).success).toBe(false);
+      expect(schema.safeParse([1, 2]).success).toBe(true);
+      expect(schema.safeParse([1, 2, 3]).success).toBe(true);
     });
   });
 

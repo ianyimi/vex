@@ -382,6 +382,40 @@ export const verification = defineTable({
   updatedAt: v.number(),
 }).index("by_identifier", ["identifier"])
 
+export const apikey = defineTable({
+  configId: v.string(),
+  name: v.optional(v.string()),
+  start: v.optional(v.string()),
+  referenceId: v.string(),
+  prefix: v.optional(v.string()),
+  key: v.string(),
+  refillInterval: v.optional(v.number()),
+  refillAmount: v.optional(v.number()),
+  lastRefillAt: v.optional(v.number()),
+  enabled: v.optional(v.boolean()),
+  rateLimitEnabled: v.optional(v.boolean()),
+  rateLimitTimeWindow: v.optional(v.number()),
+  rateLimitMax: v.optional(v.number()),
+  requestCount: v.optional(v.number()),
+  remaining: v.optional(v.number()),
+  lastRequest: v.optional(v.number()),
+  expiresAt: v.optional(v.number()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  permissions: v.optional(v.string()),
+  metadata: v.optional(v.string()),
+})
+  .index("by_configId", ["configId"])
+  .index("by_referenceId", ["referenceId"])
+  .index("by_key", ["key"])
+
+export const jwks = defineTable({
+  publicKey: v.string(),
+  privateKey: v.string(),
+  createdAt: v.number(),
+  expiresAt: v.optional(v.number()),
+})
+
 export const organization = defineTable({
   name: v.string(),
   slug: v.string(),
@@ -428,40 +462,6 @@ export const invitation = defineTable({
 })
   .index("by_organizationId", ["organizationId"])
   .index("by_email", ["email"])
-
-export const apikey = defineTable({
-  configId: v.string(),
-  name: v.optional(v.string()),
-  start: v.optional(v.string()),
-  referenceId: v.string(),
-  prefix: v.optional(v.string()),
-  key: v.string(),
-  refillInterval: v.optional(v.number()),
-  refillAmount: v.optional(v.number()),
-  lastRefillAt: v.optional(v.number()),
-  enabled: v.optional(v.boolean()),
-  rateLimitEnabled: v.optional(v.boolean()),
-  rateLimitTimeWindow: v.optional(v.number()),
-  rateLimitMax: v.optional(v.number()),
-  requestCount: v.optional(v.number()),
-  remaining: v.optional(v.number()),
-  lastRequest: v.optional(v.number()),
-  expiresAt: v.optional(v.number()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-  permissions: v.optional(v.string()),
-  metadata: v.optional(v.string()),
-})
-  .index("by_configId", ["configId"])
-  .index("by_referenceId", ["referenceId"])
-  .index("by_key", ["key"])
-
-export const jwks = defineTable({
-  publicKey: v.string(),
-  privateKey: v.string(),
-  createdAt: v.number(),
-  expiresAt: v.optional(v.number()),
-})
 
 export const images = defineTable({
   filename: v.string(),

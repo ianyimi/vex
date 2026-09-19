@@ -19,6 +19,11 @@ import type { BlocksField } from "./types";
  * receive `.default()`; non-required fields keep
  * `.default(field.defaultValue ?? [])`.
  *
+ * `min`/`max` are independent of `required`: `required` governs whether the
+ * field may be *empty*, `min`/`max` govern the block count *once a value is
+ * supplied*. An empty array always skips both checks; a non-empty array —
+ * required or not — is always checked against a configured `min`/`max`.
+ *
  * @param props - Input props.
  * @param props.field - The resolved blocks field definition.
  * @returns A Zod array schema with discriminated-union items.
@@ -57,15 +62,19 @@ export function blocksFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
     : z.array(itemSchema);
 
   if (field.min) {
-    arraySchema = arraySchema.min(
-      field.min,
-      `At least ${field.min} ${field.labels.plural} required.`,
+    const min = field.min;
+    const message = `At least ${min} ${field.labels.plural} required.`;
+    arraySchema = arraySchema.refine(
+      (value) => (!field.required && value.length === 0) || value.length >= min,
+      message,
     );
   }
   if (field.max) {
-    arraySchema = arraySchema.max(
-      field.max,
-      `No more than ${field.max} ${field.labels.plural} allowed.`,
+    const max = field.max;
+    const message = `No more than ${max} ${field.labels.plural} allowed.`;
+    arraySchema = arraySchema.refine(
+      (value) => (!field.required && value.length === 0) || value.length <= max,
+      message,
     );
   }
 

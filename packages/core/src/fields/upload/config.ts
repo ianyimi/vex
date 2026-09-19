@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import type { CollectionSlug } from "../../types/generated";
 import type { UploadFieldInput, UploadField } from "./types";
 
 /**
@@ -22,9 +23,12 @@ import type { UploadFieldInput, UploadField } from "./types";
  *   },
  * });
  */
-export function upload<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>(
-  options: UploadFieldInput<TFieldMeta>,
-): UploadField<TFieldMeta> {
+export function upload<
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+>(
+  options: UploadFieldInput<TFieldMeta, TCollectionSlug>,
+): UploadField<TFieldMeta, TCollectionSlug> {
   if (!options.to || !/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(options.to)) {
     throw new Error(`upload(): "to" must be a valid collection slug. Got "${options.to}".`);
   }

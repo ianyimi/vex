@@ -1,5 +1,8 @@
+import type { GenericDataModel } from "convex/server";
 import { ADMIN_FIELDS } from "../constants";
 import { applyBaseValidators } from "../validators/utils";
+import { fieldValidator, type FieldValidate } from "../baseTypes";
+import type { CollectionSlug } from "../../types/generated";
 import type { ColorField } from "./types";
 
 /**
@@ -29,4 +32,22 @@ export function colorFieldToValidator(props: { field: ColorField }): string {
     field: props.field,
     validator: ADMIN_FIELDS.color.validator,
   });
+}
+
+/**
+ * Types a `color()` field's `validate()` against a real collection and
+ * `DataModel`, with `value` fixed to `string`. @see {@link fieldValidator}
+ *
+ * @param slug - The owning collection's slug, used only to infer `TCollectionSlug`.
+ * @param fn - The validate callback, checked against the collection's real document shape and `value` type.
+ * @returns The same function, re-typed to the field's loose public `validate` signature.
+ */
+export function colorValidator<
+  TCollectionSlug extends CollectionSlug,
+  TDataModel extends GenericDataModel = GenericDataModel,
+>(
+  slug: TCollectionSlug,
+  fn: FieldValidate<TCollectionSlug, string, TDataModel, ColorField>,
+): FieldValidate<TCollectionSlug, string> {
+  return fieldValidator<TCollectionSlug, string, TDataModel, ColorField>(slug, fn);
 }

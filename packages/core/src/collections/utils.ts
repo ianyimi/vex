@@ -62,7 +62,7 @@ export function getCollectionDefaultValues(props: {
  * schema.parse({ title: "Hello", slug: "hello" }) // passes
  * ```
  */
-export function getCollectionInputSchema(props: { collection: CollectionConfig }) {
+export function getCollectionInputSchema(props: { collection: CollectionConfig; partial?: boolean }) {
   const res: Record<string, ZodType> = {};
   for (const [fieldKey, fieldDef] of Object.entries(props.collection.fields)) {
     if (fieldDef.admin.hidden) {
@@ -70,7 +70,8 @@ export function getCollectionInputSchema(props: { collection: CollectionConfig }
     }
     res[fieldKey] = adminFieldToInputSchema({ field: fieldDef });
   }
-  return z.object({ ...res });
+  const schema = z.object({ ...res });
+  return props.partial ? schema.partial() : schema;
 }
 
 /**
