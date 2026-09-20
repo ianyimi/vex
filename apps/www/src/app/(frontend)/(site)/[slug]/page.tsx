@@ -2,6 +2,7 @@ import { api } from "@convex/_generated/api"
 import { vexStaticParams } from "@vexcms/next/seo"
 import { notFound } from "next/navigation"
 
+import { highlightPageBlocks } from "~/lib/highlight"
 import { generatePageMetadata } from "~/lib/metadata"
 import { vex } from "~/lib/vex"
 
@@ -60,5 +61,9 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
     notFound()
   }
 
-  return <PageContent initialData={initialData} slug={normalized} />
+  const codeHighlights = await highlightPageBlocks(initialData[0]?.blocks)
+
+  return (
+    <PageContent codeHighlights={codeHighlights} initialData={initialData} slug={normalized} />
+  )
 }

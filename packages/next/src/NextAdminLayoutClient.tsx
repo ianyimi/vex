@@ -2,11 +2,12 @@
 // "use client" is injected by the tsup build banner for this entry (see
 // tsup.config.ts) so the emitted module carries the client boundary.
 import type { ReactNode } from "react";
-import { usePathname } from "next/navigation";
-import NextLink from "next/link";
-import NextImage from "next/image";
-import { NuqsAdapter } from "nuqs/adapters/next/app";
+
 import { AdminLayout, type AdminUser } from "@vexcms/react";
+import NextImage from "next/image";
+import NextLink from "next/link";
+import { usePathname } from "next/navigation";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 /**
  * Client leaf for the Next.js admin layout.
@@ -35,9 +36,9 @@ import { AdminLayout, type AdminUser } from "@vexcms/react";
  */
 export function NextAdminLayoutClient(props: {
   children: ReactNode;
-  user?: AdminUser;
   organization?: Record<string, unknown>;
   sidebarOpen?: boolean;
+  user?: AdminUser;
 }) {
   const pathname = usePathname();
   // pathname: "/admin", "/admin/posts", "/admin/posts/123"
@@ -49,13 +50,13 @@ export function NextAdminLayoutClient(props: {
   return (
     <NuqsAdapter>
       <AdminLayout
+        activeDocID={activeDocID}
         activeSlug={activeSlug}
         components={{ Link: NextLink, Image: NextImage }}
-        pathname={pathname}
-        activeDocID={activeDocID}
-        user={props.user}
         organization={props.organization}
+        pathname={pathname}
         sidebarOpen={props.sidebarOpen}
+        user={props.user}
       >
         {props.children}
       </AdminLayout>

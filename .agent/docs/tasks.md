@@ -23,6 +23,7 @@
 - Assessed-but-deferred features live in `.agent/docs/product/backlog.md`
 - Fix scripts/vercel-build-check.mjs: since / prerenders via a live vex.query, the placeholder NEXT_PUBLIC_CONVEX_URL makes the pristine build fail on every run (pre-existing at a180967). Pass through a real dev URL when present, or make HomePage degrade when Convex is unreachable
 - F follow-up — spec 2026-09-18-lifecycle-hooks-validation step 8: write `scripts/verify-hooks-wiring.mjs`, add a `createVexMutations` assertion to `scripts/verify-scaffold.mjs`, and write `apps/docs/src/content/docs/guides/lifecycle-hooks.mdx` (apps/test + base-nextjs template wiring, and the marketing-site slug validator, are done)
+- Consume @vexcms/react from source in dev (removes the tsup watch loop; see backlog)
 
 ## Recently Done
 - Re-enabled starlight-typedoc, multi-package (core/react/next/better-auth/file-storage), 120→0 TypeDoc warnings, treatWarningsAsErrors ON — see ADR-001

@@ -103,7 +103,12 @@ export {
   UnauthorizedView,
 } from "./components";
 
-export type { AdminUser, AdminLayoutProps, AppSidebarProps, UnauthorizedViewProps } from "./components";
+export type {
+  AdminUser,
+  AdminLayoutProps,
+  AppSidebarProps,
+  UnauthorizedViewProps,
+} from "./components";
 
 // Context
 export {
@@ -137,6 +142,22 @@ export type {
   RenderableBlock,
   RenderBlocksProps,
 } from "./components/RenderBlocks";
+
+// Live preview
+export { LivePreviewPanel, resolveLivePreviewUrl } from "./components/livePreview/LivePreviewPanel";
+export type { LivePreviewFrameGeometry } from "./components/livePreview/LivePreviewPanel";
+export { LivePreviewIndicator } from "./components/livePreview/LivePreviewIndicator";
+export {
+  LivePreviewProvider,
+  useLivePreview,
+  useLivePreviewQuery,
+} from "./context/LivePreviewContext";
+export type { LivePreviewQueryResult } from "./context/LivePreviewContext";
+export {
+  useLivePreviewPanelMinSize,
+  useLivePreviewPanelState,
+} from "./hooks/useLivePreviewPanelState";
+export { useLivePreviewSync } from "./hooks/useLivePreviewSync";
 
 // shadcn UI primitives
 export * from "./components/ui";
@@ -240,13 +261,7 @@ export function defineCollection<
   TFieldSlug extends CollectionSlug = CollectionSlug,
 >(
   config: Parameters<
-    typeof coreDefineCollection<
-      TFieldMeta,
-      TCollectionMeta,
-      TCollectionSlug,
-      TFieldSlug,
-      ReactHKT
-    >
+    typeof coreDefineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, ReactHKT>
   >[0],
 ): CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug> {
   return coreDefineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, ReactHKT>(

@@ -1,12 +1,12 @@
-import { betterAuthCollections } from "@vexcms/better-auth/client"
-import { defineConfig } from "@vexcms/core"
-import { uploadFile } from "@vexcms/file-storage-convex/client"
+import { authSchema } from "@convex/auth/schema";
+import { betterAuthCollections } from "@vexcms/better-auth/client";
+import { defineConfig } from "@vexcms/core";
+import { uploadFile } from "@vexcms/file-storage-convex/client";
 
-import { authSchema } from "@convex/auth/schema"
-
-import { access } from "~/auth/access"
-import { footers, headers, images, pages, themes, users } from "~/vexcms/collections"
-import { siteSettings } from "~/vexcms/globals"
+import { access } from "~/auth/access";
+import { resolvePagePath } from "~/lib/resolvePagePath";
+import { footers, headers, images, pages, themes, users } from "~/vexcms/collections";
+import { siteSettings } from "~/vexcms/globals";
 
 /**
  * VexCMS client-safe configuration for the marketing site.
@@ -37,12 +37,23 @@ const vexConfig = defineConfig({
     // and once for `after` on an update, so a slug rename purges the old path
     // too without the map looping over both itself.
     map: ({ collection, doc }) => {
-      if (collection !== pages.slug) return []
-      const { slug } = doc
-      if (typeof slug !== "string") return []
-      return [slug === "home" ? "/" : `/${slug}`]
+      if (collection !== pages.slug) {
+        return [];
+      }
+      const { slug } = doc;
+      if (typeof slug !== "string") {
+        return [];
+      }
+      const path = resolvePagePath(slug);
+      return path === undefined ? [] : [path];
     },
   },
-})
+  livePreview: {
+    allowedOrigins: [
+      "http://localhost:3030",
+      ...(process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : []),
+    ],
+  },
+});
 
-export default vexConfig
+export default vexConfig;

@@ -1,6 +1,7 @@
 import { api } from "@convex/_generated/api"
 import { notFound } from "next/navigation"
 
+import { highlightPageBlocks } from "~/lib/highlight"
 import { generatePageMetadata } from "~/lib/metadata"
 import { vex } from "~/lib/vex"
 
@@ -38,5 +39,9 @@ export default async function HomePage() {
     notFound()
   }
 
-  return <PageContent initialData={initialData} />
+  const codeHighlights = await highlightPageBlocks(initialData[0]?.blocks)
+
+  return (
+    <PageContent codeHighlights={codeHighlights} initialData={initialData} />
+  )
 }

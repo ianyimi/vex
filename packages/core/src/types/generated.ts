@@ -302,6 +302,16 @@ export type GlobalDocumentBySlug = GeneratedVexTypes extends {
   : Record<string, unknown>;
 
 /**
+ * Resolves the generated document interface for one global slug —
+ * `GlobalDocumentBySlug[TGlobalSlug]`. Falls back to `VexDocumentGlobal<TGlobalSlug>`
+ * before `vex generate` has run. Mirrors {@link DocumentByCollectionSlug} for globals.
+ */
+export type DocumentByGlobalSlug<TGlobalSlug extends GlobalSlug = GlobalSlug> =
+  TGlobalSlug extends keyof GlobalDocumentBySlug
+    ? GlobalDocumentBySlug[TGlobalSlug]
+    : VexDocumentGlobal<TGlobalSlug>;
+
+/**
  * Per-global field-type map. Augmented by `vex generate`. Powers
  * `GlobalRelationshipKeysOf<TGlobalSlug>` for populate type narrowing.
  *

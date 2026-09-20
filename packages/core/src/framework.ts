@@ -98,6 +98,19 @@ export interface CollectionEditViewProps<
    * `null` explicitly means "no document found". `undefined` means "not loaded yet".
    */
   initialData?: TDocument | null;
+  /**
+   * The live-preview panel's initial open state, read server-side from the
+   * `vex-live-preview-panel:<slug>` cookie (or the collection/global's
+   * `admin.livePreview.defaultOpen` when no cookie exists) by `NextAdminPage`.
+   */
+  initialPreviewPanelOpen?: boolean;
+  /**
+   * The live-preview split's handle position — the form column's percentage of
+   * the pane — read server-side from the `vex-live-preview-layout:<slug>`
+   * cookie by `NextAdminPage`, so a remembered width renders on the first
+   * paint instead of snapping into place after hydration.
+   */
+  initialPreviewPanelSize?: number;
 }
 
 /**
@@ -119,6 +132,19 @@ export interface GlobalEditViewProps<
    * `null` explicitly means "no document found". `undefined` means "not loaded yet".
    */
   initialData?: TDocument | null;
+  /**
+   * The live-preview panel's initial open state, read server-side from the
+   * `vex-live-preview-panel:<slug>` cookie (or the collection/global's
+   * `admin.livePreview.defaultOpen` when no cookie exists) by `NextAdminPage`.
+   */
+  initialPreviewPanelOpen?: boolean;
+  /**
+   * The live-preview split's handle position — the form column's percentage of
+   * the pane — read server-side from the `vex-live-preview-layout:<slug>`
+   * cookie by `NextAdminPage`, so a remembered width renders on the first
+   * paint instead of snapping into place after hydration.
+   */
+  initialPreviewPanelSize?: number;
 }
 
 /**

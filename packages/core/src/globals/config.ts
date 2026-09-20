@@ -1,7 +1,13 @@
 import type { ComponentHKT } from "../fields";
 import { slugToPascalCase } from "../collections/utils";
-import type { GlobalConfig, GlobalConfigInput, ReservedGlobalFieldKey } from "./types";
+import type {
+  GlobalAdminConfig,
+  GlobalConfig,
+  GlobalConfigInput,
+  ReservedGlobalFieldKey,
+} from "./types";
 import type { GlobalSlug } from "../types/generated";
+import { DEFAULT_LIVE_PREVIEW_DEBOUNCE_MS } from "../livePreview";
 
 /**
  * Defines a singleton global document for the VexCMS project.
@@ -86,6 +92,15 @@ export function defineGlobal<
       description: "",
       components: {},
       ...input.admin,
+      // One boundary cast: `GlobalConfigInput` widens `TGlobalSlug` to `string`, so
+      // its resolver's doc type is the conditional form TS cannot reduce against
+      // `GlobalConfig`'s already-`GlobalSlug`-constrained parameter. Same shape either way.
+      livePreview: (input.admin?.livePreview && {
+        url: input.admin.livePreview.url,
+        debounceMs: input.admin.livePreview.debounceMs ?? DEFAULT_LIVE_PREVIEW_DEBOUNCE_MS,
+        defaultOpen: input.admin.livePreview.defaultOpen ?? false,
+        breakpoints: input.admin.livePreview.breakpoints,
+      }) as GlobalAdminConfig<TComponent, TGlobalSlug>["livePreview"],
     },
     meta: (input.meta ?? {}) as TGlobalMeta,
     versions: {

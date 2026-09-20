@@ -1,6 +1,8 @@
 import type { ApplyComponent, ComponentHKT, AdminField } from "../fields";
 import type { GlobalSlug } from "../types/generated";
 import type { LucideIconName } from "../utils";
+import type { AdminLivePreviewConfig, AdminLivePreviewConfigInput } from "../livePreview";
+import type { DocumentByGlobalSlug } from "../types/generated";
 
 /**
  * Field keys that are reserved by the VexCMS globals system and cannot be
@@ -19,7 +21,10 @@ export type ReservedGlobalFieldKey = "_id" | "_creationTime" | "_slug";
  *
  * @typeParam TComponent - Component HKT binding; defaults to `ComponentHKT`.
  */
-export interface GlobalAdminConfigInput<TComponent extends ComponentHKT = ComponentHKT> {
+export interface GlobalAdminConfigInput<
+  TComponent extends ComponentHKT = ComponentHKT,
+  TGlobalSlug extends GlobalSlug = GlobalSlug,
+> {
   /**
    * Sidebar group label this global appears under (e.g. `"Site Builder"`).
    * Ungrouped when omitted.
@@ -30,10 +35,11 @@ export interface GlobalAdminConfigInput<TComponent extends ComponentHKT = Compon
    */
   description?: string;
   /**
-   * Live preview configuration. Reserved for future `LivePreviewPanel`
-   * integration — included now so adding live preview later is non-breaking.
+   * Live preview for this global — the resolver from the global document to
+   * the public URL its preview iframe renders, plus panel behaviour. Omit to
+   * disable live preview for this global.
    */
-  livePreview?: { url: string };
+  livePreview?: AdminLivePreviewConfigInput<Partial<DocumentByGlobalSlug<TGlobalSlug>>>;
   /**
    * Lucide icon name shown in the admin sidebar.
    * See https://lucide.dev/icons/
@@ -54,13 +60,16 @@ export interface GlobalAdminConfigInput<TComponent extends ComponentHKT = Compon
  *
  * @typeParam TComponent - Component HKT binding.
  */
-export interface GlobalAdminConfig<TComponent extends ComponentHKT = ComponentHKT> {
+export interface GlobalAdminConfig<
+  TComponent extends ComponentHKT = ComponentHKT,
+  TGlobalSlug extends GlobalSlug = GlobalSlug,
+> {
   /** Sidebar group label. Empty string when not set. */
   group: string;
   /** Description. Empty string when not set. */
   description: string;
-  /** Live preview config. */
-  livePreview?: { url: string };
+  /** Resolved live preview config. `undefined` when the global omits it. */
+  livePreview?: AdminLivePreviewConfig<Partial<DocumentByGlobalSlug<TGlobalSlug>>>;
   /** Lucide icon name. */
   icon?: LucideIconName;
   /** Custom preview component. */
@@ -125,7 +134,10 @@ export interface GlobalConfigInput<
    */
   fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
   /** Admin panel display and behaviour config. */
-  admin?: GlobalAdminConfigInput<TComponent>;
+  admin?: GlobalAdminConfigInput<
+    TComponent,
+    TGlobalSlug extends GlobalSlug ? TGlobalSlug : GlobalSlug
+  >;
   /**
    * Override the generated TypeScript interface name. Inferred from `slug`
    * with `Global` suffix when omitted (e.g. `"siteSettings"` → `"SiteSettingsGlobal"`).
@@ -168,7 +180,7 @@ export interface GlobalConfig<
   /** Resolved field definitions. */
   fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
   /** Resolved admin config. */
-  admin: GlobalAdminConfig<TComponent>;
+  admin: GlobalAdminConfig<TComponent, TGlobalSlug>;
   /**
    * PascalCase interface name for generated TypeScript types.
    * E.g. `"siteSettings"` → `"SiteSettingsGlobal"`.

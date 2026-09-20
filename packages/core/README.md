@@ -278,10 +278,22 @@ full hook-coverage caveats and BFS trigger-recursion note.
 
 ### Live Preview
 
-Not shipped. `livePreview: { url }` is accepted on collection/global admin config and
-stored on the resolved config, but there is no `LivePreviewPanel` or rendering
-integration yet — the field exists only so adding live preview later is
-non-breaking. See the [roadmap](https://docs.vexcms.dev).
+Ships a dual-transport (`postMessage` + `BroadcastChannel`) overlay: `admin.livePreview.url`
+on a collection or global resolves a document to the public URL its preview should
+render, typed to the exact generated document interface for that collection/global.
+`admin.livePreview` also accepts `debounceMs`, `defaultOpen`, and `breakpoints` (overriding
+the root `livePreview.breakpoints`). The admin panel's edit views render a resizable split
+pane (full-screen on mobile) that iframes the resolved URL and streams the form's unsaved
+values into it via `<LivePreviewProvider>` / `useLivePreview` / `useLivePreviewQuery`. The
+embedded panel's breakpoint toggle row scales the iframe to a simulated device width
+without distorting it. A floating indicator on the previewed page itself marks it as a
+live preview when that page is opened in its own tab.
+
+The panel appends `?vexLivePreview=1` to the resolved URL; the listener attaches only when the
+project's own middleware has also verified an admin session and set the `vex-live-preview`
+marker cookie (`LIVE_PREVIEW_COOKIE`). See the
+[Live Preview guide](https://docs.vexcms.dev/guides/live-preview/) for the security
+requirements any project embedding a preview surface must configure.
 
 ## Peer Dependencies
 

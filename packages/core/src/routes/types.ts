@@ -50,8 +50,10 @@ export type VexRouteMapper = (props: {
  *
  * Named for what it describes rather than for a consumer. Cache revalidation is
  * the first consumer — `resolveTargets` uses `map` to decide which paths a
- * write invalidated — but the same answer drives an admin "View page" link,
- * sitemap URL generation, and preview links, none of which are cache concerns.
+ * write invalidated — but the same answer drives an admin "View page" link and
+ * sitemap URL generation. Live preview resolves its OWN target URL via the
+ * independent `admin.livePreview.url` resolver (see `@vexcms/core`'s `livePreview`
+ * module) — the two intentionally do not share a code path.
  *
  * Note that this does NOT configure the ISR window. Next reads
  * `export const revalidate` by static analysis before any module executes, so

@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { fireEvent, waitFor } from "@testing-library/react";
 import { convexTest } from "convex-test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { defineAccess } from "@vexcms/core";
+import { defineAccess, defineCollection, defineConfig, text } from "@vexcms/core";
 import type * as ConvexReactQuery from "@convex-dev/react-query";
 import { CollectionEditView } from "./CollectionEditView";
 import { renderView } from "../../testing/harness/viewHarness";
@@ -92,5 +92,59 @@ describe("CollectionEditView — diff submit", () => {
 
     await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
     expect(convexMutationMock.mock.calls[0]?.[0]?.data).toEqual({ title: "edited" });
+  });
+});
+
+describe("CollectionEditView — live preview split", () => {
+  const t = convexTest(schema, testModules);
+
+  const previewCollection = defineCollection({
+    slug: "posts",
+    fields: {
+      status: text({ index: "by_status" }),
+      title: text({ required: false }),
+    },
+    admin: {
+      livePreview: { url: (doc) => `/posts/${String(doc.title ?? "")}` },
+    },
+  });
+  const previewConfig = defineConfig({ collections: [previewCollection] });
+
+  async function renderSplit(initialPreviewPanelSize?: number) {
+    const id = await t.run((ctx) => ctx.db.insert("documents", { status: "b", title: "a" }));
+    const stored = await t.run((ctx) => ctx.db.get(id));
+    return renderView(
+      createElement(CollectionEditView, {
+        collection: previewCollection.slug,
+        documentId: id,
+        initialData: stored,
+        initialPreviewPanelOpen: true,
+        initialPreviewPanelSize,
+      }),
+      { convex: t, config: previewConfig },
+    );
+  }
+
+  /** react-resizable-panels renders each panel's share as its flex-grow factor. */
+  function panelGrowFactors(container: HTMLElement): string[] {
+    return Array.from(container.querySelectorAll("[data-panel]")).map(
+      (panel) => (panel as HTMLElement).style.flexGrow,
+    );
+  }
+
+  it("renders the split at the server-supplied handle position on first paint", async () => {
+    const utils = await renderSplit(35);
+    await waitFor(() => expect(utils.container.querySelector("[data-panel]")).not.toBeNull());
+    // The cookie-derived width must be the FIRST painted layout — a default-then-correct
+    // sequence is exactly the shift this prop exists to prevent. Both panels are
+    // asserted: a panel left without a `defaultSize` paints at grow factor 0 until the
+    // group measures itself, which is a preview pane that flashes at zero width.
+    expect(panelGrowFactors(utils.container)).toEqual(["35", "65"]);
+  });
+
+  it("falls back to the default share when no position was stored", async () => {
+    const utils = await renderSplit(undefined);
+    await waitFor(() => expect(utils.container.querySelector("[data-panel]")).not.toBeNull());
+    expect(panelGrowFactors(utils.container)).toEqual(["60", "40"]);
   });
 });
