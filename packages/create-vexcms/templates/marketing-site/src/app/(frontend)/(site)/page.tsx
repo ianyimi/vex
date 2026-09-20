@@ -3,6 +3,7 @@ import { api } from "@convex/_generated/api"
 import type { PagesDocument } from "~/vex.types"
 
 import { generatePageMetadata } from "~/lib/metadata"
+import { highlightPageBlocks } from "~/lib/highlight"
 import { vex } from "~/lib/vex"
 
 import { PageContent } from "./PageContent"
@@ -24,5 +25,9 @@ export default async function HomePage() {
     // Fall back to client-only fetch
   }
 
-  return <PageContent initialData={initialData} />
+  const codeHighlights = await highlightPageBlocks(initialData?.[0]?.blocks)
+
+  return (
+    <PageContent codeHighlights={codeHighlights} initialData={initialData} />
+  )
 }

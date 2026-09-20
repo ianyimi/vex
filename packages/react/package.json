@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/react",
-  "version": "0.1.0-alpha.20",
+  "version": "0.1.0-alpha.21",
   "description": "React admin components and hooks for VexCMS",
   "keywords": [
     "cms",
@@ -42,7 +42,7 @@
   "source": "./dist/**/*.js",
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
-    "dev": "tsup --watch",
+    "dev": "tsup --watch src",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
@@ -65,6 +65,7 @@
     "lucide-react": "catalog:",
     "react-day-picker": "catalog:",
     "react-dropzone": "catalog:",
+    "react-resizable-panels": "catalog:",
     "sonner": "catalog:",
     "tailwind-merge": "catalog:",
     "zod": "catalog:"

@@ -2,7 +2,15 @@
 
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { CRUD_ACTIONS, GlobalEditViewProps, isFieldAllowed, vexConvexApi } from "@vexcms/core";
+import { useStore } from "@tanstack/react-form";
+import {
+  CRUD_ACTIONS,
+  DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE,
+  GlobalEditViewProps,
+  isFieldAllowed,
+  vexConvexApi,
+} from "@vexcms/core";
+import type { LivePreviewUrlResolver } from "@vexcms/core";
 import { AppForm } from "../form";
 import {
   useFieldPermissions,
@@ -16,13 +24,28 @@ import { changedValues } from "../form/changedValues";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 import { useVexConfig } from "../../context/VexConfigContext";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../ui/resizable";
+import { useIsMobile } from "../../hooks/use-mobile";
+import {
+  useLivePreviewPanelMinSize,
+  useLivePreviewPanelState,
+  writeLivePreviewLayoutCookie,
+} from "../../hooks/useLivePreviewPanelState";
+import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
+import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
 
 /**
  * Global document edit form.
  *
+ * When the global declares `admin.livePreview`, a "Show preview" toggle splits
+ * the view into a resizable form/preview pair (a full-screen overlay below the
+ * mobile breakpoint), exactly as `CollectionEditView` does.
+ *
  * @param props - View props.
  * @param props.global - The slug of the global whose fields are rendered.
  * @param props.initialData - Server-prefetched document for SSR hydration.
+ * @param props.initialPreviewPanelOpen - Server-read panel open state, so the
+ *   split pane renders correctly on first paint.
  * @returns The edit form, or a not-found message when `global` does not resolve.
  * @throws Never — resolution failure renders a not-found message instead of throwing.
  */
@@ -102,9 +125,72 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     action: CRUD_ACTIONS.update,
     data: globalDoc,
   });
+
+  const formValues = useStore(form.store, (state) => state.values);
+  const isMobile = useIsMobile();
+  const livePreview = global.admin.livePreview;
+  const previewPanel = useLivePreviewPanelState({
+    slug: global.slug,
+    initialOpen: props.initialPreviewPanelOpen ?? false,
+  });
+  const previewUrl = resolveLivePreviewUrl({
+    url: livePreview?.url as LivePreviewUrlResolver | undefined,
+    collectionSlug: global.slug,
+    baseDoc: (globalDoc ?? {}) as Record<string, unknown>,
+    formValues,
+  });
+  const previewIsActive = Boolean(livePreview && previewPanel.isOpen && previewUrl);
+  const breakpoints = livePreview?.breakpoints ?? config.livePreview.breakpoints;
+
+  // See `CollectionEditView`: split mode fills `main`'s content box exactly and
+  // cancels its bottom padding, so the form column scrolls on its own and runs
+  // to the bottom edge.
+  const isSplit = previewIsActive && !isMobile;
+
+  // BOTH panels need an explicit `defaultSize`: react-resizable-panels renders a
+  // panel that has none at flex-grow 0 until it measures the group after mount,
+  // which is a preview pane that flashes at zero width on every load.
+  const formPanelSize = props.initialPreviewPanelSize ?? DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE;
+  // See CollectionEditView: per-column pixel floors expressed as shares of the
+  // width available, the preview's being the larger of the two.
+  const { ref: splitRef, minSizes: panelMinSizes } = useLivePreviewPanelMinSize();
+  // See CollectionEditView: the scroll container changes with the split, so
+  // the offset is carried across by hand.
+  const formScroll = usePreservedScrollTop();
+
+  const formContent = (
+    <div className="space-y-4">
+      {visibleFields.map(([fieldKey, field]) => {
+        const InputComponent = fieldToInputComponent(field.type);
+        if (!InputComponent) {
+          // TODO: handle missing component error here
+          throw new Error(`Missing component for field type '${field.type}'`);
+        }
+        return (
+          <InputComponent
+            key={fieldKey}
+            name={fieldKey}
+            fieldDef={field}
+            readOnly={
+              !canEdit || field.admin.readOnly || !isFieldAllowed(fieldPermissions, fieldKey)
+            }
+            collection={global}
+          />
+        );
+      })}
+    </div>
+  );
+
   return (
-    <AppForm form={form} className="relative">
-      <div className="sticky top-12 z-10 mb-6 flex flex-wrap items-center justify-between gap-y-2 bg-background pt-4">
+    <AppForm
+      form={form}
+      className="relative -mb-6 flex h-[calc(100%+1.5rem)] flex-col"
+    >
+      <div
+        // See CollectionEditView: outside the scroll container, no bottom
+        // margin so the divider through the handle meets this border.
+        className={"z-10 -mx-6 flex shrink-0 flex-wrap items-center justify-between gap-y-2 border-b bg-background px-6 pt-4 pb-3"}
+      >
         <h1 className="text-2xl font-bold">
           Edit Global - <span className="text-primary">{global.label}</span>
         </h1>
@@ -112,6 +198,11 @@ export function GlobalEditView(props: GlobalEditViewProps) {
           selector={(state) => state.isDefaultValue}
           children={(isDefaultValue) => (
             <div className="flex flex-wrap gap-2">
+              {livePreview && (
+                <Button type="button" variant="outline" onClick={previewPanel.toggle}>
+                  {previewPanel.isOpen ? "Hide preview" : "Show preview"}
+                </Button>
+              )}
               <Button
                 type="submit"
                 className="transition-all duration-300"
@@ -135,26 +226,66 @@ export function GlobalEditView(props: GlobalEditViewProps) {
           )}
         />
       </div>
-      <div className="space-y-4">
-        {visibleFields.map(([fieldKey, field]) => {
-          const InputComponent = fieldToInputComponent(field.type);
-          if (!InputComponent) {
-            // TODO: handle missing component error here
-            throw new Error(`Missing component for field type '${field.type}'`);
-          }
-          return (
-            <InputComponent
-              key={fieldKey}
-              name={fieldKey}
-              fieldDef={field}
-              readOnly={
-                !canEdit || field.admin.readOnly || !isFieldAllowed(fieldPermissions, fieldKey)
-              }
-              collection={global}
+      {isSplit ? (
+        // See CollectionEditView: `-mr-6` on this wrapper (not the group, whose
+        // width is pinned inline) runs the preview to the shell edge, and the
+        // same element carries the min-size measurement.
+        <div ref={splitRef} className="-mr-6 flex min-h-0 flex-1">
+        <ResizablePanelGroup
+          direction="horizontal"
+          className="min-h-0 flex-1"
+          onLayout={([formPanelSize]) => {
+            if (formPanelSize !== undefined) {
+              writeLivePreviewLayoutCookie({ slug: global.slug, formPanelSize });
+            }
+          }}
+        >
+          <ResizablePanel defaultSize={formPanelSize} minSize={panelMinSizes.form}>
+            <div
+              ref={formScroll.ref}
+              onScroll={formScroll.onScroll}
+              className="vex-scroll-area h-full overflow-y-auto pt-4 pr-4 pb-6"
+            >
+              {formContent}
+            </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={100 - formPanelSize} minSize={panelMinSizes.preview}>
+            <LivePreviewPanel
+              previewUrl={previewUrl as string}
+              collectionSlug={global.slug}
+              documentId={global.slug}
+              debounceMs={livePreview?.debounceMs}
+              breakpoints={breakpoints}
+              form={form}
             />
-          );
-        })}
-      </div>
+          </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
+      ) : (
+        // See CollectionEditView: bleed over `main`'s gutter and re-add the
+        // padding inside, so the scrollbar rides the shell edge instead of
+        // sitting against the inputs.
+        <div
+          ref={formScroll.ref}
+          onScroll={formScroll.onScroll}
+          className="vex-scroll-area -mx-6 min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-6"
+        >
+          {formContent}
+        </div>
+      )}
+      {previewIsActive && isMobile && (
+        <LivePreviewPanel
+          previewUrl={previewUrl as string}
+          collectionSlug={global.slug}
+          documentId={global.slug}
+          debounceMs={livePreview?.debounceMs}
+          breakpoints={breakpoints}
+          form={form}
+          isMobile
+          onClose={previewPanel.toggle}
+        />
+      )}
     </AppForm>
   );
 }

@@ -129,7 +129,7 @@ export function MediaCollectionEditView<
 
   return (
     <AppForm form={form} className="relative flex flex-col gap-4 pt-4">
-      <div className="bg-background sticky top-12 z-10 flex min-h-16 flex-wrap items-center justify-between gap-y-2">
+      <div className="bg-background sticky top-0 z-10 flex min-h-16 flex-wrap items-center justify-between gap-y-2">
         <h1 className="text-2xl font-bold">
           Edit {collection.labels.singular} -{" "}
           {/* @ts-expect-error currentDocument[collection.admin.useAsTitle]: string */}

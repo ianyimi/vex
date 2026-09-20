@@ -5,6 +5,7 @@ import { StorageAdapterSlug } from "../types";
 import { GlobalConfig } from "../globals";
 import { VexAccessConfig } from "../access";
 import { VexRoutesConfig } from "../routes";
+import { LivePreviewConfig, LivePreviewConfigInput } from "../livePreview";
 
 /**
  * User-facing configuration input for the VexCMS admin panel.
@@ -276,6 +277,14 @@ export interface VexClientConfigInput {
    */
   routes?: VexRoutesConfig;
   /**
+   * Live-preview config — the `postMessage` origin allowlist every preview
+   * listener validates against, plus the simulated-viewport breakpoints the
+   * preview panel offers.
+   *
+   * @see {@link LivePreviewConfigInput} for all available options
+   */
+  livePreview?: LivePreviewConfigInput;
+  /**
    * Client-side upload functions, keyed by storage adapter slug.
    *
    * These are the only storage-adapter-shaped values allowed on the client
@@ -411,6 +420,11 @@ export interface VexClientConfig {
    * `routes` — it is opt-in.
    */
   routes?: VexRoutesConfig;
+  /**
+   * Resolved live-preview config — the `postMessage` origin allowlist and the
+   * breakpoint matrix. Always present; defaults applied by `defineConfig()`.
+   */
+  livePreview: LivePreviewConfig;
   /**
    * Client-side upload functions, keyed by storage adapter slug. Always
    * present; defaults to `{}`.

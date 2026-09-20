@@ -5,6 +5,7 @@ import { VexAuthConfigError } from "../auth/types";
 import { internalCollections } from "../collections/internal";
 import { validateAndMergeStorageConfig, VexStorageConfigError } from "../media";
 import { diffAuthCollections } from "./diffAuthCollections";
+import { DEFAULT_LIVE_PREVIEW_BREAKPOINTS } from "../livePreview";
 import {
   ClientUploadMap,
   VexClientConfig,
@@ -132,6 +133,10 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
       ...config?.types,
     },
     routes: config?.routes,
+    livePreview: {
+      allowedOrigins: config?.livePreview?.allowedOrigins ?? [],
+      breakpoints: config?.livePreview?.breakpoints ?? DEFAULT_LIVE_PREVIEW_BREAKPOINTS,
+    },
   };
 }
 

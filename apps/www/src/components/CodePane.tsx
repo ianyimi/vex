@@ -1,7 +1,10 @@
+"use client"
+
 import { cn } from "@vexcms/react"
 
+import { useCodeHighlight } from "~/components/CodeHighlightContext"
 import { CopyButton } from "~/components/CopyButton"
-import { highlightCode, toCodeLanguage } from "~/lib/highlight"
+import { toCodeLanguage } from "~/lib/highlight"
 
 export type CodePaneProps = {
   /** Extra classes for the scroll body. */
@@ -22,10 +25,16 @@ export type CodePaneProps = {
 /**
  * One code pane: a chrome bar and a scrolling body on the fixed dark surface.
  *
- * Shared by CodeShowcase and Split so the two never drift. A server
- * component — shiki runs here and the client receives only markup.
+ * Shared by CodeShowcase and Split so the two never drift.
+ *
+ * Synchronous, and a client component, because it renders inside
+ * `PageContent` — which is client-side so live preview can overlay its query
+ * result. Highlighting therefore happens outside it: the server pre-highlights
+ * the fetched document's panes (`highlightPageBlocks`) and this reads the
+ * result through `useCodeHighlight`. An async component here is the error
+ * "<CodePane> is an async Client Component".
  */
-export async function CodePane({
+export function CodePane({
   bodyClassName,
   code,
   filename,
@@ -34,7 +43,7 @@ export async function CodePane({
   tone = "generated",
 }: CodePaneProps) {
   const resolvedLanguage = toCodeLanguage(language)
-  const html = await highlightCode({ code, language: resolvedLanguage })
+  const html = useCodeHighlight({ code, language: resolvedLanguage })
 
   return (
     // `min-w-0` is not optional. In a `1fr` grid track the longest line would
@@ -77,8 +86,11 @@ export async function CodePane({
         )}
       >
         <pre className="font-mono text-xs leading-[1.7] whitespace-pre text-[--color-code-fg] xl:text-[12.5px]">
-          {/* Highlighted server-side; the client ships no highlighter. */}
-          <code dangerouslySetInnerHTML={{ __html: html }} />
+          {/* Pre-highlighted on the server for anything the page fetched. A
+              pane the server never saw (code being typed in live preview)
+              renders as plain source until the lazy browser highlighter
+              resolves — never blank, never a spinner over a code block. */}
+          {html === undefined ? <code>{code}</code> : <code dangerouslySetInnerHTML={{ __html: html }} />}
         </pre>
       </div>
     </div>
