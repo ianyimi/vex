@@ -1,5 +1,13 @@
 # @vexcms/admin-next
 
+## 0.1.0-alpha.22
+
+### Patch Changes
+
+- Updated dependencies [6e52134]
+  - @vexcms/react@0.1.0-alpha.22
+  - @vexcms/core@0.1.0-alpha.22
+
 ## 0.1.0-alpha.21
 
 ### Patch Changes

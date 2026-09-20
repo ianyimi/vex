@@ -24,6 +24,7 @@
     "bulk-selection-reachable",
     "config-client-server-split",
     "core-label-singularization",
+    "dashboard-collection-icons",
     "defer-auto-migration",
     "field-level-permissions",
     "generated-types-lint-header",

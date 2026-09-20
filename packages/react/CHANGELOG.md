@@ -1,5 +1,15 @@
 # @vexcms/ui
 
+## 0.1.0-alpha.22
+
+### Patch Changes
+
+- 6e52134: `DashboardView` now renders a collection's or global's configured `admin.icon` beside its
+  title on each dashboard card, matching how the sidebar already presents them. Cards for
+  entries with no `admin.icon` are unchanged.
+  - @vexcms/core@0.1.0-alpha.22
+  - @vexcms/better-auth@0.1.0-alpha.22
+
 ## 0.1.0-alpha.21
 
 ### Patch Changes
