@@ -21,6 +21,7 @@ export * from "./scroll-area";
 export * from "./skeleton";
 export * from "./separator";
 export * from "./popover";
+export * from "./resizable";
 export * from "./tabs";
 export * from "./sonner";
 

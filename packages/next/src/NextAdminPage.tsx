@@ -1,15 +1,23 @@
-import { fetchQuery } from "convex/nextjs";
-import { vexConvexApi } from "@vexcms/core";
 import type { CollectionSlug, PaginationResult, VexConfig, VexMediaDocument } from "@vexcms/core";
+
 import {
-  DashboardView,
-  CollectionListView,
+  livePreviewLayoutCookieName,
+  livePreviewPanelCookieName,
+  readLivePreviewLayoutCookie,
+  readLivePreviewPanelCookie,
+  vexConvexApi,
+} from "@vexcms/core";
+import {
   CollectionEditView,
+  CollectionListView,
+  DashboardView,
+  GlobalEditView,
+  GlobalsListView,
   MediaCollectionEditView,
   MediaCollectionListView,
-  GlobalsListView,
-  GlobalEditView,
 } from "@vexcms/react";
+import { fetchQuery } from "convex/nextjs";
+import { cookies } from "next/headers";
 
 /**
  * VexCMS admin page server component for Next.js.
@@ -56,6 +64,7 @@ export async function NextAdminPage(props: {
 }) {
   const { path = [] } = await props.params;
   const [collectionSlug, documentId] = path;
+  const cookieStore = await cookies();
 
   if (!collectionSlug) {
     return <DashboardView />;
@@ -79,7 +88,21 @@ export async function NextAdminPage(props: {
       { slug: globalConfig.slug },
       props.token ? { token: props.token } : undefined,
     );
-    return <GlobalEditView global={globalConfig.slug} initialData={global} />;
+    return (
+      <GlobalEditView
+        global={globalConfig.slug}
+        initialData={global}
+        initialPreviewPanelOpen={readLivePreviewPanelCookie({
+          cookieValue: cookieStore.get(livePreviewPanelCookieName({ slug: globalConfig.slug }))
+            ?.value,
+          defaultOpen: globalConfig.admin.livePreview?.defaultOpen ?? false,
+        })}
+        initialPreviewPanelSize={readLivePreviewLayoutCookie({
+          cookieValue: cookieStore.get(livePreviewLayoutCookieName({ slug: globalConfig.slug }))
+            ?.value,
+        })}
+      />
+    );
   }
 
   const collection = props.config.collections.find((c) => c.slug === collectionSlug);
@@ -106,7 +129,7 @@ export async function NextAdminPage(props: {
       <MediaCollectionEditView
         collection={mediaCollection.slug}
         documentId={documentId}
-        initialData={initialData as VexMediaDocument | null}
+        initialData={initialData as null | VexMediaDocument}
       />
     );
   }
@@ -143,6 +166,15 @@ export async function NextAdminPage(props: {
         collection={collection.slug}
         documentId={documentId}
         initialData={initialData}
+        initialPreviewPanelOpen={readLivePreviewPanelCookie({
+          cookieValue: cookieStore.get(livePreviewPanelCookieName({ slug: collection.slug }))
+            ?.value,
+          defaultOpen: collection.admin.livePreview?.defaultOpen ?? false,
+        })}
+        initialPreviewPanelSize={readLivePreviewLayoutCookie({
+          cookieValue: cookieStore.get(livePreviewLayoutCookieName({ slug: collection.slug }))
+            ?.value,
+        })}
       />
     );
   }

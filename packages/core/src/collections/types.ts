@@ -5,6 +5,8 @@ import type { CollectionSlug } from "../types/generated";
 import { TDocument } from "../api/convex";
 import { LucideIconName } from "../utils";
 import type { CollectionHooks, CollectionHooksInput } from "./hooks";
+import type { AdminLivePreviewConfig, AdminLivePreviewConfigInput } from "../livePreview";
+import type { DocumentByCollectionSlug } from "../types/generated";
 
 /**
  * Props received by a custom preview component for relationship rendering.
@@ -158,6 +160,7 @@ export interface CollectionTableConfig {
 export interface AdminCollectionConfigInput<
   TFieldSlug extends string = CoreAdminField,
   _TComponent extends ComponentHKT = ComponentHKT,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
 > {
   /**
    * The field whose value is displayed as the document's human-readable title
@@ -178,6 +181,12 @@ export interface AdminCollectionConfigInput<
    * Data table configuration for list view.
    */
   table?: CollectionTableConfigInput;
+  /**
+   * Live preview for this collection — the resolver from a document to the
+   * public URL its preview iframe renders, plus panel behaviour. Omit to
+   * disable live preview for this collection.
+   */
+  livePreview?: AdminLivePreviewConfigInput<Partial<DocumentByCollectionSlug<TCollectionSlug>>>;
 }
 
 /**
@@ -188,6 +197,7 @@ export interface AdminCollectionConfigInput<
 export interface AdminCollectionConfig<
   TFieldSlug extends string = CoreAdminField,
   _TComponent extends ComponentHKT = ComponentHKT,
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
 > {
   /** The field used as the document's human-readable title in the admin panel. */
   useAsTitle: CoreAdminField | NoInfer<TFieldSlug>;
@@ -196,6 +206,8 @@ export interface AdminCollectionConfig<
    * Data table configuration for list view.
    */
   table: CollectionTableConfig;
+  /** Resolved live preview config. `undefined` when the collection omits it. */
+  livePreview?: AdminLivePreviewConfig<Partial<DocumentByCollectionSlug<TCollectionSlug>>>;
 }
 
 /**
@@ -237,7 +249,11 @@ export interface CollectionConfigInput<
   TComponent extends ComponentHKT = ComponentHKT,
 > {
   /** Admin panel behaviour for this collection. All properties are optional. */
-  admin?: AdminCollectionConfigInput<TFieldSlug, TComponent>;
+  admin?: AdminCollectionConfigInput<
+    TFieldSlug,
+    TComponent,
+    TCollectionSlug extends CollectionSlug ? TCollectionSlug : CollectionSlug
+  >;
   /** Convex table name — used as the database table identifier and URL slug in the admin panel. */
   slug: TCollectionSlug;
   /**
@@ -294,7 +310,7 @@ export interface CollectionConfig<
   TComponent extends ComponentHKT = ComponentHKT,
 > {
   /** Resolved admin panel configuration for this collection. */
-  admin: AdminCollectionConfig<TFieldSlug, TComponent>;
+  admin: AdminCollectionConfig<TFieldSlug, TComponent, TCollectionSlug>;
   /** Convex table name for this collection. */
   slug: TCollectionSlug;
   /** Display names shown in the admin panel — always present after defaults are applied. */

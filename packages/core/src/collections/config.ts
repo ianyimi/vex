@@ -4,9 +4,10 @@ import { AdminField, CollectionFieldMeta, ComponentHKT, number } from "../fields
 import { CollectionSlug } from "../types";
 import { toTitleCase } from "../utils";
 import { ReservedCollectionFieldKey } from "./constants";
-import { CollectionConfig, CollectionConfigInput } from "./types";
+import { AdminCollectionConfig, CollectionConfig, CollectionConfigInput } from "./types";
 import type { CollectionHooks } from "./hooks";
 import { slugToPascalCase } from "./utils";
+import { DEFAULT_LIVE_PREVIEW_DEBOUNCE_MS } from "../livePreview";
 
 function populateCollectionFieldMeta<
   TFieldMeta extends {} = {},
@@ -192,6 +193,16 @@ export function defineCollection<
           ...input.admin?.table?.defaultSort,
         },
       },
+      // One boundary cast: `CollectionConfigInput` widens `TCollectionSlug` to
+      // `string`, so its resolver's doc type is the conditional form TS cannot
+      // reduce against `CollectionConfig`'s already-narrowed parameter. Same
+      // shape either way — mirrors `globals/config.ts`.
+      livePreview: (input.admin?.livePreview && {
+        url: input.admin.livePreview.url,
+        debounceMs: input.admin.livePreview.debounceMs ?? DEFAULT_LIVE_PREVIEW_DEBOUNCE_MS,
+        defaultOpen: input.admin.livePreview.defaultOpen ?? false,
+        breakpoints: input.admin.livePreview.breakpoints,
+      }) as AdminCollectionConfig<string, ComponentHKT, TCollectionSlug>["livePreview"],
     },
     labels: {
       singular: toTitleCase(pluralize.singular(input.slug)),

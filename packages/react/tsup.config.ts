@@ -73,11 +73,10 @@ export default defineConfig({
     /^@testing-library\//,
     "convex-test",
   ],
-  // The directive `dist/index.js` must carry: without it a Next RSC build fails
-  // the instant an app imports @vexcms/react ("You're importing a module that
-  // depends on useState into a React Server Component module"). It lands on
-  // `dist/testing/index.js` too, which is the accepted cost explained above.
-  banner: {
-    js: '"use client";',
-  },
+  // No `banner` here any more. The directive now lives at the top of
+  // `src/index.ts` / `src/testing/index.ts`, because dev resolves those source
+  // files directly (see `workspaceSourceAliases` in each app's next.config.ts)
+  // and a banner only exists in the bundle. esbuild preserves an entry's
+  // directive prologue, so `dist/index.js` still opens with `"use client"` —
+  // verified — and keeping the banner as well emitted it twice.
 });

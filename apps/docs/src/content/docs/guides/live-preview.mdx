@@ -1,0 +1,189 @@
+---
+title: Live Preview
+description: Stream a document's unsaved editor values into its own public page — a resizable split pane in the admin panel, an overlay hook on the site, and the middleware gate that keeps it private.
+---
+
+Live preview renders **the document's real public route** beside the edit form and
+updates it as you type — no separate preview route, no draft save, no autosave. The
+page being previewed is the same page a visitor gets; only the data is overlaid.
+
+## How it works
+
+1. The edit view resolves the document's preview URL from `admin.livePreview.url` and
+   iframes it in a resizable split pane.
+2. On every form change (debounced), it posts the form's **complete current values**
+   over two transports at once: `postMessage` to the surface it holds a window
+   reference for, and a shared `BroadcastChannel`.
+3. On the public page, `LivePreviewProvider` keeps an `id → unsaved values` map, and
+   `useLivePreview` overlays the entry matching the document your own query already
+   fetched.
+4. A newly-opened preview surface sends a handshake on mount; the admin panel replies
+   with the current values immediately, so a duplicated tab catches up without waiting
+   for the next keystroke.
+
+Both panel preferences — open/closed (`vex-live-preview-panel:<slug>`) and the handle
+position (`vex-live-preview-layout:<slug>`) — persist in cookies rather than
+localStorage, scoped per collection or global. The admin page reads them on the server,
+so a refresh paints the split at the width you left it at instead of snapping to it
+after hydration.
+
+Lifecycle hooks never run on preview data — you see exactly what you typed, before
+`beforeChange` would transform it.
+
+## Configure the collection
+
+```ts
+import { defineCollection, text } from "@vexcms/core"
+import { resolvePagePath } from "~/lib/resolvePagePath"
+
+export const pages = defineCollection({
+  slug: "pages",
+  admin: {
+    useAsTitle: "title",
+    livePreview: {
+      // doc is Partial<PagesDocument> — doc.slug is typed, not unknown
+      url: (doc) => resolvePagePath(doc.slug),
+      // Optional:
+      debounceMs: 150,   // sync cadence for this collection
+      defaultOpen: false, // panel state before the editor ever chooses
+      // breakpoints: [...] // overrides the root list, rarely needed
+    },
+  },
+  fields: { title: text({ required: true }), slug: text({ required: true }) },
+})
+```
+
+`admin.livePreview.url` is independent of `routes.map`. `routes.map` answers "every
+public path this document renders at" (it drives revalidation and sitemaps);
+`livePreview.url` answers "the one URL to iframe", and may point at a different origin
+such as staging. Share a helper between them if they agree, as above.
+
+Globals take the identical `admin.livePreview` block.
+
+## Configure the project
+
+```ts
+export default defineConfig({
+  collections: [pages],
+  livePreview: {
+    // Origins allowed to post preview frames to a listener. Empty by default,
+    // which means the postMessage transport accepts nothing.
+    allowedOrigins: ["http://localhost:3000", "https://admin.example.com"],
+    // Optional — defaults to 375 / 390 / sm / md / lg / xl / 2xl.
+    // breakpoints: [{ label: "sm", width: 640, icon: "Smartphone" }],
+  },
+})
+```
+
+## Wire the public site
+
+The provider must be mounted by a **client** component that imports your config
+directly — the config carries functions (`livePreview.url`, field validators), so it
+cannot cross the server/client boundary as a prop:
+
+```tsx
+// app/(site)/SiteLivePreviewProvider.tsx
+"use client"
+
+import { LivePreviewProvider } from "@vexcms/react"
+import config from "~/vex.config"
+
+export function SiteLivePreviewProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <LivePreviewProvider
+      allowedOrigins={config.livePreview.allowedOrigins}
+      collections={config.collections}
+    >
+      {children}
+    </LivePreviewProvider>
+  )
+}
+```
+
+Wrap the layout once. The provider gates itself (see below), so a normal visitor pays
+for a disabled provider and nothing else — and the route stays statically prerenderable,
+because nothing here reads `headers()` or `cookies()` on the server.
+
+Then overlay your own query result:
+
+```tsx
+"use client"
+
+import { convexQuery } from "@convex-dev/react-query"
+import { RenderBlocks, useLivePreviewQuery } from "@vexcms/react"
+
+export function PageContent({ slug, initialData }) {
+  const { data: page } = useLivePreviewQuery(
+    { ...convexQuery(api.pages.getBySlug, { slug }), initialData },
+    "pages",
+  )
+  if (!page) return null
+  return <RenderBlocks blocks={page.blocks} components={blockComponents} />
+}
+```
+
+`useLivePreviewQuery` is sugar for the common `getBySlug`-returns-an-array shape: it
+narrows to the first document for you. If your query already returns a single document,
+compose the primitives instead — `useLivePreview(doc, "pages")` next to your own
+`useQuery`.
+
+## Security: the gate is yours to set
+
+The listener attaches only when **both** are true on the previewed page:
+
+- the URL carries `?vexLivePreview=1` (`LIVE_PREVIEW_QUERY_PARAM`) — the admin panel
+  appends this to whatever `admin.livePreview.url` returns, so your resolver returns a
+  plain public path and never has to know about it, and
+- the `vex-live-preview` cookie (`LIVE_PREVIEW_COOKIE`) holds `"1"`.
+
+Your middleware sets that cookie, and only after verifying an admin session — session
+verification calls your own generated Convex API, so the framework cannot do it for you:
+
+```ts
+import {
+  LIVE_PREVIEW_COOKIE,
+  LIVE_PREVIEW_COOKIE_MAX_AGE_SECONDS,
+  LIVE_PREVIEW_QUERY_PARAM,
+} from "@vexcms/core"
+
+async function grantPreviewIfRequested(request: NextRequest) {
+  if (request.nextUrl.searchParams.get(LIVE_PREVIEW_QUERY_PARAM) !== "1") {
+    return NextResponse.next()
+  }
+  if ((await resolveSessionStatus()) !== "authenticated") {
+    return NextResponse.next()
+  }
+
+  const response = NextResponse.next()
+  response.cookies.set(LIVE_PREVIEW_COOKIE, "1", {
+    path: "/",
+    maxAge: LIVE_PREVIEW_COOKIE_MAX_AGE_SECONDS,
+    sameSite: "lax",
+    httpOnly: false, // read by the provider in the browser; carries no secret
+  })
+  return response
+}
+```
+
+Checklist for any project embedding a preview surface:
+
+- **Fail open on the public route.** An absent or stale session with
+  `?vexLivePreview=1` should render the normal published page, not redirect to sign-in.
+- **List your admin origins** in `livePreview.allowedOrigins`. An empty list disables
+  the cross-origin `postMessage` transport entirely.
+- **Never widen the allowlist to `"*"`.** Every incoming payload is still validated
+  against the target collection's Zod schema, but same-origin is not the same guarantee
+  as trustworthy.
+
+## Limits
+
+- **Same browser only.** `postMessage` and `BroadcastChannel` are both same-machine,
+  same-browser-process constructs. A preview opened on your phone while you type on your
+  laptop will not update — that needs a persisted network channel, which is out of scope.
+- **`postMessage` needs a window reference**, which the admin only has for surfaces it
+  opened itself. `BroadcastChannel` covers the rest (duplicated tab, reopened from
+  history, second monitor, pasted URL) as long as it is the same origin.
+- **The preview is pre-`beforeChange`.** Fields derived by hooks at write time will not
+  appear until you save.
+- **The panel enables client-side**, after hydration. The floating indicator is
+  fixed-position, so nothing in the page shifts when it appears.

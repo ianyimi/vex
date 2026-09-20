@@ -1,6 +1,6 @@
 {
   "name": "create-vexcms",
-  "version": "0.1.0-alpha.20",
+  "version": "0.1.0-alpha.21",
   "description": "Scaffold a new VexCMS project",
   "keywords": [
     "cms",
@@ -33,7 +33,7 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts",
-    "dev": "tsup src/index.ts --format esm --watch",
+    "dev": "tsup src/index.ts --format esm --watch src",
     "test": "vitest run"
   },
   "dependencies": {

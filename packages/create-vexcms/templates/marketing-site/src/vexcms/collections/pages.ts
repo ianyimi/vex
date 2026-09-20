@@ -2,6 +2,7 @@ import type { DataModel } from "@convex/_generated/dataModel"
 
 import { blocks, defineCollection, text, textValidator, upload } from "@vexcms/core"
 
+import { resolvePagePath } from "~/lib/resolvePagePath"
 import { TABLE_SLUG_IMAGES, TABLE_SLUG_PAGES } from "~/db/constants"
 import { pageBlocks } from "~/vexcms/blocks/config"
 
@@ -11,6 +12,9 @@ export const pages = defineCollection({
     table: { defaultColumns: ["title", "slug", "_id"] },
     useAsTitle: "title",
     icon: "FileText",
+    livePreview: {
+      url: (doc) => resolvePagePath(doc.slug),
+    },
   },
   fields: {
     title: text({

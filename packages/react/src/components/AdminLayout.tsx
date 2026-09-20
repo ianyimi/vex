@@ -175,7 +175,12 @@ export function AdminLayout(props: AdminLayoutProps) {
           </>
         )}
       </header>
-      <main className="flex-1 p-6 pt-0">{props.children}</main>
+      {/* The app's only scroll container. The window itself never scrolls (see
+          `SidebarProvider`'s wrapper), so toggling a view's height can no longer
+          add or remove a window scrollbar and shift the layout sideways. */}
+      <main className="vex-scroll-area min-h-0 flex-1 overflow-y-auto p-6 pt-0">
+        {props.children}
+      </main>
     </SidebarInset>
   );
 

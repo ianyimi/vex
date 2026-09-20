@@ -1,3 +1,15 @@
+"use client";
+
+// The package's client boundary, and the source counterpart of the
+// `"use client"` banner `tsup.config.ts` stamps on `dist/index.js`. Both must
+// exist: production resolves `dist` (banner), dev resolves this file directly
+// (see `workspaceSourceAliases` in each app's next.config.ts), and a server
+// component importing the barrel without a directive fails with "You're
+// importing a module that depends on useState into a React Server Component
+// module". Marking the barrel — rather than each of the ~90 modules below it —
+// reproduces the banner's semantics exactly: everything reachable from here
+// joins the client graph.
+
 import {
   // Field config functions that have HKT-bound component slots
   // (currently: relationship; others added when they gain custom component slots)
@@ -103,7 +115,12 @@ export {
   UnauthorizedView,
 } from "./components";
 
-export type { AdminUser, AdminLayoutProps, AppSidebarProps, UnauthorizedViewProps } from "./components";
+export type {
+  AdminUser,
+  AdminLayoutProps,
+  AppSidebarProps,
+  UnauthorizedViewProps,
+} from "./components";
 
 // Context
 export {
@@ -137,6 +154,22 @@ export type {
   RenderableBlock,
   RenderBlocksProps,
 } from "./components/RenderBlocks";
+
+// Live preview
+export { LivePreviewPanel, resolveLivePreviewUrl } from "./components/livePreview/LivePreviewPanel";
+export type { LivePreviewFrameGeometry } from "./components/livePreview/LivePreviewPanel";
+export { LivePreviewIndicator } from "./components/livePreview/LivePreviewIndicator";
+export {
+  LivePreviewProvider,
+  useLivePreview,
+  useLivePreviewQuery,
+} from "./context/LivePreviewContext";
+export type { LivePreviewQueryResult } from "./context/LivePreviewContext";
+export {
+  useLivePreviewPanelMinSize,
+  useLivePreviewPanelState,
+} from "./hooks/useLivePreviewPanelState";
+export { useLivePreviewSync } from "./hooks/useLivePreviewSync";
 
 // shadcn UI primitives
 export * from "./components/ui";
@@ -240,13 +273,7 @@ export function defineCollection<
   TFieldSlug extends CollectionSlug = CollectionSlug,
 >(
   config: Parameters<
-    typeof coreDefineCollection<
-      TFieldMeta,
-      TCollectionMeta,
-      TCollectionSlug,
-      TFieldSlug,
-      ReactHKT
-    >
+    typeof coreDefineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, ReactHKT>
   >[0],
 ): CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug> {
   return coreDefineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, ReactHKT>(

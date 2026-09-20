@@ -42,3 +42,4 @@
 - Field-level RBAC permissions
 - **F — Lifecycle hooks & validation**: collection `beforeChange`/`beforeDelete` (inline, may reject a write) and `afterChange`/`afterDelete` (via convex-helpers triggers), typed hook/validator authoring factories, async field `validate()` with `ctx`, server-enforced min/max independent of `required` across all fields (ADR-010, ADR-011); wired into `apps/www`, `apps/test`, and the `base-nextjs`/`marketing-site` templates — the lifecycle-hooks guide and two verify-script assertions remain (see Inbox)
 - **Discord show-and-tell readiness (spec 2026-09-13-discord-post-readiness)** — 8 steps: bulk-selection bar, un-export migrate stubs, admin mobile pass 375/390/768/1024, www mobile pass, mirror into create-vexcms templates, OG + social cards [dev], quickstart walk [dev], verification gate
+- Consume @vexcms/react from source in dev (removes the tsup watch loop; see backlog)

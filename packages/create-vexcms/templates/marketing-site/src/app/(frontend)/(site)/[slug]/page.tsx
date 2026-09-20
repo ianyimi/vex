@@ -5,6 +5,7 @@ import { notFound } from "next/navigation"
 import type { PagesDocument } from "~/vex.types"
 
 import { generatePageMetadata } from "~/lib/metadata"
+import { highlightPageBlocks } from "~/lib/highlight"
 import { vex } from "~/lib/vex"
 
 import { PageContent } from "../PageContent"
@@ -54,5 +55,9 @@ export default async function PublicPage({ params }: { params: Promise<{ slug: s
     notFound()
   }
 
-  return <PageContent initialData={initialData} slug={normalized} />
+  const codeHighlights = await highlightPageBlocks(initialData?.[0]?.blocks)
+
+  return (
+    <PageContent codeHighlights={codeHighlights} initialData={initialData} slug={normalized} />
+  )
 }

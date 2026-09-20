@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/better-auth",
-  "version": "0.1.0-alpha.20",
+  "version": "0.1.0-alpha.21",
   "description": "better-auth adapter for VexCMS on Convex",
   "keywords": [
     "cms",
@@ -39,7 +39,7 @@
   ],
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
-    "dev": "tsup --watch",
+    "dev": "tsup --watch src",
     "clean": "rm -rf dist",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
