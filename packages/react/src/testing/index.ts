@@ -1,3 +1,10 @@
+"use client";
+
+// Matches the banner tsup stamps on `dist/testing/index.js`. Inert where this
+// entry is actually consumed (a vitest process, where the directive is just a
+// string literal), but kept in step with the main barrel so source and bundle
+// resolution behave identically.
+
 import type { ComponentType } from "react";
 import type { AdminField, AdminFieldType, CellComponentProps, CollectionConfig, TDocument, VexAccessConfig } from "@vexcms/core";
 import { describe, expect, it } from "vitest";

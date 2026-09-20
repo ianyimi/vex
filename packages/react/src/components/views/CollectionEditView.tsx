@@ -266,36 +266,36 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
         // `useLivePreviewPanelMinSize`, since `PanelGroup` exposes only an
         // imperative handle as its ref.
         <div ref={splitRef} className="-mr-6 flex min-h-0 flex-1">
-        <ResizablePanelGroup
-          direction="horizontal"
-          className="min-h-0 flex-1"
-          onLayout={([formPanelSize]) => {
-            if (formPanelSize !== undefined) {
-              writeLivePreviewLayoutCookie({ slug: collection.slug, formPanelSize });
-            }
-          }}
-        >
-          <ResizablePanel defaultSize={formPanelSize} minSize={panelMinSizes.form}>
-            <div
-              ref={formScroll.ref}
-              onScroll={formScroll.onScroll}
-              className="vex-scroll-area h-full overflow-y-auto pt-4 pr-4 pb-6"
-            >
-              {formContent}
-            </div>
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={100 - formPanelSize} minSize={panelMinSizes.preview}>
-            <LivePreviewPanel
-              previewUrl={previewUrl as string}
-              collectionSlug={collection.slug}
-              documentId={savedDocumentId}
-              tempId={savedDocumentId ? undefined : tempId}
-              debounceMs={livePreview?.debounceMs}
-              breakpoints={breakpoints}
-              form={form}
-            />
-          </ResizablePanel>
+          <ResizablePanelGroup
+            direction="horizontal"
+            className="min-h-0 flex-1"
+            onLayout={([formPanelSize]) => {
+              if (formPanelSize !== undefined) {
+                writeLivePreviewLayoutCookie({ slug: collection.slug, formPanelSize });
+              }
+            }}
+          >
+            <ResizablePanel defaultSize={formPanelSize} minSize={panelMinSizes.form}>
+              <div
+                ref={formScroll.ref}
+                onScroll={formScroll.onScroll}
+                className="vex-scroll-area h-full overflow-y-auto pt-4 pr-4 pb-6"
+              >
+                {formContent}
+              </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={100 - formPanelSize} minSize={panelMinSizes.preview}>
+              <LivePreviewPanel
+                previewUrl={previewUrl as string}
+                collectionSlug={collection.slug}
+                documentId={savedDocumentId}
+                tempId={savedDocumentId ? undefined : tempId}
+                debounceMs={livePreview?.debounceMs}
+                breakpoints={breakpoints}
+                form={form}
+              />
+            </ResizablePanel>
           </ResizablePanelGroup>
         </div>
       ) : (

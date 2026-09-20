@@ -1,3 +1,15 @@
+"use client";
+
+// The package's client boundary, and the source counterpart of the
+// `"use client"` banner `tsup.config.ts` stamps on `dist/index.js`. Both must
+// exist: production resolves `dist` (banner), dev resolves this file directly
+// (see `workspaceSourceAliases` in each app's next.config.ts), and a server
+// component importing the barrel without a directive fails with "You're
+// importing a module that depends on useState into a React Server Component
+// module". Marking the barrel — rather than each of the ~90 modules below it —
+// reproduces the banner's semantics exactly: everything reachable from here
+// joins the client graph.
+
 import {
   // Field config functions that have HKT-bound component slots
   // (currently: relationship; others added when they gain custom component slots)
