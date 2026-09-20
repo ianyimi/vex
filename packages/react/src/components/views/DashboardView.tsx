@@ -1,7 +1,7 @@
 "use client";
 
 import { CRUD_ACTIONS, hasPermission, PERMISSION_SCOPES } from "@vexcms/core";
-import { Card, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardDescription, CardHeader, CardTitle, Icon } from "../ui";
 import { useVexAuth } from "../../context";
 import { useVexAccess } from "../../context";
 import { useVexConfig } from "../../context/VexConfigContext";
@@ -72,7 +72,14 @@ export function DashboardView() {
             <a key={collection.slug} href={`/admin/${collection.slug}`} className="group block">
               <Card className="cursor-pointer transition-shadow group-hover:shadow-md">
                 <CardHeader>
-                  <CardTitle>{collection.labels.plural}</CardTitle>
+                  <CardTitle className="flex items-center gap-1">
+                    {collection.admin.icon && (
+                      <span>
+                        <Icon name={collection.admin.icon} size={20} />
+                      </span>
+                    )}
+                    {collection.labels.plural}
+                  </CardTitle>
                   <CardDescription>Manage {collection.labels.plural.toLowerCase()}</CardDescription>
                 </CardHeader>
               </Card>
@@ -87,7 +94,14 @@ export function DashboardView() {
             <a key={collection.slug} href={`/admin/${collection.slug}`} className="group block">
               <Card className="cursor-pointer transition-shadow group-hover:shadow-md">
                 <CardHeader>
-                  <CardTitle>{collection.labels.plural}</CardTitle>
+                  <CardTitle className="flex items-center gap-1">
+                    {collection.admin.icon && (
+                      <span>
+                        <Icon name={collection.admin.icon} size={20} />
+                      </span>
+                    )}
+                    {collection.labels.plural}
+                  </CardTitle>
                   <CardDescription>Manage {collection.labels.plural.toLowerCase()}</CardDescription>
                 </CardHeader>
               </Card>
@@ -102,7 +116,14 @@ export function DashboardView() {
             <a key={global.slug} href={`/admin/globals/${global.slug}`} className="group block">
               <Card className="cursor-pointer transition-shadow group-hover:shadow-md">
                 <CardHeader>
-                  <CardTitle>{global.label}</CardTitle>
+                  <CardTitle className="flex items-center gap-1">
+                    {global.admin.icon && (
+                      <span>
+                        <Icon name={global.admin.icon} size={20} />
+                      </span>
+                    )}
+                    {global.label}
+                  </CardTitle>
                   <CardDescription>Manage {global.label.toLowerCase()}</CardDescription>
                 </CardHeader>
               </Card>

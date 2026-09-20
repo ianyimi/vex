@@ -28,7 +28,31 @@ touches:
 prompt_version: 1
 ---
 
+> **Superseded, 2026-09-20** by `.agent/docs/specs/2026-09-20-versioning-drafts` — see
+> that spec's `spec-tasks.md` header for what changed (F and E shipped, the access-index
+> API this spec's Step 10 targets was deleted and replaced). Do not implement from this
+> file.
+
 # 2026-08-23-versioning-drafts — Spec
+
+> **⚠ RE-SCOPE BEFORE IMPLEMENTING — this spec predates F and E.** It was written
+> 2026-08-23, before lifecycle hooks/validation (`2026-09-18-lifecycle-hooks-validation`,
+> shipped 2026-09-19) and live preview (`2026-09-18-live-preview`, shipped `b5263dc`
+> 2026-09-20). Per `v0.1.0-launch-plan.md` § C, the re-scope must fold in:
+>
+> 1. **Draft writes go through F's pipeline, not around it.** `beforeChange` → generated
+>    Zod schema → field `validate()` already runs on every create/update; `saveDraft`
+>    must use the same path in F's lenient mode rather than writing raw.
+> 2. **`hasPermission` receives `changes` on draft writes**, so a doc-scoped rule sees the
+>    incoming values and not just the stored row.
+> 3. **Drafts change only E's base layer.** `useLivePreview` overlays unsaved editor values
+>    onto whatever document the consumer's own query returned, so drafts are additive:
+>    fetch the draft row instead of the published one and the overlay is unchanged. No
+>    part of E needs revisiting, and nothing here should reimplement preview state.
+> 4. **Autosave (Step 14) is no longer load-bearing for preview.** E reads unsaved form
+>    state directly, so autosave is justified on its own merits or dropped.
+>
+> The 56 task groups below have not been re-verified against the current tree.
 
 ## Overview
 
