@@ -3,14 +3,13 @@
 - Access index resolution (spec 2026-08-23-access-index-resolution)
 - WP-5 publish alphas
 - Build the real www marketing site (spec 2026-09-01-www-content-spec; seed rewrite and both code-showcase pairings done — the three `/features` Split blocks remain)
-- 4. E — Live preview: `postMessage` transport + mount handshake, one `<VexLivePreviewProvider>` in the layout owning gate/origin-check/transport, `id → unsaved values` map, `useVexPreview` overlaying the consumer's own query result (optional `useVexQuery` sugar on top); target is the real route, not a preview route; deep merge extracted from `useLiveFieldMerge`; temp-id matching for unsaved-new docs (ADR-012). No drafts or autosave needed. ~~Prereq: config client/server split spec~~ — **done** (spec `2026-09-12-config-client-server-split`, ADR-013): the client config is a real module the browser imports, so `livePreview.url` can be a function
+- 5. C — Versioning & drafts (spec 2026-08-23-versioning-drafts, 56 tasks, still `draft` — RE-SCOPE FIRST: it predates F and E). Calls F's write pipeline and reuses its lenient validation mode; must pass `changes` to `hasPermission` on draft writes; supplies the draft base layer E's overlay sits on (E needs no change — the overlay already applies to whatever document the consumer's query returned)
 
 ## Inbox
 ### v0.1.0 launch track — work in this order (`.agent/docs/product/v0.1.0-launch-plan.md`)
 ### Other
 - 1. A — Data-table integrity & dead config: unreachable bulk delete, bogus `_createdAt` default, `updatedAt` verification, wire `pageSize` options, delete the UI-dependent table config (sorting/columns move to I), README `convex env set` + false sortable/searchable claims, ratify `vex_` table convention
 - 2. B — Public API surface: un-export the 4 migrate stubs + gate `autoMigrate`; localization ADR (decision only, zero production diff)
-- 5. C — Versioning & drafts (existing spec 2026-08-23-versioning-drafts, re-scope first) — calls F's pipeline and reuses its lenient validation mode; must pass `changes` to `hasPermission` on draft writes; adds the draft base layer to E's overlay
 - 6. D — Richtext field: wire the existing 3,219 lines in `richtext-plate`, add `richtext()` + the 2 missing core types, drop 4 `@ts-nocheck`
 - 7. G — Field input consistency pass: relationship field, loading states, media MIME filter, conditional fields
 - 8. H — Edit-view overhaul: unsaved-changes nav guard, duplicate document, duplicate block
@@ -25,6 +24,7 @@
 - F follow-up — spec 2026-09-18-lifecycle-hooks-validation step 8: write `scripts/verify-hooks-wiring.mjs`, add a `createVexMutations` assertion to `scripts/verify-scaffold.mjs`, and write `apps/docs/src/content/docs/guides/lifecycle-hooks.mdx` (apps/test + base-nextjs template wiring, and the marketing-site slug validator, are done)
 
 ## Recently Done
+- 4. E — Live preview — shipped `b5263dc`, 2026-09-20 (spec 2026-09-18-live-preview; ADR-012, with a dual `postMessage` + `BroadcastChannel` transport and a cookie-gated public route)
 - Re-enabled starlight-typedoc, multi-package (core/react/next/better-auth/file-storage), 120→0 TypeDoc warnings, treatWarningsAsErrors ON — see ADR-001
 - Server API access options
 - Refresh stale package names in scripts/sync-template-versions.mjs

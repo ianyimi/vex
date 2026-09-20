@@ -4,29 +4,11 @@ import { TABLE_SLUG_USERS, USER_ROLES } from "~/db/constants";
 import { images, pages, themes, users } from "~/vexcms/collections";
 import { siteSettings } from "~/vexcms/globals";
 
-/**
- * Access control (RBAC) for the admin panel and every registered collection.
- *
- * `admin` gets unrestricted access. `user` is the public demo role — it may
- * open the admin panel, *read* `pages`, `themes`, `images`, and `siteSettings`,
- * and *update* only `siteSettings.adminTheme` (every other field on that global
- * stays denied by the field map's `"*": false`). `anonRole: user` is what
- * extends that to a caller carrying no `roles` entry at all — every anonymous
- * session minted by `AdminDemoButton`, **and every unauthenticated public-site
- * request**, including the build-time metadata fetch. All other write actions
- * stay denied by the `"*": false` default, so the panel is otherwise read-only
- * for anyone who is not an admin.
- *
- * `images.read` is load-bearing for the public site, not just the demo:
- * `MediaImage` and `src/lib/metadata.ts` both resolve uploads through the
- * RBAC-gated `vex/media:getUrl`, so without it anonymous visitors get no
- * header/footer/split images and the page ships no `og:image`.
- *
- * Add a resource here whenever you register a new collection in
- * `vex.config.ts`.
- *
- * @see https://docs.vexcms.dev/guides/access-control/
- */
+const readOnly = {
+  "*": false,
+  read: true,
+};
+
 export const access = defineAccess({
   anonRole: USER_ROLES.user,
   roles: Object.values(USER_ROLES),
@@ -39,22 +21,13 @@ export const access = defineAccess({
     },
     [USER_ROLES.user]: {
       "*": false,
-      pages: {
-        "*": false,
-        read: true,
-      },
+      pages: readOnly,
       adminPanel: {
         access: true,
         impersonate: false,
       },
-      themes: {
-        "*": false,
-        read: true,
-      },
-      images: {
-        "*": false,
-        read: true,
-      },
+      themes: readOnly,
+      images: readOnly,
       siteSettings: {
         "*": false,
         read: () => ({ adminTheme: true, ogImage: true, name: true, description: true }),

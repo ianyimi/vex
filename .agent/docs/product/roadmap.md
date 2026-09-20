@@ -18,8 +18,8 @@ Ten specs. Full scope, decisions, and acceptance criteria in
 | 1 | **A** — Data-table integrity & dead config | Nothing shipped is resolved-but-unread |
 | 2 | **B** — Public API surface | Nothing exported lies about what it does |
 | 3 | **F** — Lifecycle hooks & validation | Extensibility + server-side constraint enforcement |
-| 4 | **E** — Live preview | Editing feedback loop |
-| 5 | **C** — Versioning & drafts | The feature the README tells users to wait for |
+| 4 | ~~**E** — Live preview~~ ✅ | Editing feedback loop — shipped `b5263dc`, 2026-09-20 |
+| 5 | **C** — Versioning & drafts ← **in progress** | The feature the README tells users to wait for |
 | 6 | **D** — Richtext field | The published `richtext-plate` package becomes usable |
 | 7 | **G** — Field input consistency pass | No input looks half-built |
 | 8 | **H** — Edit-view overhaul | Editing is not hostile |
@@ -40,12 +40,23 @@ Hard ordering constraints (only these three are real): **B before F and D** ·
 Architecture decisions taken for this track: ADR-010 (hook split — `before*` in the
 write path, `after*` on `convex-helpers` triggers), ADR-011 (one write-validation
 stage; `validate()` server-only and async), ADR-012 (live preview reads unsaved form
-state over `postMessage`, overlaid on the consumer's own query result).
+state over `postMessage`, overlaid on the consumer's own query result — shipped with a
+dual `postMessage` + `BroadcastChannel` transport, since `postMessage` alone cannot reach
+a tab the admin never opened).
 
 Shipped since the original Milestone 1 framing: ✅ Globals / `defineGlobal` ·
 ✅ RBAC document-level access · ✅ Field-level RBAC permissions · ✅ Access index
 resolution · ✅ `anonRole` fallback · ✅ `color` field · ✅ SEO prerendering and
-revalidation · ✅ React test suite and coverage expansion.
+revalidation · ✅ React test suite and coverage expansion · ✅ Lifecycle hooks and
+server-side field validation · ✅ Live preview.
+
+**Now in progress: C — versioning & drafts.** Re-scoped as
+`.agent/docs/specs/2026-09-20-versioning-drafts` (18 task groups), superseding the
+2026-08-23 draft, which predated F and E and is kept only for its design history.
+Draft writes call F's write pipeline and its lenient validation mode, pass `changes`
+to `hasPermission`, and supply the draft base layer E's overlay sits on — E itself
+needed no change, since the overlay already applies to whatever document the
+consumer's query returned. Spec complete; implementation not yet started.
 
 Deferred out of 0.1.0 with reasons: `json` / `email` / `textarea` (leaf fields, cheap,
 not gates) · `ui` / `tabs` (change core invariants — see `backlog.md`) · PDF block ·

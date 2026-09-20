@@ -1,7 +1,7 @@
 "use client";
 
-import { buttonVariants, cn } from "@vexcms/react";
-import { LogIn, LogOut } from "lucide-react";
+import { buttonVariants, cn, Icon } from "@vexcms/react";
+import { LogIn } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -63,7 +63,7 @@ export function SessionButton({
   if (isSessionPending) {
     return (
       <button aria-busy className={classes} disabled type="button">
-        <LogIn className="size-3.5" />
+        <LogIn size={14} />
         Sign in
       </button>
     );
@@ -72,7 +72,7 @@ export function SessionButton({
   if (!session?.user || session.user.isAnonymous === true) {
     return (
       <Link className={classes} href="/auth/sign-in" title="Sign in to your account">
-        <LogIn className="size-3.5" />
+        <LogIn size={14} />
         Sign in
       </Link>
     );
@@ -102,7 +102,11 @@ export function SessionButton({
       type="button"
       variant="ghost"
     >
-      <LogOut className={cn("size-3.5", isSigningOut && "animate-spin")} />
+      <Icon
+        className={cn(isSigningOut && "animate-spin")}
+        name={isSigningOut ? "LoaderCircle" : "LogOut"}
+        size={14}
+      />
       Sign out
     </Button>
   );

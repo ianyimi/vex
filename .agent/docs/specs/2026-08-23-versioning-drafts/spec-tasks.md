@@ -7,6 +7,15 @@ prompt_version: 1
 
 # 2026-08-23-versioning-drafts — Tasks
 
+> **Superseded, 2026-09-20** by `.agent/docs/specs/2026-09-20-versioning-drafts`. This
+> draft predates F (`2026-09-18-lifecycle-hooks-validation`) and E
+> (`2026-09-18-live-preview`), both now shipped, and the `access-constraint-builder`
+> rework that deleted the index API this draft's Step 10 was written against. The
+> two-row model, RBAC shape, and read-path analysis in `design-review.md` are still
+> correct and are carried forward unchanged into the new spec — only the write-pipeline
+> integration and the read-path's underlying index API changed. Do not implement from
+> this file; it is kept for its design history.
+
 Design: `design-review.md` (this directory) — the two-row draft model, all resolved
 decisions, and the read-path analysis. Background: `research.md`,
 `convex-component-decision.md`.
