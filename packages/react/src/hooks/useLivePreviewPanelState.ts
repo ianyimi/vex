@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { RefObject } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   DEFAULT_LIVE_PREVIEW_PANEL_MIN_SIZE,
   livePreviewLayoutCookieName,
@@ -34,25 +33,24 @@ export interface LivePreviewPanelMinSizes {
  * Starts at the absolute floor, never at a large value: two floors summing
  * past 100 leave no range and the handle will not move.
  *
- * @returns `ref` to attach to the element wrapping the split, and the minimum
- *   percentage for each column.
+ * @returns `ref` — a callback ref for the element wrapping the split — and the
+ *   minimum percentage for each column.
  */
 export function useLivePreviewPanelMinSize(): {
-  ref: RefObject<HTMLDivElement | null>;
+  ref: (element: HTMLDivElement | null) => void;
   minSizes: LivePreviewPanelMinSizes;
 } {
-  const ref = useRef<HTMLDivElement>(null);
+  const [splitElement, setSplitElement] = useState<HTMLDivElement | null>(null);
   const [minSizes, setMinSizes] = useState<LivePreviewPanelMinSizes>({
     form: DEFAULT_LIVE_PREVIEW_PANEL_MIN_SIZE,
     preview: DEFAULT_LIVE_PREVIEW_PANEL_MIN_SIZE,
   });
 
   useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
+    if (!splitElement) return;
 
     const readMinSizes = () => {
-      const splitWidth = element.clientWidth;
+      const splitWidth = splitElement.clientWidth;
       setMinSizes({
         form: resolveLivePreviewPanelMinSize({ splitWidth, column: "form" }),
         preview: resolveLivePreviewPanelMinSize({ splitWidth, column: "preview" }),
@@ -61,11 +59,11 @@ export function useLivePreviewPanelMinSize(): {
     readMinSizes();
 
     const observer = new ResizeObserver(readMinSizes);
-    observer.observe(element);
+    observer.observe(splitElement);
     return () => observer.disconnect();
-  }, []);
+  }, [splitElement]);
 
-  return { ref, minSizes };
+  return { ref: setSplitElement, minSizes };
 }
 
 /**

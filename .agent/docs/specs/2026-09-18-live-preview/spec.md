@@ -1,5 +1,5 @@
 ---
-status: draft
+status: complete
 spec_id: 2026-09-18-live-preview
 touches:
   - packages/core/src/livePreview/**

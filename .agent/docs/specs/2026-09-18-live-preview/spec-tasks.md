@@ -11,8 +11,8 @@ Regenerated from `spec.md`'s current `## Implementation` steps (rev with `Vex`-p
 naming removed per this spec's Naming section) — the prior version of this file named
 stale symbols (`VexLivePreviewContext`, `useVexPreview`, `useVexQuery`) that spec.md no
 longer uses, and used bold `**Verify:**`/`**Why:**` markers with no checklist items,
-which the `harness implement` parser rejects (plain `Why:`/`Verify:` lines + `- [ ]`
-steps required).
+which the `harness implement` parser rejects (plain `Why:`/`Verify:` lines plus
+unchecked-checkbox list items required).
 
 ## Step 1 — Core config, protocol constants & typed resolvers [dev]
 
@@ -91,10 +91,10 @@ Verify: pnpm --filter @vexcms/next build && pnpm --filter www build
 Why: Closes the loop end-to-end on the one real consumer: `pages` gets
 `admin.livePreview.url`, the root config gets `livePreview.allowedOrigins`, and
 `PageContent.tsx` switches to `useLivePreviewQuery` (Design Decision 12).
-- [ ] `apps/www/src/lib/resolvePagePath.ts` — new file.
-- [ ] `apps/www/src/vexcms/collections/pages.ts` — add `admin.livePreview.url`.
-- [ ] `apps/www/src/vex.config.ts` — reuse `resolvePagePath` in `routes.map`; add `livePreview.allowedOrigins`.
-- [ ] `apps/www/src/app/(frontend)/(site)/PageContent.tsx` — switch to `useLivePreviewQuery`, drop `pages?.[0]`.
+- [x] `apps/www/src/lib/resolvePagePath.ts` — new file.
+- [x] `apps/www/src/vexcms/collections/pages.ts` — add `admin.livePreview.url`.
+- [x] `apps/www/src/vex.config.ts` — reuse `resolvePagePath` in `routes.map`; add `livePreview.allowedOrigins`.
+- [x] `apps/www/src/app/(frontend)/(site)/PageContent.tsx` — switch to `useLivePreviewQuery`, drop `pages?.[0]`.
 Verify: manual
 
 ## Step 7 — `create-vexcms/templates/marketing-site` parity [dev]

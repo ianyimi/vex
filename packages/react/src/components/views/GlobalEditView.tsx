@@ -134,7 +134,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     initialOpen: props.initialPreviewPanelOpen ?? false,
   });
   const previewUrl = resolveLivePreviewUrl({
-    url: livePreview?.url as LivePreviewUrlResolver | undefined,
+    url: livePreview?.url as string | LivePreviewUrlResolver | undefined,
     collectionSlug: global.slug,
     baseDoc: (globalDoc ?? {}) as Record<string, unknown>,
     formValues,

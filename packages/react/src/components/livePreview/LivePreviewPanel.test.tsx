@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { computeLivePreviewFrameGeometry, resolveLivePreviewUrl } from "./LivePreviewPanel";
+import {
+  computeLivePreviewFrameGeometry,
+  resolveLivePreviewUrl,
+  resolveStoredLivePreviewBreakpoint,
+} from "./LivePreviewPanel";
 
 describe("computeLivePreviewFrameGeometry", () => {
   it("passes the container size through unscaled when no breakpoint is selected", () => {
@@ -122,5 +126,27 @@ describe("resolveLivePreviewUrl", () => {
         formValues: {},
       }),
     ).toBeUndefined();
+  });
+});
+
+describe("resolveStoredLivePreviewBreakpoint", () => {
+  const breakpoints = [
+    { label: "sm", width: 640 },
+    { label: "lg", width: 1024 },
+  ];
+
+  it("restores the breakpoint matching a stored width", () => {
+    expect(resolveStoredLivePreviewBreakpoint({ breakpoints, storedWidth: 1024 })).toEqual({
+      label: "lg",
+      width: 1024,
+    });
+  });
+
+  it("falls back to full width when nothing was stored", () => {
+    expect(resolveStoredLivePreviewBreakpoint({ breakpoints, storedWidth: null })).toBeNull();
+  });
+
+  it("falls back to full width when the stored width is no longer configured", () => {
+    expect(resolveStoredLivePreviewBreakpoint({ breakpoints, storedWidth: 390 })).toBeNull();
   });
 });

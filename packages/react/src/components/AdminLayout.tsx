@@ -157,8 +157,8 @@ export function AdminLayout(props: AdminLayoutProps) {
         {side === "right" && <div className="flex-1" />}
         {side === "right" ? (
           <>
+            <ViewSiteButton className="mr-2" />
             <AdminTopNav {...props} />
-            <ViewSiteButton />
             <SidebarTrigger
               side={side}
               className="hover:text-primary/90 transition-colors duration-300"
@@ -171,7 +171,7 @@ export function AdminLayout(props: AdminLayoutProps) {
               className="hover:text-primary/90 transition-colors duration-300"
             />
             <AdminTopNav {...props} />
-            <ViewSiteButton className="ml-auto" />
+            <ViewSiteButton className="ml-2" />
           </>
         )}
       </header>
