@@ -14,6 +14,84 @@ import { useLivePreviewSync } from "../../hooks/useLivePreviewSync";
 import { Button, Icon, VexLink } from "../ui";
 import { cn } from "../../styles/utils";
 
+const BREAKPOINT_STORAGE_PREFIX = "vex-live-preview-breakpoint:";
+
+/**
+ * Resolves a stored breakpoint width back to one of the configured breakpoints.
+ *
+ * @param props.breakpoints - The breakpoints this panel offers.
+ * @param props.storedWidth - Width read from storage, or `null` for full width.
+ * @returns The matching breakpoint, or `null` for full width and for a width
+ *   no longer configured.
+ */
+export function resolveStoredLivePreviewBreakpoint(props: {
+  breakpoints: LivePreviewBreakpoint[];
+  storedWidth: number | null;
+}): LivePreviewBreakpoint | null {
+  if (props.storedWidth === null) return null;
+  return props.breakpoints.find((breakpoint) => breakpoint.width === props.storedWidth) ?? null;
+}
+
+/**
+ * The selected simulated width, persisted per collection or global.
+ *
+ * Held outside the component's lifetime because the panel unmounts every time
+ * the editor hides the preview, which would otherwise drop the selection.
+ *
+ * @param props.slug - Scopes the stored selection.
+ * @param props.breakpoints - The breakpoints this panel offers.
+ * @returns The selected breakpoint and a setter that persists it.
+ */
+function useSelectedBreakpoint(props: { slug: string; breakpoints: LivePreviewBreakpoint[] }): [
+  LivePreviewBreakpoint | null,
+  (breakpoint: LivePreviewBreakpoint | null) => void,
+] {
+  const storageKey = `${BREAKPOINT_STORAGE_PREFIX}${props.slug}`;
+  const [selected, setSelected] = useState<LivePreviewBreakpoint | null>(null);
+
+  // Restored after mount rather than in a `useState` initializer. The admin
+  // page is server-rendered, so an initializer that reads `localStorage`
+  // produces markup the server never emitted: React keeps the server's
+  // attributes on a hydration mismatch, which left the button rendered
+  // inactive even though the selection itself had been restored.
+  const restoredKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    // Once per slug: a new `breakpoints` array identity must not re-run this
+    // and clobber the editor's current choice.
+    if (restoredKey.current === storageKey) return;
+    restoredKey.current = storageKey;
+
+    try {
+      const stored = localStorage.getItem(storageKey);
+      setSelected(
+        resolveStoredLivePreviewBreakpoint({
+          breakpoints: props.breakpoints,
+          storedWidth: stored === null ? null : Number(stored),
+        }),
+      );
+    } catch {
+      // Unreadable storage simply means no remembered selection.
+    }
+  }, [storageKey, props.breakpoints]);
+
+  const select = (breakpoint: LivePreviewBreakpoint | null) => {
+    setSelected(breakpoint);
+    try {
+      if (breakpoint) {
+        localStorage.setItem(storageKey, String(breakpoint.width));
+      } else {
+        localStorage.removeItem(storageKey);
+      }
+    } catch {
+      // Same guard as the panel's other preferences: a blocked storage write
+      // must not take the view down.
+    }
+  };
+
+  return [selected, select];
+}
+
 /** One preview surface's measured pixel size. */
 interface LivePreviewContainerSize {
   width: number;
@@ -148,7 +226,10 @@ export function LivePreviewPanel(props: {
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [selectedBreakpoint, setSelectedBreakpoint] = useState<LivePreviewBreakpoint | null>(null);
+  const [selectedBreakpoint, setSelectedBreakpoint] = useSelectedBreakpoint({
+    slug: props.collectionSlug,
+    breakpoints: props.breakpoints,
+  });
   // A fresh `previewUrl` means a new navigation: the frame is stale until it
   // reports loaded again, so the placeholder returns instead of showing the
   // previous page's pixels under a new URL.
@@ -308,8 +389,8 @@ export function LivePreviewPanel(props: {
  * path would otherwise render a perfectly normal page that never listens.
  * Temp-id params are appended on top, only while the document is unsaved.
  *
- * @param props.url - Cast down at the call site to the loose
- *   `LivePreviewUrlResolver` default.
+ * @param props.url - A literal path, or a resolver cast down at the call site
+ *   to the loose `LivePreviewUrlResolver` default.
  * @param props.collectionSlug - The collection or global being previewed.
  * @param props.baseDoc - The saved document, or `{}` for one being created.
  * @param props.formValues - The form's complete current values.
@@ -317,7 +398,7 @@ export function LivePreviewPanel(props: {
  * @returns The preview URL, or `undefined` when it cannot be resolved yet.
  */
 export function resolveLivePreviewUrl(props: {
-  url: LivePreviewUrlResolver | undefined;
+  url: string | LivePreviewUrlResolver | undefined;
   collectionSlug: string;
   baseDoc: Record<string, unknown>;
   formValues: Record<string, unknown>;
@@ -331,7 +412,7 @@ export function resolveLivePreviewUrl(props: {
     ...props.formValues,
     _id: documentId ?? props.tempId,
   };
-  const resolvedUrl = props.url(previewDoc);
+  const resolvedUrl = typeof props.url === "string" ? props.url : props.url(previewDoc);
   if (!resolvedUrl) return undefined;
 
   const previewParams = new URLSearchParams({ [LIVE_PREVIEW_QUERY_PARAM]: "1" });

@@ -162,9 +162,13 @@ export { LivePreviewIndicator } from "./components/livePreview/LivePreviewIndica
 export {
   LivePreviewProvider,
   useLivePreview,
+  useLivePreviewDocumentQuery,
   useLivePreviewQuery,
 } from "./context/LivePreviewContext";
-export type { LivePreviewQueryResult } from "./context/LivePreviewContext";
+export type {
+  LivePreviewDocumentQueryResult,
+  LivePreviewQueryResult,
+} from "./context/LivePreviewContext";
 export {
   useLivePreviewPanelMinSize,
   useLivePreviewPanelState,

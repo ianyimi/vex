@@ -2,8 +2,7 @@
 
 import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
-import { useQuery } from "@tanstack/react-query"
-import { type RenderableBlock, RenderBlocks } from "@vexcms/react"
+import { type RenderableBlock, RenderBlocks, useLivePreviewDocumentQuery } from "@vexcms/react"
 
 import type { FootersDocument } from "~/vex.types"
 
@@ -16,10 +15,15 @@ export function SiteFooter({
 }: {
   initialData?: FootersDocument | null
 }) {
-  const { data: footer } = useQuery({
-    ...convexQuery(api.footers.getFirst, {}),
-    initialData: initialData ?? undefined,
-  })
+  // See `SiteHeader`: the overlay only reaches documents a consumer hands it,
+  // so editing the footer while previewing a page needs this wrapper.
+  const { data: footer } = useLivePreviewDocumentQuery(
+    {
+      ...convexQuery(api.footers.getFirst, {}),
+      initialData: initialData ?? undefined,
+    },
+    "footers",
+  )
 
   const content = footer?.content as null | PageBlockLike[] | undefined
   if (!content) {return null}

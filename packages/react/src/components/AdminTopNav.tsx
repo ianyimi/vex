@@ -2,9 +2,9 @@
 
 import { useEffect, useState, type RefAttributes } from "react";
 import { AdminLayoutProps } from "./AdminLayout";
-import { VexLink } from "./ui";
+import { Icon, VexLink } from "./ui";
 import { ChevronLeft, ChevronRight, LucideProps } from "lucide-react";
-import { addLeadingSlash, vexConvexApi } from "@vexcms/core";
+import { addLeadingSlash, LucideIconName, vexConvexApi } from "@vexcms/core";
 import { useVexConfig } from "../context/VexConfigContext";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
@@ -74,13 +74,14 @@ export default function AdminTopNav(props: AdminLayoutProps) {
   // NextAdminPage) while the client starts with undefined until Convex fires.
   const doc = mounted ? currentDocument : undefined;
 
-  type Crumb = { key: string; href: string; label: string };
+  type Crumb = { key: string; href: string; label: string; icon?: LucideIconName };
   const crumbs: Crumb[] = [{ key: "home", href: adminRoot, label: "Home" }];
   if (activeCollection) {
     crumbs.push({
       key: "collection",
       href: `${adminRoot}/${activeCollection.slug}`,
       label: activeCollection.labels.plural,
+      icon: activeCollection.admin.icon,
     });
     if (doc) {
       crumbs.push({
@@ -109,8 +110,13 @@ export default function AdminTopNav(props: AdminLayoutProps) {
       <VexLink
         key={crumb.key}
         href={crumb.href}
-        className={cn(isLast ? "text-primary" : "hover:text-primary/90")}
+        className={cn("flex items-center gap-1", isLast ? "text-primary" : "hover:text-primary/90")}
       >
+        {crumb.icon && (
+          <span>
+            <Icon name={crumb.icon} size={14} />
+          </span>
+        )}
         <span>{crumb.label}</span>
       </VexLink>
     );

@@ -327,3 +327,56 @@ export function useLivePreviewQuery<
   const previewedDoc = useLivePreview(queryResult.data?.[0], collectionSlug);
   return { ...queryResult, data: previewedDoc ?? undefined };
 }
+
+/**
+ * `useLivePreviewDocumentQuery`'s result — the underlying single-document query
+ * result, with `null` collapsed into `undefined` so consumers have one
+ * "nothing to render" case instead of two.
+ */
+export type LivePreviewDocumentQueryResult<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> = Omit<UseQueryResult<DocumentByCollectionSlug<TCollectionSlug> | null>, "data"> & {
+  data: DocumentByCollectionSlug<TCollectionSlug> | undefined;
+};
+
+/**
+ * Sugar composing `useQuery` with `useLivePreview` for a query that already
+ * resolves to a SINGLE document — a `getFirst`-style singleton read, or any
+ * lookup by id — rather than the array `useLivePreviewQuery` narrows.
+ *
+ * Exists because the overlay only reaches documents a consumer hands it: a
+ * component fetching an editable document through a plain `useQuery` is
+ * invisible to live preview, which is why editing a `headers` document while
+ * previewing the home page changed nothing.
+ *
+ * @param queryOptions - The `useQuery` options for a query resolving to one document.
+ * @param collectionSlug - The collection that document belongs to.
+ * @returns The query result with `data` overlaid by any unsaved editor values.
+ *
+ * @example
+ * ```tsx
+ * const { data: header } = useLivePreviewDocumentQuery(
+ *   { ...convexQuery(api.headers.getFirst, {}), initialData },
+ *   "headers",
+ * );
+ * ```
+ */
+export function useLivePreviewDocumentQuery<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  // Inferred from the query itself: a `getFirst`-style read is typed
+  // `Doc | null`, a lookup by id often just `Doc`, and pinning the parameter to
+  // one of those makes the other fail to assign.
+  TData extends DocumentByCollectionSlug<TCollectionSlug> | null =
+    DocumentByCollectionSlug<TCollectionSlug> | null,
+  TQueryKey extends readonly unknown[] = readonly unknown[],
+>(
+  queryOptions: UseQueryOptions<TData, Error, TData, TQueryKey>,
+  collectionSlug: TCollectionSlug,
+): LivePreviewDocumentQueryResult<TCollectionSlug> {
+  const queryResult = useQuery(queryOptions);
+  const previewedDoc = useLivePreview(queryResult.data, collectionSlug);
+  return {
+    ...queryResult,
+    data: previewedDoc ?? undefined,
+  } as LivePreviewDocumentQueryResult<TCollectionSlug>;
+}

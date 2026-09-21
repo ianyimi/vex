@@ -2,8 +2,7 @@
 
 import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
-import { useQuery } from "@tanstack/react-query"
-import { type RenderableBlock, RenderBlocks } from "@vexcms/react"
+import { type RenderableBlock, RenderBlocks, useLivePreviewDocumentQuery } from "@vexcms/react"
 
 import type { HeadersDocument } from "~/vex.types"
 
@@ -16,10 +15,16 @@ export function SiteHeader({
 }: {
   initialData?: HeadersDocument | null
 }) {
-  const { data: header } = useQuery({
-    ...convexQuery(api.headers.getFirst, {}),
-    initialData: initialData ?? undefined,
-  })
+  // `useLivePreviewDocumentQuery`, not a bare `useQuery`: the live-preview
+  // overlay only reaches documents a consumer hands it, so a plain query here
+  // means editing the header while previewing a page changes nothing.
+  const { data: header } = useLivePreviewDocumentQuery(
+    {
+      ...convexQuery(api.headers.getFirst, {}),
+      initialData: initialData ?? undefined,
+    },
+    "headers",
+  )
 
   const content = header?.content as null | PageBlockLike[] | undefined
   if (!content) {return null}

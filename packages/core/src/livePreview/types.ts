@@ -30,9 +30,16 @@ import type { LucideIconName } from "../utils";
  * });
  * ```
  */
-export type LivePreviewUrlResolver<TDoc extends Partial<VexDocument> = Partial<VexDocument>> = (
-  doc: TDoc,
-) => string | undefined;
+export type LivePreviewUrlResolver<TDoc extends Partial<VexDocument> = Partial<VexDocument>> = {
+  // Method syntax, read back through an index access: that is what makes `TDoc`
+  // bivariant. A plain `(doc: TDoc) => …` type is strictly contravariant, so a
+  // `CollectionConfig` whose slug is still generic stops being assignable to the
+  // concrete union the admin views hold — it broke `useCollectionForm`,
+  // `defineConfig` and every `access` resource the first time this was written
+  // that way. The property could use method shorthand directly until `url`
+  // became `string | resolver`; a union member cannot.
+  bivariantResolve(doc: TDoc): string | undefined;
+}["bivariantResolve"];
 
 /**
  * One toggle-able simulated viewport width, offered as a button in the
@@ -72,7 +79,9 @@ export interface AdminLivePreviewConfigInput<
   TDoc extends Partial<VexDocument> = Partial<VexDocument>,
 > {
   /**
-   * Resolves the document being edited to its public preview URL.
+   * The document's public preview URL, as a literal path for a collection or
+   * global that always previews at one place (`url: "/"`), or a resolver for
+   * one whose URL depends on the document.
    *
    * Declared with method syntax, not `url: LivePreviewUrlResolver<TDoc>`, so
    * the parameter is checked bivariantly: a `CollectionConfig<…, TSlug>` with a
@@ -80,7 +89,7 @@ export interface AdminLivePreviewConfigInput<
    * admin views hold, and a property-position function type makes `TDoc`
    * strictly contravariant, which breaks exactly that assignment.
    */
-  url(doc: TDoc): string | undefined;
+  url: string | LivePreviewUrlResolver<TDoc>;
   /**
    * Milliseconds `useLivePreviewSync` waits after the last form change before
    * posting an update.
@@ -110,8 +119,8 @@ export interface AdminLivePreviewConfigInput<
  * defaults.
  */
 export interface AdminLivePreviewConfig<TDoc extends Partial<VexDocument> = Partial<VexDocument>> {
-  /** See {@link AdminLivePreviewConfigInput.url} for why this is method syntax. */
-  url(doc: TDoc): string | undefined;
+  /** See {@link AdminLivePreviewConfigInput.url}. */
+  url: string | LivePreviewUrlResolver<TDoc>;
   debounceMs: number;
   defaultOpen: boolean;
   /** Overrides the root breakpoints for this collection/global. `undefined` = inherit. */

@@ -151,7 +151,7 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
     initialOpen: props.initialPreviewPanelOpen ?? false,
   });
   const previewUrl = resolveLivePreviewUrl({
-    url: livePreview?.url as LivePreviewUrlResolver | undefined,
+    url: livePreview?.url as string | LivePreviewUrlResolver | undefined,
     collectionSlug: collection.slug,
     baseDoc: currentDocument,
     formValues,

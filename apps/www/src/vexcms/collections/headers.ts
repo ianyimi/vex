@@ -1,13 +1,16 @@
-import { blocks, defineCollection, text } from "@vexcms/core"
+import { blocks, defineCollection, text } from "@vexcms/core";
 
-import { TABLE_SLUG_HEADERS } from "~/db/constants"
-import { headerBlocks } from "~/vexcms/blocks/config"
+import { TABLE_SLUG_HEADERS } from "~/db/constants";
+import { headerBlocks } from "~/vexcms/blocks/config";
 
 export const headers = defineCollection({
   slug: TABLE_SLUG_HEADERS,
   admin: {
     useAsTitle: "name",
     icon: "PanelTop",
+    livePreview: {
+      url: "/",
+    },
   },
   fields: {
     name: text({
@@ -29,4 +32,4 @@ export const headers = defineCollection({
     plural: "Headers",
     singular: "Header",
   },
-})
+});

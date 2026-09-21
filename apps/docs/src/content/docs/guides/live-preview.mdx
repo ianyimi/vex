@@ -41,7 +41,8 @@ export const pages = defineCollection({
   admin: {
     useAsTitle: "title",
     livePreview: {
-      // doc is Partial<PagesDocument> — doc.slug is typed, not unknown
+      // A resolver when the URL depends on the document; `doc` is
+      // Partial<PagesDocument>, so doc.slug is typed, not unknown.
       url: (doc) => resolvePagePath(doc.slug),
       // Optional:
       debounceMs: 150,   // sync cadence for this collection
@@ -52,6 +53,10 @@ export const pages = defineCollection({
   fields: { title: text({ required: true }), slug: text({ required: true }) },
 })
 ```
+
+`url` also takes a literal path for a collection or global that always previews in one
+place — a site header or footer rendered on every page is `url: "/"`, not
+`url: () => "/"`.
 
 `admin.livePreview.url` is independent of `routes.map`. `routes.map` answers "every
 public path this document renders at" (it drives revalidation and sitemaps);
@@ -123,9 +128,20 @@ export function PageContent({ slug, initialData }) {
 ```
 
 `useLivePreviewQuery` is sugar for the common `getBySlug`-returns-an-array shape: it
-narrows to the first document for you. If your query already returns a single document,
-compose the primitives instead — `useLivePreview(doc, "pages")` next to your own
-`useQuery`.
+narrows to the first document for you. A query that already resolves to a SINGLE
+document — a `getFirst`-style singleton read, or a lookup by id — uses
+`useLivePreviewDocumentQuery` with the identical signature.
+
+Every editable document a page renders needs one of these, not just the page's own: the
+overlay only reaches documents a consumer hands it, so a site header fetched with a bare
+`useQuery` stays frozen at its saved values while the header is being edited.
+
+```tsx
+const { data: header } = useLivePreviewDocumentQuery(
+  { ...convexQuery(api.headers.getFirst, {}), initialData },
+  "headers",
+)
+```
 
 ## Security: the gate is yours to set
 
