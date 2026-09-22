@@ -2896,3 +2896,671 @@ shows the corrected, shipped-feature text everywhere — no remaining "Not shipp
    updates with no admin action beyond the original edit; open the same preview URL in a
    second, unrelated browser and confirm it shows only the published document (Design
    Decision 4's documented limit, not a bug).
+
+---
+
+## Amendment 1 — root `livePreview` config map, server-resolved URLs (2026-09-21)
+
+Raised by the developer after using the shipped feature. Two asks, one config shape:
+declare every collection's and global's live-preview settings in one root block, and let
+a `url` resolver read the database through a Convex `ctx`.
+
+### Design Decisions (continuing the numbering above)
+
+19. **The root `livePreview` block carries per-collection and per-global settings, not
+    just a URL map.** Shape:
+
+    ```ts
+    livePreview: {
+      allowedOrigins: string[];
+      breakpoints?: LivePreviewBreakpoint[];
+      collections?: { [S in CollectionSlug]?: AdminLivePreviewConfigInput<Partial<DocumentByCollectionSlug<S>>> };
+      globals?:     { [S in GlobalSlug]?:     AdminLivePreviewConfigInput<Partial<DocumentByGlobalSlug<S>>> };
+    }
+    ```
+
+    Whole `admin.livePreview` blocks (`url`, `debounceMs`, `defaultOpen`, `breakpoints`),
+    not a bare `slug → url` map: a developer who wants every preview URL in one place
+    wants every preview *setting* in one place, and a map of one field would send them
+    back to the collection file for the other three. The key supplies the slug, so each
+    entry's `url` resolver infers its own document type with no annotation — strictly
+    easier to type than `admin.livePreview.url`, which infers `TCollectionSlug` from a
+    sibling property (Design Decision 17).
+
+20. **Collection/global config wins over root config, field by field.** Consistent with
+    every other layered setting in this project, and with the existing
+    `collection.admin.livePreview.breakpoints ?? config.livePreview.breakpoints`
+    resolution (Design Decision 11), which this generalises rather than replaces. The
+    merge is per-field, not whole-object: a collection that sets only `defaultOpen`
+    inherits the root entry's `url`, exactly as a collection that sets only `url` today
+    inherits the root `breakpoints`. Whole-object replacement would make the root block
+    useless the moment a collection wanted to override one setting.
+
+    Resolution order for one setting, highest first:
+    1. `collection.admin.livePreview.<field>` / `global.admin.livePreview.<field>`
+    2. `config.livePreview.collections[slug].<field>` / `config.livePreview.globals[slug].<field>`
+    3. `config.livePreview.<field>` (root-level `breakpoints` only)
+    4. the field's own default (`DEFAULT_LIVE_PREVIEW_DEBOUNCE_MS`, `defaultOpen: false`,
+       `DEFAULT_LIVE_PREVIEW_BREAKPOINTS`)
+
+    One exported resolver, `resolveLivePreviewSettings`, owns that order. It is the only
+    place the precedence is written, called by `CollectionEditView`, `GlobalEditView`,
+    `NextAdminPage`, and the server-side URL endpoint — four call sites that must not
+    disagree about which URL a document previews at.
+
+21. **`defineCollection`/`defineGlobal` stop applying `livePreview` defaults.** They
+    resolve in isolation, before `defineConfig` has seen the root block (the same reason
+    Design Decision 11 put `breakpoints` resolution in the views). Today they default
+    `debounceMs`/`defaultOpen` eagerly, which makes "did the author set this, or is this
+    the default?" unanswerable at merge time and would let a collection's *default*
+    silently outrank a root entry's explicit value. `AdminLivePreviewConfig` therefore
+    becomes structurally identical to `AdminLivePreviewConfigInput` (all optional except
+    `url`), and `resolveLivePreviewSettings` applies every default at the end.
+
+22. **A `url` resolver may take a Convex `ctx`, and still lives in the client config.**
+    Precedent is exact: `textValidator`'s callback does `ctx.db.query(...)`, is authored
+    in `apps/www/src/vexcms/collections/pages.ts`, and that file is imported by the
+    *client* `vex.config.ts`. It works because `defineServerConfig` wraps the client
+    config and `convex/vex.ts` imports the result, so the callback is reachable from the
+    Convex runtime while being declared next to the collection it belongs to. No
+    server-config split is needed, and demanding one would split a collection's config
+    across two files for no gain.
+
+    The cost, identical to validators and documented as such: the closure is bundled
+    into the browser even though it never runs there, so it must not close over secrets.
+
+    Three accepted `url` forms, discriminated structurally:
+
+    ```ts
+    url: "/"                                            // literal path
+    url: (doc) => `/${doc.slug}`                        // client resolver (today)
+    url: { server: async ({ doc, ctx }) => `/${...}` }  // server resolver, gets ctx
+    ```
+
+    The server form is an object rather than a second bare function because a bare
+    `async (doc) => …` is indistinguishable from the client form at runtime — a function
+    that returns a promise is still just a function — and misrouting it would mean
+    calling `ctx.db` in the browser.
+
+23. **A server resolver costs one Convex round trip per debounced change; a string or
+    client resolver costs none.** The preview URL is a function of *unsaved* form values,
+    which exist only in the browser, so a server resolver must be re-evaluated with those
+    values whenever they change: a new `livePreviewUrl` query on `collectionsApi`, called
+    on the same debounce as `useLivePreviewSync`. Two things keep that cheap:
+
+    - **`NextAdminPage` resolves the initial URL server-side**, so opening an editor
+      never round-trips and the iframe has its final `src` on first paint.
+    - **Only the `{ server }` form takes that path.** A string or client resolver keeps
+      resolving synchronously in `resolveLivePreviewUrl` exactly as it does now, so the
+      common case is unchanged and the round trip is opt-in by the shape of the config.
+
+    The query is gated by the same `hasPermission` read check the collection's own `get`
+    runs. Without it, a resolver that reads `ctx.db` becomes an unauthenticated oracle —
+    the caller controls `values`, and the returned URL can encode what the resolver read.
+
+## Amendment 1 — Implementation
+
+### Step 9 — Root `livePreview` map and one precedence resolver [dev]
+
+#### packages/core/src/livePreview/types.ts
+
+`AdminLivePreviewConfig` becomes `AdminLivePreviewConfigInput` with a required `url`
+(Design Decision 21) — every other field optional, defaults applied by the resolver.
+`LivePreviewConfigInput`/`LivePreviewConfig` gain `collections` and `globals` maps typed
+as in Design Decision 19. `LivePreviewUrlResolver` keeps its bivariance hack (a union
+member cannot use method shorthand; without it every `CollectionConfig` with a generic
+slug stops being assignable — it broke `useCollectionForm`, `defineConfig` and `access`).
+New: `LivePreviewServerUrlResolver<TDoc, TDataModel>` and the `{ server }` wrapper type,
+plus `ResolvedLivePreviewSettings` (all fields required, `url` still a union).
+
+#### packages/core/src/livePreview/resolveSettings.ts
+
+New file. `resolveLivePreviewSettings({ config, kind, slug, admin })` implements Design
+Decision 20's four-level order and returns `ResolvedLivePreviewSettings | undefined`
+(`undefined` = no `url` anywhere, i.e. preview is off for that slug).
+
+#### packages/core/src/livePreview/resolveSettings.test.ts
+
+New file. Per-field precedence: collection value wins over root entry wins over root
+default; a collection setting one field inherits the rest from the root entry; a slug
+with neither returns `undefined`; defaults land only when nothing declared the field.
+
+#### packages/core/src/collections/config.ts, packages/core/src/globals/config.ts
+
+Drop the eager `debounceMs`/`defaultOpen` defaulting (Design Decision 21); pass
+`input.admin.livePreview` through untouched. Keeps the two boundary casts.
+
+#### packages/react/src/components/views/{CollectionEditView,GlobalEditView}.tsx
+
+Replace the inline `livePreview?.breakpoints ?? config.livePreview.breakpoints` and the
+`collection.admin.livePreview` reads with one `resolveLivePreviewSettings` call.
+
+#### packages/next/src/NextAdminPage.tsx
+
+Same call for `defaultOpen`, replacing the direct `collection.admin.livePreview?.defaultOpen`
+read.
+
+**Verify:** pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test
+
+### Step 10 — Server-resolved preview URLs [dev]
+
+#### packages/core/src/livePreview/resolveUrl.server.ts
+
+New file. `resolveLivePreviewUrlOnServer({ ctx, config, kind, slug, documentId, values })`
+— loads the saved document (when `documentId` is set), merges `values` over it, runs the
+`{ server }` resolver, returns `string | undefined`. Runs the collection's `hasPermission`
+read check first (Design Decision 23).
+
+#### packages/core/src/api/server.ts
+
+`collectionsApi` returns a new `livePreviewUrl` query: args
+`{ collection: v.string(), kind: v.optional(v.string()), documentId: v.optional(v.string()), values: v.any() }`,
+handler delegates to `resolveLivePreviewUrlOnServer`. Projects wire it by adding
+`livePreviewUrl` to the destructure in `convex/vex.ts` — apps/www and both templates
+updated in this step.
+
+#### packages/react/src/components/livePreview/LivePreviewPanel.tsx
+
+`resolveLivePreviewUrl` narrows the three forms: `string` returned as-is, client resolver
+called as today, `{ server }` returns `undefined` so the panel falls back to the
+server-supplied initial URL until the query answers. Preview-param appending is unchanged
+and applies to all three.
+
+#### packages/react/src/hooks/useLivePreviewServerUrl.ts (+ test)
+
+New file. When the resolved settings carry a `{ server }` resolver, subscribes to
+`vexConvexApi.livePreviewUrl` with the debounced form values and returns the resolved URL;
+returns the caller's static URL untouched otherwise, so no query is issued for the string
+and client-resolver forms.
+
+#### packages/next/src/NextAdminPage.tsx
+
+Resolves the initial URL server-side for a `{ server }` resolver and passes it as
+`initialPreviewUrl`, so the iframe's first paint needs no round trip.
+
+#### apps/www + packages/create-vexcms/templates/marketing-site
+
+`convex/vex.ts` exports `livePreviewUrl`; one collection migrated to the root
+`livePreview.collections` map to prove the shape end to end.
+
+#### packages/core/README.md, apps/docs/src/content/docs/guides/live-preview.mdx
+
+Document the root map, the precedence order, the three `url` forms, and the
+"server resolvers ship to the browser, so no secrets in the closure" rule.
+
+**Verify:** pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test && pnpm --filter @vexcms/next build
+
+---
+
+## Amendment 2 — typed resolver helpers, `livePreview` under `admin` (2026-09-21)
+
+Raised by the developer after using Amendment 1: `ctx` resolved to `never` in an inline
+`{ server }` resolver, and a global's `admin.livePreview` inferred nothing.
+
+24. **The project's `DataModel` arrives by module augmentation, so no config file needs
+    a generic or a helper.** `vex generate` already augments `@vexcms/core`'s
+    `GeneratedVexTypes` with `CollectionSlug`, `DocumentBySlug` and friends; it now emits
+    `DataModel: DataModel` there too, and `VexDataModel` reads it back (falling back to
+    `GenericDataModel` before the first generate). Every `ctx` default resolves through
+    that, so an inline `{ server }` resolver is fully typed in the root
+    `admin.livePreview.collections`/`globals` map, inside `defineCollection`, and inside
+    `defineGlobal` alike — `doc` from the map key or the sibling `slug`, `ctx` from the
+    augmentation.
+
+    This beats threading a type parameter: TypeScript has no partial type-argument
+    inference, so `defineCollection<DataModel>({…})` would silently drop every other
+    inferred parameter (`TFieldSlug` and with it `useAsTitle` checking) back to its
+    default. Augmentation costs the caller nothing and cannot regress inference.
+
+    `defineConfig<TDataModel>` keeps its parameter, defaulted to `VexDataModel`, as an
+    override for a project that wants to pin the model explicitly.
+    `livePreviewUrl`/`globalLivePreviewUrl`/`livePreviewPath` remain exported for typing
+    a resolver away from its config, but no config file needs them.
+    `defineServerConfig` needs no parameter: it consumes an already-resolved client
+    config and never types a resolver.
+
+25. **The root block moved from `config.livePreview` to `config.admin.livePreview`.**
+    A collection declares `admin.livePreview`; the project should declare the same thing
+    in the same place, so a reader looking for layered preview settings finds both at
+    `admin.livePreview`. Breaking for anyone who adopted Amendment 1's shape — a clean
+    cutover, no alias, since the feature is unreleased.
+
+**Verify:** pnpm build && pnpm test && pnpm verify:scaffold
+
+26. **`VexDataModel` types `ctx` for field `validate()` too; `doc` still needs the slug.**
+    `FieldValidateProps`/`FieldValidate` and every `xValidator` factory default
+    `TDataModel` to `VexDataModel`, so an inline `validate()` gets a real `ctx.db` with
+    no wrapper and no type argument (verified: `ctx.db.query("notATable")` and a wrong
+    index name are compile errors naming the project's tables).
+
+    `doc` cannot follow. A field is constructed by `text({ validate })` — TypeScript
+    contextually types that callback when the `text()` call is checked, which is strictly
+    before `defineCollection({ slug, fields })` exists to say which collection it belongs
+    to. Verified both ways: inline, `const s: string = doc.slug` fails with
+    `Type 'unknown' is not assignable to type 'string'`; through
+    `textValidator(TABLE_SLUG_PAGES, fn)` the same line compiles, because the slug
+    argument is what supplies `TCollectionSlug`.
+
+    (Note `VexDocument`'s `[key: string]: unknown` index signature makes a bogus property
+    name legal on a narrowed doc, so property *existence* is not a valid probe of this —
+    property *type* is.)
+
+    The helper is therefore still required for a typed `doc`, but now takes **zero type
+    arguments**: `TCollectionSlug` is inferred from the slug argument and `TDataModel`
+    defaults to `VexDataModel`. `textValidator<typeof TABLE_SLUG_PAGES, DataModel>(…)`
+    became `textValidator(TABLE_SLUG_PAGES, …)` in `apps/www` and the template.
+
+    Making a field know its collection without that argument would require the collection
+    to be established before its fields are typed — a curried
+    `defineCollection("pages")({ fields })`, or `fields` as a callback receiving typed
+    builders. Both are larger API changes than the one argument they save, and neither was
+    in scope here.
+
+27. **Field factories take the resource slug as their FIRST type parameter, and fields
+    accept global slugs.** `text<{}, "pages">(…)` worked but forced a placeholder, and
+    `text<{}, "siteSettings">(…)` was rejected outright — every field constrained its slug
+    parameter to `CollectionSlug` even though `defineGlobal` uses the same factories.
+    `VexResourceSlug` (`CollectionSlug | GlobalSlug`) and `DocumentByResourceSlug` fix the
+    constraint; the parameter order flips to `<TCollectionSlug, TFieldMeta, …>` across all
+    field types, inputs and factories.
+
+    Order chosen on measured usage: **no project config in this repo passes `meta:` at
+    all** (zero hits across `apps/www`, `apps/test` and both templates — meta is stamped at
+    runtime by `populateCollectionFieldMeta`), while `validate` — the thing that needs the
+    slug — appears in real configs. Since TypeScript has no partial type-argument
+    inference, whichever parameter is second can only be reached by spelling out the first,
+    so the one users actually want goes first. Result: `text<typeof TABLE_SLUG_PAGES>({ … })`
+    types `doc`, `value` and `ctx` with a single argument and no helper.
+
+28. **A field's `validate()` rejects by throwing, not by returning a message.** The return
+    type is now `Promise<void> | void`. A thrown value carries a stack, can be a project's
+    own error subclass, and can attach structured data through `ConvexError` (codes, the
+    conflicting document's id) — none of which a returned string can. It also removes the
+    footgun where the success path and the "forgot to return" path were the same
+    expression. `validateFields` catches whatever was thrown, attaches the field key, and
+    re-throws one `ConvexError` shape: a `ConvexError`'s own object payload is merged with
+    `field`, a string payload becomes `message`, and any other error contributes its
+    `.message`. So every consumer reads a failure identically regardless of what the
+    project threw.
+
+---
+
+## Amendment 3 — `vex` callback API (2026-09-21)
+
+Config callbacks (`validate`, the live-preview `{ server }` resolver, and later the
+lifecycle hooks) receive a raw Convex `ctx`. That is the lowest common denominator: it
+knows nothing about flat globals, relationship population, access rules, or access
+indexes, so every callback that needs those re-implements them by hand. This amendment
+adds a `vex` handle beside `ctx`.
+
+### Design Decisions
+
+29. **`vex` is added ALONGSIDE `ctx` as a sibling prop, and does NOT carry `ctx`.** Not a
+    replacement: `ctx.db` is the right tool for a one-row uniqueness probe, and removing
+    it would break every existing callback for no gain. Every callback that receives
+    `vex` already receives `ctx` in the same props object, so a `vex.ctx` would be a
+    second path to the same object — two ways to reach one thing, whose types could drift
+    apart. Omitting it also makes `VexCallbackApi` non-generic (Design Decision 32).
+
+30. **Read-only surface: `find`, `get`, `search`, `globals.get`, `globals.find`.** No
+    writes. A `validate()` that writes is a design error — it runs inside the write
+    pipeline, before the write it is gating — and a preview URL resolver writing to the
+    database is worse. Omitting writes makes that unrepresentable rather than merely
+    discouraged. The sibling `ctx.db` remains for anyone who genuinely needs it.
+
+31. **Access defaults to BYPASS inside callbacks, opt in per call.** A uniqueness check
+    that silently skips rows the current user cannot read lets a duplicate through — a
+    correctness bug that looks like a flake. So `vex.find("pages", { … })` bypasses, and
+    `vex.find("pages", { …, access: { user } })` runs the same `hasPermission` path the
+    public API does, for the rarer "does this user's org already own this slug" question.
+    The dangerous default is the explicit one.
+
+32. **`VexCallbackApi` takes no type parameters at all.** `validate` runs in a mutation
+    and the preview resolver in a query, but every operation `vex` exposes is a read, so
+    nothing in its signatures varies by context — and with `vex.ctx` dropped (Design
+    Decision 29) there is no member that needs the precise context type either. The
+    mutation-vs-query distinction is carried entirely by the sibling `ctx` prop, which is
+    typed per callsite: `ctx.db.patch` is available in a mutation callback and absent in a
+    query one, with no generic and no second API class.
+
+    Its argument and return types use `VexDataModel` — the project's own model, read from
+    the `vex generate` augmentation — rather than inferring the model back out of a
+    context type. A callback's context is always built from the project's own mutation or
+    query, so the two can never disagree, and inference would only add a conditional type
+    to every signature plus a `never` failure mode.
+
+33. **One factory builds it, called at each dispatch site, and it lives in
+    `api/server.ts`.** `createVexCallbackApi({ ctx, config })` closes over both and is
+    constructed once per callback invocation in
+    `validateFields` and `resolveLivePreviewUrlOnServer`. Hooks adopt the same call later.
+    Building it per invocation rather than per request keeps it independent of how a
+    caller reached the pipeline, and it is a plain object of bound closures — no cost
+    worth optimising. It ships from `api/server.ts` rather than a new module because
+    every server function, arg type and return type it needs is already imported there
+    for `collectionsApi`/`globalsApi`; a separate file would duplicate ~20 imports to add
+    no behaviour, and `@vexcms/core/server` is already the entry point a project reaches
+    for server-side APIs.
+
+### What this makes possible that `ctx` alone cannot
+
+- **Flat globals.** `ctx.db.get(id)` on a global returns the raw `vex_globals` row with a
+  nested `data` blob; `vex.globals.get("siteSettings")` returns the flat document.
+- **Relationship population.** `vex.get("pages", id, { depth: 1 })` resolves ids to
+  documents; `ctx.db` requires hand-written joins, written differently each time.
+- **Access-aware reads**, opt-in, sharing the real resolver rather than a re-implementation.
+- **Access-index narrowing** from `resolveAccessIndex`/`pickQueryIndex`, which a raw
+  `.filter()` scan does not get.
+- **Slug-typed arguments** checked against `IndexFieldsBySlug`, so index and field names
+  are verified against the collection actually named.
+- **One vocabulary** across `validate`, the preview resolver, and hooks — the preview
+  resolver's motivating case ("find the page referencing this document") becomes one call.
+
+34. **`vex`'s methods are typed from the SERVER functions' own arg/return types, never
+    restated and never from `vexConvexApi`.** Two different artifacts get confused here:
+
+    - `vexConvexApi.find` is a Convex `FunctionReference` — a client-side descriptor whose
+      args are the loose, validator-shaped `VexFindArgs` (`collection: CollectionSlug`,
+      `populate?: unknown`, an index signature) returning `VexDocument[] |
+      PaginationResult<VexDocument>`. Typing `vex.find` from it would DISCARD every
+      narrowing this amendment exists to provide: no per-slug document, no populate
+      inference, no depth literal.
+    - `find`/`get`/`search`/`getGlobal` in `@vexcms/core/server` are the real generic
+      functions, and they already export their arg and return types (`FindServerArgs`,
+      `FindReturn`, `FindReturnPaginated`, `GetServerArgs`, `GetReturn`, `SearchReturn`,
+      `DocReturnItem`, `GetGlobalServerArgs`, `GetGlobalReturn`).
+
+    So each method is declared as `Omit<XServerArgs<…>, "ctx" | "config">` in and
+    `XReturn<…>` out. Adding a field to `FindServerArgs` reaches `vex.find` with no edit
+    here; the shapes have exactly one definition.
+
+    **Why the parameter lists are still written out at all:** TypeScript has no
+    higher-order transformation of generic signatures — there is no `type
+    BindCtx<typeof find>` that drops one property from the argument object while
+    preserving `TCollectionSlug`/`TPopulate`/`D` inference for the caller. Mapped types
+    over a generic function collapse it to its default instantiation. The re-declaration
+    is therefore the parameter *list* only; every type inside it is imported. `find`'s
+    two overloads (with/without `paginationOpts`) are mirrored for the same reason.
+
+### Constraints
+
+- Callbacks live in the CLIENT config, so whatever `vex` imports ships to the browser
+  even though it never executes there. The factory must live behind the same server-only
+  import discipline `@vexcms/core/server` already uses, and the type exposed to config
+  authors must be type-only.
+- Everything inside a Convex mutation is already transactional, so `vex.find` inside
+  `validate` observes in-flight state. No caching layer may be added in front of it.
+
+## Amendment 3 — Implementation
+
+### Step 14 — `vex` callback API [dev]
+
+#### packages/core/src/api/server.ts
+
+2 edits. **1 — `VexCallbackApi`.** Every argument type is the server function's own
+`XServerArgs` minus the two properties the api already closed over; every return type is
+the server function's own. Nothing about option or document shapes is restated
+(Design Decision 34), and the interface takes no type parameters (Design Decision 32).
+
+```ts
+/**
+ * Read-only VexCMS API handed to config callbacks beside the raw Convex `ctx`.
+ *
+ * Exists because `ctx` is the lowest common denominator: it knows nothing about
+ * flat globals, relationship population, access rules, or access indexes, so
+ * every callback needing those re-implements them by hand.
+ *
+ * **Reads only.** A `validate()` that writes is a design error — it runs inside
+ * the write pipeline, before the write it gates — and a preview-URL resolver
+ * that writes is worse. Omitting writes makes that unrepresentable rather than
+ * merely discouraged; the sibling `ctx` prop remains for anything else.
+ *
+ * **No `ctx` member, and no type parameter.** Every callback receiving `vex`
+ * receives `ctx` in the same props object, so exposing it here would be a
+ * second path to one object whose types could drift. `VexDataModel` supplies
+ * the model directly — a callback's context is always built from the project's
+ * own mutation or query, so inferring it back out of a context type would add a
+ * conditional to every signature and a `never` failure mode for no gain.
+ */
+export interface VexCallbackApi {
+  find<
+    TCollectionSlug extends CollectionSlug,
+    const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+    const D extends number = 0,
+  >(
+    args: Omit<
+      FindServerArgs<VexDataModel, TCollectionSlug, TPopulate, D>,
+      "ctx" | "config"
+    > & { paginationOpts?: never },
+  ): Promise<DocReturnItem<TCollectionSlug, TPopulate, D>[]>;
+  find<
+    TCollectionSlug extends CollectionSlug,
+    const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+    const D extends number = 0,
+  >(
+    args: Omit<
+      FindServerArgs<VexDataModel, TCollectionSlug, TPopulate, D>,
+      "ctx" | "config"
+    > & { paginationOpts: PaginationOptions },
+  ): Promise<PaginationResult<DocReturnItem<TCollectionSlug, TPopulate, D>>>;
+
+  get<
+    TCollectionSlug extends CollectionSlug,
+    const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+    const D extends number = 0,
+  >(
+    args: Omit<GetServerArgs<VexDataModel, TCollectionSlug, TPopulate, D>, "ctx" | "config">,
+  ): Promise<GetReturn<TCollectionSlug, TPopulate, D>>;
+
+  search<
+    TCollectionSlug extends CollectionSlug,
+    const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+    const D extends number = 0,
+  >(
+    args: Omit<SearchServerArgs<VexDataModel, TCollectionSlug, TPopulate, D>, "ctx" | "config">,
+  ): Promise<DocReturnItem<TCollectionSlug, TPopulate, D>[]>;
+
+  globals: {
+    get<
+      TGlobalSlug extends GlobalSlug,
+      TPopulate extends GlobalPopulateShape<TGlobalSlug> = Record<string, never>,
+      D extends number = 0,
+    >(
+      args: Omit<GetGlobalServerArgs<VexDataModel, TGlobalSlug, TPopulate, D>, "ctx" | "config">,
+    ): Promise<GetGlobalReturn<TGlobalSlug, TPopulate, D>>;
+
+    find(
+      args?: Omit<GenericGlobalsQueryServerArgs<VexDataModel>, "ctx" | "config">,
+    ): Promise<VexDocumentGlobal[]>;
+  };
+}
+```
+
+**2 — `createVexCallbackApi`.** Lives here, not in a new module, because every server
+function, arg type and return type it needs is already imported by this file for
+`collectionsApi`/`globalsApi` — a separate file would duplicate ~20 imports to add no
+behaviour.
+
+```ts
+/**
+ * Builds the {@link VexCallbackApi} handed to one config-callback invocation.
+ *
+ * Called per invocation rather than per request (`validateFields`,
+ * `resolveLivePreviewUrlOnServer`, and later the hook dispatcher), so it stays
+ * independent of how a caller reached the pipeline. It is a plain object of
+ * bound closures.
+ *
+ * `ctx` is captured but never re-exposed: callers already hold it.
+ *
+ * @param props.ctx - The context the callback is running under.
+ * @param props.config - The resolved server config.
+ * @returns The read-only api.
+ */
+export function createVexCallbackApi(props: {
+  ctx: GenericQueryCtx<VexDataModel> | GenericMutationCtx<VexDataModel>;
+  config: VexConfig;
+}): VexCallbackApi {
+  const { ctx, config } = props;
+
+  // Bypass is the DEFAULT (Design Decision 31). A uniqueness check that silently
+  // skipped rows the caller cannot read would let a duplicate through — a
+  // correctness bug that reads as a flake. The access-aware path is opt-in.
+  const withAccess = (access?: AccessCallOptions) => access ?? { bypass: true as const };
+
+  return {
+    find: ((args: { access?: AccessCallOptions }) =>
+      find({ ...args, ctx, config, access: withAccess(args.access) } as never)) as VexCallbackApi["find"],
+    get: ((args: { access?: AccessCallOptions }) =>
+      get({ ...args, ctx, config, access: withAccess(args.access) } as never)) as VexCallbackApi["get"],
+    search: ((args: { access?: AccessCallOptions }) =>
+      search({ ...args, ctx, config, access: withAccess(args.access) } as never)) as VexCallbackApi["search"],
+    globals: {
+      get: ((args: { access?: AccessCallOptions }) =>
+        getGlobal({ ...args, ctx, config, access: withAccess(args.access) } as never)) as VexCallbackApi["globals"]["get"],
+      find: ((args?: { access?: AccessCallOptions }) =>
+        findGlobals({ ...args, ctx, config, access: withAccess(args?.access) } as never)) as VexCallbackApi["globals"]["find"],
+    },
+  };
+}
+```
+
+Each delegate casts once at the boundary — the same pattern `globalsApi`'s own wrappers
+already use in this file, because a generic signature cannot be preserved through a
+closure that injects properties.
+
+#### packages/core/src/api/callbackApi.test.ts
+
+New file. Behaviour only — no test asserts that a delegate forwards a property.
+
+```ts
+import { convexTest } from "convex-test";
+import type { GenericDataModel, GenericMutationCtx } from "convex/server";
+import { describe, expect, test } from "vitest";
+
+import { createVexCallbackApi } from "./server";
+import * as _generatedApi from "./test/convex/_generated/api";
+import schema from "./test/convex/schema";
+
+describe("createVexCallbackApi", () => {
+  test("reads a global as a flat document, not the raw vex_globals row", async () => {
+    // The whole point of `vex.globals.get` over `ctx.db.get`: the row stores user
+    // fields nested under `data`, and every consumer expects them at the root.
+    const t = convexTest(schema, modules);
+    const settings = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      createVexCallbackApi({ ctx, config }).globals.get({ slug: "siteSettings" }),
+    );
+    expect(settings).toMatchObject({ siteName: "Vex" });
+  });
+
+  test("populates relationships through get()", async () => { /* author id -> document */ });
+
+  test("bypasses access by default, so a uniqueness probe cannot miss a hidden row", async () => {
+    // A denied role must still see the conflicting row here, or the write that
+    // this read gates would create a duplicate.
+  });
+
+  test("honours an explicit access option", async () => {
+    // Same query, `access: { user }` -> the row the rule hides is absent.
+  });
+
+  test("find() respects paginationOpts, returning a page rather than an array", async () => {
+    // The overload split is the only place `vex`'s signature diverges from a
+    // plain read, so it is the only one worth pinning.
+  });
+});
+```
+
+#### packages/core/src/fields/baseTypes.ts
+
+1 edit — `FieldValidateProps` gains `vex`, beside `ctx`.
+
+```ts
+  ctx: GenericMutationCtx<TDataModel>;
+  /**
+   * Read-only VexCMS API: flat globals, populated relationships, access-aware
+   * reads. Reach for the `ctx` above for a single indexed probe, and for `vex`
+   * when the document shape or the access rules matter.
+   */
+  vex: VexCallbackApi;
+```
+
+#### packages/core/src/collections/validateFields.ts
+
+2 edits. **1 —** `validateFields` gains `config: VexConfig` (its only callers, `create`
+and `update`'s servers, already hold it). **2 —** build the api once and pass it through:
+
+```ts
+  const vex = createVexCallbackApi({ ctx: props.ctx, config: props.config });
+
+  for (const [fieldKey, field] of Object.entries(props.collection.fields)) {
+    // … unchanged guard …
+    try {
+      await validate({ value: props.doc[fieldKey], doc: props.doc, fieldKey, field, ctx: props.ctx, vex });
+    } catch (thrown) {
+      throw toFieldValidationError({ thrown, fieldKey });
+    }
+  }
+```
+
+#### packages/core/src/api/create/server.ts, packages/core/src/api/update/server.ts
+
+1 edit each — pass `config` to `validateFields`:
+
+```ts
+  await validateFields({ collection, doc, keys: Object.keys(doc), ctx: args.ctx, config: args.config });
+```
+
+#### packages/core/src/livePreview/types.ts
+
+1 edit — the server resolver's props gain `vex`.
+
+```ts
+export type LivePreviewServerUrlResolver<
+  TDoc extends Partial<VexDocument> = Partial<VexDocument>,
+  TCtx = GenericQueryCtx<VexDataModel>,
+> = {
+  bivariantResolve(props: {
+    ctx: TCtx;
+    vex: VexCallbackApi;
+    doc: TDoc;
+  }): Promise<string | undefined> | string | undefined;
+}["bivariantResolve"];
+```
+
+#### packages/core/src/livePreview/resolveUrl.server.ts
+
+1 edit — the resolver call.
+
+```ts
+  return await serverResolver({
+    ctx: props.ctx as never,
+    vex: createVexCallbackApi({ ctx: props.ctx, config: props.config }),
+    doc: previewDocument,
+  });
+```
+
+#### apps/www/src/vex.config.ts
+
+1 edit — `siteSettings`'s preview resolver, which currently hand-rolls a `ctx.db` read,
+becomes the motivating case for the api.
+
+```ts
+        siteSettings: {
+          url: {
+            server: async ({ vex }) => {
+              const [page] = await vex.find({ collection: "pages", limit: 1 })
+              return page ? resolvePagePath(page.slug) : "/"
+            },
+          },
+        },
+```
+
+`apps/www/src/vexcms/collections/pages.ts` is deliberately NOT changed: one indexed
+uniqueness probe is exactly what `ctx.db` is for, and leaving it demonstrates that `vex`
+is an addition rather than a replacement.
+
+#### packages/core/README.md, apps/docs/src/content/docs/guides/live-preview.mdx, apps/docs/src/content/docs/guides/lifecycle-hooks.mdx
+
+Document `vex` beside `ctx`: the read-only boundary, the bypass-by-default rule and why
+it is that way, and the sibling `ctx` as the escape hatch.
+
+**Verify:** `pnpm --filter @vexcms/core test && pnpm --filter www build`

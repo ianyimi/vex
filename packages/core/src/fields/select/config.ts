@@ -1,6 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
-import type { CollectionSlug } from "../../types/generated";
+import type { VexResourceSlug } from "../../types/generated";
 import type { SelectFieldInput, SelectField } from "./types";
 
 /**
@@ -59,11 +59,11 @@ import type { SelectFieldInput, SelectField } from "./types";
  * @see {@link SelectField} for the resolved output type
  */
 export function select<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
 >(
-  options?: SelectFieldInput<TFieldMeta, TCollectionSlug>,
-): SelectField<TFieldMeta, TCollectionSlug> {
+  options?: SelectFieldInput<TCollectionSlug, TFieldMeta>,
+): SelectField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.select.type,
     interfaceType: ADMIN_FIELDS.select.interfaceType,

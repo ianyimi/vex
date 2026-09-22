@@ -198,6 +198,20 @@ describe("generateVexTypes — declare module augmentation", () => {
     expect(output).toContain("interface GeneratedVexTypes");
   });
 
+  it("augments with the project's DataModel, so ctx-taking config callbacks need no generic", () => {
+    const config = defineServerConfig({
+      config: defineConfig({
+        collections: [defineCollection({ slug: "posts", fields: { title: text() } })],
+      }),
+    });
+    const output = generateVexTypes({ config });
+    // Both halves matter: the import is what makes the augmented name resolve,
+    // and the augmentation is what types `ctx` in `admin.livePreview.url`'s
+    // server form without a helper or a type argument.
+    expect(output).toContain(`import type { DataModel, Id } from "@convex/_generated/dataModel"`);
+    expect(output).toContain("DataModel: DataModel");
+  });
+
   it("includes CollectionSlug in GeneratedVexTypes augmentation", () => {
     const config = defineServerConfig({ config: defineConfig({
       collections: [

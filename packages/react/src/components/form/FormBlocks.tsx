@@ -21,6 +21,7 @@ import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 import { Accordion, AccordionContent, AccordionItem } from "../ui/accordion";
 import { FormError } from "./FormError";
 import { Draggable, DragHandle, Droppable } from "../ui/dnd";
+import type { VexResourceSlug } from "@vexcms/core";
 
 /**
  * Props for the `FormBlocks` component.
@@ -259,7 +260,7 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
   modalOpen,
   openEditor,
   closeEditor,
-}: InputComponentProps<TFieldMeta, BlocksField<TFieldMeta>> & {
+}: InputComponentProps<TFieldMeta, BlocksField<VexResourceSlug, TFieldMeta>> & {
   field: TypedFieldApi<GenericBlock[]>;
   submissionAttempts: number;
   /** Whether the block editor modal is open (driven by URL param). */

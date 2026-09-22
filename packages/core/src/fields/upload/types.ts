@@ -1,5 +1,5 @@
 import type { BaseField, BaseFieldInput, FieldValidateProps } from "../baseTypes";
-import type { CollectionSlug, MediaCollectionSlug } from "../../types/generated";
+import type { MediaCollectionSlug, VexResourceSlug } from "../../types/generated";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
 
@@ -8,9 +8,9 @@ import { BaseFieldMeta } from "../types";
  * and references the target media collection slug.
  */
 export interface UploadFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
+> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
   /**
    * The slug of the media collection that stores uploaded files for this field.
    *
@@ -52,16 +52,16 @@ export interface UploadFieldInput<
    */
   accept?: string;
   /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
 }
 
 /**
  * Resolved upload field definition after defaults are applied.
  */
 export interface UploadField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseField<TFieldMeta, TCollectionSlug> {
+> extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.upload.type;
   to: MediaCollectionSlug;
   /**
@@ -85,5 +85,5 @@ export interface UploadField<
    */
   accept: string;
   /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
 }

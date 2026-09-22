@@ -11,7 +11,8 @@ pnpm add @vexcms/next@alpha
 ## Quick Setup
 
 ```tsx
-// app/admin/clientProviders.tsx
+// components/providers/client.tsx — mounted at the APP root, not just the admin
+// route: the public site reads the same config for live preview.
 "use client"
 import { VexConfigProvider } from "@vexcms/react"
 import config from "@/vex.config"
@@ -26,15 +27,10 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
 import { NextAdminLayout } from "@vexcms/next/client"
 import { getCurrentUser } from "@/auth/serverUtils"
 
-import { ClientProviders } from "./clientProviders"
-
 export default async function AdminRootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
-  return (
-    <ClientProviders>
-      <NextAdminLayout user={user ?? undefined}>{children}</NextAdminLayout>
-    </ClientProviders>
-  )
+  // No provider here: the root layout's `ClientProviders` already mounted it.
+  return <NextAdminLayout user={user ?? undefined}>{children}</NextAdminLayout>
 }
 ```
 
@@ -70,11 +66,11 @@ export default function AdminPage({
 
 ### Roadmap note
 
-Versioning, drafts, and live preview are not implemented yet — both are in progress on the [roadmap](https://docs.vexcms.dev). A global's `versions.drafts` option parses and is stored on the resolved config, but it is not enforced: every read still returns the live document. See [docs.vexcms.dev](https://docs.vexcms.dev) for current status.
+Versioning and drafts are not implemented yet — in progress on the [roadmap](https://docs.vexcms.dev). Live preview ships: `NextAdminPage` resolves each document's preview URL (including a `{ server }` resolver that reads the database) and the edit views render the preview panel. A global's `versions.drafts` option parses and is stored on the resolved config, but it is not enforced: every read still returns the live document. See [docs.vexcms.dev](https://docs.vexcms.dev) for current status.
 
 ### Access Control
 
-- **Config provider** — `VexConfigProvider` (`@vexcms/react`) supplies the resolved client config — including `access` and `storage.clientUploads` — to the admin panel via React context, mounted once by your app around the admin route
+- **Config provider** — `VexConfigProvider` (`@vexcms/react`) supplies the resolved client config — including `access` and `storage.clientUploads` — to the admin panel via React context, mounted once by your app at the ROOT layout so the admin panel and the public site share one provenance (live preview reads its collections, globals, and `allowedOrigins` from the same context)
 - **Collection-level permissions** — `usePermission` gates create, read, update, and delete per collection and per global
 - **Field-level permissions** — a per-field access rule hides a read-denied input entirely and renders an update-denied one read-only; edit forms submit only the fields the user actually changed
 - **UI enforcement** — Buttons and actions are disabled or hidden when the current user lacks permission

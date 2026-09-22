@@ -6,14 +6,14 @@ import { useQuery } from "@tanstack/react-query";
 import type { UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
 import {
   getCollectionInputSchema,
+  getGlobalInputSchema,
   LIVE_PREVIEW_COOKIE,
   LIVE_PREVIEW_ID_PARAM,
   LIVE_PREVIEW_QUERY_PARAM,
-  type CollectionConfig,
-  type CollectionSlug,
-  type DocumentByCollectionSlug,
+  type DocumentByResourceSlug,
+  type VexResourceSlug,
 } from "@vexcms/core";
-import { LivePreviewIndicator } from "../components/livePreview/LivePreviewIndicator";
+import { useVexConfig } from "./VexConfigContext";
 import {
   LIVE_PREVIEW_MESSAGE_SOURCE,
   isLivePreviewMessage,
@@ -23,11 +23,25 @@ import {
 } from "./livePreviewProtocol";
 
 /**
- * Live-preview overlay state — an `id → unsaved values` map.
+ * Live-preview overlay state.
+ *
+ * `valuesById` is keyed by PREVIEW KEY, not by document id. For a collection
+ * document that is its `_id`, but a global has no per-document identity worth
+ * addressing — there is exactly one `siteSettings` — so its edit view keys
+ * updates by the global's slug. `globalSlugs` is what lets `useLivePreview`
+ * derive the same key on the consumer side; keying by `doc._id` there meant a
+ * global's updates landed in the map under a key nothing ever read.
+ */
+type LivePreviewContextValue = {
+  valuesById: Map<string, Record<string, unknown>>;
+  globalSlugs: ReadonlySet<string>;
+};
+
+/**
  * `null` is the default so `useLivePreview` can tell "no provider mounted, or
  * preview mode disabled" from "provider mounted, nothing unsaved yet".
  */
-const LivePreviewContext = createContext<Map<string, Record<string, unknown>> | null>(null);
+const LivePreviewContext = createContext<LivePreviewContextValue | null>(null);
 
 /**
  * Decides whether preview mode is active for this page load.
@@ -62,28 +76,29 @@ function useLivePreviewEnabled(): boolean {
 
 /**
  * Mounts the live-preview listener (both `postMessage` and `BroadcastChannel`)
- * for the subtree it wraps, and renders the floating `LivePreviewIndicator`
- * alongside `children` — but only once {@link useLivePreviewEnabled} confirms
- * both the query param and the session-verified marker cookie are present.
- * Otherwise it renders `children` untouched, at zero cost.
+ * for the subtree it wraps, once {@link useLivePreviewEnabled} confirms both the
+ * query param and the session-verified marker cookie are present. Otherwise it
+ * renders `children` untouched, at zero cost.
+ *
+ * Renders no visual affordance either way: the admin panel frames the preview
+ * and owns its controls.
  *
  * Always mounted by the caller (`NextLivePreviewProvider` in `@vexcms/next`);
  * no project writes the gating logic itself.
  *
- * @param props.allowedOrigins - Explicitly configured origins permitted to
- *   post `postMessage` control frames (`config.livePreview.allowedOrigins`).
- *   Irrelevant to `BroadcastChannel`, which cannot cross origins at all.
- * @param props.collections - The resolved `collections` array, needed to
- *   validate an incoming message's `values` against the target collection's
- *   generated Zod schema before it ever reaches a render.
+ * Everything it needs comes from `VexConfigContext` — `allowedOrigins` to
+ * screen `postMessage` frames, and `collections`/`globals` both to validate an
+ * incoming payload against the target's generated Zod schema and to tell which
+ * kind of resource a slug addresses. Passing those as props would be a second
+ * provenance for config that can disagree with the first.
+ *
  * @param props.children - The subtree that may call `useLivePreview`.
  * @returns `children`, wrapped in the overlay context when preview mode is on.
  */
-export function LivePreviewProvider(props: {
-  allowedOrigins: string[];
-  collections: CollectionConfig[];
-  children: ReactNode;
-}) {
+export function LivePreviewProvider(props: { children: ReactNode }) {
+  const config = useVexConfig();
+  const { collections, globals } = config;
+  const allowedOrigins = config.admin.livePreview.allowedOrigins;
   const enabled = useLivePreviewEnabled();
   const [valuesById, setValuesById] = useState<Map<string, Record<string, unknown>>>(
     () => new Map(),
@@ -119,15 +134,25 @@ export function LivePreviewProvider(props: {
       if (!isLivePreviewMessage(data)) return;
       if (data.type !== "vex-live-preview-update") return;
 
-      const targetCollection = props.collections.find(
+      // Collections first, then globals: a global's edit view sends its own slug
+      // as `collectionSlug`, and looking only at collections silently dropped
+      // every global update — which is why editing `siteSettings` changed nothing.
+      const targetCollection = collections.find(
         (collection) => collection.slug === data.collectionSlug,
       );
-      if (!targetCollection) return;
+      const targetGlobal = targetCollection
+        ? undefined
+        : globals.find((global) => global.slug === data.collectionSlug);
 
-      const parsedValues = getCollectionInputSchema({
-        collection: targetCollection,
-        partial: true,
-      }).safeParse(data.values);
+      const parsedValues = targetCollection
+        ? getCollectionInputSchema({ collection: targetCollection, partial: true }).safeParse(
+            data.values,
+          )
+        : targetGlobal
+          ? getGlobalInputSchema({ global: targetGlobal }).partial().safeParse(data.values)
+          : undefined;
+      // A slug that names neither: not ours to apply.
+      if (!parsedValues) return;
       if (!parsedValues.success) {
         // Silently dropping a rejected payload looks identical to "the
         // transport never arrived", which is the hardest live-preview failure
@@ -163,7 +188,7 @@ export function LivePreviewProvider(props: {
     }
 
     function handleWindowMessage(event: MessageEvent) {
-      if (!props.allowedOrigins.includes(event.origin)) return;
+      if (!allowedOrigins.includes(event.origin)) return;
       applyIncomingValues(event.data);
     }
 
@@ -181,14 +206,18 @@ export function LivePreviewProvider(props: {
       window.removeEventListener("message", handleWindowMessage);
       channel?.close();
     };
-  }, [enabled, props.allowedOrigins, props.collections]);
+  }, [enabled, allowedOrigins, collections, globals]);
+
+  const contextValue = useMemo<LivePreviewContextValue>(
+    () => ({ valuesById, globalSlugs: new Set(globals.map((global) => global.slug)) }),
+    [valuesById, globals],
+  );
 
   if (!enabled) return <>{props.children}</>;
 
   return (
-    <LivePreviewContext.Provider value={valuesById}>
+    <LivePreviewContext.Provider value={contextValue}>
       {props.children}
-      <LivePreviewIndicator />
     </LivePreviewContext.Provider>
   );
 }
@@ -233,7 +262,8 @@ function useLivePreviewSearchParam(paramName: string): string | null {
 }
 
 /**
- * Overlays unsaved editor values onto a document a consumer already fetched,
+ * Overlays unsaved editor values onto a document a consumer already fetched.
+ * `collectionSlug` accepts a global's slug too — the same overlay serves both,
  * and announces this render site to the admin panel via the mount handshake.
  *
  * `collectionSlug` is a required second argument, not inferred from `doc` —
@@ -249,13 +279,23 @@ function useLivePreviewSearchParam(paramName: string): string | null {
  *   `doc` is absent and the current URL carries a `vexLivePreviewId` matching an
  *   entry in the map — a document synthesized from the unsaved values alone.
  */
-export function useLivePreview<TCollectionSlug extends CollectionSlug = CollectionSlug>(
-  doc: DocumentByCollectionSlug<TCollectionSlug> | null | undefined,
+export function useLivePreview<TCollectionSlug extends VexResourceSlug = VexResourceSlug>(
+  doc: DocumentByResourceSlug<TCollectionSlug> | null | undefined,
   collectionSlug: TCollectionSlug,
-): DocumentByCollectionSlug<TCollectionSlug> | null | undefined {
-  const valuesById = useContext(LivePreviewContext);
+): DocumentByResourceSlug<TCollectionSlug> | null | undefined {
+  const context = useContext(LivePreviewContext);
+  const valuesById = context?.valuesById;
   const previewId = useLivePreviewSearchParam(LIVE_PREVIEW_ID_PARAM);
-  const savedDocId = (doc as { _id?: string } | null | undefined)?._id;
+
+  // A global is addressed by its slug, matching what `GlobalEditView` sends as
+  // the update's `documentId` — there is only ever one document per global, and
+  // its `_id` is an implementation detail neither side should have to agree on.
+  // Collections keep document identity, which is the only thing that can
+  // distinguish two documents of the same collection on one page.
+  const isGlobal = context?.globalSlugs.has(collectionSlug) ?? false;
+  const savedDocId = isGlobal
+    ? collectionSlug
+    : (doc as { _id?: string } | null | undefined)?._id;
 
   useLivePreviewHandshake({
     collectionSlug,
@@ -269,7 +309,7 @@ export function useLivePreview<TCollectionSlug extends CollectionSlug = Collecti
     if (savedDocId) {
       const unsavedValues = valuesById.get(savedDocId);
       return unsavedValues
-        ? ({ ...doc, ...unsavedValues } as DocumentByCollectionSlug<TCollectionSlug>)
+        ? ({ ...(doc as object), ...unsavedValues } as DocumentByResourceSlug<TCollectionSlug>)
         : doc;
     }
 
@@ -281,7 +321,7 @@ export function useLivePreview<TCollectionSlug extends CollectionSlug = Collecti
       _id: previewId,
       _creationTime: Date.now(),
       ...unsavedValues,
-    } as DocumentByCollectionSlug<TCollectionSlug>;
+    } as DocumentByResourceSlug<TCollectionSlug>;
   }, [doc, savedDocId, valuesById, previewId]);
 }
 
@@ -289,9 +329,9 @@ export function useLivePreview<TCollectionSlug extends CollectionSlug = Collecti
  * `useLivePreviewQuery`'s result — a `useQuery` result whose `data` is the single
  * overlaid document rather than the query's own array.
  */
-export type LivePreviewQueryResult<TCollectionSlug extends CollectionSlug = CollectionSlug> =
-  Omit<UseQueryResult<DocumentByCollectionSlug<TCollectionSlug>[]>, "data"> & {
-    data: DocumentByCollectionSlug<TCollectionSlug> | undefined;
+export type LivePreviewQueryResult<TCollectionSlug extends VexResourceSlug = VexResourceSlug> =
+  Omit<UseQueryResult<DocumentByResourceSlug<TCollectionSlug>[]>, "data"> & {
+    data: DocumentByResourceSlug<TCollectionSlug> | undefined;
   };
 
 /**
@@ -312,13 +352,13 @@ export type LivePreviewQueryResult<TCollectionSlug extends CollectionSlug = Coll
  * @returns The query result with `data` narrowed to the single overlaid document.
  */
 export function useLivePreviewQuery<
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TQueryKey extends readonly unknown[] = readonly unknown[],
 >(
   queryOptions: UseQueryOptions<
-    DocumentByCollectionSlug<TCollectionSlug>[],
+    DocumentByResourceSlug<TCollectionSlug>[],
     Error,
-    DocumentByCollectionSlug<TCollectionSlug>[],
+    DocumentByResourceSlug<TCollectionSlug>[],
     TQueryKey
   >,
   collectionSlug: TCollectionSlug,
@@ -334,9 +374,9 @@ export function useLivePreviewQuery<
  * "nothing to render" case instead of two.
  */
 export type LivePreviewDocumentQueryResult<
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> = Omit<UseQueryResult<DocumentByCollectionSlug<TCollectionSlug> | null>, "data"> & {
-  data: DocumentByCollectionSlug<TCollectionSlug> | undefined;
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> = Omit<UseQueryResult<DocumentByResourceSlug<TCollectionSlug> | null>, "data"> & {
+  data: DocumentByResourceSlug<TCollectionSlug> | undefined;
 };
 
 /**
@@ -362,19 +402,24 @@ export type LivePreviewDocumentQueryResult<
  * ```
  */
 export function useLivePreviewDocumentQuery<
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   // Inferred from the query itself: a `getFirst`-style read is typed
   // `Doc | null`, a lookup by id often just `Doc`, and pinning the parameter to
   // one of those makes the other fail to assign.
-  TData extends DocumentByCollectionSlug<TCollectionSlug> | null =
-    DocumentByCollectionSlug<TCollectionSlug> | null,
+  TData extends DocumentByResourceSlug<TCollectionSlug> | null =
+    DocumentByResourceSlug<TCollectionSlug> | null,
   TQueryKey extends readonly unknown[] = readonly unknown[],
 >(
   queryOptions: UseQueryOptions<TData, Error, TData, TQueryKey>,
   collectionSlug: TCollectionSlug,
 ): LivePreviewDocumentQueryResult<TCollectionSlug> {
   const queryResult = useQuery(queryOptions);
-  const previewedDoc = useLivePreview(queryResult.data, collectionSlug);
+  // One cast: `TData` is a subtype of the resolved document, but TS distributes
+  // `DocumentByResourceSlug` over the slug union and loses that relation.
+  const previewedDoc = useLivePreview(
+    queryResult.data as DocumentByResourceSlug<TCollectionSlug> | null,
+    collectionSlug,
+  );
   return {
     ...queryResult,
     data: previewedDoc ?? undefined,

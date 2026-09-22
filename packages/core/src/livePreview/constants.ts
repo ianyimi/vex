@@ -142,3 +142,32 @@ export const DEFAULT_LIVE_PREVIEW_BREAKPOINTS: LivePreviewBreakpoint[] = [
   { label: "xl", width: 1280, icon: "Laptop" },
   { label: "2xl", width: 1536, icon: "Monitor" },
 ];
+
+/**
+ * Appends the params that turn a public URL into a preview request.
+ *
+ * Lives in core, not beside the panel, because BOTH sides need it: the browser
+ * resolving a string/client `url`, and `NextAdminPage` resolving a `{ server }`
+ * one. Skipping it produces a URL that loads a perfectly normal page which
+ * listens to nothing — a silent failure, which is exactly what happened when
+ * the server-resolved path had its own un-appended copy.
+ *
+ * @param props.url - The resolved public URL.
+ * @param props.collectionSlug - The collection or global being previewed.
+ * @param props.tempId - The temp id, only while the document is unsaved.
+ * @returns The URL with `vexLivePreview=1` and, when unsaved, the temp-id params.
+ */
+export function appendLivePreviewParams(props: {
+  url: string;
+  collectionSlug: string;
+  tempId?: string;
+}): string {
+  const previewParams = new URLSearchParams({ [LIVE_PREVIEW_QUERY_PARAM]: "1" });
+  if (props.tempId) {
+    previewParams.set(LIVE_PREVIEW_ID_PARAM, props.tempId);
+    previewParams.set(LIVE_PREVIEW_COLLECTION_PARAM, props.collectionSlug);
+  }
+
+  const querySeparator = props.url.includes("?") ? "&" : "?";
+  return `${props.url}${querySeparator}${previewParams.toString()}`;
+}

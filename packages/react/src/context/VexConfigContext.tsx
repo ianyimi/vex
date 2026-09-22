@@ -13,8 +13,9 @@ import {
  * Holds the live VexCMS client config for the duration of the admin session —
  * the single provenance for config, access, and client-upload functions.
  *
- * Populated by the app's `VexConfigProvider` mount (`clientProviders.tsx`),
- * which imports `~/vex.config` directly. Because that module is a
+ * Populated by the app's single `VexConfigProvider` mount
+ * (`components/providers/client.tsx`), at the app root so the admin panel and
+ * the public site read one provenance. It imports `~/vex.config` directly. Because that module is a
  * `"use client"` file importing `vex.config` directly, Turbopack's Fast
  * Refresh re-evaluates it when any collection file changes — which updates
  * this context and re-renders all consumers, including `CollectionListView`
@@ -40,10 +41,10 @@ export function useVexConfig(): VexClientConfig {
 }
 
 /**
- * Mounts `VexConfigContext` for the subtree it wraps. The app's own
- * `clientProviders.tsx` is the only caller — it imports `~/vex.config`
- * directly so the config's callbacks (`access`, `storage.clientUploads`)
- * survive into the client bundle.
+ * Mounts `VexConfigContext` for the subtree it wraps. The app's root
+ * `ClientProviders` is the only caller — it imports `~/vex.config` directly so
+ * the config's callbacks (`access`, `storage.clientUploads`, and
+ * `admin.livePreview.url` resolvers) survive into the client bundle.
  *
  * @param props - The resolved client config to provide, and the subtree that consumes it.
  * @returns The context provider wrapping `props.children`.

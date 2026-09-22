@@ -18,6 +18,7 @@ import { useVexConfig } from "../../../context/VexConfigContext";
 import { resolveRelationshipPreview } from "./preview";
 import { get } from "@vexcms/core/client";
 import { GenericId } from "convex/values";
+import type { VexResourceSlug } from "@vexcms/core";
 
 /**
  * Relationship field input — popover combobox.
@@ -31,7 +32,7 @@ import { GenericId } from "convex/values";
 export const RelationshipFieldInput = createFieldInput<
   string[],
   CollectionFieldMeta,
-  RelationshipField<CollectionFieldMeta>
+  RelationshipField<VexResourceSlug, CollectionFieldMeta>
 >(({ name, readOnly, fieldDef, field, index, submissionAttempts }) => {
   // `createFieldInput`'s render context provides { name, fieldDef, readOnly,
   // field, submissionAttempts } — no `config`. Read the live VexConfig from the

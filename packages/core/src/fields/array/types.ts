@@ -1,7 +1,7 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseField, BaseFieldInput, FieldAdminConfig, FieldValidateProps } from "../baseTypes";
 import { AdminField, BaseFieldMeta } from "../types";
-import type { CollectionSlug } from "../../types/generated";
+import type { VexResourceSlug } from "../../types/generated";
 
 /**
  * Union of all types allowed as array item values.
@@ -61,10 +61,10 @@ export type ArrayType = string | number | boolean | object;
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`, `searchIndex`)
  */
 export interface ArrayFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TArrayType extends ArrayType = string,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
+> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
   labels?: {
     singular: string;
     plural: string;
@@ -91,7 +91,7 @@ export interface ArrayFieldInput<
     error?: string;
   };
   /** Server-only async validation with `value` typed as `TArrayType[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, TArrayType[]>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, TArrayType[]>): Promise<void> | void;
 }
 
 /**
@@ -105,10 +105,10 @@ export interface ArrayFieldInput<
  * @see {@link array} for the config function that produces this type
  */
 export interface ArrayField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TArrayType extends ArrayType = string,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseField<TFieldMeta, TCollectionSlug> {
+> extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.array.type;
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;
@@ -138,5 +138,5 @@ export interface ArrayField<
     error?: string;
   };
   /** Server-only async validation with `value` typed as `TArrayType[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, TArrayType[]>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, TArrayType[]>): Promise<void> | void;
 }

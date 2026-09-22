@@ -90,25 +90,25 @@ export const roadmapBlock = defineBlock({
         {
           feature: "Versioning & Drafts",
           description: "Draft/publish workflow with autosave and version history — in active development.",
-          status: "coming-soon",
+          status: "planned",
         },
         {
           feature: "Live Preview",
           description:
             "Side-by-side preview of draft content against the real frontend before publishing — builds on the drafts infrastructure.",
-          status: "coming-soon",
+          status: "planned",
         },
         {
           feature: "Form Builder & Lifecycle Hooks",
           description:
             "Composable form fields beyond content editing, plus beforeChange/afterChange hooks for custom side effects.",
-          status: "coming-soon",
+          status: "planned",
         },
         {
           feature: "Field Input Consistency Pass",
           description:
             "Touch-ups across field inputs — starting with the relationship field — for consistent interaction patterns in the admin panel.",
-          status: "coming-soon",
+          status: "planned",
         },
         {
           feature: "Richtext, JSON, Email & Textarea Fields",

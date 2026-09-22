@@ -212,6 +212,38 @@ is no preview-snapshot management utility.
 
 ### Lifecycle Hooks & Validation
 
+A field's `validate()` is fully typed from one type argument — the owning collection's
+or global's slug, which is also the field factory's first type parameter:
+
+```ts
+slug: text<typeof TABLE_SLUG_PAGES>({
+  validate: async ({ value, doc, ctx }) => {
+    const existing = await ctx.db.query("pages")
+      .withIndex("by_slug", (q) => q.eq("slug", value)).first()
+    if (existing && existing._id !== doc._id) {
+      throw new ConvexError({ code: "SLUG_CONFLICT", message: "Slug already in use." })
+    }
+  },
+})
+```
+
+`doc` narrows to that resource's generated document, `value` to the field's own type, and
+`ctx` to the project's Convex context (`vex generate` emits the `DataModel` into the
+`@vexcms/core` augmentation).
+
+Alongside `ctx`, every callback receives **`vex`** — a read-only VexCMS API: `vex.find`,
+`vex.get`, `vex.search`, `vex.globals.get`, `vex.globals.find`. Use `ctx.db` for a single
+indexed probe; use `vex` when the document shape or the access rules matter, since it
+returns flat globals and populated relationships and shares the real access resolver.
+Reads only — a callback that writes is a design error, and `ctx` remains for anything
+else. Access **bypasses by default** (a uniqueness check that skipped rows the editor
+cannot read would let a duplicate through); pass `access` to opt into the rules. **Reject by throwing** — a plain `Error`, your own subclass,
+or a `ConvexError` with structured data; `validateFields` attaches the field key and
+re-throws one `ConvexError` shape. Returning normally accepts the value.
+
+The `xValidator` helpers (`textValidator`, `numberValidator`, …) remain exported for
+typing a validator declared away from its field, but no config needs them.
+
 Collections run a shared write pipeline: `hasPermission` → `beforeChange` (may transform the
 payload or reject the write by throwing) → the generated Zod schema → each field's own
 `validate()` (async, server-only, receives `ctx` — safe for a `ctx.db` uniqueness query
@@ -220,6 +252,7 @@ because Convex mutations are transactional) → the write → `afterChange` / `a
 
 ```typescript
 import { defineCollection, text, beforeChangeHook, textValidator } from "@vexcms/core"
+import { ConvexError } from "convex/values"
 import type { DataModel } from "../convex/_generated/dataModel"
 
 const TABLE_SLUG_POSTS = "posts"
@@ -239,7 +272,9 @@ const posts = defineCollection({
             .query("posts")
             .withIndex("by_slug", (q) => q.eq("slug", value))
             .first()
-          if (existing && existing._id !== doc._id) return `${field.label} must be unique.`
+          if (existing && existing._id !== doc._id) {
+            throw new ConvexError({ message: `${field.label} must be unique.` })
+          }
         },
       ),
     }),
@@ -273,8 +308,8 @@ then import `mutation/internalMutation` from `./triggers` everywhere a generated
 
 `min`/`max` on `text`, `number`, `date`, `array`, `blocks`, `upload`, and `relationship` are
 enforced here too — a write through the Local API that violates a declared constraint is
-rejected, not just a form. See the [lifecycle hooks guide](https://docs.vexcms.dev) for the
-full hook-coverage caveats and BFS trigger-recursion note.
+rejected, not just a form. A dedicated lifecycle-hooks guide is still to be written; until then this README is the
+reference for the hook-coverage caveats and the BFS trigger-recursion note.
 
 ### Live Preview
 
@@ -283,12 +318,24 @@ on a collection or global is the public URL its preview should render — a lite
 (`url: "/"`) when the document always previews in one place, or a resolver from the
 document, typed to the exact generated document interface for that collection/global.
 `admin.livePreview` also accepts `debounceMs`, `defaultOpen`, and `breakpoints` (overriding
-the root `livePreview.breakpoints`). The admin panel's edit views render a resizable split
+the root `admin.livePreview.breakpoints` list). The admin panel's edit views render a resizable split
 pane (full-screen on mobile) that iframes the resolved URL and streams the form's unsaved
 values into it via `<LivePreviewProvider>` / `useLivePreview` / `useLivePreviewQuery` /
-`useLivePreviewDocumentQuery`. The embedded panel's breakpoint toggle row scales the
-iframe to a simulated device width without distorting it. A floating indicator on the
-previewed page itself marks it as a live preview when that page is opened in its own tab.
+`useLivePreviewDocumentQuery`. `LivePreviewProvider` takes no props — it reads collections,
+globals, and `allowedOrigins` from `VexConfigContext`, so mount `VexConfigProvider` once at
+the app root and it serves the admin panel and the public site alike. Globals preview on the
+same path as collections: their overlay is keyed by the global's slug, and the hooks accept a
+global slug wherever they accept a collection one. The embedded panel's breakpoint toggle row scales the
+iframe to a simulated device width without distorting it. The previewed page itself
+renders no extra chrome — the admin panel frames the preview and owns its controls.
+
+Preview settings may be declared per collection/global (`admin.livePreview`) or in one
+root block (`admin.livePreview.collections` / `.globals`); the collection's own block
+wins field by field. `url` accepts a literal path, a `(doc) => string` resolver, or a
+server resolver (`{ server: ({ doc, ctx }) => … }`), which runs on Convex with a real
+query context for URLs that need a database read. No generic and no wrapper: `vex generate`
+emits the project's `DataModel` into the `@vexcms/core` augmentation, so `ctx` is typed
+wherever the resolver is written, and `doc` comes from the map key or the sibling `slug`.
 
 The panel appends `?vexLivePreview=1` to the resolved URL; the listener attaches only when the
 project's own middleware has also verified an admin session and set the `vex-live-preview`

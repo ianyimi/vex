@@ -109,7 +109,7 @@ export type TypedFieldApi<TValue> = FieldApi<
  * @example
  * ```tsx
  * // Array field with mode="array"
- * export const ArrayFieldInput = createFieldInput<ArrayType[], ArrayField<ArrayType>>(
+ * export const ArrayFieldInput = createFieldInput<ArrayType[], ArrayField<VexResourceSlug, ArrayType>>(
  *   ({ name, fieldDef, field, submissionAttempts }) => {
  *     // field.state.value is T[] in array mode
  *     return <FormArray name={name} field={field} fieldDef={fieldDef} ... />

@@ -2,6 +2,7 @@ import { z, ZodType } from "zod";
 import { ArrayField, ArrayType } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 import { adminFieldToInputSchema } from "../inputSchemas";
+import type { VexResourceSlug } from "../../types/generated";
 
 /**
  * Builds a Zod schema for validating an array field value in the admin form.
@@ -52,7 +53,7 @@ import { adminFieldToInputSchema } from "../inputSchemas";
 export function arrayFieldToInputSchema<
   TArrayType extends ArrayType = string,
   TFieldMeta extends {} = {},
->(props: { field: ArrayField<TArrayType, TFieldMeta> }): ZodType {
+>(props: { field: ArrayField<VexResourceSlug, TArrayType, TFieldMeta> }): ZodType {
   const { field } = props;
 
   const fieldMinError = field.min?.error ?? "This field is too short.";

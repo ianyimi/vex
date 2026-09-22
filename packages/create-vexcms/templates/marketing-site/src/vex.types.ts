@@ -7,7 +7,7 @@
 /* eslint-disable perfectionist/sort-object-types */
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 
-import type { Id } from "@convex/_generated/dataModel"
+import type { DataModel, Id } from "@convex/_generated/dataModel"
 import type { VexDocument, VexDocumentGlobal } from "@vexcms/core"
 
 export interface UserDocument extends VexDocument {
@@ -656,5 +656,6 @@ declare module "@vexcms/core" {
       user: "user"
       organization: never
     }
+    DataModel: DataModel
   }
 }

@@ -509,3 +509,185 @@ similar to guide the client uploader.
 workable in practice.
 
 **Detail.** `packages/core/src/media/api/mutations.ts:57,113`.
+
+---
+
+## `vex_status` as a search-index `filterField` for versioned collections
+
+**What.** Declare `vex_status` as a Convex search-index `filterField` on the
+auto-generated `search_<useAsTitle>` index (`collectionConfigToVexSchema`,
+`validator.ts`) for a collection with `versions.drafts: true`, and have
+`search/server.ts`'s status exclusion push through `.withSearchIndex()`'s own
+`.eq("vex_status", "published")` filter instead of a post-search `.filter()`.
+
+**Why.** `2026-09-20-versioning-drafts` Step 10 excludes draft rows from `search`
+results correctly today via a generic post-search `.filter()` — this is already
+correct, not a bug. Declaring the field as an indexed `filterField` would let Convex
+push the exclusion into the search index lookup itself, avoiding wasted
+relevance-ranked result slots on excluded drafts when a search term matches many
+draft rows alongside published ones — a real optimization with no functional
+difference, since Convex search indexes already support `filterFields` (used
+today by a `text()` field's own manually-configured `searchIndex.filterFields`,
+`fields/text/types.ts`).
+
+**Lift.** Unassessed. Touches `collections/validator.ts` (the auto-generated
+`search_<useAsTitle>` index currently always emits `filterFields: []`; would need
+to conditionally include `"vex_status"` for a versioned collection) and
+`api/search/server.ts` (its status condition would need a second code path using
+`.withSearchIndex()`'s native filter instead of always folding into `.filter()`).
+
+**Why deferred.** Developer decision during `2026-09-20-versioning-drafts`'s
+revision round: no measured search-performance problem motivates it yet, and it
+is a pure optimization on top of an already-correct mechanism. Revisit if search
+latency on a versioned, draft-heavy collection is ever measured as a real problem.
+
+**Detail.** Step 10, `.agent/docs/specs/2026-09-20-versioning-drafts/spec.md`.
+
+---
+
+## Enterprise content branching (named branches, merge, commit-graph view)
+
+**What.** Named content branches spanning many documents — work a set of changes on
+a branch, preview the whole site as of that branch, merge it into trunk — plus a
+git-style commit-graph UI over `vex_versions`.
+
+**Why.** Anticipated paid/enterprise tier. Recorded here because the question
+"should `2026-09-20-versioning-drafts` be designed around this as the end goal?" was
+asked and answered **no**, and the reasoning is worth not re-deriving.
+
+**Assessment — the storage shape already fits, so nothing needs pre-building.**
+The shipped two-row draft model IS an overlay model with exactly one implicit,
+unnamed branch: a draft row is a sparse override carrying `vex_publishedId` back to
+its trunk row, and reads resolve trunk-or-override. A named branch is the same
+structure with a name — a `vex_branch?: string` (absent ⇒ trunk) plus an index on it.
+That is an additive field and an index, not a restructure. It is also what the CMS
+field converged on independently: Sanity resolves ID-prefixed version documents
+(`drafts.<id>`, `versions.<release>.<id>`) by "perspective"; Contentful environments
+are copy-on-write clones behind an alias. Both are overlays, because content branches
+are *sparse* — a branch touches a handful of documents out of thousands.
+
+**Assessment — do NOT adopt a Merkle/content-addressed model.** Git's
+"change a leaf ⇒ rewrite its tree ⇒ every ancestor tree ⇒ the commit" bubble-up is
+inherent to content addressing, and git pays it to buy deduplication (identical
+subtrees shared by reference across every commit) and integrity. On Convex neither
+is needed: rows are stored and indexed individually, there is no packfile, and this
+is not a distributed-trust problem. Adopting it would buy nothing and make every
+write touch a root object. Note also what git does NOT do: it does not store deltas
+logically — every commit references a complete tree; delta compression is a separate
+physical packfile layer (bounded by `pack.depth`, default 50) invisible to the object
+model. The equivalent choice here is already made: whole-document snapshots
+(spec decision 3), which is the read-optimal end of the snapshot-vs-delta tradeoff.
+
+**Assessment — the index is the materialized tree.** The instinct to store a
+materialized "state of the tree" on each version so a branch's documents list in one
+read is correct in goal and unnecessary in mechanism: a Convex index on
+`(branch, documentId)` gives the same O(1)-list property, maintained incrementally by
+the database instead of by hand, with no bubble-up on write. Hand-materialized tree
+state is what you build when the store *cannot* index for you.
+
+**Assessment — read cost is already O(1) queries, not O(N).** `listVersions` is one
+index range read on `by_document_version` returning metadata only (`VersionSummary`
+deliberately excludes `snapshot`), capped at `DEFAULT_VERSION_LIST_LIMIT = 50`;
+`getVersionSnapshot` is one point lookup. Against Convex's per-transaction budget
+(16 MiB read, 32,000 documents scanned, 4,096 index ranges) a full history page is
+roughly one index range and ~50 small rows. The "one query per edit" cost the
+snapshot model avoids only appears in a delta-chain design.
+
+**What the hard part actually is (the real blocker).** Not storage, not traversal —
+**merge semantics**. Merging two divergent versions of one document means field-level
+three-way merge plus a conflict-resolution UI, which is the same unsolved problem as
+the "Concurrent-edit conflict-resolution UX" entry above, at a larger scope. That
+cannot be designed before the product requirement exists, and no amount of
+pre-building in the versioning spec makes it easier.
+
+**Traversal, if the graph ever gets deep.** Git's own answer is the `commit-graph`
+file (Git 2.18+): precomputed commit metadata with **generation numbers**
+(topological levels) so ancestry questions are answered without walking history, plus
+changed-path Bloom filters (2.27+) for path-scoped log. GitHub additionally never
+returns an unbounded history — the commits UI and the REST/GraphQL APIs paginate.
+The cheap local equivalent would be a generation number on each version row.
+**Deliberately not added now**: with a linear chain, generation IS the version number,
+so it would be pure duplication today, and it is derivable for existing rows later —
+which means it fails the spec's own "only record what cannot be reconstructed" test
+(decision 11).
+
+**Lift.** Unassessed for the feature itself. The versioning spec's contribution is
+already complete: every lifecycle event is an attributed history node with a real
+parent edge, `version` is a document-scoped monotonic integer (a stable DAG node id
+that stays valid once branches exist), and snapshots make any future diff or graph
+view computable retroactively.
+
+**Why deferred.** Merge semantics are undesigned, no customer requirement is defined,
+and every structural prerequisite is additive with no backfill. Building any of it
+now would be dead code by this project's own rules.
+
+**Detail.** Design Decision 11, `.agent/docs/specs/2026-09-20-versioning-drafts/spec.md`;
+UI options (`@gitgraph/core` as a layout engine behind a custom renderer) assessed in
+the 2026-09-21 session.
+
+---
+
+## Git as the versioning store (rejected as backend; viable as a one-way mirror)
+
+**What.** Two separable ideas, assessed together because they get conflated: (a) make
+a git repo the source of truth for content versions — commit every edit, read history
+back out of git; (b) project already-stored `vex_versions` rows into a git repo as a
+one-way mirror.
+
+**(a) As a backend — no.** Six findings, ordered by how decisive they are:
+
+1. **It does not solve the problem that motivated it.** Git's attraction was branching
+   and merge. Git merges *text lines*; vexcms documents are structured JSON (block
+   arrays, rich text, relationship id arrays). Line-based three-way merge over
+   serialized JSON either conflicts on nearly every concurrent edit or silently
+   produces a document that no longer validates. A field-aware structured merge still
+   has to be written — so the hard part is untouched.
+2. **Rate limits make the draft path structurally impossible.** GitHub allows 500
+   content-generating requests per hour and 80 per minute, shared across the token/
+   installation and counting web-UI actions too; writes also cost 5 points against the
+   900-points-per-minute secondary limit. Autosave debounces at
+   `DEFAULT_AUTOSAVE_DEBOUNCE_MS = 1000`, so one actively-typing editor can produce
+   ~3,600 saves/hour — roughly 7x the hourly ceiling, before a second editor exists.
+3. **Transactionality breaks.** Convex queries/mutations are deterministic and
+   sandboxed with no network access, so every git call must be an `action`, which is
+   not transactional with the document write. That is a dual write: the row commits and
+   the push fails (or the reverse), and content and history disagree with no rollback.
+   Convex's OCC retry — which `createVersion`'s read-modify-write already depends on —
+   does not extend across an external API.
+4. **Reactivity is lost.** The edit view, list views, version dropdown and live preview
+   are all live Convex subscriptions. Git is poll-only, so a git-backed history
+   dropdown stops updating on its own and needs manual invalidation — a regression
+   against what Step 13 gets for free.
+5. **RBAC cannot follow.** Field-level permissions are enforced server-side in Convex,
+   and history reads are gated on `readDrafts`/`deleteVersions`. Git has repo-level
+   access only, so it could never serve gated reads; the Convex read path would remain,
+   making git a redundant second copy rather than a replacement.
+6. **Ops and positioning.** Every install would need a second repo plus a credential,
+   where today a deploy needs only a Convex deployment — and it makes a git host a hard
+   dependency for an open-source, self-hostable CMS.
+
+   Framing: git-backed CMSs (Tina, Decap, Keystatic) work because they target
+   markdown/static-site content where a document *is* a file, line diffs are meaningful,
+   and there is no live multi-user editing or per-field RBAC. Adopting git as the
+   backend is choosing to be that product instead of this one.
+
+**(b) As a one-way mirror — plausible, and a real enterprise selling point.** "Your
+content history lives in your own git repo" buys audit/compliance, PR-style review of
+content, an exit/migration path, and disaster recovery. It also sidesteps every
+objection above: it runs async on a schedule rather than on the write path (batch a
+day of versions into one commit — orders of magnitude under 500/hour), it is a
+projection rather than a source of truth (so a failed push means the mirror lags, not
+that data is lost), it needs no reactivity, and gating stays in Convex because the
+exporter only ever reads what it is permitted to.
+
+**Lift.** Unassessed. Roughly: a scheduled Convex action, a serializer from
+`vex_versions` rows to a file tree, and credential storage per deployment.
+
+**Why deferred.** Needs no changes to the versioning spec to remain possible:
+`vex_versions` is already append-only, attributed (`createdBy`), parent-linked, and
+stores whole-document snapshots — exactly the input a commit projection needs (author,
+parent, full tree state per node). It is a pure read-side consumer, so building any of
+it now would be speculative.
+
+**Detail.** Design Decision 11, `.agent/docs/specs/2026-09-20-versioning-drafts/spec.md`;
+assessed in the 2026-09-21 session.

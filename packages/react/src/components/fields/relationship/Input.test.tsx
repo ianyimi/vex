@@ -30,6 +30,7 @@ import {
 import { createFakeConvexClient } from "../../../testing/convex/bridge";
 import schema, { testModules } from "../../../testing/convex/schema";
 import { RelationshipFieldInput } from "./Input";
+import type { VexResourceSlug } from "@vexcms/core";
 
 type SchemaCtx = GenericMutationCtx<DataModelFromSchemaDefinition<typeof schema>>;
 
@@ -48,7 +49,7 @@ type SchemaCtx = GenericMutationCtx<DataModelFromSchemaDefinition<typeof schema>
  */
 async function renderRelationship(
   overrides: {
-    fieldDef?: RelationshipField<CollectionFieldMeta>;
+    fieldDef?: RelationshipField<VexResourceSlug, CollectionFieldMeta>;
     config?: VexClientConfig;
     initialValue?: string[] | ((seededIds: string[]) => string[]);
     seedTitles?: string[];
@@ -350,7 +351,7 @@ runFieldInputContractSuite({
 
         test("single-select: choosing a document sets the trigger preview and closes the popover", async () => {
           const user = userEvent.setup();
-          const singleFieldDef: RelationshipField<CollectionFieldMeta> = {
+          const singleFieldDef: RelationshipField<VexResourceSlug, CollectionFieldMeta> = {
             ...relationshipFieldFixture.fieldDef,
             hasMany: false,
           };
@@ -373,7 +374,7 @@ runFieldInputContractSuite({
 
         test("single-select: choosing a second document replaces the first rather than adding to it", async () => {
           const user = userEvent.setup();
-          const singleFieldDef: RelationshipField<CollectionFieldMeta> = {
+          const singleFieldDef: RelationshipField<VexResourceSlug, CollectionFieldMeta> = {
             ...relationshipFieldFixture.fieldDef,
             hasMany: false,
           };
@@ -396,7 +397,7 @@ runFieldInputContractSuite({
 
         test("single-select: choosing the currently-selected document again clears the value", async () => {
           const user = userEvent.setup();
-          const singleFieldDef: RelationshipField<CollectionFieldMeta> = {
+          const singleFieldDef: RelationshipField<VexResourceSlug, CollectionFieldMeta> = {
             ...relationshipFieldFixture.fieldDef,
             hasMany: false,
           };
@@ -436,7 +437,7 @@ runFieldInputContractSuite({
       describe("resolveRelationshipPreview (ARCH-1)", () => {
         test("field-level admin.components.preview overrides the default text preview", async () => {
           const user = userEvent.setup();
-          const fieldDefWithPreview: RelationshipField<CollectionFieldMeta> = {
+          const fieldDefWithPreview: RelationshipField<VexResourceSlug, CollectionFieldMeta> = {
             ...relationshipFieldFixture.fieldDef,
             admin: {
               ...relationshipFieldFixture.fieldDef.admin,

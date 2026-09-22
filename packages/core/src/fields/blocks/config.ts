@@ -5,7 +5,7 @@ import type { BlockConfigInput, BlockConfig, BlocksFieldInput, BlocksField } fro
 import { RESERVED_BLOCK_FIELD_NAMES } from "./types";
 import { nanoid } from "nanoid";
 import { BaseFieldMeta } from "../types";
-import type { CollectionSlug } from "../../types/generated";
+import type { VexResourceSlug } from "../../types/generated";
 
 /**
  * Defines a single block type for use in a `blocks()` field.
@@ -100,11 +100,11 @@ export function defineBlock(options: BlockConfigInput): BlockConfig {
  * @see {@link BlocksField} for the resolved output type
  */
 export function blocks<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
 >(
-  options: BlocksFieldInput<TFieldMeta, TCollectionSlug>,
-): BlocksField<TFieldMeta, TCollectionSlug> {
+  options: BlocksFieldInput<TCollectionSlug, TFieldMeta>,
+): BlocksField<TCollectionSlug, TFieldMeta> {
   // Validate unique slugs
   const seen = new Set<string>();
   for (const block of options.blocks) {

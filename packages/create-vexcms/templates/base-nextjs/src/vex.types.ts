@@ -5,7 +5,7 @@
 /* eslint-disable perfectionist/sort-interfaces */
 /* eslint-disable perfectionist/sort-modules */
 
-import type { Id } from "@convex/_generated/dataModel"
+import type { DataModel, Id } from "@convex/_generated/dataModel"
 import type { VexDocument, VexDocumentGlobal } from "@vexcms/core"
 
 export interface UserDocument extends VexDocument {
@@ -290,5 +290,6 @@ declare module "@vexcms/core" {
       user: "user"
       organization: "organization"
     }
+    DataModel: DataModel
   }
 }

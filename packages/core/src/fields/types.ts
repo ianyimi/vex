@@ -14,6 +14,7 @@ import { GroupField } from "./group";
 import { BlocksField } from "./blocks";
 import { UploadField } from "./upload";
 import { GlobalConfig } from "../globals";
+import type { VexResourceSlug } from "../types/generated";
 
 export * from "./text/types";
 export * from "./number/types";
@@ -61,18 +62,18 @@ export type CollectionFieldMeta = BaseFieldMeta & {
  * ```
  */
 export type AdminField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> =
-  | TextField<TFieldMeta>
-  | NumberField<TFieldMeta>
-  | CheckboxField<TFieldMeta>
-  | DateField<TFieldMeta>
-  | SelectField<TFieldMeta>
-  | UrlField<TFieldMeta>
-  | ColorField<TFieldMeta>
-  | ArrayField<ArrayType, TFieldMeta>
-  | RelationshipField<TFieldMeta>
-  | UploadField<TFieldMeta>
-  | BlocksField<TFieldMeta>
-  | GroupField<TFieldMeta>;
+  | TextField<VexResourceSlug, TFieldMeta>
+  | NumberField<VexResourceSlug, TFieldMeta>
+  | CheckboxField<VexResourceSlug, TFieldMeta>
+  | DateField<VexResourceSlug, TFieldMeta>
+  | SelectField<VexResourceSlug, TFieldMeta>
+  | UrlField<VexResourceSlug, TFieldMeta>
+  | ColorField<VexResourceSlug, TFieldMeta>
+  | ArrayField<VexResourceSlug, ArrayType, TFieldMeta>
+  | RelationshipField<VexResourceSlug, TFieldMeta>
+  | UploadField<VexResourceSlug, TFieldMeta>
+  | BlocksField<VexResourceSlug, TFieldMeta>
+  | GroupField<VexResourceSlug, TFieldMeta>;
 
 /**
  * Props passed to field input components rendered in the document edit form.

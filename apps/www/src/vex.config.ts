@@ -25,6 +25,27 @@ const vexConfig = defineConfig({
     sidebar: {
       side: "right",
     },
+    livePreview: {
+      // `headers` declares its preview here rather than in its own
+      // `defineCollection`, to keep both shapes exercised: a collection's own
+      // block still wins field by field over its entry in this map.
+      collections: {
+        headers: { url: "/" },
+      },
+      globals: {
+        // Server-resolved: reads the database with a real `ctx`. No helper and
+        // no type argument — `vex generate` emits this project's `DataModel`
+        // into the `@vexcms/core` augmentation, so `ctx` is typed from there
+        // and `doc` from the map key.
+        siteSettings: {
+          url: "/",
+        },
+      },
+      allowedOrigins: [
+        "http://localhost:3030",
+        ...(process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : []),
+      ],
+    },
   },
   storage: {
     clientUploads: { convex: uploadFile },
@@ -47,12 +68,6 @@ const vexConfig = defineConfig({
       const path = resolvePagePath(slug);
       return path === undefined ? [] : [path];
     },
-  },
-  livePreview: {
-    allowedOrigins: [
-      "http://localhost:3030",
-      ...(process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : []),
-    ],
   },
 });
 

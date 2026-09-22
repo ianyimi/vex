@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { text, number } from "../index";
 import { array } from "./config";
 import { arrayFieldToInputSchema } from "./inputSchema";
+import type { VexResourceSlug } from "../../types/generated";
 
 describe("arrayFieldToInputSchema", () => {
   describe("basic array validation", () => {
@@ -277,7 +278,7 @@ describe("arrayFieldToInputSchema", () => {
   describe("default value", () => {
     it("applies default value for optional array", () => {
       const itemsField = number({ required: true });
-      const field = array<number>({
+      const field = array<VexResourceSlug, number>({
         required: false,
         defaultValue: [1, 2, 3],
         items: itemsField,

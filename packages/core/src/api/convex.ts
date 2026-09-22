@@ -285,6 +285,23 @@ export const vexConvexApi = {
   >,
 
   /**
+   * Resolves a `{ server }` live-preview URL with a real Convex `ctx`.
+   * Called by `useLivePreviewServerUrl` in `@vexcms/react`, and only for that
+   * `url` form — string and client resolvers never reach the server.
+   */
+  livePreviewUrl: anyApi.vex.livePreviewUrl as FunctionReference<
+    "query",
+    "public",
+    {
+      collection: string;
+      kind?: "collection" | "global";
+      documentId?: string;
+      values?: Record<string, unknown>;
+    },
+    string | null
+  >,
+
+  /**
    * Fetches a single document by ID.
    * Called by {@link react/src!CollectionEditView} in `@vexcms/react` when editing.
    */

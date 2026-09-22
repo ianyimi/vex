@@ -76,7 +76,7 @@ Reusable UI primitives re-exported from `@vexcms/react`, including `Accordion`, 
 
 ## Roadmap
 
-Live preview, and versioning/drafts are not yet implemented — see the [roadmap](https://docs.vexcms.dev) for status.
+Versioning and drafts are not yet implemented — see the [roadmap](https://docs.vexcms.dev) for status. Live preview ships: mount `VexConfigProvider` at the app root and wrap the tree in `<LivePreviewProvider>` (it takes no props), then overlay your own query with `useLivePreview`, `useLivePreviewQuery`, or `useLivePreviewDocumentQuery`.
 
 ## Peer Dependencies
 

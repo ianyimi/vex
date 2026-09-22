@@ -11,8 +11,9 @@ import { cookies } from "next/headers";
  * client flash) and passes it, plus `user`/`organization`/`children`, to the
  * client leaf `NextAdminLayoutClient`. Config no longer crosses this
  * boundary at all — the admin panel's client tree gets its config from the
- * app's own `VexConfigProvider` mount (`clientProviders.tsx`), not from a
- * prop threaded through this layout.
+ * app's own root `VexConfigProvider` mount
+ * (`components/providers/client.tsx`), not from a prop threaded through this
+ * layout.
  *
  * Render it from your admin `layout.tsx`. Because this is a server component,
  * your `layout.tsx` may itself be an `async` server component (e.g. to run auth

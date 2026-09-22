@@ -1,6 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseField, BaseFieldInput, FieldAdminConfig, FieldValidateProps } from "../baseTypes";
-import { CollectionSlug } from "../../types";
+import { VexResourceSlug } from "../../types";
 
 /**
  * Configuration input for a `text()` field.
@@ -46,9 +46,9 @@ import { CollectionSlug } from "../../types";
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`, `searchIndex`)
  */
 export interface TextFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
+> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
@@ -92,7 +92,7 @@ export interface TextFieldInput<
     filterFields: string[];
   };
   /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
 }
 
 /**
@@ -106,9 +106,9 @@ export interface TextFieldInput<
  * @see {@link text} for the config function that produces this type
  */
 export interface TextField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseField<TFieldMeta, TCollectionSlug> {
+> extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.text.type;
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;
@@ -140,5 +140,5 @@ export interface TextField<
     filterFields: string[];
   };
   /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
 }

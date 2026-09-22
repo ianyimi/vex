@@ -29,6 +29,7 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · ⏳ Future · �
 - ✅ Exported React test kit — run the admin panel's own component suite against your config
 - ✅ Lifecycle hooks — `beforeChange` / `beforeDelete` (inline, may reject a write) and `afterChange` / `afterDelete` (via `convex-helpers` triggers), wired by default in `create-vexcms`'s `base-nextjs` template and both hand-maintained apps
 - ✅ Custom `validate()` — async, server-side, database-aware (uniqueness checks and cross-document rules), enforced on every write. A dedicated `lifecycle-hooks` guide covering both of the above is still to write; see `@vexcms/core`'s README until then.
+- ✅ Live preview — the admin panel streams unsaved form state onto your real route, for collections and globals alike. Preview settings declare per collection/global or in one root `admin.livePreview` map; `url` takes a literal path, a `(doc) => string` resolver, or a `{ server }` resolver that reads the database. Origin-allowlisted and gated per request by a session-verified cookie
 
 ## In progress
 
@@ -36,7 +37,6 @@ These are the v0.1.0 launch track, in the order they ship.
 
 - 🔄 Data-table integrity pass — bulk actions and the per-collection `admin.table` options wired end to end
 - 🔄 Localization design — the storage model and versioning interaction decided before anyone has data to migrate
-- 🔄 Live preview — the preview surface renders your unsaved edits as you type, with no save and no autosave required
 - 🔄 Versioning & drafts
 - 🔄 `richtext` field — Plate.js editor via `@vexcms/richtext-plate`
 - 🔄 Field input consistency pass — relationship field and others get consistent interaction and loading patterns

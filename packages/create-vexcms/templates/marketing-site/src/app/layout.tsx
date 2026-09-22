@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 
 import "./globals.css"
 
-import { ThemeScript } from "@vexcms/react"
+import { LivePreviewProvider, ThemeScript } from "@vexcms/react"
 import { Geist, Geist_Mono } from "next/font/google"
 
 import ClientProviders from "~/components/providers/client"
@@ -75,8 +75,17 @@ export default function RootLayout({
       <body>
         <ServerProviders>
           <ClientProviders>
-            <ThemeLive />
-            {children}
+            {/* Wraps the whole app, not just `(site)`: `<ThemeLive />` lives
+                here (it skins every route, auth pages included) and the overlay
+                only reaches consumers inside the provider. Rendered directly —
+                it takes nothing but `children`, reading collections, globals,
+                and allowed origins from `VexConfigContext` — and gates itself
+                on `?vexLivePreview=1` plus the session-verified cookie, so
+                every public route stays prerenderable. */}
+            <LivePreviewProvider>
+              <ThemeLive />
+              {children}
+            </LivePreviewProvider>
           </ClientProviders>
         </ServerProviders>
       </body>

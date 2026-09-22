@@ -6,6 +6,8 @@ import config from "~/vex.config.server"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { QueryCtx } from "./_generated/server"
 
+import { v } from "convex/values"
+
 import { query } from "./_generated/server"
 
 /** A theme document, or `null` when none is selected. */
@@ -66,4 +68,20 @@ export const getAdmin = query({
   handler: async (ctx): Promise<ActiveTheme> =>
     (await resolveTheme({ ctx, field: "adminTheme" })) ??
     (await resolveTheme({ ctx, field: "activeTheme" })),
+})
+
+/**
+ * One theme document by id, for the client to resolve a theme reference itself.
+ *
+ * Exists for live preview: `getActive`/`getAdmin` resolve
+ * `siteSettings -> theme` on the SERVER, so they answer from the saved global
+ * and cannot see an editor's unsaved `activeTheme`. `<ThemeLive />` therefore
+ * does the join on the client — overlaid settings, then this lookup.
+ *
+ * Access is bypassed for the same reason as `resolveTheme`: a palette is public.
+ */
+export const byId = query({
+  args: { id: v.string() },
+  handler: async (ctx, args): Promise<ActiveTheme> =>
+    await ctx.db.get(args.id as Id<typeof TABLE_SLUG_THEMES>),
 })

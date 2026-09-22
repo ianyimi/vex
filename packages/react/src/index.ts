@@ -57,6 +57,7 @@ import type {
   AdminCollectionConfigInput as CoreAdminCollectionConfigInput,
 } from "@vexcms/core";
 import type { ReactHKT } from "./adapter";
+import type { VexResourceSlug } from "@vexcms/core";
 
 // API functions are NOT exported from this barrel. @vexcms/next's
 // NextAdminPage (a server component) imports from @vexcms/react. Adding
@@ -156,9 +157,11 @@ export type {
 } from "./components/RenderBlocks";
 
 // Live preview
-export { LivePreviewPanel, resolveLivePreviewUrl } from "./components/livePreview/LivePreviewPanel";
+export {
+  LivePreviewPanel,
+  resolveLivePreviewUrl,
+} from "./components/livePreview/LivePreviewPanel";
 export type { LivePreviewFrameGeometry } from "./components/livePreview/LivePreviewPanel";
-export { LivePreviewIndicator } from "./components/livePreview/LivePreviewIndicator";
 export {
   LivePreviewProvider,
   useLivePreview,
@@ -173,6 +176,7 @@ export {
   useLivePreviewPanelMinSize,
   useLivePreviewPanelState,
 } from "./hooks/useLivePreviewPanelState";
+export { useLivePreviewServerUrl } from "./hooks/useLivePreviewServerUrl";
 export { useLivePreviewSync } from "./hooks/useLivePreviewSync";
 
 // shadcn UI primitives
@@ -188,7 +192,7 @@ export * from "./components/ui";
 export type RelationshipFieldInput<
   TFieldMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
-> = CoreRelationshipFieldInput<TFieldMeta, TCollectionSlug, ReactHKT>;
+> = CoreRelationshipFieldInput<VexResourceSlug, TFieldMeta, TCollectionSlug, ReactHKT>;
 
 /**
  * Resolved relationship field type with the React component slot bound.
@@ -199,7 +203,7 @@ export type RelationshipFieldInput<
 export type RelationshipField<
   TFieldMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
-> = CoreRelationshipField<TFieldMeta, TCollectionSlug, ReactHKT>;
+> = CoreRelationshipField<VexResourceSlug, TFieldMeta, TCollectionSlug, ReactHKT>;
 
 /**
  * Collection admin configuration input with the React component slot bound.
@@ -248,11 +252,14 @@ export type CollectionConfig<
  */
 export function relationship<
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TTargetSlug extends CollectionSlug = CollectionSlug,
 >(
-  options: RelationshipFieldInput<TFieldMeta, TCollectionSlug>,
-): RelationshipField<TFieldMeta, TCollectionSlug> {
-  return coreRelationship<TFieldMeta, TCollectionSlug, ReactHKT>(options);
+  options: RelationshipFieldInput<TFieldMeta, TTargetSlug>,
+): RelationshipField<TFieldMeta, TTargetSlug> {
+  // Core's own parameter order is `<resource slug, meta, target slug, component>`;
+  // this wrapper only ever binds the component slot, so the resource slug stays
+  // at its default.
+  return coreRelationship<VexResourceSlug, TFieldMeta, TTargetSlug, ReactHKT>(options);
 }
 
 /**

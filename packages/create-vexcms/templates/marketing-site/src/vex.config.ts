@@ -26,6 +26,12 @@ const vexConfig = defineConfig({
     sidebar: {
       side: "right",
     },
+    livePreview: {
+      allowedOrigins: [
+        "http://localhost:3000",
+        ...(process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : []),
+      ],
+    },
   },
   storage: {
     clientUploads: { convex: uploadFile },
@@ -41,12 +47,6 @@ const vexConfig = defineConfig({
       const path = resolvePagePath(slug)
       return path === undefined ? [] : [path]
     },
-  },
-  livePreview: {
-    allowedOrigins: [
-      "http://localhost:3000",
-      ...(process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : []),
-    ],
   },
 })
 

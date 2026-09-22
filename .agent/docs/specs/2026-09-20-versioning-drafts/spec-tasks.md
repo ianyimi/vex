@@ -2,8 +2,11 @@
 status: draft
 spec_id: 2026-09-20-versioning-drafts
 touches:
-  - packages/core/src/versioning/**
+  - packages/core/src/versions/**
   - packages/core/src/api/versions/**
+  - packages/core/src/api/preparePatch.ts
+  - packages/core/src/api/preparePatch.test.ts
+  - packages/core/src/api/update/server.ts
   - packages/core/src/collections/constants.ts
   - packages/core/src/collections/types.ts
   - packages/core/src/collections/config.ts
@@ -22,6 +25,8 @@ touches:
   - packages/core/src/api/server.ts
   - packages/core/src/api/client.ts
   - packages/core/src/api/types.ts
+  - packages/core/src/api/populate.ts
+  - packages/core/src/api/populate.test.ts
   - packages/core/src/api/find/server.ts
   - packages/core/src/api/find/server.test.ts
   - packages/core/src/api/get/server.ts
@@ -45,7 +50,7 @@ touches:
   - packages/react/src/testing/convex/schema.ts
   - packages/react/src/testing/viewSuite.ts
   - apps/www/src/vexcms/collections/pages.ts
-  - apps/www/convex/vex.ts
+  - apps/www/convex/vex/versions.ts
   - apps/www/convex/pages.ts
   - apps/www/src/auth/access.ts
   - "apps/www/src/app/(frontend)/(site)/PageContent.tsx"
@@ -88,6 +93,17 @@ it; `vex_versions` holds immutable history.**
 4. **List-view pair-collapsing ships now**, not deferred to spec I. Without it a versioned
    document with an active draft renders as two separate rows the moment this spec lands —
    a correctness gap, not a polish item I should inherit.
+5. **`vex_versions` is an append-only, DAG-shaped log; no branching field or UI ships
+   here.** A later enterprise branching feature (content branches, merges, commit-graph
+   view) needs only data from this spec that cannot be reconstructed afterwards, since
+   history rows are immutable and never backfilled. Two zero-new-field consequences:
+   every publish AND unpublish emits exactly one attributed history row (`createdBy`
+   set — the first publish previously emitted none, an unrecoverable hole), and
+   `parentVersion` is treated as the real graph edge (always the actual predecessor,
+   absent only at a genuine root). A `branch?: string` (absent ⇒ trunk), multi-parent
+   merge edges, and any graph UI are deliberately NOT added now — each is cleanly
+   additive later with no backfill, and `version` is already a document-scoped
+   monotonic integer, exactly the stable node identity a DAG needs.
 
 ## What changed under this spec since the original draft (context for every step below)
 
@@ -133,20 +149,42 @@ it; `vex_versions` holds immutable history.**
   enforced — every read returns the live document... until it lands, do not model
   publish state as a hand-written `status` field." Step 17 rewrites this section and
   `:209-211`.
+- Revision round (post-initial-draft corrections, folded into the steps below rather
+  than tracked separately): (1) Steps 5-7's original sketch re-implemented
+  `update/server.ts`'s merge/validate pipeline inline instead of sharing it — F's
+  stated goal was reuse; the fix extracts a new `preparePatch` helper both `update()`
+  and the draft mutations call. (2) `versionsApi`'s CLIENT accessor now mirrors
+  `globalsApi`'s exactly: `vexConvexApi.versions.{saveDraft,publish,...}`, built via a
+  dedicated `apps/www/convex/vex/versions.ts` registration file (Step 17), not inlined
+  into `convex/vex.ts` — the server factory itself still returns flat, unchanged. (3)
+  `packages/core/src/versioning/` is renamed `packages/core/src/versions/` throughout,
+  matching the `api/versions/` split already used for the mutation/query files. (4)
+  `versions.cascadeDelete` (default `true`) makes Step 11's delete cascade
+  configurable per collection instead of unconditional. (5) A `populateDocs` draft
+  leak (Step 10) was found and closed — not in the original design-review. (6)
+  Relationship fields and drafts: the relationship-field picker (Step 12) may surface
+  a draft target ONLY while the editing document is itself a draft; `publish` (Step 6)
+  independently and authoritatively rejects when any relationship field currently
+  links to a draft, regardless of how or when that link was made. The `vex_status`
+  search-index `filterFields` performance optimization this touches on was
+  intentionally deferred (see `backlog.md`) — Step 10's `.filter()`-based exclusion is
+  already correct without it.
 
 ## Step 1 — `versions` config on collections + globals `[agent]` — [ ]
 
 Why: Everything downstream branches on `collection.versions?.drafts`, which does not
 exist on `CollectionConfig` today, and on `GlobalConfig.versions` carrying `autosave`,
 which it doesn't either.
-- [ ] `packages/core/src/versioning/constants.ts` — `VERSION_SYSTEM_FIELDS`,
+- [ ] `packages/core/src/versions/constants.ts` — `VERSION_SYSTEM_FIELDS`,
       `DEFAULT_AUTOSAVE_DEBOUNCE_MS` (`as const`, P-003). No `maxPerDoc`/pruning default
       (decision 3).
 - [ ] `packages/core/src/collections/types.ts` — `versions?: { drafts?: boolean;
-      autosave?: boolean }` on `CollectionConfigInput`; resolved `versions: { drafts:
-      boolean; autosave: boolean }` on `CollectionConfig`.
+      autosave?: boolean; cascadeDelete?: boolean }` on `CollectionConfigInput`;
+      resolved `versions: { drafts: boolean; autosave: boolean; cascadeDelete: boolean
+      }` on `CollectionConfig`. `cascadeDelete` gates Step 11's delete cascade —
+      globals get no such field, since globals are never `remove()`d.
 - [ ] `packages/core/src/collections/config.ts` — apply defaults (`drafts: false,
-      autosave: false`), mirroring `globals/config.ts:105-109`.
+      autosave: false, cascadeDelete: true`), mirroring `globals/config.ts:105-109`.
 - [ ] `packages/core/src/collections/constants.ts` — extend `RESERVED_COLLECTION_FIELDS`
       with `vexStatus: { slug: "vex_status" }`, `vexPublishedAt: { slug:
       "vex_publishedAt" }`, `vexPublishedId: { slug: "vex_publishedId" }`. Same
@@ -157,8 +195,9 @@ which it doesn't either.
 - [ ] `packages/core/src/globals/config.ts:105-109` — apply the `autosave: false`
       default alongside the existing `drafts: false`.
 - [ ] `packages/core/src/collections/config.test.ts`, `globals/config.test.ts` — defaults
-      resolve; reserved-field compile+runtime rejection covers the three new keys the
-      same way it covers `updatedAt`.
+      resolve (including `cascadeDelete: true` and an explicit `cascadeDelete: false`
+      override, collections only); reserved-field compile+runtime rejection covers the
+      three new keys the same way it covers `updatedAt`.
 - Verify: `pnpm --filter @vexcms/core test`
 
 ## Step 2 — Schema generation `[dev]` — [ ]
@@ -208,14 +247,14 @@ Why: One-line access change Steps 8 and 13 both gate on. `readDrafts`/`saveDraft
 ## Step 4 — Version model helpers `[dev]` — [ ]
 
 Why: Leaf utilities every mutation below calls. No `pruneVersions` (decision 3).
-- [ ] `packages/core/src/versioning/extractUserFields.ts` — strips `_id`,
+- [ ] `packages/core/src/versions/extractUserFields.ts` — strips `_id`,
       `_creationTime`, and every `VERSION_SYSTEM_FIELDS` member before a document is
       written into a `vex_versions` snapshot.
-- [ ] `packages/core/src/versioning/model.ts` — `createVersion`, `getLatestVersion` (via
+- [ ] `packages/core/src/versions/model.ts` — `createVersion`, `getLatestVersion` (via
       `by_document_version`, `.order("desc").first()` — never `.collect()`),
       `getVersion`, `listVersions`, `findDraftRow` (via `by_published`).
-- [ ] `packages/core/src/versioning/extractUserFields.test.ts`,
-      `packages/core/src/versioning/model.test.ts` — exact expected values per
+- [ ] `packages/core/src/versions/extractUserFields.test.ts`,
+      `packages/core/src/versions/model.test.ts` — exact expected values per
       `AP-009` (real fixtures, no placeholder comments standing in for them).
 - Verify: `pnpm --filter @vexcms/core test`
 
@@ -223,7 +262,31 @@ Why: Leaf utilities every mutation below calls. No `pruneVersions` (decision 3).
 
 Why: First mutation, and the one every later step's "at most one draft row" invariant
 assumes. Reuses F's pipeline instead of writing directly — the core correction this
-re-scope makes.
+re-scope makes, done by EXTRACTION rather than a second copy: `update/server.ts`'s
+merge → `beforeChange` → diff → validate → `validateFields` pipeline is pulled out into
+a new shared `preparePatch` helper, called by `update()` AND `saveDraft()` (and, Step
+6, `publish()`). `saveDraft`/`publish` cannot call `update()`/`create()` directly —
+both target a fixed `id` for read/write, while a draft write's target row (bootstrap,
+promote-in-place, copy-then-delete) is often a DIFFERENT row than the one referenced —
+but the merge/`beforeChange`/validate core is identical and must not be duplicated
+three times, which is exactly what the original spec's draft mutations did.
+- [ ] `packages/core/src/api/preparePatch.ts` — new shared pipeline helper: `{ ctx,
+      config, collection, collectionSlug, action, access, auth, storedDoc, incoming,
+      partial, validateKeys: "changed" | "all" }` → `{ transformedFields, changedKeys,
+      patch }`. Extracts `hasPermission → merge → beforeChange → diff → validate →
+      validateFields` from `update/server.ts`, parameterized so both lenient
+      (`saveDraft`, `partial: true, validateKeys: "changed"`) and strict (`publish`,
+      `partial: false, validateKeys: "all"`) modes share one implementation. `create()`
+      is NOT refactored onto this — it doesn't merge against a stored doc the same way,
+      and nothing asked for that.
+- [ ] `packages/core/src/api/preparePatch.test.ts` — new file, real tests (not a
+      guided stub — this is a working function on day one, called by `update()` in the
+      same step).
+- [ ] `packages/core/src/api/update/server.ts` — refactor: imports simplified, body now
+      calls `preparePatch` (`partial: true, validateKeys: "changed"`) then
+      `stampUpdatedAt` + `ctx.db.patch`. `update/server.test.ts` needs NO changes — it
+      is the regression guard proving the refactor preserves `update`'s existing
+      behavior exactly.
 - [ ] `packages/core/src/api/versions/types.ts` — shared server/client arg shape:
       `{ collection, id, data: Partial<...>, restoredFrom?, environmentId? }`. `data` is
       a partial patch, matching `update`'s contract exactly — draft save is "update, but
@@ -234,13 +297,14 @@ re-scope makes.
       the existing draft row (`findDraftRow`) or bootstrap one (first edit of a
       published doc: insert a draft row with `vex_publishedId` set to the published
       row's `_id`, and snapshot the published row to `vex_versions` as `v1 published`
-      before the first draft write). Merge `draftRow ∪ args.data` for `beforeChange`,
-      dispatch it, diff via the same `deepEqual`/`changedKeys` approach
-      `api/update/server.ts:107-109` uses, validate with
-      `getCollectionInputSchema({ collection, partial: true })` (F's lenient mode) over
-      changed keys only, run `validateFields` over changed keys, patch/insert the draft
-      row, `createVersion` with `status: "draft"`.
-- [ ] `packages/core/src/api/versions/saveDraft.client.ts`
+      before the first draft write). Merge and validate by calling `preparePatch`
+      (`partial: true, validateKeys: "changed"` — F's lenient mode, over changed keys
+      only) instead of re-running the merge/`beforeChange`/validate steps inline, then
+      patch/insert the draft row and `createVersion` with `status: "draft"`.
+- [ ] `packages/core/src/api/versions/saveDraft.client.ts`, plus
+      `packages/core/src/api/convex.ts` — creates a new `versions: {...}` block on
+      `vexConvexApi` (mirroring the existing `globals: {...}` block) with its first
+      entry, `saveDraft`; Steps 6-8 each append one more entry to this SAME object.
 - [ ] `packages/core/src/api/versions/saveDraft.server.test.ts` — at most one draft row
       per document across repeated saves; bootstrap fires once; a role restricted to
       `update: ({ changes }) => ...` on one field gets the SAME restriction on
@@ -251,19 +315,39 @@ re-scope makes.
 
 Why: Makes the model observable end to end, carries the identity-preservation
 invariant, and is where decision 2 (strict validation) lives.
+- [ ] `packages/core/src/versions/assertNoDraftRelationships.ts` — developer decision
+      (this spec's revision round): `publish` rejects when any `relationship` field on
+      the document currently points at a target that is itself a draft, regardless of
+      when or how that link was made. Client-side, the relationship picker
+      (Step 12) may only ever surface a draft target while the EDITING document is
+      itself a draft; this function is the authoritative server-side backstop
+      independent of that — a stale link to a document that was published at
+      selection time but has since been unpublished is rejected exactly the same way.
+- [ ] `packages/core/src/versions/assertNoDraftRelationships.test.ts`
 - [ ] `packages/core/src/api/versions/publish.server.ts` — gate on `publish` with
-      `changes: args.data`. Merge the draft row's current fields with `args.data`
-      (authoritative; matches `update`'s merge, no `JSON.stringify` comparison). Run
-      `getCollectionInputSchema({ collection })` WITHOUT `partial` (decision 2 — same
-      strength as `create`) plus `validateFields` over every key; on failure throw
-      naming the missing/invalid field(s) and do not write anything. On success, two
-      paths: never-published draft (`vex_publishedId === undefined`) ⇒ patch the draft
-      row in place (`vex_status: "published"`, `vex_publishedAt: now`); draft with a
-      parent ⇒ `emitVersion(published, status: "published")` for the superseded state,
-      `patch(published, { ...userFields, vex_publishedAt: now })`, `delete(draftRow)`.
-      **The published row's `_id` is never destroyed** (design-review §2.2). Dispatch
-      `beforeChange` before validation, same ordering as `create`/`update`.
-- [ ] `packages/core/src/api/versions/publish.client.ts`
+      `changes: args.data`, delegated through `preparePatch` (Step 5's shared helper,
+      also called by `update()`) in strict mode (`partial: false, validateKeys: "all"`
+      — decision 2, same strength as `create`); on failure throw naming the
+      missing/invalid field(s) and do not write anything. After validation succeeds,
+      `assertNoDraftRelationships` rejects (nothing written) if any relationship field
+      currently links to a draft. On success, two paths: never-published draft
+      (`vex_publishedId === undefined`) ⇒ patch the draft row in place
+      (`vex_status: "published"`, `vex_publishedAt: now`) and emit its own
+      `"published"` history row; draft with a parent ⇒
+      `emitVersion(published, status: "published")` for the superseded state,
+      `patch(published, { ...transformedFields, vex_publishedAt: now })`,
+      `delete(draftRow)`. BOTH branches emit exactly one attributed (`createdBy`)
+      history row — decision 5; a skipped row is permanently unreconstructable.
+      **The published row's `_id` is never destroyed** (design-review §2.2).
+      `publish` cannot call `create()`/`update()` directly —
+      both target a fixed `id` for read/write, while `publish` must write to a
+      DIFFERENT row than the one it read (promote-in-place or copy-then-delete) —
+      `preparePatch` isolates exactly the merge/`beforeChange`/validate core those two
+      functions duplicate, without forcing a shared write target on all three.
+- [ ] `packages/core/src/api/versions/publish.client.ts`, plus
+      `packages/core/src/api/convex.ts` — appends `publish` to the `versions: {...}`
+      block Step 5 created.
+- [ ] `packages/core/src/api/server.ts` — export `assertNoDraftRelationships`.
 - [ ] `packages/core/src/api/versions/publish.server.test.ts` — published `_id` is
       identical before and after a publish cycle; a relationship pointing at it still
       resolves; draft row is gone; publishing a draft missing a required field is
@@ -277,9 +361,11 @@ Why: Needs Step 4's `findDraftRow` to enforce its rejection rule.
 - [ ] `packages/core/src/api/versions/unpublish.server.ts` — gate on `unpublish` with
       `changes: undefined` (no field values move, only status). Throw when a draft row
       exists ("publish or discard the active draft first"). Flip the published row to
-      `vex_status: "draft"`; emit a history row with `publishedAt` carried forward
-      (never rewritten backwards).
-- [ ] `packages/core/src/api/versions/unpublish.client.ts`
+      `vex_status: "draft"`; emit an ATTRIBUTED history row (`createdBy`) with
+      `publishedAt` carried forward (never rewritten backwards).
+- [ ] `packages/core/src/api/versions/unpublish.client.ts`, plus
+      `packages/core/src/api/convex.ts` — appends `unpublish` to the `versions: {...}`
+      block Steps 5-6 built.
 - [ ] `packages/core/src/api/versions/unpublish.server.test.ts` — rejects with an
       outstanding draft; invariant holds that at most one draft row exists per document.
 - Verify: `pnpm --filter @vexcms/core test`
@@ -292,7 +378,9 @@ endpoint (decision 3) — `deleteVersion` is manual, one row at a time.
       `getVersionSnapshot.server.ts` — both gate on `readDrafts`.
 - [ ] `packages/core/src/api/versions/deleteVersion.server.ts` — gates on
       `deleteVersions`.
-- [ ] Matching `.client.ts` files.
+- [ ] Matching `.client.ts` files, plus `packages/core/src/api/convex.ts` — appends
+      `listVersions`, `getVersionSnapshot`, `deleteVersion` to the `versions: {...}`
+      block Steps 5-7 built (never a flat top-level entry).
 - [ ] `.server.test.ts` per operation — a role without `readDrafts` receives no draft
       content; a role without `deleteVersions` cannot delete a version row.
 - Verify: `pnpm --filter @vexcms/core test`
@@ -301,11 +389,21 @@ endpoint (decision 3) — `deleteVersion` is manual, one row at a time.
 
 Why: Registration point; mirrors `globalsApi` so a project with no versioned
 collection or global registers nothing.
-- [ ] `packages/core/src/api/convex.ts` — `versionsApi(config, query, mutation)`
-      exporting bare names (`saveDraft`, `publish`, `unpublish`, `listVersions`,
-      `getVersionSnapshot`, `deleteVersion`) per the naming-conventions "no `adminXxx`
-      prefix" rule.
-- [ ] `packages/core/src/api/server.ts`, `packages/core/src/api/client.ts` — exports.
+- [ ] `packages/core/src/api/server.ts` — the `versionsApi(config, query, mutation,
+      getAuth?)` factory itself, immediately after `globalsApi`, returning a FLAT
+      object (bare names: `saveDraft`, `publish`, `unpublish`, `listVersions`,
+      `getVersionSnapshot`, `deleteVersion`, per naming-conventions "no `adminXxx`
+      prefix") — same shape `globalsApi` already returns. `api.vex.versions.*` nesting
+      on the wire comes from the CALLER placing the registration in its own
+      `convex/vex/versions.ts` file (Step 17), exactly how `api.vex.globals.*` comes
+      from `globalsApi` living in `convex/vex/globals.ts` — never from the factory's
+      own return shape.
+- [ ] `packages/core/src/api/convex.ts` — incrementally, across Steps 5-8, a `versions:
+      {...}` block is added to `vexConvexApi` (mirroring the existing `globals: {...}`
+      block) so the CLIENT calls read `vexConvexApi.versions.saveDraft`, `.publish`,
+      etc. — a hand-written client-side nesting convenience, independent of the
+      server factory's flat return above.
+- [ ] `packages/core/src/api/client.ts` — re-exports the six client wrappers.
 - [ ] `packages/core/src/api/convex.test.ts` — registers only declared operations; a
       config with no `versions.drafts` anywhere registers `{}`.
 - Verify: `pnpm --filter @vexcms/core test`
@@ -316,7 +414,20 @@ Why: Consumes the CURRENT `access-constraint-builder` API (`constraints`/
 `resolveAccessIndex`/`resolveAccessConstraint`/`pickQueryIndex`), not the deleted
 `AccessIndexDecl` shape the original design-review sketched this against. The point at
 which public reads stop seeing draft rows — enforced as data integrity, independent of
-`access.bypass`.
+`access.bypass`. Also closes a second leak found re-grounding this step: `populateDocs`
+(`api/populate.ts`) resolves relationship targets via a raw `ctx.db.get` batch with no
+status filter at all, so an unfiltered `find`/`get`/`search`/`getGlobal` call could
+return full draft content through a `populate`d relationship field — not named in the
+original design-review, closed here rather than deferred since leaving it open would
+silently reopen the exact class of bug this step exists to fix.
+- [ ] `packages/core/src/api/populate.ts` — add a `drafts?: boolean` parameter; a
+      resolved relationship target carrying `vex_status !== "published"` is excluded
+      unless `drafts` is `true`. Checked by field presence, not by a `VexConfig` lookup
+      — `populateDocs` fetches arbitrary cross-collection ids with no static knowledge
+      of which collection each field points to, but `vex_status` only ever exists on a
+      versioned collection's rows (Step 2), so presence alone is equivalent in practice.
+- [ ] `packages/core/src/api/populate.test.ts` — a populated target that is currently a
+      draft is excluded by default and included when `drafts: true` is passed.
 - [ ] `packages/core/src/api/find/server.ts`, `get/server.ts`, `search/server.ts` — add
       `drafts?: boolean` arg. For a versioned collection where `drafts` is falsy,
       compose an ADDITIONAL published-only condition alongside whatever
@@ -328,10 +439,8 @@ which public reads stop seeing draft rows — enforced as data integrity, indepe
       is already being applied. This composition runs UNCONDITIONALLY for a versioned
       collection when `drafts` is falsy — including when the caller passed
       `access: { bypass: true }`, since the status filter is not a permission rule.
-- [ ] `packages/core/src/api/find/server.test.ts` — public read (including a
-      `bypass: true` call) returns no draft rows and no duplicate logical documents;
-      `drafts: true` with `readDrafts` returns both; a caller-supplied `withIndex`
-      still gets the status filter via `.filter()`.
+      Each of these three files, plus `globals/get.server.ts`, also forwards its own
+      `drafts` arg into its `populateDocs` call(s).
 - Verify: `pnpm --filter @vexcms/core test`
 
 ## Step 11 — Two-row consequences `[dev]` — [ ]
@@ -341,7 +450,9 @@ pair-collapsing ships here, not deferred.
 - [ ] Slug-uniqueness validation (wherever the collection declares a unique-slug
       constraint) scopes its lookup to `vex_status === "published"`.
 - [ ] `packages/core/src/api/remove/server.ts` — delete cascades to the document's
-      draft row (if any) and every `vex_versions` row for that document.
+      draft row (if any) and every `vex_versions` row for that document, when
+      `versions.cascadeDelete` (config toggle added in Step 1, default `true`) is not
+      explicitly disabled for that collection.
 - [ ] `packages/react/src/components/views/CollectionListView.tsx` — collapse
       published/draft pairs to one row per logical document, preferring the draft when
       one exists, with an "unpublished changes" indicator.
@@ -356,7 +467,16 @@ Why: First visible UI; needs Steps 5-9 registered to have anything to call.
       Publish / Unpublish buttons, each gated by `usePermission` on its own action;
       Unpublish disabled with an outstanding draft; Publish surfaces the strict
       validation rejection from Step 6 as a field-level error, reusing the existing
-      validation-error display.
+      validation-error display; threads a new `documentStatus` prop
+      (`InputComponentProps`, `fields/types.ts`) into every field input.
+- [ ] `packages/core/src/fields/types.ts` — `InputComponentProps` gains `documentStatus?:
+      DocumentStatus`, undefined for a non-versioned resource / create mode.
+- [ ] `packages/react/src/hooks/useRelationshipPickerOptions.ts`,
+      `packages/react/src/components/fields/relationship/Input.tsx` — the picker
+      requests `drafts: true` ONLY while the document it belongs to is itself a draft
+      (`documentStatus === "draft"`) — developer decision, this spec's revision round.
+      Client-side convenience only; `assertNoDraftRelationships` (Step 6) is the
+      authoritative backstop regardless of what the picker ever showed.
 - [ ] `packages/react/src/components/views/StatusBadge.test.tsx`
 - Verify: `pnpm --filter @vexcms/react test && pnpm --filter www build`
 
@@ -391,7 +511,7 @@ Why: Step 1 already widened `GlobalConfig.versions`; this wires it through.
       (design-review §9: globals reuse the shared `vex_versions` table with
       `collection: "vex_globals"`, and the two-row model applies as `vex_globals` + one
       draft row per slug).
-- [ ] `packages/react/src/components/views/GlobalEditView.tsx` — same toolbar as Step 12.
+- [ ] `packages/react/src/components/views/GlobalEditView.tsx` — same toolbar as Step 12; threads `documentStatus` into its own field-render loop identically. `assertNoDraftRelationships` (Step 6) is NOT extended to globals here — no acceptance criterion asks for it; tracked as a known gap alongside `findGlobals`'s own status-filter gap.
 - [ ] Tests colocated.
 - Verify: `pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test`
 
@@ -419,7 +539,8 @@ Why: Proves the whole feature against a real deployment and closes the live-prev
 base-layer obligation E left for this spec.
 - [ ] `apps/www/src/vexcms/collections/pages.ts` — `versions: { drafts: true, autosave:
       true }`.
-- [ ] `apps/www/convex/vex.ts` — register `versionsApi`.
+- [ ] `apps/www/convex/vex/versions.ts` — new file, registers `versionsApi` (mirrors the
+      existing `apps/www/convex/vex/globals.ts`, not inlined into `convex/vex.ts`).
 - [ ] `apps/www/src/auth/access.ts` — draft actions per role.
 - [ ] `apps/www/convex/pages.ts` — `getBySlug` (public, `access.bypass: true`) is
       unchanged and stays published-only via Step 10's default. Add a second,

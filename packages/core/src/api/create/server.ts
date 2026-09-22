@@ -11,7 +11,7 @@ import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
 import { getCollectionInputSchema, validateFields } from "../../collections";
-import { resolveAccessCall, stampUpdatedAt } from "../utils";
+import { resolveAccessCall, stampUpdatedAt, toVexMutationCtx } from "../utils";
 import { TDocument } from "../convex";
 
 /**
@@ -101,7 +101,13 @@ export async function create<
     throw new ConvexError({ message: "Validation failed", errors: parsed.error.message });
   }
 
-  await validateFields({ collection, doc, keys: Object.keys(doc), ctx: args.ctx });
+  await validateFields({
+    collection,
+    doc,
+    keys: Object.keys(doc),
+    ctx: toVexMutationCtx(args.ctx),
+    config: args.config,
+  });
 
   const data = stampUpdatedAt({ collection: args.collection, config: args.config, data: doc });
   const id = await args.ctx.db.insert(args.collection, data as never);

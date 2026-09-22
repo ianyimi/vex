@@ -1,6 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseField, BaseFieldInput, FieldAdminConfig, FieldValidateProps } from "../baseTypes";
-import type { CollectionSlug } from "../../types/generated";
+import type { VexResourceSlug } from "../../types/generated";
 
 /**
  * Configuration input for a `number()` field.
@@ -48,9 +48,9 @@ import type { CollectionSlug } from "../../types/generated";
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`, `searchIndex`)
  */
 export interface NumberFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
+> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * Does not affect database values — only the form's initial state.
@@ -71,7 +71,7 @@ export interface NumberFieldInput<
     error?: string;
   };
   /** Server-only async validation with `value` typed as `number`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<void> | void;
 }
 
 /**
@@ -81,9 +81,9 @@ export interface NumberFieldInput<
  * @see {@link number} for the config function that produces this type
  */
 export interface NumberField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseField<TFieldMeta, TCollectionSlug> {
+> extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.number.type;
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;
@@ -108,5 +108,5 @@ export interface NumberField<
     error?: string;
   };
   /** Server-only async validation with `value` typed as `number`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<void> | void;
 }

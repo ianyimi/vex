@@ -3,7 +3,7 @@ import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
 import { adminFieldToJSDocComment } from "../utils";
 import type { GroupFieldInput, GroupField } from "./types";
-import type { CollectionSlug } from "../../types/generated";
+import type { VexResourceSlug } from "../../types/generated";
 
 /**
  * Creates a group field with all defaults applied.
@@ -49,11 +49,11 @@ import type { CollectionSlug } from "../../types/generated";
  * @see {@link GroupField} for the resolved output type
  */
 export function group<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
 >(
-  options: GroupFieldInput<TFieldMeta, TCollectionSlug>,
-): GroupField<TFieldMeta, TCollectionSlug> {
+  options: GroupFieldInput<TCollectionSlug, TFieldMeta>,
+): GroupField<TCollectionSlug, TFieldMeta> {
   // Compute the TypeScript interface type string from sub-fields so that
   // generateVexTypes emits accurate per-field types rather than `object`.
   const computedInterfaceType = buildInterfaceType(options.fields);
