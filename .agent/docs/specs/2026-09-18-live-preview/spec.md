@@ -2896,3 +2896,196 @@ shows the corrected, shipped-feature text everywhere — no remaining "Not shipp
    updates with no admin action beyond the original edit; open the same preview URL in a
    second, unrelated browser and confirm it shows only the published document (Design
    Decision 4's documented limit, not a bug).
+
+---
+
+## Amendment 1 — root `livePreview` config map, server-resolved URLs (2026-09-21)
+
+Raised by the developer after using the shipped feature. Two asks, one config shape:
+declare every collection's and global's live-preview settings in one root block, and let
+a `url` resolver read the database through a Convex `ctx`.
+
+### Design Decisions (continuing the numbering above)
+
+19. **The root `livePreview` block carries per-collection and per-global settings, not
+    just a URL map.** Shape:
+
+    ```ts
+    livePreview: {
+      allowedOrigins: string[];
+      breakpoints?: LivePreviewBreakpoint[];
+      collections?: { [S in CollectionSlug]?: AdminLivePreviewConfigInput<Partial<DocumentByCollectionSlug<S>>> };
+      globals?:     { [S in GlobalSlug]?:     AdminLivePreviewConfigInput<Partial<DocumentByGlobalSlug<S>>> };
+    }
+    ```
+
+    Whole `admin.livePreview` blocks (`url`, `debounceMs`, `defaultOpen`, `breakpoints`),
+    not a bare `slug → url` map: a developer who wants every preview URL in one place
+    wants every preview *setting* in one place, and a map of one field would send them
+    back to the collection file for the other three. The key supplies the slug, so each
+    entry's `url` resolver infers its own document type with no annotation — strictly
+    easier to type than `admin.livePreview.url`, which infers `TCollectionSlug` from a
+    sibling property (Design Decision 17).
+
+20. **Collection/global config wins over root config, field by field.** Consistent with
+    every other layered setting in this project, and with the existing
+    `collection.admin.livePreview.breakpoints ?? config.livePreview.breakpoints`
+    resolution (Design Decision 11), which this generalises rather than replaces. The
+    merge is per-field, not whole-object: a collection that sets only `defaultOpen`
+    inherits the root entry's `url`, exactly as a collection that sets only `url` today
+    inherits the root `breakpoints`. Whole-object replacement would make the root block
+    useless the moment a collection wanted to override one setting.
+
+    Resolution order for one setting, highest first:
+    1. `collection.admin.livePreview.<field>` / `global.admin.livePreview.<field>`
+    2. `config.livePreview.collections[slug].<field>` / `config.livePreview.globals[slug].<field>`
+    3. `config.livePreview.<field>` (root-level `breakpoints` only)
+    4. the field's own default (`DEFAULT_LIVE_PREVIEW_DEBOUNCE_MS`, `defaultOpen: false`,
+       `DEFAULT_LIVE_PREVIEW_BREAKPOINTS`)
+
+    One exported resolver, `resolveLivePreviewSettings`, owns that order. It is the only
+    place the precedence is written, called by `CollectionEditView`, `GlobalEditView`,
+    `NextAdminPage`, and the server-side URL endpoint — four call sites that must not
+    disagree about which URL a document previews at.
+
+21. **`defineCollection`/`defineGlobal` stop applying `livePreview` defaults.** They
+    resolve in isolation, before `defineConfig` has seen the root block (the same reason
+    Design Decision 11 put `breakpoints` resolution in the views). Today they default
+    `debounceMs`/`defaultOpen` eagerly, which makes "did the author set this, or is this
+    the default?" unanswerable at merge time and would let a collection's *default*
+    silently outrank a root entry's explicit value. `AdminLivePreviewConfig` therefore
+    becomes structurally identical to `AdminLivePreviewConfigInput` (all optional except
+    `url`), and `resolveLivePreviewSettings` applies every default at the end.
+
+22. **A `url` resolver may take a Convex `ctx`, and still lives in the client config.**
+    Precedent is exact: `textValidator`'s callback does `ctx.db.query(...)`, is authored
+    in `apps/www/src/vexcms/collections/pages.ts`, and that file is imported by the
+    *client* `vex.config.ts`. It works because `defineServerConfig` wraps the client
+    config and `convex/vex.ts` imports the result, so the callback is reachable from the
+    Convex runtime while being declared next to the collection it belongs to. No
+    server-config split is needed, and demanding one would split a collection's config
+    across two files for no gain.
+
+    The cost, identical to validators and documented as such: the closure is bundled
+    into the browser even though it never runs there, so it must not close over secrets.
+
+    Three accepted `url` forms, discriminated structurally:
+
+    ```ts
+    url: "/"                                            // literal path
+    url: (doc) => `/${doc.slug}`                        // client resolver (today)
+    url: { server: async ({ doc, ctx }) => `/${...}` }  // server resolver, gets ctx
+    ```
+
+    The server form is an object rather than a second bare function because a bare
+    `async (doc) => …` is indistinguishable from the client form at runtime — a function
+    that returns a promise is still just a function — and misrouting it would mean
+    calling `ctx.db` in the browser.
+
+23. **A server resolver costs one Convex round trip per debounced change; a string or
+    client resolver costs none.** The preview URL is a function of *unsaved* form values,
+    which exist only in the browser, so a server resolver must be re-evaluated with those
+    values whenever they change: a new `livePreviewUrl` query on `collectionsApi`, called
+    on the same debounce as `useLivePreviewSync`. Two things keep that cheap:
+
+    - **`NextAdminPage` resolves the initial URL server-side**, so opening an editor
+      never round-trips and the iframe has its final `src` on first paint.
+    - **Only the `{ server }` form takes that path.** A string or client resolver keeps
+      resolving synchronously in `resolveLivePreviewUrl` exactly as it does now, so the
+      common case is unchanged and the round trip is opt-in by the shape of the config.
+
+    The query is gated by the same `hasPermission` read check the collection's own `get`
+    runs. Without it, a resolver that reads `ctx.db` becomes an unauthenticated oracle —
+    the caller controls `values`, and the returned URL can encode what the resolver read.
+
+## Amendment 1 — Implementation
+
+### Step 9 — Root `livePreview` map and one precedence resolver [dev]
+
+#### packages/core/src/livePreview/types.ts
+
+`AdminLivePreviewConfig` becomes `AdminLivePreviewConfigInput` with a required `url`
+(Design Decision 21) — every other field optional, defaults applied by the resolver.
+`LivePreviewConfigInput`/`LivePreviewConfig` gain `collections` and `globals` maps typed
+as in Design Decision 19. `LivePreviewUrlResolver` keeps its bivariance hack (a union
+member cannot use method shorthand; without it every `CollectionConfig` with a generic
+slug stops being assignable — it broke `useCollectionForm`, `defineConfig` and `access`).
+New: `LivePreviewServerUrlResolver<TDoc, TDataModel>` and the `{ server }` wrapper type,
+plus `ResolvedLivePreviewSettings` (all fields required, `url` still a union).
+
+#### packages/core/src/livePreview/resolveSettings.ts
+
+New file. `resolveLivePreviewSettings({ config, kind, slug, admin })` implements Design
+Decision 20's four-level order and returns `ResolvedLivePreviewSettings | undefined`
+(`undefined` = no `url` anywhere, i.e. preview is off for that slug).
+
+#### packages/core/src/livePreview/resolveSettings.test.ts
+
+New file. Per-field precedence: collection value wins over root entry wins over root
+default; a collection setting one field inherits the rest from the root entry; a slug
+with neither returns `undefined`; defaults land only when nothing declared the field.
+
+#### packages/core/src/collections/config.ts, packages/core/src/globals/config.ts
+
+Drop the eager `debounceMs`/`defaultOpen` defaulting (Design Decision 21); pass
+`input.admin.livePreview` through untouched. Keeps the two boundary casts.
+
+#### packages/react/src/components/views/{CollectionEditView,GlobalEditView}.tsx
+
+Replace the inline `livePreview?.breakpoints ?? config.livePreview.breakpoints` and the
+`collection.admin.livePreview` reads with one `resolveLivePreviewSettings` call.
+
+#### packages/next/src/NextAdminPage.tsx
+
+Same call for `defaultOpen`, replacing the direct `collection.admin.livePreview?.defaultOpen`
+read.
+
+**Verify:** pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test
+
+### Step 10 — Server-resolved preview URLs [dev]
+
+#### packages/core/src/livePreview/resolveUrl.server.ts
+
+New file. `resolveLivePreviewUrlOnServer({ ctx, config, kind, slug, documentId, values })`
+— loads the saved document (when `documentId` is set), merges `values` over it, runs the
+`{ server }` resolver, returns `string | undefined`. Runs the collection's `hasPermission`
+read check first (Design Decision 23).
+
+#### packages/core/src/api/server.ts
+
+`collectionsApi` returns a new `livePreviewUrl` query: args
+`{ collection: v.string(), kind: v.optional(v.string()), documentId: v.optional(v.string()), values: v.any() }`,
+handler delegates to `resolveLivePreviewUrlOnServer`. Projects wire it by adding
+`livePreviewUrl` to the destructure in `convex/vex.ts` — apps/www and both templates
+updated in this step.
+
+#### packages/react/src/components/livePreview/LivePreviewPanel.tsx
+
+`resolveLivePreviewUrl` narrows the three forms: `string` returned as-is, client resolver
+called as today, `{ server }` returns `undefined` so the panel falls back to the
+server-supplied initial URL until the query answers. Preview-param appending is unchanged
+and applies to all three.
+
+#### packages/react/src/hooks/useLivePreviewServerUrl.ts (+ test)
+
+New file. When the resolved settings carry a `{ server }` resolver, subscribes to
+`vexConvexApi.livePreviewUrl` with the debounced form values and returns the resolved URL;
+returns the caller's static URL untouched otherwise, so no query is issued for the string
+and client-resolver forms.
+
+#### packages/next/src/NextAdminPage.tsx
+
+Resolves the initial URL server-side for a `{ server }` resolver and passes it as
+`initialPreviewUrl`, so the iframe's first paint needs no round trip.
+
+#### apps/www + packages/create-vexcms/templates/marketing-site
+
+`convex/vex.ts` exports `livePreviewUrl`; one collection migrated to the root
+`livePreview.collections` map to prove the shape end to end.
+
+#### packages/core/README.md, apps/docs/src/content/docs/guides/live-preview.mdx
+
+Document the root map, the precedence order, the three `url` forms, and the
+"server resolvers ship to the browser, so no secrets in the closure" rule.
+
+**Verify:** pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test && pnpm --filter @vexcms/next build

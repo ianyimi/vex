@@ -14,13 +14,14 @@ import { useEffect } from "react"
  * admin re-skins every open tab immediately. No polling, no preview channel,
  * no drafts machinery.
  *
- * The CSS goes into an effect-managed `<style>` tag appended to `<head>`
- * rather than a React-hoisted one: hoisted styles are deduplicated by `href`
- * and are not guaranteed to update in place when their text changes, and an
- * appended tag deterministically follows the server-rendered block — equal
- * specificity, later in the document, so it wins the moment it exists. The
- * first push matches the server CSS byte-for-byte, so nothing visibly changes
- * until a real edit lands.
+ * The CSS goes into an effect-managed `<style>` appended to the end of
+ * `<body>` rather than a React-hoisted one: hoisted styles are deduplicated by
+ * `href` and are not guaranteed to update in place when their text changes.
+ * The end of `<body>` is the one position that follows *both* server blocks —
+ * the hoisted site block in `<head>` and the admin layout's in-tree block — so
+ * at equal specificity this one wins the moment it exists. The first push
+ * matches the server CSS byte-for-byte, so nothing visibly changes until a
+ * real edit lands.
  *
  * Distinguishes loading from empty: while the query is unresolved
  * (`undefined`) the server CSS stands; once it resolves to `null` (no active
@@ -43,7 +44,7 @@ export function ThemeLive(props: { scope?: ThemeScope }) {
     if (!el) {
       el = document.createElement("style")
       el.id = id
-      document.head.appendChild(el)
+      document.body.appendChild(el)
     }
     el.textContent = theme ? buildThemeCss({ theme, scope }) : ""
 

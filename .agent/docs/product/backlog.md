@@ -509,3 +509,36 @@ similar to guide the client uploader.
 workable in practice.
 
 **Detail.** `packages/core/src/media/api/mutations.ts:57,113`.
+
+---
+
+## `vex_status` as a search-index `filterField` for versioned collections
+
+**What.** Declare `vex_status` as a Convex search-index `filterField` on the
+auto-generated `search_<useAsTitle>` index (`collectionConfigToVexSchema`,
+`validator.ts`) for a collection with `versions.drafts: true`, and have
+`search/server.ts`'s status exclusion push through `.withSearchIndex()`'s own
+`.eq("vex_status", "published")` filter instead of a post-search `.filter()`.
+
+**Why.** `2026-09-20-versioning-drafts` Step 10 excludes draft rows from `search`
+results correctly today via a generic post-search `.filter()` — this is already
+correct, not a bug. Declaring the field as an indexed `filterField` would let Convex
+push the exclusion into the search index lookup itself, avoiding wasted
+relevance-ranked result slots on excluded drafts when a search term matches many
+draft rows alongside published ones — a real optimization with no functional
+difference, since Convex search indexes already support `filterFields` (used
+today by a `text()` field's own manually-configured `searchIndex.filterFields`,
+`fields/text/types.ts`).
+
+**Lift.** Unassessed. Touches `collections/validator.ts` (the auto-generated
+`search_<useAsTitle>` index currently always emits `filterFields: []`; would need
+to conditionally include `"vex_status"` for a versioned collection) and
+`api/search/server.ts` (its status condition would need a second code path using
+`.withSearchIndex()`'s native filter instead of always folding into `.filter()`).
+
+**Why deferred.** Developer decision during `2026-09-20-versioning-drafts`'s
+revision round: no measured search-performance problem motivates it yet, and it
+is a pure optimization on top of an already-correct mechanism. Revisit if search
+latency on a versioned, draft-heavy collection is ever measured as a real problem.
+
+**Detail.** Step 10, `.agent/docs/specs/2026-09-20-versioning-drafts/spec.md`.

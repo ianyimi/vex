@@ -113,3 +113,33 @@ drives "preview links" (Design Decision 1 corrects this).
 - [x] `packages/core/README.md` — replace the "Live Preview" section.
 - [x] `apps/docs/src/content/docs/guides/live-preview.mdx` — new file, mirroring `guides/lifecycle-hooks.mdx`.
 Verify: grep -rn "livePreview" packages/core/README.md apps/docs/src/content/docs
+
+## Step 9 — Root `livePreview` map and one precedence resolver [dev]
+
+Why: Amendment 1, Design Decisions 19–21. Every collection's and global's preview
+settings become declarable in one root block, and a single `resolveLivePreviewSettings`
+owns the collection-over-root-over-default order so the four call sites that need a
+document's preview settings cannot disagree.
+- [ ] `packages/core/src/livePreview/types.ts` — `collections`/`globals` maps on the root config; `AdminLivePreviewConfig` loses its eager defaults; `LivePreviewServerUrlResolver` + `ResolvedLivePreviewSettings`.
+- [ ] `packages/core/src/livePreview/resolveSettings.ts` — new file, the one precedence implementation.
+- [ ] `packages/core/src/livePreview/resolveSettings.test.ts` — per-field precedence, partial overrides, absent slug, default application.
+- [ ] `packages/core/src/collections/config.ts` + `globals/config.ts` — stop defaulting `debounceMs`/`defaultOpen` at define time.
+- [ ] `packages/react/src/components/views/CollectionEditView.tsx` + `GlobalEditView.tsx` — resolve settings through the new helper.
+- [ ] `packages/next/src/NextAdminPage.tsx` — same helper for the cookie default.
+Verify: pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test
+
+## Step 10 — Server-resolved preview URLs [dev]
+
+Why: Amendment 1, Design Decisions 22–23. A `url` may be `{ server: ({ doc, ctx }) => … }`,
+authored in the client config like a field validator, executed on Convex with a real
+`ctx`, gated by the collection's own read permission.
+- [ ] `packages/core/src/livePreview/resolveUrl.server.ts` — load doc, merge unsaved values, permission-check, run the resolver.
+- [ ] `packages/core/src/livePreview/resolveUrl.server.test.ts` — permission denial, unsaved-value merge, absent server resolver.
+- [ ] `packages/core/src/api/server.ts` — `livePreviewUrl` query on `collectionsApi`.
+- [ ] `packages/react/src/components/livePreview/LivePreviewPanel.tsx` — `resolveLivePreviewUrl` narrows string / client resolver / server resolver.
+- [ ] `packages/react/src/hooks/useLivePreviewServerUrl.ts` + test — debounced query only for the server form.
+- [ ] `packages/next/src/NextAdminPage.tsx` — server-resolve the initial URL, pass `initialPreviewUrl`.
+- [ ] `apps/www` + `packages/create-vexcms/templates/marketing-site` — export `livePreviewUrl`; migrate one collection to the root map.
+- [ ] `packages/core/README.md` + `apps/docs/src/content/docs/guides/live-preview.mdx` — root map, precedence order, three `url` forms, no-secrets rule.
+Verify: pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test && pnpm --filter @vexcms/next build
+
