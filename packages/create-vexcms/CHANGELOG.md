@@ -1,5 +1,76 @@
 # create-vexcms
 
+## 0.1.0-alpha.23
+
+### Patch Changes
+
+- 1948f9c: `marketing-site`: the admin theme no longer follows the visitor back to the
+  public site.
+
+  `<ThemeStyle scope="admin" />` rendered its block with `href` + `precedence`,
+  which makes it a React 19 stylesheet _resource_ — react-dom keeps resources in
+  `<head>` for the life of the document and, on unmount, only decrements their
+  refcount (`commitDeletionEffectsOnFiber`, fiber tag 26). The admin layout's
+  `:root:root` block therefore outlived the admin layout: navigate from `/admin`
+  back to `/` with the in-panel "View site" link and the marketing site rendered
+  in the admin palette until a full reload. Only the admin scope was affected —
+  the site block is document-wide, so keeping it is correct.
+
+  The admin block now renders in place inside the admin layout, so React removes
+  it with that layout. Nothing about first paint changes: it still streams ahead
+  of any admin markup, and `:root:root` outranks the site's `:root` wherever both
+  apply, whatever the document order.
+
+  `<ThemeLive />` follows: it appends its `<style>` to the end of `<body>` rather
+  than `<head>`, the one position that follows both server blocks — the hoisted
+  site block in `<head>` and the admin layout's in-tree block — so live theme
+  edits still win at equal specificity.
+
+- 649cafa: Live preview reaches globals, resolves URLs on the server, and hands config callbacks a
+  typed `vex` api. Several pieces of this were unreachable before: a global's unsaved values
+  never applied at all, and a server-resolved preview URL loaded an ordinary page.
+
+  **Globals are previewable.** `LivePreviewProvider` matched an incoming `collectionSlug`
+  against `collections` only and returned early on a miss, so every global update was dropped
+  before validation. It now falls through to `globals` and validates with
+  `getGlobalInputSchema(...).partial()`. The overlay map is keyed by preview key — `_id` for a
+  collection document, the slug for a global, matching what `GlobalEditView` sends — and
+  `useLivePreview`/`useLivePreviewDocumentQuery` accept a `VexResourceSlug`, so a global slug
+  is no longer a compile error.
+
+  **`LivePreviewProvider` takes no props.** It reads `collections`, `globals`, and
+  `admin.livePreview.allowedOrigins` from `VexConfigContext`. Mount `VexConfigProvider` once
+  at the app root — it now serves the admin panel and the public site — and render
+  `<LivePreviewProvider>` directly.
+
+  **Server-resolved preview URLs carry the preview params.** `appendLivePreviewParams` moved
+  into `@vexcms/core` and `NextAdminPage` applies it to what `livePreviewUrl` returns;
+  previously the iframe was handed a plain public URL and silently listened to nothing.
+  `useLivePreviewServerUrl` holds the last resolved URL while a later edit's query is in
+  flight (`keepPreviousData`) instead of reverting to the server-rendered one, which was
+  changing the iframe `src` and reloading the preview between edits.
+
+  **Root `admin.livePreview.collections`/`.globals` maps.** Preview settings may be declared
+  centrally or on the collection/global, resolved by one precedence function. `url` accepts a
+  `{ server }` resolver that reads the database, invoked with `ctx` and a read-only `vex` api.
+
+  **`VexCallbackApi`.** Config callbacks receive `vex` — `find`, `get`, `search`, and
+  `globals.get`/`globals.find` — bound to the caller's `ctx` and config, access-bypassed by
+  default so a uniqueness check cannot miss rows the caller may not read.
+
+  **Typed `ctx` without type parameters.** `vex generate` emits the project's `DataModel` into
+  the `GeneratedVexTypes` augmentation, so `VexQueryCtx`/`VexMutationCtx` name the project's
+  own context and every `TCtx`/`TDataModel` parameter on config callbacks is gone. A project
+  that generated types before this must run `vex generate` once, or `ctx` stays
+  `GenericDataModel`.
+
+  **`validate()` throws.** A field validator raises a `ConvexError` instead of returning a
+  string; `validateFields` normalizes every failure to one error shape. Field generics are
+  slug-first (`VexResourceSlug`, `DocumentByResourceSlug`).
+
+  **Removed:** the floating `LivePreviewIndicator`. The previewed page renders no chrome of
+  its own — the admin panel frames the preview and owns its controls.
+
 ## 0.1.0-alpha.22
 
 ### Patch Changes
