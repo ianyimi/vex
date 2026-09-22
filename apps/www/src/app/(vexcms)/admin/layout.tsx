@@ -7,8 +7,6 @@ import { AuthServerProvider } from "~/components/providers/auth";
 import { ThemeLive } from "~/components/ThemeLive";
 import { ThemeStyle } from "~/components/ThemeStyle";
 
-import { ClientProviders } from "./clientProviders";
-
 /**
  * Overlays `base-nextjs`'s admin layout to wire the theme system in: base
  * ships no theme, so its admin layout has nothing to render here. `<ThemeStyle
@@ -24,12 +22,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     // Mounted here rather than in the root layout: its `getToken()` cookie read
     // forced every route in the app dynamic. Admin routes are meant to be
     // dynamic, so this is the correct home for it.
+    // `VexConfigProvider` is no longer mounted here — the root layout's
+    // `ClientProviders` mounts it once for the whole app.
     <AuthServerProvider>
-      <ClientProviders>
-        <ThemeStyle scope="admin" />
-        <ThemeLive scope="admin" />
-        <NextAdminLayout user={user ?? undefined}>{children}</NextAdminLayout>
-      </ClientProviders>
+      <ThemeStyle scope="admin" />
+      <ThemeLive scope="admin" />
+      <NextAdminLayout user={user ?? undefined}>{children}</NextAdminLayout>
     </AuthServerProvider>
   );
 }

@@ -829,7 +829,7 @@ export const featuredPosts = query({
           {
             question: "Is it production ready?",
             answer:
-              "Not yet. Ten specs stand between the current alpha and the 0.1.0 tag, in a published order. The big ones: lifecycle hooks with server-side validation, live preview, versioning and drafts, and the richtext field. The roadmap page has the full list.",
+              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation and live preview have landed; the big ones left are versioning and drafts, and the richtext field. The roadmap page has the full list.",
           },
           {
             question: "Which frameworks does it support?",
@@ -1285,32 +1285,32 @@ export const testimonials = defineTable({
           {
             feature: "Lifecycle Hooks & Server-Side Validation",
             description:
-              "beforeChange and afterChange, plus one write-validation stage. min and max become enforced through the Local API, not only in the admin form. An async validate() receives ctx, so transactional uniqueness checks are sound.",
-            status: ["planned"],
+              "beforeChange and afterChange, plus one write-validation stage. min and max are enforced through the Local API, not only in the admin form. An async validate() receives a ctx typed to your own data model, so transactional uniqueness checks are sound; it throws to reject.",
+            status: ["shipped"],
           },
           {
             feature: "Live Preview",
             description:
-              "Unsaved form state, streamed over postMessage and overlaid on your real route. The preview is your production page, not a parallel render path. Origin-allowlisted and gated per request.",
-            status: ["planned"],
+              "Unsaved form state, streamed onto your real route — the preview is your production page, not a parallel render path. Collections and globals alike, with the preview URL declared centrally or per collection, and resolvable on the server when the path lives in the database. Origin-allowlisted and gated per request.",
+            status: ["shipped"],
           },
           {
             feature: "Versioning & Drafts",
             description:
               "A real draft and publish workflow. Reads return the published document, readDrafts returns drafts, and publish promotes. Autosave never touches what is live. Prior versions are restorable from the edit view.",
-            status: ["planned"],
+            status: ["in-progress"],
           },
           {
             feature: "Richtext Field",
             description:
               "A richtext() field in core, wired to the Plate.js editor and renderer that @vexcms/richtext-plate already ships. The @ts-nocheck pragmas go with it.",
-            status: ["planned"],
+            status: ["in-progress"],
           },
           {
             feature: "Field Input Consistency Pass",
             description:
               "Every input gets correct empty, loading, error, and read-only states. The relationship field is the named offender. The media picker finally honours the upload field's accept filter.",
-            status: ["planned"],
+            status: ["in-progress"],
           },
           {
             feature: "Edit-View Overhaul",

@@ -90,7 +90,7 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     /* eslint-disable perfectionist/sort-modules */
     /* eslint-disable perfectionist/sort-object-types */
     /* eslint-disable @typescript-eslint/no-empty-object-type */\n\n
-    import type { Id } from "@convex/_generated/dataModel"
+    import type { DataModel, Id } from "@convex/_generated/dataModel"
     import type { VexDocument, VexDocumentGlobal } from "@vexcms/core"\n
   `;
 
@@ -187,6 +187,7 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     \t\tIndexFieldsBySlug: {\n${indexFieldsBySlug}\n}
     \t\tCustomActionsBySlug: {\n${customActionsBySlug}\n}
     \t\tAuthSlugs: {\n${authSlugs}\n}
+    \t\tDataModel: DataModel
     \t}
   \n}`;
 

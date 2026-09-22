@@ -223,13 +223,55 @@ hard-reload. Render it in place instead, as above.
 ### Live updates
 
 `<ThemeStyle />` covers first paint only. For edits to go live without a
-reload, add a small client component subscribing to the same query (Convex's
-reactive `useQuery`) that appends its own `<style>` to the end of `<body>` and
-rewrites its text with `buildThemeCss` on change — saving a colour in the admin
-panel then restyles the site in real time. The end of `<body>` is the one
-position that follows both server blocks (the hoisted site block in `<head>`
-and the admin layout's in-tree block), so at equal specificity the live block
-always wins.
+reload, add a small client component that appends its own `<style>` to the end
+of `<body>` and rewrites its text with `buildThemeCss` on change — saving a
+colour in the admin panel then restyles the site in real time. The end of
+`<body>` is the one position that follows both server blocks (the hoisted site
+block in `<head>` and the admin layout's in-tree block), so at equal
+specificity the live block always wins.
+
+Two rules decide whether it also works under [live
+preview](/guides/live-preview/), and both are easy to get wrong:
+
+**Do the `siteSettings -> theme` join on the CLIENT, not in `getActive`.** That
+query resolves the reference server-side, so it answers from the SAVED global
+and is structurally blind to an editor's unsaved `activeTheme` — switching
+themes in preview changes nothing until save. Read the global through
+`useLivePreviewDocumentQuery` (so the overlay reaches it), then resolve
+whichever theme it now names through a second query that takes an id:
+
+```ts
+// convex/theme.ts — alongside getActive
+export const byId = query({
+  args: { id: v.string() },
+  handler: async (ctx, args): Promise<Doc<"themes"> | null> =>
+    await ctx.db.get(args.id as Id<"themes">),
+});
+```
+
+```tsx
+const { data: settings } = useLivePreviewDocumentQuery(
+  convexQuery(api.siteSettings.get, {}),
+  "siteSettings",
+);
+const themeId = (settings?.activeTheme as string[] | undefined)?.[0];
+const { data: theme } = useQuery({
+  ...convexQuery(api.theme.byId, themeId ? { id: themeId } : "skip"),
+  enabled: Boolean(themeId),
+});
+```
+
+Outside preview the overlay is absent and this behaves exactly as the server
+join did, still as a live Convex subscription.
+
+**Own the `<style>` element in its own mount-scoped effect.** Creating it inside
+the effect that writes the CSS means every dependency change runs that effect's
+cleanup FIRST and removes the element, exposing the server CSS underneath for as
+long as the next query takes — a flash back to the saved theme, visible only the
+first time a given theme is selected because a cached one resolves in the same
+tick. Create and remove it in an effect keyed on the scope alone; write its
+`textContent` from a second effect, and hold the previous CSS (`return` early)
+while the new theme is still loading.
 
 ## Gotchas
 

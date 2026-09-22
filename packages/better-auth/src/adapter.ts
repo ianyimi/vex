@@ -18,6 +18,7 @@ import {
 } from "@vexcms/core";
 import type { BetterAuthOptions, DBFieldAttribute } from "better-auth";
 import { getAuthTables } from "better-auth/db";
+import type { VexResourceSlug } from "@vexcms/core";
 
 /**
  * Options for `betterAuthAdapter()`.
@@ -274,7 +275,7 @@ function betterAuthAttrToVexField(
   if (isHidden) admin.hidden = true;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const baseOptions: { defaultValue: any } & BaseFieldInput<AuthFieldMeta> = {
+  const baseOptions: { defaultValue: any } & BaseFieldInput<VexResourceSlug, AuthFieldMeta> = {
     defaultValue: undefined,
   };
   if (Object.keys(admin).length > 0) baseOptions.admin = admin;
@@ -288,7 +289,7 @@ function betterAuthAttrToVexField(
   }
 
   if (attr.references) {
-    return text(baseOptions);
+    return text<VexResourceSlug, AuthFieldMeta>(baseOptions);
   }
 
   if (Array.isArray(attr.type)) {
@@ -300,27 +301,27 @@ function betterAuthAttrToVexField(
 
   switch (attr.type) {
     case "string":
-      return text(baseOptions);
+      return text<VexResourceSlug, AuthFieldMeta>(baseOptions);
     case "string[]":
       return array({
         ...baseOptions,
-        items: text(baseOptions),
+        items: text<VexResourceSlug, AuthFieldMeta>(baseOptions),
       });
     case "boolean":
       return checkbox(baseOptions);
     case "number":
-      return number(baseOptions);
+      return number<VexResourceSlug, AuthFieldMeta>(baseOptions);
     case "number[]":
       return array({
         ...baseOptions,
-        items: number(baseOptions),
+        items: number<VexResourceSlug, AuthFieldMeta>(baseOptions),
       });
     case "date":
       return date(baseOptions);
     case "json":
       // Fall back to text until a dedicated json field type is wired
       // TODO: create json field
-      return text(baseOptions);
+      return text<VexResourceSlug, AuthFieldMeta>(baseOptions);
     default:
       // Unknown type — skip rather than crash
       return null;

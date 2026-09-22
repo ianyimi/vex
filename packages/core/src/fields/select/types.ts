@@ -1,6 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseField, BaseFieldInput, FieldValidateProps } from "../baseTypes";
-import type { CollectionSlug } from "../../types/generated";
+import type { VexResourceSlug } from "../../types/generated";
 
 /**
  * Configuration input for a `select()` field.
@@ -52,9 +52,9 @@ import type { CollectionSlug } from "../../types/generated";
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`)
  */
 export interface SelectFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
+> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
@@ -69,7 +69,7 @@ export interface SelectFieldInput<
   hasMany?: boolean;
   optionInterfaceName?: string;
   /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
 }
 
 /**
@@ -83,9 +83,9 @@ export interface SelectFieldInput<
  * @see {@link select} for the config function that produces this type
  */
 export interface SelectField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseField<TFieldMeta, TCollectionSlug> {
+> extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.select.type;
   /** Pre-filled value shown in the admin form when creating a new field. */
   defaultValue: string[];
@@ -97,5 +97,5 @@ export interface SelectField<
   hasMany: boolean;
   optionInterfaceName?: string;
   /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
 }

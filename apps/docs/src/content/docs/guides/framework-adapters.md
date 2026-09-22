@@ -389,29 +389,26 @@ import vexConfig from "./vex.config";
 export default defineServerConfig({ config: vexConfig });
 ```
 
-**`app/admin/clientProviders.tsx`**:
+**`components/providers/client.tsx`** — one root mount, serving the admin panel and the
+public site alike:
 ```tsx
 "use client";
 
 import { VexConfigProvider } from "@vexcms/react";
-import config from "../../../vex.config";
+import config from "../../vex.config";
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return <VexConfigProvider config={config}>{children}</VexConfigProvider>;
 }
 ```
 
-**`app/admin/layout.tsx`**:
+**`app/admin/layout.tsx`** — the config context comes from the root layout:
 ```tsx
 import { NextAdminLayout } from "@vexcms/next/client";
 
-import { ClientProviders } from "./clientProviders";
-
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClientProviders>
-      <NextAdminLayout>{children}</NextAdminLayout>
-    </ClientProviders>
+    <NextAdminLayout>{children}</NextAdminLayout>
   );
 }
 ```

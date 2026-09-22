@@ -1,4 +1,3 @@
-import type { GenericDataModel } from "convex/server";
 import { applyBaseValidators } from "../validators/utils";
 import { fieldValidator, type FieldValidate } from "../baseTypes";
 import type { CollectionSlug } from "../../types/generated";
@@ -45,10 +44,9 @@ export function relationshipFieldToValidator(props: {
  */
 export function relationshipValidator<
   TCollectionSlug extends CollectionSlug,
-  TDataModel extends GenericDataModel = GenericDataModel,
 >(
   slug: TCollectionSlug,
-  fn: FieldValidate<TCollectionSlug, string[], TDataModel, RelationshipField>,
+  fn: FieldValidate<TCollectionSlug, string[], RelationshipField>,
 ): FieldValidate<TCollectionSlug, string[]> {
-  return fieldValidator<TCollectionSlug, string[], TDataModel, RelationshipField>(slug, fn);
+  return fieldValidator<TCollectionSlug, string[], RelationshipField>(slug, fn);
 }

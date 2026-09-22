@@ -15,6 +15,7 @@ import { TrashIcon } from "lucide-react";
 import { fieldToInputComponent } from "../fields";
 import { FormError } from "./FormError";
 import { FormDescription } from "./FormDescription";
+import type { VexResourceSlug } from "@vexcms/core";
 
 /**
  * Renders an array field as a dynamic list with add/remove controls.
@@ -31,7 +32,7 @@ import { FormDescription } from "./FormDescription";
  *
  * @example
  * ```tsx
- * const ArrayFieldInput = createFieldInput<ArrayType[], ArrayField<ArrayType>>(
+ * const ArrayFieldInput = createFieldInput<ArrayType[], ArrayField<VexResourceSlug, ArrayType>>(
  *   ({ name, fieldDef, field, submissionAttempts }) => (
  *     <div className="flex flex-col gap-1.5">
  *       <FormArray
@@ -64,7 +65,7 @@ export function FormArray<
   index,
   readOnly,
   submissionAttempts,
-}: InputComponentProps<TFieldMeta, ArrayField<TArrayType, TFieldMeta>> & {
+}: InputComponentProps<TFieldMeta, ArrayField<VexResourceSlug, TArrayType, TFieldMeta>> & {
   field: TypedFieldApi<TArrayType[]>;
   submissionAttempts: number;
 }) {

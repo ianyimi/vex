@@ -1,9 +1,9 @@
-import type { GenericDataModel } from "convex/server";
 import { adminFieldToValidator } from "../validators";
 import { applyBaseValidators } from "../validators/utils";
 import { fieldValidator, type FieldValidate } from "../baseTypes";
 import type { CollectionSlug } from "../../types/generated";
 import type { ArrayField, ArrayType } from "./types";
+import type { VexResourceSlug } from "../../types/generated";
 
 /**
  * Converts an array field definition to a Convex schema validator.
@@ -33,7 +33,7 @@ import type { ArrayField, ArrayType } from "./types";
 export function arrayFieldToValidator<
   TArrayType extends ArrayType = ArrayType,
   TFieldMeta extends {} = {},
->(props: { field: ArrayField<TArrayType, TFieldMeta> }): string {
+>(props: { field: ArrayField<VexResourceSlug, TArrayType, TFieldMeta> }): string {
   const itemValidator = adminFieldToValidator({ field: props.field.items });
   return applyBaseValidators({
     field: props.field,
@@ -52,10 +52,9 @@ export function arrayFieldToValidator<
 export function arrayValidator<
   TCollectionSlug extends CollectionSlug,
   TArrayType extends ArrayType = string,
-  TDataModel extends GenericDataModel = GenericDataModel,
 >(
   slug: TCollectionSlug,
-  fn: FieldValidate<TCollectionSlug, TArrayType[], TDataModel, ArrayField<TArrayType>>,
+  fn: FieldValidate<TCollectionSlug, TArrayType[], ArrayField<VexResourceSlug, TArrayType>>,
 ): FieldValidate<TCollectionSlug, TArrayType[]> {
-  return fieldValidator<TCollectionSlug, TArrayType[], TDataModel, ArrayField<TArrayType>>(slug, fn);
+  return fieldValidator<TCollectionSlug, TArrayType[], ArrayField<VexResourceSlug, TArrayType>>(slug, fn);
 }

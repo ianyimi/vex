@@ -8,9 +8,9 @@ import {
   DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE,
   GlobalEditViewProps,
   isFieldAllowed,
+  resolveLivePreviewSettings,
   vexConvexApi,
 } from "@vexcms/core";
-import type { LivePreviewUrlResolver } from "@vexcms/core";
 import { AppForm } from "../form";
 import {
   useFieldPermissions,
@@ -33,6 +33,7 @@ import {
 } from "../../hooks/useLivePreviewPanelState";
 import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
 import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
+import { useLivePreviewServerUrl } from "../../hooks/useLivePreviewServerUrl";
 
 /**
  * Global document edit form.
@@ -128,19 +129,38 @@ export function GlobalEditView(props: GlobalEditViewProps) {
 
   const formValues = useStore(form.store, (state) => state.values);
   const isMobile = useIsMobile();
-  const livePreview = global.admin.livePreview;
+  const livePreview = resolveLivePreviewSettings({
+    config: config.admin.livePreview,
+    kind: "global",
+    slug: global.slug,
+    admin: global.admin.livePreview,
+  });
   const previewPanel = useLivePreviewPanelState({
     slug: global.slug,
     initialOpen: props.initialPreviewPanelOpen ?? false,
   });
-  const previewUrl = resolveLivePreviewUrl({
-    url: livePreview?.url as string | LivePreviewUrlResolver | undefined,
+  const clientPreviewUrl = resolveLivePreviewUrl({
+    url: livePreview?.url,
     collectionSlug: global.slug,
     baseDoc: (globalDoc ?? {}) as Record<string, unknown>,
     formValues,
   });
+
+  // A `{ server }` resolver reads the database, so it cannot be evaluated
+  // here; this issues the Convex round trip for that form only and passes
+  // the client-resolved URL straight through otherwise.
+  const previewUrl = useLivePreviewServerUrl({
+    url: livePreview?.url,
+    clientUrl: clientPreviewUrl,
+    initialUrl: props.initialPreviewUrl,
+    kind: "global",
+    slug: global.slug,
+    documentId: global.slug,
+    formValues,
+    debounceMs: livePreview?.debounceMs,
+  });
   const previewIsActive = Boolean(livePreview && previewPanel.isOpen && previewUrl);
-  const breakpoints = livePreview?.breakpoints ?? config.livePreview.breakpoints;
+  const breakpoints = livePreview?.breakpoints ?? config.admin.livePreview.breakpoints;
 
   // See `CollectionEditView`: split mode fills `main`'s content box exactly and
   // cancels its bottom padding, so the form column scrolls on its own and runs
@@ -182,14 +202,13 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   );
 
   return (
-    <AppForm
-      form={form}
-      className="relative -mb-6 flex h-[calc(100%+1.5rem)] flex-col"
-    >
+    <AppForm form={form} className="relative -mb-6 flex h-[calc(100%+1.5rem)] flex-col">
       <div
         // See CollectionEditView: outside the scroll container, no bottom
         // margin so the divider through the handle meets this border.
-        className={"z-10 -mx-6 flex shrink-0 flex-wrap items-center justify-between gap-y-2 border-b bg-background px-6 pt-4 pb-3"}
+        className={
+          "z-10 -mx-6 flex shrink-0 flex-wrap items-center justify-between gap-y-2 border-b bg-background px-6 pt-4 pb-3"
+        }
       >
         <h1 className="text-2xl font-bold">
           Edit Global - <span className="text-primary">{global.label}</span>
@@ -199,8 +218,13 @@ export function GlobalEditView(props: GlobalEditViewProps) {
           children={(isDefaultValue) => (
             <div className="flex flex-wrap gap-2">
               {livePreview && (
-                <Button type="button" variant="outline" onClick={previewPanel.toggle}>
-                  {previewPanel.isOpen ? "Hide preview" : "Show preview"}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={previewPanel.toggle}
+                  icon={isSplit ? "Eye" : "EyeOff"}
+                >
+                  Preview
                 </Button>
               )}
               <Button
@@ -231,35 +255,35 @@ export function GlobalEditView(props: GlobalEditViewProps) {
         // width is pinned inline) runs the preview to the shell edge, and the
         // same element carries the min-size measurement.
         <div ref={splitRef} className="-mr-6 flex min-h-0 flex-1">
-        <ResizablePanelGroup
-          direction="horizontal"
-          className="min-h-0 flex-1"
-          onLayout={([formPanelSize]) => {
-            if (formPanelSize !== undefined) {
-              writeLivePreviewLayoutCookie({ slug: global.slug, formPanelSize });
-            }
-          }}
-        >
-          <ResizablePanel defaultSize={formPanelSize} minSize={panelMinSizes.form}>
-            <div
-              ref={formScroll.ref}
-              onScroll={formScroll.onScroll}
-              className="vex-scroll-area h-full overflow-y-auto pt-4 pr-4 pb-6"
-            >
-              {formContent}
-            </div>
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={100 - formPanelSize} minSize={panelMinSizes.preview}>
-            <LivePreviewPanel
-              previewUrl={previewUrl as string}
-              collectionSlug={global.slug}
-              documentId={global.slug}
-              debounceMs={livePreview?.debounceMs}
-              breakpoints={breakpoints}
-              form={form}
-            />
-          </ResizablePanel>
+          <ResizablePanelGroup
+            direction="horizontal"
+            className="min-h-0 flex-1"
+            onLayout={([formPanelSize]) => {
+              if (formPanelSize !== undefined) {
+                writeLivePreviewLayoutCookie({ slug: global.slug, formPanelSize });
+              }
+            }}
+          >
+            <ResizablePanel defaultSize={formPanelSize} minSize={panelMinSizes.form}>
+              <div
+                ref={formScroll.ref}
+                onScroll={formScroll.onScroll}
+                className="vex-scroll-area h-full overflow-y-auto pt-4 pr-4 pb-6"
+              >
+                {formContent}
+              </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={100 - formPanelSize} minSize={panelMinSizes.preview}>
+              <LivePreviewPanel
+                previewUrl={previewUrl as string}
+                collectionSlug={global.slug}
+                documentId={global.slug}
+                debounceMs={livePreview?.debounceMs}
+                breakpoints={breakpoints}
+                form={form}
+              />
+            </ResizablePanel>
           </ResizablePanelGroup>
         </div>
       ) : (

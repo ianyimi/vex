@@ -88,27 +88,27 @@ export const roadmapBlock = defineBlock({
           status: "shipped",
         },
         {
-          feature: "Versioning & Drafts",
-          description: "Draft/publish workflow with autosave and version history — in active development.",
-          status: "coming-soon",
-        },
-        {
           feature: "Live Preview",
           description:
-            "Side-by-side preview of draft content against the real frontend before publishing — builds on the drafts infrastructure.",
-          status: "coming-soon",
+            "Unsaved form state, streamed onto your real route — the preview is your production page, not a parallel render path. Collections and globals alike, with the preview URL declared centrally or per collection, and resolvable on the server when the path lives in the database. Origin-allowlisted and gated per request.",
+          status: "shipped",
         },
         {
-          feature: "Form Builder & Lifecycle Hooks",
+          feature: "Versioning & Drafts",
+          description: "Draft/publish workflow with autosave and version history — in active development.",
+          status: "in-progress",
+        },
+        {
+          feature: "Lifecycle Hooks & Validation",
           description:
-            "Composable form fields beyond content editing, plus beforeChange/afterChange hooks for custom side effects.",
-          status: "coming-soon",
+            "beforeChange/beforeDelete and afterChange/afterDelete, plus an async validate() that receives a ctx typed to your own data model — min and max are enforced on every write, not only in the admin form.",
+          status: "shipped",
         },
         {
           feature: "Field Input Consistency Pass",
           description:
             "Touch-ups across field inputs — starting with the relationship field — for consistent interaction patterns in the admin panel.",
-          status: "coming-soon",
+          status: "in-progress",
         },
         {
           feature: "Richtext, JSON, Email & Textarea Fields",

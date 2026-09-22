@@ -8,7 +8,7 @@ import {
   FieldAdminConfigInput,
   FieldValidateProps,
 } from "../baseTypes";
-import { CollectionSlug } from "../../types/generated";
+import { CollectionSlug , VexResourceSlug } from "../../types/generated";
 import { RelationshipPreviewProps } from "../../collections";
 
 /**
@@ -107,11 +107,11 @@ export interface RelationshipFieldAdminConfig<
  * @see {@link CollectionSlug} for the valid slug union
  */
 export interface RelationshipFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
   TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
+> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
   /** Target collection reference. The slug must match a registered collection in `defineConfig`. */
   collection: {
     /** The slug of the collection this field links to. Must be a registered collection slug. */
@@ -140,7 +140,7 @@ export interface RelationshipFieldInput<
   admin?: BaseFieldInput["admin"] &
     RelationshipFieldAdminInput<TTargetSlug, TComponent>;
   /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
 }
 
 /**
@@ -154,11 +154,11 @@ export interface RelationshipFieldInput<
  * @see {@link relationship} for the config function
  */
 export interface RelationshipField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
   TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseField<TFieldMeta, TCollectionSlug> {
+> extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.relationship.type;
   /** Target collection reference. */
   collection: {
@@ -181,8 +181,8 @@ export interface RelationshipField<
     /** Maximum reference count error message. */
     error?: string;
   };
-  admin: BaseField<TFieldMeta>["admin"] &
+  admin: BaseField<VexResourceSlug, TFieldMeta>["admin"] &
     RelationshipFieldAdminConfig<TTargetSlug, TComponent>;
   /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
 }

@@ -10,6 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "..
 import { FormDescription } from "./FormDescription";
 import { FormError } from "./FormError";
 import { useAccordionDndState } from "../ui/dnd";
+import type { VexResourceSlug } from "@vexcms/core";
 
 /**
  * Renders a group field as a collapsible fieldset in the admin edit form.
@@ -47,7 +48,7 @@ export function FormGroup<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
   readOnly,
   submissionAttempts,
   className,
-}: InputComponentProps<TFieldMeta, GroupField<TFieldMeta>> & {
+}: InputComponentProps<TFieldMeta, GroupField<VexResourceSlug, TFieldMeta>> & {
   field: TypedFieldApi<Record<string, any>>;
   submissionAttempts: number;
 } & ComponentPropsWithRef<"div">) {

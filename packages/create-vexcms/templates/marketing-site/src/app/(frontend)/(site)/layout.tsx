@@ -8,7 +8,6 @@ import { SiteFooter } from "~/components/SiteFooter"
 import { SiteHeader } from "~/components/SiteHeader"
 import { ThemeStyle } from "~/components/ThemeStyle"
 import { vex } from "~/lib/vex"
-import { SiteLivePreviewProvider } from "./SiteLivePreviewProvider"
 
 /**
  * Marketing chrome: header + footer around every site page. Auth routes live
@@ -32,7 +31,7 @@ export default async function SiteLayout({
   }
 
   return (
-    <SiteLivePreviewProvider>
+    <>
       <ThemeStyle />
       {/* Sits above the sticky header so it is the first tab stop on every
           page. Visually hidden until focused. */}
@@ -45,6 +44,6 @@ export default async function SiteLayout({
       <SiteHeader initialData={headerData} />
       <main id="main">{children}</main>
       <SiteFooter initialData={footerData} />
-    </SiteLivePreviewProvider>
+    </>
   )
 }

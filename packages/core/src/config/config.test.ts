@@ -77,26 +77,26 @@ describe("defineConfig — schema defaults", () => {
 describe("defineConfig — live preview defaults", () => {
   it("defaults to an empty allowlist when livePreview is omitted", () => {
     const config = defineConfig();
-    expect(config.livePreview.allowedOrigins).toEqual([]);
+    expect(config.admin.livePreview.allowedOrigins).toEqual([]);
   });
 
   it("passes through a configured allowlist unchanged", () => {
     const config = defineConfig({
-      livePreview: { allowedOrigins: ["https://admin.example.com"] },
+      admin: { livePreview: { allowedOrigins: ["https://admin.example.com"] } },
     });
-    expect(config.livePreview.allowedOrigins).toEqual(["https://admin.example.com"]);
+    expect(config.admin.livePreview.allowedOrigins).toEqual(["https://admin.example.com"]);
   });
 
   it("defaults breakpoints to the J-spec viewport matrix when omitted", () => {
     const config = defineConfig();
-    expect(config.livePreview.breakpoints).toEqual(DEFAULT_LIVE_PREVIEW_BREAKPOINTS);
+    expect(config.admin.livePreview.breakpoints).toEqual(DEFAULT_LIVE_PREVIEW_BREAKPOINTS);
   });
 
   it("passes through configured breakpoints unchanged", () => {
     const config = defineConfig({
-      livePreview: { allowedOrigins: [], breakpoints: [{ label: "narrow", width: 320 }] },
+      admin: { livePreview: { allowedOrigins: [], breakpoints: [{ label: "narrow", width: 320 }] } },
     });
-    expect(config.livePreview.breakpoints).toEqual([{ label: "narrow", width: 320 }]);
+    expect(config.admin.livePreview.breakpoints).toEqual([{ label: "narrow", width: 320 }]);
   });
 });
 

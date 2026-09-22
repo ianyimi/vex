@@ -70,44 +70,50 @@ Globals take the identical `admin.livePreview` block.
 ```ts
 export default defineConfig({
   collections: [pages],
-  livePreview: {
-    // Origins allowed to post preview frames to a listener. Empty by default,
-    // which means the postMessage transport accepts nothing.
-    allowedOrigins: ["http://localhost:3000", "https://admin.example.com"],
-    // Optional — defaults to 375 / 390 / sm / md / lg / xl / 2xl.
-    // breakpoints: [{ label: "sm", width: 640, icon: "Smartphone" }],
+  admin: {
+    livePreview: {
+      // Origins allowed to post preview frames to a listener. Empty by default,
+      // which means the postMessage transport accepts nothing.
+      allowedOrigins: ["http://localhost:3000", "https://admin.example.com"],
+      // Optional — defaults to 375 / 390 / sm / md / lg / xl / 2xl.
+      // breakpoints: [{ label: "sm", width: 640, icon: "Smartphone" }],
+    },
   },
 })
 ```
 
 ## Wire the public site
 
-The provider must be mounted by a **client** component that imports your config
-directly — the config carries functions (`livePreview.url`, field validators), so it
-cannot cross the server/client boundary as a prop:
+`LivePreviewProvider` reads everything it needs — collections, globals, and
+`allowedOrigins` — from `VexConfigContext`, so it takes no props. Mount
+`VexConfigProvider` once at the app root, from a **client** component that imports your
+config directly: the config carries functions (`admin.livePreview.url`, field
+validators), so it cannot cross the server/client boundary as a prop.
 
 ```tsx
-// app/(site)/SiteLivePreviewProvider.tsx
+// components/providers/client.tsx
 "use client"
 
-import { LivePreviewProvider } from "@vexcms/react"
+import { VexConfigProvider } from "@vexcms/react"
 import config from "~/vex.config"
 
-export function SiteLivePreviewProvider({ children }: { children: React.ReactNode }) {
-  return (
-    <LivePreviewProvider
-      allowedOrigins={config.livePreview.allowedOrigins}
-      collections={config.collections}
-    >
-      {children}
-    </LivePreviewProvider>
-  )
+export default function ClientProviders({ children }: { children: React.ReactNode }) {
+  return <VexConfigProvider config={config}>{children}</VexConfigProvider>
 }
 ```
 
-Wrap the layout once. The provider gates itself (see below), so a normal visitor pays
-for a disabled provider and nothing else — and the route stays statically prerenderable,
-because nothing here reads `headers()` or `cookies()` on the server.
+The root mount covers the admin panel and the public site from one provenance. Then wrap
+the tree once, in `app/layout.tsx`:
+
+```tsx
+<ClientProviders>
+  <LivePreviewProvider>{children}</LivePreviewProvider>
+</ClientProviders>
+```
+
+The provider gates itself (see below), so a normal visitor pays for a disabled provider
+and nothing else — and the route stays statically prerenderable, because nothing here
+reads `headers()` or `cookies()` on the server.
 
 Then overlay your own query result:
 
@@ -142,6 +148,141 @@ const { data: header } = useLivePreviewDocumentQuery(
   "headers",
 )
 ```
+
+## Declaring previews in one place
+
+Every collection's and global's preview settings can live in the root config
+instead of on each `defineCollection`:
+
+```ts
+defineConfig({
+  admin: {
+    livePreview: {
+      allowedOrigins: ["http://localhost:3000"],
+      collections: {
+        headers: { url: "/" },
+        pages: { url: (doc) => resolvePagePath(doc.slug), debounceMs: 250 },
+      },
+      globals: {
+        siteSettings: { url: "/", defaultOpen: true },
+      },
+    },
+  },
+})
+```
+
+Whole settings blocks, not just URLs — the key supplies the slug, so each
+entry's `url` resolver is typed against that collection's generated document
+with no annotation.
+
+**A collection's own `admin.livePreview` wins, field by field.** Order per
+setting, highest first:
+
+1. `collection.admin.livePreview.<field>` / `global.admin.livePreview.<field>`
+2. `admin.livePreview.collections[slug].<field>` / `admin.livePreview.globals[slug].<field>`
+3. `admin.livePreview.<field>` (root `breakpoints`)
+4. the built-in default
+
+Per field, not per block: a collection overriding only `defaultOpen` still
+inherits the root entry's `url`.
+
+## Resolving a URL on the server
+
+`url` takes three forms:
+
+```ts
+url: "/"                                  // literal path
+url: (doc) => `/${doc.slug}`              // resolved in the browser
+url: { server: async ({ doc, ctx }) => … }  // resolved on Convex, with ctx
+```
+
+The `{ server }` form runs on Convex with a real query context, so it can look
+the database up — e.g. find the page that references the document being edited:
+
+`ctx` is typed with no generic and no wrapper: `vex generate` emits your project's
+`DataModel` into the `@vexcms/core` module augmentation, alongside `CollectionSlug` and
+the document maps, so `ctx.db.query(...)` is checked against your real tables wherever a
+resolver is declared. Before the first `vex generate` it falls back to Convex's
+`GenericDataModel` rather than erroring.
+
+In the root map — `doc` comes from the key:
+
+```ts
+export default defineConfig({
+  admin: {
+    livePreview: {
+      collections: {
+        authors: {
+          url: {
+            server: async ({ ctx, doc }) => {
+              const page = await ctx.db
+                .query("pages")
+                .withIndex("by_author", (q) => q.eq("author", doc._id))
+                .first()
+              return page ? `/${page.slug}` : undefined
+            },
+          },
+        },
+      },
+    },
+  },
+})
+```
+
+The resolver also receives **`vex`**, a read-only VexCMS API (`find`/`get`/`search`/
+`globals.get`), which returns flat globals and populated relationships and shares the
+access resolver — so "find the page that references this document" is one call rather
+than a hand-written join:
+
+```ts
+url: { server: async ({ vex }) => {
+  const [page] = await vex.find({ collection: "pages", limit: 1 })
+  return page ? `/${page.slug}` : "/"
+} }
+```
+
+Or beside the collection — `doc` comes from the sibling `slug`:
+
+```ts
+defineCollection({
+  slug: "authors",
+  admin: {
+    livePreview: {
+      url: {
+        server: async ({ ctx, doc }) => {
+          const page = await ctx.db
+            .query("pages")
+            .withIndex("by_author", (q) => q.eq("author", doc._id))
+            .first()
+          return page ? `/${page.slug}` : undefined
+        },
+      },
+    },
+  },
+})
+```
+
+`livePreviewUrl(slug, fn)` / `globalLivePreviewUrl(slug, fn)` are still exported for
+callers that need to type a resolver away from its config — the slug is the only type
+argument, since `ctx` is already the project's own context — but no config file needs
+them.
+
+Notes that matter:
+
+- **It stays in the client config**, beside the collection, exactly like a
+  field's `validate()` callback. It runs only on Convex, but the closure is
+  bundled into the browser — so do not capture secrets in it.
+- **It is an object, not a bare async function.** At runtime a function
+  returning a promise is indistinguishable from the sync client resolver, and
+  guessing wrong would mean calling `ctx.db` in a browser.
+- **`doc` is the saved document merged with the editor's unsaved values**, which
+  is why this runs per change rather than once.
+- **Only this form costs a round trip.** Strings and client resolvers resolve
+  synchronously as before, and `NextAdminPage` resolves the first URL
+  server-side, so opening an editor never waits on Convex.
+- **Wire the endpoint once**: add `livePreviewUrl` to your `convex/vex.ts`
+  `collectionsApi` destructure. It runs the collection's own read permission
+  check — without it, a resolver reading `ctx.db` would be an open oracle.
 
 ## Security: the gate is yours to set
 
@@ -201,5 +342,5 @@ Checklist for any project embedding a preview surface:
   history, second monitor, pasted URL) as long as it is the same origin.
 - **The preview is pre-`beforeChange`.** Fields derived by hooks at write time will not
   appear until you save.
-- **The panel enables client-side**, after hydration. The floating indicator is
-  fixed-position, so nothing in the page shifts when it appears.
+- **The panel enables client-side**, after hydration — the previewed page renders no
+  extra chrome of its own, so nothing shifts when it does.

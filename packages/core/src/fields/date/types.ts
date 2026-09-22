@@ -1,6 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseField, BaseFieldInput, FieldAdminConfig, FieldValidateProps } from "../baseTypes";
-import type { CollectionSlug } from "../../types/generated";
+import type { VexResourceSlug } from "../../types/generated";
 
 /**
  * Configuration input for a `date()` field.
@@ -60,9 +60,9 @@ import type { CollectionSlug } from "../../types/generated";
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`)
  */
 export interface DateFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
+> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
   /**
    * Pre-filled Unix timestamp (milliseconds) shown in the admin form when creating a new document.
    * Does not apply to existing database values.
@@ -104,7 +104,7 @@ export interface DateFieldInput<
     };
   };
   /** Server-only async validation with `value` typed as `number` (Unix ms timestamp). @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<void> | void;
 }
 
 /**
@@ -118,9 +118,9 @@ export interface DateFieldInput<
  * @see {@link date} for the config function that produces this type
  */
 export interface DateField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseField<TFieldMeta, TCollectionSlug> {
+> extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.date.type;
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;
@@ -155,5 +155,5 @@ export interface DateField<
     };
   };
   /** Server-only async validation with `value` typed as `number` (Unix ms timestamp). @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<void> | void;
 }

@@ -2,7 +2,7 @@ import { ADMIN_FIELDS } from "../constants";
 import type { BaseField, BaseFieldInput, FieldAdminConfig, FieldAdminConfigInput, FieldValidateProps } from "../baseTypes";
 import type { AdminField } from "../types";
 import { LucideIconName } from "../../utils";
-import type { CollectionSlug } from "../../types/generated";
+import type { VexResourceSlug } from "../../types/generated";
 
 /**
  * Field names reserved by the blocks system.
@@ -199,9 +199,9 @@ export interface BlockConfig<TBlockMeta extends {} = {}> {
  * @see {@link blocks} for the config function that produces this type
  */
 export interface BlocksFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends Omit<BaseFieldInput<TFieldMeta, TCollectionSlug>, "admin"> {
+> extends Omit<BaseFieldInput<TCollectionSlug, TFieldMeta>, "admin"> {
   admin?: FieldAdminConfigInput & {
     defaultCollapsed?: boolean;
   };
@@ -233,7 +233,7 @@ export interface BlocksFieldInput<
   /** Pre-filled value when creating a new document. Defaults to `[]`. */
   defaultValue?: Record<string, unknown>[];
   /** Server-only async validation with `value` typed as `GenericBlock[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, GenericBlock[]>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, GenericBlock[]>): Promise<void> | void;
 }
 
 /**
@@ -243,9 +243,9 @@ export interface BlocksFieldInput<
  * @see {@link blocks} for the config function that produces this type
  */
 export interface BlocksField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseField<TFieldMeta, TCollectionSlug> {
+> extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.blocks.type;
   admin: FieldAdminConfig & {
     defaultCollapsed: boolean;
@@ -263,5 +263,5 @@ export interface BlocksField<
   /** Pre-filled value when creating a new document. */
   defaultValue: Record<string, unknown>[];
   /** Server-only async validation with `value` typed as `GenericBlock[]`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, GenericBlock[]>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, GenericBlock[]>): Promise<void> | void;
 }

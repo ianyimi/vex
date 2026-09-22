@@ -1,5 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
-import type { CollectionSlug } from "../../types/generated";
+import type { VexResourceSlug } from "../../types/generated";
 import type { NumberFieldInput, NumberField } from "./types";
 
 /**
@@ -48,11 +48,11 @@ import type { NumberFieldInput, NumberField } from "./types";
  * @see {@link NumberField} for the resolved output type
  */
 export function number<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
 >(
-  options?: NumberFieldInput<TFieldMeta, TCollectionSlug>,
-): NumberField<TFieldMeta, TCollectionSlug> {
+  options?: NumberFieldInput<TCollectionSlug, TFieldMeta>,
+): NumberField<TCollectionSlug, TFieldMeta> {
   if (options?.min?.value && options?.max?.value) {
     if (options.min.value >= options.max.value) {
       // TODO. setup errors that throw in development upon invalid configuration

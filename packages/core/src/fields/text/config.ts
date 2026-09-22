@@ -1,4 +1,4 @@
-import { CollectionSlug } from "../../types";
+import { VexResourceSlug } from "../../types";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
 import type { TextFieldInput, TextField } from "./types";
@@ -48,9 +48,9 @@ import type { TextFieldInput, TextField } from "./types";
  * @see {@link TextField} for the resolved output type
  */
 export function text<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
->(options?: TextFieldInput<TFieldMeta, TCollectionSlug>): TextField<TFieldMeta, TCollectionSlug> {
+>(options?: TextFieldInput<TCollectionSlug, TFieldMeta>): TextField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.text.type,
     interfaceType: ADMIN_FIELDS.text.interfaceType,

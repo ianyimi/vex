@@ -25,6 +25,7 @@
 
 ## Recently Done
 - 4. E — Live preview — shipped `b5263dc`, 2026-09-20 (spec 2026-09-18-live-preview; ADR-012, with a dual `postMessage` + `BroadcastChannel` transport and a cookie-gated public route)
+- 4. E follow-up — live preview amendments 1–3 (spec 2026-09-18-live-preview steps 9–14): root `admin.livePreview` maps, `{ server }` URL resolvers, `VexCallbackApi`, `VexDataModel`-typed callback ctx, globals overlay, root `VexConfigProvider`
 - Re-enabled starlight-typedoc, multi-package (core/react/next/better-auth/file-storage), 120→0 TypeDoc warnings, treatWarningsAsErrors ON — see ADR-001
 - Server API access options
 - Refresh stale package names in scripts/sync-template-versions.mjs

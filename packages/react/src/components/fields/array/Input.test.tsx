@@ -16,6 +16,7 @@ import { runFieldInputContractSuite } from "../../../testing/fieldInputContract"
 import { runNestedFieldContainerSuite } from "../../../testing/nestedFieldContainer";
 import { arrayFieldFixture } from "./testFixture";
 import { ArrayFieldInput } from "./Input";
+import type { VexResourceSlug } from "@vexcms/core";
 
 /**
  * Mounts `ArrayFieldInput` behind a real `useForm` + `<AppForm>`, exposing the
@@ -26,7 +27,7 @@ import { ArrayFieldInput } from "./Input";
  * array's OWN top-level error, never surface a specific item's.
  */
 function ArrayHarness(props: {
-  fieldDef: ArrayField<ArrayType>;
+  fieldDef: ArrayField<VexResourceSlug, ArrayType>;
   collection?: CollectionConfig;
   initialValue: unknown[];
   readOnly?: boolean;

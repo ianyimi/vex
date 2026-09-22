@@ -93,6 +93,17 @@ it; `vex_versions` holds immutable history.**
 4. **List-view pair-collapsing ships now**, not deferred to spec I. Without it a versioned
    document with an active draft renders as two separate rows the moment this spec lands —
    a correctness gap, not a polish item I should inherit.
+5. **`vex_versions` is an append-only, DAG-shaped log; no branching field or UI ships
+   here.** A later enterprise branching feature (content branches, merges, commit-graph
+   view) needs only data from this spec that cannot be reconstructed afterwards, since
+   history rows are immutable and never backfilled. Two zero-new-field consequences:
+   every publish AND unpublish emits exactly one attributed history row (`createdBy`
+   set — the first publish previously emitted none, an unrecoverable hole), and
+   `parentVersion` is treated as the real graph edge (always the actual predecessor,
+   absent only at a genuine root). A `branch?: string` (absent ⇒ trunk), multi-parent
+   merge edges, and any graph UI are deliberately NOT added now — each is cleanly
+   additive later with no backfill, and `version` is already a document-scoped
+   monotonic integer, exactly the stable node identity a DAG needs.
 
 ## What changed under this spec since the original draft (context for every step below)
 
@@ -319,13 +330,16 @@ invariant, and is where decision 2 (strict validation) lives.
       — decision 2, same strength as `create`); on failure throw naming the
       missing/invalid field(s) and do not write anything. After validation succeeds,
       `assertNoDraftRelationships` rejects (nothing written) if any relationship field
-      currently links to a draft. On success, two paths:
-      never-published draft (`vex_publishedId === undefined`) ⇒ patch the draft row in
-      place (`vex_status: "published"`, `vex_publishedAt: now`); draft with a parent ⇒
+      currently links to a draft. On success, two paths: never-published draft
+      (`vex_publishedId === undefined`) ⇒ patch the draft row in place
+      (`vex_status: "published"`, `vex_publishedAt: now`) and emit its own
+      `"published"` history row; draft with a parent ⇒
       `emitVersion(published, status: "published")` for the superseded state,
       `patch(published, { ...transformedFields, vex_publishedAt: now })`,
-      `delete(draftRow)`. **The published row's `_id` is never destroyed**
-      (design-review §2.2). `publish` cannot call `create()`/`update()` directly —
+      `delete(draftRow)`. BOTH branches emit exactly one attributed (`createdBy`)
+      history row — decision 5; a skipped row is permanently unreconstructable.
+      **The published row's `_id` is never destroyed** (design-review §2.2).
+      `publish` cannot call `create()`/`update()` directly —
       both target a fixed `id` for read/write, while `publish` must write to a
       DIFFERENT row than the one it read (promote-in-place or copy-then-delete) —
       `preparePatch` isolates exactly the merge/`beforeChange`/validate core those two
@@ -347,8 +361,8 @@ Why: Needs Step 4's `findDraftRow` to enforce its rejection rule.
 - [ ] `packages/core/src/api/versions/unpublish.server.ts` — gate on `unpublish` with
       `changes: undefined` (no field values move, only status). Throw when a draft row
       exists ("publish or discard the active draft first"). Flip the published row to
-      `vex_status: "draft"`; emit a history row with `publishedAt` carried forward
-      (never rewritten backwards).
+      `vex_status: "draft"`; emit an ATTRIBUTED history row (`createdBy`) with
+      `publishedAt` carried forward (never rewritten backwards).
 - [ ] `packages/core/src/api/versions/unpublish.client.ts`, plus
       `packages/core/src/api/convex.ts` — appends `unpublish` to the `versions: {...}`
       block Steps 5-6 built.

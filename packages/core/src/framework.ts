@@ -111,6 +111,11 @@ export interface CollectionEditViewProps<
    * paint instead of snapping into place after hydration.
    */
   initialPreviewPanelSize?: number;
+  /**
+   * The preview URL resolved server-side for a `{ server }` resolver, so the
+   * iframe's first paint needs no Convex round trip.
+   */
+  initialPreviewUrl?: string;
 }
 
 /**
@@ -145,6 +150,11 @@ export interface GlobalEditViewProps<
    * paint instead of snapping into place after hydration.
    */
   initialPreviewPanelSize?: number;
+  /**
+   * The preview URL resolved server-side for a `{ server }` resolver, so the
+   * iframe's first paint needs no Convex round trip.
+   */
+  initialPreviewUrl?: string;
 }
 
 /**

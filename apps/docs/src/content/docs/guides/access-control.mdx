@@ -470,12 +470,13 @@ export const featured = query({
 ```
 
 **Client, inside the admin panel.** `usePermission` from `@vexcms/react` reads `access` off
-`useVexConfig()` — your project mounts a single `VexConfigProvider` around the admin route,
-importing the whole client-safe config directly (a client-bundle import, not a serialized RSC
-prop, since callbacks don't survive RSC serialization):
+`useVexConfig()` — your project mounts a single `VexConfigProvider` at the app root, serving
+the admin and the public site alike, importing the whole client-safe config directly (a
+client-bundle import, not a serialized RSC prop, since callbacks don't survive RSC
+serialization):
 
 ```tsx
-// app/admin/clientProviders.tsx
+// components/providers/client.tsx
 "use client";
 
 import { VexConfigProvider } from "@vexcms/react";

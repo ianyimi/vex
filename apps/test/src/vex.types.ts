@@ -7,7 +7,7 @@
 /* eslint-disable perfectionist/sort-object-types */
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 
-import type { Id } from "@convex/_generated/dataModel"
+import type { DataModel, Id } from "@convex/_generated/dataModel"
 import type { VexDocument, VexDocumentGlobal } from "@vexcms/core"
 
 export type HeroBlock = {
@@ -1010,5 +1010,6 @@ declare module "@vexcms/core" {
       user: "user"
       organization: "organization"
     }
+    DataModel: DataModel
   }
 }

@@ -1,4 +1,3 @@
-import type { GenericDataModel } from "convex/server";
 import { ADMIN_FIELDS } from "../constants";
 import { applyBaseValidators } from "../validators/utils";
 import { fieldValidator, type FieldValidate } from "../baseTypes";
@@ -54,10 +53,9 @@ export function urlFieldToValidator(props: { field: UrlField }): string {
  */
 export function urlValidator<
   TCollectionSlug extends CollectionSlug,
-  TDataModel extends GenericDataModel = GenericDataModel,
 >(
   slug: TCollectionSlug,
-  fn: FieldValidate<TCollectionSlug, string, TDataModel, UrlField>,
+  fn: FieldValidate<TCollectionSlug, string, UrlField>,
 ): FieldValidate<TCollectionSlug, string> {
-  return fieldValidator<TCollectionSlug, string, TDataModel, UrlField>(slug, fn);
+  return fieldValidator<TCollectionSlug, string, UrlField>(slug, fn);
 }

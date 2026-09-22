@@ -2,6 +2,7 @@ import { z, ZodType } from "zod";
 import { adminFieldToInputSchema } from "../inputSchemas";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 import type { GroupField } from "./types";
+import type { VexResourceSlug } from "../../types/generated";
 
 /**
  * Builds a Zod schema for validating a group field value in the admin form.
@@ -31,7 +32,7 @@ import type { GroupField } from "./types";
  * @internal — Used by admin form schema construction via `adminFieldToInputSchema`.
  */
 export function groupFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
-  field: GroupField<TFieldMeta>;
+  field: GroupField<VexResourceSlug, TFieldMeta>;
 }): ZodType {
   const { field } = props;
 

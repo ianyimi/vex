@@ -1,9 +1,9 @@
-import type { GenericDataModel } from "convex/server";
 import { adminFieldToValidator } from "../validators";
 import { applyBaseValidators } from "../validators/utils";
 import { fieldValidator, type FieldValidate } from "../baseTypes";
 import type { CollectionSlug } from "../../types/generated";
 import type { GroupField } from "./types";
+import type { VexResourceSlug } from "../../types/generated";
 
 /**
  * Converts a group field definition to a Convex schema validator string.
@@ -42,7 +42,7 @@ import type { GroupField } from "./types";
  * @internal — Used by CLI schema generation via `adminFieldToValidator`.
  */
 export function groupFieldToValidator<TFieldMeta extends {} = {}>(props: {
-  field: GroupField<TFieldMeta>;
+  field: GroupField<VexResourceSlug, TFieldMeta>;
 }): string {
   const { field } = props;
 
@@ -70,10 +70,9 @@ export function groupFieldToValidator<TFieldMeta extends {} = {}>(props: {
  */
 export function groupValidator<
   TCollectionSlug extends CollectionSlug,
-  TDataModel extends GenericDataModel = GenericDataModel,
 >(
   slug: TCollectionSlug,
-  fn: FieldValidate<TCollectionSlug, Record<string, unknown>, TDataModel, GroupField>,
+  fn: FieldValidate<TCollectionSlug, Record<string, unknown>, GroupField>,
 ): FieldValidate<TCollectionSlug, Record<string, unknown>> {
-  return fieldValidator<TCollectionSlug, Record<string, unknown>, TDataModel, GroupField>(slug, fn);
+  return fieldValidator<TCollectionSlug, Record<string, unknown>, GroupField>(slug, fn);
 }

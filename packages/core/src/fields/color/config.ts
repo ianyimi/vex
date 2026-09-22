@@ -1,6 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
-import type { CollectionSlug } from "../../types/generated";
+import type { VexResourceSlug } from "../../types/generated";
 import { COLOR_FORMATS } from "./formats";
 import type { ColorFieldInput, ColorField } from "./types";
 
@@ -50,11 +50,11 @@ import type { ColorFieldInput, ColorField } from "./types";
  * @see {@link ColorField} for the resolved output type
  */
 export function color<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
 >(
-  options?: ColorFieldInput<TFieldMeta, TCollectionSlug>,
-): ColorField<TFieldMeta, TCollectionSlug> {
+  options?: ColorFieldInput<TCollectionSlug, TFieldMeta>,
+): ColorField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.color.type,
     interfaceType: ADMIN_FIELDS.color.interfaceType,

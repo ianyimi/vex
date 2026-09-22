@@ -2,11 +2,9 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import {
-  LIVE_PREVIEW_COLLECTION_PARAM,
-  LIVE_PREVIEW_ID_PARAM,
-  LIVE_PREVIEW_QUERY_PARAM,
+  appendLivePreviewParams,
   type LivePreviewBreakpoint,
-  type LivePreviewUrlResolver,
+  type LivePreviewUrl,
 } from "@vexcms/core";
 import { Loader2 } from "lucide-react";
 import type { AnyFormApi } from "../form/AppFormContext";
@@ -205,7 +203,7 @@ export function computeLivePreviewFrameGeometry(props: {
  * @param props.tempId - The client-generated temp id, before the first save.
  * @param props.debounceMs - Forwarded to `useLivePreviewSync`.
  * @param props.breakpoints - Toggle-able simulated widths —
- *   `collection.admin.livePreview.breakpoints ?? config.livePreview.breakpoints`,
+ *   `collection.admin.livePreview.breakpoints ?? config.admin.livePreview.breakpoints`,
  *   resolved by the caller. The toggle row is not rendered when `isMobile`.
  * @param props.form - The edit view's form instance, forwarded to `useLivePreviewSync`.
  * @param props.isMobile - Renders `fixed inset-0` full-screen with a close
@@ -398,7 +396,7 @@ export function LivePreviewPanel(props: {
  * @returns The preview URL, or `undefined` when it cannot be resolved yet.
  */
 export function resolveLivePreviewUrl(props: {
-  url: string | LivePreviewUrlResolver | undefined;
+  url: LivePreviewUrl | undefined;
   collectionSlug: string;
   baseDoc: Record<string, unknown>;
   formValues: Record<string, unknown>;
@@ -412,15 +410,17 @@ export function resolveLivePreviewUrl(props: {
     ...props.formValues,
     _id: documentId ?? props.tempId,
   };
+  // Three forms. The `{ server }` object cannot be answered here — it reads the
+  // database — so the caller falls back to the URL the server already resolved
+  // (`NextAdminPage`) or the one `useLivePreviewServerUrl` fetches.
+  if (typeof props.url === "object") return undefined;
   const resolvedUrl = typeof props.url === "string" ? props.url : props.url(previewDoc);
   if (!resolvedUrl) return undefined;
 
-  const previewParams = new URLSearchParams({ [LIVE_PREVIEW_QUERY_PARAM]: "1" });
-  if (!documentId && props.tempId) {
-    previewParams.set(LIVE_PREVIEW_ID_PARAM, props.tempId);
-    previewParams.set(LIVE_PREVIEW_COLLECTION_PARAM, props.collectionSlug);
-  }
-
-  const querySeparator = resolvedUrl.includes("?") ? "&" : "?";
-  return `${resolvedUrl}${querySeparator}${previewParams.toString()}`;
+  return appendLivePreviewParams({
+    url: resolvedUrl,
+    collectionSlug: props.collectionSlug,
+    tempId: documentId ? undefined : props.tempId,
+  });
 }
+

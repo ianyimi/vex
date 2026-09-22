@@ -1,3 +1,5 @@
+import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
+
 import { TDocument, VexDocument } from "../api/convex";
 
 /**
@@ -35,6 +37,71 @@ import { TDocument, VexDocument } from "../api/convex";
  * ```
  */
 export interface GeneratedVexTypes {}
+
+/**
+ * Any slug a document can be addressed by — a collection or a global.
+ *
+ * Fields are declared with the same factories (`text()`, `number()`, …) in both
+ * `defineCollection` and `defineGlobal`, so anything a field's callback types
+ * itself against has to accept either. Constraining to `CollectionSlug` alone
+ * made `text<{}, "siteSettings">(…)` a compile error.
+ */
+/**
+ * The project's own Convex query context.
+ *
+ * Convex's generated `QueryCtx` is exactly `GenericQueryCtx<DataModel>`, so this
+ * is the same type without a generator round-trip. Degrades to
+ * `GenericQueryCtx<GenericDataModel>` before the first `vex generate`, inherited
+ * from {@link VexDataModel}.
+ *
+ * Exists so a `ctx`-taking callback never needs a type parameter to say which
+ * model it runs against — there is only one per project.
+ */
+export type VexQueryCtx = GenericQueryCtx<VexDataModel>;
+
+/** The project's own Convex mutation context. @see {@link VexQueryCtx} */
+export type VexMutationCtx = GenericMutationCtx<VexDataModel>;
+
+/**
+ * Any slug a document can be addressed by — a collection or a global.
+ *
+ * Fields are declared with the same factories (`text()`, `number()`, …) in both
+ * `defineCollection` and `defineGlobal`, so anything a field's callback types
+ * itself against has to accept either.
+ */
+export type VexResourceSlug = CollectionSlug | GlobalSlug;
+
+/**
+ * Resolves the generated document interface for a collection OR global slug.
+ *
+ * Dispatches on which union the slug belongs to, so one field type parameter
+ * serves both kinds of resource.
+ */
+export type DocumentByResourceSlug<TSlug extends VexResourceSlug = VexResourceSlug> =
+  TSlug extends GlobalSlug
+    ? DocumentByGlobalSlug<TSlug>
+    : TSlug extends CollectionSlug
+      ? DocumentByCollectionSlug<TSlug>
+      : TDocument;
+
+/**
+ * The project's own Convex `DataModel`, as emitted into the
+ * {@link GeneratedVexTypes} augmentation by `vex generate`.
+ *
+ * This is what lets a `ctx`-taking callback in a config file be typed with no
+ * generic parameter and no helper wrapper: the model arrives through module
+ * augmentation, exactly as `CollectionSlug` and `DocumentBySlug` do.
+ *
+ * - **Before `vex generate`:** `GenericDataModel`, so `ctx` is the loose Convex
+ *   context rather than a compile error.
+ * - **After:** the project's real model, so `ctx.db.query("...")` is checked
+ *   against its actual tables.
+ */
+export type VexDataModel = GeneratedVexTypes extends {
+  DataModel: infer TDataModel extends GenericDataModel;
+}
+  ? TDataModel
+  : GenericDataModel;
 
 /**
  * Union of all collection slugs registered in this project's VexCMS config.

@@ -14,7 +14,10 @@ import type {
   CollectionSlug,
   GlobalPopulateShape,
   GlobalSlug,
+  VexDataModel,
   VexDocumentGlobal,
+  VexMutationCtx,
+  VexQueryCtx,
 } from "../types/generated";
 import type { FindServerArgs } from "./find/server";
 import type { GetServerArgs } from "./get/server";
@@ -36,6 +39,7 @@ import type {
 } from "./types";
 import { find } from "./find/server";
 import { get } from "./get/server";
+import { resolveLivePreviewUrlOnServer } from "../livePreview/resolveUrl.server";
 import { search } from "./search/server";
 import { publishedSlugs } from "./publishedSlugs/server";
 import { create } from "./create/server";
@@ -47,6 +51,7 @@ import { upsertGlobal } from "./globals/upsert.server";
 import { VexGlobalsGetArgs } from "./convex";
 import { VexAccessConfigError } from "../access";
 import { VexApiAuth } from "./types";
+export { resolveLivePreviewUrlOnServer } from "../livePreview/resolveUrl.server";
 
 export { buildDepthPopulate } from "./depth";
 
@@ -152,6 +157,219 @@ export { createVexMutations } from "./triggers";
  * @see {@link hasPermission} for resolution semantics (roles, wildcards, field maps)
  * @see {@link VexApiAuth} for the resolved caller shape
  */
+/**
+ * Read-only VexCMS API handed to config callbacks beside the raw Convex `ctx`.
+ *
+ * Exists because `ctx` is the lowest common denominator: it knows nothing about
+ * flat globals, relationship population, access rules, or access indexes, so
+ * every callback needing those re-implements them by hand.
+ *
+ * **Reads only.** A `validate()` that writes is a design error — it runs inside
+ * the write pipeline, before the write it gates — and a preview-URL resolver
+ * that writes is worse. Omitting writes makes that unrepresentable rather than
+ * merely discouraged; the sibling `ctx` prop remains for anything else.
+ *
+ * **No `ctx` member, and no type parameter.** Every callback receiving `vex`
+ * receives `ctx` in the same props object, so exposing it here would be a second
+ * path to one object whose types could drift. `VexDataModel` supplies the model
+ * directly, since a callback's context is always built from the project's own
+ * mutation or query.
+ *
+ * Every argument type is the underlying server function's own `XServerArgs`
+ * minus the two properties this api closed over, and every return type is that
+ * function's own — no option or document shape is restated here.
+ */
+export interface VexCallbackApi {
+  find<
+    TCollectionSlug extends CollectionSlug,
+    const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+    const D extends number = 0,
+  >(
+    args: Omit<FindServerArgs<VexDataModel, TCollectionSlug, TPopulate, D>, "ctx" | "config"> & {
+      paginationOpts?: never;
+    },
+  ): Promise<DocReturnItem<TCollectionSlug, TPopulate, D>[]>;
+  find<
+    TCollectionSlug extends CollectionSlug,
+    const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+    const D extends number = 0,
+  >(
+    args: Omit<FindServerArgs<VexDataModel, TCollectionSlug, TPopulate, D>, "ctx" | "config"> & {
+      paginationOpts: PaginationOptions;
+    },
+  ): Promise<PaginationResult<DocReturnItem<TCollectionSlug, TPopulate, D>>>;
+
+  get<
+    TCollectionSlug extends CollectionSlug,
+    const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+    const D extends number = 0,
+  >(
+    args: Omit<GetServerArgs<VexDataModel, TCollectionSlug, TPopulate, D>, "ctx" | "config">,
+  ): Promise<GetReturn<TCollectionSlug, TPopulate, D>>;
+
+  search<
+    TCollectionSlug extends CollectionSlug,
+    const TPopulate extends PopulateShape<TCollectionSlug> = Record<string, never>,
+    const D extends number = 0,
+  >(
+    args: Omit<SearchServerArgs<VexDataModel, TCollectionSlug, TPopulate, D>, "ctx" | "config">,
+  ): Promise<DocReturnItem<TCollectionSlug, TPopulate, D>[]>;
+
+  globals: {
+    get<
+      TGlobalSlug extends GlobalSlug,
+      TPopulate extends GlobalPopulateShape<TGlobalSlug> = Record<string, never>,
+      D extends number = 0,
+    >(
+      args: Omit<GetGlobalServerArgs<VexDataModel, TGlobalSlug, TPopulate, D>, "ctx" | "config">,
+    ): Promise<GetGlobalReturn<TGlobalSlug, TPopulate, D>>;
+
+    find(
+      args?: Omit<GenericGlobalsQueryServerArgs<VexDataModel>, "ctx" | "config">,
+    ): Promise<VexDocumentGlobal[]>;
+  };
+}
+
+/**
+ * Builds the {@link VexCallbackApi} handed to one config-callback invocation.
+ *
+ * Called per invocation rather than per request (`validateFields`,
+ * `resolveLivePreviewUrlOnServer`, and later the hook dispatcher), so it stays
+ * independent of how a caller reached the pipeline. It is a plain object of
+ * bound closures. `ctx` is captured but never re-exposed: callers already hold it.
+ *
+ * @param props.ctx - The context the callback is running under.
+ * @param props.config - The resolved server config.
+ * @returns The read-only api.
+ */
+export function createVexCallbackApi(props: {
+  ctx: VexQueryCtx | VexMutationCtx;
+  config: VexConfig;
+}): VexCallbackApi {
+  const { ctx, config } = props;
+
+  // Bypass is the DEFAULT. A uniqueness check that silently skipped rows the
+  // caller cannot read would let a duplicate through — a correctness bug that
+  // reads as a flake. The access-aware path is the one you opt into.
+  const withAccess = (access?: AccessCallOptions) => access ?? { bypass: true as const };
+
+  // Each delegate casts once at the boundary: a generic signature cannot be
+  // preserved through a closure that injects properties. Same pattern the
+  // `globalsApi` wrappers below already use.
+  return {
+    find: ((args: { access?: AccessCallOptions }) =>
+      find({
+        ...args,
+        ctx,
+        config,
+        access: withAccess(args.access),
+      } as never)) as unknown as VexCallbackApi["find"],
+    get: ((args: { access?: AccessCallOptions }) =>
+      get({
+        ...args,
+        ctx,
+        config,
+        access: withAccess(args.access),
+      } as never)) as unknown as VexCallbackApi["get"],
+    search: ((args: { access?: AccessCallOptions }) =>
+      search({
+        ...args,
+        ctx,
+        config,
+        access: withAccess(args.access),
+      } as never)) as unknown as VexCallbackApi["search"],
+    globals: {
+      get: ((args: { access?: AccessCallOptions }) =>
+        getGlobal({
+          ...args,
+          ctx,
+          config,
+          access: withAccess(args.access),
+        } as never)) as unknown as VexCallbackApi["globals"]["get"],
+      find: ((args?: { access?: AccessCallOptions }) =>
+        findGlobals({
+          ...args,
+          ctx,
+          config,
+          access: withAccess(args?.access),
+        } as never)) as unknown as VexCallbackApi["globals"]["find"],
+    },
+  };
+}
+
+/**
+ * Registers the full collection CRUD surface — `find`, `get`, `search`,
+ * `create`, `update`, `remove` — as Convex endpoints, with RBAC enforcement
+ * resolved entirely on the server.
+ *
+ * All query/mutation logic lives in the imported server functions; this
+ * factory only provides the arg validators, the `query()`/`mutation()`
+ * wrappers Convex needs at the network boundary, and the auth seam.
+ *
+ * **Identity never crosses the wire as an argument.** Callers (React
+ * components, Next.js preloads, raw clients) cannot pass a user or
+ * organization — there is deliberately no `auth` arg in any endpoint's
+ * validator, so a client cannot impersonate its way past a permission check.
+ * Instead, each handler resolves the caller once per request via the
+ * server-side `getAuth` callback, which reads the authenticated connection
+ * (`ctx.auth`) and returns the current user document and active organization.
+ * The resolved {@link VexApiAuth} is forwarded to the underlying server
+ * functions, which run {@link hasPermission} against `config.access`:
+ * reads filter denied documents out (and `get` returns `null`), writes throw
+ * {@link VexAccessError}.
+ *
+ * Enforcement is strictly opt-in, and misconfiguration fails loudly:
+ * - No `config.access` → RBAC is off; `getAuth` is never called and every
+ *   operation behaves exactly as before the seam existed.
+ * - `config.access` set but `getAuth` omitted → {@link VexAccessConfigError}
+ *   on the first request (see {@link resolveGetAuth}) — a permission matrix
+ *   with no caller resolver is a project bug, surfaced immediately.
+ * - `getAuth` resolving `undefined` (unauthenticated caller) → checks run
+ *   with no user, so no roles resolve and access is denied, unless access.anonRole
+ *   is configured, in which case that role will be used.
+ *
+ * Because identity rides the Convex connection token, the same endpoints work
+ * unchanged from every runtime: client subscriptions (`useQuery`) on an
+ * authenticated Convex provider, and server preloads by passing the JWT
+ * (`preloadQuery(api.vex.find, args, { token })`) — preloaded results come
+ * back already permission-filtered. Auth plugins supply the resolver (e.g.
+ * `@vexcms/better-auth` exports one that loads the user document and active
+ * organization from the session); core only knows the `getAuth` shape.
+ *
+ * @typeParam DataModel - The project's generated Convex data model.
+ * @typeParam Visibility - Function visibility of the supplied builders;
+ *   defaults to `"public"`.
+ * @param props - Factory configuration.
+ * @param props.config - The resolved `VexConfig`; `config.access` (when set)
+ *   is the permission matrix every operation enforces.
+ * @param props.query - The project's Convex `query` builder.
+ * @param props.mutation - The project's Convex `mutation` builder.
+ * @param props.getAuth - Server-side resolver for the current caller: receives
+ *   the handler's ctx and returns `{ user, organization? }` (or `undefined`
+ *   when unauthenticated). Called once per request, and only when
+ *   `config.access` is configured. Never exposed to clients.
+ * @returns Registered `find` / `get` / `search` queries and
+ *   `create` / `update` / `remove` mutations for `convex/vex.ts` to re-export.
+ *
+ * @example
+ * ```ts
+ * // apps/test/convex/vex.ts
+ * import { collectionsApi } from "@vexcms/core/server";
+ * import { createGetAuth } from "@vexcms/better-auth/server";
+ * import { mutation, query } from "./_generated/server";
+ * import config from "~/vex.config";
+ *
+ * export const { find, get, search, create, update, remove } = collectionsApi({
+ *   config,
+ *   query,
+ *   mutation,
+ *   getAuth: createGetAuth(), // resolves user + active org from ctx.auth
+ * });
+ * ```
+ *
+ * @see {@link hasPermission} for resolution semantics (roles, wildcards, field maps)
+ * @see {@link VexApiAuth} for the resolved caller shape
+ */
 export function collectionsApi<
   DataModel extends GenericDataModel,
   Visibility extends FunctionVisibility = "public",
@@ -169,6 +387,33 @@ export function collectionsApi<
   ) => Promise<VexApiAuth | undefined>;
 }) {
   return {
+    /**
+     * Resolves a `{ server }` preview URL with a real `ctx`.
+     *
+     * Registered here rather than generated per collection: the slug is a
+     * runtime argument, exactly as it is for `find`/`get`. Projects wire it by
+     * adding `livePreviewUrl` to their `convex/vex.ts` destructure.
+     */
+    livePreviewUrl: query({
+      args: {
+        collection: v.string(),
+        kind: v.optional(v.union(v.literal("collection"), v.literal("global"))),
+        documentId: v.optional(v.string()),
+        values: v.optional(v.any()),
+      },
+      handler: async (ctx, args) => {
+        const auth = await resolveGetAuth({ ctx, config, getAuth });
+        return await resolveLivePreviewUrlOnServer({
+          ctx,
+          config,
+          auth,
+          kind: args.kind ?? "collection",
+          slug: args.collection,
+          documentId: args.documentId,
+          values: (args.values ?? {}) as Record<string, unknown>,
+        });
+      },
+    }),
     find: query({
       args: {
         collection: v.string(),

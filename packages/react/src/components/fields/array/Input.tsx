@@ -3,6 +3,7 @@
 import type { ArrayField, ArrayType } from "@vexcms/core";
 import { createFieldInput } from "../../form/createFieldInput";
 import { FormArray } from "../../form/FormArray";
+import type { VexResourceSlug } from "@vexcms/core";
 
 /**
  * Array field input component for the admin edit form.
@@ -35,7 +36,7 @@ import { FormArray } from "../../form/FormArray";
  * </form.Field>
  * ```
  */
-export const ArrayFieldInput = createFieldInput<ArrayType[], {}, ArrayField<ArrayType>>(
+export const ArrayFieldInput = createFieldInput<ArrayType[], {}, ArrayField<VexResourceSlug, ArrayType>>(
   ({ name, collection, readOnly, fieldDef, field, index, submissionAttempts }) => {
     return (
       <div className="flex flex-col gap-1.5">

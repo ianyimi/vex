@@ -625,8 +625,7 @@ describe("create (server) — validation and hooks", () => {
         slug: text({
           validate: async ({ value, ctx }) => {
             const existing = await ctx.db.query("posts").filter((q) => q.eq(q.field("slug"), value)).first();
-            if (existing) return "Slug must be unique.";
-            return undefined;
+            if (existing) throw new Error("Slug must be unique.");
           },
         }),
       },

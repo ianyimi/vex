@@ -2,7 +2,7 @@ import { childInterfaceType } from "../childInterfaceType";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
 import type { ArrayFieldInput, ArrayField, ArrayType } from "./types";
-import type { CollectionSlug } from "../../types/generated";
+import type { VexResourceSlug } from "../../types/generated";
 
 /**
  * Creates an array field with all defaults applied.
@@ -58,10 +58,10 @@ import type { CollectionSlug } from "../../types/generated";
  * @see {@link ArrayField} for the resolved output type
  */
 export function array<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TArrayType extends ArrayType = string,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
->(options: ArrayFieldInput<TArrayType, TFieldMeta, TCollectionSlug>): ArrayField<TArrayType, TFieldMeta, TCollectionSlug> {
+>(options: ArrayFieldInput<TCollectionSlug, TArrayType, TFieldMeta>): ArrayField<TCollectionSlug, TArrayType, TFieldMeta> {
   // If the items field is a named group, reference its name in the array
   // type rather than inlining the full object type. This keeps generated
   // interfaces readable and lets the named group's own type alias do the work.

@@ -2,6 +2,7 @@ import { z, ZodType } from "zod";
 import { adminFieldToInputSchema } from "../inputSchemas";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 import type { BlocksField } from "./types";
+import type { VexResourceSlug } from "../../types/generated";
 
 /**
  * Builds a Zod schema for validating a blocks field value in the admin form.
@@ -31,7 +32,7 @@ import type { BlocksField } from "./types";
  * @internal — Used by admin form schema construction via `adminFieldToInputSchema`.
  */
 export function blocksFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
-  field: BlocksField<TFieldMeta>;
+  field: BlocksField<VexResourceSlug, TFieldMeta>;
 }): ZodType {
   const { field } = props;
 

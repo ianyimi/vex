@@ -8,9 +8,10 @@ import {
   CRUD_ACTIONS,
   DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE,
   isFieldAllowed,
+  resolveLivePreviewSettings,
   vexConvexApi,
 } from "@vexcms/core";
-import type { CollectionEditViewProps, CollectionSlug, LivePreviewUrlResolver } from "@vexcms/core";
+import type { CollectionEditViewProps, CollectionSlug } from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
 import { RevalidateButton } from "../RevalidateButton";
 import { Button } from "../ui";
@@ -34,6 +35,7 @@ import {
 } from "../../hooks/useLivePreviewPanelState";
 import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
 import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
+import { useLivePreviewServerUrl } from "../../hooks/useLivePreviewServerUrl";
 
 /**
  * Collection document edit form.
@@ -143,23 +145,43 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
   });
 
   const [tempId] = useState(() => crypto.randomUUID());
+  const savedDocumentId = currentDocument._id as string | undefined;
   const formValues = useStore(form.store, (state) => state.values);
   const isMobile = useIsMobile();
-  const livePreview = collection.admin.livePreview;
+  const livePreview = resolveLivePreviewSettings({
+    config: config.admin.livePreview,
+    kind: "collection",
+    slug: collection.slug,
+    admin: collection.admin.livePreview,
+  });
   const previewPanel = useLivePreviewPanelState({
     slug: collection.slug,
     initialOpen: props.initialPreviewPanelOpen ?? false,
   });
-  const previewUrl = resolveLivePreviewUrl({
-    url: livePreview?.url as string | LivePreviewUrlResolver | undefined,
+  const clientPreviewUrl = resolveLivePreviewUrl({
+    url: livePreview?.url,
     collectionSlug: collection.slug,
     baseDoc: currentDocument,
     formValues,
     tempId,
   });
+
+  // A `{ server }` resolver reads the database, so it cannot be evaluated
+  // here; this issues the Convex round trip for that form only and passes
+  // the client-resolved URL straight through otherwise.
+  const previewUrl = useLivePreviewServerUrl({
+    url: livePreview?.url,
+    clientUrl: clientPreviewUrl,
+    initialUrl: props.initialPreviewUrl,
+    kind: "collection",
+    slug: collection.slug,
+    documentId: savedDocumentId,
+    tempId: tempId,
+    formValues,
+    debounceMs: livePreview?.debounceMs,
+  });
   const previewIsActive = Boolean(livePreview && previewPanel.isOpen && previewUrl);
-  const breakpoints = livePreview?.breakpoints ?? config.livePreview.breakpoints;
-  const savedDocumentId = currentDocument._id as string | undefined;
+  const breakpoints = livePreview?.breakpoints ?? config.admin.livePreview.breakpoints;
 
   const formContent = (
     <div className="space-y-4">
@@ -231,7 +253,7 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
                   onClick={previewPanel.toggle}
                   icon={isSplit ? "Eye" : "EyeOff"}
                 >
-                  {previewPanel.isOpen ? "Hide preview" : "Show preview"}
+                  Preview
                 </Button>
               )}
               <Button

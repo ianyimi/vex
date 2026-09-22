@@ -11,7 +11,7 @@ import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
 import { getCollectionInputSchema, validateFields } from "../../collections";
-import { deepEqual, resolveAccessCall, stampUpdatedAt } from "../utils";
+import { deepEqual, resolveAccessCall, stampUpdatedAt, toVexMutationCtx } from "../utils";
 import { TDocument } from "../convex";
 
 /**
@@ -119,7 +119,13 @@ export async function update<
   if (!parsed.success) {
     throw new ConvexError({ message: "Validation failed", errors: parsed.error.message });
   }
-  await validateFields({ collection, doc: transformedFields, keys: changedKeys, ctx: args.ctx });
+  await validateFields({
+    collection,
+    doc: transformedFields,
+    keys: changedKeys,
+    ctx: toVexMutationCtx(args.ctx),
+    config: args.config,
+  });
 
   const patch: Record<string, unknown> = {};
   for (const key of changedKeys) patch[key] = transformedFields[key];

@@ -1,6 +1,5 @@
-import type { DataModel } from "@convex/_generated/dataModel";
-
-import { blocks, defineCollection, text, textValidator, upload } from "@vexcms/core";
+import { blocks, defineCollection, text, upload } from "@vexcms/core";
+import { ConvexError } from "convex/values";
 
 import { TABLE_SLUG_IMAGES, TABLE_SLUG_PAGES } from "~/db/constants";
 import { resolvePagePath } from "~/lib/resolvePagePath";
@@ -21,23 +20,24 @@ export const pages = defineCollection({
       label: "Title",
       required: true,
     }),
-    slug: text({
+    slug: text<typeof TABLE_SLUG_PAGES>({
       description: "URL-friendly page path",
       index: "by_slug",
       label: "Slug",
       required: true,
-      validate: textValidator<typeof TABLE_SLUG_PAGES, DataModel>(
-        TABLE_SLUG_PAGES,
-        async ({ value, doc, ctx }) => {
-          const existing = await ctx.db
-            .query("pages")
-            .withIndex("by_slug", (q) => q.eq("slug", value))
-            .first();
-          if (existing && existing._id !== doc._id) {
-            return `This slug is already in use by the page '${existing.title}'.`;
-          }
-        },
-      ),
+      validate: async ({ value, doc, vex }) => {
+        const [existing] = await vex.find({ collection: TABLE_SLUG_PAGES, withIndex: {
+          name: "by_slug",
+          range: (q) => q.eq("slug", value),
+        }, limit: 1 })
+        if (existing && existing._id !== doc._id) {
+          throw new ConvexError({
+            code: "SLUG_CONFLICT",
+            conflictingPageId: existing._id,
+            message: `This slug is already in use by the page '${existing.title}'.`,
+          });
+        }
+      },
     }),
     blocks: blocks({
       admin: {

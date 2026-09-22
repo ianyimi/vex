@@ -1,6 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseField, BaseFieldInput, FieldValidateProps } from "../baseTypes";
-import type { CollectionSlug } from "../../types/generated";
+import type { VexResourceSlug } from "../../types/generated";
 import type { ColorFormat } from "./formats";
 
 /**
@@ -44,9 +44,9 @@ import type { ColorFormat } from "./formats";
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`, `searchIndex`)
  */
 export interface ColorFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
+> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * Does not affect existing database values.
@@ -80,7 +80,7 @@ export interface ColorFieldInput<
    */
   themeColors?: boolean;
   /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
 }
 
 /**
@@ -94,9 +94,9 @@ export interface ColorFieldInput<
  * @see {@link color} for the config function that produces this type
  */
 export interface ColorField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseField<TFieldMeta, TCollectionSlug> {
+> extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.color.type;
   /**
    * Pre-filled value shown in the admin form when creating a new document.
@@ -108,5 +108,5 @@ export interface ColorField<
   /** Whether the picker offers the host app's design tokens as a second tab. */
   themeColors: boolean;
   /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
 }

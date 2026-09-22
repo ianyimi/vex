@@ -120,12 +120,12 @@ Why: Amendment 1, Design Decisions 19–21. Every collection's and global's prev
 settings become declarable in one root block, and a single `resolveLivePreviewSettings`
 owns the collection-over-root-over-default order so the four call sites that need a
 document's preview settings cannot disagree.
-- [ ] `packages/core/src/livePreview/types.ts` — `collections`/`globals` maps on the root config; `AdminLivePreviewConfig` loses its eager defaults; `LivePreviewServerUrlResolver` + `ResolvedLivePreviewSettings`.
-- [ ] `packages/core/src/livePreview/resolveSettings.ts` — new file, the one precedence implementation.
-- [ ] `packages/core/src/livePreview/resolveSettings.test.ts` — per-field precedence, partial overrides, absent slug, default application.
-- [ ] `packages/core/src/collections/config.ts` + `globals/config.ts` — stop defaulting `debounceMs`/`defaultOpen` at define time.
-- [ ] `packages/react/src/components/views/CollectionEditView.tsx` + `GlobalEditView.tsx` — resolve settings through the new helper.
-- [ ] `packages/next/src/NextAdminPage.tsx` — same helper for the cookie default.
+- [x] `packages/core/src/livePreview/types.ts` — `collections`/`globals` maps on the root config; `AdminLivePreviewConfig` loses its eager defaults; `LivePreviewServerUrlResolver` + `ResolvedLivePreviewSettings`.
+- [x] `packages/core/src/livePreview/resolveSettings.ts` — new file, the one precedence implementation.
+- [x] `packages/core/src/livePreview/resolveSettings.test.ts` — per-field precedence, partial overrides, absent slug, default application.
+- [x] `packages/core/src/collections/config.ts` + `globals/config.ts` — stop defaulting `debounceMs`/`defaultOpen` at define time.
+- [x] `packages/react/src/components/views/CollectionEditView.tsx` + `GlobalEditView.tsx` — resolve settings through the new helper.
+- [x] `packages/next/src/NextAdminPage.tsx` — same helper for the cookie default.
 Verify: pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test
 
 ## Step 10 — Server-resolved preview URLs [dev]
@@ -133,13 +133,68 @@ Verify: pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test
 Why: Amendment 1, Design Decisions 22–23. A `url` may be `{ server: ({ doc, ctx }) => … }`,
 authored in the client config like a field validator, executed on Convex with a real
 `ctx`, gated by the collection's own read permission.
-- [ ] `packages/core/src/livePreview/resolveUrl.server.ts` — load doc, merge unsaved values, permission-check, run the resolver.
-- [ ] `packages/core/src/livePreview/resolveUrl.server.test.ts` — permission denial, unsaved-value merge, absent server resolver.
-- [ ] `packages/core/src/api/server.ts` — `livePreviewUrl` query on `collectionsApi`.
-- [ ] `packages/react/src/components/livePreview/LivePreviewPanel.tsx` — `resolveLivePreviewUrl` narrows string / client resolver / server resolver.
-- [ ] `packages/react/src/hooks/useLivePreviewServerUrl.ts` + test — debounced query only for the server form.
-- [ ] `packages/next/src/NextAdminPage.tsx` — server-resolve the initial URL, pass `initialPreviewUrl`.
-- [ ] `apps/www` + `packages/create-vexcms/templates/marketing-site` — export `livePreviewUrl`; migrate one collection to the root map.
-- [ ] `packages/core/README.md` + `apps/docs/src/content/docs/guides/live-preview.mdx` — root map, precedence order, three `url` forms, no-secrets rule.
+- [x] `packages/core/src/livePreview/resolveUrl.server.ts` — load doc, merge unsaved values, permission-check, run the resolver.
+- [x] `packages/core/src/livePreview/resolveUrl.server.test.ts` — permission denial, unsaved-value merge, absent server resolver.
+- [x] `packages/core/src/api/server.ts` — `livePreviewUrl` query on `collectionsApi`.
+- [x] `packages/react/src/components/livePreview/LivePreviewPanel.tsx` — `resolveLivePreviewUrl` narrows string / client resolver / server resolver.
+- [x] `packages/react/src/hooks/useLivePreviewServerUrl.ts` + test — debounced query only for the server form.
+- [x] `packages/next/src/NextAdminPage.tsx` — server-resolve the initial URL, pass `initialPreviewUrl`.
+- [x] `apps/www` + `packages/create-vexcms/templates/marketing-site` — export `livePreviewUrl`; migrate one collection to the root map.
+- [x] `packages/core/README.md` + `apps/docs/src/content/docs/guides/live-preview.mdx` — root map, precedence order, three `url` forms, no-secrets rule.
 Verify: pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test && pnpm --filter @vexcms/next build
+
+## Step 11 — Typed resolver helpers and `admin.livePreview` [dev]
+
+Why: Amendment 2. An inline `{ server }` resolver typed `ctx` as `never`, because the
+config types cannot name the project's `DataModel`; helpers fix that the way
+`textValidator` does. The root block also moves under `admin`, where a collection
+already declares its own.
+- [x] `packages/core/src/livePreview/urlHelpers.ts` — `livePreviewUrl`, `globalLivePreviewUrl`, `livePreviewPath`.
+- [x] `packages/core/src/livePreview/types.ts` — `LivePreviewUrl`'s server branch widens to the loose `LivePreviewServerUrl`.
+- [x] `packages/core/src/config/types.ts` + `config.ts` — `livePreview` moves onto `AdminConfigInput`/`AdminConfig`.
+- [x] `packages/react` + `packages/next` — every `config.livePreview` read becomes `config.admin.livePreview`.
+- [x] `apps/www` + `marketing-site` template — configs moved under `admin`; `siteSettings` dogfoods `globalLivePreviewUrl` with a real `ctx.db` read.
+- [x] `packages/core/README.md` + `apps/docs/.../live-preview.mdx` — helpers and the new location.
+Verify: pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test && pnpm --filter www build
+
+## Step 12 — `DataModel` by module augmentation [dev]
+
+Why: Amendment 2 revised. Threading a `DataModel` type parameter through
+`defineCollection`/`defineGlobal` cannot work — TypeScript has no partial type-argument
+inference, so passing one would drop the rest back to defaults. Emitting the model into
+the existing `GeneratedVexTypes` augmentation types `ctx` everywhere for free.
+- [x] `packages/core/src/types/generateVexTypes.ts` — emit `DataModel: DataModel` and import it.
+- [x] `packages/core/src/types/generateVexTypes.test.ts` — assert the import and the augmentation line.
+- [x] `packages/core/src/types/generated.ts` — `VexDataModel`, falling back to `GenericDataModel`.
+- [x] `packages/core/src/livePreview/types.ts` + `config/{types,config}.ts` — every `ctx`/`TDataModel` default resolves through `VexDataModel`.
+- [x] `apps/www` — regenerate `vex.types.ts`; drop the explicit `defineConfig<DataModel>` and the helper call.
+- [x] templates + `apps/test` — `vex.types.ts` carries the new augmentation line.
+Verify: pnpm --filter @vexcms/core test && pnpm --filter www build
+
+## Step 13 — Slug-first field generics and throwing validators [dev]
+
+Why: Decisions 27–28. One type argument should fully type a field's `validate()`, for
+globals as well as collections, and a validation failure should be a thrown error that
+can carry structured data.
+- [x] `packages/core/src/types/generated.ts` — `VexResourceSlug`, `DocumentByResourceSlug`.
+- [x] `packages/core/src/fields/**` — slug parameter first, constraint widened to `VexResourceSlug`, `validate` returns `void`.
+- [x] `packages/core/src/collections/validateFields.ts` (+ test) — catch, attribute to the field, normalise to one `ConvexError` shape.
+- [x] `packages/react/src`, `packages/better-auth/src` — positional instantiations updated for the new order.
+- [x] `apps/www` + `marketing-site` template — `pages.slug` drops `textValidator`, takes `text<typeof TABLE_SLUG_PAGES>`, and throws a `ConvexError`.
+- [x] `packages/core/README.md` — the one-argument form and the throw contract.
+Verify: pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test && pnpm --filter www build
+
+## Step 14 — `vex` callback API [dev]
+
+Why: Amendment 3, Decisions 29–33. Config callbacks get a read-only, access-aware,
+slug-typed `vex` handle beside the raw `ctx`, so flat globals, populated relationships
+and access-scoped reads stop being hand-rolled in every callback.
+- [x] `packages/core/src/api/server.ts` — `VexCallbackApi<TCtx>`, `createVexCallbackApi` (beside `collectionsApi`, reusing its imports).
+- [x] `packages/core/src/api/callbackApi.test.ts` — flat global, populated get, bypass default, explicit access, `vex.ctx` identity.
+- [x] `packages/core/src/fields/baseTypes.ts` — `vex` on `FieldValidateProps`.
+- [x] `packages/core/src/collections/validateFields.ts` (+ `create`/`update` servers) — takes `config`, builds and passes `vex`.
+- [x] `packages/core/src/livePreview/{types,resolveUrl.server}.ts` — `vex` on the server resolver props.
+- [x] `apps/www` + `marketing-site` — `siteSettings` preview resolver uses `vex.find`.
+- [x] `packages/core/README.md` + docs guides — `vex` beside `ctx`, bypass default, read-only boundary.
+Verify: pnpm --filter @vexcms/core test && pnpm --filter www build
 

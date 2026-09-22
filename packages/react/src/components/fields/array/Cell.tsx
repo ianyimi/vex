@@ -7,6 +7,7 @@ import {
 } from "@vexcms/core";
 import { VexLink } from "../../ui";
 import { useVexConfig } from "../../../context/VexConfigContext";
+import type { VexResourceSlug } from "@vexcms/core";
 
 /**
  * Array field cell component for the data-table list view.
@@ -29,7 +30,7 @@ import { useVexConfig } from "../../../context/VexConfigContext";
 export function ArrayFieldCell<
   TData extends TDocument = TDocument,
   TArrayType extends ArrayType = ArrayType,
->(props: CellComponentProps<ArrayField<TArrayType>, TData>) {
+>(props: CellComponentProps<ArrayField<VexResourceSlug, TArrayType>, TData>) {
   if (props.value === undefined || props.value === null) return <span>—</span>;
   const config = useVexConfig();
   const basePath = addLeadingSlash(config.basePath);

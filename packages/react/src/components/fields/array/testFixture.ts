@@ -1,5 +1,6 @@
 import { array, text, type ArrayField } from "@vexcms/core";
 import type { FieldFixture } from "../../../testing/fixtures/types";
+import type { VexResourceSlug } from "@vexcms/core";
 
 /**
  * `array` field fixture — the container's OWN contract (add/remove, nested
@@ -12,7 +13,7 @@ import type { FieldFixture } from "../../../testing/fixtures/types";
  * check whenever both are set (see `packages/core/src/fields/array/inputSchema.ts`),
  * so `required` alone would never surface as `invalid`'s failure reason.
  */
-export const arrayFieldFixture: FieldFixture<ArrayField<string>, string[]> = {
+export const arrayFieldFixture: FieldFixture<ArrayField<VexResourceSlug, string>, string[]> = {
   fieldType: "array",
   fieldDef: array({
     label: "Tags",

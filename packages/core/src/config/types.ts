@@ -1,3 +1,4 @@
+
 import { CollectionConfig } from "../collections";
 import { AuthCollectionConfig, VexAuthAdapter } from "../auth/types";
 import { MediaCollectionConfig, VexStorageAdapter } from "../media";
@@ -35,6 +36,17 @@ import { LivePreviewConfig, LivePreviewConfigInput } from "../livePreview";
  */
 export interface AdminConfigInput {
   /**
+   * Live-preview config: the `postMessage` origin allowlist, the simulated
+   * viewport breakpoints, and per-collection/per-global settings.
+   *
+   * Lives under `admin` because that is where a collection declares its own
+   * `admin.livePreview`, and layered settings should be found in the same place
+   * at both levels.
+   *
+   * @see {@link LivePreviewConfigInput} for all available options
+   */
+  livePreview?: LivePreviewConfigInput;
+  /**
    * Navigation sidebar configuration for the admin panel.
    *
    * Controls the sidebar that houses collection links and navigation items.
@@ -71,6 +83,8 @@ export interface AdminConfigInput {
  * @see {@link defineConfig} for the config function
  */
 export interface AdminConfig {
+  /** Resolved live-preview config. Always present; defaults applied by `defineConfig()`. */
+  livePreview: LivePreviewConfig;
   /** Navigation sidebar configuration — always present after defaults are applied. */
   sidebar: {
     /** Which side of the viewport the admin sidebar is anchored to. */
@@ -277,14 +291,6 @@ export interface VexClientConfigInput {
    */
   routes?: VexRoutesConfig;
   /**
-   * Live-preview config — the `postMessage` origin allowlist every preview
-   * listener validates against, plus the simulated-viewport breakpoints the
-   * preview panel offers.
-   *
-   * @see {@link LivePreviewConfigInput} for all available options
-   */
-  livePreview?: LivePreviewConfigInput;
-  /**
    * Client-side upload functions, keyed by storage adapter slug.
    *
    * These are the only storage-adapter-shaped values allowed on the client
@@ -420,11 +426,6 @@ export interface VexClientConfig {
    * `routes` — it is opt-in.
    */
   routes?: VexRoutesConfig;
-  /**
-   * Resolved live-preview config — the `postMessage` origin allowlist and the
-   * breakpoint matrix. Always present; defaults applied by `defineConfig()`.
-   */
-  livePreview: LivePreviewConfig;
   /**
    * Client-side upload functions, keyed by storage adapter slug. Always
    * present; defaults to `{}`.

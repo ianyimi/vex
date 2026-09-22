@@ -7,6 +7,7 @@ import {
 } from "@vexcms/core";
 import type { FieldFixture } from "../../../testing/fixtures/types";
 import { testCollection } from "../../../testing/harness/accessFixtures";
+import type { VexResourceSlug } from "@vexcms/core";
 
 /**
  * Target collection for the relationship picker under test. Its slug
@@ -47,7 +48,7 @@ export const relationshipTargetCollectionByCreationTime = defineCollection({
  * here, the shared harness's `testCollection` ("posts"), standing in for
  * the collection this relationship field is rendered as part of.
  */
-const fieldDef = relationship<CollectionFieldMeta>({
+const fieldDef = relationship<VexResourceSlug, CollectionFieldMeta>({
   collection: { slug: "documents" },
   hasMany: true,
   required: true,
@@ -64,7 +65,7 @@ const fieldDef = relationship<CollectionFieldMeta>({
  * rendered with `VexConfigContext` and the Step 10 convex-test bridge wired
  * in against real seeded documents.
  */
-export const relationshipFieldFixture: FieldFixture<RelationshipField<CollectionFieldMeta>, string[]> = {
+export const relationshipFieldFixture: FieldFixture<RelationshipField<VexResourceSlug, CollectionFieldMeta>, string[]> = {
   fieldType: "relationship",
   fieldDef,
   valid: ["kg2fake00000000000000001;documents"],

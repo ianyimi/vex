@@ -7,7 +7,6 @@ import { ReservedCollectionFieldKey } from "./constants";
 import { AdminCollectionConfig, CollectionConfig, CollectionConfigInput } from "./types";
 import type { CollectionHooks } from "./hooks";
 import { slugToPascalCase } from "./utils";
-import { DEFAULT_LIVE_PREVIEW_DEBOUNCE_MS } from "../livePreview";
 
 function populateCollectionFieldMeta<
   TFieldMeta extends {} = {},
@@ -197,12 +196,15 @@ export function defineCollection<
       // `string`, so its resolver's doc type is the conditional form TS cannot
       // reduce against `CollectionConfig`'s already-narrowed parameter. Same
       // shape either way — mirrors `globals/config.ts`.
-      livePreview: (input.admin?.livePreview && {
-        url: input.admin.livePreview.url,
-        debounceMs: input.admin.livePreview.debounceMs ?? DEFAULT_LIVE_PREVIEW_DEBOUNCE_MS,
-        defaultOpen: input.admin.livePreview.defaultOpen ?? false,
-        breakpoints: input.admin.livePreview.breakpoints,
-      }) as AdminCollectionConfig<string, ComponentHKT, TCollectionSlug>["livePreview"],
+      // Passed through untouched, NOT defaulted: this factory runs before
+      // `defineConfig` has seen `livePreview.collections[slug]`, so a default
+      // applied here would be indistinguishable from an explicit value and would
+      // outrank the root entry. `resolveLivePreviewSettings` owns every default.
+      livePreview: input.admin?.livePreview as AdminCollectionConfig<
+        string,
+        ComponentHKT,
+        TCollectionSlug
+      >["livePreview"],
     },
     labels: {
       singular: toTitleCase(pluralize.singular(input.slug)),

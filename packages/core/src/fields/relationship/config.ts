@@ -1,6 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import type { RelationshipFieldInput, RelationshipField } from "./types";
-import type { CollectionSlug } from "../../types/generated";
+import type { CollectionSlug , VexResourceSlug } from "../../types/generated";
 import { ComponentHKT } from "../baseTypes";
 import { BaseFieldMeta } from "../types";
 
@@ -44,13 +44,13 @@ import { BaseFieldMeta } from "../types";
  * @see {@link RelationshipField} for the resolved output type
  */
 export function relationship<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
   TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
 >(
-  options: RelationshipFieldInput<TFieldMeta, TTargetSlug, TComponent, TCollectionSlug>,
-): RelationshipField<TFieldMeta, TTargetSlug, TComponent, TCollectionSlug> {
+  options: RelationshipFieldInput<TCollectionSlug, TFieldMeta, TTargetSlug, TComponent>,
+): RelationshipField<TCollectionSlug, TFieldMeta, TTargetSlug, TComponent> {
   return {
     label: "",
     required: false,

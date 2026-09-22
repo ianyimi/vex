@@ -1,3 +1,4 @@
+
 import { AccessResource } from "../access";
 import { validateAccessConfig } from "../access/validateAccessConstraints";
 import { mergeAuthCollections } from "../auth/mergeCollections";
@@ -115,6 +116,12 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
     authCollections,
     admin: {
       ...config?.admin,
+      livePreview: {
+        allowedOrigins: config?.admin?.livePreview?.allowedOrigins ?? [],
+        breakpoints: config?.admin?.livePreview?.breakpoints ?? DEFAULT_LIVE_PREVIEW_BREAKPOINTS,
+        collections: config?.admin?.livePreview?.collections ?? {},
+        globals: config?.admin?.livePreview?.globals ?? {},
+      },
       sidebar: {
         side: "left",
         collapsible: "offcanvas",
@@ -133,10 +140,6 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
       ...config?.types,
     },
     routes: config?.routes,
-    livePreview: {
-      allowedOrigins: config?.livePreview?.allowedOrigins ?? [],
-      breakpoints: config?.livePreview?.breakpoints ?? DEFAULT_LIVE_PREVIEW_BREAKPOINTS,
-    },
   };
 }
 

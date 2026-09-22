@@ -130,6 +130,32 @@ true` and published-only by Step 10's default. The live-preview provider's alrea
     shipped `vex-live-preview` marker-cookie branch (ADR-012) calls a new query instead,
     gated by a real `readDrafts` permission check, so an unauthenticated request can
     never reach draft content through either path.
+11. **`vex_versions` is an append-only, DAG-shaped log — every lifecycle event is a node
+    with a parent edge — but no branching field, type, or UI ships here.** A later
+    enterprise branching feature (named content branches, merges, a commit-graph view)
+    is anticipated, and the ONLY thing it needs from this spec is data that cannot be
+    reconstructed after the fact, since history rows are immutable and never backfilled.
+    Two consequences, both zero-new-field:
+    - **Every publish and unpublish emits exactly one history row, attributed.** The
+      first publish of a document (the promote-in-place branch of Step 6) previously
+      emitted none; that hole is unrecoverable, so it now emits one like every other
+      publish. `createdBy` is recorded on publish/unpublish for the same reason it
+      already was on `saveDraft` — an unattributed immutable row can never be repaired.
+    - **`parentVersion` is the graph edge, not a display nicety.** It always records the
+      actual predecessor node (`getLatestVersion`'s result at write time), and is absent
+      only on a document's genuine root version.
+    Everything a branching feature additionally needs is **deliberately not added now**,
+    because each is cleanly additive later with no backfill: a `branch?: string` (absent
+    ⇒ trunk, so today's rows are already valid trunk history); multi-parent merge edges
+    (`parentVersion` stays the first parent; a future `mergeParents?: number[]` reads
+    today's rows as single-parent); and any graph UI (Step 13 renders the linear list the
+    current model actually produces). `version` is already a document-scoped monotonic
+    integer, which is exactly the stable node identity a DAG needs — it does not become
+    ambiguous when branches are added. Whole-document snapshots (decision 3) mean any
+    future diff or graph view can be computed retroactively from existing rows.
+    Consumers must already tolerate a `parentVersion` pointing at a row `deleteVersion`
+    removed — treat the chain as broken there and render that node as a root rather than
+    assuming the parent resolves.
 
 ## Out of Scope
 
@@ -2514,17 +2540,28 @@ export async function publish<
   //    rejected for THAT reason first, and this model-integrity check is on top of it, not
   //    instead of it.
   // 7. `const now = Date.now();`
-  // 8. Branch on `draftRow.vex_publishedId`:
+  // 8. `const createdBy = typeof args.auth?.user?.["_id"] === "string" ? (args.auth.user["_id"]
+  //    as string) : undefined;` — same extraction `saveDraft`'s history step uses. Publish
+  //    authorship is recorded on BOTH branches below: it is the single most attributable event
+  //    in the lifecycle, the history row is immutable, and an unattributed row can never be
+  //    repaired afterwards.
+  // 9. Branch on `draftRow.vex_publishedId`:
   //    a. `undefined` (never-published draft — promote in place):
+  //       `const documentId = String(draftRow._id); const previous = await getLatestVersion({
+  //       ctx: args.ctx, collection: args.collection, documentId });`
   //       `await args.ctx.db.patch(draftRow._id, stampUpdatedAt({ collection: args.collection,
   //       config: args.config, data: { ...transformedFields, vex_status: "published" as const,
-  //       vex_publishedAt: now } }) as never); const publishedRowId = draftRow._id;`
-  //       → No `createVersion` call in this branch. `saveDraft`'s history step already recorded
-  //       a `"draft"`-status history row for every prior autosave on this document, so history
-  //       is not empty here — it just has no row explicitly marked `"published"` until the
-  //       NEXT publish cycle's branch (b) supersedes it. This is spec-tasks.md Step 6's literal
-  //       scope; do not add an `emitVersion` call back into this branch without revisiting that
-  //       decision.
+  //       vex_publishedAt: now } }) as never);`
+  //       `await createVersion({ ctx: args.ctx, collection: args.collection, documentId,
+  //       status: "published", snapshot: transformedFields, publishedAt: now, createdBy,
+  //       parentVersion: previous?.version });`
+  //       `const publishedRowId = draftRow._id;`
+  //       → Records the state being published, AFTER the patch (unlike branch b, which archives
+  //       the state being OVERWRITTEN and therefore must snapshot first). Both branches emit
+  //       exactly one `"published"` row per publish, so every publish is a node in history with
+  //       a parent edge — a document's FIRST publish is not a hole. A missing row here would be
+  //       permanently unreconstructable: history rows are immutable and never backfilled, and
+  //       the pre-publish draft rows do not record that a publish happened or who did it.
   //    b. defined (draft with a published parent — copy fields onto it, then delete draft):
   //       `const published = await args.ctx.db.get(draftRow.vex_publishedId); if (!published)
   //       throw new ConvexError("Dangling vex_publishedId — the published row this draft points
@@ -2533,13 +2570,13 @@ export async function publish<
   //       ctx: args.ctx, collection: args.collection, documentId });`
   //       `await createVersion({ ctx: args.ctx, collection: args.collection, documentId,
   //       status: "published", snapshot: extractUserFields({ doc: published }), publishedAt:
-  //       published.vex_publishedAt, parentVersion: previous?.version });` → archives the state
-  //       about to be overwritten, BEFORE the patch below changes it.
+  //       published.vex_publishedAt, createdBy, parentVersion: previous?.version });` →
+  //       archives the state about to be overwritten, BEFORE the patch below changes it.
   //       `await args.ctx.db.patch(published._id, stampUpdatedAt({ collection: args.collection,
   //       config: args.config, data: { ...transformedFields, vex_publishedAt: now } }) as
   //       never);`
   //       `await args.ctx.db.delete(draftRow._id); const publishedRowId = published._id;`
-  // 9. `return String(publishedRowId);`
+  // 10. `return String(publishedRowId);`
   // Edge cases:
   // - `transformedFields` is written in FULL in both branches (not a changed-keys-only delta
   //   like `saveDraft`/`update`) — `args.data` can carry last-minute edits, step 5's strict
@@ -2659,8 +2696,11 @@ describe("publish (server)", () => {
     // 3. Assert the returned id equals `draftId`.
     // 4. Assert `ctx.db.get(draftId)` now has `vex_status: "published"` and a numeric
     //    `vex_publishedAt`.
-    // 5. Assert `vex_versions` has NO `"published"`-status row for this document yet (this
-    //    branch deliberately emits none — see the implementation's inline note).
+    // 5. Assert `vex_versions` gained exactly one `"published"`-status row for this document,
+    //    whose `snapshot` matches the just-published content, whose `publishedAt` equals the
+    //    row's own `vex_publishedAt`, and whose `createdBy` equals the acting user's id —
+    //    every publish is a history node, including a document's first (history rows are
+    //    immutable, so a skipped row is permanently unreconstructable).
     throw new Error("Not implemented");
   });
 
@@ -2866,9 +2906,12 @@ export async function unpublish<
   //    getLatestVersion({ ctx: args.ctx, collection: args.collection, documentId }); await
   //    createVersion({ ctx: args.ctx, collection: args.collection, documentId, status:
   //    "published", snapshot: extractUserFields({ doc: publishedRow }), publishedAt:
-  //    publishedRow.vex_publishedAt, parentVersion: previous?.version });` → `publishedAt` is
-  //    COPIED from the row's own stored value, never `Date.now()` — "carried forward, never
-  //    rewritten backwards."
+  //    publishedRow.vex_publishedAt, createdBy: typeof args.auth?.user?.["_id"] === "string" ?
+  //    (args.auth.user["_id"] as string) : undefined, parentVersion: previous?.version });` →
+  //    `publishedAt` is COPIED from the row's own stored value, never `Date.now()` — "carried
+  //    forward, never rewritten backwards." `createdBy` is recorded for the same reason
+  //    `publish` records it: the row is immutable, so an unattributed lifecycle event can
+  //    never be repaired afterwards.
   // 7. `await args.ctx.db.patch(publishedRow._id, { vex_status: "draft" as const });` — status
   //    only. No `stampUpdatedAt`: `vex_status` is a reserved system field (Step 1's
   //    `RESERVED_COLLECTION_FIELDS`), not a user field, so `updatedAt` (which tracks USER field

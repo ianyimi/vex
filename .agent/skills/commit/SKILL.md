@@ -102,17 +102,45 @@ the slice you personally touched and leave the rest dirty.
      `git log -S` on a line this commit removes finds the session that introduced it. No
      meaningful relation → title stays untouched.
    - Rename titles only — never edit entry bodies, never remove a name already present.
-8. **The gate.** Load `references/commit-checklist.md` (customized for this project at
+8. **The docs sweep — every run, no exceptions.** Before the gate, walk the working tree's
+   changed public surfaces and bring every reader-facing document to match. This is a
+   POSITIVE sweep driven by the diff, not a spot-check of docs you happen to remember:
+   - Build the surface list from `git status`: every changed exported symbol, config key,
+     hook, component prop, CLI flag, field option, and behavior. `git diff` on
+     `packages/*/src/**` is the source; a renamed or deleted export is as much a surface
+     change as a new one.
+   - For each surface, grep the reader-facing set for BOTH the old and the new spelling:
+     `apps/docs/src/content/docs/**` (guides, fields, roadmap — never `/api/**`, which
+     TypeDoc regenerates), every package `README.md`, the root `README.md`, and `apps/www`
+     marketing copy (`src/vexcms/blocks/**`, `convex/seed.ts`). An old spelling that still
+     appears is stale prose; a new one that appears nowhere is an undocumented surface.
+   - A feature that moved from planned to shipped MUST be moved in `apps/docs/roadmap.md`
+     AND in the `Roadmap` block config AND in `convex/seed.ts`'s roadmap/FAQ entries —
+     those three drift independently and a shipped feature still advertised as
+     "coming-soon" is a gate failure.
+   - `llms.txt` / `llms-small.txt` / `llms-full.txt` need NO manual edit: `starlight-llms-txt`
+     regenerates them into the gitignored `apps/docs/dist/` on every docs build. Verify
+     rather than assume, after the gate's `pnpm build`: `grep -F` the regenerated
+     `llms-full.txt` for one distinctive string this commit ADDED to the docs and one it
+     REMOVED — added must appear, removed must be gone. The hand-written framing in
+     `apps/docs/astro.config.mjs`'s `starlightLlmsTxt({ … })` block is the only part that
+     can rot; update it when this commit changes a fact named in `details`, adds or removes
+     a docs directory, or renames a promoted page.
+   - Report the sweep in the step-11 summary as its own section: every doc file updated and
+     why, plus the `grep -F` evidence for the llms check. "Docs updated" with no file list
+     is not a report. Finding nothing stale is a valid outcome — say which surfaces you
+     checked to reach it.
+9. **The gate.** Load `references/commit-checklist.md` (customized for this project at
    init). Run every "Must pass" item ONCE for the whole working tree — report each ✅/🔴 —
    and PERFORM every "Must be current" update. Beware cached task runners: a
    restored-from-cache banner (Turborepo's `FULL TURBO`, Nx's "existing outputs match",
    `up-to-date`) is not evidence the check ran — re-run it with the runner's force flag.
    Failures do NOT stop the run or trigger questions: fix what is mechanically fixable,
-   finish every message file regardless, and lead the step-10 summary with the remaining
+   finish every message file regardless, and lead the step-11 summary with the remaining
    🔴 items so the developer decides. (In agent-commits mode a 🔴 DOES block the actual
    `git commit` — record any waiver in today's entry.) Nothing is silently changed;
    collect every update for the summary.
-9. **Commit — by mode.**
+10. **Commit — by mode.**
    - `message-only`: the messages are in the day's ledger (and the `.commit*.md` files) —
      done. Do NOT run `git commit`.
    - `agent-commits` (the ONE permitted question in this skill — it runs git): show
@@ -120,12 +148,13 @@ the slice you personally touched and leave the rest dirty.
      developer (structured question tool). On confirmation, commit clusters **in order**,
      each `git add <that cluster's files> && git commit -F <that cluster's raw file>`.
      After the LAST one, `harness log backfill-sha --sha "$(git rev-parse HEAD)"`.
-10. **Summary.** FIRST line, message-only mode: the ledger path —
+11. **Summary.** FIRST line, message-only mode: the ledger path —
     `.agent/docs/commits/MM-DD-YYYY.md` — so the developer sees immediately where to copy
     from; then each commit title with its file count, in order, followed by the full
     messages. Agent-commits: the new SHAs in order. Say explicitly which clusters came from
     sessions other than this one, and which log entries were reconstructed retroactively.
-    Then the rename receipt from step 7 — every retitled entry as `<old title> → <new
+    Then the docs-sweep report from step 8, then the rename receipt from step 7 — every
+    retitled entry as `<old title> → <new
     title>` (or "no earlier sessions related") — closing with the line "Session names
     updated — safe to close this session." The developer waits for that line before
     closing; resume later with `/resume-session <commit title>`.

@@ -1,6 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseField, BaseFieldInput, FieldAdminConfig, FieldAdminConfigInput, FieldValidateProps } from "../baseTypes";
-import type { CollectionSlug } from "../../types/generated";
+import type { VexResourceSlug } from "../../types/generated";
 import { AdminField } from "../types";
 
 /**
@@ -81,9 +81,9 @@ export interface GroupFieldAdminConfig extends FieldAdminConfig {
  * @see {@link group} for the config function that produces this type
  */
 export interface GroupFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseFieldInput<TFieldMeta, TCollectionSlug> {
+> extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
   /**
    * Sub-fields that form the object's shape.
    *
@@ -97,7 +97,7 @@ export interface GroupFieldInput<
   interfaceName?: string;
   admin?: GroupFieldAdminConfigInput;
   /** Server-only async validation with `value` typed as `Record<string, unknown>`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, Record<string, unknown>>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, Record<string, unknown>>): Promise<void> | void;
 }
 
 /**
@@ -112,9 +112,9 @@ export interface GroupFieldInput<
  * @see {@link group} for the config function that produces this type
  */
 export interface GroupField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends BaseField<TFieldMeta, TCollectionSlug> {
+> extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.group.type;
   /** Display label shown in the admin form. Always set — inferred from field key if not provided. */
   label: string;
@@ -140,5 +140,5 @@ export interface GroupField<
   /** Pre-filled value shown when creating a new document. */
   defaultValue: Record<string, unknown>;
   /** Server-only async validation with `value` typed as `Record<string, unknown>`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, Record<string, unknown>>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug, Record<string, unknown>>): Promise<void> | void;
 }

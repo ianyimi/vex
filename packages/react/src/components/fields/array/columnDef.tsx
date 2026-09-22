@@ -1,6 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { CollectionConfig, TDocument, ArrayField, ArrayType } from "@vexcms/core";
 import { ArrayFieldCell } from "./Cell";
+import type { VexResourceSlug } from "@vexcms/core";
 
 /**
  * Creates a TanStack Table column definition for an array field.
@@ -29,7 +30,7 @@ export function arrayFieldToColumnDef<
   TData extends ArrayType & TDocument = TDocument,
   TArrayType extends ArrayType = ArrayType,
 >(props: {
-  fieldDef: ArrayField<TArrayType>;
+  fieldDef: ArrayField<VexResourceSlug, TArrayType>;
   fieldKey: string;
   collection: CollectionConfig;
   isTitleField?: boolean;

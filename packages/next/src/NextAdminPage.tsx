@@ -1,10 +1,12 @@
 import type { CollectionSlug, PaginationResult, VexConfig, VexMediaDocument } from "@vexcms/core";
 
 import {
+  appendLivePreviewParams,
   livePreviewLayoutCookieName,
   livePreviewPanelCookieName,
   readLivePreviewLayoutCookie,
   readLivePreviewPanelCookie,
+  resolveLivePreviewSettings,
   vexConvexApi,
 } from "@vexcms/core";
 import {
@@ -18,6 +20,38 @@ import {
 } from "@vexcms/react";
 import { fetchQuery } from "convex/nextjs";
 import { cookies } from "next/headers";
+
+/**
+ * Resolves a `{ server }` preview URL for first paint.
+ *
+ * Two things the caller must not have to remember. First, the query only
+ * answers for the `{ server }` form — the string and client forms resolve
+ * synchronously in the browser and return `null` here, so the iframe falls back
+ * to its own resolution. Second, the resolved URL is a plain public URL: it
+ * needs `vexLivePreview=1` appended or the preview loads an ordinary page that
+ * listens to nothing, which looks like "live preview is broken" with no error
+ * anywhere. Appending it here keeps the server path identical to the client one.
+ *
+ * @param props.args - Query arguments identifying the document or global.
+ * @param props.slug - Collection or global slug, for the temp-id params.
+ * @param props.token - Auth token forwarded to Convex.
+ * @returns The preview-ready URL, or `undefined` when the config resolves in
+ * the browser instead.
+ */
+async function resolveInitialPreviewUrl(props: {
+  args: Parameters<typeof fetchQuery<typeof vexConvexApi.livePreviewUrl>>[1];
+  slug: string;
+  token?: string;
+}): Promise<string | undefined> {
+  const url = await fetchQuery(
+    vexConvexApi.livePreviewUrl,
+    props.args,
+    props.token ? { token: props.token } : undefined,
+  );
+  if (!url) return undefined;
+
+  return appendLivePreviewParams({ url, collectionSlug: props.slug });
+}
 
 /**
  * VexCMS admin page server component for Next.js.
@@ -95,11 +129,22 @@ export async function NextAdminPage(props: {
         initialPreviewPanelOpen={readLivePreviewPanelCookie({
           cookieValue: cookieStore.get(livePreviewPanelCookieName({ slug: globalConfig.slug }))
             ?.value,
-          defaultOpen: globalConfig.admin.livePreview?.defaultOpen ?? false,
+          defaultOpen:
+            resolveLivePreviewSettings({
+              config: props.config.admin.livePreview,
+              kind: "global",
+              slug: globalConfig.slug,
+              admin: globalConfig.admin.livePreview,
+            })?.defaultOpen ?? false,
         })}
         initialPreviewPanelSize={readLivePreviewLayoutCookie({
           cookieValue: cookieStore.get(livePreviewLayoutCookieName({ slug: globalConfig.slug }))
             ?.value,
+        })}
+        initialPreviewUrl={await resolveInitialPreviewUrl({
+          args: { collection: globalConfig.slug, kind: "global", values: {} },
+          slug: globalConfig.slug,
+          token: props.token,
         })}
       />
     );
@@ -169,11 +214,22 @@ export async function NextAdminPage(props: {
         initialPreviewPanelOpen={readLivePreviewPanelCookie({
           cookieValue: cookieStore.get(livePreviewPanelCookieName({ slug: collection.slug }))
             ?.value,
-          defaultOpen: collection.admin.livePreview?.defaultOpen ?? false,
+          defaultOpen:
+            resolveLivePreviewSettings({
+              config: props.config.admin.livePreview,
+              kind: "collection",
+              slug: collection.slug,
+              admin: collection.admin.livePreview,
+            })?.defaultOpen ?? false,
         })}
         initialPreviewPanelSize={readLivePreviewLayoutCookie({
           cookieValue: cookieStore.get(livePreviewLayoutCookieName({ slug: collection.slug }))
             ?.value,
+        })}
+        initialPreviewUrl={await resolveInitialPreviewUrl({
+          args: { collection: collection.slug, kind: "collection", documentId, values: {} },
+          slug: collection.slug,
+          token: props.token,
         })}
       />
     );

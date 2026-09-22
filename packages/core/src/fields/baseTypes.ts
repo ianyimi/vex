@@ -1,5 +1,9 @@
-import type { GenericDataModel, GenericMutationCtx } from "convex/server";
-import type { CollectionSlug, DocumentByCollectionSlug } from "../types/generated";
+import type {
+  DocumentByResourceSlug,
+  VexMutationCtx,
+  VexResourceSlug,
+} from "../types/generated";
+import type { VexCallbackApi } from "../api/server";
 
 /**
  * Content alignment for data table cells.
@@ -73,37 +77,47 @@ export type ComponentEntry = {
  *   an explicit type argument.
  */
 export interface FieldValidateProps<
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  // Accepts a global slug too: the same field factories build both kinds of
+  // resource, so `text<"siteSettings">` must be legal.
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TValue = unknown,
-  TDataModel extends GenericDataModel = GenericDataModel,
   TField = unknown,
 > {
   value: TValue;
-  doc: DocumentByCollectionSlug<TCollectionSlug>;
+  doc: DocumentByResourceSlug<TCollectionSlug>;
   fieldKey: string;
   /** This field's own resolved config — the same object `defineCollection` stored under this key. */
   field: TField;
-  ctx: GenericMutationCtx<TDataModel>;
+  /**
+   * The project's own Convex mutation context, from the `vex generate`
+   * augmentation — no type parameter, because a project has one data model.
+   */
+  ctx: VexMutationCtx;
+  /**
+   * Read-only VexCMS API: flat globals, populated relationships, access-aware
+   * reads. Reach for `ctx` above for a single indexed probe, and for `vex` when
+   * the document shape or the access rules matter.
+   */
+  vex: VexCallbackApi;
 }
 
 /**
  * Custom server-side validation for one field, run after the generated Zod
  * schema passes. Async and `ctx`-bearing, so a uniqueness check
  * (`ctx.db.query(...).withIndex(...)`) is sound inside a Convex mutation's
- * transaction. Returning a non-empty string rejects the write with that
- * message; `undefined` accepts the value. Never runs on the client.
+ * transaction. Never runs on the client.
  *
- * @see {@link fieldValidator} to get `doc`/`ctx`/`field` typed against a real
- * collection, `DataModel`, and field config without touching this type directly.
+ * **Reject by throwing.** Throw anything — a plain `Error`, a project-specific
+ * subclass, or a `ConvexError` with structured data (codes, hints, the
+ * conflicting document's id). `validateFields` catches it, attaches the field
+ * key, and re-throws one `ConvexError` shape. Returning normally means the
+ * value is accepted.
  */
 export type FieldValidate<
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TValue = unknown,
-  TDataModel extends GenericDataModel = GenericDataModel,
   TField = unknown,
-> = (
-  props: FieldValidateProps<TCollectionSlug, TValue, TDataModel, TField>,
-) => Promise<string | void> | string | void;
+> = (props: FieldValidateProps<TCollectionSlug, TValue, TField>) => Promise<void> | void;
 
 /**
  * Types a field's `validate()` against a real collection, `DataModel`, and
@@ -126,30 +140,31 @@ export type FieldValidate<
  *
  * @example
  * ```ts
- * import type { DataModel } from "~/convex/_generated/dataModel"
+ * import { ConvexError } from "convex/values"
  *
  * slug: text({
- *   validate: textValidator<typeof TABLE_SLUG_PAGES, DataModel>(
+ *   validate: textValidator<typeof TABLE_SLUG_PAGES>(
  *     TABLE_SLUG_PAGES,
  *     async ({ value, doc, ctx, field }) => {
  *       const existing = await ctx.db
  *         .query("pages")
  *         .withIndex("by_slug", (q) => q.eq("slug", value))
  *         .first();
- *       if (existing && existing._id !== doc._id) return `${field.label} must be unique.`;
+ *       if (existing && existing._id !== doc._id) {
+ *         throw new ConvexError({ message: `${field.label} must be unique.` });
+ *       }
  *     },
  *   ),
  * })
  * ```
  */
 export function fieldValidator<
-  TCollectionSlug extends CollectionSlug,
+  TCollectionSlug extends VexResourceSlug,
   TValue = unknown,
-  TDataModel extends GenericDataModel = GenericDataModel,
   TField = unknown,
 >(
   slug: TCollectionSlug,
-  fn: FieldValidate<TCollectionSlug, TValue, TDataModel, TField>,
+  fn: FieldValidate<TCollectionSlug, TValue, TField>,
 ): FieldValidate<TCollectionSlug, TValue> {
   void slug;
   return fn as unknown as FieldValidate<TCollectionSlug, TValue>;
@@ -288,8 +303,8 @@ export interface FieldAdminConfig {
  * @see {@link BaseField} for the resolved type after defaults are applied
  */
 export interface BaseFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
 > {
   /** Display label for the field in the admin form. */
   label?: string;
@@ -333,7 +348,7 @@ export interface BaseFieldInput<
    * Server-only async validation, run after the generated Zod schema passes.
    * @see {@link FieldValidate}
    */
-  validate?(props: FieldValidateProps<TCollectionSlug>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug>): Promise<void> | void;
 }
 
 /**
@@ -345,8 +360,8 @@ export interface BaseFieldInput<
  * @see {@link BaseFieldInput} for the user-facing input type
  */
 export interface BaseField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
 > {
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;
@@ -379,5 +394,5 @@ export interface BaseField<
    * Server-only async validation, run after the generated Zod schema passes.
    * @see {@link FieldValidate}
    */
-  validate?(props: FieldValidateProps<TCollectionSlug>): Promise<string | void> | string | void;
+  validate?(props: FieldValidateProps<TCollectionSlug>): Promise<void> | void;
 }
