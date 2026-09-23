@@ -30,13 +30,14 @@ export const metadata: Metadata = {
  * in `ServerProviders` (e.g. colour scheme) and `ClientProviders` (Convex, auth,
  * query).
  *
- * `<ThemeStyle />` moved to `(frontend)/(site)/layout.tsx`: it reads Convex,
- * and the root must stay free of Convex reads so its routes (`/`, `/[slug]`,
- * `/sitemap.xml`, `/robots.txt`) can prerender. Admin keeps its own
- * `<ThemeStyle scope="admin" />` once for the whole app — the admin layout
- * re-emits its own scope at higher specificity, so `siteSettings.adminTheme`
- * opts out. The `auth` parallel slot moved to `(frontend)/layout.tsx`, which
- * is the group that declares it.
+ * `<ThemeStyle />` is NOT here: it reads Convex, and the root must stay free of
+ * Convex reads so its routes (`/`, `/[slug]`, `/sitemap.xml`, `/robots.txt`)
+ * can prerender. It is emitted by `(frontend)/layout.tsx` — which covers
+ * `(site)` and the auth routes alike — and by `unauthorized/page.tsx`, which
+ * sits outside that group. Admin keeps its own `<ThemeStyle scope="admin" />`
+ * once for the whole app — the admin layout re-emits its own scope at higher
+ * specificity, so `siteSettings.adminTheme` opts out. The `auth` parallel slot
+ * moved to `(frontend)/layout.tsx`, which is the group that declares it.
  */
 export default function RootLayout({
   children,
