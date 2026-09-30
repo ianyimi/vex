@@ -33,6 +33,7 @@ export const DRAFT_ACTIONS = {
   saveDraft: "saveDraft",
   publish: "publish",
   unpublish: "unpublish",
+  deleteVersions: "deleteVersions",
 } as const;
 /** Draft action union, derived from {@link DRAFT_ACTIONS}. */
 export type DraftAction = (typeof DRAFT_ACTIONS)[keyof typeof DRAFT_ACTIONS];

@@ -9,9 +9,9 @@ import { ConvexError, type GenericId } from "convex/values";
 
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
-import { CRUD_ACTIONS, hasPermission } from "../../access";
-import { getCollectionInputSchema, validateFields } from "../../collections";
-import { deepEqual, resolveAccessCall, stampUpdatedAt, toVexMutationCtx } from "../utils";
+import { CRUD_ACTIONS } from "../../access";
+import { prepareEdit } from "../prepareEdit";
+import { stampUpdatedAt } from "../utils";
 import { TDocument } from "../convex";
 
 /**
@@ -76,59 +76,18 @@ export async function update<
   }
 
   const doc = await args.ctx.db.get(args.id);
-  if (args.config.access !== undefined) {
-    const { access, action, resource } = resolveAccessCall({
-      config: args.config,
-      access: args.access,
-      defaultAction: CRUD_ACTIONS.update,
-      resource: args.collection,
-    });
-    hasPermission({
-      throwOnDenied: true,
-      access,
-      user: args.auth?.user ?? null,
-      organization: args.auth?.organization,
-      resource,
-      action,
-      data: doc ?? undefined,
-      changes: args.data,
-    });
-  }
-
-  const { _id, _creationTime, ...fields } = (doc ?? {}) as Record<string, unknown>;
-  const mergedFields = { ...fields, ...args.data } as unknown as TDocument;
-
-  let transformedFields: TDocument = mergedFields;
-  if (collection.hooks?.beforeChange) {
-    transformedFields = await collection.hooks.beforeChange({
-      operation: "update",
-      doc: mergedFields as never,
-      ctx: args.ctx,
-      collection,
-    });
-  }
-
-  const changedKeys = new Set(Object.keys(args.data));
-  for (const key of Object.keys(transformedFields)) {
-    if (!deepEqual(transformedFields[key], mergedFields[key])) changedKeys.add(key);
-  }
-
-  const parsed = getCollectionInputSchema({ collection, partial: true }).safeParse(
-    transformedFields,
-  );
-  if (!parsed.success) {
-    throw new ConvexError({ message: "Validation failed", errors: parsed.error.message });
-  }
-  await validateFields({
-    collection,
-    doc: transformedFields,
-    keys: changedKeys,
-    ctx: toVexMutationCtx(args.ctx),
+  const { patch } = await prepareEdit({
+    ctx: args.ctx,
     config: args.config,
+    collection,
+    action: CRUD_ACTIONS.update,
+    access: args.access,
+    auth: args.auth,
+    storedDoc: (doc ?? undefined) as TDocument | undefined,
+    incoming: args.data as Partial<TDocument>,
+    partial: true,
+    validateKeys: "changed",
   });
-
-  const patch: Record<string, unknown> = {};
-  for (const key of changedKeys) patch[key] = transformedFields[key];
 
   const data = stampUpdatedAt({ collection: args.collection, config: args.config, data: patch });
   await args.ctx.db.patch(args.id, data as never);

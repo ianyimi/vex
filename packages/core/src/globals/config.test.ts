@@ -13,6 +13,7 @@ describe("defineGlobal", () => {
     expect(g.admin.description).toBe("");
     expect(g.admin.components).toEqual({});
     expect(g.versions.drafts).toBe(false);
+    expect(g.versions.autosave.enabled).toBe(false);
   });
 
   it("derives interfaceName from slug with Global suffix", () => {
@@ -49,6 +50,27 @@ describe("defineGlobal", () => {
       versions: { drafts: true },
     });
     expect(g.versions.drafts).toBe(true);
+  });
+
+  it("enables autosave alongside drafts, defaulting debounceMs when omitted", () => {
+    const g = defineGlobal({
+      slug: "nav",
+      label: "Nav",
+      fields: { name: text({ label: "Name" }) },
+      versions: { drafts: true, autosave: { enabled: true } },
+    });
+    expect(g.versions.drafts).toBe(true);
+    expect(g.versions.autosave).toEqual({ enabled: true, debounceMs: 1000 });
+  });
+
+  it("honors an explicit autosave.debounceMs override", () => {
+    const g = defineGlobal({
+      slug: "nav",
+      label: "Nav",
+      fields: { name: text({ label: "Name" }) },
+      versions: { drafts: true, autosave: { enabled: true, debounceMs: 250 } },
+    });
+    expect(g.versions.autosave).toEqual({ enabled: true, debounceMs: 250 });
   });
 
   it("throws at runtime when a reserved key is used", () => {

@@ -1,5 +1,6 @@
 import type { VexClientConfig } from "../config/types";
 import { collectionConfigToVexSchema } from "../collections";
+import { versionFieldsToVexSchema } from "../versions/schema";
 
 function fail(contents: string) {
   return { update: false, contents };
@@ -54,8 +55,32 @@ export function generateVexSchema(props: { config: VexClientConfig }): {
     })
     .join("\n");
 
+  const vexVersionsTable = [
+    "",
+    "/**",
+    " * VEX VERSIONS — immutable history, one row per draft save and per publish",
+    " **/",
+    "",
+    "export const vex_versions = defineTable({",
+    "  collection: v.string(),",
+    "  documentId: v.string(),",
+    "  version: v.number(),",
+    '  status: v.union(v.literal("draft"), v.literal("published")),',
+    "  snapshot: v.any(),",
+    "  createdBy: v.optional(v.string()),",
+    "  parentVersion: v.optional(v.number()),",
+    "  restoredFrom: v.optional(v.number()),",
+    "  publishedAt: v.optional(v.number()),",
+    "})",
+    '  .index("by_document_version", ["collection", "documentId", "version"])',
+  ].join("\n");
+
   let globalsTable = "";
   if (props.config.globals.length > 0) {
+    const hasGlobalVersions = props.config.globals.some((global) => global.versions.drafts);
+    const versionSchema = hasGlobalVersions
+      ? versionFieldsToVexSchema({ tableName: "vex_globals" })
+      : { fields: [], indexes: [] };
     globalsTable = [
       "",
       "/**",
@@ -65,10 +90,12 @@ export function generateVexSchema(props: { config: VexClientConfig }): {
       "export const vex_globals = defineTable({",
       "  slug: v.string(),",
       "  data: v.any(),",
+      ...versionSchema.fields,
       "})",
       '  .index("by_slug", ["slug"])',
+      ...versionSchema.indexes,
     ].join("\n");
   }
 
-  return success([header, imports, collectionSchemas, globalsTable].join("\n"));
+  return success([header, imports, collectionSchemas, vexVersionsTable, globalsTable].join("\n"));
 }

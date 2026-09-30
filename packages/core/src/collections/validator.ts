@@ -2,7 +2,8 @@ import { ADMIN_FIELDS } from "../fields/constants";
 import { adminFieldToValidator } from "../fields/validators";
 import { CollectionConfig } from "./types";
 import type { VexClientConfig } from "../config";
-import { CORE_ADMIN_FIELDS } from "./constants";
+import { CONVEX_SYSTEM_FIELDS } from "./constants";
+import { versionFieldsToVexSchema } from "../versions/schema";
 
 /**
  * Describes a relationship field in another collection that points to a given collection.
@@ -140,7 +141,7 @@ export function collectionConfigToVexSchema(props: {
   });
   relationships.forEach(() => {
     const useAsTitle = props.collection.admin.useAsTitle;
-    const coreAdminFields: string[] = Object.values(CORE_ADMIN_FIELDS).map((f) => f.slug);
+    const coreAdminFields: string[] = Object.values(CONVEX_SYSTEM_FIELDS).map((f) => f.slug);
     if (coreAdminFields.includes(useAsTitle)) return;
     const searchIndex = searchIndexes.find((si) =>
       si.includes(`.searchIndex("search_${useAsTitle}", {`),
@@ -151,6 +152,11 @@ export function collectionConfigToVexSchema(props: {
       filterFields: []
     })`);
   });
+  if (props.collection.versions.drafts) {
+    const versionSchema = versionFieldsToVexSchema({ tableName: props.collection.slug });
+    fieldsBlock.push(...versionSchema.fields);
+    indexes.push(...versionSchema.indexes);
+  }
 
   return `export const ${props.collection.slug} = defineTable({\n${fieldsBlock.join("\n")}\n
     })${indexes.length > 0 ? `\n${indexes.join("\n")}` : ""}${

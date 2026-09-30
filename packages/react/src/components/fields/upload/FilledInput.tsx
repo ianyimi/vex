@@ -1,4 +1,4 @@
-import { Button, Draggable, DragHandle, Droppable, Icon, Skeleton } from "../../ui";
+import { Button, Draggable, DragHandle, Droppable, Skeleton } from "../../ui";
 import { useQuery } from "@tanstack/react-query";
 import {
   CollectionConfig,
@@ -209,24 +209,22 @@ function UploadItemRow({
           mediaDoc.alt.length > 0 && (
             <div className="flex max-w-[200px] min-w-0 items-center gap-2">
               <InputTag>ALT</InputTag>
-              <span className="w-sm flex-1 truncate text-xs">
+              <span className="flex-1 truncate text-xs">
                 {mediaDoc.alt || <em className="text-destructive">Missing</em>}
               </span>
             </div>
           )
         )}
-        <div className="acts">
-          <Button
-            variant="ghost"
-            className="transition-colors duration-300 hover:text-destructive"
-            type="button"
-            title="Remove"
-            onClick={onRemove}
-            disabled={readOnly || Boolean(accessError)}
-          >
-            <Icon name="X" size={13} />
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          className="transition-colors duration-300 hover:text-destructive"
+          type="button"
+          title="Remove"
+          onClick={onRemove}
+          disabled={readOnly || Boolean(accessError)}
+          icon="X"
+          iconPosition="center"
+        />
       </div>
     </div>
   );

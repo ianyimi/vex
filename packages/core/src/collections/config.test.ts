@@ -62,6 +62,101 @@ describe("defineCollection — updatedAt injection", () => {
   });
 });
 
+describe("defineCollection — versions defaults", () => {
+  it("defaults versions.drafts to false, versions.autosave to disabled, and versions.cascadeDelete to true when versions is omitted", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+    });
+    expect(posts.versions).toEqual({
+      drafts: false,
+      autosave: { enabled: false, debounceMs: 1000 },
+      cascadeDelete: true,
+    });
+  });
+
+  it("resolves versions.drafts: true when declared, defaulting autosave to disabled and cascadeDelete to true", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      versions: { drafts: true },
+    });
+    expect(posts.versions).toEqual({
+      drafts: true,
+      autosave: { enabled: false, debounceMs: 1000 },
+      cascadeDelete: true,
+    });
+  });
+
+  it("enables autosave alongside drafts, defaulting debounceMs when omitted", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      versions: { drafts: true, autosave: { enabled: true } },
+    });
+    expect(posts.versions).toEqual({
+      drafts: true,
+      autosave: { enabled: true, debounceMs: 1000 },
+      cascadeDelete: true,
+    });
+  });
+
+  it("honors an explicit autosave.debounceMs override", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      versions: { drafts: true, autosave: { enabled: true, debounceMs: 250 } },
+    });
+    expect(posts.versions.autosave).toEqual({ enabled: true, debounceMs: 250 });
+  });
+
+  it("honors an explicit cascadeDelete: false override", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      versions: { drafts: true, cascadeDelete: false },
+    });
+    expect(posts.versions).toEqual({
+      drafts: true,
+      autosave: { enabled: false, debounceMs: 1000 },
+      cascadeDelete: false,
+    });
+  });
+});
+
+describe("defineCollection — reserved versioning field keys", () => {
+  it("throws at runtime when a user field is literally named vex_status", () => {
+    const fields: Record<string, AdminField> = {
+      vex_status: text({ label: "Status" }),
+    };
+    expect(() => defineCollection({ slug: "posts", fields })).toThrow(/reserved/);
+  });
+
+  it("throws at runtime when a user field is literally named vex_publishedAt", () => {
+    const fields: Record<string, AdminField> = {
+      vex_publishedAt: text({ label: "Published At" }),
+    };
+    expect(() => defineCollection({ slug: "posts", fields })).toThrow(/reserved/);
+  });
+
+  it("throws at runtime when a user field is literally named vex_publishedId", () => {
+    const fields: Record<string, AdminField> = {
+      vex_publishedId: text({ label: "Published Id" }),
+    };
+    expect(() => defineCollection({ slug: "posts", fields })).toThrow(/reserved/);
+  });
+
+  it("is a compile-time error to declare a field literally named vex_status", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        // @ts-expect-error — vex_status is reserved; defineCollection injects it
+        fields: { vex_status: text({ label: "Status" }) },
+      }),
+    ).toThrow(/reserved/);
+  });
+});
+
 describe("defineCollection — auth-owned collections are skipped", () => {
   // `betterAuthAdapter` marks every auth table except `user` with
   // `meta.protected`. vexcms's `create`/`update` never write those rows, so a

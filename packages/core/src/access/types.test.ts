@@ -11,6 +11,12 @@ import type { MutationCallActionFor, QueryCallActionFor } from "../api/types";
 // guards below are expected and disappear in apps after `vex generate`
 // augments the registry.
 
+const draftPages = defineCollection({
+  slug: "draftPages",
+  fields: { title: text({ required: true }) },
+  versions: { drafts: true },
+});
+
 const pages = defineCollection({
   slug: "pages",
   // `authorId` declares a real index so `withIndex: "by_author"` resolves at
@@ -655,6 +661,43 @@ describe("VexAccessConfig — the bare type is a supertype of every concrete con
     const wide: VexAccessConfig = concrete;
     expect(wide.customActions).toEqual({
       pages: { query: ["listFeatured"], mutation: ["publish"] },
+    });
+  });
+});
+
+describe("DRAFT_ACTIONS — composes onto a resource's action union by shape (AP-008)", () => {
+  it("accepts deleteVersions (and the rest of DRAFT_ACTIONS) as a permission key for a resource with versions.drafts: true", () => {
+    defineAccess({
+      roles: ["admin"] as const,
+      resources: [draftPages, users],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        admin: {
+          draftPages: {
+            readDrafts: true,
+            saveDraft: true,
+            publish: true,
+            unpublish: true,
+            deleteVersions: true,
+          },
+        },
+      },
+    });
+  });
+
+  it("rejects deleteVersions on a resource that does not declare versions.drafts: true", () => {
+    defineAccess({
+      roles: ["admin"] as const,
+      resources: [pages, users],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        admin: {
+          // @ts-expect-error — `pages` declares no `versions.drafts`, so `deleteVersions` is not in its action union
+          pages: { deleteVersions: true },
+        },
+      },
     });
   });
 });

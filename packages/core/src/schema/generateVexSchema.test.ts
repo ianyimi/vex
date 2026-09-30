@@ -218,7 +218,15 @@ describe("generateVexSchema — indexes", () => {
       ],
     });
     const output = generateVexSchema({ config });
-    expect(output.contents).not.toContain(".index(");
+    // Scoped to `posts`' own block: `vex_versions` is emitted unconditionally
+    // and always carries `.index("by_document_version", ...)`, so a whole-file
+    // assertion can no longer hold.
+    const postsStart = output.contents.indexOf("export const posts = defineTable({");
+    const postsBlock = output.contents.slice(
+      postsStart,
+      output.contents.indexOf("export const", postsStart + 1),
+    );
+    expect(postsBlock).not.toContain(".index(");
   });
 });
 
@@ -321,6 +329,78 @@ describe("generateVexSchema — integration (full collection)", () => {
   });
 });
 
+describe("generateVexSchema — versioned collections", () => {
+  it("emits vex_status, vex_publishedAt, vex_publishedId, and both indexes for a collection with versions.drafts: true", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text() },
+      versions: { drafts: true },
+    });
+    const config = defineConfig({ collections: [posts] });
+    const { contents } = generateVexSchema({ config });
+
+    expect(contents).toContain(
+      'vex_status: v.optional(v.union(v.literal("draft"), v.literal("published")))',
+    );
+    expect(contents).toContain("vex_publishedAt: v.optional(v.number())");
+    expect(contents).toContain('vex_publishedId: v.optional(v.id("posts"))');
+    expect(contents).toContain('.index("by_status", ["vex_status"])');
+    expect(contents).toContain('.index("by_published", ["vex_publishedId"])');
+  });
+
+  it("does not emit versioning fields for a non-versioned collection in the same config", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text() },
+      versions: { drafts: true },
+    });
+    const authors = defineCollection({
+      slug: "authors",
+      fields: { name: text() },
+    });
+    const config = defineConfig({ collections: [posts, authors] });
+    const { contents } = generateVexSchema({ config });
+
+    // Scope to "authors"' own table block — asserting on `contents` as a
+    // whole would pass vacuously since "posts" DOES emit these fields.
+    const marker = "export const authors = defineTable({";
+    const authorsStart = contents.indexOf(marker);
+    expect(authorsStart).toBeGreaterThan(-1);
+    const nextExportStart = contents.indexOf("export const", authorsStart + marker.length);
+    const authorsBlock =
+      nextExportStart === -1
+        ? contents.slice(authorsStart)
+        : contents.slice(authorsStart, nextExportStart);
+
+    expect(authorsBlock).not.toContain("vex_status");
+    expect(authorsBlock).not.toContain("vex_publishedAt");
+    expect(authorsBlock).not.toContain("vex_publishedId");
+    expect(authorsBlock).not.toContain("by_status");
+    expect(authorsBlock).not.toContain("by_published");
+  });
+
+  it("emits vex_versions unconditionally, even when no collection or global declares drafts", () => {
+    const config = defineConfig({
+      collections: [defineCollection({ slug: "posts", fields: { title: text() } })],
+    });
+    const { contents } = generateVexSchema({ config });
+
+    expect(contents).toContain("export const vex_versions = defineTable({");
+    expect(contents).toContain("collection: v.string(),");
+    expect(contents).toContain("documentId: v.string(),");
+    expect(contents).toContain("version: v.number(),");
+    expect(contents).toContain('status: v.union(v.literal("draft"), v.literal("published")),');
+    expect(contents).toContain("snapshot: v.any(),");
+    expect(contents).toContain("createdBy: v.optional(v.string()),");
+    expect(contents).toContain("parentVersion: v.optional(v.number()),");
+    expect(contents).toContain("restoredFrom: v.optional(v.number()),");
+    expect(contents).toContain("publishedAt: v.optional(v.number()),");
+    expect(contents).toContain(
+      '.index("by_document_version", ["collection", "documentId", "version"])',
+    );
+  });
+});
+
 describe("generateVexSchema — globals", () => {
   it("emits vex_globals table when globals are registered", () => {
     const config = defineConfig({
@@ -340,27 +420,42 @@ describe("generateVexSchema — globals", () => {
     expect(contents).not.toContain("vex_globals");
   });
 
-  it("does not include versioning fields in v35", () => {
-    const config = defineConfig({
-      globals: [
-        defineGlobal({
-          slug: "nav",
-          label: "Nav",
-          fields: {} as any,
-          versions: { drafts: true },
-        }),
-      ],
-    });
-    const { contents } = generateVexSchema({ config });
-    expect(contents).not.toContain("vex_status");
-    expect(contents).not.toContain("vex_version");
-  });
-
   it("returns update: true when only globals are registered (no collections)", () => {
     const config = defineConfig({
       globals: [defineGlobal({ slug: "nav", label: "Nav", fields: {} as any })],
     });
     const { update } = generateVexSchema({ config });
     expect(update).toBe(true);
+  });
+
+  it("emits vex_status, vex_publishedAt, vex_publishedId, and both indexes on vex_globals when a registered global declares versions.drafts: true", () => {
+    const nav = defineGlobal({
+      slug: "nav",
+      label: "Nav",
+      fields: {} as any,
+      versions: { drafts: true },
+    });
+    const config = defineConfig({ globals: [nav] });
+    const { contents } = generateVexSchema({ config });
+
+    // Scope to "vex_globals"' own table block — the unrelated `status`-shaped
+    // field on the vex_versions block would otherwise false-pass a bare
+    // `contents`-wide assertion.
+    const marker = "export const vex_globals = defineTable({";
+    const globalsStart = contents.indexOf(marker);
+    expect(globalsStart).toBeGreaterThan(-1);
+    const nextExportStart = contents.indexOf("export const", globalsStart + marker.length);
+    const globalsBlock =
+      nextExportStart === -1
+        ? contents.slice(globalsStart)
+        : contents.slice(globalsStart, nextExportStart);
+
+    expect(globalsBlock).toContain(
+      'vex_status: v.optional(v.union(v.literal("draft"), v.literal("published")))',
+    );
+    expect(globalsBlock).toContain("vex_publishedAt: v.optional(v.number())");
+    expect(globalsBlock).toContain('vex_publishedId: v.optional(v.id("vex_globals"))');
+    expect(globalsBlock).toContain('.index("by_status", ["vex_status"])');
+    expect(globalsBlock).toContain('.index("by_published", ["vex_publishedId"])');
   });
 });

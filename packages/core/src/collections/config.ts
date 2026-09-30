@@ -3,10 +3,15 @@ import pluralize from "pluralize-esm";
 import { AdminField, CollectionFieldMeta, ComponentHKT, number } from "../fields";
 import { CollectionSlug } from "../types";
 import { toTitleCase } from "../utils";
-import { ReservedCollectionFieldKey } from "./constants";
+import { COLLECTION_SYSTEM_FIELDS, CollectionSystemField } from "./constants";
 import { AdminCollectionConfig, CollectionConfig, CollectionConfigInput } from "./types";
 import type { CollectionHooks } from "./hooks";
 import { slugToPascalCase } from "./utils";
+import {
+  DEFAULT_AUTOSAVE_DEBOUNCE_MS,
+  VERSION_SYSTEM_FIELDS,
+  type VersionSystemField,
+} from "../versions";
 
 function populateCollectionFieldMeta<
   TFieldMeta extends {} = {},
@@ -14,6 +19,7 @@ function populateCollectionFieldMeta<
   TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends string = string,
   TComponent extends ComponentHKT = ComponentHKT,
+  TDrafts extends boolean = boolean,
 >({
   config,
 }: {
@@ -22,7 +28,8 @@ function populateCollectionFieldMeta<
     TCollectionMeta,
     TCollectionSlug,
     TFieldSlug,
-    TComponent
+    TComponent,
+    TDrafts
   >;
 }): Record<TFieldSlug, AdminField<TFieldMeta & CollectionFieldMeta>> {
   const fields: Record<
@@ -73,6 +80,7 @@ export function defineCollection<
   TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends string = string,
   TComponent extends ComponentHKT = ComponentHKT,
+  const TDrafts extends boolean = false,
 >(
   // `string extends TFieldSlug` is the escape hatch for callers whose `fields`
   // is a widened `Record<string, AdminField<...>>` rather than an object
@@ -80,13 +88,28 @@ export function defineCollection<
   // it, `string & "updatedAt"` collapses to `"updatedAt"` (not `never`), so the
   // auth adapter's own call would hit the reserved-key branch and fail to compile.
   config: string extends TFieldSlug
-    ? CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, TComponent>
-    : [TFieldSlug & ReservedCollectionFieldKey] extends [never]
-      ? CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, TComponent>
+    ? CollectionConfigInput<
+        TFieldMeta,
+        TCollectionMeta,
+        TCollectionSlug,
+        TFieldSlug,
+        TComponent,
+        TDrafts
+      >
+    : [TFieldSlug & (CollectionSystemField | VersionSystemField)] extends [never]
+      ? CollectionConfigInput<
+          TFieldMeta,
+          TCollectionMeta,
+          TCollectionSlug,
+          TFieldSlug,
+          TComponent,
+          TDrafts
+        >
       : {
           fields: {
-            [K in TFieldSlug &
-              ReservedCollectionFieldKey]: 'Field name is reserved — defineCollection injects "updatedAt" automatically; opt out with { timestamps: false }';
+            [
+              K in TFieldSlug & (CollectionSystemField | VersionSystemField)
+            ]: 'Field name is reserved — defineCollection injects "updatedAt" automatically; opt out with { timestamps: false }';
           };
         },
 ): CollectionConfig<
@@ -94,14 +117,16 @@ export function defineCollection<
   TCollectionMeta,
   TCollectionSlug,
   TFieldSlug,
-  TComponent
+  TComponent,
+  TDrafts
 > {
   const input = config as CollectionConfigInput<
     TFieldMeta,
     TCollectionMeta,
     TCollectionSlug,
     TFieldSlug,
-    TComponent
+    TComponent,
+    TDrafts
   >;
 
   // Runtime guard for JS consumers — the compile-time branch above only
@@ -113,7 +138,10 @@ export function defineCollection<
   // owns that column. `betterAuthAdapter` does exactly this — `updatedAt` is
   // never in its `EDITABLE_FIELDS`, so it always arrives locked. A
   // user-authored field is never locked, so it still throws.
-  const reservedKeys: ReservedCollectionFieldKey[] = ["updatedAt"];
+  const reservedKeys: (CollectionSystemField | VersionSystemField)[] = [
+    ...Object.values(COLLECTION_SYSTEM_FIELDS),
+    ...Object.values(VERSION_SYSTEM_FIELDS),
+  ].map((field) => field.slug);
   for (const key of reservedKeys) {
     const declared = input.fields[key as TFieldSlug] as AdminField<TFieldMeta> | undefined;
     if (declared === undefined) {
@@ -214,5 +242,15 @@ export function defineCollection<
     meta: {
       ...input.meta,
     } as TCollectionMeta,
+    versions: {
+      drafts: false as TDrafts,
+      cascadeDelete: true,
+      ...input.versions,
+      autosave: {
+        enabled: false,
+        debounceMs: DEFAULT_AUTOSAVE_DEBOUNCE_MS,
+        ...input.versions?.autosave,
+      },
+    },
   };
 }

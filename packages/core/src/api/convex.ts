@@ -2,6 +2,7 @@ import { anyApi } from "convex/server";
 import type { FunctionReference } from "convex/server";
 import type { PaginationOptions, PaginationResult, VexApiAuth } from "./types";
 import { CollectionSlug, VexDocumentGlobal } from "../types";
+import { VERSION_SYSTEM_FIELDS, VexVersionStatus } from "../versions";
 
 /**
  * Base type for all VexCMS documents as returned from Convex queries.
@@ -38,6 +39,27 @@ export interface VexDocument {
  * @see {@link VexDocument} for the base type
  */
 export type TDocument<TShape = {}> = Record<string, unknown> & TShape & VexDocument;
+
+/**
+ * Type for versioned documents returned from Convex queries.
+ *
+ * Extends `VexDocument` with all required version fields: vex_status, vex_publishedId,
+ * vex_publishedA. Use this instead of `TDocument` in versioned collection views to
+ * avoid casting fields like `row.vex_status as string`.
+ *
+ * @example
+ * ```ts
+ * const src = doc.src; // string | undefined, no cast needed
+ * const alt = doc.alt ?? "";
+ * ```
+ *
+ * @see {@link TDocument} for the base document type with custom shape support
+ */
+export interface VexVersionDocument extends VexDocument {
+  [VERSION_SYSTEM_FIELDS.status.slug]: VexVersionStatus;
+  [VERSION_SYSTEM_FIELDS.publishedId.slug]?: string;
+  [VERSION_SYSTEM_FIELDS.publishedAt.slug]?: number;
+}
 
 /**
  * Type for media documents returned from Convex queries.
@@ -215,7 +237,9 @@ export interface VexMediaGetUrlReturn {
   error?: string;
 }
 
-// ── Media API shallow types ──────────────────────────────────────────────
+// ── Globals API shallow types ──────────────────────────────────────────────
+//
+// Arg and return shapes for the global document endpoints.
 
 /** Args for `api.vex.globals.get`. */
 export interface VexGlobalsGetArgs {
@@ -237,6 +261,21 @@ export interface VexGlobalsUpdateArgs {
   auth?: VexApiAuth;
   slug: string;
   data: Record<string, unknown>;
+}
+
+// ── Versions API shallow types ──────────────────────────────────────────────
+//
+// Arg and return shapes for the versioned document endpoints.
+
+/** Args for `api.vex.versions.saveDraft`. */
+export interface VexSaveDraftArgs {
+  [key: string]: unknown;
+  auth?: VexApiAuth;
+  collection: string;
+  id: string;
+  data: Record<string, unknown>;
+  restoredFrom?: number;
+  environmentId?: string;
 }
 
 /**
@@ -403,6 +442,15 @@ export const vexConvexApi = {
       "mutation",
       "public",
       VexGlobalsUpdateArgs,
+      string
+    >,
+  },
+
+  versions: {
+    saveDraft: anyApi.vex.versions.saveDraft as FunctionReference<
+      "mutation",
+      "public",
+      VexSaveDraftArgs,
       string
     >,
   },

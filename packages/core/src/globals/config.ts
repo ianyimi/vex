@@ -7,6 +7,7 @@ import type {
   ReservedGlobalFieldKey,
 } from "./types";
 import type { GlobalSlug } from "../types/generated";
+import { DEFAULT_AUTOSAVE_DEBOUNCE_MS } from "../versions";
 
 /**
  * Defines a singleton global document for the VexCMS project.
@@ -52,18 +53,20 @@ export function defineGlobal<
   TGlobalSlug extends GlobalSlug = GlobalSlug,
   TFieldSlug extends string = string,
   TComponent extends ComponentHKT = ComponentHKT,
+  const TDrafts extends boolean = false,
 >(
   config: string extends TFieldSlug
-    ? GlobalConfigInput<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent>
+    ? GlobalConfigInput<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent, TDrafts>
     : [TFieldSlug & ReservedGlobalFieldKey] extends [never]
-      ? GlobalConfigInput<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent>
+      ? GlobalConfigInput<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent, TDrafts>
       : {
           fields: {
-            [K in TFieldSlug &
-              ReservedGlobalFieldKey]: "Field name is reserved — cannot use _id, _creationTime, or _slug";
+            [
+              K in TFieldSlug & ReservedGlobalFieldKey
+            ]: "Field name is reserved — cannot use _id, _creationTime, or _slug";
           };
         },
-): GlobalConfig<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent> {
+): GlobalConfig<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent, TDrafts> {
   // Runtime guard for JS consumers
   const reservedKeys: ReservedGlobalFieldKey[] = ["_id", "_creationTime", "_slug"];
   for (const key of reservedKeys) {
@@ -80,7 +83,8 @@ export function defineGlobal<
     TGlobalMeta,
     TGlobalSlug,
     TFieldSlug,
-    TComponent
+    TComponent,
+    TDrafts
   >;
 
   return {
@@ -103,8 +107,13 @@ export function defineGlobal<
     },
     meta: (input.meta ?? {}) as TGlobalMeta,
     versions: {
-      drafts: false,
+      drafts: false as TDrafts,
       ...input.versions,
+      autosave: {
+        enabled: false,
+        debounceMs: DEFAULT_AUTOSAVE_DEBOUNCE_MS,
+        ...input.versions?.autosave,
+      },
     },
   };
 }
