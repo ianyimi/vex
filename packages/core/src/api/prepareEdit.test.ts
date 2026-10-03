@@ -7,7 +7,7 @@ import * as _generatedApi from "./test/convex/_generated/api";
 import schema from "./test/convex/schema";
 import { CRUD_ACTIONS, VexAccessError } from "../access";
 import { defineAccess } from "../access/config";
-import { defineCollection, text } from "../index";
+import { defineCollection, defineGlobal, text } from "../index";
 import type { VexConfig } from "../config";
 import { prepareEdit } from "./prepareEdit";
 
@@ -30,7 +30,7 @@ describe("prepareEdit", () => {
       const result = await prepareEdit({
         ctx,
         config: fixtureConfig,
-        collection: posts,
+        target: { kind: "collection", config: posts },
         action: CRUD_ACTIONS.update,
         storedDoc: stored as never,
         incoming: { slug: "changed" },
@@ -48,7 +48,7 @@ describe("prepareEdit", () => {
       const result = await prepareEdit({
         ctx,
         config: fixtureConfig,
-        collection: posts,
+        target: { kind: "collection", config: posts },
         action: CRUD_ACTIONS.update,
         storedDoc: stored as never,
         incoming: { slug: "changed" },
@@ -77,7 +77,7 @@ describe("prepareEdit", () => {
       const result = await prepareEdit({
         ctx,
         config: fixtureConfig,
-        collection: postsWithHook,
+        target: { kind: "collection", config: postsWithHook },
         action: CRUD_ACTIONS.update,
         storedDoc: stored as never,
         incoming: { title: "Brand New Title" },
@@ -99,7 +99,7 @@ describe("prepareEdit", () => {
         prepareEdit({
           ctx,
           config: fixtureConfig,
-          collection: posts,
+          target: { kind: "collection", config: posts },
           action: CRUD_ACTIONS.update,
           storedDoc: undefined,
           incoming: { title: "Only title, no slug" },
@@ -118,7 +118,7 @@ describe("prepareEdit", () => {
         await prepareEdit({
           ctx,
           config: fixtureConfig,
-          collection: posts,
+          target: { kind: "collection", config: posts },
           action: CRUD_ACTIONS.update,
           storedDoc: undefined,
           incoming: { slug: "no-title" },
@@ -159,7 +159,7 @@ describe("prepareEdit", () => {
       await prepareEdit({
         ctx,
         config: fixtureConfig,
-        collection: postsWithValidators,
+        target: { kind: "collection", config: postsWithValidators },
         action: CRUD_ACTIONS.update,
         storedDoc: stored as never,
         incoming: { slug: "changed" },
@@ -194,7 +194,7 @@ describe("prepareEdit", () => {
       const result = await prepareEdit({
         ctx,
         config: fixtureConfig,
-        collection: postsWithValidators,
+        target: { kind: "collection", config: postsWithValidators },
         action: CRUD_ACTIONS.update,
         storedDoc: stored as never,
         incoming: { title: "Updated" },
@@ -236,7 +236,7 @@ describe("prepareEdit", () => {
         prepareEdit({
           ctx,
           config,
-          collection: guardedPosts,
+          target: { kind: "collection", config: guardedPosts },
           action: CRUD_ACTIONS.update,
           auth: { user: { roles: ["blocked"] } },
           storedDoc: { title: "Old", slug: "old" } as never,
@@ -247,5 +247,116 @@ describe("prepareEdit", () => {
       ).rejects.toThrow(VexAccessError);
     });
     expect(beforeChangeCalled).toBe(false);
+  });
+});
+
+const siteSettings = defineGlobal({
+  slug: "siteSettings",
+  label: "Site Settings",
+  fields: {
+    title: text({
+      validate: ({ value }) => {
+        if (value === "BAD") throw new Error('title cannot be "BAD"');
+      },
+    }),
+  },
+  hooks: {
+    beforeChange: ({ doc }) => {
+      const fields = doc as Record<string, unknown>;
+      return {
+        ...fields,
+        title: typeof fields.title === "string" ? fields.title.toUpperCase() : fields.title,
+      };
+    },
+  },
+});
+
+const globalFixtureConfig = { collections: [], globals: [siteSettings] } as unknown as VexConfig;
+
+describe("prepareEdit — global targets", () => {
+  test("a global target's beforeChange transform lands in transformedFields AND changedKeys", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const result = await prepareEdit({
+        ctx,
+        config: globalFixtureConfig,
+        target: { kind: "global", config: siteSettings },
+        action: CRUD_ACTIONS.create,
+        storedDoc: undefined,
+        incoming: { title: "hello" },
+        partial: false,
+        validateKeys: "all",
+      });
+      expect(result.transformedFields).toMatchObject({ title: "HELLO" });
+      expect(result.changedKeys.has("title")).toBe(true);
+    });
+  });
+
+  test("operation is \"create\" when action is CRUD_ACTIONS.create, \"update\" otherwise", async () => {
+    const seenOperations: string[] = [];
+    const recordingGlobal = defineGlobal({
+      slug: "siteSettings",
+      label: "Site Settings",
+      fields: { title: text() },
+      hooks: {
+        beforeChange: ({ doc, operation }) => {
+          seenOperations.push(operation);
+          return doc;
+        },
+      },
+    });
+    const config = { collections: [], globals: [recordingGlobal] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await prepareEdit({
+        ctx,
+        config,
+        target: { kind: "global", config: recordingGlobal },
+        action: CRUD_ACTIONS.create,
+        storedDoc: undefined,
+        incoming: { title: "a" },
+        partial: false,
+        validateKeys: "all",
+      });
+      await prepareEdit({
+        ctx,
+        config,
+        target: { kind: "global", config: recordingGlobal },
+        action: CRUD_ACTIONS.update,
+        storedDoc: { title: "a" } as never,
+        incoming: { title: "b" },
+        partial: true,
+        validateKeys: "changed",
+      });
+    });
+    expect(seenOperations).toEqual(["create", "update"]);
+  });
+
+  test("a global field's validate() rejection surfaces as ConvexError({ field, message }) — the gap upsertGlobal had", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      let caught: unknown;
+      try {
+        await prepareEdit({
+          ctx,
+          config: globalFixtureConfig,
+          target: { kind: "global", config: siteSettings },
+          action: CRUD_ACTIONS.create,
+          storedDoc: undefined,
+          // `beforeChange` runs before `validate()` — `prepareEdit` validates
+          // `transformedFields`, the POST-`beforeChange` document — so the
+          // fixture's `validate` must check the UPPERCASED value "bad" becomes.
+          incoming: { title: "bad" },
+          partial: false,
+          validateKeys: "all",
+        });
+      } catch (thrown) {
+        caught = thrown;
+      }
+      expect(caught).toBeInstanceOf(ConvexError);
+      expect((caught as ConvexError<{ field: string; message: string }>).data).toMatchObject({
+        field: "title",
+      });
+    });
   });
 });

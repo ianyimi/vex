@@ -550,6 +550,31 @@ export interface Comment extends VexDocument {
   updatedAt?: number
 }
 
+export interface Post extends VexDocument {
+  _id: Id<"posts">
+  /**
+   * Required — leave empty in a draft to test publish rejection.
+   */
+  title: string
+  /**
+   * Contributors may not change this in a draft.
+   */
+  slug: string
+  /**
+   * Free text — the field to edit when testing a plain draft save.
+   */
+  body?: string
+  /**
+   * Versioned target — publishing while this points at a draft must fail.
+   */
+  relatedPost?: Id<"posts">[]
+  /**
+   * Non-versioned target — never blocks a publish.
+   */
+  relatedArticle?: Id<"articles">[]
+  updatedAt?: number
+}
+
 export interface SessionDocument extends VexDocument {
   _id: Id<"session">
   expiresAt: number
@@ -707,6 +732,18 @@ export interface SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings"> {
   favicon?: Id<"images">[]
 }
 
+export interface AnnouncementGlobal extends VexDocumentGlobal<"announcement"> {
+  /**
+   * Banner text. Required to publish.
+   */
+  message: string
+  /**
+   * Optional link target.
+   */
+  href?: string
+  dismissible?: boolean
+}
+
 export type CollectionSlug =
   | "pages"
   | "user"
@@ -717,6 +754,7 @@ export type CollectionSlug =
   | "case_studies"
   | "changelog"
   | "comments"
+  | "posts"
   | "session"
   | "account"
   | "verification"
@@ -729,7 +767,7 @@ export type CollectionSlug =
   | "invitation"
   | "images"
 
-export type GlobalSlug = "nav" | "siteSettings"
+export type GlobalSlug = "nav" | "siteSettings" | "announcement"
 
 export type MediaCollectionSlug = "images"
 
@@ -745,6 +783,7 @@ export type DocumentBySlug = {
   case_studies: CaseStudy
   changelog: ChangelogEntry
   comments: Comment
+  posts: Post
   session: SessionDocument
   account: AccountDocument
   verification: VerificationDocument
@@ -761,6 +800,7 @@ export type DocumentBySlug = {
 export type GlobalDocumentBySlug = {
   nav: NavGlobal
   siteSettings: SiteSettingsGlobal
+  announcement: AnnouncementGlobal
 }
 
 declare module "@vexcms/core" {
@@ -775,6 +815,7 @@ declare module "@vexcms/core" {
       | "case_studies"
       | "changelog"
       | "comments"
+      | "posts"
       | "session"
       | "account"
       | "verification"
@@ -786,7 +827,7 @@ declare module "@vexcms/core" {
       | "member"
       | "invitation"
       | "images"
-    GlobalSlug: "nav" | "siteSettings"
+    GlobalSlug: "nav" | "siteSettings" | "announcement"
     MediaCollectionSlug: "images"
     StorageAdapterSlug: "convex"
     DocumentBySlug: {
@@ -799,6 +840,7 @@ declare module "@vexcms/core" {
       case_studies: CaseStudy
       changelog: ChangelogEntry
       comments: Comment
+      posts: Post
       session: SessionDocument
       account: AccountDocument
       verification: VerificationDocument
@@ -814,6 +856,7 @@ declare module "@vexcms/core" {
     GlobalDocumentBySlug: {
       nav: NavGlobal
       siteSettings: SiteSettingsGlobal
+      announcement: AnnouncementGlobal
     }
     CollectionsFieldTypeMap: {
       pages: {
@@ -873,6 +916,11 @@ declare module "@vexcms/core" {
         relationship: "authorId" | "article"
         text: "body"
         checkbox: "approved"
+        number: "updatedAt"
+      }
+      posts: {
+        text: "title" | "slug" | "body"
+        relationship: "relatedPost" | "relatedArticle"
         number: "updatedAt"
       }
       session: {
@@ -962,6 +1010,10 @@ declare module "@vexcms/core" {
         relationship: "activeTheme" | "adminTheme"
         upload: "favicon"
       }
+      announcement: {
+        text: "message" | "href"
+        checkbox: "dismissible"
+      }
     }
     IndexFieldsBySlug: {
       pages: { by_slug: readonly ["slug"]; by_themes: readonly ["themes"] }
@@ -987,6 +1039,11 @@ declare module "@vexcms/core" {
         by_version: readonly ["version"]
       }
       comments: { by_author: readonly ["authorId"]; by_article: readonly ["article"] }
+      posts: {
+        by_slug: readonly ["slug"]
+        by_relatedPost: readonly ["relatedPost"]
+        by_relatedArticle: readonly ["relatedArticle"]
+      }
       session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] }
       account: { by_userId: readonly ["userId"] }
       verification: { by_identifier: readonly ["identifier"] }

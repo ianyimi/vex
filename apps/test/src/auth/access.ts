@@ -10,9 +10,10 @@ import {
   headers,
   images,
   pages,
+  posts,
   themes,
 } from "~/vexcms/collections";
-import { nav, siteSettings } from "~/vexcms/globals";
+import { announcement, nav, siteSettings } from "~/vexcms/globals";
 
 import { ownOnly, readOwn, readPublished } from "./permissions";
 
@@ -35,6 +36,8 @@ export const access = defineAccess({
     comments,
     nav,
     siteSettings,
+    posts,
+    announcement,
   ],
   customResources: {
     edit: {
@@ -59,6 +62,14 @@ export const access = defineAccess({
       case_studies: true,
       changelog: true,
       comments: true,
+      // Full draft workflow on posts. May draft the announcement but not
+      // publish/unpublish it — exercises the disabled-Publish path.
+      posts: true,
+      announcement: {
+        "*": true,
+        publish: false,
+        unpublish: false,
+      },
       adminPanel: {
         access: true,
         impersonate: false,
@@ -94,6 +105,16 @@ export const access = defineAccess({
         update: ownOnly(comments, "authorId"),
         delete: ownOnly(comments, "authorId"),
       },
+      // May draft posts but not change `slug` in a draft — the same field map on
+      // `saveDraft` as on `update` (launch-plan acceptance criterion). No
+      // publish/unpublish: drafts only.
+      posts: {
+        read: true,
+        readDrafts: true,
+        create: true,
+        update: () => ({ "*": true, slug: false }),
+        saveDraft: () => ({ "*": true, slug: false }),
+      },
       adminPanel: {
         access: true,
         impersonate: false,
@@ -127,6 +148,15 @@ export const access = defineAccess({
         // so there is nothing to push down.
         "*": false,
         read: ({ data }) => data?.approved === true,
+      },
+      // Published content only: no `readDrafts`, so drafts never reach a reader.
+      posts: {
+        "*": false,
+        read: true,
+      },
+      announcement: {
+        "*": false,
+        read: true,
       },
       images: {
         "*": false,

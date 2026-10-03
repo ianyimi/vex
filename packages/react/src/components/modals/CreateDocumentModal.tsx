@@ -6,7 +6,7 @@ import { Modal } from "./BaseModal";
 import { type CollectionSlug } from "@vexcms/core";
 import { MODALS } from "./constants";
 import { AppForm } from "../form";
-import { useCollectionForm } from "../../hooks/useCollectionForm";
+import { useFieldsForm } from "../../hooks/useFieldsForm";
 import { useVexMutation } from "../../hooks";
 import { useVexConfig } from "../../context/VexConfigContext";
 import { RenderFieldInputComponents } from "../fields";
@@ -17,7 +17,7 @@ import { parseAsBoolean, useQueryState } from "nuqs";
  * Modal for creating a new document in a collection.
  *
  * Opens when `?createNew=true` is in the URL (see `MODALS.createDocument`).
- * Builds a TanStack Form instance via `useCollectionForm`, renders only the
+ * Builds a TanStack Form instance via `useFieldsForm`, renders only the
  * collection's required fields with `<RenderFieldInputComponents>` — a quick
  * create; non-required fields keep their configured defaults and are filled
  * in later from the edit view — and calls the Convex `create` mutation on
@@ -70,11 +70,10 @@ export function CreateDocumentModal(props: { collection: CollectionSlug }) {
   const fieldKeys = Object.entries(collection.fields)
     .filter(([_fieldKey, fieldDef]) => fieldDef.required)
     .map(([fieldKey, _fieldDef]) => fieldKey);
-  const form = useCollectionForm({
-    collection,
+  const form = useFieldsForm({
+    fields: collection.fields,
     readableFieldKeys: fieldKeys,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    onSubmit: async ({ value }: { value: any }) => {
+    onSubmit: async ({ value }) => {
       // `endSubmit` (not a trailing `finally` around the whole body) so the
       // guard clears *before* `setOpen(null)` clears the URL param — freeing
       // it after would force an extra render that races the URL-driven

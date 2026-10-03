@@ -122,3 +122,68 @@ describe("GlobalEditView — diff submit", () => {
     expect(convexMutationMock.mock.calls[0]?.[0]?.data).toEqual({ tagline: "new" });
   });
 });
+
+const versionedGlobal = {
+  ...testClientConfig.globals[0],
+  versions: { drafts: true },
+} as unknown as GlobalConfig;
+const versionedConfig = {
+  ...testClientConfig,
+  globals: [versionedGlobal],
+} as never;
+
+describe("GlobalEditView — draft toolbar", () => {
+  const t = convexTest(schema, testModules);
+
+  beforeEach(() => {
+    convexMutationMock.mockReset().mockResolvedValue("g1");
+  });
+
+  it("shows Save Draft and a StatusBadge for a versioned global with a saved row", async () => {
+    const stored = { _creationTime: 1, _id: "g1", siteName: "x", tagline: "y", vex_status: "published" };
+    const utils = renderView(
+      createElement(GlobalEditView, { global: versionedGlobal.slug, initialData: stored as never }),
+      { convex: t, config: versionedConfig },
+    );
+
+    expect(utils.getByRole("button", { name: "Save Draft" })).toBeInTheDocument();
+    expect(utils.queryByRole("button", { name: "Save" })).toBeNull();
+    expect(utils.getByText("Published")).toBeInTheDocument();
+  });
+
+  it("shows Save Draft without a badge for a brand-new versioned global with no saved row yet", async () => {
+    const utils = renderView(createElement(GlobalEditView, { global: versionedGlobal.slug }), {
+      convex: t,
+      config: versionedConfig,
+    });
+
+    expect(utils.getByRole("button", { name: "Save Draft" })).toBeInTheDocument();
+    expect(utils.queryByText("Published")).toBeNull();
+    expect(utils.queryByText("Draft")).toBeNull();
+  });
+
+  it("submits the changed fields through globals.upsert when Save Draft is clicked", async () => {
+    const stored = { _creationTime: 1, _id: "g1", siteName: "x", tagline: "y", vex_status: "published" };
+    const utils = renderView(
+      createElement(GlobalEditView, { global: versionedGlobal.slug, initialData: stored as never }),
+      { convex: t, config: versionedConfig },
+    );
+
+    fireEvent.change(utils.container.querySelector("#siteName")!, { target: { value: "draft name" } });
+    fireEvent.click(utils.getByRole("button", { name: "Save Draft" }));
+
+    await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
+    expect(convexMutationMock.mock.calls[0]?.[0]?.data).toEqual({ siteName: "draft name" });
+  });
+
+  it("keeps the plain Save/Cancel toolbar for a non-versioned global", async () => {
+    const stored = { _creationTime: 1, _id: "g1", siteName: "old name", tagline: "old tagline" };
+    const utils = renderView(
+      createElement(GlobalEditView, { global: testClientConfig.globals[0].slug, initialData: stored as never }),
+      { convex: t },
+    );
+
+    expect(utils.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(utils.queryByRole("button", { name: "Save Draft" })).toBeNull();
+  });
+});

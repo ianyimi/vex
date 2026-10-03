@@ -383,6 +383,22 @@ export const images = defineTable({
   })
 
 /**
+ * VEX VERSIONS — immutable history, one row per draft save and per publish
+ **/
+
+export const vex_versions = defineTable({
+  collection: v.string(),
+  documentId: v.string(),
+  version: v.number(),
+  status: v.union(v.literal("draft"), v.literal("published")),
+  snapshot: v.any(),
+  createdBy: v.optional(v.string()),
+  parentVersion: v.optional(v.number()),
+  restoredFrom: v.optional(v.number()),
+  publishedAt: v.optional(v.number()),
+}).index("by_document_version", ["collection", "documentId", "version"])
+
+/**
  * VEX GLOBALS — singleton documents, one row per registered global slug
  **/
 

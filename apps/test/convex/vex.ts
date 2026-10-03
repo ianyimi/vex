@@ -6,6 +6,13 @@ import config from "~/vex.config.server";
 
 import { internalMutation, mutation, query } from "./_generated/server";
 
+export const getAuth = createGetAuth({
+  orgCollectionSlug: TABLE_SLUG_ORGANIZATIONS,
+  userCollectionSlug: TABLE_SLUG_USERS,
+  sessionCollectionSlug: TABLE_SLUG_SESSIONS,
+  resolveOrgs: true,
+});
+
 /**
  * Trigger-wrapped `mutation`/`internalMutation` builders — every write made
  * through them fires the written collection's `afterChange`/`afterDelete`
@@ -21,12 +28,7 @@ export const { mutation: vexMutation, internalMutation: vexInternalMutation } = 
 
 export const { find, get, search, create, update, remove } = collectionsApi({
   config,
+  getAuth,
   query,
   mutation: vexMutation,
-  getAuth: createGetAuth({
-    orgCollectionSlug: TABLE_SLUG_ORGANIZATIONS,
-    userCollectionSlug: TABLE_SLUG_USERS,
-    sessionCollectionSlug: TABLE_SLUG_SESSIONS,
-    resolveOrgs: true,
-  }),
 });

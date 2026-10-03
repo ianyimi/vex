@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
-import { convexQuery } from "@convex-dev/react-query";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import {
   CRUD_ACTIONS,
   DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE,
+  DRAFT_ACTIONS,
   isFieldAllowed,
   resolveLivePreviewSettings,
+  VERSION_STATUSES,
   vexConvexApi,
 } from "@vexcms/core";
 import type { CollectionEditViewProps, CollectionSlug } from "@vexcms/core";
@@ -16,7 +18,7 @@ import { AppForm } from "../form/AppForm";
 import { RevalidateButton } from "../RevalidateButton";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
-import { useCollectionForm } from "../../hooks/useCollectionForm";
+import { useFieldsForm } from "../../hooks/useFieldsForm";
 import {
   useFieldPermissions,
   useLiveFieldMerge,
@@ -36,12 +38,15 @@ import {
 import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
 import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
 import { useLivePreviewServerUrl } from "../../hooks/useLivePreviewServerUrl";
+import { DraftToolbar } from "../drafts";
+import { getVexErrorMessage } from "../../lib/errors";
+import { toast } from "sonner";
 
 /**
  * Collection document edit form.
  *
  * Fetches the document when editing via `vexConvexApi.get` (TanStack Query +
- * Convex subscription), initialises a `useCollectionForm` instance with the
+ * Convex subscription), initialises a `useFieldsForm` instance with the
  * current field values, and renders an `<AppForm>` with one input component per
  * field. Submits via `vexConvexApi.update`. Field inputs connect to the form
  * through `AppFormContext` — no controller prop needed.
@@ -77,13 +82,22 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
     return <p>Collection not found.</p>;
   }
 
+  // The row the editor is currently looking at. Seeded from the prop, so a
+  // non-versioned collection's behavior is unchanged — it just never gets
+  // re-pointed. `saveDraft` (Step 7) can return a different row id than the
+  // one loaded (first draft save on a published document bootstraps a new
+  // row); without tracking it locally, the editor would keep looking at the
+  // published row and the badge would never flip to Draft after an
+  // in-session save.
+  const [activeDocumentId, setActiveDocumentId] = useState(props.documentId);
+
   // This view is generic over `TCollectionSlug` — the collection is only known at
   // runtime, so it queries the generic endpoint (`VexDocument`) directly. The
   // per-slug `get()` wrapper from `@vexcms/core/client` narrows only when the
   // slug is a literal at the call site, which is not the case here.
   const { data: currentDocument } = useQuery({
     ...convexQuery(vexConvexApi.get, {
-      id: props.documentId,
+      id: activeDocumentId,
       collection: collection.slug,
     }),
     initialData: props.initialData,
@@ -104,6 +118,40 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
     mutationFn: vexConvexApi.update,
     operation: CRUD_ACTIONS.update,
   });
+
+  // Bypasses `useVexMutation` deliberately: that hook's `operation` param is
+  // typed `VexMutationOperation` (`"create" | "remove" | "update" | "upsert"`
+  // — `packages/core/src/revalidate/types.ts:19`), which has no
+  // draft-workflow member, and nothing in this spec wires draft/publish/
+  // unpublish into the ISR-purge pipeline `useVexMutation` exists for.
+  const { mutateAsync: saveDraftMutation, isPending: isSavingDraft } = useMutation({
+    mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
+  });
+
+  /**
+   * Persists the form's currently-dirty field values as a draft, without
+   * publishing them. Reuses `changedValues(form)` — the same diff-submit
+   * helper the plain `update` path already uses — so a partial patch is
+   * sent, matching `saveDraft`'s lenient-partial validation on the server.
+   *
+   * @returns Promise resolving once the draft row is saved.
+   * @throws Never — a rejected mutation is caught and toasted, never
+   *   re-thrown, since this is a manually-triggered action, not a form
+   *   submit the caller is awaiting a result from.
+   */
+  async function handleSaveDraft(): Promise<void> {
+    try {
+      const draftId = await saveDraftMutation({
+        collection: collection!.slug,
+        id: activeDocumentId,
+        data: changedValues(form),
+      });
+      setActiveDocumentId(draftId);
+      form.reset();
+    } catch (error) {
+      toast.error("Save draft failed", { description: getVexErrorMessage(error) });
+    }
+  }
   const visibleFields = useVisibleFields({
     resource: collection.slug,
     fields: collection.fields,
@@ -111,9 +159,9 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
   });
   const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
 
-  const form = useCollectionForm({
+  const form = useFieldsForm({
     document: currentDocument,
-    collection,
+    fields: collection.fields,
     readableFieldKeys,
     onSubmit: async () => {
       const changes = changedValues(form);
@@ -133,16 +181,22 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
     fieldKeys: readableFieldKeys,
   });
 
+  // A versioned collection's editor writes drafts, never the published row,
+  // so every edit affordance — the field inputs, the field-level map, and the
+  // toolbar — checks `saveDraft`; a non-versioned collection checks `update`.
+  const isVersioned = collection.versions.drafts;
+  const editAction = isVersioned ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update;
   const canEdit = usePermission({
     resource: collection.slug,
-    action: CRUD_ACTIONS.update,
+    action: editAction,
     data: currentDocument,
   });
   const fieldPermissions = useFieldPermissions({
     resource: collection.slug,
-    action: CRUD_ACTIONS.update,
+    action: editAction,
     data: currentDocument,
   });
+  const isDraftDoc = currentDocument.vex_status === VERSION_STATUSES.draft.key;
 
   const [tempId] = useState(() => crypto.randomUUID());
   const savedDocumentId = currentDocument._id as string | undefined;
@@ -157,6 +211,7 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
   const previewPanel = useLivePreviewPanelState({
     slug: collection.slug,
     initialOpen: props.initialPreviewPanelOpen ?? false,
+    enabled: livePreview !== undefined,
   });
   const clientPreviewUrl = resolveLivePreviewUrl({
     url: livePreview?.url,
@@ -244,7 +299,7 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
         <form.Subscribe
           selector={(state) => state.isDefaultValue}
           children={(isDefaultValue) => (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <RevalidateButton collection={collection.slug} doc={currentDocument} />
               {livePreview && (
                 <Button
@@ -256,25 +311,38 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
                   Preview
                 </Button>
               )}
-              <Button
-                type="submit"
-                className="transition-all duration-300"
-                isPending={isPending}
-                disabled={!canEdit || isDefaultValue}
-              >
-                Save
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="transition-all duration-300"
-                disabled={!canEdit || isDefaultValue}
-                onClick={() => {
-                  form.reset();
-                }}
-              >
-                Cancel
-              </Button>
+              {isVersioned ? (
+                <DraftToolbar
+                  status={isDraftDoc ? "draft" : "published"}
+                  saveDraft={{
+                    onClick: handleSaveDraft,
+                    isPending: isSavingDraft,
+                    disabled: !canEdit || isDefaultValue,
+                  }}
+                />
+              ) : (
+                <>
+                  <Button
+                    type="submit"
+                    className="transition-all duration-300"
+                    isPending={isPending}
+                    disabled={!canEdit || isDefaultValue}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="transition-all duration-300"
+                    disabled={!canEdit || isDefaultValue}
+                    onClick={() => {
+                      form.reset();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              )}
             </div>
           )}
         />

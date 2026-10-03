@@ -21,11 +21,22 @@
  * @returns the flattened global object data type including its metadata fields
  */
 export function flattenGlobalRow(row: Record<string, unknown>): Record<string, unknown> {
-  const { slug, data, _id, _creationTime } = row as {
+  const { slug, data, _id, _creationTime, vex_status, vex_publishedAt, vex_publishedId } = row as {
     slug: string;
     data: Record<string, unknown>;
     _id: string;
     _creationTime: number;
+    vex_status?: "draft" | "published";
+    vex_publishedAt?: number;
+    vex_publishedId?: string;
   };
-  return { _id, _creationTime, _slug: slug, ...(data ?? {}) };
+  return {
+    _id,
+    _creationTime,
+    _slug: slug,
+    ...(vex_status !== undefined ? { vex_status } : {}),
+    ...(vex_publishedAt !== undefined ? { vex_publishedAt } : {}),
+    ...(vex_publishedId !== undefined ? { vex_publishedId } : {}),
+    ...(data ?? {}),
+  };
 }

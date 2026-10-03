@@ -592,3 +592,194 @@ describe("upsertGlobal (server) — access", () => {
     expect(await storedRow(t)).toEqual({ siteName: "Old" });
   });
 });
+
+const versionedGlobal = defineGlobal({
+  slug: "banner",
+  label: "Banner",
+  fields: {
+    message: text({ label: "Message", required: true }),
+    tone: text({ label: "Tone", required: false }),
+  },
+  versions: { drafts: true },
+});
+
+const versionedFixtureConfig = {
+  globals: [versionedGlobal],
+  access: undefined,
+} as unknown as VexConfig;
+
+/** Shape of a raw `vex_globals` row once `versions.drafts` is active. */
+interface VersionedGlobalRow {
+  _id: string;
+  slug: string;
+  data: Record<string, unknown>;
+  vex_status?: "draft" | "published";
+  vex_publishedAt?: number;
+  vex_publishedId?: string;
+}
+
+/** Every `vex_globals` row currently stored for `slug: "banner"`. */
+async function bannerRows(t: Harness): Promise<VersionedGlobalRow[]> {
+  return (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+    ctx.db
+      .query("vex_globals")
+      .withIndex("by_slug", (q) => q.eq("slug", "banner"))
+      .collect(),
+  )) as unknown as VersionedGlobalRow[];
+}
+
+/** Every `vex_versions` row currently recorded for `vex_globals`/`"banner"`. */
+async function bannerVersions(
+  t: Harness,
+): Promise<Array<{ status: string; snapshot: unknown; publishedAt?: number }>> {
+  return (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+    ctx.db
+      .query("vex_versions")
+      .withIndex("by_document_version", (q) =>
+        // @ts-expect-error chain compound index fields on GenericDataModel
+        q.eq("collection", "vex_globals").eq("documentId", "banner"),
+      )
+      .collect(),
+  )) as unknown as Array<{ status: string; snapshot: unknown; publishedAt?: number }>;
+}
+
+/**
+ * Draft-lifecycle coverage for `upsertGlobal` on a versioned global. Every
+ * `upsertGlobal` call below targets `slug: "banner"`; `vex_globals` rows for
+ * it are read back directly via `ctx.db.query("vex_globals")` — mirroring
+ * the raw-row assertions the suites above already use.
+ */
+describe("upsertGlobal (server) — versions.drafts", () => {
+  it("creates a single draft-only row on the first save of a versioned global", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await upsertGlobal({
+        ctx,
+        config: versionedFixtureConfig,
+        slug: "banner",
+        data: { message: "Hello" },
+      });
+    });
+
+    const rows = await bannerRows(t);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].vex_status).toBe("draft");
+    expect(rows[0].vex_publishedId).toBeUndefined();
+    expect(rows[0].data.message).toBe("Hello");
+
+    const versions = await bannerVersions(t);
+    expect(versions).toHaveLength(1);
+    expect(versions[0].status).toBe("draft");
+  });
+
+  it("bootstraps a draft row and snapshots the published state on first edit after publish", async () => {
+    const t = convexTest(schema, modules);
+    const publishedId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Live" },
+        vex_status: "published",
+        vex_publishedAt: 1700000000000,
+      }),
+    );
+
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await upsertGlobal({
+        ctx,
+        config: versionedFixtureConfig,
+        slug: "banner",
+        data: { message: "Live, edited" },
+      });
+    });
+
+    const rows = await bannerRows(t);
+    expect(rows).toHaveLength(2);
+    const published = rows.find((r) => r._id === publishedId);
+    const draft = rows.find((r) => r._id !== publishedId);
+    expect(published?.data.message).toBe("Live");
+    expect(draft?.vex_status).toBe("draft");
+    expect(draft?.vex_publishedId).toBe(publishedId);
+    expect(draft?.data.message).toBe("Live, edited");
+
+    const versions = await bannerVersions(t);
+    const publishedSnapshot = versions.find((v) => v.status === "published");
+    const draftSnapshot = versions.find((v) => v.status === "draft");
+    expect(publishedSnapshot?.snapshot).toEqual({ message: "Live" });
+    expect(draftSnapshot?.snapshot).toEqual({ message: "Live, edited" });
+  });
+
+  it("reuses the existing draft row on repeated saveDraft calls — at most one draft row per slug", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await upsertGlobal({
+        ctx,
+        config: versionedFixtureConfig,
+        slug: "banner",
+        data: { message: "First" },
+      });
+    });
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await upsertGlobal({
+        ctx,
+        config: versionedFixtureConfig,
+        slug: "banner",
+        data: { message: "Second" },
+      });
+    });
+
+    const rows = await bannerRows(t);
+    const drafts = rows.filter((r) => r.vex_status === "draft");
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0].data.message).toBe("Second");
+  });
+
+  it("a role restricted via `changes` on one field gets the same restriction on saveDraft", async () => {
+    const restrictedConfig = {
+      globals: [versionedGlobal],
+      access: {
+        enabled: true,
+        roles: ["editor"],
+        defaultPermissionMode: "allow",
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          editor: {
+            banner: {
+              saveDraft: () => ({ "*": true, tone: false }),
+            },
+          },
+        },
+      },
+    } as unknown as VexConfig;
+    const auth = { user: { roles: ["editor"] } };
+    const t = convexTest(schema, modules);
+
+    // The stored data claims nothing yet; the DENYING payload is the one sending `tone`.
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        await upsertGlobal({
+          ctx,
+          config: restrictedConfig,
+          slug: "banner",
+          data: { tone: "loud" },
+          auth,
+        });
+      }),
+    ).rejects.toThrow();
+
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await upsertGlobal({
+        ctx,
+        config: restrictedConfig,
+        slug: "banner",
+        data: { message: "ok" },
+        auth,
+      });
+    });
+
+    const rows = await bannerRows(t);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].data.message).toBe("ok");
+  });
+});
+

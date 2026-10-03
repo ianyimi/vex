@@ -13,9 +13,11 @@ import {
   session,
   themes,
   verification,
+  vex_versions,
 } from "./vex.schema"
 
 export default defineSchema({
+  vex_versions,
   pages,
   headers,
   footers,

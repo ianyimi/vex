@@ -2,11 +2,12 @@ import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { ConvexError } from "convex/values";
 
 import type { CollectionConfig } from "../collections/types";
+import type { GlobalConfig } from "../globals/types";
 import type { VexConfig } from "../config";
 import type { AccessCallOptions, VexApiAuth } from "./types";
 import type { TDocument } from "./convex";
 import { CRUD_ACTIONS, DRAFT_ACTIONS, hasPermission } from "../access";
-import { getCollectionInputSchema, validateFields } from "../collections";
+import { getFieldsInputSchema, validateFields } from "../fields";
 import { deepEqual, resolveAccessCall, toVexMutationCtx } from "./utils";
 
 /**
@@ -23,10 +24,13 @@ export interface PrepareEditProps<DataModel extends GenericDataModel> {
    * skips itself when `config.access` is unset (RBAC off).
    */
   config: VexConfig;
-  /** The collection this write targets. Its `slug` is the permission resource. */
-  collection: CollectionConfig;
-  /** The permission action this write checks under (`CRUD_ACTIONS.update`, `DRAFT_ACTIONS.saveDraft`, `DRAFT_ACTIONS.publish`). */
+  /** The collection or global this write targets. `config.slug` is the permission resource. */
+  target:
+    | { kind: "collection"; config: CollectionConfig }
+    | { kind: "global"; config: GlobalConfig };
+  /** The permission action this write checks under. */
   action:
+    | typeof CRUD_ACTIONS.create
     | typeof CRUD_ACTIONS.update
     | typeof DRAFT_ACTIONS.saveDraft
     | typeof DRAFT_ACTIONS.publish;
@@ -39,6 +43,15 @@ export interface PrepareEditProps<DataModel extends GenericDataModel> {
    * whichever row this write is really targeting (the draft row for
    * `saveDraft`/`publish`, the row `args.id` names for `update`). `undefined`
    * only for a brand-new document with no prior state to merge onto.
+   *
+   * Caller contract: USER fields plus `_id`/`_creationTime` only — never
+   * system columns. `prepareEdit` strips just `_id`/`_creationTime` before
+   * merging, and in `validateKeys: "all"` mode `patch` carries every merged
+   * key, so a stored doc carrying `vex_*`/`_slug` would leak them into the
+   * write. Collections already satisfy this via `extractUserFields`; globals
+   * pass `{ _id, _creationTime, ...row.data }`. A consequence of this
+   * contract: `beforeChange` sees user fields only — no `vex_status` — on
+   * every path.
    */
   storedDoc: TDocument | undefined;
   /** The caller's raw incoming payload — what `hasPermission`'s `changes` argument checks. */
@@ -68,8 +81,8 @@ export interface PrepareEditResult {
  * `hasPermission → merge → beforeChange → diff → validate → validateFields` —
  * and returns the prepared fields for the caller to write however its own
  * targeting requires. Does NOT touch `ctx.db`, call `createVersion`, or stamp
- * `updatedAt` — those steps differ per caller (see this file's own docstring)
- * and stay in `update()`/`saveDraft()`/`publish()` themselves.
+ * `updatedAt` — those steps differ per caller and stay in
+ * `create()`/`update()`/`saveDraft()`/`publish()`/`upsertGlobal()` themselves.
  *
  * @typeParam DataModel - Convex data model (inferred from `props.ctx`).
  * @param props - See {@link PrepareEditProps}.
@@ -86,7 +99,7 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
       config: props.config,
       access: props.access,
       defaultAction: props.action,
-      resource: props.collection.slug,
+      resource: props.target.config.slug,
     });
     hasPermission({
       throwOnDenied: true,
@@ -103,14 +116,22 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
   const { _id, _creationTime, ...fields } = props.storedDoc ?? {};
   const mergedFields = { ...fields, ...props.incoming } as TDocument;
 
+  const operation = props.action === CRUD_ACTIONS.create ? "create" : "update";
   let transformedFields = mergedFields;
-  if (props.collection.hooks?.beforeChange) {
-    transformedFields = await props.collection.hooks.beforeChange({
-      operation: "update",
-      doc: mergedFields,
+  if (props.target.kind === "collection" && props.target.config.hooks.beforeChange) {
+    transformedFields = (await props.target.config.hooks.beforeChange({
+      operation,
+      doc: mergedFields as never,
       ctx: props.ctx,
-      collection: props.collection,
-    });
+      collection: props.target.config,
+    })) as TDocument;
+  } else if (props.target.kind === "global" && props.target.config.hooks.beforeChange) {
+    transformedFields = (await props.target.config.hooks.beforeChange({
+      operation,
+      doc: mergedFields as never,
+      ctx: props.ctx,
+      global: props.target.config,
+    })) as TDocument;
   }
 
   const changedKeys = new Set(Object.keys(props.incoming));
@@ -118,8 +139,8 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
     if (!deepEqual(transformedFields[key], mergedFields[key])) changedKeys.add(key);
   }
 
-  const parsed = getCollectionInputSchema({
-    collection: props.collection,
+  const parsed = getFieldsInputSchema({
+    fields: props.target.config.fields,
     partial: props.partial,
   }).safeParse(transformedFields);
   if (!parsed.success) {
@@ -129,7 +150,7 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
   const writeKeys =
     props.validateKeys === "all" ? new Set(Object.keys(transformedFields)) : changedKeys;
   await validateFields({
-    collection: props.collection,
+    fields: props.target.config.fields,
     doc: transformedFields,
     keys: writeKeys,
     ctx: toVexMutationCtx(props.ctx),

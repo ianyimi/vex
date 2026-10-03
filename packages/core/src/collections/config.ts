@@ -183,7 +183,7 @@ export function defineCollection<
         updatedAt: number({
           admin: { position: "sidebar", readOnly: true },
           // `number()` defaults to `0`; an unsaved document has no update
-          // time, and epoch is a lie. `getCollectionDefaultValues` yields
+          // time, and epoch is a lie. `getFieldsDefaultValues` yields
           // `undefined` on create and the stored value on edit.
           defaultValue: undefined,
           label: "Updated At",

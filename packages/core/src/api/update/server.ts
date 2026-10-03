@@ -79,7 +79,7 @@ export async function update<
   const { patch } = await prepareEdit({
     ctx: args.ctx,
     config: args.config,
-    collection,
+    target: { kind: "collection", config: collection },
     action: CRUD_ACTIONS.update,
     access: args.access,
     auth: args.auth,

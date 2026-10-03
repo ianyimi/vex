@@ -20,6 +20,7 @@ import type * as theme from "../theme.js";
 import type * as vex from "../vex.js";
 import type * as vex_globals from "../vex/globals.js";
 import type * as vex_media from "../vex/media.js";
+import type * as vex_versions from "../vex/versions.js";
 import type * as vexContext from "../vexContext.js";
 
 import type {
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   vex: typeof vex;
   "vex/globals": typeof vex_globals;
   "vex/media": typeof vex_media;
+  "vex/versions": typeof vex_versions;
   vexContext: typeof vexContext;
 }>;
 

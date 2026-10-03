@@ -6,5 +6,5 @@ export type {
   GlobalAdminConfigInput,
   ReservedGlobalFieldKey,
 } from "./types";
-export { getGlobalDefaultValues, getGlobalInputSchema } from "./utils";
-export { globalConfigToInterface, globalConfigToFieldTypeMap } from "./interfaceGen";
+export { globalConfigToInterface } from "./interfaceGen";
+export * from "./hooks";

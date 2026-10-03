@@ -6,5 +6,6 @@ export * from "./AdminSidebar";
 export * from "./AdminLayout";
 export * from "./RevalidateButton";
 export * from "./views";
+export * from "./drafts";
 export * from "./modals";
 export * from "./fields";

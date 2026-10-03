@@ -3,6 +3,7 @@ import type { GlobalSlug } from "../types/generated";
 import type { LucideIconName } from "../utils";
 import type { AdminLivePreviewConfig, AdminLivePreviewConfigInput } from "../livePreview";
 import type { DocumentByGlobalSlug } from "../types/generated";
+import type { GlobalHooks, GlobalHooksInput } from "./hooks";
 
 /**
  * Field keys that are reserved by the VexCMS globals system and cannot be
@@ -162,6 +163,10 @@ export interface GlobalConfigInput<
    * `_creationTime`, or `_slug` (enforced at compile time by `defineGlobal`).
    */
   fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
+  /** Lifecycle hooks for this global. */
+  hooks?: GlobalHooksInput<
+    TGlobalSlug extends GlobalSlug ? TGlobalSlug : GlobalSlug
+  >;
   /** Admin panel display and behaviour config. */
   admin?: GlobalAdminConfigInput<
     TComponent,
@@ -223,6 +228,8 @@ export interface GlobalConfig<
   label: string;
   /** Resolved field definitions. */
   fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
+  /** Resolved lifecycle hooks. Always present; defaults to `{}`. */
+  hooks: GlobalHooks<TGlobalSlug>;
   /** Resolved admin config. */
   admin: GlobalAdminConfig<TComponent, TGlobalSlug>;
   /**

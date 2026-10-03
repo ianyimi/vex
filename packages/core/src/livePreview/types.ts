@@ -42,7 +42,7 @@ export type LivePreviewUrlResolver<TDoc extends Partial<VexDocument> = Partial<V
   // Method syntax, read back through an index access: that is what makes `TDoc`
   // bivariant. A plain `(doc: TDoc) => …` type is strictly contravariant, so a
   // `CollectionConfig` whose slug is still generic stops being assignable to the
-  // concrete union the admin views hold — it broke `useCollectionForm`,
+  // concrete union the admin views hold — it broke the collection form hook,
   // `defineConfig` and every `access` resource the first time this was written
   // that way. The property could use method shorthand directly until `url`
   // became `string | resolver`; a union member cannot.

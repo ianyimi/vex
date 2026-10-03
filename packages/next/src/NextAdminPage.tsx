@@ -122,30 +122,37 @@ export async function NextAdminPage(props: {
       { slug: globalConfig.slug },
       props.token ? { token: props.token } : undefined,
     );
+    const globalLivePreview = resolveLivePreviewSettings({
+      config: props.config.admin.livePreview,
+      kind: "global",
+      slug: globalConfig.slug,
+      admin: globalConfig.admin.livePreview,
+    });
     return (
       <GlobalEditView
         global={globalConfig.slug}
         initialData={global}
-        initialPreviewPanelOpen={readLivePreviewPanelCookie({
-          cookieValue: cookieStore.get(livePreviewPanelCookieName({ slug: globalConfig.slug }))
-            ?.value,
-          defaultOpen:
-            resolveLivePreviewSettings({
-              config: props.config.admin.livePreview,
-              kind: "global",
-              slug: globalConfig.slug,
-              admin: globalConfig.admin.livePreview,
-            })?.defaultOpen ?? false,
-        })}
+        initialPreviewPanelOpen={
+          globalLivePreview !== undefined &&
+          readLivePreviewPanelCookie({
+            cookieValue: cookieStore.get(livePreviewPanelCookieName({ slug: globalConfig.slug }))
+              ?.value,
+            defaultOpen: globalLivePreview.defaultOpen,
+          })
+        }
         initialPreviewPanelSize={readLivePreviewLayoutCookie({
           cookieValue: cookieStore.get(livePreviewLayoutCookieName({ slug: globalConfig.slug }))
             ?.value,
         })}
-        initialPreviewUrl={await resolveInitialPreviewUrl({
-          args: { collection: globalConfig.slug, kind: "global", values: {} },
-          slug: globalConfig.slug,
-          token: props.token,
-        })}
+        initialPreviewUrl={
+          globalLivePreview === undefined
+            ? undefined
+            : await resolveInitialPreviewUrl({
+                args: { collection: globalConfig.slug, kind: "global", values: {} },
+                slug: globalConfig.slug,
+                token: props.token,
+              })
+        }
       />
     );
   }
@@ -206,31 +213,38 @@ export async function NextAdminPage(props: {
       { id: documentId, collection: collection.slug },
       props.token ? { token: props.token } : undefined,
     );
+    const collectionLivePreview = resolveLivePreviewSettings({
+      config: props.config.admin.livePreview,
+      kind: "collection",
+      slug: collection.slug,
+      admin: collection.admin.livePreview,
+    });
     return (
       <CollectionEditView
         collection={collection.slug}
         documentId={documentId}
         initialData={initialData}
-        initialPreviewPanelOpen={readLivePreviewPanelCookie({
-          cookieValue: cookieStore.get(livePreviewPanelCookieName({ slug: collection.slug }))
-            ?.value,
-          defaultOpen:
-            resolveLivePreviewSettings({
-              config: props.config.admin.livePreview,
-              kind: "collection",
-              slug: collection.slug,
-              admin: collection.admin.livePreview,
-            })?.defaultOpen ?? false,
-        })}
+        initialPreviewPanelOpen={
+          collectionLivePreview !== undefined &&
+          readLivePreviewPanelCookie({
+            cookieValue: cookieStore.get(livePreviewPanelCookieName({ slug: collection.slug }))
+              ?.value,
+            defaultOpen: collectionLivePreview.defaultOpen,
+          })
+        }
         initialPreviewPanelSize={readLivePreviewLayoutCookie({
           cookieValue: cookieStore.get(livePreviewLayoutCookieName({ slug: collection.slug }))
             ?.value,
         })}
-        initialPreviewUrl={await resolveInitialPreviewUrl({
-          args: { collection: collection.slug, kind: "collection", documentId, values: {} },
-          slug: collection.slug,
-          token: props.token,
-        })}
+        initialPreviewUrl={
+          collectionLivePreview === undefined
+            ? undefined
+            : await resolveInitialPreviewUrl({
+                args: { collection: collection.slug, kind: "collection", documentId, values: {} },
+                slug: collection.slug,
+                token: props.token,
+              })
+        }
       />
     );
   }

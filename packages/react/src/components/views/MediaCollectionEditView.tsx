@@ -8,7 +8,7 @@ import { AppForm } from "../form/AppForm";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 import {
-  useCollectionForm,
+  useFieldsForm,
   useFieldPermissions,
   useLiveFieldMerge,
   usePermission,
@@ -94,9 +94,9 @@ export function MediaCollectionEditView<
   });
   const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
 
-  const form = useCollectionForm({
+  const form = useFieldsForm({
     document: currentDocument,
-    collection,
+    fields: collection.fields,
     readableFieldKeys,
     onSubmit: async () => {
       const changes = changedValues(form);

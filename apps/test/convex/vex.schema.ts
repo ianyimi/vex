@@ -344,6 +344,28 @@ export const comments = defineTable({
   .index("by_author", ["authorId"])
   .index("by_article", ["article"])
 
+export const posts = defineTable({
+  title: v.string(),
+  slug: v.string(),
+  body: v.optional(v.string()),
+  relatedPost: v.optional(v.array(v.id("posts"))),
+  relatedArticle: v.optional(v.array(v.id("articles"))),
+  updatedAt: v.optional(v.number()),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+  vex_publishedAt: v.optional(v.number()),
+  vex_publishedId: v.optional(v.id("posts")),
+})
+  .index("by_slug", ["slug"])
+  .index("by_relatedPost", ["relatedPost"])
+  .index("by_relatedArticle", ["relatedArticle"])
+  .index("by_status", ["vex_status"])
+  .index("by_published", ["vex_publishedId"])
+  .searchIndex("search_title", {
+    searchField: "title",
+
+    filterFields: [],
+  })
+
 export const session = defineTable({
   expiresAt: v.number(),
   token: v.string(),
@@ -482,10 +504,32 @@ export const images = defineTable({
   })
 
 /**
+ * VEX VERSIONS — immutable history, one row per draft save and per publish
+ **/
+
+export const vex_versions = defineTable({
+  collection: v.string(),
+  documentId: v.string(),
+  version: v.number(),
+  status: v.union(v.literal("draft"), v.literal("published")),
+  snapshot: v.any(),
+  createdBy: v.optional(v.string()),
+  parentVersion: v.optional(v.number()),
+  restoredFrom: v.optional(v.number()),
+  publishedAt: v.optional(v.number()),
+}).index("by_document_version", ["collection", "documentId", "version"])
+
+/**
  * VEX GLOBALS — singleton documents, one row per registered global slug
  **/
 
 export const vex_globals = defineTable({
   slug: v.string(),
   data: v.any(),
-}).index("by_slug", ["slug"])
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+  vex_publishedAt: v.optional(v.number()),
+  vex_publishedId: v.optional(v.id("vex_globals")),
+})
+  .index("by_slug", ["slug"])
+  .index("by_status", ["vex_status"])
+  .index("by_published", ["vex_publishedId"])

@@ -32,6 +32,14 @@ export interface BeforeDeleteProps<
 
 /**
  * Arguments passed to a collection's `afterChange` hook.
+ *
+ * On a versioned collection (`versions.drafts: true`) this fires for EVERY
+ * row write, draft rows included — `saveDraft`'s bootstrap insert and
+ * patches, `publish`'s promotion, `unpublish`'s status flip. `newDoc.vex_status`
+ * tells them apart; the hook decides what it cares about. `operation`
+ * describes the ROW (a bootstrapped draft row is `"create"`). `publish`
+ * deleting a draft row fires `afterDelete` with that row as `oldDoc` — check
+ * `oldDoc.vex_status === "draft"` to ignore it.
  */
 export interface AfterChangeProps<
   TCollectionSlug extends CollectionSlug = CollectionSlug,

@@ -6,6 +6,7 @@ import { useStore } from "@tanstack/react-form";
 import {
   CRUD_ACTIONS,
   DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE,
+  DRAFT_ACTIONS,
   GlobalEditViewProps,
   isFieldAllowed,
   resolveLivePreviewSettings,
@@ -14,7 +15,7 @@ import {
 import { AppForm } from "../form";
 import {
   useFieldPermissions,
-  useGlobalForm,
+  useFieldsForm,
   useLiveFieldMerge,
   usePermission,
   useVexMutation,
@@ -34,6 +35,7 @@ import {
 import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
 import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
 import { useLivePreviewServerUrl } from "../../hooks/useLivePreviewServerUrl";
+import { DraftToolbar } from "../drafts";
 
 /**
  * Global document edit form.
@@ -67,7 +69,10 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   // Runtime slug (`global.slug`) — uses the generic endpoint rather than the
   // per-slug `getGlobal()` wrapper. See the note in `CollectionEditView`.
   const { data: globalDoc } = useQuery({
-    ...convexQuery(vexConvexApi.globals.get, { slug: global.slug }),
+    ...convexQuery(vexConvexApi.globals.get, {
+      slug: global.slug,
+      drafts: global.versions.drafts,
+    }),
     initialData: props.initialData,
   });
 
@@ -78,10 +83,16 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     // travels as `collection`. Merged with the loaded document (like
     // `CollectionEditView`'s own `getChanges`) so a partial diff still
     // resolves revalidation targets from the full post-write state.
-    getChanges: ({ args }) => [{ after: { ...(globalDoc ?? {}), ...args.data } }],
+    getChanges: ({ args }) =>
+      hasDrafts ? [] : [{ after: { ...(globalDoc ?? {}), ...args.data } }],
     mutationFn: vexConvexApi.globals.upsert,
     operation: "upsert",
   });
+
+  const hasDrafts = global.versions.drafts;
+  const isDraftDoc =
+    (globalDoc as { vex_status?: "draft" | "published" } | undefined)
+      ?.vex_status === "draft";
 
   const visibleFields = useVisibleFields({
     resource: global.slug,
@@ -90,16 +101,16 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   });
   const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
 
-  const form = useGlobalForm({
+  const form = useFieldsForm<Record<string, unknown>>({
     document: globalDoc,
-    global,
+    fields: global.fields,
     readableFieldKeys,
-    onSubmit: async ({ value }: { value: unknown }) => {
+    onSubmit: async ({ value }) => {
       // A global has no separate create view: before the first save,
       // `globalDoc` is undefined and `value` carries the field defaults,
       // which a diff (built against those same defaults) would omit.
       if (!globalDoc) {
-        await mutateAsync({ slug: global.slug, data: value as Record<string, unknown> });
+        await mutateAsync({ slug: global.slug, data: value });
         form.reset();
         return;
       }
@@ -118,12 +129,12 @@ export function GlobalEditView(props: GlobalEditViewProps) {
 
   const canEdit = usePermission({
     resource: global.slug,
-    action: CRUD_ACTIONS.update,
+    action: hasDrafts ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update,
     data: globalDoc as {},
   });
   const fieldPermissions = useFieldPermissions({
     resource: global.slug,
-    action: CRUD_ACTIONS.update,
+    action: hasDrafts ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update,
     data: globalDoc,
   });
 
@@ -138,6 +149,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   const previewPanel = useLivePreviewPanelState({
     slug: global.slug,
     initialOpen: props.initialPreviewPanelOpen ?? false,
+    enabled: livePreview !== undefined,
   });
   const clientPreviewUrl = resolveLivePreviewUrl({
     url: livePreview?.url,
@@ -216,7 +228,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
         <form.Subscribe
           selector={(state) => state.isDefaultValue}
           children={(isDefaultValue) => (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {livePreview && (
                 <Button
                   type="button"
@@ -227,14 +239,25 @@ export function GlobalEditView(props: GlobalEditViewProps) {
                   Preview
                 </Button>
               )}
-              <Button
-                type="submit"
-                className="transition-all duration-300"
-                isPending={isPending}
-                disabled={isDefaultValue || !canEdit}
-              >
-                Save
-              </Button>
+              {hasDrafts ? (
+                <DraftToolbar
+                  status={globalDoc ? (isDraftDoc ? "draft" : "published") : undefined}
+                  saveDraft={{
+                    onClick: () => void form.handleSubmit(),
+                    isPending,
+                    disabled: isDefaultValue || !canEdit,
+                  }}
+                />
+              ) : (
+                <Button
+                  type="submit"
+                  className="transition-all duration-300"
+                  isPending={isPending}
+                  disabled={isDefaultValue || !canEdit}
+                >
+                  Save
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"

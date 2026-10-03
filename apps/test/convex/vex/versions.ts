@@ -1,11 +1,11 @@
-import { mediaApi } from "@vexcms/core";
+import { versionsApi } from "@vexcms/core/server";
 
 import config from "~/vex.config.server";
 
 import { query } from "../_generated/server";
 import { getAuth, vexMutation as mutation } from "../vex";
 
-export const { getUrl, generateUploadUrl, createMediaDocument, deleteMedia } = mediaApi({
+export const { saveDraft } = versionsApi({
   config,
   query,
   mutation,

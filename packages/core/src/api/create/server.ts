@@ -10,7 +10,7 @@ import { ConvexError } from "convex/values";
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
 import { CRUD_ACTIONS, hasPermission } from "../../access";
-import { getCollectionInputSchema, validateFields } from "../../collections";
+import { getFieldsInputSchema, validateFields } from "../../fields";
 import { resolveAccessCall, stampUpdatedAt, toVexMutationCtx } from "../utils";
 import { TDocument } from "../convex";
 
@@ -96,13 +96,13 @@ export async function create<
     });
   }
 
-  const parsed = getCollectionInputSchema({ collection }).safeParse(doc);
+  const parsed = getFieldsInputSchema({ fields: collection.fields }).safeParse(doc);
   if (!parsed.success) {
     throw new ConvexError({ message: "Validation failed", errors: parsed.error.message });
   }
 
   await validateFields({
-    collection,
+    fields: collection.fields,
     doc,
     keys: Object.keys(doc),
     ctx: toVexMutationCtx(args.ctx),

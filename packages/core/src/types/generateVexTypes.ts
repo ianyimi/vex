@@ -1,9 +1,7 @@
-import {
-  collectionConfigToFieldTypeMap,
-  collectionConfigToInterface,
-} from "../collections/interfaceGen";
+import { collectionConfigToInterface } from "../collections/interfaceGen";
 import type { VexConfig } from "../config/types";
-import { globalConfigToFieldTypeMap, globalConfigToInterface } from "../globals";
+import { globalConfigToInterface } from "../globals";
+import { fieldsToFieldTypeMap } from "../fields";
 import { STORAGE_ADAPTER_PROTOCOLS } from "../media";
 import { collectionConfigToIndexFields } from "../collections/indexFields";
 import { CustomActionsInput } from "../access";
@@ -126,11 +124,11 @@ export function generateVexTypes(props: { config: VexConfig }): string {
   const documentBySlugType = `export type DocumentBySlug = {\n${documentsBySlug}\n}`;
 
   const collectionsFieldTypeMap = allCollections
-    .map((c) => collectionConfigToFieldTypeMap({ collection: c }))
+    .map((c) => fieldsToFieldTypeMap({ key: c.slug, fields: c.fields }))
     .join("\n");
 
   const globalsFieldTypeMap = config.globals
-    .map((g) => globalConfigToFieldTypeMap({ global: g }))
+    .map((g) => fieldsToFieldTypeMap({ key: g.slug, fields: g.fields }))
     .join("\n");
 
   const storageAdapterSlugs =

@@ -247,6 +247,7 @@ export interface VexGlobalsGetArgs {
   auth?: VexApiAuth;
   slug: string;
   populate?: Record<string, unknown>;
+  drafts?: boolean;
 }
 
 /** Args for `api.vex.globals.find`. */

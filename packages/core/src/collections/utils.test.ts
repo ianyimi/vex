@@ -8,7 +8,7 @@ import {
   select,
   defineCollection,
 } from "../index";
-import { getCollectionDefaultValues, getCollectionInputSchema } from "./utils";
+import { getFieldsDefaultValues, getFieldsInputSchema } from "../fields";
 
 const SELECT_OPTIONS = [
   { label: "Draft", value: "draft" },
@@ -38,9 +38,9 @@ const ALL_FIELDS_COLLECTION = defineCollection({
   },
 });
 
-// ─── getCollectionDefaultValues ───────────────────────────────────────────────
+// ─── getFieldsDefaultValues ───────────────────────────────────────────────
 
-describe("getCollectionDefaultValues", () => {
+describe("getFieldsDefaultValues", () => {
   it("returns field defaults for a text collection in create mode", () => {
     const collection = defineCollection({
       slug: "posts",
@@ -49,7 +49,7 @@ describe("getCollectionDefaultValues", () => {
         slug: text({ required: true }),
       },
     });
-    const defaults = getCollectionDefaultValues({ collection });
+    const defaults = getFieldsDefaultValues({ fields: collection.fields });
     // `updatedAt` is injected by `defineCollection`, and is deliberately
     // `undefined` rather than `0` on create — an unsaved document has no
     // update time.
@@ -61,8 +61,8 @@ describe("getCollectionDefaultValues", () => {
       slug: "posts",
       fields: { title: text({ required: true }) },
     });
-    const defaults = getCollectionDefaultValues({
-      collection,
+    const defaults = getFieldsDefaultValues({
+      fields: collection.fields,
       document: { _creationTime: 1, _id: "d1", title: "Hello", updatedAt: 1234 },
     });
     expect(defaults.updatedAt).toBe(1234);
@@ -74,7 +74,7 @@ describe("getCollectionDefaultValues", () => {
       fields: { message: text({ required: true }) },
       timestamps: false,
     });
-    expect(getCollectionDefaultValues({ collection })).toEqual({ message: "" });
+    expect(getFieldsDefaultValues({ fields: collection.fields })).toEqual({ message: "" });
   });
 
   it("returns 0 as default for number fields", () => {
@@ -82,7 +82,7 @@ describe("getCollectionDefaultValues", () => {
       slug: "products",
       fields: { price: number({ required: true }) },
     });
-    const defaults = getCollectionDefaultValues({ collection });
+    const defaults = getFieldsDefaultValues({ fields: collection.fields });
     expect(defaults.price).toBe(0);
   });
 
@@ -91,7 +91,7 @@ describe("getCollectionDefaultValues", () => {
       slug: "posts",
       fields: { published: checkbox() },
     });
-    const defaults = getCollectionDefaultValues({ collection });
+    const defaults = getFieldsDefaultValues({ fields: collection.fields });
     expect(defaults.published).toBe(false);
   });
 
@@ -100,7 +100,7 @@ describe("getCollectionDefaultValues", () => {
       slug: "events",
       fields: { startsAt: date({ required: false }) },
     });
-    const defaults = getCollectionDefaultValues({ collection });
+    const defaults = getFieldsDefaultValues({ fields: collection.fields });
     expect(defaults.startsAt).toBeUndefined();
   });
 
@@ -109,7 +109,7 @@ describe("getCollectionDefaultValues", () => {
       slug: "posts",
       fields: { status: select({ options: SELECT_OPTIONS }) },
     });
-    const defaults = getCollectionDefaultValues({ collection });
+    const defaults = getFieldsDefaultValues({ fields: collection.fields });
     expect(defaults.status).toEqual([]);
   });
 
@@ -129,7 +129,7 @@ describe("getCollectionDefaultValues", () => {
       score: 42,
       published: true,
     };
-    const defaults = getCollectionDefaultValues({ collection, document });
+    const defaults = getFieldsDefaultValues({ fields: collection.fields, document });
     expect(defaults.title).toBe("Hello World");
     expect(defaults.score).toBe(42);
     expect(defaults.published).toBe(true);
@@ -149,7 +149,7 @@ describe("getCollectionDefaultValues", () => {
       title: "Hello",
       // score is missing
     };
-    const defaults = getCollectionDefaultValues({ collection, document });
+    const defaults = getFieldsDefaultValues({ fields: collection.fields, document });
     expect(defaults.title).toBe("Hello");
     expect(defaults.score).toBe(0); // falls back to field default
   });
@@ -157,8 +157,8 @@ describe("getCollectionDefaultValues", () => {
   // ─── comprehensive ─────────────────────────────────────────────────────────
 
   it("comprehensive: returns correct defaults for every field type", () => {
-    const defaults = getCollectionDefaultValues({
-      collection: ALL_FIELDS_COLLECTION,
+    const defaults = getFieldsDefaultValues({
+      fields: ALL_FIELDS_COLLECTION.fields,
     });
 
     expect(defaults.title).toBe(""); // text default
@@ -180,8 +180,8 @@ describe("getCollectionDefaultValues", () => {
       status: ["published"],
       tags: ["news", "tutorial"],
     };
-    const defaults = getCollectionDefaultValues({
-      collection: ALL_FIELDS_COLLECTION,
+    const defaults = getFieldsDefaultValues({
+      fields: ALL_FIELDS_COLLECTION.fields,
       document,
     });
 
@@ -194,9 +194,9 @@ describe("getCollectionDefaultValues", () => {
   });
 });
 
-// ─── getCollectionInputSchema ─────────────────────────────────────────────────
+// ─── getFieldsInputSchema ─────────────────────────────────────────────────
 
-describe("getCollectionInputSchema", () => {
+describe("getFieldsInputSchema", () => {
   it("builds a Zod object schema with one key per field", () => {
     const collection = defineCollection({
       slug: "posts",
@@ -206,7 +206,7 @@ describe("getCollectionInputSchema", () => {
         excerpt: url({ required: false }),
       },
     });
-    const schema = getCollectionInputSchema({ collection });
+    const schema = getFieldsInputSchema({ fields: collection.fields });
     const result = schema.safeParse({
       title: "https://example.com",
       slug: "https://slug.example.com",
@@ -220,7 +220,7 @@ describe("getCollectionInputSchema", () => {
       slug: "posts",
       fields: { title: url({ required: true }) },
     });
-    const schema = getCollectionInputSchema({ collection });
+    const schema = getFieldsInputSchema({ fields: collection.fields });
     expect(schema.safeParse({ title: "" }).success).toBe(false);
     expect(schema.safeParse({ title: "https://example.com" }).success).toBe(
       true,
@@ -232,7 +232,7 @@ describe("getCollectionInputSchema", () => {
       slug: "products",
       fields: { price: number({ required: true }) },
     });
-    const schema = getCollectionInputSchema({ collection });
+    const schema = getFieldsInputSchema({ fields: collection.fields });
     expect(schema.safeParse({ price: 0 }).success).toBe(true);
     expect(schema.safeParse({ price: 9.99 }).success).toBe(true);
     expect(schema.safeParse({ price: "bad" }).success).toBe(false);
@@ -243,7 +243,7 @@ describe("getCollectionInputSchema", () => {
       slug: "posts",
       fields: { published: checkbox({ required: true }) },
     });
-    const schema = getCollectionInputSchema({ collection });
+    const schema = getFieldsInputSchema({ fields: collection.fields });
     expect(schema.safeParse({ published: true }).success).toBe(true);
     expect(schema.safeParse({ published: false }).success).toBe(true);
     expect(schema.safeParse({ published: "yes" }).success).toBe(false);
@@ -254,7 +254,7 @@ describe("getCollectionInputSchema", () => {
       slug: "events",
       fields: { startsAt: date({ required: true }) },
     });
-    const schema = getCollectionInputSchema({ collection });
+    const schema = getFieldsInputSchema({ fields: collection.fields });
     expect(schema.safeParse({ startsAt: Date.now() }).success).toBe(true);
     expect(schema.safeParse({ startsAt: "2024-01-01" }).success).toBe(false);
   });
@@ -270,7 +270,7 @@ describe("getCollectionInputSchema", () => {
         }),
       },
     });
-    const schema = getCollectionInputSchema({ collection });
+    const schema = getFieldsInputSchema({ fields: collection.fields });
     expect(schema.safeParse({ status: ["draft"] }).success).toBe(true);
     expect(schema.safeParse({ status: ["unknown"] }).success).toBe(false);
     expect(schema.safeParse({ status: ["draft", "published"] }).success).toBe(
@@ -288,7 +288,7 @@ describe("getCollectionInputSchema", () => {
         status: select({ required: false, options: SELECT_OPTIONS }),
       },
     });
-    const schema = getCollectionInputSchema({ collection });
+    const schema = getFieldsInputSchema({ fields: collection.fields });
     const result = schema.safeParse({});
     expect(result.success).toBe(true);
     if (result.success) {
@@ -302,8 +302,8 @@ describe("getCollectionInputSchema", () => {
   // ─── comprehensive ─────────────────────────────────────────────────────────
 
   it("comprehensive: validates a collection with every field type", () => {
-    const schema = getCollectionInputSchema({
-      collection: ALL_FIELDS_COLLECTION,
+    const schema = getFieldsInputSchema({
+      fields: ALL_FIELDS_COLLECTION.fields,
     });
 
     // Valid document — all fields present with correct types
@@ -338,20 +338,20 @@ describe("getCollectionInputSchema", () => {
       slug: "posts",
       fields: { title: text({ required: true }), slug: text({ min: { value: 3 } }) },
     });
-    const schema = getCollectionInputSchema({ collection, partial: true });
+    const schema = getFieldsInputSchema({ fields: collection.fields, partial: true });
     expect(schema.safeParse({}).success).toBe(true);
   });
 
   it("partial mode: a present field still runs its full validator chain", () => {
     const collection = defineCollection({ slug: "posts", fields: { slug: text({ min: { value: 3 } }) } });
-    const schema = getCollectionInputSchema({ collection, partial: true });
+    const schema = getFieldsInputSchema({ fields: collection.fields, partial: true });
     expect(schema.safeParse({ slug: "ab" }).success).toBe(false);
     expect(schema.safeParse({ slug: "abc" }).success).toBe(true);
   });
 
   it("non-partial mode is unchanged: an absent required field fails", () => {
     const collection = defineCollection({ slug: "posts", fields: { title: text({ required: true }) } });
-    const schema = getCollectionInputSchema({ collection });
+    const schema = getFieldsInputSchema({ fields: collection.fields });
     expect(schema.safeParse({}).success).toBe(false);
   });
 });

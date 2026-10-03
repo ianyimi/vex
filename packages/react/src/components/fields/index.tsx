@@ -117,7 +117,7 @@ export function fieldToInputComponent(field: AdminFieldType) {
  * @param props.collection - The `CollectionConfig` whose fields are rendered.
  * @param props.fieldKeys - Field keys to render; `undefined` renders every
  *   field in `collection.fields`. Pair with the same key list passed to
- *   `useCollectionForm`'s `readableFieldKeys` so a field kept out of the form
+ *   `useFieldsForm`'s `readableFieldKeys` so a field kept out of the form
  *   schema/`defaultValues` is also kept out of the rendered inputs — an
  *   input mounted for a key absent from form state has no value to bind to.
  * @param props.className - Optional CSS class merged with the base `"relative"` class.

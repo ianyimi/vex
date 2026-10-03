@@ -2,7 +2,7 @@ import { ConvexError } from "convex/values";
 import { describe, expect, it } from "vitest";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { defineCollection, text } from "../index";
-import { validateFields } from "./validateFields";
+import { validateFields } from "./utils";
 import type { VexConfig } from "../config";
 
 const fixtureCtx = {} as GenericMutationCtx<GenericDataModel>;
@@ -14,7 +14,7 @@ describe("validateFields", () => {
   it("passes when no field in the key set declares validate()", async () => {
     const collection = defineCollection({ slug: "posts", fields: { title: text() } });
     await expect(
-      validateFields({ collection, doc: { title: "Hi" }, keys: ["title"], ctx: fixtureCtx, config: fixtureConfig }),
+      validateFields({ fields: collection.fields, doc: { title: "Hi" }, keys: ["title"], ctx: fixtureCtx, config: fixtureConfig }),
     ).resolves.toBeUndefined();
   });
 
@@ -30,7 +30,7 @@ describe("validateFields", () => {
       },
     });
     await expect(
-      validateFields({ collection, doc: { slug: "dup" }, keys: ["slug"], ctx: fixtureCtx, config: fixtureConfig }),
+      validateFields({ fields: collection.fields, doc: { slug: "dup" }, keys: ["slug"], ctx: fixtureCtx, config: fixtureConfig }),
     ).rejects.toMatchObject({
       data: { field: "slug", message: "Slug must be unique." },
     });
@@ -48,7 +48,7 @@ describe("validateFields", () => {
       },
     });
     await expect(
-      validateFields({ collection, doc: { slug: "dup" }, keys: ["slug"], ctx: fixtureCtx, config: fixtureConfig }),
+      validateFields({ fields: collection.fields, doc: { slug: "dup" }, keys: ["slug"], ctx: fixtureCtx, config: fixtureConfig }),
     ).rejects.toMatchObject({
       data: { field: "slug", message: "Slug taken", code: "SLUG_CONFLICT" },
     });
@@ -66,7 +66,7 @@ describe("validateFields", () => {
       },
     });
     await expect(
-      validateFields({ collection, doc: { title: "Hi" }, keys: ["title"], ctx: fixtureCtx, config: fixtureConfig }),
+      validateFields({ fields: collection.fields, doc: { title: "Hi" }, keys: ["title"], ctx: fixtureCtx, config: fixtureConfig }),
     ).resolves.toBeUndefined();
   });
 
@@ -82,7 +82,7 @@ describe("validateFields", () => {
         }),
       },
     });
-    await validateFields({ collection, doc: { slug: "ok", _id: "abc" }, keys: ["slug"], ctx: fixtureCtx, config: fixtureConfig });
+    await validateFields({ fields: collection.fields, doc: { slug: "ok", _id: "abc" }, keys: ["slug"], ctx: fixtureCtx, config: fixtureConfig });
     expect(seen).toMatchObject({ value: "ok", fieldKey: "slug", doc: { slug: "ok" } });
   });
 });

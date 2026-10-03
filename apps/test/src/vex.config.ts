@@ -11,12 +11,14 @@ import {
   headers,
   images,
   pages,
+  posts,
   themes,
   users,
 } from "~/vexcms/collections";
 
 import { access } from "./auth/access";
 import { authSchema } from "./auth/schema";
+import { announcement } from "./vexcms/globals/announcement";
 import { nav } from "./vexcms/globals/nav";
 import { siteSettings } from "./vexcms/globals/siteSettings";
 
@@ -54,9 +56,10 @@ const vexConfig = defineConfig({
     caseStudies,
     changelog,
     comments,
+    posts,
   ],
   mediaCollections: [images],
-  globals: [nav, siteSettings],
+  globals: [nav, siteSettings, announcement],
   routes: {
     // One document at a time. `resolveTargets` calls this once for `before`
     // and once for `after` on an update, so a slug rename purges the old path

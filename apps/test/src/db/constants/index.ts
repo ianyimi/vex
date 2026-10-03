@@ -50,6 +50,10 @@ export type ChangelogDoc = Doc<typeof TABLE_SLUG_CHANGELOG>;
 export const TABLE_SLUG_COMMENTS = "comments" as const;
 export type CommentDoc = Doc<typeof TABLE_SLUG_COMMENTS>;
 
+export const TABLE_SLUG_POSTS = "posts" as const;
+export type PostDoc = Doc<typeof TABLE_SLUG_POSTS>;
+export type PostID = Id<typeof TABLE_SLUG_POSTS>;
+
 /**
  * Editorial workflow states, shared verbatim by every editorial collection.
  *
@@ -65,6 +69,7 @@ export type ContentStatus = (typeof CONTENT_STATUS)[keyof typeof CONTENT_STATUS]
 
 export const GLOBAL_SLUG_NAV = "nav" as const;
 export const GLOBAL_SLUG_SITE_SETTINGS = "siteSettings" as const;
+export const GLOBAL_SLUG_ANNOUNCEMENT = "announcement" as const;
 
 export const AUTH_PROVIDERS = {
   apple: "apple",

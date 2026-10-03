@@ -2,7 +2,7 @@ import { ConvexError } from "convex/values";
 
 /**
  * Shape of the structured payload this framework's own server-side
- * `ConvexError`s carry — field validation failures (`collections/validateFields.ts`),
+ * `ConvexError`s carry — field validation failures (`fields/utils.ts`'s `validateFields`),
  * schema failures (`api/create|update/server.ts`), and RBAC denials
  * (`VexAccessError`) all pass an object with some combination of these keys.
  */

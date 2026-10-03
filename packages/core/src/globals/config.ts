@@ -7,6 +7,7 @@ import type {
   ReservedGlobalFieldKey,
 } from "./types";
 import type { GlobalSlug } from "../types/generated";
+import type { GlobalHooks } from "./hooks";
 import { DEFAULT_AUTOSAVE_DEBOUNCE_MS } from "../versions";
 
 /**
@@ -90,6 +91,7 @@ export function defineGlobal<
   return {
     ...input,
     interfaceName: input.interfaceName ?? slugToPascalCase({ slug: input.slug }) + "Global",
+    hooks: (input.hooks ?? {}) as GlobalHooks<TGlobalSlug>,
     admin: {
       group: "",
       description: "",

@@ -78,13 +78,27 @@ export function useLivePreviewPanelMinSize(): {
  * @param props.slug - Scopes the cookie per collection/global.
  * @param props.initialOpen - The server-read cookie-or-default value, threaded
  *   down from `NextAdminPage`.
+ * @param props.enabled - Whether live preview is configured for this slug.
+ *   When false the panel stays closed and a stale open cookie is reset to closed.
  * @returns `isOpen` and a `toggle` function that flips it and rewrites the cookie.
  */
-export function useLivePreviewPanelState(props: { slug: string; initialOpen: boolean }): {
+export function useLivePreviewPanelState(props: {
+  slug: string;
+  initialOpen: boolean;
+  enabled: boolean;
+}): {
   isOpen: boolean;
   toggle: () => void;
 } {
-  const [isOpen, setIsOpen] = useState(props.initialOpen);
+  const [isOpen, setIsOpen] = useState(props.enabled && props.initialOpen);
+
+  useEffect(() => {
+    if (props.enabled) return;
+    setIsOpen(false);
+    if (readCookie(livePreviewPanelCookieName({ slug: props.slug })) === "1") {
+      writeLivePreviewPanelCookie({ slug: props.slug, isOpen: false });
+    }
+  }, [props.enabled, props.slug]);
 
   const toggle = useCallback(() => {
     setIsOpen((prev) => {
@@ -95,6 +109,20 @@ export function useLivePreviewPanelState(props: { slug: string; initialOpen: boo
   }, [props.slug]);
 
   return { isOpen, toggle };
+}
+
+/**
+ * Reads one preference cookie's raw value client-side — names and values are
+ * written unencoded by `writePreferenceCookie`, so they are read the same way.
+ *
+ * @param name - Cookie name.
+ * @returns The value, or `undefined` when absent or outside a browser.
+ */
+function readCookie(name: string): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  const prefix = `${name}=`;
+  const entry = document.cookie.split("; ").find((c) => c.startsWith(prefix));
+  return entry?.slice(prefix.length);
 }
 
 /**

@@ -133,7 +133,7 @@ export async function saveDraft<
   const { patch, transformedFields } = await prepareEdit({
     ctx: args.ctx,
     config: args.config,
-    collection,
+    target: { kind: "collection", config: collection },
     action: DRAFT_ACTIONS.saveDraft,
     access: args.access,
     auth: args.auth,
