@@ -1,7 +1,7 @@
 "use client";
 
-import { convexQuery } from "@convex-dev/react-query";
-import { useQuery } from "@tanstack/react-query";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
 import {
   CRUD_ACTIONS,
@@ -36,6 +36,8 @@ import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
 import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
 import { useLivePreviewServerUrl } from "../../hooks/useLivePreviewServerUrl";
 import { DraftToolbar } from "../drafts";
+import { getVexErrorMessage } from "../../lib/errors";
+import { toast } from "sonner";
 
 /**
  * Global document edit form.
@@ -76,6 +78,8 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     initialData: props.initialData,
   });
 
+  const hasDrafts = global.versions.drafts;
+
   const { mutateAsync, isPending } = useVexMutation({
     collection: global.slug,
     // A global has no per-document identity, so one change carrying the
@@ -83,13 +87,44 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     // travels as `collection`. Merged with the loaded document (like
     // `CollectionEditView`'s own `getChanges`) so a partial diff still
     // resolves revalidation targets from the full post-write state.
-    getChanges: ({ args }) =>
-      hasDrafts ? [] : [{ after: { ...(globalDoc ?? {}), ...args.data } }],
+    getChanges: ({ args }) => [{ after: { ...(globalDoc ?? {}), ...args.data } }],
     mutationFn: vexConvexApi.globals.upsert,
     operation: "upsert",
   });
 
-  const hasDrafts = global.versions.drafts;
+  // Bypasses `useVexMutation` deliberately: that hook's `operation` param is
+  // typed `VexMutationOperation` (`"create" | "remove" | "update" | "upsert"`),
+  // which has no draft-workflow member, and nothing wires draft saves into
+  // the ISR-purge pipeline `useVexMutation` exists for. Mirrors
+  // `CollectionEditView`'s own `saveDraftMutation`.
+  const { mutateAsync: saveDraftMutation, isPending: isSavingDraft } = useMutation({
+    mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
+  });
+
+  /**
+   * Persists the form's currently-dirty field values as a draft, without
+   * publishing them. Before the global has ever been saved, `globalDoc` is
+   * undefined and the dirty-diff (`changedValues`) would be empty even
+   * though the field defaults need to persist — the full form value is sent
+   * instead, exactly as the non-versioned first-save path does.
+   *
+   * @returns Promise resolving once the draft row is saved.
+   * @throws Never — a rejected mutation is caught and toasted, never
+   *   re-thrown, since this is a manually-triggered action, not a form
+   *   submit the caller is awaiting a result from.
+   */
+  async function handleSaveDraft(): Promise<void> {
+    try {
+      const data = globalDoc
+        ? changedValues(form)
+        : (form.state.values as Record<string, unknown>);
+      await saveDraftMutation({ global: global!.slug, data });
+      form.reset();
+    } catch (error) {
+      toast.error("Save draft failed", { description: getVexErrorMessage(error) });
+    }
+  }
+
   const isDraftDoc =
     (globalDoc as { vex_status?: "draft" | "published" } | undefined)
       ?.vex_status === "draft";
@@ -243,8 +278,8 @@ export function GlobalEditView(props: GlobalEditViewProps) {
                 <DraftToolbar
                   status={globalDoc ? (isDraftDoc ? "draft" : "published") : undefined}
                   saveDraft={{
-                    onClick: () => void form.handleSubmit(),
-                    isPending,
+                    onClick: handleSaveDraft,
+                    isPending: isSavingDraft,
                     disabled: isDefaultValue || !canEdit,
                   }}
                 />

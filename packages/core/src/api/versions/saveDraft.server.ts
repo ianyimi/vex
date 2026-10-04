@@ -1,75 +1,78 @@
 import { ConvexError, type GenericId } from "convex/values";
-import type { GenericDataModel, TableNamesInDataModel } from "convex/server";
+import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 
-import type { CollectionSlug } from "../../types/generated";
-import { DRAFT_ACTIONS } from "../../access";
-import { prepareEdit } from "../prepareEdit";
-import { createVersion, findDraftRow, getLatestVersion } from "../../versions/model";
-import { extractUserFields } from "../../versions/extractUserFields";
-import type { GenericVersionsMutationServerArgs, VersionsDataInput } from "./types";
-import { VERSION_STATUSES } from "../../versions";
-import { VexVersionDocument } from "../convex";
+import type { CollectionSlug, GlobalSlug } from "../../types/generated";
+import type { VexConfig } from "../../config";
+import type { AccessCallOptions, VexApiAuth } from "../types";
+import type { CollectionOrGlobal } from "../../types/utils";
+import { resolveVersionedTarget } from "../../versions/resolveVersionedTarget";
+import { saveDraftShared } from "../../versions/saveDraft";
 
 /**
- * Server-side args for `saveDraft`.
+ * Server-side args for `saveDraft`. A discriminated union: the
+ * `{ collection, id }` member saves a draft for a versioned collection's
+ * document, and the `{ global }` member saves a draft for a versioned
+ * global — `vex_globals`' one shared table has no per-document id to pass,
+ * so the slug alone identifies the target row(s).
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
- * @typeParam TCollectionSlug - Collection slug.
  */
-export interface SaveDraftServerArgs<
-  DataModel extends GenericDataModel,
-  TCollectionSlug extends CollectionSlug,
-> extends GenericVersionsMutationServerArgs<DataModel, TCollectionSlug> {
-  /**
-   * The document id the caller currently has loaded — the published row's id
-   * on every edit after the first, or a draft row's own id (never-published
-   * document, or a draft already active). Both are resolved transparently.
-   */
-  id: GenericId<TCollectionSlug>;
+export type SaveDraftServerArgs<DataModel extends GenericDataModel> = {
+  /** Convex mutation context. */
+  ctx: GenericMutationCtx<DataModel>;
+  /** The resolved `VexConfig`. */
+  config: VexConfig;
+  /** Per-call access overrides, forwarded to `resolveAccessCall`. */
+  access?: AccessCallOptions<string>;
+  /** Resolved caller identity, forwarded to `hasPermission`. */
+  auth?: VexApiAuth;
   /** Partial field values to merge into the draft row. Unspecified fields are left unchanged. */
-  data: VersionsDataInput<DataModel>;
+  data: Record<string, unknown>;
   /**
    * The version number this save restores from, when the caller is reverting to
    * an older snapshot (fetched separately via `getVersionSnapshot`, Step 8).
    * Recorded on the emitted `vex_versions` row for lineage; otherwise unused.
    */
   restoredFrom?: number;
-}
+} & (
+  | {
+      /** The versioned collection slug this call targets. */
+      collection: CollectionSlug;
+      /**
+       * The document id the caller currently has loaded — the published row's
+       * id on every edit after the first, or a draft row's own id
+       * (never-published document, or a draft already active). Both are
+       * resolved transparently.
+       */
+      id: GenericId<CollectionSlug>;
+    }
+  | {
+      /** The versioned global slug this call targets. */
+      global: GlobalSlug;
+    }
+);
 
 /**
- * Patches (or bootstraps) the draft row for a versioned collection's document and
- * records a `"draft"`-status history row. Server-side only.
+ * Patches (or bootstraps) the draft row for a versioned collection's document
+ * OR a versioned global, and records a `"draft"`-status history row.
+ * Server-side only.
  *
- * Delegates the merge/`beforeChange`/validate pipeline to `prepareEdit` — the
- * SAME function `update()` calls — rather than duplicating it: this is the
- * concrete reason `saveDraft` cannot just call `update()` directly. `update()`
- * always patches the exact `args.id` it was given; `saveDraft` may need to write
- * to a DIFFERENT row (bootstrap a new draft) than the id the caller referenced.
- * `prepareEdit` is the part of `update()`'s pipeline that doesn't care which row
- * it's for — this function supplies its own row resolution and its own write,
- * reusing only the shared merge/validate core.
- *
- * **Authorization is evaluated against the STORED draft row**, never against
- * `args.data` — the correction this spec makes relative to the original
- * 2026-08-23 draft, which authorized against whichever row the caller supplied.
- * `prepareEdit` passes `changes: args.data` to `hasPermission` internally,
- * which is what lets a field-level permission map deny individual keys.
- *
- * Does NOT stamp `updatedAt`: an autosave tick is not a real edit of the live
- * document; `publish` stamps it once, on promotion.
- *
- * Known gap: two concurrent FIRST saves on the same never-drafted document can
- * both find no draft and both bootstrap one — no unique index on
- * `vex_publishedId` prevents the second row.
+ * One implementation handles both kinds: it resolves the caller's `target`
+ * (`{ collection, id }` or `{ global }`) to a {@link CollectionOrGlobal} and a
+ * {@link VersionedTargetRows} descriptor (`../../versions/resolveVersionedTarget`),
+ * then delegates every bootstrap/merge/patch/history step to
+ * `saveDraftShared` (`../../versions/saveDraft`) — the one place that logic
+ * lives, for either kind.
  *
  * Import from `@vexcms/core/server`.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
- * @typeParam TCollectionSlug - Collection slug.
- * @param args - `{ ctx, collection, id, data, restoredFrom? }`. `ctx` must be a mutation context.
+ * @param args - `{ ctx, config, data, restoredFrom? } & ({ collection, id } | { global })`.
+ *   `ctx` must be a mutation context.
  * @returns Promise resolving to the draft row's `_id` as a string.
- * @throws {ConvexError} When `collection`/`config`, or the target document, cannot be
- *   resolved, or when the collection does not declare `versions.drafts: true`.
+ * @throws {ConvexError} When the collection/global cannot be resolved, or
+ *   does not declare `versions.drafts: true`, or (collection only) when `id`
+ *   does not resolve to a document.
  * @throws {VexAccessError} When the caller is not permitted to save this draft.
  * @example
  * ```ts
@@ -82,99 +85,58 @@ export interface SaveDraftServerArgs<
  * });
  * ```
  */
-export async function saveDraft<
-  DataModel extends GenericDataModel,
-  TCollectionSlug extends CollectionSlug,
->(args: SaveDraftServerArgs<DataModel, TCollectionSlug>): Promise<string> {
-  const collection = args.config?.collections.find((c) => c.slug === args.collection);
-  if (!args.config || !collection) {
-    throw new ConvexError(`No collection registered with slug "${args.collection}"`);
-  }
-  if (!collection.versions.drafts) {
-    throw new ConvexError(
-      `Collection "${args.collection}" does not have drafts enabled — set versions: { drafts: true } to use saveDraft`,
-    );
-  }
-  const data = extractUserFields({ doc: args.data });
-  const targetRow = (await args.ctx.db.get(args.collection, args.id)) as VexVersionDocument | null;
-  if (targetRow === null) {
-    throw new ConvexError(
-      `No document found for id "${args.id}" in collection "${args.collection}"`,
-    );
-  }
+export async function saveDraft<DataModel extends GenericDataModel>(
+  args: SaveDraftServerArgs<DataModel>,
+): Promise<string> {
+  let target: CollectionOrGlobal;
 
-  let draftRow: VexVersionDocument | null = null;
-  if (targetRow.vex_status === VERSION_STATUSES.draft.key) {
-    draftRow = targetRow;
-  } else {
-    draftRow = await findDraftRow<DataModel, TCollectionSlug>({
+  if ("collection" in args) {
+    const collection = args.config.collections.find((c) => c.slug === args.collection);
+    if (!collection) {
+      throw new ConvexError(`No collection registered with slug "${args.collection}"`);
+    }
+    if (!collection.versions.drafts) {
+      throw new ConvexError(
+        `Collection "${args.collection}" does not have drafts enabled — set versions: { drafts: true } to use saveDraft`,
+      );
+    }
+    target = { kind: "collection", config: collection };
+    const rows = await resolveVersionedTarget({
       ctx: args.ctx,
       collection: args.collection,
-      publishedId: targetRow._id as GenericId<TCollectionSlug>,
+      id: args.id,
     });
-  }
-  if (draftRow === null) {
-    await createVersion({
+    return saveDraftShared({
       ctx: args.ctx,
-      collection: args.collection,
-      documentId: targetRow._id,
-      status: VERSION_STATUSES.published.key,
-      snapshot: extractUserFields({ doc: targetRow }),
-      publishedAt: targetRow.vex_publishedAt,
+      config: args.config,
+      target,
+      access: args.access,
+      auth: args.auth,
+      data: args.data,
+      restoredFrom: args.restoredFrom,
+      rows,
     });
-    const draftRowId = await args.ctx.db.insert(args.collection, {
-      ...extractUserFields({ doc: targetRow }),
-      vex_status: VERSION_STATUSES.draft.key,
-      vex_publishedId: targetRow._id,
-    } as never);
-    draftRow = (await args.ctx.db.get(args.collection, draftRowId)) as VexVersionDocument;
   }
 
-  const { patch, transformedFields } = await prepareEdit({
+  const global = args.config.globals.find((g) => g.slug === args.global);
+  if (!global) {
+    throw new ConvexError(`No global registered with slug "${args.global}"`);
+  }
+  if (!global.versions.drafts) {
+    throw new ConvexError(
+      `Global "${args.global}" does not have drafts enabled — set versions: { drafts: true } to use saveDraft`,
+    );
+  }
+  target = { kind: "global", config: global };
+  const rows = await resolveVersionedTarget({ ctx: args.ctx, global: args.global });
+  return saveDraftShared({
     ctx: args.ctx,
     config: args.config,
-    target: { kind: "collection", config: collection },
-    action: DRAFT_ACTIONS.saveDraft,
+    target,
     access: args.access,
     auth: args.auth,
-    storedDoc: extractUserFields({ doc: draftRow as never }) as never,
-    incoming: data,
-    partial: true,
-    validateKeys: "changed",
-  });
-  await args.ctx.db.patch(
-    draftRow._id as GenericId<TableNamesInDataModel<DataModel>>,
-    patch as never,
-  );
-
-  const documentId = String(draftRow.vex_publishedId ?? draftRow._id);
-  const previous = await getLatestVersion({
-    ctx: args.ctx,
-    collection: args.collection,
-    documentId,
-  });
-  const publishedRow =
-    draftRow.vex_publishedId === undefined
-      ? null
-      : draftRow.vex_publishedId === targetRow._id
-        ? targetRow
-        : ((await args.ctx.db.get(
-            args.collection,
-            draftRow.vex_publishedId as GenericId<TCollectionSlug>,
-          )) as VexVersionDocument | null);
-  const publishedAt = publishedRow?.vex_publishedAt ?? draftRow.vex_publishedAt;
-  await createVersion({
-    ctx: args.ctx,
-    collection: args.collection,
-    documentId,
-    status: VERSION_STATUSES.draft.key,
-    snapshot: extractUserFields({ doc: transformedFields }),
-    createdBy:
-      typeof args.auth?.user?.["_id"] === "string" ? (args.auth.user["_id"] as string) : undefined,
-    parentVersion: previous?.version,
+    data: args.data,
     restoredFrom: args.restoredFrom,
-    publishedAt,
+    rows,
   });
-
-  return draftRow._id;
 }

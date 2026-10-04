@@ -162,7 +162,7 @@ describe("GlobalEditView — draft toolbar", () => {
     expect(utils.queryByText("Draft")).toBeNull();
   });
 
-  it("submits the changed fields through globals.upsert when Save Draft is clicked", async () => {
+  it("submits the changed fields through versions.saveDraft when Save Draft is clicked", async () => {
     const stored = { _creationTime: 1, _id: "g1", siteName: "x", tagline: "y", vex_status: "published" };
     const utils = renderView(
       createElement(GlobalEditView, { global: versionedGlobal.slug, initialData: stored as never }),
@@ -173,7 +173,24 @@ describe("GlobalEditView — draft toolbar", () => {
     fireEvent.click(utils.getByRole("button", { name: "Save Draft" }));
 
     await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
-    expect(convexMutationMock.mock.calls[0]?.[0]?.data).toEqual({ siteName: "draft name" });
+    expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({
+      global: versionedGlobal.slug,
+      data: { siteName: "draft name" },
+    });
+  });
+
+  it("submits the full form value through versions.saveDraft before the global has ever been saved", async () => {
+    const utils = renderView(createElement(GlobalEditView, { global: versionedGlobal.slug }), {
+      convex: t,
+      config: versionedConfig,
+    });
+
+    fireEvent.change(utils.container.querySelector("#siteName")!, { target: { value: "first name" } });
+    fireEvent.click(utils.getByRole("button", { name: "Save Draft" }));
+
+    await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
+    expect(convexMutationMock.mock.calls[0]?.[0]?.global).toBe(versionedGlobal.slug);
+    expect(convexMutationMock.mock.calls[0]?.[0]?.data).toMatchObject({ siteName: "first name" });
   });
 
   it("keeps the plain Save/Cancel toolbar for a non-versioned global", async () => {

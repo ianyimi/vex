@@ -9,6 +9,7 @@ import type { CollectionHooks } from "./hooks";
 import { slugToPascalCase } from "./utils";
 import {
   DEFAULT_AUTOSAVE_DEBOUNCE_MS,
+  VERSION_STATUSES,
   VERSION_SYSTEM_FIELDS,
   type VersionSystemField,
 } from "../versions";
@@ -245,6 +246,7 @@ export function defineCollection<
     versions: {
       drafts: false as TDrafts,
       cascadeDelete: true,
+      defaultStatus: VERSION_STATUSES.draft.key,
       ...input.versions,
       autosave: {
         enabled: false,

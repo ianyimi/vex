@@ -70,6 +70,7 @@ describe("defineCollection — versions defaults", () => {
     });
     expect(posts.versions).toEqual({
       drafts: false,
+      defaultStatus: "draft",
       autosave: { enabled: false, debounceMs: 1000 },
       cascadeDelete: true,
     });
@@ -83,6 +84,7 @@ describe("defineCollection — versions defaults", () => {
     });
     expect(posts.versions).toEqual({
       drafts: true,
+      defaultStatus: "draft",
       autosave: { enabled: false, debounceMs: 1000 },
       cascadeDelete: true,
     });
@@ -96,6 +98,7 @@ describe("defineCollection — versions defaults", () => {
     });
     expect(posts.versions).toEqual({
       drafts: true,
+      defaultStatus: "draft",
       autosave: { enabled: true, debounceMs: 1000 },
       cascadeDelete: true,
     });
@@ -118,9 +121,19 @@ describe("defineCollection — versions defaults", () => {
     });
     expect(posts.versions).toEqual({
       drafts: true,
+      defaultStatus: "draft",
       autosave: { enabled: false, debounceMs: 1000 },
       cascadeDelete: false,
     });
+  });
+
+  it("honors an explicit defaultStatus: 'published' override", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      versions: { drafts: true, defaultStatus: "published" },
+    });
+    expect(posts.versions.defaultStatus).toBe("published");
   });
 });
 

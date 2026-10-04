@@ -1,14 +1,13 @@
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { ConvexError } from "convex/values";
 
-import type { CollectionConfig } from "../collections/types";
-import type { GlobalConfig } from "../globals/types";
 import type { VexConfig } from "../config";
 import type { AccessCallOptions, VexApiAuth } from "./types";
 import type { TDocument } from "./convex";
 import { CRUD_ACTIONS, DRAFT_ACTIONS, hasPermission } from "../access";
 import { getFieldsInputSchema, validateFields } from "../fields";
 import { deepEqual, resolveAccessCall, toVexMutationCtx } from "./utils";
+import { CollectionOrGlobal } from "../types";
 
 /**
  * Args for {@link prepareEdit}.
@@ -25,9 +24,7 @@ export interface PrepareEditProps<DataModel extends GenericDataModel> {
    */
   config: VexConfig;
   /** The collection or global this write targets. `config.slug` is the permission resource. */
-  target:
-    | { kind: "collection"; config: CollectionConfig }
-    | { kind: "global"; config: GlobalConfig };
+  target: CollectionOrGlobal;
   /** The permission action this write checks under. */
   action:
     | typeof CRUD_ACTIONS.create
@@ -53,13 +50,13 @@ export interface PrepareEditProps<DataModel extends GenericDataModel> {
    * contract: `beforeChange` sees user fields only — no `vex_status` — on
    * every path.
    */
-  storedDoc: TDocument | undefined;
+  storedDoc?: TDocument | undefined;
   /** The caller's raw incoming payload — what `hasPermission`'s `changes` argument checks. */
-  incoming: Partial<TDocument>;
+  changes: Partial<TDocument>;
   /** `true` for lenient validation (`update`, `saveDraft` — a draft may be incomplete); `false` for strict, `create`-strength validation (`publish`). */
-  partial: boolean;
+  partial?: boolean;
   /** Which fields get their `validate()` hook run: only what changed (`update`, `saveDraft`), or every field (`publish`, matching `create`). */
-  validateKeys: "changed" | "all";
+  validateKeys?: "changed" | "all";
 }
 
 /** Result of {@link prepareEdit}. */
@@ -108,13 +105,13 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
       organization: props.auth?.organization,
       resource,
       action,
-      data: props.storedDoc,
-      changes: props.incoming,
+      data: props.action === CRUD_ACTIONS.create ? props.changes : props.storedDoc,
+      changes: props.changes,
     });
   }
 
   const { _id, _creationTime, ...fields } = props.storedDoc ?? {};
-  const mergedFields = { ...fields, ...props.incoming } as TDocument;
+  const mergedFields = { ...fields, ...props.changes } as TDocument;
 
   const operation = props.action === CRUD_ACTIONS.create ? "create" : "update";
   let transformedFields = mergedFields;
@@ -134,21 +131,21 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
     })) as TDocument;
   }
 
-  const changedKeys = new Set(Object.keys(props.incoming));
+  const changedKeys = new Set(Object.keys(props.changes));
   for (const key of Object.keys(transformedFields)) {
     if (!deepEqual(transformedFields[key], mergedFields[key])) changedKeys.add(key);
   }
 
   const parsed = getFieldsInputSchema({
     fields: props.target.config.fields,
-    partial: props.partial,
+    partial: props.partial ?? false,
   }).safeParse(transformedFields);
   if (!parsed.success) {
     throw new ConvexError({ message: "Validation failed", errors: parsed.error.message });
   }
 
   const writeKeys =
-    props.validateKeys === "all" ? new Set(Object.keys(transformedFields)) : changedKeys;
+    props.validateKeys === "changed" ? changedKeys : new Set(Object.keys(transformedFields));
   await validateFields({
     fields: props.target.config.fields,
     doc: transformedFields,

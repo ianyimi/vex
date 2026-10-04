@@ -1,6 +1,6 @@
-import { defineCollection, relationship, text } from "@vexcms/core"
+import { defineCollection, relationship, text } from "@vexcms/core";
 
-import { TABLE_SLUG_ARTICLES, TABLE_SLUG_POSTS } from "~/db/constants"
+import { TABLE_SLUG_ARTICLES, TABLE_SLUG_POSTS } from "~/db/constants";
 
 /**
  * Draft/publish test surface for the versioning-drafts spec.
@@ -62,4 +62,4 @@ export const posts = defineCollection({
       description: "Non-versioned target — never blocks a publish.",
     }),
   },
-})
+});

@@ -772,3 +772,63 @@ describe("update (server) — validation and hooks", () => {
     ).rejects.toThrow(/body must differ from title/);
   });
 });
+
+describe("update (server) — versioned collection", () => {
+  const versionedPosts = defineCollection({
+    slug: "posts",
+    fields: { title: text(), slug: text(), featured: checkbox() },
+    versions: { drafts: true },
+  });
+  const versionedConfig = { collections: [versionedPosts] } as unknown as VexConfig;
+
+  test("writes the published row directly and records a published history row", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await ctx.db.insert("posts", {
+        title: "Old",
+        slug: "old",
+        vex_status: "published",
+        vex_publishedAt: 1700000000000,
+      });
+      await update({ ctx, id, collection: "posts", config: versionedConfig, data: { title: "New" } });
+      const doc = await ctx.db.get(id);
+      expect(doc?.title).toBe("New");
+      expect(doc?.vex_status).toBe("published");
+
+      const [version] = await ctx.db.query("vex_versions").collect();
+      expect(version?.status).toBe("published");
+      expect(version?.documentId).toBe(id);
+      expect(version?.publishedAt).toBe(1700000000000);
+      expect(version?.snapshot).toMatchObject({ title: "New", slug: "old" });
+    });
+  });
+
+  test("rejects a draft-row id, telling the caller to use versions.saveDraft", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Live",
+        slug: "live",
+        vex_status: "published",
+      });
+      const draftId = await ctx.db.insert("posts", {
+        title: "Live draft",
+        slug: "live",
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      });
+      await expect(
+        update({
+          ctx,
+          id: draftId,
+          collection: "posts",
+          config: versionedConfig,
+          data: { title: "Edited" },
+        }),
+      ).rejects.toThrow(/versions\.saveDraft/);
+      // The draft row is left untouched.
+      const draft = await ctx.db.get(draftId);
+      expect(draft?.title).toBe("Live draft");
+    });
+  });
+});

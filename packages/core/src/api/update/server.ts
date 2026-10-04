@@ -13,6 +13,7 @@ import { CRUD_ACTIONS } from "../../access";
 import { prepareEdit } from "../prepareEdit";
 import { stampUpdatedAt } from "../utils";
 import { TDocument } from "../convex";
+import { createVersion, removeVexFields, VERSION_STATUSES } from "../../versions";
 
 /**
  * Server-side args for `update`.
@@ -76,7 +77,16 @@ export async function update<
   }
 
   const doc = await args.ctx.db.get(args.id);
-  const { patch } = await prepareEdit({
+  if (
+    collection.versions.drafts &&
+    (doc as TDocument | null)?.vex_status === VERSION_STATUSES.draft.key
+  ) {
+    throw new ConvexError(
+      `Document "${args.id}" in collection "${args.collection}" is a draft row — use versions.saveDraft to edit it`,
+    );
+  }
+
+  const { patch, transformedFields } = await prepareEdit({
     ctx: args.ctx,
     config: args.config,
     target: { kind: "collection", config: collection },
@@ -84,11 +94,22 @@ export async function update<
     access: args.access,
     auth: args.auth,
     storedDoc: (doc ?? undefined) as TDocument | undefined,
-    incoming: args.data as Partial<TDocument>,
+    changes: args.data as Partial<TDocument>,
     partial: true,
     validateKeys: "changed",
   });
 
   const data = stampUpdatedAt({ collection: args.collection, config: args.config, data: patch });
   await args.ctx.db.patch(args.id, data as never);
+
+  if (collection.versions.drafts) {
+    await createVersion({
+      ctx: args.ctx,
+      collection: args.collection,
+      documentId: String(args.id),
+      status: VERSION_STATUSES.published.key,
+      snapshot: removeVexFields({ doc: transformedFields }),
+      publishedAt: (doc as TDocument | null)?.vex_publishedAt as number | undefined,
+    });
+  }
 }

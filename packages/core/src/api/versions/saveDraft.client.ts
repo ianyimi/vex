@@ -1,12 +1,14 @@
 import type { GenericId } from "convex/values";
 
 import { vexConvexApi } from "../convex";
-import type { CollectionSlug } from "../../types/generated";
+import type { CollectionSlug, GlobalSlug } from "../../types/generated";
 import type { GenericMutationClientParams } from "../types";
 import { useConvexMutation } from "@convex-dev/react-query";
 
 /**
- * Client-side args for {@link saveDraft}.
+ * Client-side args for {@link saveDraft}. A discriminated union: pass
+ * `{ collection, id, data }` for a versioned collection's document, or
+ * `{ global, data }` for a versioned global.
  *
  * @example
  * ```tsx
@@ -15,23 +17,32 @@ import { useConvexMutation } from "@convex-dev/react-query";
  *
  * const { mutateAsync } = useMutation({ mutationFn: saveDraft() });
  * await mutateAsync({ collection: "posts", id: postId, data: { title: "Draft title" } });
+ * await mutateAsync({ global: "siteSettings", data: { siteName: "New Name" } });
  * ```
  */
-export interface SaveDraftClientArgs<
-  TCollectionSlug extends CollectionSlug = CollectionSlug,
-> extends GenericMutationClientParams {
-  /** The versioned collection slug. */
-  collection: TCollectionSlug;
-  /**
-   * The document id currently loaded — the published row's id, or an active
-   * draft's own id. The server resolves either to the one draft row.
-   */
-  id: GenericId<TCollectionSlug>;
-  /** Partial field values to merge into the draft row. Unspecified fields are left unchanged. */
-  data: Record<string, unknown>;
-  /** The version number this save restores from, when reverting to an older snapshot. */
-  restoredFrom?: number;
-}
+export type SaveDraftClientArgs<TCollectionSlug extends CollectionSlug = CollectionSlug> =
+  GenericMutationClientParams &
+    (
+      | {
+          /** The versioned collection slug. */
+          collection: TCollectionSlug;
+          /**
+           * The document id currently loaded — the published row's id, or an
+           * active draft's own id. The server resolves either to the one draft row.
+           */
+          id: GenericId<TCollectionSlug>;
+          /** Partial field values to merge into the draft row. Unspecified fields are left unchanged. */
+          data: Record<string, unknown>;
+          /** The version number this save restores from, when reverting to an older snapshot. */
+          restoredFrom?: number;
+        }
+      | {
+          /** The versioned global slug. */
+          global: GlobalSlug;
+          /** Partial field values to merge into the draft row. Unspecified fields are left unchanged. */
+          data: Record<string, unknown>;
+        }
+    );
 
 /**
  * Returns a `mutationFn` for saving a draft in a VexCMS versioned collection.

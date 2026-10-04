@@ -7,6 +7,7 @@ import { LucideIconName } from "../utils";
 import type { CollectionHooks, CollectionHooksInput } from "./hooks";
 import type { AdminLivePreviewConfig, AdminLivePreviewConfigInput } from "../livePreview";
 import type { DocumentByCollectionSlug } from "../types/generated";
+import type { VexVersionStatus } from "../versions";
 
 /**
  * Props received by a custom preview component for relationship rendering.
@@ -306,6 +307,13 @@ export interface CollectionConfigInput<
     /** Enable the draft/publish workflow for this collection. @defaultValue `false` */
     drafts?: TDrafts;
     /**
+     * The `vex_status` a newly `create()`d document starts with. `"published"`
+     * also stamps `vex_publishedAt`; `"draft"` inserts a draft-only row (no
+     * `vex_publishedId`, no `vex_publishedAt`). Ignored when `drafts` is
+     * `false`. @defaultValue `"draft"`
+     */
+    defaultStatus?: VexVersionStatus;
+    /**
      * Debounce background saves to the draft row while the edit form is
      * open. Ignored when `drafts` is `false`. @defaultValue `false`
      */
@@ -379,9 +387,9 @@ export interface CollectionConfig<
   meta: TCollectionMeta;
   /** Resolved lifecycle hooks. Always present; defaults to `{}`. */
   hooks: CollectionHooks<TCollectionSlug>;
-  /** Resolved versioning config. Always present after defaults. */
   versions: {
     drafts: TDrafts;
+    defaultStatus: VexVersionStatus;
     autosave: {
       enabled: boolean;
       debounceMs: number;

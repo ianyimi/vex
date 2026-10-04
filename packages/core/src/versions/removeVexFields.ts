@@ -28,9 +28,7 @@ import { VERSION_SYSTEM_FIELDS } from "./constants";
  * // → { title: "Hi" }
  * ```
  */
-export function extractUserFields(props: {
-  doc: Record<string, unknown>;
-}): Record<string, unknown> {
+export function removeVexFields(props: { doc: Record<string, unknown> }): Record<string, unknown> {
   const stripKeys = new Set<string>([
     ...Object.values(CONVEX_SYSTEM_FIELDS).map((v) => v.slug),
     ...Object.values(VERSION_SYSTEM_FIELDS).map((v) => v.slug),

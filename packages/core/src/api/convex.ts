@@ -269,15 +269,18 @@ export interface VexGlobalsUpdateArgs {
 // Arg and return shapes for the versioned document endpoints.
 
 /** Args for `api.vex.versions.saveDraft`. */
-export interface VexSaveDraftArgs {
+export type VexSaveDraftArgs = {
   [key: string]: unknown;
   auth?: VexApiAuth;
-  collection: string;
-  id: string;
   data: Record<string, unknown>;
   restoredFrom?: number;
   environmentId?: string;
-}
+} & (
+  | { collection: CollectionSlug; id: string }
+  | {
+      global: string;
+    }
+);
 
 /**
  * Typed `anyApi` references to the VexCMS generic Convex collection functions.

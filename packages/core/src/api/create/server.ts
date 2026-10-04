@@ -9,10 +9,10 @@ import { ConvexError } from "convex/values";
 
 import type { CollectionSlug } from "../../types/generated";
 import type { GenericMutationServerParams } from "../types";
-import { CRUD_ACTIONS, hasPermission } from "../../access";
-import { getFieldsInputSchema, validateFields } from "../../fields";
-import { resolveAccessCall, stampUpdatedAt, toVexMutationCtx } from "../utils";
-import { TDocument } from "../convex";
+import { CRUD_ACTIONS, DRAFT_ACTIONS, hasPermission } from "../../access";
+import { stampUpdatedAt } from "../utils";
+import { createVersion, removeVexFields, VERSION_STATUSES } from "../../versions";
+import { prepareEdit } from "../prepareEdit";
 
 /**
  * Server-side args for `create`.
@@ -67,49 +67,49 @@ export async function create<
     throw new ConvexError(`No collection registered with slug "${args.collection}"`);
   }
 
-  if (args.config.access !== undefined) {
-    const { access, action, resource } = resolveAccessCall({
-      config: args.config,
-      access: args.access,
-      defaultAction: CRUD_ACTIONS.create,
-      resource: args.collection,
-    });
-    hasPermission({
-      access,
-      user: args.auth?.user ?? null,
-      organization: args.auth?.organization,
-      resource,
-      action,
-      data: args.data,
-      changes: args.data,
-      throwOnDenied: true,
-    });
-  }
-
-  let doc = { ...args.data } as unknown as TDocument;
-  if (collection.hooks?.beforeChange) {
-    doc = await collection.hooks.beforeChange({
-      operation: "create",
-      doc: doc as never,
-      ctx: args.ctx,
-      collection,
-    });
-  }
-
-  const parsed = getFieldsInputSchema({ fields: collection.fields }).safeParse(doc);
-  if (!parsed.success) {
-    throw new ConvexError({ message: "Validation failed", errors: parsed.error.message });
-  }
-
-  await validateFields({
-    fields: collection.fields,
-    doc,
-    keys: Object.keys(doc),
-    ctx: toVexMutationCtx(args.ctx),
+  const { patch } = await prepareEdit<DataModel>({
+    ctx: args.ctx,
+    target: { kind: "collection", config: collection },
     config: args.config,
+    access: args.access,
+    auth: args.auth,
+    action: CRUD_ACTIONS.create,
+    changes: args.data,
   });
 
-  const data = stampUpdatedAt({ collection: args.collection, config: args.config, data: doc });
+  const data = stampUpdatedAt({ collection: args.collection, config: args.config, data: patch });
+
+  if (collection.versions.drafts) {
+    const status = collection.versions.defaultStatus;
+    const insertData = {
+      ...data,
+      vex_status: status,
+      ...(status === VERSION_STATUSES.published.key ? { vex_publishedAt: Date.now() } : {}),
+    };
+    if (status === VERSION_STATUSES.draft.key && args.config.access) {
+      hasPermission({
+        access: args.config.access,
+        user: args.auth?.user ?? null,
+        organization: args.auth?.organization,
+        resource: collection.slug,
+        action: DRAFT_ACTIONS.saveDraft,
+        data: insertData,
+        changes: args.data,
+        throwOnDenied: true,
+      });
+    }
+    const id = await args.ctx.db.insert(args.collection, insertData as never);
+    await createVersion({
+      ctx: args.ctx,
+      collection: args.collection,
+      documentId: id,
+      status,
+      snapshot: removeVexFields({ doc: data }),
+      publishedAt: insertData.vex_publishedAt,
+    });
+    return id;
+  }
+
   const id = await args.ctx.db.insert(args.collection, data as never);
   return id;
 }

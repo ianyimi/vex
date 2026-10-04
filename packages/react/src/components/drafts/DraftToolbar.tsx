@@ -10,7 +10,7 @@ export interface DraftToolbarAction {
   onClick: () => void;
   /** Shows the button's spinner while the mutation is in flight. */
   isPending: boolean;
-  /** Permission/state gate computed by the view (e.g. `!canSaveDraft`). */
+  /** Permission/state gate computed by the view (e.g. `!canEdit`). */
   disabled: boolean;
 }
 
@@ -43,7 +43,7 @@ export interface DraftToolbarProps {
  * ```tsx
  * <DraftToolbar
  *   status={isDraftDoc ? "draft" : "published"}
- *   saveDraft={{ onClick: handleSaveDraft, isPending: isSavingDraft, disabled: !canSaveDraft }}
+ *   saveDraft={{ onClick: handleSaveDraft, isPending: isSavingDraft, disabled: !canEdit }}
  * />
  * ```
  */

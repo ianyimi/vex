@@ -1,19 +1,13 @@
-import { createGetAuth } from "@vexcms/better-auth";
 import { mediaApi } from "@vexcms/core";
 
-import { TABLE_SLUG_SESSIONS, TABLE_SLUG_USERS } from "~/db/constants";
 import config from "~/vex.config.server";
 
 import { query } from "../_generated/server";
-import { vexMutation as mutation } from "../vex";
+import { getAuth, vexMutation as mutation } from "../vex";
 
 export const { getUrl, generateUploadUrl, createMediaDocument, deleteMedia } = mediaApi({
   config,
   query,
   mutation,
-  getAuth: createGetAuth({
-    userCollectionSlug: TABLE_SLUG_USERS,
-    sessionCollectionSlug: TABLE_SLUG_SESSIONS,
-    resolveOrgs: false,
-  }),
+  getAuth,
 });

@@ -644,13 +644,13 @@ async function bannerVersions(
 }
 
 /**
- * Draft-lifecycle coverage for `upsertGlobal` on a versioned global. Every
- * `upsertGlobal` call below targets `slug: "banner"`; `vex_globals` rows for
- * it are read back directly via `ctx.db.query("vex_globals")` — mirroring
- * the raw-row assertions the suites above already use.
+ * `upsertGlobal` on a versioned global now writes the PUBLISHED row
+ * directly, never a draft — the draft-lifecycle coverage this block used to
+ * hold moved to `api/versions/saveDraft.server.test.ts` (global target),
+ * since `saveDraft` is the only path that writes a global's draft row now.
  */
-describe("upsertGlobal (server) — versions.drafts", () => {
-  it("creates a single draft-only row on the first save of a versioned global", async () => {
+describe("upsertGlobal (server) — versions.drafts (published row)", () => {
+  it("inserts the published row on the first save of a versioned global", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       await upsertGlobal({
@@ -663,16 +663,16 @@ describe("upsertGlobal (server) — versions.drafts", () => {
 
     const rows = await bannerRows(t);
     expect(rows).toHaveLength(1);
-    expect(rows[0].vex_status).toBe("draft");
-    expect(rows[0].vex_publishedId).toBeUndefined();
+    expect(rows[0].vex_status).toBe("published");
+    expect(rows[0].vex_publishedAt).toBeTypeOf("number");
     expect(rows[0].data.message).toBe("Hello");
 
     const versions = await bannerVersions(t);
     expect(versions).toHaveLength(1);
-    expect(versions[0].status).toBe("draft");
+    expect(versions[0].status).toBe("published");
   });
 
-  it("bootstraps a draft row and snapshots the published state on first edit after publish", async () => {
+  it("writes the published row directly and leaves an active draft row untouched", async () => {
     const t = convexTest(schema, modules);
     const publishedId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
       ctx.db.insert("vex_globals", {
@@ -682,104 +682,37 @@ describe("upsertGlobal (server) — versions.drafts", () => {
         vex_publishedAt: 1700000000000,
       }),
     );
+    const draftId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Draft in progress" },
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      }),
+    );
 
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       await upsertGlobal({
         ctx,
         config: versionedFixtureConfig,
         slug: "banner",
-        data: { message: "Live, edited" },
+        data: { message: "Live, edited directly" },
       });
     });
 
     const rows = await bannerRows(t);
     expect(rows).toHaveLength(2);
     const published = rows.find((r) => r._id === publishedId);
-    const draft = rows.find((r) => r._id !== publishedId);
-    expect(published?.data.message).toBe("Live");
-    expect(draft?.vex_status).toBe("draft");
-    expect(draft?.vex_publishedId).toBe(publishedId);
-    expect(draft?.data.message).toBe("Live, edited");
+    const draft = rows.find((r) => r._id === draftId);
+    expect(published?.data.message).toBe("Live, edited directly");
+    expect(published?.vex_publishedAt).toBe(1700000000000);
+    // The draft row is byte-for-byte untouched.
+    expect(draft?.data.message).toBe("Draft in progress");
 
     const versions = await bannerVersions(t);
-    const publishedSnapshot = versions.find((v) => v.status === "published");
-    const draftSnapshot = versions.find((v) => v.status === "draft");
-    expect(publishedSnapshot?.snapshot).toEqual({ message: "Live" });
-    expect(draftSnapshot?.snapshot).toEqual({ message: "Live, edited" });
-  });
-
-  it("reuses the existing draft row on repeated saveDraft calls — at most one draft row per slug", async () => {
-    const t = convexTest(schema, modules);
-    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      await upsertGlobal({
-        ctx,
-        config: versionedFixtureConfig,
-        slug: "banner",
-        data: { message: "First" },
-      });
-    });
-    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      await upsertGlobal({
-        ctx,
-        config: versionedFixtureConfig,
-        slug: "banner",
-        data: { message: "Second" },
-      });
-    });
-
-    const rows = await bannerRows(t);
-    const drafts = rows.filter((r) => r.vex_status === "draft");
-    expect(drafts).toHaveLength(1);
-    expect(drafts[0].data.message).toBe("Second");
-  });
-
-  it("a role restricted via `changes` on one field gets the same restriction on saveDraft", async () => {
-    const restrictedConfig = {
-      globals: [versionedGlobal],
-      access: {
-        enabled: true,
-        roles: ["editor"],
-        defaultPermissionMode: "allow",
-        userCollectionSlug: "users",
-        userRolesField: "roles",
-        permissions: {
-          editor: {
-            banner: {
-              saveDraft: () => ({ "*": true, tone: false }),
-            },
-          },
-        },
-      },
-    } as unknown as VexConfig;
-    const auth = { user: { roles: ["editor"] } };
-    const t = convexTest(schema, modules);
-
-    // The stored data claims nothing yet; the DENYING payload is the one sending `tone`.
-    await expect(
-      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-        await upsertGlobal({
-          ctx,
-          config: restrictedConfig,
-          slug: "banner",
-          data: { tone: "loud" },
-          auth,
-        });
-      }),
-    ).rejects.toThrow();
-
-    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      await upsertGlobal({
-        ctx,
-        config: restrictedConfig,
-        slug: "banner",
-        data: { message: "ok" },
-        auth,
-      });
-    });
-
-    const rows = await bannerRows(t);
-    expect(rows).toHaveLength(1);
-    expect(rows[0].data.message).toBe("ok");
+    expect(versions).toHaveLength(1);
+    expect(versions[0].status).toBe("published");
+    expect(versions[0].snapshot).toEqual({ message: "Live, edited directly" });
   });
 });
 

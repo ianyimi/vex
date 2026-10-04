@@ -33,7 +33,7 @@ describe("prepareEdit", () => {
         target: { kind: "collection", config: posts },
         action: CRUD_ACTIONS.update,
         storedDoc: stored as never,
-        incoming: { slug: "changed" },
+        changes: { slug: "changed" },
         partial: true,
         validateKeys: "changed",
       });
@@ -51,7 +51,7 @@ describe("prepareEdit", () => {
         target: { kind: "collection", config: posts },
         action: CRUD_ACTIONS.update,
         storedDoc: stored as never,
-        incoming: { slug: "changed" },
+        changes: { slug: "changed" },
         partial: true,
         validateKeys: "changed",
       });
@@ -80,7 +80,7 @@ describe("prepareEdit", () => {
         target: { kind: "collection", config: postsWithHook },
         action: CRUD_ACTIONS.update,
         storedDoc: stored as never,
-        incoming: { title: "Brand New Title" },
+        changes: { title: "Brand New Title" },
         partial: true,
         validateKeys: "changed",
       });
@@ -102,7 +102,7 @@ describe("prepareEdit", () => {
           target: { kind: "collection", config: posts },
           action: CRUD_ACTIONS.update,
           storedDoc: undefined,
-          incoming: { title: "Only title, no slug" },
+          changes: { title: "Only title, no slug" },
           partial: true,
           validateKeys: "changed",
         }),
@@ -121,7 +121,7 @@ describe("prepareEdit", () => {
           target: { kind: "collection", config: posts },
           action: CRUD_ACTIONS.update,
           storedDoc: undefined,
-          incoming: { slug: "no-title" },
+          changes: { slug: "no-title" },
           partial: false,
           validateKeys: "all",
         });
@@ -162,7 +162,7 @@ describe("prepareEdit", () => {
         target: { kind: "collection", config: postsWithValidators },
         action: CRUD_ACTIONS.update,
         storedDoc: stored as never,
-        incoming: { slug: "changed" },
+        changes: { slug: "changed" },
         partial: true,
         validateKeys: "changed",
       });
@@ -197,7 +197,7 @@ describe("prepareEdit", () => {
         target: { kind: "collection", config: postsWithValidators },
         action: CRUD_ACTIONS.update,
         storedDoc: stored as never,
-        incoming: { title: "Updated" },
+        changes: { title: "Updated" },
         partial: false,
         validateKeys: "all",
       });
@@ -240,7 +240,7 @@ describe("prepareEdit", () => {
           action: CRUD_ACTIONS.update,
           auth: { user: { roles: ["blocked"] } },
           storedDoc: { title: "Old", slug: "old" } as never,
-          incoming: { title: "New" },
+          changes: { title: "New" },
           partial: true,
           validateKeys: "changed",
         }),
@@ -283,7 +283,7 @@ describe("prepareEdit — global targets", () => {
         target: { kind: "global", config: siteSettings },
         action: CRUD_ACTIONS.create,
         storedDoc: undefined,
-        incoming: { title: "hello" },
+        changes: { title: "hello" },
         partial: false,
         validateKeys: "all",
       });
@@ -292,7 +292,7 @@ describe("prepareEdit — global targets", () => {
     });
   });
 
-  test("operation is \"create\" when action is CRUD_ACTIONS.create, \"update\" otherwise", async () => {
+  test('operation is "create" when action is CRUD_ACTIONS.create, "update" otherwise', async () => {
     const seenOperations: string[] = [];
     const recordingGlobal = defineGlobal({
       slug: "siteSettings",
@@ -314,7 +314,7 @@ describe("prepareEdit — global targets", () => {
         target: { kind: "global", config: recordingGlobal },
         action: CRUD_ACTIONS.create,
         storedDoc: undefined,
-        incoming: { title: "a" },
+        changes: { title: "a" },
         partial: false,
         validateKeys: "all",
       });
@@ -324,7 +324,7 @@ describe("prepareEdit — global targets", () => {
         target: { kind: "global", config: recordingGlobal },
         action: CRUD_ACTIONS.update,
         storedDoc: { title: "a" } as never,
-        incoming: { title: "b" },
+        changes: { title: "b" },
         partial: true,
         validateKeys: "changed",
       });
@@ -346,7 +346,7 @@ describe("prepareEdit — global targets", () => {
           // `beforeChange` runs before `validate()` — `prepareEdit` validates
           // `transformedFields`, the POST-`beforeChange` document — so the
           // fixture's `validate` must check the UPPERCASED value "bad" becomes.
-          incoming: { title: "bad" },
+          changes: { title: "bad" },
           partial: false,
           validateKeys: "all",
         });

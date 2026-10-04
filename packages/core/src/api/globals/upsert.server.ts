@@ -2,7 +2,7 @@ import { ConvexError } from "convex/values";
 import type { GenericDataModel } from "convex/server";
 
 import type { GlobalSlug, CollectionSlug } from "../../types/generated";
-import { CRUD_ACTIONS, DRAFT_ACTIONS } from "../../access";
+import { CRUD_ACTIONS } from "../../access";
 import { GenericGlobalsMutationServerArgs } from "./types";
 import { prepareEdit } from "../prepareEdit";
 import { createVersion } from "../../versions/model";
@@ -39,18 +39,14 @@ export interface UpsertGlobalServerArgs<
  * onto the stored document, validates against the global's Zod schema, and
  * patches only the changed fields (inserts on first save).
  *
- * **Versioned global** (`versions.drafts` is `true`): the two-row draft model
- * (design-review §1, §9) applies with `vex_globals` as the shared table — a
- * published row and, while a draft is active, a draft row, BOTH carrying the
- * same `slug`, distinguished by `vex_status`/`vex_publishedId` exactly as a
- * versioned collection's own table distinguishes them. Every write is a
- * draft save: it authorizes `saveDraft` with `changes: <incoming payload>`
- * (never the stored row — the correction this whole re-scope makes) and
- * records history via `createVersion({ collection: "vex_globals",
- * documentId: slug, ... })`. Unlike a collection's flat row, a global's
- * `data: v.any()` blob never carries `_id`/`vex_*` columns, so there is
- * nothing for `extractUserFields` to strip before a snapshot — `data`
- * itself (or the Zod-validated merge of it) IS the clean snapshot.
+ * **Versioned global** (`versions.drafts` is `true`): writes the PUBLISHED
+ * row directly — the slug's row whose `vex_status !== "draft"` — exactly as
+ * `update()` writes a versioned collection's published row. Inserts it with
+ * `vex_status: "published"` and `vex_publishedAt: Date.now()` when no
+ * published row exists yet; records a `"published"`-status history row via
+ * `createVersion({ collection: "vex_globals", documentId: slug, ... })`.
+ * NEVER touches a global's draft row — `saveDraft`
+ * (`api/versions/saveDraft.server.ts`) is the only path that writes it.
  *
  * Throws `ConvexError` on Zod validation failure with a structured `errors`
  * payload. Server-side only. Import from `@vexcms/core/server`.
@@ -58,14 +54,14 @@ export interface UpsertGlobalServerArgs<
  * @typeParam DataModel - Convex data model.
  * @typeParam TSlug - Global slug.
  * @param props - `{ ctx, slug, data, config }`.
- * @returns The `_id` of the written `vex_globals` row, as a string — for a
- *   versioned global, the draft row's.
+ * @returns The `_id` of the written `vex_globals` row, as a string — the
+ *   published row's, for both a versioned and non-versioned global.
  *
  * @example
  * ```ts
  * import { upsertGlobal } from "@vexcms/core/server";
  *
- * const draftId = await upsertGlobal({
+ * const id = await upsertGlobal({
  *   ctx,
  *   slug: "siteSettings",
  *   data: { siteName: "New Name" },
@@ -107,8 +103,7 @@ export async function upsertGlobal<
       access: props.access,
       auth: props.auth,
       storedDoc: row ? (toStored(row) as never) : undefined,
-      incoming: userFields,
-      partial: false,
+      changes: userFields,
       validateKeys: "changed",
     });
     if (row) {
@@ -124,71 +119,53 @@ export async function upsertGlobal<
     return id as string;
   }
 
+  // Versioned global: writes the PUBLISHED row directly — the slug's row
+  // whose `vex_status !== "draft"` — and never touches the draft row, if
+  // one is active. `saveDraft` (`api/versions/saveDraft.server.ts`) is the
+  // only path that writes a global's draft row.
   const publishedRow = rows.find((r) => r.vex_status !== VERSION_STATUSES.draft.key);
-  const draftRow = rows.find((r) => r.vex_status === VERSION_STATUSES.draft.key);
-  const targetRow = draftRow ?? publishedRow;
 
   const { patch } = await prepareEdit({
     ctx: props.ctx,
     config: props.config,
     target: { kind: "global", config: globalConfig },
-    action: DRAFT_ACTIONS.saveDraft,
+    action: publishedRow ? CRUD_ACTIONS.update : CRUD_ACTIONS.create,
     access: props.access,
     auth: props.auth,
-    storedDoc: targetRow ? (toStored(targetRow) as never) : undefined,
-    incoming: userFields,
-    partial: true,
+    storedDoc: publishedRow ? (toStored(publishedRow) as never) : undefined,
+    changes: userFields,
+    partial: false,
     validateKeys: "changed",
   });
 
-  const nextData = { ...((targetRow?.data as Record<string, unknown>) ?? {}), ...patch };
-
-  if (!targetRow) {
-    const id = await props.ctx.db.insert("vex_globals", {
-      slug: props.slug,
-      data: nextData,
-      vex_status: VERSION_STATUSES.draft.key,
-    } as never);
+  if (publishedRow) {
+    const nextData = { ...((publishedRow.data as Record<string, unknown>) ?? {}), ...patch };
+    await props.ctx.db.patch(publishedRow._id as never, { data: nextData } as never);
     await createVersion({
       ctx: props.ctx,
       collection: "vex_globals" as CollectionSlug,
       documentId: props.slug,
-      status: VERSION_STATUSES.draft.key,
+      status: VERSION_STATUSES.published.key,
       snapshot: nextData,
+      publishedAt: publishedRow.vex_publishedAt as number | undefined,
     });
-    return id as string;
+    return publishedRow._id as string;
   }
 
-  let draftId: string;
-  if (draftRow) {
-    await props.ctx.db.patch(draftRow._id as never, { data: nextData } as never);
-    draftId = draftRow._id as string;
-  } else {
-    // `publishedRow` exists with no draft yet — snapshot the published state
-    // BEFORE bootstrapping the draft row, so the pre-edit value is recoverable.
-    await createVersion({
-      ctx: props.ctx,
-      collection: "vex_globals" as CollectionSlug,
-      documentId: props.slug,
-      status: "published",
-      snapshot: publishedRow!.data as Record<string, unknown>,
-      publishedAt: publishedRow!.vex_publishedAt as number | undefined,
-    });
-    draftId = (await props.ctx.db.insert("vex_globals", {
-      slug: props.slug,
-      data: nextData,
-      vex_status: "draft",
-      vex_publishedId: publishedRow!._id,
-    } as never)) as string;
-  }
-
+  const publishedAt = Date.now();
+  const id = await props.ctx.db.insert("vex_globals", {
+    slug: props.slug,
+    data: patch,
+    vex_status: VERSION_STATUSES.published.key,
+    vex_publishedAt: publishedAt,
+  } as never);
   await createVersion({
     ctx: props.ctx,
     collection: "vex_globals" as CollectionSlug,
     documentId: props.slug,
-    status: "draft",
-    snapshot: nextData,
+    status: VERSION_STATUSES.published.key,
+    snapshot: patch,
+    publishedAt,
   });
-
-  return draftId;
+  return id as string;
 }

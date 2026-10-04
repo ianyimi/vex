@@ -8,7 +8,7 @@ import {
   GenericQueryCtx,
   GenericMutationCtx,
 } from "convex/server";
-import { GenericId, v } from "convex/values";
+import { ConvexError, GenericId, v } from "convex/values";
 import type { VexConfig } from "../config";
 import type {
   CollectionSlug,
@@ -722,21 +722,42 @@ export function versionsApi<
 
   return {
     saveDraft: mutation({
+      // Convex requires a function's top-level args to be an object
+      // validator, so the `{ collection, id } | { global }` union is
+      // enforced here instead; `VexSaveDraftArgs` keeps it on the client.
       args: {
-        collection: v.string(),
-        id: v.string(),
+        collection: v.optional(v.string()),
+        id: v.optional(v.string()),
+        global: v.optional(v.string()),
         data: v.any(),
         restoredFrom: v.optional(v.number()),
         environmentId: v.optional(v.string()),
       },
       handler: async (ctx, args) => {
+        const isCollection = args.collection !== undefined && args.id !== undefined;
+        const isGlobal = args.global !== undefined;
+        if (isCollection === isGlobal) {
+          throw new ConvexError(
+            "saveDraft takes either { collection, id } or { global }, not both or neither",
+          );
+        }
         const auth = await resolveGetAuth({ ctx, config, getAuth });
+        if (args.collection !== undefined && args.id !== undefined) {
+          return saveDraft({
+            auth,
+            ctx,
+            config,
+            collection: args.collection as CollectionSlug,
+            id: args.id as GenericId<CollectionSlug>,
+            data: args.data,
+            restoredFrom: args.restoredFrom,
+          });
+        }
         return saveDraft({
           auth,
           ctx,
           config,
-          collection: args.collection as CollectionSlug,
-          id: args.id as GenericId<CollectionSlug>,
+          global: args.global as GlobalSlug,
           data: args.data,
           restoredFrom: args.restoredFrom,
         });
