@@ -31,6 +31,10 @@ import type { VexResourceSlug } from "../../types/generated";
  *
  * @param props - Input props.
  * @param props.field - The resolved array field definition
+ * @param props.ignoreRequired - Forwarded to the recursive
+ *   `adminFieldToInputSchema({ field: field.items })` call so a draft-lenient
+ *   pass (`getFieldsInputSchema`'s `ignoreRequired`) reaches every item, not
+ *   just this array's own `required` check.
  * @returns A Zod array schema with item count constraints and optionality applied
  *
  * @example
@@ -53,14 +57,20 @@ import type { VexResourceSlug } from "../../types/generated";
 export function arrayFieldToInputSchema<
   TArrayType extends ArrayType = string,
   TFieldMeta extends {} = {},
->(props: { field: ArrayField<VexResourceSlug, TArrayType, TFieldMeta> }): ZodType {
+>(props: {
+  field: ArrayField<VexResourceSlug, TArrayType, TFieldMeta>;
+  ignoreRequired?: boolean;
+}): ZodType {
   const { field } = props;
 
   const fieldMinError = field.min?.error ?? "This field is too short.";
   const fieldMaxError = field.max?.error ?? "This field is too long.";
   const requiredError = "This field is required.";
 
-  const itemsInputSchema = adminFieldToInputSchema({ field: field.items });
+  const itemsInputSchema = adminFieldToInputSchema({
+    field: field.items,
+    ignoreRequired: props.ignoreRequired,
+  });
 
   let arraySchema = field.required
     ? z.array(itemsInputSchema, { error: requiredError }).min(1, requiredError)

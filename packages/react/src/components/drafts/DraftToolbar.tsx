@@ -24,6 +24,11 @@ export interface DraftToolbarProps {
   status: VexVersionStatus | undefined;
   /** Save Draft button wiring. */
   saveDraft: DraftToolbarAction;
+  /**
+   * Publish button wiring. Omitted → the button is not rendered (a
+   * versioned global with no stored row has nothing to publish yet).
+   */
+  publish?: DraftToolbarAction;
 }
 
 /**
@@ -61,6 +66,17 @@ export function DraftToolbar(props: DraftToolbarProps) {
       >
         Save Draft
       </Button>
+      {props.publish && (
+        <Button
+          type="button"
+          className="transition-all duration-300"
+          isPending={props.publish.isPending}
+          disabled={props.publish.disabled}
+          onClick={props.publish.onClick}
+        >
+          Publish
+        </Button>
+      )}
     </>
   );
 }

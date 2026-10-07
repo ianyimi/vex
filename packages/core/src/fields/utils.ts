@@ -79,9 +79,18 @@ export function adminFieldToJSDocComment(props: { field: AdminField }): string {
  * global's `fields`. Hidden fields are skipped.
  *
  * @param props.fields - The resource's resolved field map.
- * @param props.partial - When true, every field becomes optional
+ * @param props.partial - When true, every TOP-LEVEL field becomes optional
  *   (`update`/`saveDraft`'s lenient mode); omit for strict, full-schema
  *   validation (`create`, `publish` — decision 4).
+ * @param props.ignoreRequired - When true, every field — at every nesting
+ *   depth (group sub-fields, array items, blocks' block fields, and any
+ *   further recursion) — is built as if `required: false` (forwarded to
+ *   `adminFieldToInputSchema`'s own `ignoreRequired`). A configured
+ *   `min`/`max` still applies to a non-empty value exactly as it does for an
+ *   optional field today; only the "must be present/non-empty" check
+ *   `required` itself adds is skipped. `saveDraft` sets this — a draft may
+ *   leave a required field empty at any depth; `publish`/`create`/`update`
+ *   do not.
  * @returns The object schema.
  *
  * @example
@@ -92,11 +101,15 @@ export function adminFieldToJSDocComment(props: { field: AdminField }): string {
 export function getFieldsInputSchema(props: {
   fields: Record<string, AdminField>;
   partial?: boolean;
+  ignoreRequired?: boolean;
 }) {
   const res: Record<string, ZodType> = {};
   for (const [fieldKey, fieldDef] of Object.entries(props.fields)) {
     if (fieldDef.admin.hidden) continue;
-    res[fieldKey] = adminFieldToInputSchema({ field: fieldDef });
+    res[fieldKey] = adminFieldToInputSchema({
+      field: fieldDef,
+      ignoreRequired: props.ignoreRequired,
+    });
   }
   const schema = z.object({ ...res });
   return props.partial ? schema.partial() : schema;

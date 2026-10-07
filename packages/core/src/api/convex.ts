@@ -282,6 +282,22 @@ export type VexSaveDraftArgs = {
     }
 );
 
+/** Args for `api.vex.versions.publish`. */
+export type VexPublishArgs =
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      collection: string;
+      id: string;
+      environmentId?: string;
+    }
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      global: string;
+      environmentId?: string;
+    };
+
 /**
  * Typed `anyApi` references to the VexCMS generic Convex collection functions.
  *
@@ -455,6 +471,12 @@ export const vexConvexApi = {
       "mutation",
       "public",
       VexSaveDraftArgs,
+      string
+    >,
+    publish: anyApi.vex.versions.publish as FunctionReference<
+      "mutation",
+      "public",
+      VexPublishArgs,
       string
     >,
   },

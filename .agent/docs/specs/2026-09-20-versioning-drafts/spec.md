@@ -128,6 +128,18 @@ is in `spec-tasks.md`'s header.
    public sees and must satisfy the collection's real constraints, so `publish` re-runs
    full `create`-strength validation over the merged document and rejects, naming the
    missing field, before promoting.
+   **Follow-up fix:** `.partial()` alone only ever made TOP-LEVEL field keys optional —
+   a required field nested inside a `group`, an `array` item, or a `blocks` block field
+   still baked in its own `.min(1, "This field is required.")`/non-empty check
+   regardless of `partial`, so a draft could not save with, say, a required text field
+   inside a group left empty. `getFieldsInputSchema`/`adminFieldToInputSchema`
+   (`fields/inputSchemas/index.ts`) gained an `ignoreRequired?: boolean` parameter,
+   forwarded recursively through `arrayFieldToInputSchema`/`groupFieldToInputSchema`/
+   `blocksFieldToInputSchema`'s own sub-field calls, that rebuilds every field at every
+   depth as if `required: false` (via `{ ...field, required: false }`, not duplicated
+   builder logic) — `min`/`max` on a non-empty value still apply exactly as for an
+   optional field today. `prepareEdit` sets `ignoreRequired: action === DRAFT_ACTIONS.saveDraft`;
+   `publish`/`create`/`update` are unaffected.
 5. **Unbounded version history in this spec; no `maxPerDoc` cap.** Matches
    `design-review.md` §6.3's own conclusion: history rows are read only when the
    history menu opens, never on the public path or in a list query — growth is a
@@ -3494,15 +3506,24 @@ Decisions (ADR-014, superseding globals-spec D21 for these pieces):
 
 1 edit — new resource-agnostic schema builder, replacing `getCollectionInputSchema` (`collections/utils.ts`) and `getGlobalInputSchema` (`globals/utils.ts`). Both were the same loop over a field map, so the builder lives with the field-level utilities it composes rather than under either resource kind (ADR-014, superseding D21 for this helper). Add `import { z, type ZodType } from "zod";` and `import { adminFieldToInputSchema } from "./inputSchemas";`.
 
+**Follow-up fix (decision 4):** `getFieldsInputSchema`/`adminFieldToInputSchema` gained
+an `ignoreRequired?: boolean` parameter so a draft-lenient pass reaches `required`
+checks nested inside `group`/`array`/`blocks` fields, not just top-level keys:
+
 ````ts
 /**
  * Builds the Zod input schema for a field map — a collection's or a
  * global's `fields`. Hidden fields are skipped.
  *
  * @param props.fields - The resource's resolved field map.
- * @param props.partial - When true, every field becomes optional
+ * @param props.partial - When true, every TOP-LEVEL field becomes optional
  *   (`update`/`saveDraft`'s lenient mode); omit for strict, full-schema
  *   validation (`create`, `publish` — decision 4).
+ * @param props.ignoreRequired - When true, every field — at every nesting
+ *   depth (group sub-fields, array items, blocks' block fields, and any
+ *   further recursion) — is built as if `required: false` (forwarded to
+ *   `adminFieldToInputSchema`'s own `ignoreRequired`). `saveDraft` sets this;
+ *   `publish`/`create`/`update` do not.
  * @returns The object schema.
  *
  * @example
@@ -3513,16 +3534,30 @@ Decisions (ADR-014, superseding globals-spec D21 for these pieces):
 export function getFieldsInputSchema(props: {
   fields: Record<string, AdminField>;
   partial?: boolean;
+  ignoreRequired?: boolean;
 }) {
   const res: Record<string, ZodType> = {};
   for (const [fieldKey, fieldDef] of Object.entries(props.fields)) {
     if (fieldDef.admin.hidden) continue;
-    res[fieldKey] = adminFieldToInputSchema({ field: fieldDef });
+    res[fieldKey] = adminFieldToInputSchema({
+      field: fieldDef,
+      ignoreRequired: props.ignoreRequired,
+    });
   }
   const schema = z.object({ ...res });
   return props.partial ? schema.partial() : schema;
 }
 ````
+
+`adminFieldToInputSchema({ field, ignoreRequired? })` (`fields/inputSchemas/index.ts`)
+overrides `field.required` to `false` before dispatching to the per-type builder
+(`{ ...field, required: false }`, not duplicated builder logic), and forwards
+`ignoreRequired` into `arrayFieldToInputSchema`/`groupFieldToInputSchema`/
+`blocksFieldToInputSchema`'s own recursive `adminFieldToInputSchema({ field: subField })`
+calls, so the override reaches every nesting depth. `applyBaseInputSchemaMeta` always
+wraps a non-required field's schema in `.optional()` as the OUTERMOST layer, which Zod
+short-circuits on an omitted key before running that field's own `.default()` — so an
+omitted key stays omitted rather than being replaced by a default, at any depth.
 
 Export it from the `fields` barrel beside `adminFieldToInputSchema`.
 

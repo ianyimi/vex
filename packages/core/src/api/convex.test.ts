@@ -1,8 +1,4 @@
-import type {
-  GenericDataModel,
-  MutationBuilder,
-  QueryBuilder,
-} from "convex/server";
+import type { GenericDataModel, MutationBuilder, QueryBuilder } from "convex/server";
 import { describe, expect, test } from "vitest";
 
 import type { VexConfig } from "../config";
@@ -13,16 +9,13 @@ import { versionsApi } from "./server";
 // handler, so an identity function stands in for Convex's real `query`/
 // `mutation` — this tests which keys get registered, not handler behavior
 // (that's covered by each operation's own `.server.test.ts`).
-const mockQuery = ((def: unknown) => def) as unknown as QueryBuilder<
-  GenericDataModel,
-  "public"
->;
+const mockQuery = ((def: unknown) => def) as unknown as QueryBuilder<GenericDataModel, "public">;
 const mockMutation = ((def: unknown) => def) as unknown as MutationBuilder<
   GenericDataModel,
   "public"
 >;
 
-const REGISTERED_OPERATION_NAMES = ["saveDraft"].sort();
+const REGISTERED_OPERATION_NAMES = ["saveDraft", "publish"].sort();
 
 const unversionedPosts = defineCollection({
   slug: "posts",

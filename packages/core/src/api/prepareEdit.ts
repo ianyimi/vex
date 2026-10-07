@@ -25,7 +25,13 @@ export interface PrepareEditProps<DataModel extends GenericDataModel> {
   config: VexConfig;
   /** The collection or global this write targets. `config.slug` is the permission resource. */
   target: CollectionOrGlobal;
-  /** The permission action this write checks under. */
+  /**
+   * The permission action this write checks under. Also selects schema
+   * strictness: `DRAFT_ACTIONS.saveDraft` builds the input schema with
+   * `ignoreRequired: true` (`getFieldsInputSchema`) — a draft may leave a
+   * required field empty at any nesting depth; every other action validates
+   * `required` normally.
+   */
   action:
     | typeof CRUD_ACTIONS.create
     | typeof CRUD_ACTIONS.update
@@ -139,6 +145,7 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
   const parsed = getFieldsInputSchema({
     fields: props.target.config.fields,
     partial: props.partial ?? false,
+    ignoreRequired: props.action === DRAFT_ACTIONS.saveDraft,
   }).safeParse(transformedFields);
   if (!parsed.success) {
     throw new ConvexError({ message: "Validation failed", errors: parsed.error.message });

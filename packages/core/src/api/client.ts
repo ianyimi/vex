@@ -32,8 +32,7 @@ export type { GetGlobalReturn } from "./globals/get.server";
 
 // GLOBALS API
 
-export { getGlobal } from "./globals/get.client";
-export type { GetGlobalClientArgs } from "./globals/get.client";
+export { getGlobal, type GetGlobalClientArgs } from "./globals/get.client";
 
 export { findGlobals } from "./globals/find.client";
 
@@ -41,5 +40,6 @@ export { updateGlobal } from "./globals/upsert.client";
 
 // VERSIONS API
 
-export { saveDraft } from "./versions/saveDraft.client";
-export type { SaveDraftClientArgs } from "./versions/saveDraft.client";
+export { saveDraft, type SaveDraftClientArgs } from "./versions/saveDraft.client";
+
+export { publish, type PublishClientArgs } from "./versions/publish.client";

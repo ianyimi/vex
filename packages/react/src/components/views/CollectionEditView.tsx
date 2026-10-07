@@ -39,7 +39,7 @@ import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
 import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
 import { useLivePreviewServerUrl } from "../../hooks/useLivePreviewServerUrl";
 import { DraftToolbar } from "../drafts";
-import { getVexErrorMessage } from "../../lib/errors";
+import { applyVexFieldErrors, getVexErrorMessage } from "../../lib/errors";
 import { toast } from "sonner";
 
 /**
@@ -118,6 +118,59 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
     mutationFn: vexConvexApi.update,
     operation: CRUD_ACTIONS.update,
   });
+
+  const { mutateAsync: publishMutation, isPending: isPublishing } = useVexMutation({
+    collection: collection.slug,
+    errorToast: { message: "Publish failed" },
+    getChanges: () => [{ after: { ...currentDocument, ...form.state.values } }],
+    mutationFn: vexConvexApi.versions.publish,
+    operation: "publish",
+  });
+
+  const canPublish = usePermission({
+    resource: collection.slug,
+    action: DRAFT_ACTIONS.publish,
+    data: currentDocument,
+  });
+
+  /**
+   * Publishes the currently-open draft, promoting its fields onto the
+   * published row. `versions.publish` takes no `data` of its own, so any
+   * not-yet-saved form edits are saved as a draft FIRST (reusing
+   * `saveDraftMutation`, the same call Save Draft makes), then promoted —
+   * two separate `try`/`catch`es, since a save-draft failure (rare, lenient
+   * validation) gets the same manual toast `handleSaveDraft` gives it, while
+   * a publish failure (Step 9's strict-validation rejection) is surfaced as
+   * field-level errors via {@link applyVexFieldErrors}, reusing the same
+   * `FormError` display every field input already renders through.
+   *
+   * @returns Promise resolving once publish completes (or rejects).
+   * @throws Never — every rejection is caught, handled, and never re-thrown.
+   */
+  async function handlePublish(): Promise<void> {
+    const changes = changedValues(form);
+    let targetId = activeDocumentId;
+    if (Object.keys(changes).length > 0) {
+      try {
+        targetId = await saveDraftMutation({
+          collection: collection!.slug,
+          id: activeDocumentId,
+          data: changes,
+        });
+        setActiveDocumentId(targetId);
+      } catch (error) {
+        toast.error("Save draft failed", { description: getVexErrorMessage(error) });
+        return;
+      }
+    }
+    try {
+      const publishedId = await publishMutation({ collection: collection!.slug, id: targetId });
+      setActiveDocumentId(publishedId);
+      form.reset();
+    } catch (error) {
+      applyVexFieldErrors(form, error);
+    }
+  }
 
   // Bypasses `useVexMutation` deliberately: that hook's `operation` param is
   // typed `VexMutationOperation` (`"create" | "remove" | "update" | "upsert"`
@@ -318,6 +371,11 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
                     onClick: handleSaveDraft,
                     isPending: isSavingDraft,
                     disabled: !canEdit || isDefaultValue,
+                  }}
+                  publish={{
+                    onClick: handlePublish,
+                    isPending: isPublishing,
+                    disabled: !canPublish || !isDraftDoc,
                   }}
                 />
               ) : (

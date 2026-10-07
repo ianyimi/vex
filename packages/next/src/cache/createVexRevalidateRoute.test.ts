@@ -1,5 +1,11 @@
-import type { VexConfig, VexDocument, VexRevalidateChange, VexRouteMapper } from "@vexcms/core";
-import type { VexRevalidateResponse } from "@vexcms/core";
+import type {
+  VexConfig,
+  VexDocument,
+  VexRevalidateChange,
+  VexRevalidateResponse,
+  VexRouteMapper,
+} from "@vexcms/core";
+
 import { defineAccess, defineCollection, text, VEX_REVALIDATE_BATCH_SIZE } from "@vexcms/core";
 import { revalidatePath } from "next/cache";
 import { NextRequest } from "next/server";
@@ -44,6 +50,16 @@ function makeConfig(overrides: Partial<VexConfig> = {}): VexConfig {
 }
 
 /**
+ * Builds a page document with the given slug.
+ *
+ * @param slug - The document's slug.
+ * @returns A minimal document shaped like a real `pages` row.
+ */
+function page(slug: string): VexDocument {
+  return { _creationTime: 1, _id: `d-${slug}`, slug };
+}
+
+/**
  * Builds a POST request carrying `body` as JSON.
  *
  * @param body - The request payload.
@@ -55,16 +71,6 @@ function postRequest(body: unknown): NextRequest {
     headers: { "content-type": "application/json" },
     method: "POST",
   });
-}
-
-/**
- * Builds a page document with the given slug.
- *
- * @param slug - The document's slug.
- * @returns A minimal document shaped like a real `pages` row.
- */
-function page(slug: string): VexDocument {
-  return { _creationTime: 1, _id: `d-${slug}`, slug } as unknown as VexDocument;
 }
 
 const signedInEditor = {
@@ -324,5 +330,39 @@ describe("createVexRevalidateRoute", () => {
     const response = await route.POST(request);
 
     expect(response.status).toBe(400);
+  });
+
+  it('maps operation "publish" to the update permission + purge action', async () => {
+    const route = createVexRevalidateRoute({ config: makeConfig(), ...signedInEditor });
+
+    const response = await route.POST(
+      postRequest({
+        changes: [{ after: page("new-page") }],
+        collection: "pages",
+        operation: "publish",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as VexRevalidateResponse;
+    expect(body.revalidated).toEqual(["/pages/new-page"]);
+  });
+
+  it('returns 403 for operation "publish" when the caller lacks update', async () => {
+    const route = createVexRevalidateRoute({
+      config: makeConfig(),
+      getAuth: async () => ({ user: viewerUser }),
+      getToken: async () => "token",
+    });
+
+    const response = await route.POST(
+      postRequest({
+        changes: [{ after: page("new-page") }],
+        collection: "pages",
+        operation: "publish",
+      }),
+    );
+
+    expect(response.status).toBe(403);
   });
 });

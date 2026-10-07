@@ -27,12 +27,18 @@ import type { VexResourceSlug } from "../../types/generated";
  *
  * @param props - Input props.
  * @param props.field - The resolved blocks field definition.
+ * @param props.ignoreRequired - Forwarded to every recursive
+ *   `adminFieldToInputSchema({ field: subField })` call (one per block's own
+ *   sub-fields) so a draft-lenient pass (`getFieldsInputSchema`'s
+ *   `ignoreRequired`) reaches every block field, not just this field's own
+ *   `required` check.
  * @returns A Zod array schema with discriminated-union items.
  *
  * @internal — Used by admin form schema construction via `adminFieldToInputSchema`.
  */
 export function blocksFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
   field: BlocksField<VexResourceSlug, TFieldMeta>;
+  ignoreRequired?: boolean;
 }): ZodType {
   const { field } = props;
 
@@ -40,7 +46,7 @@ export function blocksFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
     const userSubSchemas = Object.fromEntries(
       Object.entries(block.fields).map(([key, subField]) => [
         key,
-        adminFieldToInputSchema({ field: subField }),
+        adminFieldToInputSchema({ field: subField, ignoreRequired: props.ignoreRequired }),
       ]),
     );
     return z.object({

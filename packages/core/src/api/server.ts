@@ -49,6 +49,7 @@ import { getGlobal } from "./globals/get.server";
 import { findGlobals } from "./globals/find.server";
 import { upsertGlobal } from "./globals/upsert.server";
 import { saveDraft } from "./versions/saveDraft.server";
+import { publish } from "./versions/publish.server";
 import { VexGlobalsGetArgs } from "./convex";
 import { VexAccessConfigError } from "../access";
 import { VexApiAuth } from "./types";
@@ -85,6 +86,7 @@ export { upsertGlobal } from "./globals/upsert.server";
 export type { UpsertGlobalServerArgs } from "./globals/upsert.server";
 
 export { type SaveDraftServerArgs, saveDraft } from "./versions/saveDraft.server";
+export { type PublishServerArgs, publish } from "./versions/publish.server";
 
 export { createVexMutations } from "./triggers";
 
@@ -763,7 +765,39 @@ export function versionsApi<
         });
       },
     }),
-    // Step 8 appends `publish`, Step 10 `unpublish`,
+    publish: mutation({
+      args: {
+        collection: v.optional(v.string()),
+        id: v.optional(v.string()),
+        global: v.optional(v.string()),
+        environmentId: v.optional(v.string()),
+      },
+      handler: async (ctx, args) => {
+        const isCollection = args.collection !== undefined && args.id !== undefined;
+        const isGlobal = args.global !== undefined;
+        if (isCollection === isGlobal) {
+          throw new ConvexError(
+            "publish takes either { collection, id } or { global }, not both or neither",
+          );
+        }
+        const auth = await resolveGetAuth({ ctx, config, getAuth });
+        if (args.collection !== undefined && args.id !== undefined) {
+          return publish({
+            auth,
+            ctx,
+            config,
+            collection: args.collection as CollectionSlug,
+            id: args.id as GenericId<CollectionSlug>,
+          });
+        }
+        return publish({
+          auth,
+          ctx,
+          config,
+          global: args.global as GlobalSlug,
+        });
+      },
+    }),
     // Step 16 `listVersions` / `getVersionSnapshot` / `deleteVersion`.
   };
 }

@@ -36,7 +36,7 @@ import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
 import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
 import { useLivePreviewServerUrl } from "../../hooks/useLivePreviewServerUrl";
 import { DraftToolbar } from "../drafts";
-import { getVexErrorMessage } from "../../lib/errors";
+import { applyVexFieldErrors, getVexErrorMessage } from "../../lib/errors";
 import { toast } from "sonner";
 
 /**
@@ -82,21 +82,58 @@ export function GlobalEditView(props: GlobalEditViewProps) {
 
   const { mutateAsync, isPending } = useVexMutation({
     collection: global.slug,
-    // A global has no per-document identity, so one change carrying the
-    // upserted data is enough — a global's mapper keys on the slug, which
-    // travels as `collection`. Merged with the loaded document (like
-    // `CollectionEditView`'s own `getChanges`) so a partial diff still
-    // resolves revalidation targets from the full post-write state.
     getChanges: ({ args }) => [{ after: { ...(globalDoc ?? {}), ...args.data } }],
     mutationFn: vexConvexApi.globals.upsert,
     operation: "upsert",
   });
 
-  // Bypasses `useVexMutation` deliberately: that hook's `operation` param is
-  // typed `VexMutationOperation` (`"create" | "remove" | "update" | "upsert"`),
-  // which has no draft-workflow member, and nothing wires draft saves into
-  // the ISR-purge pipeline `useVexMutation` exists for. Mirrors
-  // `CollectionEditView`'s own `saveDraftMutation`.
+  const { mutateAsync: publishMutation, isPending: isPublishing } = useVexMutation({
+    collection: global.slug,
+    errorToast: { message: "Publish failed" },
+    getChanges: () => [{ after: { ...(globalDoc ?? {}), ...form.state.values } }],
+    mutationFn: vexConvexApi.versions.publish,
+    operation: "publish",
+  });
+
+  const canPublish = usePermission({
+    resource: global.slug,
+    action: DRAFT_ACTIONS.publish,
+    data: globalDoc as {},
+  });
+
+  /**
+   * Promotes the active draft row to published. `versions.publish` takes no
+   * `data` of its own, so any not-yet-saved form edits are saved as a draft
+   * FIRST (reusing `saveDraftMutation`), then promoted — clicking Publish
+   * directly, without a prior Save Draft click, still captures them.
+   *
+   * @returns Promise resolving once publish completes (or rejects).
+   * @throws Never — every rejection is caught, handled, and never re-thrown.
+   */
+  async function handlePublish(): Promise<void> {
+    const changes = globalDoc
+      ? changedValues(form)
+      : (form.state.values as Record<string, unknown>);
+    if (Object.keys(changes).length > 0) {
+      try {
+        await saveDraftMutation({ global: global!.slug, data: changes });
+      } catch (error) {
+        toast.error("Save draft failed", { description: getVexErrorMessage(error) });
+        return;
+      }
+    }
+    try {
+      await publishMutation({ global: global!.slug });
+      form.reset();
+    } catch (error) {
+      applyVexFieldErrors(form, error);
+    }
+    // On success the `globals.get` query refetches with `vex_status:
+    // "published"`: Publish disables. `!isDraftDoc` already disables the
+    // calling button otherwise — publish is only reachable while viewing a
+    // draft row.
+  }
+
   const { mutateAsync: saveDraftMutation, isPending: isSavingDraft } = useMutation({
     mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
   });
@@ -115,9 +152,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
    */
   async function handleSaveDraft(): Promise<void> {
     try {
-      const data = globalDoc
-        ? changedValues(form)
-        : (form.state.values as Record<string, unknown>);
+      const data = globalDoc ? changedValues(form) : (form.state.values as Record<string, unknown>);
       await saveDraftMutation({ global: global!.slug, data });
       form.reset();
     } catch (error) {
@@ -126,8 +161,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   }
 
   const isDraftDoc =
-    (globalDoc as { vex_status?: "draft" | "published" } | undefined)
-      ?.vex_status === "draft";
+    (globalDoc as { vex_status?: "draft" | "published" } | undefined)?.vex_status === "draft";
 
   const visibleFields = useVisibleFields({
     resource: global.slug,
@@ -282,6 +316,15 @@ export function GlobalEditView(props: GlobalEditViewProps) {
                     isPending: isSavingDraft,
                     disabled: isDefaultValue || !canEdit,
                   }}
+                  publish={
+                    globalDoc
+                      ? {
+                          onClick: handlePublish,
+                          isPending: isPublishing,
+                          disabled: !canPublish || !isDraftDoc,
+                        }
+                      : undefined
+                  }
                 />
               ) : (
                 <Button

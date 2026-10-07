@@ -10,13 +10,21 @@ import type { CollectionSlug } from "../types";
  * `"upsert"`; the route maps them to the CRUD vocabulary (`"delete"`,
  * `"update"`) exactly once, before either the permission check or target
  * resolution.
+ * `"publish"` is named for the draft-workflow action, not the Convex
+ * function that performs it (`vexConvexApi.versions.publish`, for either a
+ * collection or a global) — the wire verb tracks what happened to the
+ * PUBLIC document, which is the only thing `hasPermission`/`resolveTargets`
+ * need to know. It maps to the same `"update"` CRUD action `"upsert"`
+ * already does (`toCrudAction`, `createVexRevalidateRoute.ts`): a publish
+ * purges exactly like an update — both a `before` and an `after` path may
+ * exist.
  *
  * Declared here rather than in `@vexcms/react` because it is part of the wire
  * contract that `@vexcms/react` (the client) and `@vexcms/next` (the route)
  * must agree on, and `@vexcms/core` is the lowest package both depend on
  * (P-010).
  */
-export type VexMutationOperation = "create" | "remove" | "update" | "upsert";
+export type VexMutationOperation = "create" | "remove" | "update" | "upsert" | "publish";
 
 /**
  * Result of `resolveTargets` — the deduped paths to purge for a single
@@ -99,9 +107,7 @@ export interface VexRevalidateCollectionRequest {
  * `useVexRevalidate`, `@vexcms/react`). Neither of those packages depends on
  * the other, so the contract lives in the one below both (P-010).
  */
-export type VexRevalidateRequest =
-  | VexRevalidateCollectionRequest
-  | VexRevalidateDocumentsRequest;
+export type VexRevalidateRequest = VexRevalidateCollectionRequest | VexRevalidateDocumentsRequest;
 
 /**
  * Response body returned by the revalidation route. Always HTTP 200 once the

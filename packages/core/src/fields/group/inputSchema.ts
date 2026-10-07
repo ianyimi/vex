@@ -20,6 +20,10 @@ import type { VexResourceSlug } from "../../types/generated";
  *
  * @param props - Input props.
  * @param props.field - The resolved group field definition.
+ * @param props.ignoreRequired - Forwarded to every recursive
+ *   `adminFieldToInputSchema({ field: subField })` call so a draft-lenient
+ *   pass (`getFieldsInputSchema`'s `ignoreRequired`) reaches every sub-field,
+ *   not just this group's own `required` check.
  * @returns A Zod object schema with optionality applied.
  *
  * @example
@@ -33,16 +37,16 @@ import type { VexResourceSlug } from "../../types/generated";
  */
 export function groupFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
   field: GroupField<VexResourceSlug, TFieldMeta>;
+  ignoreRequired?: boolean;
 }): ZodType {
   const { field } = props;
 
   const subSchemas = Object.fromEntries(
     Object.entries(field.fields).map(([key, subField]) => [
       key,
-      adminFieldToInputSchema({ field: subField }),
+      adminFieldToInputSchema({ field: subField, ignoreRequired: props.ignoreRequired }),
     ]),
   );
-
   const schema: ZodType = field.required
     ? z.object(subSchemas, { error: "This field is required." })
     : z.object(subSchemas).default(field.defaultValue ?? {});

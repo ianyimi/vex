@@ -351,6 +351,37 @@ describe("saveDraft (server)", () => {
       expect(version?.publishedAt).toBeUndefined();
     });
   });
+
+  test("clearing a required field saves the draft with it empty (draft validation is lenient)", async () => {
+    const requiredSlugPosts = defineCollection({
+      slug: "posts",
+      fields: { title: text(), slug: text({ required: true }) },
+      versions: { drafts: true },
+    });
+    const requiredSlugConfig = { collections: [requiredSlugPosts] } as unknown as VexConfig;
+
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "original",
+        vex_status: "published",
+      });
+
+      const draftId = await saveDraft({
+        ctx,
+        config: requiredSlugConfig,
+        collection: "posts",
+        id: publishedId,
+        data: { slug: "" },
+      });
+
+      const draftRow = await ctx.db.get("posts", draftId as GenericId<"posts">);
+      expect(draftRow?.vex_status).toBe("draft");
+      expect(draftRow?.slug).toBe("");
+      expect(draftRow?.title).toBe("Original");
+    });
+  });
 });
 
 /**

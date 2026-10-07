@@ -6,6 +6,8 @@ import {
   checkbox,
   date,
   select,
+  group,
+  array,
   defineCollection,
 } from "../index";
 import { getFieldsDefaultValues, getFieldsInputSchema } from "../fields";
@@ -353,5 +355,71 @@ describe("getFieldsInputSchema", () => {
     const collection = defineCollection({ slug: "posts", fields: { title: text({ required: true }) } });
     const schema = getFieldsInputSchema({ fields: collection.fields });
     expect(schema.safeParse({}).success).toBe(false);
+  });
+});
+
+// ─── getFieldsInputSchema: ignoreRequired ──────────────────────────────────
+
+describe("getFieldsInputSchema — ignoreRequired (draft-lenient mode)", () => {
+  it("accepts an empty required text field", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+    });
+    const schema = getFieldsInputSchema({ fields: collection.fields, ignoreRequired: true });
+    expect(schema.safeParse({ title: "" }).success).toBe(true);
+    expect(schema.safeParse({}).success).toBe(true);
+  });
+
+  it("accepts an empty required select field", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { status: select({ required: true, options: SELECT_OPTIONS }) },
+    });
+    const schema = getFieldsInputSchema({ fields: collection.fields, ignoreRequired: true });
+    expect(schema.safeParse({ status: [] }).success).toBe(true);
+    expect(schema.safeParse({}).success).toBe(true);
+  });
+
+  it("accepts a required text field left empty inside a group", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        seo: group({ fields: { title: text({ required: true }) } }),
+      },
+    });
+    const schema = getFieldsInputSchema({ fields: collection.fields, ignoreRequired: true });
+    expect(schema.safeParse({ seo: { title: "" } }).success).toBe(true);
+  });
+
+  it("accepts a required text field left empty inside an array item", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        links: array({ items: text({ required: true }) }),
+      },
+    });
+    const schema = getFieldsInputSchema({ fields: collection.fields, ignoreRequired: true });
+    expect(schema.safeParse({ links: [""] }).success).toBe(true);
+  });
+
+  it("still rejects a wrong type", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }), score: number({ required: true }) },
+    });
+    const schema = getFieldsInputSchema({ fields: collection.fields, ignoreRequired: true });
+    expect(schema.safeParse({ title: 123, score: 1 }).success).toBe(false);
+    expect(schema.safeParse({ title: "ok", score: "bad" }).success).toBe(false);
+  });
+
+  it("still rejects a non-empty value violating max", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true, max: { value: 3 } }) },
+    });
+    const schema = getFieldsInputSchema({ fields: collection.fields, ignoreRequired: true });
+    expect(schema.safeParse({ title: "too long" }).success).toBe(false);
+    expect(schema.safeParse({ title: "" }).success).toBe(true);
   });
 });

@@ -21,6 +21,16 @@ import { uploadFieldToInputSchema } from "../upload";
  *
  * @param props Input props
  * @param props.field - The resolved field definition to convert
+ * @param props.ignoreRequired - When true, this field — and, recursively,
+ *   every sub-field a container type (`group`/`array`/`blocks`) dispatches
+ *   back through this function — is built as if `required: false`, by
+ *   overriding `field.required` before dispatch rather than duplicating
+ *   per-type builder logic. A configured `min`/`max` still applies to a
+ *   non-empty value exactly as it does for an optional field today; only the
+ *   "must be present/non-empty" check `required` itself adds is skipped.
+ *   Used by `getFieldsInputSchema`'s own `ignoreRequired` for draft saves
+ *   (`prepareEdit`, `saveDraft` — a draft may omit required fields at any
+ *   depth).
  * @returns A ZodType (e.g. `z.string()`, `z.boolean().optional().default(false)`)
  * @throws An Error if an unrecognized field type is given. Reaching this is a
  * compile error: the default arm binds the exhausted union to `never`, so a new
@@ -31,38 +41,53 @@ import { uploadFieldToInputSchema } from "../upload";
  * @see {@link checkboxFieldToInputSchema} for the checkbox field implementation
  * @internal
  */
-export function adminFieldToInputSchema(props: { field: AdminField }) {
-  // Captured before the switch narrows `props.field`: inside the default arm the
+export function adminFieldToInputSchema(props: {
+  field: AdminField;
+  ignoreRequired?: boolean;
+}) {
+  const effectiveField: AdminField = props.ignoreRequired
+    ? { ...props.field, required: false }
+    : props.field;
+  // Captured before the switch narrows `effectiveField`: inside the default arm the
   // union is exhausted to `never`, and `never.type` is not a usable string.
-  const fieldType: AdminFieldType = props.field.type;
+  const fieldType: AdminFieldType = effectiveField.type;
 
-  switch (props.field.type) {
+  switch (effectiveField.type) {
     case ADMIN_FIELDS.text.type:
-      return textFieldToInputSchema({ field: props.field });
+      return textFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.number.type:
-      return numberFieldToInputSchema({ field: props.field });
+      return numberFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.checkbox.type:
-      return checkboxFieldToInputSchema({ field: props.field });
+      return checkboxFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.date.type:
-      return dateFieldToInputSchema({ field: props.field });
+      return dateFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.select.type:
-      return selectFieldToInputSchema({ field: props.field });
+      return selectFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.url.type:
-      return urlFieldToInputSchema({ field: props.field });
+      return urlFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.color.type:
-      return colorFieldToInputSchema({ field: props.field });
+      return colorFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.relationship.type:
-      return relationshipFieldToInputSchema({ field: props.field });
+      return relationshipFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.array.type:
-      return arrayFieldToInputSchema({ field: props.field });
+      return arrayFieldToInputSchema({
+        field: effectiveField,
+        ignoreRequired: props.ignoreRequired,
+      });
     case ADMIN_FIELDS.group.type:
-      return groupFieldToInputSchema({ field: props.field });
+      return groupFieldToInputSchema({
+        field: effectiveField,
+        ignoreRequired: props.ignoreRequired,
+      });
     case ADMIN_FIELDS.blocks.type:
-      return blocksFieldToInputSchema({ field: props.field });
+      return blocksFieldToInputSchema({
+        field: effectiveField,
+        ignoreRequired: props.ignoreRequired,
+      });
     case ADMIN_FIELDS.upload.type:
-      return uploadFieldToInputSchema({ field: props.field });
+      return uploadFieldToInputSchema({ field: effectiveField });
     default: {
-      const unhandled: never = props.field;
+      const unhandled: never = effectiveField;
       throw new Error(
         `unrecognized field type: ${fieldType} — ${JSON.stringify(unhandled)}`,
       );

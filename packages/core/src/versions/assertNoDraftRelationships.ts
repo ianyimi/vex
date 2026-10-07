@@ -1,8 +1,8 @@
 import { ConvexError } from "convex/values";
 import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
 
-import { ADMIN_FIELDS } from "../../fields/constants";
-import type { CollectionConfig } from "../../collections/types";
+import { ADMIN_FIELDS } from "../fields/constants";
+import type { CollectionOrGlobal } from "../types";
 
 /**
  * Args for `assertNoDraftRelationships`.
@@ -13,7 +13,7 @@ export interface AssertNoDraftRelationshipsArgs<DataModel extends GenericDataMod
   /** Convex context — a read-only lookup, safe from a query or a mutation. */
   ctx: GenericQueryCtx<DataModel> | GenericMutationCtx<DataModel>;
   /** The resolved collection config being published, for its field definitions. */
-  collection: CollectionConfig;
+  target: CollectionOrGlobal;
   /** The fully-merged document about to be written (`publish`'s `transformedFields`). */
   document: Record<string, unknown>;
 }
@@ -58,7 +58,7 @@ export interface AssertNoDraftRelationshipsArgs<DataModel extends GenericDataMod
 export async function assertNoDraftRelationships<
   DataModel extends GenericDataModel = GenericDataModel,
 >(args: AssertNoDraftRelationshipsArgs<DataModel>): Promise<void> {
-  const relationshipKeys = Object.entries(args.collection.fields)
+  const relationshipKeys = Object.entries(args.target.config.fields)
     .filter(([, field]) => field.type === ADMIN_FIELDS.relationship.type)
     .map(([key]) => key);
   if (relationshipKeys.length === 0) return;

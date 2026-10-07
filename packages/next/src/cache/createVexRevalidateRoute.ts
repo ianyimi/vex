@@ -8,6 +8,8 @@ import type {
   VexRevalidateRequest,
   VexRevalidateResponse,
 } from "@vexcms/core";
+import type { NextRequest } from "next/server";
+
 import {
   hasPermission,
   PERMISSION_SCOPES,
@@ -15,7 +17,6 @@ import {
   VEX_REVALIDATE_BATCH_SIZE,
 } from "@vexcms/core";
 import { revalidatePath } from "next/cache";
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 /** Props for {@link createVexRevalidateRoute}. */
@@ -50,24 +51,6 @@ export interface CreateVexRevalidateRouteProps {
    * and reports that in `errors`, rather than silently succeeding.
    */
   listCollection?: (collection: CollectionSlug) => Promise<Partial<VexDocument>[]>;
-}
-
-/**
- * Maps the wire verb to the CRUD action `hasPermission` and `resolveTargets`
- * accept.
- *
- * `VexMutationOperation` is named for the `vexConvexApi` function that produced
- * the write (`vexConvexApi.remove`), while `hasPermission` only accepts
- * `CRUD_ACTIONS`. Mapping happens exactly once per request so the same value
- * drives both the permission check and target resolution.
- *
- * @param operation - The wire operation from the request body.
- * @returns The equivalent CRUD action.
- */
-function toCrudAction(operation: VexMutationOperation): CrudWriteAction {
-  if (operation === "remove") return "delete";
-  if (operation === "upsert") return "update";
-  return operation;
 }
 
 /**
@@ -117,12 +100,12 @@ function toCrudAction(operation: VexMutationOperation): CrudWriteAction {
  * ```
  */
 export function createVexRevalidateRoute(props: CreateVexRevalidateRouteProps): {
-  POST: (request: NextRequest) => Promise<NextResponse<{ error: string } | VexRevalidateResponse>>;
+  POST: (request: NextRequest) => Promise<NextResponse<VexRevalidateResponse | { error: string }>>;
 } {
   return {
     async POST(
       request: NextRequest,
-    ): Promise<NextResponse<{ error: string } | VexRevalidateResponse>> {
+    ): Promise<NextResponse<VexRevalidateResponse | { error: string }>> {
       const token = await props.getToken();
       if (token === null || token === undefined || token === "") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -231,4 +214,22 @@ export function createVexRevalidateRoute(props: CreateVexRevalidateRouteProps): 
       return NextResponse.json({ errors, revalidated }, { status: 200 });
     },
   };
+}
+
+/**
+ * Maps the wire verb to the CRUD action `hasPermission` and `resolveTargets`
+ * accept.
+ *
+ * `VexMutationOperation` is named for the `vexConvexApi` function that produced
+ * the write (`vexConvexApi.remove`), while `hasPermission` only accepts
+ * `CRUD_ACTIONS`. Mapping happens exactly once per request so the same value
+ * drives both the permission check and target resolution.
+ *
+ * @param operation - The wire operation from the request body.
+ * @returns The equivalent CRUD action.
+ */
+function toCrudAction(operation: VexMutationOperation): CrudWriteAction {
+  if (operation === "remove") {return "delete";}
+  if (operation === "upsert" || operation === "publish") {return "update";}
+  return operation;
 }
