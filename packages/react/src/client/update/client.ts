@@ -1,8 +1,8 @@
 import type { GenericId } from "convex/values";
 
-import { vexConvexApi } from "../convex";
-import type { CollectionSlug } from "../../types/generated";
-import type { GenericMutationClientParams } from "../types";
+import { vexConvexApi } from "@vexcms/core";
+import type { CollectionSlug } from "@vexcms/core";
+import type { GenericMutationClientParams } from "@vexcms/core";
 import { useConvexMutation } from "@convex-dev/react-query";
 
 /**
@@ -10,7 +10,7 @@ import { useConvexMutation } from "@convex-dev/react-query";
  *
  * @example
  * ```tsx
- * import { update, type UpdateClientArgs } from "@vexcms/core/client";
+ * import { update, type UpdateClientArgs } from "@vexcms/react/client";
  * import { useMutation } from "@tanstack/react-query";
  *
  * // Inside a React component:
@@ -36,14 +36,14 @@ export interface UpdateClientArgs<
  * a React component (obeys the Rules of Hooks); pass the return value as
  * `mutationFn` to `useMutation`.
  *
- * Import from `@vexcms/core/client`. For the server-side version, import
+ * Import from `@vexcms/react/client`. For the server-side version, import
  * `update` from `@vexcms/core/server`.
  *
  * @returns A mutation function compatible with tanstack-query `useMutation`.
  * @see {@link UpdateClientArgs} for the typed args shape.
  * @example
  * ```tsx
- * import { update } from "@vexcms/core/client";
+ * import { update } from "@vexcms/react/client";
  * import { useMutation } from "@tanstack/react-query";
  *
  * export function EditTitleButton({ id }: { id: Id<"posts"> }) {

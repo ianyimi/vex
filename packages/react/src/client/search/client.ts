@@ -1,8 +1,9 @@
 import { convexQuery } from "@convex-dev/react-query";
 import type { FunctionReference } from "convex/server";
+import type { VexQueryOptions } from "../types";
 
-import { vexConvexApi, type VexSearchArgs } from "../convex";
-import type { CollectionSlug } from "../../types/generated";
+import { vexConvexApi, type VexSearchArgs } from "@vexcms/core";
+import type { CollectionSlug } from "@vexcms/core";
 import type {
   DocReturnItem,
   GenericQueryClientParams,
@@ -11,8 +12,7 @@ import type {
   PopulateShape,
   SearchReturn,
   SearchReturnPaginated,
-  VexQueryOptions,
-} from "../types";
+} from "@vexcms/core";
 
 /**
  * Client-side args for `search`. Extends {@link GenericQueryClientParams}
@@ -58,7 +58,7 @@ export interface SearchClientPaginatedArgs<
  * Returns tanstack-query options for text search in a VexCMS collection.
  * Client-side only — pass to `useQuery` / `useSuspenseQuery`.
  *
- * Import from `@vexcms/core/client`. For the server-side version, import
+ * Import from `@vexcms/react/client`. For the server-side version, import
  * `search` from `@vexcms/core/server`.
  *
  * @typeParam TCollectionSlug - Collection slug.
@@ -67,7 +67,7 @@ export interface SearchClientPaginatedArgs<
  * @returns Tanstack-query `queryOptions`.
  * @example
  * ```tsx
- * import { search } from "@vexcms/core/client";
+ * import { search } from "@vexcms/react/client";
  *
  * const { data: authors } = useQuery(
  *   search({ collection: "authors", query: q, searchIndexName: "search_name", searchField: "name" }),

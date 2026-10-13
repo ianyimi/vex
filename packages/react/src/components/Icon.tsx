@@ -1,8 +1,8 @@
 import { icons, type LucideProps } from "lucide-react";
 import type { ComponentPropsWithRef } from "react";
-import type { LucideIconName } from "@vexcms/core";
+import type { IconName } from "@vexcms/core";
 
-export type { LucideIconName };
+export type { IconName };
 
 /**
  * Props for the `Icon` component.
@@ -14,9 +14,9 @@ export type IconProps = ComponentPropsWithRef<"svg"> &
   LucideProps & {
     /**
      * The Lucide icon to render.
-     * Must be a valid {@link LucideIconName} (e.g. `"FileText"`, `"Users"`).
+     * Must be a valid {@link IconName} (e.g. `"FileText"`, `"Users"`).
      */
-    name: LucideIconName;
+    name: IconName;
   };
 
 const warnedNames = new Set<string>();
@@ -31,9 +31,10 @@ const warnedNames = new Set<string>();
  * underlying icon component.
  *
  * Returns `null` if `name` does not match a known icon, so a bad string from
- * untyped data cannot throw at runtime. Because {@link LucideIconName} is exact,
- * that can only happen via an unchecked cast or `any`, so outside production the
- * miss is reported once per name with `console.warn`.
+ * untyped data cannot throw at runtime. After `vex generate`, {@link IconName}
+ * is exact, so that only happens via an unchecked cast, `any`, or a project
+ * that has not generated types; outside production the miss is reported once
+ * per name with `console.warn`.
  *
  * @param props - Icon props. See {@link IconProps} for all fields.
  * @returns The rendered SVG icon, or `null` if the name is unrecognised.
@@ -53,10 +54,10 @@ const warnedNames = new Set<string>();
  * <Icon name={collection.admin.icon} className="size-4" />
  * ```
  *
- * @see {@link LucideIconName} for the full set of valid icon names
+ * @see {@link IconName} for the full set of valid icon names
  */
 export function Icon({ name, className, ...rest }: IconProps) {
-  const LucideIcon = icons[name];
+  const LucideIcon = icons[name as keyof typeof icons];
   if (!LucideIcon) {
     if (process.env.NODE_ENV !== "production" && !warnedNames.has(name)) {
       warnedNames.add(name);

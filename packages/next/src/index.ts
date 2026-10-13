@@ -72,12 +72,12 @@ export type {
 
 // API functions are NOT re-exported from this barrel because @vexcms/next's
 // root index.ts is imported by server components (NextAdminPage). Pulling
-// @vexcms/core/client here would transitively import @convex-dev/react-query
+// @vexcms/react/client here would transitively import @convex-dev/react-query
 // which uses createContext — crashing RSC.
 //
 // Import directly from the correct environment-specific path instead:
 //
-//   import { find, get, search } from "@vexcms/core/client";  ← React components
+//   import { find, get, search } from "@vexcms/react/client";  ← React components
 //   import { find, get, search } from "@vexcms/core/server";  ← Convex handlers
 
 export type {

@@ -16,7 +16,7 @@ import { VERSION_STATUSES, type VexDocument } from "@vexcms/core";
 import { useRelationshipPickerOptions } from "../../../hooks";
 import { useVexConfig } from "../../../context/VexConfigContext";
 import { resolveRelationshipPreview } from "./preview";
-import { get } from "@vexcms/core/client";
+import { get } from "../../../client";
 import { GenericId } from "convex/values";
 import type { VexResourceSlug } from "@vexcms/core";
 

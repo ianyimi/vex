@@ -1,5 +1,5 @@
 import { useConvexMutation } from "@convex-dev/react-query";
-import { vexConvexApi } from "../convex";
+import { vexConvexApi } from "@vexcms/core";
 
 /**
  * Returns a `useConvexMutation` hook bound to the `deleteVersion` Convex
@@ -10,12 +10,12 @@ import { vexConvexApi } from "../convex";
  * (Step 18) hides its delete affordance under the same action so the throw
  * path is rarely hit.
  *
- * Import from `@vexcms/core/client`.
+ * Import from `@vexcms/react/client`.
  *
  * @returns A `useConvexMutation`-compatible mutation function.
  * @example
  * ```tsx
- * import { deleteVersion } from "@vexcms/core/client";
+ * import { deleteVersion } from "@vexcms/react/client";
  * import { useMutation } from "@tanstack/react-query";
  *
  * const { mutateAsync } = useMutation({ mutationFn: deleteVersion() });

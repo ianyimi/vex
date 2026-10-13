@@ -12,7 +12,7 @@ import {
 } from "@vexcms/core";
 import type { ReactNode } from "react";
 import { FilePreview } from "../../media/FilePreview";
-import { get } from "@vexcms/core/client";
+import { get } from "../../../client";
 import { GenericId } from "convex/values";
 import { VexLink } from "../../ui";
 import { useVexConfig } from "../../../context/VexConfigContext";

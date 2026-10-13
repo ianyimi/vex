@@ -1,6 +1,6 @@
 import type { ApplyComponent, ComponentHKT, AdminField } from "../fields";
 import type { GlobalSlug } from "../types/generated";
-import type { LucideIconName } from "../utils";
+import type { IconName } from "../utils";
 import type { AdminLivePreviewConfig, AdminLivePreviewConfigInput } from "../livePreview";
 import type { DocumentByGlobalSlug } from "../types/generated";
 import type { GlobalHooks, GlobalHooksInput } from "./hooks";
@@ -46,7 +46,7 @@ export interface GlobalAdminConfigInput<
    * Lucide icon name shown in the admin sidebar.
    * See https://lucide.dev/icons/
    */
-  icon?: LucideIconName;
+  icon?: IconName;
   /**
    * Custom React component for rendering this global in contexts where a
    * compact preview is needed (e.g. future cross-global reference UI).
@@ -100,7 +100,7 @@ export interface GlobalAdminConfig<
   /** Resolved live preview config. `undefined` when the global omits it. */
   livePreview?: AdminLivePreviewConfig<Partial<DocumentByGlobalSlug<TGlobalSlug>>>;
   /** Lucide icon name. */
-  icon?: LucideIconName;
+  icon?: IconName;
   /** Custom preview component. */
   components: {
     preview?: ApplyComponent<TComponent, { slug: string }>;

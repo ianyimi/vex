@@ -1,6 +1,4 @@
-import type { UseSuspenseQueryOptions } from "@tanstack/react-query";
 import type {
-  FunctionReference,
   GenericDataModel,
   GenericMutationCtx,
   GenericQueryCtx,
@@ -500,34 +498,13 @@ export type DepthPopulated<
 // The Convex endpoints registered by `collectionsApi` are monomorphic: one
 // registered function serves every collection, so a `FunctionReference`'s
 // return type is fixed at codegen time and a runtime `collection` value can
-// never narrow it. The `@vexcms/core/client` wrappers therefore re-attach the
+// never narrow it. The `@vexcms/react/client` wrappers therefore re-attach the
 // per-slug type at the CALL SITE by casting the funcRef to the types below.
 // The cast is sound because the endpoint really does return that collection's
 // document at runtime — `get` (server) reads the row from that table.
 //
 // These are also the contracts the future per-collection codegen reuses, so
 // the narrowing logic lives here exactly once.
-
-/**
- * Tanstack-query options as produced by `convexQuery` for a non-`"skip"` call,
- * with the result pinned to `TReturn` instead of the funcRef's baked type.
- *
- * Named deliberately: publishing this contract as `ReturnType<typeof
- * convexQuery>` instantiates the adapter's generics at their constraints and
- * collapses the query data to `any`.
- *
- * @typeParam TArgs - The endpoint's args shape.
- * @typeParam TReturn - The narrowed return type for this call.
- */
-export type VexQueryOptions<TArgs extends Record<string, unknown>, TReturn> = Pick<
-  UseSuspenseQueryOptions<
-    TReturn,
-    Error,
-    TReturn,
-    ["convexQuery", FunctionReference<"query", "public", TArgs, TReturn>, TArgs]
-  >,
-  "queryKey" | "queryFn" | "staleTime"
->;
 
 /**
  * The per-document element type shared by `get`, `find`, and `search`:

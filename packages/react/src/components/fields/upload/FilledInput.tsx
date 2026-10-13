@@ -11,7 +11,7 @@ import {
   type VexMediaDocument,
 } from "@vexcms/core";
 import { FilePreview } from "../../media/FilePreview";
-import { get } from "@vexcms/core/client";
+import { get } from "../../../client";
 import { InputTag } from "../../form/InputTag";
 import { TypedFieldApi } from "../../form/createFieldInput";
 import { useVexConfig } from "../../../context";

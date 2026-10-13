@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
-import type { FindClientPaginatedArgs } from "@vexcms/core/client";
+import type { FindClientPaginatedArgs } from "../client";
 import { vexConvexApi } from "@vexcms/core";
 import type { CollectionSlug, PaginationResult, VexDocument } from "@vexcms/core";
 

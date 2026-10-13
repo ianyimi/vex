@@ -1,9 +1,9 @@
 import { convexQuery } from "@convex-dev/react-query";
 import type { FunctionReference } from "convex/server";
-
-import { vexConvexApi, type VexGlobalsFindArgs } from "../convex";
-import type { VexDocumentGlobal } from "../../types/generated";
 import type { VexQueryOptions } from "../types";
+
+import { vexConvexApi, type VexGlobalsFindArgs } from "@vexcms/core";
+import type { VexDocumentGlobal } from "@vexcms/core";
 
 /**
  * Returns tanstack-query options for listing all saved global documents.
@@ -14,7 +14,7 @@ import type { VexQueryOptions } from "../types";
  *
  * @example
  * ```tsx
- * import { globals } from "@vexcms/core/client";
+ * import { globals } from "@vexcms/react/client";
  *
  * const { data } = useQuery(globals.find({}));
  * data?.map((g) => g._slug); // ["siteSettings", "nav"]

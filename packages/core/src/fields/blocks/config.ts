@@ -26,7 +26,7 @@ import type { VexResourceSlug } from "../../types/generated";
  * const headingBlock = defineBlock({
  *   slug:  "heading",
  *   label: "Heading",
- *   admin: { icon: "heading" },
+ *   admin: { icon: "Heading" },
  *   fields: { text: text({ required: true }) },
  * })
  * ```

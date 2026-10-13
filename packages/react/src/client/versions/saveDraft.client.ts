@@ -1,8 +1,8 @@
 import type { GenericId } from "convex/values";
 
-import { vexConvexApi } from "../convex";
-import type { CollectionSlug, GlobalSlug } from "../../types/generated";
-import type { GenericMutationClientParams } from "../types";
+import { vexConvexApi } from "@vexcms/core";
+import type { CollectionSlug, GlobalSlug } from "@vexcms/core";
+import type { GenericMutationClientParams } from "@vexcms/core";
 import { useConvexMutation } from "@convex-dev/react-query";
 
 /**
@@ -12,7 +12,7 @@ import { useConvexMutation } from "@convex-dev/react-query";
  *
  * @example
  * ```tsx
- * import { saveDraft, type SaveDraftClientArgs } from "@vexcms/core/client";
+ * import { saveDraft, type SaveDraftClientArgs } from "@vexcms/react/client";
  * import { useMutation } from "@tanstack/react-query";
  *
  * const { mutateAsync } = useMutation({ mutationFn: saveDraft() });
@@ -54,14 +54,14 @@ export type SaveDraftClientArgs<TCollectionSlug extends CollectionSlug = Collect
  * level of a React component (obeys the Rules of Hooks); pass the return
  * value as `mutationFn` to `useMutation`.
  *
- * Import from `@vexcms/core/client`. For the server-side version, import
+ * Import from `@vexcms/react/client`. For the server-side version, import
  * `saveDraft` from `@vexcms/core/server`.
  *
  * @returns A mutation function compatible with tanstack-query `useMutation`.
  * @see {@link SaveDraftClientArgs} for the typed args shape.
  * @example
  * ```tsx
- * import { saveDraft } from "@vexcms/core/client";
+ * import { saveDraft } from "@vexcms/react/client";
  * import { useMutation } from "@tanstack/react-query";
  *
  * export function SaveDraftButton({ id, title }: { id: Id<"posts">; title: string }) {

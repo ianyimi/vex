@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/core",
-  "version": "0.1.0-alpha.24",
+  "version": "0.1.0-alpha.25",
   "description": "Convex-native headless CMS core: field factories, schema generation, and typed collection APIs",
   "keywords": [
     "cms",
@@ -34,11 +34,6 @@
       "types": "./dist/api/server.d.ts",
       "import": "./dist/api/server.js"
     },
-    "./client": {
-      "source": "./src/api/client.ts",
-      "types": "./dist/api/client.d.ts",
-      "import": "./dist/api/client.js"
-    },
     "./convex": {
       "source": "./src/api/server.ts",
       "types": "./dist/api/server.d.ts",
@@ -69,29 +64,18 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@convex-dev/react-query": "catalog:",
     "@edge-runtime/vm": "catalog:",
-    "@tanstack/react-query": "catalog:",
-    "@tanstack/react-table": "catalog:",
     "@types/node": "catalog:",
-    "@types/react": "catalog:",
     "@vexcms/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "convex": "catalog:",
     "convex-helpers": "catalog:",
     "convex-test": "catalog:",
-    "lucide-react": "catalog:",
-    "react": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "@convex-dev/react-query": "catalog:peers",
-    "@tanstack/react-query": "catalog:peers",
-    "@tanstack/react-table": "catalog:peers",
-    "convex": "catalog:peers",
-    "lucide-react": "catalog:peers",
-    "react": "catalog:peers"
+    "convex": "catalog:peers"
   }
 }

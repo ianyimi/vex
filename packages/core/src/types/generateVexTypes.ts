@@ -186,6 +186,7 @@ export function generateVexTypes(props: { config: VexConfig }): string {
     \t\tCustomActionsBySlug: {\n${customActionsBySlug}\n}
     \t\tAuthSlugs: {\n${authSlugs}\n}
     \t\tDataModel: DataModel
+    \t\tIconName: keyof typeof import("lucide-react").icons
     \t}
   \n}`;
 

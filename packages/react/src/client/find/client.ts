@@ -1,8 +1,9 @@
 import { convexQuery } from "@convex-dev/react-query";
 import type { FunctionReference } from "convex/server";
+import type { VexQueryOptions } from "../types";
 
-import { vexConvexApi, type VexFindArgs, type VexFindPaginatedArgs } from "../convex";
-import type { CollectionSlug } from "../../types/generated";
+import { vexConvexApi, type VexFindArgs, type VexFindPaginatedArgs } from "@vexcms/core";
+import type { CollectionSlug } from "@vexcms/core";
 import type {
   DocReturnItem,
   FindReturn,
@@ -11,8 +12,7 @@ import type {
   PaginationOptions,
   PaginationResult,
   PopulateShape,
-  VexQueryOptions,
-} from "../types";
+} from "@vexcms/core";
 
 /**
  * Client-side args for `find`. Extends {@link GenericQueryClientParams}
@@ -56,7 +56,7 @@ export interface FindClientPaginatedArgs<
  *
  * Client-side only — pass to `useQuery` / `useSuspenseQuery` / `prefetchQuery`.
  *
- * Import from `@vexcms/core/client`. For the server-side version, import
+ * Import from `@vexcms/react/client`. For the server-side version, import
  * `find` from `@vexcms/core/server`.
  *
  * Two overloads mirror the server function: without `paginationOpts` the data is
@@ -76,7 +76,7 @@ export interface FindClientPaginatedArgs<
  * @returns Tanstack-query options for `useQuery` / `useSuspenseQuery`.
  * @example
  * ```tsx
- * import { find } from "@vexcms/core/client";
+ * import { find } from "@vexcms/react/client";
  *
  * const { data: posts } = useQuery(find({ collection: "posts" }));
  * //      ^? Post[]

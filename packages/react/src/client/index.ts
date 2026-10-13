@@ -16,8 +16,8 @@ export type { UpdateClientArgs } from "./update/client";
 export { remove } from "./remove/client";
 export type { RemoveClientArgs } from "./remove/client";
 
-// Shared return-type contracts used by the wrappers above. Also available from
-// the package root (`@vexcms/core`).
+// Shared return-type contracts used by the wrappers above, re-exported from
+// `@vexcms/core`.
 export type {
   DocReturnItem,
   FindReturn,
@@ -25,10 +25,10 @@ export type {
   GetReturn,
   SearchReturn,
   SearchReturnPaginated,
-  VexQueryOptions,
-} from "./types";
+} from "@vexcms/core";
 export { findQueryKey } from "./find/client";
-export type { GetGlobalReturn } from "./globals/get.server";
+export type { VexQueryOptions } from "./types";
+export type { GetGlobalReturn } from "@vexcms/core";
 
 // GLOBALS API
 
@@ -55,5 +55,5 @@ export {
 
 export { deleteVersion } from "./versions/deleteVersion.client";
 
-export type { VersionSummary } from "../versions";
-export type { VersionSnapshotResult } from "./versions/getVersionSnapshot.server";
+export type { VersionSummary } from "@vexcms/core";
+export type { VersionSnapshotResult } from "@vexcms/core";

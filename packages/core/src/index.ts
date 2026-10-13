@@ -36,6 +36,8 @@ export * from "./utils";
 export * from "./framework";
 export * from "./api/convex";
 export * from "./api/types";
+export type { GetGlobalReturn } from "./api/globals/get.server";
+export type { VersionSnapshotResult } from "./api/versions/getVersionSnapshot.server";
 
 // ============================================================================
 // CONFIG BUILDERS

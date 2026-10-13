@@ -1,10 +1,11 @@
 import { convexQuery } from "@convex-dev/react-query";
 import type { FunctionReference } from "convex/server";
 import type { GenericId } from "convex/values";
+import type { VexQueryOptions } from "../types";
 
-import { vexConvexApi, type VexGetArgs } from "../convex";
-import type { CollectionSlug } from "../../types/generated";
-import type { GenericQueryClientParams, GetReturn, PopulateShape, VexQueryOptions } from "../types";
+import { vexConvexApi, type VexGetArgs } from "@vexcms/core";
+import type { CollectionSlug } from "@vexcms/core";
+import type { GenericQueryClientParams, GetReturn, PopulateShape } from "@vexcms/core";
 
 /**
  * Client-side args for `get`. Extends {@link GenericQueryClientParams}
@@ -29,7 +30,7 @@ export interface GetClientArgs<
  *
  * Client-side only — pass to `useQuery` / `useSuspenseQuery`.
  *
- * Import from `@vexcms/core/client`. For the server-side version, import
+ * Import from `@vexcms/react/client`. For the server-side version, import
  * `get` from `@vexcms/core/server`.
  *
  * ### Why the funcRef is cast
@@ -50,7 +51,7 @@ export interface GetClientArgs<
  * @returns Tanstack-query options whose data is the doc or `null`.
  * @example
  * ```tsx
- * import { get } from "@vexcms/core/client";
+ * import { get } from "@vexcms/react/client";
  *
  * const { data: post } = useQuery(get({ id: postId, collection: "posts" }));
  * //      ^? Post | null

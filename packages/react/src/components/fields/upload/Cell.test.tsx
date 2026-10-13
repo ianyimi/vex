@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 import type { TDocument, VexMediaDocument } from "@vexcms/core";
-import { get } from "@vexcms/core/client";
+import { get } from "../../../client";
 import type { GenericId } from "convex/values";
 import { makeCellRow, runFieldCellContractSuite, withCellConfig } from "../../../testing/fieldCellContract";
 import { testCollection } from "../../../testing/harness/accessFixtures";

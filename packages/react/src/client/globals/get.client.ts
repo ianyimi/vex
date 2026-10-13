@@ -1,10 +1,10 @@
 import { convexQuery } from "@convex-dev/react-query";
 import type { FunctionReference } from "convex/server";
-
-import { vexConvexApi, type VexGlobalsGetArgs } from "../convex";
-import type { GlobalSlug, GlobalPopulateShape } from "../../types/generated";
 import type { VexQueryOptions } from "../types";
-import type { GetGlobalReturn } from "./get.server";
+
+import { vexConvexApi, type VexGlobalsGetArgs } from "@vexcms/core";
+import type { GlobalSlug, GlobalPopulateShape } from "@vexcms/core";
+import type { GetGlobalReturn } from "@vexcms/core";
 
 /**
  * Client-side args for `globals.get`.
@@ -29,7 +29,7 @@ export interface GetGlobalClientArgs<
  * The returned document is flat — user fields are at root level alongside
  * `_id`, `_creationTime`, and `_slug`. Client-side only.
  *
- * Import from `@vexcms/core/client`. For the server-side version, import
+ * Import from `@vexcms/react/client`. For the server-side version, import
  * `getGlobal` from `@vexcms/core/server`.
  *
  * @typeParam TSlug - Global slug.
@@ -39,7 +39,7 @@ export interface GetGlobalClientArgs<
  *
  * @example
  * ```tsx
- * import { globals } from "@vexcms/core/client";
+ * import { globals } from "@vexcms/react/client";
  *
  * // Basic
  * const { data } = useQuery(globals.get({ slug: "siteSettings" }));
