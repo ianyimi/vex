@@ -1,5 +1,6 @@
 import { ConvexError, type Value } from "convex/values";
-import { z, type ZodType } from "zod";
+import * as z from "zod";
+import type { ZodType } from "zod";
 import { AdminField } from "./types";
 import { adminFieldToInputSchema } from "./inputSchemas";
 import { createVexCallbackApi, type VexCallbackApi } from "../api/server";

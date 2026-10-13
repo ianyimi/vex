@@ -652,10 +652,16 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
   const existingHome = await ctx.db
     .query(TABLE_SLUG_PAGES)
     .withIndex("by_slug", (q) => q.eq("slug", "home"))
+    // `pages` is versioned: a draft row shares its published row's slug, and
+    // patching the draft here would leave two published rows.
+    .filter((q) => q.neq(q.field("vex_status"), "draft"))
     .first()
   const homePageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = {
     title: "Home",
     slug: "home",
+    // `pages` is versioned (`versions.drafts`): reads are published-only, so a
+    // seeded row without this is invisible on the public site.
+    vex_status: "published",
     blocks: [
       {
         blockType: BLOCK_SLUG_HERO,
@@ -1020,10 +1026,16 @@ export const featuredPosts = query({
   const existingFeatures = await ctx.db
     .query(TABLE_SLUG_PAGES)
     .withIndex("by_slug", (q) => q.eq("slug", "features"))
+    // `pages` is versioned: a draft row shares its published row's slug, and
+    // patching the draft here would leave two published rows.
+    .filter((q) => q.neq(q.field("vex_status"), "draft"))
     .first()
   const featuresPageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = {
     title: "Features",
     slug: "features",
+    // `pages` is versioned (`versions.drafts`): reads are published-only, so a
+    // seeded row without this is invisible on the public site.
+    vex_status: "published",
     blocks: [
       {
         blockType: BLOCK_SLUG_HERO,
@@ -1301,10 +1313,16 @@ export const testimonials = defineTable({
   const existingRoadmapPage = await ctx.db
     .query(TABLE_SLUG_PAGES)
     .withIndex("by_slug", (q) => q.eq("slug", "roadmap"))
+    // `pages` is versioned: a draft row shares its published row's slug, and
+    // patching the draft here would leave two published rows.
+    .filter((q) => q.neq(q.field("vex_status"), "draft"))
     .first()
   const roadmapPageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = {
     title: "Roadmap",
     slug: "roadmap",
+    // `pages` is versioned (`versions.drafts`): reads are published-only, so a
+    // seeded row without this is invisible on the public site.
+    vex_status: "published",
     blocks: [
       {
         blockType: BLOCK_SLUG_HERO,

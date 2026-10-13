@@ -69,6 +69,10 @@ touches:
   - packages/react/src/components/index.ts
   - packages/react/src/hooks/useRelationshipPickerOptions.ts
   - packages/react/src/components/fields/relationship/Input.tsx
+  - packages/next/src/NextAdminPage.tsx
+  - packages/next/src/NextAdminPage.test.ts
+  - packages/core/src/api/utils.ts
+  - packages/react/src/components/views/MediaCollectionEditView.tsx
   - packages/react/src/hooks/useAutosave.ts
   - packages/react/src/hooks/index.ts
   - packages/react/src/lib/errors.ts
@@ -88,6 +92,10 @@ touches:
   - apps/www/src/auth/access.ts
   - "apps/www/src/app/(frontend)/(site)/PageContent.tsx"
   - apps/docs/src/content/docs/guides/versioning-and-drafts.mdx
+  - packages/core/src/access/pickQueryIndex.ts
+  - packages/core/src/collections/validator.ts
+  - packages/core/src/collections/validator.test.ts
+  - packages/core/src/fields/baseTypes.ts
 prompt_version: 1
 ---
 
@@ -171,20 +179,24 @@ true` and published-only by Step 13's default. The live-preview provider's alrea
     shipped `vex-live-preview` marker-cookie branch (ADR-012) calls a new query instead,
     gated by a real `readDrafts` permission check, so an unauthenticated request can
     never reach draft content through either path.
-11. **`vex_versions` is an append-only, DAG-shaped log — every lifecycle event is a node
-    with a parent edge — but no branching field, type, or UI ships here.** A later
+11. **`vex_versions` is an append-only, DAG-shaped log — every distinct content state is a
+    node with a parent edge — but no branching field, type, or UI ships here.** A later
     enterprise branching feature (named content branches, merges, a commit-graph view)
     is anticipated, and the ONLY thing it needs from this spec is data that cannot be
-    reconstructed after the fact, since history rows are immutable and never backfilled.
+    reconstructed after the fact. A row's content (`snapshot`, `parentVersion`,
+    `createdBy`) is immutable and never backfilled; only its publish state (`status`,
+    `publishedAt`) changes, when that exact content is published.
     Two consequences, both zero-new-field:
-    - **Every publish and unpublish emits exactly one history row, attributed.** The
-      first publish of a document (the promote-in-place branch of Step 9) previously
-      emitted none; that hole is unrecoverable, so it now emits one like every other
-      publish. `createdBy` is recorded on publish/unpublish for the same reason it
-      already was on `saveDraft` — an unattributed immutable row can never be repaired.
-    - **`parentVersion` is the graph edge, not a display nicety.** It always records the
-      actual predecessor node (`getLatestVersion`'s result at write time), and is absent
-      only on a document's genuine root version.
+    - **Publishing records content once.** Publishing content that is already a node —
+      the saved draft with no unsaved edits, or a history version picked in the dropdown
+      — marks that row `status: "published"` with a fresh `publishedAt`; no row is added.
+      Publishing new content (unsaved edits) adds one attributed `published` row. A
+      published row with no history yet has its current state recorded first, so no
+      content state is ever lost. Unpublish still emits one attributed row.
+    - **`parentVersion` is the graph edge, not a display nicety.** It records the version
+      the new content was based on: the latest version at write time, or the version the
+      editor was viewing when they saved (`restoredFrom`). Absent only on a document's
+      genuine root version.
       Everything a branching feature additionally needs is **deliberately not added now**,
       because each is cleanly additive later with no backfill: a `branch?: string` (absent
       ⇒ trunk, so today's rows are already valid trunk history); multi-parent merge edges
@@ -237,6 +249,23 @@ true` and published-only by Step 13's default. The live-preview provider's alrea
     first-ever write for a slug always produces a published row, unchanged from before
     this spec — a global's first save is conventionally "site settings exist now," not a
     draft nobody asked for.
+14. **Per-index `draftStatus` is opt-in and configurable per index, not automatic for
+    every index on a `versions.drafts: true` collection.** Step 13 lets a collection-level
+    `indexes[]` entry, a field's own `index`, or a relationship field's auto `by_<field>`
+    additionally declare `draftStatus: true | "both"` — `true` replaces the index with a
+    `vex_status`-prefixed physical form; `"both"` emits that prefixed form as a second,
+    internal twin alongside the original. Neither is the collection-wide default once
+    `versions.drafts: true` is set, because the choice is a real tradeoff with no single
+    right answer: `true` narrows a published-only read through that index for free but
+    costs a `drafts: true` read on the SAME index its narrowing (it falls back to
+    `.filter()`, dev-warned); `"both"` keeps both read modes narrowed but pays for a
+    second physical index — rebuilt on every write, occupying storage, same cost class as
+    any other compound index a project adds by hand. A collection's indexes are a
+    deliberate, per-index declaration already (`indexes: [{ name, fields }]`); a project
+    choosing which of ITS indexes actually serve a published-only list view — the ones
+    worth paying the extra narrowing or twin-index cost for — is the same kind of decision
+    as choosing which fields to index in the first place, not something `versions.drafts:
+true` should decide unilaterally for every index a collection happens to declare.
 
 ## Out of Scope
 
@@ -355,7 +384,8 @@ export const VERSION_STATUSES = {
  * depends on `@vexcms/core` and never the reverse. Also the resolved type of
  * `CollectionConfig.versions.defaultStatus` (decision 13).
  */
-export type VexVersionStatus = (typeof VERSION_STATUSES)[keyof typeof VERSION_STATUSES]["key"];
+export type VexVersionStatus =
+  (typeof VERSION_STATUSES)[keyof typeof VERSION_STATUSES]["key"];
 
 /**
  * Default debounce window, in milliseconds, before `useAutosave` (Step 19)
@@ -2381,14 +2411,20 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
 
   const operation = props.action === CRUD_ACTIONS.create ? "create" : "update";
   let transformedFields = mergedFields;
-  if (props.target.kind === "collection" && props.target.config.hooks.beforeChange) {
+  if (
+    props.target.kind === "collection" &&
+    props.target.config.hooks.beforeChange
+  ) {
     transformedFields = (await props.target.config.hooks.beforeChange({
       operation,
       doc: mergedFields as never,
       ctx: props.ctx,
       collection: props.target.config,
     })) as TDocument;
-  } else if (props.target.kind === "global" && props.target.config.hooks.beforeChange) {
+  } else if (
+    props.target.kind === "global" &&
+    props.target.config.hooks.beforeChange
+  ) {
     transformedFields = (await props.target.config.hooks.beforeChange({
       operation,
       doc: mergedFields as never,
@@ -2399,7 +2435,8 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
 
   const changedKeys = new Set(Object.keys(props.incoming));
   for (const key of Object.keys(transformedFields)) {
-    if (!deepEqual(transformedFields[key], mergedFields[key])) changedKeys.add(key);
+    if (!deepEqual(transformedFields[key], mergedFields[key]))
+      changedKeys.add(key);
   }
 
   const parsed = getFieldsInputSchema({
@@ -2407,11 +2444,16 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
     partial: props.partial,
   }).safeParse(transformedFields);
   if (!parsed.success) {
-    throw new ConvexError({ message: "Validation failed", errors: parsed.error.message });
+    throw new ConvexError({
+      message: "Validation failed",
+      errors: parsed.error.message,
+    });
   }
 
   const writeKeys =
-    props.validateKeys === "all" ? new Set(Object.keys(transformedFields)) : changedKeys;
+    props.validateKeys === "all"
+      ? new Set(Object.keys(transformedFields))
+      : changedKeys;
   await validateFields({
     fields: props.target.config.fields,
     doc: transformedFields,
@@ -2487,7 +2529,11 @@ New file, complete.
 
 ```ts
 import { ConvexError, type GenericId } from "convex/values";
-import type { GenericDataModel, GenericMutationCtx, TableNamesInDataModel } from "convex/server";
+import type {
+  GenericDataModel,
+  GenericMutationCtx,
+  TableNamesInDataModel,
+} from "convex/server";
 
 import type { CollectionSlug, GlobalSlug } from "../types/generated";
 import { VERSION_STATUSES } from "./constants";
@@ -2548,7 +2594,9 @@ export interface VersionedTargetRows<DataModel extends GenericDataModel> {
  * @returns A {@link VersionedTargetRows} descriptor for `versions/saveDraft.ts`.
  * @throws {ConvexError} When `id` does not resolve to a document in `collection`.
  */
-export async function resolveVersionedTarget<DataModel extends GenericDataModel>(
+export async function resolveVersionedTarget<
+  DataModel extends GenericDataModel,
+>(
   args: { ctx: GenericMutationCtx<DataModel> } & (
     | { collection: CollectionSlug; id: GenericId<CollectionSlug> }
     | { global: GlobalSlug }
@@ -2557,20 +2605,29 @@ export async function resolveVersionedTarget<DataModel extends GenericDataModel>
   if ("collection" in args) {
     const { ctx, collection, id } = args;
     const table = collection as TableNamesInDataModel<DataModel>;
-    const targetRow = (await ctx.db.get(collection, id)) as Record<string, unknown> | null;
+    const targetRow = (await ctx.db.get(collection, id)) as Record<
+      string,
+      unknown
+    > | null;
     if (targetRow === null) {
-      throw new ConvexError(`No document found for id "${id}" in collection "${collection}"`);
+      throw new ConvexError(
+        `No document found for id "${id}" in collection "${collection}"`,
+      );
     }
 
     let draftRow: Record<string, unknown> | null = null;
     let publishedRow: Record<string, unknown> | null = null;
     if (targetRow.vex_status === VERSION_STATUSES.draft.key) {
       draftRow = targetRow;
-      const publishedId = targetRow.vex_publishedId as GenericId<CollectionSlug> | undefined;
+      const publishedId = targetRow.vex_publishedId as
+        GenericId<CollectionSlug> | undefined;
       publishedRow =
         publishedId === undefined
           ? null
-          : ((await ctx.db.get(collection, publishedId)) as Record<string, unknown> | null);
+          : ((await ctx.db.get(collection, publishedId)) as Record<
+              string,
+              unknown
+            > | null);
     } else {
       publishedRow = targetRow;
       draftRow = (await findDraftRow({
@@ -2580,7 +2637,9 @@ export async function resolveVersionedTarget<DataModel extends GenericDataModel>
       })) as Record<string, unknown> | null;
     }
 
-    const documentId = String((publishedRow?._id as string | undefined) ?? (draftRow?._id as string));
+    const documentId = String(
+      (publishedRow?._id as string | undefined) ?? (draftRow?._id as string),
+    );
 
     return {
       table,
@@ -2604,8 +2663,10 @@ export async function resolveVersionedTarget<DataModel extends GenericDataModel>
     .query("vex_globals")
     .withIndex("by_slug", (q) => q.eq("slug", global as never))
     .collect()) as Record<string, unknown>[];
-  const publishedRow = rows.find((r) => r.vex_status !== VERSION_STATUSES.draft.key) ?? null;
-  const draftRow = rows.find((r) => r.vex_status === VERSION_STATUSES.draft.key) ?? null;
+  const publishedRow =
+    rows.find((r) => r.vex_status !== VERSION_STATUSES.draft.key) ?? null;
+  const draftRow =
+    rows.find((r) => r.vex_status === VERSION_STATUSES.draft.key) ?? null;
 
   return {
     table,
@@ -2613,7 +2674,8 @@ export async function resolveVersionedTarget<DataModel extends GenericDataModel>
     documentId: global,
     publishedRow,
     draftRow,
-    toUserFields: (row) => (row.data as Record<string, unknown> | undefined) ?? {},
+    toUserFields: (row) =>
+      (row.data as Record<string, unknown> | undefined) ?? {},
     buildDraftInsert: (userFields, publishedId) => ({
       slug: global,
       data: userFields,
@@ -2621,7 +2683,10 @@ export async function resolveVersionedTarget<DataModel extends GenericDataModel>
       ...(publishedId !== undefined ? { vex_publishedId: publishedId } : {}),
     }),
     buildDraftPatch: (row, patch) => ({
-      data: { ...((row.data as Record<string, unknown> | undefined) ?? {}), ...patch },
+      data: {
+        ...((row.data as Record<string, unknown> | undefined) ?? {}),
+        ...patch,
+      },
     }),
   };
 }
@@ -2678,7 +2743,9 @@ import type { VersionedTargetRows } from "./resolveVersionedTarget";
  * @throws {ConvexError} Propagated from `prepareEdit` on validation failure.
  * @throws {VexAccessError} When the caller is not permitted to save this draft.
  */
-export async function saveDraftShared<DataModel extends GenericDataModel>(props: {
+export async function saveDraftShared<
+  DataModel extends GenericDataModel,
+>(props: {
   ctx: GenericMutationCtx<DataModel>;
   config: VexConfig;
   target: CollectionOrGlobal;
@@ -2710,7 +2777,10 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
       publishedRow?._id as string | undefined,
     );
     const draftRowId = await ctx.db.insert(rows.table, insertPayload as never);
-    draftRow = (await ctx.db.get(rows.table, draftRowId)) as Record<string, unknown>;
+    draftRow = (await ctx.db.get(rows.table, draftRowId)) as Record<
+      string,
+      unknown
+    >;
   }
 
   const { patch, transformedFields } = await prepareEdit({
@@ -2726,7 +2796,10 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
     validateKeys: "changed",
   });
 
-  await ctx.db.patch(draftRow._id as never, rows.buildDraftPatch(draftRow, patch) as never);
+  await ctx.db.patch(
+    draftRow._id as never,
+    rows.buildDraftPatch(draftRow, patch) as never,
+  );
 
   const previous = await getLatestVersion({
     ctx,
@@ -2744,7 +2817,9 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
     status: VERSION_STATUSES.draft.key,
     snapshot: removeVexFields({ doc: transformedFields }),
     createdBy:
-      typeof props.auth?.user?.["_id"] === "string" ? (props.auth.user["_id"] as string) : undefined,
+      typeof props.auth?.user?.["_id"] === "string"
+        ? (props.auth.user["_id"] as string)
+        : undefined,
     parentVersion: previous?.version,
     restoredFrom: props.restoredFrom,
     publishedAt,
@@ -2758,7 +2833,7 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
 
 New file, complete.
 
-```ts
+````ts
 import { ConvexError, type GenericId } from "convex/values";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 
@@ -2852,9 +2927,13 @@ export async function saveDraft<DataModel extends GenericDataModel>(
   let target: CollectionOrGlobal;
 
   if ("collection" in args) {
-    const collection = args.config.collections.find((c) => c.slug === args.collection);
+    const collection = args.config.collections.find(
+      (c) => c.slug === args.collection,
+    );
     if (!collection) {
-      throw new ConvexError(`No collection registered with slug "${args.collection}"`);
+      throw new ConvexError(
+        `No collection registered with slug "${args.collection}"`,
+      );
     }
     if (!collection.versions.drafts) {
       throw new ConvexError(
@@ -2889,7 +2968,10 @@ export async function saveDraft<DataModel extends GenericDataModel>(
     );
   }
   target = { kind: "global", config: global };
-  const rows = await resolveVersionedTarget({ ctx: args.ctx, global: args.global });
+  const rows = await resolveVersionedTarget({
+    ctx: args.ctx,
+    global: args.global,
+  });
   return saveDraftShared({
     ctx: args.ctx,
     config: args.config,
@@ -2901,13 +2983,13 @@ export async function saveDraft<DataModel extends GenericDataModel>(
     rows,
   });
 }
-```
+````
 
 #### packages/core/src/api/versions/saveDraft.client.ts
 
 New file, complete.
 
-```ts
+````ts
 import type { GenericId } from "convex/values";
 
 import { vexConvexApi } from "../convex";
@@ -2930,29 +3012,30 @@ import { useConvexMutation } from "@convex-dev/react-query";
  * await mutateAsync({ global: "siteSettings", data: { siteName: "New Name" } });
  * ```
  */
-export type SaveDraftClientArgs<TCollectionSlug extends CollectionSlug = CollectionSlug> =
-  GenericMutationClientParams &
-    (
-      | {
-          /** The versioned collection slug. */
-          collection: TCollectionSlug;
-          /**
-           * The document id currently loaded — the published row's id, or an
-           * active draft's own id. The server resolves either to the one draft row.
-           */
-          id: GenericId<TCollectionSlug>;
-          /** Partial field values to merge into the draft row. Unspecified fields are left unchanged. */
-          data: Record<string, unknown>;
-          /** The version number this save restores from, when reverting to an older snapshot. */
-          restoredFrom?: number;
-        }
-      | {
-          /** The versioned global slug. */
-          global: GlobalSlug;
-          /** Partial field values to merge into the draft row. Unspecified fields are left unchanged. */
-          data: Record<string, unknown>;
-        }
-    );
+export type SaveDraftClientArgs<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> = GenericMutationClientParams &
+  (
+    | {
+        /** The versioned collection slug. */
+        collection: TCollectionSlug;
+        /**
+         * The document id currently loaded — the published row's id, or an
+         * active draft's own id. The server resolves either to the one draft row.
+         */
+        id: GenericId<TCollectionSlug>;
+        /** Partial field values to merge into the draft row. Unspecified fields are left unchanged. */
+        data: Record<string, unknown>;
+        /** The version number this save restores from, when reverting to an older snapshot. */
+        restoredFrom?: number;
+      }
+    | {
+        /** The versioned global slug. */
+        global: GlobalSlug;
+        /** Partial field values to merge into the draft row. Unspecified fields are left unchanged. */
+        data: Record<string, unknown>;
+      }
+  );
 
 /**
  * Returns a `mutationFn` for saving a draft in a VexCMS versioned collection.
@@ -2987,7 +3070,7 @@ export type SaveDraftClientArgs<TCollectionSlug extends CollectionSlug = Collect
 export function saveDraft() {
   return useConvexMutation(vexConvexApi.versions.saveDraft);
 }
-```
+````
 
 #### packages/core/src/api/versions/saveDraft.server.test.ts
 
@@ -3047,7 +3130,10 @@ describe("saveDraft (server)", () => {
 
       expect(returnedId).not.toBe(publishedId);
 
-      const draftRow = await ctx.db.get("posts", returnedId as GenericId<"posts">);
+      const draftRow = await ctx.db.get(
+        "posts",
+        returnedId as GenericId<"posts">,
+      );
       expect(draftRow?.vex_status).toBe("draft");
       expect(draftRow?.vex_publishedId).toBe(publishedId);
       expect(draftRow?.title).toBe("Edited");
@@ -3068,7 +3154,10 @@ describe("saveDraft (server)", () => {
         [2, "draft"],
       ]);
       expect(versions[0]?.snapshot).toMatchObject({ title: "Original" });
-      expect(versions[1]?.snapshot).toMatchObject({ title: "Edited", slug: "original" });
+      expect(versions[1]?.snapshot).toMatchObject({
+        title: "Edited",
+        slug: "original",
+      });
     });
   });
 
@@ -3120,7 +3209,10 @@ describe("saveDraft (server)", () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
       // Written before `versions.drafts` was enabled: no `vex_status` at all.
-      const legacyId = await ctx.db.insert("posts", { title: "Legacy", slug: "legacy" });
+      const legacyId = await ctx.db.insert("posts", {
+        title: "Legacy",
+        slug: "legacy",
+      });
 
       const firstId = await saveDraft({
         ctx,
@@ -3268,11 +3360,17 @@ describe("saveDraft (server)", () => {
   });
 
   test("throws before writing anything when the collection does not have drafts enabled", async () => {
-    const plainPosts = defineCollection({ slug: "posts", fields: { title: text(), slug: text() } });
+    const plainPosts = defineCollection({
+      slug: "posts",
+      fields: { title: text(), slug: text() },
+    });
     const plainConfig = { collections: [plainPosts] } as unknown as VexConfig;
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      const postId = await ctx.db.insert("posts", { title: "Original", slug: "original" });
+      const postId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "original",
+      });
 
       await expect(
         saveDraft({
@@ -3369,7 +3467,10 @@ const versionedBanner = defineGlobal({
   versions: { drafts: true },
 });
 
-const globalFixtureConfig = { collections: [], globals: [versionedBanner] } as unknown as VexConfig;
+const globalFixtureConfig = {
+  collections: [],
+  globals: [versionedBanner],
+} as unknown as VexConfig;
 
 describe("saveDraft (server) — global target", () => {
   test("a global with no rows at all gets a draft-only row", async () => {
@@ -3390,7 +3491,9 @@ describe("saveDraft (server) — global target", () => {
     expect(rows[0]?.vex_publishedId).toBeUndefined();
     expect(rows[0]?.data).toEqual({ message: "Hello" });
 
-    const versions = await t.run((ctx) => ctx.db.query("vex_versions").collect());
+    const versions = await t.run((ctx) =>
+      ctx.db.query("vex_versions").collect(),
+    );
     expect(versions).toHaveLength(1);
     expect(versions[0]?.status).toBe("draft");
     expect(versions[0]?.documentId).toBe("banner");
@@ -3425,7 +3528,9 @@ describe("saveDraft (server) — global target", () => {
     expect(draft?.vex_publishedId).toBe(publishedId);
     expect(draft?.data).toEqual({ message: "Live, edited" });
 
-    const versions = await t.run((ctx) => ctx.db.query("vex_versions").collect());
+    const versions = await t.run((ctx) =>
+      ctx.db.query("vex_versions").collect(),
+    );
     const publishedSnapshot = versions.find((v) => v.status === "published");
     const draftSnapshot = versions.find((v) => v.status === "draft");
     expect(publishedSnapshot?.snapshot).toEqual({ message: "Live" });
@@ -3437,10 +3542,20 @@ describe("saveDraft (server) — global target", () => {
   test("repeated saves reuse the one draft row — bootstrap fires exactly once", async () => {
     const t = convexTest(schema, modules);
     const firstDraftId = await t.run((ctx) =>
-      saveDraft({ ctx, config: globalFixtureConfig, global: "banner", data: { message: "First" } }),
+      saveDraft({
+        ctx,
+        config: globalFixtureConfig,
+        global: "banner",
+        data: { message: "First" },
+      }),
     );
     const secondDraftId = await t.run((ctx) =>
-      saveDraft({ ctx, config: globalFixtureConfig, global: "banner", data: { message: "Second" } }),
+      saveDraft({
+        ctx,
+        config: globalFixtureConfig,
+        global: "banner",
+        data: { message: "Second" },
+      }),
     );
 
     expect(secondDraftId).toBe(firstDraftId);
@@ -3456,12 +3571,19 @@ describe("saveDraft (server) — global target", () => {
       label: "Banner",
       fields: { message: text({ label: "Message", required: true }) },
     });
-    const config = { collections: [], globals: [nonVersionedBanner] } as unknown as VexConfig;
+    const config = {
+      collections: [],
+      globals: [nonVersionedBanner],
+    } as unknown as VexConfig;
 
     await expect(
-      t.run((ctx) => saveDraft({ ctx, config, global: "banner", data: { message: "Hi" } })),
+      t.run((ctx) =>
+        saveDraft({ ctx, config, global: "banner", data: { message: "Hi" } }),
+      ),
     ).rejects.toThrow(/does not have drafts enabled/);
-    expect(await t.run((ctx) => ctx.db.query("vex_globals").collect())).toHaveLength(0);
+    expect(
+      await t.run((ctx) => ctx.db.query("vex_globals").collect()),
+    ).toHaveLength(0);
   });
 
   test("throws when the global slug does not resolve", async () => {
@@ -4748,15 +4870,15 @@ One edit each on the input and resolved shapes.
 **2 — resolved `CollectionConfig.versions`:**
 
 ```ts
-  versions: {
-    drafts: TDrafts;
-    defaultStatus: VexVersionStatus;
-    autosave: {
-      enabled: boolean;
-      debounceMs: number;
-    };
-    cascadeDelete: boolean;
-  };
+versions: {
+  drafts: TDrafts;
+  defaultStatus: VexVersionStatus;
+  autosave: {
+    enabled: boolean;
+    debounceMs: number;
+  }
+  cascadeDelete: boolean;
+}
 ```
 
 #### packages/core/src/collections/config.ts
@@ -4783,7 +4905,7 @@ One edit — `defineCollection`'s `versions` default block gains `defaultStatus`
 
 Existing file. Shown complete — the versioned branch touches the tail of the function, after the shared validation pipeline every `create` call already runs.
 
-```ts
+````ts
 import type {
   BetterOmit,
   DocumentByName,
@@ -4799,7 +4921,11 @@ import { CRUD_ACTIONS, hasPermission } from "../../access";
 import { getFieldsInputSchema, validateFields } from "../../fields";
 import { resolveAccessCall, stampUpdatedAt, toVexMutationCtx } from "../utils";
 import { TDocument } from "../convex";
-import { createVersion, removeVexFields, VERSION_STATUSES } from "../../versions";
+import {
+  createVersion,
+  removeVexFields,
+  VERSION_STATUSES,
+} from "../../versions";
 
 /**
  * Server-side args for `create`.
@@ -4821,7 +4947,10 @@ export interface CreateServerArgs<
    * the shape against the Convex schema at build time.
    */
   data: Expand<
-    BetterOmit<DocumentByName<DataModel, TableNamesInDataModel<DataModel>>, "_creationTime" | "_id">
+    BetterOmit<
+      DocumentByName<DataModel, TableNamesInDataModel<DataModel>>,
+      "_creationTime" | "_id"
+    >
   >;
 }
 
@@ -4861,9 +4990,13 @@ export async function create<
   DataModel extends GenericDataModel,
   TCollectionSlug extends CollectionSlug,
 >(args: CreateServerArgs<DataModel, TCollectionSlug>): Promise<string> {
-  const collection = args.config.collections.find((c) => c.slug === args.collection);
+  const collection = args.config.collections.find(
+    (c) => c.slug === args.collection,
+  );
   if (!collection) {
-    throw new ConvexError(`No collection registered with slug "${args.collection}"`);
+    throw new ConvexError(
+      `No collection registered with slug "${args.collection}"`,
+    );
   }
 
   if (args.config.access !== undefined) {
@@ -4895,9 +5028,14 @@ export async function create<
     });
   }
 
-  const parsed = getFieldsInputSchema({ fields: collection.fields }).safeParse(doc);
+  const parsed = getFieldsInputSchema({ fields: collection.fields }).safeParse(
+    doc,
+  );
   if (!parsed.success) {
-    throw new ConvexError({ message: "Validation failed", errors: parsed.error.message });
+    throw new ConvexError({
+      message: "Validation failed",
+      errors: parsed.error.message,
+    });
   }
 
   await validateFields({
@@ -4908,14 +5046,20 @@ export async function create<
     config: args.config,
   });
 
-  const data = stampUpdatedAt({ collection: args.collection, config: args.config, data: doc });
+  const data = stampUpdatedAt({
+    collection: args.collection,
+    config: args.config,
+    data: doc,
+  });
 
   if (collection.versions.drafts) {
     const status = collection.versions.defaultStatus;
     const insertData = {
       ...data,
       vex_status: status,
-      ...(status === VERSION_STATUSES.published.key ? { vex_publishedAt: Date.now() } : {}),
+      ...(status === VERSION_STATUSES.published.key
+        ? { vex_publishedAt: Date.now() }
+        : {}),
     };
     const id = await args.ctx.db.insert(args.collection, insertData as never);
     await createVersion({
@@ -4932,7 +5076,7 @@ export async function create<
   const id = await args.ctx.db.insert(args.collection, data as never);
   return id;
 }
-```
+````
 
 Note `data` (the schema/hook-processed document) is what's snapshotted, not `insertData` — the history row's snapshot is clean user fields, never `vex_status`/`vex_publishedAt`.
 
@@ -4940,7 +5084,7 @@ Note `data` (the schema/hook-processed document) is what's snapshotted, not `ins
 
 Existing file. Shown complete — the draft-row guard is new, inserted immediately after the document fetch and before `prepareEdit` runs.
 
-```ts
+````ts
 import type {
   BetterOmit,
   DocumentByName,
@@ -4956,7 +5100,11 @@ import { CRUD_ACTIONS } from "../../access";
 import { prepareEdit } from "../prepareEdit";
 import { stampUpdatedAt } from "../utils";
 import { TDocument } from "../convex";
-import { createVersion, removeVexFields, VERSION_STATUSES } from "../../versions";
+import {
+  createVersion,
+  removeVexFields,
+  VERSION_STATUSES,
+} from "../../versions";
 
 /**
  * Server-side args for `update`.
@@ -5025,9 +5173,13 @@ export async function update<
   DataModel extends GenericDataModel,
   TCollectionSlug extends CollectionSlug,
 >(args: UpdateServerArgs<DataModel, TCollectionSlug>): Promise<void> {
-  const collection = args.config.collections.find((c) => c.slug === args.collection);
+  const collection = args.config.collections.find(
+    (c) => c.slug === args.collection,
+  );
   if (!collection) {
-    throw new ConvexError(`No collection registered with slug "${args.collection}"`);
+    throw new ConvexError(
+      `No collection registered with slug "${args.collection}"`,
+    );
   }
 
   const doc = await args.ctx.db.get(args.id);
@@ -5053,7 +5205,11 @@ export async function update<
     validateKeys: "changed",
   });
 
-  const data = stampUpdatedAt({ collection: args.collection, config: args.config, data: patch });
+  const data = stampUpdatedAt({
+    collection: args.collection,
+    config: args.config,
+    data: patch,
+  });
   await args.ctx.db.patch(args.id, data as never);
 
   if (collection.versions.drafts) {
@@ -5063,11 +5219,12 @@ export async function update<
       documentId: String(args.id),
       status: VERSION_STATUSES.published.key,
       snapshot: removeVexFields({ doc: transformedFields }),
-      publishedAt: (doc as TDocument | null)?.vex_publishedAt as number | undefined,
+      publishedAt: (doc as TDocument | null)?.vex_publishedAt as
+        number | undefined,
     });
   }
 }
-```
+````
 
 `publishedAt` on the history row carries forward the document's EXISTING `vex_publishedAt` (set by `create` or a prior publish) — `update` never stamps a new one; that is `publish`'s job (Step 9).
 
@@ -5168,7 +5325,9 @@ export function versionsApi<
   ) => Promise<VexApiAuth | undefined>;
 }) {
   void query;
-  const hasVersionedCollections = config.collections.some((c) => c.versions.drafts);
+  const hasVersionedCollections = config.collections.some(
+    (c) => c.versions.drafts,
+  );
   const hasVersionedGlobals = config.globals.some((g) => g.versions.drafts);
   if (!hasVersionedCollections && !hasVersionedGlobals) {
     return {};
@@ -5188,7 +5347,8 @@ export function versionsApi<
         environmentId: v.optional(v.string()),
       },
       handler: async (ctx, args) => {
-        const isCollection = args.collection !== undefined && args.id !== undefined;
+        const isCollection =
+          args.collection !== undefined && args.id !== undefined;
         const isGlobal = args.global !== undefined;
         if (isCollection === isGlobal) {
           throw new ConvexError(
@@ -5346,7 +5506,7 @@ The three new keys are spread before `...(data ?? {})`, matching how `_id`/`_cre
 
 Shown complete — the versioned branch touches nearly every line of the implementation (row lookup, authorization, validation, and write all change shape once a slug can resolve to two rows). **No `action` argument anywhere** — a versioned global's `upsert` can only ever mean "write the published row" (Option A, decision 12); `versions.saveDraft` is the only path that writes its draft row.
 
-```ts
+````ts
 import { ConvexError } from "convex/values";
 import type { GenericDataModel } from "convex/server";
 
@@ -5469,7 +5629,10 @@ export async function upsertGlobal<
       );
       return row._id as string;
     }
-    const id = await props.ctx.db.insert("vex_globals", { slug: props.slug, data: patch } as never);
+    const id = await props.ctx.db.insert("vex_globals", {
+      slug: props.slug,
+      data: patch,
+    } as never);
     return id as string;
   }
 
@@ -5477,7 +5640,9 @@ export async function upsertGlobal<
   // whose `vex_status !== "draft"` — and never touches the draft row, if
   // one is active. `saveDraft` (`api/versions/saveDraft.server.ts`) is the
   // only path that writes a global's draft row.
-  const publishedRow = rows.find((r) => r.vex_status !== VERSION_STATUSES.draft.key);
+  const publishedRow = rows.find(
+    (r) => r.vex_status !== VERSION_STATUSES.draft.key,
+  );
 
   const { patch } = await prepareEdit({
     ctx: props.ctx,
@@ -5493,8 +5658,14 @@ export async function upsertGlobal<
   });
 
   if (publishedRow) {
-    const nextData = { ...((publishedRow.data as Record<string, unknown>) ?? {}), ...patch };
-    await props.ctx.db.patch(publishedRow._id as never, { data: nextData } as never);
+    const nextData = {
+      ...((publishedRow.data as Record<string, unknown>) ?? {}),
+      ...patch,
+    };
+    await props.ctx.db.patch(
+      publishedRow._id as never,
+      { data: nextData } as never,
+    );
     await createVersion({
       ctx: props.ctx,
       collection: "vex_globals" as CollectionSlug,
@@ -5523,7 +5694,7 @@ export async function upsertGlobal<
   });
   return id as string;
 }
-```
+````
 
 #### packages/core/src/api/globals/get.server.ts
 
@@ -5581,8 +5752,12 @@ export async function getGlobal<
       .withIndex("by_slug", (q) => q.eq("slug", props.slug as never))
       .collect();
 
-    const publishedRow = rows.find((r) => r.vex_status !== VERSION_STATUSES.draft.key);
-    const draftRow = rows.find((r) => r.vex_status === VERSION_STATUSES.draft.key);
+    const publishedRow = rows.find(
+      (r) => r.vex_status !== VERSION_STATUSES.draft.key,
+    );
+    const draftRow = rows.find(
+      (r) => r.vex_status === VERSION_STATUSES.draft.key,
+    );
     const wantsDrafts =
       props.config?.access === undefined
         ? Boolean(props.drafts)
@@ -5864,7 +6039,7 @@ Live preview on a global shows whichever row the edit view has loaded — draft 
 
 #### packages/react/src/components/drafts/StatusBadge.tsx
 
-```tsx
+````tsx
 "use client";
 
 import { VERSION_STATUSES, type VexVersionStatus } from "@vexcms/core";
@@ -5899,20 +6074,21 @@ export interface StatusBadgeProps {
  * ```
  */
 export function StatusBadge(props: StatusBadgeProps) {
-  const variant = props.status === VERSION_STATUSES.draft.key ? "outline" : "default";
+  const variant =
+    props.status === VERSION_STATUSES.draft.key ? "outline" : "default";
   const label =
     props.status === VERSION_STATUSES.draft.key
       ? VERSION_STATUSES.draft.labels.singular
       : VERSION_STATUSES.published.labels.singular;
   return <Badge variant={variant}>{label}</Badge>;
 }
-```
+````
 
 #### packages/react/src/components/drafts/DraftToolbar.tsx
 
 New file, complete — real code, not pseudocode (pure presentation, no branching worth deferring).
 
-```tsx
+````tsx
 "use client";
 
 import type { VexVersionStatus } from "@vexcms/core";
@@ -5979,7 +6155,7 @@ export function DraftToolbar(props: DraftToolbarProps) {
     </>
   );
 }
-```
+````
 
 #### packages/react/src/components/drafts/index.ts
 
@@ -6061,9 +6237,10 @@ const [activeDocumentId, setActiveDocumentId] = useState(props.documentId);
 **3 — draft mutation, anchored right after the existing `update` `useVexMutation` block.** Bypasses `useVexMutation` deliberately: that hook's `operation` param is typed `VexMutationOperation` (`"create" | "remove" | "update" | "upsert"` — `packages/core/src/revalidate/types.ts`), which has no draft-workflow member, and nothing in this spec wires `saveDraft` into the ISR-purge pipeline `useVexMutation` exists for — a draft is never public, so it is never revalidated.
 
 ```tsx
-const { mutateAsync: saveDraftMutation, isPending: isSavingDraft } = useMutation({
-  mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
-});
+const { mutateAsync: saveDraftMutation, isPending: isSavingDraft } =
+  useMutation({
+    mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
+  });
 ```
 
 **4 — Save Draft handler**, immediately after edit 3.
@@ -6090,7 +6267,9 @@ async function handleSaveDraft(): Promise<void> {
     setActiveDocumentId(draftId);
     form.reset();
   } catch (error) {
-    toast.error("Save draft failed", { description: getVexErrorMessage(error) });
+    toast.error("Save draft failed", {
+      description: getVexErrorMessage(error),
+    });
   }
 }
 ```
@@ -6170,7 +6349,7 @@ const isDraftDoc = currentDocument.vex_status === VERSION_STATUSES.draft.key;
 
 **Complete component after this step** — full file, edits applied, everything else verbatim from HEAD:
 
-```tsx
+````tsx
 "use client";
 
 import { useState } from "react";
@@ -6201,7 +6380,11 @@ import {
 } from "../../hooks";
 import { changedValues } from "../form/changedValues";
 import { useVexConfig } from "../../context/VexConfigContext";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../ui/resizable";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "../ui/resizable";
 import { useIsMobile } from "../../hooks/use-mobile";
 import {
   useLivePreviewPanelMinSize,
@@ -6209,7 +6392,10 @@ import {
   writeLivePreviewLayoutCookie,
 } from "../../hooks/useLivePreviewPanelState";
 import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
-import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
+import {
+  LivePreviewPanel,
+  resolveLivePreviewUrl,
+} from "../livePreview/LivePreviewPanel";
 import { useLivePreviewServerUrl } from "../../hooks/useLivePreviewServerUrl";
 import { DraftToolbar } from "../drafts";
 import { getVexErrorMessage } from "../../lib/errors";
@@ -6244,11 +6430,13 @@ import { toast } from "sonner";
  * <CollectionEditView collection="posts" documentId="k573abc..." initialData={serverDoc} />
  * ```
  */
-export function CollectionEditView<TCollectionSlug extends CollectionSlug = CollectionSlug>(
-  props: CollectionEditViewProps<TCollectionSlug>,
-) {
+export function CollectionEditView<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+>(props: CollectionEditViewProps<TCollectionSlug>) {
   const config = useVexConfig();
-  const collection = config.collections.find((c) => c.slug === props.collection);
+  const collection = config.collections.find(
+    (c) => c.slug === props.collection,
+  );
 
   if (!collection) {
     // TODO: add proper not found component or screen
@@ -6297,9 +6485,10 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
   // — `packages/core/src/revalidate/types.ts`), which has no draft-workflow
   // member, and nothing in this spec wires draft/publish/unpublish into the
   // ISR-purge pipeline `useVexMutation` exists for.
-  const { mutateAsync: saveDraftMutation, isPending: isSavingDraft } = useMutation({
-    mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
-  });
+  const { mutateAsync: saveDraftMutation, isPending: isSavingDraft } =
+    useMutation({
+      mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
+    });
 
   /**
    * Persists the form's currently-dirty field values as a draft, without
@@ -6322,7 +6511,9 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
       setActiveDocumentId(draftId);
       form.reset();
     } catch (error) {
-      toast.error("Save draft failed", { description: getVexErrorMessage(error) });
+      toast.error("Save draft failed", {
+        description: getVexErrorMessage(error),
+      });
     }
   }
   const visibleFields = useVisibleFields({
@@ -6358,7 +6549,9 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
   // so every edit affordance — the field inputs, the field-level map, and the
   // toolbar — checks `saveDraft`; a non-versioned collection checks `update`.
   const isVersioned = collection.versions.drafts;
-  const editAction = isVersioned ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update;
+  const editAction = isVersioned
+    ? DRAFT_ACTIONS.saveDraft
+    : CRUD_ACTIONS.update;
   const canEdit = usePermission({
     resource: collection.slug,
     action: editAction,
@@ -6408,8 +6601,11 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
     formValues,
     debounceMs: livePreview?.debounceMs,
   });
-  const previewIsActive = Boolean(livePreview && previewPanel.isOpen && previewUrl);
-  const breakpoints = livePreview?.breakpoints ?? config.admin.livePreview.breakpoints;
+  const previewIsActive = Boolean(
+    livePreview && previewPanel.isOpen && previewUrl,
+  );
+  const breakpoints =
+    livePreview?.breakpoints ?? config.admin.livePreview.breakpoints;
 
   const formContent = (
     <div className="space-y-4">
@@ -6425,7 +6621,9 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
             name={fieldKey}
             fieldDef={field}
             readOnly={
-              !canEdit || field.admin.readOnly || !isFieldAllowed(fieldPermissions, fieldKey)
+              !canEdit ||
+              field.admin.readOnly ||
+              !isFieldAllowed(fieldPermissions, fieldKey)
             }
             collection={collection}
           />
@@ -6443,17 +6641,22 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
   // BOTH panels need an explicit `defaultSize`: react-resizable-panels renders a
   // panel that has none at flex-grow 0 until it measures the group after mount,
   // which is a preview pane that flashes at zero width on every load.
-  const formPanelSize = props.initialPreviewPanelSize ?? DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE;
+  const formPanelSize =
+    props.initialPreviewPanelSize ?? DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE;
   // Pixel floors turned into shares of the available width, asymmetric by
   // design: the preview needs more room to stay representative than the form
   // needs to stay usable.
-  const { ref: splitRef, minSizes: panelMinSizes } = useLivePreviewPanelMinSize();
+  const { ref: splitRef, minSizes: panelMinSizes } =
+    useLivePreviewPanelMinSize();
   // Toggling the preview swaps which element scrolls, and a freshly mounted
   // scroller starts at zero — so the offset is carried across by hand.
   const formScroll = usePreservedScrollTop();
 
   return (
-    <AppForm form={form} className="relative -mb-6 flex h-[calc(100%+1.5rem)] flex-col">
+    <AppForm
+      form={form}
+      className="relative -mb-6 flex h-[calc(100%+1.5rem)] flex-col"
+    >
       <div
         // Outside the scroll container, so it never scrolls away and never
         // moves when a scrollbar appears below it. No bottom margin: the
@@ -6473,7 +6676,10 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
           selector={(state) => state.isDefaultValue}
           children={(isDefaultValue) => (
             <div className="flex flex-wrap items-center gap-2">
-              <RevalidateButton collection={collection.slug} doc={currentDocument} />
+              <RevalidateButton
+                collection={collection.slug}
+                doc={currentDocument}
+              />
               {livePreview && (
                 <Button
                   type="button"
@@ -6534,11 +6740,17 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
             className="min-h-0 flex-1"
             onLayout={([formPanelSize]) => {
               if (formPanelSize !== undefined) {
-                writeLivePreviewLayoutCookie({ slug: collection.slug, formPanelSize });
+                writeLivePreviewLayoutCookie({
+                  slug: collection.slug,
+                  formPanelSize,
+                });
               }
             }}
           >
-            <ResizablePanel defaultSize={formPanelSize} minSize={panelMinSizes.form}>
+            <ResizablePanel
+              defaultSize={formPanelSize}
+              minSize={panelMinSizes.form}
+            >
               <div
                 ref={formScroll.ref}
                 onScroll={formScroll.onScroll}
@@ -6548,7 +6760,10 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={100 - formPanelSize} minSize={panelMinSizes.preview}>
+            <ResizablePanel
+              defaultSize={100 - formPanelSize}
+              minSize={panelMinSizes.preview}
+            >
               <LivePreviewPanel
                 previewUrl={previewUrl as string}
                 collectionSlug={collection.slug}
@@ -6591,7 +6806,7 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
     </AppForm>
   );
 }
-```
+````
 
 #### packages/react/src/components/views/GlobalEditView.tsx
 
@@ -6653,9 +6868,10 @@ const { mutateAsync, isPending } = useVexMutation({
 // which has no draft-workflow member, and nothing wires draft saves into
 // the ISR-purge pipeline `useVexMutation` exists for. Mirrors
 // `CollectionEditView`'s own `saveDraftMutation`.
-const { mutateAsync: saveDraftMutation, isPending: isSavingDraft } = useMutation({
-  mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
-});
+const { mutateAsync: saveDraftMutation, isPending: isSavingDraft } =
+  useMutation({
+    mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
+  });
 
 /**
  * Persists the form's currently-dirty field values as a draft, without
@@ -6671,16 +6887,21 @@ const { mutateAsync: saveDraftMutation, isPending: isSavingDraft } = useMutation
  */
 async function handleSaveDraft(): Promise<void> {
   try {
-    const data = globalDoc ? changedValues(form) : (form.state.values as Record<string, unknown>);
+    const data = globalDoc
+      ? changedValues(form)
+      : (form.state.values as Record<string, unknown>);
     await saveDraftMutation({ global: global!.slug, data });
     form.reset();
   } catch (error) {
-    toast.error("Save draft failed", { description: getVexErrorMessage(error) });
+    toast.error("Save draft failed", {
+      description: getVexErrorMessage(error),
+    });
   }
 }
 
 const isDraftDoc =
-  (globalDoc as { vex_status?: "draft" | "published" } | undefined)?.vex_status === "draft";
+  (globalDoc as { vex_status?: "draft" | "published" } | undefined)
+    ?.vex_status === "draft";
 ```
 
 **5 — edit permissions follow the draft action.** On BOTH `const canEdit = usePermission({...})` and the `fieldPermissions` call beneath it, the action is `hasDrafts ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update` → `canEdit` and `fieldPermissions` become "can save a draft" for a versioned global instead of "can `update`", which is the whole point of the "role restricted via `changes` on one field gets the same restriction on saveDraft" acceptance criterion (Step 5) — a role granted `saveDraft` but not `update` must still see its editable fields as editable here, not locked read-only by a check against the wrong action. There is no separate `canSaveDraft` variable in this file either — `canEdit` IS the gate, same shape as `CollectionEditView`'s `editAction`.
@@ -6788,7 +7009,11 @@ import { changedValues } from "../form/changedValues";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 import { useVexConfig } from "../../context/VexConfigContext";
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../ui/resizable";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "../ui/resizable";
 import { useIsMobile } from "../../hooks/use-mobile";
 import {
   useLivePreviewPanelMinSize,
@@ -6796,7 +7021,10 @@ import {
   writeLivePreviewLayoutCookie,
 } from "../../hooks/useLivePreviewPanelState";
 import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
-import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
+import {
+  LivePreviewPanel,
+  resolveLivePreviewUrl,
+} from "../livePreview/LivePreviewPanel";
 import { useLivePreviewServerUrl } from "../../hooks/useLivePreviewServerUrl";
 import { DraftToolbar } from "../drafts";
 import { getVexErrorMessage } from "../../lib/errors";
@@ -6850,7 +7078,9 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     // travels as `collection`. Merged with the loaded document (like
     // `CollectionEditView`'s own `getChanges`) so a partial diff still
     // resolves revalidation targets from the full post-write state.
-    getChanges: ({ args }) => [{ after: { ...(globalDoc ?? {}), ...args.data } }],
+    getChanges: ({ args }) => [
+      { after: { ...(globalDoc ?? {}), ...args.data } },
+    ],
     mutationFn: vexConvexApi.globals.upsert,
     operation: "upsert",
   });
@@ -6860,9 +7090,10 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   // which has no draft-workflow member, and nothing wires draft saves into
   // the ISR-purge pipeline `useVexMutation` exists for. Mirrors
   // `CollectionEditView`'s own `saveDraftMutation`.
-  const { mutateAsync: saveDraftMutation, isPending: isSavingDraft } = useMutation({
-    mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
-  });
+  const { mutateAsync: saveDraftMutation, isPending: isSavingDraft } =
+    useMutation({
+      mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
+    });
 
   /**
    * Persists the form's currently-dirty field values as a draft, without
@@ -6884,7 +7115,9 @@ export function GlobalEditView(props: GlobalEditViewProps) {
       await saveDraftMutation({ global: global!.slug, data });
       form.reset();
     } catch (error) {
-      toast.error("Save draft failed", { description: getVexErrorMessage(error) });
+      toast.error("Save draft failed", {
+        description: getVexErrorMessage(error),
+      });
     }
   }
 
@@ -6969,8 +7202,11 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     formValues,
     debounceMs: livePreview?.debounceMs,
   });
-  const previewIsActive = Boolean(livePreview && previewPanel.isOpen && previewUrl);
-  const breakpoints = livePreview?.breakpoints ?? config.admin.livePreview.breakpoints;
+  const previewIsActive = Boolean(
+    livePreview && previewPanel.isOpen && previewUrl,
+  );
+  const breakpoints =
+    livePreview?.breakpoints ?? config.admin.livePreview.breakpoints;
 
   // See `CollectionEditView`: split mode fills `main`'s content box exactly and
   // cancels its bottom padding, so the form column scrolls on its own and runs
@@ -6980,10 +7216,12 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   // BOTH panels need an explicit `defaultSize`: react-resizable-panels renders a
   // panel that has none at flex-grow 0 until it measures the group after mount,
   // which is a preview pane that flashes at zero width on every load.
-  const formPanelSize = props.initialPreviewPanelSize ?? DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE;
+  const formPanelSize =
+    props.initialPreviewPanelSize ?? DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE;
   // See CollectionEditView: per-column pixel floors expressed as shares of the
   // width available, the preview's being the larger of the two.
-  const { ref: splitRef, minSizes: panelMinSizes } = useLivePreviewPanelMinSize();
+  const { ref: splitRef, minSizes: panelMinSizes } =
+    useLivePreviewPanelMinSize();
   // See CollectionEditView: the scroll container changes with the split, so
   // the offset is carried across by hand.
   const formScroll = usePreservedScrollTop();
@@ -7002,7 +7240,9 @@ export function GlobalEditView(props: GlobalEditViewProps) {
             name={fieldKey}
             fieldDef={field}
             readOnly={
-              !canEdit || field.admin.readOnly || !isFieldAllowed(fieldPermissions, fieldKey)
+              !canEdit ||
+              field.admin.readOnly ||
+              !isFieldAllowed(fieldPermissions, fieldKey)
             }
             collection={global}
           />
@@ -7012,7 +7252,10 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   );
 
   return (
-    <AppForm form={form} className="relative -mb-6 flex h-[calc(100%+1.5rem)] flex-col">
+    <AppForm
+      form={form}
+      className="relative -mb-6 flex h-[calc(100%+1.5rem)] flex-col"
+    >
       <div
         // See CollectionEditView: outside the scroll container, no bottom
         // margin so the divider through the handle meets this border.
@@ -7039,7 +7282,9 @@ export function GlobalEditView(props: GlobalEditViewProps) {
               )}
               {hasDrafts ? (
                 <DraftToolbar
-                  status={globalDoc ? (isDraftDoc ? "draft" : "published") : undefined}
+                  status={
+                    globalDoc ? (isDraftDoc ? "draft" : "published") : undefined
+                  }
                   saveDraft={{
                     onClick: handleSaveDraft,
                     isPending: isSavingDraft,
@@ -7081,11 +7326,17 @@ export function GlobalEditView(props: GlobalEditViewProps) {
             className="min-h-0 flex-1"
             onLayout={([formPanelSize]) => {
               if (formPanelSize !== undefined) {
-                writeLivePreviewLayoutCookie({ slug: global.slug, formPanelSize });
+                writeLivePreviewLayoutCookie({
+                  slug: global.slug,
+                  formPanelSize,
+                });
               }
             }}
           >
-            <ResizablePanel defaultSize={formPanelSize} minSize={panelMinSizes.form}>
+            <ResizablePanel
+              defaultSize={formPanelSize}
+              minSize={panelMinSizes.form}
+            >
               <div
                 ref={formScroll.ref}
                 onScroll={formScroll.onScroll}
@@ -7095,7 +7346,10 @@ export function GlobalEditView(props: GlobalEditViewProps) {
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={100 - formPanelSize} minSize={panelMinSizes.preview}>
+            <ResizablePanel
+              defaultSize={100 - formPanelSize}
+              minSize={panelMinSizes.preview}
+            >
               <LivePreviewPanel
                 previewUrl={previewUrl as string}
                 collectionSlug={global.slug}
@@ -7173,18 +7427,25 @@ describe("GlobalEditView — draft toolbar", () => {
       { convex: t, config: versionedConfig },
     );
 
-    expect(utils.getByRole("button", { name: "Save Draft" })).toBeInTheDocument();
+    expect(
+      utils.getByRole("button", { name: "Save Draft" }),
+    ).toBeInTheDocument();
     expect(utils.queryByRole("button", { name: "Save" })).toBeNull();
     expect(utils.getByText("Published")).toBeInTheDocument();
   });
 
   it("shows Save Draft without a badge for a brand-new versioned global with no saved row yet", async () => {
-    const utils = renderView(createElement(GlobalEditView, { global: versionedGlobal.slug }), {
-      convex: t,
-      config: versionedConfig,
-    });
+    const utils = renderView(
+      createElement(GlobalEditView, { global: versionedGlobal.slug }),
+      {
+        convex: t,
+        config: versionedConfig,
+      },
+    );
 
-    expect(utils.getByRole("button", { name: "Save Draft" })).toBeInTheDocument();
+    expect(
+      utils.getByRole("button", { name: "Save Draft" }),
+    ).toBeInTheDocument();
     expect(utils.queryByText("Published")).toBeNull();
     expect(utils.queryByText("Draft")).toBeNull();
   });
@@ -7218,10 +7479,13 @@ describe("GlobalEditView — draft toolbar", () => {
   });
 
   it("submits the full form value through versions.saveDraft before the global has ever been saved", async () => {
-    const utils = renderView(createElement(GlobalEditView, { global: versionedGlobal.slug }), {
-      convex: t,
-      config: versionedConfig,
-    });
+    const utils = renderView(
+      createElement(GlobalEditView, { global: versionedGlobal.slug }),
+      {
+        convex: t,
+        config: versionedConfig,
+      },
+    );
 
     fireEvent.change(utils.container.querySelector("#siteName")!, {
       target: { value: "first name" },
@@ -7229,8 +7493,12 @@ describe("GlobalEditView — draft toolbar", () => {
     fireEvent.click(utils.getByRole("button", { name: "Save Draft" }));
 
     await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
-    expect(convexMutationMock.mock.calls[0]?.[0]?.global).toBe(versionedGlobal.slug);
-    expect(convexMutationMock.mock.calls[0]?.[0]?.data).toMatchObject({ siteName: "first name" });
+    expect(convexMutationMock.mock.calls[0]?.[0]?.global).toBe(
+      versionedGlobal.slug,
+    );
+    expect(convexMutationMock.mock.calls[0]?.[0]?.data).toMatchObject({
+      siteName: "first name",
+    });
   });
 
   it("keeps the plain Save/Cancel toolbar for a non-versioned global", async () => {
@@ -7278,14 +7546,17 @@ this step — publishing a global now goes exclusively through
 `versions.publish`, exactly like saving its draft already goes exclusively
 through `versions.saveDraft`.
 
-`publishShared` takes no `data` of its own. The rejected design let a caller
-pass last-minute field edits alongside the publish call; the unified version
-doesn't need to, because the thing being promoted is always "whatever is
-currently stored on the one active draft row" — the same row `saveDraft`
-already writes to. The UI (Step 10) composes `saveDraft` then `publish` when
-there are unsaved edits, which keeps this function's contract identical for
-either kind and avoids duplicating `saveDraft`'s own merge/validate pipeline
-a second time inside `publish`.
+`publishShared` accepts an optional `data` of its own — pending, not-yet-saved
+form edits, merged on top of the draft/published row's fields before
+validation. A caller with nothing pending passes no `data` (or `{}`), and the
+thing promoted is exactly "whatever is currently stored on the active draft
+row (or the published row, once a document has none left)" — the same row
+`saveDraft` already writes to. This replaces an earlier design where the UI
+(Step 10) composed `saveDraft` then `publish` as two separate calls whenever
+there were unsaved edits; folding `data` into `publishShared` itself collapses
+that into one call and one validation pass, while still keeping `publish`
+kind-agnostic — it merges through the same `rows.toUserFields`/`buildDraftPatch`
+seam `saveDraftShared` already uses, never branching on `target.kind`.
 
 Validation stays STRICT (`partial: false, validateKeys: "all"` — decision 4):
 a draft may be incomplete, but a published document is what the public sees.
@@ -7335,13 +7606,16 @@ from — not a new, separately-decided scope expansion.
 - [ ] `packages/core/src/versions/publish.ts` — new. `publishShared`, the
       `publish` counterpart to Step 7's `saveDraftShared`: same signature
       shape, same "never branches on `target.kind`" discipline, driven
-      entirely by the `VersionedTargetRows` descriptor it's handed.
+      entirely by the `VersionedTargetRows` descriptor it's handed, plus an
+      optional `data` merged on top before validation.
 - [ ] `packages/core/src/api/versions/publish.server.ts` — rewritten (a version
       of this file already exists on disk from before this redesign, written
       for the rejected collection-only design; this replaces it). Mirrors
       `saveDraft.server.ts` exactly: resolve config → check `versions.drafts`
       → build `target` → `resolveVersionedTarget` → delegate to
-      `publishShared`. No `data` argument.
+      `publishShared`, forwarding an optional `data` argument (stripped of
+      system fields via `removeVexFields`, the same treatment `saveDraft`
+      gives its own `data`).
 - [ ] `packages/core/src/api/versions/publish.server.test.ts` — new. Covers
       both a versioned collection and a versioned global through the one
       shared implementation, the same way `saveDraft.server.test.ts` does.
@@ -7353,7 +7627,7 @@ from — not a new, separately-decided scope expansion.
 - [ ] `packages/core/src/api/client.ts` — re-exports `publish`.
 - [ ] `packages/core/src/api/convex.ts` — `VexPublishArgs` (the `publish`
       sibling of `VexSaveDraftArgs`) + a `publish` entry in the `versions:
-      {...}` block Step 7 created. `globals.upsert`'s args type is untouched —
+    {...}` block Step 7 created. `globals.upsert`'s args type is untouched —
       it has no `action` field in this design, before or after this step.
 - [ ] `packages/core/src/api/convex.test.ts` — `REGISTERED_OPERATION_NAMES`
       gains `"publish"`.
@@ -7373,7 +7647,11 @@ from — not a new, separately-decided scope expansion.
 
 ````ts
 import { ConvexError } from "convex/values";
-import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
+import type {
+  GenericDataModel,
+  GenericMutationCtx,
+  GenericQueryCtx,
+} from "convex/server";
 
 import { ADMIN_FIELDS } from "../fields/constants";
 import type { CollectionOrGlobal } from "../types/utils";
@@ -7383,7 +7661,9 @@ import type { CollectionOrGlobal } from "../types/utils";
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
  */
-export interface AssertNoDraftRelationshipsArgs<DataModel extends GenericDataModel> {
+export interface AssertNoDraftRelationshipsArgs<
+  DataModel extends GenericDataModel,
+> {
   /** Convex context — a read-only lookup, safe from a query or a mutation. */
   ctx: GenericQueryCtx<DataModel> | GenericMutationCtx<DataModel>;
   /** The collection or global being published, for its field definitions. */
@@ -7435,9 +7715,9 @@ export interface AssertNoDraftRelationshipsArgs<DataModel extends GenericDataMod
  * await assertNoDraftRelationships({ ctx, target, document: transformedFields });
  * ```
  */
-export async function assertNoDraftRelationships<DataModel extends GenericDataModel = GenericDataModel>(
-  args: AssertNoDraftRelationshipsArgs<DataModel>,
-): Promise<void> {
+export async function assertNoDraftRelationships<
+  DataModel extends GenericDataModel = GenericDataModel,
+>(args: AssertNoDraftRelationshipsArgs<DataModel>): Promise<void> {
   const relationshipKeys = Object.entries(args.target.config.fields)
     .filter(([, field]) => field.type === ADMIN_FIELDS.relationship.type)
     .map(([key]) => key);
@@ -7499,7 +7779,10 @@ const bannerWithRelationship = defineGlobal({
 describe("assertNoDraftRelationships", () => {
   test("resolves when the collection has no relationship fields", async () => {
     const t = convexTest(schema, modules);
-    const plainPosts = defineCollection({ slug: "posts", fields: { title: text() } });
+    const plainPosts = defineCollection({
+      slug: "posts",
+      fields: { title: text() },
+    });
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       await expect(
         assertNoDraftRelationships({
@@ -7514,7 +7797,10 @@ describe("assertNoDraftRelationships", () => {
   test("resolves when every linked document is published", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const linkedId = await ctx.db.insert("posts", { title: "Linked", vex_status: "published" } as never);
+      const linkedId = await ctx.db.insert("posts", {
+        title: "Linked",
+        vex_status: "published",
+      } as never);
       await expect(
         assertNoDraftRelationships({
           ctx,
@@ -7528,7 +7814,10 @@ describe("assertNoDraftRelationships", () => {
   test("rejects, naming the field, when a linked document is still a draft", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const draftId = await ctx.db.insert("posts", { title: "Linked", vex_status: "draft" } as never);
+      const draftId = await ctx.db.insert("posts", {
+        title: "Linked",
+        vex_status: "draft",
+      } as never);
       let caught: unknown;
       try {
         await assertNoDraftRelationships({
@@ -7540,14 +7829,19 @@ describe("assertNoDraftRelationships", () => {
         caught = error;
       }
       expect(caught).toBeInstanceOf(ConvexError);
-      expect((caught as ConvexError<{ field: string }>).data.field).toBe("related");
+      expect((caught as ConvexError<{ field: string }>).data.field).toBe(
+        "related",
+      );
     });
   });
 
   test("applies the same check to a global target — the gap the rejected collection-only design left", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const draftId = await ctx.db.insert("posts", { title: "Linked", vex_status: "draft" } as never);
+      const draftId = await ctx.db.insert("posts", {
+        title: "Linked",
+        vex_status: "draft",
+      } as never);
       let caught: unknown;
       try {
         await assertNoDraftRelationships({
@@ -7559,7 +7853,9 @@ describe("assertNoDraftRelationships", () => {
         caught = error;
       }
       expect(caught).toBeInstanceOf(ConvexError);
-      expect((caught as ConvexError<{ field: string }>).data.field).toBe("featured");
+      expect((caught as ConvexError<{ field: string }>).data.field).toBe(
+        "featured",
+      );
     });
   });
 });
@@ -7596,18 +7892,18 @@ import type { VersionedTargetRows } from "./resolveVersionedTarget";
  * resolved into `rows` (see {@link resolveVersionedTarget}); this function
  * never branches on `target.kind`.
  *
- * Takes no `data` of its own — it always promotes whatever is CURRENTLY
- * stored on `rows.draftRow`. A draft row is always a complete copy of the
- * document's fields (bootstrapped as a full copy of the published state, or
- * of `{}` for a brand-new document, and every `saveDraft` patch lands flatly
- * on that same complete set), so passing `rows.toUserFields(draftRow)` as
- * `prepareEdit`'s `incoming` — merged over `storedDoc` (the current
- * published row's fields, or `{}` when none exists yet) via `prepareEdit`'s
- * own `{ ...storedDoc, ...incoming }` step — reproduces the draft's complete
- * content exactly, the same "every field, no partial merge" shape `create`'s
- * own strict pass already has. A caller with pending, not-yet-saved form
- * edits (Step 10's UI) saves them as a draft FIRST, then calls this — never
- * merges them in here.
+ * Promotes whatever is CURRENTLY stored on `rows.draftRow` (or
+ * `rows.publishedRow` when there is no draft), merged with optional
+ * `props.data` — pending, not-yet-saved form edits — applied on top. A
+ * draft row is always a complete copy of the document's fields
+ * (bootstrapped as a full copy of the published state, or of `{}` for a
+ * brand-new document, and every `saveDraft` patch lands flatly on that
+ * same complete set), so `{ ...toUserFields(draftRow ?? publishedRow),
+ * ...data }`, passed as `prepareEdit`'s `changes` — merged over
+ * `storedDoc` (the current published row's fields, or `{}` when none
+ * exists yet) via `prepareEdit`'s own `{ ...storedDoc, ...changes }` step
+ * — reproduces the full intended content, the same "every field, no
+ * partial merge" shape `create`'s own strict pass already has.
  *
  * Validates STRICTLY (`partial: false, validateKeys: "all"` — decision 4): a
  * draft may be incomplete, a published document may not.
@@ -7620,32 +7916,37 @@ import type { VersionedTargetRows } from "./resolveVersionedTarget";
  *   overwritten — deliberately redundant with whatever `saveDraftShared`'s
  *   own bootstrap already archived when the draft first branched off, since
  *   decision 11 records one node per transition even when adjacent content
- *   happens to match), the published row is patched with the draft's
- *   validated fields, and the now-redundant draft row is deleted.
+ *   happens to match), the published row is patched with the merged
+ *   validated fields, and any now-redundant draft row is deleted.
  * - `rows.publishedRow` is `null` (the document/global has never been
  *   published — `create`'s `versions.defaultStatus: "draft"` path produces
- *   exactly this row shape): the draft row is promoted IN PLACE — patched to
- *   `vex_status: "published"` — keeping its own `_id`. This is decision 1's
- *   id-stability invariant applied from a document's FIRST publish onward:
- *   the only way a draft-only row's `_id` could become unstable here is if
- *   this function minted a different one for that first publish, and it
- *   does not. Decision 11 independently confirms this branch still exists
- *   post-redesign: it names "the promote-in-place branch of Step 9" as the
- *   thing that must now ALSO emit exactly one history row (previously none),
- *   which only makes sense if there is still a promote-in-place branch.
+ *   exactly this row shape): a draft row is promoted IN PLACE — patched to
+ *   `vex_status: "published"` — keeping its own `_id`; if there is no draft
+ *   row either (only possible for a global with no rows at all — a
+ *   collection always has a row), one is inserted directly as published.
+ *   This is decision 1's id-stability invariant applied from a document's
+ *   FIRST publish onward: the only way a draft-only row's `_id` could
+ *   become unstable here is if this function minted a different one for
+ *   that first publish, and it does not. Decision 11 independently
+ *   confirms this branch still exists post-redesign: it names "the
+ *   promote-in-place branch of Step 9" as the thing that must now ALSO
+ *   emit exactly one history row (previously none), which only makes sense
+ *   if there is still a promote-in-place branch.
  *
  * Both branches record exactly one history row (decision 11: every publish
  * is attributed and emits one node, no exceptions).
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
- * @param props - Resolved target + rows.
+ * @param props - Resolved target + rows, plus optional `data` to merge on
+ *   top of the draft/published row before publishing.
  * @returns The published row's `_id`, as a string — stable across every
  *   future publish once this call returns.
- * @throws {ConvexError} `"No draft to publish for this document."` when
- *   `rows.draftRow` is `null`; propagated from `prepareEdit` on strict-
- *   validation failure (`{ message, errors }` or `{ message, field }`);
- *   propagated from `assertNoDraftRelationships` (`{ message, field }`) when
- *   a relationship field still points at a draft.
+ * @throws {ConvexError} `"Nothing to publish: no draft and no changes."`
+ *   when `rows.draftRow` is `null` and `props.data` is empty or omitted;
+ *   propagated from `prepareEdit` on strict-validation failure
+ *   (`{ message, errors }` or `{ message, field }`); propagated from
+ *   `assertNoDraftRelationships` (`{ message, field }`) when a relationship
+ *   field still points at a draft.
  * @throws {VexAccessError} When the caller is not permitted to publish.
  * @example
  * ```ts
@@ -7662,94 +7963,114 @@ export async function publishShared<DataModel extends GenericDataModel>(props: {
   access?: AccessCallOptions<string>;
   auth?: VexApiAuth;
   rows: VersionedTargetRows<DataModel>;
+  data?: Record<string, unknown>;
 }): Promise<string> {
-  const { ctx, config, target, rows } = props;
-  const draftRow = rows.draftRow;
-  if (draftRow === null) {
-    throw new ConvexError("No draft to publish for this document.");
+  const draftRow = props.rows.draftRow;
+  const publishedRow = props.rows.publishedRow;
+  const data = props.data ?? {};
+  if (draftRow === null && Object.keys(data).length === 0) {
+    throw new ConvexError("Nothing to publish: no draft and no changes.");
   }
-  const publishedRow = rows.publishedRow;
+  const baseRow = draftRow ?? publishedRow;
+  const changes = {
+    ...(baseRow ? props.rows.toUserFields(baseRow) : {}),
+    ...data,
+  };
 
-  const { transformedFields } = await prepareEdit({
-    ctx,
-    config,
-    target,
+  const { transformedFields } = await prepareEdit<DataModel>({
+    ctx: props.ctx,
+    config: props.config,
+    target: props.target,
     action: DRAFT_ACTIONS.publish,
     access: props.access,
     auth: props.auth,
-    storedDoc: (publishedRow ? rows.toUserFields(publishedRow) : {}) as never,
-    incoming: rows.toUserFields(draftRow),
+    storedDoc: (publishedRow
+      ? props.rows.toUserFields(publishedRow)
+      : {}) as never,
+    changes,
     partial: false,
     validateKeys: "all",
   });
 
-  await assertNoDraftRelationships({ ctx, target, document: transformedFields });
+  await assertNoDraftRelationships({
+    ctx: props.ctx,
+    target: props.target,
+    document: transformedFields,
+  });
 
   const now = Date.now();
   const createdBy =
-    typeof props.auth?.user?.["_id"] === "string" ? (props.auth.user["_id"] as string) : undefined;
+    typeof props.auth?.user?.["_id"] === "string"
+      ? (props.auth.user["_id"] as string)
+      : undefined;
   const previous = await getLatestVersion({
-    ctx,
-    collection: rows.historyCollection,
-    documentId: rows.documentId,
+    ctx: props.ctx,
+    collection: props.rows.historyCollection,
+    documentId: props.rows.documentId,
   });
 
   if (publishedRow !== null) {
-    // Archive the state THIS write is about to overwrite, with its OWN
-    // original `publishedAt` — snapshot before mutate, the same ordering
-    // `saveDraftShared` uses when a draft first branches off a published row.
     await createVersion({
-      ctx,
-      collection: rows.historyCollection,
-      documentId: rows.documentId,
+      ctx: props.ctx,
+      collection: props.rows.historyCollection,
+      documentId: props.rows.documentId,
       status: VERSION_STATUSES.published.key,
-      snapshot: rows.toUserFields(publishedRow),
+      snapshot: props.rows.toUserFields(publishedRow),
       publishedAt: publishedRow.vex_publishedAt as number | undefined,
       createdBy,
       parentVersion: previous?.version,
     });
-    // `buildDraftPatch` is named for shaping a DRAFT row's patch payload,
-    // but nothing about it is draft-specific — it just converts a flat
-    // user-fields record into whatever shape this `rows.table` stores a row
-    // in (flat for a collection, nested under `data` for `vex_globals`).
-    // Reused here unchanged to shape the PUBLISHED row's write the same way.
-    await ctx.db.patch(
+    await props.ctx.db.patch(
       publishedRow._id as never,
-      { ...rows.buildDraftPatch(publishedRow, transformedFields), vex_publishedAt: now } as never,
+      {
+        ...props.rows.buildDraftPatch(publishedRow, transformedFields),
+        vex_publishedAt: now,
+      } as never,
     );
-    await ctx.db.delete(draftRow._id as never);
+    if (draftRow !== null) {
+      await props.ctx.db.delete(draftRow._id as never);
+    }
     return String(publishedRow._id);
   }
 
-  // Never published before: promote the draft row IN PLACE, keeping its own
-  // `_id`. There is no prior published content to archive, so the one
-  // history row this records (decision 11) snapshots the content now going
-  // live, not a superseded state.
-  await ctx.db.patch(
-    draftRow._id as never,
+  const rowId =
+    draftRow !== null
+      ? draftRow._id
+      : await props.ctx.db.insert(
+          props.rows.table as never,
+          {
+            ...props.rows.buildDraftInsert(transformedFields, undefined),
+            vex_status: VERSION_STATUSES.published.key,
+          } as never,
+        );
+
+  await props.ctx.db.patch(
+    rowId as never,
     {
-      ...rows.buildDraftPatch(draftRow, transformedFields),
+      ...(draftRow
+        ? props.rows.buildDraftPatch(draftRow, transformedFields)
+        : {}),
       vex_status: VERSION_STATUSES.published.key,
       vex_publishedAt: now,
     } as never,
   );
   await createVersion({
-    ctx,
-    collection: rows.historyCollection,
-    documentId: rows.documentId,
+    ctx: props.ctx,
+    collection: props.rows.historyCollection,
+    documentId: props.rows.documentId,
     status: VERSION_STATUSES.published.key,
     snapshot: removeVexFields({ doc: transformedFields }),
     publishedAt: now,
     createdBy,
     parentVersion: previous?.version,
   });
-  return String(draftRow._id);
+  return String(rowId);
 }
 ````
 
 #### packages/core/src/api/versions/publish.server.ts
 
-```ts
+````ts
 import { ConvexError, type GenericId } from "convex/values";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 
@@ -7759,14 +8080,15 @@ import type { AccessCallOptions, VexApiAuth } from "../types";
 import type { CollectionOrGlobal } from "../../types/utils";
 import { resolveVersionedTarget } from "../../versions/resolveVersionedTarget";
 import { publishShared } from "../../versions/publish";
+import { removeVexFields } from "../../versions/removeVexFields";
 
 /**
  * Server-side args for `publish`. A discriminated union, identical in shape
- * to `SaveDraftServerArgs` minus `data`/`restoredFrom` (`publish` promotes
- * whatever is currently stored on the draft row — see `publishShared`'s
- * doc comment): the `{ collection, id }` member publishes a versioned
- * collection's active draft, and the `{ global }` member publishes a
- * versioned global's.
+ * to `SaveDraftServerArgs` minus `restoredFrom`: the `{ collection, id }`
+ * member publishes a versioned collection's active draft, and the
+ * `{ global }` member publishes a versioned global's. `data`, when given,
+ * is merged on top of the current draft/published row before publishing —
+ * see `publishShared`'s doc comment.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
  */
@@ -7779,6 +8101,8 @@ export type PublishServerArgs<DataModel extends GenericDataModel> = {
   access?: AccessCallOptions<string>;
   /** Resolved caller identity, forwarded to `hasPermission`. */
   auth?: VexApiAuth;
+  /** Field values to merge on top of the current draft/published row before publishing. */
+  data?: Record<string, unknown>;
 } & (
   | {
       /** The versioned collection slug this call targets. */
@@ -7812,8 +8136,8 @@ export type PublishServerArgs<DataModel extends GenericDataModel> = {
  * @throws {ConvexError} When the collection/global cannot be resolved, does
  *   not declare `versions.drafts: true`, or (collection only) when `id`
  *   does not resolve to a document; propagated from `publishShared` when
- *   there is no draft to publish, or the merged document fails strict
- *   validation.
+ *   there is nothing to publish (no draft and no `data`), or the merged
+ *   document fails strict validation.
  * @throws {VexAccessError} When the caller is not permitted to publish.
  * @example
  * ```ts
@@ -7831,9 +8155,13 @@ export async function publish<DataModel extends GenericDataModel>(
   let target: CollectionOrGlobal;
 
   if ("collection" in args) {
-    const collection = args.config.collections.find((c) => c.slug === args.collection);
+    const collection = args.config.collections.find(
+      (c) => c.slug === args.collection,
+    );
     if (!collection) {
-      throw new ConvexError(`No collection registered with slug "${args.collection}"`);
+      throw new ConvexError(
+        `No collection registered with slug "${args.collection}"`,
+      );
     }
     if (!collection.versions.drafts) {
       throw new ConvexError(
@@ -7841,8 +8169,20 @@ export async function publish<DataModel extends GenericDataModel>(
       );
     }
     target = { kind: "collection", config: collection };
-    const rows = await resolveVersionedTarget({ ctx: args.ctx, collection: args.collection, id: args.id });
-    return publishShared({ ctx: args.ctx, config: args.config, target, access: args.access, auth: args.auth, rows });
+    const rows = await resolveVersionedTarget({
+      ctx: args.ctx,
+      collection: args.collection,
+      id: args.id,
+    });
+    return publishShared({
+      ctx: args.ctx,
+      config: args.config,
+      target,
+      access: args.access,
+      auth: args.auth,
+      data: args.data ? removeVexFields({ doc: args.data }) : undefined,
+      rows,
+    });
   }
 
   const global = args.config.globals.find((g) => g.slug === args.global);
@@ -7855,14 +8195,25 @@ export async function publish<DataModel extends GenericDataModel>(
     );
   }
   target = { kind: "global", config: global };
-  const rows = await resolveVersionedTarget({ ctx: args.ctx, global: args.global });
-  return publishShared({ ctx: args.ctx, config: args.config, target, access: args.access, auth: args.auth, rows });
+  const rows = await resolveVersionedTarget({
+    ctx: args.ctx,
+    global: args.global,
+  });
+  return publishShared({
+    ctx: args.ctx,
+    config: args.config,
+    target,
+    access: args.access,
+    auth: args.auth,
+    data: args.data ? removeVexFields({ doc: args.data }) : undefined,
+    rows,
+  });
 }
-```
+````
 
 #### packages/core/src/api/versions/publish.client.ts
 
-```ts
+````ts
 import type { GenericId } from "convex/values";
 
 import { vexConvexApi } from "../convex";
@@ -7885,20 +8236,25 @@ import { useConvexMutation } from "@convex-dev/react-query";
  * await mutateAsync({ global: "siteSettings" });
  * ```
  */
-export type PublishClientArgs<TCollectionSlug extends CollectionSlug = CollectionSlug> =
-  GenericMutationClientParams &
-    (
-      | {
-          /** The versioned collection slug. */
-          collection: TCollectionSlug;
-          /** The document id currently loaded — the published row's id, or an active draft's own id. */
-          id: GenericId<TCollectionSlug>;
-        }
-      | {
-          /** The versioned global slug. */
-          global: GlobalSlug;
-        }
-    );
+export type PublishClientArgs<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> = GenericMutationClientParams &
+  (
+    | {
+        /** The versioned collection slug. */
+        collection: TCollectionSlug;
+        /** The document id currently loaded — the published row's id, or an active draft's own id. */
+        id: GenericId<TCollectionSlug>;
+        /** Field values to merge on top of the current draft/published row before publishing. */
+        data?: Record<string, unknown>;
+      }
+    | {
+        /** The versioned global slug. */
+        global: GlobalSlug;
+        /** Field values to merge on top of the current draft/published row before publishing. */
+        data?: Record<string, unknown>;
+      }
+  );
 
 /**
  * Returns a `mutationFn` for publishing a VexCMS versioned collection
@@ -7917,7 +8273,7 @@ export type PublishClientArgs<TCollectionSlug extends CollectionSlug = Collectio
 export function publish() {
   return useConvexMutation(vexConvexApi.versions.publish);
 }
-```
+````
 
 #### packages/core/src/api/versions/publish.server.test.ts
 
@@ -7932,7 +8288,12 @@ import schema from "../test/convex/schema";
 import type { VexConfig } from "../../config";
 import { saveDraft } from "./saveDraft.server";
 import { publish } from "./publish.server";
-import { defineCollection, defineGlobal, relationship, text } from "../../index";
+import {
+  defineCollection,
+  defineGlobal,
+  relationship,
+  text,
+} from "../../index";
 
 const versionedPosts = defineCollection({
   slug: "posts",
@@ -7949,22 +8310,112 @@ const versionedBanner = defineGlobal({
   versions: { drafts: true },
 });
 
-const globalFixtureConfig = { collections: [], globals: [versionedBanner] } as unknown as VexConfig;
+const globalFixtureConfig = {
+  collections: [],
+  globals: [versionedBanner],
+} as unknown as VexConfig;
 
 const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
 };
 
 describe("publish (server)", () => {
-  test("throws when there is no draft to publish, and writes nothing", async () => {
+  test("throws when there is no draft and no data, and writes nothing", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const publishedId = await ctx.db.insert("posts", { title: "Original", slug: "original", vex_status: "published" });
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "original",
+        vex_status: "published",
+      });
       await expect(
-        publish({ ctx, config: fixtureConfig, collection: "posts", id: publishedId }),
-      ).rejects.toThrow(/No draft to publish/);
+        publish({
+          ctx,
+          config: fixtureConfig,
+          collection: "posts",
+          id: publishedId,
+        }),
+      ).rejects.toThrow(/Nothing to publish/);
       const row = await ctx.db.get(publishedId);
       expect(row?.title).toBe("Original");
+      expect(await ctx.db.query("vex_versions").collect()).toHaveLength(0);
+    });
+  });
+
+  test("publishing a published row with data updates the same row, archives the previous state, and writes no draft row", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "original",
+        vex_status: "published",
+      });
+      const returnedId = await publish({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        id: publishedId,
+        data: { title: "Edited directly" },
+      });
+      expect(returnedId).toBe(publishedId);
+      const row = await ctx.db.get(publishedId);
+      expect(row?.title).toBe("Edited directly");
+      expect(row?.vex_status).toBe("published");
+      const allPosts = await ctx.db.query("posts").collect();
+      expect(allPosts).toHaveLength(1);
+    });
+  });
+
+  test("publishing a draft with data merges data over the draft's fields and deletes the draft", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "original",
+        vex_status: "published",
+      });
+      const draftId = await saveDraft({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        id: publishedId,
+        data: { title: "Draft edit" },
+      });
+      const returnedId = await publish({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        id: draftId as never,
+        data: { title: "Overridden at publish" },
+      });
+      expect(returnedId).toBe(publishedId);
+      const row = await ctx.db.get(publishedId);
+      expect(row?.title).toBe("Overridden at publish");
+      expect(await ctx.db.get(draftId as never)).toBeNull();
+    });
+  });
+
+  test("rejects publishing invalid data, writing nothing", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "original",
+        vex_status: "published",
+      });
+      await expect(
+        publish({
+          ctx,
+          config: fixtureConfig,
+          collection: "posts",
+          id: publishedId,
+          data: { slug: "" },
+        }),
+      ).rejects.toThrow();
+      const row = await ctx.db.get(publishedId);
+      expect(row?.title).toBe("Original");
+      expect(row?.slug).toBe("original");
+      expect(await ctx.db.query("posts").collect()).toHaveLength(1);
       expect(await ctx.db.query("vex_versions").collect()).toHaveLength(0);
     });
   });
@@ -7972,7 +8423,11 @@ describe("publish (server)", () => {
   test("publishing a never-published draft promotes it in place, keeping its own _id, and records one history row", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const draftId = await ctx.db.insert("posts", { title: "Draft content", slug: "draft-content", vex_status: "draft" });
+      const draftId = await ctx.db.insert("posts", {
+        title: "Draft content",
+        slug: "draft-content",
+        vex_status: "draft",
+      });
 
       const returnedId = await publish({
         ctx,
@@ -7989,10 +8444,15 @@ describe("publish (server)", () => {
 
       const versions = await ctx.db
         .query("vex_versions")
-        .withIndex("by_document_version", (q) => q.eq("collection", "posts").eq("documentId", String(draftId)))
+        .withIndex("by_document_version", (q) =>
+          q.eq("collection", "posts").eq("documentId", String(draftId)),
+        )
         .collect();
       expect(versions.map((v) => v.status)).toEqual(["published"]);
-      expect(versions[0]?.snapshot).toMatchObject({ title: "Draft content", slug: "draft-content" });
+      expect(versions[0]?.snapshot).toMatchObject({
+        title: "Draft content",
+        slug: "draft-content",
+      });
       expect(versions[0]?.publishedAt).toBe(row?.vex_publishedAt);
       expect(versions[0]?.createdBy).toBe("user_1");
     });
@@ -8001,7 +8461,11 @@ describe("publish (server)", () => {
   test("publishing a draft with a published parent copies its fields onto the published row, deletes the draft, and preserves the published _id", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const publishedId = await ctx.db.insert("posts", { title: "Original", slug: "original", vex_status: "published" });
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "original",
+        vex_status: "published",
+      });
       const referencerId = await ctx.db.insert("posts", {
         title: "Referencer",
         slug: "referencer",
@@ -8017,7 +8481,12 @@ describe("publish (server)", () => {
         data: { title: "Edited" },
       });
 
-      const returnedId = await publish({ ctx, config: fixtureConfig, collection: "posts", id: draftId as never });
+      const returnedId = await publish({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        id: draftId as never,
+      });
 
       expect(returnedId).toBe(publishedId);
       const row = await ctx.db.get(publishedId);
@@ -8048,19 +8517,30 @@ describe("publish (server)", () => {
         data: { title: "Edited" },
       });
 
-      await publish({ ctx, config: fixtureConfig, collection: "posts", id: draftId as never });
+      await publish({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        id: draftId as never,
+      });
 
       const versions = await ctx.db
         .query("vex_versions")
-        .withIndex("by_document_version", (q) => q.eq("collection", "posts").eq("documentId", String(publishedId)))
+        .withIndex("by_document_version", (q) =>
+          q.eq("collection", "posts").eq("documentId", String(publishedId)),
+        )
         .collect();
       // `saveDraft`'s own bootstrap already recorded one "published" row for
       // the pre-edit state; `publish` records a SECOND one for the state it
       // just overwrote — every transition gets its own immutable node
       // (decision 11), even when adjacent content happens to match.
-      const publishedVersions = versions.filter((v) => v.status === "published");
+      const publishedVersions = versions.filter(
+        (v) => v.status === "published",
+      );
       expect(publishedVersions).toHaveLength(2);
-      const latest = publishedVersions.reduce((a, b) => (a.version > b.version ? a : b));
+      const latest = publishedVersions.reduce((a, b) =>
+        a.version > b.version ? a : b,
+      );
       expect(latest.snapshot).toMatchObject({ title: "Original" });
       expect(latest.publishedAt).toBe(t0);
     });
@@ -8069,7 +8549,11 @@ describe("publish (server)", () => {
   test("rejects a draft missing a required field, naming it, without writing anything", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const publishedId = await ctx.db.insert("posts", { title: "Original", slug: "original", vex_status: "published" });
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Original",
+        slug: "original",
+        vex_status: "published",
+      });
       const draftId = await saveDraft({
         ctx,
         config: fixtureConfig,
@@ -8080,13 +8564,20 @@ describe("publish (server)", () => {
 
       let caught: unknown;
       try {
-        await publish({ ctx, config: fixtureConfig, collection: "posts", id: draftId as never });
+        await publish({
+          ctx,
+          config: fixtureConfig,
+          collection: "posts",
+          id: draftId as never,
+        });
       } catch (error) {
         caught = error;
       }
 
       expect(caught).toBeInstanceOf(ConvexError);
-      expect((caught as ConvexError<{ errors: string }>).data.errors).toContain("slug");
+      expect((caught as ConvexError<{ errors: string }>).data.errors).toContain(
+        "slug",
+      );
       const row = await ctx.db.get(publishedId);
       expect(row?.title).toBe("Original");
       expect(await ctx.db.get(draftId as never)).not.toBeNull();
@@ -8104,11 +8595,22 @@ describe("publish (server)", () => {
       },
       versions: { drafts: true },
     });
-    const relationshipConfig = { collections: [versionedPostsWithRelationship] } as unknown as VexConfig;
+    const relationshipConfig = {
+      collections: [versionedPostsWithRelationship],
+    } as unknown as VexConfig;
 
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const aId = await ctx.db.insert("posts", { title: "A", slug: "a", vex_status: "draft" });
-      const bId = await ctx.db.insert("posts", { title: "B", slug: "b", vex_status: "published", related: [] } as never);
+      const aId = await ctx.db.insert("posts", {
+        title: "A",
+        slug: "a",
+        vex_status: "draft",
+      });
+      const bId = await ctx.db.insert("posts", {
+        title: "B",
+        slug: "b",
+        vex_status: "published",
+        related: [],
+      } as never);
 
       const bDraftId = await saveDraft({
         ctx,
@@ -8120,13 +8622,20 @@ describe("publish (server)", () => {
 
       let caught: unknown;
       try {
-        await publish({ ctx, config: relationshipConfig, collection: "posts", id: bDraftId as never });
+        await publish({
+          ctx,
+          config: relationshipConfig,
+          collection: "posts",
+          id: bDraftId as never,
+        });
       } catch (error) {
         caught = error;
       }
 
       expect(caught).toBeInstanceOf(ConvexError);
-      expect((caught as ConvexError<{ field: string }>).data.field).toBe("related");
+      expect((caught as ConvexError<{ field: string }>).data.field).toBe(
+        "related",
+      );
       const bRow = await ctx.db.get(bId);
       expect(bRow?.related).toEqual([]);
       expect(await ctx.db.get(bDraftId as never)).not.toBeNull();
@@ -8135,37 +8644,176 @@ describe("publish (server)", () => {
 
   test("throws before writing anything when the collection does not have drafts enabled", async () => {
     const t = convexTest(schema, modules);
-    const nonVersionedPosts = defineCollection({ slug: "posts", fields: { title: text() } });
+    const nonVersionedPosts = defineCollection({
+      slug: "posts",
+      fields: { title: text() },
+    });
     const config = { collections: [nonVersionedPosts] } as unknown as VexConfig;
     await expect(
-      t.run((ctx: GenericMutationCtx<GenericDataModel>) => publish({ ctx, config, collection: "posts", id: "x" as never })),
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        publish({ ctx, config, collection: "posts", id: "x" as never }),
+      ),
     ).rejects.toThrow(/does not have drafts enabled/);
   });
 });
 
 describe("publish (server) — global target", () => {
-  test("throws when there is no draft to publish", async () => {
+  test("throws when there is no draft and no data", async () => {
     const t = convexTest(schema, modules);
     await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      ctx.db.insert("vex_globals", { slug: "banner", data: { message: "Live" }, vex_status: "published" }),
+      ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Live" },
+        vex_status: "published",
+      }),
     );
     await expect(
-      t.run((ctx: GenericMutationCtx<GenericDataModel>) => publish({ ctx, config: globalFixtureConfig, global: "banner" })),
-    ).rejects.toThrow(/No draft to publish/);
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        publish({ ctx, config: globalFixtureConfig, global: "banner" }),
+      ),
+    ).rejects.toThrow(/Nothing to publish/);
+  });
+
+  test("publishing a published global with data updates the same row and writes no draft row", async () => {
+    const t = convexTest(schema, modules);
+    const publishedId = await t.run(
+      (ctx: GenericMutationCtx<GenericDataModel>) =>
+        ctx.db.insert("vex_globals", {
+          slug: "banner",
+          data: { message: "Live" },
+          vex_status: "published",
+        }),
+    );
+    const returnedId = await t.run(
+      (ctx: GenericMutationCtx<GenericDataModel>) =>
+        publish({
+          ctx,
+          config: globalFixtureConfig,
+          global: "banner",
+          data: { message: "Edited directly" },
+        }),
+    );
+    expect(returnedId).toBe(publishedId);
+    const rows = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.query("vex_globals").collect(),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.data).toEqual({ message: "Edited directly" });
+  });
+
+  test("publishing a global draft with data merges data over the draft and deletes the draft", async () => {
+    const t = convexTest(schema, modules);
+    const publishedId = await t.run(
+      (ctx: GenericMutationCtx<GenericDataModel>) =>
+        ctx.db.insert("vex_globals", {
+          slug: "banner",
+          data: { message: "Live" },
+          vex_status: "published",
+        }),
+    );
+    const draftId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      saveDraft({
+        ctx,
+        config: globalFixtureConfig,
+        global: "banner",
+        data: { message: "Draft edit" },
+      }),
+    );
+    const returnedId = await t.run(
+      (ctx: GenericMutationCtx<GenericDataModel>) =>
+        publish({
+          ctx,
+          config: globalFixtureConfig,
+          global: "banner",
+          data: { message: "Overridden at publish" },
+        }),
+    );
+    expect(returnedId).toBe(publishedId);
+    const rows = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.query("vex_globals").collect(),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.data).toEqual({ message: "Overridden at publish" });
+    expect(
+      await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        ctx.db.get(draftId as never),
+      ),
+    ).toBeNull();
+  });
+
+  test("rejects publishing invalid data on a global, writing nothing", async () => {
+    const t = convexTest(schema, modules);
+    const publishedId = await t.run(
+      (ctx: GenericMutationCtx<GenericDataModel>) =>
+        ctx.db.insert("vex_globals", {
+          slug: "banner",
+          data: { message: "Live" },
+          vex_status: "published",
+        }),
+    );
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        publish({
+          ctx,
+          config: globalFixtureConfig,
+          global: "banner",
+          data: { message: "" },
+        }),
+      ),
+    ).rejects.toThrow();
+    const rows = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.query("vex_globals").collect(),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?._id).toBe(publishedId);
+    expect(rows[0]?.data).toEqual({ message: "Live" });
+  });
+
+  test("publishing a global with no rows and data inserts a published row", async () => {
+    const t = convexTest(schema, modules);
+    const returnedId = await t.run(
+      (ctx: GenericMutationCtx<GenericDataModel>) =>
+        publish({
+          ctx,
+          config: globalFixtureConfig,
+          global: "banner",
+          data: { message: "First publish" },
+        }),
+    );
+    const rows = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.query("vex_globals").collect(),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?._id).toBe(returnedId);
+    expect(rows[0]?.vex_status).toBe("published");
+    expect(rows[0]?.data).toEqual({ message: "First publish" });
+    expect(typeof rows[0]?.vex_publishedAt).toBe("number");
+    const versions = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.query("vex_versions").collect(),
+    );
+    expect(versions.map((v) => v.status)).toEqual(["published"]);
   });
 
   test("publishing a global's first-ever draft promotes it in place, keeping its own _id", async () => {
     const t = convexTest(schema, modules);
     const draftId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      saveDraft({ ctx, config: globalFixtureConfig, global: "banner", data: { message: "Hello" } }),
+      saveDraft({
+        ctx,
+        config: globalFixtureConfig,
+        global: "banner",
+        data: { message: "Hello" },
+      }),
     );
 
-    const returnedId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      publish({ ctx, config: globalFixtureConfig, global: "banner" }),
+    const returnedId = await t.run(
+      (ctx: GenericMutationCtx<GenericDataModel>) =>
+        publish({ ctx, config: globalFixtureConfig, global: "banner" }),
     );
 
     expect(returnedId).toBe(draftId);
-    const rows = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.query("vex_globals").collect());
+    const rows = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.query("vex_globals").collect(),
+    );
     expect(rows).toHaveLength(1);
     expect(rows[0]?._id).toBe(draftId);
     expect(rows[0]?.vex_status).toBe("published");
@@ -8174,27 +8822,40 @@ describe("publish (server) — global target", () => {
 
   test("publishing a global's draft with a published parent copies its fields onto the published row and deletes the draft", async () => {
     const t = convexTest(schema, modules);
-    const publishedId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      ctx.db.insert("vex_globals", {
-        slug: "banner",
-        data: { message: "Live" },
-        vex_status: "published",
-        vex_publishedAt: 1700000000000,
-      }),
+    const publishedId = await t.run(
+      (ctx: GenericMutationCtx<GenericDataModel>) =>
+        ctx.db.insert("vex_globals", {
+          slug: "banner",
+          data: { message: "Live" },
+          vex_status: "published",
+          vex_publishedAt: 1700000000000,
+        }),
     );
     const draftId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      saveDraft({ ctx, config: globalFixtureConfig, global: "banner", data: { message: "Live, edited" } }),
+      saveDraft({
+        ctx,
+        config: globalFixtureConfig,
+        global: "banner",
+        data: { message: "Live, edited" },
+      }),
     );
 
-    const returnedId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      publish({ ctx, config: globalFixtureConfig, global: "banner" }),
+    const returnedId = await t.run(
+      (ctx: GenericMutationCtx<GenericDataModel>) =>
+        publish({ ctx, config: globalFixtureConfig, global: "banner" }),
     );
 
     expect(returnedId).toBe(publishedId);
-    const rows = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.query("vex_globals").collect());
+    const rows = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.query("vex_globals").collect(),
+    );
     expect(rows).toHaveLength(1);
     expect(rows[0]?.data).toEqual({ message: "Live, edited" });
-    expect(await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(draftId as never))).toBeNull();
+    expect(
+      await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        ctx.db.get(draftId as never),
+      ),
+    ).toBeNull();
   });
 
   test("throws before writing anything when the global does not have drafts enabled", async () => {
@@ -8204,9 +8865,14 @@ describe("publish (server) — global target", () => {
       label: "Banner",
       fields: { message: text({ required: true }) },
     });
-    const config = { collections: [], globals: [nonVersionedBanner] } as unknown as VexConfig;
+    const config = {
+      collections: [],
+      globals: [nonVersionedBanner],
+    } as unknown as VexConfig;
     await expect(
-      t.run((ctx: GenericMutationCtx<GenericDataModel>) => publish({ ctx, config, global: "banner" })),
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        publish({ ctx, config, global: "banner" }),
+      ),
     ).rejects.toThrow(/does not have drafts enabled/);
   });
 
@@ -8214,7 +8880,11 @@ describe("publish (server) — global target", () => {
     const t = convexTest(schema, modules);
     await expect(
       t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-        publish({ ctx, config: globalFixtureConfig, global: "doesNotExist" as never }),
+        publish({
+          ctx,
+          config: globalFixtureConfig,
+          global: "doesNotExist" as never,
+        }),
       ),
     ).rejects.toThrow(/No global registered/);
   });
@@ -8250,6 +8920,7 @@ a real `publish` entry, same flat-object wire shape as `saveDraft`:
         id: v.optional(v.string()),
         global: v.optional(v.string()),
         environmentId: v.optional(v.string()),
+        data: v.optional(v.any()),
       },
       handler: async (ctx, args) => {
         const isCollection = args.collection !== undefined && args.id !== undefined;
@@ -8267,6 +8938,7 @@ a real `publish` entry, same flat-object wire shape as `saveDraft`:
             config,
             collection: args.collection as CollectionSlug,
             id: args.id as GenericId<CollectionSlug>,
+            data: args.data as Record<string, unknown> | undefined,
           });
         }
         return publish({
@@ -8274,6 +8946,7 @@ a real `publish` entry, same flat-object wire shape as `saveDraft`:
           ctx,
           config,
           global: args.global as GlobalSlug,
+          data: args.data as Record<string, unknown> | undefined,
         });
       },
     }),
@@ -8303,12 +8976,14 @@ export type VexPublishArgs =
       auth?: VexApiAuth;
       collection: string;
       id: string;
+      data?: Record<string, unknown>;
       environmentId?: string;
     }
   | {
       [key: string]: unknown;
       auth?: VexApiAuth;
       global: string;
+      data?: Record<string, unknown>;
       environmentId?: string;
     };
 ```
@@ -8353,7 +9028,8 @@ member (a draft is never public, so saving one has nothing to purge and never
 calls this endpoint).
 
 ```ts
-export type VexMutationOperation = "create" | "remove" | "update" | "upsert" | "publish";
+export type VexMutationOperation =
+  "create" | "remove" | "update" | "upsert" | "publish";
 ```
 
 Add one sentence to the existing doc comment, after the paragraph explaining
@@ -8403,10 +9079,17 @@ what `"publish"` checks.
 
 ```ts
 it('maps operation "publish" to the update permission + purge action', async () => {
-  const route = createVexRevalidateRoute({ config: makeConfig(), ...signedInEditor });
+  const route = createVexRevalidateRoute({
+    config: makeConfig(),
+    ...signedInEditor,
+  });
 
   const response = await route.POST(
-    postRequest({ changes: [{ after: page("new-page") }], collection: "pages", operation: "publish" }),
+    postRequest({
+      changes: [{ after: page("new-page") }],
+      collection: "pages",
+      operation: "publish",
+    }),
   );
 
   expect(response.status).toBe(200);
@@ -8422,7 +9105,11 @@ it('returns 403 for operation "publish" when the caller lacks update', async () 
   });
 
   const response = await route.POST(
-    postRequest({ changes: [{ after: page("new-page") }], collection: "pages", operation: "publish" }),
+    postRequest({
+      changes: [{ after: page("new-page") }],
+      collection: "pages",
+      operation: "publish",
+    }),
   );
 
   expect(response.status).toBe(403);
@@ -8440,20 +9127,17 @@ button into `CollectionEditView`, with `GlobalEditView` left on
 `vexConvexApi.versions.publish` endpoint, the same way they already both
 call `vexConvexApi.versions.saveDraft`.
 
-`versions.publish` (Step 9) takes no `data` of its own — it always promotes
-whatever is currently on the draft row. So `handlePublish` in both views is a
-two-step compose, not a single call: if the form has unsaved changes, save
-them as a draft first (the exact same `saveDraftMutation` Save Draft already
-uses), THEN publish. This keeps `publishShared`'s contract identical for
-either kind — it never needs to know about a caller's in-flight form state —
-and means a user who edits a field and clicks Publish directly, without a
-separate Save Draft click first, still gets those edits promoted. The two
-steps are two separate `try`/`catch`s: a save-draft failure (rare — lenient
-validation) gets the same manual toast `handleSaveDraft` already gives it; a
-publish failure (Step 9's strict-validation rejection) is surfaced as
-field-level errors via `applyVexFieldErrors`, reusing the SAME `FormError`
-display every field input already renders through
-(`packages/react/src/components/form/FormError.tsx`, which reads
+`versions.publish` (Step 9) accepts an optional `data` of its own — pending,
+not-yet-saved form edits, merged on top of the draft/published row before
+validation. So `handlePublish` in both views is a SINGLE call: it passes
+`changedValues(form)` (collection) / the form's current values (global) as
+`data` directly to `publishMutation`, no `saveDraftMutation` call first. A
+user who edits a field and clicks Publish directly, without a separate Save
+Draft click first, still gets those edits promoted — in one round trip
+instead of two. The publish failure path (Step 9's strict-validation
+rejection) is surfaced as field-level errors via `applyVexFieldErrors`,
+reusing the SAME `FormError` display every field input already renders
+through (`packages/react/src/components/form/FormError.tsx`, which reads
 `field.state.meta.errors[0]`) — not a bespoke error UI, since decision 4
 promises the rejection "names the missing field," and a toast that vanishes
 in four seconds does not. `applyVexFieldErrors` writes to
@@ -8461,10 +9145,8 @@ in four seconds does not. `applyVexFieldErrors` writes to
 TanStack Form's own `meta.errors` derivation reads from — the supported way
 to inject a server-side error outside the library's own `validate()`
 lifecycle. The publish mutation's own generic failure toast (`"Publish
-failed"`, via `useVexMutation`'s `errorToast`) still fires alongside the
-inline field error; only the save-draft step needed a second manual one,
-since it bypasses `useVexMutation` entirely (a draft is never public, so it
-has nothing to purge — unchanged from Step 7).
+failed"`, via `useVexMutation`'s `errorToast`) fires alongside the inline
+field error.
 
 Both views route the publish call through `useVexMutation`, unlike
 `saveDraftMutation`'s deliberate bypass: publishing moves a document into
@@ -8486,16 +9168,23 @@ separate `canSaveDraft` anywhere in that file. Publish gets its OWN, second
 permission check, `canPublish`, against `DRAFT_ACTIONS.publish` — a role can
 be granted one draft action without the other (`createVexRevalidateRoute`'s
 own Step 9 test already proves a role can have `publish` without `update`).
+The Publish button's `disabled` rule is `!canPublish || (!isDraftDoc &&
+isDefaultValue)` — not the older `!canPublish || !isDraftDoc` — because
+`publishShared` (Step 9) can now also promote a PUBLISHED row directly when
+it carries unsaved edits; the button only needs disabling when there is
+nothing to promote: no draft AND no edits.
 
 - [ ] `packages/react/src/lib/errors.ts` — `applyVexFieldErrors`.
 - [ ] `packages/react/src/components/drafts/DraftToolbar.tsx` — optional `publish` action.
 - [ ] `packages/react/src/components/views/CollectionEditView.tsx` — `canPublish`
-      permission, a `publish` mutation via `useVexMutation`, a composed
-      save-draft-then-publish `handlePublish`, toolbar wiring.
-- [ ] `packages/react/src/components/views/GlobalEditView.tsx` — same, but
-      the publish mutation targets `{ global: slug }` (no `id`), and the
-      Publish button is omitted entirely while nothing has ever been saved
-      (`globalDoc` is `undefined`).
+      permission, a `publish` mutation via `useVexMutation`, a single-call
+      `handlePublish` that passes `changedValues(form)` as `data`, toolbar
+      wiring.
+- [ ] `packages/react/src/components/views/GlobalEditView.tsx` — same, with
+      the publish mutation targeting `{ global: slug, data }` and the
+      Publish button always rendered (no longer omitted while `globalDoc`
+      is `undefined` — it is simply disabled until there is something to
+      publish).
 - [ ] `packages/react/src/components/views/GlobalEditView.test.tsx` — publish coverage.
 
 #### packages/react/src/lib/errors.ts
@@ -8615,22 +9304,24 @@ Existing file (built by Step 8); 2 edits.
 variant — publishing is the consequential action:
 
 ```tsx
-      {props.publish && (
-        <Button
-          type="button"
-          className="transition-all duration-300"
-          isPending={props.publish.isPending}
-          disabled={props.publish.disabled}
-          onClick={props.publish.onClick}
-        >
-          Publish
-        </Button>
-      )}
+{
+  props.publish && (
+    <Button
+      type="button"
+      className="transition-all duration-300"
+      isPending={props.publish.isPending}
+      disabled={props.publish.disabled}
+      onClick={props.publish.onClick}
+    >
+      Publish
+    </Button>
+  );
+}
 ```
 
 **Complete file after this step**, everything else verbatim from Step 8:
 
-```tsx
+````tsx
 "use client";
 
 import type { VexVersionStatus } from "@vexcms/core";
@@ -8682,7 +9373,7 @@ export interface DraftToolbarProps {
  * <DraftToolbar
  *   status={isDraftDoc ? "draft" : "published"}
  *   saveDraft={{ onClick: handleSaveDraft, isPending: isSavingDraft, disabled: !canEdit }}
- *   publish={{ onClick: handlePublish, isPending: isPublishing, disabled: !canPublish || !isDraftDoc }}
+ *   publish={{ onClick: handlePublish, isPending: isPublishing, disabled: !canPublish || (!isDraftDoc && isDefaultValue) }}
  * />
  * ```
  */
@@ -8714,7 +9405,7 @@ export function DraftToolbar(props: DraftToolbarProps) {
     </>
   );
 }
-```
+````
 
 #### packages/react/src/components/views/CollectionEditView.tsx
 
@@ -8732,16 +9423,8 @@ useMutation({ mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft)
 });`):
 
 ```tsx
-  // Routed through `useVexMutation` — unlike `saveDraftMutation`, which
-  // deliberately bypasses it because a draft is never public and has
-  // nothing to purge, publishing moves a document into public view and
-  // does need one. `versions.publish` (Step 9) takes no `data` — it always
-  // promotes whatever is currently on the draft row — so there is no
-  // `args.data` to build an "after" doc from here; `handlePublish` saves
-  // any pending form edits as a draft FIRST, so by the time this call's own
-  // `onSuccess` runs, the form's current values already match what was just
-  // written.
-  const { mutateAsync: publishMutation, isPending: isPublishing } = useVexMutation({
+const { mutateAsync: publishMutation, isPending: isPublishing } =
+  useVexMutation({
     collection: collection.slug,
     errorToast: { message: "Publish failed" },
     getChanges: () => [{ after: { ...currentDocument, ...form.state.values } }],
@@ -8754,62 +9437,40 @@ useMutation({ mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft)
 === VERSION_STATUSES.draft.key;`:
 
 ```tsx
-  const canPublish = usePermission({
-    resource: collection.slug,
-    action: DRAFT_ACTIONS.publish,
-    data: currentDocument,
-  });
+const canPublish = usePermission({
+  resource: collection.slug,
+  action: DRAFT_ACTIONS.publish,
+  data: currentDocument,
+});
 ```
 
 **4 — `handlePublish`**, after `handleSaveDraft`:
 
 ```tsx
-  /**
-   * Publishes the currently-open draft, promoting its fields onto the
-   * published row. `versions.publish` takes no `data` of its own, so any
-   * not-yet-saved form edits are saved as a draft FIRST (reusing
-   * `saveDraftMutation`, the same call Save Draft makes), then promoted —
-   * two separate `try`/`catch`es, since a save-draft failure (rare, lenient
-   * validation) gets the same manual toast `handleSaveDraft` gives it, while
-   * a publish failure (Step 9's strict-validation rejection) is surfaced as
-   * field-level errors via {@link applyVexFieldErrors}, reusing the same
-   * `FormError` display every field input already renders through.
-   *
-   * @returns Promise resolving once publish completes (or rejects).
-   * @throws Never — every rejection is caught, handled, and never re-thrown.
-   */
-  async function handlePublish(): Promise<void> {
-    const changes = changedValues(form);
-    let targetId = activeDocumentId;
-    if (Object.keys(changes).length > 0) {
-      try {
-        targetId = await saveDraftMutation({
-          collection: collection!.slug,
-          id: activeDocumentId,
-          data: changes,
-        });
-        setActiveDocumentId(targetId);
-      } catch (error) {
-        toast.error("Save draft failed", { description: getVexErrorMessage(error) });
-        return;
-      }
-    }
-    try {
-      const publishedId = await publishMutation({ collection: collection!.slug, id: targetId });
-      // A never-published draft promotes in place (`publishedId ===
-      // targetId`, `setActiveDocumentId` is a no-op); a draft with a
-      // published parent copies fields onto the parent and deletes the
-      // draft row (`publishedId` differs) — either way the published row's
-      // `_id` never changes across repeated publish cycles (decision 1),
-      // only WHICH row this component currently points at can change.
-      setActiveDocumentId(publishedId);
-      form.reset();
-    } catch (error) {
-      applyVexFieldErrors(form, error);
-    }
-    // Edge cases: `!isDraftDoc` already disables the calling button —
-    // publish is only reachable while viewing a draft row.
+/**
+ * Publishes the currently-open draft (or, for a never-published
+ * document, the published row), merging any not-yet-saved form edits on
+ * top in the same mutation call — `versions.publish`'s `data` arg,
+ * surfaced as field-level errors via {@link applyVexFieldErrors} on
+ * strict-validation rejection, reusing the same `FormError` display
+ * every field input already renders through.
+ *
+ * @returns Promise resolving once publish completes (or rejects).
+ * @throws Never — every rejection is caught, handled, and never re-thrown.
+ */
+async function handlePublish(): Promise<void> {
+  try {
+    const publishedId = await publishMutation({
+      collection: collection!.slug,
+      id: activeDocumentId,
+      data: changedValues(form),
+    });
+    setActiveDocumentId(publishedId);
+    form.reset();
+  } catch (error) {
+    applyVexFieldErrors(form, error);
   }
+}
 ```
 
 **5 — toolbar prop.** On the existing `<DraftToolbar ... />`, add after `saveDraft`:
@@ -8818,7 +9479,7 @@ useMutation({ mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft)
                   publish={{
                     onClick: handlePublish,
                     isPending: isPublishing,
-                    disabled: !canPublish || !isDraftDoc,
+                    disabled: !canPublish || (!isDraftDoc && isDefaultValue),
                   }}
 ```
 
@@ -8835,16 +9496,13 @@ import { applyVexFieldErrors, getVexErrorMessage } from "../../lib/errors";
 **2 — publish mutation**, after the existing `saveDraftMutation` block:
 
 ```tsx
-  // Publishing changes what the public reads, so — unlike the draft save —
-  // it keeps the revalidation purge. `versions.publish` takes only
-  // `{ global }` — no document fields — so there's no `args`-derived
-  // "after" here either; `handlePublish` saves any pending form edits as a
-  // draft FIRST, so the form's current values already match what was just
-  // written by the time this call's own `onSuccess` runs.
-  const { mutateAsync: publishMutation, isPending: isPublishing } = useVexMutation({
+const { mutateAsync: publishMutation, isPending: isPublishing } =
+  useVexMutation({
     collection: global.slug,
     errorToast: { message: "Publish failed" },
-    getChanges: () => [{ after: { ...(globalDoc ?? {}), ...form.state.values } }],
+    getChanges: () => [
+      { after: { ...(globalDoc ?? {}), ...form.state.values } },
+    ],
     mutationFn: vexConvexApi.versions.publish,
     operation: "publish",
   });
@@ -8853,87 +9511,83 @@ import { applyVexFieldErrors, getVexErrorMessage } from "../../lib/errors";
 **3 — `canPublish` permission**, after the existing `isDraftDoc` computation:
 
 ```tsx
-  const canPublish = usePermission({
-    resource: global.slug,
-    action: DRAFT_ACTIONS.publish,
-    data: globalDoc as {},
-  });
+const canPublish = usePermission({
+  resource: global.slug,
+  action: DRAFT_ACTIONS.publish,
+  data: globalDoc as {},
+});
 ```
 
 **4 — `handlePublish`**, after `canPublish`:
 
 ```tsx
-  /**
-   * Promotes the active draft row to published. `versions.publish` takes no
-   * `data` of its own, so any not-yet-saved form edits are saved as a draft
-   * FIRST (reusing `saveDraftMutation`), then promoted — clicking Publish
-   * directly, without a prior Save Draft click, still captures them.
-   *
-   * @returns Promise resolving once publish completes (or rejects).
-   * @throws Never — every rejection is caught, handled, and never re-thrown.
-   */
-  async function handlePublish(): Promise<void> {
-    const changes = globalDoc ? changedValues(form) : (form.state.values as Record<string, unknown>);
-    if (Object.keys(changes).length > 0) {
-      try {
-        await saveDraftMutation({ global: global!.slug, data: changes });
-      } catch (error) {
-        toast.error("Save draft failed", { description: getVexErrorMessage(error) });
-        return;
-      }
-    }
-    try {
-      await publishMutation({ global: global!.slug });
-      form.reset();
-    } catch (error) {
-      applyVexFieldErrors(form, error);
-    }
-    // On success the `globals.get` query refetches with `vex_status:
-    // "published"`: Publish disables. `!isDraftDoc` already disables the
-    // calling button otherwise — publish is only reachable while viewing a
-    // draft row.
+/**
+ * Promotes the active draft row (or, for a never-published global, the
+ * published row) to published, merging any not-yet-saved form edits on
+ * top in the same mutation call — `versions.publish`'s `data` arg.
+ *
+ * @returns Promise resolving once publish completes (or rejects).
+ * @throws Never — every rejection is caught, handled, and never re-thrown.
+ */
+async function handlePublish(): Promise<void> {
+  const data = globalDoc
+    ? changedValues(form)
+    : (form.state.values as Record<string, unknown>);
+  try {
+    await publishMutation({ global: global!.slug, data });
+    form.reset();
+  } catch (error) {
+    applyVexFieldErrors(form, error);
   }
+}
 ```
 
 **5 — toolbar prop.** On the existing `<DraftToolbar ... />`, add after
-`saveDraft` — omitted entirely while nothing is stored, so a brand-new
-versioned global shows only Save Draft:
+`saveDraft` — always rendered now, not conditional on `globalDoc`:
 
 ```tsx
-                  publish={
-                    globalDoc
-                      ? {
-                          onClick: handlePublish,
-                          isPending: isPublishing,
-                          disabled: !canPublish || !isDraftDoc,
-                        }
-                      : undefined
-                  }
+                  publish={{
+                    onClick: handlePublish,
+                    isPending: isPublishing,
+                    disabled: !canPublish || (!isDraftDoc && isDefaultValue),
+                  }}
 ```
 
 #### packages/react/src/components/views/GlobalEditView.test.tsx
 
-Append inside the existing `describe("GlobalEditView — draft toolbar", ...)`
-block, after its last test. `convexMutationMock` is the single mock behind
-BOTH `saveDraftMutation` (plain `useMutation` wrapping `useConvexMutation`)
-and `publishMutation` (`useVexMutation`, which also wraps
-`useConvexMutation` internally) — a composed save-then-publish click
-therefore calls it twice, in order.
+Replace the existing `"hides Publish for a brand-new versioned global with
+no saved row yet"` / `"calls versions.publish with just the slug..."` /
+`"saves a pending edit as a draft before publishing..."` tests inside the
+existing `describe("GlobalEditView — draft toolbar", ...)` block with the
+following — Publish is no longer conditionally omitted, and every click is
+a single `convexMutationMock` call carrying `data`:
 
 ```ts
-it("hides Publish for a brand-new versioned global with no saved row yet", async () => {
-  const utils = renderView(createElement(GlobalEditView, { global: versionedGlobal.slug }), {
-    convex: t,
-    config: versionedConfig,
-  });
+it("disables Publish for a brand-new versioned global with no saved row yet and no edits", async () => {
+  const utils = renderView(
+    createElement(GlobalEditView, { global: versionedGlobal.slug }),
+    {
+      convex: t,
+      config: versionedConfig,
+    },
+  );
 
-  expect(utils.queryByRole("button", { name: "Publish" })).toBeNull();
+  expect(utils.getByRole("button", { name: "Publish" })).toBeDisabled();
 });
 
 it("enables Publish only while the loaded document is a draft", async () => {
-  const draft = { _creationTime: 1, _id: "g1", siteName: "x", tagline: "y", vex_status: "draft" };
+  const draft = {
+    _creationTime: 1,
+    _id: "g1",
+    siteName: "x",
+    tagline: "y",
+    vex_status: "draft",
+  };
   const utils = renderView(
-    createElement(GlobalEditView, { global: versionedGlobal.slug, initialData: draft as never }),
+    createElement(GlobalEditView, {
+      global: versionedGlobal.slug,
+      initialData: draft as never,
+    }),
     { convex: t, config: versionedConfig },
   );
   expect(utils.getByRole("button", { name: "Publish" })).not.toBeDisabled();
@@ -8941,43 +9595,101 @@ it("enables Publish only while the loaded document is a draft", async () => {
 
   const published = { ...draft, vex_status: "published" };
   const again = renderView(
-    createElement(GlobalEditView, { global: versionedGlobal.slug, initialData: published as never }),
+    createElement(GlobalEditView, {
+      global: versionedGlobal.slug,
+      initialData: published as never,
+    }),
     { convex: t, config: versionedConfig },
   );
   expect(again.getByRole("button", { name: "Publish" })).toBeDisabled();
 });
 
-it("calls versions.publish with just the slug when Publish is clicked with no unsaved changes", async () => {
+it("enables Publish for a published global once edited, sending the edit as data without a separate saveDraft call", async () => {
   convexMutationMock.mockReset().mockResolvedValue("g1");
-  const draft = { _creationTime: 1, _id: "g1", siteName: "x", tagline: "y", vex_status: "draft" };
+  const stored = {
+    _creationTime: 1,
+    _id: "g1",
+    siteName: "x",
+    tagline: "y",
+    vex_status: "published",
+  };
   const utils = renderView(
-    createElement(GlobalEditView, { global: versionedGlobal.slug, initialData: draft as never }),
+    createElement(GlobalEditView, {
+      global: versionedGlobal.slug,
+      initialData: stored as never,
+    }),
+    { convex: t, config: versionedConfig },
+  );
+  expect(utils.getByRole("button", { name: "Publish" })).toBeDisabled();
+
+  fireEvent.change(utils.container.querySelector("#siteName")!, {
+    target: { value: "new name" },
+  });
+  await waitFor(() =>
+    expect(utils.getByRole("button", { name: "Publish" })).toBeEnabled(),
+  );
+  fireEvent.click(utils.getByRole("button", { name: "Publish" }));
+
+  await waitFor(() => expect(convexMutationMock).toHaveBeenCalledTimes(1));
+  expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({
+    global: versionedGlobal.slug,
+    data: { siteName: "new name" },
+  });
+});
+
+it("calls versions.publish with an empty data object when Publish is clicked with no unsaved changes", async () => {
+  convexMutationMock.mockReset().mockResolvedValue("g1");
+  const draft = {
+    _creationTime: 1,
+    _id: "g1",
+    siteName: "x",
+    tagline: "y",
+    vex_status: "draft",
+  };
+  const utils = renderView(
+    createElement(GlobalEditView, {
+      global: versionedGlobal.slug,
+      initialData: draft as never,
+    }),
     { convex: t, config: versionedConfig },
   );
 
   fireEvent.click(utils.getByRole("button", { name: "Publish" }));
 
   await waitFor(() => expect(convexMutationMock).toHaveBeenCalledTimes(1));
-  expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({ global: versionedGlobal.slug });
+  expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({
+    global: versionedGlobal.slug,
+    data: {},
+  });
 });
 
-it("saves a pending edit as a draft before publishing when the form has unsaved changes", async () => {
-  convexMutationMock.mockReset().mockResolvedValueOnce("g1").mockResolvedValueOnce("g1");
-  const draft = { _creationTime: 1, _id: "g1", siteName: "x", tagline: "y", vex_status: "draft" };
+it("sends a pending edit as publish data in a single mutation call when the form has unsaved changes", async () => {
+  convexMutationMock.mockReset().mockResolvedValue("g1");
+  const draft = {
+    _creationTime: 1,
+    _id: "g1",
+    siteName: "x",
+    tagline: "y",
+    vex_status: "draft",
+  };
   const utils = renderView(
-    createElement(GlobalEditView, { global: versionedGlobal.slug, initialData: draft as never }),
+    createElement(GlobalEditView, {
+      global: versionedGlobal.slug,
+      initialData: draft as never,
+    }),
     { convex: t, config: versionedConfig },
   );
 
-  fireEvent.change(utils.container.querySelector("#siteName")!, { target: { value: "new name" } });
+  fireEvent.change(utils.container.querySelector("#siteName")!, {
+    target: { value: "new name" },
+  });
   fireEvent.click(utils.getByRole("button", { name: "Publish" }));
 
-  await waitFor(() => expect(convexMutationMock).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(convexMutationMock).toHaveBeenCalledTimes(1));
   expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({
     global: versionedGlobal.slug,
     data: { siteName: "new name" },
   });
-  expect(convexMutationMock.mock.calls[1]?.[0]).toEqual({ global: versionedGlobal.slug });
 });
 ```
 
@@ -8991,10 +9703,10 @@ unchanged except `vex_status`) and the published row's `_id` unchanged on
 every publish after that. Point `relatedPost` at another post that is
 currently a draft and Publish → rejected naming `relatedPost`; point
 `relatedArticle` at any published article → publishes. As `editor` on
-`announcement` (a versioned global) → edit a field and Publish directly
-without a prior Save Draft click → the edit is captured and the global
-flips to Published. As a role granted `update` but not `publish` → Publish
-renders disabled.
+`announcement` (a versioned global) → edit a field and Publish directly,
+with no prior Save Draft click → one mutation call, the edit is captured,
+and the global flips to Published. As a role granted `update` but not
+`publish` → Publish renders disabled.
 
 ### Step 11 — Unpublish, server half `[dev]`
 
@@ -9094,7 +9806,9 @@ import type { VersionedTargetRows } from "./resolveVersionedTarget";
  *   an active draft row already exists for the document.
  * @throws {VexAccessError} When the caller is not permitted to unpublish this document.
  */
-export async function unpublishShared<DataModel extends GenericDataModel>(props: {
+export async function unpublishShared<
+  DataModel extends GenericDataModel,
+>(props: {
   ctx: GenericMutationCtx<DataModel>;
   config: VexConfig;
   target: CollectionOrGlobal;
@@ -9113,7 +9827,9 @@ export async function unpublishShared<DataModel extends GenericDataModel>(props:
     );
   }
   if (rows.draftRow !== null) {
-    throw new ConvexError("Publish or discard the active draft before unpublishing.");
+    throw new ConvexError(
+      "Publish or discard the active draft before unpublishing.",
+    );
   }
   const publishedRow = rows.publishedRow;
 
@@ -9147,7 +9863,9 @@ export async function unpublishShared<DataModel extends GenericDataModel>(props:
     snapshot: rows.toUserFields(publishedRow),
     publishedAt: publishedRow.vex_publishedAt as number | undefined,
     createdBy:
-      typeof props.auth?.user?.["_id"] === "string" ? (props.auth.user["_id"] as string) : undefined,
+      typeof props.auth?.user?.["_id"] === "string"
+        ? (props.auth.user["_id"] as string)
+        : undefined,
     parentVersion: previous?.version,
   });
 
@@ -9159,7 +9877,10 @@ export async function unpublishShared<DataModel extends GenericDataModel>(props:
   // `updatedAt` (which tracks user field edits) is intentionally left
   // alone. `vex_publishedAt` is also left untouched on this patch, for the
   // same "carried forward, never rewritten backwards" reason.
-  await ctx.db.patch(publishedRow._id as never, { vex_status: VERSION_STATUSES.draft.key } as never);
+  await ctx.db.patch(
+    publishedRow._id as never,
+    { vex_status: VERSION_STATUSES.draft.key } as never,
+  );
 
   return String(publishedRow._id);
 }
@@ -9167,7 +9888,7 @@ export async function unpublishShared<DataModel extends GenericDataModel>(props:
 
 #### packages/core/src/api/versions/unpublish.server.ts
 
-```ts
+````ts
 import { ConvexError, type GenericId } from "convex/values";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 
@@ -9242,16 +9963,36 @@ export async function unpublish<DataModel extends GenericDataModel>(
   args: UnpublishServerArgs<DataModel>,
 ): Promise<string> {
   if ("collection" in args) {
-    const collection = args.config.collections.find((c) => c.slug === args.collection);
+    const collection = args.config.collections.find(
+      (c) => c.slug === args.collection,
+    );
     if (!collection) {
-      throw new ConvexError(`No collection registered with slug "${args.collection}"`);
+      throw new ConvexError(
+        `No collection registered with slug "${args.collection}"`,
+      );
     }
     if (!collection.versions.drafts) {
-      throw new ConvexError(`Collection "${args.collection}" does not have versions.drafts enabled.`);
+      throw new ConvexError(
+        `Collection "${args.collection}" does not have versions.drafts enabled.`,
+      );
     }
-    const target: CollectionOrGlobal = { kind: "collection", config: collection };
-    const rows = await resolveVersionedTarget({ ctx: args.ctx, collection: args.collection, id: args.id });
-    return unpublishShared({ ctx: args.ctx, config: args.config, target, access: args.access, auth: args.auth, rows });
+    const target: CollectionOrGlobal = {
+      kind: "collection",
+      config: collection,
+    };
+    const rows = await resolveVersionedTarget({
+      ctx: args.ctx,
+      collection: args.collection,
+      id: args.id,
+    });
+    return unpublishShared({
+      ctx: args.ctx,
+      config: args.config,
+      target,
+      access: args.access,
+      auth: args.auth,
+      rows,
+    });
   }
 
   const global = args.config.globals.find((g) => g.slug === args.global);
@@ -9259,17 +10000,29 @@ export async function unpublish<DataModel extends GenericDataModel>(
     throw new ConvexError(`No global registered with slug "${args.global}"`);
   }
   if (!global.versions.drafts) {
-    throw new ConvexError(`Global "${args.global}" does not have versions.drafts enabled.`);
+    throw new ConvexError(
+      `Global "${args.global}" does not have versions.drafts enabled.`,
+    );
   }
   const target: CollectionOrGlobal = { kind: "global", config: global };
-  const rows = await resolveVersionedTarget({ ctx: args.ctx, global: args.global });
-  return unpublishShared({ ctx: args.ctx, config: args.config, target, access: args.access, auth: args.auth, rows });
+  const rows = await resolveVersionedTarget({
+    ctx: args.ctx,
+    global: args.global,
+  });
+  return unpublishShared({
+    ctx: args.ctx,
+    config: args.config,
+    target,
+    access: args.access,
+    auth: args.auth,
+    rows,
+  });
 }
-```
+````
 
 #### packages/core/src/api/versions/unpublish.client.ts
 
-```ts
+````ts
 import type { GenericId } from "convex/values";
 
 import { vexConvexApi } from "../convex";
@@ -9292,20 +10045,21 @@ import { useConvexMutation } from "@convex-dev/react-query";
  * await mutateAsync({ global: "siteSettings" });
  * ```
  */
-export type UnpublishClientArgs<TCollectionSlug extends CollectionSlug = CollectionSlug> =
-  GenericMutationClientParams &
-    (
-      | {
-          /** The versioned collection slug. */
-          collection: TCollectionSlug;
-          /** The currently-loaded document's id — the published row's id, in practice. */
-          id: GenericId<TCollectionSlug>;
-        }
-      | {
-          /** The versioned global slug. */
-          global: GlobalSlug;
-        }
-    );
+export type UnpublishClientArgs<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> = GenericMutationClientParams &
+  (
+    | {
+        /** The versioned collection slug. */
+        collection: TCollectionSlug;
+        /** The currently-loaded document's id — the published row's id, in practice. */
+        id: GenericId<TCollectionSlug>;
+      }
+    | {
+        /** The versioned global slug. */
+        global: GlobalSlug;
+      }
+  );
 
 /**
  * Returns a `mutationFn` for unpublishing a VexCMS versioned collection's
@@ -9324,7 +10078,7 @@ export type UnpublishClientArgs<TCollectionSlug extends CollectionSlug = Collect
 export function unpublish() {
   return useConvexMutation(vexConvexApi.versions.unpublish);
 }
-```
+````
 
 #### packages/core/src/api/versions/unpublish.server.test.ts
 
@@ -9347,7 +10101,10 @@ const versionedPosts = defineCollection({
   versions: { drafts: true },
 });
 
-const fixtureConfig = { collections: [versionedPosts], globals: [] } as unknown as VexConfig;
+const fixtureConfig = {
+  collections: [versionedPosts],
+  globals: [],
+} as unknown as VexConfig;
 
 const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
@@ -9371,7 +10128,12 @@ describe("unpublish (server) — collection target", () => {
       });
 
       await expect(
-        unpublish({ ctx, config: fixtureConfig, collection: "posts", id: publishedId }),
+        unpublish({
+          ctx,
+          config: fixtureConfig,
+          collection: "posts",
+          id: publishedId,
+        }),
       ).rejects.toThrow(ConvexError);
 
       const publishedRow = await ctx.db.get(publishedId);
@@ -9390,7 +10152,12 @@ describe("unpublish (server) — collection target", () => {
         vex_publishedAt: t0,
       });
 
-      const returnedId = await unpublish({ ctx, config: fixtureConfig, collection: "posts", id: publishedId });
+      const returnedId = await unpublish({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        id: publishedId,
+      });
       expect(returnedId).toBe(String(publishedId));
 
       const row = await ctx.db.get(publishedId);
@@ -9418,7 +10185,12 @@ describe("unpublish (server) — collection target", () => {
         vex_status: "published",
       });
 
-      await unpublish({ ctx, config: fixtureConfig, collection: "posts", id: publishedId });
+      await unpublish({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        id: publishedId,
+      });
       const returnedId = await saveDraft({
         ctx,
         config: fixtureConfig,
@@ -9437,10 +10209,19 @@ describe("unpublish (server) — collection target", () => {
   test("throws when the target document has never been published", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const draftId = await ctx.db.insert("posts", { title: "Draft", slug: "draft", vex_status: "draft" });
+      const draftId = await ctx.db.insert("posts", {
+        title: "Draft",
+        slug: "draft",
+        vex_status: "draft",
+      });
 
       await expect(
-        unpublish({ ctx, config: fixtureConfig, collection: "posts", id: draftId }),
+        unpublish({
+          ctx,
+          config: fixtureConfig,
+          collection: "posts",
+          id: draftId,
+        }),
       ).rejects.toThrow(ConvexError);
     });
   });
@@ -9452,7 +10233,10 @@ const versionedBanner = defineGlobal({
   versions: { drafts: true },
 });
 
-const globalFixtureConfig = { collections: [], globals: [versionedBanner] } as unknown as VexConfig;
+const globalFixtureConfig = {
+  collections: [],
+  globals: [versionedBanner],
+} as unknown as VexConfig;
 
 describe("unpublish (server) — global target", () => {
   test("flips the published vex_globals row to draft, leaving the slug and publishedAt intact", async () => {
@@ -9505,7 +10289,12 @@ describe("unpublish (server) — global target", () => {
     });
 
     await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
-      saveDraft({ ctx, config: globalFixtureConfig, global: "banner", data: { message: "Live, edited" } }),
+      saveDraft({
+        ctx,
+        config: globalFixtureConfig,
+        global: "banner",
+        data: { message: "Live, edited" },
+      }),
     );
 
     await expect(
@@ -9629,12 +10418,7 @@ edit also lands):
 
 ```ts
 export type VexMutationOperation =
-  | "create"
-  | "remove"
-  | "update"
-  | "upsert"
-  | "publish"
-  | "unpublish";
+  "create" | "remove" | "update" | "upsert" | "publish" | "unpublish";
 ```
 
 #### packages/next/src/cache/createVexRevalidateRoute.ts
@@ -9646,7 +10430,12 @@ same permission check and ISR-purge target resolution an `update` does:
 ```ts
 function toCrudAction(operation: VexMutationOperation): CrudWriteAction {
   if (operation === "remove") return "delete";
-  if (operation === "upsert" || operation === "publish" || operation === "unpublish") return "update";
+  if (
+    operation === "upsert" ||
+    operation === "publish" ||
+    operation === "unpublish"
+  )
+    return "update";
   return operation;
 }
 ```
@@ -9741,15 +10530,16 @@ the reason this step's `Why:` gives: unpublish moves a document out of public vi
 needs a purge too, unlike `saveDraftMutation` just above it.
 
 ```tsx
-const { mutateAsync: unpublishMutation, isPending: isUnpublishing } = useVexMutation({
-  collection: collection.slug,
-  // The published row is what's currently loaded whenever Unpublish is
-  // enabled — the toolbar disables it while a draft exists (edit 4 below) —
-  // so `currentDocument` IS the "before" state this purges as a delete.
-  getChanges: () => [{ before: currentDocument }],
-  mutationFn: vexConvexApi.versions.unpublish,
-  operation: "unpublish",
-});
+const { mutateAsync: unpublishMutation, isPending: isUnpublishing } =
+  useVexMutation({
+    collection: collection.slug,
+    // The published row is what's currently loaded whenever Unpublish is
+    // enabled — the toolbar disables it while a draft exists (edit 4 below) —
+    // so `currentDocument` IS the "before" state this purges as a delete.
+    getChanges: () => [{ before: currentDocument }],
+    mutationFn: vexConvexApi.versions.unpublish,
+    operation: "unpublish",
+  });
 ```
 
 **3 — handler**, after `handlePublish` (Step 10):
@@ -9764,7 +10554,10 @@ const { mutateAsync: unpublishMutation, isPending: isUnpublishing } = useVexMuta
  */
 async function handleUnpublish(): Promise<void> {
   try {
-    await unpublishMutation({ collection: collection.slug, id: activeDocumentId });
+    await unpublishMutation({
+      collection: collection.slug,
+      id: activeDocumentId,
+    });
   } catch (error) {
     // Step 11 rejects while a draft row exists; `isDraftDoc` already
     // disables the calling button client-side, but a draft created in
@@ -9782,7 +10575,8 @@ async function handleUnpublish(): Promise<void> {
           unpublish={{
             onClick: handleUnpublish,
             isPending: isUnpublishing,
-            disabled: !canUnpublish || isDraftDoc,
+            // Unpublish acts on the stored row, so unsaved edits would be silently discarded.
+            disabled: !canUnpublish || isDraftDoc || !isDefaultValue,
           }}
 ```
 
@@ -9800,12 +10594,13 @@ const canUnpublish = usePermission({
   action: DRAFT_ACTIONS.unpublish,
   data: globalDoc as {},
 });
-const { mutateAsync: unpublishAsync, isPending: isUnpublishing } = useVexMutation({
-  collection: global.slug,
-  getChanges: () => (globalDoc ? [{ before: globalDoc }] : []),
-  mutationFn: vexConvexApi.versions.unpublish,
-  operation: "unpublish",
-});
+const { mutateAsync: unpublishAsync, isPending: isUnpublishing } =
+  useVexMutation({
+    collection: global.slug,
+    getChanges: () => (globalDoc ? [{ before: globalDoc }] : []),
+    mutationFn: vexConvexApi.versions.unpublish,
+    operation: "unpublish",
+  });
 ```
 
 **2 — handler**, after `handlePublish` (Step 10):
@@ -9835,7 +10630,7 @@ async function handleUnpublish() {
                       ? {
                           onClick: handleUnpublish,
                           isPending: isUnpublishing,
-                          disabled: !canUnpublish || isDraftDoc,
+                          disabled: !canUnpublish || isDraftDoc || !isDefaultValue,
                         }
                       : undefined
                   }
@@ -9884,7 +10679,9 @@ it("calls versions.unpublish with the global's slug when Unpublish is clicked", 
   fireEvent.click(utils.getByRole("button", { name: "Unpublish" }));
 
   await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
-  expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({ global: versionedGlobal.slug });
+  expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({
+    global: versionedGlobal.slug,
+  });
 });
 ```
 
@@ -9918,6 +10715,23 @@ draft of this same file once used (a `requiresPublishedOnly` that returned `fals
 `bypass: true`) — get that ordering wrong and a trusted internal caller silently sees every
 draft in the table.
 
+**D1: `requiresPublishedOnly` and `composeStatusConstraint` live in
+`packages/core/src/versions/statusConstraint.ts`, not `api/find/server.ts`.** The original
+draft of this step defined both functions locally in `find/server.ts` and had `get`/
+`search` import them from there — a domain-logic pair (what does "published-only" mean for
+a resource, how does the framework narrow a query to it) living inside one specific API
+operation's file, imported sideways by its siblings. `versions/` already owns every other
+piece of draft/publish domain logic (`constants.ts`, `model.ts`, `schema.ts`,
+`resolveVersionedTarget.ts`); this step's two functions — plus the new per-index
+`draftStatus` lookup Decisions D2–D4 add below — belong there for the same reason, and
+`find`/`get`/`search` import from `versions/` like every other `../../versions` consumer
+instead of reaching into a sibling API operation's internals. `populate.ts` and
+`getGlobal` need no import change here: both already read their published/draft
+distinction straight off `versions/constants.ts`'s `VERSION_STATUSES`/
+`VERSION_SYSTEM_FIELDS` (`populateDocs`'s own inline check; `getGlobal`'s row-preference
+branch, Steps 9/11) — already the `versions/`-owning pattern this decision generalizes,
+not something this step needs to touch.
+
 Two, genuinely separate, mechanisms compose here and must not be conflated:
 
 1. **RBAC — who may see a draft at all.** `drafts: true` switches the action this call
@@ -9938,29 +10752,130 @@ Two, genuinely separate, mechanisms compose here and must not be conflated:
    is falsy — including under `access: { bypass: true }` — it has no relationship to
    mechanism 1 beyond both reading the same `drafts` boolean.
 
+**D2–D4: a per-index `draftStatus` lets the SAME index serve a narrowed query in both
+read modes, not just the published-only one.** Mechanism 2 above is correct but, on an
+index a caller or RBAC rule actually claims, costs a full-page-minus-drafts `.filter()`
+scan instead of an index-narrowed read — every row the index returns is read and checked,
+published or not. A collection whose public list view is dominated by one hot index (the
+common case: `by_slug`, or a compound `by_category_date`) can now mark that SPECIFIC index
+`draftStatus: true | "both"` — on a collection-level `indexes[]` entry, a field's own
+`index`, or a relationship field's auto `by_<field>` — and `collectionConfigToVexSchema`
+emits a `vex_status`-prefixed PHYSICAL twin of it:
+
+- `draftStatus: true` — the index is REPLACED by its prefixed form:
+  `.index(name, ["vex_status", ...fields])`. No unprefixed physical index exists for
+  `name` at all.
+- `draftStatus: "both"` — BOTH forms are emitted: the unprefixed `.index(name, fields)`
+  exactly as before, and a second, internal twin —
+  `.index(\`${name}__draftStatus\`, ["vex_status", ...fields])`. The double-underscore
+separates it from the project's own `by_`-prefixed naming (`naming-conventions.md`has no
+rule for Convex index names; this is the framework's own internal-marker convention,
+recorded here as its definition) and keeps it deterministic — any caller that knows`name` can derive the twin without a lookup.
+
+Access-rule and `find({ withIndex })` TYPING is unaffected either way: `TIndexFields`
+(`IndexFieldsBySlug[slug]`, `collections/indexFields.ts` → `types/generateVexTypes.ts`)
+already derives its field-tuple-per-index map purely from `collection.fields`' `index`/
+relationship-auto-name — reading neither `draftStatus` nor `collection.indexes[]` itself
+(a PRE-EXISTING scope boundary: a collection-level compound `indexes[]` entry has never
+been visible to `AccessQueryBuilder.withIndex`'s typed `TIndexFields`, only a compound
+index built by several fields sharing one `field.index` name is — this step neither fixes
+nor worsens that gap). So **no change to `collections/indexFields.ts` or
+`types/generateVexTypes.ts` is needed**: an index's TYPED field tuple is already the USER
+fields only, never `vex_status` — the framework prepends that prefix at QUERY time
+(`composeStatusConstraint`, below), invisible to whoever authored the access rule's
+`withIndex` call. The twin name itself is never a `TIndexFields`/`IndexNameFor` key for
+the same reason `by_status`/`by_published` (the system indexes `versionFieldsToVexSchema`
+already emits) aren't today — `collectionConfigToIndexFields` never reads them either, so
+an access-rule author has never been able to select a system index by name, and the twin
+gets identical treatment. (A raw `find({ withIndex: { name: "posts__draftStatus", … } })`
+call IS still type-reachable, the same way `find({ withIndex: { name: "by_status", … } })`
+already is today — `FindServerArgs.withIndex.name` types from Convex's own generated
+`IndexNames<NamedTableInfo<…>>`, outside this framework's control, and nothing prevents a
+raw caller naming a system index today either. Scoping that is a pre-existing gap, not one
+this step introduces or is positioned to close.)
+
+Query-TIME composition is `composeStatusConstraint`'s job, and runs AFTER `pickQueryIndex`
+has already arbitrated which index (RBAC's or the caller's) won the query's one
+`withIndex` slot — every branch below reads THAT winning index's OWN `draftStatus`, looked
+up by name, never the collection's in the abstract:
+
+1. **Published-only read, winning index has no `draftStatus` (or none was chosen at
+   all)** — unchanged from mechanism 2 above: claim the free `by_status` slot, or fold
+   `vex_status === "published"` into `.filter()` when the slot is taken. New in this
+   revision: when a slot-occupying index DID exist but declared no `draftStatus`, a
+   dev-only warning fires once per (collection, index) — modeled on `pickQueryIndex`'s own
+   `warnDisplacedAccessIndex` — suggesting `draftStatus: true`.
+2. **Published-only read, winning index HAS a `draftStatus`** — the published constraint
+   rides the SAME index for free. The physical index is already `vex_status`-prefixed
+   (under `name` for `draftStatus: true`, under `` `${name}__draftStatus` `` for `"both"`),
+   so `composeRanges({ first: eq(vex_status, "published"), second: winningIndex.range })`
+   — the exact "access range, then caller range" composition `pickQueryIndex` already uses
+   when both sides share one index slot — produces a single range against the prefixed
+   physical index. No `.filter()` for status at all.
+3. **`drafts: true` read, winning index has `draftStatus: "both"`** — the UNPREFIXED
+   physical index (`name`) already exists; the RBAC/caller range was authored against it
+   and needs no change. A no-op case, stated for completeness.
+4. **`drafts: true` read, winning index has `draftStatus: true`** — there is no unprefixed
+   physical index to fall back to (only the `vex_status`-prefixed form exists under
+   `name`), and the RBAC/caller range was authored against the UNPREFIXED field order, so
+   it cannot be replayed against the prefixed physical index generically — a range
+   authored for position 0 = the resource's first declared field cannot be reinterpreted
+   as position 1 without knowing what it constrains. The conservative, correct choice:
+   drop the range (`withIndex(name)` with no range — a full, but still correctly-scoped,
+   scan through that one index) and re-apply the dropped range itself as a `.filter()`,
+   ANDed with `accessFilter`. A filter compares by field NAME, so the positional problem
+   above does not apply to it. Re-applying the range — not recomputing the RBAC
+   constraint — is what keeps this correct for every way `pickQueryIndex` can arbitrate:
+   the range holds the access rule's constraints when the access index won (and
+   `accessFilter` omitted them via `indexAlreadyApplied: true`), the CALLER's own lookup
+   when the caller's index won (and `accessFilter` is already the whole RBAC condition),
+   or both merged when the names matched. Recomputing only the RBAC filter would silently
+   drop a caller range and widen the read to every row RBAC allows. A dev-only warning,
+   same shape as case 1's, suggests `"both"`.
+
+**Bypass/unconfigured access.** `requiresPublishedOnly` never reads `access` at all, so
+cases 1–2 run identically whether or not RBAC is configured or bypassed — unchanged from
+the original design (design-review.md §3.1, restated above). Case 4 never reads `access`
+either: under bypass or no config `accessFilter` is `undefined`, so the result is just the
+dropped range as a filter (or nothing, when the range was ordering-only) — no spurious
+RBAC filter where none was configured, and a caller's own lookup is still honored.
+
+**`composeRanges` (`access/pickQueryIndex.ts`) is exported, not relocated, and reused
+as-is.** It already does exactly what case 2/4's "prefix range, then continue with the
+caller's own range" composition needs, with the exact same "first narrows the index
+prefix, second continues from there" semantics `pickQueryIndex` itself uses to merge an
+access range and a caller range sharing one index. Relocating it into `versions/` would
+either duplicate the function or make `access/pickQueryIndex.ts` import FROM `versions/`
+for no reason — `versions/` already depends on `access/` for `resolveAccessConstraint`,
+and a generic range-composition helper has no access-specific semantics to justify owning
+two copies. The change is one word: `function composeRanges` → `export function
+composeRanges`, and its `@internal` tag is dropped since it is now public API.
+
 **A note on the draft-only row, verified explicitly rather than assumed.** Option A's
 `create` (`api/create/server.ts`) can produce a row where `vex_status === "draft"` but
 `vex_publishedId` is `undefined` — a document inserted with
 `collection.versions.defaultStatus: "draft"` (the config default) that has never been
 published, so there is no published counterpart for it to point at. This case did not exist
 in the original two-row design this step was first written against, which only knew
-"published row" plus "its one optional draft counterpart." Mechanism 2 above needs no
-awareness of the distinction, and no code change, to handle it correctly: it filters purely
-on `vex_status`, never on whether `vex_publishedId` is set, so a draft-only row is excluded
-from a published-only read by the exact same `vex_status !== "published"` condition that
-excludes an ordinary draft with a published parent — same `.filter()`/`withIndex`
-composition, same `readDrafts` gate required to see it at all. `requiresPublishedOnly`/
-`composeStatusConstraint` (edits 3–4 below) and `populateDocs`'s own
-`vex_status === undefined || vex_status === "published"` check (already shipped, edit below)
-both already satisfy this without modification — the test added to `find/server.test.ts`
-below exists to pin that down explicitly, since it is a new reachable state the original
-test list never exercised, not because the implementation needs to change.
+"published row" plus "its one optional draft counterpart." Every mechanism above needs no
+awareness of the distinction, and no code change, to handle it correctly: `vex_status` is
+the only thing ever tested, never `vex_publishedId`'s presence, so a draft-only row is
+excluded from a published-only read by the exact same condition that excludes an ordinary
+draft with a published parent — same `.filter()`/`withIndex` composition, same
+`readDrafts` gate required to see it at all, draftStatus-indexed or not. `populateDocs`'s
+own `vex_status === undefined || vex_status === "published"` check (already shipped,
+unchanged) satisfies this too — the test added to `find/server.test.ts` below exists to
+pin that down explicitly, since it is a new reachable state the original test list never
+exercised, not because the implementation needs to change.
 
 `search` never contests a `withIndex` slot — its `buildQuery` uses `.withSearchIndex`, and
 Convex forbids combining `.withIndex` and `.withSearchIndex` on one query, so there is no
 framework-owned slot there to claim structurally. `search`'s status condition is therefore
-always folded into `.filter()`, never structural — consistent with `search/server.ts`
-already only importing `resolveAccessConstraint`, never `resolveAccessIndex`.
+ALWAYS folded into `.filter()`, never structural, and never per-index-`draftStatus`-aware —
+consistent with `search/server.ts` already only importing `resolveAccessConstraint`, never
+`resolveAccessIndex`. `get`'s semantics are likewise unchanged by D2–D4: it is a
+post-fetch, by-`_id` check on ONE already-fetched row's own `vex_status`, which has no
+`withIndex` slot to narrow in the first place.
 
 A third gap, found while re-grounding this step against the live tree (not named in
 design-review.md): `populateDocs` (`api/populate.ts`) resolves every relationship field via
@@ -9977,29 +10892,1090 @@ The fix reuses the SAME `drafts` boolean already threaded onto `find`/`get`/`sea
 above — a nested `populate` call inherits its caller's `drafts` intent rather than resolving a
 second, independent RBAC decision per target collection; documenting this as the deliberate
 scope of a v1 fix, not an oversight, is the edge-case note on `populateDocs` below.
+`populateDocs` stays `draftStatus`-blind: it has no static knowledge of which index (if any)
+a target row would have been read through, so it keeps the same plain `vex_status` field
+check regardless of what Decisions D2–D4 add to the query builder.
 
+- [ ] `packages/core/src/collections/types.ts` — `CollectionConfigInput.indexes[]` and
+      resolved `CollectionConfig.indexes[]` entries gain `draftStatus?: TDrafts extends
+    true ? true | "both" : never` — type-gated by the SAME `TDrafts` generic already on
+      both interfaces, so a literal `versions: { drafts: false }` (or omitted) config
+      cannot even typecheck a `draftStatus` on one of its own indexes.
+- [ ] `packages/core/src/fields/baseTypes.ts` — `BaseFieldInput`/`BaseField` gain a sibling
+      `indexDraftStatus?: true | "both"` next to the existing `index?: string`. A sibling
+      property, not a union on `index` itself — `index` stays a plain string everywhere it
+      is already read as one (`collectionConfigToVexSchema`, `collectionConfigToIndexFields`,
+      `buildChecks.ts`'s `resolveAccessIndexNameFor`), so none of those need to change.
+      Not type-gated by the owning collection's `TDrafts` — a field factory (`text()`,
+      `relationship()`, …) is built independently of any collection, with no generic
+      threading a collection's `TDrafts` down to it — so this is runtime-validated only,
+      by the next edit.
+- [ ] `packages/core/src/collections/config.ts` — `defineCollection` throws when a
+      collection-level `indexes[].draftStatus` or a field's `indexDraftStatus` is declared
+      without `versions.drafts: true` (the runtime half of the type-level guard above, for
+      a JS caller or a dynamically-assembled `indexes` array — mirrors the existing
+      reserved-key runtime guard's own reasoning), and when a field's `indexDraftStatus` is
+      set with no `index` of its own and no relationship auto-index to attach to.
+- [ ] `packages/core/src/collections/config.test.ts` — the three throw cases above, plus a
+      config declaring `draftStatus`/`indexDraftStatus` legally under `versions.drafts:
+    true` resolves unchanged.
+- [ ] `packages/core/src/collections/validator.ts` — `collectionConfigToVexSchema` emits
+      the prefixed/twin `.index(...)` lines for both a collection-level `indexes[]` entry
+      and a per-field index (explicit or relationship-auto), mirroring the existing
+      per-field emission shape exactly (including its known one-line-per-field behavior for
+      two fields sharing one `index` name — pre-existing, not this step's to fix).
+- [ ] `packages/core/src/collections/validator.test.ts` — `draftStatus: true` replaces the
+      index with its prefixed form (no unprefixed line emitted); `"both"` emits both lines,
+      twin named `` `${name}__draftStatus` ``; a collection-level compound index prefixes
+      every declared field; a relationship field's auto `by_<fieldKey>` index picks up
+      `indexDraftStatus` the same as an explicit one.
+- [ ] `packages/core/src/access/pickQueryIndex.ts` — export `composeRanges`; drop its
+      `@internal` tag; note its new `versions/statusConstraint.ts` consumer in the doc
+      comment. No other line changes — its existing `pickQueryIndex` callers and tests are
+      untouched.
+- [ ] `packages/core/src/versions/statusConstraint.ts` (new) — `requiresPublishedOnly`
+      (relocated from the stale local-to-`find/server.ts` design, implementation
+      unchanged) and `composeStatusConstraint` (relocated AND extended for D2–D4's
+      per-index composition above), plus the internal `resolveIndexDraftStatus` lookup and
+      two dev-only warning helpers.
+- [ ] `packages/core/src/versions/statusConstraint.test.ts` (new) — unit coverage for
+      `requiresPublishedOnly` and all four `composeStatusConstraint` composition cases
+      above — case 4 for each way the dropped range arose (access index won, caller's
+      index won, merged same-name range, ordering-only), including that case 2's composed range starts with a `vex_status` equality
+      before the caller's own constraint, and that each warning fires exactly once per
+      (collection, index) pair across repeated calls.
+- [ ] `packages/core/src/versions/index.ts` — re-export the new module.
 - [ ] `packages/core/src/api/populate.ts` — add a `drafts?: boolean` parameter; a fetched
       relationship target carrying `vex_status !== "published"` is excluded unless `drafts`
       is `true` — closes the populate-time leak the Why above names.
 - [ ] `packages/core/src/api/populate.test.ts` — a populated target that is currently a
       draft is excluded by default and included when `drafts: true` is passed.
-- [ ] `packages/core/src/api/find/server.ts` — add `drafts?: boolean` arg; add
-      `requiresPublishedOnly` and `composeStatusConstraint`; wire both into `find`'s
-      existing resolve block; thread `args.drafts` into its `populateDocs` call.
-- [ ] `packages/core/src/api/get/server.ts` — add `drafts?: boolean` arg; a versioned
-      collection's row is treated as not found when its status isn't published and
-      `drafts` wasn't requested; thread `args.drafts` into its `populateDocs` call.
-- [ ] `packages/core/src/api/search/server.ts` — add `drafts?: boolean` arg; the status
-      condition is always folded into `.filter()`; thread `args.drafts` into its
-      `populateDocs` call.
+- [x] (partly) `packages/core/src/api/find/server.ts` — `FindServerArgs.drafts?: boolean`
+      already exists in the live tree, verbatim, with the doc comment reproduced in edit 2
+      below — **no change needed there**. Everything else in this bullet is still open:
+      import `composeStatusConstraint`/`DRAFT_ACTIONS`; wire the new per-index-aware
+      resolve block (edit 3 below, which replaces `requiresPublishedOnly`/
+      `composeStatusConstraint`'s old LOCAL definitions — deleted from this file, now
+      imported from `../../versions`); thread `args.drafts` into its `populateDocs` call.
+- [ ] `packages/core/src/api/server.ts` — `collectionsApi`'s `find`/`get`/`search` registrations accept and forward `drafts` (without it Convex rejects every client call that sends it).
+- [ ] `packages/core/src/api/utils.ts` — `resolveReadCall`: `drafts: true` falls back to the published-only read for a caller without `readDrafts` (same as `getGlobal`); used by `find` and `get`.
+- [ ] `packages/core/src/api/get/server.test.ts` — drafts fallback (`read`-only role: published row, `null` for a draft row; `readDrafts` role: draft row).
+- [ ] `packages/core/src/api/get/server.ts` — add `drafts?: boolean` arg; import
+      `requiresPublishedOnly` from `../../versions` (not `../find/server` — D1); a
+      versioned collection's row is treated as not found when its status isn't published
+      and `drafts` wasn't requested (unchanged semantics — D2–D4 do not apply to a
+      by-`_id` fetch); thread `args.drafts` into its `populateDocs` call.
+- [ ] `packages/core/src/api/search/server.ts` — add `drafts?: boolean` arg; import
+      `requiresPublishedOnly` from `../../versions`; the status condition is always folded
+      into `.filter()`, never per-index-`draftStatus`-aware (unchanged — D2–D4 do not apply
+      to `search`); thread `args.drafts` into its `populateDocs` call.
 - [ ] `packages/core/src/api/globals/get.server.ts` — thread `args.drafts` into its two
-      `populateDocs` calls (depth-populate and explicit `populate`).
+      `populateDocs` calls. Its own published/draft row PREFERENCE logic (Steps 9/11,
+      already shipped) is untouched — globals have no index declaration surface at all
+      (`globals/types.ts` carries no `indexes` field, confirmed against the live tree; the
+      shared `vex_globals` table's `by_slug`/`by_status`/`by_published` indexes are
+      schema-generated, not per-global declared), so D2–D4's per-index `draftStatus` has no
+      surface to attach to on a global and is out of scope here.
 - [ ] `packages/core/src/api/find/server.test.ts` — public read (including a
       `bypass: true` call) returns no draft rows and no duplicate logical documents;
       `drafts: true` with `readDrafts` returns both; a caller-supplied `withIndex` still
       gets the status filter via `.filter()`; a draft-only row (never published, Option A's
       `defaultStatus: "draft"` case) is excluded by default and visible with `drafts: true` +
-      `readDrafts`.
+      `readDrafts`; PLUS the four `draftStatus` composition cases end to end against
+      `convexTest` (a real `draftStatus: "both"`/`draftStatus: true` physical schema, not a
+      mock) — published-only on a `"both"` index excludes the draft row with no extra
+      `.filter()` cost; `drafts: true` on that same `"both"` index returns both rows
+      untouched; `drafts: true` on a `draftStatus: true`-only index drops its range and
+      still returns correctly (via the `.filter()` fallback) while warning; a published-only
+      read on an index with no `draftStatus` still filters correctly and warns once.
+- [ ] `packages/core/src/api/test/convex/schema.ts` — `posts` table gains `by_title` (plain) + `by_title__draftStatus` (`["vex_status", "title"]`) and `by_body`
+      (`["vex_status", "body"]`, a `draftStatus: true`-only index with no unprefixed twin)
+      so the new `find/server.test.ts` cases above exercise real physical indexes, not a
+      mocked query chain.
+- [ ] `apps/test/src/vexcms/collections/posts.ts` — one collection-level index with
+      `draftStatus: "both"` and one field-level index with `indexDraftStatus: true`, so
+      manual verification exercises both modes (see Manual note below).
+
+#### packages/core/src/collections/types.ts
+
+2 edits — `CollectionConfigInput.indexes` and resolved `CollectionConfig.indexes` each gain
+one field. Both already carry `TDrafts` as a generic parameter (Step 1), so the gate costs
+nothing new to thread.
+
+````ts
+  /** Index definitions that create indexes on this collection in Convex. */
+  indexes?: {
+    name: string;
+    fields: NoInfer<TFieldSlug>[];
+    /**
+     * Also narrow this index on `vex_status` for draft/publish status
+     * composition (Step 13, `versions/statusConstraint.ts`). Only valid
+     * when this collection declares `versions.drafts: true` —
+     * `defineCollection` throws otherwise for a dynamically-assembled
+     * config; a literal `{ drafts: false }` (or omitted) config fails to
+     * typecheck a `draftStatus` here at all, since this property only
+     * exists when `TDrafts` is the literal `true`.
+     *
+     * - `true` — REPLACES the index with its `vex_status`-prefixed physical
+     *   form (`.index(name, ["vex_status", ...fields])`); no unprefixed
+     *   physical index exists for `name`. A `drafts: true` read that picks
+     *   this index cannot narrow through it and drops to `.filter()` for
+     *   any RBAC/caller range (dev-only warning, once per index).
+     * - `"both"` — emits the unprefixed index AND a `vex_status`-prefixed
+     *   twin (`` `${name}__draftStatus` `` — internal, never a selectable
+     *   `IndexNameFor` member), so a published-only read and a `drafts:
+     *   true` read on `name` both stay index-narrowed.
+     *
+     * @example
+     * ```ts
+     * indexes: [{ name: "by_slug", fields: ["slug"], draftStatus: "both" }]
+     * ```
+     */
+    draftStatus?: TDrafts extends true ? true | "both" : never;
+  }[];
+````
+
+The resolved `CollectionConfig.indexes` entry gets the same field, doc comment shortened to
+a `@see`:
+
+```ts
+  /** Index definitions that create indexes on this collection in Convex. */
+  indexes?: {
+    name: string;
+    fields: NoInfer<TFieldSlug>[];
+    /** @see {@link CollectionConfigInput.indexes} */
+    draftStatus?: TDrafts extends true ? true | "both" : never;
+  }[];
+```
+
+#### packages/core/src/fields/baseTypes.ts
+
+2 edits — `BaseFieldInput`/`BaseField` each gain one sibling property, immediately after
+the existing `index?: string;`.
+
+```ts
+  /**
+   * Also narrow this field's index on `vex_status` for draft/publish status
+   * composition (Step 13, `versions/statusConstraint.ts`). Meaningless
+   * without an index to attach to — set `index` too, or this is a
+   * relationship field (which auto-indexes `by_<fieldKey>`) — and without
+   * the owning collection's `versions.drafts: true`; `defineCollection`
+   * throws otherwise for either violation (`collections/config.ts`). Same
+   * `true` (replaces the index) / `"both"` (adds a `vex_status`-prefixed
+   * twin) contract as `CollectionConfigInput.indexes[].draftStatus` — see
+   * there for the full narrowing/fallback behavior.
+   */
+  indexDraftStatus?: true | "both";
+```
+
+(Added to `BaseField` identically, `@see` in place of the restated contract.)
+
+#### packages/core/src/collections/config.ts
+
+1 import edit, 1 new validation block — inserted immediately after the existing
+reserved-key guard's closing brace, before the `// Never mutate input.fields` comment.
+
+```ts
+import {
+  ADMIN_FIELDS,
+  AdminField,
+  CollectionFieldMeta,
+  ComponentHKT,
+  number,
+} from "../fields";
+```
+
+```ts
+// Runtime guard: `draftStatus` (collection-level `indexes[]` and
+// field-level `indexDraftStatus`) requires `versions.drafts: true`. The
+// type-level `TDrafts extends true ? ... : never` branch on
+// `CollectionConfigInput.indexes[].draftStatus` only protects a literal
+// config object — a JS caller, or a dynamically-assembled `indexes`
+// array, bypasses it the same way the reserved-key guard above needs its
+// own runtime half.
+if (input.versions?.drafts !== true) {
+  const indexOffender = input.indexes?.find((i) => i.draftStatus !== undefined);
+  if (indexOffender) {
+    throw new Error(
+      `defineCollection: index "${indexOffender.name}" on collection "${input.slug}" declares draftStatus but versions.drafts is not true.`,
+    );
+  }
+  const fieldOffender = Object.entries(input.fields).find(
+    ([, field]) => (field as AdminField).indexDraftStatus !== undefined,
+  );
+  if (fieldOffender) {
+    throw new Error(
+      `defineCollection: field "${fieldOffender[0]}" on collection "${input.slug}" declares indexDraftStatus but versions.drafts is not true.`,
+    );
+  }
+}
+// A field's `indexDraftStatus` narrows an index that must actually
+// exist — either the field's own `index`, or a relationship field's auto
+// `by_<fieldKey>`. Catches a typo'd `indexDraftStatus` on a field with
+// neither, which would otherwise silently do nothing.
+for (const [fieldKey, field] of Object.entries(input.fields)) {
+  const f = field as AdminField;
+  if (
+    f.indexDraftStatus !== undefined &&
+    !f.index &&
+    f.type !== ADMIN_FIELDS.relationship.type
+  ) {
+    throw new Error(
+      `defineCollection: field "${fieldKey}" on collection "${input.slug}" declares indexDraftStatus with no index to narrow — set "index", or this must be a relationship field (which auto-indexes).`,
+    );
+  }
+}
+```
+
+#### packages/core/src/collections/config.test.ts
+
+New `describe` block, appended after the file's existing coverage.
+
+```ts
+describe("defineCollection — draftStatus validation", () => {
+  it("throws when a collection-level index declares draftStatus without versions.drafts: true", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { title: text({ required: true }) },
+        indexes: [
+          { name: "by_title", fields: ["title"], draftStatus: true } as never,
+        ],
+      }),
+    ).toThrow(/draftStatus/);
+  });
+
+  it("throws when a field's indexDraftStatus is set without versions.drafts: true", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: {
+          slug: text({
+            required: true,
+            index: "by_slug",
+            indexDraftStatus: true,
+          }),
+        },
+      }),
+    ).toThrow(/draftStatus/);
+  });
+
+  it("throws when indexDraftStatus is set on a field with no index and no relationship auto-index", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { title: text({ required: true, indexDraftStatus: true }) },
+        versions: { drafts: true },
+      }),
+    ).toThrow(/no index to narrow/);
+  });
+
+  it("allows draftStatus on a collection-level index when versions.drafts: true", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      versions: { drafts: true },
+      indexes: [{ name: "by_title", fields: ["title"], draftStatus: "both" }],
+    });
+    expect(posts.indexes?.[0]).toMatchObject({
+      name: "by_title",
+      draftStatus: "both",
+    });
+  });
+
+  it("allows indexDraftStatus on a field's own index when versions.drafts: true", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: {
+        slug: text({
+          required: true,
+          index: "by_slug",
+          indexDraftStatus: true,
+        }),
+      },
+      versions: { drafts: true },
+    });
+    expect(posts.fields.slug?.indexDraftStatus).toBe(true);
+  });
+});
+```
+
+#### packages/core/src/collections/validator.ts
+
+2 edits inside `collectionConfigToVexSchema`. Everything else in the function — field
+validator emission, search indexes, the `versions.drafts` tail block — is unchanged.
+
+**1 — the collection-level `indexes` loop.**
+
+```ts
+for (const index of props.collection.indexes ?? []) {
+  if (index.draftStatus === true) {
+    indexes.push(
+      `\t.index("${index.name}", ${JSON.stringify(["vex_status", ...index.fields])})`,
+    );
+  } else if (index.draftStatus === "both") {
+    indexes.push(`\t.index("${index.name}", ${JSON.stringify(index.fields)})`);
+    indexes.push(
+      `\t.index("${index.name}__draftStatus", ${JSON.stringify(["vex_status", ...index.fields])})`,
+    );
+  } else {
+    indexes.push(`\t.index("${index.name}", ${JSON.stringify(index.fields)})`);
+  }
+}
+```
+
+**2 — the per-field index push**, inside the main fields loop — replaces only the
+single-line `if (fieldIndexName && !props.collection.indexes?.find(...))` body.
+
+```ts
+if (
+  fieldIndexName &&
+  !props.collection.indexes?.find((i) => i.name === fieldIndexName)
+) {
+  if (field.indexDraftStatus === true) {
+    indexes.push(
+      `\t.index("${fieldIndexName}", ${JSON.stringify(["vex_status", fieldKey])})`,
+    );
+  } else if (field.indexDraftStatus === "both") {
+    indexes.push(`\t.index("${fieldIndexName}", ["${fieldKey}"])`);
+    indexes.push(
+      `\t.index("${fieldIndexName}__draftStatus", ${JSON.stringify(["vex_status", fieldKey])})`,
+    );
+  } else {
+    indexes.push(`\t.index("${fieldIndexName}", ["${fieldKey}"])`);
+  }
+}
+```
+
+#### packages/core/src/collections/validator.test.ts
+
+New `describe` block, appended after the existing `collectionConfigToVexSchema` coverage.
+
+```ts
+describe("collectionConfigToVexSchema — draftStatus indexes", () => {
+  it("draftStatus: true replaces the index with its vex_status-prefixed form — no unprefixed twin", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { slug: text({ index: "by_slug", indexDraftStatus: true }) },
+      versions: { drafts: true },
+    });
+    const config = defineConfig({ collections: [posts] });
+    const output = collectionConfigToVexSchema({ collection: posts, config });
+    expect(output).toContain('.index("by_slug", ["vex_status","slug"])');
+    expect(output).not.toContain('.index("by_slug", ["slug"])');
+  });
+
+  it('draftStatus: "both" emits the unprefixed index and a prefixed twin', () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { slug: text({ index: "by_slug", indexDraftStatus: "both" }) },
+      versions: { drafts: true },
+    });
+    const config = defineConfig({ collections: [posts] });
+    const output = collectionConfigToVexSchema({ collection: posts, config });
+    expect(output).toContain('.index("by_slug", ["slug"])');
+    expect(output).toContain(
+      '.index("by_slug__draftStatus", ["vex_status","slug"])',
+    );
+  });
+
+  it("draftStatus on a collection-level compound index prefixes every declared field", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: {
+        author: relationship({ collection: { slug: "authors" } }),
+        title: text(),
+      },
+      versions: { drafts: true },
+      indexes: [
+        {
+          name: "by_author_title",
+          fields: ["author", "title"],
+          draftStatus: "both",
+        },
+      ],
+    });
+    const config = defineConfig({ collections: [posts] });
+    const output = collectionConfigToVexSchema({ collection: posts, config });
+    expect(output).toContain('.index("by_author_title", ["author","title"])');
+    expect(output).toContain(
+      '.index("by_author_title__draftStatus", ["vex_status","author","title"])',
+    );
+  });
+
+  it("draftStatus on a relationship field's auto by_<fieldKey> index", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: {
+        author: relationship({
+          collection: { slug: "authors" },
+          indexDraftStatus: true,
+        }),
+      },
+      versions: { drafts: true },
+    });
+    const config = defineConfig({ collections: [posts] });
+    const output = collectionConfigToVexSchema({ collection: posts, config });
+    expect(output).toContain('.index("by_author", ["vex_status","author"])');
+    expect(output).not.toContain('.index("by_author", ["author"])');
+  });
+});
+```
+
+Verify: `pnpm --filter @vexcms/core test -- validator config`
+
+#### packages/core/src/access/pickQueryIndex.ts
+
+One-word edit, plus a doc-comment update — `composeRanges` becomes public API, reused by
+`versions/statusConstraint.ts`'s case 2/4 range composition.
+
+```ts
+/**
+ * Composes two optional ranges onto one builder: `first` narrows, then
+ * `second` continues from where it left off.
+ *
+ * Convex's `IndexRangeBuilder` tracks its position in the index at the type
+ * level, and `.eq()` returns the builder for the *next* field — so chaining is
+ * exactly how a compound constraint is expressed. Composing opaque range
+ * callbacks loses that positional type, hence the cast: each callback is typed
+ * as returning the terminal `IndexRange`, but at runtime it returns the builder
+ * whenever fields remain. Ordering matters — the first range owns the index
+ * prefix, so it must run first.
+ *
+ * Exported for `versions/statusConstraint.ts`, which reuses it unmodified to
+ * prefix a `vex_status` equality onto a `draftStatus`-indexed query's own
+ * range — the same "prefix, then continue" shape `pickQueryIndex` already
+ * uses to merge an access range and a caller range on one index.
+ *
+ * @param props - Input props.
+ * @param props.first - Range applied first; owns the index prefix.
+ * @param props.second - Range continuing from `first`'s result.
+ * @returns A single range applying both in order, one of them when only one is
+ *   supplied, or `undefined` when neither is — an absent range means "use this
+ *   index unconstrained", which `buildQuery` expresses by omitting the arg.
+ */
+export function composeRanges(props: {
+  first?: IndexRangeFn;
+  second?: IndexRangeFn;
+}): IndexRangeFn | undefined {
+  const { first, second } = props;
+  if (!first) return second;
+  if (!second) return first;
+  return (q) => second(first(q) as Parameters<IndexRangeFn>[0]);
+}
+```
+
+#### packages/core/src/versions/statusConstraint.ts
+
+New file. `requiresPublishedOnly` is the original design, relocated unchanged.
+`composeStatusConstraint` is relocated AND extended with the per-index `draftStatus`
+lookup and its four-case composition (Decisions D2–D4, worked through above).
+
+```ts
+import type { VexConfig } from "../config";
+import { ADMIN_FIELDS } from "../fields";
+import {
+  accessConstraintsToFilter,
+  type AccessFilterFn,
+  composeRanges,
+  createIndexConstraintBuilder,
+  type IndexRangeFn,
+  type QueryIndex,
+  readIndexConstraints,
+} from "../access";
+import { VERSION_STATUSES } from "./constants";
+
+/**
+ * Decides whether a query against `collection` must be narrowed to
+ * published-only rows.
+ *
+ * Purely a data-integrity question — see {@link composeStatusConstraint} for
+ * why the narrowing it drives runs independently of `access.bypass`. `false`
+ * for a non-versioned collection (nothing to narrow), for a caller
+ * explicitly requesting drafts, or when `config` wasn't supplied.
+ *
+ * @param props - Input props.
+ * @param props.config - The resolved `VexConfig`, to look up `collection`'s
+ *   `versions`.
+ * @param props.collection - The collection slug being queried.
+ * @param props.drafts - The caller's `drafts` arg (`FindServerArgs.drafts` /
+ *   `GetServerArgs.drafts` / `SearchServerArgs.drafts` — one contract,
+ *   shared).
+ * @returns `true` when the published-only constraint must apply.
+ */
+export function requiresPublishedOnly(props: {
+  config?: VexConfig;
+  collection: string;
+  drafts?: boolean;
+}): boolean {
+  if (props.drafts === true) return false;
+  const collection = props.config?.collections.find(
+    (c) => c.slug === props.collection,
+  );
+  return collection?.versions?.drafts === true;
+}
+
+/**
+ * Looks up the `draftStatus` a project declared on one of `collection`'s
+ * indexes, by the SAME name `pickQueryIndex` resolved — a collection-level
+ * `indexes[]` entry first (compound indexes can only be declared there or
+ * via several fields sharing one `field.index` name), then a field's own
+ * `index`, then a relationship field's auto `by_<fieldKey>` — mirroring
+ * `collectionConfigToVexSchema`'s own lookup order (`collections/validator.ts`).
+ *
+ * `defineCollection` already rejects a `draftStatus`/`indexDraftStatus`
+ * declared without `versions.drafts: true` (`collections/config.ts`), so
+ * finding one here always means the collection is genuinely versioned —
+ * this function does not re-check `versions.drafts` itself.
+ *
+ * @returns true | "both" | undefined
+ * @internal
+ */
+function resolveIndexDraftStatus(props: {
+  config?: VexConfig;
+  collection: string;
+  indexName: string;
+}): true | "both" | undefined {
+  const collection = props.config?.collections.find(
+    (c) => c.slug === props.collection,
+  );
+  if (!collection) return undefined;
+
+  const declaredIndex = collection.indexes?.find(
+    (i) => i.name === props.indexName,
+  );
+  if (declaredIndex) return declaredIndex.draftStatus;
+
+  for (const [fieldKey, field] of Object.entries(collection.fields)) {
+    if (!field) continue;
+    const fieldIndexName =
+      field.index ??
+      (field.type === ADMIN_FIELDS.relationship.type
+        ? `by_${fieldKey}`
+        : undefined);
+    if (fieldIndexName === props.indexName) return field.indexDraftStatus;
+  }
+  return undefined;
+}
+
+/**
+ * Physical name of a `draftStatus` index's `vex_status`-prefixed twin.
+ * Deterministic — any caller holding `indexName` can derive it without a
+ * lookup — and never a selectable `IndexNameFor` member: `collections/
+ * indexFields.ts` never emits it, identical treatment to the system `by_
+ * status`/`by_published` indexes.
+ * @param indexName the name of the convex index
+ * @returns new indexName with the draftStatus
+ * @internal
+ */
+function draftStatusTwinName(indexName: string): string {
+  return `${indexName}__draftStatus`;
+}
+
+const warnedMissingDraftStatusIndex = new Set<string>();
+
+/**
+ * Warns once per (collection, index) pair that a published-only read fell
+ * back to `.filter()` because the winning index declares no `draftStatus`.
+ * Dev-only, modeled on `pickQueryIndex`'s `warnDisplacedAccessIndex`.
+ * @internal
+ */
+function warnMissingDraftStatusIndex(props: {
+  collection: string;
+  indexName: string;
+}): void {
+  if (process.env.NODE_ENV === "production") return;
+  const key = `${props.collection}\u0000${props.indexName}`;
+  if (warnedMissingDraftStatusIndex.has(key)) return;
+  warnedMissingDraftStatusIndex.add(key);
+  console.warn(
+    `[vexcms] "${props.collection}" read through index "${props.indexName}" for a ` +
+      `published-only query, but that index declares no draftStatus — the status condition ` +
+      `fell back to .filter(), scanning every row the index returns instead of narrowing to ` +
+      `published rows. Declare { draftStatus: true } (or "both") on this index to narrow the read.`,
+  );
+}
+
+const warnedFilteredDraftStatusIndex = new Set<string>();
+
+/**
+ * Warns once per (collection, index) pair that a `drafts: true` read fell
+ * back to `.filter()` because the winning index declares `draftStatus:
+ * true` — only its `vex_status`-prefixed physical form exists, so this read
+ * cannot narrow through it. Dev-only.
+ * @internal
+ */
+function warnFilteredDraftStatusIndex(props: {
+  collection: string;
+  indexName: string;
+}): void {
+  if (process.env.NODE_ENV === "production") return;
+  const key = `${props.collection}\u0000${props.indexName}`;
+  if (warnedFilteredDraftStatusIndex.has(key)) return;
+  warnedFilteredDraftStatusIndex.add(key);
+  console.warn(
+    `[vexcms] "${props.collection}" read through index "${props.indexName}" with drafts: ` +
+      `true, but that index declares { draftStatus: true } — only its vex_status-prefixed ` +
+      `physical form exists, so this read cannot narrow through it. The RBAC/caller range ` +
+      `fell back to .filter(). Declare { draftStatus: "both" } to keep both read modes ` +
+      `index-narrowed.`,
+  );
+}
+
+/**
+ * Folds the framework's published/draft status composition onto whatever
+ * `resolveAccessIndex` / `pickQueryIndex` / `resolveAccessConstraint`
+ * already resolved for the caller's RBAC rule, honoring Convex's
+ * one-`withIndex`-per-query limit AND, when the winning index declares a
+ * `draftStatus` (Step 13's per-index config), the one-physical-field-order
+ * limit a `vex_status`-prefixed index imposes.
+ *
+ * Never a permission rule. The published-only half runs whenever
+ * `requiresPublishedOnly` says so, including when the caller bypassed RBAC
+ * entirely (`props.resolvedIndex`/`props.accessFilter` may both be
+ * `undefined` in that case) — hiding non-published rows on a versioned
+ * collection is data integrity (design-review.md §3.1), not authorization,
+ * so it has no dependency on `access.bypass` at all. MUST run AFTER
+ * `pickQueryIndex` — every branch reads `props.resolvedIndex.name` to look
+ * up THAT index's own `draftStatus`, never the collection's in the
+ * abstract.
+ *
+ * Four cases, crossing "does this read want published-only or everything"
+ * with "does the winning index declare a draftStatus" — see the Why above
+ * for the full worked reasoning per case:
+ *
+ * 1. Published-only, no draftStatus on the winning index (or none chosen) —
+ *    unchanged original design: claim the free `by_status` slot, or fold
+ *    `vex_status === "published"` into `.filter()`. Warns once when an
+ *    index WAS chosen but declares no draftStatus.
+ * 2. Published-only, winning index HAS a draftStatus — rides the SAME
+ *    (prefixed) physical index for free via `composeRanges`. No `.filter()`.
+ * 3. `drafts: true`, winning index has `draftStatus: "both"` — the
+ *    unprefixed physical index already exists untouched; no-op.
+ * 4. `drafts: true`, winning index has `draftStatus: true` — no unprefixed
+ *    physical form exists; drop the range and re-apply it as a `.filter()`
+ *    ANDed with `accessFilter`. Warns once, suggesting `"both"`.
+ *
+ * @param props - Input props.
+ * @param props.config - The resolved `VexConfig`.
+ * @param props.collection - The collection slug being queried.
+ * @param props.drafts - The caller's `drafts` arg.
+ * @param props.resolvedIndex - `pickQueryIndex({ accessIndex, callerIndex
+ *   })`'s output, computed BEFORE this function runs.
+ * @param props.accessFilter - The RBAC filter `resolveAccessConstraint`
+ *   already resolved for `resolvedIndex` as arbitrated (the SAME
+ *   `indexAlreadyApplied` the caller already used).
+ * @returns The index to apply and the filter to apply.
+ */
+export function composeStatusConstraint(props: {
+  config?: VexConfig;
+  collection: string;
+  drafts?: boolean;
+  resolvedIndex: QueryIndex | undefined;
+  accessFilter: AccessFilterFn | undefined;
+}): {
+  resolvedIndex: QueryIndex | undefined;
+  accessFilter: AccessFilterFn | undefined;
+} {
+  const publishedOnly = requiresPublishedOnly({
+    config: props.config,
+    collection: props.collection,
+    drafts: props.drafts,
+  });
+  const draftStatus = props.resolvedIndex
+    ? resolveIndexDraftStatus({
+        config: props.config,
+        collection: props.collection,
+        indexName: props.resolvedIndex.name,
+      })
+    : undefined;
+  const publishedRange: IndexRangeFn = (q) =>
+    q.eq("vex_status", VERSION_STATUSES.published.key);
+
+  if (publishedOnly) {
+    if (draftStatus === undefined) {
+      if (props.resolvedIndex === undefined) {
+        return {
+          resolvedIndex: { name: "by_status", range: publishedRange },
+          accessFilter: props.accessFilter,
+        };
+      }
+      warnMissingDraftStatusIndex({
+        collection: props.collection,
+        indexName: props.resolvedIndex.name,
+      });
+      const statusFilter: AccessFilterFn = (q) =>
+        q.eq(q.field("vex_status"), VERSION_STATUSES.published.key);
+      return {
+        resolvedIndex: props.resolvedIndex,
+        accessFilter: props.accessFilter
+          ? (q) => q.and(props.accessFilter!(q), statusFilter(q))
+          : statusFilter,
+      };
+    }
+    const physicalName =
+      draftStatus === "both"
+        ? draftStatusTwinName(props.resolvedIndex!.name)
+        : props.resolvedIndex!.name;
+    return {
+      resolvedIndex: {
+        name: physicalName,
+        range: composeRanges({
+          first: publishedRange,
+          second: props.resolvedIndex!.range,
+        }),
+      },
+      accessFilter: props.accessFilter,
+    };
+  }
+
+  if (draftStatus === "both" || draftStatus === undefined) {
+    return {
+      resolvedIndex: props.resolvedIndex,
+      accessFilter: props.accessFilter,
+    };
+  }
+
+  // draftStatus === true, drafts: true: only the prefixed physical index
+  // exists under `name`, so the range cannot ride it. Whatever that range
+  // carried must move to `.filter()`: the access rule's constraints (omitted
+  // from `accessFilter` because the access index won), the caller's own
+  // `withIndex` range (when the caller's index won), or both merged (same
+  // name). Compiling the dropped range itself covers all three — recomputing
+  // only the RBAC constraint would silently lose a caller range.
+  warnFilteredDraftStatusIndex({
+    collection: props.collection,
+    indexName: props.resolvedIndex!.name,
+  });
+  const rangeFilter = rangeToFilter(props.resolvedIndex!.range);
+  return {
+    resolvedIndex: { name: props.resolvedIndex!.name, range: undefined },
+    accessFilter:
+      props.accessFilter && rangeFilter
+        ? (q) => q.and(props.accessFilter!(q), rangeFilter(q))
+        : (props.accessFilter ?? rangeFilter),
+  };
+}
+
+/**
+ * Re-expresses an index range as an equivalent `.filter()` predicate, for a
+ * query that can no longer push the range into `.withIndex()`. Runs the range
+ * against a recording builder and compiles the recorded constraints — the same
+ * two compile targets access rules use, so both agree by construction.
+ *
+ * @param range - The range to convert; `undefined` = unconstrained.
+ * @returns A filter thunk, or `undefined` when the range constrains nothing.
+ */
+function rangeToFilter(
+  range: IndexRangeFn | undefined,
+): AccessFilterFn | undefined {
+  if (!range) return undefined;
+  const recorded = range(createIndexConstraintBuilder() as never);
+  const constraints = readIndexConstraints(recorded as never);
+  if (constraints.length === 0) return undefined;
+  return (q) => accessConstraintsToFilter({ constraints, q });
+}
+```
+
+#### packages/core/src/versions/statusConstraint.test.ts
+
+New file — pure unit coverage, no `convexTest` needed (the physical-schema proof lives in
+`find/server.test.ts`'s new integration cases below).
+
+```ts
+import { describe, expect, it, vi } from "vitest";
+import type { VexConfig } from "../config";
+import { defineCollection } from "../collections/config";
+// import { relationship } from "../fields/relationship/config";
+import { text } from "../fields";
+import {
+  composeStatusConstraint,
+  requiresPublishedOnly,
+} from "./statusConstraint";
+
+const draftStatusTruePosts = defineCollection({
+  slug: "posts",
+  fields: { slug: text({ index: "by_slug", indexDraftStatus: true }) },
+  versions: { drafts: true },
+});
+
+const draftStatusBothPosts = defineCollection({
+  slug: "posts",
+  fields: { slug: text({ index: "by_slug", indexDraftStatus: "both" }) },
+  versions: { drafts: true },
+});
+
+const plainIndexPosts = defineCollection({
+  slug: "posts",
+  fields: { slug: text({ index: "by_slug" }) },
+  versions: { drafts: true },
+});
+
+function configOf(collection: ReturnType<typeof defineCollection>): VexConfig {
+  return { collections: [collection] } as unknown as VexConfig;
+}
+
+describe("requiresPublishedOnly", () => {
+  it("is false when drafts: true is requested", () => {
+    expect(
+      requiresPublishedOnly({
+        config: configOf(plainIndexPosts),
+        collection: "posts",
+        drafts: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("is true for a versioned collection with no drafts request", () => {
+    expect(
+      requiresPublishedOnly({
+        config: configOf(plainIndexPosts),
+        collection: "posts",
+      }),
+    ).toBe(true);
+  });
+
+  it("is false when config is omitted", () => {
+    expect(requiresPublishedOnly({ collection: "posts" })).toBe(false);
+  });
+});
+
+describe("composeStatusConstraint — published-only, draftStatus: true index", () => {
+  it("claims the prefixed physical index with a vex_status-leading range and no .filter()", () => {
+    const result = composeStatusConstraint({
+      config: configOf(draftStatusTruePosts),
+      collection: "posts",
+      resolvedIndex: {
+        name: "by_slug",
+        range: (q: any) => q.eq("slug", "hello"),
+      },
+      accessFilter: undefined,
+    });
+    expect(result.resolvedIndex?.name).toBe("by_slug");
+    expect(result.accessFilter).toBeUndefined();
+
+    const calls: [string, unknown][] = [];
+    const fakeBuilder = {
+      eq: (field: string, value: unknown) => {
+        calls.push([field, value]);
+        return fakeBuilder;
+      },
+    };
+    result.resolvedIndex?.range?.(fakeBuilder as any);
+    expect(calls[0]).toEqual(["vex_status", "published"]);
+    expect(calls[1]).toEqual(["slug", "hello"]);
+  });
+});
+
+describe('composeStatusConstraint — published-only, draftStatus: "both" index', () => {
+  it("claims the twin physical index, not the unprefixed name", () => {
+    const result = composeStatusConstraint({
+      config: configOf(draftStatusBothPosts),
+      collection: "posts",
+      resolvedIndex: { name: "by_slug" },
+      accessFilter: undefined,
+    });
+    expect(result.resolvedIndex?.name).toBe("by_slug__draftStatus");
+  });
+});
+
+describe("composeStatusConstraint — published-only, index with no draftStatus", () => {
+  it("falls back to .filter() and warns exactly once across repeated calls", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const call = () =>
+      composeStatusConstraint({
+        config: configOf(plainIndexPosts),
+        collection: "posts",
+        resolvedIndex: {
+          name: "by_slug",
+          range: (q: any) => q.eq("slug", "hello"),
+        },
+        accessFilter: undefined,
+      });
+    const first = call();
+    call();
+    expect(first.resolvedIndex?.name).toBe("by_slug");
+    expect(first.accessFilter).toBeDefined();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+});
+
+describe('composeStatusConstraint — drafts: true, draftStatus: "both" index', () => {
+  it("uses the unprefixed physical index untouched", () => {
+    const result = composeStatusConstraint({
+      config: configOf(draftStatusBothPosts),
+      collection: "posts",
+      drafts: true,
+      resolvedIndex: {
+        name: "by_slug",
+        range: (q: any) => q.eq("slug", "hello"),
+      },
+      accessFilter: undefined,
+    });
+    expect(result.resolvedIndex?.name).toBe("by_slug");
+    expect(result.resolvedIndex?.range).toBeDefined();
+  });
+});
+
+describe("composeStatusConstraint — drafts: true, draftStatus: true index", () => {
+  it("drops the range and moves the RBAC constraint to .filter(), warning once", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const result = composeStatusConstraint({
+      config: configOf(draftStatusTruePosts),
+      collection: "posts",
+      drafts: true,
+      resolvedIndex: {
+        name: "by_slug",
+        range: (q: any) => q.eq("slug", "hello"),
+      },
+      accessFilter: undefined,
+    });
+    expect(result.resolvedIndex).toEqual({ name: "by_slug", range: undefined });
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    warnSpy.mockRestore();
+  });
+});
+
+describe("composeStatusConstraint — drafts: true, draftStatus: true index, caller's range", () => {
+  /** A FilterBuilder stand-in that renders each expression as a string. */
+  const q = {
+    field: (name: string) => `field(${name})`,
+    eq: (left: unknown, right: unknown) =>
+      `eq(${String(left)}, ${JSON.stringify(right)})`,
+    and: (...exprs: unknown[]) => `and(${exprs.join(", ")})`,
+  };
+
+  it("re-applies the dropped caller range as a filter, ANDed with the RBAC filter", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    // The caller's own index won the slot, so `accessFilter` is already the
+    // whole RBAC condition and the dropped range is the caller's `slug` lookup.
+    const result = composeStatusConstraint({
+      config: configOf(draftStatusTruePosts),
+      collection: "posts",
+      drafts: true,
+      resolvedIndex: {
+        name: "by_slug",
+        range: (ix: any) => ix.eq("slug", "hello"),
+      },
+      accessFilter: (fq: any) => fq.eq(fq.field("authorId"), "u1"),
+    });
+    warnSpy.mockRestore();
+
+    expect(result.resolvedIndex).toEqual({ name: "by_slug", range: undefined });
+    expect(result.accessFilter?.(q as never)).toBe(
+      'and(eq(field(authorId), "u1"), eq(field(slug), "hello"))',
+    );
+  });
+
+  it("re-applies an access-index range that accessFilter omitted (access index won the slot)", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    // `find` resolved accessFilter with `indexAlreadyApplied: true`, so it carries
+    // only the rule's leftover filter half; the index half lives in the range.
+    const result = composeStatusConstraint({
+      config: configOf(draftStatusTruePosts),
+      collection: "posts",
+      drafts: true,
+      resolvedIndex: {
+        name: "by_slug",
+        range: (ix: any) => ix.eq("slug", "mine"),
+      },
+      accessFilter: (fq: any) => fq.eq(fq.field("approved"), true),
+    });
+    warnSpy.mockRestore();
+
+    expect(result.accessFilter?.(q as never)).toBe(
+      'and(eq(field(approved), true), eq(field(slug), "mine"))',
+    );
+  });
+
+  it("re-applies every constraint of a merged access + caller range", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const compound = defineCollection({
+      slug: "posts",
+      fields: {
+        authorId: text({ index: "by_author_slug", indexDraftStatus: true }),
+        slug: text({ index: "by_author_slug" }),
+      },
+      versions: { drafts: true },
+    });
+    // Same index name on both sides: `pickQueryIndex` composed access's prefix
+    // with the caller's continuation into one range.
+    const result = composeStatusConstraint({
+      config: configOf(compound),
+      collection: "posts",
+      drafts: true,
+      resolvedIndex: {
+        name: "by_author_slug",
+        range: (ix: any) => ix.eq("authorId", "u1").eq("slug", "hello"),
+      },
+      accessFilter: undefined,
+    });
+    warnSpy.mockRestore();
+
+    expect(result.resolvedIndex).toEqual({
+      name: "by_author_slug",
+      range: undefined,
+    });
+    expect(result.accessFilter?.(q as never)).toBe(
+      'and(eq(field(authorId), "u1"), eq(field(slug), "hello"))',
+    );
+  });
+
+  it("adds no filter when the dropped range is ordering-only", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const result = composeStatusConstraint({
+      config: configOf(draftStatusTruePosts),
+      collection: "posts",
+      drafts: true,
+      resolvedIndex: { name: "by_slug", range: undefined },
+      accessFilter: undefined,
+    });
+    warnSpy.mockRestore();
+
+    expect(result.accessFilter).toBeUndefined();
+  });
+
+  it("filters by the dropped range alone when there is no RBAC filter", () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const result = composeStatusConstraint({
+      config: configOf(draftStatusTruePosts),
+      collection: "posts",
+      drafts: true,
+      resolvedIndex: {
+        name: "by_slug",
+        range: (ix: any) => ix.eq("slug", "hello"),
+      },
+      accessFilter: undefined,
+    });
+    warnSpy.mockRestore();
+
+    expect(result.accessFilter?.(q as never)).toBe('eq(field(slug), "hello")');
+  });
+});
+```
+
+Verify: `pnpm --filter @vexcms/core test -- statusConstraint`
+
+#### packages/core/src/versions/index.ts
+
+```ts
+export * from "./statusConstraint";
+```
 
 #### packages/core/src/api/populate.ts
 
@@ -10078,9 +12054,7 @@ export async function populateDocs<
 
 #### packages/core/src/api/populate.test.ts
 
-One edit — a new `describe` block appended after the existing coverage. Real, concrete
-assertions — `populateDocs` is already fully implemented; this adds behavior to a working
-function, the same treatment the rest of this file already has.
+One edit — a new `describe` block appended after the existing coverage.
 
 ```ts
 describe("populateDocs — draft exclusion", () => {
@@ -10154,24 +12128,98 @@ describe("populateDocs — draft exclusion", () => {
 });
 ```
 
-#### packages/core/src/api/find/server.ts
+#### packages/core/src/api/server.ts
 
-6 edits. Everything else in the file — the two `find` overloads, the return-value logic, and
-the count-query rebuild — is unchanged; they consume the same `resolvedIndex` and
-`accessFilter` names as before, now produced by the block in edit 5.
+1 edit — `collectionsApi`'s `find`, `get`, and `search` registrations accept and forward `drafts`. Without this the server functions above can never receive it from a client: Convex rejects any argument the validator doesn't declare, so every client call that sends `drafts` (the list view, Step 16; `CollectionEditView`'s `get` and the relationship picker, Step 14) fails with an argument-validation error.
 
-**1 — imports.** Add a `VexConfig` type import (new), and add `DRAFT_ACTIONS` to the
-existing `../../access` import.
+In each of the three `query({ args: { ... } })` blocks, add beside `depth`:
 
 ```ts
-import type { VexConfig } from "../../config";
+        drafts: v.optional(v.boolean()),
 ```
+
+…and in each handler's server call (`find({...})`, `get({...})`, `search({...})`), add:
+
+```ts
+          drafts: args.drafts,
+```
+
+#### packages/core/src/api/utils.ts
+
+1 edit — new `resolveReadCall`, the one place the draft fallback lives for every collection read (`find`, `get`; `search` when it needs it). `drafts: true` only takes effect for a caller who may read drafts at all; anyone else silently gets the published-only read under `read` — the same fallback `getGlobal` uses. This is what lets the admin views and `NextAdminPage`'s prefetches always send `drafts: true` for a versioned collection without knowing who is asking (Steps 14 and 16): without it, `get` threw for a caller with `read` but not `readDrafts` opening even a published document. Add `hasPermission`, `PERMISSION_SCOPES` to the `../access` import and `type VexApiAuth` to the `./types` import.
+
+```ts
+/**
+ * Resolves a collection READ call (`find`/`get`/`search`) that may ask for
+ * drafts, applying the draft fallback every read shares.
+ *
+ * `drafts: true` only takes effect for a caller who may read drafts at all
+ * (`readDrafts` at any scope — per-document draft rules still run in each
+ * read's own per-row check). Anyone else silently gets the published-only
+ * read, resolved under `read`, rather than an error or an empty result — the
+ * same fallback `getGlobal` uses.
+ *
+ * @returns `resolveAccessCall`'s result for the action that applies, plus
+ *   `wantsDrafts` — the EFFECTIVE drafts flag every downstream step must use
+ *   instead of the raw `drafts` arg.
+ */
+export function resolveReadCall(props: {
+  config?: VexConfig;
+  access?: AccessCallOptions<string>;
+  auth?: VexApiAuth;
+  collection: string;
+  drafts?: boolean;
+}): {
+  access: VexAccessConfig | undefined;
+  action: string;
+  resource: string;
+  wantsDrafts: boolean;
+} {
+  if (props.drafts === true) {
+    const draftsCall = resolveAccessCall({
+      config: props.config,
+      access: props.access,
+      defaultAction: DRAFT_ACTIONS.readDrafts as string,
+      resource: props.collection,
+    });
+    // Bypass/unconfigured access resolves `access` to `undefined`: no RBAC, drafts allowed.
+    const mayReadDrafts =
+      draftsCall.access === undefined ||
+      hasPermission({
+        access: draftsCall.access,
+        user: props.auth?.user ?? null,
+        organization: props.auth?.organization,
+        resource: draftsCall.resource,
+        action: draftsCall.action,
+        scope: PERMISSION_SCOPES.any,
+      });
+    if (mayReadDrafts) return { ...draftsCall, wantsDrafts: true };
+  }
+  return {
+    ...resolveAccessCall({
+      config: props.config,
+      access: props.access,
+      defaultAction: CRUD_ACTIONS.read as string,
+      resource: props.collection,
+    }),
+    wantsDrafts: false,
+  };
+}
+```
+
+#### packages/core/src/api/find/server.ts
+
+4 edits. Everything else in the file — the two `find` overloads, the return-value logic, and
+the count-query rebuild — is unchanged; they consume the same `resolvedIndex` and
+`accessFilter` names as before, now produced by the block in edit 3.
+
+**1 — imports.** Drop `CRUD_ACTIONS` from the `../../access` import (the action now comes
+from `resolveReadCall`); swap `resolveAccessCall` for `resolveReadCall` in the `../utils`
+import; add `composeStatusConstraint` from `../../versions` (D1 — not a local definition anymore).
 
 ```ts
 import {
   AccessFilterFn,
-  CRUD_ACTIONS,
-  DRAFT_ACTIONS,
   hasPermission,
   type IndexRangeFn,
   pickQueryIndex,
@@ -10181,9 +12229,11 @@ import {
   resolveFieldPermissions,
   stripDeniedFields,
 } from "../../access";
+import { resolveReadCall } from "../utils";
+import { composeStatusConstraint } from "../../versions";
 ```
 
-**2 — `FindServerArgs.drafts`.** Add after the `withIndex` field, before `paginationOpts`.
+**2 — `FindServerArgs.drafts`.** Already present in the live tree, verbatim — NO EDIT:
 
 ```ts
   /**
@@ -10205,138 +12255,22 @@ import {
   drafts?: boolean;
 ```
 
-**3 — new exported `requiresPublishedOnly`.** Add immediately after the `FindServerArgs`
-interface's closing brace, before the `find` overloads.
+**3 — `find`'s resolve block.** Replace the span from `const { access, action, resource } =
+resolveAccessCall({...})` through the end of the existing `const accessFilter =
+resolveAccessConstraint({...});` call (the block immediately before the `buildQuery<...>({
+...args, resolvedIndex, accessFilter })` call, which is unchanged and still reads these same
+two final names).
 
 ```ts
-/**
- * Decides whether a query against `collection` must be narrowed to
- * published-only rows.
- *
- * Purely a data-integrity question — see {@link composeStatusConstraint} for why
- * the narrowing it drives runs independently of `access.bypass`. `false` for a
- * non-versioned collection (nothing to narrow), for a caller explicitly requesting
- * drafts, or when `config` wasn't supplied.
- *
- * @param props - Input props.
- * @param props.config - The resolved `VexConfig`, to look up `collection`'s `versions`.
- * @param props.collection - The collection slug being queried.
- * @param props.drafts - The caller's `drafts` arg (`FindServerArgs.drafts` /
- *   `GetServerArgs.drafts` / `SearchServerArgs.drafts` — one contract, shared).
- * @returns `true` when the published-only constraint must apply.
- */
-export function requiresPublishedOnly(props: {
-  config?: VexConfig;
-  collection: string;
-  drafts?: boolean;
-}): boolean {
-  // TODO: implement
-  // 1. `props.drafts === true` → `return false` — the caller explicitly asked for
-  //    drafts; the RBAC `readDrafts` action switch (in `find`'s resolve block, and
-  //    its `get`/`search` mirrors) governs whether they're ALLOWED to see them, not
-  //    this function — keep the two concerns apart.
-  // 2. `const collection = props.config?.collections.find((c) => c.slug === props.collection);`
-  //    → mirrors the lookup pattern already used in `api/utils.ts` (`stampUpdatedAt`).
-  // 3. `return collection?.versions?.drafts === true;`
-  // Edge cases:
-  // - `props.config` omitted → step 2 finds nothing → `false`. A caller not passing
-  //   `config` gets today's unfiltered behavior — the same posture `find`/`get`/
-  //   `search` already take when `config` (and therefore RBAC) is absent elsewhere
-  //   in this file.
-  // - A registered collection with `versions.drafts: false`, or `versions` entirely
-  //   absent (pre-Step-1 configs) → `false`; nothing on it ever writes `vex_status`,
-  //   so narrowing on that field would silently exclude every row.
-  // - A draft-only row (`vex_status: "draft"`, `vex_publishedId` undefined, Option
-  //   A's `defaultStatus: "draft"` case) needs no special case here: this function
-  //   only decides WHETHER the published-only constraint applies to the query as a
-  //   whole, never which individual rows qualify — that's `composeStatusConstraint`'s
-  //   `vex_status === "published"` condition below, which already treats a
-  //   draft-only row identically to an ordinary draft.
-  throw new Error("Not implemented");
-}
-```
-
-**4 — new exported `composeStatusConstraint`.** Add immediately after
-`requiresPublishedOnly`.
-
-```ts
-/**
- * Folds the framework's published-only status condition onto whatever
- * `resolveAccessIndex` / `pickQueryIndex` / `resolveAccessConstraint` already
- * resolved for the caller's RBAC rule, honoring Convex's one-`withIndex`-per-query
- * limit.
- *
- * Never a permission rule. Runs whenever `publishedOnly` is `true`, including when
- * the caller bypassed RBAC entirely (`props.resolvedIndex`/`props.accessFilter` may
- * both be `undefined` in that case) — hiding non-published rows on a versioned
- * collection is data integrity (design-review.md §3.1), not authorization, so it
- * has no dependency on `access.bypass` at all.
- *
- * @param props - Input props.
- * @param props.publishedOnly - {@link requiresPublishedOnly}'s result for this call.
- * @param props.resolvedIndex - The RBAC-vs-caller `withIndex` arbitration result —
- *   `pickQueryIndex({ accessIndex, callerIndex })`'s output, computed BEFORE this
- *   function runs and untouched by it when `publishedOnly` is `false`.
- * @param props.accessFilter - The RBAC filter `resolveAccessConstraint` resolved,
- *   if any.
- * @returns The index to apply (RBAC/caller arbitration, unchanged, when
- *   `publishedOnly` is `false`; the status index when the slot was free; the
- *   original `resolvedIndex` untouched when the slot was already claimed) and the
- *   filter to apply, with the status constraint folded in only when it couldn't
- *   claim the slot.
- */
-export function composeStatusConstraint(props: {
-  publishedOnly: boolean;
-  resolvedIndex: QueryIndex | undefined;
-  accessFilter: AccessFilterFn | undefined;
-}): {
-  resolvedIndex: QueryIndex | undefined;
-  accessFilter: AccessFilterFn | undefined;
-} {
-  // TODO: implement
-  // 1. `!props.publishedOnly` → `return { resolvedIndex: props.resolvedIndex, accessFilter:
-  //    props.accessFilter }` unchanged — nothing to narrow for this call.
-  // 2. `props.publishedOnly` true AND `props.resolvedIndex === undefined` (no index slot
-  //    claimed — neither an RBAC rule nor the caller's own `withIndex` wanted it) → the
-  //    status condition takes the free slot outright:
-  //    `return { resolvedIndex: { name: "by_status", range: (q) => q.eq("vex_status",
-  //    "published") }, accessFilter: props.accessFilter }`.
-  //    → full pages, minimal reads — the common public list-view case
-  //    (design-review.md §5.6, first bullet).
-  // 3. `props.publishedOnly` true AND `props.resolvedIndex !== undefined` (the slot is
-  //    already claimed, by an access rule OR by the caller) → the status condition has
-  //    nowhere left but `.filter()`:
-  //    a. `const statusFilter: AccessFilterFn = (q) => q.eq(q.field("vex_status"), "published");`
-  //    b. `const combined = props.accessFilter ? (q) => q.and(props.accessFilter!(q),
-  //       statusFilter(q)) : statusFilter;`
-  //    c. `return { resolvedIndex: props.resolvedIndex, accessFilter: combined };`
-  //    → still full pages (Convex's `paginate` counts `numItems` after filters,
-  //    design-review.md §5.5), just more rows read per page than case 2.
-  // Edge cases:
-  // - `props.resolvedIndex` names something other than `"by_status"` (an RBAC index like
-  //   `by_author`, or the caller's own `withIndex`) → case 3, same as any other occupant;
-  //   this function does not care WHO holds the slot, only whether it's held.
-  // - `props.accessFilter` is `undefined` and case 3 applies → the status filter IS the
-  //   whole filter; do not wrap a no-op `q.and(true, statusFilter(q))`.
-  // - A draft-only row (`vex_status: "draft"`, no `vex_publishedId`) is excluded by
-  //   cases 2 and 3 identically to an ordinary draft — both conditions test
-  //   `vex_status === "published"` only, never `vex_publishedId`'s presence.
-  throw new Error("Not implemented");
-}
-```
-
-**5 — `find`'s resolve block.** Replace the span from `const { access, action, resource } =
-resolveAccessCall({...})` through `const accessFilter = resolveAccessConstraint({...});`
-(the block immediately before the `buildQuery<...>({ ...args, resolvedIndex, accessFilter })`
-call, which is unchanged and still reads these same two final names).
-
-```ts
-const { access, action, resource } = resolveAccessCall({
+// Effective drafts flag + the action it resolves under — a caller without
+// `readDrafts` falls back to the published-only read (see `resolveReadCall`,
+// `api/utils.ts`). Every downstream step reads `wantsDrafts`, never `args.drafts`.
+const { access, action, resource, wantsDrafts } = resolveReadCall({
   config: args.config,
   access: args.access,
-  defaultAction:
-    args.drafts === true ? DRAFT_ACTIONS.readDrafts : CRUD_ACTIONS.read,
-  resource: args.collection,
+  auth: args.auth,
+  collection: args.collection,
+  drafts: args.drafts,
 });
 const accessIndex = resolveAccessIndex({
   access,
@@ -10363,23 +12297,24 @@ const rbacFilter = resolveAccessConstraint({
 });
 // Status narrowing is independent of RBAC (design-review.md §3.1) — it runs
 // whenever `requiresPublishedOnly` says so, whether or not `access` above is
-// `undefined` (bypassed or unconfigured).
+// `undefined` (bypassed or unconfigured). Also arbitrates the winning index's
+// OWN `draftStatus` declaration (Step 13 D2–D4, `versions/statusConstraint.ts`)
+// — a `drafts: true` read against a `draftStatus: true`-only index drops the
+// range and re-applies it as a filter, so no access inputs are needed here.
 const { resolvedIndex, accessFilter } = composeStatusConstraint({
-  publishedOnly: requiresPublishedOnly({
-    config: args.config,
-    collection: args.collection,
-    drafts: args.drafts,
-  }),
+  config: args.config,
+  collection: args.collection,
+  drafts: wantsDrafts,
   resolvedIndex: rbacResolvedIndex,
   accessFilter: rbacFilter,
 });
 ```
 
-**6 — the `populateDocs` call**, unchanged in every other respect (still guarded by the same
+**4 — the `populateDocs` call**, unchanged in every other respect (still guarded by the same
 `!effectivePopulate || Object.keys(effectivePopulate).length === 0` branch):
 
 ```ts
-      : ((await populateDocs(args.ctx, docs, effectivePopulate, args.drafts)) as unknown as FindReturn<
+      : ((await populateDocs(args.ctx, docs, effectivePopulate, wantsDrafts)) as unknown as FindReturn<
           TCollectionSlug,
           TPopulate,
           D
@@ -10388,84 +12323,95 @@ const { resolvedIndex, accessFilter } = composeStatusConstraint({
 
 #### packages/core/src/api/get/server.ts
 
-5 edits. Everything else in the file — the depth/populate resolution and its `Id<TableName>`
-extraction comment — is unchanged.
+`get` uses `resolveReadCall` (above) so `drafts: true` falls back to published-only for a caller without `readDrafts` instead of throwing — the edit view always sends `drafts` for a versioned collection, so a `read`-only caller must still open a published document. The status check runs BEFORE the permission check: a draft row a caller isn't reading drafts for does not exist for them ("not found"), never a permission error about a row they were never going to see. D2–D4 do not touch this file: `get` has no `withIndex` slot to narrow.
 
-**1 — imports.** Add `DRAFT_ACTIONS` to the existing `../../access` import, and import the
-shared helper from `find/server.ts`.
+**1 — imports:**
 
 ```ts
 import {
-  CRUD_ACTIONS,
-  DRAFT_ACTIONS,
   hasPermission,
   resolveFieldPermissions,
   stripDeniedFields,
 } from "../../access";
-import { requiresPublishedOnly } from "../find/server";
+import { resolveReadCall } from "../utils";
+import { requiresPublishedOnly, VERSION_STATUSES } from "../../versions";
 ```
 
-**2 — `GetServerArgs.drafts`.** Add alongside `collection`.
+**2 — `GetServerArgs.drafts`**, alongside `collection`:
 
 ```ts
   /** Same contract as `FindServerArgs.drafts` — see `find/server.ts`. */
   drafts?: boolean;
 ```
 
-**3 — `resolveAccessCall`'s `defaultAction`.** Inside the existing
-`if (doc && args.config?.access !== undefined) { const { access, action, resource } =
-resolveAccessCall({ … }); … }` block — only the `defaultAction` line changes.
+**3 — the read resolution, status check, and RBAC block**, replacing everything from `let doc = await args.ctx.db.get(args.id);` through the end of the existing `if (doc && args.config?.access !== undefined) { … }` block:
 
 ```ts
-      defaultAction: args.drafts === true ? DRAFT_ACTIONS.readDrafts : CRUD_ACTIONS.read,
-```
+const { access, action, resource, wantsDrafts } = resolveReadCall({
+  config: args.config,
+  access: args.access,
+  auth: args.auth,
+  collection: args.collection,
+  drafts: args.drafts,
+});
 
-**4 — post-fetch status check.** Insert immediately after that `if` block closes, before the
-`// Resolve slug for buildDepthPopulate from the Id (D12).` comment. Runs unconditionally on
-`args.config`, not on `args.config?.access` — the same posture edit 5 of `find/server.ts`
-takes — and AFTER the RBAC block above, not before: an explicit permission denial must still
-throw ahead of a status check that would otherwise silently swallow it into a plain `null`.
-This same `vex_status !== "published"` comparison is also what correctly excludes a
-draft-only row (never published, no `vex_publishedId`) fetched by its own `_id` without
-`drafts: true` — identical treatment to an ordinary draft, no extra branch required.
+let doc = await args.ctx.db.get(args.id);
 
-```ts
+// Checked BEFORE permissions: a draft row a caller isn't reading drafts for
+// does not exist for them — "not found", never a permission error about a
+// row they were never going to see.
 if (
   doc &&
   requiresPublishedOnly({
     config: args.config,
     collection: args.collection,
-    drafts: args.drafts,
+    drafts: wantsDrafts,
   }) &&
-  (doc as Record<string, unknown>).vex_status !== "published"
+  (doc as Record<string, unknown>).vex_status !== VERSION_STATUSES.published.key
 ) {
-  // A draft row fetched by a caller not requesting drafts does not exist for
-  // them — "not found" semantics, not a thrown error: the row IS the wrong
-  // logical state to serve, not a permission boundary `hasPermission` already
-  // ruled on above.
   doc = null;
+}
+
+if (doc && access !== undefined) {
+  hasPermission({
+    throwOnDenied: true,
+    access,
+    user: args.auth?.user ?? null,
+    organization: args.auth?.organization,
+    resource,
+    action,
+    data: doc,
+  });
+  doc = stripDeniedFields(
+    doc,
+    resolveFieldPermissions({
+      access,
+      user: args.auth?.user ?? null,
+      organization: args.auth?.organization,
+      resource,
+      action,
+      data: doc,
+    }),
+  );
 }
 ```
 
-**5 — the `populateDocs` call**, unchanged in every other respect:
+**4 — the `populateDocs` call** forwards `wantsDrafts` (not `args.drafts`), unchanged otherwise.
 
-```ts
-const [populated] = await populateDocs<DataModel, TCollectionSlug, TPopulate>(
-  args.ctx,
-  [doc],
-  effectivePopulate,
-  args.drafts,
-);
-```
+#### packages/core/src/api/get/server.test.ts
+
+New `describe("get (server) — drafts fallback")`: with `drafts: true`, a `read`-only role gets the published row (no throw) and `null` for a draft row; a `readDrafts` role gets the draft row.
 
 #### packages/core/src/api/search/server.ts
 
 4 edits. `buildQuery` itself — including its `.withSearchIndex` branch — is unchanged; it
 already accepts a single `accessFilter` and ANDs it with `args.filter`, so the composed
-filter from edit 3 flows through with no further change.
+filter from edit 3 flows through with no further change. D2–D4 do not touch this file: a
+search query never claims a `withIndex` slot to begin with, so there is no index to look up
+a `draftStatus` on.
 
 **1 — imports.** Add `DRAFT_ACTIONS` to the existing `../../access` import, and import the
-shared helper from `find/server.ts`.
+shared helper from `../../versions`.
 
 ```ts
 import {
@@ -10477,7 +12423,7 @@ import {
   resolveFieldPermissions,
   stripDeniedFields,
 } from "../../access";
-import { requiresPublishedOnly } from "../find/server";
+import { requiresPublishedOnly } from "../../versions";
 ```
 
 **2 — `SearchServerArgs.drafts`.** Add after `searchField`, before `limit`.
@@ -10510,8 +12456,8 @@ const rbacFilter = resolveAccessConstraint({
 // query, and vex's generated schema doesn't manage search indexes). Unlike
 // `find`/`get`, there is no framework-owned slot here for the status constraint to
 // claim structurally, so it is ALWAYS folded into `.filter()`, independent of
-// `access.bypass` — same data-integrity posture as `find`, simpler because there's
-// only one branch.
+// `access.bypass` and never `draftStatus`-aware — same data-integrity posture as
+// `find`, simpler because there's only one branch.
 let accessFilter: AccessFilterFn | undefined = rbacFilter;
 if (
   requiresPublishedOnly({
@@ -10542,12 +12488,64 @@ const searchQuery = buildQuery({
         >[]);
 ```
 
+#### packages/core/src/api/globals/get.server.ts
+
+2 edits — thread `args.drafts` through the two already-shipped `populateDocs` calls. The
+row-preference branch above them (Steps 9/11 — `publishedRow`/`draftRow`/`wantsDrafts`) is
+untouched: D2–D4's per-index `draftStatus` has nothing to attach to on a global
+(`globals/types.ts` declares no `indexes` field at all, confirmed against the live tree —
+the shared `vex_globals` table's indexes are schema-generated, never per-global declared),
+so this file's scope under this step is exactly the populate leak, unchanged from the
+original design.
+
+```ts
+if (depthPopulate && Object.keys(depthPopulate).length > 0) {
+  const [populated] = await populateDocs(
+    props.ctx,
+    [flat],
+    depthPopulate,
+    props.drafts,
+  );
+  flat = populated as Record<string, unknown>;
+}
+```
+
+```ts
+if (props.populate && Object.keys(props.populate).length > 0) {
+  const [populated] = await populateDocs(
+    props.ctx,
+    [flat],
+    props.populate as Record<string, unknown>,
+    props.drafts,
+  );
+  flat = populated as Record<string, unknown>;
+}
+```
+
+#### packages/core/src/api/test/convex/schema.ts
+
+One edit — three new physical indexes on `posts`, exercising both `draftStatus` modes the
+new `find/server.test.ts` cases below need against a REAL generated schema, not a mocked
+query chain. `title`/`body` are both already declared fields.
+
+```ts
+    .searchIndex("search_title", { searchField: "title" })
+    .index("by_featured", ["featured"])
+    .index("by_slug", ["slug"])
+    .index("by_title", ["title"])
+    .index("by_title__draftStatus", ["vex_status", "title"])
+    .index("by_body", ["vex_status", "body"])
+    .index("by_status", ["vex_status"])
+    .index("by_published", ["vex_publishedId"]),
+```
+
 #### packages/core/src/api/find/server.test.ts
 
 New `describe` block, appended after the file's existing coverage — complete and
 runnable. Fixtures build on the shared `posts` table (Step 4 extends it with
 `vex_status`/`vex_publishedAt`/`vex_publishedId` + `by_status`/`by_published`, and it
-already carries a `by_slug` index from the base fixture); each test's own `config`
+already carries a `by_slug` index from the base fixture, plus `by_title`/
+`by_title__draftStatus`/`by_body` from the edit above); each test's own `config`
 fixture declares `defineCollection({ slug: "posts", ..., versions: { drafts: true } })`
 separately from the raw table schema.
 
@@ -10636,7 +12634,7 @@ describe("find (server) — versioned collection status filtering", () => {
    * status narrowing. Whether draft content is actually returned still depends on
    * the resolved `readDrafts` RBAC action.
    */
-  test("drafts: true paired with readDrafts permission returns both rows; without it, neither", async () => {
+  test("drafts: true with readDrafts returns both rows; without it, falls back to the published row only", async () => {
     const t = convexTest(schema, modules);
     const { publishedId, draftId, withPermission, withoutPermission } =
       await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
@@ -10676,7 +12674,7 @@ describe("find (server) — versioned collection status filtering", () => {
     expect(withPermission.map((doc: any) => doc._id).sort()).toEqual(
       [publishedId, draftId].sort(),
     );
-    expect(withoutPermission).toHaveLength(0);
+    expect(withoutPermission.map((doc) => doc._id)).toEqual([publishedId]);
   });
 
   /**
@@ -10734,8 +12732,9 @@ describe("find (server) — versioned collection status filtering", () => {
   });
 
   /**
-   * When a caller supplies its own `withIndex`, the status constraint must still
-   * apply — via `.filter()`, since the `withIndex` slot is already taken.
+   * When a caller supplies its own `withIndex` on an index with no `draftStatus`,
+   * the status constraint must still apply — via `.filter()`, since the
+   * `withIndex` slot is already taken and `by_slug` declares no `draftStatus`.
    */
   test("a caller-supplied withIndex still gets the status filter via .filter()", async () => {
     const t = convexTest(schema, modules);
@@ -10791,11 +12790,215 @@ describe("find (server) — versioned collection status filtering", () => {
     expect(result).toHaveLength(1);
   });
 });
+
+describe("find (server) — per-index draftStatus composition", () => {
+  const draftStatusPostsResource = defineCollection({
+    slug: "posts",
+    fields: {
+      title: text(),
+      slug: text(),
+      body: text({ index: "by_body", indexDraftStatus: true }),
+    },
+    versions: { drafts: true },
+    indexes: [{ name: "by_title", fields: ["title"], draftStatus: "both" }],
+  });
+
+  const draftStatusConfig = {
+    collections: [draftStatusPostsResource, versionedAuthorsResource],
+  } as unknown as VexConfig;
+
+  const draftStatusConfigWithAccess = {
+    collections: [draftStatusPostsResource, versionedAuthorsResource],
+    access: defineAccess({
+      roles: ["editor", "viewer"] as const,
+      resources: [draftStatusPostsResource],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        editor: { posts: { readDrafts: true } },
+        viewer: { posts: { read: true } },
+      },
+    }),
+  } as unknown as VexConfig;
+
+  /**
+   * A published-only read against a `draftStatus: "both"` index composes the
+   * status equality straight onto that index's own range — the range starts
+   * with `vex_status`, so no `.filter()` runs, and the draft row with a
+   * matching title is excluded despite sharing the index's narrowing field.
+   */
+  test('a published-only read on a draftStatus: "both" index excludes the draft row with no extra .filter() cost', async () => {
+    const t = convexTest(schema, modules);
+    const { publishedId, result } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const publishedId = await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          vex_status: "published",
+        });
+        await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello-draft",
+          vex_status: "draft",
+        });
+        return {
+          publishedId,
+          result: await find({
+            ctx,
+            collection: "posts",
+            config: draftStatusConfig,
+            withIndex: {
+              name: "by_title",
+              range: (q: any) => q.eq("title", "Hello"),
+            },
+          }),
+        };
+      },
+    );
+    expect(result).toHaveLength(1);
+    expect((result[0] as any)._id).toBe(publishedId);
+  });
+
+  /**
+   * `drafts: true` against that SAME `"both"` index uses its unprefixed
+   * physical form untouched — both rows come back.
+   */
+  test('drafts: true on the same "both" index returns both rows, untouched', async () => {
+    const t = convexTest(schema, modules);
+    const { result } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          vex_status: "published",
+        });
+        await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello-draft",
+          vex_status: "draft",
+        });
+        return {
+          result: await find({
+            ctx,
+            collection: "posts",
+            config: draftStatusConfigWithAccess,
+            auth: editorAuth,
+            drafts: true,
+            withIndex: {
+              name: "by_title",
+              range: (q: any) => q.eq("title", "Hello"),
+            },
+          }),
+        };
+      },
+    );
+    expect(result).toHaveLength(2);
+  });
+
+  /**
+   * `drafts: true` against a `draftStatus: true`-ONLY index (`by_body`, no
+   * unprefixed physical form) drops the caller's range and falls the RBAC
+   * constraint back to `.filter()`, warning once — the conservative,
+   * correct behavior case 4 of `composeStatusConstraint` chooses.
+   */
+  test("drafts: true on a draftStatus: true index drops the range and falls back to .filter(), with a dev warning", async () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const t = convexTest(schema, modules);
+    const { result } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          body: "match",
+          vex_status: "published",
+        });
+        await ctx.db.insert("posts", {
+          title: "Other",
+          slug: "other",
+          body: "match",
+          vex_status: "draft",
+        });
+        return {
+          result: await find({
+            ctx,
+            collection: "posts",
+            config: draftStatusConfigWithAccess,
+            auth: editorAuth,
+            drafts: true,
+            withIndex: {
+              name: "by_body",
+              range: (q: any) => q.eq("body", "match"),
+            },
+          }),
+        };
+      },
+    );
+    // The range is dropped (not replayed against the prefixed index), so
+    // `by_body` with no range scans every row — both come back, since the
+    // editor role's `readDrafts` grant here has no index-shaped constraint
+    // of its own to fall back to.
+    expect(result).toHaveLength(2);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  /**
+   * A published-only read against an index with NO declared `draftStatus`
+   * still filters correctly (unchanged original design) and warns once,
+   * suggesting one.
+   */
+  test("a published-only read on an index with no draftStatus still filters, and warns once", async () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const t = convexTest(schema, modules);
+    const { publishedId, result } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const publishedId = await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          vex_status: "published",
+        });
+        await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          vex_status: "draft",
+          vex_publishedId: publishedId,
+        });
+        return {
+          publishedId,
+          result: await find({
+            ctx,
+            collection: "posts",
+            config: draftStatusConfig,
+            withIndex: {
+              name: "by_slug",
+              range: (q: any) => q.eq("slug", "hello"),
+            },
+          }),
+        };
+      },
+    );
+    expect(result).toHaveLength(1);
+    expect((result[0] as any)._id).toBe(publishedId);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+});
 ```
 
-Verify: `pnpm --filter @vexcms/core test`
+Verify: `pnpm --filter @vexcms/core test -- find/server`
 
-**Manual (apps/test):** right after this step, open a post that has an active draft through its draft row — `CollectionEditView` shows "Document not found" until Step 14 passes `drafts` to `get`. That breakage is this step's filter working; Step 14 is its fix.
+**Manual (apps/test):** right after this step, open a post that has an active draft through
+its draft row — `CollectionEditView` shows "Document not found" until Step 14 passes
+`drafts` to `get`. That breakage is this step's filter working; Step 14 is its fix. Also
+verify the two `apps/test` fixture indexes from the checklist above: a list view filtered
+to the `draftStatus: "both"` collection-level index returns only published posts by
+default and both once the fixture's `editor` role requests drafts; a view filtered to the
+`draftStatus: true` field-level index behaves the same for a published-only read, and logs
+the dev warning in the console once a drafts-inclusive read is attempted against it.
 
 ### Step 14 — Status filter UI: draft-aware reads in the edit views `[dev]`
 
@@ -10809,6 +13012,115 @@ Why: Step 13 makes every collection read published-only unless the caller asks f
 - [ ] `packages/core/src/fields/types.ts` — `InputComponentProps.documentStatus`.
 - [ ] `packages/react/src/hooks/useRelationshipPickerOptions.ts` — `drafts` option.
 - [ ] `packages/react/src/components/fields/relationship/Input.tsx` — forwards `documentStatus === "draft"` as `drafts`.
+- [ ] `packages/react/src/components/views/CollectionEditView.tsx`, `MediaCollectionEditView.tsx` — split into an outer view (config + document query + "not found") and an inner `…Form` holding every other hook, so a document that is missing on one render and present on the next can't change the hook count.
+- [ ] `packages/next/src/NextAdminPage.tsx` — the collection-edit and global-edit prefetches send the same `drafts` as their views' client queries.
+- [ ] Tests: `CollectionEditView.test.tsx`, `MediaCollectionEditView.test.tsx` (document missing on first render, then found — no hook-order error); `packages/next/src/NextAdminPage.test.ts` (new — each prefetch's args equal the matching view's client query).
+
+**Hook order and prefetch parity (two consequences of adding `drafts` to `get`).**
+
+- **The edit views must not return before their hooks.** `CollectionEditView` used to `return <p>Document not found.</p>` when `currentDocument` was missing, BEFORE `useVexMutation` and ~20 more hooks. Any render where the document is missing followed by one where it exists then throws "Rendered more hooks than during the previous render". With `drafts` on the client query that happens on refresh (a prefetch without `drafts` resolves a draft row to `null`, the client query finds it), on publish (the draft row is deleted and its query delivers `null` before `setActiveDocumentId(publishedId)` re-points), and when the document is deleted in another tab. `MediaCollectionEditView` had the same shape. Both split: the outer component resolves config + document and renders "not found"; an inner `CollectionEditForm` / `MediaCollectionEditForm` receives the defined document and holds every other hook. `activeDocumentId` state stays in the outer `CollectionEditView` (it keys the query) and is passed down with its setter.
+- **Prefetches send exactly the client's args.** Hydrated `initialData` seeds the CLIENT's query key, so `NextAdminPage`'s `fetchQuery` args must equal the view's: `{ id, collection, drafts: collection.versions.drafts }` for the collection edit page and `{ slug, drafts: global.versions.drafts }` for the global edit page (the list page is Step 16). Safe for every caller because `get` and `getGlobal` both fall back to published-only without `readDrafts`.
+
+#### packages/react/src/components/views/CollectionEditView.tsx — split
+
+`CollectionEditView` keeps the config lookup, `activeDocumentId` state, and the `get` query; after the "Document not found" return it renders the inner form. Everything from the first `useVexMutation` to the end of the old component moves, unchanged, into `CollectionEditForm`. Add `type Dispatch, type SetStateAction` to the `react` import and `CollectionConfig, VexDocument` to the `@vexcms/core` type import.
+
+```tsx
+  if (!currentDocument) {
+    // TODO: add proper not found component or screen
+    return <p>Document not found.</p>;
+  }
+
+  return (
+    <CollectionEditForm
+      initialPreviewPanelOpen={props.initialPreviewPanelOpen}
+      initialPreviewPanelSize={props.initialPreviewPanelSize}
+      initialPreviewUrl={props.initialPreviewUrl}
+      collection={collection}
+      currentDocument={currentDocument}
+      activeDocumentId={activeDocumentId}
+      setActiveDocumentId={setActiveDocumentId}
+    />
+  );
+}
+
+/**
+ * The edit form for one loaded document. Split from {@link CollectionEditView}
+ * so every hook below runs on every render: the outer view returns early while
+ * the document is missing (not found, deleted elsewhere, or a draft row deleted
+ * by publish before the view re-points), and React requires the same hooks in
+ * the same order on each render of one component. This component only mounts
+ * once `currentDocument` exists.
+ */
+function CollectionEditForm(
+  props: Pick<
+    CollectionEditViewProps,
+    "initialPreviewPanelOpen" | "initialPreviewPanelSize" | "initialPreviewUrl"
+  > & {
+    collection: CollectionConfig;
+    currentDocument: VexDocument;
+    activeDocumentId: VexDocument["_id"];
+    setActiveDocumentId: Dispatch<SetStateAction<VexDocument["_id"]>>;
+  },
+) {
+  const config = useVexConfig();
+  const { collection, currentDocument, activeDocumentId, setActiveDocumentId } = props;
+  // …the rest of the former component body, unchanged.
+```
+
+#### packages/react/src/components/views/MediaCollectionEditView.tsx — split
+
+Same shape. The query result is typed `VexMediaDocument | null | undefined` (was a bare cast to `VexMediaDocument`, which hid the missing case), and `usePermission`'s `data` reads `currentDocument` instead of the raw query `data`.
+
+```tsx
+  const currentDocument = data as VexMediaDocument | null | undefined;
+
+  if (!currentDocument) {
+    // TODO: add proper not found component or screen
+    return <p>Document not found.</p>;
+  }
+
+  return <MediaCollectionEditForm collection={collection} currentDocument={currentDocument} />;
+}
+
+function MediaCollectionEditForm(props: {
+  collection: MediaCollectionConfig;
+  currentDocument: VexMediaDocument;
+}) {
+  const { collection, currentDocument } = props;
+  // …the rest of the former component body, unchanged.
+```
+
+#### packages/next/src/NextAdminPage.tsx — edit prefetches
+
+```ts
+const global = await fetchQuery(
+  vexConvexApi.globals.get,
+  // Same args as `GlobalEditView`'s client query (`getGlobal` falls back to
+  // the published row for a caller without `readDrafts`).
+  { slug: globalConfig.slug, drafts: globalConfig.versions.drafts },
+  props.token ? { token: props.token } : undefined,
+);
+```
+
+```ts
+const initialData = await fetchQuery(
+  vexConvexApi.get,
+  // Same args as `CollectionEditView`'s client query (`get` falls back to
+  // published-only for a caller without `readDrafts`).
+  {
+    id: documentId,
+    collection: collection.slug,
+    drafts: collection.versions.drafts,
+  },
+  props.token ? { token: props.token } : undefined,
+);
+```
+
+#### Tests
+
+- `CollectionEditView.test.tsx`, `MediaCollectionEditView.test.tsx` — render with no `initialData` for an existing document: the first render shows "Document not found.", the query then finds it, and the form renders with no hook-order error. (`convexQuery` marks data as never stale, so the missing-then-present sequence is driven by an absent `initialData`, not `initialData: null`.) Both fail against the pre-split views with "Rendered more hooks than during the previous render".
+- `packages/next/src/NextAdminPage.test.ts` (new) — mocks `fetchQuery`, `next/headers`, and the `@vexcms/react` views, then asserts the prefetch args for the versioned/non-versioned list page, versioned/non-versioned edit page, and versioned global page equal what each view's client query sends.
 
 #### packages/react/src/components/views/CollectionEditView.tsx
 
@@ -10852,7 +13164,9 @@ loop's `<InputComponent>` call gains one prop:
   name={fieldKey}
   fieldDef={field}
   readOnly={
-    !canEdit || field.admin.readOnly || !isFieldAllowed(fieldPermissions, fieldKey)
+    !canEdit ||
+    field.admin.readOnly ||
+    !isFieldAllowed(fieldPermissions, fieldKey)
   }
   collection={global}
   documentStatus={
@@ -11722,6 +14036,7 @@ flag relative to a public version that doesn't exist.
 - [ ] `packages/react/src/components/views/collapseVersionedPairs.ts` (new) — collapses a versioned collection's published/draft rows to one row per logical document, preferring the draft, with a `hasUnpublishedChanges` flag; a draft-only row (no `vex_publishedId`) groups under its own `_id` and is never suppressed.
 - [ ] `packages/react/src/components/views/collapseVersionedPairs.test.ts` (new) — pair-collapsing, a standalone published row, a never-published draft-only row, a legacy row with no `vex_status`, and multiple independent documents collapsed without cross-contamination.
 - [ ] `packages/react/src/components/views/CollectionListView.tsx` — requests both rows of an in-progress pair (and any draft-only row) when the caller can read drafts, collapses via the helper above, and renders a three-state Status column (`StatusBadge` + an optional "Unpublished changes" indicator) built from `hasUnpublishedChanges` and the collapsed row's own `vex_status`.
+- [ ] `packages/next/src/NextAdminPage.tsx` — list prefetch sends `drafts: true` for a versioned collection, matching the client query.
 - [ ] `packages/react/src/testing/convex/schema.ts` — `vex_status`/`vex_publishedId` fields on the shared `documents` fixture table, so a seeded row can model a published/draft pair or a draft-only row.
 - [ ] `packages/react/src/testing/viewSuite.ts` — `describeCollectionListView` gains pair-collapsing AND draft-only-row coverage.
 - Verify: `pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test`
@@ -11818,7 +14133,8 @@ export function collapseVersionedPairs<
   for (const group of groups.values()) {
     result.push({
       ...(group.draft ?? group.published)!,
-      hasUnpublishedChanges: group.draft !== undefined && group.published !== undefined,
+      hasUnpublishedChanges:
+        group.draft !== undefined && group.published !== undefined,
     });
   }
   return result;
@@ -11951,7 +14267,12 @@ import { MODALS } from "../modals/constants";
 import { CreateDocumentModal } from "../modals";
 import { useVexConfig } from "../../context/VexConfigContext";
 import { getCollectionColumnDefs } from "../fields";
-import { useFieldPermissions, usePaginatedQuery, usePermission, useVexMutation } from "../../hooks";
+import {
+  useFieldPermissions,
+  usePaginatedQuery,
+  usePermission,
+  useVexMutation,
+} from "../../hooks";
 import { useMemo } from "react";
 import { Badge, DataTable } from "../ui";
 import { StatusBadge } from "../drafts";
@@ -12008,7 +14329,7 @@ function buildStatusColumn<
 }
 ```
 
-**3 — component docstring.** After "This component renders the *content area only* — wrap it in `AdminLayout`.":
+**3 — component docstring.** After "This component renders the _content area only_ — wrap it in `AdminLayout`.":
 
 ```ts
  *
@@ -12020,63 +14341,65 @@ function buildStatusColumn<
  * row, paired or standalone.
 ```
 
-**4 — `isVersioned`/`canReadDrafts`, the pagination query's new `drafts` field, and the new `rows` memo** — inserted between the existing `numItems` const and the component's return:
+**4 — `isVersioned`, the pagination query's new `drafts` field, and the new `rows` memo** — inserted between the existing `numItems` const and the component's return:
 
 ```ts
-  const numItems = Math.max(
-    collection.admin.table.serverPageSize,
-    collection.admin.table.defaultPageSize,
-  );
+const numItems = Math.max(
+  collection.admin.table.serverPageSize,
+  collection.admin.table.defaultPageSize,
+);
 
-  const isVersioned = collection.versions.drafts;
-  const canReadDrafts = usePermission({
-    resource: collection.slug,
-    action: DRAFT_ACTIONS.readDrafts,
-    scope: PERMISSION_SCOPES.any,
-  });
+const isVersioned = collection.versions.drafts;
 
-  const pagination = usePaginatedQuery({
-    query: {
-      collection: collection.slug,
-      drafts: isVersioned && canReadDrafts ? true : undefined,
-      depth: 1,
-      paginationOpts: {
-        numItems,
-        totalDocs: true,
-        cursor: null,
-      },
+const pagination = usePaginatedQuery({
+  query: {
+    collection: collection.slug,
+    // Always sent for a versioned collection: `find` itself falls back to the
+    // published-only read for a caller without `readDrafts` (Step 13), so these
+    // args match `NextAdminPage`'s server prefetch exactly for every caller.
+    drafts: isVersioned ? true : undefined,
+    depth: 1,
+    paginationOpts: {
+      numItems,
+      totalDocs: true,
+      cursor: null,
     },
-    initialData: props.initialData,
-    clientPageSize: collection.admin.table.defaultPageSize,
-  });
+  },
+  initialData: props.initialData,
+  clientPageSize: collection.admin.table.defaultPageSize,
+});
 
-  const rows = useMemo(
-    () =>
-      isVersioned
-        ? collapseVersionedPairs({ documents: pagination.results })
-        : pagination.results,
-    [pagination.results, isVersioned],
-  );
+const rows = useMemo(
+  () =>
+    isVersioned
+      ? collapseVersionedPairs({ documents: pagination.results })
+      : pagination.results,
+  [pagination.results, isVersioned],
+);
 ```
 
 **5 — `columns`, gaining the Status column on a versioned collection:**
 
 ```ts
-  const columns = useMemo(() => {
-    const fieldColumns = getCollectionColumnDefs({ collection }).filter((column) => {
+const columns = useMemo(() => {
+  const fieldColumns = getCollectionColumnDefs({ collection }).filter(
+    (column) => {
       const key = columnFieldKey(column);
       return key === undefined || isFieldAllowed(fieldPermissions, key);
-    });
-    return isVersioned ? [buildStatusColumn(), ...fieldColumns] : fieldColumns;
-  }, [collection, fieldPermissions, isVersioned]);
+    },
+  );
+  return isVersioned ? [buildStatusColumn(), ...fieldColumns] : fieldColumns;
+}, [collection, fieldPermissions, isVersioned]);
 ```
 
 **6 — document count text now reads `rows`, not `pagination.results`:**
 
 ```ts
-            {pagination.isPending
-              ? "Loading…"
-              : `${rows.length} document${rows.length === 1 ? "" : "s"}`}
+{
+  pagination.isPending
+    ? "Loading…"
+    : `${rows.length} document${rows.length === 1 ? "" : "s"}`;
+}
 ```
 
 **7 — `DataTable`'s `data` now reads `rows`:**
@@ -12085,6 +14408,25 @@ function buildStatusColumn<
       <DataTable
         data={rows}
         columns={columns}
+```
+
+#### packages/next/src/NextAdminPage.tsx
+
+1 edit — the list-view prefetch sends the same `drafts` value the client query does. Hydrated `initialData` is seeded into the CLIENT's query key, so a prefetch that omits `drafts` paints published rows and then gets replaced by the draft-aware result a moment later. Sending `drafts: true` is safe for every caller because `find` falls back to published-only without `readDrafts` (Step 13).
+
+```ts
+const initialData = await fetchQuery(
+  vexConvexApi.findPaginated,
+  {
+    collection: collectionSlug as CollectionSlug,
+    // Same args as `CollectionListView`'s client query, so the hydrated
+    // initial data belongs to the query the client subscribes to.
+    drafts: collection.versions.drafts ? true : undefined,
+    depth: 1,
+    paginationOpts: { cursor: null, numItems, totalDocs: true },
+  },
+  props.token ? { token: props.token } : undefined,
+);
 ```
 
 #### packages/react/src/testing/convex/schema.ts
@@ -12105,104 +14447,104 @@ One edit. The `documents` table gains the two fields a seeded row needs to model
 One edit — three new `it()` blocks appended inside `describeCollectionListView`'s `describe("CollectionListView", () => { ... })`, after the existing `runRbacStateSuite({ ... });` call and before that `describe`'s closing `});`. Each seeds its own isolated `convexTest()` instance rather than reusing the outer shared `t`/`docs`, so neither test's rows leak into the file's other, count-sensitive assertions.
 
 ```ts
-    it("collapses a published/draft pair into one row — Published status plus an 'Unpublished changes' indicator", async () => {
-      const t2 = convexTest(schema, testModules);
-      const versionedCollection = {
-        ...testCollection,
-        versions: { drafts: true },
-      } as unknown as typeof testCollection;
-      const config = { ...testClientConfig, collections: [versionedCollection] };
-      const seeded = await t2.run(async (ctx) => {
-        const publishedId = await ctx.db.insert("documents", {
-          title: "Launch post",
-          vex_status: "published",
-        });
-        const draftId = await ctx.db.insert("documents", {
-          title: "Launch post (edited)",
-          vex_status: "draft",
-          vex_publishedId: publishedId,
-        });
-        const rows = await Promise.all([
-          ctx.db.get(publishedId),
-          ctx.db.get(draftId),
-        ]);
-        return rows.filter((doc): doc is TestDoc<"documents"> => doc !== null);
-      });
-
-      const utils = renderView(
-        createElement(CollectionListView, {
-          collection: versionedCollection.slug,
-          initialData: toPage(seeded),
-        }),
-        { convex: t2, config },
-      );
-
-      expect(utils.getAllByRole("row")).toHaveLength(2); // header + 1 collapsed row
-      expect(utils.getByText("Published")).toBeInTheDocument();
-      expect(utils.getByText("Unpublished changes")).toBeInTheDocument();
-      expect(utils.getByText("Launch post (edited)")).toBeInTheDocument();
+it("collapses a published/draft pair into one row — Published status plus an 'Unpublished changes' indicator", async () => {
+  const t2 = convexTest(schema, testModules);
+  const versionedCollection = {
+    ...testCollection,
+    versions: { drafts: true },
+  } as unknown as typeof testCollection;
+  const config = { ...testClientConfig, collections: [versionedCollection] };
+  const seeded = await t2.run(async (ctx) => {
+    const publishedId = await ctx.db.insert("documents", {
+      title: "Launch post",
+      vex_status: "published",
     });
-
-    it("keeps a standalone published document showing Published status without the indicator", async () => {
-      const t2 = convexTest(schema, testModules);
-      const versionedCollection = {
-        ...testCollection,
-        versions: { drafts: true },
-      } as unknown as typeof testCollection;
-      const config = { ...testClientConfig, collections: [versionedCollection] };
-      const seeded = await t2.run(async (ctx) => {
-        const id = await ctx.db.insert("documents", {
-          title: "Solo post",
-          vex_status: "published",
-        });
-        const solo = await ctx.db.get(id);
-        return solo ? [solo] : [];
-      });
-
-      const utils = renderView(
-        createElement(CollectionListView, {
-          collection: versionedCollection.slug,
-          initialData: toPage(seeded),
-        }),
-        { convex: t2, config },
-      );
-
-      expect(utils.getAllByRole("row")).toHaveLength(2); // header + 1 row
-      expect(utils.getByText("Published")).toBeInTheDocument();
-      expect(utils.queryByText("Unpublished changes")).toBeNull();
+    const draftId = await ctx.db.insert("documents", {
+      title: "Launch post (edited)",
+      vex_status: "draft",
+      vex_publishedId: publishedId,
     });
+    const rows = await Promise.all([
+      ctx.db.get(publishedId),
+      ctx.db.get(draftId),
+    ]);
+    return rows.filter((doc): doc is TestDoc<"documents"> => doc !== null);
+  });
 
-    it("renders a never-published draft-only row as its own single row showing Draft status", async () => {
-      const t2 = convexTest(schema, testModules);
-      const versionedCollection = {
-        ...testCollection,
-        versions: { drafts: true },
-      } as unknown as typeof testCollection;
-      const config = { ...testClientConfig, collections: [versionedCollection] };
-      const seeded = await t2.run(async (ctx) => {
-        const id = await ctx.db.insert("documents", {
-          title: "Never published",
-          vex_status: "draft",
-          // No vex_publishedId — this row is not anyone's counterpart, so it
-          // is never suppressed by the collapsing helper's grouping key.
-        });
-        const draftOnly = await ctx.db.get(id);
-        return draftOnly ? [draftOnly] : [];
-      });
+  const utils = renderView(
+    createElement(CollectionListView, {
+      collection: versionedCollection.slug,
+      initialData: toPage(seeded),
+    }),
+    { convex: t2, config },
+  );
 
-      const utils = renderView(
-        createElement(CollectionListView, {
-          collection: versionedCollection.slug,
-          initialData: toPage(seeded),
-        }),
-        { convex: t2, config },
-      );
+  expect(utils.getAllByRole("row")).toHaveLength(2); // header + 1 collapsed row
+  expect(utils.getByText("Published")).toBeInTheDocument();
+  expect(utils.getByText("Unpublished changes")).toBeInTheDocument();
+  expect(utils.getByText("Launch post (edited)")).toBeInTheDocument();
+});
 
-      expect(utils.getAllByRole("row")).toHaveLength(2); // header + exactly 1 row
-      expect(utils.getByText("Draft")).toBeInTheDocument();
-      expect(utils.queryByText("Unpublished changes")).toBeNull();
-      expect(utils.getByText("Never published")).toBeInTheDocument();
+it("keeps a standalone published document showing Published status without the indicator", async () => {
+  const t2 = convexTest(schema, testModules);
+  const versionedCollection = {
+    ...testCollection,
+    versions: { drafts: true },
+  } as unknown as typeof testCollection;
+  const config = { ...testClientConfig, collections: [versionedCollection] };
+  const seeded = await t2.run(async (ctx) => {
+    const id = await ctx.db.insert("documents", {
+      title: "Solo post",
+      vex_status: "published",
     });
+    const solo = await ctx.db.get(id);
+    return solo ? [solo] : [];
+  });
+
+  const utils = renderView(
+    createElement(CollectionListView, {
+      collection: versionedCollection.slug,
+      initialData: toPage(seeded),
+    }),
+    { convex: t2, config },
+  );
+
+  expect(utils.getAllByRole("row")).toHaveLength(2); // header + 1 row
+  expect(utils.getByText("Published")).toBeInTheDocument();
+  expect(utils.queryByText("Unpublished changes")).toBeNull();
+});
+
+it("renders a never-published draft-only row as its own single row showing Draft status", async () => {
+  const t2 = convexTest(schema, testModules);
+  const versionedCollection = {
+    ...testCollection,
+    versions: { drafts: true },
+  } as unknown as typeof testCollection;
+  const config = { ...testClientConfig, collections: [versionedCollection] };
+  const seeded = await t2.run(async (ctx) => {
+    const id = await ctx.db.insert("documents", {
+      title: "Never published",
+      vex_status: "draft",
+      // No vex_publishedId — this row is not anyone's counterpart, so it
+      // is never suppressed by the collapsing helper's grouping key.
+    });
+    const draftOnly = await ctx.db.get(id);
+    return draftOnly ? [draftOnly] : [];
+  });
+
+  const utils = renderView(
+    createElement(CollectionListView, {
+      collection: versionedCollection.slug,
+      initialData: toPage(seeded),
+    }),
+    { convex: t2, config },
+  );
+
+  expect(utils.getAllByRole("row")).toHaveLength(2); // header + exactly 1 row
+  expect(utils.getByText("Draft")).toBeInTheDocument();
+  expect(utils.queryByText("Unpublished changes")).toBeNull();
+  expect(utils.getByText("Never published")).toBeInTheDocument();
+});
 ```
 
 Verify: `pnpm --filter @vexcms/core test && pnpm --filter @vexcms/react test`
@@ -12336,7 +14678,11 @@ New file, complete.
 
 ```ts
 import { ConvexError, type GenericId } from "convex/values";
-import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
+import type {
+  GenericDataModel,
+  GenericMutationCtx,
+  GenericQueryCtx,
+} from "convex/server";
 
 import type { CollectionSlug, GlobalSlug } from "../../types/generated";
 import type { VexConfig } from "../../config";
@@ -12358,7 +14704,9 @@ import {
  * themselves — the server resolves `id`/`global` to the `vex_versions` key
  * the same way `saveDraft`/`publish` already do, via `resolveVersionedTarget`.
  */
-export type VersionsTarget<TCollectionSlug extends CollectionSlug = CollectionSlug> =
+export type VersionsTarget<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> =
   | { collection: TCollectionSlug; id: GenericId<TCollectionSlug> }
   | { global: GlobalSlug };
 
@@ -12415,9 +14763,13 @@ export async function resolveHistoryTarget<DataModel extends GenericDataModel>(
   } & VersionsTarget,
 ): Promise<ResolvedHistoryTarget<DataModel>> {
   if ("collection" in args) {
-    const collection = args.config.collections.find((c) => c.slug === args.collection);
+    const collection = args.config.collections.find(
+      (c) => c.slug === args.collection,
+    );
     if (!collection) {
-      throw new ConvexError(`No collection registered with slug "${args.collection}"`);
+      throw new ConvexError(
+        `No collection registered with slug "${args.collection}"`,
+      );
     }
     if (!collection.versions.drafts) {
       throw new ConvexError(
@@ -12441,7 +14793,10 @@ export async function resolveHistoryTarget<DataModel extends GenericDataModel>(
       `Global "${args.global}" does not have drafts enabled — version history requires versions: { drafts: true }`,
     );
   }
-  const rows = await resolveVersionedTarget({ ctx: args.ctx, global: args.global });
+  const rows = await resolveVersionedTarget({
+    ctx: args.ctx,
+    global: args.global,
+  });
   return { resource: args.global, rows };
 }
 
@@ -12466,7 +14821,8 @@ export function assertVersionsAccess(props: {
   auth?: VexApiAuth;
   access?: AccessCallOptions<string>;
   resource: string;
-  defaultAction: typeof DRAFT_ACTIONS.readDrafts | typeof DRAFT_ACTIONS.deleteVersions;
+  defaultAction:
+    typeof DRAFT_ACTIONS.readDrafts | typeof DRAFT_ACTIONS.deleteVersions;
   data?: Record<string, unknown>;
 }): void {
   if (props.config.access === undefined) return;
@@ -12492,7 +14848,7 @@ export function assertVersionsAccess(props: {
 
 New file, complete.
 
-```ts
+````ts
 import type { GenericDataModel, GenericQueryCtx } from "convex/server";
 import type { GenericId } from "convex/values";
 
@@ -12582,7 +14938,6 @@ export interface VersionSummary {
  *   handler: (ctx, args) =>
  *     listVersions({ ctx, config, collection: "posts", id: args.id }),
  * });
- * ```
  */
 export async function listVersions<DataModel extends GenericDataModel>(
   args: ListVersionsServerArgs<DataModel>,
@@ -12595,7 +14950,11 @@ export async function listVersions<DataModel extends GenericDataModel>(
           collection: args.collection,
           id: args.id,
         })
-      : await resolveHistoryTarget({ ctx: args.ctx, config: args.config, global: args.global });
+      : await resolveHistoryTarget({
+          ctx: args.ctx,
+          config: args.config,
+          global: args.global,
+        });
 
   assertVersionsAccess({
     config: args.config,
@@ -12621,7 +14980,7 @@ export async function listVersions<DataModel extends GenericDataModel>(
     publishedAt: row.publishedAt ?? null,
   }));
 }
-```
+````
 
 #### packages/core/src/api/versions/getVersionSnapshot.server.ts
 
@@ -12702,7 +15061,11 @@ export async function getVersionSnapshot<DataModel extends GenericDataModel>(
           collection: args.collection,
           id: args.id,
         })
-      : await resolveHistoryTarget({ ctx: args.ctx, config: args.config, global: args.global });
+      : await resolveHistoryTarget({
+          ctx: args.ctx,
+          config: args.config,
+          global: args.global,
+        });
 
   assertVersionsAccess({
     config: args.config,
@@ -12725,7 +15088,10 @@ export async function getVersionSnapshot<DataModel extends GenericDataModel>(
     );
   }
 
-  return { snapshot: row.snapshot as Record<string, unknown>, status: row.status };
+  return {
+    snapshot: row.snapshot as Record<string, unknown>,
+    status: row.status,
+  };
 }
 ```
 
@@ -12801,7 +15167,11 @@ export async function deleteVersion<DataModel extends GenericDataModel>(
           collection: args.collection,
           id: args.id,
         })
-      : await resolveHistoryTarget({ ctx: args.ctx, config: args.config, global: args.global });
+      : await resolveHistoryTarget({
+          ctx: args.ctx,
+          config: args.config,
+          global: args.global,
+        });
 
   assertVersionsAccess({
     config: args.config,
@@ -12832,7 +15202,7 @@ export async function deleteVersion<DataModel extends GenericDataModel>(
 
 New file, complete.
 
-```ts
+````ts
 import { convexQuery } from "@convex-dev/react-query";
 import type { FunctionReference } from "convex/server";
 import type { GenericId } from "convex/values";
@@ -12847,8 +15217,14 @@ import type { VersionSummary } from "./listVersions.server";
  * `{ collection, id, limit? }` for a versioned collection's document, or
  * `{ global, limit? }` for a versioned global.
  */
-export type ListVersionsClientArgs<TCollectionSlug extends CollectionSlug = CollectionSlug> =
-  | { collection: TCollectionSlug; id: GenericId<TCollectionSlug>; limit?: number }
+export type ListVersionsClientArgs<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> =
+  | {
+      collection: TCollectionSlug;
+      id: GenericId<TCollectionSlug>;
+      limit?: number;
+    }
   | { global: GlobalSlug; limit?: number };
 
 /**
@@ -12868,9 +15244,10 @@ export type ListVersionsClientArgs<TCollectionSlug extends CollectionSlug = Coll
  *
  * const { data } = useQuery(listVersions({ collection: "posts", id: postId }));
  * const { data: bannerHistory } = useQuery(listVersions({ global: "banner" }));
- * ```
  */
-export function listVersions<TCollectionSlug extends CollectionSlug = CollectionSlug>(
+export function listVersions<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+>(
   props: ListVersionsClientArgs<TCollectionSlug>,
 ): VexQueryOptions<VexListVersionsArgs, VersionSummary[]> {
   const funcRef = vexConvexApi.versions.listVersions as FunctionReference<
@@ -12880,10 +15257,14 @@ export function listVersions<TCollectionSlug extends CollectionSlug = Collection
     VersionSummary[]
   >;
   return "collection" in props
-    ? convexQuery(funcRef, { collection: props.collection, id: props.id, limit: props.limit })
+    ? convexQuery(funcRef, {
+        collection: props.collection,
+        id: props.id,
+        limit: props.limit,
+      })
     : convexQuery(funcRef, { global: props.global, limit: props.limit });
 }
-```
+````
 
 #### packages/core/src/api/versions/getVersionSnapshot.client.ts
 
@@ -12904,8 +15285,14 @@ import type { VersionSnapshotResult } from "./getVersionSnapshot.server";
  * pass `{ collection, id, version }` for a versioned collection's document,
  * or `{ global, version }` for a versioned global.
  */
-export type GetVersionSnapshotClientArgs<TCollectionSlug extends CollectionSlug = CollectionSlug> =
-  | { collection: TCollectionSlug; id: GenericId<TCollectionSlug>; version: number }
+export type GetVersionSnapshotClientArgs<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+> =
+  | {
+      collection: TCollectionSlug;
+      id: GenericId<TCollectionSlug>;
+      version: number;
+    }
   | { global: GlobalSlug; version: number };
 
 /**
@@ -12918,7 +15305,9 @@ export type GetVersionSnapshotClientArgs<TCollectionSlug extends CollectionSlug 
  * @param props - `{ collection, id, version } | { global, version }`.
  * @returns Tanstack-query `queryOptions` for `useQuery`.
  */
-export function getVersionSnapshot<TCollectionSlug extends CollectionSlug = CollectionSlug>(
+export function getVersionSnapshot<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+>(
   props: GetVersionSnapshotClientArgs<TCollectionSlug>,
 ): VexQueryOptions<VexGetVersionSnapshotArgs, VersionSnapshotResult> {
   const funcRef = vexConvexApi.versions.getVersionSnapshot as FunctionReference<
@@ -12928,7 +15317,11 @@ export function getVersionSnapshot<TCollectionSlug extends CollectionSlug = Coll
     VersionSnapshotResult
   >;
   return "collection" in props
-    ? convexQuery(funcRef, { collection: props.collection, id: props.id, version: props.version })
+    ? convexQuery(funcRef, {
+        collection: props.collection,
+        id: props.id,
+        version: props.version,
+      })
     : convexQuery(funcRef, { global: props.global, version: props.version });
 }
 ```
@@ -12937,7 +15330,7 @@ export function getVersionSnapshot<TCollectionSlug extends CollectionSlug = Coll
 
 New file, complete.
 
-```ts
+````ts
 import { useConvexMutation } from "@convex-dev/react-query";
 import { vexConvexApi } from "../convex";
 
@@ -12961,12 +15354,11 @@ import { vexConvexApi } from "../convex";
  * const { mutateAsync } = useMutation({ mutationFn: deleteVersion() });
  * await mutateAsync({ collection: "posts", id: postId, version: 3 });
  * await mutateAsync({ global: "banner", version: 2 });
- * ```
  */
 export function deleteVersion() {
   return useConvexMutation(vexConvexApi.versions.deleteVersion);
 }
-```
+````
 
 #### packages/core/src/api/convex.ts
 
@@ -13088,7 +15480,10 @@ import {
 
 ```ts
 export { listVersions } from "./versions/listVersions.server";
-export type { ListVersionsServerArgs, VersionSummary } from "./versions/listVersions.server";
+export type {
+  ListVersionsServerArgs,
+  VersionSummary,
+} from "./versions/listVersions.server";
 export { getVersionSnapshot } from "./versions/getVersionSnapshot.server";
 export type {
   GetVersionSnapshotServerArgs,
@@ -13102,16 +15497,15 @@ export type { DeleteVersionServerArgs } from "./versions/deleteVersion.server";
 entry's trailing comment (`// Step 8 appends \`publish\`, Step 10 \`unpublish\`, // Step 16
 \`listVersions\` / \`getVersionSnapshot\` / \`deleteVersion\`.`), replaced with the real
 registrations below. Since Steps 9/11 own `publish`/`unpublish`'s own edits to this same
-factory independently (also anchored directly off the `saveDraft` entry, never off each
+factory independently (also anchored directly off the `saveDraft`entry, never off each
 other or off the three below), the comment is narrowed to note only what's still pending
 there — this step's own three operations are no longer pending once this edit lands. This
-edit also deletes the now-stale `void query;` line near the top of the function body: once
-`listVersions`/`getVersionSnapshot` are registered below, `query` is finally used.
+edit also deletes the now-stale`void query;`line near the top of the function body: once`listVersions`/`getVersionSnapshot`are registered below,`query` is finally used.
 
 Delete:
 
 ```ts
-  void query;
+void query;
 ```
 
 Replace the trailing comment and the function's closing brace with:
@@ -13329,28 +15723,36 @@ const viewerUser = { _id: "u2", roles: ["viewer"] };
 describe("listVersions (server) — collection target", () => {
   test("returns summaries newest-first, without snapshot content, for a caller with readDrafts", async () => {
     const t = convexTest(schema, modules);
-    const result = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const id = await ctx.db.insert("posts", {
-        title: "Hello",
-        slug: "hello",
-        vex_status: "published",
-      });
-      await ctx.db.insert("vex_versions", {
-        collection: "posts",
-        documentId: id,
-        version: 1,
-        status: "published",
-        snapshot: { title: "Hello" },
-      });
-      await ctx.db.insert("vex_versions", {
-        collection: "posts",
-        documentId: id,
-        version: 2,
-        status: "draft",
-        snapshot: { title: "Hello (draft edit)" },
-      });
-      return listVersions({ ctx, config: fixtureConfig, auth: { user: editorUser }, collection: "posts", id });
-    });
+    const result = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const id = await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          vex_status: "published",
+        });
+        await ctx.db.insert("vex_versions", {
+          collection: "posts",
+          documentId: id,
+          version: 1,
+          status: "published",
+          snapshot: { title: "Hello" },
+        });
+        await ctx.db.insert("vex_versions", {
+          collection: "posts",
+          documentId: id,
+          version: 2,
+          status: "draft",
+          snapshot: { title: "Hello (draft edit)" },
+        });
+        return listVersions({
+          ctx,
+          config: fixtureConfig,
+          auth: { user: editorUser },
+          collection: "posts",
+          id,
+        });
+      },
+    );
 
     expect(result.map((entry) => entry.version)).toEqual([2, 1]);
     for (const entry of result) {
@@ -13361,7 +15763,11 @@ describe("listVersions (server) — collection target", () => {
   test("throws for a caller without readDrafts, before reading any version row", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const id = await ctx.db.insert("posts", { title: "Hello", slug: "hello", vex_status: "published" });
+      const id = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        vex_status: "published",
+      });
       await ctx.db.insert("vex_versions", {
         collection: "posts",
         documentId: id,
@@ -13371,7 +15777,13 @@ describe("listVersions (server) — collection target", () => {
       });
 
       await expect(
-        listVersions({ ctx, config: fixtureConfig, auth: { user: viewerUser }, collection: "posts", id }),
+        listVersions({
+          ctx,
+          config: fixtureConfig,
+          auth: { user: viewerUser },
+          collection: "posts",
+          id,
+        }),
       ).rejects.toThrow(VexAccessError);
     });
   });
@@ -13379,28 +15791,49 @@ describe("listVersions (server) — collection target", () => {
   test("throws when the document does not exist", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const otherId = await ctx.db.insert("posts", { title: "Gone", slug: "gone" });
+      const otherId = await ctx.db.insert("posts", {
+        title: "Gone",
+        slug: "gone",
+      });
       await ctx.db.delete(otherId);
 
       await expect(
-        listVersions({ ctx, config: fixtureConfig, auth: { user: editorUser }, collection: "posts", id: otherId }),
+        listVersions({
+          ctx,
+          config: fixtureConfig,
+          auth: { user: editorUser },
+          collection: "posts",
+          id: otherId,
+        }),
       ).rejects.toThrow();
     });
   });
 
   test("returns a draft-only document's own history — never published, no vex_publishedId", async () => {
     const t = convexTest(schema, modules);
-    const result = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const id = await ctx.db.insert("posts", { title: "New", slug: "new", vex_status: "draft" });
-      await ctx.db.insert("vex_versions", {
-        collection: "posts",
-        documentId: id,
-        version: 1,
-        status: "draft",
-        snapshot: { title: "New" },
-      });
-      return listVersions({ ctx, config: fixtureConfig, auth: { user: editorUser }, collection: "posts", id });
-    });
+    const result = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const id = await ctx.db.insert("posts", {
+          title: "New",
+          slug: "new",
+          vex_status: "draft",
+        });
+        await ctx.db.insert("vex_versions", {
+          collection: "posts",
+          documentId: id,
+          version: 1,
+          status: "draft",
+          snapshot: { title: "New" },
+        });
+        return listVersions({
+          ctx,
+          config: fixtureConfig,
+          auth: { user: editorUser },
+          collection: "posts",
+          id,
+        });
+      },
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0]?.status).toBe("draft");
@@ -13408,10 +15841,22 @@ describe("listVersions (server) — collection target", () => {
 
   test("returns [] for a document with no history yet", async () => {
     const t = convexTest(schema, modules);
-    const result = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const id = await ctx.db.insert("posts", { title: "Hello", slug: "hello", vex_status: "published" });
-      return listVersions({ ctx, config: fixtureConfig, auth: { user: editorUser }, collection: "posts", id });
-    });
+    const result = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const id = await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          vex_status: "published",
+        });
+        return listVersions({
+          ctx,
+          config: fixtureConfig,
+          auth: { user: editorUser },
+          collection: "posts",
+          id,
+        });
+      },
+    );
 
     expect(result).toEqual([]);
   });
@@ -13435,30 +15880,49 @@ const globalAccess = defineAccess({
   },
 });
 
-const globalFixtureConfig = { collections: [], globals: [banner], access: globalAccess } as unknown as VexConfig;
+const globalFixtureConfig = {
+  collections: [],
+  globals: [banner],
+  access: globalAccess,
+} as unknown as VexConfig;
 
 describe("listVersions (server) — global target", () => {
   test("returns summaries for a caller with readDrafts, RBAC resolved against the global's own slug", async () => {
     const t = convexTest(schema, modules);
-    const result = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      await ctx.db.insert("vex_globals", { slug: "banner", data: { message: "Hi" }, vex_status: "published" });
-      await ctx.db.insert("vex_versions", {
-        collection: "vex_globals",
-        documentId: "banner",
-        version: 1,
-        status: "published",
-        snapshot: { message: "Hi" },
-      });
-      return listVersions({ ctx, config: globalFixtureConfig, auth: { user: editorUser }, global: "banner" });
-    });
+    const result = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        await ctx.db.insert("vex_globals", {
+          slug: "banner",
+          data: { message: "Hi" },
+          vex_status: "published",
+        });
+        await ctx.db.insert("vex_versions", {
+          collection: "vex_globals",
+          documentId: "banner",
+          version: 1,
+          status: "published",
+          snapshot: { message: "Hi" },
+        });
+        return listVersions({
+          ctx,
+          config: globalFixtureConfig,
+          auth: { user: editorUser },
+          global: "banner",
+        });
+      },
+    );
 
     expect(result).toHaveLength(1);
   });
 
-  test("throws for a caller without readDrafts — denial is resolved against the global's own slug, never the literal \"vex_globals\"", async () => {
+  test('throws for a caller without readDrafts — denial is resolved against the global\'s own slug, never the literal "vex_globals"', async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      await ctx.db.insert("vex_globals", { slug: "banner", data: { message: "Hi" }, vex_status: "published" });
+      await ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Hi" },
+        vex_status: "published",
+      });
       await ctx.db.insert("vex_versions", {
         collection: "vex_globals",
         documentId: "banner",
@@ -13474,7 +15938,12 @@ describe("listVersions (server) — global target", () => {
       // CORRECT resource ("banner") and still observing a denial proves the
       // check is specifically about `readDrafts`, not merely "wrong resource".
       await expect(
-        listVersions({ ctx, config: globalFixtureConfig, auth: { user: viewerUser }, global: "banner" }),
+        listVersions({
+          ctx,
+          config: globalFixtureConfig,
+          auth: { user: viewerUser },
+          global: "banner",
+        }),
       ).rejects.toThrow(VexAccessError);
     });
   });
@@ -13527,26 +15996,46 @@ const viewerUser = { _id: "u2", roles: ["viewer"] };
 describe("getVersionSnapshot (server) — collection target", () => {
   test("returns the snapshot and status for a caller with readDrafts", async () => {
     const t = convexTest(schema, modules);
-    const result = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const id = await ctx.db.insert("posts", { title: "Hello", slug: "hello", vex_status: "published" });
-      await ctx.db.insert("vex_versions", {
-        collection: "posts",
-        documentId: id,
-        version: 1,
-        status: "draft",
-        snapshot: { title: "Draft body" },
-      });
+    const result = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const id = await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          vex_status: "published",
+        });
+        await ctx.db.insert("vex_versions", {
+          collection: "posts",
+          documentId: id,
+          version: 1,
+          status: "draft",
+          snapshot: { title: "Draft body" },
+        });
 
-      return getVersionSnapshot({ ctx, config: fixtureConfig, auth: { user: editorUser }, collection: "posts", id, version: 1 });
+        return getVersionSnapshot({
+          ctx,
+          config: fixtureConfig,
+          auth: { user: editorUser },
+          collection: "posts",
+          id,
+          version: 1,
+        });
+      },
+    );
+
+    expect(result).toEqual({
+      snapshot: { title: "Draft body" },
+      status: "draft",
     });
-
-    expect(result).toEqual({ snapshot: { title: "Draft body" }, status: "draft" });
   });
 
   test("throws for a caller without readDrafts — no draft content escapes the rejection", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const id = await ctx.db.insert("posts", { title: "Hello", slug: "hello", vex_status: "published" });
+      const id = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        vex_status: "published",
+      });
       await ctx.db.insert("vex_versions", {
         collection: "posts",
         documentId: id,
@@ -13557,7 +16046,14 @@ describe("getVersionSnapshot (server) — collection target", () => {
 
       let caught: unknown;
       try {
-        await getVersionSnapshot({ ctx, config: fixtureConfig, auth: { user: viewerUser }, collection: "posts", id, version: 1 });
+        await getVersionSnapshot({
+          ctx,
+          config: fixtureConfig,
+          auth: { user: viewerUser },
+          collection: "posts",
+          id,
+          version: 1,
+        });
       } catch (error) {
         caught = error;
       }
@@ -13570,10 +16066,21 @@ describe("getVersionSnapshot (server) — collection target", () => {
   test("throws when the version does not exist", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const id = await ctx.db.insert("posts", { title: "Hello", slug: "hello", vex_status: "published" });
+      const id = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        vex_status: "published",
+      });
 
       await expect(
-        getVersionSnapshot({ ctx, config: fixtureConfig, auth: { user: editorUser }, collection: "posts", id, version: 99 }),
+        getVersionSnapshot({
+          ctx,
+          config: fixtureConfig,
+          auth: { user: editorUser },
+          collection: "posts",
+          id,
+          version: 99,
+        }),
       ).rejects.toThrow();
     });
   });
@@ -13597,30 +16104,53 @@ const globalAccess = defineAccess({
   },
 });
 
-const globalFixtureConfig = { collections: [], globals: [banner], access: globalAccess } as unknown as VexConfig;
+const globalFixtureConfig = {
+  collections: [],
+  globals: [banner],
+  access: globalAccess,
+} as unknown as VexConfig;
 
 describe("getVersionSnapshot (server) — global target", () => {
   test("returns the snapshot for a caller with readDrafts, RBAC resolved against the global's own slug", async () => {
     const t = convexTest(schema, modules);
-    const result = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      await ctx.db.insert("vex_globals", { slug: "banner", data: { message: "Live" }, vex_status: "published" });
-      await ctx.db.insert("vex_versions", {
-        collection: "vex_globals",
-        documentId: "banner",
-        version: 1,
-        status: "published",
-        snapshot: { message: "Live" },
-      });
-      return getVersionSnapshot({ ctx, config: globalFixtureConfig, auth: { user: editorUser }, global: "banner", version: 1 });
-    });
+    const result = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        await ctx.db.insert("vex_globals", {
+          slug: "banner",
+          data: { message: "Live" },
+          vex_status: "published",
+        });
+        await ctx.db.insert("vex_versions", {
+          collection: "vex_globals",
+          documentId: "banner",
+          version: 1,
+          status: "published",
+          snapshot: { message: "Live" },
+        });
+        return getVersionSnapshot({
+          ctx,
+          config: globalFixtureConfig,
+          auth: { user: editorUser },
+          global: "banner",
+          version: 1,
+        });
+      },
+    );
 
-    expect(result).toEqual({ snapshot: { message: "Live" }, status: "published" });
+    expect(result).toEqual({
+      snapshot: { message: "Live" },
+      status: "published",
+    });
   });
 
   test("throws for a caller without readDrafts on the global's own slug", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      await ctx.db.insert("vex_globals", { slug: "banner", data: { message: "Live" }, vex_status: "published" });
+      await ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Live" },
+        vex_status: "published",
+      });
       await ctx.db.insert("vex_versions", {
         collection: "vex_globals",
         documentId: "banner",
@@ -13630,7 +16160,13 @@ describe("getVersionSnapshot (server) — global target", () => {
       });
 
       await expect(
-        getVersionSnapshot({ ctx, config: globalFixtureConfig, auth: { user: viewerUser }, global: "banner", version: 1 }),
+        getVersionSnapshot({
+          ctx,
+          config: globalFixtureConfig,
+          auth: { user: viewerUser },
+          global: "banner",
+          version: 1,
+        }),
       ).rejects.toThrow(VexAccessError);
     });
   });
@@ -13684,7 +16220,11 @@ describe("deleteVersion (server) — collection target", () => {
   test("deletes the targeted version row for a caller with deleteVersions", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const id = await ctx.db.insert("posts", { title: "Hello", slug: "hello", vex_status: "published" });
+      const id = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        vex_status: "published",
+      });
       const versionId = await ctx.db.insert("vex_versions", {
         collection: "posts",
         documentId: id,
@@ -13693,7 +16233,14 @@ describe("deleteVersion (server) — collection target", () => {
         snapshot: { title: "Hello" },
       });
 
-      const result = await deleteVersion({ ctx, config: fixtureConfig, auth: { user: adminUser }, collection: "posts", id, version: 1 });
+      const result = await deleteVersion({
+        ctx,
+        config: fixtureConfig,
+        auth: { user: adminUser },
+        collection: "posts",
+        id,
+        version: 1,
+      });
 
       expect(result).toBeUndefined();
       expect(await ctx.db.get(versionId)).toBeNull();
@@ -13703,7 +16250,11 @@ describe("deleteVersion (server) — collection target", () => {
   test("throws for a caller without deleteVersions — history is left intact", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const id = await ctx.db.insert("posts", { title: "Hello", slug: "hello", vex_status: "published" });
+      const id = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        vex_status: "published",
+      });
       const versionId = await ctx.db.insert("vex_versions", {
         collection: "posts",
         documentId: id,
@@ -13713,7 +16264,14 @@ describe("deleteVersion (server) — collection target", () => {
       });
 
       await expect(
-        deleteVersion({ ctx, config: fixtureConfig, auth: { user: editorUser }, collection: "posts", id, version: 1 }),
+        deleteVersion({
+          ctx,
+          config: fixtureConfig,
+          auth: { user: editorUser },
+          collection: "posts",
+          id,
+          version: 1,
+        }),
       ).rejects.toThrow(VexAccessError);
 
       expect(await ctx.db.get(versionId)).not.toBeNull();
@@ -13723,10 +16281,21 @@ describe("deleteVersion (server) — collection target", () => {
   test("throws when the version does not exist", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const id = await ctx.db.insert("posts", { title: "Hello", slug: "hello", vex_status: "published" });
+      const id = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        vex_status: "published",
+      });
 
       await expect(
-        deleteVersion({ ctx, config: fixtureConfig, auth: { user: adminUser }, collection: "posts", id, version: 99 }),
+        deleteVersion({
+          ctx,
+          config: fixtureConfig,
+          auth: { user: adminUser },
+          collection: "posts",
+          id,
+          version: 99,
+        }),
       ).rejects.toThrow();
     });
   });
@@ -13750,13 +16319,21 @@ const globalAccess = defineAccess({
   },
 });
 
-const globalFixtureConfig = { collections: [], globals: [banner], access: globalAccess } as unknown as VexConfig;
+const globalFixtureConfig = {
+  collections: [],
+  globals: [banner],
+  access: globalAccess,
+} as unknown as VexConfig;
 
 describe("deleteVersion (server) — global target", () => {
   test("deletes the targeted version row for a caller with deleteVersions, resolved against the global's own slug", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      await ctx.db.insert("vex_globals", { slug: "banner", data: { message: "Live" }, vex_status: "published" });
+      await ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Live" },
+        vex_status: "published",
+      });
       const versionId = await ctx.db.insert("vex_versions", {
         collection: "vex_globals",
         documentId: "banner",
@@ -13765,7 +16342,13 @@ describe("deleteVersion (server) — global target", () => {
         snapshot: { message: "Live" },
       });
 
-      await deleteVersion({ ctx, config: globalFixtureConfig, auth: { user: adminUser }, global: "banner", version: 1 });
+      await deleteVersion({
+        ctx,
+        config: globalFixtureConfig,
+        auth: { user: adminUser },
+        global: "banner",
+        version: 1,
+      });
 
       expect(await ctx.db.get(versionId)).toBeNull();
     });
@@ -13774,7 +16357,11 @@ describe("deleteVersion (server) — global target", () => {
   test("throws for a caller without deleteVersions — history is left intact", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      await ctx.db.insert("vex_globals", { slug: "banner", data: { message: "Live" }, vex_status: "published" });
+      await ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Live" },
+        vex_status: "published",
+      });
       const versionId = await ctx.db.insert("vex_versions", {
         collection: "vex_globals",
         documentId: "banner",
@@ -13784,7 +16371,13 @@ describe("deleteVersion (server) — global target", () => {
       });
 
       await expect(
-        deleteVersion({ ctx, config: globalFixtureConfig, auth: { user: editorUser }, global: "banner", version: 1 }),
+        deleteVersion({
+          ctx,
+          config: globalFixtureConfig,
+          auth: { user: editorUser },
+          global: "banner",
+          version: 1,
+        }),
       ).rejects.toThrow(VexAccessError);
 
       expect(await ctx.db.get(versionId)).not.toBeNull();
@@ -13950,10 +16543,21 @@ export function VersionHistoryDropdown(props: VersionHistoryDropdownProps) {
   // exactly like a collection's do.
   const resource = "collection" in target ? target.collection : target.global;
 
-  const canReadDrafts = usePermission({ resource, action: DRAFT_ACTIONS.readDrafts });
-  const canSaveDraft = usePermission({ resource, action: DRAFT_ACTIONS.saveDraft });
-  const canDeleteVersions = usePermission({ resource, action: DRAFT_ACTIONS.deleteVersions });
-  const [versionPendingDelete, setVersionPendingDelete] = useState<number | null>(null);
+  const canReadDrafts = usePermission({
+    resource,
+    action: DRAFT_ACTIONS.readDrafts,
+  });
+  const canSaveDraft = usePermission({
+    resource,
+    action: DRAFT_ACTIONS.saveDraft,
+  });
+  const canDeleteVersions = usePermission({
+    resource,
+    action: DRAFT_ACTIONS.deleteVersions,
+  });
+  const [versionPendingDelete, setVersionPendingDelete] = useState<
+    number | null
+  >(null);
 
   // Shared `{ collection, documentId } | { global }` shape every
   // `versions.*` read/delete call below sends as-is — `listVersions`,
@@ -13973,9 +16577,10 @@ export function VersionHistoryDropdown(props: VersionHistoryDropdownProps) {
   const { mutateAsync: saveDraftMutation } = useMutation({
     mutationFn: useConvexMutation(vexConvexApi.versions.saveDraft),
   });
-  const { mutateAsync: deleteVersionMutation, isPending: isDeleting } = useMutation({
-    mutationFn: useConvexMutation(vexConvexApi.versions.deleteVersion),
-  });
+  const { mutateAsync: deleteVersionMutation, isPending: isDeleting } =
+    useMutation({
+      mutationFn: useConvexMutation(vexConvexApi.versions.deleteVersion),
+    });
 
   /**
    * Restores an older version's content onto the live form and persists it
@@ -14162,7 +16767,10 @@ import { DraftToolbar, VersionHistoryDropdown } from "../drafts";
   }}
 >
   <VersionHistoryDropdown
-    target={{ collection: collection.slug, documentId: activeDocumentId as string }}
+    target={{
+      collection: collection.slug,
+      documentId: activeDocumentId as string,
+    }}
     onRestored={setActiveDocumentId}
   />
 </DraftToolbar>
@@ -14451,7 +17059,7 @@ describe("VersionHistoryDropdown", () => {
     await waitFor(() => expect(onRestored).toHaveBeenCalledWith("draft123"));
   });
 
-  it("restore (global target) saves a draft WITHOUT restoredFrom, and resolves permissions against the global's own slug — never \"vex_globals\"", async () => {
+  it('restore (global target) saves a draft WITHOUT restoredFrom, and resolves permissions against the global\'s own slug — never "vex_globals"', async () => {
     versionRows = [
       {
         version: 2,
@@ -14474,14 +17082,15 @@ describe("VersionHistoryDropdown", () => {
     });
     saveDraftMock.mockResolvedValue("draft456");
 
-    render(
-      <VersionHistoryDropdown target={{ global: "announcement" }} />,
-    );
+    render(<VersionHistoryDropdown target={{ global: "announcement" }} />);
     const user = await openHistory();
     await user.click(screen.getByRole("button", { name: /restore/i }));
 
     await waitFor(() =>
-      expect(setFieldValueMock).toHaveBeenCalledWith("message", "Old announcement"),
+      expect(setFieldValueMock).toHaveBeenCalledWith(
+        "message",
+        "Old announcement",
+      ),
     );
     expect(saveDraftMock).toHaveBeenCalledWith({
       global: "announcement",
@@ -14932,7 +17541,8 @@ describe("useAutosave", () => {
   it("cancels a pending debounce when enabled flips to false mid-debounce", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     const { rerender } = renderHook(
-      ({ values, enabled }) => useAutosave({ values, onSave, enabled, debounceMs: 1000 }),
+      ({ values, enabled }) =>
+        useAutosave({ values, onSave, enabled, debounceMs: 1000 }),
       { initialProps: { values: { title: "A" }, enabled: true } },
     );
 
@@ -15035,8 +17645,11 @@ import {
 
 ```tsx
 useAutosave({
-  values: globalDoc ? changedValues(form) : (form.state.values as Record<string, unknown>),
-  onSave: (changes) => saveDraftMutation({ global: global!.slug, data: changes }),
+  values: globalDoc
+    ? changedValues(form)
+    : (form.state.values as Record<string, unknown>),
+  onSave: (changes) =>
+    saveDraftMutation({ global: global!.slug, data: changes }),
   enabled: hasDrafts && global.versions.autosave.enabled && canEdit,
 });
 ```
@@ -15090,7 +17703,7 @@ into their own project and runs once, not something the CLI fires automatically.
       `backfillVersionStatus`.
 - [ ] `packages/core/src/api/versions/backfillStatus.server.ts` — a genuine,
       separately-invoked (not CLI-auto-fired) one-shot action that stamps `vex_status:
-  "published"` on rows in a collection that are missing the field.
+"published"` on rows in a collection that are missing the field.
 - [ ] `packages/core/src/api/server.ts` — re-export `backfillStatus` and its arg/result
       types. Required for the function above to be reachable at all: `@vexcms/core`'s
       `package.json#exports` only exposes `.`, `./server`, `./client`, `./convex`,

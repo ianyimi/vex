@@ -1,25 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import {
+  CONSTRAINT_COMPARATORS,
   CRUD_ACTIONS,
   DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE,
   DRAFT_ACTIONS,
+  getFieldsDefaultValues,
   isFieldAllowed,
   resolveLivePreviewSettings,
   VERSION_STATUSES,
   vexConvexApi,
 } from "@vexcms/core";
-import type { CollectionEditViewProps, CollectionSlug } from "@vexcms/core";
+import type {
+  CollectionConfig,
+  CollectionEditViewProps,
+  CollectionSlug,
+  VexDocument,
+} from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
 import { RevalidateButton } from "../RevalidateButton";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 import { useFieldsForm } from "../../hooks/useFieldsForm";
 import {
+  useAutosave,
   useFieldPermissions,
   useLiveFieldMerge,
   usePermission,
@@ -27,6 +35,7 @@ import {
   useVisibleFields,
 } from "../../hooks";
 import { changedValues } from "../form/changedValues";
+import { pickReadableValues } from "../form/readableFields";
 import { useVexConfig } from "../../context/VexConfigContext";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../ui/resizable";
 import { useIsMobile } from "../../hooks/use-mobile";
@@ -38,7 +47,7 @@ import {
 import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
 import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
 import { useLivePreviewServerUrl } from "../../hooks/useLivePreviewServerUrl";
-import { DraftToolbar } from "../drafts";
+import { DraftToolbar, VersionHistoryDropdown, type ViewedVersion } from "../drafts";
 import { applyVexFieldErrors, getVexErrorMessage } from "../../lib/errors";
 import { toast } from "sonner";
 
@@ -99,6 +108,7 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
     ...convexQuery(vexConvexApi.get, {
       id: activeDocumentId,
       collection: collection.slug,
+      drafts: collection.versions.drafts,
     }),
     initialData: props.initialData,
   });
@@ -107,6 +117,58 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
     // TODO: add proper not found component or screen
     return <p>Document not found.</p>;
   }
+
+  return (
+    <CollectionEditForm
+      initialPreviewPanelOpen={props.initialPreviewPanelOpen}
+      initialPreviewPanelSize={props.initialPreviewPanelSize}
+      initialPreviewUrl={props.initialPreviewUrl}
+      collection={collection}
+      currentDocument={currentDocument}
+      activeDocumentId={activeDocumentId}
+      setActiveDocumentId={setActiveDocumentId}
+    />
+  );
+}
+
+/**
+ * The edit form for one loaded document. Split from {@link CollectionEditView}
+ * so every hook below runs on every render: the outer view returns early while
+ * the document is missing (not found, deleted elsewhere, or a draft row deleted
+ * by publish before the view re-points), and React requires the same hooks in
+ * the same order on each render of one component. This component only mounts
+ * once `currentDocument` exists.
+ *
+ * @param props - The resolved collection, the loaded document, the id the
+ *   outer view is tracking (and its setter, so a draft save or publish can
+ *   re-point it), and the live-preview SSR props.
+ * @returns The edit form.
+ */
+function CollectionEditForm(
+  props: Pick<
+    CollectionEditViewProps,
+    "initialPreviewPanelOpen" | "initialPreviewPanelSize" | "initialPreviewUrl"
+  > & {
+    collection: CollectionConfig;
+    currentDocument: VexDocument;
+    activeDocumentId: VexDocument["_id"];
+    setActiveDocumentId: Dispatch<SetStateAction<VexDocument["_id"]>>;
+  },
+) {
+  const config = useVexConfig();
+  const { collection, currentDocument, activeDocumentId, setActiveDocumentId } = props;
+
+  const [viewedVersion, setViewedVersion] = useState<ViewedVersion | null>(null);
+  // Passed as the form's `document` (not `form.reset(snapshot)`): TanStack re-applies
+  // `defaultValues` from props each render while untouched, which would undo a reset.
+  const formDocument: VexDocument = viewedVersion
+    ? ({
+        _id: currentDocument._id,
+        _creationTime: currentDocument._creationTime,
+        ...viewedVersion.snapshot,
+      } as VexDocument)
+    : currentDocument;
+  const restoredFrom = viewedVersion ? { restoredFrom: viewedVersion.version } : {};
 
   const { mutateAsync, isPending } = useVexMutation({
     collection: collection.slug,
@@ -127,48 +189,72 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
     operation: "publish",
   });
 
+  const { mutateAsync: unpublishMutation, isPending: isUnpublishing } = useVexMutation({
+    collection: collection.slug,
+    // The published row is what's currently loaded whenever Unpublish is
+    // enabled — the toolbar disables it while a draft exists (edit 4 below) —
+    // so `currentDocument` IS the "before" state this purges as a delete.
+    getChanges: () => [{ before: currentDocument }],
+    mutationFn: vexConvexApi.versions.unpublish,
+    operation: "unpublish",
+  });
+
   const canPublish = usePermission({
     resource: collection.slug,
     action: DRAFT_ACTIONS.publish,
     data: currentDocument,
   });
 
+  const canUnpublish = usePermission({
+    resource: collection.slug,
+    action: DRAFT_ACTIONS.unpublish,
+    data: currentDocument,
+  });
+
   /**
-   * Publishes the currently-open draft, promoting its fields onto the
-   * published row. `versions.publish` takes no `data` of its own, so any
-   * not-yet-saved form edits are saved as a draft FIRST (reusing
-   * `saveDraftMutation`, the same call Save Draft makes), then promoted —
-   * two separate `try`/`catch`es, since a save-draft failure (rare, lenient
-   * validation) gets the same manual toast `handleSaveDraft` gives it, while
-   * a publish failure (Step 9's strict-validation rejection) is surfaced as
-   * field-level errors via {@link applyVexFieldErrors}, reusing the same
-   * `FormError` display every field input already renders through.
+   * Publishes the currently-open draft (or, for a never-published document,
+   * the published row), merging any not-yet-saved form edits on top in the
+   * same mutation call — `versions.publish`'s `data` arg, surfaced as
+   * field-level errors via {@link applyVexFieldErrors} on strict-validation
+   * rejection, reusing the same `FormError` display every field input
+   * already renders through.
    *
    * @returns Promise resolving once publish completes (or rejects).
    * @throws Never — every rejection is caught, handled, and never re-thrown.
    */
   async function handlePublish(): Promise<void> {
-    const changes = changedValues(form);
-    let targetId = activeDocumentId;
-    if (Object.keys(changes).length > 0) {
-      try {
-        targetId = await saveDraftMutation({
-          collection: collection!.slug,
-          id: activeDocumentId,
-          data: changes,
-        });
-        setActiveDocumentId(targetId);
-      } catch (error) {
-        toast.error("Save draft failed", { description: getVexErrorMessage(error) });
-        return;
-      }
-    }
     try {
-      const publishedId = await publishMutation({ collection: collection!.slug, id: targetId });
+      const publishedId = await publishMutation({
+        collection: collection!.slug,
+        id: activeDocumentId,
+        data: changedValues(form),
+        version: viewedVersion?.version,
+      });
       setActiveDocumentId(publishedId);
+      setViewedVersion(null);
       form.reset();
     } catch (error) {
       applyVexFieldErrors(form, error);
+    }
+  }
+
+  /**
+   * Unpublishes the currently-open published document, flipping it back to
+   * draft.
+   *
+   * @returns Promise resolving once unpublish completes (or rejects).
+   * @throws Never — a rejected mutation is caught and toasted, never re-thrown.
+   */
+  async function handleUnpublish(): Promise<void> {
+    try {
+      await unpublishMutation({ collection: collection!.slug, id: activeDocumentId });
+    } catch (error) {
+      // Step 11 rejects while a draft row exists; `isDraftDoc` already
+      // disables the calling button client-side, but a draft created in
+      // another tab between render and click still surfaces as a rejected
+      // mutation here — the server stays the source of truth, this is not
+      // treated as a bug.
+      toast.error("Unpublish failed", { description: getVexErrorMessage(error) });
     }
   }
 
@@ -198,8 +284,10 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
         collection: collection!.slug,
         id: activeDocumentId,
         data: changedValues(form),
+        ...restoredFrom,
       });
       setActiveDocumentId(draftId);
+      setViewedVersion(null);
       form.reset();
     } catch (error) {
       toast.error("Save draft failed", { description: getVexErrorMessage(error) });
@@ -213,7 +301,7 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
   const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
 
   const form = useFieldsForm({
-    document: currentDocument,
+    document: formDocument,
     fields: collection.fields,
     readableFieldKeys,
     onSubmit: async () => {
@@ -230,7 +318,7 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
 
   useLiveFieldMerge({
     form,
-    document: currentDocument,
+    document: formDocument,
     fieldKeys: readableFieldKeys,
   });
 
@@ -251,9 +339,54 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
   });
   const isDraftDoc = currentDocument.vex_status === VERSION_STATUSES.draft.key;
 
+  const viewedVersionNumber = viewedVersion?.version ?? null;
+  const lastViewedVersionRef = useRef(viewedVersionNumber);
+  useEffect(() => {
+    if (lastViewedVersionRef.current === viewedVersionNumber) return;
+    lastViewedVersionRef.current = viewedVersionNumber;
+    form.reset();
+  }, [viewedVersionNumber]);
+
+  useAutosave({
+    values: changedValues(form),
+    onSave: async (changes) => {
+      const draftId = await saveDraftMutation({
+        collection: collection.slug,
+        id: activeDocumentId,
+        data: changes,
+        ...restoredFrom,
+      });
+      setActiveDocumentId(draftId);
+      setViewedVersion(null);
+      // Keystrokes typed during the save stay dirty for autosave's follow-up save.
+      if (CONSTRAINT_COMPARATORS.eq(changedValues(form), changes)) {
+        form.reset();
+      }
+    },
+    enabled: isVersioned && collection.versions.autosave.enabled && canEdit,
+  });
+
+  const { data: publishedRowWhileDraft } = useQuery({
+    ...convexQuery(vexConvexApi.get, {
+      id: (currentDocument.vex_publishedId as string | undefined) ?? currentDocument._id,
+      collection: collection.slug,
+    }),
+    enabled: isVersioned && isDraftDoc,
+  });
+  const publishedDocument = isDraftDoc ? publishedRowWhileDraft : currentDocument;
+
   const [tempId] = useState(() => crypto.randomUUID());
   const savedDocumentId = currentDocument._id as string | undefined;
   const formValues = useStore(form.store, (state) => state.values);
+  const matchesPublished =
+    !!publishedDocument &&
+    CONSTRAINT_COMPARATORS.eq(
+      formValues,
+      pickReadableValues(
+        getFieldsDefaultValues({ fields: collection.fields, document: publishedDocument }),
+        readableFieldKeys,
+      ),
+    );
   const isMobile = useIsMobile();
   const livePreview = resolveLivePreviewSettings({
     config: config.admin.livePreview,
@@ -308,6 +441,13 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
               !canEdit || field.admin.readOnly || !isFieldAllowed(fieldPermissions, fieldKey)
             }
             collection={collection}
+            documentStatus={
+              isVersioned
+                ? isDraftDoc
+                  ? VERSION_STATUSES.draft.key
+                  : VERSION_STATUSES.published.key
+                : undefined
+            }
           />
         );
       })}
@@ -320,25 +460,13 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
   // run to the bottom edge instead of stopping short of it.
   const isSplit = previewIsActive && !isMobile;
 
-  // BOTH panels need an explicit `defaultSize`: react-resizable-panels renders a
-  // panel that has none at flex-grow 0 until it measures the group after mount,
-  // which is a preview pane that flashes at zero width on every load.
   const formPanelSize = props.initialPreviewPanelSize ?? DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE;
-  // Pixel floors turned into shares of the available width, asymmetric by
-  // design: the preview needs more room to stay representative than the form
-  // needs to stay usable.
   const { ref: splitRef, minSizes: panelMinSizes } = useLivePreviewPanelMinSize();
-  // Toggling the preview swaps which element scrolls, and a freshly mounted
-  // scroller starts at zero — so the offset is carried across by hand.
   const formScroll = usePreservedScrollTop();
 
   return (
     <AppForm form={form} className="relative -mb-6 flex h-[calc(100%+1.5rem)] flex-col">
       <div
-        // Outside the scroll container, so it never scrolls away and never
-        // moves when a scrollbar appears below it. No bottom margin: the
-        // handle's divider starts at the top of the panel group, and a gap
-        // here would leave the two rules disconnected at their junction.
         className={
           "z-10 -mx-6 flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-y-2 border-b bg-background px-6"
         }
@@ -375,9 +503,25 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
                   publish={{
                     onClick: handlePublish,
                     isPending: isPublishing,
-                    disabled: !canPublish || !isDraftDoc,
+                    disabled: !canPublish || matchesPublished,
                   }}
-                />
+                  unpublish={{
+                    onClick: handleUnpublish,
+                    isPending: isUnpublishing,
+                    disabled: !canUnpublish || isDraftDoc || !isDefaultValue,
+                  }}
+                >
+                  <VersionHistoryDropdown
+                    target={{
+                      collection: collection.slug,
+                      documentId: activeDocumentId,
+                    }}
+                    hasDraft={isDraftDoc}
+                    viewingVersion={viewedVersion?.version ?? null}
+                    onViewVersion={setViewedVersion}
+                    hasUnsavedChanges={!isDefaultValue}
+                  />
+                </DraftToolbar>
               ) : (
                 <>
                   <Button

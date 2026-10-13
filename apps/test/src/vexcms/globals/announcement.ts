@@ -18,6 +18,9 @@ export const announcement = defineGlobal({
   },
   versions: {
     drafts: true,
+    autosave: {
+      enabled: true,
+    },
   },
   fields: {
     message: text({

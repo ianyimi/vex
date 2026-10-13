@@ -110,7 +110,16 @@ export function collectionConfigToVexSchema(props: {
   const indexes = [];
   const searchIndexes: string[] = [];
   for (const index of props.collection.indexes ?? []) {
-    indexes.push(`\t.index("${index.name}", ${JSON.stringify(index.fields)})`);
+    if (index.draftStatus === true) {
+      indexes.push(`\t.index("${index.name}", ${JSON.stringify(["vex_status", ...index.fields])})`);
+    } else if (index.draftStatus === "both") {
+      indexes.push(`\t.index("${index.name}", ${JSON.stringify(index.fields)})`);
+      indexes.push(
+        `\t.index("${index.name}__draftStatus", ${JSON.stringify(["vex_status", ...index.fields])})`,
+      );
+    } else {
+      indexes.push(`\t.index("${index.name}", ${JSON.stringify(index.fields)})`);
+    }
   }
 
   for (const [fieldKey, field] of Object.entries(props.collection.fields)) {
@@ -124,7 +133,16 @@ export function collectionConfigToVexSchema(props: {
         : undefined;
     // collection indexes preferred since they can be compound indexes
     if (fieldIndexName && !props.collection.indexes?.find((i) => i.name === fieldIndexName)) {
-      indexes.push(`\t.index("${fieldIndexName}", ["${fieldKey}"])`);
+      if (field.indexDraftStatus === true) {
+        indexes.push(`\t.index("${fieldIndexName}", ${JSON.stringify(["vex_status", fieldKey])})`);
+      } else if (field.indexDraftStatus === "both") {
+        indexes.push(`\t.index("${fieldIndexName}", ["${fieldKey}"])`);
+        indexes.push(
+          `\t.index("${fieldIndexName}__draftStatus", ${JSON.stringify(["vex_status", fieldKey])})`,
+        );
+      } else {
+        indexes.push(`\t.index("${fieldIndexName}", ["${fieldKey}"])`);
+      }
     }
 
     if (field.type === ADMIN_FIELDS.text.type && field.searchIndex) {

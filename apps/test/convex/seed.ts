@@ -1,1027 +1,38 @@
-import type { Id } from "./_generated/dataModel"
+import type { WithoutSystemFields } from "convex/server"
 
-import { GLOBAL_SLUG_SITE_SETTINGS } from "~/db/constants"
+import { getGlobal, upsertGlobal } from "@vexcms/core/server"
 
-import { mutation } from "./_generated/server"
+import {
+  GLOBAL_SLUG_SITE_SETTINGS,
+  TABLE_SLUG_FOOTERS,
+  TABLE_SLUG_HEADERS,
+  TABLE_SLUG_PAGES,
+  TABLE_SLUG_THEMES,
+} from "~/db/constants"
+import config from "~/vex.config.server"
+import {
+  BLOCK_SLUG_CODE_SHOWCASE,
+  BLOCK_SLUG_CTA,
+  BLOCK_SLUG_FAQ,
+  BLOCK_SLUG_FEATURES,
+  BLOCK_SLUG_FOOTER,
+  BLOCK_SLUG_HEADER,
+  BLOCK_SLUG_HERO,
+  BLOCK_SLUG_HOW_IT_WORKS,
+  BLOCK_SLUG_ROADMAP,
+  BLOCK_SLUG_SPLIT,
+  BLOCK_SLUG_STATS,
+} from "~/vexcms/blocks/constants"
 
-// ============================================================================
-// INIT — Fresh seed with block-based pages
-// ============================================================================
+import type { Doc, Id } from "./_generated/dataModel"
 
-/**
- * Initialize the site with default data for the Vex CMS marketing site.
- *
- * Run from terminal:
- *   npx convex run seed:init
- *
- * Creates:
- * - Site settings (site_settings collection)
- * - Default header with marketing nav
- * - Default footer with marketing links
- * - Default theme (Stark × Ember)
- * - 4 pages with block-based content: home, features, pricing, roadmap
- *
- * Safe to run multiple times — skips items that already exist.
- */
-export const init = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const created: string[] = []
-    const skipped: string[] = []
-
-    async function insertIfMissing(
-      table: string,
-      indexName: string,
-      indexField: string,
-      lookupValue: string,
-      data: Record<string, unknown>,
-      label: string
-    ) {
-      const existing = await ctx.db
-        .query(table as any)
-        .withIndex(indexName, (q: any) => q.eq(indexField, lookupValue))
-        .first()
-      if (existing) {
-        skipped.push(label)
-      } else {
-        await ctx.db.insert(table as any, data as any)
-        created.push(label)
-      }
-    }
-
-    async function insertIfEmpty(table: string, data: Record<string, unknown>, label: string) {
-      const first = await ctx.db.query(table as any).first()
-      if (first) {
-        skipped.push(label)
-      } else {
-        await ctx.db.insert(table as any, data as any)
-        created.push(label)
-      }
-    }
-
-    // ── SITE SETTINGS ── singleton global, stored in vex_globals as { slug, data }
-    const existingSettings = await ctx.db
-      .query("vex_globals")
-      .withIndex("by_slug", (q) => q.eq("slug", GLOBAL_SLUG_SITE_SETTINGS))
-      .first()
-    if (existingSettings) {
-      skipped.push("siteSettings")
-    } else {
-      await ctx.db.insert("vex_globals", {
-        slug: GLOBAL_SLUG_SITE_SETTINGS,
-        data: { name: "Vex CMS", activeTheme: [], adminTheme: [] },
-      })
-      created.push("siteSettings")
-    }
-
-    // ── HEADER ──
-    await insertIfMissing(
-      "headers",
-      "by_name",
-      "name",
-      "Main Header",
-      {
-        name: "Main Header",
-        logoText: "Vex CMS",
-        logoHref: "/",
-        menuItems: JSON.stringify([
-          { label: "Features", href: "/features" },
-          { label: "Pricing", href: "/pricing" },
-          { label: "Roadmap", href: "/roadmap" },
-          { label: "Docs", href: "/docs" },
-        ]),
-        actionButtons: JSON.stringify([
-          { label: "GitHub", href: "https://github.com/vexcms/vex", variant: "ghost" },
-          { label: "Get Started", href: "/docs", variant: "default" },
-        ]),
-      },
-      "header"
-    )
-
-    // ── FOOTER ──
-    await insertIfMissing(
-      "footers",
-      "by_name",
-      "name",
-      "Main Footer",
-      {
-        name: "Main Footer",
-        logoText: "Vex CMS",
-        copyright: "Vex CMS. All rights reserved.",
-        links: JSON.stringify([
-          { label: "Features", href: "/features" },
-          { label: "Pricing", href: "/pricing" },
-          { label: "Roadmap", href: "/roadmap" },
-          { label: "Documentation", href: "/docs" },
-          { label: "GitHub", href: "https://github.com/vexcms/vex" },
-          { label: "npm", href: "https://www.npmjs.com/package/vexcms" },
-          { label: "Convex", href: "https://convex.dev" },
-        ]),
-        socialLinks: JSON.stringify([
-          { platform: "GitHub", href: "https://github.com/vexcms/vex", icon: "Github" },
-          { platform: "X", href: "https://x.com/vexcms", icon: "Twitter" },
-        ]),
-      },
-      "footer"
-    )
-
-    // ── THEMES ── seeded by `seed:themes`, which also sets the active reference.
-
-    // ── PAGES — block-based content ──
-
-    // HOME
-    await insertIfMissing(
-      "pages",
-      "by_slug",
-      "slug",
-      "home",
-      {
-        title: "Vex CMS — The CMS for Convex",
-        slug: "home",
-        metaTitle: "Vex CMS — The CMS Built for Convex",
-        metaDescription:
-          "A headless content management system powered by Convex. Real-time data, type-safe schemas, and a beautiful admin panel out of the box.",
-        blocks: homeBlocks(),
-      },
-      "page:home"
-    )
-
-    // FEATURES
-    await insertIfMissing(
-      "pages",
-      "by_slug",
-      "slug",
-      "features",
-      {
-        title: "Everything you need to manage content",
-        slug: "features",
-        metaTitle: "Features — Vex CMS",
-        metaDescription:
-          "16 field types, real-time queries, type-safe schemas, live preview, and a beautiful admin panel. Everything you need to manage content.",
-        blocks: featuresBlocks(),
-      },
-      "page:features"
-    )
-
-    // PRICING
-    await insertIfMissing(
-      "pages",
-      "by_slug",
-      "slug",
-      "pricing",
-      {
-        title: "Simple, transparent pricing",
-        slug: "pricing",
-        metaTitle: "Pricing — Vex CMS",
-        metaDescription: "Vex CMS is open source and free. Enterprise features coming soon.",
-        blocks: pricingBlocks(),
-      },
-      "page:pricing"
-    )
-
-    // ROADMAP
-    await insertIfMissing(
-      "pages",
-      "by_slug",
-      "slug",
-      "roadmap",
-      {
-        title: "Roadmap",
-        slug: "roadmap",
-        metaTitle: "Roadmap — Vex CMS",
-        metaDescription:
-          "What we've shipped and what's coming next. Vex CMS is actively developed.",
-        blocks: roadmapBlocks(),
-      },
-      "page:roadmap"
-    )
-
-    return {
-      created,
-      skipped,
-      message: `Initialized ${created.length} items. Skipped ${skipped.length} (already exist).`,
-    }
-  },
-})
-
-// ============================================================================
-// MIGRATE — Patch existing pages from legacy content → blocks
-// ============================================================================
+import { internalMutation, type MutationCtx } from "./_generated/server"
 
 /**
- * Migration: Patch all existing pages with block-based content.
- *
- * Run from terminal:
- *   npx convex run seed:migratePagesToBlocks
- *
- * For each page in the `pages` table:
- * 1. If the page already has `blocks` data, it is skipped.
- * 2. If the page has legacy `content` text, it is parsed into structured blocks.
- * 3. If the page has neither, a default content block is added.
- *
- * The legacy `content` field is left intact for reference but is no longer used
- * by the page renderer.
+ * The 6 tweakcn theme presets (32-token light/dark palettes matching
+ * `themeColors.ts`'s `ThemeColorTokenKey` set). Shared verbatim with
+ * `apps/www/convex/seed.ts`'s `THEME_PRESETS`.
  */
-/**
- * Clear all test fields from pages and remove their data.
- *
- * Run from terminal:
- *   npx convex run seed:clearTestFields
- *
- * Unsets these fields on all pages:
- * - test (array field)
- * - test2 (nested array field)
- * - seo (group field)
- * - anotherTest (nested group field)
- *
- * Uses `undefined` to truly remove the fields from documents (not just empty strings).
- * After running, you can safely remove these fields from the pages collection schema.
- */
-export const clearTestFields = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const pages = await ctx.db.query("pages").collect()
-    const results: { slug: string; cleared: string[]; error?: string }[] = []
-
-    for (const page of pages as any[]) {
-      try {
-        const cleared: string[] = []
-        const unset: Record<string, undefined> = {}
-
-        if (page.test !== undefined) {
-          unset.test = undefined
-          cleared.push("test")
-        }
-        if (page.test2 !== undefined) {
-          unset.test2 = undefined
-          cleared.push("test2")
-        }
-        if (page.seo !== undefined) {
-          unset.seo = undefined
-          cleared.push("seo")
-        }
-        if (page.anotherTest !== undefined) {
-          unset.anotherTest = undefined
-          cleared.push("anotherTest")
-        }
-
-        if (cleared.length > 0) {
-          await ctx.db.patch(page._id, unset as any)
-        }
-
-        results.push({ slug: page.slug, cleared })
-      } catch (err) {
-        results.push({
-          slug: page.slug,
-          cleared: [],
-          error: err instanceof Error ? err.message : String(err),
-        })
-      }
-    }
-
-    const totalCleared = results.reduce((sum, r) => sum + r.cleared.length, 0)
-
-    return {
-      totalPages: pages.length,
-      totalFieldsCleared: totalCleared,
-      results,
-      message: `Cleared ${totalCleared} test field instances across ${pages.length} pages.`,
-    }
-  },
-})
-
-export const migratePagesToBlocks = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const pages = await ctx.db.query("pages").collect()
-    const results: { slug: string; status: "migrated" | "skipped" | "error"; message: string }[] =
-      []
-
-    for (const page of pages as any[]) {
-      try {
-        // Skip if blocks already exist and are non-empty
-        if (page.blocks && Array.isArray(page.blocks) && page.blocks.length > 0) {
-          results.push({ slug: page.slug, status: "skipped", message: "Already has blocks" })
-          continue
-        }
-
-        const blocks = generateBlocksForPage(page)
-        await ctx.db.patch(page._id, { blocks } as any)
-        results.push({
-          slug: page.slug,
-          status: "migrated",
-          message: `Created ${blocks.length} blocks`,
-        })
-      } catch (err) {
-        results.push({
-          slug: page.slug,
-          status: "error",
-          message: err instanceof Error ? err.message : String(err),
-        })
-      }
-    }
-
-    return {
-      total: pages.length,
-      migrated: results.filter((r) => r.status === "migrated").length,
-      skipped: results.filter((r) => r.status === "skipped").length,
-      errors: results.filter((r) => r.status === "error").length,
-      results,
-    }
-  },
-})
-
-/**
- * Generates structured blocks for a page based on its existing content or slug.
- */
-function generateBlocksForPage(page: {
-  slug: string
-  title: string
-  content?: string
-  metaTitle?: string
-  metaDescription?: string
-}) {
-  // Try parsing legacy content first
-  if (page.content && typeof page.content === "string" && page.content.includes("---")) {
-    return parseLegacyContent(page.content, page.title)
-  }
-
-  // Fallback: generate blocks based on slug
-  return generateDefaultBlocksForSlug(page.slug, page.title)
-}
-
-/**
- * Parses legacy content text with `--- SECTION ---` dividers into structured blocks.
- */
-function parseLegacyContent(content: string, title: string) {
-  const sections = content.split(/\n---\s*[^-\n]+\s*---\n/)
-  const headers = content.match(/---\s*([^-\n]+)\s*---/g) || []
-  const blocks: any[] = []
-
-  // First section → hero if it's short enough, otherwise content
-  const firstSection = sections[0]?.trim()
-  if (firstSection) {
-    const lines = firstSection.split("\n").filter((l) => l.trim())
-    if (lines.length <= 3) {
-      blocks.push({
-        id: crypto.randomUUID(),
-        blockType: "hero",
-        blockName: "Imported Hero",
-        title: lines[0] || title,
-        subtitle: lines.slice(1).join(" ").substring(0, 200),
-      })
-    } else {
-      blocks.push({
-        id: crypto.randomUUID(),
-        blockType: "content",
-        blockName: "Imported Content",
-        body: firstSection,
-        align: ["left"],
-        maxWidth: ["prose"],
-      })
-    }
-  }
-
-  // Remaining sections → content blocks
-  for (let i = 1; i < sections.length; i++) {
-    const section = sections[i]?.trim()
-    if (!section) continue
-
-    const header = headers[i - 1]?.replace(/---/g, "").trim() || `Section ${i}`
-    blocks.push({
-      id: crypto.randomUUID(),
-      blockType: "content",
-      blockName: header,
-      body: section,
-      align: ["left"],
-      maxWidth: ["prose"],
-    })
-  }
-
-  // If no blocks were created, add a default content block
-  if (blocks.length === 0) {
-    blocks.push({
-      id: crypto.randomUUID(),
-      blockType: "content",
-      blockName: "Content",
-      body: content,
-      align: ["left"],
-      maxWidth: ["prose"],
-    })
-  }
-
-  return blocks
-}
-
-/**
- * Generates default blocks for a page based on its slug.
- */
-function generateDefaultBlocksForSlug(slug: string, title: string) {
-  switch (slug) {
-    case "home":
-      return homeBlocks()
-    case "features":
-      return featuresBlocks()
-    case "pricing":
-      return pricingBlocks()
-    case "roadmap":
-      return roadmapBlocks()
-    default:
-      return [
-        {
-          id: crypto.randomUUID(),
-          blockType: "hero",
-          blockName: "Hero",
-          title,
-          subtitle: `Welcome to the ${title} page.`,
-          primaryCtaLabel: "Learn More",
-          primaryCtaHref: `/${slug}`,
-        },
-        {
-          id: crypto.randomUUID(),
-          blockType: "content",
-          blockName: "Content",
-          body: `Content for the ${title} page goes here. Edit this block in the admin panel.`,
-          align: ["left"],
-          maxWidth: ["prose"],
-        },
-      ]
-  }
-}
-
-// ============================================================================
-// Block generators — proper copy for each page type
-// ============================================================================
-
-function homeBlocks() {
-  return [
-    {
-      id: crypto.randomUUID(),
-      blockType: "hero",
-      blockName: "Main Hero",
-      badge: "Now in Public Beta",
-      title: "The CMS for Convex",
-      subtitle:
-        "Vex CMS gives you a full-featured content management system powered by Convex — real-time data, type-safe schemas, and a beautiful admin panel out of the box.",
-      primaryCtaLabel: "Get Started",
-      primaryCtaHref: "/docs",
-      secondaryCtaLabel: "View on GitHub",
-      secondaryCtaHref: "https://github.com/vexcms/vex",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "stats",
-      blockName: "Key Metrics",
-      title: "Trusted by developers worldwide",
-      stats: [
-        { value: "16+", label: "Field Types" },
-        { value: "100%", label: "TypeScript" },
-        { value: "<50ms", label: "Avg Query Time" },
-        { value: "∞", label: "Real-Time Updates" },
-      ],
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "feature",
-      blockName: "Real-Time by Default",
-      icon: "Zap",
-      title: "Real-Time by Default",
-      description:
-        "Every query is live. Content updates appear instantly across all connected clients — no polling, no webhooks.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "feature",
-      blockName: "Type-Safe Schemas",
-      icon: "ShieldCheck",
-      title: "Type-Safe Schemas",
-      description:
-        "Define your collections with TypeScript. Vex generates Convex schemas, Zod validators, and typed queries automatically.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "feature",
-      blockName: "Developer First",
-      icon: "Code",
-      title: "Developer First",
-      description:
-        "Code-first configuration, CLI tooling, and a clean API. Build with the tools you already know and love.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "logo-cloud",
-      blockName: "Trusted By",
-      title: "Built on technology you trust",
-      logos: [
-        { name: "Convex", image: "/logos/convex.svg", link: "https://convex.dev" },
-        {
-          name: "TypeScript",
-          image: "/logos/typescript.svg",
-          link: "https://www.typescriptlang.org",
-        },
-        { name: "Next.js", image: "/logos/nextjs.svg", link: "https://nextjs.org" },
-        { name: "Tailwind", image: "/logos/tailwind.svg", link: "https://tailwindcss.com" },
-        { name: "Vercel", image: "/logos/vercel.svg", link: "https://vercel.com" },
-      ],
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "testimonial",
-      blockName: "Developer Quote",
-      quote:
-        "Vex CMS cut our content workflow in half. Real-time previews mean our editors never wait for a deploy — and the type safety means our devs never guess.",
-      authorName: "Sarah Chen",
-      authorRole: "Lead Engineer, Acme Inc.",
-      company: "Acme Inc.",
-      rating: 5,
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "faq",
-      blockName: "FAQ",
-      title: "Frequently asked questions",
-      questions: [
-        {
-          question: "What is Vex CMS?",
-          answer:
-            "A headless CMS built on Convex with real-time data, type-safe schemas, draft/publish workflows, live preview, and an admin panel.",
-        },
-        {
-          question: "How is Vex different?",
-          answer:
-            "Unlike traditional headless CMS platforms, Vex is powered by Convex's real-time database. Content updates are instant across all clients.",
-        },
-        {
-          question: "Is Vex CMS free?",
-          answer:
-            "Yes, open source and free. You only pay for Convex usage, which has a generous free tier.",
-        },
-        {
-          question: "How do I get started?",
-          answer: "Run npx create-vexcms@alpha to scaffold a new project in under a minute.",
-        },
-      ],
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "cta",
-      blockName: "Final CTA",
-      title: "Ready to build?",
-      description: "Scaffold your first Vex CMS project in under a minute.",
-      buttonLabel: "Get Started",
-      buttonHref: "/docs",
-      variant: ["default"],
-    },
-  ]
-}
-
-function featuresBlocks() {
-  return [
-    {
-      id: crypto.randomUUID(),
-      blockType: "hero",
-      blockName: "Features Hero",
-      badge: "Features",
-      title: "Everything You Need to Manage Content",
-      subtitle:
-        "Built on Convex's real-time infrastructure with a developer experience that doesn't compromise on power.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "feature",
-      blockName: "16 Field Types",
-      icon: "Layers",
-      title: "16 Field Types",
-      description:
-        "Text, number, select, date, relationship, upload, richtext, blocks, color, tabs, and more.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "feature",
-      blockName: "Admin Panel",
-      icon: "LayoutDashboard",
-      title: "Full Admin Panel",
-      description:
-        "List views, edit forms, media library, and draft/publish workflow — all out of the box.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "feature",
-      blockName: "Real-Time Queries",
-      icon: "Activity",
-      title: "Real-Time Queries",
-      description:
-        "Every query is live via Convex. Content updates appear instantly across all connected clients.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "feature",
-      blockName: "Live Preview",
-      icon: "Eye",
-      title: "Live Preview",
-      description:
-        "Side-by-side iframe preview with responsive breakpoints and real-time updates as you edit.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "feature",
-      blockName: "Block System",
-      icon: "Blocks",
-      title: "Composable Blocks",
-      description:
-        "Compose pages from reusable content blocks with drag-and-drop reordering and inline editing.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "feature",
-      blockName: "Auth & RBAC",
-      icon: "ShieldCheck",
-      title: "Auth & RBAC",
-      description:
-        "Better Auth integration with role-based access control at the document and field level.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "feature",
-      blockName: "Rich Text Editor",
-      icon: "Type",
-      title: "Rich Text Editor",
-      description:
-        "Plate.js-powered editor with media uploads, links, tables, and custom elements.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "feature",
-      blockName: "CLI & Scaffolding",
-      icon: "Terminal",
-      title: "CLI & Scaffolding",
-      description: "vex dev with watch/generate, and create-vexcms for instant project setup.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "feature",
-      blockName: "Theme System",
-      icon: "Palette",
-      title: "Theme System",
-      description:
-        "Database-driven themes with light/dark mode, CSS variables, and OKLCH color support.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "feature",
-      blockName: "Block Styles",
-      icon: "Paintbrush",
-      title: "Block Styles",
-      description:
-        "Per-block responsive styling with Tailwind presets — margin, padding, typography, layout, and more.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "cta",
-      blockName: "Dev Experience CTA",
-      title: "TypeScript-First, Code-First",
-      description:
-        "Every collection, field, and query is fully typed. Schema changes propagate to your IDE instantly. Vex generates Convex schemas, typed queries, and Zod validators automatically.",
-      buttonLabel: "Read the Docs",
-      buttonHref: "/docs",
-      variant: ["outline"],
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "cta",
-      blockName: "Content Management CTA",
-      title: "Draft, Publish, Version, Repeat",
-      description:
-        "Save drafts and publish when ready. Full version history for every document. Track every change with automatic version snapshots. Roll back to any previous state.",
-      buttonLabel: "Try It Out",
-      buttonHref: "/admin",
-      variant: ["ghost"],
-    },
-  ]
-}
-
-function pricingBlocks() {
-  return [
-    {
-      id: crypto.randomUUID(),
-      blockType: "hero",
-      blockName: "Pricing Hero",
-      badge: "Open Source",
-      title: "Simple, Transparent Pricing",
-      subtitle: "Vex CMS is free and open source. You only pay for Convex usage.",
-      primaryCtaLabel: "Get Started Free",
-      primaryCtaHref: "/docs",
-      secondaryCtaLabel: "View on GitHub",
-      secondaryCtaHref: "https://github.com/vexcms/vex",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "pricing",
-      blockName: "Open Source Plan",
-      planName: "Open Source",
-      price: "Free",
-      period: "forever",
-      description: "All core features included. MIT licensed.",
-      features: [
-        "All 16 field types",
-        "Admin panel with list views & edit forms",
-        "Real-time queries via Convex",
-        "Live preview with responsive breakpoints",
-        "Block system with drag-and-drop",
-        "Authentication & RBAC",
-        "Rich text editor (Plate.js)",
-        "CLI & scaffolding tools",
-        "Theme system with CSS variables",
-        "Block styles with Tailwind presets",
-      ],
-      ctaLabel: "Get Started",
-      ctaHref: "/docs",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "pricing",
-      blockName: "Enterprise Plan",
-      planName: "Enterprise",
-      price: "Coming Soon",
-      period: "",
-      description: "Advanced features for teams and organizations.",
-      features: [
-        "Content environments (staging & production)",
-        "SAML/OIDC single sign-on",
-        "Multi-step approval workflows",
-        "Audit log with retention policies",
-        "i18n field variants & translation workflows",
-        "Priority support",
-      ],
-      ctaLabel: "Join Waitlist",
-      ctaHref: "/contact",
-      highlighted: true,
-      badge: "Coming Soon",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "faq",
-      blockName: "Pricing FAQ",
-      title: "Frequently asked questions",
-      questions: [
-        {
-          question: "Is it really free?",
-          answer:
-            "Yes, Vex CMS is MIT licensed. You only pay for Convex hosting, which has a generous free tier.",
-        },
-        {
-          question: "What about Convex costs?",
-          answer:
-            "Convex's free tier handles most small projects. Paid plans start when you exceed free tier limits.",
-        },
-        {
-          question: "What does Enterprise include?",
-          answer:
-            "Content environments, SSO, approval workflows, audit log, and localization — all built for team and compliance needs.",
-        },
-      ],
-    },
-  ]
-}
-
-function roadmapBlocks() {
-  return [
-    {
-      id: crypto.randomUUID(),
-      blockType: "hero",
-      blockName: "Roadmap Hero",
-      badge: "Roadmap",
-      title: "What We've Shipped & What's Coming Next",
-      subtitle: "Vex CMS is actively developed. Here's where we're headed.",
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "stats",
-      blockName: "Shipped Stats",
-      title: "Shipped",
-      stats: [
-        { value: "16", label: "Field Types" },
-        { value: "✓", label: "Admin Panel" },
-        { value: "✓", label: "Real-Time" },
-        { value: "✓", label: "Live Preview" },
-        { value: "✓", label: "Blocks" },
-        { value: "✓", label: "Auth & RBAC" },
-        { value: "✓", label: "Rich Text" },
-        { value: "✓", label: "CLI" },
-        { value: "✓", label: "Themes" },
-        { value: "✓", label: "Block Styles" },
-      ],
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "content",
-      blockName: "Coming Soon",
-      body: "**Content Scheduling** — Set a publishAt timestamp and content goes live automatically.\n\n**Team Management** — Invite users, assign roles, and manage pending invitations.\n\n**API Keys** — Read-only API tokens for external integrations with configurable rate limiting.\n\n**Audit Log** — Track who changed what and when across all collections and documents.",
-      align: ["left"],
-      maxWidth: ["wide"],
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "content",
-      blockName: "Planned",
-      body: "**Environments** — Project-level content branching with staging and production environments.\n\n**Localization** — i18n field variants with per-locale versioning and content translation workflows.\n\n**Approval Workflows** — Review and sign-off steps before content goes live.\n\n**Plugin System** — Extend Vex with community plugins for custom fields, integrations, and admin panel features.",
-      align: ["left"],
-      maxWidth: ["wide"],
-    },
-    {
-      id: crypto.randomUUID(),
-      blockType: "cta",
-      blockName: "Roadmap CTA",
-      title: "Want to shape the roadmap?",
-      description: "Join our community and help us prioritize what matters most to you.",
-      buttonLabel: "Join the Discussion",
-      buttonHref: "https://github.com/vexcms/vex/discussions",
-      variant: ["outline"],
-    },
-  ]
-}
-
-// ============================================================================
-// EDITORIAL — Seed data for exercising the shared access rules
-// ============================================================================
-
-/**
- * Seed the editorial collections with rows spanning every access outcome.
- *
- * Run from terminal:
- *   npx convex run seed:editorial
- *
- * Assigns authorship to the two oldest users so ownership rules have something to
- * discriminate on: user A authors the published rows plus one draft, user B authors
- * the rest. Sign in as each and the same rule set yields visibly different tables.
- *
- * What each role should see afterwards, per `~/auth/access.ts`:
- * - `admin`        — everything.
- * - `editor`       — everything in articles/case_studies/changelog/comments.
- * - `contributor`  — only the rows they authored, any status.
- * - `user`         — only `published` rows, and no comments at all.
- *
- * Safe to run multiple times — skips rows whose slug already exists.
- */
-export const editorial = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const created: string[] = []
-    const skipped: string[] = []
-
-    const users = await ctx.db.query("user").take(2)
-    if (users.length === 0) {
-      throw new Error("seed:editorial needs at least one user — sign in once, then run this again.")
-    }
-    // Falls back to the same author when only one user exists: the status rules still
-    // demonstrate, only the ownership split goes flat.
-    const authorA = users[0]._id
-    const authorB = users[1]?._id ?? users[0]._id
-
-    // Generic over the table so the returned id narrows to it — `comments` below needs
-    // a real `Id<"articles">`, not a union across all three. Convex's generated query
-    // types cannot resolve a shared index name through a generic table parameter, so
-    // the table is widened to one concrete literal INSIDE the helper. All three declare
-    // `by_slug` over `["slug"]`, which is what makes that widening sound.
-    type EditorialTable = "articles" | "case_studies" | "changelog"
-    async function insertBySlug<T extends EditorialTable>(
-      table: T,
-      slug: string,
-      data: Record<string, unknown>
-    ): Promise<Id<T>> {
-      const existing = await ctx.db
-        .query(table as "articles")
-        .withIndex("by_slug", (q) => q.eq("slug", slug))
-        .first()
-      if (existing) {
-        skipped.push(`${table}/${slug}`)
-        return existing._id as Id<T>
-      }
-      const id = await ctx.db.insert(table, { slug, ...data } as never)
-      created.push(`${table}/${slug}`)
-      return id
-    }
-
-    // ── Articles ───────────────────────────────────────────────────────────
-    const publishedArticle = await insertBySlug("articles", "why-convex", {
-      title: "Why we built VexCMS on Convex",
-      excerpt: "Reactive queries turn out to be the right primitive for a CMS.",
-      body: "Convex gives us live queries, transactional mutations, and typed indexes.",
-      status: ["published"],
-      publishedAt: Date.now() - 86_400_000 * 14,
-      readingMinutes: 7,
-      featured: true,
-      authorId: [authorA],
-    })
-
-    await insertBySlug("articles", "field-types-deep-dive", {
-      title: "A deep dive on field types",
-      excerpt: "Every field is a value, and that is the whole trick.",
-      body: "Draft in progress.",
-      status: ["draft"],
-      readingMinutes: 12,
-      featured: false,
-      authorId: [authorA],
-    })
-
-    await insertBySlug("articles", "access-control-patterns", {
-      title: "Access control patterns that scale",
-      excerpt: "Define the constraint once, apply it everywhere.",
-      body: "In review.",
-      status: ["review"],
-      readingMinutes: 9,
-      featured: false,
-      authorId: [authorB],
-    })
-
-    // ── Case studies ───────────────────────────────────────────────────────
-    await insertBySlug("case_studies", "maprios", {
-      title: "Maprios cuts publish time by 60%",
-      excerpt: "Migrating off a Node CMS onto Convex.",
-      status: ["published"],
-      publishedAt: Date.now() - 86_400_000 * 30,
-      clientName: "Maprios",
-      industry: "Logistics",
-      clientUrl: "https://maprios.com",
-      outcomeSummary: "Publish-to-live dropped from 90s to 35s.",
-      contractValue: 48_000,
-      authorId: [authorA],
-    })
-
-    await insertBySlug("case_studies", "northwind-rebuild", {
-      title: "Northwind rebuilds its docs site",
-      excerpt: "Unreleased — pricing still under review.",
-      status: ["draft"],
-      clientName: "Northwind",
-      industry: "Manufacturing",
-      outcomeSummary: "Pending sign-off.",
-      contractValue: 22_500,
-      authorId: [authorB],
-    })
-
-    // ── Changelog ──────────────────────────────────────────────────────────
-    await insertBySlug("changelog", "v0-4-0", {
-      title: "Shared access rules",
-      excerpt: "One constraint, many resources.",
-      status: ["published"],
-      publishedAt: Date.now() - 86_400_000 * 3,
-      version: "0.4.0",
-      releaseType: ["minor"],
-      breaking: false,
-      notes: "- composable access checks\n- index pushdown per resource",
-      authorId: [authorA],
-    })
-
-    await insertBySlug("changelog", "v0-5-0", {
-      title: "Versioning and drafts",
-      excerpt: "Unreleased.",
-      status: ["draft"],
-      version: "0.5.0",
-      releaseType: ["minor"],
-      breaking: true,
-      notes: "- draft/publish workflow",
-      authorId: [authorB],
-    })
-
-    // ── Comments ───────────────────────────────────────────────────────────
-    // No `status` field, so only the ownership rules reach these — which is the
-    // partial-overlap case the shared rules are meant to prove.
-    const existingComments = await ctx.db
-      .query("comments")
-      .withIndex("by_article", (q) => q.eq("article", [publishedArticle]))
-      .collect()
-    if (existingComments.length > 0) {
-      skipped.push("comments (already seeded)")
-    } else {
-      await ctx.db.insert("comments", {
-        body: "This matches what we saw migrating our own site.",
-        article: [publishedArticle],
-        approved: true,
-        authorId: [authorB],
-      })
-      await ctx.db.insert("comments", {
-        body: "Awaiting moderation — should be hidden from readers.",
-        article: [publishedArticle],
-        approved: false,
-        authorId: [authorA],
-      })
-      created.push("comments x2")
-    }
-
-    return {
-      authorA,
-      authorB,
-      created,
-      skipped,
-      note: "Sign in as each author and compare the tables: contributor sees only their own rows, user sees only published ones.",
-    }
-  },
-})
-
-// ============================================================================
-// THEMES — full 32-token shadcn palettes
-// ============================================================================
-
 const THEME_PRESETS = [
   {
     name: "Stark × Ember",
@@ -1315,71 +326,1449 @@ const THEME_PRESETS = [
       sidebarRing: "oklch(59.16% 0.21798 0.58)",
     },
   },
+  {
+    name: "Caffeine",
+    fontFamily:
+      "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+    radius: "0.5rem",
+    light: {
+      background: "oklch(98.21% 0 0)",
+      foreground: "oklch(24.35% 0 0)",
+      card: "oklch(99.11% 0 0)",
+      cardForeground: "oklch(24.35% 0 0)",
+      popover: "oklch(99.11% 0 0)",
+      popoverForeground: "oklch(24.35% 0 0)",
+      primary: "oklch(43.41% 0.0392 41.99)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(92% 0.0651 74.37)",
+      secondaryForeground: "oklch(34.99% 0.0685 40.83)",
+      muted: "oklch(95.21% 0 0)",
+      mutedForeground: "oklch(50.32% 0 0)",
+      accent: "oklch(93.1% 0 0)",
+      accentForeground: "oklch(24.35% 0 0)",
+      destructive: "oklch(62.71% 0.1936 33.34)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(88.22% 0 0)",
+      input: "oklch(88.22% 0 0)",
+      ring: "oklch(43.41% 0.0392 41.99)",
+      chart1: "oklch(43.41% 0.0392 41.99)",
+      chart2: "oklch(92% 0.0651 74.37)",
+      chart3: "oklch(93.1% 0 0)",
+      chart4: "oklch(93.67% 0.0523 75.5)",
+      chart5: "oklch(43.38% 0.0437 41.67)",
+      sidebar: "oklch(98.81% 0 0)",
+      sidebarForeground: "oklch(26.45% 0 0)",
+      sidebarPrimary: "oklch(32.5% 0 0)",
+      sidebarPrimaryForeground: "oklch(98.81% 0 0)",
+      sidebarAccent: "oklch(97.61% 0 0)",
+      sidebarAccentForeground: "oklch(32.5% 0 0)",
+      sidebarBorder: "oklch(94.01% 0 0)",
+      sidebarRing: "oklch(77.31% 0 0)",
+    },
+    dark: {
+      background: "oklch(17.76% 0 0)",
+      foreground: "oklch(94.91% 0 0)",
+      card: "oklch(21.34% 0 0)",
+      cardForeground: "oklch(94.91% 0 0)",
+      popover: "oklch(21.34% 0 0)",
+      popoverForeground: "oklch(94.91% 0 0)",
+      primary: "oklch(92.47% 0.0524 66.17)",
+      primaryForeground: "oklch(20.29% 0.024 200.2)",
+      secondary: "oklch(31.63% 0.019 63.7)",
+      secondaryForeground: "oklch(92.47% 0.0524 66.17)",
+      muted: "oklch(25.2% 0 0)",
+      mutedForeground: "oklch(76.99% 0 0)",
+      accent: "oklch(28.5% 0 0)",
+      accentForeground: "oklch(94.91% 0 0)",
+      destructive: "oklch(62.71% 0.1936 33.34)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(23.51% 0.0115 91.75)",
+      input: "oklch(40.17% 0 0)",
+      ring: "oklch(92.47% 0.0524 66.17)",
+      chart1: "oklch(92.47% 0.0524 66.17)",
+      chart2: "oklch(31.63% 0.019 63.7)",
+      chart3: "oklch(28.5% 0 0)",
+      chart4: "oklch(34.81% 0.0219 67)",
+      chart5: "oklch(92.45% 0.0533 67.09)",
+      sidebar: "oklch(21.03% 0.0059 285.89)",
+      sidebarForeground: "oklch(96.74% 0.0013 286.38)",
+      sidebarPrimary: "oklch(48.82% 0.2172 264.38)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(27.39% 0.0055 286.03)",
+      sidebarAccentForeground: "oklch(96.74% 0.0013 286.38)",
+      sidebarBorder: "oklch(27.39% 0.0055 286.03)",
+      sidebarRing: "oklch(87.11% 0.0055 286.29)",
+    },
+  },
+  {
+    name: "Sage Garden",
+    fontFamily: "Antic, ui-sans-serif, sans-serif, system-ui",
+    radius: "0.35rem",
+    light: {
+      background: "oklch(97.61% 0.0041 91.45)",
+      foreground: "oklch(24.17% 0.0298 269.88)",
+      card: "oklch(100% 0 0)",
+      cardForeground: "oklch(24.17% 0.0298 269.88)",
+      popover: "oklch(100% 0 0)",
+      popoverForeground: "oklch(24.17% 0.0298 269.88)",
+      primary: "oklch(63.33% 0.0309 154.9)",
+      primaryForeground: "oklch(100% 0 0)",
+      secondary: "oklch(85.96% 0.0291 119.99)",
+      secondaryForeground: "oklch(24.17% 0.0298 269.88)",
+      muted: "oklch(92.51% 0.0071 88.64)",
+      mutedForeground: "oklch(55.1% 0.0234 264.36)",
+      accent: "oklch(82.42% 0.0221 136.61)",
+      accentForeground: "oklch(24.17% 0.0298 269.88)",
+      destructive: "oklch(56.24% 0.1743 26.14)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(92.51% 0.0071 88.64)",
+      input: "oklch(100% 0 0)",
+      ring: "oklch(63.33% 0.0309 154.9)",
+      chart1: "oklch(63.33% 0.0309 154.9)",
+      chart2: "oklch(72.09% 0.0489 120.95)",
+      chart3: "oklch(67.44% 0.0427 136.01)",
+      chart4: "oklch(55.1% 0.0234 264.36)",
+      chart5: "oklch(92.51% 0.0071 88.64)",
+      sidebar: "oklch(98.45% 0.0026 106.45)",
+      sidebarForeground: "oklch(24.17% 0.0298 269.88)",
+      sidebarPrimary: "oklch(63.33% 0.0309 154.9)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(92.51% 0.0071 88.64)",
+      sidebarAccentForeground: "oklch(24.17% 0.0298 269.88)",
+      sidebarBorder: "oklch(92.51% 0.0071 88.64)",
+      sidebarRing: "oklch(63.33% 0.0309 154.9)",
+    },
+    dark: {
+      background: "oklch(14.48% 0 0)",
+      foreground: "oklch(97.02% 0 0)",
+      card: "oklch(18.22% 0 0)",
+      cardForeground: "oklch(97.02% 0 0)",
+      popover: "oklch(18.22% 0 0)",
+      popoverForeground: "oklch(97.02% 0 0)",
+      primary: "oklch(63.33% 0.0309 154.9)",
+      primaryForeground: "oklch(0% 0 0)",
+      secondary: "oklch(21.78% 0 0)",
+      secondaryForeground: "oklch(97.02% 0 0)",
+      muted: "oklch(21.78% 0 0)",
+      mutedForeground: "oklch(70.58% 0 0)",
+      accent: "oklch(37.09% 0.0248 153.98)",
+      accentForeground: "oklch(97.02% 0 0)",
+      destructive: "oklch(63.68% 0.2078 25.33)",
+      destructiveForeground: "oklch(100% 0 0)",
+      border: "oklch(28.5% 0 0)",
+      input: "oklch(18.22% 0 0)",
+      ring: "oklch(63.33% 0.0309 154.9)",
+      chart1: "oklch(63.33% 0.0309 154.9)",
+      chart2: "oklch(72.09% 0.0489 120.95)",
+      chart3: "oklch(67.44% 0.0427 136.01)",
+      chart4: "oklch(55.1% 0.0234 264.36)",
+      chart5: "oklch(50.96% 0.0289 152.35)",
+      sidebar: "oklch(16.84% 0 0)",
+      sidebarForeground: "oklch(97.02% 0 0)",
+      sidebarPrimary: "oklch(63.33% 0.0309 154.9)",
+      sidebarPrimaryForeground: "oklch(100% 0 0)",
+      sidebarAccent: "oklch(21.78% 0 0)",
+      sidebarAccentForeground: "oklch(97.02% 0 0)",
+      sidebarBorder: "oklch(28.5% 0 0)",
+      sidebarRing: "oklch(63.33% 0.0309 154.9)",
+    },
+  },
 ]
 
+/** How `runSeed` treats a document that already exists. */
+type SeedMode = "insert" | "patch"
+
+/** Per-document outcome of a seed run, keyed by a stable natural label. */
+export type SeedReport = {
+  /** Documents that did not exist and were inserted. */
+  created: string[]
+  /** Documents that existed and were reconciled against this file. */
+  patched: string[]
+  /** Documents that existed and were left exactly as they were. */
+  skipped: string[]
+}
+
 /**
- * Seed the theme presets and point `siteSettings.activeTheme` at one.
+ * Builds the whole marketing site: the 6 theme presets ("Stark × Ember" active
+ * by default), site settings, a header, a footer, and the three pages, every
+ * one assembled from block field data rather than bespoke JSX — then layers on
+ * the test-only editorial fixtures (articles, case studies, changelog,
+ * comments) this app seeds for exercising the shared access rules.
  *
- * Run from terminal:
- *   npx convex run seed:themes
- *   npx convex run seed:themes '{"activate":"Violet Bloom"}'
+ * Every document is located by a natural identifier — theme/header/footer name,
+ * page slug, editorial slug, or the `siteSettings` singleton — never by id, so
+ * both modes are safe to run repeatedly and neither can ever duplicate a row.
  *
- * Requires `seed:init` to have run first — that is what creates the
- * siteSettings global. Safe to run repeatedly: existing themes are skipped by
- * name, and only the active reference is rewritten. `adminTheme` is left alone,
- * so the admin panel keeps following the site theme unless you set it by hand.
- *
- * @param activate - Theme name to set active. Defaults to "Stark × Ember".
+ * `mode` decides what happens to a document that is already there:
+ * - `"insert"` leaves it untouched. Correct for a fresh deployment, and the
+ *   reason editing this file has no effect on one that is already seeded.
+ * - `"patch"` reconciles it in place, so this file is the source of truth and
+ *   content changes ship by re-running rather than by hand-editing documents.
+ *   Patching overwrites editor changes to the fields seeded here, which is the
+ *   point; it is not a merge. The editorial fixtures are the one exception:
+ *   they are always insert-if-missing, regardless of `mode`.
  */
-export const themes = mutation({
-  args: {},
-  handler: async (ctx, args: { activate?: string }) => {
-    const created: string[] = []
-    const skipped: string[] = []
+async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
+  const created: string[] = []
+  const patched: string[] = []
+  const skipped: string[] = []
 
-    for (const preset of THEME_PRESETS) {
-      const existing = await ctx.db
-        .query("themes")
-        .withIndex("by_name", (q) => q.eq("name", preset.name))
-        .first()
-      if (existing) {
-        skipped.push(preset.name)
+  let activeThemeId: null | string = null
+  for (const preset of THEME_PRESETS) {
+    const existing = await ctx.db
+      .query(TABLE_SLUG_THEMES)
+      .withIndex("by_name", (q) => q.eq("name", preset.name))
+      .first()
+    if (existing) {
+      if (mode === "patch") {
+        await ctx.db.patch(TABLE_SLUG_THEMES, existing._id, preset)
+        patched.push(`theme:${preset.name}`)
       } else {
-        await ctx.db.insert("themes", preset)
-        created.push(preset.name)
+        skipped.push(`theme:${preset.name}`)
       }
+      if (preset.name === "Stark × Ember") {
+        activeThemeId = existing._id
+      }
+      continue
     }
+    const id = await ctx.db.insert(TABLE_SLUG_THEMES, preset)
+    created.push(`theme:${preset.name}`)
+    if (preset.name === "Stark × Ember") {
+      activeThemeId = id
+    }
+  }
 
-    const activateName = args.activate ?? "Stark × Ember"
-    const target = await ctx.db
-      .query("themes")
-      .withIndex("by_name", (q) => q.eq("name", activateName))
-      .first()
-    if (!target) {
-      throw new Error(
-        `No theme named "${activateName}". Seeded: ${THEME_PRESETS.map((p) => p.name).join(", ")}.`
-      )
-    }
-
-    const settings = await ctx.db
-      .query("vex_globals")
-      .withIndex("by_slug", (q) => q.eq("slug", GLOBAL_SLUG_SITE_SETTINGS))
-      .first()
-    if (!settings) {
-      throw new Error("siteSettings global not found — run 'npx convex run seed:init' first.")
-    }
-    // The vex_globals schema stores `data: v.any()`; getGlobal owns the real
-    // shape, so name the record type once instead of spreading `any`.
-    const settingsData = (settings.data ?? {}) as Record<string, unknown>
-    await ctx.db.patch(settings._id, {
-      data: { ...settingsData, activeTheme: [target._id] },
+  const existingSettings = await getGlobal({
+    ctx,
+    config,
+    slug: GLOBAL_SLUG_SITE_SETTINGS,
+    access: { bypass: true },
+  })
+  const siteSettingsDoc = {
+    name: "VexCMS",
+    description:
+      "Define your collections in TypeScript. VexCMS generates the Convex schema and types, and ships a real-time admin panel your whole team can use.",
+    activeTheme: activeThemeId ? [activeThemeId] : [],
+  }
+  if (existingSettings && mode !== "patch") {
+    skipped.push("siteSettings")
+  } else {
+    // `upsertGlobal` merges field by field, so passing only the seeded keys
+    // leaves `adminTheme` and every SEO field an editor had set untouched.
+    await upsertGlobal({
+      ctx,
+      config,
+      slug: GLOBAL_SLUG_SITE_SETTINGS,
+      data: siteSettingsDoc,
+      access: { bypass: true },
     })
-
-    return {
-      created,
-      skipped,
-      active: activateName,
-      note: "Reload the app — both site and admin follow siteSettings.activeTheme.",
+    if (existingSettings) {
+      patched.push("siteSettings")
+    } else {
+      created.push("siteSettings")
     }
+  }
+
+  const existingHeader = await ctx.db
+    .query(TABLE_SLUG_HEADERS)
+    .withIndex("by_name", (q) => q.eq("name", "Main Header"))
+    .first()
+  const headerDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_HEADERS>> = {
+    name: "Main Header",
+    content: [
+      {
+        blockType: BLOCK_SLUG_HEADER,
+        blockName: "Site Header",
+        id: "main-header",
+        logoText: "VexCMS",
+        logoHref: "/",
+        menuItems: [
+          { label: "Features", href: "/features" },
+          { label: "Roadmap", href: "/roadmap" },
+          { label: "Docs", href: "https://docs.vexcms.dev" },
+        ],
+        actionButtons: [
+          { label: "GitHub", href: "https://github.com/ianyimi/vex", variant: ["ghost"] },
+          {
+            label: "Get started",
+            href: "https://docs.vexcms.dev/guides/quickstart/",
+            variant: ["default"],
+          },
+        ],
+      },
+    ],
+  }
+  if (existingHeader) {
+    if (mode === "patch") {
+      await ctx.db.patch(TABLE_SLUG_HEADERS, existingHeader._id, headerDoc)
+      patched.push("header")
+    } else {
+      skipped.push("header")
+    }
+  } else {
+    await ctx.db.insert(TABLE_SLUG_HEADERS, headerDoc)
+    created.push("header")
+  }
+
+  const existingFooter = await ctx.db
+    .query(TABLE_SLUG_FOOTERS)
+    .withIndex("by_name", (q) => q.eq("name", "Main Footer"))
+    .first()
+  const footerDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_FOOTERS>> = {
+    name: "Main Footer",
+    content: [
+      {
+        blockType: BLOCK_SLUG_FOOTER,
+        blockName: "Site Footer",
+        id: "main-footer",
+        logoText: "VexCMS",
+        copyright: "VexCMS. Apache-2.0 licensed. Built on Convex.",
+        links: [
+          { label: "Features", href: "/features" },
+          { label: "Roadmap", href: "/roadmap" },
+          { label: "Docs", href: "https://docs.vexcms.dev" },
+          { label: "Quickstart", href: "https://docs.vexcms.dev/guides/quickstart/" },
+          { label: "Admin demo", href: "/admin" },
+          { label: "npm", href: "https://www.npmjs.com/package/@vexcms/core" },
+          { label: "Licence", href: "https://github.com/ianyimi/vex/blob/master/LICENSE" },
+          { label: "Convex", href: "https://convex.dev" },
+          { label: "Convex docs", href: "https://docs.convex.dev" },
+        ],
+        socialLinks: [
+          { platform: "GitHub", href: "https://github.com/ianyimi/vex", icon: "Github" },
+        ],
+      },
+    ],
+  }
+  if (existingFooter) {
+    if (mode === "patch") {
+      await ctx.db.patch(TABLE_SLUG_FOOTERS, existingFooter._id, footerDoc)
+      patched.push("footer")
+    } else {
+      skipped.push("footer")
+    }
+  } else {
+    await ctx.db.insert(TABLE_SLUG_FOOTERS, footerDoc)
+    created.push("footer")
+  }
+
+  const existingHome = await ctx.db
+    .query(TABLE_SLUG_PAGES)
+    .withIndex("by_slug", (q) => q.eq("slug", "home"))
+    // `pages` is versioned: a draft row shares its published row's slug, and
+    // patching the draft here would leave two published rows.
+    .filter((q) => q.neq(q.field("vex_status"), "draft"))
+    .first()
+  const homePageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = {
+    title: "Home",
+    slug: "home",
+    // `pages` is versioned (`versions.drafts`): reads are published-only, so a
+    // seeded row without this is invisible on the public site.
+    vex_status: "published",
+    blocks: [
+      {
+        blockType: BLOCK_SLUG_HERO,
+        blockName: "Hero",
+        id: "home-hero",
+        variant: ["full"],
+        installCommand: "pnpm create vexcms@alpha",
+        badgeText: "Public alpha — now on npm",
+        badgeLink: "https://www.npmjs.com/package/@vexcms/core",
+        heading: "The content backend for everything Convex.",
+        subheading:
+          "Define your collections in TypeScript. Vex generates the Convex schema and types. Your app gets typed queries. Your clients get a real-time admin panel. No API layer. No second database.",
+        primaryCtaLabel: "Get started",
+        primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
+        secondaryCtaLabel: "View on GitHub",
+        secondaryCtaHref: "https://github.com/ianyimi/vex",
+      },
+      {
+        blockType: BLOCK_SLUG_STATS,
+        blockName: "Stats",
+        id: "home-stats",
+        items: [
+          {
+            value: "1",
+            label: "command to a running CMS",
+            description:
+              "pnpm create vexcms@alpha scaffolds Next.js, Convex, auth, and the admin panel in one step",
+          },
+          {
+            value: "0",
+            label: "API layers to maintain",
+            description:
+              "Convex is the database. No connection string, no REST or GraphQL tier in between",
+          },
+          {
+            value: "12",
+            label: "field types",
+            description:
+              "text, url, number, checkbox, select, date, color, upload, relationship, group, array, blocks",
+          },
+          {
+            value: "8",
+            label: "packages on npm",
+            description:
+              "core, react, next, cli, better-auth, file-storage-convex, richtext-plate, create-vexcms",
+          },
+        ],
+      },
+      {
+        blockType: BLOCK_SLUG_FEATURES,
+        blockName: "Features",
+        id: "home-features",
+        heading: "One config. The whole backend.",
+        subheading:
+          "Your collection definitions are the only place you write your content model. The Convex tables, the TypeScript types, the Zod validators, the admin forms, and the access rules all come from them.",
+        features: [
+          {
+            title: "Schema and types, generated",
+            description:
+              "vex dev watches your collections and writes the Convex schema, the TypeScript interfaces, and the Zod validators. You never hand-maintain schema.ts again.",
+            icon: "Wand",
+          },
+          {
+            title: "Typed reads, ready to use",
+            description:
+              "The packages export find, get, create, update, and remove for both the server and the client. Call them inside your own Convex functions, or through the local API from a server component.",
+            icon: "Plug",
+          },
+          {
+            title: "Types all the way to the component",
+            description:
+              "Fields, relationships, and return shapes are checked from the table to the JSX. Rename a field and the compiler hands you every call site.",
+            icon: "ShieldCheck",
+          },
+          {
+            title: "An admin panel you can hand to a client",
+            description:
+              "It is a route in your own app, not a dashboard on someone else's domain. Every list view is a live Convex subscription. Rows and totals update as people work.",
+            icon: "Radio",
+          },
+          {
+            title: "Access control that runs in the query",
+            description:
+              "Rules per document and per field. Constraints compile to a withIndex range inside the Convex query. Per-call overrides and an anonymous role are built in.",
+            icon: "Lock",
+          },
+          {
+            title: "Page building from typed blocks",
+            description:
+              "A blocks field composes typed content blocks into a discriminated union. Each block pairs one config with one React renderer. This page is built from them.",
+            icon: "LayoutGrid",
+          },
+        ],
+      },
+      {
+        blockType: BLOCK_SLUG_CODE_SHOWCASE,
+        blockName: "Code Showcase",
+        id: "home-code-showcase",
+        heading: "You write the collection. Vex writes the schema.",
+        subheading:
+          "On the left, a blog's Posts collection, written once by hand. On the right, the Convex table vex dev emits from it. Validators, ids, and indexes included. Never edited by hand.",
+        panes: [
+          {
+            label: "You write",
+            filename: "src/vexcms/collections/posts.ts",
+            language: ["ts"],
+            authored: ["authored"],
+            code: `export const posts = defineCollection({
+  slug: "posts",
+  admin: { useAsTitle: "title", icon: "Newspaper" },
+  fields: {
+    title: text({ label: "Title", required: true }),
+    slug: text({ label: "Slug", required: true, index: "by_slug" }),
+    excerpt: text({ label: "Excerpt" }),
+    featured: checkbox({ label: "Featured" }),
+    readingMinutes: number({ label: "Reading Minutes" }),
+    coverImage: upload({ to: "images", label: "Cover Image" }),
+    author: relationship({ label: "Author", collection: { slug: "authors" } }),
+    tags: array({ label: "Tags", items: text({ label: "Tag" }) }),
+    seo: group({
+      label: "SEO",
+      fields: {
+        metaTitle: text({ label: "Meta Title" }),
+        metaDescription: text({ label: "Meta Description" }),
+      },
+    }),
   },
+  labels: { singular: "Post", plural: "Posts" },
+})`,
+          },
+          {
+            label: "Vex generates",
+            filename: "convex/vex.schema.ts",
+            language: ["ts"],
+            authored: ["generated"],
+            code: `// ⚠️ AUTO-GENERATED BY VEX CMS — DO NOT EDIT ⚠️
+// Run 'vex dev' or 'vex generate' to update this file.
+
+import { defineTable } from "convex/server"
+import { v } from "convex/values"
+
+export const posts = defineTable({
+  title: v.string(),
+  slug: v.string(),
+  excerpt: v.optional(v.string()),
+  featured: v.optional(v.boolean()),
+  readingMinutes: v.optional(v.number()),
+  coverImage: v.optional(v.array(v.id("images"))),
+  author: v.optional(v.array(v.id("authors"))),
+  tags: v.optional(v.array(v.string())),
+  seo: v.optional(
+    v.object({ metaTitle: v.optional(v.string()), metaDescription: v.optional(v.string()) })
+  ),
+})
+  .index("by_slug", ["slug"])
+  .index("by_author", ["author"])`,
+          },
+        ],
+      },
+      {
+        blockType: BLOCK_SLUG_SPLIT,
+        blockName: "Built on Convex",
+        id: "home-split-convex",
+        eyebrow: "Built on Convex",
+        heading: "Everything Convex does, your CMS does too.",
+        body: "VexCMS is built for Convex and nothing else. That is the trade. In return, none of the guarantees below are features we had to build. They are Convex's, and they come with the install. Every one is documented on convex.dev.",
+        bullets: [
+          {
+            icon: "Radio",
+            text: "Live queries. Every read is a subscription, so edits land in every open client. Nothing to poll, no cache to invalidate.",
+          },
+          {
+            icon: "ShieldCheck",
+            text: "ACID transactions. A mutation that touches five documents either lands completely or not at all.",
+          },
+          {
+            icon: "Clock",
+            text: "Scheduling and crons. Publish at a time, expire a banner, reindex overnight.",
+          },
+          {
+            icon: "HardDrive",
+            text: "File storage. The media library is Convex storage sitting behind an upload field.",
+          },
+          {
+            icon: "Search",
+            text: "Full-text and vector search over your content, from the same backend that stores it.",
+          },
+          {
+            icon: "Lock",
+            text: "Convex's security and compliance posture, inherited whole rather than re-implemented.",
+          },
+        ],
+        media: ["code"],
+        mediaPosition: ["right"],
+        codeFilename: "convex/posts.ts",
+        codeLanguage: ["ts"],
+        code: `import { find } from "@vexcms/core/server"
+
+import { query } from "./_generated/server"
+
+// An ordinary Convex query. Because it is an ordinary Convex
+// query, every client reading it is subscribed to it — that is
+// Convex's doing, not something VexCMS bolted on top.
+export const featuredPosts = query({
+  args: {},
+  handler: async (ctx) =>
+    find({
+      ctx,
+      collection: "posts",
+      withIndex: { name: "by_featured", range: (q) => q.eq("featured", true) },
+      access: { bypass: true },
+    }),
+})`,
+      },
+      {
+        blockType: BLOCK_SLUG_SPLIT,
+        blockName: "Coming from Payload",
+        id: "home-split-payload",
+        eyebrow: "Coming from Payload",
+        heading: "The config you already know, on a backend that subscribes.",
+        body: "Collections, fields, globals, blocks, access control: the shapes are the ones you already write. Your content modelling carries over. What changes is the layer underneath.",
+        bullets: [
+          {
+            icon: "FileCode",
+            text: "defineCollection and defineGlobal, with the field helpers you expect from a code-first CMS.",
+          },
+          {
+            icon: "Blocks",
+            text: "A blocks field that composes typed content blocks into a real page builder.",
+          },
+          {
+            icon: "Lock",
+            text: "Document- and field-level access control, with constraints that compile to an indexed range.",
+          },
+          {
+            icon: "Image",
+            text: "An upload field over a searchable media library, backed by Convex file storage.",
+          },
+          {
+            icon: "Users",
+            text: "Email, password, and OAuth through Better Auth, with organisations and API keys as plugins.",
+          },
+          {
+            icon: "Database",
+            text: "No database to run, no adapter to pick, no cache to invalidate. Convex is all three.",
+          },
+        ],
+        media: ["none"],
+        mediaPosition: ["right"],
+      },
+      {
+        blockType: BLOCK_SLUG_HOW_IT_WORKS,
+        blockName: "How It Works",
+        id: "home-how-it-works",
+        heading: "From nothing to a live CMS in four steps.",
+        subheading:
+          "The scaffolder wires Convex, auth, and the admin panel together. Your part is the field definitions.",
+        steps: [
+          {
+            icon: "Terminal",
+            title: "Scaffold the project",
+            description:
+              "pnpm create vexcms@alpha gives you a Next.js app with Convex, Better Auth, and the admin panel already wired together",
+          },
+          {
+            icon: "Code",
+            title: "Define your collections",
+            description:
+              "Declare fields with defineCollection and the field helpers. vex dev watches the file and regenerates the Convex schema, the types, and the validators as you type",
+          },
+          {
+            icon: "LayoutGrid",
+            title: "Build the pages",
+            description:
+              "Compose pages from typed blocks. Each block pairs one config with one renderer. Editors manage them from the admin panel",
+          },
+          {
+            icon: "Rocket",
+            title: "Deploy",
+            description:
+              "Push to Convex and deploy the Next.js app. Every read is a subscription, so content changes reach open clients on their own",
+          },
+        ],
+      },
+      {
+        blockType: BLOCK_SLUG_FAQ,
+        blockName: "FAQ",
+        id: "home-faq",
+        heading: "Questions we keep getting.",
+        subheading: "",
+        supportLink: "https://github.com/ianyimi/vex/issues",
+        items: [
+          {
+            question: "What is VexCMS?",
+            answer:
+              "A headless CMS that runs inside your Convex backend. You define collections in TypeScript. VexCMS generates the Convex schema and types, exports typed read and write functions, and gives your team a real-time admin panel.",
+          },
+          {
+            question: "How is this different from other headless CMS platforms?",
+            answer:
+              "Most of them put a REST or GraphQL API in front of a database you configure and pay for separately. VexCMS has neither. Convex is the database and your schema is code. Every read is a live subscription, not a request.",
+          },
+          {
+            question: "Does it generate my queries?",
+            answer:
+              "No. vex dev generates the Convex schema, the TypeScript types, and the Zod validators. The read and write functions — find, get, create, update, remove — ship in the packages. You call them inside your own Convex functions, or through the local API from a server component. Your query layer stays yours.",
+          },
+          {
+            question: "I already use Payload. Why would I switch?",
+            answer:
+              "The config is familiar, so your content modelling transfers. You drop the database to operate, the adapter layer, and the cache invalidation. You pick up everything Convex ships: live queries, transactions, scheduling, file storage, and search.",
+          },
+          {
+            question: "Do I need to know Convex?",
+            answer:
+              "It helps, and it pays off. Everything you learn about Convex applies to your app, not to a CMS abstraction. Day to day, you write field definitions and the CLI does the rest.",
+          },
+          {
+            question: "Is it production ready?",
+            answer:
+              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation and live preview have landed; the big ones left are versioning and drafts, and the richtext field. The roadmap page has the full list.",
+          },
+          {
+            question: "Which frameworks does it support?",
+            answer:
+              "The data layer works with any Convex client. The admin panel is Next.js today, through @vexcms/next and @vexcms/react. Those packages also ship prerendering, sitemap and robots helpers, and cache purging on save. A TanStack Start adapter is on the post-launch list.",
+          },
+          {
+            question: "What does it cost?",
+            answer:
+              "The core is Apache-2.0 and stays that way: every field type, the admin panel, the CLI, RBAC, drafts, live preview, and hooks. You pay Convex for usage, and Convex has a free tier. Paid enterprise add-ons come later: environment branching, SSO, approval workflows, audit logs, and localization, as separate packages under a flat annual licence. Nothing free today becomes paid later.",
+          },
+        ],
+      },
+      {
+        blockType: BLOCK_SLUG_CTA,
+        blockName: "CTA",
+        id: "home-cta",
+        heading: "Scaffold it and see.",
+        subheading:
+          "One command gives you a Next.js app, a Convex deployment, auth, the admin panel, and a marketing site like this one. Seeded, editable, and yours.",
+        actions: [
+          { label: "Get started", href: "https://docs.vexcms.dev/guides/quickstart/" },
+          { label: "View on GitHub", href: "https://github.com/ianyimi/vex" },
+          { label: "Why Convex", href: "https://docs.convex.dev/realtime" },
+        ],
+      },
+    ],
+  }
+  if (existingHome) {
+    if (mode === "patch") {
+      await ctx.db.patch(TABLE_SLUG_PAGES, existingHome._id, homePageDoc)
+      patched.push("page:home")
+    } else {
+      skipped.push("page:home")
+    }
+  } else {
+    await ctx.db.insert(TABLE_SLUG_PAGES, homePageDoc)
+    created.push("page:home")
+  }
+
+  const existingFeatures = await ctx.db
+    .query(TABLE_SLUG_PAGES)
+    .withIndex("by_slug", (q) => q.eq("slug", "features"))
+    // `pages` is versioned: a draft row shares its published row's slug, and
+    // patching the draft here would leave two published rows.
+    .filter((q) => q.neq(q.field("vex_status"), "draft"))
+    .first()
+  const featuresPageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = {
+    title: "Features",
+    slug: "features",
+    // `pages` is versioned (`versions.drafts`): reads are published-only, so a
+    // seeded row without this is invisible on the public site.
+    vex_status: "published",
+    blocks: [
+      {
+        blockType: BLOCK_SLUG_HERO,
+        blockName: "Hero",
+        id: "features-hero",
+        variant: ["compact"],
+        badgeText: "Features",
+        heading: "Everything that comes out of one collection definition.",
+        subheading:
+          "The Convex tables, the TypeScript types, the Zod validators, the admin forms, the typed read and write functions, and the access rules. Written once, in TypeScript.",
+        primaryCtaLabel: "Get started",
+        primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
+      },
+      {
+        blockType: BLOCK_SLUG_FEATURES,
+        blockName: "Features",
+        id: "features-features",
+        heading: "What you get, concretely.",
+        subheading:
+          "Everything below is shipped in the published packages and running in this site's admin panel. Anything still in progress lives on the roadmap.",
+        features: [
+          {
+            title: "Twelve field types",
+            description:
+              "text, url, number, checkbox, select, date, color, upload, relationship, group, array, and blocks. Richtext lands with 0.1.0. json, email, and textarea follow after.",
+            icon: "Type",
+          },
+          {
+            title: "Schema and type generation",
+            description:
+              "vex generate and vex dev write convex/vex.schema.ts, your TypeScript interfaces, and matching Zod validators straight from defineCollection.",
+            icon: "Wand",
+          },
+          {
+            title: "Real-time data tables",
+            description:
+              "Pagination, live totals, and bulk operations over a Convex subscription. Two editors working the same collection watch each other's changes arrive.",
+            icon: "Table",
+          },
+          {
+            title: "Media library",
+            description:
+              "An upload field with a searchable, paginated picker over Convex file storage, available anywhere a document takes an image.",
+            icon: "Image",
+          },
+          {
+            title: "Roles, documents, and fields",
+            description:
+              "Rules per collection, per operation, per document, and per field, plus per-call access.action and access.bypass overrides and an anonymous role for public reads.",
+            icon: "Lock",
+          },
+          {
+            title: "Globals for the one-off content",
+            description:
+              "defineGlobal gives you singletons — site settings, a header, a footer — with the same fields, the same forms, and the same access rules as a collection.",
+            icon: "Boxes",
+          },
+          {
+            title: "Database-driven themes",
+            description:
+              "32 shadcn tokens per mode, light and dark, stored as OKLCH and applied on first paint. Change one and every open tab follows without a reload.",
+            icon: "Palette",
+          },
+          {
+            title: "SEO, prerendering, and purge on save",
+            description:
+              "vexMetadata, vexStaticParams, createVexSitemap, and createVexRobots for the public side, plus a revalidate route that drops the cached page when an editor hits save.",
+            icon: "Search",
+          },
+          {
+            title: "A test kit for your own components",
+            description:
+              "@vexcms/react/testing exports the suites we run against every field input. Your custom fields can be held to the same contract.",
+            icon: "CircleCheck",
+          },
+        ],
+      },
+      {
+        blockType: BLOCK_SLUG_SPLIT,
+        blockName: "Admin panel",
+        id: "features-split-admin",
+        eyebrow: "Admin panel",
+        heading: "A panel you can hand to a client.",
+        body: "The admin panel is a route in your own Next.js app, behind your own auth, on your own domain. It reads the same collection definitions your code does. Add a field and the form updates with no UI work.",
+        bullets: [
+          {
+            icon: "Radio",
+            text: "Every list view is a Convex subscription, so rows and totals update while you watch.",
+          },
+          {
+            icon: "Users",
+            text: "Roles decide what each person can see and change, down to the individual field.",
+          },
+          {
+            icon: "Palette",
+            text: "Themes live in the database. Branding the panel is content work, not a deploy.",
+          },
+          {
+            icon: "Image",
+            text: "A media picker with search and pagination over Convex file storage.",
+          },
+        ],
+        media: ["code"],
+        mediaPosition: ["right"],
+        codeFilename: "app/(vexcms)/admin/[[...path]]/page.tsx",
+        codeLanguage: ["tsx"],
+        code: `import { NextAdminPage } from "@vexcms/next/server"
+import { redirect } from "next/navigation"
+
+import { getToken } from "~/auth/server"
+import config from "~/vex.config.server"
+
+// The whole panel is one route in your app. Gate it however you
+// gate anything else, then hand it the config you already wrote.
+export default async function AdminPage({
+  params,
+}: {
+  params: Promise<{ path?: string[] }>
+}) {
+  const token = await getToken()
+  if (!token) redirect("/auth/sign-in?redirectTo=/admin")
+
+  return <NextAdminPage config={config} params={params} token={token} />
+}`,
+      },
+      {
+        blockType: BLOCK_SLUG_CODE_SHOWCASE,
+        blockName: "Code Showcase",
+        id: "features-code-showcase",
+        heading: "One collection. Every layer, typed.",
+        subheading:
+          "A testimonials collection any marketing site would have, and the Convex table vex dev writes from it. Validators, media ids, and the index you asked for, none of it typed out by hand.",
+        panes: [
+          {
+            label: "You write",
+            filename: "src/vexcms/collections/testimonials.ts",
+            language: ["ts"],
+            authored: ["authored"],
+            code: `export const testimonials = defineCollection({
+  slug: "testimonials",
+  admin: { useAsTitle: "author", icon: "Quote" },
+  fields: {
+    quote: text({ label: "Quote", required: true }),
+    author: text({ label: "Author", required: true }),
+    role: text({ label: "Role" }),
+    company: text({ label: "Company", index: "by_company" }),
+    companyUrl: url({ label: "Company URL" }),
+    avatar: upload({ to: "images", label: "Avatar" }),
+    rating: number({ label: "Rating" }),
+    featured: checkbox({ label: "Featured" }),
+    plan: select({
+      label: "Plan",
+      options: [
+        { label: "Free", value: "free" },
+        { label: "Pro", value: "pro" },
+        { label: "Enterprise", value: "enterprise" },
+      ],
+      defaultValue: ["pro"],
+    }),
+  },
+  labels: { singular: "Testimonial", plural: "Testimonials" },
+})`,
+          },
+          {
+            label: "Vex generates",
+            filename: "convex/vex.schema.ts",
+            language: ["ts"],
+            authored: ["generated"],
+            code: `// ⚠️ AUTO-GENERATED BY VEX CMS — DO NOT EDIT ⚠️
+// Run 'vex dev' or 'vex generate' to update this file.
+
+import { defineTable } from "convex/server"
+import { v } from "convex/values"
+
+export const testimonials = defineTable({
+  quote: v.string(),
+  author: v.string(),
+  role: v.optional(v.string()),
+  company: v.optional(v.string()),
+  companyUrl: v.optional(v.string()),
+  avatar: v.optional(v.array(v.id("images"))),
+  rating: v.optional(v.number()),
+  featured: v.optional(v.boolean()),
+  plan: v.optional(v.array(v.union(v.literal("free"), v.literal("pro"), v.literal("enterprise")))),
+}).index("by_company", ["company"])`,
+          },
+        ],
+      },
+      {
+        blockType: BLOCK_SLUG_SPLIT,
+        blockName: "Access control",
+        id: "features-split-access",
+        eyebrow: "Access control",
+        heading: "A scoped read stays scoped, inside the query.",
+        body: "Access rules carry constraints, and constraints compile to a withIndex range on the query itself. The narrowing happens in the database, not in a filter over documents you already paid to read.",
+        bullets: [
+          {
+            icon: "Lock",
+            text: "Rules per collection, per operation, per document, and per field.",
+          },
+          {
+            icon: "Search",
+            text: "Indexed constraints rather than filtering a page of results after the fact.",
+          },
+          {
+            icon: "Users",
+            text: "An anonymous role, so public pages read without a session.",
+          },
+          {
+            icon: "ShieldCheck",
+            text: "Per-call access.action and access.bypass for server code you already trust.",
+          },
+        ],
+        media: ["code"],
+        mediaPosition: ["left"],
+        codeFilename: "src/vexcms/access.ts",
+        codeLanguage: ["ts"],
+        code: `export const access = defineAccess({
+  roles: ["admin", "editor", "guest"] as const,
+  anonRole: "guest",
+  resources: [posts],
+  permissions: {
+    admin: { "*": true },
+    editor: {
+      posts: {
+        // Editors browse their own posts, resolved straight off
+        // the by_author index — no post-read filtering.
+        read: {
+          constraints: ({ user, q }) =>
+            q.withIndex("by_author", (ix) => ix.eq("authorId", user._id)),
+        },
+        update: true,
+      },
+    },
+    guest: {
+      posts: {
+        // Compiles to withIndex("by_status", ix => ix.eq("status", "published"))
+        // on the query itself, so drafts are never read at all.
+        read: {
+          constraints: ({ q }) =>
+            q.withIndex("by_status", (ix) => ix.eq("status", "published")),
+        },
+      },
+    },
+  },
+})`,
+      },
+      {
+        blockType: BLOCK_SLUG_CTA,
+        blockName: "CTA",
+        id: "features-cta",
+        heading: "Scaffold it and see.",
+        subheading:
+          "One command gives you a Next.js app, a Convex deployment, auth, the admin panel, and a marketing site like this one. Seeded, editable, and yours.",
+        actions: [
+          { label: "Get started", href: "https://docs.vexcms.dev/guides/quickstart/" },
+          { label: "View on GitHub", href: "https://github.com/ianyimi/vex" },
+          { label: "Why Convex", href: "https://docs.convex.dev/realtime" },
+        ],
+      },
+    ],
+  }
+  if (existingFeatures) {
+    if (mode === "patch") {
+      await ctx.db.patch(TABLE_SLUG_PAGES, existingFeatures._id, featuresPageDoc)
+      patched.push("page:features")
+    } else {
+      skipped.push("page:features")
+    }
+  } else {
+    await ctx.db.insert(TABLE_SLUG_PAGES, featuresPageDoc)
+    created.push("page:features")
+  }
+
+  const existingRoadmapPage = await ctx.db
+    .query(TABLE_SLUG_PAGES)
+    .withIndex("by_slug", (q) => q.eq("slug", "roadmap"))
+    // `pages` is versioned: a draft row shares its published row's slug, and
+    // patching the draft here would leave two published rows.
+    .filter((q) => q.neq(q.field("vex_status"), "draft"))
+    .first()
+  const roadmapPageDoc: WithoutSystemFields<Doc<typeof TABLE_SLUG_PAGES>> = {
+    title: "Roadmap",
+    slug: "roadmap",
+    // `pages` is versioned (`versions.drafts`): reads are published-only, so a
+    // seeded row without this is invisible on the public site.
+    vex_status: "published",
+    blocks: [
+      {
+        blockType: BLOCK_SLUG_HERO,
+        blockName: "Hero",
+        id: "roadmap-hero",
+        variant: ["compact"],
+        badgeText: "Roadmap",
+        heading: "What's shipped, what's next, and what's still an idea.",
+        subheading:
+          "VexCMS is in public alpha. Ten specs stand between the current alpha and the 0.1.0 tag, and they ship in the order below. This page itself is edited in the admin panel, not in a source file.",
+        primaryCtaLabel: "Get started",
+        primaryCtaHref: "https://docs.vexcms.dev/guides/quickstart/",
+      },
+      {
+        blockType: BLOCK_SLUG_STATS,
+        blockName: "Stats",
+        id: "roadmap-stats",
+        items: [
+          {
+            value: "11",
+            label: "shipped",
+            description:
+              "Field types, codegen, the admin panel, globals, media, RBAC, themes, auth, SEO, the CLI, and the test kit",
+          },
+          {
+            value: "10",
+            label: "specs to v0.1.0",
+            description:
+              "Each spec consumes what the last one built. The mobile pass is the final gate",
+          },
+          {
+            value: "0.1.0-alpha.16",
+            label: "on npm today",
+            description:
+              "Published from the dev branch. The whole track lands before anything is tagged 0.1.0",
+          },
+        ],
+      },
+      {
+        blockType: BLOCK_SLUG_ROADMAP,
+        blockName: "Roadmap",
+        id: "roadmap-roadmap",
+        heading: "Roadmap",
+        subheading:
+          "Shipped means it is in the published packages and running in this site. Planned means it is committed to 0.1.0, listed in the order it ships. Everything past that is an intention, not a promise.",
+        items: [
+          {
+            feature: "12 Field Types",
+            description:
+              "text, url, color, number, checkbox, date, select, relationship, array, group, blocks, and upload.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Convex Schema & Type Codegen",
+            description:
+              "vex dev and vex generate write your Convex schema, TypeScript types, and Zod validators from defineCollection. There is no hand-written schema.ts to drift.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Real-Time Admin Panel",
+            description:
+              "A data table with pagination, live totals, and bulk operations. Every list view is a Convex subscription. Two people on one collection see each other work.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Globals",
+            description:
+              "defineGlobal singletons for site settings, headers, footers, and anything else there is exactly one of.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Media Library",
+            description:
+              "A Convex file storage adapter with a searchable, paginated picker built into every upload field.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Document & Field-Level RBAC",
+            description:
+              "Rules per collection, operation, document, and field. Constraints compile to withIndex ranges inside the query. Per-call overrides and an anonRole fallback are built in.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Custom Theme System",
+            description:
+              "Themes in the database with 32 shadcn tokens per mode, light and dark, stored as OKLCH and applied on first paint. Changing one updates every open tab.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Better Auth Integration",
+            description:
+              "Email, password, and OAuth out of the box, with organisations and API keys available as plugins.",
+            status: ["shipped"],
+          },
+          {
+            feature: "SEO, Prerendering & Revalidation",
+            description:
+              "vexMetadata, vexStaticParams, createVexSitemap, and createVexRobots, plus a revalidate route that purges the cached page when an editor saves.",
+            status: ["shipped"],
+          },
+          {
+            feature: "CLI & Scaffolder",
+            description:
+              "vex dev, vex generate, and create-vexcms. The scaffolder offers a bare project or a full marketing-site template.",
+            status: ["shipped"],
+          },
+          {
+            feature: "React Test Kit",
+            description:
+              "@vexcms/react/testing exports the contract suites we run against every field input. Your own custom fields can be held to them too.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Data-Table Integrity & Config Honesty",
+            description:
+              "First in the launch track. Every key under admin.table gets a consumer or gets deleted. No README documents a flag that does nothing.",
+            status: ["planned"],
+          },
+          {
+            feature: "Public API Honesty Pass",
+            description:
+              "Nothing exported may lie about what it does. The auto-migration stubs leave the public surface. The localization model gets decided before anyone has data to migrate.",
+            status: ["planned"],
+          },
+          {
+            feature: "Lifecycle Hooks & Server-Side Validation",
+            description:
+              "beforeChange and afterChange, plus one write-validation stage. min and max are enforced through the Local API, not only in the admin form. An async validate() receives a ctx typed to your own data model, so transactional uniqueness checks are sound; it throws to reject.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Live Preview",
+            description:
+              "Unsaved form state, streamed onto your real route — the preview is your production page, not a parallel render path. Collections and globals alike, with the preview URL declared centrally or per collection, and resolvable on the server when the path lives in the database. Origin-allowlisted and gated per request.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Versioning & Drafts",
+            description:
+              "A real draft and publish workflow. Reads return the published document, readDrafts returns drafts, and publish promotes. Autosave never touches what is live. Prior versions are restorable from the edit view.",
+            status: ["in-progress"],
+          },
+          {
+            feature: "Richtext Field",
+            description:
+              "A richtext() field in core, wired to the Plate.js editor and renderer that @vexcms/richtext-plate already ships. The @ts-nocheck pragmas go with it.",
+            status: ["in-progress"],
+          },
+          {
+            feature: "Field Input Consistency Pass",
+            description:
+              "Every input gets correct empty, loading, error, and read-only states. The relationship field is the named offender. The media picker finally honours the upload field's accept filter.",
+            status: ["in-progress"],
+          },
+          {
+            feature: "Edit-View Overhaul",
+            description:
+              "An unsaved-changes guard, so a misclick cannot cost you work. Duplicate for documents and for blocks. A validation summary that jumps to the failing field.",
+            status: ["planned"],
+          },
+          {
+            feature: "List-View Overhaul",
+            description:
+              "Per-collection search, sortable columns, column visibility, page-size control, and saved views. Each control ships together with the config key that drives it.",
+            status: ["planned"],
+          },
+          {
+            feature: "Responsive & Mobile Pass",
+            description:
+              "The final gate. Every admin and marketing surface audited at seven widths, from 375 to 1536. No clipped controls, and every primary action reachable on a phone.",
+            status: ["planned"],
+          },
+          {
+            feature: "JSON, Email & Textarea Fields",
+            description:
+              "Deliberately cut from 0.1.0, not forgotten. Leaf fields are cheap to add once the track is done. ui and tabs are a separate question; both change core invariants.",
+            status: ["future"],
+          },
+          {
+            feature: "Content Scheduling",
+            description:
+              "publishAt on a document, promoted by a Convex scheduled function. The scheduling Convex already has, put to work on content.",
+            status: ["future"],
+          },
+          {
+            feature: "Team Management & API Keys",
+            description:
+              "A UI for inviting people and assigning roles. Scoped read-only tokens for anything that reads your content from outside.",
+            status: ["future"],
+          },
+          {
+            feature: "TanStack Start Adapter",
+            description:
+              "The data layer already works with any Convex client. This is the admin panel and the caching helpers on a second framework.",
+            status: ["future"],
+          },
+          {
+            feature: "S3, R2 & Vercel Blob Adapters",
+            description:
+              "Storage adapters beside the Convex one, for teams whose assets have to live somewhere specific.",
+            status: ["future"],
+          },
+          {
+            feature: "Form Builder",
+            description:
+              "defineFormCollection: fields for collecting input rather than editing content. Generated validation, stored submissions.",
+            status: ["future"],
+          },
+          {
+            feature: "Plugin System",
+            description:
+              "Third-party extensions over collections, fields, and admin views, including custom field types. The panel grows without forking.",
+            status: ["future"],
+          },
+          {
+            feature: "Enterprise Add-Ons",
+            description:
+              "Content branching between environments, SAML and OIDC SSO, approval workflows, a retained audit log, and localization. Separate paid packages on a flat annual licence. The core stays Apache-2.0, and nothing free today moves behind it.",
+            status: ["exploring"],
+          },
+          {
+            feature: "Multi-Component Workspaces",
+            description:
+              "defineComponent, per-component schema generation, and workspace routing. This is where support for the wider Convex component ecosystem starts.",
+            status: ["exploring"],
+          },
+        ],
+      },
+      {
+        blockType: BLOCK_SLUG_CTA,
+        blockName: "CTA",
+        id: "roadmap-cta",
+        heading: "Scaffold it and see.",
+        subheading:
+          "One command gives you a Next.js app, a Convex deployment, auth, the admin panel, and a marketing site like this one. Seeded, editable, and yours.",
+        actions: [
+          { label: "Get started", href: "https://docs.vexcms.dev/guides/quickstart/" },
+          { label: "View on GitHub", href: "https://github.com/ianyimi/vex" },
+          { label: "Why Convex", href: "https://docs.convex.dev/realtime" },
+        ],
+      },
+    ],
+  }
+  if (existingRoadmapPage) {
+    if (mode === "patch") {
+      await ctx.db.patch(TABLE_SLUG_PAGES, existingRoadmapPage._id, roadmapPageDoc)
+      patched.push("page:roadmap")
+    } else {
+      skipped.push("page:roadmap")
+    }
+  } else {
+    await ctx.db.insert(TABLE_SLUG_PAGES, roadmapPageDoc)
+    created.push("page:roadmap")
+  }
+
+  // ── TEST-ONLY: editorial fixtures ──────────────────────────────────────
+  // Seeds `articles`, `case_studies`, `changelog`, and `comments` with rows
+  // spanning every access outcome, so the shared access rules have something
+  // to discriminate on. Lifted unchanged from apps/test/convex/seed.ts's
+  // standalone `editorial` mutation (now folded into `runSeed` instead of a
+  // separate exported mutation).
+  //
+  // Assigns authorship to the two oldest users so ownership rules have
+  // something to discriminate on: user A authors the published rows plus one
+  // draft, user B authors the rest. Requires at least one signed-in user to
+  // exist already — throws otherwise (sign in once, then re-run).
+  //
+  // Always insert-if-missing regardless of `mode`: unlike the real-site
+  // sections above, these fixtures are never reconciled in place by `patch`,
+  // matching the original mutation's behaviour.
+  const users = await ctx.db.query("user").take(2)
+  if (users.length === 0) {
+    throw new Error("seed:editorial needs at least one user — sign in once, then run this again.")
+  }
+  // Falls back to the same author when only one user exists: the status rules still
+  // demonstrate, only the ownership split goes flat.
+  const authorA = users[0]._id
+  const authorB = users[1]?._id ?? users[0]._id
+
+  // Generic over the table so the returned id narrows to it — `comments` below needs
+  // a real `Id<"articles">`, not a union across all three. Convex's generated query
+  // types cannot resolve a shared index name through a generic table parameter, so
+  // the table is widened to one concrete literal INSIDE the helper. All three declare
+  // `by_slug` over `["slug"]`, which is what makes that widening sound.
+  type EditorialTable = "articles" | "case_studies" | "changelog"
+  async function insertBySlug<T extends EditorialTable>(
+    table: T,
+    slug: string,
+    data: Record<string, unknown>
+  ): Promise<Id<T>> {
+    const existing = await ctx.db
+      .query(table as "articles")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .first()
+    if (existing) {
+      skipped.push(`${table}/${slug}`)
+      return existing._id as Id<T>
+    }
+    const id = await ctx.db.insert(table, { slug, ...data } as never)
+    created.push(`${table}/${slug}`)
+    return id
+  }
+
+  // ── Articles ───────────────────────────────────────────────────────────
+  const publishedArticle = await insertBySlug("articles", "why-convex", {
+    title: "Why we built VexCMS on Convex",
+    excerpt: "Reactive queries turn out to be the right primitive for a CMS.",
+    body: "Convex gives us live queries, transactional mutations, and typed indexes.",
+    status: ["published"],
+    publishedAt: Date.now() - 86_400_000 * 14,
+    readingMinutes: 7,
+    featured: true,
+    authorId: [authorA],
+  })
+
+  await insertBySlug("articles", "field-types-deep-dive", {
+    title: "A deep dive on field types",
+    excerpt: "Every field is a value, and that is the whole trick.",
+    body: "Draft in progress.",
+    status: ["draft"],
+    readingMinutes: 12,
+    featured: false,
+    authorId: [authorA],
+  })
+
+  await insertBySlug("articles", "access-control-patterns", {
+    title: "Access control patterns that scale",
+    excerpt: "Define the constraint once, apply it everywhere.",
+    body: "In review.",
+    status: ["review"],
+    readingMinutes: 9,
+    featured: false,
+    authorId: [authorB],
+  })
+
+  // ── Case studies ───────────────────────────────────────────────────────
+  await insertBySlug("case_studies", "maprios", {
+    title: "Maprios cuts publish time by 60%",
+    excerpt: "Migrating off a Node CMS onto Convex.",
+    status: ["published"],
+    publishedAt: Date.now() - 86_400_000 * 30,
+    clientName: "Maprios",
+    industry: "Logistics",
+    clientUrl: "https://maprios.com",
+    outcomeSummary: "Publish-to-live dropped from 90s to 35s.",
+    contractValue: 48_000,
+    authorId: [authorA],
+  })
+
+  await insertBySlug("case_studies", "northwind-rebuild", {
+    title: "Northwind rebuilds its docs site",
+    excerpt: "Unreleased — pricing still under review.",
+    status: ["draft"],
+    clientName: "Northwind",
+    industry: "Manufacturing",
+    outcomeSummary: "Pending sign-off.",
+    contractValue: 22_500,
+    authorId: [authorB],
+  })
+
+  // ── Changelog ──────────────────────────────────────────────────────────
+  await insertBySlug("changelog", "v0-4-0", {
+    title: "Shared access rules",
+    excerpt: "One constraint, many resources.",
+    status: ["published"],
+    publishedAt: Date.now() - 86_400_000 * 3,
+    version: "0.4.0",
+    releaseType: ["minor"],
+    breaking: false,
+    notes: "- composable access checks\n- index pushdown per resource",
+    authorId: [authorA],
+  })
+
+  await insertBySlug("changelog", "v0-5-0", {
+    title: "Versioning and drafts",
+    excerpt: "Unreleased.",
+    status: ["draft"],
+    version: "0.5.0",
+    releaseType: ["minor"],
+    breaking: true,
+    notes: "- draft/publish workflow",
+    authorId: [authorB],
+  })
+
+  // ── Comments ───────────────────────────────────────────────────────────
+  // No `status` field, so only the ownership rules reach these — which is the
+  // partial-overlap case the shared rules are meant to prove.
+  const existingComments = await ctx.db
+    .query("comments")
+    .withIndex("by_article", (q) => q.eq("article", [publishedArticle]))
+    .collect()
+  if (existingComments.length > 0) {
+    skipped.push("comments (already seeded)")
+  } else {
+    await ctx.db.insert("comments", {
+      body: "This matches what we saw migrating our own site.",
+      article: [publishedArticle],
+      approved: true,
+      authorId: [authorB],
+    })
+    await ctx.db.insert("comments", {
+      body: "Awaiting moderation — should be hidden from readers.",
+      article: [publishedArticle],
+      approved: false,
+      authorId: [authorA],
+    })
+    created.push("comments x2")
+  }
+
+  return { created, patched, skipped }
+}
+
+/**
+ * Seed a deployment, inserting only what is missing.
+ *
+ * This is what a fresh scaffold runs. It deliberately does NOT update a
+ * document that already exists, so it can never clobber an editor's work —
+ * which also means editing this file does nothing to an already-seeded
+ * deployment. Use `reinit` for that.
+ *
+ * Run from terminal: `npx convex run seed:init`
+ */
+export const init = internalMutation({
+  args: {},
+  handler: async (ctx) => runSeed(ctx, "insert"),
+})
+
+/**
+ * Re-seed a deployment, reconciling every seeded document in place.
+ *
+ * Same content as `init`, but an existing document is patched instead of
+ * skipped, so this file becomes the source of truth for seeded content and a
+ * content change ships by editing it and re-running. Nothing is deleted and
+ * nothing is duplicated: documents are matched on name or slug, so ids,
+ * relationships pointing at them, and any field this file does not set all
+ * survive.
+ *
+ * This overwrites admin-panel edits to the fields seeded here. That is the
+ * intended behaviour — it is a reconcile, not a merge.
+ *
+ * Run from terminal: `npx convex run seed:reinit`
+ */
+export const reinit = internalMutation({
+  args: {},
+  handler: async (ctx) => runSeed(ctx, "patch"),
 })

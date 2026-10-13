@@ -1,12 +1,15 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
 import {
+  CONSTRAINT_COMPARATORS,
   CRUD_ACTIONS,
   DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE,
   DRAFT_ACTIONS,
+  getFieldsDefaultValues,
   GlobalEditViewProps,
   isFieldAllowed,
   resolveLivePreviewSettings,
@@ -14,6 +17,7 @@ import {
 } from "@vexcms/core";
 import { AppForm } from "../form";
 import {
+  useAutosave,
   useFieldPermissions,
   useFieldsForm,
   useLiveFieldMerge,
@@ -22,6 +26,7 @@ import {
   useVisibleFields,
 } from "../../hooks";
 import { changedValues } from "../form/changedValues";
+import { pickReadableValues } from "../form/readableFields";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 import { useVexConfig } from "../../context/VexConfigContext";
@@ -35,7 +40,7 @@ import {
 import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
 import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
 import { useLivePreviewServerUrl } from "../../hooks/useLivePreviewServerUrl";
-import { DraftToolbar } from "../drafts";
+import { DraftToolbar, VersionHistoryDropdown, type ViewedVersion } from "../drafts";
 import { applyVexFieldErrors, getVexErrorMessage } from "../../lib/errors";
 import { toast } from "sonner";
 
@@ -80,6 +85,10 @@ export function GlobalEditView(props: GlobalEditViewProps) {
 
   const hasDrafts = global.versions.drafts;
 
+  const [viewedVersion, setViewedVersion] = useState<ViewedVersion | null>(null);
+  const formDocument = viewedVersion ? { _id: globalDoc?._id, ...viewedVersion.snapshot } : globalDoc;
+  const restoredFrom = viewedVersion ? { restoredFrom: viewedVersion.version } : {};
+
   const { mutateAsync, isPending } = useVexMutation({
     collection: global.slug,
     getChanges: ({ args }) => [{ after: { ...(globalDoc ?? {}), ...args.data } }],
@@ -100,38 +109,50 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     action: DRAFT_ACTIONS.publish,
     data: globalDoc as {},
   });
+  const canUnpublish = usePermission({
+    resource: global.slug,
+    action: DRAFT_ACTIONS.unpublish,
+    data: globalDoc as {},
+  });
+  const { mutateAsync: unpublishAsync, isPending: isUnpublishing } = useVexMutation({
+    collection: global.slug,
+    getChanges: () => (globalDoc ? [{ before: globalDoc }] : []),
+    mutationFn: vexConvexApi.versions.unpublish,
+    operation: "unpublish",
+  });
 
   /**
-   * Promotes the active draft row to published. `versions.publish` takes no
-   * `data` of its own, so any not-yet-saved form edits are saved as a draft
-   * FIRST (reusing `saveDraftMutation`), then promoted — clicking Publish
-   * directly, without a prior Save Draft click, still captures them.
+   * Promotes the active draft row (or, for a never-published global, the
+   * published row) to published, merging any not-yet-saved form edits on
+   * top in the same mutation call — `versions.publish`'s `data` arg.
    *
    * @returns Promise resolving once publish completes (or rejects).
    * @throws Never — every rejection is caught, handled, and never re-thrown.
    */
   async function handlePublish(): Promise<void> {
-    const changes = globalDoc
-      ? changedValues(form)
-      : (form.state.values as Record<string, unknown>);
-    if (Object.keys(changes).length > 0) {
-      try {
-        await saveDraftMutation({ global: global!.slug, data: changes });
-      } catch (error) {
-        toast.error("Save draft failed", { description: getVexErrorMessage(error) });
-        return;
-      }
-    }
+    const data = globalDoc ? changedValues(form) : (form.state.values as Record<string, unknown>);
     try {
-      await publishMutation({ global: global!.slug });
+      await publishMutation({ global: global!.slug, data, version: viewedVersion?.version });
+      setViewedVersion(null);
       form.reset();
     } catch (error) {
       applyVexFieldErrors(form, error);
     }
-    // On success the `globals.get` query refetches with `vex_status:
-    // "published"`: Publish disables. `!isDraftDoc` already disables the
-    // calling button otherwise — publish is only reachable while viewing a
-    // draft row.
+  }
+
+  /**
+   * Flips the published row back to a draft. Disabled client-side while an
+   * outstanding draft exists (mirrors the server-side rejection this action
+   * hits otherwise), so the handler itself has no rejection path beyond
+   * what `useVexMutation`'s own `onError` toast already surfaces.
+   *
+   * @returns Resolves once the mutation settles.
+   * @throws Never.
+   */
+  async function handleUnpublish() {
+    await unpublishAsync({ global: global!.slug });
+    // On success, `globalDoc.vex_status` becomes `"draft"` once the `get`
+    // query refetches — Publish enables, Unpublish disables.
   }
 
   const { mutateAsync: saveDraftMutation, isPending: isSavingDraft } = useMutation({
@@ -153,7 +174,8 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   async function handleSaveDraft(): Promise<void> {
     try {
       const data = globalDoc ? changedValues(form) : (form.state.values as Record<string, unknown>);
-      await saveDraftMutation({ global: global!.slug, data });
+      await saveDraftMutation({ global: global!.slug, data, ...restoredFrom });
+      setViewedVersion(null);
       form.reset();
     } catch (error) {
       toast.error("Save draft failed", { description: getVexErrorMessage(error) });
@@ -171,7 +193,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
 
   const form = useFieldsForm<Record<string, unknown>>({
-    document: globalDoc,
+    document: formDocument,
     fields: global.fields,
     readableFieldKeys,
     onSubmit: async ({ value }) => {
@@ -192,7 +214,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
 
   useLiveFieldMerge({
     form,
-    document: globalDoc,
+    document: formDocument,
     fieldKeys: readableFieldKeys,
   });
 
@@ -207,7 +229,42 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     data: globalDoc,
   });
 
+  const viewedVersionNumber = viewedVersion?.version ?? null;
+  const lastViewedVersionRef = useRef(viewedVersionNumber);
+  useEffect(() => {
+    if (lastViewedVersionRef.current === viewedVersionNumber) return;
+    lastViewedVersionRef.current = viewedVersionNumber;
+    form.reset();
+  }, [viewedVersionNumber]);
+
+  useAutosave({
+    values: globalDoc ? changedValues(form) : (form.state.values as Record<string, unknown>),
+    onSave: async (changes) => {
+      await saveDraftMutation({ global: global.slug, data: changes, ...restoredFrom });
+      setViewedVersion(null);
+      // Keystrokes typed during the save stay dirty for autosave's follow-up save.
+      if (CONSTRAINT_COMPARATORS.eq(changedValues(form), changes)) {
+        form.reset();
+      }
+    },
+    enabled: hasDrafts && global.versions.autosave.enabled && canEdit,
+  });
+
   const formValues = useStore(form.store, (state) => state.values);
+  const { data: publishedRowWhileDraft } = useQuery({
+    ...convexQuery(vexConvexApi.globals.get, { slug: global.slug }),
+    enabled: hasDrafts && isDraftDoc,
+  });
+  const publishedGlobal = isDraftDoc ? publishedRowWhileDraft : globalDoc;
+  const matchesPublished =
+    !!publishedGlobal &&
+    CONSTRAINT_COMPARATORS.eq(
+      formValues,
+      pickReadableValues(
+        getFieldsDefaultValues({ fields: global.fields, document: publishedGlobal }),
+        readableFieldKeys,
+      ),
+    );
   const isMobile = useIsMobile();
   const livePreview = resolveLivePreviewSettings({
     config: config.admin.livePreview,
@@ -276,6 +333,9 @@ export function GlobalEditView(props: GlobalEditViewProps) {
               !canEdit || field.admin.readOnly || !isFieldAllowed(fieldPermissions, fieldKey)
             }
             collection={global}
+            documentStatus={
+              hasDrafts && globalDoc ? (isDraftDoc ? "draft" : "published") : undefined
+            }
           />
         );
       })}
@@ -316,16 +376,29 @@ export function GlobalEditView(props: GlobalEditViewProps) {
                     isPending: isSavingDraft,
                     disabled: isDefaultValue || !canEdit,
                   }}
-                  publish={
+                  publish={{
+                    onClick: handlePublish,
+                    isPending: isPublishing,
+                    disabled: !canPublish || (!globalDoc && isDefaultValue) || matchesPublished,
+                  }}
+                  unpublish={
                     globalDoc
                       ? {
-                          onClick: handlePublish,
-                          isPending: isPublishing,
-                          disabled: !canPublish || !isDraftDoc,
+                          onClick: handleUnpublish,
+                          isPending: isUnpublishing,
+                          disabled: !canUnpublish || isDraftDoc || !isDefaultValue,
                         }
                       : undefined
                   }
-                />
+                >
+                  <VersionHistoryDropdown
+                    target={{ global: global.slug }}
+                    hasDraft={isDraftDoc}
+                    viewingVersion={viewedVersion?.version ?? null}
+                    onViewVersion={setViewedVersion}
+                    hasUnsavedChanges={!isDefaultValue}
+                  />
+                </DraftToolbar>
               ) : (
                 <Button
                   type="submit"

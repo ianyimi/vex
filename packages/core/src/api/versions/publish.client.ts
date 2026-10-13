@@ -28,10 +28,18 @@ export type PublishClientArgs<TCollectionSlug extends CollectionSlug = Collectio
           collection: TCollectionSlug;
           /** The document id currently loaded — the published row's id, or an active draft's own id. */
           id: GenericId<TCollectionSlug>;
+          /** Field values to merge on top of the current draft/published row before publishing. */
+          data?: Record<string, unknown>;
+          /** Publish this history version's snapshot instead of the draft. */
+          version?: number;
         }
       | {
           /** The versioned global slug. */
           global: GlobalSlug;
+          /** Field values to merge on top of the current draft/published row before publishing. */
+          data?: Record<string, unknown>;
+          /** Publish this history version's snapshot instead of the draft. */
+          version?: number;
         }
     );
 

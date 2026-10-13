@@ -139,9 +139,12 @@ describe("GlobalEditView — diff submit", () => {
   });
 });
 
+// Spread the resolved `versions` and override only `drafts`: a resolved
+// `GlobalConfig` always carries `versions.autosave` (`defineGlobal`'s default),
+// which `GlobalEditView` reads to wire `useAutosave`.
 const versionedGlobal = {
   ...testClientConfig.globals[0],
-  versions: { drafts: true },
+  versions: { ...testClientConfig.globals[0].versions, drafts: true },
 } as unknown as GlobalConfig;
 const versionedConfig = {
   ...testClientConfig,
@@ -239,13 +242,13 @@ describe("GlobalEditView — draft toolbar", () => {
     expect(utils.queryByRole("button", { name: "Save Draft" })).toBeNull();
   });
 
-  it("hides Publish for a brand-new versioned global with no saved row yet", async () => {
+  it("disables Publish for a brand-new versioned global with no saved row yet and no edits", async () => {
     const utils = renderView(createElement(GlobalEditView, { global: versionedGlobal.slug }), {
       convex: t,
       config: versionedConfig,
     });
 
-    expect(utils.queryByRole("button", { name: "Publish" })).toBeNull();
+    expect(utils.getByRole("button", { name: "Publish" })).toBeDisabled();
   });
 
   it("enables Publish only while the loaded document is a draft", async () => {
@@ -268,7 +271,36 @@ describe("GlobalEditView — draft toolbar", () => {
     expect(again.getByRole("button", { name: "Publish" })).toBeDisabled();
   });
 
-  it("calls versions.publish with just the slug when Publish is clicked with no unsaved changes", async () => {
+  it("enables Publish for a published global once edited, sending the edit as data without a separate saveDraft call", async () => {
+    convexMutationMock.mockReset().mockResolvedValue("g1");
+    const stored = {
+      _creationTime: 1,
+      _id: "g1",
+      siteName: "x",
+      tagline: "y",
+      vex_status: "published",
+    };
+    const utils = renderView(
+      createElement(GlobalEditView, { global: versionedGlobal.slug, initialData: stored as never }),
+      { convex: t, config: versionedConfig },
+    );
+    expect(utils.getByRole("button", { name: "Publish" })).toBeDisabled();
+
+    fireEvent.change(utils.container.querySelector("#siteName")!, {
+      target: { value: "new name" },
+    });
+    await waitFor(() => expect(utils.getByRole("button", { name: "Publish" })).toBeEnabled());
+
+    fireEvent.click(utils.getByRole("button", { name: "Publish" }));
+
+    await waitFor(() => expect(convexMutationMock).toHaveBeenCalledTimes(1));
+    expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({
+      global: versionedGlobal.slug,
+      data: { siteName: "new name" },
+    });
+  });
+
+  it("calls versions.publish with an empty data object when Publish is clicked with no unsaved changes", async () => {
     convexMutationMock.mockReset().mockResolvedValue("g1");
     const draft = { _creationTime: 1, _id: "g1", siteName: "x", tagline: "y", vex_status: "draft" };
     const utils = renderView(
@@ -279,11 +311,11 @@ describe("GlobalEditView — draft toolbar", () => {
     fireEvent.click(utils.getByRole("button", { name: "Publish" }));
 
     await waitFor(() => expect(convexMutationMock).toHaveBeenCalledTimes(1));
-    expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({ global: versionedGlobal.slug });
+    expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({ global: versionedGlobal.slug, data: {} });
   });
 
-  it("saves a pending edit as a draft before publishing when the form has unsaved changes", async () => {
-    convexMutationMock.mockReset().mockResolvedValueOnce("g1").mockResolvedValueOnce("g1");
+  it("sends a pending edit as publish data in a single mutation call when the form has unsaved changes", async () => {
+    convexMutationMock.mockReset().mockResolvedValue("g1");
     const draft = { _creationTime: 1, _id: "g1", siteName: "x", tagline: "y", vex_status: "draft" };
     const utils = renderView(
       createElement(GlobalEditView, { global: versionedGlobal.slug, initialData: draft as never }),
@@ -295,11 +327,81 @@ describe("GlobalEditView — draft toolbar", () => {
     });
     fireEvent.click(utils.getByRole("button", { name: "Publish" }));
 
-    await waitFor(() => expect(convexMutationMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(convexMutationMock).toHaveBeenCalledTimes(1));
     expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({
       global: versionedGlobal.slug,
       data: { siteName: "new name" },
     });
-    expect(convexMutationMock.mock.calls[1]?.[0]).toEqual({ global: versionedGlobal.slug });
+  });
+
+  it("disables Unpublish while the loaded document is a draft", async () => {
+    const stored = {
+      _creationTime: 1,
+      _id: "g1",
+      siteName: "x",
+      tagline: "y",
+      vex_status: "draft",
+    };
+    const utils = renderView(
+      createElement(GlobalEditView, {
+        global: versionedGlobal.slug,
+        initialData: stored as never,
+      }),
+      { convex: t, config: versionedConfig },
+    );
+
+    expect(utils.getByRole("button", { name: "Unpublish" })).toBeDisabled();
+  });
+
+  it("calls versions.unpublish with the global's slug when Unpublish is clicked", async () => {
+    const stored = {
+      _creationTime: 1,
+      _id: "g1",
+      siteName: "x",
+      tagline: "y",
+      vex_status: "published",
+    };
+    const utils = renderView(
+      createElement(GlobalEditView, {
+        global: versionedGlobal.slug,
+        initialData: stored as never,
+      }),
+      { convex: t, config: versionedConfig },
+    );
+
+    fireEvent.click(utils.getByRole("button", { name: "Unpublish" }));
+
+    await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
+    expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({ global: versionedGlobal.slug });
+  });
+
+  it("disables Unpublish while the form has unsaved changes, and re-enables it on Cancel", async () => {
+    const stored = {
+      _creationTime: 1,
+      _id: "g1",
+      siteName: "x",
+      tagline: "y",
+      vex_status: "published",
+    };
+    const utils = renderView(
+      createElement(GlobalEditView, {
+        global: versionedGlobal.slug,
+        initialData: stored as never,
+      }),
+      { convex: t, config: versionedConfig },
+    );
+    expect(utils.getByRole("button", { name: "Unpublish" })).toBeEnabled();
+
+    fireEvent.change(utils.container.querySelector("#siteName")!, {
+      target: { value: "unsaved" },
+    });
+    await waitFor(() =>
+      expect(utils.getByRole("button", { name: "Unpublish" })).toBeDisabled(),
+    );
+
+    fireEvent.click(utils.getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(utils.getByRole("button", { name: "Unpublish" })).toBeEnabled(),
+    );
   });
 });

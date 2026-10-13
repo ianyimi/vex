@@ -1,4 +1,5 @@
-import { z, ZodType } from "zod";
+import * as z from "zod";
+import type { ZodType } from "zod";
 import { ArrayField, ArrayType } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 import { adminFieldToInputSchema } from "../inputSchemas";

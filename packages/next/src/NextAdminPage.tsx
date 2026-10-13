@@ -119,7 +119,9 @@ export async function NextAdminPage(props: {
     }
     const global = await fetchQuery(
       vexConvexApi.globals.get,
-      { slug: globalConfig.slug },
+      // Same args as `GlobalEditView`'s client query (`getGlobal` falls back to
+      // the published row for a caller without `readDrafts`).
+      { slug: globalConfig.slug, drafts: globalConfig.versions.drafts },
       props.token ? { token: props.token } : undefined,
     );
     const globalLivePreview = resolveLivePreviewSettings({
@@ -210,7 +212,9 @@ export async function NextAdminPage(props: {
   if (collection && documentId) {
     const initialData = await fetchQuery(
       vexConvexApi.get,
-      { id: documentId, collection: collection.slug },
+      // Same args as `CollectionEditView`'s client query (`get` falls back to
+      // published-only for a caller without `readDrafts`).
+      { id: documentId, collection: collection.slug, drafts: collection.versions.drafts },
       props.token ? { token: props.token } : undefined,
     );
     const collectionLivePreview = resolveLivePreviewSettings({
@@ -261,6 +265,9 @@ export async function NextAdminPage(props: {
     vexConvexApi.findPaginated,
     {
       collection: collectionSlug as CollectionSlug,
+      // Same args as `CollectionListView`'s client query, so the hydrated
+      // initial data belongs to the query the client subscribes to.
+      drafts: collection.versions.drafts ? true : undefined,
       depth: 1,
       paginationOpts: { cursor: null, numItems, totalDocs: true },
     },

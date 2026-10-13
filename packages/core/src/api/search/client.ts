@@ -130,6 +130,7 @@ export function search<
           limit: args.limit,
           populate: args.populate,
           depth: args.depth,
+          drafts: args.drafts,
           paginationOpts: args.paginationOpts,
         },
   );

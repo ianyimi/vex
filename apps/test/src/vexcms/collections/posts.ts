@@ -30,6 +30,9 @@ export const posts = defineCollection({
   },
   versions: {
     drafts: true,
+    autosave: {
+      enabled: true,
+    },
   },
   fields: {
     title: text({

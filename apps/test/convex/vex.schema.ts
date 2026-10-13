@@ -15,15 +15,129 @@ export const pages = defineTable({
           blockType: v.literal("hero"),
           blockName: v.optional(v.string()),
           id: v.string(),
-          badge: v.optional(v.string()),
-          title: v.string(),
-          subtitle: v.optional(v.string()),
+          variant: v.optional(v.array(v.union(v.literal("full"), v.literal("compact")))),
+          badgeText: v.optional(v.string()),
+          badgeLink: v.optional(v.string()),
+          heading: v.string(),
+          subheading: v.optional(v.string()),
+          installCommand: v.optional(v.string()),
           primaryCtaLabel: v.optional(v.string()),
           primaryCtaHref: v.optional(v.string()),
           secondaryCtaLabel: v.optional(v.string()),
           secondaryCtaHref: v.optional(v.string()),
-          showImage: v.optional(v.boolean()),
-          image: v.optional(v.string()),
+        }),
+        v.object({
+          blockType: v.literal("stats"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          heading: v.optional(v.string()),
+          subheading: v.optional(v.string()),
+          items: v.array(
+            v.object({ value: v.string(), label: v.string(), description: v.optional(v.string()) })
+          ),
+        }),
+        v.object({
+          blockType: v.literal("features"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          heading: v.string(),
+          subheading: v.optional(v.string()),
+          features: v.array(
+            v.object({ title: v.string(), description: v.string(), icon: v.optional(v.string()) })
+          ),
+        }),
+        v.object({
+          blockType: v.literal("code_showcase"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          heading: v.string(),
+          subheading: v.optional(v.string()),
+          panes: v.array(
+            v.object({
+              label: v.string(),
+              filename: v.optional(v.string()),
+              language: v.optional(
+                v.array(
+                  v.union(v.literal("ts"), v.literal("tsx"), v.literal("bash"), v.literal("json"))
+                )
+              ),
+              authored: v.optional(v.array(v.union(v.literal("authored"), v.literal("generated")))),
+              code: v.string(),
+              caption: v.optional(v.string()),
+            })
+          ),
+        }),
+        v.object({
+          blockType: v.literal("split"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          eyebrow: v.optional(v.string()),
+          heading: v.string(),
+          body: v.string(),
+          bullets: v.optional(
+            v.array(v.object({ icon: v.optional(v.string()), text: v.string() }))
+          ),
+          media: v.optional(
+            v.array(v.union(v.literal("code"), v.literal("image"), v.literal("none")))
+          ),
+          code: v.optional(v.string()),
+          codeFilename: v.optional(v.string()),
+          codeLanguage: v.optional(
+            v.array(
+              v.union(v.literal("ts"), v.literal("tsx"), v.literal("bash"), v.literal("json"))
+            )
+          ),
+          image: v.optional(v.array(v.id("images"))),
+          mediaPosition: v.optional(v.array(v.union(v.literal("right"), v.literal("left")))),
+        }),
+        v.object({
+          blockType: v.literal("how_it_works"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          heading: v.string(),
+          subheading: v.optional(v.string()),
+          steps: v.array(
+            v.object({ icon: v.optional(v.string()), title: v.string(), description: v.string() })
+          ),
+        }),
+        v.object({
+          blockType: v.literal("roadmap"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          heading: v.string(),
+          subheading: v.optional(v.string()),
+          items: v.array(
+            v.object({
+              feature: v.string(),
+              description: v.optional(v.string()),
+              status: v.array(
+                v.union(
+                  v.literal("shipped"),
+                  v.literal("in-progress"),
+                  v.literal("planned"),
+                  v.literal("exploring"),
+                  v.literal("future")
+                )
+              ),
+            })
+          ),
+        }),
+        v.object({
+          blockType: v.literal("faq"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          heading: v.string(),
+          subheading: v.optional(v.string()),
+          supportLink: v.optional(v.string()),
+          items: v.array(v.object({ question: v.string(), answer: v.string() })),
+        }),
+        v.object({
+          blockType: v.literal("cta"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          heading: v.string(),
+          subheading: v.optional(v.string()),
+          actions: v.optional(v.array(v.object({ label: v.string(), href: v.string() }))),
         }),
         v.object({
           blockType: v.literal("feature"),
@@ -34,18 +148,6 @@ export const pages = defineTable({
           description: v.optional(v.string()),
           linkLabel: v.optional(v.string()),
           linkHref: v.optional(v.string()),
-        }),
-        v.object({
-          blockType: v.literal("cta"),
-          blockName: v.optional(v.string()),
-          id: v.string(),
-          title: v.string(),
-          description: v.optional(v.string()),
-          buttonLabel: v.optional(v.string()),
-          buttonHref: v.optional(v.string()),
-          variant: v.optional(
-            v.array(v.union(v.literal("default"), v.literal("outline"), v.literal("ghost")))
-          ),
         }),
         v.object({
           blockType: v.literal("testimonial"),
@@ -59,13 +161,6 @@ export const pages = defineTable({
           rating: v.optional(v.number()),
         }),
         v.object({
-          blockType: v.literal("stats"),
-          blockName: v.optional(v.string()),
-          id: v.string(),
-          title: v.optional(v.string()),
-          stats: v.optional(v.array(v.object({ value: v.string(), label: v.string() }))),
-        }),
-        v.object({
           blockType: v.literal("logo-cloud"),
           blockName: v.optional(v.string()),
           id: v.string(),
@@ -73,13 +168,6 @@ export const pages = defineTable({
           logos: v.optional(
             v.array(v.object({ name: v.string(), image: v.string(), link: v.optional(v.string()) }))
           ),
-        }),
-        v.object({
-          blockType: v.literal("faq"),
-          blockName: v.optional(v.string()),
-          id: v.string(),
-          title: v.optional(v.string()),
-          questions: v.optional(v.array(v.object({ question: v.string(), answer: v.string() }))),
         }),
         v.object({
           blockType: v.literal("pricing"),
@@ -111,7 +199,7 @@ export const pages = defineTable({
   testImage: v.optional(v.array(v.id("images"))),
   metaTitle: v.optional(v.string()),
   metaDescription: v.optional(v.string()),
-  ogImage: v.optional(v.string()),
+  ogImage: v.optional(v.array(v.id("images"))),
   themes: v.optional(v.array(v.id("themes"))),
   test: v.optional(v.array(v.string())),
   test2: v.optional(v.array(v.array(v.number()))),
@@ -142,10 +230,15 @@ export const pages = defineTable({
     })
   ),
   updatedAt: v.optional(v.number()),
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+  vex_publishedAt: v.optional(v.number()),
+  vex_publishedId: v.optional(v.id("pages")),
 })
   .index("by_slug_title", ["slug", "title"])
   .index("by_slug", ["slug"])
   .index("by_themes", ["themes"])
+  .index("by_status", ["vex_status"])
+  .index("by_published", ["vex_publishedId"])
 
 export const user = defineTable({
   name: v.string(),
@@ -162,23 +255,63 @@ export const user = defineTable({
   userId: v.optional(v.string()),
   roles: v.array(v.string()),
   newUserFieldTest: v.optional(v.string()),
-}).index("by_email", ["email"])
+})
+  .index("by_email", ["email"])
+  .searchIndex("search_name", {
+    searchField: "name",
+
+    filterFields: [],
+  })
 
 export const headers = defineTable({
   name: v.string(),
-  logoText: v.optional(v.string()),
-  logoHref: v.optional(v.string()),
-  menuItems: v.optional(v.string()),
-  actionButtons: v.optional(v.string()),
+  content: v.optional(
+    v.array(
+      v.object({
+        blockType: v.literal("header"),
+        blockName: v.optional(v.string()),
+        id: v.string(),
+        logoText: v.optional(v.string()),
+        logoImage: v.optional(v.array(v.id("images"))),
+        logoHref: v.optional(v.string()),
+        menuItems: v.optional(v.array(v.object({ label: v.string(), href: v.string() }))),
+        actionButtons: v.optional(
+          v.array(
+            v.object({
+              label: v.string(),
+              href: v.string(),
+              variant: v.optional(
+                v.array(v.union(v.literal("default"), v.literal("outline"), v.literal("ghost")))
+              ),
+            })
+          )
+        ),
+      })
+    )
+  ),
   updatedAt: v.optional(v.number()),
 }).index("by_name", ["name"])
 
 export const footers = defineTable({
   name: v.string(),
-  logoText: v.optional(v.string()),
-  copyright: v.optional(v.string()),
-  links: v.optional(v.string()),
-  socialLinks: v.optional(v.string()),
+  content: v.optional(
+    v.array(
+      v.object({
+        blockType: v.literal("footer"),
+        blockName: v.optional(v.string()),
+        id: v.string(),
+        logoText: v.optional(v.string()),
+        logoImage: v.optional(v.array(v.id("images"))),
+        copyright: v.optional(v.string()),
+        links: v.optional(v.array(v.object({ label: v.string(), href: v.string() }))),
+        socialLinks: v.optional(
+          v.array(
+            v.object({ platform: v.string(), href: v.string(), icon: v.optional(v.string()) })
+          )
+        ),
+      })
+    )
+  ),
   updatedAt: v.optional(v.number()),
 }).index("by_name", ["name"])
 

@@ -12,6 +12,7 @@ import {
   pages,
   posts,
   themes,
+  users,
 } from "~/vexcms/collections";
 import { announcement, nav, siteSettings } from "~/vexcms/globals";
 
@@ -30,6 +31,7 @@ export const access = defineAccess({
     images,
     pages,
     themes,
+    users,
     articles,
     caseStudies,
     changelog,
@@ -187,10 +189,13 @@ export const access = defineAccess({
         "*": true,
       },
       siteSettings: {
-        "*": true,
+        "*": false,
+        read: () => ({ adminTheme: true, ogImage: true, name: true, description: true }),
+        update: () => ({ adminTheme: true }),
       },
       themes: {
-        "*": true,
+        "*": false,
+        read: true,
       },
     },
   },

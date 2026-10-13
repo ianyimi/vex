@@ -230,6 +230,6 @@ export function createVexRevalidateRoute(props: CreateVexRevalidateRouteProps): 
  */
 function toCrudAction(operation: VexMutationOperation): CrudWriteAction {
   if (operation === "remove") {return "delete";}
-  if (operation === "upsert" || operation === "publish") {return "update";}
+  if (operation === "upsert" || operation === "publish" || operation === "unpublish") {return "update";}
   return operation;
 }

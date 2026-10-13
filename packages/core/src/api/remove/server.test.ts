@@ -41,13 +41,13 @@ describe("remove (server)", () => {
       const id1 = await ctx.db.insert("posts", { title: "Post 1", slug: "p1" });
       const id2 = await ctx.db.insert("posts", { title: "Post 2", slug: "p2" });
       const id3 = await ctx.db.insert("posts", { title: "Post 3", slug: "p3" });
-      
+
       await remove({ ctx, ids: [id1, id2, id3], collection: "posts", config: fixtureConfig });
-      
+
       const doc1 = await ctx.db.get(id1);
       const doc2 = await ctx.db.get(id2);
       const doc3 = await ctx.db.get(id3);
-      
+
       expect(doc1).toBeNull();
       expect(doc2).toBeNull();
       expect(doc3).toBeNull();
@@ -58,9 +58,15 @@ describe("remove (server)", () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       const id = await ctx.db.insert("posts", { title: "Soft Delete Test", slug: "sdt" });
-      
-      await remove({ ctx, ids: [id], softDelete: "deleted", collection: "posts", config: fixtureConfig });
-      
+
+      await remove({
+        ctx,
+        ids: [id],
+        softDelete: "deleted",
+        collection: "posts",
+        config: fixtureConfig,
+      });
+
       const doc = await ctx.db.get(id);
       expect(doc).not.toBeNull();
       expect((doc as any).deleted).toBe(true);
@@ -72,12 +78,18 @@ describe("remove (server)", () => {
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       const id1 = await ctx.db.insert("posts", { title: "Post 1", slug: "p1" });
       const id2 = await ctx.db.insert("posts", { title: "Post 2", slug: "p2" });
-      
-      await remove({ ctx, ids: [id1, id2], softDelete: "deleted", collection: "posts", config: fixtureConfig });
-      
+
+      await remove({
+        ctx,
+        ids: [id1, id2],
+        softDelete: "deleted",
+        collection: "posts",
+        config: fixtureConfig,
+      });
+
       const doc1 = await ctx.db.get(id1);
       const doc2 = await ctx.db.get(id2);
-      
+
       expect(doc1).not.toBeNull();
       expect(doc2).not.toBeNull();
       expect((doc1 as any).deleted).toBe(true);
@@ -112,7 +124,13 @@ describe("remove (server) — access enforcement", () => {
     await withTransaction(async (ctx) => {
       const id = await ctx.db.insert("posts", { title: "Doomed", slug: "d" });
       await expect(
-        remove({ ctx, ids: [id], collection: "posts", config, auth: { user: { roles: ["blocked"] } } }),
+        remove({
+          ctx,
+          ids: [id],
+          collection: "posts",
+          config,
+          auth: { user: { roles: ["blocked"] } },
+        }),
       ).rejects.toThrow(VexAccessError);
       expect(await ctx.db.get(id)).not.toBeNull();
     });
@@ -135,7 +153,13 @@ describe("remove (server) — access enforcement", () => {
     await withTransaction(async (ctx) => {
       const id = await ctx.db.insert("posts", { title: "Doomed", slug: "d" });
       await expect(
-        remove({ ctx, ids: [id], collection: "posts", config, auth: { user: { roles: ["noAccess"] } } }),
+        remove({
+          ctx,
+          ids: [id],
+          collection: "posts",
+          config,
+          auth: { user: { roles: ["noAccess"] } },
+        }),
       ).rejects.toThrow(VexAccessError);
       expect(await ctx.db.get(id)).not.toBeNull();
     });
@@ -157,7 +181,13 @@ describe("remove (server) — access enforcement", () => {
 
     await withTransaction(async (ctx) => {
       const id = await ctx.db.insert("posts", { title: "Goes away", slug: "d" });
-      await remove({ ctx, ids: [id], collection: "posts", config, auth: { user: { roles: ["editor"] } } });
+      await remove({
+        ctx,
+        ids: [id],
+        collection: "posts",
+        config,
+        auth: { user: { roles: ["editor"] } },
+      });
       expect(await ctx.db.get(id)).toBeNull();
     });
   });
@@ -182,7 +212,11 @@ describe("remove (server) — access enforcement", () => {
     const auth = { user: { roles: ["editor"] } };
 
     await withTransaction(async (ctx) => {
-      const protectedId = await ctx.db.insert("posts", { title: "Protected", slug: "p", featured: true });
+      const protectedId = await ctx.db.insert("posts", {
+        title: "Protected",
+        slug: "p",
+        featured: true,
+      });
       const openId = await ctx.db.insert("posts", { title: "Open", slug: "o", featured: false });
 
       await expect(
@@ -265,7 +299,11 @@ describe("remove (server) — access enforcement", () => {
 
     test("denies when the constraint holds but the filter does not", async () => {
       await withTransaction(async (ctx) => {
-        const id = await ctx.db.insert("posts", { title: "Unapproved", slug: "s", featured: false });
+        const id = await ctx.db.insert("posts", {
+          title: "Unapproved",
+          slug: "s",
+          featured: false,
+        });
         await expect(
           remove({ ctx, ids: [id], collection: "posts", config: bothConfig, auth }),
         ).rejects.toThrow(VexAccessError);
@@ -366,7 +404,13 @@ describe("remove (server) — access enforcement", () => {
 
       const noOrg = await ctx.db.insert("posts", { title: "No org", slug: "n" });
       await expect(
-        remove({ ctx, ids: [noOrg], collection: "posts", config, auth: { user: { roles: ["member"] } } }),
+        remove({
+          ctx,
+          ids: [noOrg],
+          collection: "posts",
+          config,
+          auth: { user: { roles: ["member"] } },
+        }),
       ).rejects.toThrow(VexAccessError);
       expect(await ctx.db.get(noOrg)).not.toBeNull();
     });
@@ -440,15 +484,17 @@ describe("remove (server) — access enforcement", () => {
     const auth = { user: { roles: ["editor"] } };
 
     const t = convexTest(schema, modules);
-    const { openId, protectedId } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      const openId = await ctx.db.insert("posts", { title: "Open", slug: "o", featured: false });
-      const protectedId = await ctx.db.insert("posts", {
-        title: "Protected",
-        slug: "p",
-        featured: true,
-      });
-      return { openId, protectedId };
-    });
+    const { openId, protectedId } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const openId = await ctx.db.insert("posts", { title: "Open", slug: "o", featured: false });
+        const protectedId = await ctx.db.insert("posts", {
+          title: "Protected",
+          slug: "p",
+          featured: true,
+        });
+        return { openId, protectedId };
+      },
+    );
 
     // The rejection is left UNCAUGHT inside the transaction — exactly how a
     // real `mutation({ handler })` that does not itself catch would behave.
@@ -470,15 +516,25 @@ describe("remove (server) — beforeDelete", () => {
     const collection = defineCollection({
       slug: "posts",
       fields: { title: text() },
-      hooks: { beforeDelete: () => { throw new Error("cannot delete"); } },
+      hooks: {
+        beforeDelete: () => {
+          throw new Error("cannot delete");
+        },
+      },
     });
     const config = { collections: [collection] } as unknown as VexConfig;
     const t = convexTest(schema, modules);
-    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never));
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never),
+    );
     await expect(
-      t.run((ctx: GenericMutationCtx<GenericDataModel>) => remove({ ctx, config, collection: "posts", ids: [id as never] })),
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        remove({ ctx, config, collection: "posts", ids: [id as never] }),
+      ),
     ).rejects.toThrow(/cannot delete/);
-    const stillThere = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    const stillThere = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.get(id as never),
+    );
     expect(stillThere).not.toBeNull();
   });
 
@@ -487,12 +543,20 @@ describe("remove (server) — beforeDelete", () => {
     const collection = defineCollection({
       slug: "posts",
       fields: { title: text(), deleted: checkbox() },
-      hooks: { beforeDelete: () => { called = true; } },
+      hooks: {
+        beforeDelete: () => {
+          called = true;
+        },
+      },
     });
     const config = { collections: [collection] } as unknown as VexConfig;
     const t = convexTest(schema, modules);
-    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never));
-    await t.run((ctx: GenericMutationCtx<GenericDataModel>) => remove({ ctx, config, collection: "posts", ids: [id as never], softDelete: "deleted" }));
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never),
+    );
+    await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      remove({ ctx, config, collection: "posts", ids: [id as never], softDelete: "deleted" }),
+    );
     expect(called).toBe(false);
   });
 
@@ -500,9 +564,234 @@ describe("remove (server) — beforeDelete", () => {
     const collection = defineCollection({ slug: "posts", fields: { title: text() } });
     const config = { collections: [collection] } as unknown as VexConfig;
     const t = convexTest(schema, modules);
-    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never));
-    await t.run((ctx: GenericMutationCtx<GenericDataModel>) => remove({ ctx, config, collection: "posts", ids: [id as never] }));
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("posts", { title: "Hi", slug: "hi" } as never),
+    );
+    await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      remove({ ctx, config, collection: "posts", ids: [id as never] }),
+    );
     const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
     expect(doc).toBeNull();
+  });
+});
+
+const versionedPostsResource = defineCollection({
+  slug: "posts",
+  fields: { title: text(), slug: text() },
+  versions: { drafts: true },
+});
+
+// Resolves `versions: { drafts: true }` for real (Step 1),
+// which is what `remove()`'s `collection.versions.drafts` check reads.
+const versionedFixtureConfig = {
+  collections: [versionedPostsResource],
+} as unknown as VexConfig;
+
+describe("remove (server) — two-row cascade", () => {
+  test("deleting the published row also deletes its draft row and version history", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Published",
+        slug: "cascade-a",
+        vex_status: "published",
+      });
+      const draftId = await ctx.db.insert("posts", {
+        title: "Published (edited)",
+        slug: "cascade-a",
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      });
+      const versionId1 = await ctx.db.insert("vex_versions", {
+        snapshot: {},
+        collection: "posts",
+        documentId: publishedId,
+        version: 1,
+        status: "published",
+      });
+      const versionId2 = await ctx.db.insert("vex_versions", {
+        snapshot: {},
+        collection: "posts",
+        documentId: publishedId,
+        version: 2,
+        status: "draft",
+      });
+
+      await remove({
+        ctx,
+        ids: [publishedId],
+        collection: "posts",
+        config: versionedFixtureConfig,
+      });
+
+      expect(await ctx.db.get(publishedId)).toBeNull();
+      expect(await ctx.db.get(draftId)).toBeNull();
+      expect(await ctx.db.get(versionId1)).toBeNull();
+      expect(await ctx.db.get(versionId2)).toBeNull();
+    });
+  });
+
+  test("deleting via the draft row cascades identically", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Published",
+        slug: "cascade-b",
+        vex_status: "published",
+      });
+      const draftId = await ctx.db.insert("posts", {
+        title: "Published (edited)",
+        slug: "cascade-b",
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      });
+      const versionId = await ctx.db.insert("vex_versions", {
+        snapshot: {},
+        collection: "posts",
+        documentId: publishedId,
+        version: 1,
+        status: "published",
+      });
+
+      await remove({
+        ctx,
+        ids: [draftId],
+        collection: "posts",
+        config: versionedFixtureConfig,
+      });
+
+      expect(await ctx.db.get(publishedId)).toBeNull();
+      expect(await ctx.db.get(draftId)).toBeNull();
+      expect(await ctx.db.get(versionId)).toBeNull();
+    });
+  });
+
+  test("does not touch a different document's draft or version history", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedA = await ctx.db.insert("posts", {
+        title: "Doc A",
+        slug: "cascade-c",
+        vex_status: "published",
+      });
+      const publishedB = await ctx.db.insert("posts", {
+        title: "Doc B",
+        slug: "cascade-d",
+        vex_status: "published",
+      });
+      const draftB = await ctx.db.insert("posts", {
+        title: "Doc B (edited)",
+        slug: "cascade-d",
+        vex_status: "draft",
+        vex_publishedId: publishedB,
+      });
+      const versionB = await ctx.db.insert("vex_versions", {
+        snapshot: {},
+        collection: "posts",
+        documentId: publishedB,
+        version: 1,
+        status: "published",
+      });
+
+      await remove({
+        ctx,
+        ids: [publishedA],
+        collection: "posts",
+        config: versionedFixtureConfig,
+      });
+
+      expect(await ctx.db.get(publishedA)).toBeNull();
+      expect(await ctx.db.get(publishedB)).not.toBeNull();
+      expect(await ctx.db.get(draftB)).not.toBeNull();
+      expect(await ctx.db.get(versionB)).not.toBeNull();
+    });
+  });
+
+  test("a non-versioned collection's delete is unaffected by the cascade guard", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await ctx.db.insert("posts", {
+        title: "Plain",
+        slug: "no-versions",
+      });
+      await remove({
+        ctx,
+        ids: [id],
+        collection: "posts",
+        config: fixtureConfig,
+      });
+      expect(await ctx.db.get(id)).toBeNull();
+    });
+  });
+
+  test("a never-published draft-only row's own version history is still cleared, and nothing else is touched", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const draftId = await ctx.db.insert("posts", {
+        title: "New page (unpublished)",
+        slug: "cascade-e",
+        vex_status: "draft",
+      });
+      const versionId = await ctx.db.insert("vex_versions", {
+        snapshot: {},
+        collection: "posts",
+        documentId: draftId,
+        version: 1,
+        status: "draft",
+      });
+
+      await remove({
+        ctx,
+        ids: [draftId],
+        collection: "posts",
+        config: versionedFixtureConfig,
+      });
+
+      expect(await ctx.db.get(draftId)).toBeNull();
+      expect(await ctx.db.get(versionId)).toBeNull();
+    });
+  });
+
+  test("versions.cascadeDelete: false leaves the draft row and version history in place", async () => {
+    const noCascadePosts = defineCollection({
+      slug: "posts",
+      fields: { title: text(), slug: text() },
+      versions: { drafts: true, cascadeDelete: false },
+    });
+    const noCascadeConfig = {
+      collections: [noCascadePosts],
+    } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Published",
+        slug: "cascade-f",
+        vex_status: "published",
+      });
+      const draftId = await ctx.db.insert("posts", {
+        title: "Published (edited)",
+        slug: "cascade-f",
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      });
+      const versionId = await ctx.db.insert("vex_versions", {
+        snapshot: {},
+        collection: "posts",
+        documentId: publishedId,
+        version: 1,
+        status: "published",
+      });
+
+      await remove({
+        ctx,
+        ids: [publishedId],
+        collection: "posts",
+        config: noCascadeConfig,
+      });
+
+      expect(await ctx.db.get(publishedId)).toBeNull();
+      expect(await ctx.db.get(draftId)).not.toBeNull();
+      expect(await ctx.db.get(versionId)).not.toBeNull();
+    });
   });
 });

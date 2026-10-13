@@ -2,11 +2,7 @@
 
 import { convexQuery } from "@convex-dev/react-query";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import type {
-  CollectionConfig,
-  RelationshipField,
-  VexDocument,
-} from "@vexcms/core";
+import type { CollectionConfig, RelationshipField, VexDocument } from "@vexcms/core";
 import { vexConvexApi } from "@vexcms/core";
 
 /**
@@ -37,7 +33,7 @@ export function useRelationshipPickerOptions(
   fieldDef: RelationshipField,
   targetCollection: CollectionConfig,
   query: string,
-  opts?: { enabled?: boolean },
+  opts?: { enabled?: boolean; drafts?: boolean },
 ) {
   const useAsTitle = targetCollection.admin.useAsTitle;
   const isSearchable = useAsTitle !== "_id" && useAsTitle !== "_creationTime";
@@ -47,14 +43,12 @@ export function useRelationshipPickerOptions(
         searchIndexName: `search_${useAsTitle}`,
         searchField: useAsTitle,
         query,
+        drafts: opts?.drafts,
       }
-    : { collection: fieldDef.collection.slug };
+    : { collection: fieldDef.collection.slug, drafts: opts?.drafts };
 
   const { data, isPending, isError, error } = useQuery({
-    ...convexQuery(
-      isSearchable ? vexConvexApi.search : vexConvexApi.find,
-      args as never,
-    ),
+    ...convexQuery(isSearchable ? vexConvexApi.search : vexConvexApi.find, args as never),
     enabled: opts?.enabled ?? true,
     placeholderData: keepPreviousData,
   });

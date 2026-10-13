@@ -382,6 +382,73 @@ describe("saveDraft (server)", () => {
       expect(draftRow?.title).toBe("Original");
     });
   });
+
+  test("saving from an older version rewrites the draft as that version plus the edits, with it as parent", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const publishedId = await ctx.db.insert("posts", {
+        title: "V1",
+        slug: "s",
+        vex_status: "published",
+      });
+      const draftId = await saveDraft({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        id: publishedId,
+        data: { title: "V2" },
+      });
+      await ctx.db.patch(draftId as GenericId<"posts">, { body: "added after v1" });
+
+      await saveDraft({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        id: draftId as GenericId<"posts">,
+        data: { slug: "s2" },
+        restoredFrom: 1,
+      });
+
+      const draftRow = await ctx.db.get("posts", draftId as GenericId<"posts">);
+      expect(draftRow?.title).toBe("V1");
+      expect(draftRow?.slug).toBe("s2");
+      expect(draftRow?.body).toBeUndefined();
+
+      const versions = await ctx.db
+        .query("vex_versions")
+        .withIndex("by_document_version", (q) =>
+          q.eq("collection", "posts").eq("documentId", String(publishedId)),
+        )
+        .collect();
+      const latest = versions.at(-1);
+      expect(latest?.version).toBe(3);
+      expect(latest?.parentVersion).toBe(1);
+      expect(latest?.snapshot).toEqual({ title: "V1", slug: "s2" });
+    });
+  });
+
+  test("saving from a version that does not exist throws and leaves the draft unchanged", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const draftId = await ctx.db.insert("posts", {
+        title: "Draft",
+        slug: "d",
+        vex_status: "draft",
+      });
+
+      await expect(
+        saveDraft({
+          ctx,
+          config: fixtureConfig,
+          collection: "posts",
+          id: draftId,
+          data: { title: "Edited" },
+          restoredFrom: 99,
+        }),
+      ).rejects.toThrow(/Version 99 does not exist/);
+      expect((await ctx.db.get(draftId))?.title).toBe("Draft");
+    });
+  });
 });
 
 /**
@@ -507,5 +574,28 @@ describe("saveDraft (server) — global target", () => {
         }),
       ),
     ).rejects.toThrow(/No global registered/);
+  });
+
+  test("saving from an older version replaces the draft's data with that version's snapshot", async () => {
+    const t = convexTest(schema, modules);
+    await t.run((ctx) =>
+      ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Live" },
+        vex_status: "published",
+      }),
+    );
+    const draftId = await t.run((ctx) =>
+      saveDraft({ ctx, config: globalFixtureConfig, global: "banner", data: { message: "Edited" } }),
+    );
+
+    await t.run((ctx) =>
+      saveDraft({ ctx, config: globalFixtureConfig, global: "banner", data: {}, restoredFrom: 1 }),
+    );
+
+    const rows = await t.run((ctx) => ctx.db.query("vex_globals").collect());
+    expect(rows.find((r) => r._id === draftId)?.data).toEqual({ message: "Live" });
+    const versions = await t.run((ctx) => ctx.db.query("vex_versions").collect());
+    expect(versions.at(-1)?.parentVersion).toBe(1);
   });
 });

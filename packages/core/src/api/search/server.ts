@@ -23,12 +23,14 @@ import type {
 import {
   AccessFilterFn,
   CRUD_ACTIONS,
+  DRAFT_ACTIONS,
   hasPermission,
   resolveAccessConstraint,
   resolveFieldPermissions,
   stripDeniedFields,
 } from "../../access";
 import { resolveAccessCall } from "../utils";
+import { requiresPublishedOnly, VERSION_STATUSES } from "../../versions";
 
 /**
  * Server-side args for `search`.
@@ -85,6 +87,8 @@ export interface SearchServerArgs<
       >
     >,
   ) => ExpressionOrValue<boolean>;
+  /** Same contract as `FindServerArgs.drafts` — see `find/server.ts`. */
+  drafts?: boolean;
 }
 
 // Overload 1: WITHOUT paginationOpts → returns array (most common case)
@@ -150,16 +154,28 @@ export async function search<
   const { access, action, resource } = resolveAccessCall({
     config: args.config,
     access: args.access,
-    defaultAction: CRUD_ACTIONS.read,
+    defaultAction: args.drafts === true ? DRAFT_ACTIONS.readDrafts : CRUD_ACTIONS.read,
     resource: args.collection,
   });
-  const accessFilter = resolveAccessConstraint({
+  const rbacFilter = resolveAccessConstraint({
     access,
     user: args.auth?.user ?? null,
     organization: args.auth?.organization,
     resource,
     action,
   });
+  let accessFilter: AccessFilterFn | undefined = rbacFilter;
+  if (
+    requiresPublishedOnly({
+      config: args.config,
+      collection: args.collection,
+      drafts: args.drafts,
+    })
+  ) {
+    const statusFilter: AccessFilterFn = (q) =>
+      q.eq(q.field("vex_status"), VERSION_STATUSES.published.key);
+    accessFilter = rbacFilter ? (q) => q.and(rbacFilter(q), statusFilter(q)) : statusFilter;
+  }
   const searchQuery = buildQuery({
     ...args,
     accessFilter,
@@ -226,7 +242,7 @@ export async function search<
   const finalDocs =
     !effectivePopulate || Object.keys(effectivePopulate).length === 0
       ? (docs as DocReturnItem<TCollectionSlug, TPopulate, D>[])
-      : ((await populateDocs(args.ctx, docs, effectivePopulate)) as DocReturnItem<
+      : ((await populateDocs(args.ctx, docs, effectivePopulate, args.drafts)) as DocReturnItem<
           TCollectionSlug,
           TPopulate,
           D

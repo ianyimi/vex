@@ -2,7 +2,8 @@ import { anyApi } from "convex/server";
 import type { FunctionReference } from "convex/server";
 import type { PaginationOptions, PaginationResult, VexApiAuth } from "./types";
 import { CollectionSlug, VexDocumentGlobal } from "../types";
-import { VERSION_SYSTEM_FIELDS, VexVersionStatus } from "../versions";
+import { VERSION_SYSTEM_FIELDS, VexVersionStatus, VersionSummary } from "../versions";
+import type { VersionSnapshotResult } from "./versions/getVersionSnapshot.server";
 
 /**
  * Base type for all VexCMS documents as returned from Convex queries.
@@ -113,6 +114,7 @@ export interface VexFindArgs {
   depth?: number;
   limit?: number;
   paginationOpts?: PaginationOptions;
+  drafts?: boolean;
 }
 
 /** Args for `api.vex.find`. */
@@ -134,6 +136,7 @@ export interface VexGetArgs {
   id: string;
   populate?: unknown;
   depth?: number;
+  drafts?: boolean;
 }
 
 /** Args for `api.vex.search`. */
@@ -148,6 +151,7 @@ export interface VexSearchArgs {
   populate?: unknown;
   depth?: number;
   paginationOpts?: PaginationOptions;
+  drafts?: boolean;
 }
 
 /** Args for `api.vex.create`. */
@@ -289,12 +293,86 @@ export type VexPublishArgs =
       auth?: VexApiAuth;
       collection: string;
       id: string;
+      data?: Record<string, unknown>;
+      version?: number;
       environmentId?: string;
     }
   | {
       [key: string]: unknown;
       auth?: VexApiAuth;
       global: string;
+      data?: Record<string, unknown>;
+      version?: number;
+      environmentId?: string;
+    };
+
+/** Args for `api.vex.versions.unpublish`. */
+export type VexUnpublishArgs =
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      collection: string;
+      id: string;
+      environmentId?: string;
+    }
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      global: string;
+      environmentId?: string;
+    };
+
+/** Args for `api.vex.versions.listVersions`. */
+export type VexListVersionsArgs =
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      collection: string;
+      id: string;
+      limit?: number;
+      environmentId?: string;
+    }
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      global: string;
+      limit?: number;
+      environmentId?: string;
+    };
+
+/** Args for `api.vex.versions.getVersionSnapshot`. */
+export type VexGetVersionSnapshotArgs =
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      collection: string;
+      id: string;
+      version: number;
+      environmentId?: string;
+    }
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      global: string;
+      version: number;
+      environmentId?: string;
+    };
+
+/** Args for `api.vex.versions.deleteVersion`. */
+export type VexDeleteVersionArgs =
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      collection: string;
+      id: string;
+      version: number;
+      environmentId?: string;
+    }
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      global: string;
+      version: number;
       environmentId?: string;
     };
 
@@ -478,6 +556,30 @@ export const vexConvexApi = {
       "public",
       VexPublishArgs,
       string
+    >,
+    unpublish: anyApi.vex.versions.unpublish as FunctionReference<
+      "mutation",
+      "public",
+      VexUnpublishArgs,
+      string
+    >,
+    listVersions: anyApi.vex.versions.listVersions as FunctionReference<
+      "query",
+      "public",
+      VexListVersionsArgs,
+      VersionSummary[]
+    >,
+    getVersionSnapshot: anyApi.vex.versions.getVersionSnapshot as FunctionReference<
+      "query",
+      "public",
+      VexGetVersionSnapshotArgs,
+      VersionSnapshotResult
+    >,
+    deleteVersion: anyApi.vex.versions.deleteVersion as FunctionReference<
+      "mutation",
+      "public",
+      VexDeleteVersionArgs,
+      void
     >,
   },
 } as const;

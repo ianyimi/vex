@@ -3,6 +3,7 @@
 import type { VexVersionStatus } from "@vexcms/core";
 import { Button } from "../ui";
 import { StatusBadge } from "./StatusBadge";
+import { type ComponentPropsWithRef } from "react";
 
 /** One toolbar button's wiring, supplied by the owning edit view. */
 export interface DraftToolbarAction {
@@ -15,7 +16,7 @@ export interface DraftToolbarAction {
 }
 
 /** Props for {@link DraftToolbar}. */
-export interface DraftToolbarProps {
+export interface DraftToolbarProps extends ComponentPropsWithRef<"div"> {
   /**
    * The loaded row's `vex_status`. `undefined` when nothing is stored yet
    * (a versioned global before its first save) — the badge is hidden then,
@@ -29,6 +30,8 @@ export interface DraftToolbarProps {
    * versioned global with no stored row has nothing to publish yet).
    */
   publish?: DraftToolbarAction;
+  /** Unpublish button wiring. Omitted → the button is not rendered. */
+  unpublish?: DraftToolbarAction;
 }
 
 /**
@@ -56,6 +59,7 @@ export function DraftToolbar(props: DraftToolbarProps) {
   return (
     <>
       {props.status && <StatusBadge status={props.status} />}
+      {props.children}
       <Button
         type="button"
         variant="outline"
@@ -75,6 +79,18 @@ export function DraftToolbar(props: DraftToolbarProps) {
           onClick={props.publish.onClick}
         >
           Publish
+        </Button>
+      )}
+      {props.unpublish && (
+        <Button
+          type="button"
+          variant="outline"
+          className="transition-all duration-300"
+          isPending={props.unpublish.isPending}
+          disabled={props.unpublish.disabled}
+          onClick={props.unpublish.onClick}
+        >
+          Unpublish
         </Button>
       )}
     </>

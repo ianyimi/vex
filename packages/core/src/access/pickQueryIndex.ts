@@ -49,8 +49,13 @@ function warnDisplacedAccessIndex(props: {
  * exactly how a compound constraint is expressed. Composing opaque range
  * callbacks loses that positional type, hence the cast: each callback is typed
  * as returning the terminal `IndexRange`, but at runtime it returns the builder
- * whenever fields remain. Ordering matters — the access range owns the index
+ * whenever fields remain. Ordering matters — the first range owns the index
  * prefix, so it must run first.
+ *
+ * Exported for `versions/statusConstraint.ts`, which reuses it unmodified to
+ * prefix a `vex_status` equality onto a `draftStatus`-indexed query's own
+ * range — the same "prefix, then continue" shape `pickQueryIndex` already
+ * uses to merge an access range and a caller range on one index.
  *
  * @param props - Input props.
  * @param props.first - Range applied first; owns the index prefix.
@@ -58,9 +63,8 @@ function warnDisplacedAccessIndex(props: {
  * @returns A single range applying both in order, one of them when only one is
  *   supplied, or `undefined` when neither is — an absent range means "use this
  *   index unconstrained", which `buildQuery` expresses by omitting the arg.
- * @internal
  */
-function composeRanges(props: {
+export function composeRanges(props: {
   first?: IndexRangeFn;
   second?: IndexRangeFn;
 }): IndexRangeFn | undefined {

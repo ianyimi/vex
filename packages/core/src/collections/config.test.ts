@@ -283,3 +283,53 @@ describe("defineCollection — hooks", () => {
     expect(posts.hooks.beforeChange).toBe(beforeChange);
   });
 });
+
+describe("defineCollection — draftStatus validation", () => {
+  it("throws when a collection-level index declares draftStatus without versions.drafts: true", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { title: text({ required: true }) },
+        indexes: [{ name: "by_title", fields: ["title"], draftStatus: true } as never],
+      }),
+    ).toThrow(/draftStatus/);
+  });
+
+  it("throws when a field's indexDraftStatus is set without versions.drafts: true", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { slug: text({ required: true, index: "by_slug", indexDraftStatus: true }) },
+      }),
+    ).toThrow(/declares indexDraftStatus but versions\.drafts is not true/);
+  });
+
+  it("throws when indexDraftStatus is set on a field with no index and no relationship auto-index", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { title: text({ required: true, indexDraftStatus: true }) },
+        versions: { drafts: true },
+      }),
+    ).toThrow(/no index to narrow/);
+  });
+
+  it("allows draftStatus on a collection-level index when versions.drafts: true", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      versions: { drafts: true },
+      indexes: [{ name: "by_title", fields: ["title"], draftStatus: "both" }],
+    });
+    expect(posts.indexes?.[0]).toMatchObject({ name: "by_title", draftStatus: "both" });
+  });
+
+  it("allows indexDraftStatus on a field's own index when versions.drafts: true", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { slug: text({ required: true, index: "by_slug", indexDraftStatus: true }) },
+      versions: { drafts: true },
+    });
+    expect(posts.fields.slug?.indexDraftStatus).toBe(true);
+  });
+});

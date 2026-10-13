@@ -1,5 +1,10 @@
 import { ConvexError, type GenericId } from "convex/values";
-import type { GenericDataModel, GenericMutationCtx, TableNamesInDataModel } from "convex/server";
+import type {
+  GenericDataModel,
+  GenericMutationCtx,
+  GenericQueryCtx,
+  TableNamesInDataModel,
+} from "convex/server";
 
 import type { CollectionSlug, GlobalSlug } from "../types/generated";
 import { VERSION_STATUSES } from "./constants";
@@ -44,6 +49,14 @@ export interface VersionedTargetRows<DataModel extends GenericDataModel> {
     row: Record<string, unknown>,
     patch: Record<string, unknown>,
   ) => Record<string, unknown>;
+  /**
+   * Builds the DB payload to replace every user field on an existing draft
+   * `row` with `userFields` — fields absent from `userFields` are cleared.
+   */
+  buildDraftReplace: (
+    row: Record<string, unknown>,
+    userFields: Record<string, unknown>,
+  ) => Record<string, unknown>;
 }
 
 /**
@@ -61,7 +74,7 @@ export interface VersionedTargetRows<DataModel extends GenericDataModel> {
  * @throws {ConvexError} When `id` does not resolve to a document in `collection`.
  */
 export async function resolveVersionedTarget<DataModel extends GenericDataModel>(
-  props: { ctx: GenericMutationCtx<DataModel> } & (
+  props: { ctx: GenericMutationCtx<DataModel> | GenericQueryCtx<DataModel> } & (
     | { collection: CollectionSlug; id: GenericId<CollectionSlug> }
     | { global: GlobalSlug }
   ),
@@ -116,6 +129,10 @@ export async function resolveVersionedTarget<DataModel extends GenericDataModel>
         ...(publishedId !== undefined ? { vex_publishedId: publishedId } : {}),
       }),
       buildDraftPatch: (_row, patch) => patch,
+      buildDraftReplace: (row, userFields) => ({
+        ...Object.fromEntries(Object.keys(removeVexFields({ doc: row })).map((key) => [key, undefined])),
+        ...userFields,
+      }),
     };
   }
 
@@ -143,5 +160,6 @@ export async function resolveVersionedTarget<DataModel extends GenericDataModel>
     buildDraftPatch: (row, patch) => ({
       data: { ...((row.data as Record<string, unknown> | undefined) ?? {}), ...patch },
     }),
+    buildDraftReplace: (_row, userFields) => ({ data: userFields }),
   };
 }

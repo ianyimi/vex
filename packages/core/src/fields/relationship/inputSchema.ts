@@ -1,4 +1,5 @@
-import { z, type ZodType } from "zod";
+import * as z from "zod";
+import type { ZodType } from "zod";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 import type { RelationshipField } from "./types";
 import { ADMIN_FIELDS } from "../constants";

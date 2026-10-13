@@ -276,6 +276,31 @@ export interface CollectionConfigInput<
   indexes?: {
     name: string;
     fields: NoInfer<TFieldSlug>[];
+    /**
+     * Also narrow this index on `vex_status` for draft/publish status
+     * composition (Step 13, `versions/statusConstraint.ts`). Only valid
+     * when this collection declares `versions.drafts: true` —
+     * `defineCollection` throws otherwise for a dynamically-assembled
+     * config; a literal `{ drafts: false }` (or omitted) config fails to
+     * typecheck a `draftStatus` here at all, since this property only
+     * exists when `TDrafts` is the literal `true`.
+     *
+     * - `true` — REPLACES the index with its `vex_status`-prefixed physical
+     *   form (`.index(name, ["vex_status", ...fields])`); no unprefixed
+     *   physical index exists for `name`. A `drafts: true` read that picks
+     *   this index cannot narrow through it and drops to `.filter()` for
+     *   any RBAC/caller range (dev-only warning, once per index).
+     * - `"both"` — emits the unprefixed index AND a `vex_status`-prefixed
+     *   twin (`` `${name}__draftStatus` `` — internal, never a selectable
+     *   `IndexNameFor` member), so a published-only read and a `drafts:
+     *   true` read on `name` both stay index-narrowed.
+     *
+     * @example
+     * ```ts
+     * indexes: [{ name: "by_slug", fields: ["slug"], draftStatus: "both" }]
+     * ```
+     */
+    draftStatus?: TDrafts extends true ? true | "both" : never;
   }[];
   meta?: TCollectionMeta;
   /**
@@ -383,6 +408,7 @@ export interface CollectionConfig<
   indexes?: {
     name: string;
     fields: NoInfer<TFieldSlug>[];
+    draftStatus?: TDrafts extends true ? true | "both" : never;
   }[];
   meta: TCollectionMeta;
   /** Resolved lifecycle hooks. Always present; defaults to `{}`. */

@@ -1,5 +1,5 @@
 ---
-"@vexcms/react": minor
+"@vexcms/react": patch
 ---
 
 **BREAKING: `useCollectionForm` and `useGlobalForm` are replaced by `useFieldsForm`.** Both

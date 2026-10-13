@@ -7,14 +7,15 @@ import type { AccessCallOptions, VexApiAuth } from "../types";
 import type { CollectionOrGlobal } from "../../types/utils";
 import { resolveVersionedTarget } from "../../versions/resolveVersionedTarget";
 import { publishShared } from "../../versions/publish";
+import { removeVexFields } from "../../versions/removeVexFields";
 
 /**
  * Server-side args for `publish`. A discriminated union, identical in shape
- * to `SaveDraftServerArgs` minus `data`/`restoredFrom` (`publish` promotes
- * whatever is currently stored on the draft row — see `publishShared`'s
- * doc comment): the `{ collection, id }` member publishes a versioned
- * collection's active draft, and the `{ global }` member publishes a
- * versioned global's.
+ * to `SaveDraftServerArgs` minus `restoredFrom`: the `{ collection, id }`
+ * member publishes a versioned collection's active draft, and the
+ * `{ global }` member publishes a versioned global's. `data`, when given,
+ * is merged on top of the current draft/published row before publishing —
+ * see `publishShared`'s doc comment.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
  */
@@ -27,6 +28,10 @@ export type PublishServerArgs<DataModel extends GenericDataModel> = {
   access?: AccessCallOptions<string>;
   /** Resolved caller identity, forwarded to `hasPermission`. */
   auth?: VexApiAuth;
+  /** Field values to merge on top of the current draft/published row before publishing. */
+  data?: Record<string, unknown>;
+  /** Publish this history version's snapshot instead of the draft. */
+  version?: number;
 } & (
   | {
       /** The versioned collection slug this call targets. */
@@ -60,8 +65,8 @@ export type PublishServerArgs<DataModel extends GenericDataModel> = {
  * @throws {ConvexError} When the collection/global cannot be resolved, does
  *   not declare `versions.drafts: true`, or (collection only) when `id`
  *   does not resolve to a document; propagated from `publishShared` when
- *   there is no draft to publish, or the merged document fails strict
- *   validation.
+ *   there is nothing to publish (no draft and no `data`), or the merged
+ *   document fails strict validation.
  * @throws {VexAccessError} When the caller is not permitted to publish.
  * @example
  * ```ts
@@ -100,7 +105,9 @@ export async function publish<DataModel extends GenericDataModel>(
       target,
       access: args.access,
       auth: args.auth,
+      data: args.data ? removeVexFields({ doc: args.data }) : undefined,
       rows,
+      version: args.version,
     });
   }
 
@@ -121,6 +128,8 @@ export async function publish<DataModel extends GenericDataModel>(
     target,
     access: args.access,
     auth: args.auth,
+    data: args.data ? removeVexFields({ doc: args.data }) : undefined,
     rows,
+    version: args.version,
   });
 }

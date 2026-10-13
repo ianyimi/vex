@@ -83,6 +83,7 @@ export function get<
           collection: args.collection,
           populate: args.populate,
           depth: args.depth,
+          drafts: args.drafts,
         },
   );
 }

@@ -148,3 +148,32 @@ describe("CollectionEditView — live preview split", () => {
     expect(panelGrowFactors(utils.container)).toEqual(["60", "40"]);
   });
 });
+
+describe("CollectionEditView — document appearing after a missing prefetch", () => {
+  const t = convexTest(schema, testModules);
+
+  // Regression: the server prefetch can resolve `null` (e.g. it read without
+  // `drafts` while the client reads a draft row) and the client query then
+  // finds the document. The view used to return "Document not found" BEFORE its
+  // form hooks, so the next render called more hooks and React threw "Rendered
+  // more hooks than during the previous render".
+  it("renders the form without a hook-order error when the client query finds the document", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const doc = await t.run((ctx) => ctx.db.insert("documents", { status: "b", title: "found" }));
+    const utils = renderView(
+      createElement(CollectionEditView, { collection: testCollection.slug, documentId: doc }),
+      { convex: t },
+    );
+
+    // No prefetched document: the first render has none, the query then finds it.
+    expect(utils.getByText("Document not found.")).toBeInTheDocument();
+    await waitFor(() => expect(utils.container.querySelector("#title")).not.toBeNull());
+    expect((utils.container.querySelector("#title") as HTMLInputElement).value).toBe("found");
+
+    const hookErrors = consoleError.mock.calls.filter((call) =>
+      call.some((arg) => String(arg).includes("order of Hooks")),
+    );
+    expect(hookErrors).toEqual([]);
+    consoleError.mockRestore();
+  });
+});

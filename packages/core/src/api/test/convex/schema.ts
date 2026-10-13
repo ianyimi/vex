@@ -16,6 +16,9 @@ const schema = defineSchema({
     title: v.string(),
     slug: v.string(),
     body: v.optional(v.string()),
+    // Only `find`'s "warns once" draftStatus test reads through `by_excerpt`, so
+    // the module-level warn-once memory has never seen it when that test runs.
+    excerpt: v.optional(v.string()),
     // Declared because `create`/`update` now stamp it; `convex-test` enforces
     // this fixture exactly as a real deployment would.
     updatedAt: v.optional(v.number()),
@@ -33,6 +36,10 @@ const schema = defineSchema({
     .searchIndex("search_title", { searchField: "title" })
     .index("by_featured", ["featured"])
     .index("by_slug", ["slug"])
+    .index("by_title", ["title"])
+    .index("by_excerpt", ["excerpt"])
+    .index("by_title__draftStatus", ["vex_status", "title"])
+    .index("by_body", ["vex_status", "body"])
     .index("by_status", ["vex_status"])
     .index("by_published", ["vex_publishedId"]),
 
@@ -44,9 +51,14 @@ const schema = defineSchema({
     // tuples must match or the positional builder terminates at the shortest.
     slug: v.optional(v.string()),
     organization: v.optional(v.array(v.id("organizations"))),
+    vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+    vex_publishedAt: v.optional(v.number()),
+    vex_publishedId: v.optional(v.id("posts")),
   })
     .searchIndex("search_name", { searchField: "name" })
-    .index("by_slug", ["slug"]),
+    .index("by_slug", ["slug"])
+    .index("by_status", ["vex_status"])
+    .index("by_published", ["vex_publishedId"]),
 
   organizations: defineTable({
     name: v.string(),

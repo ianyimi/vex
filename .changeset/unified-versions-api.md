@@ -1,6 +1,6 @@
 ---
-"@vexcms/core": minor
-"@vexcms/react": minor
+"@vexcms/core": patch
+"@vexcms/react": patch
 ---
 
 Unified `versions.saveDraft` to cover both collections and globals through

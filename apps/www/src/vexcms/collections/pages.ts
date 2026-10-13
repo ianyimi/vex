@@ -15,6 +15,12 @@ export const pages = defineCollection({
       url: (doc) => resolvePagePath(doc.slug),
     },
   },
+  versions: {
+    drafts: true,
+    autosave: {
+      enabled: true,
+    },
+  },
   fields: {
     title: text({
       label: "Title",
@@ -26,10 +32,14 @@ export const pages = defineCollection({
       label: "Slug",
       required: true,
       validate: async ({ value, doc, vex }) => {
-        const [existing] = await vex.find({ collection: TABLE_SLUG_PAGES, withIndex: {
-          name: "by_slug",
-          range: (q) => q.eq("slug", value),
-        }, limit: 1 })
+        const [existing] = await vex.find({
+          collection: TABLE_SLUG_PAGES,
+          withIndex: {
+            name: "by_slug",
+            range: (q) => q.eq("slug", value),
+          },
+          limit: 1,
+        });
         if (existing && existing._id !== doc._id) {
           throw new ConvexError({
             code: "SLUG_CONFLICT",

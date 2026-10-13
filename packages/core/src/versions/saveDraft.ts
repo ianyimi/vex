@@ -1,4 +1,5 @@
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
+import { ConvexError } from "convex/values";
 
 import type { VexConfig } from "../config";
 import type { AccessCallOptions, VexApiAuth } from "../api/types";
@@ -6,7 +7,7 @@ import { DRAFT_ACTIONS } from "../access";
 import { prepareEdit } from "../api/prepareEdit";
 import type { CollectionOrGlobal } from "../types/utils";
 import { VERSION_STATUSES } from "./constants";
-import { createVersion, getLatestVersion } from "./model";
+import { createVersion, getLatestVersion, getVersion } from "./model";
 import { removeVexFields } from "./removeVexFields";
 import type { VersionedTargetRows } from "./resolveVersionedTarget";
 
@@ -74,6 +75,19 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
     draftRow = (await props.ctx.db.get(props.rows.table, draftRowId)) as Record<string, unknown>;
   }
 
+  const baseVersion =
+    props.restoredFrom === undefined
+      ? null
+      : await getVersion({
+          ctx: props.ctx,
+          collection: props.rows.historyCollection,
+          documentId: props.rows.documentId,
+          version: props.restoredFrom,
+        });
+  if (props.restoredFrom !== undefined && baseVersion === null) {
+    throw new ConvexError(`Version ${props.restoredFrom} does not exist`);
+  }
+
   const { patch, transformedFields } = await prepareEdit({
     ctx: props.ctx,
     config: props.config,
@@ -81,7 +95,7 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
     action: DRAFT_ACTIONS.saveDraft,
     access: props.access,
     auth: props.auth,
-    storedDoc: props.rows.toUserFields(draftRow) as never,
+    storedDoc: (baseVersion?.snapshot ?? props.rows.toUserFields(draftRow)) as never,
     changes: data,
     partial: true,
     validateKeys: "changed",
@@ -89,7 +103,9 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
 
   await props.ctx.db.patch(
     draftRow._id as never,
-    props.rows.buildDraftPatch(draftRow, patch) as never,
+    (baseVersion
+      ? props.rows.buildDraftReplace(draftRow, removeVexFields({ doc: transformedFields }))
+      : props.rows.buildDraftPatch(draftRow, patch)) as never,
   );
 
   const previous = await getLatestVersion({
@@ -111,7 +127,7 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
       typeof props.auth?.user?.["_id"] === "string"
         ? (props.auth.user["_id"] as string)
         : undefined,
-    parentVersion: previous?.version,
+    parentVersion: props.restoredFrom ?? previous?.version,
     restoredFrom: props.restoredFrom,
     publishedAt,
   });

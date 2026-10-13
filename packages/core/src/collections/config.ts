@@ -1,6 +1,6 @@
 import pluralize from "pluralize-esm";
 
-import { AdminField, CollectionFieldMeta, ComponentHKT, number } from "../fields";
+import { ADMIN_FIELDS, AdminField, CollectionFieldMeta, ComponentHKT, number } from "../fields";
 import { CollectionSlug } from "../types";
 import { toTitleCase } from "../utils";
 import { COLLECTION_SYSTEM_FIELDS, CollectionSystemField } from "./constants";
@@ -155,6 +155,43 @@ export function defineCollection<
     throw new Error(
       `defineCollection: field key "${key}" is reserved and cannot be used in collection "${input.slug}". defineCollection injects it automatically; set { timestamps: false } to opt out.`,
     );
+  }
+
+  // Runtime guard: `draftStatus` (collection-level `indexes[]` and
+  // field-level `indexDraftStatus`) requires `versions.drafts: true`. The
+  // type-level `TDrafts extends true ? ... : never` branch on
+  // `CollectionConfigInput.indexes[].draftStatus` only protects a literal
+  // config object — a JS caller, or a dynamically-assembled `indexes`
+  // array, bypasses it the same way the reserved-key guard above needs its
+  // own runtime half.
+  if (input.versions?.drafts !== true) {
+    const indexOffender = input.indexes?.find((i) => i.draftStatus !== undefined);
+    if (indexOffender) {
+      throw new Error(
+        `defineCollection: index "${indexOffender.name}" on collection "${input.slug}" declares draftStatus but versions.drafts is not true.`,
+      );
+    }
+    const fieldOffender = Object.entries(input.fields).find(
+      ([, field]) => (field as AdminField).indexDraftStatus !== undefined,
+    );
+    if (fieldOffender) {
+      throw new Error(
+        `defineCollection: field "${fieldOffender[0]}" on collection "${input.slug}" declares indexDraftStatus but versions.drafts is not true.`,
+      );
+    }
+  }
+
+  // A field's `indexDraftStatus` narrows an index that must actually
+  // exist — either the field's own `index`, or a relationship field's auto
+  // `by_<fieldKey>`. Catches a typo'd `indexDraftStatus` on a field with
+  // neither, which would otherwise silently do nothing.
+  for (const [fieldKey, field] of Object.entries(input.fields)) {
+    const f = field as AdminField;
+    if (f.indexDraftStatus !== undefined && !f.index && f.type !== ADMIN_FIELDS.relationship.type) {
+      throw new Error(
+        `defineCollection: field "${fieldKey}" on collection "${input.slug}" declares indexDraftStatus with no index to narrow — set "index", or this must be a relationship field (which auto-indexes).`,
+      );
+    }
   }
 
   // Never mutate `input.fields`: the same input object may be reused across

@@ -15,7 +15,14 @@ const mockMutation = ((def: unknown) => def) as unknown as MutationBuilder<
   "public"
 >;
 
-const REGISTERED_OPERATION_NAMES = ["saveDraft", "publish"].sort();
+const REGISTERED_OPERATION_NAMES = [
+  "saveDraft",
+  "publish",
+  "unpublish",
+  "listVersions",
+  "getVersionSnapshot",
+  "deleteVersion",
+].sort();
 
 const unversionedPosts = defineCollection({
   slug: "posts",

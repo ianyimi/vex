@@ -12,7 +12,7 @@ import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
 import { useDebounceValue } from "@ts-hooks-kit/core";
 import { useQueries } from "@tanstack/react-query";
-import { type VexDocument } from "@vexcms/core";
+import { VERSION_STATUSES, type VexDocument } from "@vexcms/core";
 import { useRelationshipPickerOptions } from "../../../hooks";
 import { useVexConfig } from "../../../context/VexConfigContext";
 import { resolveRelationshipPreview } from "./preview";
@@ -33,7 +33,7 @@ export const RelationshipFieldInput = createFieldInput<
   string[],
   CollectionFieldMeta,
   RelationshipField<VexResourceSlug, CollectionFieldMeta>
->(({ name, readOnly, fieldDef, field, index, submissionAttempts }) => {
+>(({ name, readOnly, fieldDef, field, index, submissionAttempts, documentStatus }) => {
   // `createFieldInput`'s render context provides { name, fieldDef, readOnly,
   // field, submissionAttempts } — no `config`. Read the live VexConfig from the
   // existing AdminLayout-provided context instead.
@@ -55,7 +55,7 @@ export const RelationshipFieldInput = createFieldInput<
     return (
       <div className="flex flex-col gap-1.5">
         <FormLabel field={fieldDef} index={index} name={name} />
-        <p className="text-destructive text-xs">
+        <p className="text-xs text-destructive">
           Unknown collection: <code>{fieldDef.collection.slug}</code>
         </p>
       </div>
@@ -72,15 +72,22 @@ export const RelationshipFieldInput = createFieldInput<
     fieldDef,
     targetCollection,
     debouncedSearch,
-    { enabled: open },
+    { enabled: open, drafts: documentStatus === VERSION_STATUSES.draft.key },
   );
 
   // Resolve selected IDs to full docs for chip rendering.
   // tanstack-query's per-ID cache deduplicates with the picker's search results.
+  // Same `drafts` gate as the picker above: a draft document may link a draft
+  // target, and without it `get`'s published-only filter resolves that target to
+  // `null` — the value is saved but its chip silently disappears.
   const selectedIds: string[] = field.state.value ?? [];
   const selectedDocResults = useQueries({
     queries: selectedIds.map((id) => ({
-      ...get({ id: id as GenericId<CollectionSlug>, collection: targetCollection.slug }),
+      ...get({
+        id: id as GenericId<CollectionSlug>,
+        collection: targetCollection.slug,
+        drafts: documentStatus === VERSION_STATUSES.draft.key,
+      }),
       enabled: id !== "",
     })),
   });
@@ -129,7 +136,7 @@ export const RelationshipFieldInput = createFieldInput<
           {selectedDocs.map((doc) => (
             <span
               key={doc._id}
-              className="bg-muted border-border inline-flex items-center gap-1 rounded-sm border px-2 py-0.5 text-xs"
+              className="inline-flex items-center gap-1 rounded-sm border border-border bg-muted px-2 py-0.5 text-xs"
             >
               <Preview doc={doc} fieldKey="_id" config={targetCollection as never} />
               <button
@@ -179,7 +186,7 @@ export const RelationshipFieldInput = createFieldInput<
 
         <PopoverContent className="w-80 p-0">
           {/* —— Search input with isPending spinner: Decision 13 —— */}
-          <div className="border-border border-b p-2">
+          <div className="border-b border-border p-2">
             <Input
               type="text"
               placeholder={`Search ${targetLabel}…`}
@@ -193,7 +200,7 @@ export const RelationshipFieldInput = createFieldInput<
           {/* —— Result list: master lines 258–295, rendered via Preview —— */}
           <div className="max-h-[240px] overflow-y-auto">
             {documents.length === 0 ? (
-              <p className="text-muted-foreground p-4 text-center text-xs">
+              <p className="p-4 text-center text-xs text-muted-foreground">
                 {isPending ? "Loading…" : "No documents found"}
               </p>
             ) : (
@@ -204,20 +211,19 @@ export const RelationshipFieldInput = createFieldInput<
                     key={doc._id}
                     type="button"
                     onClick={() => handleSelect(doc._id)}
-                    className={`hover:bg-accent hover:text-accent-foreground ${isSelected ? "bg-accent text-accent-foreground" : ""} flex
-                        w-full items-center gap-2 px-3 py-1.5 text-left
-                      text-[13px]`}
+                    className={`${isSelected ? "bg-accent text-accent-foreground" : ""} flex w-full items-center
+                        gap-2 px-3 py-1.5 text-left text-[13px] hover:bg-accent
+                      hover:text-accent-foreground`}
                   >
                     {isMany && (
                       <span
                         className={`${
-                          isSelected
-                            ? "bg-primary border-primary text-primary-foreground"
-                            : "border-input"
+                          isSelected ? "bg-primary text-primary-foreground" : "border-input"
                         }
-                              grid h-4 w-4 flex-shrink-0
-                              place-items-center rounded-sm
-                          border`}
+                        grid
+                              h-4 w-4 flex-shrink-0 place-items-center
+                              rounded-sm border
+                          border-primary`}
                       >
                         {isSelected && <span className="text-[10px]">✓</span>}
                       </span>

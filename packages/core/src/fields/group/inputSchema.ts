@@ -1,4 +1,5 @@
-import { z, ZodType } from "zod";
+import * as z from "zod";
+import type { ZodType } from "zod";
 import { adminFieldToInputSchema } from "../inputSchemas";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 import type { GroupField } from "./types";

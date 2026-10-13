@@ -161,7 +161,13 @@ export const pages = defineTable({
   metaDescription: v.optional(v.string()),
   ogImage: v.optional(v.array(v.id("images"))),
   updatedAt: v.optional(v.number()),
-}).index("by_slug", ["slug"])
+  vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+  vex_publishedAt: v.optional(v.number()),
+  vex_publishedId: v.optional(v.id("pages")),
+})
+  .index("by_slug", ["slug"])
+  .index("by_status", ["vex_status"])
+  .index("by_published", ["vex_publishedId"])
 
 export const headers = defineTable({
   name: v.string(),

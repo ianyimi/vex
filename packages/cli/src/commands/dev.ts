@@ -1,16 +1,10 @@
 // @ts-nocheck
 import { resolve } from "node:path";
 import { generateAndWrite, getOutputPath } from "../lib/generateSchema.js";
-import {
-  killConvexDev,
-  startConvexDev,
-  waitForDeploy,
-} from "../lib/convexProcess.js";
+import { killConvexDev, startConvexDev, waitForDeploy } from "../lib/convexProcess.js";
 import { loadConfig, patchConvexTsconfig } from "../lib/loadConfig.js";
 import { logger } from "../lib/logger.js";
-import { backfillVersionStatus } from "../lib/migrate.js";
 import { isServerConfigPath, resolveConfigPath } from "../lib/resolveConfigPath.js";
-import { resolveConvexUrl } from "../lib/resolveConvexUrl.js";
 import { traceImports } from "../lib/traceImports.js";
 import { createWatcher } from "../lib/watcher.js";
 
@@ -31,9 +25,7 @@ export interface DevOptions {
  * @param options - Run-mode and working-directory overrides for the dev command.
  */
 export async function devCommand(options: DevOptions = {}) {
-  const cwd = options.cwd
-    ? resolve(process.cwd(), options.cwd)
-    : process.cwd();
+  const cwd = options.cwd ? resolve(process.cwd(), options.cwd) : process.cwd();
   const configPath = resolveConfigPath(cwd);
   if (!isServerConfigPath(configPath)) {
     logger.error(
@@ -88,7 +80,6 @@ export async function devCommand(options: DevOptions = {}) {
   // Wait for the first deployment. On success, stop the tsconfig watcher
   // (no longer needed). On failure, the watcher already patched the file
   // which triggers Convex to retry.
-  const hasVersioning = config.collections.some((c) => c.versions?.drafts);
   waitForDeploy(cwd)
     .then(async (deployed) => {
       // Stop watching — Convex only overwrites tsconfig during provisioning
@@ -98,13 +89,6 @@ export async function devCommand(options: DevOptions = {}) {
         // Patch one more time in case the watcher missed it
         patchConvexTsconfig(cwd);
         return;
-      }
-
-      if (hasVersioning) {
-        const convexUrl = resolveConvexUrl(cwd);
-        if (convexUrl) {
-          await backfillVersionStatus({ convexUrl, config });
-        }
       }
     })
     .catch(() => {

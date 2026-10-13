@@ -89,3 +89,44 @@ describe("MediaCollectionEditView — diff submit", () => {
     expect(convexMutationMock).not.toHaveBeenCalled();
   });
 });
+
+describe("MediaCollectionEditView — document appearing after a missing prefetch", () => {
+  const t = convexTest(schema, testModules);
+
+  // Regression: same hook-order hazard as `CollectionEditView` — the view
+  // returned "Document not found" before its form hooks.
+  it("renders the form without a hook-order error when the client query finds the document", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const doc = await t.run((ctx) =>
+      ctx.db.insert("media", {
+        adapter: "convex",
+        alt: "found alt",
+        collectionSlug: "images",
+        deleted: false,
+        filename: "photo.png",
+        mimeType: "image/png",
+        size: 100,
+        src: "https://example.com/photo.png",
+        storageId: "s1",
+      }),
+    );
+    const utils = renderView(
+      createElement(MediaCollectionEditView, {
+        collection: testClientConfig.mediaCollections[0].slug,
+        documentId: doc,
+      }),
+      { convex: t },
+    );
+
+    // No prefetched document: the first render has none, the query then finds it.
+    expect(utils.getByText("Document not found.")).toBeInTheDocument();
+    await waitFor(() => expect(utils.container.querySelector("#alt")).not.toBeNull());
+    expect((utils.container.querySelector("#alt") as HTMLInputElement).value).toBe("found alt");
+
+    const hookErrors = consoleError.mock.calls.filter((call) =>
+      call.some((arg) => String(arg).includes("order of Hooks")),
+    );
+    expect(hookErrors).toEqual([]);
+    consoleError.mockRestore();
+  });
+});

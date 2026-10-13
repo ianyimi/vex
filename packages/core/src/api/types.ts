@@ -187,6 +187,12 @@ export interface GenericQueryClientParams<
    * that is not known yet) without violating the Rules of Hooks.
    */
   skip?: boolean;
+  /**
+   * When `true` on a versioned collection, includes the document's draft
+   * row alongside its published row — gated server-side on the `readDrafts`
+   * action (Step 13). Ignored for a non-versioned collection.
+   */
+  drafts?: boolean;
 }
 
 /**

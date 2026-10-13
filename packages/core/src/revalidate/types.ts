@@ -24,7 +24,13 @@ import type { CollectionSlug } from "../types";
  * must agree on, and `@vexcms/core` is the lowest package both depend on
  * (P-010).
  */
-export type VexMutationOperation = "create" | "remove" | "update" | "upsert" | "publish";
+export type VexMutationOperation =
+  | "create"
+  | "remove"
+  | "update"
+  | "upsert"
+  | "publish"
+  | "unpublish";
 
 /**
  * Result of `resolveTargets` — the deduped paths to purge for a single
