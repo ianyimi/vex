@@ -2,7 +2,8 @@ import { ADMIN_FIELDS } from "../fields/constants";
 import { adminFieldToValidator } from "../fields/validators";
 import { CollectionConfig } from "./types";
 import type { VexClientConfig } from "../config";
-import { CORE_ADMIN_FIELDS } from "./constants";
+import { CONVEX_SYSTEM_FIELDS } from "./constants";
+import { versionFieldsToVexSchema } from "../versions/schema";
 
 /**
  * Describes a relationship field in another collection that points to a given collection.
@@ -109,7 +110,16 @@ export function collectionConfigToVexSchema(props: {
   const indexes = [];
   const searchIndexes: string[] = [];
   for (const index of props.collection.indexes ?? []) {
-    indexes.push(`\t.index("${index.name}", ${JSON.stringify(index.fields)})`);
+    if (index.draftStatus === true) {
+      indexes.push(`\t.index("${index.name}", ${JSON.stringify(["vex_status", ...index.fields])})`);
+    } else if (index.draftStatus === "both") {
+      indexes.push(`\t.index("${index.name}", ${JSON.stringify(index.fields)})`);
+      indexes.push(
+        `\t.index("${index.name}__draftStatus", ${JSON.stringify(["vex_status", ...index.fields])})`,
+      );
+    } else {
+      indexes.push(`\t.index("${index.name}", ${JSON.stringify(index.fields)})`);
+    }
   }
 
   for (const [fieldKey, field] of Object.entries(props.collection.fields)) {
@@ -123,7 +133,16 @@ export function collectionConfigToVexSchema(props: {
         : undefined;
     // collection indexes preferred since they can be compound indexes
     if (fieldIndexName && !props.collection.indexes?.find((i) => i.name === fieldIndexName)) {
-      indexes.push(`\t.index("${fieldIndexName}", ["${fieldKey}"])`);
+      if (field.indexDraftStatus === true) {
+        indexes.push(`\t.index("${fieldIndexName}", ${JSON.stringify(["vex_status", fieldKey])})`);
+      } else if (field.indexDraftStatus === "both") {
+        indexes.push(`\t.index("${fieldIndexName}", ["${fieldKey}"])`);
+        indexes.push(
+          `\t.index("${fieldIndexName}__draftStatus", ${JSON.stringify(["vex_status", fieldKey])})`,
+        );
+      } else {
+        indexes.push(`\t.index("${fieldIndexName}", ["${fieldKey}"])`);
+      }
     }
 
     if (field.type === ADMIN_FIELDS.text.type && field.searchIndex) {
@@ -140,7 +159,7 @@ export function collectionConfigToVexSchema(props: {
   });
   relationships.forEach(() => {
     const useAsTitle = props.collection.admin.useAsTitle;
-    const coreAdminFields: string[] = Object.values(CORE_ADMIN_FIELDS).map((f) => f.slug);
+    const coreAdminFields: string[] = Object.values(CONVEX_SYSTEM_FIELDS).map((f) => f.slug);
     if (coreAdminFields.includes(useAsTitle)) return;
     const searchIndex = searchIndexes.find((si) =>
       si.includes(`.searchIndex("search_${useAsTitle}", {`),
@@ -151,6 +170,11 @@ export function collectionConfigToVexSchema(props: {
       filterFields: []
     })`);
   });
+  if (props.collection.versions.drafts) {
+    const versionSchema = versionFieldsToVexSchema({ tableName: props.collection.slug });
+    fieldsBlock.push(...versionSchema.fields);
+    indexes.push(...versionSchema.indexes);
+  }
 
   return `export const ${props.collection.slug} = defineTable({\n${fieldsBlock.join("\n")}\n
     })${indexes.length > 0 ? `\n${indexes.join("\n")}` : ""}${

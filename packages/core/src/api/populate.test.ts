@@ -13,7 +13,6 @@ const modules: Record<string, () => Promise<unknown>> = {
   "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
 };
 
-
 describe("populateDocs", () => {
   test("returns docs unchanged when populate is empty", async () => {
     const t = convexTest(schema, modules);
@@ -37,7 +36,7 @@ describe("populateDocs", () => {
       const post = await ctx.db.get(postId);
       return populateDocs(ctx, [post!], { author: true } as PopulateShape);
     });
-     
+
     const populated = (result as any[])[0].author as DocumentBySlug["authors"][];
     expect(populated[0].name).toBe("Lena Park");
   });
@@ -60,9 +59,11 @@ describe("populateDocs", () => {
         author: { populate: { organization: true } },
       } as PopulateShape);
     });
-     
+
     const author = ((result as any[])[0].author as DocumentBySlug["authors"][])[0];
-    expect((author.organization as unknown as DocumentBySlug["organizations"][])[0].name).toBe("Vex Inc");
+    expect((author.organization as unknown as DocumentBySlug["organizations"][])[0].name).toBe(
+      "Vex Inc",
+    );
   });
 
   test("recurses 5 levels deep using self-referencing parent (D12)", async () => {
@@ -104,7 +105,7 @@ describe("populateDocs", () => {
         },
       } as PopulateShape);
     });
-     
+
     let cursor: any = result[0];
     for (let i = 1; i <= 4; i++) {
       cursor = cursor.parent[0];
@@ -124,7 +125,7 @@ describe("populateDocs", () => {
       return populateDocs(ctx, [post!], { author: true } as PopulateShape);
     });
     expect(result[0]).toMatchObject({ title: "Solo", slug: "solo" });
-     
+
     expect((result as any[])[0].author).toBeUndefined();
   });
 
@@ -142,7 +143,69 @@ describe("populateDocs", () => {
       const post = await ctx.db.get(postId);
       return populateDocs(ctx, [post!], { author: true } as PopulateShape);
     });
-     
+
     expect(((result as any[])[0].author as DocumentBySlug["authors"][]).length).toBe(0);
+  });
+});
+
+describe("populateDocs — draft exclusion", () => {
+  test("excludes a populated target that is currently a draft", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const authorId = await ctx.db.insert("authors", {
+        name: "Lena Park",
+        vex_status: "draft",
+      });
+      const postId = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        author: [authorId],
+      });
+      const post = await ctx.db.get(postId);
+      return populateDocs(ctx, [post!], { author: true } as PopulateShape);
+    });
+
+    const populated = (result as any[])[0].author as DocumentBySlug["authors"][];
+    expect(populated).toHaveLength(0);
+  });
+
+  test("includes a draft target when drafts: true is passed", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const authorId = await ctx.db.insert("authors", {
+        name: "Lena Park",
+        vex_status: "draft",
+      });
+      const postId = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        author: [authorId],
+      });
+      const post = await ctx.db.get(postId);
+      return populateDocs(ctx, [post!], { author: true } as PopulateShape, true);
+    });
+
+    const populated = (result as any[])[0].author as DocumentBySlug["authors"][];
+    expect(populated[0].name).toBe("Lena Park");
+  });
+
+  test("includes a published target by default — the common case is unaffected", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx) => {
+      const authorId = await ctx.db.insert("authors", {
+        name: "Lena Park",
+        vex_status: "published",
+      });
+      const postId = await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        author: [authorId],
+      });
+      const post = await ctx.db.get(postId);
+      return populateDocs(ctx, [post!], { author: true } as PopulateShape);
+    });
+
+    const populated = (result as any[])[0].author as DocumentBySlug["authors"][];
+    expect(populated[0].name).toBe("Lena Park");
   });
 });

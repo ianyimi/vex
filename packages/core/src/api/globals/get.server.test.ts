@@ -6,6 +6,8 @@ import type { VexDocumentGlobal } from "../../types/generated";
 import * as generatedApi from "../test/convex/_generated/api";
 import schema from "../test/convex/schema";
 import type { VexConfig } from "../../config";
+import { text } from "../../fields";
+import { defineGlobal } from "../../globals/config";
 import { getGlobal } from "./get.server";
 
 const modules: Record<string, () => Promise<unknown>> = {
@@ -167,3 +169,143 @@ describe("getGlobal (server) — field-level read shaping", () => {
     expect(result).not.toBeNull();
   });
 });
+
+const versionedFixtureConfig = {
+  globals: [
+    defineGlobal({
+      slug: "banner",
+      label: "Banner",
+      fields: { message: text({ label: "Message", required: true }) },
+      versions: { drafts: true },
+    }),
+  ],
+} as unknown as VexConfig;
+
+describe("getGlobal (server) — versions.drafts", () => {
+  it("returns the published row by default when a draft exists", async () => {
+    const t = convexTest(schema, modules);
+    const publishedId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Live" },
+        vex_status: "published",
+      }),
+    );
+    await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Draft" },
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      }),
+    );
+
+    const result = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      getGlobal({ ctx, slug: "banner", config: versionedFixtureConfig }),
+    )) as VexDocumentGlobal | null;
+
+    expect(result?.message).toBe("Live");
+    expect(result?.vex_status).toBe("published");
+  });
+
+  it("returns the draft row when drafts: true and the caller has readDrafts", async () => {
+    const t = convexTest(schema, modules);
+    const publishedId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Live" },
+        vex_status: "published",
+      }),
+    );
+    await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Draft" },
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      }),
+    );
+
+    const configWithReadDrafts = {
+      globals: versionedFixtureConfig.globals,
+      access: {
+        enabled: true,
+        roles: ["editor"],
+        defaultPermissionMode: "allow",
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          editor: { banner: { read: true, readDrafts: true } },
+        },
+      },
+    } as unknown as VexConfig;
+
+    const result = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      getGlobal({
+        ctx,
+        slug: "banner",
+        config: configWithReadDrafts,
+        drafts: true,
+        auth: { user: { roles: ["editor"] } },
+      }),
+    )) as VexDocumentGlobal | null;
+
+    expect(result?.message).toBe("Draft");
+    expect(result?.vex_status).toBe("draft");
+  });
+
+  it("falls back to the published row when drafts: true but the caller lacks readDrafts", async () => {
+    const t = convexTest(schema, modules);
+    const publishedId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Live" },
+        vex_status: "published",
+      }),
+    );
+    await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Draft" },
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      }),
+    );
+
+    const configWithoutReadDrafts = {
+      globals: versionedFixtureConfig.globals,
+      access: {
+        enabled: true,
+        roles: ["viewer"],
+        defaultPermissionMode: "deny",
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          viewer: { banner: { read: true } },
+        },
+      },
+    } as unknown as VexConfig;
+
+    const result = (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      getGlobal({
+        ctx,
+        slug: "banner",
+        config: configWithoutReadDrafts,
+        drafts: true,
+        auth: { user: { roles: ["viewer"] } },
+      }),
+    )) as VexDocumentGlobal | null;
+
+    expect(result?.message).toBe("Live");
+    expect(result?.vex_status).toBe("published");
+  });
+
+  it("returns null when a versioned global has never been saved", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      getGlobal({ ctx, slug: "banner", config: versionedFixtureConfig }),
+    );
+    expect(result).toBeNull();
+  });
+});
+

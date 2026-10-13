@@ -4,13 +4,13 @@ import {
   CRUD_ACTIONS,
   isFieldAllowed,
   PERMISSION_SCOPES,
+  VERSION_STATUSES,
   vexConvexApi,
   type CollectionListViewProps,
   type CollectionSlug,
   type TDocument,
 } from "@vexcms/core";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Button } from "../ui/button";
 import { RevalidateButton } from "../RevalidateButton";
 import { VexLink } from "../ui/VexLink";
 import { MODALS } from "../modals/constants";
@@ -19,7 +19,57 @@ import { useVexConfig } from "../../context/VexConfigContext";
 import { getCollectionColumnDefs } from "../fields";
 import { useFieldPermissions, usePaginatedQuery, usePermission, useVexMutation } from "../../hooks";
 import { useMemo } from "react";
-import { DataTable } from "../ui";
+import { Badge, Button, DataTable } from "../ui";
+import { collapseVersionedPairs } from "./utils";
+import { StatusBadge } from "../drafts";
+
+/**
+ * Builds the synthetic "Status" column shown on a versioned collection's
+ * list view. Reads two signals off each collapsed row
+ * (`collapseVersionedPairs`) rather than a bespoke third flag: the row's own
+ * `vex_status` — `"draft"` whenever a draft exists, whether paired with a
+ * published row or standing alone — and `hasUnpublishedChanges`, `true`
+ * only for a genuine published+draft pair.
+ *
+ * Three resulting states: a standalone published row (`vex_status !==
+ * "draft"`) renders `StatusBadge status="published"` alone; a
+ * published+draft pair (`vex_status === "draft" && hasUnpublishedChanges`)
+ * renders `StatusBadge status="published"` PLUS an "Unpublished changes"
+ * badge — the document IS live, there's just a pending edit; a draft-only
+ * row, never published (`vex_status === "draft" && !hasUnpublishedChanges`),
+ * renders `StatusBadge status="draft"` alone — it has never gone live, so
+ * there is no "unpublished changes" to flag relative to a public version
+ * that doesn't exist.
+ *
+ * Not derived by `getCollectionColumnDefs` — both signals are synthetic,
+ * never real collection fields.
+ *
+ * @returns A `ColumnDef` reading `vex_status`/`hasUnpublishedChanges` off each row.
+ */
+function buildStatusColumn<
+  TData extends TDocument & { hasUnpublishedChanges: boolean },
+>(): ColumnDef<TData, boolean> {
+  return {
+    id: "_status",
+    header: "Status",
+    accessorFn: (row) => row.hasUnpublishedChanges,
+    cell: ({ row }) => {
+      const doc = row.original;
+      const isDraftOnly =
+        doc.vex_status === VERSION_STATUSES.draft.key && !doc.hasUnpublishedChanges;
+      return (
+        <div className="flex items-center gap-1.5">
+          <StatusBadge
+            status={isDraftOnly ? VERSION_STATUSES.draft.key : VERSION_STATUSES.published.key}
+          />
+          {doc.hasUnpublishedChanges ? (
+            <Badge variant="secondary">Unpublished changes</Badge>
+          ) : null}
+        </div>
+      );
+    },
+  };
+}
 
 /**
  * The field name backing a column, read off TanStack's `accessorKey`.
@@ -55,6 +105,13 @@ function columnFieldKey(column: ColumnDef<TDocument, unknown>): string | undefin
  * ```tsx
  * <CollectionListView collection="posts" initialData={serverDocs} />
  * ```
+ *
+ * On a versioned collection (`collection.versions.drafts`), requests both
+ * rows of an in-progress pair — and any draft-only row that has never been
+ * published — via `drafts: true` (gated on `readDrafts`), and collapses
+ * each logical document to one row via `collapseVersionedPairs`. The public
+ * read path is unaffected: it never requests drafts and never sees a draft
+ * row, paired or standalone.
  */
 export function CollectionListView<
   TCollectionSlug extends CollectionSlug = CollectionSlug,
@@ -72,9 +129,14 @@ export function CollectionListView<
     collection.admin.table.serverPageSize,
     collection.admin.table.defaultPageSize,
   );
+  const isVersioned = collection.versions.drafts;
   const pagination = usePaginatedQuery({
     query: {
       collection: collection.slug,
+      // Always sent for a versioned collection: `find` itself falls back to the
+      // published-only read for a caller without `readDrafts`, so these args
+      // match `NextAdminPage`'s server prefetch exactly for every caller.
+      drafts: isVersioned ? true : undefined,
       depth: 1,
       paginationOpts: {
         numItems,
@@ -86,6 +148,12 @@ export function CollectionListView<
     clientPageSize: collection.admin.table.defaultPageSize,
   });
 
+  const rows = useMemo(
+    () =>
+      isVersioned ? collapseVersionedPairs({ documents: pagination.results }) : pagination.results,
+    [pagination.results, isVersioned],
+  );
+
   const fieldPermissions = useFieldPermissions({
     resource: collection.slug,
     action: CRUD_ACTIONS.read,
@@ -96,11 +164,14 @@ export function CollectionListView<
   });
 
   const columns = useMemo(() => {
-    return getCollectionColumnDefs({ collection }).filter((column) => {
+    const fieldColumns = getCollectionColumnDefs({ collection }).filter((column) => {
       const key = columnFieldKey(column);
       return key === undefined || isFieldAllowed(fieldPermissions, key);
     });
-  }, [collection, fieldPermissions]);
+    return isVersioned
+      ? ([buildStatusColumn(), ...fieldColumns] as typeof fieldColumns)
+      : fieldColumns;
+  }, [collection, fieldPermissions, isVersioned]);
 
   const removeMutation = useVexMutation({
     collection: collection.slug,
@@ -138,10 +209,10 @@ export function CollectionListView<
       <div className="mb-6 flex flex-wrap items-center justify-between gap-y-2 pt-4">
         <div>
           <h1 className="text-2xl font-bold">{collection.labels.plural}</h1>
-          <p className="text-muted-foreground mt-0.5 text-sm" suppressHydrationWarning>
+          <p className="mt-0.5 text-sm text-muted-foreground" suppressHydrationWarning>
             {pagination.isPending
               ? "Loading…"
-              : `${pagination.results.length} document${pagination.results.length === 1 ? "" : "s"}`}
+              : `${rows.length} document${rows.length === 1 ? "" : "s"}`}
           </p>
         </div>
         {/* Grouped so the header's `justify-between` keeps the title left and
@@ -161,7 +232,7 @@ export function CollectionListView<
       </div>
 
       <DataTable
-        data={pagination.results}
+        data={rows}
         columns={columns}
         isDone={pagination.isDone}
         onLoadMore={pagination.loadMore}

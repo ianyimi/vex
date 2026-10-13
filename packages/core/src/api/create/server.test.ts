@@ -638,3 +638,51 @@ describe("create (server) — validation and hooks", () => {
     ).rejects.toThrow(ConvexError);
   });
 });
+
+describe("create (server) — versioned collection", () => {
+  const versionedPosts = defineCollection({
+    slug: "posts",
+    fields: { title: text(), slug: text() },
+    versions: { drafts: true },
+  });
+  const versionedConfig = { collections: [versionedPosts] } as unknown as VexConfig;
+
+  test("defaults to a draft-only row: no vex_publishedId, no vex_publishedAt", async () => {
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({ ctx, config: versionedConfig, collection: "posts", data: { title: "Hello", slug: "hello" } }),
+    );
+    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    expect(doc?.vex_status).toBe("draft");
+    expect(doc?.vex_publishedId).toBeUndefined();
+    expect(doc?.vex_publishedAt).toBeUndefined();
+
+    const [version] = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.query("vex_versions").collect(),
+    );
+    expect(version?.status).toBe("draft");
+    expect(version?.documentId).toBe(id);
+  });
+
+  test("honors defaultStatus: 'published' — stamps vex_publishedAt and records a published history row", async () => {
+    const publishedPosts = defineCollection({
+      slug: "posts",
+      fields: { title: text(), slug: text() },
+      versions: { drafts: true, defaultStatus: "published" },
+    });
+    const config = { collections: [publishedPosts] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({ ctx, config, collection: "posts", data: { title: "Hello", slug: "hello" } }),
+    );
+    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    expect(doc?.vex_status).toBe("published");
+    expect(doc?.vex_publishedAt).toBeTypeOf("number");
+
+    const [version] = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.query("vex_versions").collect(),
+    );
+    expect(version?.status).toBe("published");
+    expect(version?.publishedAt).toBe(doc?.vex_publishedAt);
+  });
+});

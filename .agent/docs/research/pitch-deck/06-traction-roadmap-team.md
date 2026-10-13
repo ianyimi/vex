@@ -1,0 +1,86 @@
+# 06 — Traction, milestones, roadmap, team
+
+> Feeds slides: **Traction · Roadmap/Milestones · Team · (Ask/Use of funds — see 04)**.
+> Numbers pulled 2026-10-12 unless stated. Internal sources are repo paths; external
+> numbers link to the API that produced them.
+
+## Timeline (verified)
+
+| Date | Event | Source |
+|---|---|---|
+| 2026-02-17 | First commit | `git log --reverse` |
+| 2026-02-18 | Public GitHub repo created (`ianyimi/vex`) | https://api.github.com/repos/ianyimi/vex (`created_at`) |
+| Feb–Mar 2026 | v1 prototype on `master`: 16 field types, drafts, RBAC, richtext, live preview, blocks, 586+ tests — built in ~6 weeks | `.agent/docs/research/legacy-planning/roadmap-monetization-strategy-v2.md:194-236` |
+| 2026-03-20 | First npm publish of `@vexcms/core` | `npm view @vexcms/core time` |
+| 2026-03-27 | Targeted developer-event demo (plan existed; **attendance/outcome not recorded — ask founder**) | `roadmap-monetization-strategy-v2.md:589`; deleted `agent-os/product/event-build-plan.md` |
+| Apr 2026 → | **Rebuild** branch: re-architecture (framework-agnostic core, HKT adapters, colocated types); features re-implemented rather than ported | `.agent/docs/product/mission.md:9-12`; `legacy-planning/v0.1.0-launch-roadmap.md:3-5` |
+| 2026-09-02 | Presented at the **Convex meetup** (launch-readiness spec targeted this date; deployed site + public read-only admin as demo) | `.agent/docs/specs/2026-08-30-launch-readiness/spec.md:1` |
+| ~2026-09-14 | Posted to the **Convex Discord show-and-tell** channel | `.agent/docs/specs/2026-09-13-discord-post-readiness/spec.md:30` |
+| 2026-09-20 | Live preview shipped (`b5263dc`) | `.agent/docs/product/roadmap.md:21` |
+| 2026-10 | `0.1.0-alpha.23`; versioning & drafts in progress | `packages/core/package.json`; `harness state` |
+
+**Pitch framing for the rebuild:** "Validated the full feature set in a 6-week prototype,
+then rebuilt the foundation for production (framework-agnostic core, adapter architecture)
+before inviting users." Have the founder confirm wording — it's an inference from the docs.
+
+## Traction metrics available today
+
+| Metric | Value | As of / source | Caveat |
+|---|---|---|---|
+| npm downloads, `@vexcms/core`, last 30 days | 1,376 | 2026-09-11→10-10, https://api.npmjs.org/downloads/point/last-month/@vexcms/core | Raw npm counts include CI, mirrors, the founder's own `verify-scaffold` runs, and 23 alpha publishes. The 7 packages all sit at 1,048–1,376 — near-identical counts across packages suggest mostly scaffold/CI installs, not distinct users. **Do not present as users.** |
+| npm downloads by month, `@vexcms/core` | Mar 2,807 · Apr 454 · May 342 · Jun 338 · Jul 174 · Aug 259 · Sep 3,347 | https://api.npmjs.org/downloads/range/2026-03-01:2026-10-10/@vexcms/core | Spikes coincide with publish bursts (Mar first publish; Sep alpha series + meetup) |
+| `create-vexcms` downloads, last 30 days | 1,081 | https://api.npmjs.org/downloads/point/last-month/create-vexcms | Same caveat |
+| GitHub stars / forks | 8 / 1 | https://api.github.com/repos/ianyimi/vex | Small; a weak slide metric today |
+| Published versions of `@vexcms/core` | 40 | `npm view @vexcms/core time` | Shipping cadence signal |
+| Public demo | Live site + anonymous read-only admin | https://vexcms.dev, https://vexcms.dev/admin (200) | Strong "show, don't tell" asset |
+| Engineering depth | ~1,890 test cases, 14 ADRs, ~123k LOC TS/TSX | repo counts, 2026-10-12 | Investors weigh this lightly vs. users |
+| Design partner | maprios (www + app) migrating off Payload/MongoDB is the v0.1.0 acceptance target | `.agent/docs/product/mission.md:5-7`; `.agent/docs/product/maprios-roadmap-gaps.md` | Appears to be the founder's own product (sibling repo `maprios-app.git`). **Confirm relationship**; an internal dogfood customer is real but must be disclosed as such |
+
+**Honest read:** pre-traction. The deck should lead with product velocity, ecosystem
+position, and a concrete design-partner plan, and should add instrumented metrics before
+pitching (see `07-gaps-and-asks.md` § metrics to start collecting now).
+
+## Roadmap (for the Roadmap slide)
+
+Source: `.agent/docs/product/roadmap.md`, `.agent/docs/product/v0.1.0-launch-plan.md`,
+`apps/docs/src/content/docs/roadmap.md`, `legacy-planning/roadmap-monetization-strategy-v2.md`.
+
+```mermaid
+flowchart LR
+  M1["M1 · v0.1.0<br/>drafts/versioning · richtext ·<br/>list & edit-view overhaul · mobile"] --> M2["M2 · First migration<br/>maprios www off Payload/Mongo"]
+  M2 --> M3["M3 · Multi-component workspaces<br/>maprios app migration"]
+  M1 --> ECO["Ecosystem (free)<br/>forms · scheduling · API keys · teams ·<br/>TanStack Start · S3/R2 · plugins"]
+  M2 --> ENT["Enterprise (paid)<br/>branching/environments · SSO ·<br/>approval workflows · audit · i18n"]
+```
+
+| Phase | Contents | Status |
+|---|---|---|
+| M1 — v0.1.0 | 10 specs A–J: data-table integrity, public API, hooks/validation ✅, live preview ✅, versioning & drafts (in progress), richtext, field consistency, edit-view, list-view, responsive | `roadmap.md:11-27` |
+| M2 — maprios/www migration | ~35–40 blocks, 5–6 collections, drop Payload + MongoDB | `roadmap.md:65-71` |
+| M3 — Multi-component | `defineComponent()`, per-component codegen, workspace routing | `roadmap.md:73-77` |
+| Free backlog | forms, scheduling, API keys, team mgmt, TanStack Start, S3/R2, plugin system, auto-migration, conflict resolution, presence/live cursors | `apps/docs/.../roadmap.md:48-72`; `backlog.md:278-404` |
+| Enterprise | environments/branching, SSO, workflows, audit, localization; git one-way mirror as an audit/compliance add-on | `roadmap.md:91-96`; `backlog.md:548-693` |
+| Exploring | analytics adapter (per-document/per-block metrics in the admin) | `apps/docs/.../roadmap.md:72`; launch-readiness spec `:1076-1090` |
+
+Founder intent (2026-10-12): many future features will be adopted from **BaseHub** — the
+BaseHub feature matrix in `03-competition.md` is the input for an expanded roadmap slide.
+
+**Missing for the slide:** dates. No phase has a target date. Investors expect quarter-level
+milestones tied to the raise (e.g. "v0.1.0 in Qx; 3 design partners in Qy; first paid
+enterprise licence in Qz"). Add them in `.agent/docs/product/roadmap.md`.
+
+## Team
+
+| Person | Role | Evidence |
+|---|---|---|
+| Isaiah Anyimi | Founder, sole engineer (≈ all 286 non-bot commits) | `git shortlog -sn --all` |
+
+Missing: bio, prior experience, why-this-founder, advisors, hiring plan. Solo-founder risk
+is the first question a seed investor will ask; see `07-gaps-and-asks.md`.
+
+## Development cadence (supporting, not headline)
+
+Commits per month on the current branch: Feb 9 · Mar 147 · Apr 32 · May 15 · Jun 5 ·
+Jul 7 · Aug 17 · Sep 59 · Oct 3 (to 10-06). Commits are squashed by the session harness,
+so counts understate work; spec/ADR output (25+ specs, 14 ADRs since Aug) is a better
+velocity proxy.

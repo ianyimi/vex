@@ -66,11 +66,13 @@ export default function RootLayout({
     >
       <head>
         {/* ThemeScript applies the persisted light/dark class before first
-            paint (no flash). ThemeStyle moved to `(frontend)/(site)/layout.tsx`:
-            it reads Convex, and the root must stay free of Convex reads so its
-            routes can prerender. Admin keeps its own `<ThemeStyle scope="admin" />`
-            once for the whole app — the admin layout re-emits its own scope
-            at higher specificity, so `siteSettings.adminTheme` opts out. */}
+            paint (no flash). ThemeStyle is NOT here: it reads Convex, and the
+            root must stay free of Convex reads. It is emitted by
+            `(frontend)/layout.tsx` (covers `(site)` and the auth routes) and
+            by `unauthorized/page.tsx`, which sits outside that group. Admin
+            keeps its own `<ThemeStyle scope="admin" />` — the admin layout
+            re-emits its own scope at higher specificity, so
+            `siteSettings.adminTheme` opts out. */}
         <ThemeScript />
       </head>
       <body>

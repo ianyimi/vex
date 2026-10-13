@@ -1,5 +1,5 @@
 import { AdminField } from "../fields";
-import { CoreAdminField, ReservedCollectionFieldKey } from "./constants";
+import { ConvexSystemField, CollectionSystemField } from "./constants";
 import type { ComponentHKT } from "../fields";
 import type { CollectionSlug } from "../types/generated";
 import { TDocument } from "../api/convex";
@@ -7,6 +7,7 @@ import { LucideIconName } from "../utils";
 import type { CollectionHooks, CollectionHooksInput } from "./hooks";
 import type { AdminLivePreviewConfig, AdminLivePreviewConfigInput } from "../livePreview";
 import type { DocumentByCollectionSlug } from "../types/generated";
+import type { VexVersionStatus } from "../versions";
 
 /**
  * Props received by a custom preview component for relationship rendering.
@@ -158,7 +159,7 @@ export interface CollectionTableConfig {
  * @see {@link AdminCollectionConfig} for the resolved type after defaults are applied
  */
 export interface AdminCollectionConfigInput<
-  TFieldSlug extends string = CoreAdminField,
+  TFieldSlug extends string = ConvexSystemField,
   _TComponent extends ComponentHKT = ComponentHKT,
   TCollectionSlug extends CollectionSlug = CollectionSlug,
 > {
@@ -171,7 +172,7 @@ export interface AdminCollectionConfigInput<
    * field also auto-generates a database index (`by_<field>`) and a search
    * index (`search_<field>`) for fast admin queries. Omit to fall back to `"_id"`.
    */
-  useAsTitle?: CoreAdminField | NoInfer<TFieldSlug>;
+  useAsTitle?: ConvexSystemField | NoInfer<TFieldSlug>;
   /**
    * A valid Lucide icon name for this collection in the admin sidebar
    * See https://lucide.dev/icons/
@@ -195,12 +196,12 @@ export interface AdminCollectionConfigInput<
  * @see {@link AdminCollectionConfigInput} for the user-facing input type
  */
 export interface AdminCollectionConfig<
-  TFieldSlug extends string = CoreAdminField,
+  TFieldSlug extends string = ConvexSystemField,
   _TComponent extends ComponentHKT = ComponentHKT,
   TCollectionSlug extends CollectionSlug = CollectionSlug,
 > {
   /** The field used as the document's human-readable title in the admin panel. */
-  useAsTitle: CoreAdminField | NoInfer<TFieldSlug>;
+  useAsTitle: ConvexSystemField | NoInfer<TFieldSlug>;
   icon?: LucideIconName;
   /**
    * Data table configuration for list view.
@@ -247,6 +248,7 @@ export interface CollectionConfigInput<
   TCollectionSlug extends string = string,
   TFieldSlug extends string = string,
   TComponent extends ComponentHKT = ComponentHKT,
+  TDrafts extends boolean = false,
 > {
   /** Admin panel behaviour for this collection. All properties are optional. */
   admin?: AdminCollectionConfigInput<
@@ -274,6 +276,31 @@ export interface CollectionConfigInput<
   indexes?: {
     name: string;
     fields: NoInfer<TFieldSlug>[];
+    /**
+     * Also narrow this index on `vex_status` for draft/publish status
+     * composition (Step 13, `versions/statusConstraint.ts`). Only valid
+     * when this collection declares `versions.drafts: true` —
+     * `defineCollection` throws otherwise for a dynamically-assembled
+     * config; a literal `{ drafts: false }` (or omitted) config fails to
+     * typecheck a `draftStatus` here at all, since this property only
+     * exists when `TDrafts` is the literal `true`.
+     *
+     * - `true` — REPLACES the index with its `vex_status`-prefixed physical
+     *   form (`.index(name, ["vex_status", ...fields])`); no unprefixed
+     *   physical index exists for `name`. A `drafts: true` read that picks
+     *   this index cannot narrow through it and drops to `.filter()` for
+     *   any RBAC/caller range (dev-only warning, once per index).
+     * - `"both"` — emits the unprefixed index AND a `vex_status`-prefixed
+     *   twin (`` `${name}__draftStatus` `` — internal, never a selectable
+     *   `IndexNameFor` member), so a published-only read and a `drafts:
+     *   true` read on `name` both stay index-narrowed.
+     *
+     * @example
+     * ```ts
+     * indexes: [{ name: "by_slug", fields: ["slug"], draftStatus: "both" }]
+     * ```
+     */
+    draftStatus?: TDrafts extends true ? true | "both" : never;
   }[];
   meta?: TCollectionMeta;
   /**
@@ -294,6 +321,50 @@ export interface CollectionConfigInput<
   hooks?: CollectionHooksInput<
     TCollectionSlug extends CollectionSlug ? TCollectionSlug : CollectionSlug
   >;
+  /**
+   * Draft and versioning config for this collection. Enabling `drafts` adds
+   * `vex_status` / `vex_publishedAt` / `vex_publishedId` to the generated
+   * table (`generateVexSchema`) and the draft-workflow actions
+   * (`readDrafts`, `saveDraft`, `publish`, `unpublish`, `deleteVersions`)
+   * to this resource's subject in `defineAccess`.
+   */
+  versions?: {
+    /** Enable the draft/publish workflow for this collection. @defaultValue `false` */
+    drafts?: TDrafts;
+    /**
+     * The `vex_status` a newly `create()`d document starts with. `"published"`
+     * also stamps `vex_publishedAt`; `"draft"` inserts a draft-only row (no
+     * `vex_publishedId`, no `vex_publishedAt`). Ignored when `drafts` is
+     * `false`. @defaultValue `"draft"`
+     */
+    defaultStatus?: VexVersionStatus;
+    /**
+     * Debounce background saves to the draft row while the edit form is
+     * open. Ignored when `drafts` is `false`. @defaultValue `false`
+     */
+    autosave?: {
+      /**
+       * Enable or disable autosaves to new drafts
+       */
+      enabled: boolean;
+      /**
+       * Debounce (milliseconds) to autosave after inputs have changed
+       */
+      debounceMs?: number;
+    };
+    /**
+     * When a document is deleted (`remove`), also delete its draft row (if
+     * any) and every `vex_versions` history row for it in the same action
+     * (`cascadeVersionedDelete`, Step 11). Set `false` to leave the draft
+     * row and history behind — orphaned rows are inert (no query reads a
+     * draft/history row without its own explicit `drafts: true` /
+     * `listVersions` call, so nothing surfaces them by accident), but they
+     * do occupy storage indefinitely and a future `saveDraft`/`publish` on
+     * a REUSED id could resurface stale history. Ignored when `drafts` is
+     * `false` — there is nothing to cascade. @defaultValue `true`
+     */
+    cascadeDelete?: boolean;
+  };
 }
 
 /**
@@ -308,6 +379,7 @@ export interface CollectionConfig<
   TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends string = string,
   TComponent extends ComponentHKT = ComponentHKT,
+  TDrafts extends boolean = boolean,
 > {
   /** Resolved admin panel configuration for this collection. */
   admin: AdminCollectionConfig<TFieldSlug, TComponent, TCollectionSlug>;
@@ -328,7 +400,7 @@ export interface CollectionConfig<
    * opts out, so reading it must be null-checked — the same reason
    * `stampUpdatedAt` treats an absent entry as "do not stamp".
    */
-  fields: Partial<Record<ReservedCollectionFieldKey, AdminField<TFieldMeta>>> &
+  fields: Partial<Record<CollectionSystemField, AdminField<TFieldMeta>>> &
     Record<TFieldSlug, AdminField<TFieldMeta>>;
   /** PascalCase identifier derived from `slug`, used as the TypeScript interface name in generated types (e.g. `"posts"` → `"Posts"`). */
   interfaceName: string;
@@ -336,8 +408,18 @@ export interface CollectionConfig<
   indexes?: {
     name: string;
     fields: NoInfer<TFieldSlug>[];
+    draftStatus?: TDrafts extends true ? true | "both" : never;
   }[];
   meta: TCollectionMeta;
   /** Resolved lifecycle hooks. Always present; defaults to `{}`. */
   hooks: CollectionHooks<TCollectionSlug>;
+  versions: {
+    drafts: TDrafts;
+    defaultStatus: VexVersionStatus;
+    autosave: {
+      enabled: boolean;
+      debounceMs: number;
+    };
+    cascadeDelete: boolean;
+  };
 }

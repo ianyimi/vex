@@ -3,12 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { CRUD_ACTIONS, isFieldAllowed, vexConvexApi } from "@vexcms/core";
-import type { MediaCollectionSlug, VexMediaDocument } from "@vexcms/core";
+import type { MediaCollectionConfig, MediaCollectionSlug, VexMediaDocument } from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
 import { Button } from "../ui";
 import { fieldToInputComponent } from "../fields";
 import {
-  useCollectionForm,
+  useFieldsForm,
   useFieldPermissions,
   useLiveFieldMerge,
   usePermission,
@@ -72,12 +72,31 @@ export function MediaCollectionEditView<
     }),
     initialData: props.initialData,
   });
-  const currentDocument = data as VexMediaDocument;
+  const currentDocument = data as VexMediaDocument | null | undefined;
 
   if (!currentDocument) {
     // TODO: add proper not found component or screen
     return <p>Document not found.</p>;
   }
+
+  return <MediaCollectionEditForm collection={collection} currentDocument={currentDocument} />;
+}
+
+/**
+ * The edit form for one loaded media document. Split from
+ * {@link MediaCollectionEditView} so every hook below runs on every render:
+ * the outer view returns early while the document is missing (not found, or
+ * deleted in another tab), and React requires the same hooks in the same
+ * order on each render of one component.
+ *
+ * @param props - The resolved media collection and the loaded document.
+ * @returns The edit form.
+ */
+function MediaCollectionEditForm(props: {
+  collection: MediaCollectionConfig;
+  currentDocument: VexMediaDocument;
+}) {
+  const { collection, currentDocument } = props;
 
   const { mutateAsync, isPending } = useVexMutation({
     collection: collection.slug,
@@ -94,9 +113,9 @@ export function MediaCollectionEditView<
   });
   const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
 
-  const form = useCollectionForm({
+  const form = useFieldsForm({
     document: currentDocument,
-    collection,
+    fields: collection.fields,
     readableFieldKeys,
     onSubmit: async () => {
       const changes = changedValues(form);
@@ -119,7 +138,7 @@ export function MediaCollectionEditView<
   const canEdit = usePermission({
     resource: collection.slug,
     action: CRUD_ACTIONS.update,
-    data: data as {},
+    data: currentDocument,
   });
   const fieldPermissions = useFieldPermissions({
     resource: collection.slug,

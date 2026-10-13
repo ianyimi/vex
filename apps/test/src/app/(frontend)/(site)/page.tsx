@@ -1,11 +1,11 @@
-import type { Metadata } from "next"
-
 import { api } from "@convex/_generated/api"
 import { notFound } from "next/navigation"
 
+import { highlightPageBlocks } from "~/lib/highlight"
+import { generatePageMetadata } from "~/lib/metadata"
 import { vex } from "~/lib/vex"
 
-import PageContent from "./PageContent"
+import { PageContent } from "./PageContent"
 
 // Next requires this to be an inline literal — it is read by static analysis
 // before any module executes, so neither a `vexConfig` member expression nor an
@@ -15,19 +15,8 @@ import PageContent from "./PageContent"
 // purges this path immediately.
 export const revalidate = 3600
 
-export async function generateMetadata(): Promise<Metadata> {
-  const pages = await vex.query(api.pages.getBySlug, { slug: "home" })
-  const page = pages[0]
-
-  if (!page) {
-    return { title: "Vex CMS" }
-  }
-
-  return {
-    title: (page.metaTitle ?? page.title) + " | Vex CMS",
-    description: page.metaDescription ?? undefined,
-    openGraph: page.ogImage ? { images: [{ url: page.ogImage }] } : undefined,
-  }
+export async function generateMetadata() {
+  return generatePageMetadata({ slug: "home" })
 }
 
 /**
@@ -37,18 +26,22 @@ export async function generateMetadata(): Promise<Metadata> {
  * hard-codes `cache: "no-store"`, which forces this route dynamic and defeats
  * the `revalidate` window above.
  *
- * A missing `home` document resolves the query successfully (`getBySlug`
- * returns `[]`) and reaches `notFound()` below on purpose — a Convex outage
- * instead throws out of this server component, rendering a real 500 rather
- * than swallowing the failure into an empty 200.
+ * The `try`/`catch` is gone deliberately. A Convex outage now throws out of
+ * this server component and Next renders a real 500, instead of swallowing the
+ * failure into an empty 200. A genuinely missing `home` document still resolves
+ * the query successfully (`getBySlug` returns `[]`), so `notFound()` below is
+ * reached on purpose rather than via a caught exception.
  */
 export default async function HomePage() {
-  const pages = await vex.query(api.pages.getBySlug, { slug: "home" })
-  const page = pages[0]
+  const initialData = await vex.query(api.pages.getBySlug, { slug: "home" })
 
-  if (!page) {
+  if (!initialData || initialData.length === 0) {
     notFound()
   }
 
-  return <PageContent page={page} />
+  const codeHighlights = await highlightPageBlocks(initialData[0]?.blocks)
+
+  return (
+    <PageContent codeHighlights={codeHighlights} initialData={initialData} />
+  )
 }

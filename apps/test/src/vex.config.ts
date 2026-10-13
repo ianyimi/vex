@@ -11,12 +11,16 @@ import {
   headers,
   images,
   pages,
+  posts,
   themes,
   users,
 } from "~/vexcms/collections";
 
 import { access } from "./auth/access";
 import { authSchema } from "./auth/schema";
+import { TABLE_SLUG_PAGES } from "./db/constants";
+import { resolvePagePath } from "./lib/resolvePagePath";
+import { announcement } from "./vexcms/globals/announcement";
 import { nav } from "./vexcms/globals/nav";
 import { siteSettings } from "./vexcms/globals/siteSettings";
 
@@ -40,6 +44,39 @@ const vexConfig = defineConfig({
     sidebar: {
       side: "right",
     },
+    livePreview: {
+      // `headers` declares its preview here rather than in its own
+      // `defineCollection`, to keep both shapes exercised: a collection's own
+      // block still wins field by field over its entry in this map.
+      collections: {
+        headers: { url: "/" },
+      },
+      globals: {
+        // Server-resolved: reads the database with a real `ctx`. No helper and
+        // no type argument — `vex generate` emits this project's `DataModel`
+        // into the `@vexcms/core` augmentation, so `ctx` is typed from there
+        // and `doc` from the map key.
+        siteSettings: {
+          url: {
+            server: async ({ vex }) => {
+              const [page] = await vex.find({
+                collection: TABLE_SLUG_PAGES,
+                withIndex: {
+                  name: "by_slug",
+                  range: (q) => q.eq("slug", "home"),
+                },
+                limit: 1,
+              });
+              return page ? `/${String(page.slug)}` : "/";
+            },
+          },
+        },
+      },
+      allowedOrigins: [
+        "http://localhost:3020",
+        ...(process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : []),
+      ],
+    },
   },
   storage: {
     clientUploads: { convex: uploadFile },
@@ -54,9 +91,10 @@ const vexConfig = defineConfig({
     caseStudies,
     changelog,
     comments,
+    posts,
   ],
   mediaCollections: [images],
-  globals: [nav, siteSettings],
+  globals: [nav, siteSettings, announcement],
   routes: {
     // One document at a time. `resolveTargets` calls this once for `before`
     // and once for `after` on an update, so a slug rename purges the old path
@@ -69,7 +107,8 @@ const vexConfig = defineConfig({
       if (typeof slug !== "string") {
         return [];
       }
-      return [slug === "home" ? "/" : `/${slug}`];
+      const path = resolvePagePath(slug);
+      return path === undefined ? [] : [path];
     },
   },
 });

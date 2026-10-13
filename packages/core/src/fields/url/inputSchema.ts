@@ -1,4 +1,5 @@
-import { z, type ZodType } from "zod";
+import * as z from "zod";
+import type { ZodType } from "zod";
 import { UrlField } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 

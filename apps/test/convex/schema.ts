@@ -23,9 +23,13 @@ import {
   case_studies,
   changelog,
   comments,
+  posts,
+  vex_versions,
 } from "./vex.schema";
 
 export default defineSchema({
+  posts,
+  vex_versions,
   articles,
   case_studies,
   changelog,

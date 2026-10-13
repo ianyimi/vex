@@ -1,3 +1,4 @@
+import { DRAFT_ACTIONS } from "@vexcms/core";
 import { v } from "convex/values";
 
 import { TABLE_SLUG_PAGES } from "~/db/constants";
@@ -68,5 +69,39 @@ export const getBySlug = query({
         bypass: true,
       },
     });
+  },
+});
+
+/**
+ * Returns the page matching `slug`, preferring its draft row when one exists — the
+ * live-preview base layer's authenticated counterpart to `getBySlug`. Called only when
+ * `PageContent.tsx`'s `useSitePreviewMode` detects an active preview session.
+ *
+ * Never bypasses access: `drafts: true` lifts the published-only filter, and
+ * `access: { action: DRAFT_ACTIONS.readDrafts }` means a row reaches the caller only
+ * when their resolved session holds `readDrafts` on `pages`. Everyone else — including
+ * anonymous visitors — gets `[]`, never draft content.
+ *
+ * @param args.slug - The page slug to preview.
+ * @returns The draft row if one exists, else the published row, else `[]` — the same
+ *   shape `getBySlug` returns. A denied request and a bad slug are indistinguishable.
+ */
+export const getBySlugPreview = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
+    // No `limit`: a published row and its draft twin both carry this slug until an
+    // editor changes it, so both must be seen before choosing (at most two rows).
+    const matches = await find({
+      ctx,
+      collection: TABLE_SLUG_PAGES,
+      withIndex: {
+        name: "by_slug",
+        range: (q) => q.eq("slug", slug),
+      },
+      drafts: true,
+      access: { action: DRAFT_ACTIONS.readDrafts },
+    });
+    const draft = matches.find((doc) => doc.vex_status === "draft");
+    return draft ? [draft] : matches.filter((doc) => doc.vex_status === "published");
   },
 });

@@ -16,6 +16,9 @@ const schema = defineSchema({
     title: v.string(),
     slug: v.string(),
     body: v.optional(v.string()),
+    // Only `find`'s "warns once" draftStatus test reads through `by_excerpt`, so
+    // the module-level warn-once memory has never seen it when that test runs.
+    excerpt: v.optional(v.string()),
     // Declared because `create`/`update` now stamp it; `convex-test` enforces
     // this fixture exactly as a real deployment would.
     updatedAt: v.optional(v.number()),
@@ -23,10 +26,22 @@ const schema = defineSchema({
     deleted: v.optional(v.boolean()), // For soft delete tests
     author: v.optional(v.array(v.id("authors"))),
     parent: v.optional(v.array(v.id("posts"))), // self-ref for depth tests
+    // Versioning columns, matching what `versionFieldsToVexSchema` emits for a
+    // collection declaring `versions.drafts: true`. Optional, so every
+    // pre-existing suite that inserts plain posts stays valid.
+    vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+    vex_publishedAt: v.optional(v.number()),
+    vex_publishedId: v.optional(v.id("posts")),
   })
     .searchIndex("search_title", { searchField: "title" })
     .index("by_featured", ["featured"])
-    .index("by_slug", ["slug"]),
+    .index("by_slug", ["slug"])
+    .index("by_title", ["title"])
+    .index("by_excerpt", ["excerpt"])
+    .index("by_title__draftStatus", ["vex_status", "title"])
+    .index("by_body", ["vex_status", "body"])
+    .index("by_status", ["vex_status"])
+    .index("by_published", ["vex_publishedId"]),
 
   authors: defineTable({
     name: v.string(),
@@ -36,9 +51,14 @@ const schema = defineSchema({
     // tuples must match or the positional builder terminates at the shortest.
     slug: v.optional(v.string()),
     organization: v.optional(v.array(v.id("organizations"))),
+    vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+    vex_publishedAt: v.optional(v.number()),
+    vex_publishedId: v.optional(v.id("posts")),
   })
     .searchIndex("search_name", { searchField: "name" })
-    .index("by_slug", ["slug"]),
+    .index("by_slug", ["slug"])
+    .index("by_status", ["vex_status"])
+    .index("by_published", ["vex_publishedId"]),
 
   organizations: defineTable({
     name: v.string(),
@@ -56,7 +76,25 @@ const schema = defineSchema({
   vex_globals: defineTable({
     slug: v.string(),
     data: v.any(),
-  }).index("by_slug", ["slug"]),
+    vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+    vex_publishedAt: v.optional(v.number()),
+    vex_publishedId: v.optional(v.id("vex_globals")),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_status", ["vex_status"])
+    .index("by_published", ["vex_publishedId"]),
+
+  vex_versions: defineTable({
+    collection: v.string(),
+    documentId: v.string(),
+    version: v.number(),
+    status: v.union(v.literal("draft"), v.literal("published")),
+    snapshot: v.any(),
+    createdBy: v.optional(v.string()),
+    parentVersion: v.optional(v.number()),
+    restoredFrom: v.optional(v.number()),
+    publishedAt: v.optional(v.number()),
+  }).index("by_document_version", ["collection", "documentId", "version"]),
 });
 
 export default schema;

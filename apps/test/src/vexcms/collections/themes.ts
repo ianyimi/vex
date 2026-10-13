@@ -37,11 +37,17 @@ export const themes = defineCollection({
     light: group({
       label: "Light Mode",
       description: "Tokens emitted under :root.",
+      admin: {
+        defaultCollapsed: true,
+      },
       fields: themeColors("light"),
     }),
     dark: group({
       label: "Dark Mode",
       description: "Tokens emitted under .dark.",
+      admin: {
+        defaultCollapsed: false,
+      },
       fields: themeColors("dark"),
     }),
   },

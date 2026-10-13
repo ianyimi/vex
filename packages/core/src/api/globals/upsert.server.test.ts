@@ -592,3 +592,127 @@ describe("upsertGlobal (server) — access", () => {
     expect(await storedRow(t)).toEqual({ siteName: "Old" });
   });
 });
+
+const versionedGlobal = defineGlobal({
+  slug: "banner",
+  label: "Banner",
+  fields: {
+    message: text({ label: "Message", required: true }),
+    tone: text({ label: "Tone", required: false }),
+  },
+  versions: { drafts: true },
+});
+
+const versionedFixtureConfig = {
+  globals: [versionedGlobal],
+  access: undefined,
+} as unknown as VexConfig;
+
+/** Shape of a raw `vex_globals` row once `versions.drafts` is active. */
+interface VersionedGlobalRow {
+  _id: string;
+  slug: string;
+  data: Record<string, unknown>;
+  vex_status?: "draft" | "published";
+  vex_publishedAt?: number;
+  vex_publishedId?: string;
+}
+
+/** Every `vex_globals` row currently stored for `slug: "banner"`. */
+async function bannerRows(t: Harness): Promise<VersionedGlobalRow[]> {
+  return (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+    ctx.db
+      .query("vex_globals")
+      .withIndex("by_slug", (q) => q.eq("slug", "banner"))
+      .collect(),
+  )) as unknown as VersionedGlobalRow[];
+}
+
+/** Every `vex_versions` row currently recorded for `vex_globals`/`"banner"`. */
+async function bannerVersions(
+  t: Harness,
+): Promise<Array<{ status: string; snapshot: unknown; publishedAt?: number }>> {
+  return (await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+    ctx.db
+      .query("vex_versions")
+      .withIndex("by_document_version", (q) =>
+        // @ts-expect-error chain compound index fields on GenericDataModel
+        q.eq("collection", "vex_globals").eq("documentId", "banner"),
+      )
+      .collect(),
+  )) as unknown as Array<{ status: string; snapshot: unknown; publishedAt?: number }>;
+}
+
+/**
+ * `upsertGlobal` on a versioned global now writes the PUBLISHED row
+ * directly, never a draft — the draft-lifecycle coverage this block used to
+ * hold moved to `api/versions/saveDraft.server.test.ts` (global target),
+ * since `saveDraft` is the only path that writes a global's draft row now.
+ */
+describe("upsertGlobal (server) — versions.drafts (published row)", () => {
+  it("inserts the published row on the first save of a versioned global", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await upsertGlobal({
+        ctx,
+        config: versionedFixtureConfig,
+        slug: "banner",
+        data: { message: "Hello" },
+      });
+    });
+
+    const rows = await bannerRows(t);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].vex_status).toBe("published");
+    expect(rows[0].vex_publishedAt).toBeTypeOf("number");
+    expect(rows[0].data.message).toBe("Hello");
+
+    const versions = await bannerVersions(t);
+    expect(versions).toHaveLength(1);
+    expect(versions[0].status).toBe("published");
+  });
+
+  it("writes the published row directly and leaves an active draft row untouched", async () => {
+    const t = convexTest(schema, modules);
+    const publishedId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Live" },
+        vex_status: "published",
+        vex_publishedAt: 1700000000000,
+      }),
+    );
+    const draftId = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.insert("vex_globals", {
+        slug: "banner",
+        data: { message: "Draft in progress" },
+        vex_status: "draft",
+        vex_publishedId: publishedId,
+      }),
+    );
+
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await upsertGlobal({
+        ctx,
+        config: versionedFixtureConfig,
+        slug: "banner",
+        data: { message: "Live, edited directly" },
+      });
+    });
+
+    const rows = await bannerRows(t);
+    expect(rows).toHaveLength(2);
+    const published = rows.find((r) => r._id === publishedId);
+    const draft = rows.find((r) => r._id === draftId);
+    expect(published?.data.message).toBe("Live, edited directly");
+    expect(published?.vex_publishedAt).toBe(1700000000000);
+    // The draft row is byte-for-byte untouched.
+    expect(draft?.data.message).toBe("Draft in progress");
+
+    const versions = await bannerVersions(t);
+    expect(versions).toHaveLength(1);
+    expect(versions[0].status).toBe("published");
+    expect(versions[0].snapshot).toEqual({ message: "Live, edited directly" });
+  });
+});
+

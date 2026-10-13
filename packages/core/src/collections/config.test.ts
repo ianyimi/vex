@@ -62,6 +62,114 @@ describe("defineCollection — updatedAt injection", () => {
   });
 });
 
+describe("defineCollection — versions defaults", () => {
+  it("defaults versions.drafts to false, versions.autosave to disabled, and versions.cascadeDelete to true when versions is omitted", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+    });
+    expect(posts.versions).toEqual({
+      drafts: false,
+      defaultStatus: "draft",
+      autosave: { enabled: false, debounceMs: 1000 },
+      cascadeDelete: true,
+    });
+  });
+
+  it("resolves versions.drafts: true when declared, defaulting autosave to disabled and cascadeDelete to true", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      versions: { drafts: true },
+    });
+    expect(posts.versions).toEqual({
+      drafts: true,
+      defaultStatus: "draft",
+      autosave: { enabled: false, debounceMs: 1000 },
+      cascadeDelete: true,
+    });
+  });
+
+  it("enables autosave alongside drafts, defaulting debounceMs when omitted", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      versions: { drafts: true, autosave: { enabled: true } },
+    });
+    expect(posts.versions).toEqual({
+      drafts: true,
+      defaultStatus: "draft",
+      autosave: { enabled: true, debounceMs: 1000 },
+      cascadeDelete: true,
+    });
+  });
+
+  it("honors an explicit autosave.debounceMs override", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      versions: { drafts: true, autosave: { enabled: true, debounceMs: 250 } },
+    });
+    expect(posts.versions.autosave).toEqual({ enabled: true, debounceMs: 250 });
+  });
+
+  it("honors an explicit cascadeDelete: false override", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      versions: { drafts: true, cascadeDelete: false },
+    });
+    expect(posts.versions).toEqual({
+      drafts: true,
+      defaultStatus: "draft",
+      autosave: { enabled: false, debounceMs: 1000 },
+      cascadeDelete: false,
+    });
+  });
+
+  it("honors an explicit defaultStatus: 'published' override", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      versions: { drafts: true, defaultStatus: "published" },
+    });
+    expect(posts.versions.defaultStatus).toBe("published");
+  });
+});
+
+describe("defineCollection — reserved versioning field keys", () => {
+  it("throws at runtime when a user field is literally named vex_status", () => {
+    const fields: Record<string, AdminField> = {
+      vex_status: text({ label: "Status" }),
+    };
+    expect(() => defineCollection({ slug: "posts", fields })).toThrow(/reserved/);
+  });
+
+  it("throws at runtime when a user field is literally named vex_publishedAt", () => {
+    const fields: Record<string, AdminField> = {
+      vex_publishedAt: text({ label: "Published At" }),
+    };
+    expect(() => defineCollection({ slug: "posts", fields })).toThrow(/reserved/);
+  });
+
+  it("throws at runtime when a user field is literally named vex_publishedId", () => {
+    const fields: Record<string, AdminField> = {
+      vex_publishedId: text({ label: "Published Id" }),
+    };
+    expect(() => defineCollection({ slug: "posts", fields })).toThrow(/reserved/);
+  });
+
+  it("is a compile-time error to declare a field literally named vex_status", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        // @ts-expect-error — vex_status is reserved; defineCollection injects it
+        fields: { vex_status: text({ label: "Status" }) },
+      }),
+    ).toThrow(/reserved/);
+  });
+});
+
 describe("defineCollection — auth-owned collections are skipped", () => {
   // `betterAuthAdapter` marks every auth table except `user` with
   // `meta.protected`. vexcms's `create`/`update` never write those rows, so a
@@ -173,5 +281,55 @@ describe("defineCollection — hooks", () => {
       hooks: { beforeChange },
     });
     expect(posts.hooks.beforeChange).toBe(beforeChange);
+  });
+});
+
+describe("defineCollection — draftStatus validation", () => {
+  it("throws when a collection-level index declares draftStatus without versions.drafts: true", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { title: text({ required: true }) },
+        indexes: [{ name: "by_title", fields: ["title"], draftStatus: true } as never],
+      }),
+    ).toThrow(/draftStatus/);
+  });
+
+  it("throws when a field's indexDraftStatus is set without versions.drafts: true", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { slug: text({ required: true, index: "by_slug", indexDraftStatus: true }) },
+      }),
+    ).toThrow(/declares indexDraftStatus but versions\.drafts is not true/);
+  });
+
+  it("throws when indexDraftStatus is set on a field with no index and no relationship auto-index", () => {
+    expect(() =>
+      defineCollection({
+        slug: "posts",
+        fields: { title: text({ required: true, indexDraftStatus: true }) },
+        versions: { drafts: true },
+      }),
+    ).toThrow(/no index to narrow/);
+  });
+
+  it("allows draftStatus on a collection-level index when versions.drafts: true", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+      versions: { drafts: true },
+      indexes: [{ name: "by_title", fields: ["title"], draftStatus: "both" }],
+    });
+    expect(posts.indexes?.[0]).toMatchObject({ name: "by_title", draftStatus: "both" });
+  });
+
+  it("allows indexDraftStatus on a field's own index when versions.drafts: true", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { slug: text({ required: true, index: "by_slug", indexDraftStatus: true }) },
+      versions: { drafts: true },
+    });
+    expect(posts.fields.slug?.indexDraftStatus).toBe(true);
   });
 });

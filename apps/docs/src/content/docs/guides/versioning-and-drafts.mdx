@@ -1,0 +1,236 @@
+---
+title: Versioning & Drafts
+description: Turn on a draft/publish workflow for a collection or global — a stable published row, at most one draft beside it, immutable version history, and a live preview that can show the draft.
+---
+
+A versioned document is **one published row with a stable `_id`**, plus at most one
+**draft row** pointing back at it through `vex_publishedId`. Edits land on the draft;
+publishing copies them onto the published row and deletes the draft, so the `_id` your
+relationships, permalinks, and admin URLs point at never changes. Every distinct content
+state is recorded once in `vex_versions` as an immutable snapshot; publishing content that
+is already there marks its version published instead of adding a row.
+
+## Enabling drafts
+
+```ts
+import { defineCollection, defineGlobal, text } from "@vexcms/core"
+
+export const posts = defineCollection({
+  slug: "posts",
+  fields: { title: text({ required: true }) },
+  versions: {
+    drafts: true,
+    autosave: { enabled: true }, // optional — see Autosave below
+  },
+})
+
+export const announcement = defineGlobal({
+  slug: "announcement",
+  label: "Announcement",
+  fields: { message: text({ required: true }) },
+  versions: { drafts: true },
+})
+```
+
+- `drafts` defaults to `false`. A collection or global that doesn't opt in behaves exactly
+  as before — no extra columns, no filtering, no new endpoints.
+- `vex dev` / `vex generate` adds the `vex_status`, `vex_publishedAt`, and
+  `vex_publishedId` columns, the `by_status` / `by_published` indexes, and the
+  `vex_versions` table.
+
+Register the operations in their own file, the same way `convex/vex/globals.ts` registers
+globals — the file placement is what makes them `api.vex.versions.*`:
+
+```ts
+// convex/vex/versions.ts
+import { versionsApi } from "@vexcms/core/server"
+
+export const { saveDraft, publish, unpublish, listVersions, getVersionSnapshot, deleteVersion } =
+  versionsApi({ config, query, mutation, getAuth })
+```
+
+`versionsApi` registers nothing when no collection or global declares `versions.drafts`,
+so a project that never opts in exposes no draft surface at all. Each operation takes
+`{ collection, id }` for a collection document or `{ global }` for a global.
+
+### Status-narrowed indexes
+
+Reads on a versioned collection filter on `vex_status`. To keep a lookup index-backed
+instead of filtered, narrow it on status:
+
+```ts
+indexes: [{ name: "by_slug", fields: ["slug"], draftStatus: "both" }],
+fields: { author: relationship({ to: "users", indexDraftStatus: true }) },
+```
+
+- `true` replaces the index with a `vex_status`-prefixed one; `"both"` keeps the original
+  and adds a status-prefixed twin.
+- `indexDraftStatus` needs an index to attach to (`index` set, or a relationship field) and
+  `versions.drafts: true`; `defineCollection` throws otherwise.
+- Unique fields stay unique among published documents only — a draft may share a slug with
+  its own published row.
+
+## Draft, publish, unpublish
+
+| Action           | Grants                                                                  |
+| ---------------- | ----------------------------------------------------------------------- |
+| `readDrafts`     | Reading draft rows (`drafts: true` on reads) and the version history.   |
+| `saveDraft`      | Creating or updating the draft row.                                     |
+| `publish`        | Promoting the draft onto the published row.                             |
+| `unpublish`      | Flipping the published row back to draft.                               |
+| `deleteVersions` | Deleting individual `vex_versions` history rows.                        |
+
+- **`saveDraft` is lenient.** A draft may be incomplete — required fields aren't enforced
+  until publish. It checks permission against the incoming changes, so a role restricted
+  to certain fields on `update` gets the same restriction on `saveDraft`.
+- **`publish` is strict.** It re-validates the merged document as strictly as `create` and
+  rejects — naming the missing or invalid field, writing nothing — if it fails. It also
+  rejects while any relationship field points at a document that is itself a draft.
+- **`unpublish` requires no outstanding draft.** Publish or discard the draft first.
+- **Reads exclude drafts by default** — `find`, `get`, `search`, and `globals.get` only
+  return published rows unless the caller passes `drafts: true` **and** holds
+  `readDrafts`. This applies even under `access: { bypass: true }`: hiding drafts is data
+  integrity, not a permission rule.
+
+The five actions join the resource's permission matrix automatically. Grant them like any
+other action (this three-role setup is illustrative):
+
+```ts
+permissions: {
+  admin: { "*": true },
+  editor: {
+    "*": false,
+    posts: { read: true, readDrafts: true, saveDraft: true }, // drafts only
+  },
+  viewer: {
+    "*": false,
+    posts: { read: true }, // published content only
+  },
+}
+```
+
+A project whose only roles are an admin and a public reader needs no extra entries at all:
+`"*": true` already covers the draft actions, and default-deny already withholds them from
+everyone else.
+
+Deleting either row of a versioned document — from the list view, which shows the draft
+row when one exists, or via the published row — deletes the whole document: the other row
+and its entire version history (`versions.cascadeDelete`, default `true`).
+
+## Autosave
+
+With `versions.autosave.enabled`, the collection edit view saves a draft automatically
+once the form settles. Outside the built-in views, use the same hook:
+
+```tsx
+import { useAutosave } from "@vexcms/react"
+
+const { status, lastSavedAt, error } = useAutosave({
+  values: changedValues(form),
+  onSave: (changes) => saveDraft({ collection: "posts", id, data: changes }),
+  enabled: canSaveDraft,
+  debounceMs: 1000, // defaults to DEFAULT_AUTOSAVE_DEBOUNCE_MS
+})
+```
+
+- It saves only when the values actually changed since the last successful save, after
+  they stop changing for `debounceMs` — never on an interval, never on mount.
+- A change made while a save is in flight gets its own save once that one finishes; it's
+  never folded into the request already sent.
+- A failed save sets `status: "error"` and leaves the changes pending, so the next settle
+  retries them.
+
+## Version history and restore
+
+```tsx
+import { VersionHistoryDropdown } from "@vexcms/react"
+
+<VersionHistoryDropdown
+  target={{ collection: "posts", documentId: activeDocumentId }}
+  hasDraft={isDraftDoc}
+  viewingVersion={viewedVersion?.version ?? null}
+  onViewVersion={setViewedVersion}
+  hasUnsavedChanges={!isDefaultValue}
+/>
+// or, for a global:
+<VersionHistoryDropdown target={{ global: "announcement" }} {...sameProps} />
+```
+
+- Lists every version newest-first with its number, status, published time, creator, and
+  timestamp. It renders nothing without `readDrafts`; the delete action is hidden without
+  `deleteVersions`, and never offered on the live version, the published version, or the
+  version on screen.
+- The version on screen is highlighted, and the published version (plus the active draft,
+  while one exists) is tagged **Active**. Opening the menu scrolls to the version on screen.
+- **Viewing never saves.** Picking a version shows its snapshot in the form — the built-in
+  edit views hold it as `viewedVersion` — and browsing history creates no versions. With
+  unsaved edits, the dropdown asks before discarding them.
+- **Saving from a viewed version** sends only your edits plus `restoredFrom: <version>`; the
+  server rewrites the draft as that version's snapshot with your edits on top, and the new
+  version records it as its parent.
+- **Publishing a viewed version** (`publish({ …, version })`) writes its snapshot to the
+  published row and marks that version published — no new row unless you edited it first.
+- History is never pruned automatically. `deleteVersion` removes one row at a time.
+
+## Live preview and drafts
+
+The public page's normal query should stay published-only. To make the
+[live preview](/guides/live-preview/) show the draft, add a **second** query beside it that
+asks for drafts and checks permission for real:
+
+```ts
+// convex/pages.ts
+export const getBySlugPreview = query({
+  args: { slug: v.string() },
+  handler: async (ctx, { slug }) => {
+    const matches = await find({
+      ctx,
+      collection: "pages",
+      withIndex: { name: "by_slug", range: (q) => q.eq("slug", slug) },
+      drafts: true,
+      access: { action: DRAFT_ACTIONS.readDrafts },
+    })
+    const draft = matches.find((doc) => doc.vex_status === "draft")
+    return draft ? [draft] : matches.filter((doc) => doc.vex_status === "published")
+  },
+})
+```
+
+On the page, pick that query only once the browser confirms a preview session — both
+`?vexLivePreview=1` and the `vex-live-preview` cookie your middleware sets. `apps/www`'s
+`PageContent.tsx` (`useSitePreviewMode`) is the reference implementation.
+
+:::caution
+The preview cookie only proves the request came from *a* verified session — not that the
+session may see drafts. The `readDrafts` check inside the query is the real boundary.
+Never use `access: { bypass: true }` on the preview query. A caller without `readDrafts`
+gets an empty result rather than an error, so a denied request can't reveal which pages
+exist.
+:::
+
+## Migrating off a hand-rolled status field
+
+1. Turn on `versions.drafts` and run `vex dev` so the new columns exist.
+2. Stamp every pre-existing row as published with `backfillStatus`, wrapped in your own
+   `internalMutation` (it has no permission check, so it must never be public):
+
+   ```ts
+   // convex/backfillPagesStatus.ts — delete once the backfill reports isDone
+   import { paginationOptsValidator } from "convex/server"
+   import { backfillStatus } from "@vexcms/core/server"
+   import { internalMutation } from "./_generated/server"
+
+   export const run = internalMutation({
+     args: { paginationOpts: paginationOptsValidator },
+     handler: (ctx, args) =>
+       backfillStatus({ ctx, config, collection: "pages", paginationOpts: args.paginationOpts }),
+   })
+   ```
+
+   ```sh
+   npx convex run backfillPagesStatus:run '{"paginationOpts":{"numItems":200,"cursor":null}}'
+   # repeat with the returned continueCursor until isDone: true
+   ```
+
+3. Delete your old `status` field and point any query that filtered on it at the built-in
+   `drafts` argument instead.

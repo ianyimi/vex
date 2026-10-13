@@ -656,3 +656,70 @@ describe("get (server) — field-level read shaping", () => {
     expect(doc).not.toBeNull();
   });
 });
+
+describe("get (server) — drafts fallback", () => {
+  const versionedPosts = defineCollection({
+    slug: "posts",
+    fields: { title: text(), slug: text() },
+    versions: { drafts: true },
+  });
+  const draftsConfig = {
+    collections: [versionedPosts],
+    access: defineAccess({
+      roles: ["editor", "viewer"] as const,
+      resources: [versionedPosts],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        editor: { posts: { read: true, readDrafts: true } },
+        viewer: { posts: { read: true } },
+      },
+    }),
+  } as unknown as VexConfig;
+  const editorAuth = { user: { _id: "e1", roles: ["editor"] } };
+  const viewerAuth = { user: { _id: "v1", roles: ["viewer"] } };
+
+  async function seedPair(ctx: GenericMutationCtx<GenericDataModel>) {
+    const publishedId = await ctx.db.insert("posts", {
+      title: "Live",
+      slug: "doc",
+      vex_status: "published",
+    });
+    const draftId = await ctx.db.insert("posts", {
+      title: "Draft",
+      slug: "doc",
+      vex_status: "draft",
+      vex_publishedId: publishedId,
+    });
+    return { publishedId, draftId };
+  }
+
+  // The edit view always sends `drafts: true` for a versioned collection; a
+  // caller without `readDrafts` must still open a published document.
+  test("drafts: true without readDrafts returns the published row instead of throwing", async () => {
+    const t = convexTest(schema, modules);
+    const doc = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const { publishedId } = await seedPair(ctx);
+      return get({ ctx, id: publishedId, collection: "posts", config: draftsConfig, auth: viewerAuth, drafts: true });
+    });
+    expect(doc?.title).toBe("Live");
+  });
+
+  test("drafts: true without readDrafts returns null for a draft row (not found, not a permission error)", async () => {
+    const t = convexTest(schema, modules);
+    const doc = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const { draftId } = await seedPair(ctx);
+      return get({ ctx, id: draftId, collection: "posts", config: draftsConfig, auth: viewerAuth, drafts: true });
+    });
+    expect(doc).toBeNull();
+  });
+
+  test("drafts: true with readDrafts returns the draft row", async () => {
+    const t = convexTest(schema, modules);
+    const doc = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const { draftId } = await seedPair(ctx);
+      return get({ ctx, id: draftId, collection: "posts", config: draftsConfig, auth: editorAuth, drafts: true });
+    });
+    expect(doc?.title).toBe("Draft");
+  });
+});

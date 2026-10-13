@@ -1,260 +1,197 @@
 # Maprios Migration — Roadmap Gap Analysis
 
-> Cross-reference of the full maprios site configuration against the VexCMS roadmap. Identifies what the roadmap already covers and what's missing.
+> **Re-verified 2026-09-23 against package source at `bf49cd0` (`0.1.0-alpha.23`).**
+> Original written 2026-08-21. Every status line below is evidence-backed with a
+> `path:line` citation; where the original claimed something was built and it is
+> not in the rebuild, the row says so.
+>
+> **Two framing corrections before reading:**
+>
+> 1. **The numeric spec scheme is dead.** Spec 07/09c/10/13–19/24/28–29/30.5/34/38/43a–b
+>    survive only in `.agent/docs/research/legacy-planning/`. The live track is
+>    `v0.1.0-launch-plan.md` specs **A–J** plus date-prefixed dirs under
+>    `.agent/docs/specs/`. Mappings below use the live labels.
+> 2. **`apps/www` is VexCMS's own marketing site, not maprios.** Its 11 blocks are
+>    not maprios ports. The maprios block port (~35–40 configs) is Milestone 2 and
+>    has not started.
 
 ---
 
-## What the Roadmap Already Covers (✅)
+## 1. Corrected baseline — what actually exists today
 
-| Maprios Feature | Roadmap Coverage | Notes |
-|---|---|---|
-| Auth (Users, Sessions, Accounts, Verifications) | Spec 13 — Better Auth Package | ✅ Already built |
-| Pages collection with blocks | Spec 28 — Blocks System | ✅ Already built |
-| Media collection with upload | Spec 15 — Media Collections | ✅ Already built |
-| Draft/published status | Spec 07 — Versioning & Drafts | ✅ Already built |
-| Access control (read by status) | Spec 16 — RBAC | ✅ Already built |
-| Globals (SiteConfig) | Spec 38 — Globals System | ✅ Already built |
-| Theme system with color field | Spec 29 — Color Field + Theme | ✅ Already built |
-| Block style controls | Spec 09c — Block Style Controls | ✅ Already built |
-| Live preview | Spec 10 — Live Preview | ✅ Already built |
-| Rich text | Spec 17 — Rich Text (Plate) | ✅ Already built |
-| Custom admin components | Spec 09 — Custom Admin Components | ✅ Already built |
-| Icon picker | Listed as done in Current Project State | ✅ Already built |
-| Form submission collection | Spec 24 — Form Builder | 📋 Phase 3 (planned) |
-| email/textarea field types | Spec 24 — Form Builder | 📋 Phase 3 (planned) |
-| Cross-component auth | Spec 43b — Cross-Component Auth | 📋 Phase 3 (planned) |
-| Team management | Spec 18 — Team Management UI | 📋 Phase 3 (planned) |
-| API keys | Spec 19 — API Key Management | 📋 Phase 3 (planned) |
-| Hooks system | Spec XX — Hooks System | 📋 Phase 3 (planned) |
-| Field types (text, number, checkbox, select, date, relationship, array, group, blocks, upload, json, color, tabs, object, richtext) | All listed as done | ✅ Already built |
-
----
-
-## What's Missing from the Roadmap (❌)
-
-### 1. Block Group Categorization
-
-**What:** The maprios admin block picker groups 37+ block variants into 15 categories (Heroes, Call to Action, Features, Contact, Gallery, Stats, Team, Testimonial, Case Study, FAQ, Industries, Services, Footer, Navbar, etc.).
-
-**Gap:** Spec 28 (Blocks System) mentions "admin block picker" but does not mention group/category organization. With 37+ variants in a flat list, the picker becomes unusable.
-
-**Impact:** HIGH — admin UX for content editors.
-
-**Recommendation:** Add to Spec 28 or as a standalone note. Add `admin.group` to `defineBlock()` options. Admin block picker renders grouped sections.
-
----
-
-### 2. Additional Block Categories Beyond 8 Marketing Blocks
-
-**What:** The roadmap lists 8 marketing blocks (Spec 34): Hero, Features, CTA, FAQ, Header, Footer, HowItWorks, Roadmap. The maprios site uses **15 block categories with 37+ variants**:
-
-| Category | Variants | In Roadmap? |
-|---|---|---|
-| Hero | 3 | ✅ Spec 34 |
-| Features | 11 | ✅ Spec 34 |
-| CTA | 3 | ✅ Spec 34 |
-| FAQ | 2 | ✅ Spec 34 |
-| Header | 1 (Navbar) | ✅ Spec 34 |
-| Footer | 3 | ✅ Spec 34 |
-| **Contact** | 1 | ❌ Missing |
-| **Gallery** | 2 | ❌ Missing |
-| **Stats** | 1 | ❌ Missing |
-| **Team** | 1 | ❌ Missing |
-| **Testimonial** | 2 | ❌ Missing |
-| **CaseStudy** | 1 | ❌ Missing |
-| **Industries** | 1 | ❌ Missing |
-| **Service** | 1 | ❌ Missing |
-| **Services** | 2 | ❌ Missing |
-| **Navbar** | 4 (in Headers collection) | Partially covered |
-| HowItWorks | — | ✅ Spec 34 |
-| Roadmap | — | ✅ Spec 34 |
-
-**Gap:** 7 block categories are not in the roadmap's marketing blocks list. These are content blocks needed for the maprios site.
-
-**Impact:** MEDIUM — these are just additional `defineBlock()` calls. No new framework features needed. But they need to be built/ported.
-
-**Recommendation:** Expand Spec 34 or add a new spec for "Maprios Block Library" that lists all 15+ categories. Note: Header/Footer are collection-level (not page blocks), and Navbar is a block within Headers collection.
-
----
-
-### 3. Contact Form Block Configuration
-
-**What:** The maprios Contact block has a `form` group with configuration fields: title, description, submit button label, terms link labels/URLs, privacy link labels/URLs, success message, error message. It also has an array of `contactMethods` (email, phone, chat, office) with icon, title, description, value, href.
-
-**Gap:** Spec 24 (Form Builder) covers the **submission collection** (ContactSubmissions) and field types (email, textarea). But it does not cover the **Contact block** which configures the frontend form UI (labels, messages, links, contact methods). This is a block that renders a form + contact info, not just a form submission handler.
-
-**Impact:** HIGH — the Contact block is a core page section on the maprios site.
-
-**Recommendation:** Add to Spec 24 or as a separate note. The Contact block uses `group()` + `array()` fields for form configuration + contact methods. It needs the `icon` field (already done) and `upload` field (already done for team photos). The actual submission handling is a separate Convex mutation that writes to the ContactSubmissions collection.
-
----
-
-### 4. Public Mutation Access (Unauthenticated Create)
-
-**What:** The maprios ContactSubmissions collection has `access: { create: () => true }` — anyone can submit a form without authentication. This is a public Convex mutation.
-
-**Gap:** Spec 16 (RBAC) covers document-level and field-level permissions for authenticated users. It does not explicitly mention the **public/unauthenticated access pattern**.
-
-**Impact:** HIGH — contact forms are public-facing. Without this, the form builder is useless for lead capture.
-
-**Recommendation:** Add to Spec 16 or Spec 24. Public mutations need:
-- `access: { create: () => true }` or equivalent in `defineAccess()`
-- Convex mutation that skips auth checks for specific collections/actions
-- Rate limiting (basic) to prevent abuse
-- Spam protection (honeypot or CAPTCHA integration)
-
----
-
-### 5. Admin Form Row Layout
-
-**What:** The maprios Contact block form configuration uses side-by-side field pairs:
-```ts
-{ type: "row", fields: [
-  { name: "termsLinkLabel", admin: { width: "50%" } },
-  { name: "termsLinkHref", admin: { width: "50%" } },
-] }
-```
-
-**Gap:** The roadmap's admin form (Spec 14) does not mention row layout for side-by-side fields. VexCMS has `admin.width: "half"` on individual fields, but no explicit row grouping.
-
-**Impact:** LOW — can be modeled with `group()` fields or individual `width: "half"` fields. Not a blocker.
-
-**Recommendation:** Note in Spec 14 that `admin.width: "half"` on consecutive fields renders side-by-side. Or add a lightweight `row` layout concept.
-
----
-
-### 6. Seed Data with Block Content
-
-**What:** The maprios seed creates pages with full block content (hero blocks, feature blocks, CTA blocks, etc. with default values, images, contact methods, team members, etc.). The seed also creates headers, footers, themes, and links them in SiteConfig.
-
-**Gap:** The roadmap mentions "seed script" for the marketing site but does not specify **seed data with nested block content**. Block content is complex JSON with nested arrays, groups, and relationships.
-
-**Impact:** MEDIUM — one-time setup, but complex to write manually.
-
-**Recommendation:** Add to Spec 30.5 (Create CLI) or as a note. Seed data should be TypeScript files that import `defineBlock()` defaults and create documents with full block arrays. The CLI's `create-vexcms` template should include a seed script example.
-
----
-
-### 7. Form Submission Admin Table View
-
-**What:** The maprios ContactSubmissions collection has `admin: { defaultColumns: ["firstName", "lastName", "email", "createdAt"] }` — a specific table view for form submissions.
-
-**Gap:** Spec 24 mentions "submission storage in Convex" but does not explicitly mention the **admin table view** for submissions. This is a standard collection list view, but it needs specific columns.
-
-**Impact:** LOW — standard collection list view already supports this. Just needs to be wired as a collection.
-
-**Recommendation:** Note in Spec 24 that form submission collections use standard `defineCollection()` with the admin list view. No new framework feature needed.
-
----
-
-### 8. Block Defaults / Presets
-
-**What:** Every maprios block has extensive `defaultValue` settings (hero headlines, feature descriptions, team member bios, contact methods, etc.). These are the block's "preset content" that appears when a block is first added to a page.
-
-**Gap:** The roadmap does not explicitly mention block default values. `defaultValue` on fields is supported (it's a standard field property), but complex nested defaults (arrays of objects with multiple fields) need to be validated.
-
-**Impact:** LOW — `defaultValue` on array fields and group fields is already supported by the field system. Just needs testing with complex nested structures.
-
-**Recommendation:** No roadmap change needed. Just verify that `defaultValue` works for `array()` fields with nested objects.
-
----
-
-## Summary: What Needs to Be Added to the Roadmap
-
-| # | Item | Priority | Where to Add |
+| Maprios feature | Original claim | Verified state (2026-09-23) | Evidence |
 |---|---|---|---|
-| 1 | **Block group categorization** | HIGH | Spec 28 (Blocks System) or new note |
-| 2 | **Additional block categories** (Gallery, Stats, Team, Testimonial, CaseStudy, Industries, Service, Services, Contact) | MEDIUM | Spec 34 (Marketing Blocks) — expand list |
-| 3 | **Contact form block** (form config + contact methods) | HIGH | Spec 24 (Form Builder) or separate note |
-| 4 | **Public mutation access** (unauthenticated create) | HIGH | Spec 16 (RBAC) or Spec 24 |
-| 5 | **Admin form row layout** | LOW | Spec 14 (Collection Edit Form) — note |
-| 6 | **Seed data with block content** | MEDIUM | Spec 30.5 (Create CLI) or note |
-| 7 | **Form submission admin table** | LOW | Spec 24 — already covered by standard collection view |
-| 8 | **Block defaults** | LOW | No change — already supported |
+| Auth (Users, Sessions, Accounts, Verifications) | ✅ built | ✅ **Built** — `@vexcms/better-auth` ships, incl. `anonRoleDatabaseHook` | `packages/better-auth/`, `templates/base-nextjs/convex/auth/options.ts:3` |
+| Pages collection with blocks | ✅ built | ✅ **Built** — `blocks()` field, `defineBlock`, `RenderBlocks` | `packages/core/src/fields/blocks/`, `packages/react/src/index.ts:151` |
+| Media collection with upload | ✅ built | ✅ **Built** — `defineMediaCollection`, `upload()` field | `apps/www/src/vexcms/collections/images.ts` |
+| Draft/published status | ✅ built | ❌ **NOT built** — spec C re-scoped 2026-09-20, 18 task groups, status `draft`, implementation not started | `.agent/docs/specs/2026-09-20-versioning-drafts/`, `v0.1.0-launch-plan.md:64` |
+| Access control (read by status) | ✅ built | ◐ **RBAC built, status filter not** — doc-level + field-level RBAC shipped; the `_status` filter lands with C | `packages/core/src/access/`, spec `2026-09-07-field-level-rbac-permissions` (complete) |
+| Globals (SiteConfig) | ✅ built | ✅ **Built** — `defineGlobal`; `siteSettings` global live in `apps/www` | `apps/www/src/vexcms/globals/siteSettings.ts` |
+| Theme system with color field | ✅ built | ✅ **Built** — `color()` field + `themes`/`themeColors` collections | `packages/core/src/fields/color/`, spec `2026-08-30-wpc-color-field` (complete) |
+| Block style controls | ✅ built | ❌ **NOT built** — `BlockAdminConfig` carries only `icon` + `defaultCollapsed` | `packages/core/src/fields/blocks/types.ts:38-57` |
+| Live preview | ✅ built | ✅ **Built** — shipped `b5263dc`, 2026-09-20; `postMessage` + `BroadcastChannel`, preview globals + server-resolved URLs in `649cafa` | `packages/react/src/context/LivePreviewContext.tsx`, spec `2026-09-18-live-preview` (complete) |
+| Rich text | ✅ built | ❌ **NOT wired** — `packages/richtext-plate` exists but there is no `richtext()` field in the core union. This is spec **D**, not started | `packages/core/src/fields/types.ts:64-76`, `v0.1.0-launch-plan.md:65` |
+| Custom admin components | ✅ built | ◐ **Partial** — only `relationship.admin.components.preview` has a slot; there is no general per-field component override | `packages/core/src/fields/relationship/types.ts:34` |
+| Icon picker | ✅ built | ❌ **No icon field** — `apps/www` models icons as `text()` holding a Lucide name; `<Icon>` renders them. No picker input | `apps/www/src/vexcms/blocks/HowItWorks/config.ts:25-27`, `packages/react/src/index.ts:149` |
+| Form submission collection | 📋 planned | ❌ **Still absent** — no `defineFormCollection`, no form-builder spec anywhere | searched `packages/`, `.agent/docs/specs/` |
+| email / textarea field types | 📋 planned | ❌ **Still absent** — deferred out of 0.1.0 as leaf fields | `roadmap.md:61-63` |
+| Cross-component auth / multi-component | 📋 planned | ❌ **Still absent** — Milestone 3, deliberately last | `roadmap.md:73-77` |
+| Team management, API keys, hooks *system* | 📋 planned | ❌ Team/API-keys absent (post-v1 backlog). **Lifecycle hooks DID ship** (see below) | `roadmap.md:98-102` |
+
+**Field types actually shipped — 12, not "everything":**
+`text` · `number` · `checkbox` · `date` · `select` · `url` · `color` · `relationship` ·
+`array` · `group` · `blocks` · `upload`
+(`packages/core/src/fields/types.ts:64-76`)
+
+**Absent:** `email` · `textarea` · `json` · `richtext` · `icon` · `tabs` · `ui`.
+
+**Shipped since the original analysis and not in it at all:**
+lifecycle hooks (`beforeChange`/`beforeDelete` inline, `afterChange`/`afterDelete` on
+convex-helpers triggers — `packages/core/src/collections/hooks.ts:83-96`,
+`packages/core/src/api/triggers.ts:48-61`) · server-side field validation ·
+SEO prerendering + revalidation · the exported React test kit (`@vexcms/react/testing`) ·
+the client/server config split (ADR-013) · access constraint builder / index resolution.
 
 ---
 
-## Recommended Roadmap Updates
+## 2. The eight gaps, re-statused
 
-### Add to Spec 28 (Blocks System)
+### 1. Block group categorization — 🔴 **STILL OPEN, unchanged**
 
-```
-- Block group categorization in admin picker
-  - defineBlock({ admin: { group: "Heroes" } })
-  - Admin block picker renders collapsible sections by group
-  - Groups ordered alphabetically or by config order
-```
+`BlockAdminConfig` exposes `icon` and `defaultCollapsed` only — no `group`
+(`packages/core/src/fields/blocks/types.ts:38-57`). `BlockPickerDialog` renders a
+flat filtered list with no grouping wrapper (`packages/react/src/components/form/FormBlocks.tsx:90-210`).
 
-### Expand Spec 34 (Marketing Blocks)
+Explicitly **deferred out of 0.1.0** (`roadmap.md:61-63`). Still HIGH impact for a
+37-variant maprios picker; still LOW effort. Lands in the post-launch quick-wins batch.
 
-```
-Spec 34 — Marketing Blocks
-  ✅ Hero, Features, CTA, FAQ, Header, Footer, HowItWorks, Roadmap
-  🔜 Additional blocks for maprios migration:
-    - Contact (form config + contact methods)
-    - Gallery (image grid with items)
-    - Stats (numbers + countdown)
-    - Team (member grid with photos + social links)
-    - Testimonial (quote carousel)
-    - CaseStudy (case study content)
-    - Industries (industry showcase)
-    - Service / Services (service listing)
-```
+### 2. Additional block categories — 🔴 **STILL OPEN; the original table was misread**
 
-### Add to Spec 24 (Form Builder)
+`apps/www` and the `marketing-site` template each ship **11 blocks**, and they are
+VexCMS's own marketing blocks, not maprios ports:
 
-```
-- Contact form block (page-level block, not just submission collection)
-  - Form configuration: title, description, button labels, terms/privacy links, messages
-  - Contact methods array: icon, title, description, value, href
-  - Submission handling: writes to ContactSubmissions collection
-- Public mutation access (unauthenticated create)
-  - Rate limiting (basic: 5 submissions / IP / hour)
-  - Spam honeypot field
-```
+`Hero` · `Stats` · `Features` · `CodeShowcase` · `Split` · `HowItWorks` · `Roadmap` ·
+`FAQ` · `CTA` (page blocks) + `Header` + `Footer` (collection-level)
+(`apps/www/src/vexcms/blocks/config.ts`)
 
-### Add to Spec 16 (RBAC)
+`base-nextjs` ships **zero** blocks (`images` + `users` collections only).
 
-```
-- Public access patterns
-  - Unauthenticated create for specific collections (e.g., form submissions)
-  - IP-based rate limiting for public mutations
-  - No auth required, but still validated and logged
-```
+So of the maprios categories: **Contact, Gallery, Team, Testimonial, CaseStudy,
+Industries, Service/Services, and the 4 Navbar variants do not exist anywhere.**
+`Stats` now exists, but as VexCMS's own block, not the maprios one.
+
+Impact unchanged: MEDIUM, pure `defineBlock()` work, no framework feature needed.
+This is the bulk of Milestone 2.
+
+### 3. Contact form block — 🔴 **STILL OPEN**
+
+No Contact block, no `contactMethods` array, no form-config group anywhere in
+`apps/www` or either template. No `ContactSubmissions` collection —
+`apps/www/src/db/constants/index.ts` defines `pages`, `headers`, `footers`, `themes`,
+`images`, `users`, `siteSettings` and nothing else.
+
+Blocked on `email()` + `textarea()`, which are not in the field union.
+
+### 4. Public mutation access — 🟡 **PARTIALLY CLOSED**
+
+**Closed:** `anonRole` shipped. `defineAccess({ anonRole })`
+(`packages/core/src/access/config.ts:183`) and `hasPermission` falls back when a
+caller resolves to zero roles (`packages/core/src/access/hasPermission.ts:235`).
+Live in production: `apps/www/src/auth/access.ts:13` (`anonRole: USER_ROLES.user`)
+powers anonymous page + media reads. `create` is a first-class matrix action
+(`packages/core/src/access/constants.ts:8`), so **unauthenticated create is
+expressible today** — grant `create` on the submissions collection to the anon role.
+
+**Still open:** no rate limiting, no honeypot, no spam protection anywhere in the
+repo. The only `rateLimit*` identifiers are inert schema columns in the Better Auth
+plugin schema (`packages/better-auth/src/pluginSchemas.generated.ts:121-136`) — no
+enforcement path. That work was scoped to land with the form builder.
+
+### 5. Admin form row layout — 🟡 **CHANGED — now a dead-config bug, not a missing feature**
+
+`admin.width?: "full" | "half"` is defined (`packages/core/src/fields/baseTypes.ts:243-251`)
+but **no React code reads it** — `RenderFieldInputComponents` renders a flat column
+(`packages/react/src/components/fields/index.tsx:133-165`). There is still no `row`
+concept.
+
+Already tracked: honoring `admin.placeholder` / `admin.width` / `admin.cellAlignment`
+is in spec **G** (`v0.1.0-launch-plan.md:699-701`). No new roadmap entry needed.
+
+### 6. Seed data with block content — ✅ **CLOSED**
+
+Both seeds exist and do exactly what the gap asked for — nested arrays and groups
+inside block content:
+- `apps/www/convex/seed.ts` — 1,599 lines; `THEME_PRESETS` (6 themes) + pages with
+  nested Split bullets, HowItWorks steps, FAQ items, Roadmap items, Stats, Features.
+- `packages/create-vexcms/templates/marketing-site/convex/seed.ts` — 1,240 lines, same shape.
+- `base-nextjs` ships no seed (intentional — no content collections).
+
+The pattern the gap analysis asked the CLI template to demonstrate is shipped.
+
+### 7. Form submission admin table — ⚪ **UNCHANGED — still trivially covered**
+
+Standard `defineCollection` list view. Note that `defaultColumns` is one of the
+dead-config items spec **A** is auditing, so verify it is actually read before
+relying on it.
+
+### 8. Block defaults / presets — ✅ **CLOSED**
+
+`defaultValue` works on `array()` and `group()` with nested object content
+(`packages/core/src/fields/array/types.ts:77`,
+`packages/core/src/fields/group/types.ts:96`), and is exercised in production across
+every `apps/www` block (e.g. `Header/config.ts:34-39`, `Footer/config.ts:32-38`).
+No verification debt left.
 
 ---
 
-## Bottom Line
+## 3. Implementation order (decided 2026-08-21) — re-statused
 
-**The roadmap covers 95% of what the maprios site needs.** The only genuine framework gaps are:
-
-1. **Block group categorization** — admin UX feature
-2. **Public mutation access** — access control pattern
-3. **Contact form block** — block variant that combines form config + contact methods
-
-Everything else (additional block categories, seed data, admin table views, block defaults) is implementation work using existing framework features, not new framework development.
-
-**Implementation order is decided (see below).** After the framework items land, the maprios www migration is primarily content block implementation, not framework work.
-
----
-
-## Implementation Order (decided 2026-08-21)
-
-RBAC (Spec 16) and Globals (Spec 38) are complete in the rebuild. Remaining work
-runs in this order:
-
-| # | Work | Depends on | Notes |
+| # | Work | Status 2026-09-23 | Evidence |
 |---|---|---|---|
-| 1 | **Public access (anon read + create)** | RBAC (done) | Anonymous visitors must read published pages and submit contact forms. Design: `anonRole` on `defineAccess()` (analogous to `userRolesField`) — when a caller's roles resolve empty (no session, or Better Auth anonymous-plugin user without roles), `hasPermission` falls back to `[anonRole]`. Explicit roles win over the fallback. No matrix changes; adapter-agnostic. Rate limiting: document pattern only for now. |
-| 2 | **Versioning / Drafts** (Spec 07) | — | Moved earlier (was "save for last") because live preview builds on `_vexDrafts`. RBAC-class effort. |
-| 3 | **Live Preview** (Spec 10) | #2 | Needs draft-aware queries. |
-| 4 | **TanStack form context port** (from maprios) | — | Bring maprios form context/hooks paradigm into `@vexcms/react`; export the form hook factory + field component map so users can extend their own `appForm` off the vexcms one. Must land before the form builder, which is built on it. |
-| 5 | **Form Builder** (Spec 24) | #1, #3, #4 | Includes email + textarea field types (pulled out of quick wins — the contact form needs them). Renders form pages via the live-preview mechanism. Honeypot/rate limiting land here. |
-| 6 | **Quick wins** | — | json field, PDF block port, block group categorization, other small items. Deliberately batched at the end. |
-| 7 | **React UI testing framework** | admin surface stable | Exportable suite from `@vexcms/react` for client vitest configs; custom-component tests via the componentHKT registry; full-suite vs custom-only toggle. Device/viewport emulation deferred past first pass. |
-| 8 | **Publish + migrate www** | #1–7 | Publish packages to npm, promote rebuild branch to master, then migrate maprios www against published packages. **Does NOT require multi-component.** |
-| 9 | **Multi-component** (Spec 43a → 43b) | — | Tier 2; blocks only the main-app migration. Deliberately last. |
+| 1 | Public access (anon read + create) | ✅ **Done** for the access model (`anonRole` shipped, anon read live on `apps/www`). Rate limiting still documentation-only — nothing enforces it | `access/config.ts:183`, `hasPermission.ts:235`, `apps/www/src/auth/access.ts:13` |
+| 2 | Versioning / drafts (now spec **C**) | 🔴 **Not started.** Re-scoped 2026-09-20 to 18 task groups; the 2026-08-23 draft (56 tasks) is superseded and kept for design history only | `.agent/docs/specs/2026-09-20-versioning-drafts/`, `v0.1.0-launch-plan.md:17-27` |
+| 3 | Live Preview (now spec **E**) | ✅ **Shipped** `b5263dc`, 2026-09-20 — *and it shipped before C, not after.* The original ordering assumption (preview needs drafts) was wrong: the overlay sits on whatever document the consumer's query returned, so C only swaps the base layer | ADR-012, spec `2026-09-18-live-preview` (complete) |
+| 4 | TanStack form context port | 🟡 **Built internally, not exported.** `AppForm`, `AppFormContext`, `createFieldInput`, `useCollectionForm`, `useGlobalForm` all exist under `packages/react/src/components/form/` and `src/hooks/`, but **none appear in `packages/react/src/index.ts`** — consumers cannot build their own `appForm` off the VexCMS one yet. The export surface is the remaining work | `packages/react/src/index.ts:98-183` (absent), `components/form/AppForm.tsx`, `hooks/useCollectionForm.ts` |
+| 5 | Form Builder | 🔴 **Not started.** No `defineFormCollection`, no spec dir, no `email`/`textarea` fields. Only a "future" roadmap card in the www seed copy | `apps/www/convex/seed.ts:1512-1515` |
+| 6 | Quick wins (json field, PDF block, block group categorization) | 🔴 **Not started** — explicitly deferred out of 0.1.0 | `roadmap.md:61-63` |
+| 7 | React UI testing framework | ✅ **Shipped.** `@vexcms/react/testing` exports `runVexReactSuite`, `runFieldInputContractSuite`, `runNestedFieldContainerSuite`, `runHooksSuite`, `runRbacStateSuite`, `fieldFixtures`, `renderWithVexProviders` | `packages/react/package.json` exports `./testing`; `packages/react/src/testing/index.ts:158-268` |
+| 8 | Publish + migrate www | ◐ **Alphas publishing** — at `0.1.0-alpha.23`, changesets in pre mode. Remaining: `changeset pre exit`, 0.1.0 tag, then the maprios migration. Note `apps/www` (VexCMS's own site) is already built and Payload-free; the *maprios* www migration has not begun | `bf49cd0`, `.changeset/pre.json`, spec `2026-09-01-wp5-publish-alphas` (7 open) |
+| 9 | Multi-component (43a → 43b) | 🔴 **Not started**, still deliberately last (Milestone 3) | `roadmap.md:73-77` |
 
-Hooks system (Spec XX) stays deferred — not needed for content editing at
-migration time. Revisit if the form builder wants `afterCreate` submission
-notifications.
+**The order changed in one material way:** the 0.1.0 launch track (`v0.1.0-launch-plan.md`,
+A–J) now supersedes this list. Live preview moved ahead of drafts, lifecycle hooks
+(**F**) moved ahead of both, and richtext (**D**) / field polish (**G**) / edit view
+(**H**) / list view (**I**) / responsive (**J**) were added as launch gates that did
+not exist in the 2026-08-21 framing. The form builder and quick wins now sit *after*
+the whole A–J track, not inside it.
+
+---
+
+## 4. What actually blocks the maprios migration now
+
+Ordered by what must exist before the maprios content port can start.
+
+**Framework work still required:**
+
+| Item | Why it blocks | Where it lives now |
+|---|---|---|
+| **Versioning / drafts (C)** | maprios pages carry draft/published status; the README already promises it | spec `2026-09-20-versioning-drafts`, not started |
+| **Richtext field (D)** | maprios content is rich text; `richtext-plate` is published but unreachable | launch plan D, not started |
+| **`email()` + `textarea()` fields** | contact form cannot be modeled without them | deferred; pull forward with the form builder |
+| **Form builder + public-create hardening** | rate limiting / honeypot for the contact endpoint; the access model itself is ready | no spec exists |
+| **Block group categorization** | 37+ variants in a flat picker is unusable | quick-wins batch |
+| **`admin.width` honoring (G)** | side-by-side field pairs in the contact form config | launch plan G, already scoped |
+
+**Not framework work — pure content porting (Milestone 2):**
+
+~35–40 `defineBlock()` configs + React renderers across the 8 missing categories
+(Contact, Gallery, Team, Testimonial, CaseStudy, Industries, Service/Services, plus
+the 4 Navbar variants), the `ContactSubmissions` collection, and a maprios seed. The
+seed pattern, theme system, globals, media, block defaults, and anon read are all
+proven in `apps/www` and copyable.
+
+**Revised bottom line:** the framework covers less than the original "95%" claimed —
+drafts, richtext, the icon picker, and block style controls were counted as built and
+are not. But three of the eight gaps closed outright (seed data, block defaults,
+public access model), one turned into an already-scoped launch-plan item
+(`admin.width` → G), and the remaining framework work is fully enumerated above.

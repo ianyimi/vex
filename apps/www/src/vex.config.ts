@@ -8,6 +8,8 @@ import { resolvePagePath } from "~/lib/resolvePagePath";
 import { footers, headers, images, pages, themes, users } from "~/vexcms/collections";
 import { siteSettings } from "~/vexcms/globals";
 
+import { TABLE_SLUG_PAGES } from "./db/constants";
+
 /**
  * VexCMS client-safe configuration for the marketing site.
  *
@@ -38,7 +40,19 @@ const vexConfig = defineConfig({
         // into the `@vexcms/core` augmentation, so `ctx` is typed from there
         // and `doc` from the map key.
         siteSettings: {
-          url: "/",
+          url: {
+            server: async ({ vex }) => {
+              const [page] = await vex.find({
+                collection: TABLE_SLUG_PAGES,
+                withIndex: {
+                  name: "by_slug",
+                  range: (q) => q.eq("slug", "home"),
+                },
+                limit: 1,
+              });
+              return page ? `/${String(page.slug)}` : "/";
+            },
+          },
         },
       },
       allowedOrigins: [

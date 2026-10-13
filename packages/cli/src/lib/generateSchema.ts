@@ -4,10 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 
 import type { VexConfig } from "@vexcms/core";
-import {
-  generateVexSchema,
-  generateVexTypes,
-} from "@vexcms/core";
+import { generateVexSchema, generateVexTypes } from "@vexcms/core";
 import {
   diffSchema,
   makeFieldsOptional,
@@ -17,7 +14,7 @@ import {
 
 import { waitForDeploy } from "./convexProcess.js";
 import { logger } from "./logger.js";
-import { executeMigration, executeFieldRemoval, backfillVersionStatus } from "./migrate.js";
+import { executeMigration, executeFieldRemoval } from "./migrate.js";
 import { resolveConvexUrl } from "./resolveConvexUrl.js";
 
 /**
@@ -111,8 +108,7 @@ export async function generateAndWrite(
   writeVexTypes({ config, configPath, cwd });
 
   // Generate the schema content; bail early if there are no collections to emit
-  const { update: shouldWriteSchema, contents: schemaContents } =
-    generateVexSchema({ config });
+  const { update: shouldWriteSchema, contents: schemaContents } = generateVexSchema({ config });
   if (!shouldWriteSchema) {
     return { written: false };
   }
@@ -121,9 +117,7 @@ export async function generateAndWrite(
   const finalSchema = formatString(schemaContents, vexSchemaPath, cwd);
 
   // Compare with existing file — skip write if unchanged
-  const existing = existsSync(vexSchemaPath)
-    ? readFileSync(vexSchemaPath, "utf-8")
-    : "";
+  const existing = existsSync(vexSchemaPath) ? readFileSync(vexSchemaPath, "utf-8") : "";
 
   syncSchemaImports(convexSchemaPath, schemaContents, outputRelPath, config);
 
@@ -134,9 +128,7 @@ export async function generateAndWrite(
     const diff = diffSchema(existing, finalSchema);
     const convexUrl = resolveConvexUrl(cwd);
 
-    const fieldsToMakeOptional = diff.needsMigration.filter(
-      (f) => !f.isOptional,
-    );
+    const fieldsToMakeOptional = diff.needsMigration.filter((f) => !f.isOptional);
     const hasAdditions = diff.needsMigration.length > 0;
     const hasRemovals = diff.removedFields.length > 0;
 
@@ -227,9 +219,7 @@ export async function generateAndWrite(
     // The migration flow writes the file itself (interim then final), so we only
     // need to write here for non-migration cases (autoMigrate off, no existing file,
     // or no fields needing migration).
-    const current = existsSync(vexSchemaPath)
-      ? readFileSync(vexSchemaPath, "utf-8")
-      : "";
+    const current = existsSync(vexSchemaPath) ? readFileSync(vexSchemaPath, "utf-8") : "";
     if (current !== finalSchema) {
       writeFileSync(vexSchemaPath, finalSchema, "utf-8");
       logger.success(`Generated ${outputRelPath}`);
@@ -238,22 +228,6 @@ export async function generateAndWrite(
 
   // Sync schema.ts imports with vex.schema.ts exports
   syncSchemaImports(convexSchemaPath, schemaContents, outputRelPath, config, existing);
-
-  // Backfill vex_status on versioned collections after schema is deployed.
-  // The mutation only patches documents missing vex_status, so this is safe
-  // to run on every schema push — most runs patch 0 documents.
-  const hasVersioning = config.collections.some((c) => c.versions?.drafts);
-  if (hasVersioning) {
-    const convexUrl = resolveConvexUrl(cwd);
-    if (convexUrl) {
-      // Wait for the schema to be deployed before calling the mutation
-      const pushFn = options?.pushSchema ?? ((c: string) => waitForDeploy(c));
-      const deployed = await pushFn(cwd);
-      if (deployed) {
-        await backfillVersionStatus({ convexUrl, config });
-      }
-    }
-  }
 
   return { written: true };
 }
@@ -322,11 +296,11 @@ function formatString(source: string, filepath: string, cwd: string): string {
     const bin = findBin("prettier", cwd);
     if (bin) {
       try {
-        return execFileSync(
-          bin,
-          ["--stdin-filepath", filepath, "--log-level", "silent"],
-          { input: source, encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] },
-        );
+        return execFileSync(bin, ["--stdin-filepath", filepath, "--log-level", "silent"], {
+          input: source,
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "ignore"],
+        });
       } catch {}
     }
   }
@@ -335,11 +309,11 @@ function formatString(source: string, filepath: string, cwd: string): string {
     const bin = findBin("biome", cwd);
     if (bin) {
       try {
-        return execFileSync(
-          bin,
-          ["format", "--stdin-file-path", filepath],
-          { input: source, encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] },
-        );
+        return execFileSync(bin, ["format", "--stdin-file-path", filepath], {
+          input: source,
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "ignore"],
+        });
       } catch {}
     }
   }
@@ -354,14 +328,11 @@ function syncSchemaImports(
   config: VexConfig,
   previousVexContent?: string,
 ) {
-  const exportNames = [...vexContent.matchAll(/^export const (\w+)/gm)].map(
-    (m) => m[1]!,
-  );
+  const exportNames = [...vexContent.matchAll(/^export const (\w+)/gm)].map((m) => m[1]!);
 
   if (exportNames.length === 0) return;
 
-  const vexImportPath =
-    "./" + outputRelPath.replace(/^\/convex\//, "").replace(/\.ts$/, "");
+  const vexImportPath = "./" + outputRelPath.replace(/^\/convex\//, "").replace(/\.ts$/, "");
 
   // No existing schema.ts — create one from scratch
   if (!existsSync(schemaPath)) {
@@ -396,26 +367,17 @@ function syncSchemaImports(
 
   // --- Auto-remove stale exports ---
   if (config.schema.autoRemove && previousVexContent) {
-    const oldExports = [
-      ...previousVexContent.matchAll(/^export const (\w+)/gm),
-    ].map((m) => m[1]!);
+    const oldExports = [...previousVexContent.matchAll(/^export const (\w+)/gm)].map((m) => m[1]!);
     const newExportSet = new Set(exportNames);
     const removed = oldExports.filter((name) => !newExportSet.has(name));
 
     if (removed.length > 0) {
       for (const name of removed) {
-        const simpleEntryPattern = new RegExp(
-          `^[ \\t]*${name}\\s*,?[ \\t]*$`,
-          "m",
-        );
-        const aliasEntryPattern = new RegExp(
-          `^[ \\t]*${name}\\s*:\\s*${name}\\s*,?[ \\t]*$`,
-          "m",
-        );
+        const simpleEntryPattern = new RegExp(`^[ \\t]*${name}\\s*,?[ \\t]*$`, "m");
+        const aliasEntryPattern = new RegExp(`^[ \\t]*${name}\\s*:\\s*${name}\\s*,?[ \\t]*$`, "m");
 
         const isSimple =
-          simpleEntryPattern.test(schemaContent) ||
-          aliasEntryPattern.test(schemaContent);
+          simpleEntryPattern.test(schemaContent) || aliasEntryPattern.test(schemaContent);
 
         if (!isSimple) {
           logger.warn(
@@ -451,11 +413,7 @@ function syncSchemaImports(
  * @param importPath - Module specifier of the existing (or to-be-created) import, e.g. `"./vex.schema"`.
  * @returns `content` with `names` merged into the import from `importPath`; if no matching import exists, a new import statement is appended after the last import (or prepended if the file has none).
  */
-function addToImport(
-  content: string,
-  names: string[],
-  importPath: string,
-): string {
+function addToImport(content: string, names: string[], importPath: string): string {
   const escapedPath = importPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   // Match multi-line import: import {\n  ...\n} from "path"
@@ -471,10 +429,7 @@ function addToImport(
     if (existingBlock.includes("\n")) {
       // Multi-line: insert new names before the closing brace
       const newEntries = names.map((n) => `  ${n},\n`).join("");
-      return content.replace(
-        multiLineRe,
-        `$1${existingBlock}${newEntries}$3`,
-      );
+      return content.replace(multiLineRe, `$1${existingBlock}${newEntries}$3`);
     }
     // Single-line: add names to the list
     const trimmed = existingBlock.trim().replace(/,\s*$/, "");
@@ -485,8 +440,7 @@ function addToImport(
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
-      const block =
-        "\n" + items.map((n) => `  ${n},`).join("\n") + "\n";
+      const block = "\n" + items.map((n) => `  ${n},`).join("\n") + "\n";
       return content.replace(multiLineRe, `$1${block}$3`);
     }
     return content.replace(multiLineRe, `$1 ${allNames} $3`);
@@ -532,16 +486,9 @@ function addToDefineSchema(content: string, names: string[]): string {
  * @param importPath - Module specifier of the import to modify, e.g. `"./vex.schema"`.
  * @returns `content` with `name` removed from the import; the entire import statement is dropped if `name` was the last one, and `content` is returned unchanged if no matching import is found.
  */
-function removeFromImport(
-  content: string,
-  name: string,
-  importPath: string,
-): string {
+function removeFromImport(content: string, name: string, importPath: string): string {
   const escapedPath = importPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const importRe = new RegExp(
-    `(import\\s*\\{)([^}]*)(\\}\\s*from\\s*["']${escapedPath}["'])`,
-    "s",
-  );
+  const importRe = new RegExp(`(import\\s*\\{)([^}]*)(\\}\\s*from\\s*["']${escapedPath}["'])`, "s");
   const match = content.match(importRe);
   if (!match) return content;
 
@@ -555,10 +502,7 @@ function removeFromImport(
   if (items.length === 0) {
     // Remove the entire import line
     return content.replace(
-      new RegExp(
-        `import\\s*\\{[^}]*\\}\\s*from\\s*["']${escapedPath}["'];?\\s*\\n?`,
-        "s",
-      ),
+      new RegExp(`import\\s*\\{[^}]*\\}\\s*from\\s*["']${escapedPath}["'];?\\s*\\n?`, "s"),
       "",
     );
   }

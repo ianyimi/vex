@@ -437,6 +437,9 @@ importers:
       shadcn:
         specifier: 'catalog:'
         version: 3.6.3(@types/node@20.19.43)(typescript@6.0.3)
+      shiki:
+        specifier: 'catalog:'
+        version: 4.4.3
       tailwind-merge:
         specifier: 'catalog:'
         version: 3.5.0

@@ -106,6 +106,29 @@
 
   /* ── Motion ───────────────────────────────────────────────────────────── */
   --ease-emphasized: cubic-bezier(.2, .8, .2, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 260ms;
+
+  /* ── Section rhythm — every block's vertical padding derives from these ── */
+  --spacing-section:    3.5rem;  /*  56px  mobile  */
+  --spacing-section-md: 5rem;    /*  80px  tablet  */
+  --spacing-section-xl: 7rem;    /* 112px  desktop */
+
+  /* ── Code pane — FIXED IN BOTH THEMES ─────────────────────────────────────
+     The one deliberate exception to "the theme decides colour": code panes
+     stay dark under a light theme. That is what lets shiki run a single
+     server pass with one theme and ship no highlighter to the client.
+     These are @theme tokens, never part of the themes collection record. */
+  --color-code-bg:     oklch(11%   0     0);
+  --color-code-chrome: oklch(15.5% 0     0);
+  --color-code-border: oklch(24%   0     0);
+  --color-code-fg:     oklch(84%   0     0);
+  --color-code-dim:    oklch(52%   0     0);  /* comments, shell prompts        */
+  --color-code-key:    oklch(72%   0.16 42);  /* keywords, primitives, booleans */
+  --color-code-ident:  oklch(96%   0     0);  /* functions, type names          */
+  --color-code-string: oklch(70%   0     0);  /* strings, slugs                 */
+  --color-code-punct:  oklch(45%   0     0);
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -251,6 +274,90 @@
       "cv11" 1;
     -webkit-font-smoothing: antialiased;
   }
+
+  /* Focus-visible is global and is never removed or restyled per block. It
+     must stay legible against bg-background AND the fixed dark code pane. */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--color-primary) 22%, transparent);
+  }
+
+  /* Links inside `text` field output. There is no richtext field, so this is
+     the only styling prose from the CMS ever receives. */
+  .prose-field a {
+    color: var(--color-primary);
+    text-decoration-line: underline;
+    text-underline-offset: 4px;
+    text-decoration-color: color-mix(in oklch, currentColor 40%, transparent);
+  }
+  .prose-field a:hover {
+    text-decoration-color: currentColor;
+  }
+
+  code,
+  pre {
+    font-feature-settings:
+      "ss01" 1,
+      "calt" 1;
+    tab-size: 2;
+  }
+
+  /* Smooth scrolling is scoped to explicit in-page anchor navigation, never
+     applied to `html` globally.
+
+     A global `scroll-behavior: smooth` animates *every* programmatic scroll,
+     including the position restoration that popovers, dialogs and scroll
+     locks perform. A 20px correction then reads as the page gliding away
+     under the cursor, and a restore-to-saved-offset reads as a scroll to the
+     top. `:target` limits it to the one case the design actually asked for. */
+  html:has(:target) {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   MOTION KIT
+   The `reveal` keyframe and `.item` live in
+   src/components/motion-primitives/reveal.module.css — do not duplicate them.
+   Only the two rules that must be global are declared here.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* Stagger contract — the group sets the step, each item reads its index. */
+.reveal-group > * {
+  --reveal-delay: calc(var(--reveal-stagger, 60ms) * var(--i, 0));
+}
+
+/* The one decorative loop on the entire site: the Roadmap "In progress" dot. */
+@keyframes livepulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.live-dot {
+  animation: livepulse 2s var(--ease-emphasized) infinite;
+}
+
+/* Reduced motion is a full stop, not a shortened duration: the final state is
+   painted immediately — opacity 1, no blur, no translate. */
+@media (prefers-reduced-motion: reduce) {
+  .item,
+  .live-dot,
+  .reveal-group > * {
+    animation: none !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 /* Pangea dnd placeholder — thin dashed line instead of full-height gap */
@@ -264,3 +371,42 @@
   border-top: 2px dashed var(--border) !important;
 }
 
+/* ── Scrollbar ────────────────────────────────────────────────────────────
+   Matches the admin panel's `.vex-scroll-area` treatment (@vexcms/react's
+   styles.css): transparent track so the scrollbar reads as part of the
+   surface, and a permanently visible semi-transparent thumb rather than an
+   overlay bar that hides how much content is left. Applied to the document
+   scroller here, since the marketing site scrolls the window.
+   ────────────────────────────────────────────────────────────────────────── */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--foreground) 25%, transparent) transparent;
+}
+
+html::-webkit-scrollbar,
+body ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html::-webkit-scrollbar-track,
+html::-webkit-scrollbar-corner,
+body ::-webkit-scrollbar-track,
+body ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+html::-webkit-scrollbar-thumb,
+body ::-webkit-scrollbar-thumb {
+  /* Transparent border + `background-clip: content-box` is the only way to
+     inset a webkit thumb without painting the track. */
+  background-color: color-mix(in oklch, var(--foreground) 25%, transparent);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: 9999px;
+}
+
+html::-webkit-scrollbar-thumb:hover,
+body ::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklch, var(--foreground) 45%, transparent);
+}

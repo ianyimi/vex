@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- The VexCMS chevron, same geometry as src/components/BrandMark.tsx scaled
+       2x. Ember is hard-coded (#f87e28, the dark-mode primary token
+       oklch(72% 0.175 50)) rather than currentColor: a favicon renders outside
+       the document, so it has no colour to inherit, and this hue holds up on
+       both light and dark browser chrome. -->
+  <path
+    d="M5 6.5 14.5 25.5a1.7 1.7 0 0 0 3 0L27 6.5"
+    fill="none"
+    stroke="#f87e28"
+    stroke-linecap="square"
+    stroke-width="4.5"
+  />
+</svg>

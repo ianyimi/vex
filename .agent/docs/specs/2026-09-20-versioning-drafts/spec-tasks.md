@@ -54,7 +54,6 @@ touches:
   - apps/www/convex/pages.ts
   - apps/www/src/auth/access.ts
   - "apps/www/src/app/(frontend)/(site)/PageContent.tsx"
-  - "apps/www/src/app/(frontend)/(site)/SiteLivePreviewProvider.tsx"
   - apps/docs/src/content/docs/guides/versioning-and-drafts.mdx
 prompt_version: 1
 ---
@@ -169,6 +168,32 @@ it; `vex_versions` holds immutable history.**
   search-index `filterFields` performance optimization this touches on was
   intentionally deferred (see `backlog.md`) — Step 10's `.filter()`-based exclusion is
   already correct without it.
+- Rebased onto `649cafa` (`feat(core,react,next)!: preview globals and resolve preview
+  urls server-side`) and `09d733d`, both landed after this spec was written. Seven
+  corrections, no scope change: (1) `validateFields` now takes
+  `ctx: toVexMutationCtx(ctx)` plus `config` — `preparePatch` (Step 5) matches
+  `update`/`create` exactly. (2) A field's `validate()` rejects by THROWING, and
+  `validateFields` normalizes every rejection to `ConvexError({ message, field })` —
+  there is no `error` key; `applyVexFieldErrors` (Step 12) and
+  `assertNoDraftRelationships` (Step 6) both target the new shape, and
+  `assertUniqueAmongPublished` (Step 11) is now aligned with the throw contract by
+  construction. (3) Step 1's `defineCollection`/`defineGlobal` bodies were re-excerpted
+  from HEAD: `649cafa` DELETED their `livePreview` defaulting block (defaults now belong
+  to `resolveLivePreviewSettings`, and defaulting in the factory would outrank the root
+  `livePreview.collections[slug]` entry), so the old excerpt would have reverted it.
+  (4) `SiteLivePreviewProvider.tsx` no longer exists — provider wiring moved to the app
+  root and is already shipped; `useSitePreviewMode` moves into `PageContent.tsx`, its
+  only consumer, and Step 17 loses that file. (5) Every field type gained a leading
+  `VexResourceSlug` generic; the relationship input already reflects it. (6) Step 12/15
+  toolbar JSX re-excerpted — the preview toggle reads `Preview`, not
+  `Show/Hide preview`. (7) `collectionsApi` now also returns `livePreviewUrl`
+  (`globalsApi` still returns `{ get, find, upsert }`, so Step 9's mirror claim holds).
+  Three interactions decided rather than corrected: a versioned global previews
+  whichever row the edit view loaded (Step 15); a `{ server }` preview-URL resolver
+  resolves against the DRAFT row, so a slug changed in a draft previews at its new path
+  (Step 12); and `assertUniqueAmongPublished` takes the fixed `VexQueryCtx` rather than
+  a `DataModel` generic, since its intended caller is a field `validate()` which now
+  receives exactly that (Step 11).
 
 ## Step 1 — `versions` config on collections + globals `[agent]` — [ ]
 
@@ -179,21 +204,29 @@ which it doesn't either.
       `DEFAULT_AUTOSAVE_DEBOUNCE_MS` (`as const`, P-003). No `maxPerDoc`/pruning default
       (decision 3).
 - [ ] `packages/core/src/collections/types.ts` — `versions?: { drafts?: boolean;
-      autosave?: boolean; cascadeDelete?: boolean }` on `CollectionConfigInput`;
-      resolved `versions: { drafts: boolean; autosave: boolean; cascadeDelete: boolean
-      }` on `CollectionConfig`. `cascadeDelete` gates Step 11's delete cascade —
-      globals get no such field, since globals are never `remove()`d.
-- [ ] `packages/core/src/collections/config.ts` — apply defaults (`drafts: false,
-      autosave: false, cascadeDelete: true`), mirroring `globals/config.ts:105-109`.
+      autosave?: { enabled: boolean; debounceMs?: number }; cascadeDelete?: boolean }` on
+      `CollectionConfigInput`; resolved `versions: { drafts: boolean; autosave: {
+      enabled: boolean; debounceMs: number }; cascadeDelete: boolean }` on
+      `CollectionConfig`. `cascadeDelete` gates Step 11's delete cascade — globals get no
+      such field, since globals are never `remove()`d.
+- [ ] `packages/core/src/collections/config.ts` — apply defaults (`drafts: false`,
+      `cascadeDelete: true`, `autosave: { enabled: false, debounceMs:
+      DEFAULT_AUTOSAVE_DEBOUNCE_MS }`), mirroring `globals/config.ts`. `autosave` is
+      re-spread AFTER `...input.versions` so a caller passing only `{ enabled: true }`
+      still gets the default `debounceMs`.
 - [ ] `packages/core/src/collections/constants.ts` — extend `RESERVED_COLLECTION_FIELDS`
       with `vexStatus: { slug: "vex_status" }`, `vexPublishedAt: { slug:
-      "vex_publishedAt" }`, `vexPublishedId: { slug: "vex_publishedId" }`. Same
-      compile-time/runtime guard `updatedAt` already gets — no second mechanism.
-- [ ] `packages/core/src/globals/types.ts` — widen the existing `versions?: { drafts?:
-      boolean }` input to also accept `autosave?: boolean`; resolved `versions: {
-      drafts: boolean; autosave: boolean }` (was `{ drafts: boolean }`).
-- [ ] `packages/core/src/globals/config.ts:105-109` — apply the `autosave: false`
-      default alongside the existing `drafts: false`.
+      "vex_publishedAt" }`, `vexPublishedId: { slug: "vex_publishedId" }`, AND add those
+      three keys to `defineCollection`'s runtime `reservedKeys` array — extending the map
+      alone does not arm the guard. Same compile-time/runtime mechanism `updatedAt`
+      already gets — no second one.
+- [ ] `packages/core/src/globals/types.ts` — 6th generic `TDrafts`; `versions` on
+      `GlobalConfigInput` (NOT on `GlobalAdminConfigInput` — nothing reads
+      `admin.versions`), carrying the same `autosave` object; resolved `GlobalConfig`
+      defaults `TDrafts` WIDE (`= boolean`, never `= false`, or every bare `GlobalConfig`
+      reference rejects a `drafts: true` global with TS2322).
+- [ ] `packages/core/src/globals/config.ts` — apply the same `autosave` defaults
+      alongside `drafts: false as TDrafts`.
 - [ ] `packages/core/src/collections/config.test.ts`, `globals/config.test.ts` — defaults
       resolve (including `cascadeDelete: true` and an explicit `cascadeDelete: false`
       override, collections only); reserved-field compile+runtime rejection covers the
@@ -548,8 +581,10 @@ base-layer obligation E left for this spec.
       already-shipped `vex-live-preview` marker cookie is present (ADR-012's amendment)
       — it passes `drafts: true` and runs under a real `readDrafts` permission check
       (not `bypass`), so an unauthenticated request can never reach draft content.
-- [ ] `apps/www/src/app/(frontend)/(site)/PageContent.tsx` /
-      `SiteLivePreviewProvider.tsx` — wire the preview-mode branch to the new query.
+- [ ] `apps/www/src/app/(frontend)/(site)/PageContent.tsx` — wire the preview-mode branch
+      to the new query, and take over `useSitePreviewMode` from the now-deleted
+      `SiteLivePreviewProvider.tsx` (`649cafa` moved provider wiring to the app root and
+      made `LivePreviewProvider` prop-less/self-gating; that part is already shipped).
       `useVexPreview`/`useLivePreviewQuery` themselves are unchanged.
 - [ ] `packages/core/README.md:155-161, 209-211` — rewrite from "not shipped" to
       describe the real draft/publish workflow and the migration path off a hand-rolled

@@ -1,15 +1,6 @@
 // @ts-nocheck
-import type { VexConfig } from "@vexcms/core";
 import type { MigrationOp, RemovedFieldInfo } from "@vexcms/core/internal";
 import { logger } from "./logger.js";
-
-/** Options for backfilling `vex_status` on documents in versioned collections. */
-export interface BackfillVersionStatusOptions {
-  /** Convex deployment URL. */
-  convexUrl: string;
-  /** VEX config to inspect for versioned collections. */
-  config: VexConfig;
-}
 
 /** Options for executing a batch of field migration operations. */
 export interface MigrateOptions {
@@ -32,13 +23,16 @@ const MUTATION_TIMEOUT_MS = 30_000;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`Migration timed out after ${ms}ms`)),
-      ms,
-    );
+    const timer = setTimeout(() => reject(new Error(`Migration timed out after ${ms}ms`)), ms);
     promise.then(
-      (val) => { clearTimeout(timer); resolve(val); },
-      (err) => { clearTimeout(timer); reject(err); },
+      (val) => {
+        clearTimeout(timer);
+        resolve(val);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
     );
   });
 }
@@ -65,9 +59,7 @@ export async function executeMigration(options: MigrateOptions): Promise<void> {
   try {
     client = await getClient(convexUrl);
   } catch {
-    logger.warn(
-      "Could not import convex/browser — install `convex` to enable auto-migration",
-    );
+    logger.warn("Could not import convex/browser — install `convex` to enable auto-migration");
     return;
   }
 
@@ -82,16 +74,15 @@ export async function executeMigration(options: MigrateOptions): Promise<void> {
 
       try {
         while (true) {
-          const result: { patched: number; isDone: boolean; cursor: string } =
-            await withTimeout(
-              client.mutation("vex/migrate:backfillField" as any, {
-                table: op.table,
-                field: op.field,
-                value: op.defaultValue,
-                cursor,
-              }),
-              MUTATION_TIMEOUT_MS,
-            );
+          const result: { patched: number; isDone: boolean; cursor: string } = await withTimeout(
+            client.mutation("vex/migrate:backfillField" as any, {
+              table: op.table,
+              field: op.field,
+              value: op.defaultValue,
+              cursor,
+            }),
+            MUTATION_TIMEOUT_MS,
+          );
 
           totalPatched += result.patched;
           cursor = result.cursor;
@@ -105,10 +96,7 @@ export async function executeMigration(options: MigrateOptions): Promise<void> {
           );
         }
       } catch (err) {
-        if (
-          err instanceof Error &&
-          err.message.includes("Could not find")
-        ) {
+        if (err instanceof Error && err.message.includes("Could not find")) {
           logger.warn(
             `Migration function not found. Deploy convex/vex/migrate.ts to your Convex project first.`,
           );
@@ -129,18 +117,14 @@ export async function executeMigration(options: MigrateOptions): Promise<void> {
  * is already deployed (via `pushSchema`) before calling this function.
  * @param options - Convex deployment URL and the fields to strip from documents.
  */
-export async function executeFieldRemoval(
-  options: RemovalOptions,
-): Promise<void> {
+export async function executeFieldRemoval(options: RemovalOptions): Promise<void> {
   const { convexUrl, fields } = options;
 
   let client: any;
   try {
     client = await getClient(convexUrl);
   } catch {
-    logger.warn(
-      "Could not import convex/browser — install `convex` to enable auto-migration",
-    );
+    logger.warn("Could not import convex/browser — install `convex` to enable auto-migration");
     return;
   }
 
@@ -153,15 +137,14 @@ export async function executeFieldRemoval(
 
       try {
         while (true) {
-          const result: { patched: number; isDone: boolean; cursor: string } =
-            await withTimeout(
-              client.mutation("vex/migrate:removeField" as any, {
-                table,
-                field,
-                cursor,
-              }),
-              MUTATION_TIMEOUT_MS,
-            );
+          const result: { patched: number; isDone: boolean; cursor: string } = await withTimeout(
+            client.mutation("vex/migrate:removeField" as any, {
+              table,
+              field,
+              cursor,
+            }),
+            MUTATION_TIMEOUT_MS,
+          );
 
           totalPatched += result.patched;
           cursor = result.cursor;
@@ -170,97 +153,16 @@ export async function executeFieldRemoval(
         }
 
         if (totalPatched > 0) {
-          logger.success(
-            `Removed "${field}" from ${totalPatched} documents in "${table}"`,
-          );
+          logger.success(`Removed "${field}" from ${totalPatched} documents in "${table}"`);
         }
       } catch (err) {
-        if (
-          err instanceof Error &&
-          err.message.includes("Could not find")
-        ) {
+        if (err instanceof Error && err.message.includes("Could not find")) {
           logger.warn(
             `Migration function not found. Deploy convex/vex/migrate.ts (with removeField) to your Convex project first.`,
           );
           return;
         }
         throw err;
-      }
-    }
-  } finally {
-    client.close?.();
-  }
-}
-
-/**
- * Backfill `vex_status` on existing documents in versioned collections.
- *
- * For each collection with `versions.drafts` enabled, calls
- * `vex/versions:backfillVersionStatus` which sets `vex_status: "published"`
- * on documents that don't have the field yet.
- *
- * Safe to run on every schema push — the mutation only patches documents
- * missing `vex_status`, so most runs will patch 0 documents.
- * @param options - Convex deployment URL and the VEX config used to find versioned collections.
- */
-export async function backfillVersionStatus(
-  options: BackfillVersionStatusOptions,
-): Promise<void> {
-  const { convexUrl, config } = options;
-  const versionedSlugs = config.collections
-    .filter((c) => c.versions?.drafts)
-    .map((c) => c.slug);
-
-  if (versionedSlugs.length === 0) return;
-
-  let client: any;
-  try {
-    client = await getClient(convexUrl);
-  } catch {
-    logger.warn(
-      "Could not import convex/browser — install `convex` to enable version backfill",
-    );
-    return;
-  }
-
-  try {
-    for (const slug of versionedSlugs) {
-      let cursor: string | undefined;
-      let totalPatched = 0;
-
-      try {
-        while (true) {
-          const result: { patched: number; isDone: boolean; cursor: string } =
-            await withTimeout(
-              client.mutation("vex/versions:backfillVersionStatus" as any, {
-                collectionSlug: slug,
-                cursor,
-              }),
-              MUTATION_TIMEOUT_MS,
-            );
-
-          totalPatched += result.patched;
-          cursor = result.cursor;
-
-          if (result.isDone) break;
-        }
-
-        if (totalPatched > 0) {
-          logger.success(
-            `Backfilled vex_status on ${totalPatched} documents in "${slug}"`,
-          );
-        }
-      } catch (err) {
-        if (
-          err instanceof Error &&
-          err.message.includes("Could not find")
-        ) {
-          logger.warn(
-            `Backfill function not found. Deploy convex/vex/versions.ts to your Convex project first.`,
-          );
-          return;
-        }
-        logger.warn(`Failed to backfill "${slug}": ${err}`);
       }
     }
   } finally {
