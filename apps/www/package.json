@@ -1,6 +1,6 @@
 {
   "name": "www",
-  "version": "0.1.0-alpha.24",
+  "version": "0.1.0-alpha.25",
   "private": true,
   "scripts": {
     "build": "next build",

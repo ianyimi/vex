@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/richtext-plate",
-  "version": "0.1.0-alpha.24",
+  "version": "0.1.0-alpha.25",
   "description": "Plate rich-text editor integration for VexCMS",
   "keywords": [
     "cms",

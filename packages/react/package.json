@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/react",
-  "version": "0.1.0-alpha.24",
+  "version": "0.1.0-alpha.25",
   "description": "React admin components and hooks for VexCMS",
   "keywords": [
     "cms",
