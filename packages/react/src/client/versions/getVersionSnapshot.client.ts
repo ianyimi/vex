@@ -1,10 +1,10 @@
 import { convexQuery } from "@convex-dev/react-query";
 import type { GenericId } from "convex/values";
-
-import { vexConvexApi, type VexGetVersionSnapshotArgs } from "../convex";
-import type { CollectionSlug, GlobalSlug } from "../../types/generated";
 import type { VexQueryOptions } from "../types";
-import type { VersionSnapshotResult } from "./getVersionSnapshot.server";
+
+import { vexConvexApi, type VexGetVersionSnapshotArgs } from "@vexcms/core";
+import type { CollectionSlug, GlobalSlug } from "@vexcms/core";
+import type { VersionSnapshotResult } from "@vexcms/core";
 
 /**
  * Client-side args for {@link getVersionSnapshot}. A discriminated union:
@@ -19,7 +19,7 @@ export type GetVersionSnapshotClientArgs<TCollectionSlug extends CollectionSlug 
  * Returns tanstack-query options for one version's full snapshot — used by
  * `VersionHistoryDropdown`'s restore preview. Client-side only.
  *
- * Import from `@vexcms/core/client`.
+ * Import from `@vexcms/react/client`.
  *
  * @typeParam TCollectionSlug - Collection slug.
  * @param props - `{ collection, id, version } | { global, version }`.

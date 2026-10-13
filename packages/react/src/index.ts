@@ -60,16 +60,15 @@ import type { ReactHKT } from "./adapter";
 import type { VexResourceSlug } from "@vexcms/core";
 
 // API functions are NOT exported from this barrel. @vexcms/next's
-// NextAdminPage (a server component) imports from @vexcms/react. Adding
-// @vexcms/core/client here would pull @convex-dev/react-query into the
-// server module graph, crashing RSC with "createContext only works in
-// Client Components".
+// NextAdminPage (a server component) imports from @vexcms/react. Re-exporting
+// ./client here would pull @convex-dev/react-query into the server module
+// graph, crashing RSC with "createContext only works in Client Components".
 //
 // Import directly from the environment-specific path:
-//   import { find, get, search } from "@vexcms/core/client";  // React components
+//   import { find, get, search } from "@vexcms/react/client";  // React components
 //   import { find, get, search } from "@vexcms/core/server";  // Convex handlers
 
-export type { FindClientArgs, GetClientArgs, SearchClientArgs } from "@vexcms/core/client";
+export type { FindClientArgs, GetClientArgs, SearchClientArgs } from "./client";
 
 // Server-side API (Convex query handlers)
 export { find as findServer, get as getServer, search as searchServer } from "@vexcms/core/server";
@@ -147,7 +146,7 @@ export {
 // Utilities
 export { cn } from "./styles/utils";
 export { Icon } from "./components/Icon";
-export type { IconProps, LucideIconName } from "./components/Icon";
+export type { IconProps, IconName } from "./components/Icon";
 export { RenderBlocks } from "./components/RenderBlocks";
 export type {
   BlockComponentProps,

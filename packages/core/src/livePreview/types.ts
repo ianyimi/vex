@@ -6,7 +6,7 @@ import type {
   VexQueryCtx,
 } from "../types/generated";
 import type { DocumentByGlobalSlug } from "../types/generated";
-import type { LucideIconName } from "../utils";
+import type { IconName } from "../utils";
 import type { VexCallbackApi } from "../api/server";
 
 /**
@@ -122,7 +122,7 @@ export interface LivePreviewBreakpoint {
    * project can show device silhouettes instead of pixel numbers. Omit to
    * show `label` as plain text.
    */
-  icon?: LucideIconName;
+  icon?: IconName;
 }
 
 /**

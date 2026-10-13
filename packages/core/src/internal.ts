@@ -4,7 +4,7 @@
  * Nothing here is public API. The packages in this monorepo version together as one
  * fixed changeset group, so a symbol may change shape or disappear in any release
  * without a deprecation cycle. Application code must import from `@vexcms/core`,
- * `@vexcms/core/server` or `@vexcms/core/client` instead.
+ * `@vexcms/core/server` or `@vexcms/react/client` instead.
  *
  * Currently carries the schema-diffing and migration-planning helpers consumed by
  * `@vexcms/cli`'s auto-migration orchestration. They are placeholders — `diffSchema`

@@ -28,7 +28,7 @@ import { defineBlock, text, select, number } from "@vexcms/core";
 const headingBlock = defineBlock({
   slug: "heading",
   label: "Heading",
-  admin: { icon: "heading" },
+  admin: { icon: "Heading" },
   fields: {
     level: select({
       options: [
@@ -44,7 +44,7 @@ const headingBlock = defineBlock({
 const imageBlock = defineBlock({
   slug: "image",
   label: "Image",
-  admin: { icon: "image" },
+  admin: { icon: "Image" },
   fields: {
     url: text({ required: true, admin: { placeholder: "https://..." } }),
     alt: text({ required: true }),
@@ -106,7 +106,7 @@ import { defineCollection, blocks, defineBlock, text, select, number } from "@ve
 const headingBlock = defineBlock({
   slug: "heading",
   label: "Heading",
-  admin: { icon: "heading" },
+  admin: { icon: "Heading" },
   fields: {
     level: select({ options: [{ label: "H1", value: "h1" }, { label: "H2", value: "h2" }] }),
     text: text({ required: true }),
@@ -116,14 +116,14 @@ const headingBlock = defineBlock({
 const paragraphBlock = defineBlock({
   slug: "paragraph",
   label: "Paragraph",
-  admin: { icon: "align-left" },
+  admin: { icon: "AlignLeft" },
   fields: { content: text({ required: true }) },
 });
 
 const spacerBlock = defineBlock({
   slug: "spacer",
   label: "Spacer",
-  admin: { icon: "move-vertical" },
+  admin: { icon: "MoveVertical" },
   fields: { height: number({ defaultValue: 24 }) },
 });
 
@@ -163,6 +163,10 @@ a placeholder icon with "No [plural] yet." text. Each block item displays a
 drag handle, order number, type badge, and an inline `blockName` input for
 renaming. Sub-fields for the block are rendered when the item is expanded,
 using the same input components as standalone fields.
+
+`admin.icon` (here and on collections, globals, and live-preview breakpoints) takes a
+canonical PascalCase [Lucide](https://lucide.dev/icons) name, typed as `IconName`. The name
+set comes from `vex generate`; before the types are generated, any string is accepted.
 
 A searchable dialog handles block-type selection when multiple block types
 are configured; a single block type skips the dialog and adds directly.

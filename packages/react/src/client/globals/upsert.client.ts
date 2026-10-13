@@ -1,5 +1,5 @@
 import { useConvexMutation } from "@convex-dev/react-query";
-import { vexConvexApi } from "../convex";
+import { vexConvexApi } from "@vexcms/core";
 
 /**
  * Returns a `useConvexMutation` hook bound to the `globals.update` Convex mutation.
@@ -10,13 +10,13 @@ import { vexConvexApi } from "../convex";
  * are stripped server-side if they accidentally appear. `GlobalEditView` calls
  * this internally after stripping system keys from the flat form state.
  *
- * Import from `@vexcms/core/client`.
+ * Import from `@vexcms/react/client`.
  *
  * @returns A `useConvexMutation`-compatible mutation function.
  *
  * @example
  * ```tsx
- * import { globals } from "@vexcms/core/client";
+ * import { globals } from "@vexcms/react/client";
  * import { useMutation } from "@tanstack/react-query";
  *
  * const mutation = useMutation({ mutationFn: globals.update() });

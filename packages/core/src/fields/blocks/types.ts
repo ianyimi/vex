@@ -1,7 +1,7 @@
 import { ADMIN_FIELDS } from "../constants";
 import type { BaseField, BaseFieldInput, FieldAdminConfig, FieldAdminConfigInput, FieldValidateProps } from "../baseTypes";
 import type { AdminField } from "../types";
-import { LucideIconName } from "../../utils";
+import { IconName } from "../../utils";
 import type { VexResourceSlug } from "../../types/generated";
 
 /**
@@ -44,7 +44,7 @@ export interface BlockAdminConfig {
    *
    * @example "Sparkles" | "Puzzle" | "Megaphone" | "CreditCard"
    */
-  icon?: LucideIconName;
+  icon?: IconName;
   /**
    * Whether this block starts expanded when the page loads.
    *
@@ -77,7 +77,7 @@ export interface BlockAdminConfig {
  * const headingBlock = defineBlock({
  *   slug:  "heading",
  *   label: "Heading",
- *   admin: { icon: "heading" },
+ *   admin: { icon: "Heading" },
  *   fields: {
  *     level: select({ options: [{ label: "H1", value: "h1" }] }),
  *     text:  text({ required: true }),

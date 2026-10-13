@@ -4,7 +4,7 @@ import { useEffect, useState, type RefAttributes } from "react";
 import { AdminLayoutProps } from "./AdminLayout";
 import { Icon, VexLink } from "./ui";
 import { ChevronLeft, ChevronRight, LucideProps } from "lucide-react";
-import { addLeadingSlash, LucideIconName, vexConvexApi } from "@vexcms/core";
+import { addLeadingSlash, IconName, vexConvexApi } from "@vexcms/core";
 import { useVexConfig } from "../context/VexConfigContext";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
@@ -74,7 +74,7 @@ export default function AdminTopNav(props: AdminLayoutProps) {
   // NextAdminPage) while the client starts with undefined until Convex fires.
   const doc = mounted ? currentDocument : undefined;
 
-  type Crumb = { key: string; href: string; label: string; icon?: LucideIconName };
+  type Crumb = { key: string; href: string; label: string; icon?: IconName };
   const crumbs: Crumb[] = [{ key: "home", href: adminRoot, label: "Home" }];
   if (activeCollection) {
     crumbs.push({

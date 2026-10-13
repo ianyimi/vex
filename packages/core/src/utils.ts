@@ -1,28 +1,29 @@
-import type { icons } from "lucide-react";
+import type { GeneratedVexTypes } from "./types/generated";
 
 /**
- * Valid Lucide icon name string (e.g. `"FileText"`, `"Users"`, `"Settings"`).
+ * Icon name accepted by `admin.icon` on collections, globals, blocks, and live
+ * preview breakpoints.
  *
- * Derived from the `icons` map exported by `lucide-react` — the same map the
- * `Icon` component in `@vexcms/react` indexes at render time. This is
- * deliberately narrower than the set of names `lucide-react` exports as
- * components: alias exports (`AlertCircle` → `CircleAlert`), the `*Icon`
- * suffixed duplicates (`UsersIcon`), and non-icon exports (`createLucideIcon`,
- * `icons`, `Icon`) are absent from the map and would render nothing.
+ * Core is icon-library agnostic; the name set comes from the
+ * {@link GeneratedVexTypes} augmentation `vex generate` writes.
  *
- * Use the canonical PascalCase name as listed on the Lucide site.
+ * - **Before `vex generate`:** `string`.
+ * - **After:** the canonical Lucide names — the keys of `lucide-react`'s
+ *   `icons` map, which the `Icon` component in `@vexcms/react` indexes at
+ *   render time. Alias exports (`AlertCircle`) and `*Icon` duplicates
+ *   (`UsersIcon`) are not in that map and are rejected.
+ *
  * @see https://lucide.dev/icons
  *
  * @example
  * ```ts
- * const icon: LucideIconName = "CircleAlert";  // ✅ canonical, renders
- * const alias: LucideIconName = "AlertCircle"; // ❌ alias export, not in `icons`
- * const bad: LucideIconName = "NotAnIcon";     // ❌ not an icon at all
+ * const icon: IconName = "CircleAlert";  // ✅ canonical, renders
+ * const alias: IconName = "AlertCircle"; // ❌ alias export, not in `icons`
  * ```
- *
- * @see the `Icon` component from `@vexcms/react` that renders a `LucideIconName`
  */
-export type LucideIconName = keyof typeof icons;
+export type IconName = GeneratedVexTypes extends { IconName: infer TName extends string }
+  ? TName
+  : string;
 
 const MINOR_WORDS = new Set([
   "a",

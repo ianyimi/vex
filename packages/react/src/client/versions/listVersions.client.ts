@@ -1,10 +1,10 @@
 import { convexQuery } from "@convex-dev/react-query";
 import type { GenericId } from "convex/values";
-
-import { vexConvexApi, type VexListVersionsArgs } from "../convex";
-import type { CollectionSlug, GlobalSlug } from "../../types/generated";
 import type { VexQueryOptions } from "../types";
-import type { VersionSummary } from "../../versions";
+
+import { vexConvexApi, type VexListVersionsArgs } from "@vexcms/core";
+import type { CollectionSlug, GlobalSlug } from "@vexcms/core";
+import type { VersionSummary } from "@vexcms/core";
 
 /**
  * Client-side args for {@link listVersions}. A discriminated union: pass
@@ -21,14 +21,14 @@ export type ListVersionsClientArgs<TCollectionSlug extends CollectionSlug = Coll
  * `VersionHistoryDropdown`, Step 18, which hides the affordance under the
  * same action so the throw path is rarely hit).
  *
- * Import from `@vexcms/core/client`.
+ * Import from `@vexcms/react/client`.
  *
  * @typeParam TCollectionSlug - Collection slug.
  * @param props - `{ collection, id, limit? } | { global, limit? }`.
  * @returns Tanstack-query `queryOptions` for `useQuery`.
  * @example
  * ```tsx
- * import { listVersions } from "@vexcms/core/client";
+ * import { listVersions } from "@vexcms/react/client";
  *
  * const { data } = useQuery(listVersions({ collection: "posts", id: postId }));
  * const { data: bannerHistory } = useQuery(listVersions({ global: "banner" }));

@@ -42,7 +42,7 @@ export interface GetServerArgs<
  * populate all relationship fields to N levels — internal use only.
  *
  * Import from `@vexcms/core/server`. For the client-side version, import
- * `get` from `@vexcms/core/client`.
+ * `get` from `@vexcms/react/client`.
  *
  * @typeParam DataModel - Convex data model (inferred from `args.ctx`).
  * @typeParam TCollectionSlug - Collection slug, recovered from the `Id` brand.

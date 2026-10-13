@@ -4,7 +4,6 @@ import { CheckboxField } from "./checkbox";
 import { DateField } from "./date";
 import { TDocument } from "../api/convex";
 import { CollectionConfig } from "../collections";
-import { Row } from "@tanstack/react-table";
 import { SelectField } from "./select";
 import { UrlField } from "./url";
 import { ColorField } from "./color";
@@ -123,6 +122,15 @@ export interface InputComponentProps<
 }
 
 /**
+ * The table row handed to a cell component — the minimum every framework's
+ * data table can supply. React Table's `Row` satisfies it.
+ */
+export interface CellRow<TData extends TDocument = TDocument> {
+  /** The full document this row renders. */
+  original: TData;
+}
+
+/**
  * Props passed to field cell components rendered in the data table list view.
  *
  * Every cell component registered in a framework adapter's `fields` map must
@@ -151,7 +159,7 @@ export interface CellComponentProps<
   /** The raw field value from the document — typed to the field's value type. */
   value: TField["defaultValue"];
   /** The full document row, for cases where the cell needs to read other fields. */
-  row: Row<TData>;
+  row: CellRow<TData>;
   /** The resolved field definition — narrows to the specific field type via `TField`. */
   fieldDef: TField;
   /** The resolved field key on the collection for this column. */

@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "../../styles/utils";
 import { Loader2Icon } from "lucide-react";
-import { Icon, type LucideIconName } from "../Icon";
+import { Icon, type IconName } from "../Icon";
 
 const buttonVariants = cva(
   // `disabled:*` only matches form elements. When `nativeButton={false}` and
@@ -60,7 +60,7 @@ function Button({
   ...props
 }: {
   isPending?: boolean;
-  icon?: LucideIconName;
+  icon?: IconName;
   iconSize?: number;
   iconPosition?: "left" | "right" | "center";
 } & ButtonPrimitive.Props &

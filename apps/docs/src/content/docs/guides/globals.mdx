@@ -56,13 +56,13 @@ leave the global ungrouped.
 ## Querying a global
 
 Client components use the same tanstack-query wrappers as collections, imported from
-`@vexcms/core/client`:
+`@vexcms/react/client`:
 
 ```tsx
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getGlobal } from "@vexcms/core/client";
+import { getGlobal } from "@vexcms/react/client";
 
 export function SiteHeader() {
   const { data } = useQuery(getGlobal({ slug: "siteSettings" }));
@@ -84,7 +84,7 @@ List every saved global at once — the result is un-narrowed, since each row's 
 picks a different shape:
 
 ```tsx
-import { findGlobals } from "@vexcms/core/client";
+import { findGlobals } from "@vexcms/react/client";
 
 const { data } = useQuery(findGlobals());
 data?.map((g) => g._slug); // e.g. ["siteSettings", "nav"]
@@ -117,7 +117,7 @@ when building a custom editing UI:
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { updateGlobal } from "@vexcms/core/client";
+import { updateGlobal } from "@vexcms/react/client";
 
 function SiteNameForm() {
   const mutation = useMutation({ mutationFn: updateGlobal() });
@@ -195,7 +195,7 @@ export const nav = defineGlobal({
   `"SiteSettingsGlobal"`) — pass `interfaceName` explicitly if you need a different
   generated TypeScript name.
 - **Client and server globals helpers are separate entry points with the same names.**
-  `@vexcms/core/client` (`getGlobal`, `findGlobals`, `updateGlobal` — tanstack-query based)
+  `@vexcms/react/client` (`getGlobal`, `findGlobals`, `updateGlobal` — tanstack-query based)
   vs. `@vexcms/core/server` (identical names, `ctx`-based, called from inside Convex
   functions). Import from whichever matches where the code runs — the client versions
   forbid `ctx`, the server versions require it, so mixing them up is a type error.

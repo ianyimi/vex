@@ -3,7 +3,7 @@ import { ConvexSystemField, CollectionSystemField } from "./constants";
 import type { ComponentHKT } from "../fields";
 import type { CollectionSlug } from "../types/generated";
 import { TDocument } from "../api/convex";
-import { LucideIconName } from "../utils";
+import { IconName } from "../utils";
 import type { CollectionHooks, CollectionHooksInput } from "./hooks";
 import type { AdminLivePreviewConfig, AdminLivePreviewConfigInput } from "../livePreview";
 import type { DocumentByCollectionSlug } from "../types/generated";
@@ -177,7 +177,7 @@ export interface AdminCollectionConfigInput<
    * A valid Lucide icon name for this collection in the admin sidebar
    * See https://lucide.dev/icons/
    */
-  icon?: LucideIconName;
+  icon?: IconName;
   /**
    * Data table configuration for list view.
    */
@@ -202,7 +202,7 @@ export interface AdminCollectionConfig<
 > {
   /** The field used as the document's human-readable title in the admin panel. */
   useAsTitle: ConvexSystemField | NoInfer<TFieldSlug>;
-  icon?: LucideIconName;
+  icon?: IconName;
   /**
    * Data table configuration for list view.
    */

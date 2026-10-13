@@ -102,7 +102,7 @@ export function CollectionEditView<TCollectionSlug extends CollectionSlug = Coll
 
   // This view is generic over `TCollectionSlug` — the collection is only known at
   // runtime, so it queries the generic endpoint (`VexDocument`) directly. The
-  // per-slug `get()` wrapper from `@vexcms/core/client` narrows only when the
+  // per-slug `get()` wrapper from `@vexcms/react/client` narrows only when the
   // slug is a literal at the call site, which is not the case here.
   const { data: currentDocument } = useQuery({
     ...convexQuery(vexConvexApi.get, {
