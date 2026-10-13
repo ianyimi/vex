@@ -1,5 +1,19 @@
 # www
 
+## 0.1.0-alpha.24
+
+### Patch Changes
+
+- Updated dependencies [865f360]
+- Updated dependencies [ff79cc3]
+- Updated dependencies [372e801]
+- Updated dependencies [865f360]
+  - @vexcms/core@0.1.0-alpha.24
+  - @vexcms/react@0.1.0-alpha.24
+  - @vexcms/next@0.1.0-alpha.24
+  - @vexcms/better-auth@0.1.0-alpha.24
+  - @vexcms/file-storage-convex@0.1.0-alpha.24
+
 ## 0.1.0-alpha.23
 
 ### Patch Changes

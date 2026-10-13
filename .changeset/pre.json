@@ -25,6 +25,7 @@
     "bulk-selection-reachable",
     "config-client-server-split",
     "core-label-singularization",
+    "core-zod-namespace-import",
     "dashboard-collection-icons",
     "defer-auto-migration",
     "field-level-permissions",
@@ -41,6 +42,9 @@
     "secure-session-cookie-prefix",
     "select-scroll-lock-and-admin-gate",
     "seo-prerendering-and-revalidation",
-    "sticky-global-edit-header"
+    "sticky-global-edit-header",
+    "unified-versions-api",
+    "use-fields-form",
+    "versioning-and-drafts"
   ]
 }

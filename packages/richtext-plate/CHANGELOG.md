@@ -1,5 +1,14 @@
 # @vexcms/richtext
 
+## 0.1.0-alpha.24
+
+### Patch Changes
+
+- Updated dependencies [865f360]
+- Updated dependencies [ff79cc3]
+- Updated dependencies [865f360]
+  - @vexcms/core@0.1.0-alpha.24
+
 ## 0.1.0-alpha.23
 
 ### Patch Changes
