@@ -39,6 +39,7 @@
     "clsx": "catalog:",
     "convex": "catalog:",
     "convex-helpers": "catalog:",
+    "geist": "^1.7.2",
     "lucide-react": "catalog:",
     "next": "catalog:",
     "nuqs": "catalog:",
