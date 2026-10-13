@@ -186,6 +186,9 @@ catalogs:
     fs-extra:
       specifier: 11.3.6
       version: 11.3.6
+    geist:
+      specifier: 1.7.2
+      version: 1.7.2
     jiti:
       specifier: 2.7.0
       version: 2.7.0
@@ -586,7 +589,7 @@ importers:
         specifier: 'catalog:'
         version: 0.1.120(@standard-schema/spec@1.1.0)(convex@1.44.0(react@19.2.7))(hono@4.12.29)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
       geist:
-        specifier: ^1.7.2
+        specifier: 'catalog:'
         version: 1.7.2(next@16.3.3(@babel/core@7.29.7)(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))
       lucide-react:
         specifier: 'catalog:'
