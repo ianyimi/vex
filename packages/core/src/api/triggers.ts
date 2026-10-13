@@ -2,11 +2,13 @@ import type { FunctionVisibility, GenericDataModel, MutationBuilder } from "conv
 import { Triggers } from "convex-helpers/server/triggers";
 import { customCtx, customMutation } from "convex-helpers/server/customFunctions";
 import type { VexConfig } from "../config";
+import { flattenGlobalRow } from "./globals/utils";
 
 /**
  * Builds a `convex-helpers` `Triggers<DataModel>` instance and wraps an app's
  * raw `mutation`/`internalMutation` builders so writes made through the
- * result fire each written collection's `afterChange`/`afterDelete` hooks.
+ * result fire each written collection's `afterChange`/`afterDelete` hooks and
+ * each written global's `afterChange` hook.
  *
  * Hooks fire only for writes made through the returned builders — never for
  * the Convex dashboard, `npx convex import`, or a mutation still built on the
@@ -66,6 +68,27 @@ export function createVexMutations<
         collection,
         ctx,
       });
+    });
+  }
+
+  // One shared `vex_globals` trigger, dispatching by `newDoc.slug`, registered
+  // only when at least one global actually declares `afterChange` — a global
+  // has no delete hook, so a `"delete"` change (always `publish` removing a
+  // draft row, Step 9) is always skipped.
+  const globalsWithAfterChange = (props.config.globals ?? []).filter((g) => g.hooks.afterChange);
+  if (globalsWithAfterChange.length > 0) {
+    triggers.register("vex_globals" as never, async (ctx, change) => {
+      if (change.operation === "delete") return;
+      const global = globalsWithAfterChange.find((g) => g.slug === change.newDoc.slug);
+      if (!global) return;
+      await global.hooks.afterChange!({
+        operation: change.operation === "insert" ? "create" : "update",
+        id: change.id as string,
+        oldDoc: change.oldDoc ? flattenGlobalRow(change.oldDoc) : null,
+        newDoc: flattenGlobalRow(change.newDoc),
+        global,
+        ctx,
+      } as never);
     });
   }
 

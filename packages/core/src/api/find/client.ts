@@ -140,6 +140,7 @@ export function find<
           populate: args.populate,
           limit: args.limit,
           depth: args.depth,
+          drafts: args.drafts,
           paginationOpts: args.paginationOpts,
         },
   );
@@ -169,6 +170,7 @@ export function findQueryKey<
     populate: args.populate,
     limit: args.limit,
     depth: args.depth,
+    drafts: args.drafts,
     paginationOpts: args.paginationOpts,
   }).queryKey;
 }

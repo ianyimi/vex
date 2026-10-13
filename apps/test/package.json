@@ -38,6 +38,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "shadcn": "catalog:",
+    "shiki": "catalog:",
     "tailwind-merge": "catalog:",
     "tw-animate-css": "catalog:",
     "zod": "catalog:"

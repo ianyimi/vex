@@ -137,7 +137,8 @@ export type CollectionSlug = GeneratedVexTypes extends {
  * - **After `vex generate`:** resolves to a typed map, e.g.
  *   `{ posts: PostsDocument; authors: AuthorsDocument }`.
  *
- * Used by `useCollectionForm` to type the `document` prop per collection.
+ * Pass an entry as `useFieldsForm`'s `TData` to type a form's submitted value
+ * per collection, e.g. `useFieldsForm<DocumentBySlug["posts"]>(...)`.
  *
  * @example
  * ```ts

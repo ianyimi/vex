@@ -15,6 +15,7 @@ import { BlocksField } from "./blocks";
 import { UploadField } from "./upload";
 import { GlobalConfig } from "../globals";
 import type { VexResourceSlug } from "../types/generated";
+import { VexVersionStatus } from "../versions";
 
 export * from "./text/types";
 export * from "./number/types";
@@ -117,6 +118,8 @@ export interface InputComponentProps<
   index?: number;
   /** The config for the collection this field is attached to. */
   collection: CollectionConfig | GlobalConfig;
+  /** Necessary for Edit Views. What is the status of this document, 'draft' or 'published'? */
+  documentStatus?: VexVersionStatus;
 }
 
 /**

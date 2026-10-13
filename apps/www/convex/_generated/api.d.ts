@@ -25,6 +25,7 @@ import type * as vex from "../vex.js";
 import type * as vex_firstUser from "../vex/firstUser.js";
 import type * as vex_globals from "../vex/globals.js";
 import type * as vex_media from "../vex/media.js";
+import type * as vex_versions from "../vex/versions.js";
 
 import type {
   ApiFromModules,
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   "vex/firstUser": typeof vex_firstUser;
   "vex/globals": typeof vex_globals;
   "vex/media": typeof vex_media;
+  "vex/versions": typeof vex_versions;
 }>;
 
 /**

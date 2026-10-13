@@ -1,6 +1,6 @@
 {
   "name": "www",
-  "version": "0.1.0-alpha.23",
+  "version": "0.1.0-alpha.24",
   "private": true,
   "scripts": {
     "build": "next build",
@@ -39,6 +39,7 @@
     "clsx": "catalog:",
     "convex": "catalog:",
     "convex-helpers": "catalog:",
+    "geist": "catalog:",
     "lucide-react": "catalog:",
     "next": "catalog:",
     "nuqs": "catalog:",

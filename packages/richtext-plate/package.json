@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/richtext-plate",
-  "version": "0.1.0-alpha.23",
+  "version": "0.1.0-alpha.24",
   "description": "Plate rich-text editor integration for VexCMS",
   "keywords": [
     "cms",
@@ -43,7 +43,7 @@
   },
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
-    "dev": "tsup --watch src",
+    "dev": "tsup --watch src --no-clean",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.check.json"
   },

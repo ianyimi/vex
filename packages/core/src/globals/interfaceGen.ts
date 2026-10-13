@@ -43,29 +43,3 @@ export function globalConfigToInterface(props: { global: GlobalConfig }): string
 
   return [fieldInterfaces.join("\n\n"), interfaceStart, interfaceFields, "}"].join("\n");
 }
-
-/**
- * Converts a resolved `GlobalConfig` to the TypeScript source string for its
- * `GlobalsFieldTypeMap` entry in the `declare module '@vexcms/core'` block.
- *
- * Powers `GlobalRelationshipKeysOf<TGlobalSlug>` for populate type narrowing.
- *
- * @param props.global - The resolved global definition.
- * @returns TypeScript source string for one `GlobalsFieldTypeMap` entry.
- */
-export function globalConfigToFieldTypeMap(props: { global: GlobalConfig }): string {
-  const { global: g } = props;
-  const fieldTypeMap = Object.entries(g.fields).reduce<Record<string, string[]>>(
-    (acc, [fieldKey, field]) => {
-      if (!acc[field.type]) acc[field.type] = [];
-      acc[field.type]!.push(`"${fieldKey}"`);
-      return acc;
-    },
-    {},
-  );
-  const interfaceBody = Object.entries(fieldTypeMap)
-    .map(([fieldType, fields]) => `\t\t${fieldType}: ${fields.join(" | ")}`)
-    .join("\n");
-  // See `collectionConfigToFieldTypeMap` for why there is no synthetic `id` entry.
-  return `\t${g.slug}: {\n${interfaceBody}\n\t}`;
-}

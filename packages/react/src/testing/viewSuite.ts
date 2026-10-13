@@ -113,7 +113,9 @@ const MATRIX_UNDECLARED: RbacMatrix = {
  * @param docs - The seeded convex-test rows to expose as a single, complete page.
  * @returns A one-page, already-done `PaginationResult`.
  */
-function toPage<TDoc extends VexDocument = VexDocument>(docs: TestDoc<"documents">[]): PaginationResult<TDoc> {
+function toPage<TDoc extends VexDocument = VexDocument>(
+  docs: TestDoc<"documents">[],
+): PaginationResult<TDoc> {
   // convex-test's schema-derived doc type has no index signature; `VexDocument` requires one,
   // and `VexMediaDocument` (the media list view's TDoc) requires media-specific fields none of
   // this suite's seeded rows carry (they only exercise the "no src" fallback rendering path).
@@ -140,7 +142,10 @@ function columnHeaderTexts(container: HTMLElement): string[] {
  * @param titles - One title per row to insert.
  * @returns The seeded rows, in insertion order.
  */
-async function seedDocuments(t: ConvexTestInstance, titles: string[]): Promise<TestDoc<"documents">[]> {
+async function seedDocuments(
+  t: ConvexTestInstance,
+  titles: string[],
+): Promise<TestDoc<"documents">[]> {
   return t.run(async (ctx) => {
     const ids = await Promise.all(titles.map((title) => ctx.db.insert("documents", { title })));
     const docs = await Promise.all(ids.map((id) => ctx.db.get(id)));
@@ -173,7 +178,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
     if (options.access) {
       it("renders without crashing under the provided access config", () => {
         const { container, unmount } = renderView(
-        createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage(docs) }),
+          createElement(CollectionListView, {
+            collection: testCollection.slug,
+            initialData: toPage(docs),
+          }),
           { convex: t, access: options.access, auth: { user: null } },
         );
         expect(container).toBeTruthy();
@@ -184,7 +192,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
 
     it("renders rows from seeded data", () => {
       const utils = renderView(
-        createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage(docs) }),
+        createElement(CollectionListView, {
+          collection: testCollection.slug,
+          initialData: toPage(docs),
+        }),
         { convex: t },
       );
       expect(utils.getByText("3 documents")).toBeInTheDocument();
@@ -193,7 +204,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
 
     it("renders the empty state with zero documents", () => {
       const utils = renderView(
-        createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage([]) }),
+        createElement(CollectionListView, {
+          collection: testCollection.slug,
+          initialData: toPage([]),
+        }),
         { convex: t },
       );
       expect(utils.getByText("0 documents")).toBeInTheDocument();
@@ -211,7 +225,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage(docs) }),
+        createElement(CollectionListView, {
+          collection: testCollection.slug,
+          initialData: toPage(docs),
+        }),
         { convex: t, access: noDeleteAccess, auth: { user: asUser("reader") } },
       );
       expect(utils.container.querySelector('thead [data-slot="checkbox"]')).toBeNull();
@@ -229,7 +246,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage(docs) }),
+        createElement(CollectionListView, {
+          collection: testCollection.slug,
+          initialData: toPage(docs),
+        }),
         { convex: t, access: deleterAccess, auth: { user: asUser("deleter") } },
       );
       expect(utils.container.querySelector('thead [data-slot="checkbox"]')).not.toBeNull();
@@ -263,7 +283,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         // shared fixture's type.
       } as unknown as typeof testCollection;
       const utils = renderView(
-        createElement(CollectionListView, { collection: priorityTitleCollection.slug, initialData: toPage(docs) }),
+        createElement(CollectionListView, {
+          collection: priorityTitleCollection.slug,
+          initialData: toPage(docs),
+        }),
         { convex: t },
       );
       expect(utils.getAllByRole("row")).toHaveLength(4); // 1 header row + 3 data rows
@@ -307,7 +330,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       const config = { ...testClientConfig, collections: [postsWithTitle] };
 
       const denied = renderView(
-        createElement(CollectionListView, { collection: postsWithTitle.slug, initialData: toPage(docs) }),
+        createElement(CollectionListView, {
+          collection: postsWithTitle.slug,
+          initialData: toPage(docs),
+        }),
         { convex: t, config, access: fieldMapAccess, auth: { user: asUser("viewer") } },
       );
       expect(columnHeaderTexts(denied.container)).toContain("title");
@@ -317,7 +343,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       denied.unmount();
 
       const undeclaredMap = renderView(
-        createElement(CollectionListView, { collection: postsWithTitle.slug, initialData: toPage(docs) }),
+        createElement(CollectionListView, {
+          collection: postsWithTitle.slug,
+          initialData: toPage(docs),
+        }),
         { convex: t, config, access: fieldMapAccess, auth: { user: asUser("plain") } },
       );
       expect(columnHeaderTexts(undeclaredMap.container)).toEqual(
@@ -326,7 +355,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
       undeclaredMap.unmount();
 
       const perDoc = renderView(
-        createElement(CollectionListView, { collection: postsWithTitle.slug, initialData: toPage(docs) }),
+        createElement(CollectionListView, {
+          collection: postsWithTitle.slug,
+          initialData: toPage(docs),
+        }),
         { convex: t, config, access: fieldMapAccess, auth: { user: asUser("perDoc") } },
       );
       expect(columnHeaderTexts(perDoc.container)).toContain("status");
@@ -347,7 +379,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage(docs) }),
+        createElement(CollectionListView, {
+          collection: testCollection.slug,
+          initialData: toPage(docs),
+        }),
         { convex: t, access: createMapAccess, auth: { user: asUser("mapCreator") } },
       );
       const newLink = utils.container.querySelector('a[href="/admin/posts?createNew=true"]');
@@ -357,7 +392,10 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
     runRbacStateSuite({
       render: () =>
         wrapWithViewProviders(
-          createElement(CollectionListView, { collection: testCollection.slug, initialData: toPage(docs) }),
+          createElement(CollectionListView, {
+            collection: testCollection.slug,
+            initialData: toPage(docs),
+          }),
           { convex: t },
         ),
       assert: (utils, scenario) => {
@@ -376,6 +414,108 @@ function describeCollectionListView(options: { access?: VexAccessConfig }): void
           expect(revalidateButton).toBeDisabled();
         }
       },
+    });
+
+    it("collapses a published/draft pair into one row — Published status plus an 'Unpublished changes' indicator", async () => {
+      const t2 = convexTest(schema, testModules);
+      const versionedCollection = {
+        ...testCollection,
+        // Spread the resolved `versions` (autosave, cascadeDelete defaults) and
+        // override only `drafts` — a resolved config never lacks the rest.
+        versions: { ...testCollection.versions, drafts: true },
+      } as unknown as typeof testCollection;
+      const config = { ...testClientConfig, collections: [versionedCollection] };
+      const seeded = await t2.run(async (ctx) => {
+        const publishedId = await ctx.db.insert("documents", {
+          title: "Launch post",
+          vex_status: "published",
+        });
+        const draftId = await ctx.db.insert("documents", {
+          title: "Launch post (edited)",
+          vex_status: "draft",
+          vex_publishedId: publishedId,
+        });
+        const rows = await Promise.all([ctx.db.get(publishedId), ctx.db.get(draftId)]);
+        return rows.filter((doc): doc is TestDoc<"documents"> => doc !== null);
+      });
+
+      const utils = renderView(
+        createElement(CollectionListView, {
+          collection: versionedCollection.slug,
+          initialData: toPage(seeded),
+        }),
+        { convex: t2, config },
+      );
+
+      expect(utils.getAllByRole("row")).toHaveLength(2); // header + 1 collapsed row
+      expect(utils.getByText("Published")).toBeInTheDocument();
+      expect(utils.getByText("Unpublished changes")).toBeInTheDocument();
+      expect(utils.getByText("Launch post (edited)")).toBeInTheDocument();
+    });
+
+    it("keeps a standalone published document showing Published status without the indicator", async () => {
+      const t2 = convexTest(schema, testModules);
+      const versionedCollection = {
+        ...testCollection,
+        // Spread the resolved `versions` (autosave, cascadeDelete defaults) and
+        // override only `drafts` — a resolved config never lacks the rest.
+        versions: { ...testCollection.versions, drafts: true },
+      } as unknown as typeof testCollection;
+      const config = { ...testClientConfig, collections: [versionedCollection] };
+      const seeded = await t2.run(async (ctx) => {
+        const id = await ctx.db.insert("documents", {
+          title: "Solo post",
+          vex_status: "published",
+        });
+        const solo = await ctx.db.get(id);
+        return solo ? [solo] : [];
+      });
+
+      const utils = renderView(
+        createElement(CollectionListView, {
+          collection: versionedCollection.slug,
+          initialData: toPage(seeded),
+        }),
+        { convex: t2, config },
+      );
+
+      expect(utils.getAllByRole("row")).toHaveLength(2); // header + 1 row
+      expect(utils.getByText("Published")).toBeInTheDocument();
+      expect(utils.queryByText("Unpublished changes")).toBeNull();
+    });
+
+    it("renders a never-published draft-only row as its own single row showing Draft status", async () => {
+      const t2 = convexTest(schema, testModules);
+      const versionedCollection = {
+        ...testCollection,
+        // Spread the resolved `versions` (autosave, cascadeDelete defaults) and
+        // override only `drafts` — a resolved config never lacks the rest.
+        versions: { ...testCollection.versions, drafts: true },
+      } as unknown as typeof testCollection;
+      const config = { ...testClientConfig, collections: [versionedCollection] };
+      const seeded = await t2.run(async (ctx) => {
+        const id = await ctx.db.insert("documents", {
+          title: "Never published",
+          vex_status: "draft",
+          // No vex_publishedId — this row is not anyone's counterpart, so it
+          // is never suppressed by the collapsing helper's grouping key.
+        });
+        const draftOnly = await ctx.db.get(id);
+        return draftOnly ? [draftOnly] : [];
+      });
+
+      const utils = renderView(
+        createElement(CollectionListView, {
+          collection: versionedCollection.slug,
+          initialData: toPage(seeded),
+        }),
+        { convex: t2, config },
+      );
+
+      expect(utils.getAllByRole("row")).toHaveLength(2); // header + exactly 1 row
+      expect(utils.getByText("Draft")).toBeInTheDocument();
+      expect(utils.queryByText("Unpublished changes")).toBeNull();
+      expect(utils.getByText("Never published")).toBeInTheDocument();
     });
   });
 }
@@ -435,7 +575,11 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
       // string. Proves the form mounts on the field's own default value instead of crashing
       // on the missing key.
       const utils = renderView(
-        createElement(CollectionEditView, { collection: testCollection.slug, documentId: doc._id, initialData: doc }),
+        createElement(CollectionEditView, {
+          collection: testCollection.slug,
+          documentId: doc._id,
+          initialData: doc,
+        }),
         { convex: t },
       );
       const statusInput = utils.container.querySelector("#status") as HTMLInputElement;
@@ -463,7 +607,11 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionEditView, { collection: testCollection.slug, documentId: id, initialData: stored }),
+        createElement(CollectionEditView, {
+          collection: testCollection.slug,
+          documentId: id,
+          initialData: stored,
+        }),
         { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
       );
       expect(utils.container.querySelector("#status")).toBeNull();
@@ -487,7 +635,11 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionEditView, { collection: testCollection.slug, documentId: id, initialData: stored }),
+        createElement(CollectionEditView, {
+          collection: testCollection.slug,
+          documentId: id,
+          initialData: stored,
+        }),
         { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
       );
       expect(utils.container.innerHTML).not.toContain("sentinel-denied");
@@ -497,7 +649,11 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
       const id = await t.run((ctx) => ctx.db.insert("documents", { status: "b", title: "a" }));
       const stored = await t.run((ctx) => ctx.db.get(id));
       const utils = renderView(
-        createElement(CollectionEditView, { collection: testCollection.slug, documentId: id, initialData: stored }),
+        createElement(CollectionEditView, {
+          collection: testCollection.slug,
+          documentId: id,
+          initialData: stored,
+        }),
         { convex: t },
       );
       expect(utils.container.querySelector("#status")).not.toBeNull();
@@ -519,7 +675,11 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionEditView, { collection: testCollection.slug, documentId: id, initialData: stored }),
+        createElement(CollectionEditView, {
+          collection: testCollection.slug,
+          documentId: id,
+          initialData: stored,
+        }),
         { convex: t, access: updateGatedAccess, auth: { user: asUser("gated") } },
       );
       const statusInput = utils.container.querySelector("#status");
@@ -545,7 +705,11 @@ function describeCollectionEditView(options: { access?: VexAccessConfig }): void
         },
       });
       const utils = renderView(
-        createElement(CollectionEditView, { collection: testCollection.slug, documentId: id, initialData: stored }),
+        createElement(CollectionEditView, {
+          collection: testCollection.slug,
+          documentId: id,
+          initialData: stored,
+        }),
         { convex: t, access: fieldMapAccess, auth: { user: asUser("stranger") } },
       );
       expect(utils.container.querySelector("#status")).not.toBeNull();
@@ -606,11 +770,14 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
 
     if (options.access) {
       it("renders without crashing under the provided access config", () => {
-        const { container, unmount } = renderView(createElement(GlobalEditView, { global: testClientConfig.globals[0].slug }), {
-          convex: t,
-          access: options.access,
-          auth: { user: null },
-        });
+        const { container, unmount } = renderView(
+          createElement(GlobalEditView, { global: testClientConfig.globals[0].slug }),
+          {
+            convex: t,
+            access: options.access,
+            auth: { user: null },
+          },
+        );
         expect(container).toBeTruthy();
         unmount();
       });
@@ -618,7 +785,10 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
     }
 
     it("renders the default field values when no document has ever been saved", () => {
-      const utils = renderView(createElement(GlobalEditView, { global: testClientConfig.globals[0].slug }), { convex: t });
+      const utils = renderView(
+        createElement(GlobalEditView, { global: testClientConfig.globals[0].slug }),
+        { convex: t },
+      );
       const heading = utils.getByRole("heading", { level: 1 });
       expect(heading.textContent).toBe("Edit Global - Settings");
       expect(utils.container.querySelector("#siteName")).not.toBeNull();
@@ -629,7 +799,12 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
      * Driven through `initialData` — see this suite's doc comment for why.
      */
     it("hides a read-denied field's input while keeping the allowed one visible", () => {
-      const stored = { _creationTime: 1, _id: "g1", siteName: "sentinel-denied", tagline: "visible" };
+      const stored = {
+        _creationTime: 1,
+        _id: "g1",
+        siteName: "sentinel-denied",
+        tagline: "visible",
+      };
       const fieldMapAccess = defineAccess({
         roles: ["gated"] as const,
         resources: [testClientConfig.globals[0] as never],
@@ -640,7 +815,10 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
         } as never,
       });
       const utils = renderView(
-        createElement(GlobalEditView, { global: testClientConfig.globals[0].slug, initialData: stored as never }),
+        createElement(GlobalEditView, {
+          global: testClientConfig.globals[0].slug,
+          initialData: stored as never,
+        }),
         { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
       );
       expect(utils.container.querySelector("#siteName")).toBeNull();
@@ -648,7 +826,12 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
     });
 
     it("does not render a read-denied field's stored value anywhere in the form", () => {
-      const stored = { _creationTime: 1, _id: "g1", siteName: "sentinel-denied", tagline: "visible" };
+      const stored = {
+        _creationTime: 1,
+        _id: "g1",
+        siteName: "sentinel-denied",
+        tagline: "visible",
+      };
       const fieldMapAccess = defineAccess({
         roles: ["gated"] as const,
         resources: [testClientConfig.globals[0] as never],
@@ -659,7 +842,10 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
         } as never,
       });
       const utils = renderView(
-        createElement(GlobalEditView, { global: testClientConfig.globals[0].slug, initialData: stored as never }),
+        createElement(GlobalEditView, {
+          global: testClientConfig.globals[0].slug,
+          initialData: stored as never,
+        }),
         { convex: t, access: fieldMapAccess, auth: { user: asUser("gated") } },
       );
       expect(utils.container.innerHTML).not.toContain("sentinel-denied");
@@ -668,7 +854,10 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
     it("renders every field when no read map narrows them", () => {
       const stored = { _creationTime: 1, _id: "g1", siteName: "a", tagline: "b" };
       const utils = renderView(
-        createElement(GlobalEditView, { global: testClientConfig.globals[0].slug, initialData: stored as never }),
+        createElement(GlobalEditView, {
+          global: testClientConfig.globals[0].slug,
+          initialData: stored as never,
+        }),
         { convex: t },
       );
       expect(utils.container.querySelector("#siteName")).not.toBeNull();
@@ -687,7 +876,10 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
         } as never,
       });
       const utils = renderView(
-        createElement(GlobalEditView, { global: testClientConfig.globals[0].slug, initialData: stored as never }),
+        createElement(GlobalEditView, {
+          global: testClientConfig.globals[0].slug,
+          initialData: stored as never,
+        }),
         { convex: t, access: updateGatedAccess, auth: { user: asUser("gated") } },
       );
       const siteNameInput = utils.container.querySelector("#siteName");
@@ -699,7 +891,12 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
     });
 
     it("still renders every field when the caller has no known role", () => {
-      const stored = { _creationTime: 1, _id: "g1", siteName: "sentinel-denied", tagline: "visible" };
+      const stored = {
+        _creationTime: 1,
+        _id: "g1",
+        siteName: "sentinel-denied",
+        tagline: "visible",
+      };
       const fieldMapAccess = defineAccess({
         roles: ["gated"] as const,
         resources: [testClientConfig.globals[0] as never],
@@ -710,7 +907,10 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
         } as never,
       });
       const utils = renderView(
-        createElement(GlobalEditView, { global: testClientConfig.globals[0].slug, initialData: stored as never }),
+        createElement(GlobalEditView, {
+          global: testClientConfig.globals[0].slug,
+          initialData: stored as never,
+        }),
         { convex: t, access: fieldMapAccess, auth: { user: asUser("stranger") } },
       );
       expect(utils.container.querySelector("#siteName")).not.toBeNull();
@@ -718,7 +918,11 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
     });
 
     runRbacStateSuite({
-      render: () => wrapWithViewProviders(createElement(GlobalEditView, { global: testClientConfig.globals[0].slug }), { convex: t }),
+      render: () =>
+        wrapWithViewProviders(
+          createElement(GlobalEditView, { global: testClientConfig.globals[0].slug }),
+          { convex: t },
+        ),
       assert: (utils, scenario) => {
         const expected = MATRIX_UNDECLARED[scenario.name as keyof RbacMatrix];
         const siteNameInput = utils.container.querySelector("#siteName");
@@ -748,7 +952,9 @@ function describeGlobalEditView(options: { access?: VexAccessConfig }): void {
 function describeGlobalsListView(_options: { access?: VexAccessConfig }): void {
   describe("GlobalsListView", () => {
     it("renders one card per configured global, linking to its edit route", () => {
-      const utils = renderWithVexProviders(createElement(GlobalsListView, {}), { config: testClientConfig });
+      const utils = renderWithVexProviders(createElement(GlobalsListView, {}), {
+        config: testClientConfig,
+      });
       expect(utils.getByText("Settings")).toBeInTheDocument();
       expect(utils.getByText("Edit Global")).toBeInTheDocument();
       const link = utils.container.querySelector('a[href="/admin/globals/settings"]');
@@ -776,10 +982,10 @@ function describeDashboardView(options: { access?: VexAccessConfig }): void {
   describe("DashboardView", () => {
     if (options.access) {
       it("renders without crashing under the provided access config", () => {
-        const { container, unmount } = renderWithVexProviders(
-          createElement(DashboardView, {}),
-          { access: options.access, auth: { user: null } },
-        );
+        const { container, unmount } = renderWithVexProviders(createElement(DashboardView, {}), {
+          access: options.access,
+          auth: { user: null },
+        });
         expect(container).toBeTruthy();
         unmount();
       });
@@ -1357,7 +1563,9 @@ function describeAdminSidebar(options: { access?: VexAccessConfig }): void {
           // "anonymous"/"denied" deny every one of testClientConfig's three nav categories
           // simultaneously — the sidebar's own nav list renders with ZERO items rather than
           // crashing on an empty filtered array or leaving a stale/placeholder entry behind.
-          expect(utils.container.querySelectorAll('[data-slot="sidebar-menu-button"]')).toHaveLength(0);
+          expect(
+            utils.container.querySelectorAll('[data-slot="sidebar-menu-button"]'),
+          ).toHaveLength(0);
         }
       },
     });
@@ -1419,15 +1627,12 @@ function describeAdminLayout(options: { access?: VexAccessConfig }): void {
 
     it("injects the framework Link/Image overrides into the tree it wraps", () => {
       const utils = renderView(
-        createElement(
-          AdminLayout,
-          {
-            pathname: "/admin/posts",
-            activeSlug: "posts",
-            components: { Link: StubLink, Image: StubImage },
-            children: createElement(ImageProbe),
-          },
-        ),
+        createElement(AdminLayout, {
+          pathname: "/admin/posts",
+          activeSlug: "posts",
+          components: { Link: StubLink, Image: StubImage },
+          children: createElement(ImageProbe),
+        }),
         { convex: t },
       );
       const stubLinks = utils.container.querySelectorAll('[data-stub-link="true"]');

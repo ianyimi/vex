@@ -5,8 +5,9 @@ import type { CollectionSlug } from "../../types/generated";
 import { buildDepthPopulate } from "../depth";
 import { populateDocs } from "../populate";
 import type { GenericQueryServerParams, GetReturn, PopulateShape } from "../types";
-import { CRUD_ACTIONS, hasPermission, resolveFieldPermissions, stripDeniedFields } from "../../access";
-import { resolveAccessCall } from "../utils";
+import { hasPermission, resolveFieldPermissions, stripDeniedFields } from "../../access";
+import { resolveReadCall } from "../utils";
+import { requiresPublishedOnly, VERSION_STATUSES } from "../../versions";
 
 /**
  * Server-side args for `get`.
@@ -29,6 +30,8 @@ export interface GetServerArgs<
   id: GenericId<TCollectionSlug>;
   /** The collection slug to patch this document. */
   collection: TCollectionSlug;
+  /** Same contract as `FindServerArgs.drafts` — see `find/server.ts`. */
+  drafts?: boolean;
 }
 
 /**
@@ -65,14 +68,36 @@ export async function get<
 >(
   args: GetServerArgs<DataModel, TCollectionSlug, TPopulate, D>,
 ): Promise<GetReturn<TCollectionSlug, TPopulate, D>> {
+  // Effective drafts flag + the action it resolves under — a caller without
+  // `readDrafts` falls back to the published-only read instead of being
+  // rejected (see `resolveReadCall`), so the edit view can always send
+  // `drafts: true` for a versioned collection.
+  const { access, action, resource, wantsDrafts } = resolveReadCall({
+    config: args.config,
+    access: args.access,
+    auth: args.auth,
+    collection: args.collection,
+    drafts: args.drafts,
+  });
+
   let doc = await args.ctx.db.get(args.id);
-  if (doc && args.config?.access !== undefined) {
-    const { access, action, resource } = resolveAccessCall({
+
+  // Checked BEFORE permissions: a draft row a caller isn't reading drafts for
+  // does not exist for them — "not found", never a permission error about a
+  // row they were never going to see.
+  if (
+    doc &&
+    requiresPublishedOnly({
       config: args.config,
-      access: args.access,
-      defaultAction: CRUD_ACTIONS.read,
-      resource: args.collection,
-    });
+      collection: args.collection,
+      drafts: wantsDrafts,
+    }) &&
+    (doc as Record<string, unknown>).vex_status !== VERSION_STATUSES.published.key
+  ) {
+    doc = null;
+  }
+
+  if (doc && access !== undefined) {
     hasPermission({
       throwOnDenied: true,
       access,
@@ -124,6 +149,7 @@ export async function get<
     args.ctx,
     [doc],
     effectivePopulate,
+    wantsDrafts,
   );
 
   return (populated ?? null) as unknown as GetReturn<TCollectionSlug, TPopulate, D>;

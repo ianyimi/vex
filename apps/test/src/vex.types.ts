@@ -14,15 +14,148 @@ export type HeroBlock = {
   blockType: "hero"
   blockName?: string
   id: string
-  badge?: string
-  title: string
-  subtitle?: string
+  variant?: ("full" | "compact")[]
+  badgeText?: string
+  badgeLink?: string
+  heading: string
+  subheading?: string
+  installCommand?: string
   primaryCtaLabel?: string
   primaryCtaHref?: string
   secondaryCtaLabel?: string
   secondaryCtaHref?: string
-  showImage?: boolean
-  image?: string
+}
+
+export type StatsBlock = {
+  blockType: "stats"
+  blockName?: string
+  id: string
+  heading?: string
+  subheading?: string
+  items: {
+    /**
+     * Free text, not a number — "0", "12" and "~30s" all render. Any unit belongs in
+     * the string.
+     */
+    value: string
+    label: string
+    description?: string
+  }[]
+}
+
+export type FeaturesBlock = {
+  blockType: "features"
+  blockName?: string
+  id: string
+  heading: string
+  subheading?: string
+  features: {
+    title: string
+    description: string
+    /**
+     * Lucide icon name
+     */
+    icon?: string
+  }[]
+}
+
+export type CodeShowcaseBlock = {
+  blockType: "code_showcase"
+  blockName?: string
+  id: string
+  heading: string
+  subheading?: string
+  panes: {
+    /**
+     * Shown uppercase in the chrome bar.
+     */
+    label: string
+    filename?: string
+    language?: ("ts" | "tsx" | "bash" | "json")[]
+    /**
+     * Hand-written panes carry the primary-coloured label — the only signal separating
+     * human input from generated output.
+     */
+    authored?: ("authored" | "generated")[]
+    code: string
+    caption?: string
+  }[]
+}
+
+export type SplitBlock = {
+  blockType: "split"
+  blockName?: string
+  id: string
+  eyebrow?: string
+  heading: string
+  body: string
+  bullets?: {
+    /**
+     * Lucide icon name
+     */
+    icon?: string
+    text: string
+  }[]
+  media?: ("code" | "image" | "none")[]
+  code?: string
+  codeFilename?: string
+  codeLanguage?: ("ts" | "tsx" | "bash" | "json")[]
+  image?: Id<"images">[]
+  mediaPosition?: ("right" | "left")[]
+}
+
+export type HowItWorksBlock = {
+  blockType: "how_it_works"
+  blockName?: string
+  id: string
+  heading: string
+  subheading?: string
+  steps: {
+    /**
+     * Lucide icon name
+     */
+    icon?: string
+    title: string
+    description: string
+  }[]
+}
+
+export type RoadmapBlock = {
+  blockType: "roadmap"
+  blockName?: string
+  id: string
+  heading: string
+  subheading?: string
+  items: {
+    feature: string
+    description?: string
+    status: ("shipped" | "in-progress" | "planned" | "exploring" | "future")[]
+  }[]
+}
+
+export type FaqBlock = {
+  blockType: "faq"
+  blockName?: string
+  id: string
+  heading: string
+  subheading?: string
+  supportLink?: string
+  items: {
+    question: string
+    answer: string
+  }[]
+}
+
+export type CtaBlock = {
+  blockType: "cta"
+  blockName?: string
+  id: string
+  heading: string
+  subheading?: string
+  actions?: {
+    label: string
+    href: string
+  }[]
 }
 
 export type FeatureBlock = {
@@ -34,17 +167,6 @@ export type FeatureBlock = {
   description?: string
   linkLabel?: string
   linkHref?: string
-}
-
-export type CtaBlock = {
-  blockType: "cta"
-  blockName?: string
-  id: string
-  title: string
-  description?: string
-  buttonLabel?: string
-  buttonHref?: string
-  variant?: ("default" | "outline" | "ghost")[]
 }
 
 export type TestimonialBlock = {
@@ -59,23 +181,6 @@ export type TestimonialBlock = {
   rating?: number
 }
 
-export type StatsBlock = {
-  blockType: "stats"
-  blockName?: string
-  id: string
-  title?: string
-  stats?: {
-    /**
-     * The number or metric, e.g. '10K+' or '99.9%'.
-     */
-    value: string
-    /**
-     * What the number represents, e.g. 'Active Users'.
-     */
-    label: string
-  }[]
-}
-
 export type LogoCloudBlock = {
   blockType: "logo-cloud"
   blockName?: string
@@ -85,20 +190,6 @@ export type LogoCloudBlock = {
     name: string
     image: string
     link?: string
-  }[]
-}
-
-export type FaqBlock = {
-  blockType: "faq"
-  blockName?: string
-  id: string
-  title?: string
-  questions?: {
-    question: string
-    /**
-     * The answer text. Supports basic formatting.
-     */
-    answer: string
   }[]
 }
 
@@ -128,12 +219,17 @@ export type ContentBlock = {
 
 export type PageBlock =
   | HeroBlock
-  | FeatureBlock
-  | CtaBlock
-  | TestimonialBlock
   | StatsBlock
-  | LogoCloudBlock
+  | FeaturesBlock
+  | CodeShowcaseBlock
+  | SplitBlock
+  | HowItWorksBlock
+  | RoadmapBlock
   | FaqBlock
+  | CtaBlock
+  | FeatureBlock
+  | TestimonialBlock
+  | LogoCloudBlock
   | PricingBlock
   | ContentBlock
 
@@ -171,7 +267,7 @@ export interface Page extends VexDocument {
    */
   title: string
   /**
-   * URL-friendly identifier. Used for routing: /<slug>. Must be unique.
+   * URL-friendly page path
    */
   slug: string
   /**
@@ -181,18 +277,14 @@ export interface Page extends VexDocument {
   blocks?: PageBlock[]
   testImage?: Id<"images">[]
   /**
-   * Custom <title> tag for search engines. Falls back to the title field if empty.
+   * Custom <title> tag. Falls back to page title if empty.
    */
   metaTitle?: string
   /**
-   * Summary shown in search result snippets. Keep under 160 characters for best
-   * display.
+   * Custom meta description for search results.
    */
   metaDescription?: string
-  /**
-   * Image URL for Open Graph social sharing previews. Recommended 1200×630px.
-   */
-  ogImage?: string
+  ogImage?: Id<"images">[]
   themes?: Id<"themes">[]
   /**
    * some test description.
@@ -230,59 +322,55 @@ export interface UserDocument extends VexDocument {
    */
   newUserFieldTest?: string
 }
-
-export interface Header extends VexDocument {
-  _id: Id<"headers">
-  /**
-   * Internal identifier for this header config. Used for idempotent lookups.
-   */
-  name: string
-  /**
-   * Brand name rendered as the logo. Falls back to site settings name.
-   */
+export type HeaderBlock = {
+  blockType: "header"
+  blockName?: string
+  id: string
   logoText?: string
-  /**
-   * URL the logo links to. Typically / for the home page.
-   */
+  logoImage?: Id<"images">[]
   logoHref?: string
-  /**
-   * JSON array of navigation links. Each item: { label: string, href: string }.
-   * Example: [{"label":"Features","href":"/features"}]
-   */
-  menuItems?: string
-  /**
-   * JSON array of CTA buttons. Each item: { label, href, variant }. Variant options:
-   * default, outline, ghost.
-   */
-  actionButtons?: string
-  updatedAt?: number
+  menuItems?: {
+    label: string
+    href: string
+  }[]
+  actionButtons?: {
+    label: string
+    href: string
+    variant?: ("default" | "outline" | "ghost")[]
+  }[]
 }
 
-export interface Footer extends VexDocument {
-  _id: Id<"footers">
-  /**
-   * Internal identifier for this footer config. Used for idempotent lookups.
-   */
+export interface HeadersDocument extends VexDocument {
+  _id: Id<"headers">
   name: string
-  /**
-   * Brand name shown in the footer. Falls back to site settings name.
-   */
+  content?: HeaderBlock[]
+  updatedAt?: number
+}
+export type FooterBlock = {
+  blockType: "footer"
+  blockName?: string
+  id: string
   logoText?: string
-  /**
-   * Copyright line displayed at the bottom of the footer. Auto-prepends © and the
-   * current year.
-   */
+  logoImage?: Id<"images">[]
   copyright?: string
-  /**
-   * JSON array of footer navigation links. Each item: { label: string, href: string
-   * }. Grouped by section in the UI.
-   */
-  links?: string
-  /**
-   * JSON array of social profile links. Each item: { platform: string, href: string,
-   * icon: string }. Icon maps to a Lucide icon name.
-   */
-  socialLinks?: string
+  links?: {
+    label: string
+    href: string
+  }[]
+  socialLinks?: {
+    platform: string
+    href: string
+    /**
+     * Lucide icon name
+     */
+    icon?: string
+  }[]
+}
+
+export interface FootersDocument extends VexDocument {
+  _id: Id<"footers">
+  name: string
+  content?: FooterBlock[]
   updatedAt?: number
 }
 
@@ -550,6 +638,31 @@ export interface Comment extends VexDocument {
   updatedAt?: number
 }
 
+export interface Post extends VexDocument {
+  _id: Id<"posts">
+  /**
+   * Required — leave empty in a draft to test publish rejection.
+   */
+  title: string
+  /**
+   * Contributors may not change this in a draft.
+   */
+  slug: string
+  /**
+   * Free text — the field to edit when testing a plain draft save.
+   */
+  body?: string
+  /**
+   * Versioned target — publishing while this points at a draft must fail.
+   */
+  relatedPost?: Id<"posts">[]
+  /**
+   * Non-versioned target — never blocks a publish.
+   */
+  relatedArticle?: Id<"articles">[]
+  updatedAt?: number
+}
+
 export interface SessionDocument extends VexDocument {
   _id: Id<"session">
   expiresAt: number
@@ -694,6 +807,7 @@ export interface SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings"> {
    * Global site name used as fallback for logo text, page titles, and meta tags.
    */
   name: string
+  description?: string
   /**
    * The theme applied to the public site. Changing it re-skins the site on the next
    * page load.
@@ -704,7 +818,38 @@ export interface SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings"> {
    * the admin its own palette.
    */
   adminTheme?: Id<"themes">[]
+  /**
+   * Site favicon image
+   */
   favicon?: Id<"images">[]
+  /**
+   * Default <title> tag for the site
+   */
+  metaTitle?: string
+  /**
+   * Default meta description for SEO
+   */
+  metaDescription?: string
+  /**
+   * Default Open Graph image for social sharing
+   */
+  ogImage?: Id<"images">[]
+  /**
+   * @handle for Twitter cards
+   */
+  twitterHandle?: string
+}
+
+export interface AnnouncementGlobal extends VexDocumentGlobal<"announcement"> {
+  /**
+   * Banner text. Required to publish.
+   */
+  message: string
+  /**
+   * Optional link target.
+   */
+  href?: string
+  dismissible?: boolean
 }
 
 export type CollectionSlug =
@@ -717,6 +862,7 @@ export type CollectionSlug =
   | "case_studies"
   | "changelog"
   | "comments"
+  | "posts"
   | "session"
   | "account"
   | "verification"
@@ -729,7 +875,7 @@ export type CollectionSlug =
   | "invitation"
   | "images"
 
-export type GlobalSlug = "nav" | "siteSettings"
+export type GlobalSlug = "nav" | "siteSettings" | "announcement"
 
 export type MediaCollectionSlug = "images"
 
@@ -738,13 +884,14 @@ export type StorageAdapterSlug = "convex"
 export type DocumentBySlug = {
   pages: Page
   user: UserDocument
-  headers: Header
-  footers: Footer
+  headers: HeadersDocument
+  footers: FootersDocument
   themes: Theme
   articles: Article
   case_studies: CaseStudy
   changelog: ChangelogEntry
   comments: Comment
+  posts: Post
   session: SessionDocument
   account: AccountDocument
   verification: VerificationDocument
@@ -761,6 +908,7 @@ export type DocumentBySlug = {
 export type GlobalDocumentBySlug = {
   nav: NavGlobal
   siteSettings: SiteSettingsGlobal
+  announcement: AnnouncementGlobal
 }
 
 declare module "@vexcms/core" {
@@ -775,6 +923,7 @@ declare module "@vexcms/core" {
       | "case_studies"
       | "changelog"
       | "comments"
+      | "posts"
       | "session"
       | "account"
       | "verification"
@@ -786,19 +935,20 @@ declare module "@vexcms/core" {
       | "member"
       | "invitation"
       | "images"
-    GlobalSlug: "nav" | "siteSettings"
+    GlobalSlug: "nav" | "siteSettings" | "announcement"
     MediaCollectionSlug: "images"
     StorageAdapterSlug: "convex"
     DocumentBySlug: {
       pages: Page
       user: UserDocument
-      headers: Header
-      footers: Footer
+      headers: HeadersDocument
+      footers: FootersDocument
       themes: Theme
       articles: Article
       case_studies: CaseStudy
       changelog: ChangelogEntry
       comments: Comment
+      posts: Post
       session: SessionDocument
       account: AccountDocument
       verification: VerificationDocument
@@ -814,13 +964,13 @@ declare module "@vexcms/core" {
     GlobalDocumentBySlug: {
       nav: NavGlobal
       siteSettings: SiteSettingsGlobal
+      announcement: AnnouncementGlobal
     }
     CollectionsFieldTypeMap: {
       pages: {
         text: "title" | "slug" | "content" | "metaTitle" | "metaDescription"
         blocks: "blocks"
-        upload: "testImage"
-        url: "ogImage"
+        upload: "testImage" | "ogImage"
         relationship: "themes"
         array: "test" | "test2"
         group: "seo" | "anotherTest"
@@ -833,11 +983,13 @@ declare module "@vexcms/core" {
         array: "roles"
       }
       headers: {
-        text: "name" | "logoText" | "logoHref" | "menuItems" | "actionButtons"
+        text: "name"
+        blocks: "content"
         number: "updatedAt"
       }
       footers: {
-        text: "name" | "logoText" | "copyright" | "links" | "socialLinks"
+        text: "name"
+        blocks: "content"
         number: "updatedAt"
       }
       themes: {
@@ -873,6 +1025,11 @@ declare module "@vexcms/core" {
         relationship: "authorId" | "article"
         text: "body"
         checkbox: "approved"
+        number: "updatedAt"
+      }
+      posts: {
+        text: "title" | "slug" | "body"
+        relationship: "relatedPost" | "relatedArticle"
         number: "updatedAt"
       }
       session: {
@@ -958,9 +1115,13 @@ declare module "@vexcms/core" {
         array: "items"
       }
       siteSettings: {
-        text: "name"
+        text: "name" | "description" | "metaTitle" | "metaDescription" | "twitterHandle"
         relationship: "activeTheme" | "adminTheme"
-        upload: "favicon"
+        upload: "favicon" | "ogImage"
+      }
+      announcement: {
+        text: "message" | "href"
+        checkbox: "dismissible"
       }
     }
     IndexFieldsBySlug: {
@@ -987,6 +1148,11 @@ declare module "@vexcms/core" {
         by_version: readonly ["version"]
       }
       comments: { by_author: readonly ["authorId"]; by_article: readonly ["article"] }
+      posts: {
+        by_slug: readonly ["slug"]
+        by_relatedPost: readonly ["relatedPost"]
+        by_relatedArticle: readonly ["relatedArticle"]
+      }
       session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] }
       account: { by_userId: readonly ["userId"] }
       verification: { by_identifier: readonly ["identifier"] }

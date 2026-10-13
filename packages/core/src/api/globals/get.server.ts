@@ -10,10 +10,17 @@ import type {
 import { populateDocs } from "../populate";
 import { buildDepthPopulate } from "../depth";
 import type { Prettify } from "../types";
-import { CRUD_ACTIONS, hasPermission, resolveFieldPermissions, stripDeniedFields } from "../../access";
+import {
+  CRUD_ACTIONS,
+  DRAFT_ACTIONS,
+  hasPermission,
+  resolveFieldPermissions,
+  stripDeniedFields,
+} from "../../access";
 import { GenericGlobalsQueryServerArgs } from "./types";
 import { resolveAccessCall } from "../utils";
 import { flattenGlobalRow } from "./utils";
+import { VERSION_STATUSES } from "../../versions";
 
 /**
  * Server-side args for `getGlobal`. Populate and depth are mutually exclusive.
@@ -35,6 +42,16 @@ export interface GetGlobalServerArgs<
   populate?: [D] extends [0] ? TPopulate : never;
   /** Auto-populate all relationship fields to N levels. Mutually exclusive with `populate`. */
   depth?: [TPopulate] extends [Record<string, never>] ? D : never;
+  /**
+   * When the resolved global declares `versions.drafts: true`, prefer the
+   * active draft row over the published row — the same knob Step 13 adds to
+   * `find`/`get`/`search` for collections. Ignored for a non-versioned
+   * global. Defaults to `false`: the public/default read path never sees
+   * draft content, matching design-review §3.1 — this is data integrity,
+   * not a permission decision, so the default without the flag is "no
+   * drafts" regardless of the caller's grants.
+   */
+  drafts?: boolean;
 }
 
 /**
@@ -65,7 +82,7 @@ export type GetGlobalReturn<
  * @typeParam TSlug - Global slug.
  * @typeParam TPopulate - Populate shape.
  * @typeParam D - Depth literal.
- * @param args - `{ ctx, slug, populate? }` or `{ ctx, slug, depth, config }`.
+ * @param props - `{ ctx, slug, populate? }` or `{ ctx, slug, depth, config }`.
  * @returns Flat global document or `null` if not yet saved.
  *
  * @example
@@ -89,30 +106,53 @@ export async function getGlobal<
   TPopulate extends GlobalPopulateShape<TGlobalSlug> = Record<string, never>,
   D extends number = 0,
 >(
-  args: GetGlobalServerArgs<DataModel, TGlobalSlug, TPopulate, D>,
+  props: GetGlobalServerArgs<DataModel, TGlobalSlug, TPopulate, D>,
 ): Promise<GetGlobalReturn<TGlobalSlug, TPopulate, D>> {
-  const { ctx, slug, populate, depth, config } = args;
+  let row: Record<string, unknown> | null = null;
+  const globalConfig = props.config?.globals.find((g) => g.slug === props.slug);
+  if (!globalConfig?.versions.drafts) {
+    row = await props.ctx.db
+      .query("vex_globals")
+      .withIndex("by_slug", (q) => q.eq("slug", props.slug as never))
+      .first();
+  } else {
+    const rows = await props.ctx.db
+      .query("vex_globals")
+      .withIndex("by_slug", (q) => q.eq("slug", props.slug as never))
+      .collect();
 
-  const row = await ctx.db
-    .query("vex_globals")
-    .withIndex("by_slug", (q) => q.eq("slug", slug as any))
-    .first();
+    const publishedRow = rows.find((r) => r.vex_status !== VERSION_STATUSES.draft.key);
+    const draftRow = rows.find((r) => r.vex_status === VERSION_STATUSES.draft.key);
+    const wantsDrafts =
+      props.config?.access === undefined
+        ? Boolean(props.drafts)
+        : Boolean(props.drafts) &&
+          hasPermission({
+            access: props.config.access,
+            user: props.auth?.user ?? null,
+            organization: props.auth?.organization,
+            resource: props.slug,
+            action: DRAFT_ACTIONS.readDrafts,
+            throwOnDenied: false,
+          });
+    row = (wantsDrafts && draftRow ? draftRow : publishedRow) ?? null;
+  }
 
   if (!row) return null as GetGlobalReturn<TGlobalSlug, TPopulate, D>;
 
   let flat = flattenGlobalRow(row as Record<string, unknown>);
 
-  if (args.config?.access !== undefined) {
+  if (props.config?.access !== undefined) {
     const { access, action, resource } = resolveAccessCall({
-      config: args.config,
-      access: args.access,
+      config: props.config,
+      access: props.access,
       defaultAction: CRUD_ACTIONS.read,
-      resource: args.slug,
+      resource: props.slug,
     });
     hasPermission({
       throwOnDenied: true,
-      user: args.auth?.user ?? null,
-      organization: args.auth?.organization,
+      user: props.auth?.user ?? null,
+      organization: props.auth?.organization,
       access,
       resource,
       action,
@@ -122,8 +162,8 @@ export async function getGlobal<
       flat,
       resolveFieldPermissions({
         access,
-        user: args.auth?.user ?? null,
-        organization: args.auth?.organization,
+        user: props.auth?.user ?? null,
+        organization: props.auth?.organization,
         resource,
         action,
         data: flat,
@@ -132,20 +172,24 @@ export async function getGlobal<
   }
 
   // Depth: auto-populate all relationship fields to N levels
-  if (depth && depth > 0 && config) {
-    const globalConfig = config.globals.find((g) => g.slug === slug);
+  if (props.depth && props.depth > 0 && props.config) {
+    const globalConfig = props.config.globals.find((g) => g.slug === props.slug);
     if (globalConfig) {
-      const depthPopulate = buildDepthPopulate<TPopulate>(config, slug, depth);
+      const depthPopulate = buildDepthPopulate<TPopulate>(props.config, props.slug, props.depth);
       if (depthPopulate && Object.keys(depthPopulate).length > 0) {
-        const [populated] = await populateDocs(ctx, [flat], depthPopulate);
+        const [populated] = await populateDocs(props.ctx, [flat], depthPopulate);
         flat = populated as Record<string, unknown>;
       }
     }
   }
 
   // Explicit populate
-  if (populate && Object.keys(populate).length > 0) {
-    const [populated] = await populateDocs(ctx, [flat], populate as Record<string, unknown>);
+  if (props.populate && Object.keys(props.populate).length > 0) {
+    const [populated] = await populateDocs(
+      props.ctx,
+      [flat],
+      props.populate as Record<string, unknown>,
+    );
     flat = populated as Record<string, unknown>;
   }
 

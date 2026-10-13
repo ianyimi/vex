@@ -1,4 +1,5 @@
-import { z, ZodType } from "zod";
+import * as z from "zod";
+import type { ZodType } from "zod";
 import { TextField } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 

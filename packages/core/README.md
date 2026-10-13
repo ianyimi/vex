@@ -154,11 +154,58 @@ const typesSource = generateVexTypes(config)     // → vex.types.ts
 
 ### Versioning & Drafts
 
-Not shipped. `versions.drafts` parses and is stored on the resolved config, but no
-draft/publish workflow is enforced — every read returns the live document. See the
-[roadmap](https://docs.vexcms.dev); until it lands, do not model publish state as
-a hand-written `status` field, because that field becomes redundant when the
-feature arrives.
+`versions.drafts: true` on a collection or global turns on a draft/publish workflow: a
+**published** row keeps its `_id` for the life of the document, and at most one **draft**
+row (`vex_publishedId` pointing back at it) tracks unpublished edits. Publishing merges the
+draft's fields into the published row and deletes the draft — the published row's `_id`
+never changes, so relationships, permalinks, and the admin edit URL survive every publish.
+Unpublishing flips the published row back to `draft` and is rejected while an outstanding
+draft row exists. Every draft save and publish snapshots into `vex_versions`, an immutable,
+unbounded history table read only when the version-history menu opens.
+
+```typescript
+import { defineCollection } from "@vexcms/core"
+import { versionsApi } from "@vexcms/core/server"
+
+export const posts = defineCollection({
+  slug: "posts",
+  fields: {/* ... */},
+  versions: {
+    drafts: true,
+    autosave: { enabled: true }, // debounced saveDraft on settled form changes only
+  },
+})
+
+// convex/vex/versions.ts — its own file, the same split convex/vex/globals.ts uses;
+// that file placement is what makes `api.vex.versions.*` a distinct path.
+export const {
+  saveDraft,
+  publish,
+  unpublish,
+  listVersions,
+  getVersionSnapshot,
+  deleteVersion,
+} = versionsApi({ config, query, mutation, getAuth })
+```
+
+Each operation takes `{ collection, id }` for a collection document or `{ global }` for a
+global. `saveDraft` validates leniently — a draft may be incomplete. `publish` re-validates
+the full merged document with the same strength as `create` and rejects, naming the
+missing field, before promoting; nothing is written on rejection. Five actions —
+`readDrafts`, `saveDraft`, `publish`, `unpublish`, `deleteVersions` — join the usual CRUD set
+on a versioned resource's permission matrix. Reads (`find`, `get`, `search`, `globals.get`)
+exclude draft rows by default — even under `access.bypass`, since the status filter is data
+integrity, not a permission rule — unless the caller passes `drafts: true` **and** holds
+`readDrafts`.
+
+**Migrating off a hand-rolled `status` field.** Turn on `versions.drafts`, run the one-shot
+`backfillStatus` function (`@vexcms/core/server`, wrapped in your own `internalMutation`)
+until it reports `isDone: true` to stamp `vex_status: "published"` on every row that
+predates the toggle, then delete the old field and repoint whatever query filtered on it at
+the built-in `drafts` argument instead.
+
+See the [Versioning & Drafts guide](https://docs.vexcms.dev/guides/versioning-and-drafts/)
+for the RBAC table, autosave, version history/restore, and the live-preview interaction.
 
 ### Access Control (RBAC)
 
@@ -205,10 +252,11 @@ against a write, a read, or a quantified check.
 ### Convex Integration Utilities
 
 Generic document CRUD operations (`create`, `find`, `get`, `remove`, `search`) —
-framework-agnostic. Draft-specific actions (`readDrafts`, `saveDraft`, `publish`,
-`unpublish`) are typed and recognized by the access-control layer, but versioning
-and drafts themselves are not shipped — see `### Versioning & Drafts` above. There
-is no preview-snapshot management utility.
+framework-agnostic. `versionsApi` (see `### Versioning & Drafts` above) mirrors
+`globalsApi`'s factory pattern, and registers nothing at all for a config with no
+`versions.drafts` anywhere — a project that never opts in exposes no draft surface. Version
+history has no automatic pruning: `deleteVersion` removes one row at a time, by design,
+since these rows are read only when the history menu opens.
 
 ### Lifecycle Hooks & Validation
 

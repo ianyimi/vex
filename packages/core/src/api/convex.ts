@@ -2,6 +2,8 @@ import { anyApi } from "convex/server";
 import type { FunctionReference } from "convex/server";
 import type { PaginationOptions, PaginationResult, VexApiAuth } from "./types";
 import { CollectionSlug, VexDocumentGlobal } from "../types";
+import { VERSION_SYSTEM_FIELDS, VexVersionStatus, VersionSummary } from "../versions";
+import type { VersionSnapshotResult } from "./versions/getVersionSnapshot.server";
 
 /**
  * Base type for all VexCMS documents as returned from Convex queries.
@@ -38,6 +40,27 @@ export interface VexDocument {
  * @see {@link VexDocument} for the base type
  */
 export type TDocument<TShape = {}> = Record<string, unknown> & TShape & VexDocument;
+
+/**
+ * Type for versioned documents returned from Convex queries.
+ *
+ * Extends `VexDocument` with all required version fields: vex_status, vex_publishedId,
+ * vex_publishedA. Use this instead of `TDocument` in versioned collection views to
+ * avoid casting fields like `row.vex_status as string`.
+ *
+ * @example
+ * ```ts
+ * const src = doc.src; // string | undefined, no cast needed
+ * const alt = doc.alt ?? "";
+ * ```
+ *
+ * @see {@link TDocument} for the base document type with custom shape support
+ */
+export interface VexVersionDocument extends VexDocument {
+  [VERSION_SYSTEM_FIELDS.status.slug]: VexVersionStatus;
+  [VERSION_SYSTEM_FIELDS.publishedId.slug]?: string;
+  [VERSION_SYSTEM_FIELDS.publishedAt.slug]?: number;
+}
 
 /**
  * Type for media documents returned from Convex queries.
@@ -91,6 +114,7 @@ export interface VexFindArgs {
   depth?: number;
   limit?: number;
   paginationOpts?: PaginationOptions;
+  drafts?: boolean;
 }
 
 /** Args for `api.vex.find`. */
@@ -112,6 +136,7 @@ export interface VexGetArgs {
   id: string;
   populate?: unknown;
   depth?: number;
+  drafts?: boolean;
 }
 
 /** Args for `api.vex.search`. */
@@ -126,6 +151,7 @@ export interface VexSearchArgs {
   populate?: unknown;
   depth?: number;
   paginationOpts?: PaginationOptions;
+  drafts?: boolean;
 }
 
 /** Args for `api.vex.create`. */
@@ -215,7 +241,9 @@ export interface VexMediaGetUrlReturn {
   error?: string;
 }
 
-// ── Media API shallow types ──────────────────────────────────────────────
+// ── Globals API shallow types ──────────────────────────────────────────────
+//
+// Arg and return shapes for the global document endpoints.
 
 /** Args for `api.vex.globals.get`. */
 export interface VexGlobalsGetArgs {
@@ -223,6 +251,7 @@ export interface VexGlobalsGetArgs {
   auth?: VexApiAuth;
   slug: string;
   populate?: Record<string, unknown>;
+  drafts?: boolean;
 }
 
 /** Args for `api.vex.globals.find`. */
@@ -238,6 +267,114 @@ export interface VexGlobalsUpdateArgs {
   slug: string;
   data: Record<string, unknown>;
 }
+
+// ── Versions API shallow types ──────────────────────────────────────────────
+//
+// Arg and return shapes for the versioned document endpoints.
+
+/** Args for `api.vex.versions.saveDraft`. */
+export type VexSaveDraftArgs = {
+  [key: string]: unknown;
+  auth?: VexApiAuth;
+  data: Record<string, unknown>;
+  restoredFrom?: number;
+  environmentId?: string;
+} & (
+  | { collection: CollectionSlug; id: string }
+  | {
+      global: string;
+    }
+);
+
+/** Args for `api.vex.versions.publish`. */
+export type VexPublishArgs =
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      collection: string;
+      id: string;
+      data?: Record<string, unknown>;
+      version?: number;
+      environmentId?: string;
+    }
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      global: string;
+      data?: Record<string, unknown>;
+      version?: number;
+      environmentId?: string;
+    };
+
+/** Args for `api.vex.versions.unpublish`. */
+export type VexUnpublishArgs =
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      collection: string;
+      id: string;
+      environmentId?: string;
+    }
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      global: string;
+      environmentId?: string;
+    };
+
+/** Args for `api.vex.versions.listVersions`. */
+export type VexListVersionsArgs =
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      collection: string;
+      id: string;
+      limit?: number;
+      environmentId?: string;
+    }
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      global: string;
+      limit?: number;
+      environmentId?: string;
+    };
+
+/** Args for `api.vex.versions.getVersionSnapshot`. */
+export type VexGetVersionSnapshotArgs =
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      collection: string;
+      id: string;
+      version: number;
+      environmentId?: string;
+    }
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      global: string;
+      version: number;
+      environmentId?: string;
+    };
+
+/** Args for `api.vex.versions.deleteVersion`. */
+export type VexDeleteVersionArgs =
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      collection: string;
+      id: string;
+      version: number;
+      environmentId?: string;
+    }
+  | {
+      [key: string]: unknown;
+      auth?: VexApiAuth;
+      global: string;
+      version: number;
+      environmentId?: string;
+    };
 
 /**
  * Typed `anyApi` references to the VexCMS generic Convex collection functions.
@@ -404,6 +541,45 @@ export const vexConvexApi = {
       "public",
       VexGlobalsUpdateArgs,
       string
+    >,
+  },
+
+  versions: {
+    saveDraft: anyApi.vex.versions.saveDraft as FunctionReference<
+      "mutation",
+      "public",
+      VexSaveDraftArgs,
+      string
+    >,
+    publish: anyApi.vex.versions.publish as FunctionReference<
+      "mutation",
+      "public",
+      VexPublishArgs,
+      string
+    >,
+    unpublish: anyApi.vex.versions.unpublish as FunctionReference<
+      "mutation",
+      "public",
+      VexUnpublishArgs,
+      string
+    >,
+    listVersions: anyApi.vex.versions.listVersions as FunctionReference<
+      "query",
+      "public",
+      VexListVersionsArgs,
+      VersionSummary[]
+    >,
+    getVersionSnapshot: anyApi.vex.versions.getVersionSnapshot as FunctionReference<
+      "query",
+      "public",
+      VexGetVersionSnapshotArgs,
+      VersionSnapshotResult
+    >,
+    deleteVersion: anyApi.vex.versions.deleteVersion as FunctionReference<
+      "mutation",
+      "public",
+      VexDeleteVersionArgs,
+      void
     >,
   },
 } as const;

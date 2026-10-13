@@ -1,349 +1,110 @@
-"use client";
-import { RenderBlocks, type BlockComponents } from "@vexcms/react";
-import Link from "next/link";
+"use client"
 
-import type { Page, PageBlock } from "~/vex.types.ts";
+import { useEffect, useState } from "react"
 
+import { convexQuery } from "@convex-dev/react-query"
+import { api } from "@convex/_generated/api"
+import { LIVE_PREVIEW_COOKIE, LIVE_PREVIEW_QUERY_PARAM } from "@vexcms/core"
+import { RenderBlocks, useLivePreviewQuery } from "@vexcms/react"
 
-/**
- * Props for the `PageContent` component.
- *
- * @example
- * ```tsx
- * <PageContent page={{ _id: "abc123", title: "About Us", slug: "about-us", blocks: [...] }} />
- * ```
- */
+import type { CodeHighlightMap } from "~/lib/highlight"
+import type { Page } from "~/vex.types"
+
+import { CodeHighlightProvider } from "~/components/CodeHighlightContext"
+import { WelcomePage } from "~/components/WelcomePage"
+import { blockComponents } from "~/vexcms/blocks"
+
 export interface PageContentProps {
-  /** The page document to render. */
-  page: Page;
+  /**
+   * Server-highlighted code panes for `initialData`, keyed by
+   * `codeHighlightKey`. Built by `highlightPageBlocks`, because nothing below
+   * this client boundary can await shiki.
+   */
+  codeHighlights?: CodeHighlightMap
+  /**
+   * Server-fetched `pages.getBySlug` result, hydrated as the query's initial data.
+   * Always the published copy — `useSitePreviewMode` cannot resolve until after mount
+   * (see its docstring), so the server-rendered pass is never the preview branch.
+   */
+  initialData?: Page[]
+  /** URL slug to render. Omit (or empty) for the home page. */
+  slug?: string
 }
 
 /**
- * Renders a public-facing page with title and block-based content.
+ * Renders one marketing page's blocks via `RenderBlocks` (Contract 1), or falls back
+ * to base's bootstrap `WelcomePage` when no `home` page document exists yet — a fresh
+ * scaffold before `pnpm seed` has run (Contract 3).
  *
- * Displays the page `title` as the heading and iterates over `page.blocks`
- * to render each section. Each block is dispatched to its own renderer
- * based on `blockType`.
+ * Calls `pages.getBySlug` (published-only, `access.bypass`) outside live preview and
+ * `pages.getBySlugPreview` (session-authenticated, gated on the `readDrafts` action)
+ * once `useSitePreviewMode` confirms an active preview session — the live-preview
+ * base-layer swap. Both always return an array (empty when no match — the same
+ * shape every collection query returns); `useLivePreviewQuery` performs the
+ * `[0]` narrowing itself and overlays any unsaved editor values for this document on
+ * top of whichever base layer ran.
+ */
+export function PageContent({ codeHighlights, slug, initialData }: PageContentProps) {
+  const normalizedSlug = slug && slug.length > 0 ? slug : "home"
+  const previewModeActive = useSitePreviewMode()
+
+  const { data: page } = useLivePreviewQuery(
+    {
+      ...convexQuery(previewModeActive ? api.pages.getBySlugPreview : api.pages.getBySlug, {
+        slug: normalizedSlug,
+      }),
+      initialData,
+    },
+    "pages",
+  )
+
+  if (!page) {
+    return <WelcomePage />
+  }
+
+  return (
+    <CodeHighlightProvider highlights={codeHighlights ?? {}}>
+      <RenderBlocks
+        blocks={page.blocks}
+        components={blockComponents}
+      />
+    </CodeHighlightProvider>
+  )
+}
+
+/**
+ * Whether this page load is inside an active live-preview session — both
+ * `?vexLivePreview=1` and the session-verified `vex-live-preview` marker cookie
+ * `proxy.ts` sets (`grantPreviewIfRequested`) are present.
  *
- * @param props.page - The page document to render.
+ * `PageContent` reads this to pick its base query. Mirrors `@vexcms/react`'s
+ * internal `useLivePreviewEnabled` rather than importing it: the boolean is needed to
+ * choose a query before `useLivePreviewQuery` runs, and widening that package's
+ * public surface for one caller isn't worth five lines.
+ *
+ * Read in an effect, never during render, so the page stays statically
+ * prerenderable and the first client render matches the server's.
+ *
+ * Advisory only: it just picks which query runs. The real boundary is
+ * `getBySlugPreview`'s server-side `readDrafts` check — a forged cookie selects the
+ * preview query and gets an empty result, never draft content.
+ *
+ * @returns `true` once both signals are present in the browser; `false` before mount
+ *   and on every load outside live preview.
  */
-export default function PageContent({ page }: PageContentProps) {
-  return (
-    <main className="min-h-screen bg-background text-foreground">
-      {/* Admin link section */}
-      <section className="mx-auto max-w-4xl px-6 py-8">
-        {/* Plain <a> (not <Link>): /admin is a separate zone behind the auth
-            proxy. A document request lets the proxy's 307 do a real hard
-            redirect to the full-page sign-in — an RSC soft-nav redirect gets
-            swallowed by the @auth interception route and renders nothing. */}
-        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-        <a
-          className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          href="/admin"
-        >
-          Go to Admin
-        </a>
-      </section>
+function useSitePreviewMode(): boolean {
+  const [previewMode, setPreviewMode] = useState(false)
 
-      {/* Hero section */}
-      <section className="mx-auto max-w-4xl px-6 py-20 md:py-32">
-        <h1 className="text-4xl font-bold tracking-tight md:text-6xl">{page.title}</h1>
-      </section>
+  useEffect(() => {
+    // Neither alone suffices: a pasted preview URL without a verified session, or an
+    // admin browsing normally, must both stay on the published copy.
+    const previewRequested =
+      new URLSearchParams(window.location.search).get(LIVE_PREVIEW_QUERY_PARAM) === "1"
+    const sessionVerified = document.cookie
+      .split("; ")
+      .some((cookie) => cookie === `${LIVE_PREVIEW_COOKIE}=1`)
+    setPreviewMode(previewRequested && sessionVerified)
+  }, [])
 
-      {/* Blocks content section */}
-      {page.blocks && page.blocks.length > 0 && (
-        <section className="mx-auto max-w-4xl px-6 pb-20">
-          <RenderBlocks blocks={page.blocks} components={pageBlockComponents} fallback={UnknownBlock} />
-        </section>
-      )}
-    </main>
-  );
-}
-
-const pageBlockComponents = {
-  hero: HeroBlockRenderer,
-  feature: FeatureBlockRenderer,
-  cta: CtaBlockRenderer,
-  testimonial: TestimonialBlockRenderer,
-  stats: StatsBlockRenderer,
-  "logo-cloud": LogoCloudBlockRenderer,
-  faq: FaqBlockRenderer,
-  pricing: PricingBlockRenderer,
-  content: ContentBlockRenderer,
-} satisfies BlockComponents<PageBlock>;
-
-/**
- * Rendered for a block type no longer registered in `pageBlockComponents` —
- * the old `default:` branch of the dispatch switch.
- */
-function UnknownBlock({ block }: { block: PageBlock }) {
-  return (
-    <div className="rounded-lg border border-dashed border-red-300 p-6 text-center text-sm text-muted-foreground">
-      Unknown block type:{" "}
-      <code className="font-mono text-xs">{block.blockType}</code>
-    </div>
-  );
-}
-
-/**
- * Renders a Content block — free-form prose text.
- */
-function ContentBlockRenderer({ block }: { block: Extract<PageBlock, { blockType: "content" }> }) {
-  const alignClass = block.align?.[0] === "center" ? "text-center" : "text-left";
-  const widthClass =
-    block.maxWidth?.[0] === "full"
-      ? "max-w-none"
-      : block.maxWidth?.[0] === "wide"
-        ? "max-w-4xl"
-        : "max-w-2xl prose prose-neutral dark:prose-invert";
-
-  return (
-    <section className={`${alignClass} py-8`}>
-      <div className={`${widthClass} mx-auto whitespace-pre-line`}>{block.body}</div>
-    </section>
-  );
-}
-
-/**
- * Renders a CTA block — call-to-action section with heading and button.
- */
-function CtaBlockRenderer({ block }: { block: Extract<PageBlock, { blockType: "cta" }> }) {
-  const variantClasses = {
-    default: "bg-primary text-primary-foreground hover:bg-primary/90",
-    outline: "border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground",
-    ghost: "text-primary hover:bg-primary/10",
-  };
-  const buttonClass =
-    variantClasses[(block.variant?.[0] ?? "default") as keyof typeof variantClasses] ??
-    variantClasses.default;
-
-  return (
-    <section className="py-16 text-center">
-      <h3 className="text-2xl font-bold">{block.title}</h3>
-      {block.description && (
-        <p className="mx-auto mt-2 max-w-xl text-muted-foreground">{block.description}</p>
-      )}
-      {block.buttonLabel && (
-        <Link
-          className={`${buttonClass} mt-6 inline-flex items-center rounded-md px-6 py-3 text-sm font-medium`}
-          href={block.buttonHref ?? "#"}
-        >
-          {block.buttonLabel}
-        </Link>
-      )}
-    </section>
-  );
-}
-
-/**
- * Renders a FAQ block — accordion of questions and answers.
- */
-function FaqBlockRenderer({ block }: { block: Extract<PageBlock, { blockType: "faq" }> }) {
-  return (
-    <section className="py-12">
-      {block.title && <h3 className="mb-6 text-2xl font-bold">{block.title}</h3>}
-      <div className="space-y-4">
-        {block.questions?.map((q: { answer: string; question: string }, i: number) => (
-          <details className="rounded-lg border bg-card p-4" key={i}>
-            <summary className="cursor-pointer font-semibold">{q.question}</summary>
-            <p className="mt-2 text-muted-foreground">{q.answer}</p>
-          </details>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/**
- * Renders a Feature block — single feature card with icon, title, and description.
- */
-function FeatureBlockRenderer({ block }: { block: Extract<PageBlock, { blockType: "feature" }> }) {
-  return (
-    <section className="py-12">
-      <div className="rounded-lg border bg-card p-6 shadow-sm">
-        {block.icon && <span className="mb-2 text-2xl">{block.icon}</span>}
-        <h3 className="text-xl font-semibold">{block.title}</h3>
-        {block.description && <p className="mt-2 text-muted-foreground">{block.description}</p>}
-        {block.linkLabel && (
-          <Link
-            className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
-            href={block.linkHref ?? "#"}
-          >
-            {block.linkLabel} →
-          </Link>
-        )}
-      </div>
-    </section>
-  );
-}
-
-/**
- * Renders a Hero block — big headline, subtitle, and CTA buttons.
- */
-function HeroBlockRenderer({ block }: { block: Extract<PageBlock, { blockType: "hero" }> }) {
-  return (
-    <section className="py-16 text-center">
-      {block.badge && (
-        <span className="mb-4 inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-          {block.badge}
-        </span>
-      )}
-      <h2 className="text-3xl font-bold tracking-tight md:text-5xl">{block.title}</h2>
-      {block.subtitle && (
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">{block.subtitle}</p>
-      )}
-      <div className="mt-8 flex justify-center gap-4">
-        {block.primaryCtaLabel && (
-          <Link
-            className="inline-flex items-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            href={block.primaryCtaHref ?? "#"}
-          >
-            {block.primaryCtaLabel}
-          </Link>
-        )}
-        {block.secondaryCtaLabel && (
-          <Link
-            className="inline-flex items-center rounded-md border border-input bg-background px-6 py-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-            href={block.secondaryCtaHref ?? "#"}
-          >
-            {block.secondaryCtaLabel}
-          </Link>
-        )}
-      </div>
-      {block.showImage && block.image && (
-        <div className="mt-12">
-          <img alt={block.title} className="mx-auto max-w-full rounded-lg" src={block.image} />
-        </div>
-      )}
-    </section>
-  );
-}
-
-/**
- * Renders a Logo Cloud block — grid of logos.
- */
-function LogoCloudBlockRenderer({
-  block,
-}: {
-  block: Extract<PageBlock, { blockType: "logo-cloud" }>;
-}) {
-  return (
-    <section className="py-12">
-      {block.title && (
-        <h3 className="mb-6 text-center text-sm font-medium tracking-wide text-muted-foreground uppercase">
-          {block.title}
-        </h3>
-      )}
-      <div className="flex flex-wrap items-center justify-center gap-8">
-        {block.logos?.map((logo: { image: string; link?: string; name: string }, i: number) =>
-          logo.link ? (
-            <a href={logo.link} key={i} rel="noopener noreferrer" target="_blank">
-              <img
-                alt={logo.name}
-                className="h-8 opacity-60 grayscale hover:opacity-100 hover:grayscale-0"
-                src={logo.image}
-              />
-            </a>
-          ) : (
-            <img alt={logo.name} className="h-8 opacity-60 grayscale" key={i} src={logo.image} />
-          ),
-        )}
-      </div>
-    </section>
-  );
-}
-
-/**
- * Renders a Pricing block — pricing card with plan details and CTA.
- */
-function PricingBlockRenderer({ block }: { block: Extract<PageBlock, { blockType: "pricing" }> }) {
-  return (
-    <section className="py-12">
-      <div
-        className={`${block.highlighted ? "border-primary ring-primary/20" : ""} rounded-lg border bg-card p-6 shadow-sm ring-2`}
-      >
-        {block.badge && (
-          <span className="mb-2 inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-            {block.badge}
-          </span>
-        )}
-        <h3 className="text-xl font-bold">{block.planName}</h3>
-        <div className="mt-4">
-          <span className="text-4xl font-bold">{block.price}</span>
-          {block.period && <span className="text-muted-foreground">{block.period}</span>}
-        </div>
-        {block.description && (
-          <p className="mt-2 text-sm text-muted-foreground">{block.description}</p>
-        )}
-        {block.features && block.features.length > 0 && (
-          <ul className="mt-6 space-y-2">
-            {block.features.map((feature: string, i: number) => (
-              <li className="text-sm" key={i}>
-                ✓ {feature}
-              </li>
-            ))}
-          </ul>
-        )}
-        {block.ctaLabel && (
-          <Link
-            className={`${block.highlighted ? "bg-primary hover:bg-primary/90" : "border hover:bg-accent"} mt-6 inline-flex w-full items-center justify-center rounded-md border-input bg-background px-6 py-3 text-sm font-medium text-primary-foreground`}
-            href={block.ctaHref ?? "#"}
-          >
-            {block.ctaLabel}
-          </Link>
-        )}
-      </div>
-    </section>
-  );
-}
-
-/**
- * Renders a Stats block — row of key metrics.
- */
-function StatsBlockRenderer({ block }: { block: Extract<PageBlock, { blockType: "stats" }> }) {
-  return (
-    <section className="py-16">
-      {block.title && <h3 className="mb-8 text-center text-2xl font-bold">{block.title}</h3>}
-      <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-        {block.stats?.map((stat, i) => (
-          <div className="text-center" key={i}>
-            <div className="text-3xl font-bold">{stat.value}</div>
-            <div className="mt-1 text-sm text-muted-foreground">{stat.label}</div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/**
- * Renders a Testimonial block — customer quote with author info.
- */
-function TestimonialBlockRenderer({
-  block,
-}: {
-  block: Extract<PageBlock, { blockType: "testimonial" }>;
-}) {
-  return (
-    <section className="py-12">
-      <blockquote className="rounded-lg border bg-card p-6 shadow-sm">
-        <p className="text-lg italic">&ldquo;{block.quote}&rdquo;</p>
-        <footer className="mt-4 flex items-center gap-3">
-          {block.authorAvatar && (
-            <img
-              alt={block.authorName}
-              className="h-10 w-10 rounded-full"
-              src={block.authorAvatar}
-            />
-          )}
-          <div>
-            <cite className="font-semibold not-italic">{block.authorName}</cite>
-            {block.authorRole && (
-              <p className="text-sm text-muted-foreground">{block.authorRole}</p>
-            )}
-          </div>
-        </footer>
-      </blockquote>
-    </section>
-  );
+  return previewMode
 }

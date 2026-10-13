@@ -5,8 +5,7 @@ import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { UseQueryOptions, UseQueryResult } from "@tanstack/react-query";
 import {
-  getCollectionInputSchema,
-  getGlobalInputSchema,
+  getFieldsInputSchema,
   LIVE_PREVIEW_COOKIE,
   LIVE_PREVIEW_ID_PARAM,
   LIVE_PREVIEW_QUERY_PARAM,
@@ -145,11 +144,9 @@ export function LivePreviewProvider(props: { children: ReactNode }) {
         : globals.find((global) => global.slug === data.collectionSlug);
 
       const parsedValues = targetCollection
-        ? getCollectionInputSchema({ collection: targetCollection, partial: true }).safeParse(
-            data.values,
-          )
+        ? getFieldsInputSchema({ fields: targetCollection.fields, partial: true }).safeParse(data.values)
         : targetGlobal
-          ? getGlobalInputSchema({ global: targetGlobal }).partial().safeParse(data.values)
+          ? getFieldsInputSchema({ fields: targetGlobal.fields, partial: true }).safeParse(data.values)
           : undefined;
       // A slug that names neither: not ours to apply.
       if (!parsedValues) return;
@@ -267,8 +264,7 @@ function useLivePreviewSearchParam(paramName: string): string | null {
  * and announces this render site to the admin panel via the mount handshake.
  *
  * `collectionSlug` is a required second argument, not inferred from `doc` —
- * mirrors `useCollectionForm`'s `collection` argument, and is what types
- * `doc`/the return value to the exact generated document interface for that
+ * it is what types `doc`/the return value to the exact generated document interface for that
  * collection. It also supplies the handshake/update messages' `collectionSlug`,
  * which has no other source once `doc` is `null`.
  *

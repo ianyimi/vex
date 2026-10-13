@@ -3,6 +3,7 @@ import type { GlobalSlug } from "../types/generated";
 import type { LucideIconName } from "../utils";
 import type { AdminLivePreviewConfig, AdminLivePreviewConfigInput } from "../livePreview";
 import type { DocumentByGlobalSlug } from "../types/generated";
+import type { GlobalHooks, GlobalHooksInput } from "./hooks";
 
 /**
  * Field keys that are reserved by the VexCMS globals system and cannot be
@@ -24,6 +25,7 @@ export type ReservedGlobalFieldKey = "_id" | "_creationTime" | "_slug";
 export interface GlobalAdminConfigInput<
   TComponent extends ComponentHKT = ComponentHKT,
   TGlobalSlug extends GlobalSlug = GlobalSlug,
+  TDrafts extends boolean = false,
 > {
   /**
    * Sidebar group label this global appears under (e.g. `"Site Builder"`).
@@ -52,6 +54,33 @@ export interface GlobalAdminConfigInput<
    */
   components?: {
     preview?: ApplyComponent<TComponent, { slug: string }>;
+  };
+  /**
+   * Draft and versioning config for this global. Enabling `drafts` adds
+   * `vex_status` / `vex_publishedAt` / `vex_publishedId` to `vex_globals`
+   * (`generateVexSchema`) and the draft-workflow actions (`readDrafts`,
+   * `saveDraft`, `publish`, `unpublish`, `deleteVersions`) to this global's
+   * subject in `defineAccess`. Reuses the shared `vex_versions` table and
+   * the same two-row model as a versioned collection, scoped by
+   * `collection: "vex_globals"` (design-review §9).
+   */
+  versions?: {
+    /** Enable the draft/publish workflow for this collection. @defaultValue `false` */
+    drafts?: TDrafts;
+    /**
+     * Debounce background saves to the draft row while the edit form is
+     * open. Ignored when `drafts` is `false`. @defaultValue `false`
+     */
+    autosave?: {
+      /**
+       * Enable or disable autosaves to new drafts
+       */
+      enabled: boolean;
+      /**
+       * Debounce (milliseconds) to autosave after inputs have changed
+       */
+      debounceMs?: number;
+    };
   };
 }
 
@@ -114,6 +143,7 @@ export interface GlobalConfigInput<
   TGlobalSlug extends string = string,
   TFieldSlug extends string = string,
   TComponent extends ComponentHKT = ComponentHKT,
+  TDrafts extends boolean = false,
 > {
   /**
    * Unique slug for this global. Becomes the `_slug` discriminator on the flat
@@ -133,6 +163,10 @@ export interface GlobalConfigInput<
    * `_creationTime`, or `_slug` (enforced at compile time by `defineGlobal`).
    */
   fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
+  /** Lifecycle hooks for this global. */
+  hooks?: GlobalHooksInput<
+    TGlobalSlug extends GlobalSlug ? TGlobalSlug : GlobalSlug
+  >;
   /** Admin panel display and behaviour config. */
   admin?: GlobalAdminConfigInput<
     TComponent,
@@ -151,8 +185,22 @@ export interface GlobalConfigInput<
    * `defineGlobal` call sites don't need to change when Spec 36 ships.
    */
   versions?: {
-    /** Enable draft/publish workflow. Default: `false`. */
-    drafts?: boolean;
+    /** Enable the draft/publish workflow for this collection. @defaultValue `false` */
+    drafts?: TDrafts;
+    /**
+     * Debounce background saves to the draft row while the edit form is
+     * open. Ignored when `drafts` is `false`. @defaultValue `false`
+     */
+    autosave?: {
+      /**
+       * Enable or disable autosaves to new drafts
+       */
+      enabled: boolean;
+      /**
+       * Debounce (milliseconds) to autosave after inputs have changed
+       */
+      debounceMs?: number;
+    };
   };
 }
 
@@ -172,6 +220,7 @@ export interface GlobalConfig<
   TGlobalSlug extends GlobalSlug = GlobalSlug,
   TFieldSlug extends string = string,
   TComponent extends ComponentHKT = ComponentHKT,
+  TDrafts extends boolean = boolean,
 > {
   /** Unique slug — the lookup key in `vex_globals`. */
   slug: TGlobalSlug;
@@ -179,6 +228,8 @@ export interface GlobalConfig<
   label: string;
   /** Resolved field definitions. */
   fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
+  /** Resolved lifecycle hooks. Always present; defaults to `{}`. */
+  hooks: GlobalHooks<TGlobalSlug>;
   /** Resolved admin config. */
   admin: GlobalAdminConfig<TComponent, TGlobalSlug>;
   /**
@@ -189,5 +240,11 @@ export interface GlobalConfig<
   /** Global-level metadata. */
   meta: TGlobalMeta;
   /** Resolved versioning config. Always present after defaults. */
-  versions: { drafts: boolean };
+  versions: {
+    drafts: TDrafts;
+    autosave: {
+      enabled: boolean;
+      debounceMs: number;
+    };
+  };
 }

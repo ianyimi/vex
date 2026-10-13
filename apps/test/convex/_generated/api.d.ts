@@ -13,13 +13,18 @@ import type * as auth_config from "../auth/config.js";
 import type * as auth_db from "../auth/db.js";
 import type * as auth_index from "../auth/index.js";
 import type * as auth_sessions from "../auth/sessions.js";
+import type * as footers from "../footers.js";
+import type * as headers from "../headers.js";
 import type * as http from "../http.js";
 import type * as pages from "../pages.js";
 import type * as seed from "../seed.js";
+import type * as siteSettings from "../siteSettings.js";
 import type * as theme from "../theme.js";
 import type * as vex from "../vex.js";
+import type * as vex_firstUser from "../vex/firstUser.js";
 import type * as vex_globals from "../vex/globals.js";
 import type * as vex_media from "../vex/media.js";
+import type * as vex_versions from "../vex/versions.js";
 import type * as vexContext from "../vexContext.js";
 
 import type {
@@ -34,13 +39,18 @@ declare const fullApi: ApiFromModules<{
   "auth/db": typeof auth_db;
   "auth/index": typeof auth_index;
   "auth/sessions": typeof auth_sessions;
+  footers: typeof footers;
+  headers: typeof headers;
   http: typeof http;
   pages: typeof pages;
   seed: typeof seed;
+  siteSettings: typeof siteSettings;
   theme: typeof theme;
   vex: typeof vex;
+  "vex/firstUser": typeof vex_firstUser;
   "vex/globals": typeof vex_globals;
   "vex/media": typeof vex_media;
+  "vex/versions": typeof vex_versions;
   vexContext: typeof vexContext;
 }>;
 

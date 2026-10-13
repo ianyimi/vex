@@ -30,6 +30,8 @@ const schema = defineSchema({
   documents: defineTable({
     status: v.optional(v.string()),
     title: v.optional(v.string()),
+    vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
+    vex_publishedId: v.optional(v.id("documents")),
   }).searchIndex("search_title", { searchField: "title", filterFields: [] }),
   // The media counterpart of `documents`: `MediaLibraryGrid`, `FilePreview` and
   // `MediaUploadDropzone` all read `VexMediaDocument`'s own fields

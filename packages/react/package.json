@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/react",
-  "version": "0.1.0-alpha.23",
+  "version": "0.1.0-alpha.24",
   "description": "React admin components and hooks for VexCMS",
   "keywords": [
     "cms",
@@ -42,7 +42,7 @@
   "source": "./dist/**/*.js",
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
-    "dev": "tsup --watch src",
+    "dev": "tsup --watch src --no-clean",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",

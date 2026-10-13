@@ -25,7 +25,6 @@ import type {
 } from "../types";
 import {
   AccessFilterFn,
-  CRUD_ACTIONS,
   hasPermission,
   type IndexRangeFn,
   pickQueryIndex,
@@ -35,7 +34,8 @@ import {
   resolveFieldPermissions,
   stripDeniedFields,
 } from "../../access";
-import { resolveAccessCall } from "../utils";
+import { resolveReadCall } from "../utils";
+import { composeStatusConstraint } from "../../versions";
 
 /**
  * Server-side args for `find`. Extends {@link GenericQueryServerParams}
@@ -127,6 +127,25 @@ export interface FindServerArgs<
    * Uses Convex's native `.paginate(opts)` API under the hood.
    */
   paginationOpts?: PaginationOptions;
+
+  /**
+   * Include draft rows for a versioned collection. Defaults to `false`.
+   *
+   * The two-row draft model (design-review.md §1) means an unfiltered query on a
+   * versioned collection returns the same logical document twice — once
+   * `vex_status: "published"`, once `vex_status: "draft"` — so `find` injects a
+   * published-only constraint unless this is `true`. Ignored for a collection that
+   * doesn't declare `versions.drafts`.
+   *
+   * Also switches the RBAC action this call resolves against, from `"read"` to
+   * `"readDrafts"` (`DRAFT_ACTIONS.readDrafts`) — but only when the caller's
+   * role grants `readDrafts` at all. A caller without it silently falls back
+   * to the published-only read (the same non-throwing fallback `getGlobal`
+   * uses), so one set of query args serves every caller: the admin list view
+   * and its server prefetch can both always send `drafts: true` for a
+   * versioned collection without knowing who is asking.
+   */
+  drafts?: boolean;
 }
 
 // Overload 1: WITHOUT paginationOpts → returns array (most common case)
@@ -197,11 +216,14 @@ export async function find<
 ): Promise<
   FindReturn<TCollectionSlug, TPopulate, D> | FindReturnPaginated<TCollectionSlug, TPopulate, D>
 > {
-  const { access, action, resource } = resolveAccessCall({
+  // Effective drafts flag + the action it resolves under — see `resolveReadCall`
+  // for the fallback a caller without `readDrafts` gets.
+  const { access, action, resource, wantsDrafts } = resolveReadCall({
     config: args.config,
     access: args.access,
-    defaultAction: CRUD_ACTIONS.read,
-    resource: args.collection,
+    auth: args.auth,
+    collection: args.collection,
+    drafts: args.drafts,
   });
   const accessIndex = resolveAccessIndex({
     access,
@@ -210,31 +232,32 @@ export async function find<
     resource,
     action,
   });
-  // `FindServerArgs.withIndex` is a conditional type over `TCollectionSlug`,
-  // which is still an unresolved type parameter here — TypeScript cannot reduce
-  // it, so it stays opaque and will not assign to a concrete object type. The
-  // runtime shape is exactly `{ name, range? }`, which is what `pickQueryIndex`
-  // takes; the index name and range are already checked against the collection
-  // at the public call site.
+  // `FindServerArgs.withIndex` is a conditional type over `TCollectionSlug`, still an
+  // unresolved type parameter here — TypeScript cannot reduce it, so it stays opaque.
+  // The runtime shape is exactly `{ name, range? }`, already checked against the
+  // collection at the public call site.
   const callerIndex = args.withIndex as { name: string; range?: IndexRangeFn } | undefined;
-  const resolvedIndex = pickQueryIndex({ accessIndex, callerIndex });
-  // Resolve the constraint UNCONDITIONALLY. Two cases were previously missed, both
-  // silent because the per-document `hasPermission` pass still rejected the rows —
-  // correctness held, but the query read them anyway, which is exactly the ragged
-  // page this design exists to remove:
-  //   1. a rule with no index at all (the flat algebra, and the only form an
-  //      action-level wildcard can express) never reached the query;
-  //   2. a rule with an index AND a filter lost its filter half whenever the access
-  //      index won the slot.
-  // `indexAlreadyApplied` is what keeps the range from being applied twice when the
-  // access index did win.
-  const accessFilter = resolveAccessConstraint({
+  const rbacResolvedIndex = pickQueryIndex({ accessIndex, callerIndex });
+  const rbacFilter = resolveAccessConstraint({
     access,
     user: args.auth?.user ?? null,
     organization: args.auth?.organization,
     resource,
     action,
-    indexAlreadyApplied: accessIndex !== undefined && resolvedIndex?.name === accessIndex.name,
+    indexAlreadyApplied: accessIndex !== undefined && rbacResolvedIndex?.name === accessIndex.name,
+  });
+  // Status narrowing is independent of RBAC (design-review.md §3.1) — it runs
+  // whenever `requiresPublishedOnly` says so, whether or not `access` above is
+  // `undefined` (bypassed or unconfigured). Also arbitrates the winning index's
+  // OWN `draftStatus` declaration (Step 13 D2–D4, `versions/statusConstraint.ts`)
+  // — a `drafts: true` read against a `draftStatus: true`-only index drops the
+  // range and re-applies it as a filter, so no access inputs are needed here.
+  const { resolvedIndex, accessFilter } = composeStatusConstraint({
+    config: args.config,
+    collection: args.collection,
+    drafts: wantsDrafts,
+    resolvedIndex: rbacResolvedIndex,
+    accessFilter: rbacFilter,
   });
 
   const findQuery = buildQuery<DataModel, TCollectionSlug, TPopulate, D>({
@@ -306,11 +329,12 @@ export async function find<
   const finalDocs =
     !effectivePopulate || Object.keys(effectivePopulate).length === 0
       ? (docs as unknown as FindReturn<TCollectionSlug, TPopulate, D>)
-      : ((await populateDocs(args.ctx, docs, effectivePopulate)) as unknown as FindReturn<
-          TCollectionSlug,
-          TPopulate,
-          D
-        >);
+      : ((await populateDocs(
+          args.ctx,
+          docs,
+          effectivePopulate,
+          wantsDrafts,
+        )) as unknown as FindReturn<TCollectionSlug, TPopulate, D>);
 
   if (args.paginationOpts && convexPaginationResult) {
     if (args.paginationOpts.totalDocs && !args.paginationOpts.cursor) {

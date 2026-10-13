@@ -1514,3 +1514,412 @@ describe("find (server) — field-level read shaping", () => {
     expect(docs).toHaveLength(1);
   });
 });
+
+const versionedPostsResource = defineCollection({
+  slug: "posts",
+  fields: { title: text(), slug: text() },
+  versions: { drafts: true },
+});
+
+const versionedAuthorsResource = defineCollection({
+  slug: "authors",
+  fields: { name: text() },
+});
+
+const versionedConfig = {
+  collections: [versionedPostsResource, versionedAuthorsResource],
+} as unknown as VexConfig;
+
+const versionedAccess = defineAccess({
+  roles: ["editor", "viewer"] as const,
+  resources: [versionedPostsResource],
+  userCollectionSlug: "users",
+  userRolesField: "roles",
+  permissions: {
+    editor: { posts: { readDrafts: true } },
+    viewer: { posts: { read: true } },
+  },
+});
+
+const versionedConfigWithAccess = {
+  collections: [versionedPostsResource, versionedAuthorsResource],
+  access: versionedAccess,
+} as unknown as VexConfig;
+
+const editorAuth = { user: { _id: "u1", roles: "editor" } };
+const viewerAuth = { user: { _id: "u2", roles: "viewer" } };
+
+describe("find (server) — versioned collection status filtering", () => {
+  /**
+   * A public read must never surface a draft row, and the published row for a
+   * document with an active draft must not appear twice — with or without
+   * `access.bypass`, since the status constraint is data integrity, not RBAC.
+   */
+  test("a public read, including access: { bypass: true }, returns no draft rows and no duplicate logical documents", async () => {
+    const t = convexTest(schema, modules);
+    const { publishedId, unfiltered, bypassed } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const publishedId = await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          vex_status: "published",
+        });
+        await ctx.db.insert("posts", {
+          title: "Hello (draft edit)",
+          slug: "hello",
+          vex_status: "draft",
+          vex_publishedId: publishedId,
+        });
+
+        return {
+          publishedId,
+          unfiltered: await find({
+            ctx,
+            collection: "posts",
+            config: versionedConfig,
+          }),
+          bypassed: await find({
+            ctx,
+            collection: "posts",
+            config: versionedConfig,
+            access: { bypass: true },
+          }),
+        };
+      },
+    );
+
+    expect(unfiltered).toHaveLength(1);
+    expect((unfiltered[0] as any)._id).toBe(publishedId);
+    expect(bypassed).toHaveLength(1);
+    expect((bypassed[0] as any)._id).toBe(publishedId);
+  });
+
+  /**
+   * `drafts: true` alone must not be sufficient — it only lifts the structural
+   * status narrowing for a caller who may read drafts. A caller without
+   * `readDrafts` falls back to the published-only read: no draft content, and
+   * no empty result either, so one set of args serves every caller.
+   */
+  test("drafts: true with readDrafts returns both rows; without it, falls back to the published row only", async () => {
+    const t = convexTest(schema, modules);
+    const { publishedId, draftId, withPermission, withoutPermission } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const publishedId = await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          vex_status: "published",
+        });
+        const draftId = await ctx.db.insert("posts", {
+          title: "Hello (draft edit)",
+          slug: "hello",
+          vex_status: "draft",
+          vex_publishedId: publishedId,
+        });
+
+        return {
+          publishedId,
+          draftId,
+          withPermission: await find({
+            ctx,
+            collection: "posts",
+            config: versionedConfigWithAccess,
+            auth: editorAuth,
+            drafts: true,
+          }),
+          withoutPermission: await find({
+            ctx,
+            collection: "posts",
+            config: versionedConfigWithAccess,
+            auth: viewerAuth,
+            drafts: true,
+          }),
+        };
+      },
+    );
+
+    expect(withPermission).toHaveLength(2);
+    expect(withPermission.map((doc: any) => doc._id).sort()).toEqual([publishedId, draftId].sort());
+    expect(withoutPermission.map((doc) => doc._id)).toEqual([publishedId]);
+  });
+
+  /**
+   * A draft-only row — `vex_status: "draft"` with no `vex_publishedId`, the row
+   * Option A's `create` produces for a collection whose `versions.defaultStatus`
+   * is `"draft"` — has never been published and so has no published counterpart
+   * at all. It must be excluded from a published-only read exactly like an
+   * ordinary draft that DOES have a published parent, since the filter in
+   * `composeStatusConstraint` keys purely on `vex_status`, never on whether
+   * `vex_publishedId` is set — this pins that down explicitly, since this exact
+   * row shape did not exist when this test file was first written.
+   */
+  test("a draft-only row (never published, no vex_publishedId) is excluded by default and visible with drafts: true + readDrafts", async () => {
+    const t = convexTest(schema, modules);
+    const { draftOnlyId, withoutDrafts, withDraftsNoPermission, withDraftsAndPermission } =
+      await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const draftOnlyId = await ctx.db.insert("posts", {
+          title: "New page (unpublished)",
+          slug: "never-published",
+          vex_status: "draft",
+        });
+
+        return {
+          draftOnlyId,
+          withoutDrafts: await find({
+            ctx,
+            collection: "posts",
+            config: versionedConfig,
+          }),
+          withDraftsNoPermission: await find({
+            ctx,
+            collection: "posts",
+            config: versionedConfigWithAccess,
+            auth: viewerAuth,
+            drafts: true,
+          }),
+          withDraftsAndPermission: await find({
+            ctx,
+            collection: "posts",
+            config: versionedConfigWithAccess,
+            auth: editorAuth,
+            drafts: true,
+          }),
+        };
+      });
+
+    expect(withoutDrafts).toHaveLength(0);
+    expect(withDraftsNoPermission).toHaveLength(0);
+    expect(withDraftsAndPermission).toHaveLength(1);
+    expect((withDraftsAndPermission[0] as any)._id).toBe(draftOnlyId);
+  });
+
+  /**
+   * When a caller supplies its own `withIndex` on an index with no `draftStatus`,
+   * the status constraint must still apply — via `.filter()`, since the
+   * `withIndex` slot is already taken and `by_slug` declares no `draftStatus`.
+   */
+  test("a caller-supplied withIndex still gets the status filter via .filter()", async () => {
+    const t = convexTest(schema, modules);
+    const { publishedId, result } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const publishedId = await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          vex_status: "published",
+        });
+        await ctx.db.insert("posts", {
+          title: "Hello (draft edit)",
+          slug: "hello",
+          vex_status: "draft",
+          vex_publishedId: publishedId,
+        });
+
+        return {
+          publishedId,
+          result: await find({
+            ctx,
+            collection: "posts",
+            config: versionedConfig,
+            withIndex: {
+              name: "by_slug",
+              range: (q: any) => q.eq("slug", "hello"),
+            },
+          }),
+        };
+      },
+    );
+
+    expect(result).toHaveLength(1);
+    expect((result[0] as any)._id).toBe(publishedId);
+  });
+
+  /**
+   * A non-versioned collection must be completely unaffected by this mechanism,
+   * even if a stray row happens to carry a `vex_status` field.
+   */
+  test("a non-versioned collection is unaffected", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("authors", {
+        name: "Lena",
+        vex_status: "draft",
+      } as any);
+      return find({ ctx, collection: "authors", config: versionedConfig });
+    });
+
+    expect(result).toHaveLength(1);
+  });
+});
+
+describe("find (server) — per-index draftStatus composition", () => {
+  const draftStatusPostsResource = defineCollection({
+    slug: "posts",
+    fields: {
+      title: text(),
+      slug: text(),
+      body: text({ index: "by_body", indexDraftStatus: true }),
+      excerpt: text({ index: "by_excerpt" }),
+    },
+    versions: { drafts: true },
+    indexes: [{ name: "by_title", fields: ["title"], draftStatus: "both" }],
+  });
+
+  const draftStatusConfig = {
+    collections: [draftStatusPostsResource, versionedAuthorsResource],
+  } as unknown as VexConfig;
+
+  const draftStatusConfigWithAccess = {
+    collections: [draftStatusPostsResource, versionedAuthorsResource],
+    access: defineAccess({
+      roles: ["editor", "viewer"] as const,
+      resources: [draftStatusPostsResource],
+      userCollectionSlug: "users",
+      userRolesField: "roles",
+      permissions: {
+        editor: { posts: { readDrafts: true } },
+        viewer: { posts: { read: true } },
+      },
+    }),
+  } as unknown as VexConfig;
+
+  /**
+   * A published-only read against a `draftStatus: "both"` index composes the
+   * status equality straight onto that index's own range — the range starts
+   * with `vex_status`, so no `.filter()` runs, and the draft row with a
+   * matching title is excluded despite sharing the index's narrowing field.
+   */
+  test('a published-only read on a draftStatus: "both" index excludes the draft row with no extra .filter() cost', async () => {
+    const t = convexTest(schema, modules);
+    const { publishedId, result } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const publishedId = await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          vex_status: "published",
+        });
+        await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello-draft",
+          vex_status: "draft",
+        });
+        return {
+          publishedId,
+          result: await find({
+            ctx,
+            collection: "posts",
+            config: draftStatusConfig,
+            withIndex: { name: "by_title", range: (q: any) => q.eq("title", "Hello") },
+          }),
+        };
+      },
+    );
+    expect(result).toHaveLength(1);
+    expect((result[0] as any)._id).toBe(publishedId);
+  });
+
+  /**
+   * `drafts: true` against that SAME `"both"` index uses its unprefixed
+   * physical form untouched — both rows come back.
+   */
+  test('drafts: true on the same "both" index returns both rows, untouched', async () => {
+    const t = convexTest(schema, modules);
+    const { result } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", { title: "Hello", slug: "hello", vex_status: "published" });
+      await ctx.db.insert("posts", { title: "Hello", slug: "hello-draft", vex_status: "draft" });
+      return {
+        result: await find({
+          ctx,
+          collection: "posts",
+          config: draftStatusConfigWithAccess,
+          auth: editorAuth,
+          drafts: true,
+          withIndex: { name: "by_title", range: (q: any) => q.eq("title", "Hello") },
+        }),
+      };
+    });
+    expect(result).toHaveLength(2);
+  });
+
+  /**
+   * `drafts: true` against a `draftStatus: true`-ONLY index (`by_body`, no
+   * unprefixed physical form) drops the caller's range and falls the RBAC
+   * constraint back to `.filter()`, warning once — the conservative,
+   * correct behavior case 4 of `composeStatusConstraint` chooses.
+   */
+  test("drafts: true on a draftStatus: true index drops the range and falls back to .filter(), with a dev warning", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const t = convexTest(schema, modules);
+    const { result } = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await ctx.db.insert("posts", {
+        title: "Hello",
+        slug: "hello",
+        body: "match",
+        vex_status: "published",
+      });
+      await ctx.db.insert("posts", {
+        title: "Other",
+        slug: "other",
+        body: "match",
+        vex_status: "draft",
+      });
+      return {
+        result: await find({
+          ctx,
+          collection: "posts",
+          config: draftStatusConfigWithAccess,
+          auth: editorAuth,
+          drafts: true,
+          withIndex: { name: "by_body", range: (q: any) => q.eq("body", "match") },
+        }),
+      };
+    });
+    // The range is dropped (not replayed against the prefixed index), so
+    // `by_body` with no range scans every row — both come back, since the
+    // editor role's `readDrafts` grant here has no index-shaped constraint
+    // of its own to fall back to.
+    expect(result).toHaveLength(2);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  /**
+   * A published-only read against an index with NO declared `draftStatus`
+   * still filters correctly (unchanged original design) and warns once,
+   * suggesting one.
+   */
+  test("a published-only read on an index with no draftStatus still filters, and warns once", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const t = convexTest(schema, modules);
+    const { publishedId, result } = await t.run(
+      async (ctx: GenericMutationCtx<GenericDataModel>) => {
+        const publishedId = await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          excerpt: "intro",
+          vex_status: "published",
+        });
+        await ctx.db.insert("posts", {
+          title: "Hello",
+          slug: "hello",
+          excerpt: "intro",
+          vex_status: "draft",
+          vex_publishedId: publishedId,
+        });
+        return {
+          publishedId,
+          result: await find({
+            ctx,
+            collection: "posts",
+            config: draftStatusConfig,
+            // `by_excerpt` is read published-only by no other test, so the warn-once
+            // memory in `statusConstraint.ts` has not consumed this pair yet.
+            withIndex: { name: "by_excerpt", range: (q: any) => q.eq("excerpt", "intro") },
+          }),
+        };
+      },
+    );
+    expect(result).toHaveLength(1);
+    expect((result[0] as any)._id).toBe(publishedId);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+});

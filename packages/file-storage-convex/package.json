@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/file-storage-convex",
-  "version": "0.1.0-alpha.23",
+  "version": "0.1.0-alpha.24",
   "description": "Convex file-storage adapter for VexCMS uploads",
   "keywords": [
     "cms",
@@ -42,7 +42,7 @@
   },
   "scripts": {
     "build": "tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
-    "dev": "tsup --watch src",
+    "dev": "tsup --watch src --no-clean",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "test": "vitest run",

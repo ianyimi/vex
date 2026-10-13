@@ -1,8 +1,4 @@
-import type {
-  DocumentByResourceSlug,
-  VexMutationCtx,
-  VexResourceSlug,
-} from "../types/generated";
+import type { DocumentByResourceSlug, VexMutationCtx, VexResourceSlug } from "../types/generated";
 import type { VexCallbackApi } from "../api/server";
 
 /**
@@ -343,6 +339,18 @@ export interface BaseFieldInput<
    * ```
    */
   index?: string;
+  /**
+   * Also narrow this field's index on `vex_status` for draft/publish status
+   * composition (Step 13, `versions/statusConstraint.ts`). Meaningless
+   * without an index to attach to — set `index` too, or this is a
+   * relationship field (which auto-indexes `by_<fieldKey>`) — and without
+   * the owning collection's `versions.drafts: true`; `defineCollection`
+   * throws otherwise for either violation (`collections/config.ts`). Same
+   * `true` (replaces the index) / `"both"` (adds a `vex_status`-prefixed
+   * twin) contract as `CollectionConfigInput.indexes[].draftStatus` — see
+   * there for the full narrowing/fallback behavior.
+   */
+  indexDraftStatus?: true | "both";
   meta?: TFieldMeta;
   /**
    * Server-only async validation, run after the generated Zod schema passes.
@@ -387,6 +395,18 @@ export interface BaseField<
   interfaceDescription?: string;
   /** Convex index name for this field. */
   index?: string;
+  /**
+   * Also narrow this field's index on `vex_status` for draft/publish status
+   * composition (Step 13, `versions/statusConstraint.ts`). Meaningless
+   * without an index to attach to — set `index` too, or this is a
+   * relationship field (which auto-indexes `by_<fieldKey>`) — and without
+   * the owning collection's `versions.drafts: true`; `defineCollection`
+   * throws otherwise for either violation (`collections/config.ts`). Same
+   * `true` (replaces the index) / `"both"` (adds a `vex_status`-prefixed
+   * twin) contract as `CollectionConfigInput.indexes[].draftStatus` — see
+   * there for the full narrowing/fallback behavior.
+   */
+  indexDraftStatus?: true | "both";
   /** TypeScript type string written to generated document interfaces (e.g. `"string"`, `"number"`, `"string[]"`). */
   interfaceType: string;
   meta: TFieldMeta;

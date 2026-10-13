@@ -393,3 +393,58 @@ describe("collectionConfigToVexSchema — injected updatedAt field", () => {
     expect(contents).not.toContain("updatedAt");
   });
 });
+
+describe("collectionConfigToVexSchema — draftStatus indexes", () => {
+  it("draftStatus: true replaces the index with its vex_status-prefixed form — no unprefixed twin", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { slug: text({ index: "by_slug", indexDraftStatus: true }) },
+      versions: { drafts: true },
+    });
+    const config = defineConfig({ collections: [posts] });
+    const output = collectionConfigToVexSchema({ collection: posts, config });
+    expect(output).toContain('.index("by_slug", ["vex_status","slug"])');
+    expect(output).not.toContain('.index("by_slug", ["slug"])');
+  });
+
+  it('draftStatus: "both" emits the unprefixed index and a prefixed twin', () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { slug: text({ index: "by_slug", indexDraftStatus: "both" }) },
+      versions: { drafts: true },
+    });
+    const config = defineConfig({ collections: [posts] });
+    const output = collectionConfigToVexSchema({ collection: posts, config });
+    expect(output).toContain('.index("by_slug", ["slug"])');
+    expect(output).toContain('.index("by_slug__draftStatus", ["vex_status","slug"])');
+  });
+
+  it("draftStatus on a collection-level compound index prefixes every declared field", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { author: relationship({ collection: { slug: "authors" } }), title: text() },
+      versions: { drafts: true },
+      indexes: [{ name: "by_author_title", fields: ["author", "title"], draftStatus: "both" }],
+    });
+    const config = defineConfig({ collections: [posts] });
+    const output = collectionConfigToVexSchema({ collection: posts, config });
+    expect(output).toContain('.index("by_author_title", ["author","title"])');
+    expect(output).toContain(
+      '.index("by_author_title__draftStatus", ["vex_status","author","title"])',
+    );
+  });
+
+  it("draftStatus on a relationship field's auto by_<fieldKey> index", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: {
+        author: relationship({ collection: { slug: "authors" }, indexDraftStatus: true }),
+      },
+      versions: { drafts: true },
+    });
+    const config = defineConfig({ collections: [posts] });
+    const output = collectionConfigToVexSchema({ collection: posts, config });
+    expect(output).toContain('.index("by_author", ["vex_status","author"])');
+    expect(output).not.toContain('.index("by_author", ["author"])');
+  });
+});

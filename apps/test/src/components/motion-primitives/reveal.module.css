@@ -1,0 +1,32 @@
+/*
+ * Shared "reveal" animation for AnimatedGroup and TextEffect — the
+ * blur + fade + rise entrance the hero uses, implemented in pure CSS so the
+ * template carries no animation-library dependency.
+ *
+ * `both` fill-mode keeps elements hidden until their delay elapses, which is
+ * what makes the stagger read as a sequence. Delay per element arrives via
+ * the `--reveal-delay` custom property.
+ */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    filter: blur(12px);
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+.item {
+  animation: reveal 1.1s cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation-delay: var(--reveal-delay, 0s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item {
+    animation: none;
+  }
+}
