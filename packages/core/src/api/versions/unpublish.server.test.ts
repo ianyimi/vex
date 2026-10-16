@@ -48,7 +48,7 @@ describe("unpublish (server) — collection target", () => {
     });
   });
 
-  test("flips the published row to draft and records a history row with publishedAt carried forward", async () => {
+  test("with no earlier published version: goes offline, clearing publishedAt, writing no history row", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
       const t0 = 1700000000000;
@@ -58,13 +58,22 @@ describe("unpublish (server) — collection target", () => {
         vex_status: "published",
         vex_publishedAt: t0,
       });
+      await ctx.db.insert("vex_versions", {
+        collection: "posts",
+        documentId: String(publishedId),
+        version: 1,
+        status: "published",
+        snapshot: { title: "Original", slug: "original" },
+        publishedAt: t0,
+      });
 
       const returnedId = await unpublish({ ctx, config: fixtureConfig, collection: "posts", id: publishedId });
       expect(returnedId).toBe(String(publishedId));
 
+      // Explicit unpublish removes the "was live" stamp on both rows.
       const row = await ctx.db.get(publishedId);
       expect(row?.vex_status).toBe("draft");
-      expect(row?.vex_publishedAt).toBe(t0);
+      expect(row?.vex_publishedAt).toBeUndefined();
 
       const versions = await ctx.db
         .query("vex_versions")
@@ -73,9 +82,64 @@ describe("unpublish (server) — collection target", () => {
           q.eq("collection", "posts").eq("documentId", String(publishedId)),
         )
         .collect();
-      expect(versions).toHaveLength(1);
-      expect(versions[0]?.status).toBe("published");
-      expect(versions[0]?.publishedAt).toBe(t0);
+      expect(versions).toHaveLength(1); // no new row
+      expect(versions[0]?.status).toBe("draft");
+      expect(versions[0]?.publishedAt).toBeUndefined();
+    });
+  });
+
+  test("with an earlier published version: promotes its snapshot in place and stays published", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const t1 = 1700000000000;
+      const t2 = 1700000100000;
+      const publishedId = await ctx.db.insert("posts", {
+        title: "Second",
+        slug: "second",
+        vex_status: "published",
+        vex_publishedAt: t2,
+      });
+      await ctx.db.insert("vex_versions", {
+        collection: "posts",
+        documentId: String(publishedId),
+        version: 1,
+        status: "published",
+        snapshot: { title: "First", slug: "first" },
+        publishedAt: t1,
+      });
+      await ctx.db.insert("vex_versions", {
+        collection: "posts",
+        documentId: String(publishedId),
+        version: 2,
+        status: "published",
+        snapshot: { title: "Second", slug: "second" },
+        publishedAt: t2,
+      });
+
+      await unpublish({ ctx, config: fixtureConfig, collection: "posts", id: publishedId });
+
+      // Same _id, previous content, previous publishedAt, still published.
+      const row = await ctx.db.get(publishedId);
+      expect(row?.vex_status).toBe("published");
+      expect(row?.title).toBe("First");
+      expect(row?.slug).toBe("first");
+      expect(row?.vex_publishedAt).toBe(t1);
+      expect(row?.vex_activeVersion).toBe(1);
+
+      const versions = await ctx.db
+        .query("vex_versions")
+        .withIndex("by_document_version", (q) =>
+          // @ts-expect-error chain compound index fields on GenericDataModel
+          q.eq("collection", "posts").eq("documentId", String(publishedId)),
+        )
+        .collect();
+      expect(versions).toHaveLength(2); // no new row
+      const demoted = versions.find((v) => v.version === 2);
+      expect(demoted?.status).toBe("draft");
+      expect(demoted?.publishedAt).toBeUndefined();
+      const promoted = versions.find((v) => v.version === 1);
+      expect(promoted?.status).toBe("published");
+      expect(promoted?.publishedAt).toBe(t1);
     });
   });
 
@@ -126,7 +190,7 @@ const versionedBanner = defineGlobal({
 const globalFixtureConfig = { collections: [], globals: [versionedBanner] } as unknown as VexConfig;
 
 describe("unpublish (server) — global target", () => {
-  test("flips the published vex_globals row to draft, leaving the slug and publishedAt intact", async () => {
+  test("demotes the published vex_globals row offline, clearing publishedAt, writing no history row", async () => {
     const t = convexTest(schema, modules);
     const publishedAt = 1700000000000;
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
@@ -135,6 +199,14 @@ describe("unpublish (server) — global target", () => {
         data: { message: "Live" },
         vex_status: "published",
         vex_publishedAt: publishedAt,
+      });
+      await ctx.db.insert("vex_versions", {
+        collection: "vex_globals",
+        documentId: "banner",
+        version: 1,
+        status: "published",
+        snapshot: { message: "Live" },
+        publishedAt,
       });
     });
 
@@ -149,7 +221,7 @@ describe("unpublish (server) — global target", () => {
         .collect();
       expect(rows).toHaveLength(1);
       expect(rows[0]?.vex_status).toBe("draft");
-      expect(rows[0]?.vex_publishedAt).toBe(publishedAt);
+      expect(rows[0]?.vex_publishedAt).toBeUndefined();
       expect(rows[0]?.data).toEqual({ message: "Live" });
 
       const versions = await ctx.db
@@ -159,9 +231,9 @@ describe("unpublish (server) — global target", () => {
           q.eq("collection", "vex_globals").eq("documentId", "banner"),
         )
         .collect();
-      expect(versions).toHaveLength(1);
-      expect(versions[0]?.status).toBe("published");
-      expect(versions[0]?.publishedAt).toBe(publishedAt);
+      expect(versions).toHaveLength(1); // no new row
+      expect(versions[0]?.status).toBe("draft");
+      expect(versions[0]?.publishedAt).toBeUndefined();
     });
   });
 

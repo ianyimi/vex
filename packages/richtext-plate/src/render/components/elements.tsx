@@ -184,8 +184,10 @@ export function LinkElementStatic(props: SlateElementProps) {
  * Server-safe static renderer for an image node.
  *
  * @param props - The Slate element props for the image node; `element.url`,
- *   `element.alt`, `element.width`, and `element.align` control the
- *   rendered image and its float/alignment.
+ *   `element.alt`, `element.width`, `element.aspectRatio`, and
+ *   `element.align` control the rendered image and its float/alignment.
+ *   A set `aspectRatio` crops the image to that shape (`object-fit: cover`)
+ *   and scales with the width, so it holds on narrow screens too.
  * @returns The image (sized and aligned per `element`) wrapped in a
  *   `SlateElement`.
  */
@@ -194,6 +196,7 @@ export function ImageElementStatic(props: SlateElementProps) {
     url?: string;
     alt?: string;
     width?: number;
+    aspectRatio?: number;
     align?: "left" | "center" | "right";
   };
 
@@ -224,6 +227,10 @@ export function ImageElementStatic(props: SlateElementProps) {
             width: "100%",
             borderRadius: 6,
             display: "block",
+            ...(element.aspectRatio !== undefined && {
+              aspectRatio: element.aspectRatio,
+              objectFit: "cover" as const,
+            }),
           }}
         />
       </div>

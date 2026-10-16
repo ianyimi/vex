@@ -12,7 +12,7 @@ interface StorageValidationInput {
  * Validates a config's media wiring.
  *
  * Checks:
- * 1. Every `upload().to` slug names a declared media collection.
+ * 1. Every `upload().to` and `richtext().mediaCollectionSlug` slug names a declared media collection.
  * 2. No slug is used by both a regular collection and a media collection.
  *
  * Media collections arrive pre-declared on the client config as of the
@@ -35,11 +35,18 @@ export function validateAndMergeStorageConfig(input: StorageValidationInput): vo
       if (field.type === ADMIN_FIELDS.upload.type && !mediaSlugs.has(field.to)) {
         missing.add(field.to);
       }
+      if (
+        field.type === ADMIN_FIELDS.richtext.type &&
+        field.mediaCollectionSlug !== undefined &&
+        !mediaSlugs.has(field.mediaCollectionSlug)
+      ) {
+        missing.add(field.mediaCollectionSlug);
+      }
     }
   }
   if (missing.size > 0) {
     throw new VexStorageConfigError(
-      `upload() fields reference missing media collections: ${[...missing].join(", ")}. ` +
+      `upload() and richtext() fields reference missing media collections: ${[...missing].join(", ")}. ` +
         `Declare them on defineConfig({ mediaCollections: [...] }) using a storage package's defineMediaCollection(). ` +
         `Available media collections: ${[...mediaSlugs].join(", ") || "none"}.`,
     );

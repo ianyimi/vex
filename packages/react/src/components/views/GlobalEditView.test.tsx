@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { fireEvent, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { convexTest } from "convex-test";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineAccess, text, type GlobalConfig } from "@vexcms/core";
@@ -353,7 +353,7 @@ describe("GlobalEditView — draft toolbar", () => {
     expect(utils.getByRole("button", { name: "Unpublish" })).toBeDisabled();
   });
 
-  it("calls versions.unpublish with the global's slug when Unpublish is clicked", async () => {
+  it("asks for confirmation, then calls versions.unpublish with the global's slug", async () => {
     const stored = {
       _creationTime: 1,
       _id: "g1",
@@ -370,6 +370,13 @@ describe("GlobalEditView — draft toolbar", () => {
     );
 
     fireEvent.click(utils.getByRole("button", { name: "Unpublish" }));
+
+    // The confirmation dialog explains the outcome; nothing fires until confirmed.
+    const dialog = await screen.findByRole("alertdialog");
+    expect(convexMutationMock).not.toHaveBeenCalled();
+    const confirm = within(dialog).getByRole("button", { name: "Unpublish" });
+    await waitFor(() => expect(confirm).not.toBeDisabled());
+    fireEvent.click(confirm);
 
     await waitFor(() => expect(convexMutationMock).toHaveBeenCalled());
     expect(convexMutationMock.mock.calls[0]?.[0]).toEqual({ global: versionedGlobal.slug });

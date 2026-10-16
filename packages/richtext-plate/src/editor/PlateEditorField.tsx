@@ -1,9 +1,9 @@
-// @ts-nocheck
 "use client";
 
-import { useMemo, useState, useCallback, useRef, useImperativeHandle, forwardRef } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef, useImperativeHandle, forwardRef } from "react";
+import type { Value } from "platejs";
 import { Plate, PlateContent, createPlateEditor, useEditorRef } from "platejs/react";
-import type { VexEditorComponentProps, RichTextDocument } from "@vexcms/core";
+import { CONSTRAINT_COMPARATORS, type VexEditorComponentProps, type RichTextDocument } from "@vexcms/core";
 import type { VexEditorFeature } from "./features/types";
 import { createPluginsFromFeatures } from "./plugins/createPlugins";
 import { Toolbar } from "./components/Toolbar";
@@ -12,28 +12,8 @@ import { ImageUpload } from "./components/image/ImageUpload";
 import { useImageUpload } from "./components/image/useImageUpload";
 import { TableToolbar } from "./components/TableToolbar";
 
-interface MediaDoc {
-  _id: string;
-  filename: string;
-  mimeType: string;
-  url: string;
-  alt?: string;
-}
-
 interface PlateEditorFieldProps extends VexEditorComponentProps {
   features: VexEditorFeature[];
-  mediaResults?: MediaDoc[];
-  mediaSearchTerm?: string;
-  onMediaSearchChange?: (term: string) => void;
-  mediaCanLoadMore?: boolean;
-  onMediaLoadMore?: () => void;
-  mediaIsLoading?: boolean;
-  onUploadNew?: () => void;
-  generateUploadUrl?: () => Promise<string>;
-  createMediaDocument?: (props: {
-    collectionSlug: string;
-    fields: Record<string, unknown>;
-  }) => Promise<string>;
 }
 
 const DEFAULT_VALUE: RichTextDocument = [
@@ -44,7 +24,7 @@ const DEFAULT_VALUE: RichTextDocument = [
  * Handle for inserting images from outside the Plate context.
  */
 interface ImageInsertHandle {
-  insertImage: (props: { url: string; alt?: string; mediaId?: string; width?: number; height?: number }) => void;
+  insertImage: (props: { url: string; alt?: string; mediaId?: string }) => void;
 }
 
 /**
@@ -56,13 +36,13 @@ const ImageInsertBridge = forwardRef<ImageInsertHandle>(function ImageInsertBrid
 
   useImperativeHandle(ref, () => ({
     insertImage: (props) => {
+      // No `width`/`aspectRatio`: a fresh image renders at its own size
+      // (capped to the editor) until the user resizes it.
       const imgNode = {
         type: "img",
         url: props.url,
         alt: props.alt || "",
         mediaId: props.mediaId,
-        width: props.width,
-        height: props.height,
         children: [{ text: "" }],
       } as any;
       const trailingP = { type: "p", children: [{ text: "" }] } as any;
@@ -94,8 +74,11 @@ const ImageInsertBridge = forwardRef<ImageInsertHandle>(function ImageInsertBrid
  * through `onChange`. This is the `editorComponent` used by the adapter
  * returned from `plateEditor()`.
  *
- * @returns The rendered field — label and description, the formatting and table
- *   toolbars, and the editable content area wrapped in `EditorContainer`.
+ * The visible label and description are the host field input's job; `label`
+ * is used here only as the editable area's accessible name.
+ *
+ * @returns The formatting and table toolbars and the editable content area,
+ *   wrapped in `EditorContainer`.
  */
 export function PlateEditorField({
   value,
@@ -103,10 +86,10 @@ export function PlateEditorField({
   readOnly = false,
   placeholder,
   label,
-  description,
   name,
   features,
-  mediaCollection,
+  mediaCollectionSlug,
+  mediaAltRequired,
   mediaResults,
   mediaSearchTerm,
   onMediaSearchChange,
@@ -119,10 +102,38 @@ export function PlateEditorField({
 }: PlateEditorFieldProps) {
   const [showImageUpload, setShowImageUpload] = useState(false);
   const imageInsertRef = useRef<ImageInsertHandle>(null);
+  const imageButtonRef = useRef<HTMLSpanElement>(null);
+  const imagePopoverRef = useRef<HTMLDivElement>(null);
+
+  // Close the image popover on a click outside it, like the link/table
+  // controls. The toggle button is excluded so its own mousedown still toggles.
+  // Uses the dispatch path, not `contains(target)`: popover contents re-render
+  // as you use it, and a target removed mid-event would read as "outside".
+  useEffect(() => {
+    if (!showImageUpload) return;
+    const handler = (e: MouseEvent) => {
+      const path = e.composedPath();
+      if (imagePopoverRef.current && path.includes(imagePopoverRef.current)) return;
+      if (imageButtonRef.current && path.includes(imageButtonRef.current)) return;
+      setShowImageUpload(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showImageUpload]);
+
+  // No media collection → the image feature is dropped entirely (toolbar
+  // button, paste, and drop handlers all key off this list).
+  const effectiveFeatures = useMemo(
+    () =>
+      mediaCollectionSlug
+        ? features
+        : features.filter((feature) => feature.key !== "image"),
+    [features, mediaCollectionSlug],
+  );
 
   const { plugins, components } = useMemo(
-    () => createPluginsFromFeatures(features),
-    [features]
+    () => createPluginsFromFeatures(effectiveFeatures),
+    [effectiveFeatures]
   );
 
   const editor = useMemo(() => {
@@ -138,23 +149,57 @@ export function PlateEditorField({
     // is not installed, so the directive itself errored as an unknown rule.)
   }, [plugins]);
 
+  // The last document this editor emitted. A `value` prop that isn't it came
+  // from outside (version swap in the history tab, restore, form reset), so
+  // the editor — built once from the initial value — must be overwritten.
+  // Echoes of our own edits match by reference and are skipped, which keeps
+  // the selection intact while typing.
+  const lastEmittedRef = useRef<RichTextDocument | undefined>(value);
+
+  useEffect(() => {
+    if (value === lastEmittedRef.current) return;
+    lastEmittedRef.current = value;
+    const next = value && value.length > 0 ? value : DEFAULT_VALUE;
+    // A same-content copy (e.g. the form re-seeded from the saved doc after an
+    // autosave) must not reset the editor — that would move the cursor mid-typing.
+    // Key-order-insensitive: Convex returns object keys sorted, Plate keeps
+    // insertion order.
+    if (CONSTRAINT_COMPARATORS.eq(next, editor.children)) return;
+    // RichTextDocument's index-signature nodes are structurally Plate's
+    // `Value`, but the index signatures keep TS from unifying the two.
+    editor.tf.setValue(next as unknown as Value);
+    // Plate normalizes synchronously on setValue — it assigns a random `id` to
+    // every node lacking one, merges adjacent leaves, fills empty `children` —
+    // so the echo that follows is the NORMALIZED document, not `next`. Record
+    // that as ours, or the echo reads as a user edit and dirties the form
+    // (the "discard changes?" prompt on a plain version switch).
+    lastEmittedRef.current = editor.children as unknown as RichTextDocument;
+  }, [editor, value]);
+
   const handleChange = useCallback(
-    ({ value: newValue }: { value: any }) => {
-      onChange(newValue as RichTextDocument);
+    ({ value: newValue }: { value: Value }) => {
+      const next = newValue as unknown as RichTextDocument;
+      // A value applied by the sync effect above comes back through
+      // onValueChange (Slate flushes changes asynchronously, so a "currently
+      // applying" flag would already be cleared). Re-emitting it would mark
+      // the field dirty and autosave it, ping-ponging with the form.
+      if (CONSTRAINT_COMPARATORS.eq(next, lastEmittedRef.current)) return;
+      lastEmittedRef.current = next;
+      onChange(next);
     },
     [onChange]
   );
 
   const { uploadFile } = useImageUpload({
-    mediaCollection,
+    mediaCollectionSlug,
     generateUploadUrl,
     createMediaDocument,
   });
 
-  const hasImageFeature = features.some((f) => f.key === "image");
+  const hasImageFeature = effectiveFeatures.some((f) => f.key === "image");
 
   const handleInsertImage = useCallback(
-    (props: { url: string; alt?: string; mediaId?: string; width?: number; height?: number }) => {
+    (props: { url: string; alt?: string; mediaId?: string }) => {
       // Close popover first, then insert on next tick so editor can regain focus
       setShowImageUpload(false);
       setTimeout(() => {
@@ -168,6 +213,18 @@ export function PlateEditorField({
       }, 50);
     },
     []
+  );
+
+  // Upload tab: create the media document (same mutations as the upload
+  // field), then insert the stored image. Errors propagate to the tab's
+  // own error display.
+  const handleUploadFile = useCallback(
+    async (props: { file: File; alt?: string }) => {
+      if (!uploadFile) throw new Error("Media collection not configured");
+      const result = await uploadFile(props.file, { alt: props.alt });
+      handleInsertImage({ url: result.url, mediaId: result.mediaId, alt: props.alt });
+    },
+    [uploadFile, handleInsertImage]
   );
 
   // Paste handler
@@ -184,8 +241,6 @@ export function PlateEditorField({
           imageInsertRef.current?.insertImage({
             url: result.url,
             mediaId: result.mediaId,
-            width: result.width,
-            height: result.height,
           });
         }).catch((err) => console.error("Image upload failed:", err));
       }
@@ -207,8 +262,6 @@ export function PlateEditorField({
           imageInsertRef.current?.insertImage({
             url: result.url,
             mediaId: result.mediaId,
-            width: result.width,
-            height: result.height,
           });
         }).catch((err) => console.error("Image upload failed:", err));
       }
@@ -217,7 +270,7 @@ export function PlateEditorField({
   );
 
   return (
-    <EditorContainer label={label} description={description}>
+    <EditorContainer>
       <Plate
         editor={editor}
         onValueChange={handleChange}
@@ -234,60 +287,65 @@ export function PlateEditorField({
               top: 0,
               zIndex: 10,
               background: "var(--background)",
+              // Match the editor root's rounded top corners: this bar's square
+              // background otherwise paints over the border arcs, leaving the
+              // top corners looking like gaps in the border.
+              borderTopLeftRadius: "var(--radius)",
+              borderTopRightRadius: "var(--radius)",
               borderBottom: "1px solid var(--border)",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                position: "relative",
-              }}
-            >
-              <Toolbar features={features} />
-              {hasImageFeature && (
-                <span className="vex-tb-wrap">
-                  <button
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      setShowImageUpload((v) => !v);
-                    }}
-                    style={{
-                      background: "transparent",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--radius)",
-                      padding: "4px 8px",
-                      cursor: "pointer",
-                      fontSize: 14,
-                      lineHeight: 1,
-                      marginRight: 8,
-                    }}
-                  >
-                    🖼
-                  </button>
-                  <span className="vex-tb-tip">Insert image</span>
-                </span>
-              )}
+            <div style={{ position: "relative" }}>
+              <Toolbar
+                features={effectiveFeatures}
+                trailing={
+                  hasImageFeature ? (
+                    <span ref={imageButtonRef} className="vex-tb-wrap">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setShowImageUpload((v) => !v);
+                        }}
+                        style={{
+                          background: "transparent",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius)",
+                          padding: "4px 8px",
+                          cursor: "pointer",
+                          fontSize: 14,
+                          lineHeight: 1,
+                        }}
+                      >
+                        🖼
+                      </button>
+                      <span className="vex-tb-tip">Insert image</span>
+                    </span>
+                  ) : undefined
+                }
+              />
             </div>
             {showImageUpload && (
-              <ImageUpload
-                onClose={() => setShowImageUpload(false)}
-                onInsertUrl={handleInsertImage}
-                onInsertMedia={
-                  mediaResults !== undefined
-                    ? handleInsertImage
-                    : undefined
-                }
-                onUploadNew={onUploadNew}
-                mediaResults={mediaResults}
-                mediaSearchTerm={mediaSearchTerm}
-                onMediaSearchChange={onMediaSearchChange}
-                mediaCanLoadMore={mediaCanLoadMore}
-                onMediaLoadMore={onMediaLoadMore}
-                mediaIsLoading={mediaIsLoading}
-              />
+              <div ref={imagePopoverRef}>
+                <ImageUpload
+                  onClose={() => setShowImageUpload(false)}
+                  onInsertUrl={handleInsertImage}
+                  onInsertMedia={
+                    mediaResults !== undefined
+                      ? handleInsertImage
+                      : undefined
+                  }
+                  onUploadNew={onUploadNew}
+                  onUploadFile={uploadFile ? handleUploadFile : undefined}
+                  altRequired={mediaAltRequired}
+                  mediaResults={mediaResults}
+                  mediaSearchTerm={mediaSearchTerm}
+                  onMediaSearchChange={onMediaSearchChange}
+                  mediaCanLoadMore={mediaCanLoadMore}
+                  onMediaLoadMore={onMediaLoadMore}
+                  mediaIsLoading={mediaIsLoading}
+                />
+              </div>
             )}
           </div>
         )}

@@ -54,6 +54,10 @@ const NO_TRUNCATION_FIELD_TYPES: ReadonlySet<AdminFieldType> = new Set([
   "number",
   "checkbox",
   "color",
+  // The generic over-length builder sizes arrays by JSON length, which a
+  // richtext document already exceeds while its plain text stays short;
+  // richtext/Cell.test.tsx asserts truncation with an explicit long document.
+  "richtext",
 ]);
 
 /**

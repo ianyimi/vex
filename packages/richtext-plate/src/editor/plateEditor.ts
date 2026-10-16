@@ -1,8 +1,7 @@
-// @ts-nocheck
-import type { VexEditorAdapter, VexEditorComponentProps } from "@vexcms/core";
+import type { VexEditorComponentProps, VexRenderComponentProps } from "@vexcms/core";
+import type { VexEditorAdapter } from "@vexcms/react";
 import type { VexEditorFeature } from "./features/types";
 import { defaultFeatures } from "./features/defaultFeatures";
-import { RichText } from "../render/RichText";
 import React from "react";
 
 type FeatureInput =
@@ -41,7 +40,7 @@ function resolveFeatures(input?: FeatureInput): VexEditorFeature[] {
  *
  * @example
  * ```ts
- * import { plateEditor } from "@vexcms/richtext/editor";
+ * import { plateEditor } from "@vexcms/richtext-plate";
  * import { defineConfig } from "@vexcms/core";
  *
  * export default defineConfig({
@@ -52,18 +51,22 @@ function resolveFeatures(input?: FeatureInput): VexEditorFeature[] {
  * @param options - Editor configuration; currently just which features to enable.
  * @returns A `VexEditorAdapter` whose `editorComponent` lazy-loads
  *   `PlateEditorField` (pre-bound to the resolved `features`) and whose
- *   `renderComponent` is the static `RichText` renderer.
+ *   `renderComponent` lazy-loads the static `RichText` renderer.
  */
 export function plateEditor(options: PlateEditorOptions = {}): VexEditorAdapter {
   const features = resolveFeatures(options.features);
 
-  // Lazy-load the editor component to keep the render-only path lightweight.
-  // We use React.lazy so the PlateEditorField chunk is only loaded when
-  // the admin UI actually mounts the editor.
+  // Both components are lazy so `vex.config.ts` (bundled into every Convex
+  // function via the server config) never evaluates platejs at module load —
+  // platejs's jotai dependency reads `import.meta`, which the Convex runtime
+  // rejects. The chunks load only when the admin UI mounts a component.
   const LazyEditorField = React.lazy(() =>
     import("./PlateEditorField").then((mod) => ({
       default: mod.PlateEditorField,
     }))
+  );
+  const LazyRichText = React.lazy(() =>
+    import("../render/RichText").then((mod) => ({ default: mod.RichText }))
   );
 
   // Wrapper that injects resolved features into PlateEditorField.
@@ -71,9 +74,13 @@ export function plateEditor(options: PlateEditorOptions = {}): VexEditorAdapter 
     return React.createElement(LazyEditorField, { ...props, features });
   }
 
+  function RenderComponent(props: VexRenderComponentProps) {
+    return React.createElement(LazyRichText, props);
+  }
+
   return {
     type: "plate",
     editorComponent: EditorComponent,
-    renderComponent: RichText,
+    renderComponent: RenderComponent,
   };
 }

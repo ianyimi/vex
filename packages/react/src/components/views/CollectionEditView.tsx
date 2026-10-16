@@ -31,6 +31,7 @@ import {
   useFieldPermissions,
   useLiveFieldMerge,
   usePermission,
+  useResetWhenSaved,
   useVexMutation,
   useVisibleFields,
 } from "../../hooks";
@@ -48,6 +49,16 @@ import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
 import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
 import { useLivePreviewServerUrl } from "../../hooks/useLivePreviewServerUrl";
 import { DraftToolbar, VersionHistoryDropdown, type ViewedVersion } from "../drafts";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 import { applyVexFieldErrors, getVexErrorMessage } from "../../lib/errors";
 import { toast } from "sonner";
 
@@ -159,6 +170,22 @@ function CollectionEditForm(
   const { collection, currentDocument, activeDocumentId, setActiveDocumentId } = props;
 
   const [viewedVersion, setViewedVersion] = useState<ViewedVersion | null>(null);
+  const [confirmingUnpublish, setConfirmingUnpublish] = useState(false);
+  // Loaded only while the unpublish dialog is open: enough of the version
+  // timeline to say which version will be promoted (the server re-derives the
+  // same answer authoritatively).
+  const { data: unpublishVersions } = useQuery({
+    ...convexQuery(vexConvexApi.versions.listVersions, {
+      collection: collection.slug,
+      id: activeDocumentId,
+    }),
+    enabled: confirmingUnpublish,
+  });
+  const publishedTimeline = (unpublishVersions ?? [])
+    .filter((row) => row.status === "published" && row.publishedAt !== null)
+    .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
+  const unpublishCurrent = publishedTimeline[0];
+  const unpublishTarget = publishedTimeline[1];
   // Passed as the form's `document` (not `form.reset(snapshot)`): TanStack re-applies
   // `defaultValues` from props each render while untouched, which would undo a reset.
   const formDocument: VexDocument = viewedVersion
@@ -192,9 +219,13 @@ function CollectionEditForm(
   const { mutateAsync: unpublishMutation, isPending: isUnpublishing } = useVexMutation({
     collection: collection.slug,
     // The published row is what's currently loaded whenever Unpublish is
-    // enabled — the toolbar disables it while a draft exists (edit 4 below) —
-    // so `currentDocument` IS the "before" state this purges as a delete.
-    getChanges: () => [{ before: currentDocument }],
+    // enabled. With an earlier published version to promote, the page stays
+    // live (same paths, older content) — purge as an update; with none, the
+    // document goes offline — purge as a delete.
+    getChanges: () =>
+      unpublishTarget !== undefined
+        ? [{ before: currentDocument, after: currentDocument }]
+        : [{ before: currentDocument }],
     mutationFn: vexConvexApi.versions.unpublish,
     operation: "unpublish",
   });
@@ -224,15 +255,16 @@ function CollectionEditForm(
    */
   async function handlePublish(): Promise<void> {
     try {
+      const changes = changedValues(form);
       const publishedId = await publishMutation({
         collection: collection!.slug,
         id: activeDocumentId,
-        data: changedValues(form),
+        data: changes,
         version: viewedVersion?.version,
       });
       setActiveDocumentId(publishedId);
       setViewedVersion(null);
-      form.reset();
+      resetWhenSaved(changes);
     } catch (error) {
       applyVexFieldErrors(form, error);
     }
@@ -248,7 +280,9 @@ function CollectionEditForm(
   async function handleUnpublish(): Promise<void> {
     try {
       await unpublishMutation({ collection: collection!.slug, id: activeDocumentId });
+      setConfirmingUnpublish(false);
     } catch (error) {
+      setConfirmingUnpublish(false);
       // Step 11 rejects while a draft row exists; `isDraftDoc` already
       // disables the calling button client-side, but a draft created in
       // another tab between render and click still surfaces as a rejected
@@ -280,15 +314,16 @@ function CollectionEditForm(
    */
   async function handleSaveDraft(): Promise<void> {
     try {
+      const changes = changedValues(form);
       const draftId = await saveDraftMutation({
         collection: collection!.slug,
         id: activeDocumentId,
-        data: changedValues(form),
+        data: changes,
         ...restoredFrom,
       });
       setActiveDocumentId(draftId);
       setViewedVersion(null);
-      form.reset();
+      resetWhenSaved(changes);
     } catch (error) {
       toast.error("Save draft failed", { description: getVexErrorMessage(error) });
     }
@@ -312,7 +347,7 @@ function CollectionEditForm(
         collection: collection.slug,
         data: changes,
       });
-      form.reset();
+      resetWhenSaved(changes);
     },
   });
 
@@ -321,6 +356,9 @@ function CollectionEditForm(
     document: formDocument,
     fieldKeys: readableFieldKeys,
   });
+
+  // Post-save resets wait for the live row to reflect the save — see the hook.
+  const resetWhenSaved = useResetWhenSaved({ form, document: currentDocument });
 
   // A versioned collection's editor writes drafts, never the published row,
   // so every edit affordance — the field inputs, the field-level map, and the
@@ -359,9 +397,7 @@ function CollectionEditForm(
       setActiveDocumentId(draftId);
       setViewedVersion(null);
       // Keystrokes typed during the save stay dirty for autosave's follow-up save.
-      if (CONSTRAINT_COMPARATORS.eq(changedValues(form), changes)) {
-        form.reset();
-      }
+      resetWhenSaved(changes);
     },
     enabled: isVersioned && collection.versions.autosave.enabled && canEdit,
   });
@@ -481,36 +517,40 @@ function CollectionEditForm(
           selector={(state) => state.isDefaultValue}
           children={(isDefaultValue) => (
             <div className="flex flex-wrap items-center gap-2">
-              <RevalidateButton collection={collection.slug} doc={currentDocument} />
-              {livePreview && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={previewPanel.toggle}
-                  icon={isSplit ? "Eye" : "EyeOff"}
-                >
-                  Preview
-                </Button>
-              )}
               {isVersioned ? (
                 <DraftToolbar
                   status={isDraftDoc ? "draft" : "published"}
                   saveDraft={{
                     onClick: handleSaveDraft,
                     isPending: isSavingDraft,
-                    disabled: !canEdit || isDefaultValue,
+                    // Viewing an old version: Save Draft restores it as the
+                    // current draft even with no edits on top.
+                    disabled: !canEdit || (viewedVersion === null && isDefaultValue),
                   }}
                   publish={{
                     onClick: handlePublish,
                     isPending: isPublishing,
-                    disabled: !canPublish || matchesPublished,
+                    // Viewing an old version: Publish re-promotes it even when
+                    // its content matches the live published document.
+                    disabled: !canPublish || (viewedVersion === null && matchesPublished),
                   }}
                   unpublish={{
-                    onClick: handleUnpublish,
+                    onClick: () => setConfirmingUnpublish(true),
                     isPending: isUnpublishing,
                     disabled: !canUnpublish || isDraftDoc || !isDefaultValue,
                   }}
                 >
+                  <RevalidateButton collection={collection.slug} doc={currentDocument} />
+                  {livePreview && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={previewPanel.toggle}
+                      icon={isSplit ? "Eye" : "EyeOff"}
+                    >
+                      Preview
+                    </Button>
+                  )}
                   <VersionHistoryDropdown
                     target={{
                       collection: collection.slug,
@@ -520,10 +560,24 @@ function CollectionEditForm(
                     viewingVersion={viewedVersion?.version ?? null}
                     onViewVersion={setViewedVersion}
                     hasUnsavedChanges={!isDefaultValue}
+                    activeVersion={
+                      (currentDocument as { vex_activeVersion?: number }).vex_activeVersion ?? null
+                    }
                   />
                 </DraftToolbar>
               ) : (
                 <>
+                  <RevalidateButton collection={collection.slug} doc={currentDocument} />
+                  {livePreview && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={previewPanel.toggle}
+                      icon={isSplit ? "Eye" : "EyeOff"}
+                    >
+                      Preview
+                    </Button>
+                  )}
                   <Button
                     type="submit"
                     className="transition-all duration-300"
@@ -617,6 +671,42 @@ function CollectionEditForm(
           onClose={previewPanel.toggle}
         />
       )}
+      <AlertDialog
+        open={confirmingUnpublish}
+        onOpenChange={(open) => {
+          if (!open) setConfirmingUnpublish(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Unpublish{unpublishCurrent ? ` version ${unpublishCurrent.version}` : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {unpublishVersions === undefined
+                ? "Checking which version will take its place…"
+                : unpublishTarget
+                  ? `The document will revert to version ${unpublishTarget.version}` +
+                    (unpublishTarget.publishedAt !== null
+                      ? ` (published ${new Date(unpublishTarget.publishedAt).toLocaleString()})`
+                      : "") +
+                    `.${unpublishCurrent ? ` Version ${unpublishCurrent.version} becomes a draft and loses its published timestamp.` : ""}`
+                  : "No earlier published version exists — the document will go offline and become a draft."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={unpublishVersions === undefined || isUnpublishing}
+              onClick={() => {
+                void handleUnpublish();
+              }}
+            >
+              Unpublish
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppForm>
   );
 }

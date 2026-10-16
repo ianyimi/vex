@@ -82,11 +82,12 @@ export const ADMIN_FIELDS = {
     validator: "v.array(\nv.string()\n)",
     defaultValue: undefined,
   },
-  // richtext: {
-  //   type: "richtext",
-  //   validator: "v.any()",
-  //   defaultValue: {},
-  // },
+  richtext: {
+    type: "richtext",
+    interfaceType: "RichTextDocument",
+    validator: "v.array(\nv.any()\n)",
+    defaultValue: [],
+  },
 } as const;
 /** Union of all supported field type name strings (e.g. `"text"` | `"number"` | `"checkbox"` | ...). */
 export type AdminFieldType = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["type"];

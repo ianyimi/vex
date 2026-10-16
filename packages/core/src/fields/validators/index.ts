@@ -12,6 +12,7 @@ import { arrayFieldToValidator } from "../array";
 import { groupFieldToValidator } from "../group";
 import { blocksFieldToValidator } from "../blocks";
 import { uploadFieldToValidator } from "../upload";
+import { richTextFieldToValidator } from "../richtext";
 
 /**
  * Converts any field definition to its Convex schema validator string.
@@ -63,6 +64,8 @@ export function adminFieldToValidator<TFieldMeta extends {} = {}>(props: {
       return blocksFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.upload.type:
       return uploadFieldToValidator({ field: props.field });
+    case ADMIN_FIELDS.richtext.type:
+      return richTextFieldToValidator({ field: props.field });
     default: {
       const unhandled: never = props.field;
       throw new Error(

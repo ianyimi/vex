@@ -60,6 +60,7 @@ export interface VexVersionDocument extends VexDocument {
   [VERSION_SYSTEM_FIELDS.status.slug]: VexVersionStatus;
   [VERSION_SYSTEM_FIELDS.publishedId.slug]?: string;
   [VERSION_SYSTEM_FIELDS.publishedAt.slug]?: number;
+  [VERSION_SYSTEM_FIELDS.activeVersion.slug]?: number;
 }
 
 /**

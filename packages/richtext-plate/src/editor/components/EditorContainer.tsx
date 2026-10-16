@@ -4,8 +4,6 @@ import type { ReactNode } from "react";
 
 interface EditorContainerProps {
   children: ReactNode;
-  label?: string;
-  description?: string;
 }
 
 /**
@@ -84,27 +82,16 @@ const editorStyles = `
  * Wrapper container for the rich text editor.
  * Uses CSS variables to match the host application's theme.
  *
- * @returns The labeled, styled wrapper containing the editor children.
+ * Renders no label or description: the host field input (`@vexcms/react`'s
+ * richtext `Input`) owns that chrome, like every other field type, so
+ * rendering it here too would show it twice.
+ *
+ * @returns The styled wrapper containing the editor children.
  */
-export function EditorContainer({
-  children,
-  label,
-  description,
-}: EditorContainerProps) {
+export function EditorContainer({ children }: EditorContainerProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <style dangerouslySetInnerHTML={{ __html: editorStyles }} />
-      {label && (
-        <label
-          style={{
-            fontSize: 14,
-            fontWeight: 500,
-            color: "var(--foreground)",
-          }}
-        >
-          {label}
-        </label>
-      )}
       <div
         className="vex-editor-root"
         style={{
@@ -115,17 +102,6 @@ export function EditorContainer({
       >
         {children}
       </div>
-      {description && (
-        <p
-          style={{
-            fontSize: 12,
-            color: "var(--muted-foreground)",
-            margin: 0,
-          }}
-        >
-          {description}
-        </p>
-      )}
     </div>
   );
 }

@@ -72,6 +72,12 @@ export interface VersionHistoryDropdownProps {
   hasDraft: boolean;
   /** The version shown in the edit form, or `null` for the live document. */
   viewingVersion: number | null;
+  /**
+   * The live row's `vex_activeVersion` pointer — which history row the
+   * document (or its draft) currently mirrors. `null`/`undefined` falls back
+   * to the newest row, for documents written before the pointer existed.
+   */
+  activeVersion?: number | null;
   /** Shows a version in the edit form, or `null` to return to the live document. Never saves. */
   onViewVersion: (view: ViewedVersion | null) => void;
   /** Whether the edit form has unsaved changes; switching versions then asks to discard them first. */
@@ -220,8 +226,11 @@ export function VersionHistoryDropdown(props: VersionHistoryDropdownProps) {
       (latest, row) => (latest && (latest.publishedAt ?? 0) >= (row.publishedAt ?? 0) ? latest : row),
       undefined,
     )?.version;
-  const liveVersion = props.hasDraft ? rows[0]?.version : (publishedVersion ?? rows[0]?.version);
-  const activeDraftVersion = props.hasDraft ? rows[0]?.version : undefined;
+  const pointer = props.activeVersion ?? undefined;
+  const liveVersion = props.hasDraft
+    ? (pointer ?? rows[0]?.version)
+    : (pointer ?? publishedVersion ?? rows[0]?.version);
+  const activeDraftVersion = props.hasDraft ? (pointer ?? rows[0]?.version) : undefined;
   const shownVersion = props.viewingVersion ?? liveVersion;
 
   return (

@@ -40,6 +40,7 @@
     "media-and-scaffold-fixes",
     "media-geturl-resolves-media-collections",
     "react-source-use-client-directive",
+    "richtext-field-and-unpublish-promotion",
     "secure-session-cookie-prefix",
     "select-scroll-lock-and-admin-gate",
     "seo-prerendering-and-revalidation",

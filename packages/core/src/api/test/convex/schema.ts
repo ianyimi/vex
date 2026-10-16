@@ -31,6 +31,7 @@ const schema = defineSchema({
     // pre-existing suite that inserts plain posts stays valid.
     vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
     vex_publishedAt: v.optional(v.number()),
+    vex_activeVersion: v.optional(v.number()),
     vex_publishedId: v.optional(v.id("posts")),
   })
     .searchIndex("search_title", { searchField: "title" })
@@ -53,6 +54,7 @@ const schema = defineSchema({
     organization: v.optional(v.array(v.id("organizations"))),
     vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
     vex_publishedAt: v.optional(v.number()),
+    vex_activeVersion: v.optional(v.number()),
     vex_publishedId: v.optional(v.id("posts")),
   })
     .searchIndex("search_name", { searchField: "name" })
@@ -78,6 +80,7 @@ const schema = defineSchema({
     data: v.any(),
     vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
     vex_publishedAt: v.optional(v.number()),
+    vex_activeVersion: v.optional(v.number()),
     vex_publishedId: v.optional(v.id("vex_globals")),
   })
     .index("by_slug", ["slug"])

@@ -22,6 +22,7 @@ import {
   useFieldsForm,
   useLiveFieldMerge,
   usePermission,
+  useResetWhenSaved,
   useVexMutation,
   useVisibleFields,
 } from "../../hooks";
@@ -41,6 +42,16 @@ import { usePreservedScrollTop } from "../../hooks/usePreservedScrollTop";
 import { LivePreviewPanel, resolveLivePreviewUrl } from "../livePreview/LivePreviewPanel";
 import { useLivePreviewServerUrl } from "../../hooks/useLivePreviewServerUrl";
 import { DraftToolbar, VersionHistoryDropdown, type ViewedVersion } from "../drafts";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 import { applyVexFieldErrors, getVexErrorMessage } from "../../lib/errors";
 import { toast } from "sonner";
 
@@ -86,6 +97,17 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   const hasDrafts = global.versions.drafts;
 
   const [viewedVersion, setViewedVersion] = useState<ViewedVersion | null>(null);
+  const [confirmingUnpublish, setConfirmingUnpublish] = useState(false);
+  // Loaded only while the unpublish dialog is open — see CollectionEditView.
+  const { data: unpublishVersions } = useQuery({
+    ...convexQuery(vexConvexApi.versions.listVersions, { global: global.slug }),
+    enabled: confirmingUnpublish,
+  });
+  const publishedTimeline = (unpublishVersions ?? [])
+    .filter((row) => row.status === "published" && row.publishedAt !== null)
+    .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
+  const unpublishCurrent = publishedTimeline[0];
+  const unpublishTarget = publishedTimeline[1];
   const formDocument = viewedVersion ? { _id: globalDoc?._id, ...viewedVersion.snapshot } : globalDoc;
   const restoredFrom = viewedVersion ? { restoredFrom: viewedVersion.version } : {};
 
@@ -116,7 +138,12 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   });
   const { mutateAsync: unpublishAsync, isPending: isUnpublishing } = useVexMutation({
     collection: global.slug,
-    getChanges: () => (globalDoc ? [{ before: globalDoc }] : []),
+    getChanges: () =>
+      globalDoc
+        ? unpublishTarget !== undefined
+          ? [{ before: globalDoc, after: globalDoc }]
+          : [{ before: globalDoc }]
+        : [],
     mutationFn: vexConvexApi.versions.unpublish,
     operation: "unpublish",
   });
@@ -134,7 +161,8 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     try {
       await publishMutation({ global: global!.slug, data, version: viewedVersion?.version });
       setViewedVersion(null);
-      form.reset();
+      if (globalDoc) resetWhenSaved(data);
+      else form.reset();
     } catch (error) {
       applyVexFieldErrors(form, error);
     }
@@ -151,6 +179,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
    */
   async function handleUnpublish() {
     await unpublishAsync({ global: global!.slug });
+    setConfirmingUnpublish(false);
     // On success, `globalDoc.vex_status` becomes `"draft"` once the `get`
     // query refetches — Publish enables, Unpublish disables.
   }
@@ -176,7 +205,8 @@ export function GlobalEditView(props: GlobalEditViewProps) {
       const data = globalDoc ? changedValues(form) : (form.state.values as Record<string, unknown>);
       await saveDraftMutation({ global: global!.slug, data, ...restoredFrom });
       setViewedVersion(null);
-      form.reset();
+      if (globalDoc) resetWhenSaved(data);
+      else form.reset();
     } catch (error) {
       toast.error("Save draft failed", { description: getVexErrorMessage(error) });
     }
@@ -208,7 +238,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
       const changes = changedValues(form);
       if (Object.keys(changes).length === 0) return;
       await mutateAsync({ slug: global.slug, data: changes });
-      form.reset();
+      resetWhenSaved(changes);
     },
   });
 
@@ -217,6 +247,9 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     document: formDocument,
     fieldKeys: readableFieldKeys,
   });
+
+  // Post-save resets wait for the live row to reflect the save — see the hook.
+  const resetWhenSaved = useResetWhenSaved({ form, document: globalDoc });
 
   const canEdit = usePermission({
     resource: global.slug,
@@ -243,9 +276,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
       await saveDraftMutation({ global: global.slug, data: changes, ...restoredFrom });
       setViewedVersion(null);
       // Keystrokes typed during the save stay dirty for autosave's follow-up save.
-      if (CONSTRAINT_COMPARATORS.eq(changedValues(form), changes)) {
-        form.reset();
-      }
+      resetWhenSaved(changes);
     },
     enabled: hasDrafts && global.versions.autosave.enabled && canEdit,
   });
@@ -374,17 +405,24 @@ export function GlobalEditView(props: GlobalEditViewProps) {
                   saveDraft={{
                     onClick: handleSaveDraft,
                     isPending: isSavingDraft,
-                    disabled: isDefaultValue || !canEdit,
+                    // Viewing an old version: Save Draft restores it as the
+                    // current draft even with no edits on top.
+                    disabled: !canEdit || (viewedVersion === null && isDefaultValue),
                   }}
                   publish={{
                     onClick: handlePublish,
                     isPending: isPublishing,
-                    disabled: !canPublish || (!globalDoc && isDefaultValue) || matchesPublished,
+                    // Viewing an old version: Publish re-promotes it even when
+                    // its content matches the live published global.
+                    disabled:
+                      !canPublish ||
+                      (viewedVersion === null &&
+                        ((!globalDoc && isDefaultValue) || matchesPublished)),
                   }}
                   unpublish={
                     globalDoc
                       ? {
-                          onClick: handleUnpublish,
+                          onClick: () => setConfirmingUnpublish(true),
                           isPending: isUnpublishing,
                           disabled: !canUnpublish || isDraftDoc || !isDefaultValue,
                         }
@@ -397,6 +435,10 @@ export function GlobalEditView(props: GlobalEditViewProps) {
                     viewingVersion={viewedVersion?.version ?? null}
                     onViewVersion={setViewedVersion}
                     hasUnsavedChanges={!isDefaultValue}
+                    activeVersion={
+                      (globalDoc as { vex_activeVersion?: number } | undefined)?.vex_activeVersion ??
+                      null
+                    }
                   />
                 </DraftToolbar>
               ) : (
@@ -484,6 +526,42 @@ export function GlobalEditView(props: GlobalEditViewProps) {
           onClose={previewPanel.toggle}
         />
       )}
+      <AlertDialog
+        open={confirmingUnpublish}
+        onOpenChange={(open) => {
+          if (!open) setConfirmingUnpublish(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Unpublish{unpublishCurrent ? ` version ${unpublishCurrent.version}` : ""}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {unpublishVersions === undefined
+                ? "Checking which version will take its place…"
+                : unpublishTarget
+                  ? `The global will revert to version ${unpublishTarget.version}` +
+                    (unpublishTarget.publishedAt !== null
+                      ? ` (published ${new Date(unpublishTarget.publishedAt).toLocaleString()})`
+                      : "") +
+                    `.${unpublishCurrent ? ` Version ${unpublishCurrent.version} becomes a draft and loses its published timestamp.` : ""}`
+                  : "No earlier published version exists — the global will go offline and become a draft."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={unpublishVersions === undefined || isUnpublishing}
+              onClick={() => {
+                void handleUnpublish();
+              }}
+            >
+              Unpublish
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppForm>
   );
 }

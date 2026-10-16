@@ -735,6 +735,12 @@ function Separator() {
 
 interface ToolbarProps {
   features: VexEditorFeature[];
+  /**
+   * Extra controls appended inside the toolbar's own wrapping flex container
+   * (e.g. the image button), so they wrap with the button groups instead of
+   * sitting beside the whole toolbar on a row of their own.
+   */
+  trailing?: ReactNode;
 }
 
 const featureSet = (features: VexEditorFeature[]) =>
@@ -748,7 +754,7 @@ const featureSet = (features: VexEditorFeature[]) =>
  * @returns The toolbar with its enabled button groups, or `null` when no
  *   feature enables any group.
  */
-export function Toolbar({ features }: ToolbarProps) {
+export function Toolbar({ features, trailing }: ToolbarProps) {
   const enabled = featureSet(features);
 
   const hasMarks =
@@ -770,7 +776,7 @@ export function Toolbar({ features }: ToolbarProps) {
     enabled.has("table") ||
     enabled.has("horizontalRule");
 
-  if (!hasMarks && !hasBlocks && !hasLists && !hasInserts) {
+  if (!hasMarks && !hasBlocks && !hasLists && !hasInserts && !trailing) {
     return null;
   }
 
@@ -843,6 +849,7 @@ export function Toolbar({ features }: ToolbarProps) {
           {group}
         </Fragment>
       ))}
+      {trailing}
     </div>
     </>
   );

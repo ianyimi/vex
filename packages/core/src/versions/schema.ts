@@ -47,6 +47,7 @@ export function versionFieldsToVexSchema(props: { tableName: string }): {
       `\t${VERSION_SYSTEM_FIELDS.status.slug}: v.optional(v.union(v.literal("${VERSION_STATUSES.draft.key}"), v.literal("${VERSION_STATUSES.published.key}"))),`,
       `\t${VERSION_SYSTEM_FIELDS.publishedAt.slug}: v.optional(v.number()),`,
       `\t${VERSION_SYSTEM_FIELDS.publishedId.slug}: v.optional(v.id("${props.tableName}")),`,
+      `\t${VERSION_SYSTEM_FIELDS.activeVersion.slug}: v.optional(v.number()),`,
     ],
     indexes: [
       `\t.index("by_status", ["${VERSION_SYSTEM_FIELDS.status.slug}"])`,

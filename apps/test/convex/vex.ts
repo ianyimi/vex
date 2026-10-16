@@ -26,7 +26,7 @@ export const { mutation: vexMutation, internalMutation: vexInternalMutation } = 
   internalMutation,
 });
 
-export const { find, get, search, create, update, remove } = collectionsApi({
+export const { find, get, search, create, update, remove, livePreviewUrl } = collectionsApi({
   config,
   getAuth,
   query,

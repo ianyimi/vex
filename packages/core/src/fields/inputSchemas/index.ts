@@ -12,6 +12,7 @@ import { arrayFieldToInputSchema } from "../array";
 import { groupFieldToInputSchema } from "../group";
 import { blocksFieldToInputSchema } from "../blocks";
 import { uploadFieldToInputSchema } from "../upload";
+import { richTextFieldToInputSchema } from "../richtext";
 
 /**
  * Converts any field definition to its form input schema using zod.
@@ -86,6 +87,8 @@ export function adminFieldToInputSchema(props: {
       });
     case ADMIN_FIELDS.upload.type:
       return uploadFieldToInputSchema({ field: effectiveField });
+    case ADMIN_FIELDS.richtext.type:
+      return richTextFieldToInputSchema({ field: effectiveField });
     default: {
       const unhandled: never = effectiveField;
       throw new Error(

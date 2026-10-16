@@ -1,6 +1,7 @@
 import { betterAuthCollections } from "@vexcms/better-auth/client";
 import { defineConfig } from "@vexcms/core";
 import { uploadFile } from "@vexcms/file-storage-convex/client";
+import { plateEditor } from "@vexcms/richtext-plate";
 
 import {
   articles,
@@ -40,6 +41,7 @@ import { siteSettings } from "./vexcms/globals/siteSettings";
 const vexConfig = defineConfig({
   access,
   authCollections: betterAuthCollections(authSchema),
+  editor: plateEditor(),
   admin: {
     sidebar: {
       side: "right",

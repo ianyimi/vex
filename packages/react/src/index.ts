@@ -51,6 +51,7 @@ export type {
 import type {
   CollectionSlug,
   RelationshipFieldInput as CoreRelationshipFieldInput,
+  VexEditorAdapter as CoreVexEditorAdapter,
   RelationshipField as CoreRelationshipField,
   CollectionConfigInput as CoreCollectionConfigInput,
   CollectionConfig as CoreCollectionConfig,
@@ -239,6 +240,17 @@ export type CollectionConfig<
   TCollectionSlug extends CollectionSlug = CollectionSlug,
   TFieldSlug extends CollectionSlug = CollectionSlug,
 > = CoreCollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, ReactHKT>;
+
+/**
+ * Root editor adapter type with the React component slot bound.
+ *
+ * Identical to `@vexcms/core`'s `VexEditorAdapter` except `editorComponent`
+ * and `renderComponent` are typed as `ComponentType<...>` instead of an
+ * opaque `ApplyComponent<ComponentHKT, _>`. `plateEditor()` from
+ * `@vexcms/richtext-plate` returns this type; `vex.config.ts` sets
+ * `editor: plateEditor()`.
+ */
+export type VexEditorAdapter = CoreVexEditorAdapter<ReactHKT>;
 
 /**
  * Defines a relationship field with React-typed component slots.

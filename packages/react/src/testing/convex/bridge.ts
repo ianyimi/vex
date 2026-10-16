@@ -94,6 +94,24 @@ const QUERY_HANDLERS: Record<string, FakeQueryHandler> = {
     const collection = resolveTable(args);
     return paginationOpts ? find({ ctx, collection, paginationOpts }) : find({ ctx, collection });
   },
+  // The unpublish confirmation dialog loads the version timeline to say which
+  // version will be promoted; an empty list reads as "none" (go offline).
+  "vex/versions:listVersions": async (ctx, args) => {
+    const documentId = (args.id ?? args.global) as string;
+    const rows = await ctx.db.query("vex_versions").collect();
+    return rows
+      .filter((row) => row.documentId === documentId)
+      .sort((a, b) => (b.version as number) - (a.version as number))
+      .map((row) => ({
+        version: row.version,
+        status: row.status,
+        createdAt: row._creationTime,
+        createdBy: row.createdBy ?? null,
+        publishedAt: row.publishedAt ?? null,
+        parentVersion: row.parentVersion ?? null,
+        restoredFrom: row.restoredFrom ?? null,
+      }));
+  },
 };
 
 /**
