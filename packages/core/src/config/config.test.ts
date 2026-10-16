@@ -5,6 +5,7 @@ import {
   defineCollection,
   text,
   upload,
+  richtext,
   DEFAULT_LIVE_PREVIEW_BREAKPOINTS,
 } from "../";
 import type {
@@ -12,6 +13,7 @@ import type {
   VexAuthAdapter,
   VexRouteMapper,
   VexStorageAdapter,
+  VexEditorAdapter,
 } from "../";
 import { VexStorageConfigError } from "../media";
 import { VexAuthConfigError } from "../auth/types";
@@ -162,6 +164,44 @@ describe("defineConfig with media collections", () => {
       }),
     ).toThrow(VexStorageConfigError);
   });
+
+  it("throws when a richtext field's mediaCollectionSlug is not declared", () => {
+    expect(() =>
+      defineConfig({
+        collections: [
+          defineCollection({
+            slug: "posts",
+            fields: { body: richtext({ mediaCollectionSlug: "images" }) },
+          }),
+        ],
+      }),
+    ).toThrow(VexStorageConfigError);
+  });
+
+  it("accepts a richtext field whose mediaCollectionSlug is declared", () => {
+    const config = defineConfig({
+      mediaCollections: [makeMockMediaCollection("images")],
+      collections: [
+        defineCollection({
+          slug: "posts",
+          fields: { body: richtext({ mediaCollectionSlug: "images" }) },
+        }),
+      ],
+    });
+    expect(config.mediaCollections[0].slug).toBe("images");
+  });
+
+  it("accepts a richtext field without mediaCollectionSlug and no media collections", () => {
+    const config = defineConfig({
+      collections: [
+        defineCollection({
+          slug: "posts",
+          fields: { body: richtext() },
+        }),
+      ],
+    });
+    expect(config.mediaCollections).toEqual([]);
+  });
 });
 
 // ── Revalidate defaults ────────────────────────────────────────────────────
@@ -180,6 +220,23 @@ describe("defineConfig — revalidate defaults", () => {
 
   it("leaves routes undefined when the project never configured it", () => {
     expect(defineConfig({}).routes).toBeUndefined();
+  });
+});
+
+describe("defineConfig — editor", () => {
+  it("passes a configured editor adapter through unchanged", () => {
+    const editor: VexEditorAdapter = {
+      type: "plate",
+      editorComponent: () => null,
+      renderComponent: () => null,
+    };
+    const config = defineConfig({ editor });
+    expect(config.editor).toBe(editor);
+  });
+
+  it("leaves editor undefined when omitted", () => {
+    const config = defineConfig();
+    expect(config.editor).toBeUndefined();
   });
 });
 

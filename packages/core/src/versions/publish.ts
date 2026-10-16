@@ -178,11 +178,16 @@ export async function publishShared<DataModel extends GenericDataModel>(props: {
     await props.ctx.db.delete(draftRow._id as never);
   }
 
+  // Publishing a saved draft re-promotes its existing history row; anything
+  // else records one new row. Either way the row's number becomes the live
+  // row's active-version pointer.
   const publishesSavedDraft = draftRow !== null && Object.keys(data).length === 0;
+  let activeVersion: number;
   if (publishesSavedDraft && previous !== null) {
     await markVersionPublished({ ctx: props.ctx, version: previous, publishedAt: now });
+    activeVersion = previous.version;
   } else {
-    await createVersion({
+    activeVersion = await createVersion({
       ctx: props.ctx,
       collection: props.rows.historyCollection,
       documentId: props.rows.documentId,
@@ -193,6 +198,7 @@ export async function publishShared<DataModel extends GenericDataModel>(props: {
       parentVersion: previous?.version,
     });
   }
+  await props.ctx.db.patch(rowId as never, { vex_activeVersion: activeVersion } as never);
   return String(rowId);
 }
 
@@ -255,8 +261,12 @@ async function publishFromVersion<DataModel extends GenericDataModel>(props: {
     await props.ctx.db.delete(props.rows.draftRow._id as never);
   }
 
+  // Verbatim republish re-promotes the OLD version row in place (restoring
+  // its published status and stamping a fresh publishedAt — it becomes the
+  // current version with no new history row); edits on top record one row.
+  let activeVersion: number;
   if (Object.keys(data).length > 0) {
-    await createVersion({
+    activeVersion = await createVersion({
       ctx: props.ctx,
       collection: props.rows.historyCollection,
       documentId: props.rows.documentId,
@@ -272,7 +282,9 @@ async function publishFromVersion<DataModel extends GenericDataModel>(props: {
     });
   } else {
     await markVersionPublished({ ctx: props.ctx, version: base, publishedAt: now });
+    activeVersion = base.version;
   }
+  await props.ctx.db.patch(targetRow._id as never, { vex_activeVersion: activeVersion } as never);
   return String(targetRow._id);
 }
 

@@ -8,7 +8,7 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 
 import type { DataModel, Id } from "@convex/_generated/dataModel"
-import type { VexDocument, VexDocumentGlobal } from "@vexcms/core"
+import type { VexDocument, VexDocumentGlobal, RichTextDocument } from "@vexcms/core"
 
 export type HeroBlock = {
   blockType: "hero"
@@ -649,9 +649,9 @@ export interface Post extends VexDocument {
    */
   slug: string
   /**
-   * Free text — the field to edit when testing a plain draft save.
+   * Rich text — the field to edit when testing a plain draft save.
    */
-  body?: string
+  body?: RichTextDocument
   /**
    * Versioned target — publishing while this points at a draft must fail.
    */
@@ -1028,7 +1028,8 @@ declare module "@vexcms/core" {
         number: "updatedAt"
       }
       posts: {
-        text: "title" | "slug" | "body"
+        text: "title" | "slug"
+        richtext: "body"
         relationship: "relatedPost" | "relatedArticle"
         number: "updatedAt"
       }

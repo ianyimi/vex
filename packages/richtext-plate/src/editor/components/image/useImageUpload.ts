@@ -1,23 +1,25 @@
 "use client";
 
 import { useCallback } from "react";
+import type {
+  MediaCollectionSlug,
+  VexEditorComponentProps,
+} from "@vexcms/core";
 
 interface UseImageUploadProps {
-  mediaCollection?: string;
+  mediaCollectionSlug?: MediaCollectionSlug;
   generateUploadUrl?: () => Promise<string>;
-  createMediaDocument?: (props: {
-    collectionSlug: string;
-    fields: Record<string, unknown>;
-  }) => Promise<string>;
+  createMediaDocument?: VexEditorComponentProps["createMediaDocument"];
 }
 
-/** Result of a successful image upload — URL, media document id, and optional metadata. */
+/**
+ * Result of a successful image upload — the stored URL and media document id.
+ * Pixel dimensions are recorded on the media document itself, not here: an
+ * inserted image renders at its own size until the user resizes it.
+ */
 export interface UploadResult {
   url: string;
   mediaId: string;
-  alt?: string;
-  width?: number;
-  height?: number;
 }
 
 function getImageDimensions(file: File): Promise<{ width: number; height: number }> {
@@ -39,27 +41,32 @@ function getImageDimensions(file: File): Promise<{ width: number; height: number
 /**
  * Hook that provides a function to upload an image file to the media collection.
  *
- * @param props - Media collection slug and the upload URL / document creation
- *   callbacks used to perform the upload.
- * @returns `uploadFile` — the upload function, or `null` when `mediaCollection`,
- *   `generateUploadUrl`, and `createMediaDocument` are not all provided — and
- *   `isEnabled`, which reports whether uploads are configured.
+ * @param props - `mediaCollectionSlug` plus the upload URL / document creation
+ *   callbacks used to perform the upload. `createMediaDocument` resolves
+ *   `{ mediaId, url? }` — `url` is the stored file URL when the storage
+ *   adapter can resolve it at creation time.
+ * @returns `uploadFile` — the upload function, or `null` when
+ *   `mediaCollectionSlug`, `generateUploadUrl`, and `createMediaDocument` are
+ *   not all provided — and `isEnabled`, which reports whether uploads are
+ *   configured.
  */
 export function useImageUpload(props: UseImageUploadProps) {
-  const { mediaCollection, generateUploadUrl, createMediaDocument } = props;
+  const { mediaCollectionSlug, generateUploadUrl, createMediaDocument } = props;
 
-  const isEnabled = !!(mediaCollection && generateUploadUrl && createMediaDocument);
+  const isEnabled = !!(
+    mediaCollectionSlug &&
+    generateUploadUrl &&
+    createMediaDocument
+  );
 
   const uploadFile = useCallback(
-    async (file: File): Promise<UploadResult> => {
-      if (!mediaCollection || !generateUploadUrl || !createMediaDocument) {
+    async (file: File, options?: { alt?: string }): Promise<UploadResult> => {
+      if (!mediaCollectionSlug || !generateUploadUrl || !createMediaDocument) {
         throw new Error("Media collection not configured");
       }
 
-      // Get presigned upload URL
       const uploadUrl = await generateUploadUrl();
 
-      // Upload the file
       const uploadResponse = await fetch(uploadUrl, {
         method: "POST",
         body: file,
@@ -70,9 +77,10 @@ export function useImageUpload(props: UseImageUploadProps) {
         throw new Error(`Upload failed: ${uploadResponse.statusText}`);
       }
 
-      const { storageId } = (await uploadResponse.json()) as { storageId: string };
+      const { storageId } = (await uploadResponse.json()) as {
+        storageId: string;
+      };
 
-      // Get image dimensions if it's an image
       let width: number | undefined;
       let height: number | undefined;
       if (file.type.startsWith("image/")) {
@@ -85,33 +93,27 @@ export function useImageUpload(props: UseImageUploadProps) {
         }
       }
 
-      // Create media document
-      const documentId = await createMediaDocument({
-        collectionSlug: mediaCollection,
+      // `url` is the stored `src` the server computed at doc-creation time.
+      const { mediaId, url } = await createMediaDocument({
+        collectionSlug: mediaCollectionSlug,
         fields: {
           storageId,
           filename: file.name,
           mimeType: file.type,
           size: file.size,
-          url: "",
-          alt: "",
+          // Absent (not "") when the user gave none: the adapter then falls
+          // back to the filename, like the upload field's dropzone path.
+          alt: options?.alt || undefined,
           width: width ?? 0,
           height: height ?? 0,
         },
       });
 
-      // The URL gets resolved server-side, but we can create a temporary
-      // object URL for immediate display while the server URL resolves
-      const tempUrl = URL.createObjectURL(file);
-
-      return {
-        url: tempUrl,
-        mediaId: documentId,
-        width,
-        height,
-      };
+      // Blob URL only as a fallback for adapters that can't resolve a URL
+      // synchronously — it does not survive a reload.
+      return { url: url ?? URL.createObjectURL(file), mediaId };
     },
-    [mediaCollection, generateUploadUrl, createMediaDocument]
+    [mediaCollectionSlug, generateUploadUrl, createMediaDocument],
   );
 
   return { uploadFile: isEnabled ? uploadFile : null, isEnabled };

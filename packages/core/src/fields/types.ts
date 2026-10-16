@@ -10,6 +10,7 @@ import { ColorField } from "./color";
 import { RelationshipField } from "./relationship";
 import { ArrayField, ArrayType } from "./array";
 import { GroupField } from "./group";
+import { RichTextField } from "./richtext";
 import { BlocksField } from "./blocks";
 import { UploadField } from "./upload";
 import { GlobalConfig } from "../globals";
@@ -73,7 +74,8 @@ export type AdminField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> =
   | RelationshipField<VexResourceSlug, TFieldMeta>
   | UploadField<VexResourceSlug, TFieldMeta>
   | BlocksField<VexResourceSlug, TFieldMeta>
-  | GroupField<VexResourceSlug, TFieldMeta>;
+  | GroupField<VexResourceSlug, TFieldMeta>
+  | RichTextField<VexResourceSlug, TFieldMeta>;
 
 /**
  * Props passed to field input components rendered in the document edit form.

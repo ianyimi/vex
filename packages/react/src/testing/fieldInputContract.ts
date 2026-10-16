@@ -1,4 +1,10 @@
-import { type ComponentType, type ReactNode, createElement, useState } from "react";
+import {
+  type ChangeEvent,
+  type ComponentType,
+  type ReactNode,
+  createElement,
+  useState,
+} from "react";
 import { useForm } from "@tanstack/react-form";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
@@ -10,6 +16,10 @@ import {
   defineConfig,
   text,
   type AdminField,
+  type RichTextDocument,
+  type VexEditorAdapter,
+  type VexEditorComponentProps,
+  type VexRenderComponentProps,
   type CollectionConfig,
   type VexClientConfig,
 } from "@vexcms/core";
@@ -19,6 +29,7 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { VexConfigContext } from "../context/VexConfigContext";
 import { AppForm } from "../components/form/AppForm";
+import type { ReactHKT } from "../adapter";
 
 /**
  * The slice of TanStack Form's API the contract's assertions actually read.
@@ -105,6 +116,47 @@ const AppFormBoundary = AppForm as unknown as ComponentType<{
 }>;
 
 /**
+ * Minimal `VexEditorAdapter` mounted for every field under this shared
+ * contract suite via `stubClientConfig.editor`. Renders a single `<textarea>`
+ * holding the first text leaf's content — enough for `richtext`'s generic
+ * label/required/readOnly assertions (resolved through the field's own
+ * `role="group"` wrapper, like `array`/`blocks`/`upload`, never through this
+ * textarea's own identity) to exercise a real control instead of hitting the
+ * "missing `editor`" configuration-error branch every OTHER fixture here
+ * never triggers. `richtext/Input.test.tsx`'s own `extra` block drives the
+ * full node-array round trip through this same textarea directly, and
+ * separately asserts the configuration-error branch using its own
+ * editor-less config (not this one).
+ *
+ * @param props - The editor-component props the host field input supplies.
+ * @returns The stub textarea element.
+ */
+function StubRichTextEditor(props: VexEditorComponentProps) {
+  const firstChild = props.value[0]?.children[0];
+  const text = firstChild && "text" in firstChild ? firstChild.text : "";
+  return createElement("textarea", {
+    "aria-label": props.label ?? props.name,
+    disabled: props.readOnly,
+    placeholder: props.placeholder,
+    value: text,
+    onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
+      const next: RichTextDocument = [
+        { type: "p", children: [{ text: event.target.value }] },
+      ];
+      props.onChange(next);
+    },
+  });
+}
+
+/** Test-only `VexEditorAdapter` — {@link StubRichTextEditor} plus a plain-text `renderComponent`. Exported so `richtext/Input.test.tsx` can compose its own configs for the editor-present and editor-absent cases. */
+export const stubEditorAdapter: VexEditorAdapter<ReactHKT> = {
+  type: "stub",
+  editorComponent: StubRichTextEditor,
+  renderComponent: (props: VexRenderComponentProps) =>
+    createElement("span", null, JSON.stringify(props.content)),
+};
+
+/**
  * Stub client config every mounted field renders against.
  *
  * Load-bearing, not defensive: `UploadFieldInput` resolves its target media
@@ -120,6 +172,7 @@ const AppFormBoundary = AppForm as unknown as ComponentType<{
  * carries the upload fixture's `to` slug.
  */
 const stubClientConfig: VexClientConfig = defineConfig({
+  editor: stubEditorAdapter,
   collections: [
     defineCollection({
       slug: "documents",

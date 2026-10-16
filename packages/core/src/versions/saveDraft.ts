@@ -3,11 +3,11 @@ import { ConvexError } from "convex/values";
 
 import type { VexConfig } from "../config";
 import type { AccessCallOptions, VexApiAuth } from "../api/types";
-import { DRAFT_ACTIONS } from "../access";
+import { CONSTRAINT_COMPARATORS, DRAFT_ACTIONS } from "../access";
 import { prepareEdit } from "../api/prepareEdit";
 import type { CollectionOrGlobal } from "../types/utils";
 import { VERSION_STATUSES } from "./constants";
-import { createVersion, getLatestVersion, getVersion } from "./model";
+import { createVersion, getLatestVersion, getVersion, listVersions } from "./model";
 import { removeVexFields } from "./removeVexFields";
 import type { VersionedTargetRows } from "./resolveVersionedTarget";
 
@@ -58,14 +58,31 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
 
   if (draftRow === null) {
     if (publishedRow !== null) {
-      await createVersion({
+      // Snapshot the pre-edit published state the first time a draft branches
+      // off it — but only when history doesn't already hold that exact content
+      // as a published row (it always does once publish stamps every state;
+      // this write remains for legacy documents predating that invariant).
+      const publishedFields = props.rows.toUserFields(publishedRow);
+      const existing = await listVersions({
         ctx: props.ctx,
         collection: props.rows.historyCollection,
         documentId: props.rows.documentId,
-        status: VERSION_STATUSES.published.key,
-        snapshot: props.rows.toUserFields(publishedRow),
-        publishedAt: publishedRow.vex_publishedAt as number | undefined,
       });
+      const alreadySnapshotted = existing.some(
+        (row) =>
+          row.status === VERSION_STATUSES.published.key &&
+          CONSTRAINT_COMPARATORS.eq(row.snapshot, publishedFields),
+      );
+      if (!alreadySnapshotted) {
+        await createVersion({
+          ctx: props.ctx,
+          collection: props.rows.historyCollection,
+          documentId: props.rows.documentId,
+          status: VERSION_STATUSES.published.key,
+          snapshot: publishedFields,
+          publishedAt: publishedRow.vex_publishedAt as number | undefined,
+        });
+      }
     }
     const insertPayload = props.rows.buildDraftInsert(
       publishedRow ? props.rows.toUserFields(publishedRow) : {},
@@ -108,29 +125,39 @@ export async function saveDraftShared<DataModel extends GenericDataModel>(props:
       : props.rows.buildDraftPatch(draftRow, patch)) as never,
   );
 
-  const previous = await getLatestVersion({
-    ctx: props.ctx,
-    collection: props.rows.historyCollection,
-    documentId: props.rows.documentId,
-  });
-  const publishedAt =
-    (publishedRow?.vex_publishedAt as number | undefined) ??
-    (draftRow.vex_publishedAt as number | undefined);
+  // Restoring a version verbatim (restoredFrom set, no edits on top) makes
+  // THAT row the current draft: the active-version pointer moves to it and no
+  // new history row is written. Anything else records one draft row.
+  const restoresVerbatim = props.restoredFrom !== undefined && Object.keys(data).length === 0;
+  let activeVersion: number;
+  if (restoresVerbatim) {
+    activeVersion = props.restoredFrom as number;
+  } else {
+    const previous = await getLatestVersion({
+      ctx: props.ctx,
+      collection: props.rows.historyCollection,
+      documentId: props.rows.documentId,
+    });
+    const publishedAt =
+      (publishedRow?.vex_publishedAt as number | undefined) ??
+      (draftRow.vex_publishedAt as number | undefined);
 
-  await createVersion({
-    ctx: props.ctx,
-    collection: props.rows.historyCollection,
-    documentId: props.rows.documentId,
-    status: VERSION_STATUSES.draft.key,
-    snapshot: removeVexFields({ doc: transformedFields }),
-    createdBy:
-      typeof props.auth?.user?.["_id"] === "string"
-        ? (props.auth.user["_id"] as string)
-        : undefined,
-    parentVersion: props.restoredFrom ?? previous?.version,
-    restoredFrom: props.restoredFrom,
-    publishedAt,
-  });
+    activeVersion = await createVersion({
+      ctx: props.ctx,
+      collection: props.rows.historyCollection,
+      documentId: props.rows.documentId,
+      status: VERSION_STATUSES.draft.key,
+      snapshot: removeVexFields({ doc: transformedFields }),
+      createdBy:
+        typeof props.auth?.user?.["_id"] === "string"
+          ? (props.auth.user["_id"] as string)
+          : undefined,
+      parentVersion: props.restoredFrom ?? previous?.version,
+      restoredFrom: props.restoredFrom,
+      publishedAt,
+    });
+  }
+  await props.ctx.db.patch(draftRow._id as never, { vex_activeVersion: activeVersion } as never);
 
   return String(draftRow._id);
 }

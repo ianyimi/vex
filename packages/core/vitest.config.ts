@@ -2,6 +2,11 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
+    // Worker threads, never the default `forks`: fork workers outlive a crashed or
+    // interrupted vitest main process, and convex-test's real-setTimeout scheduler
+    // keeps those orphans spinning forever (~100% CPU, GBs of RAM each). Threads
+    // die with the main process.
+    pool: "threads",
     globals: true,
     // convex-test requires the edge-runtime VM for proper crypto/timer/module
     // semantics matching the real Convex runtime. See docs.convex.dev/testing.

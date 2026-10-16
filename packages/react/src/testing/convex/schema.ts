@@ -50,6 +50,20 @@ const schema = defineSchema({
     src: v.optional(v.string()),
     storageId: v.string(),
   }).searchIndex("search_filename", { searchField: "filename", filterFields: [] }),
+  // Minimal history table for the unpublish confirmation dialog's
+  // `vex:listVersions` fake (bridge.ts): an empty table reads as "no earlier
+  // published version", and seeded rows drive the promotion message.
+  vex_versions: defineTable({
+    collection: v.string(),
+    documentId: v.string(),
+    version: v.number(),
+    status: v.union(v.literal("draft"), v.literal("published")),
+    snapshot: v.any(),
+    createdBy: v.optional(v.string()),
+    parentVersion: v.optional(v.number()),
+    restoredFrom: v.optional(v.number()),
+    publishedAt: v.optional(v.number()),
+  }),
 });
 
 export default schema;

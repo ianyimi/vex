@@ -35,6 +35,8 @@ import {
   BlocksFieldCell,
   UploadFieldInput,
   UploadFieldCell,
+  RichTextFieldInput,
+  RichTextFieldCell,
 } from "./components";
 
 /**
@@ -117,6 +119,10 @@ export const reactAdapter: FrameworkAdapterInput<ReactHKT> = defineFrameworkAdap
     [ADMIN_FIELDS.upload.type]: {
       input: UploadFieldInput,
       cell: UploadFieldCell,
+    },
+    [ADMIN_FIELDS.richtext.type]: {
+      input: RichTextFieldInput,
+      cell: RichTextFieldCell,
     },
   },
   views: {

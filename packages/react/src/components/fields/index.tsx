@@ -26,6 +26,11 @@ import { ArrayFieldCell, ArrayFieldInput, arrayFieldToColumnDef } from "./array"
 import { GroupFieldCell, GroupFieldInput, groupFieldToColumnDef } from "./group";
 import { BlocksFieldCell, BlocksFieldInput, blocksFieldToColumnDef } from "./blocks";
 import { UploadFieldInput, UploadFieldCell, uploadFieldToColumnDef } from "./upload";
+import {
+  RichTextFieldCell,
+  RichTextFieldInput,
+  richTextFieldToColumnDef,
+} from "./richtext";
 
 export * from "./text";
 export * from "./number";
@@ -39,6 +44,7 @@ export * from "./array";
 export * from "./relationship";
 export * from "./group";
 export * from "./blocks";
+export * from "./richtext";
 
 /**
  * Maps every `AdminFieldType` string to its corresponding input component.
@@ -84,6 +90,9 @@ export const fieldInputComponents: Record<
     InputComponentProps<BaseFieldMeta, AdminField>
   >,
   [ADMIN_FIELDS.upload.type]: UploadFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
+  [ADMIN_FIELDS.richtext.type]: RichTextFieldInput as ComponentType<
     InputComponentProps<BaseFieldMeta, AdminField>
   >,
 };
@@ -180,6 +189,7 @@ export const fieldCellComponents: Record<
   [ADMIN_FIELDS.group.type]: GroupFieldCell as ComponentType<CellComponentProps<AdminField>>,
   [ADMIN_FIELDS.blocks.type]: BlocksFieldCell as ComponentType<CellComponentProps<AdminField>>,
   [ADMIN_FIELDS.upload.type]: UploadFieldCell as ComponentType<CellComponentProps<AdminField>>,
+  [ADMIN_FIELDS.richtext.type]: RichTextFieldCell as ComponentType<CellComponentProps<AdminField>>,
 };
 
 /**
@@ -352,6 +362,17 @@ export function getCollectionColumnDefs<
       case ADMIN_FIELDS.upload.type:
         columnDefs.push(
           uploadFieldToColumnDef<TData>({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
+      case ADMIN_FIELDS.richtext.type:
+        columnDefs.push(
+          richTextFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,

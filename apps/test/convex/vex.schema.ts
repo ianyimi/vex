@@ -233,6 +233,7 @@ export const pages = defineTable({
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   vex_publishedAt: v.optional(v.number()),
   vex_publishedId: v.optional(v.id("pages")),
+  vex_activeVersion: v.optional(v.number()),
 })
   .index("by_slug_title", ["slug", "title"])
   .index("by_slug", ["slug"])
@@ -480,13 +481,14 @@ export const comments = defineTable({
 export const posts = defineTable({
   title: v.string(),
   slug: v.string(),
-  body: v.optional(v.string()),
+  body: v.optional(v.array(v.any())),
   relatedPost: v.optional(v.array(v.id("posts"))),
   relatedArticle: v.optional(v.array(v.id("articles"))),
   updatedAt: v.optional(v.number()),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   vex_publishedAt: v.optional(v.number()),
   vex_publishedId: v.optional(v.id("posts")),
+  vex_activeVersion: v.optional(v.number()),
 })
   .index("by_slug", ["slug"])
   .index("by_relatedPost", ["relatedPost"])
@@ -662,6 +664,7 @@ export const vex_globals = defineTable({
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   vex_publishedAt: v.optional(v.number()),
   vex_publishedId: v.optional(v.id("vex_globals")),
+  vex_activeVersion: v.optional(v.number()),
 })
   .index("by_slug", ["slug"])
   .index("by_status", ["vex_status"])

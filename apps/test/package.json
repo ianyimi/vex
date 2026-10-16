@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
+    "vex:generate": "vex dev --once",
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
     "coverage": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run --coverage",
     "secret:create": "openssl rand -base64 32 | tr -d '\\n' | tee /dev/stderr | pbcopy && echo '\\n✓ Secret copied to clipboard'"
@@ -27,6 +28,7 @@
     "@vexcms/file-storage-convex": "workspace:*",
     "@vexcms/next": "workspace:*",
     "@vexcms/react": "workspace:*",
+    "@vexcms/richtext-plate": "workspace:*",
     "better-auth": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",

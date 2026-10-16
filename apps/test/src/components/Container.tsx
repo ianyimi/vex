@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 
-import { cn } from "@vexcms/react"
+import { cn } from "~/lib/utils"
 
 /**
  * The site's single container. Every block uses it, so the left edge of a

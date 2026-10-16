@@ -99,7 +99,7 @@ export async function create<
       });
     }
     const id = await args.ctx.db.insert(args.collection, insertData as never);
-    await createVersion({
+    const version = await createVersion({
       ctx: args.ctx,
       collection: args.collection,
       documentId: id,
@@ -107,6 +107,7 @@ export async function create<
       snapshot: removeVexFields({ doc: data }),
       publishedAt: insertData.vex_publishedAt,
     });
+    await args.ctx.db.patch(id as never, { vex_activeVersion: version } as never);
     return id;
   }
 

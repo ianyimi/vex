@@ -22,10 +22,19 @@ export const VERSION_SYSTEM_FIELDS = {
   publishedId: {
     slug: "vex_publishedId",
   },
+  /**
+   * The `vex_versions` row this live row currently mirrors — the pointer the
+   * admin's history dropdown marks "Active". Moved (never duplicated) by
+   * saveDraft/publish/unpublish, including promote-in-place paths that write
+   * no new history row.
+   */
+  activeVersion: {
+    slug: "vex_activeVersion",
+  },
 } as const;
 /**
  * Version system field slug, derived from {@link VERSION_SYSTEM_FIELDS}.
- * Resolves to `"vex_status" | "vex_publishedAt" | "vex_publishedId"`.
+ * Resolves to `"vex_status" | "vex_publishedAt" | "vex_publishedId" | "vex_activeVersion"`.
  */
 export type VersionSystemField =
   (typeof VERSION_SYSTEM_FIELDS)[keyof typeof VERSION_SYSTEM_FIELDS]["slug"];

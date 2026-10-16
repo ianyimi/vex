@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { VexRenderComponentProps } from "@vexcms/core";
 import { createStaticEditor, PlateStatic } from "platejs/static";
 import { BaseParagraphPlugin } from "platejs";

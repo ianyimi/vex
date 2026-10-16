@@ -691,3 +691,89 @@ it now would be speculative.
 
 **Detail.** Design Decision 11, `.agent/docs/specs/2026-09-20-versioning-drafts/spec.md`;
 assessed in the 2026-09-21 session.
+
+---
+
+## Richtext editor scroll position survives a refresh
+
+**What.** Remember each richtext field's scroll offset inside its editor box
+(`PlateEditorField`'s `maxHeight: 500; overflowY: auto` wrapper) in
+`localStorage`, restore it on load, and delete the entry when the field is
+scrolled back to the top.
+
+**Why.** Long richtext bodies scroll inside their own box; a refresh (or the
+admin re-mounting the form) drops the editor back to the top, losing the
+editor's place.
+
+**Design (approved shape, 2026-10-14).**
+- Key: `vex-richtext-scroll:<collection>:<documentId>:<fieldPath>`
+  (`fieldPath` = the form field `name`, so nested fields like
+  `sections.2.body` stay distinct). No key in create mode (no id) → nothing
+  persisted.
+- Plumbing: optional `persistenceKey?: string` on core
+  `VexEditorComponentProps` (adapters may ignore it); a small
+  document-identity context provided by `CollectionEditView`/`GlobalEditView`
+  (field inputs don't receive the document id today —
+  `InputComponentProps` only carries the collection); the react richtext
+  `Input` builds the key and passes it to the editor.
+- Save: `onScrollEnd` on the scroll box (React 19) — `scrollTop > 0` →
+  write, `0` → remove. Fallback for browsers without `onscrollend`: a ~150ms
+  debounced `scroll` handler running the same function.
+- Restore: read once after mount; content height grows after mount (lazy
+  editor chunk, images loading), so re-apply via a `ResizeObserver` on the
+  content until the target is reachable, the user scrolls, or ~2s pass. A
+  `restoring` guard ignores scroll-end events until then, or the initial
+  `scrollTop = 0` would delete the entry before it's restored.
+
+**Lift.** Small — three packages, ~1 hook plus a context:
+`packages/core/src/editor/types.ts`, `@vexcms/react` (context + richtext
+`Input`), `packages/richtext-plate/src/editor/PlateEditorField.tsx`.
+
+**Blockers / open question.** Which document id keys the entry: the first
+autosave of a published document creates a draft row with a different id
+(`setActiveDocumentId(draftId)` in `CollectionEditView`). The key must use the
+id a refresh reopens (the URL's) or the saved offset is orphaned after the
+first autosave — verify which id the URL holds before implementing.
+
+**Why deferred.** Nice-to-have UX; developer wants to decide later.
+`localStorage` chosen over a cookie: the value is client-only (the editor
+renders client-side, and restoring must wait for images anyway), so a cookie
+would only add request weight.
+
+---
+
+## Richtext video (and wider media) nodes
+
+**What.** Let the richtext editor insert video — and potentially audio, file
+attachments, and URL embeds — alongside images.
+
+**Why.** The storage pipeline is already media-agnostic (`generateUploadUrl`/
+`createMediaDocument`/media collections store any MIME type); only the richtext
+integration is image-only. Editors will eventually want video in body content.
+
+**Assessment (2026-10-14).** Plate imposes no limit: `@platejs/media` (already
+a dependency) ships `VideoPlugin`, `AudioPlugin`, `FilePlugin`, and
+`MediaEmbedPlugin` next to the `ImagePlugin` we register. The image-only
+restriction lives entirely in `richtext-plate`:
+- `features`: only `ImageFeature`; `createPlugins` registers only `ImagePlugin`.
+- Paste/drop handlers and the popover's Upload tab filter `image/*`.
+- The popover's Media Library tab filters results to image MIME types.
+- Only an `img` node has editor + static-renderer components.
+
+**Lift (video-only scope).** Moderate, one package plus the static renderer:
+`VideoFeature` + `video` element components (editor + `render/components/
+elements.tsx`, `<video controls>` with the image treatment for width/align);
+popover accepts `video/*` and shows videos in the library tab; paste/drop MIME
+branch inserts a `video` node. Embeds/audio/files deliberately excluded —
+each is its own feature decision.
+
+**Blockers / open questions.**
+- Resize/crop is image-specific (`object-fit: cover` crops an `<img>`); a
+  `<video>` can reuse the width handle but crop needs its own decision.
+- No transcoding/adaptive streaming: Convex serves the file as uploaded;
+  large videos hit storage/bandwidth directly.
+- Possibly a `richtext({ mediaMimeTypes })` option for per-field control.
+
+**Why deferred.** Image support just shipped (spec 2026-10-13-richtext-field);
+developer explicitly keeps the popover image-only for now (Upload tab and
+library select restricted to `image/*`, tooltip "Insert image").

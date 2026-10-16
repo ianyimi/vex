@@ -7,6 +7,8 @@ import { GlobalConfig } from "../globals";
 import { VexAccessConfig } from "../access";
 import { VexRoutesConfig } from "../routes";
 import { LivePreviewConfig, LivePreviewConfigInput } from "../livePreview";
+import { ComponentHKT } from "../fields";
+import { VexEditorAdapter } from "../editor";
 
 /**
  * User-facing configuration input for the VexCMS admin panel.
@@ -320,6 +322,28 @@ export interface VexClientConfigInput {
    * @see {@link TypesConfigInput} for all available options
    */
   types?: TypesConfigInput;
+  /**
+   * Root rich-text editor adapter, used by every `richtext()` field in every
+   * collection — there is exactly one editor per project (ADR-013), set once
+   * here rather than per-field.
+   *
+   * Type-erased to `ComponentHKT` at this level, the same way
+   * `collections: CollectionConfig[]` already erases each collection's own
+   * `TComponent` binding — a concrete adapter (e.g. `plateEditor()` from
+   * `@vexcms/richtext-plate`, typed `VexEditorAdapter<ReactHKT>`) is still
+   * assignable here because its component slots resolve to a real component
+   * type, and any real type is assignable into this slot's erased `unknown`.
+   *
+   * Omitted entirely for a project with no rich-text fields. A collection
+   * that declares a `richtext()` field while this is absent renders a
+   * configuration error in the admin Input instead of crashing or falling
+   * back to a plain textarea (Step 3).
+   *
+   * @see {@link VexEditorAdapter} for the adapter shape
+   * @see {@link RelationshipFieldAdminInput.components.preview} for the same
+   *   `ComponentHKT` erasure pattern on a per-field (rather than root) slot
+   */
+  editor?: VexEditorAdapter<ComponentHKT>;
 }
 
 /**
@@ -441,6 +465,13 @@ export interface VexClientConfig {
   schema: SchemaConfig;
   /** Resolved type generation configuration — always fully populated after defaults are applied. */
   types: TypesConfig;
+  /**
+   * Resolved root editor adapter — present only when the project configured
+   * one. `undefined` when the project has no rich-text fields.
+   *
+   * @see {@link VexEditorAdapter} for the adapter shape
+   */
+  editor?: VexEditorAdapter<ComponentHKT>;
 }
 
 /**

@@ -1,21 +1,26 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
-
-interface MediaDoc {
-  _id: string;
-  filename: string;
-  mimeType: string;
-  url: string;
-  alt?: string;
-}
+import type { VexMediaDocument } from "@vexcms/core";
+import { Button } from "@vexcms/react";
 
 interface ImageUploadProps {
   onClose: () => void;
   onInsertUrl: (props: { url: string; alt?: string }) => void;
-  onInsertMedia?: (props: { url: string; mediaId: string; alt?: string }) => void;
+  onInsertMedia?: (props: {
+    url: string;
+    mediaId: string;
+    alt?: string;
+  }) => void;
   onUploadNew?: () => void;
-  mediaResults?: MediaDoc[];
+  /**
+   * Uploads a file as a NEW media document (the same mutations the upload
+   * field uses) and inserts it. Present → the popover shows an "Upload" tab.
+   */
+  onUploadFile?: (props: { file: File; alt?: string }) => Promise<void>;
+  /** Whether the media collection requires alt text — the Upload tab blocks an empty alt. */
+  altRequired?: boolean;
+  mediaResults?: VexMediaDocument[];
   mediaSearchTerm?: string;
   onMediaSearchChange?: (term: string) => void;
   mediaCanLoadMore?: boolean;
@@ -111,6 +116,113 @@ function UrlTab({
   );
 }
 
+function UploadTab({
+  onUploadFile,
+  altRequired,
+}: {
+  onUploadFile: (props: { file: File; alt?: string }) => Promise<void>;
+  altRequired?: boolean;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [alt, setAlt] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = useCallback(async () => {
+    if (!file || uploading) return;
+    if (altRequired && alt.trim().length === 0) {
+      setError("Alt text is required.");
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      // Parent's onUploadFile inserts the image and closes the popover.
+      await onUploadFile({ file, alt: alt.trim() || undefined });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+      setUploading(false);
+    }
+  }, [file, alt, altRequired, uploading, onUploadFile]);
+
+  const acceptFiles = useCallback((files: FileList | File[]) => {
+    const image = [...files].find((f) => f.type.startsWith("image/"));
+    if (image) setFile(image);
+  }, []);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => fileInputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
+        }}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          acceptFiles(e.dataTransfer.files);
+        }}
+        style={{
+          border: `1px dashed ${dragOver ? "var(--primary)" : "var(--border)"}`,
+          borderRadius: "var(--radius)",
+          padding: 16,
+          textAlign: "center",
+          cursor: "pointer",
+          fontSize: 12,
+          color: file ? "var(--foreground)" : "var(--muted-foreground)",
+          background: dragOver ? "var(--muted)" : "transparent",
+        }}
+      >
+        {file ? file.name : "Drop an image here, or click to browse"}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            if (e.target.files) acceptFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
+      </div>
+      <label style={{ fontSize: 12, fontWeight: 500 }}>
+        Alt text
+        {altRequired && <span style={{ color: "var(--destructive)" }}> *</span>}
+        <input
+          type="text"
+          required={altRequired}
+          value={alt}
+          onChange={(e) => setAlt(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); void handleUpload(); }
+          }}
+          placeholder="Describe the image"
+          style={inputStyle}
+        />
+      </label>
+      {error && (
+        <p role="alert" style={{ margin: 0, fontSize: 12, color: "var(--destructive)" }}>
+          {error}
+        </p>
+      )}
+      <Button
+        type="button"
+        disabled={!file || uploading}
+        isPending={uploading}
+        onMouseDown={(e) => { e.preventDefault(); void handleUpload(); }}
+      >
+        Upload & insert
+      </Button>
+    </div>
+  );
+}
+
 function MediaTab({
   results,
   searchTerm,
@@ -121,13 +233,13 @@ function MediaTab({
   onSelect,
   onUploadNew,
 }: {
-  results: MediaDoc[];
+  results: VexMediaDocument[];
   searchTerm?: string;
   onSearchChange?: (s: string) => void;
   canLoadMore?: boolean;
   onLoadMore?: () => void;
   isLoading?: boolean;
-  onSelect: (doc: MediaDoc) => void;
+  onSelect: (doc: VexMediaDocument) => void;
   onUploadNew?: () => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -195,7 +307,7 @@ function MediaTab({
             }}
           >
             <img
-              src={doc.url}
+              src={doc.src}
               alt={doc.alt || doc.filename}
               style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
             />
@@ -219,13 +331,14 @@ function MediaTab({
  *
  * @param props - Insert/close callbacks, plus optional media-library results
  *   and search/pagination handlers. When `mediaResults` is provided, the
- *   popover shows a "Media Library" / "URL" tab switcher; otherwise it shows
- *   only the URL tab.
+ *   popover shows a "Media Library" tab; when `onUploadFile` is provided, an
+ *   "Upload" tab that creates a new media document; "URL" is always there.
  * @returns The image insertion popover with its tab(s).
  */
 export function ImageUpload(props: ImageUploadProps) {
   const hasMedia = props.mediaResults !== undefined;
-  const [tab, setTab] = useState<"media" | "url">(hasMedia ? "media" : "url");
+  const hasUpload = props.onUploadFile !== undefined;
+  const [tab, setTab] = useState<"media" | "upload" | "url">(hasMedia ? "media" : "url");
 
   return (
     <div
@@ -246,11 +359,18 @@ export function ImageUpload(props: ImageUploadProps) {
         width: 320,
       }}
     >
-      {hasMedia && (
+      {(hasMedia || hasUpload) && (
         <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 2 }}>
-          <button type="button" style={tabStyle(tab === "media")} onClick={() => setTab("media")}>
-            Media Library
-          </button>
+          {hasMedia && (
+            <button type="button" style={tabStyle(tab === "media")} onClick={() => setTab("media")}>
+              Media Library
+            </button>
+          )}
+          {hasUpload && (
+            <button type="button" style={tabStyle(tab === "upload")} onClick={() => setTab("upload")}>
+              Upload
+            </button>
+          )}
           <button type="button" style={tabStyle(tab === "url")} onClick={() => setTab("url")}>
             URL
           </button>
@@ -266,10 +386,14 @@ export function ImageUpload(props: ImageUploadProps) {
           isLoading={props.mediaIsLoading}
           onSelect={(doc) => {
             // Parent's onInsertMedia handles closing — don't call onClose here
-            props.onInsertMedia?.({ url: doc.url, mediaId: doc._id, alt: doc.alt });
+            props.onInsertMedia?.({ url: doc.src, mediaId: doc._id, alt: doc.alt });
           }}
-          onUploadNew={props.onUploadNew}
+          onUploadNew={
+            hasUpload ? () => setTab("upload") : props.onUploadNew
+          }
         />
+      ) : tab === "upload" && props.onUploadFile ? (
+        <UploadTab onUploadFile={props.onUploadFile} altRequired={props.altRequired} />
       ) : (
         <UrlTab onInsert={(p) => { props.onInsertUrl(p); }} onClose={props.onClose} />
       )}

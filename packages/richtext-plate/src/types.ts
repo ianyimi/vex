@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Re-export canonical types from core
 export type {
   RichTextDocument,
@@ -14,8 +13,14 @@ export interface ImageElement extends RichTextElement {
   url: string;
   mediaId?: string;
   alt?: string;
+  /** Display width in px. Absent → the image's own width, capped to the container. */
   width?: number;
-  height?: number;
+  /**
+   * Custom shape (width / height), set by resizing an edge or Shift-dragging
+   * the corner. The image is cropped to it, never stretched. Absent → the
+   * image's own shape.
+   */
+  aspectRatio?: number;
 }
 
 /** Link element node — narrowed type for link-specific properties. */

@@ -12,6 +12,7 @@ import { relationshipFieldFixture } from "../../components/fields/relationship/t
 import { arrayFieldFixture } from "../../components/fields/array/testFixture";
 import { groupFieldFixture } from "../../components/fields/group/testFixture";
 import { blocksFieldFixture } from "../../components/fields/blocks/testFixture";
+import { richTextFieldFixture } from "../../components/fields/richtext/testFixture";
 // Each remaining per-type fixture is imported from that field type's OWN folder
 // as later steps add it.
 
@@ -40,4 +41,5 @@ export const fieldFixtures: Record<AdminFieldType, FieldFixture> = {
   array: arrayFieldFixture,
   group: groupFieldFixture,
   blocks: blocksFieldFixture,
+  richtext: richTextFieldFixture,
 };

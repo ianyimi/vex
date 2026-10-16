@@ -657,5 +657,6 @@ declare module "@vexcms/core" {
       organization: never
     }
     DataModel: DataModel
+    IconName: keyof typeof import("lucide-react").icons
   }
 }

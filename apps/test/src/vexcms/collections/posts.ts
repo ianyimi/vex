@@ -1,6 +1,6 @@
-import { defineCollection, relationship, text } from "@vexcms/core";
+import { defineCollection, relationship, richtext, text } from "@vexcms/core";
 
-import { TABLE_SLUG_ARTICLES, TABLE_SLUG_POSTS } from "~/db/constants";
+import { TABLE_SLUG_ARTICLES, TABLE_SLUG_IMAGES, TABLE_SLUG_POSTS } from "~/db/constants";
 
 /**
  * Draft/publish test surface for the versioning-drafts spec.
@@ -27,6 +27,11 @@ export const posts = defineCollection({
   admin: {
     useAsTitle: "title",
     icon: "FilePen",
+    livePreview: {
+      url: (post) => {
+        return `/posts/${post.slug}`;
+      },
+    },
   },
   versions: {
     drafts: true,
@@ -46,9 +51,10 @@ export const posts = defineCollection({
       index: "by_slug",
       description: "Contributors may not change this in a draft.",
     }),
-    body: text({
+    body: richtext({
       label: "Body",
-      description: "Free text — the field to edit when testing a plain draft save.",
+      description: "Rich text — the field to edit when testing a plain draft save.",
+      mediaCollectionSlug: TABLE_SLUG_IMAGES,
     }),
     relatedPost: relationship({
       label: "Related Post",

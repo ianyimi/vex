@@ -7,22 +7,28 @@ import { resolveAccessCall } from "../api/utils";
 import { DRAFT_ACTIONS, hasPermission } from "../access";
 import type { CollectionOrGlobal } from "../types/utils";
 import { VERSION_STATUSES } from "./constants";
-import { createVersion, getLatestVersion } from "./model";
+import { listVersions, type VexVersion } from "./model";
 import type { VersionedTargetRows } from "./resolveVersionedTarget";
 
 /**
  * Kind-agnostic `unpublish` implementation shared by both versioned
  * collections and versioned globals. Every per-kind difference — which
- * table the row lives in, how its user fields are extracted for the
- * history snapshot — is already resolved into `rows` (see
- * {@link resolveVersionedTarget}); this function never branches on
- * `target.kind` itself.
+ * table the row lives in, how its user fields are extracted — is already
+ * resolved into `rows` (see {@link resolveVersionedTarget}); this function
+ * never branches on `target.kind` itself.
  *
- * Flips the currently-published row's `vex_status` back to `"draft"` and
- * records one `"published"`-status history row capturing the content that
- * was just taken down — the same row shape `saveDraft`'s pre-edit snapshot
- * records, so a document's history reads as an unbroken "what was live,
- * when" timeline across either operation.
+ * **Demote-and-promote, never append.** Writes NO history row:
+ * 1. The version row recording the content being taken down (the
+ *    `published`-status row with the greatest `publishedAt`) is demoted —
+ *    `status` → `"draft"` and its `publishedAt` REMOVED. An explicitly
+ *    unpublished version loses its "was live" stamp; a version merely
+ *    superseded by a later publish keeps it.
+ * 2. When an earlier published version exists, its snapshot is promoted
+ *    onto the live row IN PLACE — same `_id`, `vex_publishedAt` set to that
+ *    version's `publishedAt`, `vex_status` stays `"published"`. The
+ *    document stays live, showing the previous published content.
+ * 3. With no earlier published version, the document goes offline: the
+ *    live row flips to `"draft"` and its `vex_publishedAt` is removed.
  *
  * **Rejects while an active draft row exists** for the document: the
  * caller must publish or discard that draft first, or this unpublish would
@@ -30,22 +36,14 @@ import type { VersionedTargetRows } from "./resolveVersionedTarget";
  * longer published — a state nothing downstream can make sense of.
  * **Rejects when there is no published row** — nothing to take down.
  *
- * No field values move — this is a status-only transition, so unlike
- * `saveDraft`/`publish` there is no `data` payload, no `prepareEdit` call,
- * and no field-level permission gating. The permission check goes straight
- * through `resolveAccessCall` + `hasPermission` with `changes: undefined`:
- * `unpublish` is not in `hasPermission`'s built-in payload-bearing action
- * set (only `create`/`update`), so a field-map-shaped `unpublish` rule
- * simply projects (grants) rather than tripping the "field map but no
- * changes supplied" throw — correct for a status-only action.
- *
- * `vex_publishedAt` is carried forward unchanged, both on the live row and
- * the emitted history row — it records "was this ever live," which stays
- * true after an unpublish, never reset to indicate otherwise.
+ * The permission check goes through `resolveAccessCall` + `hasPermission`
+ * with `changes: undefined`: `unpublish` is a status transition whose
+ * restored content is, by construction, content that already passed a
+ * `publish` permission check when it first went live.
  *
  * @typeParam DataModel - The Convex data model (inferred from `ctx`).
  * @param props - Resolved target + the rows this call is really touching.
- * @returns The published row's `_id` (now flipped to a draft row), as a string.
+ * @returns The live row's `_id`, as a string.
  * @throws {ConvexError} When there is no published row to unpublish, or when
  *   an active draft row already exists for the document.
  * @throws {VexAccessError} When the caller is not permitted to unpublish this document.
@@ -90,32 +88,49 @@ export async function unpublishShared<DataModel extends GenericDataModel>(props:
     throwOnDenied: true,
   });
 
-  const previous = await getLatestVersion({
+  // The version timeline, newest-first. `current` is the row recording what
+  // is being taken down; `previous` is the next-most-recently published
+  // content, promoted below when present.
+  const versions = await listVersions({
     ctx,
     collection: rows.historyCollection,
     documentId: rows.documentId,
   });
-  await createVersion({
-    ctx,
-    collection: rows.historyCollection,
-    documentId: rows.documentId,
-    status: VERSION_STATUSES.published.key,
-    snapshot: rows.toUserFields(publishedRow),
-    publishedAt: publishedRow.vex_publishedAt as number | undefined,
-    createdBy:
-      typeof props.auth?.user?.["_id"] === "string" ? (props.auth.user["_id"] as string) : undefined,
-    parentVersion: previous?.version,
-  });
+  const published = versions
+    .filter(
+      (row): row is VexVersion & { publishedAt: number } =>
+        row.status === VERSION_STATUSES.published.key && row.publishedAt !== undefined,
+    )
+    .sort((a, b) => b.publishedAt - a.publishedAt);
+  const [current, previous] = published;
 
-  // Deliberately NOT `rows.buildDraftPatch` — that helper merges a CONTENT
-  // patch (nested under `data` for a global); `vex_status` is a top-level
-  // system field on every versioned row regardless of kind, so one direct
-  // patch closes out either branch identically. No `stampUpdatedAt`:
-  // `vex_status` is a reserved system field, not a user field, so
-  // `updatedAt` (which tracks user field edits) is intentionally left
-  // alone. `vex_publishedAt` is also left untouched on this patch, for the
-  // same "carried forward, never rewritten backwards" reason.
-  await ctx.db.patch(publishedRow._id as never, { vex_status: VERSION_STATUSES.draft.key } as never);
+  // Demote the taken-down version: back to draft, "was live" stamp removed
+  // so it never outranks `previous` in a later promotion.
+  if (current !== undefined) {
+    await ctx.db.patch(current._id as never, {
+      status: VERSION_STATUSES.draft.key,
+      publishedAt: undefined,
+    } as never);
+  }
+
+  if (previous !== undefined) {
+    // Promote in place: same `_id`, previous content, previous publishedAt;
+    // the document stays published. No history row is written — both states
+    // already have one.
+    await ctx.db.patch(publishedRow._id as never, {
+      ...rows.buildDraftReplace(publishedRow, previous.snapshot as Record<string, unknown>),
+      vex_publishedAt: previous.publishedAt,
+      vex_activeVersion: previous.version,
+    } as never);
+  } else {
+    // Nothing to promote: the document goes offline. The explicit unpublish
+    // removes the live row's "was ever live" stamp too.
+    await ctx.db.patch(publishedRow._id as never, {
+      vex_status: VERSION_STATUSES.draft.key,
+      vex_publishedAt: undefined,
+      vex_activeVersion: current?.version,
+    } as never);
+  }
 
   return String(publishedRow._id);
 }

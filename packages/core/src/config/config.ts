@@ -110,6 +110,7 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
     basePath: "/admin",
     ...config,
     access: config?.access,
+    editor: config?.editor,
     collections,
     globals: config?.globals ?? [],
     mediaCollections,

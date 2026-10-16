@@ -17,6 +17,7 @@ import type * as footers from "../footers.js";
 import type * as headers from "../headers.js";
 import type * as http from "../http.js";
 import type * as pages from "../pages.js";
+import type * as posts from "../posts.js";
 import type * as seed from "../seed.js";
 import type * as siteSettings from "../siteSettings.js";
 import type * as theme from "../theme.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   headers: typeof headers;
   http: typeof http;
   pages: typeof pages;
+  posts: typeof posts;
   seed: typeof seed;
   siteSettings: typeof siteSettings;
   theme: typeof theme;
