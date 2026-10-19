@@ -281,7 +281,7 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
   const items = (field.state.value ?? []) as GenericBlock[];
   const blockDefMap = new Map(fieldDef.blocks.map((b) => [b.blockType, b]));
   const { singular, plural } = fieldDef.labels;
-  const atMax = !!fieldDef.max && items.length >= fieldDef.max;
+  const atMax = !!fieldDef.max && items.length >= fieldDef.max[0];
 
   // Controlled accordion open-state. `items` can populate asynchronously
   // (the owning document loading after first mount) and Base UI's Accordion
@@ -493,7 +493,7 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
           </Button>
           {atMax && (
             <span className="text-xs text-muted-foreground">
-              Maximum {fieldDef.max} {plural} reached
+              Maximum {fieldDef.max?.[0]} {plural} reached
             </span>
           )}
         </div>

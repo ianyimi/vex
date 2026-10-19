@@ -44,10 +44,10 @@ function isContainerFieldType(fieldType: AdminFieldType): fieldType is "array" |
 const CONTAINER_CHILD_FIELD_TYPES: AdminFieldType[] = ["text", "select", "date", "upload", "array"];
 
 /**
- * The four field types whose Cell contract opts out of `runFieldCellContractSuite`'s
+ * The field types whose Cell contract opts out of `runFieldCellContractSuite`'s
  * default truncation assertion — a fixed-format date, a number, a boolean checkbox and a
- * `#rrggbb` color swatch never render an unbounded string. Mirrors each type's own
- * `Cell.test.tsx` call (Step 5).
+ * `#rrggbb` color swatch never render an unbounded string; richtext and json assert
+ * truncation in their own `Cell.test.tsx`. Mirrors each type's own `Cell.test.tsx` call.
  */
 const NO_TRUNCATION_FIELD_TYPES: ReadonlySet<AdminFieldType> = new Set([
   "date",
@@ -58,6 +58,9 @@ const NO_TRUNCATION_FIELD_TYPES: ReadonlySet<AdminFieldType> = new Set([
   // richtext document already exceeds while its plain text stays short;
   // richtext/Cell.test.tsx asserts truncation with an explicit long document.
   "richtext",
+  // The json fixture's `valid` value is a number (see json/testFixture.ts), which the
+  // generic builder cannot grow; json/Cell.test.tsx asserts its 80-character cut directly.
+  "json",
 ]);
 
 /**

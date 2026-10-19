@@ -22,29 +22,23 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  *
  * @example
  * ```ts
- * const field = number({ required: true, min: { value: 0 }, max: { value: 100 } })
+ * const field = number({ required: true, min: 0, max: [100, "Too large."] })
  * numberFieldToInputSchema({ field })
- * // → z.number({ error: "This field is required." }).min(0).max(100)
+ * // → z.number({ error: "This field is required." }).min(0, "...").max(100, "Too large.")
  * ```
  */
-export function numberFieldToInputSchema(props: {
-  field: NumberField;
-}): ZodType {
+export function numberFieldToInputSchema(props: { field: NumberField }): ZodType {
   const { field } = props;
 
-  const fieldMinError = field.min?.error ?? "This field is too small.";
-  const fieldMaxError = field.max?.error ?? "This field is too large.";
   const requiredError = "This field is required.";
 
-  let inputSchema = field.required
-    ? z.number({ error: requiredError })
-    : z.number();
+  let inputSchema = field.required ? z.number({ error: requiredError }) : z.number();
 
   if (field.min) {
-    inputSchema = inputSchema.min(field.min.value, fieldMinError);
+    inputSchema = inputSchema.min(field.min[0], field.min[1]);
   }
   if (field.max) {
-    inputSchema = inputSchema.max(field.max.value, fieldMaxError);
+    inputSchema = inputSchema.max(field.max[0], field.max[1]);
   }
 
   if (field.required) {
@@ -52,11 +46,11 @@ export function numberFieldToInputSchema(props: {
   }
 
   let defaultValue = field.defaultValue;
-  if (field.min && defaultValue < field.min.value) {
-    defaultValue = field.min.value;
+  if (field.min && defaultValue < field.min[0]) {
+    defaultValue = field.min[0];
   }
-  if (field.max && defaultValue > field.max.value) {
-    defaultValue = field.max.value;
+  if (field.max && defaultValue > field.max[0]) {
+    defaultValue = field.max[0];
   }
 
   return applyBaseInputSchemaMeta({

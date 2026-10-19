@@ -5,8 +5,10 @@
 > is what you follow to ship. This file holds milestone framing and the
 > post-launch vision.
 >
-> Source of truth for migration readiness: `../research/legacy-planning/maprios-migration-todo.md`
-> (verified against package source 2026-08-04).
+> **After 0.1.0, follow `post-v0.1.0-plan.md`** — tracks MW (maprios www), AD (brownfield
+> adoption), ENT-0 (paid foundation), Pro → Agency → ENT-P (procurement readiness) →
+> Enterprise, FR (free features), DB (backend adapters, unscheduled). Decided 2026-10-16/17;
+> summarised under **After 0.1.0** below.
 
 ## Milestone 1 — v0.1.0 launch track
 
@@ -19,8 +21,8 @@ Ten specs. Full scope, decisions, and acceptance criteria in
 | 2 | **B** — Public API surface | Nothing exported lies about what it does |
 | 3 | **F** — Lifecycle hooks & validation | Extensibility + server-side constraint enforcement |
 | 4 | ~~**E** — Live preview~~ ✅ | Editing feedback loop — shipped `b5263dc`, 2026-09-20 |
-| 5 | **C** — Versioning & drafts ← **in progress** | The feature the README tells users to wait for |
-| 6 | **D** — Richtext field | The published `richtext-plate` package becomes usable |
+| 5 | ~~**C** — Versioning & drafts~~ ✅ | Shipped `35a50dc`…`865f360`, 2026-09-30 → 10-13 |
+| 6 | ~~**D** — Richtext field~~ ✅ | Shipped `7d51f56`, 2026-10-15; dogfood + docs steps remain |
 | 7 | **G** — Field input consistency pass | No input looks half-built |
 | 8 | **H** — Edit-view overhaul | Editing is not hostile |
 | 9 | **I** — List-view overhaul | 200 rows is usable |
@@ -48,59 +50,59 @@ Shipped since the original Milestone 1 framing: ✅ Globals / `defineGlobal` ·
 ✅ RBAC document-level access · ✅ Field-level RBAC permissions · ✅ Access index
 resolution · ✅ `anonRole` fallback · ✅ `color` field · ✅ SEO prerendering and
 revalidation · ✅ React test suite and coverage expansion · ✅ Lifecycle hooks and
-server-side field validation · ✅ Live preview.
+server-side field validation · ✅ Live preview · ✅ Versioning & drafts · ✅ Richtext field.
 
-**Now in progress: C — versioning & drafts.** Re-scoped as
-`.agent/docs/specs/2026-09-20-versioning-drafts` (18 task groups), superseding the
-2026-08-23 draft, which predated F and E and is kept only for its design history.
-Draft writes call F's write pipeline and its lenient validation mode, pass `changes`
-to `hasPermission`, and supply the draft base layer E's overlay sits on — E itself
-needed no change, since the overlay already applies to whatever document the
-consumer's query returned. Spec complete; implementation not yet started.
+**Pulled into 0.1.0 (2026-10-16):** `email` / `textarea` / `json` leaf fields, sequenced
+before G so its consistency pass covers them, and the B2 localization ADR — localization
+is a free core feature (2026-10-17).
 
-Deferred out of 0.1.0 with reasons: `json` / `email` / `textarea` (leaf fields, cheap,
-not gates) · `ui` / `tabs` (change core invariants — see `backlog.md`) · PDF block ·
-block group categorization.
+Deferred out of 0.1.0 with reasons: `ui` / `tabs` (change core invariants — see
+`backlog.md`) · PDF block · block group categorization (post-0.1.0 Track MW).
 
-## Milestone 2 — maprios/www migration
+**Release milestones after the tag:** first production deployment → 3–5 external design
+partners on Convex → first paid Pro customers.
 
-Pure content/component work once Milestone 1 lands:
-- Port ~35-40 block configs + React renderers (Payload types -> Vex generated types)
-- Define 5-6 collections (Pages, Media, Themes, Headers, Footers, ContactSubmissions) + SiteConfig global
-- Seed script (Convex `seed` mutation)
-- Drop Payload + MongoDB from maprios www
+## After 0.1.0
 
-## Milestone 3 — Multi-component architecture
+Full scope, decisions, and acceptance criteria in `post-v0.1.0-plan.md`. Releases continue
+as patches from `0.1.1`; `0.2.0` is reserved for a substantial change (backend adapters are
+the leading candidate).
 
-- Multi-component architecture (spec 43a): `defineComponent()`, per-component schema/codegen, workspace routing
-- Cross-component auth/user pattern (spec 43b)
-- maprios main-app migration
+| Order | Track | Gate |
+|---|---|---|
+| 1 | **MW** — maprios www migration | Payload → VexCMS on its own Convex deployment; init/seed hook, block groups, per-field component slot, public-form hardening |
+| 2 | **AD** — Brownfield adoption | An existing Convex app adopts Vex table by table: adopt existing tables, schema introspection, raw-validator field, auth bridge, live-data migrations |
+| 3 | **ENT-0** — Paid foundation | Open-core ADR, private package registry, signed offline licence keys checked at build time |
+| 4 | **Pro** | Co-editing (cursors, per-field indicators, conflict resolution, collaborative rich text), visual editor, basic A/B testing |
+| 5 | **Agency** | Pro + client-project licence coverage, white-label admin, licence handoff |
+| 6 | **ENT-P** — Procurement readiness | MSA with capped indemnity, support SLA, security-questionnaire pack, invoicing on terms |
+| 7 | **Enterprise** | SSO/SCIM, audit log, approval workflows, branching, git mirror, full A/B + personalization |
+| — | **FR** — Free features | Interleaved: localization, presence + facepile, scheduling, form builder, webhooks, S3/R2, image transforms, API keys / team management, MCP server, TanStack Start, `tabs` / `ui` |
+| — | **DB** — Backend adapters | Unscheduled; after Enterprise. Split Convex out of core; Supabase first (`research/db-adapter-feasibility.md`) |
 
+Multi-component workspaces (`research/legacy-planning/multi-component-architecture.md`)
+moved behind brownfield adoption: root-app adoption is the common case and needs no
+component split. Revisit when a customer needs isolation.
 
-## Long-term vision (post-launch)
+## Licensing and tiers
 
-> Sources (in `../research/legacy-planning/`): `roadmap-monetization-strategy-v2.md`,
-> `v0.1.0-launch-roadmap.md` "Post-v1 Backlog", `multi-component-architecture.md`.
+**Open core.** The Apache-2.0 core stays free forever — every field type, the admin panel,
+CLI, drafts and versions, RBAC, live preview, hooks, localization, and presence. Paid tiers
+are self-hosted licences priced **per company by size, never per seat**; VexCMS never hosts
+customer infrastructure. Renewing customers keep their signed price. Nothing free today
+becomes paid later. Licence terms for the paid packages are decided in the open-core ADR
+(ENT-0). List prices are founder-held and published only with the first paid tier.
 
-**License / monetization:** Apache-2.0 core forever (all fields, admin panel, CLI, drafts, RBAC,
-live preview, hooks). Enterprise features ship as separate BSL/commercial packages in a
-private-repo git submodule (`packages/enterprise`). Flat annual per-company license.
-Additional revenue tiers: Convex partnership (referral/sponsorship/Stack listing), support
-subscriptions, GitHub Sponsors/grants.
+| Tier | Who | Adds |
+|---|---|---|
+| Community | everyone | the whole core |
+| Pro | small companies (revenue / staff cap) | co-editing, visual editor, basic A/B testing |
+| Agency | agencies building for clients under the Pro cap | client-project coverage, white-label, licence handoff |
+| Enterprise | companies above the cap, or needing compliance | SSO/SCIM, audit log, approval workflows, branching, git mirror, SLA and procurement terms |
 
-**Enterprise packages (paid):**
-- `@vexcms/enterprise-environments` — project-level content branching (staging/production) — core competitive moat vs BaseHub
-- `@vexcms/enterprise-sso` — SAML/OIDC SSO, IdP group -> role mapping
-- `@vexcms/enterprise-workflows` — review/approval workflows, sign-off before publish
-- `@vexcms/enterprise-audit` — full audit log with retention/export/compliance reports
-- `@vexcms/enterprise-localization` — i18n field variants, locale-aware versioning
+Other revenue lines: Convex partnership (ecosystem listing, startups program), support,
+migration services, premium templates, grants.
 
-**Post-v1 free backlog (not blocking launch):** onboarding tour, team management UI, API key
-management, content scheduling (`publishAt` + scheduled function), basic audit log, lifecycle
-hooks system, TanStack Start adapter, S3/R2/Vercel Blob storage adapters, relationship inline
-create, block style controls, public demo site, form builder (`defineFormCollection`),
-plugin system (custom field types).
-
-**Architecture backlog:** multi-component Workspaces (Option A, selected direction) matures
-here — lands after enterprise features are stable; a unified namespace or plugin API can be
-layered on the same workspace primitives later.
+**Architecture backlog:** backend adapters (Track DB) and multi-component workspaces both
+build on a core split into backend-neutral and Convex-specific packages; neither starts
+before the Enterprise tier.

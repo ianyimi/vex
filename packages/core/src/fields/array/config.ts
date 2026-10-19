@@ -1,6 +1,7 @@
 import { childInterfaceType } from "../childInterfaceType";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldLimit } from "../utils";
 import type { ArrayFieldInput, ArrayField, ArrayType } from "./types";
 import type { VexResourceSlug } from "../../types/generated";
 
@@ -43,7 +44,7 @@ import type { VexResourceSlug } from "../../types/generated";
  *     // Number array with a min length
  *     scores: array({
  *       items: number(),
- *       min: { value: 1 },
+ *       min: 1,
  *     }),
  *
  *     // Nested array — array of arrays of numbers
@@ -80,6 +81,15 @@ export function array<
     required: false,
     defaultValue: [],
     ...options,
+
+    min: resolveFieldLimit({
+      limit: options.min,
+      defaultError: (value) => `Must be at least ${value} items.`,
+    }),
+    max: resolveFieldLimit({
+      limit: options.max,
+      defaultError: (value) => `Must be no more than ${value} items.`,
+    }),
 
     items: {
       ...options.items,

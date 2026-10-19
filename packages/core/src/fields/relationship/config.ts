@@ -3,6 +3,7 @@ import type { RelationshipFieldInput, RelationshipField } from "./types";
 import type { CollectionSlug , VexResourceSlug } from "../../types/generated";
 import { ComponentHKT } from "../baseTypes";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldLimit } from "../utils";
 
 /**
  * Creates a relationship field with all defaults applied.
@@ -56,8 +57,14 @@ export function relationship<
     required: false,
     hasMany: false,
     ...options,
-    min: options.min,
-    max: options.max,
+    min: resolveFieldLimit({
+      limit: options.min,
+      defaultError: (value) => `Must be at least ${value} related items.`,
+    }),
+    max: resolveFieldLimit({
+      limit: options.max,
+      defaultError: (value) => `Must be no more than ${value} related items.`,
+    }),
     type: ADMIN_FIELDS.relationship.type,
     // Per-field override of the static `ADMIN_FIELDS.relationship.interfaceType`
     // (`Id<CollectionSlug>[]`): emitting the target slug as a literal is what

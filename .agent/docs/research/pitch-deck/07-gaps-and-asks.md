@@ -13,9 +13,9 @@
 | 4 | How many people outside the project have scaffolded or deployed VexCMS? Any issues, PRs, DMs, or testimonials? | Traction | traction-log |
 | 5 | The raise: amount, instrument (SAFE or priced), timeline, 18–24-month milestones it buys | Ask / Use of funds | `.agent/docs/product/fundraising.md` (new) |
 | 6 | Co-founder or first-hire plans (solo-founder risk is the first seed question) | Team | team.md |
-| 7 | Which BaseHub features come first, and which go free vs paid (`03-competition.md` § BaseHub matrix) | Roadmap, Business model | `roadmap.md` + ADR-015 |
+| 7 | ~~Free vs paid for BaseHub features?~~ **Mostly answered 2026-10-17:** localization, presence/facepile free; co-editing, visual editor, basic A/B → Pro; SSO/SCIM, audit, approvals, branching → Enterprise (`03-competition.md` matrix). Open: analytics, AI, MCP | Roadmap, Business model | `roadmap.md` + open-core ADR |
 | 8 | ~~Hosted control plane?~~ **Answered 2026-10-12: no hosting or cloud features.** Remaining question: which BaseHub-style features (analytics, AI) go in the enterprise licence vs free, given they run on the customer's own deployment | Business model | ADR-015 |
-| 9 | Pricing: keep the $500–2,000/yr anchor, or re-anchor to comps (`04-business-model.md` § 4)? | Business model | `pricing-hypotheses.md` |
+| 9 | ~~Pricing anchor?~~ **Answered 2026-10-17:** Community free · Pro $995/yr · Agency $2,500/yr · Enterprise $9.5k / $18k / $30k by size band; per company, never per seat; renewal-locked grandfathering (`04-business-model.md` §4) | Business model | `pricing-hypotheses.md` (validation log) |
 | 10 | The 10-year vision: the CMS for Convex only, or content infrastructure for reactive backends in general? | Vision | `mission.md` |
 
 ## B. Metrics to start collecting now
@@ -42,7 +42,7 @@ look first at **GitHub star growth rate** (Runa ROSS Index methodology,
 4. **Convex ecosystem placement**: a Stack guest post, a template listing, or a startups-program mention (`05-platform-convex.md` § asks).
 5. **A BaseHub-parity "wow" feature**: presence/facepile (cheap on Convex, per `backlog.md:323-404`) or a branching preview.
 6. **A 90-second demo video** following the original event demo flow (`01-problem-solution-product.md` § Demo assets).
-7. **Enterprise waitlist signups** as early willingness-to-pay evidence.
+7. **Waitlist signups per tier** (Pro / Agency / Enterprise) as early willingness-to-pay evidence, then the first founding-price Pro customers ($295/yr cohort, `04-business-model.md` §4).
 
 ## D. Risks to pre-empt in the deck (with the counter-evidence to show)
 
@@ -63,9 +63,10 @@ via secondary source); 90%+ of early rounds are SAFEs (`sources/business-model-c
 
 | Bucket | What it buys (from the repo roadmap) |
 |---|---|
-| Engineering (1–2 hires) | v0.1.0 finish, multiplayer/presence, branching (enterprise), TanStack Start adapter |
-| Developer relations / community | Convex ecosystem content, templates, docs, design-partner support |
-| Enterprise packaging | SSO, audit, workflows, localization, licence-key infrastructure |
+| Engineering (1–2 hires) | v0.1.0 finish, Pro tier (co-editing, visual editor, A/B), branching (Enterprise), TanStack Start adapter |
+| Developer relations / community | Convex ecosystem content, templates, docs, design-partner support, agency partner program |
+| Paid-tier infrastructure | Private package registry, signed licence keys, Stripe invoicing; Enterprise packaging (SSO/SCIM, audit, workflows) |
+| Enterprise readiness | MSA with capped indemnity (lawyer), support SLA, security-questionnaire / trust pack, E&O insurance |
 | Runway | 18–24 months to the next milestone set (seed→A median is ~2.1 years) |
 
 ## F. Repo additions suggested (summary)

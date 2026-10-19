@@ -70,16 +70,14 @@ export function blocksFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
     : z.array(itemSchema);
 
   if (field.min) {
-    const min = field.min;
-    const message = `At least ${min} ${field.labels.plural} required.`;
+    const [min, message] = field.min;
     arraySchema = arraySchema.refine(
       (value) => (!field.required && value.length === 0) || value.length >= min,
       message,
     );
   }
   if (field.max) {
-    const max = field.max;
-    const message = `No more than ${max} ${field.labels.plural} allowed.`;
+    const [max, message] = field.max;
     arraySchema = arraySchema.refine(
       (value) => (!field.required && value.length === 0) || value.length <= max,
       message,

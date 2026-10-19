@@ -1,7 +1,6 @@
 import { apiKey } from "@better-auth/api-key";
 import { convex } from "@convex-dev/better-auth/plugins";
 import authConfig from "@convex/auth.config";
-import { nextCookies } from "better-auth/next-js";
 import { admin, anonymous, organization } from "better-auth/plugins";
 
 import { USER_ROLES } from "~/db/constants";
@@ -17,7 +16,7 @@ import { authSchema } from "./schema";
  * console.warn filter in http.ts suppress the deprecation noise before it fires.
  *
  * Includes: admin roles, anonymous access, organization/team support, API key auth,
- * Next.js cookie integration, and Convex session storage.
+ * and Convex session storage.
  *
  * @see authOptions in apps/test/src/auth/options.ts
  * @see betterAuthAdapter in @vexcms/better-auth
@@ -34,6 +33,4 @@ export const createPlugins = () => [
   }),
   apiKey(),
   convex({ authConfig }),
-  // this plugin must be last. per convex dev cli warnings
-  nextCookies(),
 ];

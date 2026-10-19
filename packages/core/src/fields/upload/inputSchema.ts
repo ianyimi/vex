@@ -33,16 +33,14 @@ export function uploadFieldToInputSchema(props: { field: UploadField }): ZodType
     : z.array(z.string());
 
   if (field.min) {
-    const min = field.min;
-    const message = `At least ${min} file${min === 1 ? "" : "s"} required.`;
+    const [min, message] = field.min;
     inputSchema = inputSchema.refine(
       (value) => (!field.required && value.length === 0) || value.length >= min,
       message,
     );
   }
   if (field.max) {
-    const max = field.max;
-    const message = `No more than ${max} file${max === 1 ? "" : "s"} allowed.`;
+    const [max, message] = field.max;
     inputSchema = inputSchema.refine(
       (value) => (!field.required && value.length === 0) || value.length <= max,
       message,

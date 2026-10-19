@@ -1,6 +1,8 @@
 import { ADMIN_FIELDS, type AdminFieldType } from "../constants";
 import { AdminField } from "../types";
 import { textFieldToInputSchema } from "../text";
+import { emailFieldToInputSchema } from "../email";
+import { textareaFieldToInputSchema } from "../textarea";
 import { numberFieldToInputSchema } from "../number";
 import { checkboxFieldToInputSchema } from "../checkbox";
 import { dateFieldToInputSchema } from "../date";
@@ -13,6 +15,7 @@ import { groupFieldToInputSchema } from "../group";
 import { blocksFieldToInputSchema } from "../blocks";
 import { uploadFieldToInputSchema } from "../upload";
 import { richTextFieldToInputSchema } from "../richtext";
+import { jsonFieldToInputSchema } from "../json";
 
 /**
  * Converts any field definition to its form input schema using zod.
@@ -56,6 +59,10 @@ export function adminFieldToInputSchema(props: {
   switch (effectiveField.type) {
     case ADMIN_FIELDS.text.type:
       return textFieldToInputSchema({ field: effectiveField });
+    case ADMIN_FIELDS.email.type:
+      return emailFieldToInputSchema({ field: effectiveField });
+    case ADMIN_FIELDS.textarea.type:
+      return textareaFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.number.type:
       return numberFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.checkbox.type:
@@ -89,6 +96,8 @@ export function adminFieldToInputSchema(props: {
       return uploadFieldToInputSchema({ field: effectiveField });
     case ADMIN_FIELDS.richtext.type:
       return richTextFieldToInputSchema({ field: effectiveField });
+    case ADMIN_FIELDS.json.type:
+      return jsonFieldToInputSchema({ field: effectiveField });
     default: {
       const unhandled: never = effectiveField;
       throw new Error(

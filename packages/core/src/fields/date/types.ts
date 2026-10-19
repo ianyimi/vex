@@ -1,5 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig, FieldValidateProps } from "../baseTypes";
+import { BaseField, BaseFieldInput, FieldAdminConfig, FieldLimit, FieldLimitInput, FieldValidateProps } from "../baseTypes";
 import type { VexResourceSlug } from "../../types/generated";
 
 /**
@@ -68,10 +68,10 @@ export interface DateFieldInput<
    * Does not apply to existing database values.
    */
   defaultValue?: number | undefined;
-  /** Minimum allowed Unix timestamp (milliseconds). Validated in the input schema. */
-  min?: number;
-  /** Maximum allowed Unix timestamp (milliseconds). Validated in the input schema. */
-  max?: number;
+  /** Minimum allowed Unix timestamp (milliseconds). Validated in the input schema. @see {@link FieldLimitInput} */
+  min?: FieldLimitInput;
+  /** Maximum allowed Unix timestamp (milliseconds). Validated in the input schema. @see {@link FieldLimitInput} */
+  max?: FieldLimitInput;
   /**
    * Date/time picker display configuration. Each key is optional — omitted keys
    * fall back to the defaults applied by `date()`. The `time` object is always
@@ -130,10 +130,10 @@ export interface DateField<
   admin: FieldAdminConfig;
   /** Pre-filled Unix timestamp (milliseconds) shown in the admin form when creating a new document. */
   defaultValue: number | undefined;
-  /** Minimum allowed Unix timestamp (milliseconds). */
-  min?: number;
-  /** Maximum allowed Unix timestamp (milliseconds). */
-  max?: number;
+  /** Minimum allowed Unix timestamp (milliseconds), with its resolved error message. @see {@link FieldLimit} */
+  min?: FieldLimit;
+  /** Maximum allowed Unix timestamp (milliseconds), with its resolved error message. @see {@link FieldLimit} */
+  max?: FieldLimit;
   /**
    * Resolved date/time picker display configuration — all keys always present after defaults are applied.
    *

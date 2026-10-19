@@ -51,12 +51,12 @@ export const DateFieldInput = createFieldInput<number | undefined, {}, DateField
     );
 
     const minDate = useMemo(
-      () => (fieldDef.min !== undefined ? new Date(fieldDef.min) : undefined),
+      () => (fieldDef.min !== undefined ? new Date(fieldDef.min[0]) : undefined),
       [fieldDef.min],
     );
 
     const maxDate = useMemo(
-      () => (fieldDef.max !== undefined ? new Date(fieldDef.max) : undefined),
+      () => (fieldDef.max !== undefined ? new Date(fieldDef.max[0]) : undefined),
       [fieldDef.max],
     );
 

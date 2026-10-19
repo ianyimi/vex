@@ -50,7 +50,7 @@ describe("uploadFieldToInputSchema", () => {
     // the min-specific message must actually be among the issues.
     if (!belowMin.success) {
       expect(belowMin.error.issues.map((issue) => issue.message)).toContain(
-        "At least 1 file required.",
+        "Must be at least 1 file.",
       );
     }
     expect(requiredSchema.safeParse(["doc_1"]).success).toBe(true);

@@ -519,6 +519,9 @@ function CollectionEditForm(
             <div className="flex flex-wrap items-center gap-2">
               {isVersioned ? (
                 <DraftToolbar
+                  form={form}
+                  canEdit={canEdit}
+                  isDefaultValue={isDefaultValue}
                   status={isDraftDoc ? "draft" : "published"}
                   saveDraft={{
                     onClick: handleSaveDraft,

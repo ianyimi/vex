@@ -48,7 +48,7 @@ import type { VexResourceSlug } from "../../types/generated";
  * @example
  * ```ts
  * // Optional field, min/max still enforced once a value is supplied
- * const field = array({ items: number(), min: { value: 2 }, max: { value: 5 } })
+ * const field = array({ items: number(), min: 2, max: 5 })
  * const schema = arrayFieldToInputSchema({ field })
  * schema.safeParse(undefined)   // → success: [] (skips min/max — empty)
  * schema.safeParse([1])         // → fails: below min
@@ -64,8 +64,6 @@ export function arrayFieldToInputSchema<
 }): ZodType {
   const { field } = props;
 
-  const fieldMinError = field.min?.error ?? "This field is too short.";
-  const fieldMaxError = field.max?.error ?? "This field is too long.";
   const requiredError = "This field is required.";
 
   const itemsInputSchema = adminFieldToInputSchema({
@@ -78,17 +76,17 @@ export function arrayFieldToInputSchema<
     : z.array(itemsInputSchema);
 
   if (field.min) {
-    const min = field.min.value;
+    const [min, message] = field.min;
     arraySchema = arraySchema.refine(
       (value) => (!field.required && value.length === 0) || value.length >= min,
-      fieldMinError,
+      message,
     );
   }
   if (field.max) {
-    const max = field.max.value;
+    const [max, message] = field.max;
     arraySchema = arraySchema.refine(
       (value) => (!field.required && value.length === 0) || value.length <= max,
-      fieldMaxError,
+      message,
     );
   }
 

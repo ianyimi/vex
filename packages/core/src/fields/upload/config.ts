@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldLimit } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 import type { UploadFieldInput, UploadField } from "./types";
 
@@ -37,9 +38,18 @@ export function upload<
     label: "",
     required: false,
     hasMany: false,
-    min: 0,
     accept: "",
     ...options,
+    min: resolveFieldLimit({
+      limit: options.min,
+      defaultError: (value) =>
+        `Must be at least ${value} file${value === 1 ? "" : "s"}.`,
+    }),
+    max: resolveFieldLimit({
+      limit: options.max,
+      defaultError: (value) =>
+        `Must be no more than ${value} file${value === 1 ? "" : "s"}.`,
+    }),
     type: ADMIN_FIELDS.upload.type,
     // Per-field override of the static `ADMIN_FIELDS.upload.interfaceType`
     // (`Id<MediaCollectionSlug>[]`). `to` is validated as a slug above; emitting

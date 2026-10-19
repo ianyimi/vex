@@ -1,5 +1,8 @@
 import { NumberField } from "./number";
 import { TextField } from "./text";
+import { EmailField } from "./email";
+import { TextareaField } from "./textarea";
+import { JsonField } from "./json";
 import { CheckboxField } from "./checkbox";
 import { DateField } from "./date";
 import { TDocument } from "../api/convex";
@@ -18,6 +21,9 @@ import type { VexResourceSlug } from "../types/generated";
 import { VexVersionStatus } from "../versions";
 
 export * from "./text/types";
+export * from "./email/types";
+export * from "./textarea/types";
+export * from "./json/types";
 export * from "./number/types";
 export * from "./checkbox/types";
 export * from "./blocks/types";
@@ -64,6 +70,8 @@ export type CollectionFieldMeta = BaseFieldMeta & {
  */
 export type AdminField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> =
   | TextField<VexResourceSlug, TFieldMeta>
+  | EmailField<VexResourceSlug, TFieldMeta>
+  | TextareaField<VexResourceSlug, TFieldMeta>
   | NumberField<VexResourceSlug, TFieldMeta>
   | CheckboxField<VexResourceSlug, TFieldMeta>
   | DateField<VexResourceSlug, TFieldMeta>
@@ -75,7 +83,8 @@ export type AdminField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> =
   | UploadField<VexResourceSlug, TFieldMeta>
   | BlocksField<VexResourceSlug, TFieldMeta>
   | GroupField<VexResourceSlug, TFieldMeta>
-  | RichTextField<VexResourceSlug, TFieldMeta>;
+  | RichTextField<VexResourceSlug, TFieldMeta>
+  | JsonField<VexResourceSlug, TFieldMeta>;
 
 /**
  * Props passed to field input components rendered in the document edit form.

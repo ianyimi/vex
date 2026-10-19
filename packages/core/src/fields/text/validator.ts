@@ -32,7 +32,7 @@ import type { TextField } from "./types";
  * const field2 = text({ required: false })
  * textToValidatorString({ field: field2 })  // "v.optional(v.string())"
  *
- * const field3 = text({ min: { value: 3 }, max: { value: 100 } })
+ * const field3 = text({ min: 3, max: 100 })
  * textToValidatorString({ field: field3 })  // "v.optional(v.string())"
  * // Note: Length constraints don't affect schema, handled at validation layer
  * ```
@@ -55,9 +55,7 @@ export function textFieldToValidator(props: { field: TextField }): string {
  * @param fn - The validate callback, checked against the collection's real document shape and `value` type.
  * @returns The same function, re-typed to the field's loose public `validate` signature.
  */
-export function textValidator<
-  TCollectionSlug extends CollectionSlug,
->(
+export function textValidator<TCollectionSlug extends CollectionSlug>(
   slug: TCollectionSlug,
   fn: FieldValidate<TCollectionSlug, string, TextField>,
 ): FieldValidate<TCollectionSlug, string> {

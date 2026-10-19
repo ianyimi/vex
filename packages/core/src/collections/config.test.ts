@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import type { AdminField } from "../fields";
+import type { AdminField, DateField } from "../fields";
 import { defineCollection, number, text } from "../index";
 import { beforeChangeHook } from "./hooks";
 
 describe("defineCollection — updatedAt injection", () => {
-  it("injects an optional updatedAt number field by default", () => {
+  it("injects an optional updatedAt date field by default", () => {
     const posts = defineCollection({
       slug: "posts",
       fields: { title: text({ required: true }) },
     });
     const field = posts.fields.updatedAt;
     expect(field).toBeDefined();
-    expect(field?.type).toBe("number");
+    expect(field?.type).toBe("date");
     expect(field?.required).toBe(false);
   });
 
@@ -23,6 +23,18 @@ describe("defineCollection — updatedAt injection", () => {
     });
     expect(posts.fields.updatedAt?.admin.readOnly).toBe(true);
     expect(posts.fields.updatedAt?.admin.position).toBe("sidebar");
+  });
+
+  it("resolves the injected field's time config with seconds visible", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: { title: text({ required: true }) },
+    });
+    expect((posts.fields.updatedAt as DateField | undefined)?.time).toEqual({
+      hidden: false,
+      use12HourFormat: true,
+      timePicker: { hour: true, minute: true, second: true },
+    });
   });
 
   it("omits updatedAt when timestamps: false", () => {

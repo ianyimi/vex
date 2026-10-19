@@ -32,7 +32,7 @@ import type { NumberField } from "./types";
  * const field2 = number({ required: false })
  * numberFieldToValidator({ field: field2 })  // "v.optional(v.number())"
  *
- * const field3 = number({ min: { value: 0 }, max: { value: 100 } })
+ * const field3 = number({ min: 0, max: 100 })
  * numberFieldToValidator({ field: field3 })  // "v.optional(v.number())"
  * // Note: Range constraints don't affect schema, handled at validation layer
  * ```
@@ -42,7 +42,7 @@ import type { NumberField } from "./types";
 export function numberFieldToValidator(props: { field: NumberField }): string {
   return applyBaseValidators({
     field: props.field,
-    validator: ADMIN_FIELDS.number.validator
+    validator: ADMIN_FIELDS.number.validator,
   });
 }
 
@@ -54,9 +54,7 @@ export function numberFieldToValidator(props: { field: NumberField }): string {
  * @param fn - The validate callback, checked against the collection's real document shape and `value` type.
  * @returns The same function, re-typed to the field's loose public `validate` signature.
  */
-export function numberValidator<
-  TCollectionSlug extends CollectionSlug,
->(
+export function numberValidator<TCollectionSlug extends CollectionSlug>(
   slug: TCollectionSlug,
   fn: FieldValidate<TCollectionSlug, number, NumberField>,
 ): FieldValidate<TCollectionSlug, number> {

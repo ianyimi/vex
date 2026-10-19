@@ -17,7 +17,8 @@
 | 2026-09-02 | Presented at the **Convex meetup** (launch-readiness spec targeted this date; deployed site + public read-only admin as demo) | `.agent/docs/specs/2026-08-30-launch-readiness/spec.md:1` |
 | ~2026-09-14 | Posted to the **Convex Discord show-and-tell** channel | `.agent/docs/specs/2026-09-13-discord-post-readiness/spec.md:30` |
 | 2026-09-20 | Live preview shipped (`b5263dc`) | `.agent/docs/product/roadmap.md:21` |
-| 2026-10 | `0.1.0-alpha.23`; versioning & drafts in progress | `packages/core/package.json`; `harness state` |
+| 2026-10-13 / 10-15 | Versioning & drafts shipped (`865f360`); richtext field shipped (`7d51f56`); `0.1.0-alpha.26` | git log |
+| 2026-10-17 | Pricing decided: Community · Pro $995 · Agency $2,500 · Enterprise $9.5–30k/yr | `04-business-model.md` §4 |
 
 **Pitch framing for the rebuild:** "Validated the full feature set in a 6-week prototype,
 then rebuilt the foundation for production (framework-agnostic core, adapter architecture)
@@ -42,25 +43,27 @@ pitching (see `07-gaps-and-asks.md` § metrics to start collecting now).
 
 ## Roadmap (for the Roadmap slide)
 
-Source: `.agent/docs/product/roadmap.md`, `.agent/docs/product/v0.1.0-launch-plan.md`,
-`apps/docs/src/content/docs/roadmap.md`, `legacy-planning/roadmap-monetization-strategy-v2.md`.
+Source: `.agent/docs/product/post-v0.1.0-plan.md` (2026-10-17), `.agent/docs/product/v0.1.0-launch-plan.md`,
+`apps/docs/src/content/docs/roadmap.md`, `04-business-model.md` §4.
 
 ```mermaid
 flowchart LR
-  M1["M1 · v0.1.0<br/>drafts/versioning · richtext ·<br/>list & edit-view overhaul · mobile"] --> M2["M2 · First migration<br/>maprios www off Payload/Mongo"]
-  M2 --> M3["M3 · Multi-component workspaces<br/>maprios app migration"]
-  M1 --> ECO["Ecosystem (free)<br/>forms · scheduling · API keys · teams ·<br/>TanStack Start · S3/R2 · plugins"]
-  M2 --> ENT["Enterprise (paid)<br/>branching/environments · SSO ·<br/>approval workflows · audit · i18n"]
+  M1["v0.1.0<br/>drafts ✅ · richtext ✅ · leaf fields ·<br/>list & edit-view overhaul · mobile"] --> MW["Maprios www<br/>off Payload/Mongo · init/seed hook"]
+  MW --> AD["Brownfield adoption<br/>existing Convex apps adopt Vex<br/>table by table"]
+  AD --> PRO["Pro $995/yr<br/>co-editing · visual editor · basic A/B"]
+  PRO --> AG["Agency $2,500/yr<br/>client projects · white-label"]
+  AG --> ENT["Enterprise $9.5k–30k/yr<br/>SSO/SCIM · audit · approvals · branching<br/>+ MSA · SLA · trust pack"]
+  M1 --> FREE["Community (free)<br/>localization · presence · forms ·<br/>scheduling · webhooks · plugins"]
 ```
 
 | Phase | Contents | Status |
 |---|---|---|
-| M1 — v0.1.0 | 10 specs A–J: data-table integrity, public API, hooks/validation ✅, live preview ✅, versioning & drafts (in progress), richtext, field consistency, edit-view, list-view, responsive | `roadmap.md:11-27` |
-| M2 — maprios/www migration | ~35–40 blocks, 5–6 collections, drop Payload + MongoDB | `roadmap.md:65-71` |
-| M3 — Multi-component | `defineComponent()`, per-component codegen, workspace routing | `roadmap.md:73-77` |
-| Free backlog | forms, scheduling, API keys, team mgmt, TanStack Start, S3/R2, plugin system, auto-migration, conflict resolution, presence/live cursors | `apps/docs/.../roadmap.md:48-72`; `backlog.md:278-404` |
-| Enterprise | environments/branching, SSO, workflows, audit, localization; git one-way mirror as an audit/compliance add-on | `roadmap.md:91-96`; `backlog.md:548-693` |
-| Exploring | analytics adapter (per-document/per-block metrics in the admin) | `apps/docs/.../roadmap.md:72`; launch-readiness spec `:1076-1090` |
+| v0.1.0 | Launch specs A–J: hooks/validation ✅, live preview ✅, versioning & drafts ✅, richtext ✅ (docs pending), leaf fields + localization ADR, field/edit/list-view overhauls, responsive | `v0.1.0-launch-plan.md` |
+| Maprios www | ~40 block configs, 6 collections + 1 global, init/seed hook, drop Payload + MongoDB | `post-v0.1.0-plan.md` Track MW |
+| Brownfield adoption | Adopt existing tables, schema introspection, auth bridge, migrations — proven on a clone of the maprios Convex app | Track AD |
+| Pro → Agency → Enterprise | Paid tiers ship in price order; Enterprise gated on procurement readiness (MSA, SLA, trust pack, invoicing) | Tracks ENT-0, ENT-P |
+| Community (free) | localization, presence/facepile, forms, scheduling, webhooks, API keys, team mgmt, TanStack Start, S3/R2, plugins | Track FR; `apps/docs/.../roadmap.md` |
+| Exploring | multi-component workspaces, analytics adapter, MCP server, AI (bring-your-own-key) | `apps/docs/.../roadmap.md` |
 
 Founder intent (2026-10-12): many future features will be adopted from **BaseHub** — the
 BaseHub feature matrix in `03-competition.md` is the input for an expanded roadmap slide.

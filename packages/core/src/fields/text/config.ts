@@ -1,6 +1,7 @@
 import { VexResourceSlug } from "../../types";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldLimit } from "../utils";
 import type { TextFieldInput, TextField } from "./types";
 
 /**
@@ -33,7 +34,7 @@ import type { TextFieldInput, TextField } from "./types";
  *     title: text(),
  *
  *     // Required slug with length validation and a database index
- *     slug: text({ required: true, min: { value: 3 }, max: { value: 100 }, index: "by_slug" }),
+ *     slug: text({ required: true, min: 3, max: 100, index: "by_slug" }),
  *
  *     // Author name with a placeholder hint in the admin form
  *     authorName: text({
@@ -60,6 +61,15 @@ export function text<
     required: false,
     defaultValue: ADMIN_FIELDS.text.defaultValue,
     ...options,
+
+    min: resolveFieldLimit({
+      limit: options?.min,
+      defaultError: (value) => `Must be at least ${value} characters.`,
+    }),
+    max: resolveFieldLimit({
+      limit: options?.max,
+      defaultError: (value) => `Must be no more than ${value} characters.`,
+    }),
 
     // Admin config with all defaults applied
     admin: {

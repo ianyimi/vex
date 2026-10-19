@@ -94,7 +94,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     initialData: props.initialData,
   });
 
-  const hasDrafts = global.versions.drafts;
+  const isVersioned = global.versions.drafts;
 
   const [viewedVersion, setViewedVersion] = useState<ViewedVersion | null>(null);
   const [confirmingUnpublish, setConfirmingUnpublish] = useState(false);
@@ -108,7 +108,9 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
   const unpublishCurrent = publishedTimeline[0];
   const unpublishTarget = publishedTimeline[1];
-  const formDocument = viewedVersion ? { _id: globalDoc?._id, ...viewedVersion.snapshot } : globalDoc;
+  const formDocument = viewedVersion
+    ? { _id: globalDoc?._id, ...viewedVersion.snapshot }
+    : globalDoc;
   const restoredFrom = viewedVersion ? { restoredFrom: viewedVersion.version } : {};
 
   const { mutateAsync, isPending } = useVexMutation({
@@ -253,12 +255,12 @@ export function GlobalEditView(props: GlobalEditViewProps) {
 
   const canEdit = usePermission({
     resource: global.slug,
-    action: hasDrafts ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update,
+    action: isVersioned ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update,
     data: globalDoc as {},
   });
   const fieldPermissions = useFieldPermissions({
     resource: global.slug,
-    action: hasDrafts ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update,
+    action: isVersioned ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update,
     data: globalDoc,
   });
 
@@ -278,13 +280,13 @@ export function GlobalEditView(props: GlobalEditViewProps) {
       // Keystrokes typed during the save stay dirty for autosave's follow-up save.
       resetWhenSaved(changes);
     },
-    enabled: hasDrafts && global.versions.autosave.enabled && canEdit,
+    enabled: isVersioned && global.versions.autosave.enabled && canEdit,
   });
 
   const formValues = useStore(form.store, (state) => state.values);
   const { data: publishedRowWhileDraft } = useQuery({
     ...convexQuery(vexConvexApi.globals.get, { slug: global.slug }),
-    enabled: hasDrafts && isDraftDoc,
+    enabled: isVersioned && isDraftDoc,
   });
   const publishedGlobal = isDraftDoc ? publishedRowWhileDraft : globalDoc;
   const matchesPublished =
@@ -365,7 +367,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
             }
             collection={global}
             documentStatus={
-              hasDrafts && globalDoc ? (isDraftDoc ? "draft" : "published") : undefined
+              isVersioned && globalDoc ? (isDraftDoc ? "draft" : "published") : undefined
             }
           />
         );
@@ -389,18 +391,11 @@ export function GlobalEditView(props: GlobalEditViewProps) {
           selector={(state) => state.isDefaultValue}
           children={(isDefaultValue) => (
             <div className="flex flex-wrap items-center gap-2">
-              {livePreview && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={previewPanel.toggle}
-                  icon={isSplit ? "Eye" : "EyeOff"}
-                >
-                  Preview
-                </Button>
-              )}
-              {hasDrafts ? (
+              {isVersioned ? (
                 <DraftToolbar
+                  form={form}
+                  canEdit={canEdit}
+                  isDefaultValue={isDefaultValue}
                   status={globalDoc ? (isDraftDoc ? "draft" : "published") : undefined}
                   saveDraft={{
                     onClick: handleSaveDraft,
@@ -429,6 +424,16 @@ export function GlobalEditView(props: GlobalEditViewProps) {
                       : undefined
                   }
                 >
+                  {livePreview && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={previewPanel.toggle}
+                      icon={isSplit ? "Eye" : "EyeOff"}
+                    >
+                      Preview
+                    </Button>
+                  )}
                   <VersionHistoryDropdown
                     target={{ global: global.slug }}
                     hasDraft={isDraftDoc}
@@ -436,32 +441,44 @@ export function GlobalEditView(props: GlobalEditViewProps) {
                     onViewVersion={setViewedVersion}
                     hasUnsavedChanges={!isDefaultValue}
                     activeVersion={
-                      (globalDoc as { vex_activeVersion?: number } | undefined)?.vex_activeVersion ??
-                      null
+                      (globalDoc as { vex_activeVersion?: number } | undefined)
+                        ?.vex_activeVersion ?? null
                     }
                   />
                 </DraftToolbar>
               ) : (
-                <Button
-                  type="submit"
-                  className="transition-all duration-300"
-                  isPending={isPending}
-                  disabled={isDefaultValue || !canEdit}
-                >
-                  Save
-                </Button>
+                <>
+                  {livePreview && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={previewPanel.toggle}
+                      icon={isSplit ? "Eye" : "EyeOff"}
+                    >
+                      Preview
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    className="transition-all duration-300"
+                    isPending={isPending}
+                    disabled={isDefaultValue || !canEdit}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="transition-all duration-300"
+                    disabled={isDefaultValue || !canEdit}
+                    onClick={() => {
+                      form.reset();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </>
               )}
-              <Button
-                type="button"
-                variant="outline"
-                className="transition-all duration-300"
-                disabled={isDefaultValue || !canEdit}
-                onClick={() => {
-                  form.reset();
-                }}
-              >
-                Cancel
-              </Button>
             </div>
           )}
         />

@@ -282,7 +282,7 @@ export function DateTimePicker({
   }, [displayValue, hideTime, use12HourFormat]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen} modal={modal}>
+    <Popover open={open && !disabled} onOpenChange={(next) => setOpen(next && !disabled)} modal={modal}>
       <PopoverTrigger
         nativeButton={false}
         render={
@@ -321,7 +321,7 @@ export function DateTimePicker({
                     <CalendarIcon className="mr-2 size-4" />
                     {dislayFormat}
                   </div>
-                  {clearable && value && (
+                  {clearable && value && !disabled && (
                     <button
                       type="button"
                       disabled={disabled}

@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldLimit } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 import type { DateFieldInput, DateField } from "./types";
 
@@ -71,6 +72,17 @@ export function date<
     required: false,
     defaultValue: ADMIN_FIELDS.date.defaultValue,
     ...options,
+
+    min: resolveFieldLimit({
+      limit: options?.min,
+      defaultError: (value) =>
+        `Must be on or after ${new Date(value).toISOString().slice(0, 10)}.`,
+    }),
+    max: resolveFieldLimit({
+      limit: options?.max,
+      defaultError: (value) =>
+        `Must be on or before ${new Date(value).toISOString().slice(0, 10)}.`,
+    }),
 
     // Admin config with all defaults applied
     admin: {

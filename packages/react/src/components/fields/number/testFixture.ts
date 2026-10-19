@@ -14,8 +14,8 @@ export const numberFieldFixture: FieldFixture<NumberField, number> = {
   fieldDef: number({
     label: "Quantity",
     required: true,
-    min: { value: 0, error: "Quantity cannot be negative." },
-    max: { value: 100, error: "Quantity cannot exceed 100." },
+    min: [0, "Quantity cannot be negative."],
+    max: [100, "Quantity cannot exceed 100."],
   }),
   valid: 42,
   // NOT `undefined`: `numberFieldToInputSchema` ends every branch in an

@@ -8,6 +8,8 @@ import {
 } from "@vexcms/core";
 import { ComponentPropsWithRef, ComponentType } from "react";
 import { TextFieldCell, TextFieldInput, textFieldToColumnDef } from "./text";
+import { EmailFieldCell, EmailFieldInput, emailFieldToColumnDef } from "./email";
+import { TextareaFieldCell, TextareaFieldInput, textareaFieldToColumnDef } from "./textarea";
 import { NumberFieldCell, NumberFieldInput, numberFieldToColumnDef } from "./number";
 import { CheckboxFieldCell, CheckboxFieldInput, checkboxFieldToColumnDef } from "./checkbox";
 import { DateFieldCell, DateFieldInput, dateFieldToColumnDef } from "./date";
@@ -31,8 +33,11 @@ import {
   RichTextFieldInput,
   richTextFieldToColumnDef,
 } from "./richtext";
+import { JsonFieldCell, JsonFieldInput, jsonFieldToColumnDef } from "./json";
 
 export * from "./text";
+export * from "./email";
+export * from "./textarea";
 export * from "./number";
 export * from "./checkbox";
 export * from "./date";
@@ -45,6 +50,7 @@ export * from "./relationship";
 export * from "./group";
 export * from "./blocks";
 export * from "./richtext";
+export * from "./json";
 
 /**
  * Maps every `AdminFieldType` string to its corresponding input component.
@@ -57,6 +63,12 @@ export const fieldInputComponents: Record<
   ComponentType<InputComponentProps<BaseFieldMeta, AdminField>>
 > = {
   [ADMIN_FIELDS.text.type]: TextFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
+  [ADMIN_FIELDS.email.type]: EmailFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
+  [ADMIN_FIELDS.textarea.type]: TextareaFieldInput as ComponentType<
     InputComponentProps<BaseFieldMeta, AdminField>
   >,
   [ADMIN_FIELDS.number.type]: NumberFieldInput as ComponentType<
@@ -93,6 +105,9 @@ export const fieldInputComponents: Record<
     InputComponentProps<BaseFieldMeta, AdminField>
   >,
   [ADMIN_FIELDS.richtext.type]: RichTextFieldInput as ComponentType<
+    InputComponentProps<BaseFieldMeta, AdminField>
+  >,
+  [ADMIN_FIELDS.json.type]: JsonFieldInput as ComponentType<
     InputComponentProps<BaseFieldMeta, AdminField>
   >,
 };
@@ -176,6 +191,8 @@ export const fieldCellComponents: Record<
   ComponentType<CellComponentProps<AdminField>>
 > = {
   [ADMIN_FIELDS.text.type]: TextFieldCell as ComponentType<CellComponentProps<AdminField>>,
+  [ADMIN_FIELDS.email.type]: EmailFieldCell as ComponentType<CellComponentProps<AdminField>>,
+  [ADMIN_FIELDS.textarea.type]: TextareaFieldCell as ComponentType<CellComponentProps<AdminField>>,
   [ADMIN_FIELDS.number.type]: NumberFieldCell as ComponentType<CellComponentProps<AdminField>>,
   [ADMIN_FIELDS.checkbox.type]: CheckboxFieldCell as ComponentType<CellComponentProps<AdminField>>,
   [ADMIN_FIELDS.date.type]: DateFieldCell as ComponentType<CellComponentProps<AdminField>>,
@@ -190,6 +207,7 @@ export const fieldCellComponents: Record<
   [ADMIN_FIELDS.blocks.type]: BlocksFieldCell as ComponentType<CellComponentProps<AdminField>>,
   [ADMIN_FIELDS.upload.type]: UploadFieldCell as ComponentType<CellComponentProps<AdminField>>,
   [ADMIN_FIELDS.richtext.type]: RichTextFieldCell as ComponentType<CellComponentProps<AdminField>>,
+  [ADMIN_FIELDS.json.type]: JsonFieldCell as ComponentType<CellComponentProps<AdminField>>,
 };
 
 /**
@@ -241,6 +259,28 @@ export function getCollectionColumnDefs<
       case ADMIN_FIELDS.text.type:
         columnDefs.push(
           textFieldToColumnDef<TData>({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
+      case ADMIN_FIELDS.email.type:
+        columnDefs.push(
+          emailFieldToColumnDef<TData>({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
+      case ADMIN_FIELDS.textarea.type:
+        columnDefs.push(
+          textareaFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,
@@ -373,6 +413,17 @@ export function getCollectionColumnDefs<
       case ADMIN_FIELDS.richtext.type:
         columnDefs.push(
           richTextFieldToColumnDef<TData>({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
+      case ADMIN_FIELDS.json.type:
+        columnDefs.push(
+          jsonFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,

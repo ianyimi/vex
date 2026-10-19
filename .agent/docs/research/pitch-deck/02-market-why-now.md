@@ -40,7 +40,7 @@ Analyst estimates for "headless CMS software" vary by more than 10×
 |---|---|---|---|
 | **TAM** | Headless CMS software spend | ~$1.6–1.8B (2025) → ~$4.4–6.2B (2031–33) | Mordor / Grand View |
 | **SAM** | TS/React/Next.js-stack share of headless | ~$270–450M `[ASSUMPTION 15–25%]` | `sources/market-size.md` §6 |
-| **SOM (beachhead)** | Convex paying teams that buy an enterprise add-on | ~$0.7–7.3M ARR `[ASSUMPTION: 73% in market × 5–10% conversion × $2–10k/yr]` | `04-business-model.md` §5 |
+| **SOM (beachhead)** | Convex paying teams buying a Pro, Agency, or Enterprise licence | ~$0.53–2.2M ARR at today's Convex size; five-year scenarios $0.46M / $1.45M / $3.52M `[ASSUMPTION: 73% in market × 5–10% paid × $1.46–3.03k blended]` | `04-business-model.md` §5 |
 
 Expansion levers for the "Vision" slide: the SOM pool grows with Convex itself (12× YoY
 downloads), with agencies selling VexCMS to clients, and with any future backend

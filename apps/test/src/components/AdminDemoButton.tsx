@@ -17,10 +17,11 @@ import { signIn, useSession } from "~/auth/client";
  * already registered in `convex/auth/plugins/index.ts`, so this mints a
  * throwaway session instead and then navigates.
  *
- * What that session can do is decided entirely by `src/auth/access.ts`: an
- * anonymous user carries no entry in `roles`, `hasPermission` falls back to
- * `anonRole` (`user`), and that role grants `adminPanel.access` plus `read` on
- * `pages`/`siteSettings` and nothing else. Read-only is enforced server-side by
+ * What that session can do is decided entirely by `src/auth/access.ts`:
+ * `src/auth/options.ts`'s `databaseHooks.user.create` gives every anonymous
+ * user the `guest` role, which mirrors `apps/www`'s `user` role — admin-panel
+ * access, `read` on `pages`/`themes`/`images`, a field-limited `siteSettings`
+ * read, and updating only `adminTheme`. Read-only is enforced server-side by
  * the access matrix, not by this component — nothing here is a security
  * boundary.
  *

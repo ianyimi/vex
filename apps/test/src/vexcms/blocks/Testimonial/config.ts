@@ -21,8 +21,8 @@ export const testimonialBlock = defineBlock({
     rating: number({
       label: "Rating",
       description: "Star rating 1–5.",
-      min: { value: 1 },
-      max: { value: 5 },
+      min: 1,
+      max: 5,
     }),
   },
 })

@@ -74,8 +74,8 @@ runFieldInputContractSuite({
         label: "Scores",
         items: text({ label: "Score", required: true }),
         required: true,
-        min: { value: 2 },
-        max: { value: 3 },
+        min: 2,
+        max: 3,
       });
 
       it("passes validation at exactly the min item count", async () => {
@@ -92,7 +92,7 @@ runFieldInputContractSuite({
         const result = schema.safeParse(["a"]);
         expect(result.success).toBe(false);
         const message = !result.success ? result.error.issues[0]?.message : undefined;
-        expect(message).toBe("This field is too short.");
+        expect(message).toBe("Must be at least 2 items.");
 
         const user = userEvent.setup();
         render(<ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a"]} />);
@@ -114,7 +114,7 @@ runFieldInputContractSuite({
         const result = schema.safeParse(["a", "b", "c", "d"]);
         expect(result.success).toBe(false);
         const message = !result.success ? result.error.issues[0]?.message : undefined;
-        expect(message).toBe("This field is too long.");
+        expect(message).toBe("Must be no more than 3 items.");
 
         const user = userEvent.setup();
         render(<ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a", "b", "c", "d"]} />);
@@ -140,8 +140,8 @@ runFieldInputContractSuite({
           label: "Scores",
           items: text({ label: "Score", required: true }),
           required: true,
-          min: { value: 1, error: "Add at least one score." },
-          max: { value: 2, error: "No more than two scores." },
+          min: [1, "Add at least one score."],
+          max: [2, "No more than two scores."],
         });
         const user = userEvent.setup();
 

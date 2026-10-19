@@ -5,6 +5,7 @@ import type { BlockConfigInput, BlockConfig, BlocksFieldInput, BlocksField } fro
 import { RESERVED_BLOCK_FIELD_NAMES } from "./types";
 import { nanoid } from "nanoid";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldLimit } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 
 /**
@@ -128,8 +129,16 @@ export function blocks<
     labels: options.labels ?? { singular: "Block", plural: "Blocks" },
     blocks: options.blocks,
     interfaceName: options.interfaceName,
-    min: options.min,
-    max: options.max,
+    min: resolveFieldLimit({
+      limit: options.min,
+      defaultError: (value) =>
+        `Must be at least ${value} ${options.labels?.plural ?? "Blocks"}.`,
+    }),
+    max: resolveFieldLimit({
+      limit: options.max,
+      defaultError: (value) =>
+        `Must be no more than ${value} ${options.labels?.plural ?? "Blocks"}.`,
+    }),
     admin: {
       defaultCollapsed: options.admin?.defaultCollapsed ?? false,
       hidden: false,

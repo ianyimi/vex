@@ -196,37 +196,15 @@ export const pages = defineTable({
       )
     )
   ),
-  testImage: v.optional(v.array(v.id("images"))),
   metaTitle: v.optional(v.string()),
   metaDescription: v.optional(v.string()),
   ogImage: v.optional(v.array(v.id("images"))),
   themes: v.optional(v.array(v.id("themes"))),
-  test: v.optional(v.array(v.string())),
-  test2: v.optional(v.array(v.array(v.number()))),
   seo: v.optional(
     v.object({
       metaTitle: v.optional(v.string()),
       metaDescription: v.optional(v.string()),
       ogImage: v.optional(v.string()),
-    })
-  ),
-  anotherTest: v.optional(
-    v.object({
-      title: v.optional(v.string()),
-      subtitle: v.optional(v.string()),
-      list: v.optional(
-        v.array(
-          v.object({
-            title: v.optional(v.string()),
-            description: v.optional(v.string()),
-            queue: v.optional(
-              v.array(
-                v.object({ title: v.optional(v.string()), description: v.optional(v.string()) })
-              )
-            ),
-          })
-        )
-      ),
     })
   ),
   updatedAt: v.optional(v.number()),
@@ -255,7 +233,6 @@ export const user = defineTable({
   isAnonymous: v.optional(v.boolean()),
   userId: v.optional(v.string()),
   roles: v.array(v.string()),
-  newUserFieldTest: v.optional(v.string()),
 })
   .index("by_email", ["email"])
   .searchIndex("search_name", {
@@ -484,6 +461,7 @@ export const posts = defineTable({
   body: v.optional(v.array(v.any())),
   relatedPost: v.optional(v.array(v.id("posts"))),
   relatedArticle: v.optional(v.array(v.id("articles"))),
+  relatedField: v.optional(v.array(v.id("fields"))),
   updatedAt: v.optional(v.number()),
   vex_status: v.optional(v.union(v.literal("draft"), v.literal("published"))),
   vex_publishedAt: v.optional(v.number()),
@@ -493,11 +471,84 @@ export const posts = defineTable({
   .index("by_slug", ["slug"])
   .index("by_relatedPost", ["relatedPost"])
   .index("by_relatedArticle", ["relatedArticle"])
+  .index("by_relatedField", ["relatedField"])
   .index("by_status", ["vex_status"])
   .index("by_published", ["vex_publishedId"])
   .searchIndex("search_title", {
     searchField: "title",
 
+    filterFields: [],
+  })
+
+export const fields = defineTable({
+  contactEmail: v.string(),
+  bio: v.optional(v.string()),
+  settings: v.optional(v.any()),
+  title: v.optional(v.string()),
+  rating: v.optional(v.number()),
+  isFeatured: v.optional(v.boolean()),
+  status: v.optional(v.array(v.union(v.literal("draft"), v.literal("published")))),
+  tags: v.optional(
+    v.array(v.union(v.literal("news"), v.literal("tutorial"), v.literal("release")))
+  ),
+  accentColor: v.optional(v.string()),
+  website: v.optional(v.string()),
+  dueOn: v.optional(v.number()),
+  eventAt: v.optional(v.number()),
+  relatedUser: v.optional(v.array(v.id("user"))),
+  relatedUsers: v.optional(v.array(v.id("user"))),
+  avatar: v.optional(v.array(v.id("images"))),
+  gallery: v.optional(v.array(v.id("images"))),
+  body: v.optional(v.array(v.any())),
+  tagList: v.optional(v.array(v.string())),
+  gridItems: v.optional(
+    v.array(v.object({ heading: v.optional(v.string()), subheading: v.optional(v.string()) }))
+  ),
+  info: v.optional(
+    v.object({ heading: v.optional(v.string()), bullets: v.optional(v.array(v.string())) })
+  ),
+  content: v.optional(
+    v.array(
+      v.union(
+        v.object({
+          blockType: v.literal("stat_group"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          heading: v.optional(v.string()),
+          stats: v.optional(
+            v.array(v.object({ value: v.optional(v.string()), caption: v.optional(v.string()) }))
+          ),
+        }),
+        v.object({
+          blockType: v.literal("container"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          label: v.optional(v.string()),
+          children: v.optional(
+            v.array(
+              v.object({
+                blockType: v.literal("nested_stat_group"),
+                blockName: v.optional(v.string()),
+                id: v.string(),
+                heading: v.optional(v.string()),
+                stats: v.optional(
+                  v.array(
+                    v.object({ value: v.optional(v.string()), caption: v.optional(v.string()) })
+                  )
+                ),
+              })
+            )
+          ),
+        })
+      )
+    )
+  ),
+  updatedAt: v.optional(v.number()),
+})
+  .index("by_relatedUser", ["relatedUser"])
+  .index("by_relatedUsers", ["relatedUsers"])
+  .searchIndex("search_fields_contactEmail", {
+    searchField: "contactEmail",
     filterFields: [],
   })
 

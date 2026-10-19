@@ -1,4 +1,4 @@
-import type { BaseField, BaseFieldInput, FieldValidateProps } from "../baseTypes";
+import type { BaseField, BaseFieldInput, FieldLimit, FieldLimitInput, FieldValidateProps } from "../baseTypes";
 import type { MediaCollectionSlug, VexResourceSlug } from "../../types/generated";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
@@ -28,13 +28,15 @@ export interface UploadFieldInput<
    */
   to: MediaCollectionSlug;
   /**
-   * The min number of files allowed.
+   * Minimum number of files allowed. Absent — the default — means no minimum.
+   * @see {@link FieldLimitInput}
    */
-  min?: number;
+  min?: FieldLimitInput;
   /**
-   * The max number of files allowed.
+   * Maximum number of files allowed.
+   * @see {@link FieldLimitInput}
    */
-  max?: number;
+  max?: FieldLimitInput;
   /**
    * Whether this input accepts multiple files or only one.
    */
@@ -69,13 +71,16 @@ export interface UploadField<
    */
   hasMany: boolean;
   /**
-   * The min number of files allowed.
+   * Minimum number of files allowed, with its resolved error message.
+   * Absent means no minimum — upload's resolved `min` no longer defaults to `0`.
+   * @see {@link FieldLimit}
    */
-  min: number;
+  min?: FieldLimit;
   /**
-   * The max number of files allowed.
+   * Maximum number of files allowed, with its resolved error message.
+   * @see {@link FieldLimit}
    */
-  max?: number;
+  max?: FieldLimit;
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    */

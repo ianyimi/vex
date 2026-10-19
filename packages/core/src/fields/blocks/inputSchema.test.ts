@@ -67,7 +67,7 @@ describe("blocksFieldToInputSchema", () => {
     // merely fail; the min-specific message must actually be among the issues.
     if (!result.success) {
       expect(result.error.issues.map((issue) => issue.message)).toContain(
-        "At least 1 Blocks required.",
+        "Must be at least 1 Blocks.",
       );
     }
     expect(

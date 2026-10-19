@@ -14,12 +14,6 @@ const SESSION_COOKIES = {
 } as const;
 
 /**
- * Paths the proxy must never guard, because they are where it sends people.
- * Guarding them turns a Convex outage into an infinite redirect loop.
- */
-const ALWAYS_ALLOWED: Record<string, true> = { "/": true, "/unauthorized": true };
-
-/**
  * Session gate for the private surfaces named in `config.matcher`.
  *
  * **This is the marketing-site variant.** The base template guards every route
@@ -52,10 +46,6 @@ const ALWAYS_ALLOWED: Record<string, true> = { "/": true, "/unauthorized": true 
  *   redirect to sign-in or to the unauthorized page.
  */
 export async function proxy(request: NextRequest) {
-  if (ALWAYS_ALLOWED[request.nextUrl.pathname]) {
-    return NextResponse.next();
-  }
-
   if (request.nextUrl.pathname.startsWith("/admin")) {
     return guardAdminRequest(request);
   }

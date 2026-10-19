@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 import { useForm } from "@tanstack/react-form";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -233,6 +233,19 @@ function isPopoverTriggerControl(control: Element): boolean {
 }
 
 /**
+ * Whether `control` is a contenteditable control (CodeMirror's `json`
+ * editor) — jsdom does not implement the `HTMLElement.isContentEditable`
+ * getter (it is always `undefined`), so this reads the `contenteditable`
+ * attribute directly instead of relying on the DOM property.
+ *
+ * @param control - The rendered control element to inspect.
+ * @returns Whether `control` is editable via `contenteditable="true"`.
+ */
+function isContentEditableControl(control: Element): boolean {
+  return control.getAttribute("contenteditable") === "true";
+}
+
+/**
  * Best-effort generic interaction used by every value-mutating assertion below.
  * Handles the two control shapes a fixture is guaranteed to be able to drive
  * generically — a plain text-like control, and a checkbox/radio — and is a
@@ -268,6 +281,17 @@ async function setControlValue(
     if (text) {
       await user.type(input, text);
     }
+    return;
+  }
+  // A contenteditable control (CodeMirror's `json` editor): no `.value`/`<input>`
+  // identity, but `@testing-library/user-event` v14 supports `clear()`/`type()`
+  // on contenteditable elements directly.
+  if (isContentEditableControl(control)) {
+    await user.clear(control);
+    const text = value === undefined || value === null ? "" : String(value);
+    if (text) {
+      await user.type(control, text);
+    }
   }
 }
 
@@ -300,6 +324,10 @@ async function attemptEdit(user: UserEvent, control: HTMLElement, value: unknown
  */
 function expectControlValue(control: HTMLElement, expected: unknown): void {
   if (isPopoverTriggerControl(control)) return;
+  if (isContentEditableControl(control)) {
+    expect(control.textContent).toBe(expected === undefined || expected === null ? "" : String(expected));
+    return;
+  }
   const input = control as HTMLInputElement;
   if (input.type === "checkbox" || input.type === "radio") {
     expect(input.checked).toBe(Boolean(expected));
@@ -400,15 +428,47 @@ function getLabelNode(container: HTMLElement): HTMLElement | null {
 }
 
 /**
+ * Polls `container.innerHTML` until two consecutive checks (10ms apart,
+ * under `act()`) match, or 20 attempts (200ms) elapse.
+ *
+ * A field's control behind a `React.lazy`/`Suspense` boundary (`json`'s
+ * `JsonEditor`) still shows its Suspense `fallback` synchronously right
+ * after `render()` — the real dynamic `import("./JsonEditorView")` resolves
+ * only after genuine async module-transform work, not a single microtask, so
+ * one `act(async () => {})` isn't enough to observe it settle. Comparing
+ * successive snapshots needs no field-type-specific knowledge: a
+ * non-lazy field's markup is already identical on the very first two checks
+ * (one extra 10ms wait, same for every one of the other 29 field types), a
+ * lazy one keeps changing until the real control swaps in.
+ *
+ * @param container - The rendered field's container to poll.
+ */
+async function waitForStableRender(container: HTMLElement): Promise<void> {
+  let previous = container.innerHTML;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    const current = container.innerHTML;
+    if (current === previous) return;
+    previous = current;
+  }
+}
+
+/**
  * Mounts `Component` inside a real `useForm`/`<AppForm>` pair — the exact wiring
  * `createFieldInput`-built components expect in production. The mounted form's
  * only validator is a form-level `onSubmit` that delegates to the real
  * `adminFieldToInputSchema` dispatcher, so submitting the form exercises the
  * field's actual production validation, not a test-only stand-in.
  *
+ * `async`, polling via {@link waitForStableRender} after mount so every
+ * caller's `getControl` resolves the field's REAL control, never a stale
+ * Suspense fallback node React is about to replace.
+ *
  * @returns Utilities for interacting with and asserting on the mounted field.
  */
-function renderField<TField extends AdminField, TValue>(props: {
+async function renderField<TField extends AdminField, TValue>(props: {
   Component: FieldInputContractOptions<TField, TValue>["Component"];
   fieldDef: TField;
   collection: CollectionConfig;
@@ -492,6 +552,7 @@ function renderField<TField extends AdminField, TValue>(props: {
   }
 
   const result = render(createElement(Harness));
+  await waitForStableRender(result.container);
   return {
     ...result,
     // `render` above mounts `Harness` synchronously, so `form` is always assigned
@@ -546,8 +607,8 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
 
   describe(`${fixture.fieldType} field input contract`, () => {
     // ── 1. Label ────────────────────────────────────────────────────────────
-    it('renders a label associated with the input via htmlFor/id, or (for container fields with no single control) a labelled role="group"', () => {
-      const { container } = renderField({
+    it('renders a label associated with the input via htmlFor/id, or (for container fields with no single control) a labelled role="group"', async () => {
+      const { container } = await renderField({
         Component,
         fieldDef: fixture.fieldDef,
         collection,
@@ -575,9 +636,9 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       expect(labelNode?.textContent).toContain(label);
     });
 
-    it("falls back to the field name when fieldDef.label is empty", () => {
+    it("falls back to the field name when fieldDef.label is empty", async () => {
       const fieldDef = withFieldDef(fixture.fieldDef, { label: "" });
-      renderField({ Component, fieldDef, collection, readOnly: false, initialValue: fixture.valid });
+      await renderField({ Component, fieldDef, collection, readOnly: false, initialValue: fixture.valid });
 
       // `checkbox`-shaped controls associate the SAME label text with two
       // elements (the visible `role="checkbox"` via `aria-labelledby`, and
@@ -588,8 +649,8 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       expect(visible).toBeInTheDocument();
     });
 
-    it("prefixes the label with a 1-based index when `index` is supplied (nested rendering)", () => {
-      const { container } = renderField({
+    it("prefixes the label with a 1-based index when `index` is supplied (nested rendering)", async () => {
+      const { container } = await renderField({
         Component,
         fieldDef: fixture.fieldDef,
         collection,
@@ -602,9 +663,9 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       expect(getLabelNode(container)?.textContent).toBe(expected);
     });
 
-    it("shows a required-asterisk in the label when the field is required", () => {
+    it("shows a required-asterisk in the label when the field is required", async () => {
       const fieldDef = withFieldDef(fixture.fieldDef, { required: true });
-      const { container } = renderField({
+      const { container } = await renderField({
         Component,
         fieldDef,
         collection,
@@ -617,9 +678,9 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       );
     });
 
-    it("hides the required-asterisk in the label when the field is not required", () => {
+    it("hides the required-asterisk in the label when the field is not required", async () => {
       const fieldDef = withFieldDef(fixture.fieldDef, { required: false });
-      const { container } = renderField({
+      const { container } = await renderField({
         Component,
         fieldDef,
         collection,
@@ -630,7 +691,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       expect(getLabelNode(container)?.textContent).toBe(fieldDef.label || FIELD_NAME);
     });
 
-    it("marks the control as required for assistive tech when the field is required", () => {
+    it("marks the control as required for assistive tech when the field is required", async () => {
       // Ambiguous whether "reflected in the control" (design-change item 5) means a
       // native `required` attribute or `aria-required` — either is accepted.
       // `text/Input.tsx` forwards neither to its `<Input>` (only `disabled`,
@@ -638,7 +699,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       // see Input.tsx), so this is expected to fail for text: a genuine a11y gap
       // surfaced here, not a test bug.
       const fieldDef = withFieldDef(fixture.fieldDef, { required: true });
-      const { container } = renderField({ Component, fieldDef, collection, readOnly: false, initialValue: fixture.valid });
+      const { container } = await renderField({ Component, fieldDef, collection, readOnly: false, initialValue: fixture.valid });
 
       const control = getControl(container, fieldDef.label || FIELD_NAME);
       // `aria-required` is not an ARIA-allowed attribute on `role="group"`
@@ -656,18 +717,18 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
     // `FormDescription` reads `field.description` (a top-level `BaseField`
     // property), not `field.admin.description` — implemented against the real
     // component, not the design change's checklist shorthand.
-    it("renders the field's description when fieldDef.description is set", () => {
+    it("renders the field's description when fieldDef.description is set", async () => {
       const fieldDef = withFieldDef(fixture.fieldDef, {
         description: "Contract-probe description.",
       });
-      renderField({ Component, fieldDef, collection, readOnly: false, initialValue: fixture.valid });
+      await renderField({ Component, fieldDef, collection, readOnly: false, initialValue: fixture.valid });
 
       expect(screen.getByText("Contract-probe description.")).toBeVisible();
     });
 
-    it("hides the description paragraph when fieldDef.description is not set", () => {
+    it("hides the description paragraph when fieldDef.description is not set", async () => {
       const fieldDef = withFieldDef(fixture.fieldDef, { description: undefined });
-      const { container } = renderField({
+      const { container } = await renderField({
         Component,
         fieldDef,
         collection,
@@ -686,16 +747,21 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
     });
 
     // ── 3. Placeholder ──────────────────────────────────────────────────────
-    it("forwards fieldDef.admin.placeholder to the control", () => {
+    it("forwards fieldDef.admin.placeholder to the control", async () => {
       const fieldDef = withFieldDef(fixture.fieldDef, {
         admin: { placeholder: "Contract placeholder probe" },
       });
-      const { container } = renderField({ Component, fieldDef, collection, readOnly: false, initialValue: fixture.empty });
+      const { container } = await renderField({ Component, fieldDef, collection, readOnly: false, initialValue: fixture.empty });
 
       const control = getControl(container, fieldDef.label || FIELD_NAME);
       if (isPopoverTriggerControl(control)) return;
       const controlInput = control as HTMLInputElement;
       if (["checkbox", "radio", "file"].includes(controlInput.type)) return;
+      // A contenteditable control (CodeMirror's `json` editor) has no native
+      // `placeholder` HTML attribute to forward to — it renders its own
+      // `.cm-placeholder` widget instead, a different rendering model this
+      // generic DOM-attribute assertion can't generalize to.
+      if (isContentEditableControl(control)) return;
       expect(control).toHaveAttribute("placeholder", "Contract placeholder probe");
     });
 
@@ -703,7 +769,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
     it("the `readOnly` prop disables editing independent of fieldDef.admin.readOnly", async () => {
       const user = userEvent.setup();
       const fieldDef = withFieldDef(fixture.fieldDef, { admin: { readOnly: false } });
-      const { container } = renderField({ Component, fieldDef, collection, readOnly: true, initialValue: fixture.empty });
+      const { container } = await renderField({ Component, fieldDef, collection, readOnly: true, initialValue: fixture.empty });
 
       const control = getControl(container, fieldDef.label || FIELD_NAME);
       await attemptEdit(user, control, fixture.valid);
@@ -714,7 +780,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
     it("fieldDef.admin.readOnly disables editing independent of the `readOnly` prop", async () => {
       const user = userEvent.setup();
       const fieldDef = withFieldDef(fixture.fieldDef, { admin: { readOnly: true } });
-      const { container } = renderField({ Component, fieldDef, collection, readOnly: false, initialValue: fixture.empty });
+      const { container } = await renderField({ Component, fieldDef, collection, readOnly: false, initialValue: fixture.empty });
 
       const control = getControl(container, fieldDef.label || FIELD_NAME);
       await attemptEdit(user, control, fixture.valid);
@@ -725,7 +791,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
     it("disables editing when both readOnly sources are set together", async () => {
       const user = userEvent.setup();
       const fieldDef = withFieldDef(fixture.fieldDef, { admin: { readOnly: true } });
-      const { container } = renderField({ Component, fieldDef, collection, readOnly: true, initialValue: fixture.empty });
+      const { container } = await renderField({ Component, fieldDef, collection, readOnly: true, initialValue: fixture.empty });
 
       const control = getControl(container, fieldDef.label || FIELD_NAME);
       await attemptEdit(user, control, fixture.valid);
@@ -734,9 +800,9 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
     });
 
     // ── 5 & 7. Required + error timing ──────────────────────────────────────
-    it("shows no validation error before any interaction or submission", () => {
+    it("shows no validation error before any interaction or submission", async () => {
       const errorMessage = deriveInvalidErrorMessage();
-      renderField({
+      await renderField({
         Component,
         fieldDef: fixture.fieldDef,
         collection,
@@ -747,9 +813,9 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       expect(screen.queryByText(errorMessage)).not.toBeInTheDocument();
     });
 
-    it("blurring an untouched field alone shows no error — this harness's only validator is form-level onSubmit, so isTouched has no error to reveal without a prior submit", () => {
+    it("blurring an untouched field alone shows no error — this harness's only validator is form-level onSubmit, so isTouched has no error to reveal without a prior submit", async () => {
       const errorMessage = deriveInvalidErrorMessage();
-      const { container } = renderField({
+      const { container } = await renderField({
         Component,
         fieldDef: fixture.fieldDef,
         collection,
@@ -765,7 +831,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
     it("shows the field's validation error only after a submission attempt", async () => {
       const errorMessage = deriveInvalidErrorMessage();
       const user = userEvent.setup();
-      renderField({
+      await renderField({
         Component,
         fieldDef: fixture.fieldDef,
         collection,
@@ -784,7 +850,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
     it("clears the error once the value becomes valid and the form is resubmitted", async () => {
       const errorMessage = deriveInvalidErrorMessage();
       const user = userEvent.setup();
-      const { container } = renderField({
+      const { container } = await renderField({
         Component,
         fieldDef: fixture.fieldDef,
         collection,
@@ -814,9 +880,9 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
         ["invalid", fixture.invalid],
       ] as const
     ).forEach(([name, value]) => {
-      it(`renders the ${name} fixture value without crashing or a React input warning`, () => {
+      it(`renders the ${name} fixture value without crashing or a React input warning`, async () => {
         const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-        renderField({
+        await renderField({
           Component,
           fieldDef: fixture.fieldDef,
           collection,
@@ -835,7 +901,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
     // ── 8. Change/blur wiring ───────────────────────────────────────────────
     it("round-trips a typed value through the controlled input", async () => {
       const user = userEvent.setup();
-      const { container } = renderField({
+      const { container } = await renderField({
         Component,
         fieldDef: fixture.fieldDef,
         collection,
@@ -850,7 +916,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
 
     it("passes the correctly-typed value (not stringified) to field.handleChange", async () => {
       const user = userEvent.setup();
-      const { container, getForm } = renderField({
+      const { container, getForm } = await renderField({
         Component,
         fieldDef: fixture.fieldDef,
         collection,
@@ -864,8 +930,8 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       expect(getForm().getFieldValue(FIELD_NAME)).toStrictEqual(fixture.valid);
     });
 
-    it("calls field.handleBlur on blur, marking the field touched", () => {
-      const { container, getForm } = renderField({
+    it("calls field.handleBlur on blur, marking the field touched", async () => {
+      const { container, getForm } = await renderField({
         Component,
         fieldDef: fixture.fieldDef,
         collection,
@@ -894,9 +960,9 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
     });
 
     // ── 9. defaultValue ─────────────────────────────────────────────────────
-    it("starts at ADMIN_FIELDS[type].defaultValue when the form is seeded with it", () => {
+    it("starts at ADMIN_FIELDS[type].defaultValue when the form is seeded with it", async () => {
       const defaultValue = ADMIN_FIELDS[fixture.fieldType].defaultValue as TValue;
-      const { container } = renderField({
+      const { container } = await renderField({
         Component,
         fieldDef: fixture.fieldDef,
         collection,
@@ -909,7 +975,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
 
     // ── 10. Accessibility ───────────────────────────────────────────────────
     it("has no detectable accessibility violations in its default render", async () => {
-      const { container } = renderField({
+      const { container } = await renderField({
         Component,
         fieldDef: fixture.fieldDef,
         collection,
@@ -921,7 +987,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
     });
 
     it("has no detectable accessibility violations when read-only", async () => {
-      const { container } = renderField({
+      const { container } = await renderField({
         Component,
         fieldDef: fixture.fieldDef,
         collection,
@@ -934,7 +1000,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
 
     it("has no detectable accessibility violations while showing a validation error", async () => {
       const user = userEvent.setup();
-      const { container } = renderField({
+      const { container } = await renderField({
         Component,
         fieldDef: fixture.fieldDef,
         collection,

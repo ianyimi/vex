@@ -89,7 +89,7 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        min: { value: 2 },
+        min: 2,
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -107,7 +107,7 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        min: { value: 3, error: "At least 3 items required" },
+        min: [3, "At least 3 items required"],
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -121,7 +121,7 @@ describe("arrayFieldToInputSchema", () => {
     });
 
     it("surfaces a custom min message on a required field even when min.value matches the required floor (regression)", () => {
-      // A `min: { value: 1 }` on a required field is a common pattern to get
+      // A `min: [1, "…"]` on a required field is a common pattern to get
       // a friendlier message than the generic "This field is required." —
       // the only way to violate `min: 1` is an empty array, so the
       // required-only-skips-when-optional gate must not swallow this case.
@@ -129,7 +129,7 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        min: { value: 1, error: "Add at least one item." },
+        min: [1, "Add at least one item."],
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -149,7 +149,7 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        max: { value: 3 },
+        max: 3,
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -166,7 +166,7 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        max: { value: 2, error: "Maximum 2 items allowed" },
+        max: [2, "Maximum 2 items allowed"],
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -184,8 +184,8 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        min: { value: 2 },
-        max: { value: 5 },
+        min: 2,
+        max: 5,
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -205,8 +205,8 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        min: { value: 3, error: "Too few items" },
-        max: { value: 10, error: "Too many items" },
+        min: [3, "Too few items"],
+        max: [10, "Too many items"],
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -222,8 +222,8 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        min: { value: 1, error: "Too few items" },
-        max: { value: 2, error: "Too many items" },
+        min: [1, "Too few items"],
+        max: [2, "Too many items"],
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -258,8 +258,8 @@ describe("arrayFieldToInputSchema", () => {
 
     it("applies constraints to nested arrays", () => {
       const innerItems = text({ required: true });
-      const innerArray = array({ items: innerItems, required: true, max: { value: 3 } });
-      const field = array({ items: innerArray, required: true, min: { value: 2 } });
+      const innerArray = array({ items: innerItems, required: true, max: 3 });
+      const field = array({ items: innerArray, required: true, min: 2 });
       const schema = arrayFieldToInputSchema({ field });
 
       // Should accept 2-3 nested arrays, each with max 3 items
@@ -298,8 +298,8 @@ describe("arrayFieldToInputSchema", () => {
       const itemsField = number({ required: true });
       const field = array({
         items: itemsField,
-        min: { value: 2 },
-        max: { value: 3 },
+        min: 2,
+        max: 3,
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -312,8 +312,8 @@ describe("arrayFieldToInputSchema", () => {
       const itemsField = number({ required: true });
       const field = array({
         items: itemsField,
-        min: { value: 2 },
-        max: { value: 3 },
+        min: 2,
+        max: 3,
       });
       const schema = arrayFieldToInputSchema({ field });
 

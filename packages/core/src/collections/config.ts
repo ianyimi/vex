@@ -1,6 +1,6 @@
 import pluralize from "pluralize-esm";
 
-import { ADMIN_FIELDS, AdminField, CollectionFieldMeta, ComponentHKT, number } from "../fields";
+import { ADMIN_FIELDS, AdminField, CollectionFieldMeta, ComponentHKT, date } from "../fields";
 import { CollectionSlug } from "../types";
 import { toTitleCase } from "../utils";
 import { COLLECTION_SYSTEM_FIELDS, CollectionSystemField } from "./constants";
@@ -218,14 +218,16 @@ export function defineCollection<
     ? input.fields
     : {
         ...input.fields,
-        updatedAt: number({
-          admin: { position: "sidebar", readOnly: true },
-          // `number()` defaults to `0`; an unsaved document has no update
-          // time, and epoch is a lie. `getFieldsDefaultValues` yields
-          // `undefined` on create and the stored value on edit.
-          defaultValue: undefined,
+        updatedAt: date({
           label: "Updated At",
           required: false,
+          // `date()`'s own default is already `undefined` (`ADMIN_FIELDS.date.defaultValue`);
+          // stated explicitly so the intent reads at the call site — an unsaved document has
+          // no update time, and epoch is a lie. `getFieldsDefaultValues` yields `undefined`
+          // on create and the stored value on edit.
+          defaultValue: undefined,
+          admin: { position: "sidebar", readOnly: true },
+          time: { timePicker: { hour: true, minute: true, second: true } },
         }) as AdminField<TFieldMeta>,
       };
 

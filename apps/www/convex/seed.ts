@@ -992,7 +992,7 @@ export const featuredPosts = query({
           {
             question: "What does it cost?",
             answer:
-              "The core is Apache-2.0 and stays that way: every field type, the admin panel, the CLI, RBAC, drafts, live preview, and hooks. You pay Convex for usage, and Convex has a free tier. Paid enterprise add-ons come later: environment branching, SSO, approval workflows, audit logs, and localization, as separate packages under a flat annual licence. Nothing free today becomes paid later.",
+              "The core is Apache-2.0 and stays that way: every field type, the admin panel, the CLI, RBAC, drafts, live preview, and hooks, plus localization and presence when they land. You pay Convex for usage, and Convex has a free tier. Paid enterprise add-ons come later: real-time co-editing, environment branching, SSO, approval workflows, and audit logs, as separate packages under a flat annual licence. Nothing free today becomes paid later.",
           },
         ],
       },
@@ -1463,13 +1463,13 @@ export const testimonials = defineTable({
             feature: "Versioning & Drafts",
             description:
               "A real draft and publish workflow. Reads return the published document, readDrafts returns drafts, and publish promotes. Autosave never touches what is live. Prior versions are restorable from the edit view.",
-            status: ["in-progress"],
+            status: ["shipped"],
           },
           {
             feature: "Richtext Field",
             description:
-              "A richtext() field in core, wired to the Plate.js editor and renderer that @vexcms/richtext-plate already ships. The @ts-nocheck pragmas go with it.",
-            status: ["in-progress"],
+              "A richtext() field in core, wired to the Plate.js editor and renderer from @vexcms/richtext-plate, with inline images from the media library.",
+            status: ["shipped"],
           },
           {
             feature: "Field Input Consistency Pass",
@@ -1498,8 +1498,8 @@ export const testimonials = defineTable({
           {
             feature: "JSON, Email & Textarea Fields",
             description:
-              "Deliberately cut from 0.1.0, not forgotten. Leaf fields are cheap to add once the track is done. ui and tabs are a separate question; both change core invariants.",
-            status: ["future"],
+              "Pulled back into the 0.1.0 track: cheap leaf fields, landed before the field consistency pass so it covers them. ui and tabs are a separate question; both change core invariants.",
+            status: ["in-progress"],
           },
           {
             feature: "Content Scheduling",
@@ -1540,7 +1540,7 @@ export const testimonials = defineTable({
           {
             feature: "Enterprise Add-Ons",
             description:
-              "Content branching between environments, SAML and OIDC SSO, approval workflows, a retained audit log, and localization. Separate paid packages on a flat annual licence. The core stays Apache-2.0, and nothing free today moves behind it.",
+              "Real-time co-editing (live cursors, per-field indicators, collaborative rich text), content branching between environments, SAML and OIDC SSO, approval workflows, and a retained audit log. Separate paid packages on a flat annual licence. The core stays Apache-2.0, and nothing free today moves behind it.",
             status: ["exploring"],
           },
           {

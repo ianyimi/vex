@@ -6,6 +6,8 @@ import {
   ComponentHKT,
   FieldAdminConfig,
   FieldAdminConfigInput,
+  FieldLimit,
+  FieldLimitInput,
   FieldValidateProps,
 } from "../baseTypes";
 import { CollectionSlug , VexResourceSlug } from "../../types/generated";
@@ -123,20 +125,10 @@ export interface RelationshipFieldInput<
    * @defaultValue false
    */
   hasMany?: boolean;
-  /** Minimum number of related documents required, once a value is supplied. */
-  min?: {
-    /** Minimum reference count. */
-    value: number;
-    /** Minimum reference count error message. */
-    error?: string;
-  };
-  /** Maximum number of related documents allowed. */
-  max?: {
-    /** Maximum reference count. */
-    value: number;
-    /** Maximum reference count error message. */
-    error?: string;
-  };
+  /** Minimum number of related documents required, once a value is supplied. @see {@link FieldLimitInput} */
+  min?: FieldLimitInput;
+  /** Maximum number of related documents allowed. @see {@link FieldLimitInput} */
+  max?: FieldLimitInput;
   admin?: BaseFieldInput["admin"] &
     RelationshipFieldAdminInput<TTargetSlug, TComponent>;
   /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
@@ -167,20 +159,10 @@ export interface RelationshipField<
   };
   /** Whether this field stores multiple document references. */
   hasMany: boolean;
-  /** Minimum number of related documents required, once a value is supplied. */
-  min?: {
-    /** Minimum reference count. */
-    value: number;
-    /** Minimum reference count error message. */
-    error?: string;
-  };
-  /** Maximum number of related documents allowed. */
-  max?: {
-    /** Maximum reference count. */
-    value: number;
-    /** Maximum reference count error message. */
-    error?: string;
-  };
+  /** Minimum number of related documents required, once a value is supplied, with its resolved error message. @see {@link FieldLimit} */
+  min?: FieldLimit;
+  /** Maximum number of related documents allowed, with its resolved error message. @see {@link FieldLimit} */
+  max?: FieldLimit;
   admin: BaseField<VexResourceSlug, TFieldMeta>["admin"] &
     RelationshipFieldAdminConfig<TTargetSlug, TComponent>;
   /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */

@@ -634,7 +634,7 @@ describe("update (server) — validation and hooks", () => {
   });
 
   test("rejects a present field that violates its constraint on a partial update", async () => {
-    const collection = defineCollection({ slug: "posts", fields: { title: text({ max: { value: 5 } }) } });
+    const collection = defineCollection({ slug: "posts", fields: { title: text({ max: 5 }) } });
     const config = { collections: [collection] } as unknown as VexConfig;
     const t = convexTest(schema, modules);
     const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
@@ -651,7 +651,7 @@ describe("update (server) — validation and hooks", () => {
       fields: {
         title: text(),
         slug: text(),
-        author: array({ items: text(), required: true, min: { value: 2 } }),
+        author: array({ items: text(), required: true, min: 2 }),
       },
     });
     const config = { collections: [collection] } as unknown as VexConfig;
@@ -674,7 +674,7 @@ describe("update (server) — validation and hooks", () => {
       fields: {
         title: text(),
         slug: text(),
-        author: array({ items: text(), min: { value: 2 } }),
+        author: array({ items: text(), min: 2 }),
       },
     });
     const config = { collections: [collection] } as unknown as VexConfig;
@@ -698,7 +698,7 @@ describe("update (server) — validation and hooks", () => {
       fields: {
         title: text(),
         slug: text(),
-        author: array({ items: text(), min: { value: 2 } }),
+        author: array({ items: text(), min: 2 }),
       },
     });
     const config = { collections: [collection] } as unknown as VexConfig;
@@ -722,7 +722,7 @@ describe("update (server) — validation and hooks", () => {
       fields: {
         title: text(),
         slug: text(),
-        author: array({ items: text(), min: { value: 2 } }),
+        author: array({ items: text(), min: 2 }),
       },
     });
     const config = { collections: [collection] } as unknown as VexConfig;

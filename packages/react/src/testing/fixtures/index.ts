@@ -1,6 +1,9 @@
 import type { AdminFieldType } from "@vexcms/core";
 import type { FieldFixture } from "./types";
 import { textFieldFixture } from "../../components/fields/text/testFixture";
+import { emailFieldFixture } from "../../components/fields/email/testFixture";
+import { textareaFieldFixture } from "../../components/fields/textarea/testFixture";
+import { jsonFieldFixture } from "../../components/fields/json/testFixture";
 import { numberFieldFixture } from "../../components/fields/number/testFixture";
 import { checkboxFieldFixture } from "../../components/fields/checkbox/testFixture";
 import { urlFieldFixture } from "../../components/fields/url/testFixture";
@@ -30,6 +33,9 @@ import { richTextFieldFixture } from "../../components/fields/richtext/testFixtu
  */
 export const fieldFixtures: Record<AdminFieldType, FieldFixture> = {
   text: textFieldFixture,
+  email: emailFieldFixture,
+  textarea: textareaFieldFixture,
+  json: jsonFieldFixture,
   number: numberFieldFixture,
   checkbox: checkboxFieldFixture,
   url: urlFieldFixture,

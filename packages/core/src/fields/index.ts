@@ -7,6 +7,8 @@ export * from "./interfaceGen";
 export * from "./utils";
 
 export * from "./text";
+export * from "./email";
+export * from "./textarea";
 export * from "./select";
 export * from "./relationship";
 export * from "./number";
@@ -19,3 +21,4 @@ export * from "./group";
 export * from "./blocks";
 export * from "./upload";
 export * from "./richtext";
+export * from "./json";

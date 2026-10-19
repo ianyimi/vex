@@ -1,5 +1,7 @@
 import type { BetterAuthOptions } from "better-auth";
 
+import { USER_ROLES } from "~/db/constants";
+
 import { createPlugins } from "./plugins";
 import { authSchema } from "./schema";
 
@@ -26,6 +28,14 @@ export const authOptions: BetterAuthOptions = {
   baseURL: process.env.SITE_URL,
   emailAndPassword: {
     enabled: true,
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) =>
+          user.isAnonymous === true ? { data: { ...user, roles: [USER_ROLES.guest] } } : undefined,
+      },
+    },
   },
   plugins: createPlugins(),
   secret: process.env.BETTER_AUTH_SECRET,

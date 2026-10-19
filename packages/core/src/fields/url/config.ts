@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldLimit } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 import type { UrlFieldInput, UrlField } from "./types";
 
@@ -34,7 +35,7 @@ import type { UrlFieldInput, UrlField } from "./types";
  *     canonicalUrl: url(),
  *
  *     // Required website URL with a length cap and database index
- *     website: url({ required: true, max: { value: 2048 }, index: "by_website" }),
+ *     website: url({ required: true, max: 2048, index: "by_website" }),
  *
  *     // Social profile URL with a placeholder hint
  *     twitterUrl: url({
@@ -63,6 +64,15 @@ export function url<
     required: false,
     defaultValue: ADMIN_FIELDS.url.defaultValue,
     ...options,
+
+    min: resolveFieldLimit({
+      limit: options?.min,
+      defaultError: (value) => `Must be at least ${value} characters.`,
+    }),
+    max: resolveFieldLimit({
+      limit: options?.max,
+      defaultError: (value) => `Must be no more than ${value} characters.`,
+    }),
 
     // Admin config with all defaults applied
     admin: {

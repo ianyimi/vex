@@ -10,6 +10,10 @@ import type { ComponentType } from "react";
 import {
   TextFieldInput,
   TextFieldCell,
+  EmailFieldInput,
+  EmailFieldCell,
+  TextareaFieldInput,
+  TextareaFieldCell,
   NumberFieldCell,
   NumberFieldInput,
   CheckboxFieldInput,
@@ -37,6 +41,8 @@ import {
   UploadFieldCell,
   RichTextFieldInput,
   RichTextFieldCell,
+  JsonFieldInput,
+  JsonFieldCell,
 } from "./components";
 
 /**
@@ -75,6 +81,14 @@ export const reactAdapter: FrameworkAdapterInput<ReactHKT> = defineFrameworkAdap
     [ADMIN_FIELDS.text.type]: {
       input: TextFieldInput,
       cell: TextFieldCell,
+    },
+    [ADMIN_FIELDS.email.type]: {
+      input: EmailFieldInput,
+      cell: EmailFieldCell,
+    },
+    [ADMIN_FIELDS.textarea.type]: {
+      input: TextareaFieldInput,
+      cell: TextareaFieldCell,
     },
     [ADMIN_FIELDS.number.type]: {
       input: NumberFieldInput,
@@ -123,6 +137,10 @@ export const reactAdapter: FrameworkAdapterInput<ReactHKT> = defineFrameworkAdap
     [ADMIN_FIELDS.richtext.type]: {
       input: RichTextFieldInput,
       cell: RichTextFieldCell,
+    },
+    [ADMIN_FIELDS.json.type]: {
+      input: JsonFieldInput,
+      cell: JsonFieldCell,
     },
   },
   views: {

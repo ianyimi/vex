@@ -777,3 +777,46 @@ each is its own feature decision.
 **Why deferred.** Image support just shipped (spec 2026-10-13-richtext-field);
 developer explicitly keeps the popover image-only for now (Upload tab and
 library select restricted to `image/*`, tooltip "Insert image").
+
+---
+
+## Convex function bundle size (dead auth/admin code)
+
+**What.** Keep code that never runs in the Convex runtime out of the Convex
+function bundle. Measured 2026-10-16 with esbuild using Convex's own bundler
+settings (`conditions: ["convex","module"]`, splitting, minified syntax and
+identifiers) over `apps/test/convex/*.ts`. Three sources found:
+
+1. **Admin UI via the richtext editor — fixed.** `vex.config.ts` →
+   `plateEditor()` lazy-imported `PlateEditorField` → `@vexcms/react` + Plate +
+   Slate + lucide + Base UI. esbuild bundles lazy chunks even though they never
+   run. Fixed by a `"convex"` export condition on `@vexcms/richtext-plate`
+   (`src/server.ts`, inert adapter): 7,955 → 2,372 KB unminified.
+2. **`nextCookies()` — fixed in `apps/test` and `apps/www`; still in the
+   `base-nextjs` template.** Better Auth runs only in Convex here
+   (`convexBetterAuthNextJs` proxies), so both of the plugin's hooks fail on
+   `next/headers` and return. It pulled 36 Next server files: 2,211 → 2,059 KB
+   (−152 KB). The plugin has no schema, so removal doesn't affect auth tables.
+   Template: `packages/create-vexcms/templates/base-nextjs/convex/auth/plugins/index.ts`.
+3. **Kysely via the full `better-auth` entry — open.** ~391 KB. Vex passes an
+   adapter and never runs Better Auth migrations, so `better-auth/minimal`
+   (no Kysely: no direct DB connection, no `runMigrations()`) would be
+   functionally sufficient. But switching `createAuth` alone saves only ~11 KB:
+   `@better-auth/api-key` imports `BetterAuthError` from the root
+   `better-auth` entry, which keeps the full entry and Kysely in the bundle.
+
+**Why.** A smaller bundle means faster deploys and less code to load per
+function cold start [INFERENCE — cold-start effect not measured]. No
+correctness impact found for any item.
+
+**Lift.** Item 2's template: one line plus a template-sync run. Item 3: blocked
+upstream; revisit when `@better-auth/api-key` imports from a subpath, or if the
+API-key plugin is dropped (then switch `convex/auth/index.ts` to
+`better-auth/minimal` and re-measure).
+
+**Why deferred.** Items 1–2 are done in the apps; item 3's saving is gated on
+an upstream change. Developer asked to keep it on record to revisit.
+
+**Detail.** Re-measure with an esbuild metafile build of `apps/test/convex/*.ts`
+using the conditions/options in `convex/dist/cjs/bundler/debugBundle.js:73-90`,
+then reverse-walk importers of the module family in question.

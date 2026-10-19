@@ -34,8 +34,8 @@ describe("arrayFieldToValidator", () => {
         required: true,
         defaultValue: "test",
       }),
-      min: { value: 3 },
-      max: { value: 100 },
+      min: 3,
+      max: 100,
     });
     const validator = arrayFieldToValidator({ field });
 

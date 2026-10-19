@@ -1,5 +1,13 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig, FieldValidateProps } from "../baseTypes";
+import {
+  BaseField,
+  BaseFieldInput,
+  FieldAdminConfig,
+  FieldLimit,
+  FieldLimitInput,
+  FieldSearchIndex,
+  FieldValidateProps,
+} from "../baseTypes";
 import { VexResourceSlug } from "../../types";
 
 /**
@@ -31,7 +39,7 @@ import { VexResourceSlug } from "../../types";
  * title: text()
  *
  * // Required slug with length validation and a database index
- * slug: text({ required: true, min: { value: 3 }, max: { value: 100 }, index: "by_slug" })
+ * slug: text({ required: true, min: 3, max: 100, index: "by_slug" })
  *
  * // Author name with a placeholder hint shown in the admin form
  * authorName: text({
@@ -43,7 +51,7 @@ import { VexResourceSlug } from "../../types";
  * canonicalUrl: text({ defaultValue: "https://example.com" })
  * ```
  *
- * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`, `searchIndex`)
+ * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`)
  */
 export interface TextFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
@@ -55,42 +63,17 @@ export interface TextFieldInput<
    *
    */
   defaultValue?: string;
-  /** Minimum character length config. */
-  min?: {
-    /** Minimum character length value. */
-    value: number;
-    /** Minimum character length error message. */
-    error?: string;
-  };
-  /** Maximum character length config. */
-  max?: {
-    /** Maximum character length value. */
-    value: number;
-    /** Maximum character length error message. */
-    error?: string;
-  };
+  /** Minimum character length. @see {@link FieldLimitInput} */
+  min?: FieldLimitInput;
+  /** Maximum character length. @see {@link FieldLimitInput} */
+  max?: FieldLimitInput;
   /**
    * Create a full-text search index on this field.
    * The field this is defined on becomes the `searchField`.
    *
-   * @example
-   * ```ts
-   * title: {
-   *   type: "text",
-   *   searchIndex: { name: "search_title", filterFields: ["status", "author"] },
-   * }
-   * // Generates: .searchIndex("search_title", { searchField: "title", filterFields: ["status", "author"] })
-   * ```
+   * @see {@link FieldSearchIndex}
    */
-  searchIndex?: {
-    /** Search index name (must be unique within the collection). */
-    name: string;
-    /**
-     * Fields to filter search results by.
-     * String array — validated at runtime against collection field names.
-     */
-    filterFields: string[];
-  };
+  searchIndex?: FieldSearchIndex;
   /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
   validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
 }
@@ -118,27 +101,12 @@ export interface TextField<
   admin: FieldAdminConfig;
   /** Pre-filled value shown in the admin form when creating a new field. */
   defaultValue: string;
-  /** Minimum allowed character length config. */
-  min?: {
-    /** Minimum allowed character length value. */
-    value: number;
-    /** Minimum allowed character length error message. */
-    error?: string;
-  };
-  /** Maximum allowed character length config. */
-  max?: {
-    /** Maximum allowed character length value. */
-    value: number;
-    /** Maximum allowed character length error message. */
-    error?: string;
-  };
-  /** Full-text search index configuration for this field. */
-  searchIndex?: {
-    /** Search index name — must be unique within the collection. */
-    name: string;
-    /** Fields to filter search results by. */
-    filterFields: string[];
-  };
+  /** Minimum character length, with its resolved error message. @see {@link FieldLimit} */
+  min?: FieldLimit;
+  /** Maximum character length, with its resolved error message. @see {@link FieldLimit} */
+  max?: FieldLimit;
+  /** Full-text search index configuration for this field. @see {@link FieldSearchIndex} */
+  searchIndex?: FieldSearchIndex;
   /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
   validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
 }

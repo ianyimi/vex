@@ -57,9 +57,9 @@ All from `sources/business-model-comps.md` (accessed 2026-10-12).
 
 | # | Stream | Fit | Evidence | Notes |
 |---|---|---|---|---|
-| 1 | **Enterprise add-on licence** (branching/environments, SSO, approval workflows, audit + retention, localization, git mirror; optionally analytics and AI features that run on the customer's own deployment with their own API keys) | Already promised publicly | seed.ts:989; comps § 2 | Core of the model. Licence options for the private packages: commercial EULA, BSL, or FSL (Convex's own choice). Decide in an ADR |
+| 1 | **Tiered self-hosted licences — Pro · Agency · Enterprise** (Pro: co-editing, visual editor, basic A/B; Agency: Pro + client-project coverage + white-label; Enterprise: SSO/SCIM, audit log, approval workflows, branching, git mirror, SLA, procurement terms). Localization and presence stay free (founder decision 2026-10-17) | Already promised publicly | seed.ts:995; comps § 2; § 4 below | Core of the model. Licence options for the private packages: commercial EULA, BSL, or FSL (Convex's own choice). Decide in an ADR |
 | 2 | **Convex partnership**: ecosystem listing, Startups-program bundling, co-marketing, sponsored development; long-term acquisition path | Strong. Convex has stated it wants Components to become "a real marketplace" | `sources/convex-ecosystem.md` §3, partnership-asks table | Not revenue on day 1; strategic. Do not model referral revenue until Convex publishes terms (none found) |
-| 3 | **Agency program**: white-label admin, multi-client licence, certified partner directory | Agencies are a named target user | old mission; strategy v2 Tier 4 | Agencies are the bridge from free installs to enterprise buyers |
+| 3 | **Agency tier** (now a priced licence, § 4): client-project coverage, white-label admin, licence handoff, partner directory | Agencies are a named target user | old mission; strategy v2 Tier 4 | Agencies are the bridge from free installs to enterprise buyers; the licence covers clients only below the Pro size cap |
 | 4 | **Migration tooling / services**: Payload→Vex, BaseHub→Vex | Timely: BaseHub's future is "nothing changes for now" after Vercel; Payload Cloud paused | `sources/competitors.md`; BaseHub blog 2026-06-02 | A productized importer is an acquisition channel; one-off services bring early cash (no ongoing ops) |
 | 5 | **Support/SLA subscriptions** (code support, not operations) | Standard | strategy v2 Tier 4 | Founder-time-bound; low scale |
 | 6 | **Premium templates/blocks** (one-time) | Medium | Tailwind UI model | Fits the `create-vexcms` marketing-site template; small revenue, good funnel |
@@ -69,37 +69,107 @@ All from `sources/business-model-comps.md` (accessed 2026-10-12).
 (founder decision, 2026-10-12; matches strategy v2: "Not charging for hosting").
 
 **Constraint from the public promise:** "Nothing free today becomes paid later." Anything
-shipped free (drafts, live preview, hooks, RBAC, presence if shipped free) cannot later move
+shipped free (drafts, live preview, hooks, RBAC, localization, presence) cannot later move
 behind the licence. Decide the free/paid line for planned BaseHub-inspired features
 **before** they ship (see `03-competition.md` § BaseHub feature matrix).
 
-## 4. Pricing hypothesis to put in the deck  **[HYPOTHESIS — founder to validate]**
+## 4. Pricing — founder target (decided 2026-10-17; not yet market-validated)
 
-Anchored to cited comps; do not present as validated.
+Per company, **never per seat**, priced by company size/revenue. Renewing customers keep the
+price they signed at (grandfathered while renewals continue); no pay-once licences. Paid tiers
+ship in price order: Pro → Agency → Enterprise, and Enterprise cannot ship until its
+procurement paperwork exists (`.agent/docs/product/post-v0.1.0-plan.md` decisions 10–13).
 
-| Tier | Who | Price shape | Anchor |
+| Tier | Who | End-state list price | Contents |
 |---|---|---|---|
-| Community | everyone | Free, Apache-2.0 | Payload/Strapi/Directus core |
-| Team / Pro licence | startups & agencies on Convex Pro | flat ~$1–3k/yr per company (or per agency client project) | Sidekiq Pro $995/yr; Strapi SSO add-on ≈ $1.8k/yr + seats |
-| Enterprise licence | companies on Convex Business/Enterprise | flat ~$10–30k/yr per company, sales-assisted | Directus Team $6k/yr; Convex Business $30k/yr floor; Contentful median deal $24–54k/yr (Vendr, unverified primary) |
-| Support / SLA (optional) | enterprise buyers | annual add-on | strategy v2 Tier 4 |
+| Community | everyone | Free, Apache-2.0 | Entire core incl. localization, presence/facepile, drafts, RBAC, live preview, hooks |
+| Pro | companies under ~$5M revenue / ~25 staff | **$995/yr** flat | Co-editing (cursors, per-field indicators, conflict resolution, collaborative rich text), visual editor, basic A/B testing, email support |
+| Agency | agencies building for clients under the Pro cap | **$2,500/yr** flat | Pro + unlimited client projects, white-label admin, licence handoff, partner directory |
+| Enterprise | companies above the cap, or needing compliance | **$9,500 / $18,000 / $30,000 per year** by size band (≤250 / 250–1,000 / 1,000+ staff) | Agency + SSO/SCIM, audit log, approval workflows, branching, git mirror, full A/B + personalization, support SLA, MSA with capped indemnity, security-questionnaire pack, invoicing on terms |
 
-Free-tier eligibility idea: Directus-style "free for orgs under $X revenue" keeps
-startups/agencies on the funnel while enterprises pay.
+Anchors: Sidekiq Pro $995/yr; Directus Team ~$6k/yr self-hosted; Strapi Enterprise
+reportedly $15–50k/yr (unverified); Convex Business $30k/yr minimum, which Enterprise buyers
+already pay (`sources/business-model-comps.md`).
 
-## 5. Illustrative revenue math (inputs cited, assumptions flagged)
+**Launch ramp** — founding prices for new customers rise as each tier gains features:
 
-From `sources/market-size.md` §6 (bottom-up):
+| Tier | Year 1 | Year 2 | Year 3 | Year 4+ |
+|---|---|---|---|---|
+| Pro | $295 | $595 | $995 | $995 |
+| Agency | — | $1,250 | $2,000 | $2,500 |
+| Enterprise (≤250 band; larger bands ×1.9 / ×3.2) | — | $5,000 | $7,500 | $9,500 |
 
-- Convex paying teams ≈ 10,000 (Convex, 2026-04-02) → `[ASSUMPTION]` 73% in market for a
-  headless CMS (WP Engine adoption rate) ≈ 7,300 → `[ASSUMPTION]` 5–10% conversion at
-  $2–10k/yr ⇒ **≈ $0.7M–$7.3M ARR** beachhead.
+**Licence mechanics:** private-registry install tokens plus an Ed25519-signed offline key
+checked by the CLI at `vex dev` / `vex deploy`. No phone-home; lapsed licences warn, then
+block *deploying* paid packages after a signed grace date — running production never breaks.
+
+## 5. Revenue model — five-year scenarios (every input is an `[ASSUMPTION]`)
+
+**Model:** yearly signup cohorts, each renewing at its locked price; annual churn Pro 20%,
+Agency 15%, Enterprise 10%; Enterprise band mix 70/22/8% (blended list ≈ $13.1k/yr). Year 1
+= first year Pro is on sale; Agency and Enterprise start in year 2.
+
+**Conservative** — new/yr: Pro 20→100 · Agency 3→12 · Enterprise 1→7
+
+| Year | Pro ARR | Agency ARR | Enterprise ARR | Total ARR | Customers (P/A/E) |
+|---|---|---|---|---|---|
+| 1 | $6k | $0 | $0 | $6k | 20 / 0 / 0 |
+| 2 | $29k | $4k | $7k | $39k | 56 / 3 / 1 |
+| 3 | $83k | $15k | $37k | $135k | 105 / 9 / 4 |
+| 4 | $146k | $38k | $99k | $282k | 164 / 17 / 9 |
+| 5 | $216k | $62k | $180k | $458k | 231 / 27 / 15 |
+
+**Base** — new/yr: Pro 50→350 · Agency 8→35 · Enterprise 3→22
+
+| Year | Pro ARR | Agency ARR | Enterprise ARR | Total ARR | Customers (P/A/E) |
+|---|---|---|---|---|---|
+| 1 | $15k | $0 | $0 | $15k | 50 / 0 / 0 |
+| 2 | $83k | $10k | $21k | $114k | 160 / 8 / 3 |
+| 3 | $266k | $39k | $101k | $405k | 328 / 22 / 11 |
+| 4 | $491k | $95k | $287k | $873k | 542 / 44 / 25 |
+| 5 | $741k | $168k | $545k | $1.45M | 784 / 72 / 44 |
+
+**Strong** — new/yr: Pro 100→900 · Agency 20→80 · Enterprise 6→50
+
+| Year | Pro ARR | Agency ARR | Enterprise ARR | Total ARR | Customers (P/A/E) |
+|---|---|---|---|---|---|
+| 1 | $30k | $0 | $0 | $30k | 100 / 0 / 0 |
+| 2 | $202k | $25k | $41k | $268k | 380 / 20 / 6 |
+| 3 | $659k | $101k | $223k | $983k | 804 / 57 / 23 |
+| 4 | $1.22M | $236k | $657k | $2.12M | 1,343 / 108 / 56 |
+| 5 | $1.87M | $401k | $1.24M | $3.52M | 1,975 / 172 / 100 |
+
+Grandfathering (locked prices vs list) peaks in year 3 at $42k / $115k / $265k and falls to
+~5–6% of ARR by year 5 in every scenario, because founding pricing is limited to early cohorts.
+
+**Mix sensitivity** (ARR at list, by total customers; Pro/Agency/Enterprise share):
+
+| Customers | Pro-heavy 90/7/3 | Balanced 80/12/8 | Enterprise-leaning 70/15/15 |
+|---|---|---|---|
+| 100 | $146k | $214k | $303k |
+| 250 | $366k | $535k | $757k |
+| 500 | $731k | $1.07M | $1.51M |
+| 1,000 | $1.46M | $2.14M | $3.03M |
+| 2,000 | $2.92M | $4.28M | $6.06M |
+
+Blended revenue per customer: $1.46k (Pro-heavy) · $2.14k (balanced) · $3.03k
+(Enterprise-leaning).
+
+**Beachhead ceiling (replaces the earlier $0.7–7.3M):** Convex paying teams ≈ 10,000
+(Convex, 2026-04-02) → `[ASSUMPTION]` 73% in market ≈ 7,300 → `[ASSUMPTION]` 5–10% paid
+conversion × $1.46–3.03k blended ⇒ **≈ $0.53M–$2.2M ARR** at today's Convex size. The earlier
+figure assumed every paying customer spent $2–10k (enterprise-only pricing); the tiered model
+sells most seats at Pro prices and earns most of its upside from Enterprise mix.
+
 - Sanity check against Sidekiq: a solo, flat-licence OSS business reached ~$1.35M/yr average
-  gross sales over 10 years with 1,850 customers.
+  gross sales over 10 years with 1,850 customers (~$730/customer).
 - Upside drivers: Convex growth (`convex` npm downloads 12.2× YoY; ~500k developers,
-  ~2M apps per Convex Series B release, 2026-08-04), plus non-Convex expansion if the
-  framework-agnostic core later supports other backends (SpacetimeDB assessed:
-  `.agent/docs/research/spacetimedb-vs-convex-port-feasibility.md`).
+  ~2M apps per Convex Series B release, 2026-08-04), Enterprise mix, plus non-Convex
+  expansion if the framework-agnostic core later supports other backends (SpacetimeDB
+  assessed: `.agent/docs/research/spacetimedb-vs-convex-port-feasibility.md`).
+- Costs outside the model: Stripe ~3%, private registry $0–100/mo, MSA/licence lawyer
+  $3–10k one-time, tech E&O insurance ~$1–3k/yr once Enterprise sells, and founder support
+  time (grows with Enterprise SLAs).
 
 ## 6. Where to add business-model material in the repo (suggestions)
 

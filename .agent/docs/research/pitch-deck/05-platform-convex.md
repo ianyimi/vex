@@ -81,8 +81,10 @@ Monthly `convex` npm downloads ([npm range API](https://api.npmjs.org/downloads/
 - Flat 2×/yr → ~20k (Apr 2027), ~40k (Apr 2028).
 - Recent-download pace (≈3–5×/yr) → ~30–50k by Apr 2027.
 
-With the 04 § 5 conversion assumptions, the beachhead ceiling scales linearly:
-20k teams ≈ $1.5–15M ARR, 40k ≈ $3–29M.
+With the 04 § 5 tiered assumptions (73% in market × 5–10% paid × $1.46–3.03k blended per
+customer), the beachhead ceiling scales linearly: 10k teams ≈ $0.53–2.2M ARR, 20k ≈
+$1.1–4.4M, 40k ≈ $2.1–8.8M. (Superseded 2026-10-17: $1.5–15M / $3–29M, which priced every
+customer at $2–10k.)
 
 On the slide: show the historical chart with sources, and present the scenario table as
 "VexCMS's market grows with Convex" rather than as a Convex projection.

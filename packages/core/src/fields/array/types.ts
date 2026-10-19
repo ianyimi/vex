@@ -1,5 +1,12 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig, FieldValidateProps } from "../baseTypes";
+import {
+  BaseField,
+  BaseFieldInput,
+  FieldAdminConfig,
+  FieldLimit,
+  FieldLimitInput,
+  FieldValidateProps,
+} from "../baseTypes";
 import { AdminField, BaseFieldMeta } from "../types";
 import type { VexResourceSlug } from "../../types/generated";
 
@@ -44,7 +51,7 @@ export type ArrayType = string | number | boolean | object;
  * tags: array({ items: text() })
  *
  * // Required number array with max length
- * scores: array({ required: true, items: number(), max: { value: 10 } })
+ * scores: array({ required: true, items: number(), max: 10 })
  *
  * // Nested array — array of arrays of numbers (2D matrix)
  * matrix: array({ items: array({ items: number() }) })
@@ -76,20 +83,10 @@ export interface ArrayFieldInput<
    */
   defaultValue?: TArrayType[];
   items: AdminField;
-  /** Minimum array length config. */
-  min?: {
-    /** Minimum array length. */
-    value: number;
-    /** Minimum array length error message. */
-    error?: string;
-  };
-  /** Maximum array length config. */
-  max?: {
-    /** Maximum array length. */
-    value: number;
-    /** Maximum array length error message. */
-    error?: string;
-  };
+  /** Minimum array length. @see {@link FieldLimitInput} */
+  min?: FieldLimitInput;
+  /** Maximum array length. @see {@link FieldLimitInput} */
+  max?: FieldLimitInput;
   /** Server-only async validation with `value` typed as `TArrayType[]`. @see {@link FieldValidate} */
   validate?(props: FieldValidateProps<TCollectionSlug, TArrayType[]>): Promise<void> | void;
 }
@@ -123,20 +120,10 @@ export interface ArrayField<
   /** Pre-filled value shown in the admin form when creating a new field. */
   defaultValue: TArrayType[];
   items: AdminField;
-  /** Minimum allowed array length config. */
-  min?: {
-    /** Minimum allowed array length. */
-    value: number;
-    /** Minimum allowed array length error message. */
-    error?: string;
-  };
-  /** Maximum allowed array length config. */
-  max?: {
-    /** Maximum allowed array length. */
-    value: number;
-    /** Maximum allowed array length error message. */
-    error?: string;
-  };
+  /** Minimum allowed array length, with its resolved error message. @see {@link FieldLimit} */
+  min?: FieldLimit;
+  /** Maximum allowed array length, with its resolved error message. @see {@link FieldLimit} */
+  max?: FieldLimit;
   /** Server-only async validation with `value` typed as `TArrayType[]`. @see {@link FieldValidate} */
   validate?(props: FieldValidateProps<TCollectionSlug, TArrayType[]>): Promise<void> | void;
 }

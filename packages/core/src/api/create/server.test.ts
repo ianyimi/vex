@@ -525,7 +525,7 @@ describe("create (server) — validation and hooks", () => {
   });
 
   test("rejects a write that violates a field's max length through the Local API", async () => {
-    const collection = defineCollection({ slug: "posts", fields: { title: text({ max: { value: 5 } }) } });
+    const collection = defineCollection({ slug: "posts", fields: { title: text({ max: 5 }) } });
     const config = { collections: [collection] } as unknown as VexConfig;
     const t = convexTest(schema, modules);
     await expect(
@@ -541,7 +541,7 @@ describe("create (server) — validation and hooks", () => {
       fields: {
         title: text(),
         slug: text(),
-        author: array({ items: text(), required: true, min: { value: 2 } }),
+        author: array({ items: text(), required: true, min: 2 }),
       },
     });
     const config = { collections: [collection] } as unknown as VexConfig;
@@ -568,7 +568,7 @@ describe("create (server) — validation and hooks", () => {
       fields: {
         title: text(),
         slug: text(),
-        author: array({ items: text(), min: { value: 2 } }),
+        author: array({ items: text(), min: 2 }),
       },
     });
     const config = { collections: [collection] } as unknown as VexConfig;

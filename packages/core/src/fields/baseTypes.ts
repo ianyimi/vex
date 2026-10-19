@@ -15,6 +15,41 @@ export type Labels = {
 };
 
 /**
+ * User-facing input for a field's `min`/`max` constraint. A bare `number`
+ * uses the field's own default error message (filled in by its `config.ts`
+ * via {@link resolveFieldLimit}); a `[value, error]` tuple overrides it.
+ */
+export type FieldLimitInput = number | readonly [value: number, error: string];
+
+/**
+ * Resolved `min`/`max` constraint after defaults are applied — always a
+ * `[value, error]` tuple, even when the input was a bare number.
+ */
+export type FieldLimit = readonly [value: number, error: string];
+
+/**
+ * Full-text search index configuration for a string field. Not a base field
+ * option: only field types that declare their own `searchIndex` property
+ * (`text`, `textarea`, `email`) accept it. The field it is defined on becomes
+ * the index's `searchField`.
+ *
+ * @example
+ * ```ts
+ * title: text({ searchIndex: { name: "search_title", filterFields: ["status", "author"] } })
+ * // Generates: .searchIndex("search_title", { searchField: "title", filterFields: ["status", "author"] })
+ * ```
+ */
+export interface FieldSearchIndex {
+  /** Search index name (must be unique within the collection). */
+  name: string;
+  /**
+   * Fields to filter search results by.
+   * String array — validated at runtime against collection field names.
+   */
+  filterFields: string[];
+}
+
+/**
  * Higher-kinded type interface for framework-specific component constructors.
  *
  * Frameworks implement this to map a props type to their component type.

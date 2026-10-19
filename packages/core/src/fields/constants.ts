@@ -15,6 +15,18 @@ export const ADMIN_FIELDS = {
     validator: "v.string()",
     defaultValue: "",
   },
+  email: {
+    type: "email",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+  },
+  textarea: {
+    type: "textarea",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+  },
   url: {
     type: "url",
     interfaceType: "string",
@@ -88,6 +100,12 @@ export const ADMIN_FIELDS = {
     validator: "v.array(\nv.any()\n)",
     defaultValue: [],
   },
+  json: {
+    type: "json",
+    interfaceType: "unknown",
+    validator: "v.any()",
+    defaultValue: undefined,
+  },
 } as const;
 /** Union of all supported field type name strings (e.g. `"text"` | `"number"` | `"checkbox"` | ...). */
 export type AdminFieldType = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS]["type"];
@@ -98,6 +116,9 @@ export type AdminFieldTsType = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS][
 
 /** Literal type `"text"` — the discriminant value on {@link TextField}. */
 export type TextFieldType = typeof ADMIN_FIELDS.text.type;
+
+/** Literal type `"email"` — the discriminant value on {@link EmailField}. */
+export type EmailFieldType = typeof ADMIN_FIELDS.email.type;
 
 /** Literal type `"url"` — the discriminant value on {@link UrlField}. */
 export type UrlFieldType = typeof ADMIN_FIELDS.url.type;

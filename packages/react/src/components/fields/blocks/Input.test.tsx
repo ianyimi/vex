@@ -279,7 +279,7 @@ runFieldInputContractSuite({
         const belowMin = schema.safeParse(oneBlock);
         expect(belowMin.success).toBe(false);
         const message = !belowMin.success ? belowMin.error.issues[0]?.message : undefined;
-        expect(message).toBe("At least 2 Sections required.");
+        expect(message).toBe("Must be at least 2 Sections.");
 
         const user = userEvent.setup();
         render(<BlocksHarness fieldDef={boundaryFieldDef} initialValue={oneBlock} />);
@@ -328,7 +328,9 @@ runFieldInputContractSuite({
         const user = userEvent.setup();
         render(<BlocksHarness fieldDef={boundaryFieldDef} initialValue={fourBlocks} />);
         await user.click(screen.getByRole("button", { name: /submit/i }));
-        expect(await screen.findByText("No more than 3 Sections allowed.")).toBeInTheDocument();
+        expect(
+          await screen.findByText("Must be no more than 3 Sections."),
+        ).toBeInTheDocument();
       });
 
       it("closes the picker dialog on Escape without adding any block", async () => {

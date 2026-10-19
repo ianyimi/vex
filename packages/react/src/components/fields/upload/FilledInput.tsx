@@ -64,7 +64,8 @@ export function UploadFilledState({
   onReorder,
   openPicker,
 }: UploadFilledStateProps) {
-  const atLimit = fieldDef.max !== undefined && mediaIds.length >= fieldDef.max;
+  const atLimit =
+    fieldDef.max !== undefined && mediaIds.length >= fieldDef.max[0];
 
   const config = useVexConfig();
   const targetCollectionConfig = config.mediaCollections.find((mc) => mc.slug === fieldDef.to);
@@ -128,7 +129,7 @@ export function UploadFilledState({
               className={`${atLimit ? "text-destructive" : "text-muted-foreground"} ml-auto font-mono
               text-[11px]`}
             >
-              {mediaIds.length}/{fieldDef.max}
+              {mediaIds.length}/{fieldDef.max[0]}
             </span>
           )}
         </div>

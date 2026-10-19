@@ -89,7 +89,7 @@ export function FormArray<
   }
 
   const items = field.state.value ?? [];
-  const atMax = !!fieldDef.max && items.length >= fieldDef.max.value;
+  const atMax = !!fieldDef.max && items.length >= fieldDef.max[0];
 
   return (
     <div
@@ -123,7 +123,7 @@ export function FormArray<
           </Button>
           {atMax && (
             <span className="text-xs text-muted-foreground">
-              Maximum {fieldDef.max?.value} {fieldDef.labels.plural} reached
+              Maximum {fieldDef.max?.[0]} {fieldDef.labels.plural} reached
             </span>
           )}
         </div>

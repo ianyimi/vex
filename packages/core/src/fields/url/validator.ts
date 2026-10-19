@@ -28,7 +28,7 @@ import type { UrlField } from "./types";
  * const field2 = url({ required: false })
  * urlFieldToValidator({ field: field2 })  // "v.optional(v.string())"
  *
- * const field3 = url({ min: { value: 10 }, max: { value: 2048 } })
+ * const field3 = url({ min: 10, max: 2048 })
  * urlFieldToValidator({ field: field3 })  // "v.optional(v.string())"
  * // Length constraints don't affect schema — handled at validation layer
  * ```

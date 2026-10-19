@@ -23,7 +23,7 @@ import {
 // always import config functions from `@vexcms/react` (or `@vexcms/next`),
 // never from `@vexcms/core` directly. When any of these gains a component
 // slot, replace the pass-through with a typed wrapper like `relationship`.
-export { text, number, select, date, url, checkbox, defineConfig } from "@vexcms/core";
+export { text, email, textarea, number, select, date, url, checkbox, json, defineConfig } from "@vexcms/core";
 
 // Re-export the *resolved* field types users reference in their code.
 //
@@ -34,11 +34,14 @@ export { text, number, select, date, url, checkbox, defineConfig } from "@vexcms
 // `number()`, etc. — which infer their own input types automatically.
 export type {
   TextField,
+  EmailField,
+  TextareaField,
   NumberField,
   SelectField,
   DateField,
   UrlField,
   CheckboxField,
+  JsonField,
   AdminField,
   CollectionSlug,
   VexDocument,
@@ -99,7 +102,8 @@ export { reactAdapter } from "./adapter";
 export type { ReactHKT, ReactAdapter } from "./adapter";
 
 // Field components
-export { TextFieldInput, TextFieldCell } from "./components/fields";
+export { TextFieldInput, TextFieldCell, EmailFieldInput, EmailFieldCell, TextareaFieldInput, TextareaFieldCell } from "./components/fields";
+export { JsonFieldInput, JsonFieldCell } from "./components/fields";
 
 export {
   // Layout components

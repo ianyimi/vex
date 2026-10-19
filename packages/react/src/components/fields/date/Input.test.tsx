@@ -94,6 +94,22 @@ runFieldInputContractSuite({
       });
     });
 
+    describe("date field: read-only", () => {
+      it("does not open the picker or offer the clear button when admin.readOnly is set", async () => {
+        const user = userEvent.setup();
+        render(
+          <DateHarness
+            fieldDef={{ ...fixture.fieldDef, admin: { ...fixture.fieldDef.admin, readOnly: true } }}
+            initialValue={fixture.valid}
+          />,
+        );
+        await user.click(screen.getByText(DATE_TIME_LABEL));
+        expect(screen.queryByText(TIME_NO_SECONDS)).not.toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Clear date" })).not.toBeInTheDocument();
+      });
+    });
+
     describe("date field: time.timePicker per-unit opt-in/opt-out", () => {
       it("hides the seconds column by default (timePicker.second: false)", async () => {
         const user = userEvent.setup();
@@ -200,7 +216,13 @@ runFieldInputContractSuite({
     describe('date field: min/max bounds (JSDoc: "Validated in the input schema")', () => {
       it("KNOWN GAP — accepts a timestamp before fieldDef.min: dateFieldToInputSchema never reads field.min", () => {
         const boundary = new Date(fixture.valid).getTime();
-        const fieldWithMin: DateField = { ...fixture.fieldDef, min: boundary };
+        const fieldWithMin: DateField = {
+          ...fixture.fieldDef,
+          min: [
+            boundary,
+            `Must be on or after ${new Date(boundary).toISOString().slice(0, 10)}.`,
+          ],
+        };
         const belowMin = boundary - 1;
 
         const result = adminFieldToInputSchema({ field: fieldWithMin }).safeParse(belowMin);
@@ -210,7 +232,13 @@ runFieldInputContractSuite({
 
       it("KNOWN GAP — accepts a timestamp after fieldDef.max: dateFieldToInputSchema never reads field.max", () => {
         const boundary = new Date(fixture.valid).getTime();
-        const fieldWithMax: DateField = { ...fixture.fieldDef, max: boundary };
+        const fieldWithMax: DateField = {
+          ...fixture.fieldDef,
+          max: [
+            boundary,
+            `Must be on or before ${new Date(boundary).toISOString().slice(0, 10)}.`,
+          ],
+        };
         const aboveMax = boundary + 1;
 
         const result = adminFieldToInputSchema({ field: fieldWithMax }).safeParse(aboveMax);
@@ -221,7 +249,13 @@ runFieldInputContractSuite({
       it("KNOWN GAP — DateFieldInput never forwards fieldDef.min/max to the calendar, so out-of-range days are never disabled", async () => {
         const user = userEvent.setup();
         const initial = new Date(fixture.valid);
-        const fieldWithMin: DateField = { ...fixture.fieldDef, min: initial.getTime() };
+        const fieldWithMin: DateField = {
+          ...fixture.fieldDef,
+          min: [
+            initial.getTime(),
+            `Must be on or after ${new Date(initial.getTime()).toISOString().slice(0, 10)}.`,
+          ],
+        };
         render(<DateHarness fieldDef={fieldWithMin} initialValue={fixture.valid} />);
 
         await user.click(screen.getByText(DATE_TIME_LABEL));

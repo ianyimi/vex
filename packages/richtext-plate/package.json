@@ -26,6 +26,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "convex": "./dist/server.js",
       "import": "./dist/index.js"
     },
     "./editor": {

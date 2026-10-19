@@ -83,7 +83,7 @@ Source: `apps/docs/src/content/docs/roadmap.md:10-32` (public roadmap) and
 
 | Area | Shipped |
 |---|---|
-| Content model | 12 field types (text, number, checkbox, select, date, url, relationship, upload, array, group, blocks, color); collections; globals (`defineGlobal`); typed blocks page-builder |
+| Content model | 13 field types (text, number, checkbox, select, date, url, relationship, upload, array, group, blocks, color, richtext); collections; globals (`defineGlobal`); typed blocks page-builder; versioning & drafts with autosave, history, restore |
 | Codegen | Convex schema + TS types + Zod validators from config (`vex dev` / `vex generate` / `vex deploy`) |
 | Admin panel | Real-time data tables (pagination, live totals, bulk ops), media library over Convex storage, database-driven themes (OKLCH, live across tabs) |
 | Access control | Document- and field-level RBAC; `{ constraints }` rules compiled to `withIndex` ranges inside Convex queries; anonymous role; per-call overrides |
@@ -91,13 +91,14 @@ Source: `apps/docs/src/content/docs/roadmap.md:10-32` (public roadmap) and
 | Editing UX | **Live preview of unsaved form state** onto the real route (postMessage + BroadcastChannel; ADR-012) |
 | Public site | SEO helpers, static prerendering, revalidate-on-save, sitemap/robots |
 | DX | `create-vexcms` scaffolder (marketing-site + bare + `--orgs` templates), Better Auth integration, TypeDoc API reference, `llms.txt` for AI agents (`README.md:79-81`), exported React test kit |
-| Packages | 8 published npm packages, all `0.1.0-alpha.23`, Apache-2.0 (`packages/*/package.json`) |
+| Packages | 8 published npm packages, all `0.1.0-alpha.26`, Apache-2.0 (`packages/*/package.json`) |
 
-**Not yet shipped (honest list for the deck/Q&A):** versioning & drafts (spec complete,
-in progress), richtext field (Plate editor exists, not wired), list-view search/sort,
-json/email/textarea/tabs/ui fields, form builder, team management, API keys, TanStack Start
-adapter, S3/R2 adapters (`apps/docs/src/content/docs/roadmap.md:34-67`). The site itself
-states "Is it production ready? Not yet." (`seed.ts:977-979`).
+**Not yet shipped (honest list for the deck/Q&A):** list-view search/sort, edit-view guards,
+json/email/textarea fields (in v0.1.0), localization, tabs/ui fields, form builder, team
+management, API keys, TanStack Start adapter, S3/R2 adapters, every paid tier
+(`apps/docs/src/content/docs/roadmap.md`). Versioning & drafts shipped 2026-10-13
+(`865f360`); richtext 2026-10-15 (`7d51f56`). The site itself states "Is it production
+ready? Not yet." (`seed.ts:977-979`).
 
 ## Demo assets that exist
 

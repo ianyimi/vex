@@ -250,7 +250,11 @@ runFieldInputContractSuite({
         // `EmptyInput`'s file input is hardcoded `multiple` regardless of
         // `fieldDef.hasMany`, and `handleFilesSelected` keeps the whole
         // FileList — a single-select field should stage only the first file.
-        const singleFieldDef = { ...fixture.fieldDef, hasMany: false, max: 1 };
+        const singleFieldDef = {
+          ...fixture.fieldDef,
+          hasMany: false,
+          max: [1, "Must be no more than 1 file."] as const,
+        };
         render(<Harness fieldDef={singleFieldDef} readOnly={false} initialValue={undefined} />);
         const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
 

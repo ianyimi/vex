@@ -1,5 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldValidateProps } from "../baseTypes";
+import { BaseField, BaseFieldInput, FieldLimit, FieldLimitInput, FieldValidateProps } from "../baseTypes";
 import type { VexResourceSlug } from "../../types/generated";
 
 /**
@@ -30,7 +30,7 @@ import type { VexResourceSlug } from "../../types/generated";
  * canonicalUrl: url()
  *
  * // Required website URL with a length cap and a database index
- * website: url({ required: true, max: { value: 2048 }, index: "by_website" })
+ * website: url({ required: true, max: 2048, index: "by_website" })
  *
  * // Social profile URL with a placeholder hint
  * twitterUrl: url({
@@ -53,6 +53,10 @@ export interface UrlFieldInput<
    * Does not affect existing database values.
    */
   defaultValue?: string;
+  /** Minimum character length. @see {@link FieldLimitInput} */
+  min?: FieldLimitInput;
+  /** Maximum character length. @see {@link FieldLimitInput} */
+  max?: FieldLimitInput;
   /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
   validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
 }
@@ -77,6 +81,10 @@ export interface UrlField<
    * `undefined` means no default is applied — the input starts empty.
    */
   defaultValue?: string;
+  /** Minimum character length, with its resolved error message. @see {@link FieldLimit} */
+  min?: FieldLimit;
+  /** Maximum character length, with its resolved error message. @see {@link FieldLimit} */
+  max?: FieldLimit;
   /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
   validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
 }

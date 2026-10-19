@@ -49,8 +49,8 @@ describe("adminFieldToValidator — number", () => {
   it("ignores min/max constraints — they don't affect the DB schema", () => {
     const field = number({
       required: true,
-      min: { value: 0 },
-      max: { value: 100 },
+      min: 0,
+      max: 100,
     });
     expect(adminFieldToValidator({ field })).toBe("v.number()");
   });

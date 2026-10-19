@@ -7,6 +7,43 @@ import { createVexCallbackApi, type VexCallbackApi } from "../api/server";
 import type { VexConfig } from "../config";
 import type { TDocument } from "../api/convex";
 import type { VexMutationCtx } from "../types/generated";
+import { FieldLimit, FieldLimitInput } from "./baseTypes";
+
+/**
+ * Resolves a field's `min`/`max` input into its final `[value, error]`
+ * tuple. A bare number input is paired with `defaultError(value)`; a
+ * `[value, error]` tuple input is returned as-is; `undefined` stays
+ * `undefined` (no constraint configured).
+ *
+ * @param props - Input props.
+ * @param props.limit - The field's raw `min`/`max` input.
+ * @param props.defaultError - Builds the default error message from the
+ *   resolved value, when `limit` is a bare number. Ignored when `limit` is
+ *   already a `[value, error]` tuple.
+ * @returns The resolved `[value, error]` tuple, or `undefined`.
+ *
+ * @example
+ * ```ts
+ * resolveFieldLimit({ limit: 3, defaultError: () => "Too short." })
+ * // → [3, "Too short."]
+ *
+ * resolveFieldLimit({ limit: [3, "Need 3+ chars."], defaultError: () => "Too short." })
+ * // → [3, "Need 3+ chars."]
+ *
+ * resolveFieldLimit({ limit: undefined, defaultError: () => "Too short." })
+ * // → undefined
+ * ```
+ */
+export function resolveFieldLimit(props: {
+  limit: FieldLimitInput | undefined;
+  defaultError: (value: number) => string;
+}): FieldLimit | undefined {
+  if (props.limit === undefined) return undefined;
+  if (typeof props.limit === "number") {
+    return [props.limit, props.defaultError(props.limit)] as const;
+  }
+  return props.limit;
+}
 
 /**
  * Wraps a string into lines that do not exceed `maxLen` characters, splitting
@@ -249,10 +286,7 @@ export async function validateFields(props: {
  * @param props.fieldKey - The field that rejected the write.
  * @returns A `ConvexError` whose data always carries `field` and `message`.
  */
-function toFieldValidationError(props: {
-  thrown: unknown;
-  fieldKey: string;
-}): ConvexError<Value> {
+function toFieldValidationError(props: { thrown: unknown; fieldKey: string }): ConvexError<Value> {
   const { thrown, fieldKey } = props;
 
   if (thrown instanceof ConvexError) {

@@ -73,17 +73,70 @@ export function getIncomingRelationships(props: {
 }
 
 /**
+ * The search index a relationship/upload picker should query when listing
+ * candidates from `collection`, derived from that collection's
+ * `admin.useAsTitle`.
+ */
+export interface ResolvedTitleSearchIndex {
+  /** The Convex `.searchIndex()` name to query. */
+  indexName: string;
+  /** The field key the index was built on — always equal to `useAsTitle`. */
+  searchField: string;
+}
+
+/**
+ * Resolves the search index backing a collection's `useAsTitle` field, for
+ * use by both schema generation (`collectionConfigToVexSchema`) and the
+ * admin picker (`usePaginatedSearch`), so the two agree on a single name.
+ *
+ * `useAsTitle` is searchable only when it names a field declaring its own
+ * `searchIndex` support (`"searchIndex" in field` — `text`, `textarea`,
+ * `email`). When that field configures its own `searchIndex` (any name),
+ * that index is reused as-is. Otherwise the field is searchable but has no
+ * manual index, so the auto-generated `search_<useAsTitle>` name is
+ * returned. A `useAsTitle` pointing at a Convex system field (`_id`,
+ * `_creationTime`) or at a non-searchable field type (number, date, …)
+ * returns `undefined` — the picker falls back to `find()`.
+ *
+ * @param props - Input props.
+ * @param props.collection - The collection whose `useAsTitle` is resolved.
+ * @returns The index name + search field to query, or `undefined` when
+ *   `useAsTitle` has no backing search index.
+ */
+export function resolveTitleSearchIndex(props: {
+  collection: CollectionConfig;
+}): ResolvedTitleSearchIndex | undefined {
+  const useAsTitle = props.collection.admin.useAsTitle;
+  const coreAdminFields: string[] = Object.values(CONVEX_SYSTEM_FIELDS).map((f) => f.slug);
+  if (coreAdminFields.includes(useAsTitle)) return undefined;
+  const field = props.collection.fields[useAsTitle];
+  if (
+    field === undefined ||
+    (field.type !== ADMIN_FIELDS.text.type &&
+      field.type !== ADMIN_FIELDS.textarea.type &&
+      field.type !== ADMIN_FIELDS.email.type)
+  ) {
+    return undefined;
+  }
+  if (field.searchIndex) {
+    return { indexName: field.searchIndex.name, searchField: useAsTitle };
+  }
+  return { indexName: `search_${useAsTitle}`, searchField: useAsTitle };
+}
+
+/**
  * Converts a resolved `CollectionConfig` to a Convex `defineTable(...)` source string.
  *
  * Iterates the collection's fields, builds each field's Convex validator via
  * `adminFieldToValidator`, and appends index chains:
  * - `.index()` for fields with an explicit `field.index` property
  * - `.index("by_<fieldKey>", ["<fieldKey>"])` auto-generated for every relationship field
- * - `.searchIndex()` for text fields with `field.searchIndex` configured
- * - `.searchIndex("search_<useAsTitle>", { searchField: "<useAsTitle>", filterFields: [] })`
- *   auto-generated when another collection has a relationship pointing HERE and
- *   `useAsTitle` is not a Convex system field (`_id`, `_creationTime`), provided
- *   no manually configured search index already has that name.
+ * - `.searchIndex()` for fields declaring their own `field.searchIndex`
+ * - a `.searchIndex(...)` for `useAsTitle` auto-generated when another collection has a
+ *   relationship pointing HERE, via `resolveTitleSearchIndex` — reuses the `useAsTitle`
+ *   field's own `searchIndex` name when it has one, generates `search_<useAsTitle>`
+ *   when it doesn't, and is omitted entirely when `useAsTitle` is a Convex system field
+ *   or a non-searchable field type
  *
  * @param props - Input props.
  * @param props.collection - The resolved collection definition to convert.
@@ -101,6 +154,7 @@ export function getIncomingRelationships(props: {
  *
  * @see {@link generateVexSchema} for the full-file generator that wraps this function
  * @see {@link getIncomingRelationships} for the cross-collection helper
+ * @see {@link resolveTitleSearchIndex} for the `useAsTitle` index-name resolution rule
  */
 export function collectionConfigToVexSchema(props: {
   collection: CollectionConfig;
@@ -145,7 +199,7 @@ export function collectionConfigToVexSchema(props: {
       }
     }
 
-    if (field.type === ADMIN_FIELDS.text.type && field.searchIndex) {
+    if ("searchIndex" in field && field.searchIndex) {
       searchIndexes.push(`\t.searchIndex("${field.searchIndex.name}", {\n
         searchField: "${fieldKey}",
         filterFields: ${JSON.stringify(field.searchIndex.filterFields)}\n
@@ -157,19 +211,20 @@ export function collectionConfigToVexSchema(props: {
     collection: props.collection,
     config: props.config,
   });
-  relationships.forEach(() => {
-    const useAsTitle = props.collection.admin.useAsTitle;
-    const coreAdminFields: string[] = Object.values(CONVEX_SYSTEM_FIELDS).map((f) => f.slug);
-    if (coreAdminFields.includes(useAsTitle)) return;
-    const searchIndex = searchIndexes.find((si) =>
-      si.includes(`.searchIndex("search_${useAsTitle}", {`),
-    );
-    if (searchIndex !== undefined) return;
-    searchIndexes.push(`\t.searchIndex("search_${useAsTitle}", {\n
-      searchField: "${useAsTitle}",\n
-      filterFields: []
-    })`);
-  });
+  if (relationships.length > 0) {
+    const titleSearchIndex = resolveTitleSearchIndex({ collection: props.collection });
+    if (titleSearchIndex !== undefined) {
+      const titleField = props.collection.fields[titleSearchIndex.searchField];
+      const hasOwnSearchIndex =
+        titleField !== undefined && "searchIndex" in titleField && titleField.searchIndex !== undefined;
+      if (!hasOwnSearchIndex) {
+        searchIndexes.push(`\t.searchIndex("${titleSearchIndex.indexName}", {\n
+        searchField: "${titleSearchIndex.searchField}",\n
+        filterFields: []
+      })`);
+      }
+    }
+  }
   if (props.collection.versions.drafts) {
     const versionSchema = versionFieldsToVexSchema({ tableName: props.collection.slug });
     fieldsBlock.push(...versionSchema.fields);

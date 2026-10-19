@@ -5,6 +5,8 @@ import { date } from "../fields/date/config";
 import { number } from "../fields/number/config";
 import { select } from "../fields/select/config";
 import { text } from "../fields/text/config";
+import { email } from "../fields/email/config";
+import { textarea } from "../fields/textarea/config";
 import { defineAccess } from "../access/config";
 import { generateVexTypes } from "./generateVexTypes";
 import { group } from "../fields/group/config";
@@ -201,6 +203,34 @@ describe("generateVexTypes — document interfaces", () => {
     }) })
     const output = generateVexTypes({ config });
     expect(output).toContain("export interface BlogPostsDocument extends VexDocument {");
+  });
+
+  it("generates an email field as a plain string, through the same generic interfaceType path as text", () => {
+    const config = defineServerConfig({ config: defineConfig({
+      collections: [
+        defineCollection({
+          slug: "authors",
+          fields: { contactEmail: email({ required: true }) },
+        }),
+      ],
+    }) })
+    const output = generateVexTypes({ config });
+    expect(output).toContain("contactEmail: string");
+    expect(output).not.toContain("contactEmail?: string");
+  });
+
+  it("generates a textarea field as a plain string, through the same generic interfaceType path as text", () => {
+    const config = defineServerConfig({ config: defineConfig({
+      collections: [
+        defineCollection({
+          slug: "posts",
+          fields: { body: textarea({ required: true }) },
+        }),
+      ],
+    }) })
+    const output = generateVexTypes({ config });
+    expect(output).toContain("body: string");
+    expect(output).not.toContain("body?: string");
   });
 });
 
