@@ -267,7 +267,7 @@ three-state + dialog-picker pattern; `blocks` gains a full editing toolbox (dupl
 move, collapse-all, copy/paste across documents); forms gain `...tabs()` / `...collapsible()` /
 `...row()` layout helpers, `admin.condition`, and opt-in input masks; and the deferred leaf
 fields `email()`, `textarea()`, `json()` ship. It lands now because H and I build on a form
-renderer that, today, ignores four of the six declared `admin` options.
+renderer that, today, ignores four of the six declared `admin` options. It also lays the admin extension-point (slot) groundwork a future plugin system builds on — field-level and blocks/array-action slots, resolved as ordered, typed `renderDefault` override chains.
 
 ## Design Decisions
 
@@ -323,6 +323,34 @@ renderer that, today, ignores four of the six declared `admin` options.
     H keeps the nav guard, duplicate document and the error summary.
 21. **Docs, changesets, templates and CLI are deferred to the commit phase.** Why: they follow
     `apps/www` adopting the new fields, after implementation settles.
+22. **Admin extension points (slots) are built into G now, not retrofitted.** Why: plugins
+    become config contributions against the same keys instead of a second mechanism
+    (`2026-10-21-plugin-system/stem.md` decision S1).
+23. **Nested `admin.components` keys map 1:1 to flat slot ids exported from core (`SLOT_IDS`).**
+    Why: autocomplete for authors; one stable identifier for resolution errors and, later,
+    plugin conflict messages (S2).
+24. **Overrides compose via a `renderDefault(props)` chain, applied in contribution order.**
+    Why: the only pattern where two contributors can both customise one component without one
+    silently winning (S3, Sanity model).
+25. **Built-in UI (block/array actions) is registered as default contributions with `vex.`-prefixed
+    ids, in the same lists a project or plugin contributes to.** Why: proves there is no private
+    rendering path for G's own actions; a project hides one by id instead of forking the component
+    (S4, S9).
+26. **G declares the per-field/per-type `field.*` and blocks/array `*.actions` slots only — no
+    built-in contribution for `field.label`/`field.description` yet.** Why: every Input still
+    renders its own label/description inline; populating those two slots' built-ins is a future
+    input-styling pass (H), not groundwork (draft slot inventory, `stem.md`).
+27. **Slot components receive minimal typed props; `access`/`condition` predicates gate mounting
+    before render, each contribution in its own error boundary.** Why: one rule for built-ins and
+    third parties, and one bad contribution cannot take down a form mid-edit (S10, S11).
+28. **One field-component registry, derived from `reactAdapter.fields`, replaces the duplicated
+    `fieldInputComponents`/`fieldCellComponents` maps.** Why: S6 — a second hand-maintained map
+    per field type was already a bug magnet before overrides existed.
+29. **Slot ids and prop types live in `@vexcms/core` via `ComponentHKT`/`ApplyComponent`; `@vexcms/react`
+    renders them.** Why: config is authored against core types; a future non-React admin reuses the
+    same contracts (S12).
+30. **Slots and their context hooks are documented `@experimental`, no `unstable_` prefix.** Why:
+    avoids a mass rename when Track PL stabilises them post-0.1.0 (S13).
 
 ## Out of Scope
 
@@ -332,6 +360,11 @@ renderer that, today, ignores four of the six declared `admin` options.
 - System-clipboard (cross-origin) block copy/paste.
 - New data types beyond `email`/`textarea`/`json` (slug, radio-as-type, `ui`).
 - Concurrent-edit conflict resolution (already in `backlog.md`).
+- Edit-view (H) and list-view (I) admin extension points — `edit.*`, `list.*`, and shell slots
+  (`nav.*`, `header.actions`, `dashboard.widgets`, `providers`, `routes`) are declared by H/I,
+  not here (draft slot inventory, `2026-10-21-plugin-system/stem.md`).
+- Server-component slot contributions (deferred to Track PL — S14).
+- `definePlugin` and plugin packaging/distribution (Track PL, post-0.1.0).
 
 ## Implementation
 
@@ -2628,7 +2661,7 @@ export function url<
 }
 ```
 
-(Step 8 later replaces `url/types.ts`'s import block wholesale to add `admin.mask`
+(Step 10 later replaces `url/types.ts`'s import block wholesale to add `admin.mask`
 support — its replacement body must keep `FieldLimit, FieldLimitInput` alongside
 the `FieldAdminConfig`/`FieldAdminConfigInput`/`FieldMaskInput` additions it
 introduces, or this step's `min`/`max` properties stop compiling.)
@@ -2783,7 +2816,7 @@ Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- fields && pnpm --fi
 - [x] `packages/react/src/components/fields/email/` — `Input.tsx`, `Cell.tsx` (mailto link), `columnDef.tsx`, `testFixture.ts`, `index.ts` + `Input.test.tsx`, `Cell.test.tsx`, `columnDef.test.ts`
 - [x] react registration: `components/fields/index.tsx` (`fieldInputComponents`, `fieldCellComponents`, `getCollectionColumnDefs` switch), `adapter.ts` (`fields` map), `src/index.ts` (`EmailFieldInput`/`EmailFieldCell` export), `testing/fixtures/index.ts` (`fieldFixtures.email`)
 
-Why: leaf field; needed by masks (step 8) and dogfood; registering it touches every exhaustive registry.
+Why: leaf field; needed by masks (step 10) and dogfood; registering it touches every exhaustive registry.
 
 `email()` mirrors `text()` almost exactly (same `BaseFieldInput`/`BaseField` shape, same `min`/`max` length semantics now built on step 1's `FieldLimitInput`/`FieldLimit`/`resolveFieldLimit`) with two differences: an email-format check composed onto the same Zod chain (`z.string().email({ error })`, chained — not piped — so it stacks with the length checks exactly like `min`/`max` do), and a Cell that links `mailto:` instead of showing plain text, following `url/Cell.tsx`'s `isTitleField`-switches-the-`href` pattern (not `text/Cell.tsx`'s link-only-when-title). `email()` also gets `searchIndex?: FieldSearchIndex` (the shared type already declared in `../baseTypes` — not duplicated here): `collections/validator.ts`'s search-index emission condition widens from a `field.type === ADMIN_FIELDS.text.type` check to the generic `"searchIndex" in field && field.searchIndex`, so this one change covers `email` now and `textarea` in step 3 with no further edits to that file.
 
@@ -5007,7 +5040,7 @@ import { FormError } from "../../form/FormError";
  *
  * Renders a `Textarea` sized by `fieldDef.rows`. When `fieldDef.max` is
  * configured, an `n/max` character counter is shown below the textarea,
- * right-aligned — the same markup `text/Input.tsx`'s counter (step 15)
+ * right-aligned — the same markup `text/Input.tsx`'s counter (step 17)
  * reuses.
  *
  * The `name` prop is the field key from the collection config (e.g. `"bio"`).
@@ -7797,7 +7830,7 @@ Verify: pnpm --filter @vexcms/core test -- collections && pnpm --filter @vexcms/
 - [ ] migrate every `width: "half"` / `width: "full"` literal in `packages/core/src/fields/**` (JSDoc examples included) to `"50%"` / the `"100%"` default
 - [ ] `packages/react/src/index.ts` — re-export `tabs`, `collapsible`, `row` the way `text` is re-exported
 
-Why: pure core types + helpers + the layout-tree builder; react (step 9) and server (step 7) consume them.
+Why: pure core types + helpers + the layout-tree builder; react (step 11) and server (step 9) consume them.
 
 No change is needed in `packages/better-auth/src/adapter.ts`: `betterAuthAttrToVexField` (`packages/better-auth/src/adapter.ts:259-328`) builds a plain `admin: FieldAdminConfigInput` object and passes it straight into `text()`/`select()`/`checkbox()`/`number()`/`date()`/`array()` (`packages/better-auth/src/adapter.ts:273-324`) — the field factories resolve `width`/`layout` defaults themselves, so the new defaults apply automatically with zero auth-adapter changes. Confirmed no `width: "half"`/`"full"` literal exists in `apps/test/src` or `apps/www/src` (only `apps/docs` MDX pages use it, out of scope per the launch-plan — docs land in the commit phase).
 
@@ -9543,7 +9576,1736 @@ export {
 
 Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- fields/layout
 
-### Step 7 — Server-side condition enforcement [agent]
+### Step 7 — Core extension-point model: slot IDs, contribution types, resolution [agent]
+
+- [ ] `packages/core/src/components/types.ts` — `SLOT_IDS`, `SlotId`, `ComponentContributionInput`/`ResolvedComponentContribution`, `ComponentOverrideInput`/`ResolvedComponentOverride`, `SlotAccessPredicate`/`SlotAccessContext`, `VexComponentConfigError`
+- [ ] `packages/core/src/components/builtinIds.ts` — module shell; populated by step 15 (its first consumer)
+- [ ] `packages/core/src/components/resolve.ts` + `resolve.test.ts` — `resolveComponentContributions`, `resolveComponentOverrides`
+- [ ] `packages/core/src/components/index.ts` — barrel
+- [ ] `packages/core/src/fields/baseTypes.ts` — `FieldAdminConfigInput`/`FieldAdminConfig` gain a `TComponent extends ComponentHKT = ComponentHKT` generic and a `components` property
+- [ ] `packages/core/src/fields/relationship/types.ts` — `RelationshipFieldAdminInput`/`Config.components` extends the base `FieldSlotComponentsInput` shape instead of replacing it
+- [ ] `packages/core/src/fields/utils.ts` + `utils.test.ts` — `resolveFieldComponents`
+- [ ] `packages/core/src/fields/text/config.ts` — `admin.components` default (representative; every other field factory gets the identical one-line addition at the same spread point Step 6 added `layout: []`)
+- [ ] `packages/core/src/config/types.ts` — `AdminConfigInput.components`
+- [ ] `packages/core/src/config/config.ts` + `config.test.ts` — `defineConfig` resolves root-level slot lists
+
+Why: admin extension points are built into G now, not retrofitted post-0.1.0 — plugins later
+become "config contributions" against the same keys instead of a second mechanism
+(`.agent/docs/specs/2026-10-21-plugin-system/stem.md`, decisions S1-S14). This step is pure
+core: types, the resolution algorithm, and the two places (`baseTypes.ts` for the per-field
+level, `config.ts` for the root level) a field or a config actually gets a `components` property.
+It declares the slot ids G owns (`field.*`, `blocks.*`, `array.*`) and resolves ORDERING only —
+composing an override chain into one renderable component is step 8's job, since that needs a
+framework's `ComponentHKT` to be concrete (React's `ComponentType`).
+
+**Design note — why resolution splits core/react at the ordering boundary.** `resolveComponentContributions`
+takes one already-flat array (a project's own list, with any built-ins already merged in by the
+caller) and returns the FINAL ordered array for that one level (root, or one field's own list) —
+it never merges ACROSS levels (root per-type vs. one field's own override), because that
+composition is a `renderDefault` wrapping chain, not a reorderable array: the per-type override's
+`renderDefault` must resolve to the true built-in, and the per-field override's `renderDefault`
+must resolve to whatever the per-type chain produced. Only React (step 8) has a component model
+to build that wrapping chain in, so core resolves each level's own order once (duplicate-id
+checked, hidden filtered) and hands React two small, already-ordered arrays to fold together at
+render time.
+
+#### packages/core/src/components/types.ts
+
+New file.
+
+```ts
+import type { ApplyComponent, ComponentHKT } from "../fields/baseTypes";
+import type { FieldCondition } from "../fields/layout/types";
+
+/**
+ * Flat, dot-joined identifiers for every admin extension point (slot) G declares. Nested
+ * `admin.components` keys map 1:1 onto these — `admin.components.beforeInput` on a field is
+ * `SLOT_IDS.field.beforeInput` (S2). H and I declare their own `edit.*`/`list.*`/shell entries
+ * in their own specs; this map only carries G's.
+ *
+ * @experimental Slot ids and the contribution model are documented experimental until Track PL
+ * ships `definePlugin` (S13) — no `unstable_` prefix; breaking changes are still possible.
+ */
+export const SLOT_IDS = {
+  field: {
+    /** Override chain for a field's input component. One per field instance AND one project-wide per field type — see {@link ComponentOverrideInput} composition in `@vexcms/react`. */
+    input: "field.input",
+    /** Override chain for a field's data-table cell component. Same two-level composition as `input`. */
+    cell: "field.cell",
+    /** Override chain for a field's label. No built-in contribution yet (step 11's design note) — every Input still renders its own label inline. */
+    label: "field.label",
+    /** Override chain for a field's description. No built-in contribution yet, same reason as `label`. */
+    description: "field.description",
+    /** Additive contributions rendered before a field's resolved input. */
+    beforeInput: "field.beforeInput",
+    /** Additive contributions rendered after a field's resolved input. */
+    afterInput: "field.afterInput",
+  },
+  blocks: {
+    /** Additive contributions rendered in a block item's actions menu. Built-ins: step 15 (duplicate/insert/move/remove), step 16 (copy/paste). */
+    itemActions: "blocks.item.actions",
+    /** Additive contributions rendered in a `blocks()` field's header toolbar. Built-ins: step 16 (copy all/paste/replace all). */
+    headerActions: "blocks.header.actions",
+  },
+  array: {
+    /** Additive contributions rendered per array item's action row. Built-ins: step 15 (duplicate/move/remove). */
+    itemActions: "array.item.actions",
+  },
+} as const;
+
+/** Union of every flat slot id {@link SLOT_IDS} declares. */
+export type SlotId =
+  | (typeof SLOT_IDS.field)[keyof typeof SLOT_IDS.field]
+  | (typeof SLOT_IDS.blocks)[keyof typeof SLOT_IDS.blocks]
+  | (typeof SLOT_IDS.array)[keyof typeof SLOT_IDS.array];
+
+/**
+ * Context passed to a contribution's `access` predicate — a thin RBAC checker bound to the
+ * current user by the renderer (`@vexcms/react`'s `useVexPermissions`, S5), so core's own types
+ * stay framework- and auth-adapter-agnostic. `resource`/`action` mirror `hasPermission`'s own
+ * vocabulary (`access/hasPermission.ts`) without importing its generated-type machinery here.
+ */
+export interface SlotAccessContext {
+  /** `true` when the current user may perform `action` on `resource` (collection/global slug, or a `customResources` key). */
+  hasPermission: (resource: string, action: string) => boolean;
+}
+
+/** A pure predicate deciding whether a contribution mounts at all (S11). */
+export type SlotAccessPredicate = (ctx: SlotAccessContext) => boolean;
+
+/**
+ * One additive entry in a slot list (`beforeInput`/`afterInput`, `blocks.item.actions`,
+ * `blocks.header.actions`, `array.item.actions`) — either a real contribution, or a directive
+ * hiding a built-in by id (S4/S9).
+ *
+ * @typeParam TComponent - The framework's `ComponentHKT`. Type-erased to the base `ComponentHKT`
+ *   wherever a slot is declared outside a framework-typed context (root `admin.components`,
+ *   exactly like `editor?: VexEditorAdapter<ComponentHKT>` on `VexClientConfigInput`).
+ * @typeParam TProps - The props the slot's resolved component receives.
+ */
+export type ComponentContributionInput<TComponent extends ComponentHKT, TProps> =
+  | {
+      /** Stable identifier (S2/S9) — `vex.`-prefixed for built-ins, otherwise project/plugin-chosen. Duplicate ids within one resolved list are a {@link VexComponentConfigError}. */
+      id: string;
+      /** The contribution's component, referenced directly (S7) — `React.lazy(() => import(...))` is a valid value for a React `ComponentHKT`. */
+      component: ApplyComponent<TComponent, TProps>;
+      /** Sort key; ties broken by array position. Default `0`. */
+      order?: number;
+      /** Id(s) this contribution must render before. */
+      before?: string | string[];
+      /** Id(s) this contribution must render after. */
+      after?: string | string[];
+      /** Omit this contribution from the resolved list without removing the entry (keeps `order`/`before`/`after` documented in place). */
+      hidden?: boolean;
+      /** Gates mounting — reuses RBAC (S11). Checked before `condition`. */
+      access?: SlotAccessPredicate;
+      /** Gates mounting — same `(data, siblingData)` signature as `admin.condition` (Step 6, S11). Checked after `access`. */
+      condition?: FieldCondition;
+    }
+  | {
+      /** The id of an EXISTING contribution (usually a built-in) in this same resolved list to hide. */
+      id: string;
+      /** Always `true` — a hide directive carries no component. */
+      hidden: true;
+      component?: never;
+    };
+
+/** One contribution after {@link resolveComponentContributions} has ordered and filtered a slot's list. Hide directives never appear here — they are consumed during resolution. */
+export type ResolvedComponentContribution<TComponent extends ComponentHKT, TProps> = Extract<
+  ComponentContributionInput<TComponent, TProps>,
+  { component: ApplyComponent<TComponent, TProps> }
+>;
+
+/**
+ * One entry in an override chain (`field.input`, `field.cell`, `field.label`,
+ * `field.description`, and the root per-type `fields.<type>.{Input,Cell}` lists) — the Sanity
+ * `renderDefault` model (S3). Order in the array IS the composition order; there is no
+ * `before`/`after` for overrides (S8).
+ *
+ * @typeParam TComponent - The framework's `ComponentHKT`.
+ * @typeParam TProps - The props the slot's resolved component receives — the override's OWN
+ *   component receives `TProps & { renderDefault: ApplyComponent<TComponent, TProps> }`, composed
+ *   by the renderer (`@vexcms/react`'s `resolveFieldInputComponent`/`resolveFieldCellComponent`);
+ *   core only declares the minimal `{ id, component }` shape (S8).
+ */
+export interface ComponentOverrideInput<TComponent extends ComponentHKT, TProps> {
+  /** Stable identifier (S2/S9). Duplicate ids within one resolved chain are a {@link VexComponentConfigError}. */
+  id: string;
+  /** Receives `renderDefault` — the PREVIOUS stage of the chain (the true built-in for the first entry). Calling it renders the default; not calling it replaces it entirely. */
+  component: ApplyComponent<TComponent, TProps & { renderDefault: ApplyComponent<TComponent, TProps> }>;
+}
+
+/** An override chain after {@link resolveComponentOverrides} has de-duplicated it — array order unchanged, `before`/`after` do not apply to overrides. */
+export type ResolvedComponentOverride<TComponent extends ComponentHKT, TProps> = ComponentOverrideInput<
+  TComponent,
+  TProps
+>;
+
+/**
+ * Thrown when a slot's config cannot be resolved — a genuine duplicate id (two real
+ * contributions, not a hide directive, sharing one id) in one list. Does not yet name a
+ * contributing PLUGIN (no `definePlugin` before Track PL) — only the id and both entries'
+ * positions in the merged list, which is everything available pre-plugin-system.
+ */
+export class VexComponentConfigError extends Error {
+  /** @param message — Human-readable description of the configuration error. */
+  constructor(message: string) {
+    super(message);
+    this.name = "VexComponentConfigError";
+  }
+}
+```
+
+#### packages/core/src/components/builtinIds.ts
+
+New file — module shell only; step 15 is the first step with a built-in contribution to name, and
+owns this file's actual content (its own `#### packages/core/src/components/builtinIds.ts`
+section).
+
+```ts
+/**
+ * Built-in contribution ids for G's slots (`vex.` prefix — S4). Populated by step 15 (blocks/array
+ * actions) and step 16 (clipboard); empty here because no built-in contribution exists before
+ * those steps land.
+ *
+ * @experimental
+ */
+export const BUILTIN_CONTRIBUTION_IDS = {} as const;
+```
+
+#### packages/core/src/components/resolve.ts
+
+New file.
+
+```ts
+import { VexComponentConfigError, type ComponentContributionInput, type ComponentHKT, type ComponentOverrideInput, type ResolvedComponentContribution, type ResolvedComponentOverride, type SlotId } from "./types";
+
+function toIdArray(value: string | string[] | undefined): string[] {
+  if (value === undefined) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+/**
+ * Orders one slot's additive contribution list — hide directives applied, duplicate real ids
+ * rejected, `order`/`before`/`after` resolved into a final sequence.
+ *
+ * Processing order: (1) partition hide directives from real contributions; (2) drop every real
+ * contribution whose id a hide directive names (S4's "replace = hide + add" rule — a hide
+ * directive matching nothing is a harmless no-op, not an error, since a project may hide a
+ * built-in that a future core version removes outright); (3) among the SURVIVING real
+ * contributions, a repeated id IS an error (two genuine contributions fighting for one id, S9);
+ * (4) stable-sort by `order` (default `0`), tie-broken by original array position; (5) apply
+ * `before`/`after` as a secondary topological pass over that stable order — a constraint
+ * naming an id that was hidden or never existed is ignored (the constraint is about relative
+ * position among what's actually rendered).
+ *
+ * @throws {VexComponentConfigError} When two real (non-hidden) contributions in `props.contributions`
+ *   share one id.
+ */
+export function resolveComponentContributions<TComponent extends ComponentHKT, TProps>(props: {
+  slotId: SlotId;
+  contributions: ComponentContributionInput<TComponent, TProps>[];
+}): ResolvedComponentContribution<TComponent, TProps>[] {
+  const { slotId, contributions } = props;
+
+  const hiddenIds = new Set<string>();
+  const real: { entry: ResolvedComponentContribution<TComponent, TProps>; index: number }[] = [];
+  contributions.forEach((entry, index) => {
+    if (entry.hidden === true && entry.component === undefined) {
+      hiddenIds.add(entry.id);
+      return;
+    }
+    if (entry.hidden === true) return; // a real contribution marked hidden: drop it, not an error
+    real.push({ entry: entry as ResolvedComponentContribution<TComponent, TProps>, index });
+  });
+
+  const surviving = real.filter(({ entry }) => !hiddenIds.has(entry.id));
+
+  const seen = new Map<string, number>();
+  for (const { entry, index } of surviving) {
+    const priorIndex = seen.get(entry.id);
+    if (priorIndex !== undefined) {
+      throw new VexComponentConfigError(
+        `Slot "${slotId}": duplicate contribution id "${entry.id}" (entries at positions ${priorIndex} and ${index}). ` +
+          `Replacing a built-in requires { id: "${entry.id}", hidden: true } plus a NEW contribution under a different id, ` +
+          `or wrapping it via an override chain instead of a duplicate additive entry.`,
+      );
+    }
+    seen.set(entry.id, index);
+  }
+
+  const stable = [...surviving].sort((a, b) => {
+    const orderA = a.entry.order ?? 0;
+    const orderB = b.entry.order ?? 0;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.index - b.index;
+  });
+
+  const ids = stable.map(({ entry }) => entry.id);
+  const idToPos = new Map(ids.map((id, i) => [id, i]));
+  const result = [...stable];
+
+  // Secondary topological pass: repeatedly move any entry that violates a before/after
+  // constraint relative to its current neighbor, bounded by result.length passes so a cyclic
+  // constraint set (e.g. A before B, B before A) terminates instead of looping forever — it
+  // simply stops improving once no swap helps, leaving the stable order for the unsatisfiable pair.
+  for (let pass = 0; pass < result.length; pass++) {
+    let swapped = false;
+    for (let i = 0; i < result.length; i++) {
+      const entry = result[i]!.entry;
+      const beforeIds = toIdArray(entry.before).filter((id) => idToPos.has(id));
+      const afterIds = toIdArray(entry.after).filter((id) => idToPos.has(id));
+      for (const targetId of beforeIds) {
+        const j = result.findIndex((r) => r.entry.id === targetId);
+        if (j !== -1 && j < i) {
+          [result[i], result[j]] = [result[j]!, result[i]!];
+          swapped = true;
+        }
+      }
+      for (const targetId of afterIds) {
+        const j = result.findIndex((r) => r.entry.id === targetId);
+        if (j !== -1 && j > i) {
+          [result[i], result[j]] = [result[j]!, result[i]!];
+          swapped = true;
+        }
+      }
+    }
+    if (!swapped) break;
+  }
+
+  return result.map(({ entry }) => entry);
+}
+
+/**
+ * Orders one override chain (`field.input`, `field.cell`, `field.label`, `field.description`, a
+ * root per-type `fields.<type>.{Input,Cell}` list) — array order only, no `before`/`after` (S8).
+ *
+ * @throws {VexComponentConfigError} When two overrides in `props.overrides` share one id.
+ */
+export function resolveComponentOverrides<TComponent extends ComponentHKT, TProps>(props: {
+  slotId: SlotId;
+  overrides: ComponentOverrideInput<TComponent, TProps>[];
+}): ResolvedComponentOverride<TComponent, TProps>[] {
+  const { slotId, overrides } = props;
+  const seen = new Map<string, number>();
+  overrides.forEach((entry, index) => {
+    const priorIndex = seen.get(entry.id);
+    if (priorIndex !== undefined) {
+      throw new VexComponentConfigError(
+        `Slot "${slotId}": duplicate override id "${entry.id}" (entries at positions ${priorIndex} and ${index}).`,
+      );
+    }
+    seen.set(entry.id, index);
+  });
+  return [...overrides];
+}
+```
+
+#### packages/core/src/components/index.ts
+
+New file.
+
+```ts
+export * from "./types";
+export * from "./resolve";
+export * from "./builtinIds";
+```
+
+#### packages/core/src/components/resolve.test.ts
+
+New file.
+
+```ts
+import { describe, expect, it } from "vitest";
+import { resolveComponentContributions, resolveComponentOverrides, VexComponentConfigError } from "./resolve";
+
+const comp = () => null;
+
+describe("resolveComponentContributions", () => {
+  it("returns contributions in array order when no order/before/after is set", () => {
+    const result = resolveComponentContributions({
+      slotId: "field.beforeInput",
+      contributions: [
+        { id: "a", component: comp },
+        { id: "b", component: comp },
+      ],
+    });
+    expect(result.map((r) => r.id)).toEqual(["a", "b"]);
+  });
+
+  it("sorts by order, ties broken by array position", () => {
+    const result = resolveComponentContributions({
+      slotId: "field.beforeInput",
+      contributions: [
+        { id: "a", component: comp, order: 10 },
+        { id: "b", component: comp, order: 0 },
+        { id: "c", component: comp, order: 0 },
+      ],
+    });
+    expect(result.map((r) => r.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it("drops a real contribution whose id a hide directive names", () => {
+    const result = resolveComponentContributions({
+      slotId: "blocks.item.actions",
+      contributions: [
+        { id: "vex.block.duplicate", component: comp },
+        { id: "vex.block.duplicate", hidden: true },
+      ],
+    });
+    expect(result).toEqual([]);
+  });
+
+  it("ignores a hide directive matching nothing", () => {
+    const result = resolveComponentContributions({
+      slotId: "blocks.item.actions",
+      contributions: [{ id: "vex.block.remove", hidden: true }],
+    });
+    expect(result).toEqual([]);
+  });
+
+  it("drops a contribution explicitly marked hidden: true with a component, without error", () => {
+    const result = resolveComponentContributions({
+      slotId: "field.beforeInput",
+      contributions: [{ id: "a", component: comp, hidden: true }],
+    });
+    expect(result).toEqual([]);
+  });
+
+  it("throws VexComponentConfigError naming both positions on a genuine duplicate id", () => {
+    expect(() =>
+      resolveComponentContributions({
+        slotId: "blocks.item.actions",
+        contributions: [
+          { id: "acme.action", component: comp },
+          { id: "acme.action", component: comp },
+        ],
+      }),
+    ).toThrow(VexComponentConfigError);
+  });
+
+  it("orders a contribution before another by id", () => {
+    const result = resolveComponentContributions({
+      slotId: "field.beforeInput",
+      contributions: [
+        { id: "a", component: comp },
+        { id: "b", component: comp },
+        { id: "c", component: comp, before: "a" },
+      ],
+    });
+    expect(result.map((r) => r.id).indexOf("c")).toBeLessThan(result.map((r) => r.id).indexOf("a"));
+  });
+
+  it("orders a contribution after another by id", () => {
+    const result = resolveComponentContributions({
+      slotId: "field.beforeInput",
+      contributions: [
+        { id: "a", component: comp, after: "b" },
+        { id: "b", component: comp },
+      ],
+    });
+    expect(result.map((r) => r.id)).toEqual(["b", "a"]);
+  });
+
+  it("ignores a before/after constraint naming an id that was hidden", () => {
+    const result = resolveComponentContributions({
+      slotId: "blocks.item.actions",
+      contributions: [
+        { id: "vex.block.duplicate", hidden: true },
+        { id: "acme.action", component: comp, before: "vex.block.duplicate" },
+      ],
+    });
+    expect(result.map((r) => r.id)).toEqual(["acme.action"]);
+  });
+});
+
+describe("resolveComponentOverrides", () => {
+  it("returns overrides in array order", () => {
+    const result = resolveComponentOverrides({
+      slotId: "field.input",
+      overrides: [
+        { id: "a", component: comp },
+        { id: "b", component: comp },
+      ],
+    });
+    expect(result.map((r) => r.id)).toEqual(["a", "b"]);
+  });
+
+  it("throws VexComponentConfigError naming both positions on a duplicate override id", () => {
+    expect(() =>
+      resolveComponentOverrides({
+        slotId: "field.input",
+        overrides: [
+          { id: "acme.override", component: comp },
+          { id: "acme.override", component: comp },
+        ],
+      }),
+    ).toThrow(VexComponentConfigError);
+  });
+});
+```
+
+#### packages/core/src/fields/baseTypes.ts (step 7 edits)
+
+2 edits. Everything else in the file (Step 1's `FieldLimit`/`FieldLimitInput`, Step 6's
+`admin.layout`/`admin.condition` additions) is unchanged.
+
+**1 — import.** Add `ApplyComponent, ComponentHKT` are already imported/declared in this file
+(`ApplyComponent`/`ComponentHKT` are DEFINED here, not imported) — no new import needed. Add one
+new import for the slot shapes, anchored below the existing `VexCallbackApi` import:
+
+```ts
+import type { ComponentContributionInput, ComponentOverrideInput } from "../components/types";
+```
+
+**2 — `FieldAdminConfigInput`/`FieldAdminConfig` gain a `TComponent` generic and a `components`
+property.** Anchored at both interfaces' declarations (the existing `cellAlignment?: Alignment;`
+closing member, and the resolved counterpart's `placeholder?: string;` closing member).
+
+```ts
+/**
+ * Per-field override and additive contribution slots (S1/S6). Every field type inherits this —
+ * none redeclare their own `admin` property, so `text({ admin: { components: {...} } })` works
+ * identically for every field factory without per-type edits.
+ *
+ * @experimental
+ */
+export interface FieldSlotComponentsInput<TComponent extends ComponentHKT = ComponentHKT> {
+  /** Override chain for this field instance's input component (S6). Composed with the root per-type `fields.<type>.Input` chain and the built-in — see `@vexcms/react`'s `resolveFieldInputComponent`. */
+  Input?: ComponentOverrideInput<TComponent, unknown>[];
+  /** Override chain for this field instance's data-table cell component. Same composition as `Input`. */
+  Cell?: ComponentOverrideInput<TComponent, unknown>[];
+  /** Override chain for this field instance's label. No built-in to override yet (step 11's design note). */
+  Label?: ComponentOverrideInput<TComponent, unknown>[];
+  /** Override chain for this field instance's description. No built-in to override yet. */
+  Description?: ComponentOverrideInput<TComponent, unknown>[];
+  /** Additive contributions rendered before this field's resolved input. */
+  beforeInput?: ComponentContributionInput<TComponent, unknown>[];
+  /** Additive contributions rendered after this field's resolved input. */
+  afterInput?: ComponentContributionInput<TComponent, unknown>[];
+}
+
+export interface FieldAdminConfigInput<TComponent extends ComponentHKT = ComponentHKT> {
+  // …existing hidden/readOnly/position/width/placeholder/cellAlignment members, unchanged…
+  /**
+   * Per-field slot overrides and additive contributions (S1/S6). Omitted entirely for a field
+   * with no customization — resolves to `{}` (every list empty).
+   *
+   * @experimental
+   */
+  components?: FieldSlotComponentsInput<TComponent>;
+}
+```
+
+```ts
+export interface FieldAdminConfig<TComponent extends ComponentHKT = ComponentHKT> {
+  // …existing hidden/readOnly/position/width/cellAlignment/placeholder members, unchanged…
+  /** Resolved per-field slot overrides — always present, every list defaulted to `[]` by `resolveFieldComponents`. */
+  components: {
+    Input: ComponentOverrideInput<TComponent, unknown>[];
+    Cell: ComponentOverrideInput<TComponent, unknown>[];
+    Label: ComponentOverrideInput<TComponent, unknown>[];
+    Description: ComponentOverrideInput<TComponent, unknown>[];
+    beforeInput: ComponentContributionInput<TComponent, unknown>[];
+    afterInput: ComponentContributionInput<TComponent, unknown>[];
+  };
+}
+```
+
+`unknown` props here (rather than a field-specific `InputComponentProps<...>`) match how
+`BaseFieldInput`/`BaseField` themselves carry no `TComponent` generic today — only `relationship`
+threads one through its own narrower `RelationshipFieldAdminInput`/`Config`. A field type that
+wants its `Input`/`Cell` override chain typed against its own concrete props (the way relationship
+types `components.preview`) narrows `components` the same way relationship does, shown next.
+
+#### packages/core/src/fields/relationship/types.ts (step 7 edits)
+
+2 edits — `RelationshipFieldAdminInput`/`RelationshipFieldAdminConfig`'s `components` property
+widens from `{ preview }` only to the base `FieldSlotComponentsInput` shape PLUS `preview`, so it
+remains a valid override of the base `FieldAdminConfigInput<TComponent>`/`FieldAdminConfig<TComponent>`
+it extends (TypeScript rejects redeclaring a member with an incompatible, non-superset type).
+
+**1 — `RelationshipFieldAdminInput`,** anchored at its `extends FieldAdminConfigInput {` line and
+`components` property:
+
+```ts
+export interface RelationshipFieldAdminInput<
+  TTargetSlug extends CollectionSlug = CollectionSlug,
+  TComponent extends ComponentHKT = ComponentHKT,
+> extends FieldAdminConfigInput<TComponent> {
+  /**
+   * Base per-field slot overrides (S6) PLUS `preview`, the relationship-only override —
+   * the only supported location for a custom preview (ARCH-1: target collections do not
+   * support their own `admin.components.preview`).
+   */
+  components?: FieldSlotComponentsInput<TComponent> & {
+    preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TTargetSlug>>;
+  };
+}
+```
+
+**2 — `RelationshipFieldAdminConfig`,** the same widening on the resolved type:
+
+```ts
+export interface RelationshipFieldAdminConfig<
+  TTargetSlug extends CollectionSlug = CollectionSlug,
+  TComponent extends ComponentHKT = ComponentHKT,
+> extends FieldAdminConfig<TComponent> {
+  /** Base resolved slot overrides PLUS `preview`. */
+  components: FieldAdminConfig<TComponent>["components"] & {
+    preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TTargetSlug>>;
+  };
+}
+```
+
+Add `FieldSlotComponentsInput` to the existing `../baseTypes` import list at the top of the file.
+
+#### packages/core/src/fields/utils.ts
+
+1 edit — new exported function, anchored after `resolveFieldLimit`.
+
+```ts
+import type { ComponentContributionInput, ComponentOverrideInput } from "../components/types";
+import { resolveComponentContributions, resolveComponentOverrides } from "../components/resolve";
+import { SLOT_IDS } from "../components/types";
+
+/**
+ * Resolves one field's `admin.components` input into the always-present resolved shape every
+ * field factory stamps onto `FieldAdminConfig.components`. Field-level lists have no built-ins
+ * to merge (every field-level contribution is project/plugin-authored, S6) — this only de-
+ * duplicates and orders the field's OWN list via {@link resolveComponentContributions}/
+ * {@link resolveComponentOverrides}.
+ *
+ * @param props.components - The raw `admin.components` input, or `undefined` for a field with no
+ *   customization.
+ * @returns The resolved `components` object — every list defaulted to `[]`.
+ * @throws {VexComponentConfigError} When one of the field's own lists has a duplicate id.
+ */
+export function resolveFieldComponents(props: {
+  components?: {
+    Input?: ComponentOverrideInput<any, unknown>[];
+    Cell?: ComponentOverrideInput<any, unknown>[];
+    Label?: ComponentOverrideInput<any, unknown>[];
+    Description?: ComponentOverrideInput<any, unknown>[];
+    beforeInput?: ComponentContributionInput<any, unknown>[];
+    afterInput?: ComponentContributionInput<any, unknown>[];
+  };
+}) {
+  const input = props.components ?? {};
+  return {
+    Input: resolveComponentOverrides({ slotId: SLOT_IDS.field.input, overrides: input.Input ?? [] }),
+    Cell: resolveComponentOverrides({ slotId: SLOT_IDS.field.cell, overrides: input.Cell ?? [] }),
+    Label: resolveComponentOverrides({ slotId: SLOT_IDS.field.label, overrides: input.Label ?? [] }),
+    Description: resolveComponentOverrides({
+      slotId: SLOT_IDS.field.description,
+      overrides: input.Description ?? [],
+    }),
+    beforeInput: resolveComponentContributions({
+      slotId: SLOT_IDS.field.beforeInput,
+      contributions: input.beforeInput ?? [],
+    }),
+    afterInput: resolveComponentContributions({
+      slotId: SLOT_IDS.field.afterInput,
+      contributions: input.afterInput ?? [],
+    }),
+  };
+}
+```
+
+#### packages/core/src/fields/utils.test.ts
+
+New `describe` block appended, alongside Step 1's `resolveFieldLimit` tests and Step 7
+(server-condition)'s own appended block.
+
+```ts
+describe("resolveFieldComponents", () => {
+  it("defaults every list to [] when components is omitted", () => {
+    const resolved = resolveFieldComponents({});
+    expect(resolved).toEqual({ Input: [], Cell: [], Label: [], Description: [], beforeInput: [], afterInput: [] });
+  });
+
+  it("resolves a field's own beforeInput order", () => {
+    const comp = () => null;
+    const resolved = resolveFieldComponents({
+      components: { beforeInput: [{ id: "b", component: comp, order: 1 }, { id: "a", component: comp, order: 0 }] },
+    });
+    expect(resolved.beforeInput.map((c) => c.id)).toEqual(["a", "b"]);
+  });
+
+  it("propagates a duplicate-id error from the field's own Input chain", () => {
+    const comp = () => null;
+    expect(() =>
+      resolveFieldComponents({
+        components: { Input: [{ id: "x", component: comp }, { id: "x", component: comp }] },
+      }),
+    ).toThrow();
+  });
+});
+```
+
+#### packages/core/src/fields/text/config.ts (representative field factory)
+
+1 edit — `admin.components` default, anchored at the same `admin: { ... }` spread object Step 6
+added `layout: []` to.
+
+```ts
+import { resolveFieldComponents } from "../utils";
+
+// …inside text(), the returned field's admin object:
+admin: {
+  hidden: false,
+  readOnly: false,
+  position: "main",
+  width: "100%",
+  layout: [],
+  cellAlignment: "left",
+  ...input.admin,
+  components: resolveFieldComponents({ components: input.admin?.components }),
+},
+```
+
+Every other field factory (number, email, textarea, json, checkbox, date, select, url, color,
+array, relationship, upload, blocks, group, richtext) gets the identical one-line
+`components: resolveFieldComponents({ components: input.admin?.components })` addition at its own
+`admin: { ... }` spread, anchored the same way Step 6's `layout: []` was. `apps/test`/`apps/www`
+need no edits — no project configures a slot yet, and `resolveFieldComponents({})` is a pure,
+side-effect-free `{}`-shaped default.
+
+#### packages/core/src/config/types.ts
+
+1 edit — `AdminConfigInput` gains `components`, anchored at its existing `sidebar?: {...}` member,
+and a new `AdminComponentsInput` type above it.
+
+```ts
+import type { AdminFieldType } from "../fields";
+import type {
+  ComponentContributionInput,
+  ComponentOverrideInput,
+} from "../components/types";
+
+/**
+ * Root-level admin extension points (S1) — type-erased to the base `ComponentHKT`, the same
+ * pattern `VexClientConfigInput.editor` already uses, since `defineConfig()` itself has no
+ * framework-typed wrapper (only `relationship()`/`defineCollection()` in `@vexcms/react` do).
+ *
+ * @experimental
+ */
+export interface AdminComponentsInput {
+  /** Project-wide per-field-TYPE overrides (S6) — `fields.text.Input` applies to every `text()` field unless that field's own `admin.components.Input` chain wraps it further. */
+  fields?: {
+    [K in AdminFieldType]?: {
+      Input?: ComponentOverrideInput<ComponentHKT, unknown>[];
+      Cell?: ComponentOverrideInput<ComponentHKT, unknown>[];
+    };
+  };
+  /** `blocks()` field action-menu/header slot defaults, project-wide. */
+  blocks?: {
+    itemActions?: ComponentContributionInput<ComponentHKT, unknown>[];
+    headerActions?: ComponentContributionInput<ComponentHKT, unknown>[];
+  };
+  /** `array()` field item-action slot defaults, project-wide. */
+  array?: {
+    itemActions?: ComponentContributionInput<ComponentHKT, unknown>[];
+  };
+}
+```
+
+```ts
+export interface AdminConfigInput {
+  // …existing livePreview/sidebar members, unchanged…
+  /**
+   * Root-level admin extension points (S1) — resolved once by `defineConfig()`, merging
+   * `BUILTIN_CONTRIBUTION_IDS` defaults with this project's own lists.
+   *
+   * @experimental
+   */
+  components?: AdminComponentsInput;
+}
+```
+
+And on the resolved `AdminConfig`:
+
+```ts
+export interface AdminConfig {
+  // …existing livePreview/sidebar members, unchanged…
+  /** Resolved root-level admin extension points — always present, every list defaulted and ordered. */
+  components: {
+    fields: { [K in AdminFieldType]?: { Input: ComponentOverrideInput<ComponentHKT, unknown>[]; Cell: ComponentOverrideInput<ComponentHKT, unknown>[] } };
+    blocks: { itemActions: ComponentContributionInput<ComponentHKT, unknown>[]; headerActions: ComponentContributionInput<ComponentHKT, unknown>[] };
+    array: { itemActions: ComponentContributionInput<ComponentHKT, unknown>[] };
+  };
+}
+```
+
+#### packages/core/src/config/config.ts
+
+1 edit inside `defineConfig()` — anchored at the returned object's `admin: { ...config?.admin, livePreview: {...}, sidebar: {...} }` block Step 6 left unchanged. Resolves `blocks.itemActions`/`blocks.headerActions`/`array.itemActions` by merging `BUILTIN_CONTRIBUTION_IDS` defaults (empty until step 15/16 populate them) ahead of the project's own list, so a project's `{ id: "vex.block.duplicate", hidden: true }` entry resolves against the real built-in. `fields.<type>` chains have no built-ins to merge (pure override chains, S8) — just ordered.
+
+```ts
+import { resolveComponentContributions, resolveComponentOverrides, SLOT_IDS } from "../components";
+import { ADMIN_FIELDS, type AdminFieldType } from "../fields";
+
+// …inside defineConfig(), building the returned `admin` object:
+admin: {
+  ...config?.admin,
+  livePreview: { /* …unchanged… */ },
+  sidebar: { /* …unchanged… */ },
+  components: {
+    fields: Object.fromEntries(
+      (Object.values(ADMIN_FIELDS) as { type: AdminFieldType }[]).map(({ type }) => [
+        type,
+        {
+          Input: resolveComponentOverrides({
+            slotId: SLOT_IDS.field.input,
+            overrides: config?.admin?.components?.fields?.[type]?.Input ?? [],
+          }),
+          Cell: resolveComponentOverrides({
+            slotId: SLOT_IDS.field.cell,
+            overrides: config?.admin?.components?.fields?.[type]?.Cell ?? [],
+          }),
+        },
+      ]),
+    ),
+    blocks: {
+      itemActions: resolveComponentContributions({
+        slotId: SLOT_IDS.blocks.itemActions,
+        contributions: config?.admin?.components?.blocks?.itemActions ?? [],
+      }),
+      headerActions: resolveComponentContributions({
+        slotId: SLOT_IDS.blocks.headerActions,
+        contributions: config?.admin?.components?.blocks?.headerActions ?? [],
+      }),
+    },
+    array: {
+      itemActions: resolveComponentContributions({
+        slotId: SLOT_IDS.array.itemActions,
+        contributions: config?.admin?.components?.array?.itemActions ?? [],
+      }),
+    },
+  },
+},
+```
+
+Built-ins are NOT pre-pended here at the config level (unlike the note above might suggest) —
+step 15/16's `FormBlocks`/`FormArray`/`BlockActionsMenu` pass `builtins` directly to `SlotOutlet`
+alongside this already-ordered project list, since the built-in components (`DropdownMenuItem`
+JSX closing over per-render handlers) cannot be constructed at `defineConfig()` time, only at
+render time. `defineConfig()`'s own resolution above still runs — it is what catches a
+project-authored duplicate id, or a `before`/`after` naming a built-in id, ahead of render.
+
+#### packages/core/src/config/config.test.ts
+
+New test appended to the existing `defineConfig` describe block.
+
+```ts
+it("resolves admin.components.blocks.itemActions, ordering and de-duplicating the project's own list", () => {
+  const comp = () => null;
+  const config = defineConfig({
+    admin: {
+      components: {
+        blocks: { itemActions: [{ id: "acme.action", component: comp, order: 0 }] },
+      },
+    },
+  });
+  expect(config.admin.components.blocks.itemActions.map((c) => c.id)).toEqual(["acme.action"]);
+});
+
+it("throws VexComponentConfigError when a field's own fields.<type>.Input chain has a duplicate id", () => {
+  const comp = () => null;
+  expect(() =>
+    defineConfig({
+      admin: {
+        components: {
+          fields: { text: { Input: [{ id: "x", component: comp }, { id: "x", component: comp }] } },
+        },
+      },
+    }),
+  ).toThrow(VexComponentConfigError);
+});
+```
+
+Add `VexComponentConfigError` to this test file's existing `../` import list.
+
+#### packages/core/src/index.ts
+
+1 edit — new barrel export, anchored beside the existing `./access`/`./auth`/`./media` re-exports.
+
+```ts
+export * from "./components";
+```
+
+Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- components fields config
+
+### Step 8 — React slot primitives + single field registry [agent]
+
+- [ ] `packages/react/src/components/fields/registry.ts` (new) — `fieldToInputComponent`/`fieldToCellComponent` derived from `reactAdapter.fields`
+- [ ] `packages/react/src/components/fields/index.tsx` — drop `fieldInputComponents`/`fieldCellComponents`, re-export from `registry.ts`
+- [ ] `packages/react/src/components/fields/index.test.tsx` — registry-parity test now asserts against `reactAdapter.fields`
+- [ ] `packages/react/src/components/slots/ComponentErrorBoundary.tsx` + test
+- [ ] `packages/react/src/components/slots/formData.ts` + test — `resolveSiblingData`, `useSlotConditionData`
+- [ ] `packages/react/src/components/slots/SlotOutlet.tsx` + test — gates `condition` against real form `data`/`siblingData` via `useSlotConditionData`
+- [ ] `packages/react/src/components/slots/SlotOverrideOutlet.tsx` + test
+- [ ] `packages/react/src/components/slots/resolveFieldInputComponent.ts` + test
+- [ ] `packages/react/src/components/slots/resolveFieldCellComponent.ts` + test
+- [ ] `packages/react/src/components/slots/index.ts` — barrel
+- [ ] `packages/react/src/hooks/useVexPermissions.ts` + test
+- [ ] `packages/react/src/hooks/useVexForm.ts` + test
+- [ ] `packages/react/src/hooks/index.ts` — re-export both
+- [ ] `packages/react/src/index.ts` — export the new public surface
+
+Why: one registry (S6) replaces `fieldInputComponents`/`fieldCellComponents` duplicating
+`reactAdapter.fields` — today's two hand-written maps (`packages/react/src/components/fields/index.tsx`)
+must be kept in sync with `adapter.ts` by hand on every new field type; `registry.ts` derives both
+from the one real source of truth. `SlotOutlet`/`SlotOverrideOutlet` are the renderer every later
+G step (11, 15, 16, 17) and, eventually, H/I build their own slots on: additive contributions
+ordered/gated/boundary-wrapped (S10/S11), and override chains composed via `renderDefault` (S3).
+
+**Design note — S5 context hooks, what G can supply.** `useVexPermissions` and `useVexForm` are
+the only two S5 hooks with real data available in this step. `useVexDocument` and
+`useVexCollection` both need a resource-neutral "what document/collection is this slot inside"
+identity that only makes unambiguous sense once an edit view's own context exists — `RenderFields`
+itself is called recursively for a group's sub-fields, one array/blocks item, and a create modal's
+required-only subset, none of which have "the document" in the same sense an edit view does. H's
+own spec owns `useVexDocument`/`useVexCollection`, built on the edit-view context it introduces;
+this step's `SlotAccessContext`/`SlotOutlet` accept whatever hooks exist today and are additive
+when H's land, same as `field.label`/`field.description` having no built-in yet.
+`SlotOutlet`'s own `condition` gate (`useSlotConditionData`, in `formData.ts`) is built on
+`useVexForm`, not a new hook — it reads the same form store this step's `useVexForm` already
+exposes, so it needs no document/collection identity to resolve real `data`/`siblingData`.
+
+#### packages/react/src/components/fields/registry.ts
+
+New file.
+
+```tsx
+import type { ComponentType } from "react";
+import {
+  type AdminField,
+  type AdminFieldType,
+  type BaseFieldMeta,
+  type CellComponentProps,
+  type InputComponentProps,
+} from "@vexcms/core";
+import { reactAdapter } from "../../adapter";
+
+/**
+ * Returns the BUILT-IN input component registered for a field type via `reactAdapter.fields` —
+ * the one source of truth step 8 derives both this and {@link fieldToCellComponent} from,
+ * replacing the duplicated `fieldInputComponents`/`fieldCellComponents` maps this file used to
+ * hand-maintain. Does NOT resolve override chains — callers that need the fully-resolved
+ * (built-in + per-type + per-field) component use `resolveFieldInputComponent` instead; this stays
+ * the "what is the TRUE default" primitive that chain's innermost `renderDefault` composes from.
+ *
+ * @param field - The `AdminFieldType` string to look up.
+ * @returns The registered component, or `undefined` for an unregistered type.
+ */
+export function fieldToInputComponent(
+  field: AdminFieldType,
+): ComponentType<InputComponentProps<BaseFieldMeta, AdminField>> | undefined {
+  return reactAdapter.fields[field]?.input as
+    | ComponentType<InputComponentProps<BaseFieldMeta, AdminField>>
+    | undefined;
+}
+
+/**
+ * Returns the BUILT-IN cell component registered for a field type via `reactAdapter.fields`. Same
+ * single-source-of-truth replacement as {@link fieldToInputComponent}; `getCollectionColumnDefs`'s
+ * existing call site is unchanged — it already resolves overrides for free once this function's
+ * caller (`resolveFieldCellComponent`, used by `getCollectionColumnDefs`) composes the chain.
+ *
+ * @param field - The `AdminFieldType` string to look up.
+ * @returns The registered component, or `undefined` for an unregistered type.
+ */
+export function fieldToCellComponent(
+  field: AdminFieldType,
+): ComponentType<CellComponentProps<AdminField>> | undefined {
+  return reactAdapter.fields[field]?.cell as ComponentType<CellComponentProps<AdminField>> | undefined;
+}
+```
+
+#### packages/react/src/components/fields/index.tsx (step 8 edits)
+
+3 edits. Everything else (the per-type barrel exports, `getCollectionColumnDefs`'s own switch
+body) is unchanged.
+
+**1 — drop the `fieldInputComponents` `Record` literal and its JSDoc**, anchored at the comment
+above `export const fieldInputComponents: Record<` through its closing `};`. Replace with:
+
+```ts
+export { fieldToInputComponent, fieldToCellComponent } from "./registry";
+```
+
+**2 — drop the old `fieldToInputComponent` function** (now re-exported from `registry.ts` above,
+not redefined here), anchored at its own JSDoc through closing `}`.
+
+**3 — drop the `fieldCellComponents` `Record` literal and its JSDoc and the old
+`fieldToCellComponent` function**, anchored the same way as edits 1-2 — both replaced by the
+single re-export line edit 1 already added.
+
+#### packages/react/src/components/fields/index.test.tsx (step 8 edits)
+
+1 edit — the registry-parity test (asserting every `ADMIN_FIELDS` type has an `Input`/`Cell`
+entry) now iterates `reactAdapter.fields` instead of the deleted `fieldInputComponents`/
+`fieldCellComponents` maps, anchored at that existing `it`.
+
+```tsx
+it("registers an Input and Cell component for every ADMIN_FIELDS type", () => {
+  for (const { type } of Object.values(ADMIN_FIELDS)) {
+    expect(reactAdapter.fields[type]?.input).toBeDefined();
+    expect(reactAdapter.fields[type]?.cell).toBeDefined();
+  }
+});
+```
+
+Add `reactAdapter` to the file's imports (`from "../../adapter"`).
+
+#### packages/react/src/components/slots/types.ts
+
+New file — React-specific slot prop helpers built on core's framework-agnostic ones.
+
+```tsx
+import type { ApplyComponent, ComponentHKT } from "@vexcms/core";
+
+/** Props an override component receives — the slot's own props plus `renderDefault` (S3). */
+export type SlotOverrideProps<TComponent extends ComponentHKT, TProps> = TProps & {
+  renderDefault: ApplyComponent<TComponent, TProps>;
+};
+```
+
+#### packages/react/src/components/slots/ComponentErrorBoundary.tsx
+
+New file.
+
+```tsx
+"use client";
+
+import { Component, type ReactNode } from "react";
+
+/**
+ * Wraps one contribution so a throwing third-party component cannot take down the whole slot or
+ * the surrounding form (S10). Renders an inline error naming the contribution's id instead of
+ * propagating — editing other fields, or other contributions in the same slot, must stay possible.
+ */
+export class ComponentErrorBoundary extends Component<
+  { id: string; children: ReactNode },
+  { error: Error | undefined }
+> {
+  state: { error: Error | undefined } = { error: undefined };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div role="alert" className="rounded-sm border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
+          Component "{this.props.id}" failed to render: {this.state.error.message}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+```
+
+#### packages/react/src/components/slots/ComponentErrorBoundary.test.tsx
+
+New file.
+
+```tsx
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { ComponentErrorBoundary } from "./ComponentErrorBoundary";
+
+function Throws(): never {
+  throw new Error("boom");
+}
+
+describe("ComponentErrorBoundary", () => {
+  it("renders children when nothing throws", () => {
+    render(
+      <ComponentErrorBoundary id="acme.safe">
+        <span>ok</span>
+      </ComponentErrorBoundary>,
+    );
+    expect(screen.getByText("ok")).toBeInTheDocument();
+  });
+
+  it("renders an inline error naming the id when a child throws, without propagating", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <ComponentErrorBoundary id="acme.broken">
+        <Throws />
+      </ComponentErrorBoundary>,
+    );
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("acme.broken");
+    expect(alert).toHaveTextContent("boom");
+    spy.mockRestore();
+  });
+});
+```
+
+#### packages/react/src/components/slots/formData.ts
+
+New file — the live `{ data, siblingData }` resolver `SlotOutlet` gates `condition` with, moved
+here (rather than declared inline in Step 12's `useFieldCondition.ts`, where this logic
+originally lived) so it is available four steps before `useFieldCondition` itself lands. Step 12
+imports `resolveSiblingData` from here instead of re-declaring its own copy.
+
+```ts
+"use client";
+
+import { useStore } from "@tanstack/react-form";
+import { getBy } from "@tanstack/react-form";
+import { useVexForm } from "../../hooks/useVexForm";
+
+/**
+ * Resolves the value at `name`'s PARENT path — `layout[2].title` resolves siblings from
+ * `layout[2]`, `seo.title` from `seo`, and a top-level name (no `.`) from the whole `data` object.
+ * Matches `FieldConditionProps`'s `siblingData` convention (Step 6).
+ */
+export function resolveSiblingData(props: { data: Record<string, unknown>; name: string }): Record<string, unknown> {
+  const lastDotIndex = props.name.lastIndexOf(".");
+  const parentPath = lastDotIndex === -1 ? undefined : props.name.slice(0, lastDotIndex);
+  return (parentPath === undefined ? props.data : getBy(props.data, parentPath)) as Record<
+    string,
+    unknown
+  >;
+}
+
+/** `{ data, siblingData }` for a slot contribution's `condition` gate (S11). */
+export interface SlotConditionData {
+  data: Record<string, unknown>;
+  siblingData: Record<string, unknown>;
+}
+
+/**
+ * Live `condition`-gating data for `SlotOutlet`, resolved from the enclosing `<AppForm>` —
+ * `undefined` outside one. Every G slot is form-scoped (`field.*`, `blocks.*`, `array.*` all
+ * render inside a document's edit form), so `SlotOutlet` treats `undefined` as "skip `condition`
+ * evaluation entirely" (documented at its own call site) rather than fabricating `{}` data, which
+ * would make a predicate that actually reads `data`/`siblingData` answer wrong instead of simply
+ * not gating.
+ *
+ * @param name - The form path whose PARENT path supplies `siblingData` — a field's own name for
+ *   `field.beforeInput`/`afterInput`, or one block/array item's own path (e.g. `content[2]`) for
+ *   `blocks.item.actions`/`array.item.actions`. `undefined` resolves `siblingData` to the whole
+ *   form's values.
+ */
+export function useSlotConditionData(name: string | undefined): SlotConditionData | undefined {
+  const form = useVexForm();
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- `form` is fixed for a given mounted
+  // SlotOutlet instance: a component never gains or loses its enclosing <AppForm> without a full
+  // remount of this component too (the surrounding tree changes, not just a prop), so this
+  // conditional call never changes hook order across re-renders of the SAME instance. Every
+  // current G call site always renders inside <AppForm>; this guards a future call site with
+  // none, which must skip gating rather than evaluate against fabricated data.
+  const values = form ? useStore(form.store, (state) => state.values as Record<string, unknown>) : undefined;
+  if (!form || !values) return undefined;
+  return {
+    data: values,
+    siblingData: name === undefined ? values : resolveSiblingData({ data: values, name }),
+  };
+}
+```
+
+#### packages/react/src/components/slots/formData.test.ts
+
+New file.
+
+```tsx
+import { render } from "@testing-library/react";
+import { useForm } from "@tanstack/react-form";
+import { describe, expect, it } from "vitest";
+import { renderHook } from "@testing-library/react";
+import { resolveSiblingData, useSlotConditionData } from "./formData";
+import { AppForm } from "../form/AppForm";
+import type { AnyFormApi } from "../form/AppFormContext";
+
+describe("resolveSiblingData", () => {
+  it("returns the whole data object for a top-level name", () => {
+    expect(resolveSiblingData({ data: { title: "x" }, name: "title" })).toEqual({ title: "x" });
+  });
+
+  it("resolves the parent path for a nested name", () => {
+    expect(
+      resolveSiblingData({ data: { seo: { title: "x" } }, name: "seo.title" }),
+    ).toEqual({ title: "x" });
+  });
+});
+
+describe("useSlotConditionData", () => {
+  function withForm(defaultValues: Record<string, unknown>) {
+    let form: AnyFormApi | undefined;
+    function Wrapper({ children }: { children: React.ReactNode }) {
+      const f = useForm({ defaultValues });
+      form = f as AnyFormApi;
+      return <AppForm form={f}>{children}</AppForm>;
+    }
+    return { Wrapper, getForm: (): AnyFormApi => form! };
+  }
+
+  it("returns undefined outside an <AppForm>", () => {
+    const { result } = renderHook(() => useSlotConditionData(undefined));
+    expect(result.current).toBeUndefined();
+  });
+
+  it("returns the whole form's values as both data and siblingData when name is omitted", () => {
+    const { Wrapper } = withForm({ title: "x" });
+    const { result } = renderHook(() => useSlotConditionData(undefined), { wrapper: Wrapper });
+    expect(result.current).toEqual({ data: { title: "x" }, siblingData: { title: "x" } });
+  });
+
+  it("resolves siblingData from name's parent path inside an <AppForm>", () => {
+    const { Wrapper } = withForm({ content: [{ heading: "a" }, { heading: "b" }] });
+    const { result } = renderHook(() => useSlotConditionData("content[1]"), { wrapper: Wrapper });
+    expect(result.current?.siblingData).toEqual({ heading: "b" });
+  });
+});
+```
+
+#### packages/react/src/components/slots/SlotOutlet.tsx
+
+New file.
+
+```tsx
+"use client";
+
+import type { ReactNode } from "react";
+import {
+  resolveComponentContributions,
+  type ComponentContributionInput,
+  type SlotAccessContext,
+  type SlotId,
+} from "@vexcms/core";
+import type { ReactHKT } from "../../adapter";
+import { ComponentErrorBoundary } from "./ComponentErrorBoundary";
+import { useVexPermissions } from "../../hooks/useVexPermissions";
+import { useSlotConditionData } from "./formData";
+
+/**
+ * Renders an additive slot's resolved contribution list (S8/S10/S11) — `field.beforeInput`/
+ * `afterInput`, `blocks.item.actions`, `blocks.header.actions`, `array.item.actions`.
+ *
+ * `builtins` and `contributions` are kept as two separate props (rather than one pre-merged
+ * array) because built-in components close over per-render handlers (`onDuplicate`, `onRemove`,
+ * …) that only exist at the call site — they cannot be constructed at `defineConfig()` time the
+ * way a project's own `admin.components` list already is (step 7's `resolveComponentContributions`
+ * already ordered that part). `SlotOutlet` merges the two arrays itself, THEN re-resolves order —
+ * a project's `before`/`after` targeting a built-in id still works, because the built-in's real id
+ * is present in the merged array before resolution runs.
+ *
+ * @param props.slotId - The slot being rendered — used for error messages and the error boundary id.
+ * @param props.builtins - This call site's built-in contributions (already-ordered is fine; final order is re-resolved here).
+ * @param props.contributions - The project/plugin-authored contributions for this slot (from `admin.components` at whichever level the call site owns).
+ * @param props.contributedProps - Props passed to every contribution's component.
+ * @param props.conditionName - The form path `condition` gating resolves `data`/`siblingData` from
+ *   (`useSlotConditionData`) — a field's own name for `field.beforeInput`/`afterInput`, or one
+ *   block/array item's own path for `blocks.item.actions`/`array.item.actions`. Every current G
+ *   call site passes one. Omitted only for a slot genuinely outside any form (none exist in G
+ *   today) — `condition` is then never evaluated and a `condition`-bearing contribution always
+ *   mounts, rather than being gated against fabricated data.
+ */
+export function SlotOutlet<TProps extends {}>(props: {
+  slotId: SlotId;
+  builtins: ComponentContributionInput<ReactHKT, TProps>[];
+  contributions: ComponentContributionInput<ReactHKT, TProps>[] | undefined;
+  contributedProps: TProps;
+  conditionName?: string;
+}): ReactNode {
+  const { hasPermission } = useVexPermissions();
+  const ctx: SlotAccessContext = { hasPermission };
+  const conditionData = useSlotConditionData(props.conditionName);
+
+  const resolved = resolveComponentContributions<ReactHKT, TProps>({
+    slotId: props.slotId,
+    contributions: [...props.builtins, ...(props.contributions ?? [])],
+  });
+
+  return (
+    <>
+      {resolved.map((contribution) => {
+        if (contribution.access && !contribution.access(ctx)) return null;
+        // `conditionData` is `undefined` with no enclosing <AppForm> (no current G call site) —
+        // a `condition`-bearing contribution always mounts rather than being gated against
+        // fabricated data; see this function's own JSDoc and `useSlotConditionData`'s.
+        if (contribution.condition && conditionData && !contribution.condition(conditionData)) return null;
+        const Contribution = contribution.component;
+        return (
+          <ComponentErrorBoundary key={contribution.id} id={contribution.id}>
+            <Contribution {...props.contributedProps} />
+          </ComponentErrorBoundary>
+        );
+      })}
+    </>
+  );
+}
+```
+
+#### packages/react/src/components/slots/SlotOutlet.test.tsx
+
+New file.
+
+```tsx
+import { render, screen } from "@testing-library/react";
+import { useForm } from "@tanstack/react-form";
+import { describe, expect, it, vi } from "vitest";
+import { SlotOutlet } from "./SlotOutlet";
+import { VexConfigProvider } from "../../context";
+import { baseTestConfig } from "../../testing/fixtures";
+import { AppForm } from "../form/AppForm";
+
+function Probe(props: { label: string }) {
+  return <span>{props.label}</span>;
+}
+
+function renderOutlet(ui: React.ReactElement) {
+  return render(<VexConfigProvider config={baseTestConfig}>{ui}</VexConfigProvider>);
+}
+
+function renderOutletInForm(ui: React.ReactElement, defaultValues: Record<string, unknown>) {
+  function Wrapper() {
+    const form = useForm({ defaultValues });
+    return <AppForm form={form}>{ui}</AppForm>;
+  }
+  return render(<VexConfigProvider config={baseTestConfig}><Wrapper /></VexConfigProvider>);
+}
+
+describe("SlotOutlet", () => {
+  it("renders built-ins and project contributions together, ordered", () => {
+    renderOutlet(
+      <SlotOutlet
+        slotId="field.beforeInput"
+        builtins={[{ id: "vex.builtin", component: Probe, order: 1 }]}
+        contributions={[{ id: "acme.custom", component: Probe, order: 0 }]}
+        contributedProps={{ label: "x" }}
+      />,
+    );
+    const spans = screen.getAllByText("x");
+    expect(spans).toHaveLength(2);
+  });
+
+  it("does not render a contribution whose access predicate returns false", () => {
+    renderOutlet(
+      <SlotOutlet
+        slotId="field.beforeInput"
+        builtins={[]}
+        contributions={[{ id: "acme.gated", component: Probe, access: () => false }]}
+        contributedProps={{ label: "hidden" }}
+      />,
+    );
+    expect(screen.queryByText("hidden")).not.toBeInTheDocument();
+  });
+
+  it("renders an error boundary around a throwing contribution without affecting siblings", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    function Throws(): never {
+      throw new Error("boom");
+    }
+    renderOutlet(
+      <SlotOutlet
+        slotId="field.beforeInput"
+        builtins={[]}
+        contributions={[
+          { id: "acme.broken", component: Throws },
+          { id: "acme.ok", component: Probe },
+        ]}
+        contributedProps={{ label: "sibling" }}
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("acme.broken");
+    expect(screen.getByText("sibling")).toBeInTheDocument();
+    spy.mockRestore();
+  });
+
+  it("gates a contribution's condition against real form data, hiding it when false", () => {
+    renderOutletInForm(
+      <SlotOutlet
+        slotId="field.beforeInput"
+        builtins={[]}
+        contributions={[
+          { id: "acme.gated", component: Probe, condition: ({ data }) => data.enabled === true },
+        ]}
+        contributedProps={{ label: "conditional" }}
+        conditionName="secret"
+      />,
+      { enabled: false, secret: "" },
+    );
+    expect(screen.queryByText("conditional")).not.toBeInTheDocument();
+  });
+
+  it("renders a condition-gated contribution once its predicate becomes true", () => {
+    renderOutletInForm(
+      <SlotOutlet
+        slotId="field.beforeInput"
+        builtins={[]}
+        contributions={[
+          { id: "acme.gated", component: Probe, condition: ({ data }) => data.enabled === true },
+        ]}
+        contributedProps={{ label: "conditional" }}
+        conditionName="secret"
+      />,
+      { enabled: true, secret: "" },
+    );
+    expect(screen.getByText("conditional")).toBeInTheDocument();
+  });
+
+  it("always mounts a condition-bearing contribution when rendered with no enclosing form (no conditionData)", () => {
+    renderOutlet(
+      <SlotOutlet
+        slotId="field.beforeInput"
+        builtins={[]}
+        contributions={[
+          { id: "acme.gated", component: Probe, condition: () => false },
+        ]}
+        contributedProps={{ label: "no-form" }}
+        conditionName="secret"
+      />,
+    );
+    expect(screen.getByText("no-form")).toBeInTheDocument();
+  });
+});
+```
+
+#### packages/react/src/components/slots/SlotOverrideOutlet.tsx
+
+New file.
+
+```tsx
+"use client";
+
+import type { ComponentType, ReactNode } from "react";
+import { resolveComponentOverrides, type ComponentOverrideInput, type SlotId } from "@vexcms/core";
+import type { ReactHKT } from "../../adapter";
+import { ComponentErrorBoundary } from "./ComponentErrorBoundary";
+
+/**
+ * Renders an override chain's final composed component (S3) — used directly for `field.label`/
+ * `field.description` (no built-in default; `defaultComponent` is a pure fallback, usually `() =>
+ * null`). `field.input`/`field.cell`'s own chains compose through {@link resolveFieldInputComponent}/
+ * `resolveFieldCellComponent} instead, since those DO have a real built-in to start from and are
+ * consumed as a plain component (not JSX) by `FieldSlotOutlet`/the cell registry.
+ */
+export function SlotOverrideOutlet<TProps extends {}>(props: {
+  slotId: SlotId;
+  overrides: ComponentOverrideInput<ReactHKT, TProps>[] | undefined;
+  defaultComponent: ComponentType<TProps>;
+  props: TProps;
+}): ReactNode {
+  const resolved = resolveComponentOverrides<ReactHKT, TProps>({
+    slotId: props.slotId,
+    overrides: props.overrides ?? [],
+  });
+
+  const Composed = resolved.reduce<ComponentType<TProps>>((renderDefault, override) => {
+    const Override = override.component;
+    function Composed(p: TProps) {
+      return <Override {...p} renderDefault={renderDefault} />;
+    }
+    Composed.displayName = `SlotOverride(${override.id})`;
+    return Composed;
+  }, props.defaultComponent);
+
+  return (
+    <ComponentErrorBoundary id={props.slotId}>
+      <Composed {...props.props} />
+    </ComponentErrorBoundary>
+  );
+}
+```
+
+#### packages/react/src/components/slots/SlotOverrideOutlet.test.tsx
+
+New file.
+
+```tsx
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { SlotOverrideOutlet } from "./SlotOverrideOutlet";
+
+function Default(props: { label: string }) {
+  return <span data-testid="default">{props.label}</span>;
+}
+
+describe("SlotOverrideOutlet", () => {
+  it("renders the default component when no overrides are given", () => {
+    render(<SlotOverrideOutlet slotId="field.label" overrides={undefined} defaultComponent={Default} props={{ label: "x" }} />);
+    expect(screen.getByTestId("default")).toHaveTextContent("x");
+  });
+
+  it("composes a single override's renderDefault back to the default component", () => {
+    function Override(props: { label: string; renderDefault: typeof Default }) {
+      const RenderDefault = props.renderDefault;
+      return (
+        <div>
+          <span data-testid="wrapper">wrapped</span>
+          <RenderDefault {...props} />
+        </div>
+      );
+    }
+    render(
+      <SlotOverrideOutlet
+        slotId="field.label"
+        overrides={[{ id: "acme.wrap", component: Override }]}
+        defaultComponent={Default}
+        props={{ label: "x" }}
+      />,
+    );
+    expect(screen.getByTestId("wrapper")).toBeInTheDocument();
+    expect(screen.getByTestId("default")).toHaveTextContent("x");
+  });
+
+  it("composes two overrides in array order, each wrapping the previous", () => {
+    const order: string[] = [];
+    function makeOverride(name: string) {
+      return function Override(props: { label: string; renderDefault: ComponentType<{ label: string }> }) {
+        order.push(name);
+        const RenderDefault = props.renderDefault;
+        return <RenderDefault {...props} />;
+      };
+    }
+    render(
+      <SlotOverrideOutlet
+        slotId="field.label"
+        overrides={[{ id: "a", component: makeOverride("a") }, { id: "b", component: makeOverride("b") }]}
+        defaultComponent={Default}
+        props={{ label: "x" }}
+      />,
+    );
+    expect(order).toEqual(["b", "a"]);
+  });
+});
+```
+
+#### packages/react/src/components/slots/resolveFieldInputComponent.ts
+
+New file.
+
+```tsx
+import type { ComponentType } from "react";
+import type { AdminFieldType, ComponentOverrideInput, InputComponentProps } from "@vexcms/core";
+import type { ReactHKT } from "../../adapter";
+import { fieldToInputComponent } from "../fields/registry";
+
+/**
+ * Composes the final Input component for one field: built-in → root per-type `fields.<type>.Input`
+ * chain → this field instance's own `admin.components.Input` chain, each override's `renderDefault`
+ * resolving to the previous stage (S3). Memoized by its caller (`FieldSlotOutlet`, step 11) on the
+ * same dependency array the field's own `admin.components.Input` and the root config's
+ * `admin.components.fields[type]` change with.
+ *
+ * @throws {Error} When `fieldType` has no registered built-in (same failure mode the deleted
+ *   `RenderFieldInputComponents` and the old `fieldToInputComponent` callers already threw).
+ */
+export function resolveFieldInputComponent(props: {
+  fieldType: AdminFieldType;
+  rootOverrides: ComponentOverrideInput<ReactHKT, InputComponentProps>[] | undefined;
+  fieldOverrides: ComponentOverrideInput<ReactHKT, InputComponentProps>[] | undefined;
+}): ComponentType<InputComponentProps> {
+  const builtin = fieldToInputComponent(props.fieldType);
+  if (!builtin) {
+    throw new Error(`Missing component for field type '${props.fieldType}'`);
+  }
+  const chain = [...(props.rootOverrides ?? []), ...(props.fieldOverrides ?? [])];
+  return chain.reduce<ComponentType<InputComponentProps>>((renderDefault, override) => {
+    const Override = override.component;
+    function Composed(p: InputComponentProps) {
+      return <Override {...p} renderDefault={renderDefault} />;
+    }
+    Composed.displayName = `FieldInputOverride(${override.id})`;
+    return Composed;
+  }, builtin);
+}
+```
+
+#### packages/react/src/components/slots/resolveFieldInputComponent.test.ts
+
+New file.
+
+```tsx
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { resolveFieldInputComponent } from "./resolveFieldInputComponent";
+
+const baseProps = { name: "title", fieldDef: { type: "text" } as any, readOnly: false, collection: {} as any };
+
+describe("resolveFieldInputComponent", () => {
+  it("returns the built-in when no overrides are configured", () => {
+    const Component = resolveFieldInputComponent({ fieldType: "text", rootOverrides: undefined, fieldOverrides: undefined });
+    render(<Component {...baseProps} />);
+    // TextFieldInput renders a real <input>; this just proves it mounted without throwing.
+  });
+
+  it("composes root then field overrides, each wrapping the previous via renderDefault", () => {
+    const order: string[] = [];
+    function makeOverride(name: string) {
+      return function Override(props: any) {
+        order.push(name);
+        const RenderDefault = props.renderDefault;
+        return <RenderDefault {...props} />;
+      };
+    }
+    const Component = resolveFieldInputComponent({
+      fieldType: "text",
+      rootOverrides: [{ id: "root", component: makeOverride("root") }],
+      fieldOverrides: [{ id: "field", component: makeOverride("field") }],
+    });
+    render(<Component {...baseProps} />);
+    expect(order).toEqual(["field", "root"]);
+  });
+
+  it("throws for an unregistered field type", () => {
+    expect(() =>
+      resolveFieldInputComponent({ fieldType: "nonexistent" as any, rootOverrides: undefined, fieldOverrides: undefined }),
+    ).toThrow(/Missing component/);
+  });
+});
+```
+
+#### packages/react/src/components/slots/resolveFieldCellComponent.ts
+
+New file — identical composition to `resolveFieldInputComponent`, over `fieldToCellComponent`/
+`CellComponentProps` and the root `fields.<type>.Cell` chain plus the field's own `Cell` chain.
+`getCollectionColumnDefs` (`packages/react/src/components/fields/index.tsx`, unchanged call site)
+calls this instead of the bare registry lookup, which is how Step 17's "DataTable cells resolve
+`field.cell` through the registry" requirement is met with no `DataTable.tsx` edit.
+
+```tsx
+import type { ComponentType } from "react";
+import type { AdminField, AdminFieldType, CellComponentProps, ComponentOverrideInput } from "@vexcms/core";
+import type { ReactHKT } from "../../adapter";
+import { fieldToCellComponent } from "../fields/registry";
+
+export function resolveFieldCellComponent(props: {
+  fieldType: AdminFieldType;
+  rootOverrides: ComponentOverrideInput<ReactHKT, CellComponentProps<AdminField>>[] | undefined;
+  fieldOverrides: ComponentOverrideInput<ReactHKT, CellComponentProps<AdminField>>[] | undefined;
+}): ComponentType<CellComponentProps<AdminField>> {
+  const builtin = fieldToCellComponent(props.fieldType);
+  if (!builtin) {
+    throw new Error(`Missing component for field type '${props.fieldType}'`);
+  }
+  const chain = [...(props.rootOverrides ?? []), ...(props.fieldOverrides ?? [])];
+  return chain.reduce<ComponentType<CellComponentProps<AdminField>>>((renderDefault, override) => {
+    const Override = override.component;
+    function Composed(p: CellComponentProps<AdminField>) {
+      return <Override {...p} renderDefault={renderDefault} />;
+    }
+    Composed.displayName = `FieldCellOverride(${override.id})`;
+    return Composed;
+  }, builtin);
+}
+```
+
+#### packages/react/src/components/slots/resolveFieldCellComponent.test.ts
+
+New file — same three cases as `resolveFieldInputComponent.test.ts` (built-in passthrough,
+root-then-field composition order, unregistered-type throw), against `CellComponentProps` fixtures
+instead of `InputComponentProps`.
+
+#### packages/react/src/components/slots/index.ts
+
+New file.
+
+```ts
+export * from "./types";
+export * from "./ComponentErrorBoundary";
+export * from "./SlotOutlet";
+export * from "./SlotOverrideOutlet";
+export * from "./resolveFieldInputComponent";
+export * from "./resolveFieldCellComponent";
+```
+
+#### packages/react/src/hooks/useVexPermissions.ts
+
+New file.
+
+```ts
+import { useVexAccess, useVexAuth } from "../context";
+import { hasPermission } from "@vexcms/core";
+
+/**
+ * S5 context hook — binds `hasPermission` to the current user, for a slot contribution's
+ * `access` predicate (`SlotAccessContext`) and for a project's own slot components that need the
+ * same check. Thin wrapper over `useVexAccess`/`useVexAuth`, which already carry the resolved
+ * access config and current user respectively.
+ *
+ * @experimental
+ */
+export function useVexPermissions(): { hasPermission: (resource: string, action: string) => boolean } {
+  const access = useVexAccess();
+  const auth = useVexAuth();
+  return {
+    hasPermission: (resource: string, action: string) => {
+      if (!access) return true; // no access config configured: everything allowed, matching core's own resolveGetAuth fallback
+      return hasPermission({ access, user: auth?.user, resource, action } as any);
+    },
+  };
+}
+```
+
+#### packages/react/src/hooks/useVexPermissions.test.tsx
+
+New file — `renderHook` under `VexConfigProvider`/`VexAuthProvider` fixtures (reused from the
+existing `usePermission` test suite), asserting `hasPermission` returns `true` with no access
+config, and delegates to core's `hasPermission` with one configured.
+
+#### packages/react/src/hooks/useVexForm.ts
+
+New file.
+
+```tsx
+import { useContext } from "react";
+import { AppFormContext } from "../components/form/AppFormContext";
+
+/**
+ * S5 context hook — exposes the current TanStack `AppForm` instance to a slot contribution
+ * rendered inside a form (any `field.*`/`blocks.*`/`array.*` slot). `undefined` outside an
+ * `<AppForm>` — a contribution that needs form access checks for this itself rather than
+ * assuming one exists, the same way `FormArray`/`FormBlocks` already throw instead of silently
+ * no-op-ing when rendered outside a form context.
+ *
+ * @experimental
+ */
+export function useVexForm() {
+  return useContext(AppFormContext);
+}
+```
+
+#### packages/react/src/hooks/useVexForm.test.tsx
+
+New file — asserts `undefined` outside `<AppForm>`, and the real form instance inside one (reusing
+the existing `AppForm` test harness).
+
+#### packages/react/src/hooks/index.ts
+
+2 edits — add `export * from "./useVexPermissions";` and `export * from "./useVexForm";`, anchored
+beside the existing hook exports.
+
+#### packages/react/src/index.ts (step 8 edits)
+
+1 edit — new export block, anchored after the existing "Field components" export section.
+
+```ts
+// Admin extension points (slots) — experimental, S13
+export { SlotOutlet, SlotOverrideOutlet } from "./components/slots";
+export type { SlotOverrideProps } from "./components/slots";
+export { useVexPermissions, useVexForm } from "./hooks";
+export { SLOT_IDS, BUILTIN_CONTRIBUTION_IDS } from "@vexcms/core";
+export type {
+  ComponentContributionInput,
+  ComponentOverrideInput,
+  SlotId,
+  SlotAccessContext,
+  SlotAccessPredicate,
+} from "@vexcms/core";
+```
+
+Verify: pnpm typecheck && pnpm --filter @vexcms/react test -- fields/index slots
+
+### Step 9 — Server-side condition enforcement [agent]
 
 - [ ] `packages/core/src/fields/inputSchemas/index.ts` — `adminFieldToInputSchema` evaluates each field's own `admin.condition` (via Step 6's `isFieldConditionMet`) before dispatch; condition-false → `z.unknown()`; threads `data`/`siblingData` to `group`/`array`/`blocks`
 - [ ] `packages/core/src/fields/utils.ts` — `getFieldsInputSchema({ …, data })` forwards `data`/per-field `siblingData`/`key` into `adminFieldToInputSchema`; `validateFields` skips a field whose condition is false
@@ -9836,7 +11598,7 @@ export function getFieldsInputSchema(props: {
  * fields whose key isn't in `keys` (unchanged on `update`, every field on
  * `create`), that don't define `validate`, or whose `admin.condition`
  * evaluates false — a condition-hidden field's `validate()` never runs,
- * matching `getFieldsInputSchema`'s schema-level skip (Step 7). `doc` stands
+ * matching `getFieldsInputSchema`'s schema-level skip (Step 9). `doc` stands
  * in for both `data` and `siblingData` here: `validateFields` only ever runs
  * a TOP-LEVEL field's own `validate()` (a `group`/`array`/`blocks`
  * sub-field's `validate()`, if any, runs through the container field's own
@@ -9927,7 +11689,7 @@ export async function validateFields(props: {
  * @param props.data - The full top-level document, forwarded unchanged to
  *   every sub-field so each can evaluate its own `admin.condition` and, if
  *   it is itself a container, continue threading `data` further down.
- *   Omitted entirely skips condition evaluation (Step 7).
+ *   Omitted entirely skips condition evaluation (Step 9).
  * @param props.siblingData - This group's OWN resolved value — the object
  *   every one of its sub-fields sees as `siblingData` for its own condition
  *   check, since they are each other's true siblings. Computed by whichever
@@ -10020,7 +11782,7 @@ import type { VexResourceSlug } from "../../types/generated";
  * it) declares an `admin.condition` (`hasFieldConditions`), each array ITEM
  * needs its own `siblingData` — unlike a `group`'s sub-fields, items are
  * positional, not keyed, so there is no single `data[key]` to compute up
- * front at schema-build time (Step 7). The base/outer item schema is built
+ * front at schema-build time (Step 9). The base/outer item schema is built
  * loose (`z.unknown()`) instead of the real item schema — enforcing
  * `required` up front there would reject a condition-hidden field before
  * the real, condition-aware per-item re-parse ever runs — and a
@@ -10171,7 +11933,7 @@ import type { VexResourceSlug } from "../../types/generated";
  *
  * When `props.data` is given AND any block's own `fields` (recursively)
  * declares an `admin.condition` (`hasFieldConditions`), each block item
- * needs its own `siblingData` the same way an array item does (Step 7) —
+ * needs its own `siblingData` the same way an array item does (Step 9) —
  * items are positional, so there is no single schema-build-time
  * `data[key]`. `blockSchemaFor` (the per-block-type `z.object()` builder) is
  * shared between the base pass and the per-item re-parse so block schemas
@@ -10614,7 +12376,7 @@ import { defineCollection, defineGlobal, text, checkbox } from "../index";
 
 Verify: pnpm --filter @vexcms/core test -- prepareEdit fields
 
-### Step 8 — Input masks: `admin.mask` + `fields.inputMasks` [agent]
+### Step 10 — Input masks: `admin.mask` + `fields.inputMasks` [agent]
 
 - [ ] `pnpm-workspace.yaml` catalog + `packages/react/package.json` — `use-mask-input` (P-015)
 - [ ] `packages/core/src/fields/mask/` — `types.ts` (`FieldMaskInput`, `FieldMask`, `MASKABLE_FIELD_TYPES`), `utils.ts` (`resolveFieldMask`), `index.ts` + tests
@@ -11963,7 +13725,7 @@ describe("email: admin.mask", () => {
 
 Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- mask config && pnpm --filter @vexcms/react test -- useFieldMask fields/text fields/number fields/url fields/email
 
-### Step 9 — React layout renderer: `RenderFields`, tabs, collapsible, row, width, sidebar, hidden [agent]
+### Step 11 — React layout renderer: `RenderFields`, tabs, collapsible, row, width, sidebar, hidden [agent]
 
 - [ ] `packages/react/src/components/form/constants.ts` — `FORM_URL_PARAMS`
 - [ ] `packages/react/src/components/form/RenderFields.tsx` + test — renders `FieldLayoutNode[]`; flex-wrap widths; region filter
@@ -11975,9 +13737,22 @@ Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- mask config && pnpm
 - [ ] `packages/react/src/components/fields/index.test.tsx` — `admin.hidden` column-exclusion test
 - [ ] `CollectionEditView`, `GlobalEditView`, `MediaCollectionEditView` — main + sidebar columns via `RenderFields`; `admin.hidden` honored; submit-failure jumps to the first errored tab
 - [ ] `FormGroup`, `FormBlocks`, `CreateDocumentModal` — switch to `RenderFields`
+- [ ] `packages/react/src/components/form/RenderFields.tsx` — the `"field"` branch renders through a new `FieldSlotOutlet`: resolves `field.input` via step 8's `resolveFieldInputComponent` (per-type then per-field override chain), renders `field.beforeInput`/`field.afterInput` (`SlotOutlet`) and `field.label`/`field.description` (`SlotOverrideOutlet`, no built-in yet) around it
 - [ ] `packages/react/src/components/fields/select/Input.tsx`, `packages/react/src/hooks/useModalSurface.tsx`, `useModalSurface.test.tsx` — stale `RenderFieldInputComponents` doc references fixed
 
 Why: one renderer replaces the four duplicated field loops; consumes step 6's tree.
+
+**Design note — field slots (S1/S6/S12).** `FieldSlotOutlet` is the one place `RenderFields`
+departs from a plain function call: resolving `field.input`'s override chain needs
+`useVexConfig()` (a hook, for the root per-type chain) alongside the field's own pre-resolved
+`admin.components.Input` chain (resolved once at field-factory time by step 7's
+`resolveFieldComponents`), so it is a real component, not a helper `renderFieldLayoutNode` can
+call directly. `field.label`/`field.description` render with no built-in contribution in this
+pass (see `FieldSlotOutlet`'s own doc comment) — every Input still renders its own label inline,
+unchanged visual behavior. `field.beforeInput`/`field.afterInput` have no built-ins either; they
+are pure extension points until a plugin or this project's own config populates them. Both
+`SlotOutlet` calls pass `conditionName={inputProps.name}` (step 8) so a contribution's
+`condition` gates against this field's real `data`/`siblingData`, not fabricated data.
 
 **Design note — `documentStatus` and per-field permission `readOnly`.**
 
@@ -12025,13 +13800,20 @@ export type FormUrlParam = (typeof FORM_URL_PARAMS)[keyof typeof FORM_URL_PARAMS
 import { type CSSProperties, type ReactNode, useMemo } from "react";
 import {
   buildFieldLayoutTree,
+  SLOT_IDS,
   type AdminField,
+  type BaseFieldMeta,
   type CollectionConfig,
   type FieldLayoutNode,
   type GlobalConfig,
+  type InputComponentProps,
   type VexVersionStatus,
 } from "@vexcms/core";
-import { fieldToInputComponent } from "../fields";
+import { useVexConfig } from "../../context";
+import { ComponentErrorBoundary } from "../slots/ComponentErrorBoundary";
+import { SlotOutlet } from "../slots/SlotOutlet";
+import { SlotOverrideOutlet } from "../slots/SlotOverrideOutlet";
+import { resolveFieldInputComponent } from "../slots/resolveFieldInputComponent";
 import { FormTabs } from "./FormTabs";
 import { FormCollapsible } from "./FormCollapsible";
 import { FormRow } from "./FormRow";
@@ -12199,6 +13981,53 @@ export function findErroredTabLabel(props: {
 }
 
 /**
+ * Resolves and renders one `"field"` node's full slot surface: `field.beforeInput` /
+ * `field.afterInput` contributions around the resolved `field.input` override chain, plus the
+ * (currently built-in-less) `field.label` / `field.description` override points.
+ *
+ * `field.label`/`field.description` have NO built-in contribution in this pass — every Input
+ * component still renders its own label/description markup inline, unchanged. The slots exist
+ * (S1/S12) so a project's own custom Input override that opts out of its own label/description,
+ * or a future input-styling pass (noted for H), already composes correctly against them. Declaring
+ * the slot now and giving it a real built-in later is additive, not breaking (S9's duplicate-id
+ * rule only applies once a built-in exists to collide with).
+ */
+function FieldSlotOutlet(props: {
+  node: Extract<FieldLayoutNode, { kind: "field" }>;
+  context: RenderFieldsContext;
+}): ReactNode {
+  const { node, context } = props;
+  const config = useVexConfig();
+  const InputComponent = useMemo(
+    () =>
+      resolveFieldInputComponent({
+        fieldType: node.field.type,
+        rootOverrides: config.admin.components?.fields?.[node.field.type]?.Input,
+        fieldOverrides: node.field.admin.components.Input,
+      }),
+    [node.field.type, node.field.admin.components.Input, config.admin.components],
+  );
+  const inputProps: InputComponentProps<BaseFieldMeta, AdminField> = {
+    name: fieldLayoutNodeName(context, node.key),
+    fieldDef: node.field,
+    readOnly: Boolean(context.readOnly) || node.field.admin.readOnly,
+    collection: context.collection,
+    documentStatus: context.documentStatus,
+  };
+  return (
+    <>
+      <SlotOutlet slotId={SLOT_IDS.field.beforeInput} builtins={[]} contributions={node.field.admin.components.beforeInput} contributedProps={inputProps} />
+      <SlotOverrideOutlet slotId={SLOT_IDS.field.label} overrides={node.field.admin.components.Label} defaultComponent={() => null} props={inputProps} />
+      <ComponentErrorBoundary id={SLOT_IDS.field.input}>
+        <InputComponent {...inputProps} />
+      </ComponentErrorBoundary>
+      <SlotOverrideOutlet slotId={SLOT_IDS.field.description} overrides={node.field.admin.components.Description} defaultComponent={() => null} props={inputProps} />
+      <SlotOutlet slotId={SLOT_IDS.field.afterInput} builtins={[]} contributions={node.field.admin.components.afterInput} contributedProps={inputProps} />
+    </>
+  );
+}
+
+/**
  * Renders one `FieldLayoutNode`, recursing into `FormTabs`/`FormCollapsible`/
  * `FormRow` for container kinds.
  *
@@ -12208,19 +14037,7 @@ export function findErroredTabLabel(props: {
  */
 export function renderFieldLayoutNode(node: FieldLayoutNode, context: RenderFieldsContext): ReactNode {
   if (node.kind === "field") {
-    const InputComponent = fieldToInputComponent(node.field.type);
-    if (!InputComponent) {
-      throw new Error(`Missing component for field type '${node.field.type}'`);
-    }
-    return (
-      <InputComponent
-        name={fieldLayoutNodeName(context, node.key)}
-        fieldDef={node.field}
-        readOnly={Boolean(context.readOnly) || node.field.admin.readOnly}
-        collection={context.collection}
-        documentStatus={context.documentStatus}
-      />
-    );
+    return <FieldSlotOutlet node={node} context={context} />;
   }
   if (node.kind === "tabs") {
     return <FormTabs node={node} context={context} useUrlState={node.id === context.urlTabsId} />;
@@ -13848,7 +15665,7 @@ import { applyFieldPermissionReadOnly } from "../form/applyFieldPermissionReadOn
 
 Verify: pnpm typecheck && pnpm --filter @vexcms/react test -- form views
 
-### Step 10 — React conditions + condition-aware client validation [agent]
+### Step 12 — React conditions + condition-aware client validation [agent]
 
 - [ ] `packages/react/src/hooks/useFieldCondition.ts` + `useFieldCondition.test.tsx` — `useFieldCondition` (subscribes to the form store only when `admin.condition` is set), plus `isFieldLayoutNodeVisible`/`useFieldLayoutNodeVisible` (frame-level "any descendant visible" check)
 - [ ] `packages/react/src/hooks/index.ts` — barrel export
@@ -13859,10 +15676,10 @@ Verify: pnpm typecheck && pnpm --filter @vexcms/react test -- form views
 - [ ] `packages/react/src/hooks/useFieldsForm.ts` + `useFieldsForm.test.ts` — validators rebuild the input schema from current values when `hasFieldConditions`
 
 Why: hide fields reactively without re-rendering the whole form on every
-keystroke; client Zod must match the server's Step 7 rule (a condition-hidden
+keystroke; client Zod must match the server's Step 9 rule (a condition-hidden
 required field never blocks submit, on either side).
 
-Step 9 (`local://g-step-09.md`) is the renderer this step wires conditions
+Step 11 (`local://g-step-11.md`) is the renderer this step wires conditions
 into. Every nesting level — `RenderFields` itself, `FormTabs`,
 `FormCollapsible`, `FormRow` — renders a `"field"` node through the SAME
 shared function, `renderFieldLayoutNode` (exported from `RenderFields.tsx`),
@@ -14255,7 +16072,7 @@ export * from "./FieldConditionGate";
 
 #### `packages/react/src/components/form/RenderFields.tsx`
 
-Builds on Step 9's file (`local://g-step-09.md`) — 2 edits; everything else
+Builds on Step 11's file (`local://g-step-11.md`) — 2 edits; everything else
 unchanged.
 
 **1 — import.** Add after `import { FormRow } from "./FormRow";`:
@@ -14304,7 +16121,7 @@ export function renderFieldLayoutNode(node: FieldLayoutNode, context: RenderFiel
 block, after the last test (`"renders a row() group via FormRow"`); every
 import it needs (`useForm`, `AppForm`, `NuqsTestingAdapter`, `text`,
 `RenderFields`, `userEvent`, `baseCollection`, `render`, `screen`) is already
-imported by Step 9's file.
+imported by Step 11's file.
 
 ```tsx
   it("hides and reactively shows a field whose admin.condition depends on a sibling", async () => {
@@ -14403,7 +16220,7 @@ export function FormTabs(props: {
 
 1 edit — add one `it` inside `describe("FormTabs", ...)`, after the last test
 (the error-count badge test); uses only `buildTabsNode`/`renderHarness`,
-already defined in Step 9's file.
+already defined in Step 11's file.
 
 ```tsx
   it("renders nothing when every field across every tab is condition-hidden", () => {
@@ -14469,7 +16286,7 @@ export function FormCollapsible(props: { node: CollapsibleLayoutNode; context: R
 
 1 edit — add one `it` inside `describe("FormCollapsible", ...)`, after the
 last test (`"hides the error-count badge once opened"`); uses only
-`buildCollapsibleNode`/`renderHarness`, already defined in Step 9's file.
+`buildCollapsibleNode`/`renderHarness`, already defined in Step 11's file.
 
 ```tsx
   it("renders nothing (not even its label) when every sub-field is condition-hidden", () => {
@@ -14523,7 +16340,7 @@ export function FormRow(props: { node: RowLayoutNode; context: RenderFieldsConte
 the wrapper `<div>`, so this test checks the whole container — not just the
 field — to prove the frame-level guard fired rather than only
 `FieldConditionGate`. Uses only `buildRowNode`/`baseCollection`, already
-defined in Step 9's file; `useForm`, `AppForm`, `FormRow`, `text`, `render`
+defined in Step 11's file; `useForm`, `AppForm`, `FormRow`, `text`, `render`
 are already imported.
 
 ```tsx
@@ -14587,7 +16404,7 @@ full:
  * (`hasFieldConditions`), the static schema is replaced by a validator
  * FUNCTION that rebuilds `getFieldsInputSchema({ fields, data: value })` from
  * the form's current values on every blur/submit — mirroring the server's
- * Step 7 rule exactly: a condition-hidden field becomes `z.unknown()`
+ * Step 9 rule exactly: a condition-hidden field becomes `z.unknown()`
  * (value kept, unvalidated), so it can never block submission. Forms with no
  * conditioned field keep the original static-schema-as-validator path
  * unchanged (no per-validation rebuild cost).
@@ -14797,7 +16614,7 @@ describe("useFieldsForm", () => {
 
 Verify: `pnpm --filter @vexcms/react test -- useFieldCondition RenderFields useFieldsForm`
 
-### Step 11 — `usePaginatedSearch` + upload picker fixes [agent]
+### Step 13 — `usePaginatedSearch` + upload picker fixes [agent]
 
 - [ ] `packages/react/src/hooks/usePaginatedSearch.ts` + `usePaginatedSearch.test.tsx` (new, thin — mirrors `usePaginatedQuery.test.tsx`'s `runHooksSuite({ only: [...] })` one-liner; without it `describePaginatedSearch` in `hooksSuite.tsx` never actually executes) + the describe block itself (in `packages/react/src/testing/hooksSuite.tsx`)
 - [ ] `packages/react/src/hooks/index.ts` — export the new hook
@@ -14883,7 +16700,7 @@ export interface UsePaginatedSearchReturn<TDocument extends VexDocument = VexDoc
 
 /**
  * Debounced, cursor-paginated search over a VexCMS collection or media
- * collection — the hook both the relationship picker (step 12) and the
+ * collection — the hook both the relationship picker (step 14) and the
  * media library grid use, so pagination, debouncing, and MIME-type
  * filtering are implemented once.
  *
@@ -15842,7 +17659,7 @@ it("derives the Type menu from accept, and selecting a type filters results clie
 
 Verify: `pnpm --filter @vexcms/react test -- usePaginatedSearch media fields/upload`
 
-### Step 12 — Relationship field overhaul [agent]
+### Step 14 — Relationship field overhaul [agent]
 
 - [ ] `packages/react/src/components/relationship/RelationshipPicker.tsx` — dialog: Select / Create tabs
 - [ ] `packages/react/src/components/relationship/RelationshipDocumentList.tsx` — search + paginated list via `usePaginatedSearch`
@@ -15874,9 +17691,9 @@ no way to create a target document without leaving the field. Copied from
 upload's three-state pattern (`Input` switches read-only/empty/filled; `Empty`
 is a dashed box with Select/Create buttons; `Filled` is draggable rows with
 Edit/Clear) per contract Decision 9 — relationship and upload share no field
-code, only `usePaginatedSearch` (Step 11). `useRelationshipPickerOptions` is
+code, only `usePaginatedSearch` (Step 13). `useRelationshipPickerOptions` is
 deleted; its search/list query is now `usePaginatedSearch`, owned and tested by
-Step 11; this step's own tests cover what is new here (the list's selection/
+Step 13; this step's own tests cover what is new here (the list's selection/
 checkbox/max-disable logic, the picker's tab switching, the empty/filled/
 draft-gated states) rather than re-proving the shared hook's debounce/branch
 behavior.
@@ -15889,7 +17706,7 @@ redundant auto index, and the picker always queried the hardcoded `search_<useAs
 regardless of which index actually existed. `resolveTitleSearchIndex({ collection })` (exported
 from `packages/core/src/collections/validator.ts`, re-exported from the collections and core
 barrels) is now the single source of truth both schema generation and `usePaginatedSearch`
-(Step 11) consult: it resolves the `useAsTitle` field BY REFERENCE (not by name) — reusing that
+(Step 13) consult: it resolves the `useAsTitle` field BY REFERENCE (not by name) — reusing that
 field's own `searchIndex` name when it declares one, falling back to the auto `search_<useAsTitle>`
 name only when it doesn't — and returns `undefined` when `useAsTitle` is a Convex system field or
 a field type that doesn't declare `searchIndex` support (number, date, checkbox, …), so no second
@@ -16677,7 +18494,7 @@ export function CreateDocumentForm({
 
 #### packages/react/src/components/modals/CreateDocumentModal.tsx
 
-Existing file — by this step, Step 9 has already swapped this file's
+Existing file — by this step, Step 11 has already swapped this file's
 `RenderFieldInputComponents` import/usage for `RenderFields` (its own two-edit
 change to this file). The whole `CreateDocumentModal` function body is
 replaced here — it now resolves the collection and delegates everything else
@@ -17431,8 +19248,7 @@ export * from "./FilledInput";
 
 Existing file. Drops `relationshipTargetCollectionByCreationTime` — it existed
 only to exercise `useRelationshipPickerOptions`'s now-deleted searchable/
-non-searchable branch split, which is `usePaginatedSearch`'s own concern (Step
-11) now, not this field's. `relationshipTargetCollection`/`relationshipFieldFixture`
+non-searchable branch split, which is `usePaginatedSearch`'s own concern (Step 13) now, not this field's. `relationshipTargetCollection`/`relationshipFieldFixture`
 are unchanged except for their doc comments, which no longer reference the
 deleted hook or the old popover combobox.
 
@@ -17902,12 +19718,12 @@ Verify: `pnpm --filter @vexcms/react test -- fields/relationship relationship`
 
 #### packages/react/src/hooks/useRelationshipPickerOptions.ts
 
-Deleted — its search/list query is `usePaginatedSearch` (Step 11); the relationship
+Deleted — its search/list query is `usePaginatedSearch` (Step 13); the relationship
 field's picker (`RelationshipDocumentList`) calls that hook directly instead.
 
 #### packages/react/src/hooks/index.ts
 
-**1 — drop the `useRelationshipPickerOptions` barrel export.** (Step 11 already
+**1 — drop the `useRelationshipPickerOptions` barrel export.** (Step 13 already
 added `export * from "./usePaginatedSearch";` after `usePaginatedQuery`, kept
 unchanged below.)
 
@@ -18151,7 +19967,7 @@ Verify: `pnpm --filter @vexcms/core test -- validator`
 
 Verify: `pnpm --filter @vexcms/react test -- fields/relationship relationship`
 
-### Step 13 — Blocks + array editing actions [agent]
+### Step 15 — Blocks + array editing actions [agent]
 
 - [ ] `packages/core/src/fields/blocks/utils.ts` — `buildDefaultBlock`, `cloneBlockWithFreshIds`, `coerceBlockToDefinition`
 - [ ] `packages/core/src/fields/blocks/utils.test.ts`
@@ -18163,12 +19979,12 @@ Verify: `pnpm --filter @vexcms/react test -- fields/relationship relationship`
 - [ ] `packages/react/src/components/form/FormArray.tsx` — duplicate, move up/down, stable item keys
 - [ ] `packages/react/src/components/form/FormArray.test.tsx`
 - [ ] `packages/react/src/components/fields/blocks/Input.test.tsx` — 2 edits for the `blockName` default-placeholder fix and the actions-menu remove path
-- [ ] `packages/react/src/testing/nestedFieldContainer.ts` — 3 edits: the "blocks" `blockName` matcher, the "removes a seeded item" remove path, the readOnly-cascade check exempting the per-block actions menu trigger (step 14 stops disabling it so `Copy` stays reachable)
+- [ ] `packages/react/src/testing/nestedFieldContainer.ts` — 3 edits: the "blocks" `blockName` matcher, the "removes a seeded item" remove path, the readOnly-cascade check exempting the per-block actions menu trigger (step 16 stops disabling it so `Copy` stays reachable)
 - [ ] `pnpm --filter @vexcms/core test -- fields/blocks && pnpm --filter @vexcms/react test -- FormBlocks FormArray fields/blocks fields/array`
 
 Why: duplicate / insert above-below / move / collapse-expand all / error markers; per-block `defaultCollapsed` honored.
 
-Depends on step 1 (`fieldDef.max` is already the `FieldLimit` tuple `readonly [value, error]` by this step — every `max`/`min` read below uses `fieldDef.max?.[0]`, not a bare number or a `{ value }` object) and step 9 (`RenderFields` already exists — `FormBlocks`' per-block sub-field loop renders through it, exactly like `FormGroup`'s own sub-field loop, instead of hand-mapping `Object.entries(blockDef.fields)` with `fieldToInputComponent`).
+Depends on step 1 (`fieldDef.max` is already the `FieldLimit` tuple `readonly [value, error]` by this step — every `max`/`min` read below uses `fieldDef.max?.[0]`, not a bare number or a `{ value }` object) and step 11 (`RenderFields` already exists — `FormBlocks`' per-block sub-field loop renders through it, exactly like `FormGroup`'s own sub-field loop, instead of hand-mapping `Object.entries(blockDef.fields)` with `fieldToInputComponent`).
 
 Reads first: `form/FormBlocks.tsx` (519 lines), `form/FormArray.tsx`, `fields/blocks/Input.tsx`, `ui/dropdown-menu.tsx`, `ui/dnd/*`, `core/src/fields/blocks/{types,config}.ts`. `buildDefaultBlock` moves out of `FormBlocks.tsx` into core (contract) and stops seeding `blockName` from the block's `label` — that was swallowing the `placeholder` (`blockDef.label ?? blockDef.blockType`) on every freshly-added block, since the input's `value` was never empty. The `canEdit` NOTE at the old `FormBlocks.tsx:318-325` is resolved by hoisting ONE `usePermission({ resource: collection.slug, action: CRUD_ACTIONS.update, scope: PERMISSION_SCOPES.any })` call — `scope: "any"` (optimistic) because `FormBlocks` has no document in scope, matching `CollectionListView`'s own list-wide/no-document `usePermission` calls, not the per-document `CollectionEditView`/`GlobalEditView` pattern (which has `data` to check against and omits `scope`). The per-block accordion row becomes its own component (`BlockAccordionItem`) so `useFieldErrorCount` — one call per block — stays legal under Rules of Hooks even though `items.length` changes across renders (a hook call inside `.map` would violate it; a hook call inside a per-item component instance does not). `FormArray` gets a `useRef`-held parallel key array because its items are raw values (`string | number | boolean | object`), not `GenericBlock`s with an `id` — every push/duplicate/remove/move/reorder updates both the TanStack Form array and the key array in the same synchronous step.
 
@@ -19965,7 +21781,7 @@ Edit 2 — the `it("removes a seeded item, returning to the empty state", …)` 
           });
 ```
 
-Edit 3 — the "cascades readOnly to every nested control" test exempts the per-block actions menu trigger and the field-level "Copy all" button: step 14 stops disabling the trigger under `readOnly` and never gates "Copy all" on it either, since copying never mutates the field (every mutating item/control is still gated individually):
+Edit 3 — the "cascades readOnly to every nested control" test exempts the per-block actions menu trigger and the field-level "Copy all" button: step 16 stops disabling the trigger under `readOnly` and never gates "Copy all" on it either, since copying never mutates the field (every mutating item/control is still gated individually):
 
 ```ts
           it("cascades readOnly to every nested control", async () => {
@@ -19998,14 +21814,97 @@ Edit 3 — the "cascades readOnly to every nested control" test exempts the per-
 ```
 
 
+#### packages/core/src/components/builtinIds.ts
+
+New file (step 7 declared the module; this is its first populated content).
+
+```ts
+/**
+ * Built-in contribution ids for G's slots (`vex.` prefix — S4). A plugin or
+ * project hides one of these via `{ id: BUILTIN_CONTRIBUTION_IDS.block.duplicate, hidden: true }`
+ * in the matching `admin.components` list (S9) — never by re-using the id for a
+ * different component.
+ */
+export const BUILTIN_CONTRIBUTION_IDS = {
+  block: {
+    duplicate: "vex.block.duplicate",
+    insertAbove: "vex.block.insertAbove",
+    insertBelow: "vex.block.insertBelow",
+    moveUp: "vex.block.moveUp",
+    moveDown: "vex.block.moveDown",
+    remove: "vex.block.remove",
+  },
+  array: {
+    duplicate: "vex.array.duplicate",
+    moveUp: "vex.array.moveUp",
+    moveDown: "vex.array.moveDown",
+    remove: "vex.array.remove",
+  },
+} as const;
+```
+
+#### packages/react/src/components/form/BlockActionsMenu.tsx (slot wiring)
+
+Anchored at the `DropdownMenuContent` body above (the six `DropdownMenuItem`s between
+`<DropdownMenuContent align="end">` and its closing tag). Replace that body with a `SlotOutlet`
+render: each former `DropdownMenuItem` becomes a `ComponentContributionInput` whose `component`
+renders the identical `DropdownMenuItem` markup, built once (not per-render) as a module-level
+array keyed by the handlers closed over in props.
+
+```tsx
+import { BUILTIN_CONTRIBUTION_IDS, SLOT_IDS } from "@vexcms/core";
+import { SlotOutlet } from "../slots/SlotOutlet";
+
+// …inside BlockActionsMenu, replacing the six <DropdownMenuItem> children:
+const builtinItemActions: ComponentContributionInput<ReactHKT, BlockActionsMenuProps>[] = [
+  {
+    id: BUILTIN_CONTRIBUTION_IDS.block.duplicate,
+    component: (p) => (
+      <DropdownMenuItem disabled={!p.canAdd} onClick={p.onDuplicate}>
+        <CopyIcon className="size-4" />
+        Duplicate
+      </DropdownMenuItem>
+    ),
+  },
+  // …insertAbove, insertBelow, moveUp, moveDown (unchanged markup, now one entry each)…
+  {
+    id: BUILTIN_CONTRIBUTION_IDS.block.remove,
+    component: (p) => (
+      <DropdownMenuItem variant="destructive" onClick={p.onRemove}>
+        <TrashIcon className="size-4" />
+        Remove
+      </DropdownMenuItem>
+    ),
+  },
+];
+
+// render body:
+<DropdownMenuContent align="end">
+  <SlotOutlet slotId={SLOT_IDS.blocks.itemActions} builtins={builtinItemActions} contributedProps={props} />
+</DropdownMenuContent>
+```
+
+The `DropdownMenuSeparator`s between groups are dropped from the contribution list (a plugin's
+own contribution has no natural group membership) and instead rendered by `SlotOutlet` itself
+between every contiguous run of 2/3-and-1 built-ins — documented as current best-effort grouping,
+not a stable API a plugin can rely on.
+
+#### packages/react/src/components/form/FormArray.tsx (slot wiring)
+
+Anchored at the four per-item `<Button>` elements (Duplicate/Move up/Move down/Remove,
+`aria-label` identifies each). Each becomes a built-in contribution at `SLOT_IDS.array.itemActions`,
+rendered through `SlotOutlet` in place of the four inline `<Button>`s — identical markup, now
+sourced from a `builtinItemActions` array built the same way as `BlockActionsMenu`'s above, keyed
+by `BUILTIN_CONTRIBUTION_IDS.array.{duplicate,moveUp,moveDown,remove}`.
+
 Verify: `pnpm --filter @vexcms/core test -- fields/blocks && pnpm --filter @vexcms/react test -- FormBlocks FormArray fields/blocks fields/array`
 
-### Step 14 — Block clipboard (copy/paste across fields, documents, collections) [agent]
+### Step 16 — Block clipboard (copy/paste across fields, documents, collections) [agent]
 
 - [ ] `packages/react/src/hooks/useBlockClipboard.ts` + test — `vex:block-clipboard` envelope, cross-tab `storage` sync
 - [ ] `packages/react/src/hooks/index.ts` — barrel export
 - [ ] `packages/react/src/components/form/BlockActionsMenu.tsx` — `onCopy` / `onPasteAbove` / `onPasteBelow` / `canPaste`
-- [ ] `packages/react/src/components/form/BlockActionsMenu.test.tsx` — step 13's file updated for the four new props and the trigger no longer being disabled when `readOnly`
+- [ ] `packages/react/src/components/form/BlockActionsMenu.test.tsx` — step 15's file updated for the four new props and the trigger no longer being disabled when `readOnly`
 - [ ] `packages/react/src/components/form/FormBlocks.tsx` — header Copy all / Paste (append) / Replace all; per-block copy/paste wiring; paste resolved against the target field's block definitions; `max`/`canEdit` gating; toast summary
 - [ ] `packages/react/src/components/form/FormBlocks.test.tsx` — paste accepted / skipped / at-max / no-permission
 
@@ -20251,7 +22150,7 @@ export * from "./useBlockClipboard";
 
 #### packages/react/src/components/form/BlockActionsMenu.tsx
 
-Builds on step 13's file. The `BlockActionsMenuProps` interface and the component body both change throughout (four new items interleaved with the six step-13 items), so the whole function is shown — anchored by the `BlockActionsMenu` identifier.
+Builds on step 15's file. The `BlockActionsMenuProps` interface and the component body both change throughout (four new items interleaved with the six step-15 items), so the whole function is shown — anchored by the `BlockActionsMenu` identifier.
 
 ```tsx
 "use client";
@@ -20364,7 +22263,7 @@ export function BlockActionsMenu(props: BlockActionsMenuProps) {
 
 #### packages/react/src/components/form/BlockActionsMenu.test.tsx
 
-Builds on step 13's file. `baseProps` gains the four new required props; the
+Builds on step 15's file. `baseProps` gains the four new required props; the
 trigger is no longer disabled when `readOnly` (Copy must stay reachable), so
 the last test is replaced with one asserting mutating actions are blocked
 while Copy still fires.
@@ -20389,7 +22288,7 @@ const baseProps = {
 };
 ```
 
-Replace step 13's last test (`"disables the trigger, so the menu cannot be opened, when readOnly"`) with:
+Replace step 15's last test (`"disables the trigger, so the menu cannot be opened, when readOnly"`) with:
 
 ```tsx
   it("disables mutating actions, but not Copy, when readOnly", async () => {
@@ -20407,7 +22306,7 @@ Replace step 13's last test (`"disables the trigger, so the menu cannot be opene
 
 #### packages/react/src/components/form/FormBlocks.tsx
 
-Builds on step 13's file (header toolbar with `maxValue`/`atMax`/Collapse-all/Expand-all, the hoisted `canEdit`/`effectiveReadOnly`, and the per-block `BlockAccordionItem` sub-component rendering `BlockActionsMenu` — see step 13). All edits below are additions on top of that shape.
+Builds on step 15's file (header toolbar with `maxValue`/`atMax`/Collapse-all/Expand-all, the hoisted `canEdit`/`effectiveReadOnly`, and the per-block `BlockAccordionItem` sub-component rendering `BlockActionsMenu` — see step 15). All edits below are additions on top of that shape.
 
 **1. Imports** — anchored at the existing `lucide-react` import line; add the clipboard hook, core block-paste utils, `sonner`, and the alert-dialog primitives.
 
@@ -20491,7 +22390,7 @@ function toastPasteOutcome(props: { acceptedCount: number; skipped: number; drop
 }
 ```
 
-**3. Clipboard state, paste candidates and gating** — anchored after `atMax`/`maxValue` (step 13).
+**3. Clipboard state, paste candidates and gating** — anchored after `atMax`/`maxValue` (step 15).
 
 ```ts
 const { clipboard, copyBlocks } = useBlockClipboard();
@@ -20572,7 +22471,7 @@ function handleReplaceAll() {
 )}
 ```
 
-**6. Header toolbar** — anchored at step 13's toolbar button group (the `<div className="flex items-center gap-1">` containing the Collapse all / Expand all buttons); insert Copy all / Paste / Replace all as its first three children, before Collapse all.
+**6. Header toolbar** — anchored at step 15's toolbar button group (the `<div className="flex items-center gap-1">` containing the Collapse all / Expand all buttons); insert Copy all / Paste / Replace all as its first three children, before Collapse all.
 
 ```tsx
 <Button
@@ -20611,7 +22510,7 @@ function handleReplaceAll() {
 </AlertDialog>
 ```
 
-**7. Per-block wiring** — anchored at the `<BlockAccordionItem ... />` invocation inside the block `.map()` (step 13), alongside its six existing handler props (`onDuplicate`, `onInsertAbove`, `onInsertBelow`, `onMoveUp`, `onMoveDown`, `onRemove`); add:
+**7. Per-block wiring** — anchored at the `<BlockAccordionItem ... />` invocation inside the block `.map()` (step 15), alongside its six existing handler props (`onDuplicate`, `onInsertAbove`, `onInsertBelow`, `onMoveUp`, `onMoveDown`, `onRemove`); add:
 
 ```tsx
 onCopy={() => handleCopyBlock(item)}
@@ -20624,7 +22523,7 @@ canPaste={canPaste}
 
 #### packages/react/src/components/form/FormBlocks.test.tsx
 
-Builds on step 13's file (which establishes `FormBlocksHarness` — a real `useForm()` + `<AppForm>` + `<form.Field name="testField" mode="array">` wrapper around `FormBlocks`, with a local `useState` standing in for the URL-driven `modalOpen`/`openEditor`/`closeEditor`, reusing `testCollection`/`testAccess`/`testUsers`/`renderWithVexProviders` from `testing/harness/accessFixtures.ts`). Append the following `describe` block at the end of the file.
+Builds on step 15's file (which establishes `FormBlocksHarness` — a real `useForm()` + `<AppForm>` + `<form.Field name="testField" mode="array">` wrapper around `FormBlocks`, with a local `useState` standing in for the URL-driven `modalOpen`/`openEditor`/`closeEditor`, reusing `testCollection`/`testAccess`/`testUsers`/`renderWithVexProviders` from `testing/harness/accessFixtures.ts`). Append the following `describe` block at the end of the file.
 
 ```tsx
 describe("FormBlocks: block clipboard paste", () => {
@@ -20750,11 +22649,48 @@ describe("FormBlocks: block clipboard paste", () => {
 });
 ```
 
-Add the matching imports to the top of the file alongside step 13's: `BLOCK_CLIPBOARD_STORAGE_KEY` from `"../../hooks"`, and `beforeEach`/`afterEach` from `"vitest"` (step 13's own cases may already import these; do not duplicate the specifier).
+Add the matching imports to the top of the file alongside step 15's: `BLOCK_CLIPBOARD_STORAGE_KEY` from `"../../hooks"`, and `beforeEach`/`afterEach` from `"vitest"` (step 15's own cases may already import these; do not duplicate the specifier).
+
+#### packages/core/src/components/builtinIds.ts (step 16 additions)
+
+Six more ids added to `BUILTIN_CONTRIBUTION_IDS` alongside step 15's (anchored at the
+`block` key's object literal): `copy`, `pasteAbove`, `pasteBelow` under `block`, and
+`copyAll`, `pasteAppend`, `replaceAll` under a new `blocksHeader` key.
+
+```ts
+block: {
+  // …step 15's duplicate/insertAbove/insertBelow/moveUp/moveDown/remove…
+  copy: "vex.block.copy",
+  pasteAbove: "vex.block.pasteAbove",
+  pasteBelow: "vex.block.pasteBelow",
+},
+blocksHeader: {
+  copyAll: "vex.blocksHeader.copyAll",
+  pasteAppend: "vex.blocksHeader.pasteAppend",
+  replaceAll: "vex.blocksHeader.replaceAll",
+},
+```
+
+#### packages/react/src/components/form/BlockActionsMenu.tsx (slot wiring)
+
+Builds on step 15's `SlotOutlet`-driven menu (`SLOT_IDS.blocks.itemActions`) — the three new
+`DropdownMenuItem`s this step's own edit above adds (Copy block / Paste above / Paste below)
+join the SAME built-in contribution array step 15 built, using the three new
+`BUILTIN_CONTRIBUTION_IDS.block.*` ids, so a plugin's `before`/`after` targeting
+`"vex.block.duplicate"` continues to resolve against the real final order including these.
+
+#### packages/react/src/components/form/FormBlocks.tsx (header slot wiring)
+
+The header toolbar's Copy all / Paste / Replace all buttons (this step's own edit above) are
+built-in contributions at `SLOT_IDS.blocks.headerActions` — a NEW slot this step populates for
+the first time (step 15 only populated `blocks.itemActions`), rendered through the same
+`SlotOutlet` component, `before`-anchored at `vex.blocksHeader.copyAll` ahead of the existing
+Collapse all / Expand all buttons (which stay plain `Button`s, not contributions — they operate
+on local component state, not form data, and have no plugin-relevant extension point yet).
 
 Verify: `pnpm --filter @vexcms/react test -- useBlockClipboard FormBlocks`
 
-### Step 15 — Per-input polish + state sweep [agent]
+### Step 17 — Per-input polish + state sweep [agent]
 
 - [ ] `packages/core/src/fields/number/types.ts` — `step?: number` on `NumberFieldInput`/`NumberField`
 - [ ] `packages/core/src/fields/select/types.ts` — `SELECT_DISPLAYS`, `SelectDisplay`, `SelectFieldAdminConfigInput`/`SelectFieldAdminConfig` (`searchable`, `display`)
@@ -20781,7 +22717,7 @@ individually pass (`hasInertSignal` accepts ANY inert signal, so a passive
 `aria-readonly` counted the same as a real `disabled`) while the visible behavior
 disagrees across types.
 
-**This step builds on Steps 1, 2, 3, 6 and 8 as landed, not on today's repo.** In
+**This step builds on Steps 1, 2, 3, 6 and 10 as landed, not on today's repo.** In
 particular: `text`/`number`/`email`/`url` all carry Step 1's `FieldLimit` tuples
 (`field.min`/`field.max` are `readonly [value, error] | undefined`, never the old
 `{ value, error }` object); `email()` exists (Step 2) with the same `FieldLimit`
@@ -20793,17 +22729,17 @@ tabular-nums">{value.length}/{fieldDef.max[0]}</p>`; `FieldAdminConfigInput`/
 `"100%"`) and `layout: FieldLayoutFrame[]` (default `[]`) — every field's `admin`
 defaults object below already includes `width: "100%", layout: []`, not the
 pre-Step-6 `width: "full"`; and `text`/`email`/`number`/`url` each render **two**
-branches from Step 8's `admin.mask` support — a masked, uncontrolled `<Input
+branches from Step 10's `admin.mask` support — a masked, uncontrolled `<Input
 ref={maskRef} defaultValue={…} onInput={…}>` and an unmasked, controlled `<Input
 value={…} onChange={…}>` — so every fix below (both-source `disabled`,
 `aria-invalid`) is applied to **both** branches, and `step`/`min`/`max` HTML
 attributes are applied **only** to number's unmasked `type="number"` branch (a
 masked number renders `type="text"`, where those attributes are inert). `select`
-is untouched by Steps 1/2/3/8 (not maskable, no `min`/`max`) — its edits below are
+is untouched by Steps 1/2/3/10 (not maskable, no `min`/`max`) — its edits below are
 unaffected by any of this and match what was already written against the
 pre-mask repo.
 
-**Audit findings (file:line as read against the Step-8-landed tree; ordered by
+**Audit findings (file:line as read against the Step-10-landed tree; ordered by
 severity):**
 
 1. **`packages/react/src/components/fields/select/Input.tsx:75-77`** — real functional
@@ -20824,17 +22760,17 @@ severity):**
    `isFieldShowingError` helper (`form/FormError.tsx`), using the exact same
    touched/submissionAttempts timing `FormError` already uses, so the ring and the
    message always appear together — wired onto **both** the masked and unmasked
-   `<Input>` branches for `text`/`email`/`number`/`url` (Step 8).
+   `<Input>` branches for `text`/`email`/`number`/`url` (Step 10).
 3. **`packages/react/src/components/ui/multi-select.tsx:138-141`** — `MultiSelectTrigger`
    carried no `aria-invalid:*` variant at all (unlike `ui/input.tsx`/`ui/checkbox.tsx`/
    `ui/button.tsx`), so even after (2) nothing would have rendered. Fixed alongside (2).
 4. **`packages/react/src/components/fields/text/Input.tsx:786,798`,
-   `url/Input.tsx:1065,1077`, `email/Input.tsx:1204,1217`** (Step-8-landed line
+   `url/Input.tsx:1065,1077`, `email/Input.tsx:1204,1217`** (Step-10-landed line
    numbers, both the masked and unmasked `<Input>`) — `disabled={readOnly}` only;
    `fieldDef.admin.readOnly` was forwarded solely as the native HTML `readonly`
    attribute, which blocks editing but carries none of
    `disabled:opacity-50 disabled:cursor-not-allowed` — a field marked
-   `admin.readOnly: true` looked fully active. `number`'s own Step-8 output already
+   `admin.readOnly: true` looked fully active. `number`'s own Step-10 output already
    uses `disabled={readOnly || fieldDef.admin.readOnly}` on both branches (not part
    of this defect); `text`/`email`/`url` now match it.
 5. **`packages/react/src/components/ui/data-table/DataTable.tsx:239-258`** — every
@@ -20850,14 +22786,14 @@ severity):**
    three-state `role="group"` fields the shared contract's own `hasInertSignal`/
    `getControl` helpers already exempt from the single-control assertions
    (`fieldInputContract.ts:649,882`); `relationship/Input.tsx` is also about to be
-   replaced wholesale by Step 12 — auditing its pre-overhaul code would be moot.
+   replaced wholesale by Step 14 — auditing its pre-overhaul code would be moot.
    `textarea/Input.tsx` (Step 3) is a brand-new file this step did not touch; it
    shares `text`'s `aria-invalid` gap but is out of this step's declared scope.
 
 #### packages/core/src/fields/number/types.ts
 
 Two edits — `step` lives beside `min`/`max` (Step 1's `FieldLimit`/`FieldLimitInput`
-tuples), unaffected by Step 8's unrelated `admin` override (inserted as the first
+tuples), unaffected by Step 10's unrelated `admin` override (inserted as the first
 member of each interface, well before `max`).
 
 **1 — `NumberFieldInput`'s `max` property: insert `step` immediately after it, before `validate`.**
@@ -20884,7 +22820,7 @@ member of each interface, well before `max`).
 
 #### packages/core/src/fields/select/types.ts
 
-`select` is not in Step 8's `MASKABLE_FIELD_TYPES`, so it carries no `admin` override
+`select` is not in Step 10's `MASKABLE_FIELD_TYPES`, so it carries no `admin` override
 yet — these edits add the first one. `FieldAdminConfigInput`/`FieldAdminConfig`
 (from `../baseTypes`) already carry Step 6's `width: string`/`layout`/`condition`,
 inherited automatically through `extends`.
@@ -20995,7 +22931,7 @@ import { SELECT_DISPLAYS } from "./types";
 
 #### packages/react/src/components/form/FormError.tsx
 
-Entire file, replacing the existing implementation (untouched by Steps 1/2/3/6/8) —
+Entire file, replacing the existing implementation (untouched by Steps 1/2/3/6/10) —
 `isFieldShowingError` is the same touched/submissionAttempts timing `FormError`
 already computed inline, now exported so every field `Input.tsx` can drive its
 control's `aria-invalid` off the identical rule the visible message uses, instead
@@ -21069,7 +23005,7 @@ export function FormError({
 
 #### packages/react/src/components/fields/text/Input.tsx
 
-Entire file, replacing the Step-8-landed implementation — the render function's
+Entire file, replacing the Step-10-landed implementation — the render function's
 body changes throughout (counter, `aria-invalid`, both-source `disabled` on both
 the masked and unmasked `<Input>`), so it is shown complete per the repo
 convention.
@@ -21187,9 +23123,9 @@ export const TextFieldInput = createFieldInput<string, {}, TextField>(
 
 #### packages/react/src/components/fields/email/Input.tsx
 
-Entire file, replacing the Step-8-landed implementation — same counter and
+Entire file, replacing the Step-10-landed implementation — same counter and
 `aria-invalid`/`disabled` treatment as `text/Input.tsx` above, requested
-explicitly so `email` doesn't fall behind `text`'s polish. Keeps Step 8's
+explicitly so `email` doesn't fall behind `text`'s polish. Keeps Step 10's
 `type="email"`/`type="text"` branch split and `autoComplete="email"` on both.
 
 ```tsx
@@ -21295,9 +23231,9 @@ export const EmailFieldInput = createFieldInput<string, {}, EmailField>(
 
 #### packages/react/src/components/fields/number/Input.tsx
 
-Entire file, replacing the Step-8-landed implementation. `step`/`min`/`max` HTML
+Entire file, replacing the Step-10-landed implementation. `step`/`min`/`max` HTML
 attributes apply only to the unmasked `type="number"` branch — a masked number
-renders `type="text"` (Step 8), where `step`/`min`/`max` are inert; `number`'s
+renders `type="text"` (Step 10), where `step`/`min`/`max` are inert; `number`'s
 `disabled` was already both-source on both branches pre-this-step, so no change
 there.
 
@@ -21406,7 +23342,7 @@ export const NumberFieldInput = createFieldInput<number, {}, NumberField>(
 
 #### packages/react/src/components/fields/url/Input.tsx
 
-Entire file, replacing the Step-8-landed implementation. The open-link button
+Entire file, replacing the Step-10-landed implementation. The open-link button
 sits outside the mask branch — it reads `field.state.value` directly, which
 stays the live, reactive form value in both the masked (uncontrolled DOM,
 `onInput` still calls `field.handleChange`) and unmasked cases.
@@ -21538,14 +23474,14 @@ export const UrlFieldInput = createFieldInput<string, {}, UrlField>(
 #### packages/react/src/components/fields/select/Input.tsx
 
 Entire file, replacing the existing implementation. `select` is untouched by
-Steps 1/2/3/8. Step 9 (`g-step-09.md:1835-1841`) makes one isolated edit to the
+Steps 1/2/3/10. Step 11 (`g-step-11.md:1835-1841`) makes one isolated edit to the
 pre-this-step file — the JSDoc line `Fields are rendered generically by
 \`RenderFieldInputComponents\`, so there is` → `` `RenderFields`, so there is ``
-(`RenderFieldInputComponents` is removed in Step 9). This full-file rewrite
-already carries the post-Step-9 wording verbatim in its JSDoc below (see
+(`RenderFieldInputComponents` is removed in Step 11). This full-file rewrite
+already carries the post-Step-11 wording verbatim in its JSDoc below (see
 "Fields are rendered generically by `RenderFields`, so there is no prop
 channel…"), so no further re-anchoring is needed — the entire-file replacement
-subsumes Step 9's one-line edit.
+subsumes Step 11's one-line edit.
 
 ```tsx
 "use client";
@@ -21713,7 +23649,7 @@ export const SelectFieldInput = createFieldInput<string[], {}, SelectField>(
 
 #### packages/react/src/components/fields/color/Input.tsx
 
-Untouched by Steps 1/2/3/6/8 — same edit as against the pre-mask repo.
+Untouched by Steps 1/2/3/6/10 — same edit as against the pre-mask repo.
 
 **1 — import line: `FormError` → add `isFieldShowingError`.**
 
@@ -21741,7 +23677,7 @@ import { FormError, isFieldShowingError } from "../../form/FormError";
 
 #### packages/react/src/components/fields/checkbox/Input.tsx
 
-Untouched by Steps 1/2/3/6/8 — same edit as against the pre-mask repo.
+Untouched by Steps 1/2/3/6/10 — same edit as against the pre-mask repo.
 
 **1 — import line: `FormError` → add `isFieldShowingError`.**
 
@@ -21767,7 +23703,7 @@ import { FormError, isFieldShowingError } from "../../form/FormError";
 
 #### packages/react/src/components/ui/multi-select.tsx
 
-Untouched by Steps 1/2/3/6/8 — same edit as against the pre-mask repo.
+Untouched by Steps 1/2/3/6/10 — same edit as against the pre-mask repo.
 
 **1 — `MultiSelectTrigger`'s className string: insert `aria-invalid:*` variants after `disabled:opacity-50`, before the `[&_svg]` selectors.**
 
@@ -21780,7 +23716,7 @@ Untouched by Steps 1/2/3/6/8 — same edit as against the pre-mask repo.
 
 #### packages/react/src/components/ui/data-table/DataTable.tsx
 
-Untouched by Steps 1/2/3/6/8 — same edit as against the pre-mask repo.
+Untouched by Steps 1/2/3/6/10 — same edit as against the pre-mask repo.
 
 **1 — imports: widen the `@vexcms/core` import.**
 
@@ -21854,7 +23790,7 @@ const ALIGNMENT_CLASS: Record<Alignment, string> = {
 
 #### packages/react/src/testing/fieldInputContract.ts
 
-Untouched by Steps 1/2/3/6/8 — same edit as against the pre-mask repo.
+Untouched by Steps 1/2/3/6/10 — same edit as against the pre-mask repo.
 
 **1 — insert a new section before the `extra?.(options);` line that closes the `describe` block (after section "10. Accessibility").** Type-agnostic: every field type's `onSubmit` validator runs the same real schema regardless of `readOnly`/`admin.readOnly`, and `hasInertSignal` is already proven to hold for both sources by the existing section 4 tests, so these two hold for every current and future field type without per-type exceptions.
 
@@ -21899,7 +23835,7 @@ Untouched by Steps 1/2/3/6/8 — same edit as against the pre-mask repo.
 
 #### packages/react/src/testing/dataTableSuite.tsx
 
-Untouched by Steps 1/2/3/6/8 — same edit as against the pre-mask repo.
+Untouched by Steps 1/2/3/6/10 — same edit as against the pre-mask repo.
 
 **1 — insert a new test inside the `"DataTable"` describe block, immediately after `"renders the header label and every row's cell"`'s closing `});`, before `"hides Load More..."`.**
 
@@ -21920,7 +23856,7 @@ Untouched by Steps 1/2/3/6/8 — same edit as against the pre-mask repo.
 
 #### packages/react/src/components/fields/text/Input.test.tsx
 
-Step 8 only APPENDS a new top-level `describe("text: admin.mask", ...)` after the
+Step 10 only APPENDS a new top-level `describe("text: admin.mask", ...)` after the
 `runFieldInputContractSuite({ … })` call closes — the `extra` callback's own body,
 including `describe("text: length boundaries...")`, is untouched, so this anchor
 still applies.
@@ -21964,9 +23900,8 @@ still applies.
 
 #### packages/react/src/components/fields/email/Input.test.tsx
 
-Mirrors `text/Input.test.tsx`'s edit above, inside the same `extra` callback. Step
-8 only appends a new top-level `describe("email: admin.mask", ...)` after the
-`runFieldInputContractSuite({ … })` call closes (Step 8, `g-step-08.md:1267-1298`)
+Mirrors `text/Input.test.tsx`'s edit above, inside the same `extra` callback. Step 10 only appends a new top-level `describe("email: admin.mask", ...)` after the
+`runFieldInputContractSuite({ … })` call closes (Step 10, `g-step-10.md:1267-1298`)
 — `extra`'s own body is untouched, so this anchor applies cleanly. `email` already
 imports `email`, `EmailValidationHarness`; no new imports needed.
 
@@ -22013,8 +23948,8 @@ imports `email`, `EmailValidationHarness`; no new imports needed.
 
 #### packages/react/src/components/fields/number/Input.test.tsx
 
-`number` is already imported by Step 8's own edit to this file
-(`g-step-08.md:963-969`) — no new import needed here.
+`number` is already imported by Step 10's own edit to this file
+(`g-step-10.md:963-969`) — no new import needed here.
 
 **1 — replace the `it("does not forward fieldDef.min/max as native HTML attributes and does not clamp typed values...")` test (the one inside `describe("number: numeric coercion, decimal/negative handling, and the ?? 0 empty fallback", ...)`) with the following — min/max/step ARE now forwarded on the unmasked branch; clamping is still never applied client-side. The field def below carries no `admin.mask`, so `NumberHarness` renders the unmasked `type="number"` branch.**
 
@@ -22047,9 +23982,9 @@ imports `email`, `EmailValidationHarness`; no new imports needed.
 
 #### packages/react/src/components/fields/url/Input.test.tsx
 
-`url` is already imported by Step 8's own edit to this file (`g-step-08.md:1103-1109`,
+`url` is already imported by Step 10's own edit to this file (`g-step-10.md:1103-1109`,
 though these new tests don't need it — they construct no inline `url()` fieldDefs).
-Step 8 appends `describe("url: admin.mask", ...)` after `runFieldInputContractSuite`
+Step 10 appends `describe("url: admin.mask", ...)` after `runFieldInputContractSuite`
 closes; `extra`'s body is untouched.
 
 **1 — insert a new `describe` inside `extra`, immediately after `describe("url: urlFieldToInputSchema...")`'s closing `});`.**
@@ -22109,7 +24044,7 @@ closes; `extra`'s body is untouched.
 
 #### packages/react/src/components/fields/select/Input.test.tsx
 
-Untouched by Steps 1/2/3/6/8 — same edit as against the pre-mask repo.
+Untouched by Steps 1/2/3/6/10 — same edit as against the pre-mask repo.
 
 **1 — import line: add `SELECT_DISPLAYS` to the `@vexcms/core` import.**
 
@@ -22125,7 +24060,7 @@ import { select, SELECT_DISPLAYS, type SelectField } from "@vexcms/core";
         // effect's own side effect instead — the popup's initial focus
         // target taking focus, same assertion `ui/multi-select.test.tsx`
         // uses to pin that effect. `admin.searchable` defaults to `false`
-        // (Step 15), so the focus target is the sr-only
+        // (Step 17), so the focus target is the sr-only
         // `[data-multiselect-focus]` button, not the search `command-input`.
         await waitFor(() =>
           expect(document.activeElement?.hasAttribute("data-multiselect-focus")).toBe(true),
@@ -22224,7 +24159,7 @@ import { select, SELECT_DISPLAYS, type SelectField } from "@vexcms/core";
 
 #### packages/react/src/components/fields/array/Input.test.tsx
 
-Pre-existing test, not authored by any step — documented the pre-Step-15 defect
+Pre-existing test, not authored by any step — documented the pre-Step-17 defect
 (audit finding 4: `text`'s `disabled` was forwarded from the `readOnly` prop
 only, never OR-ed with the item's own `fieldDef.admin.readOnly`). `text/Input.tsx`'s
 rewrite above now ORs both sources into `disabled` on every branch, so the
@@ -22256,9 +24191,61 @@ assertion below, unchanged).
         ).not.toBeDisabled();
 ```
 
+#### packages/react/src/testing/fieldInputContract.ts
+
+New section appended after the existing per-type assertions, run once per field type by
+`runFieldInputContractSuite` — proves step 8's override chain composes for every registered
+field, not just the one hand-picked in `apps/test`'s dogfood (step 18).
+
+```tsx
+describe(`${fieldType}: admin.components.Input override`, () => {
+  it("renders the override in place of the built-in, and its renderDefault re-renders the built-in unchanged", () => {
+    const rendered = { default: false, override: false };
+    const OverrideProbe = (props: SlotOverrideProps<ReactHKT, InputComponentProps<any, any>>) => {
+      rendered.override = true;
+      const RenderDefault = props.renderDefault;
+      return <RenderDefault {...props} />;
+    };
+    const fieldDefWithOverride = {
+      ...fixture.fieldDef,
+      admin: {
+        ...fixture.fieldDef.admin,
+        components: { Input: { id: "test.override", component: OverrideProbe } },
+      },
+    };
+    render(
+      <ContractHarness fieldDef={fieldDefWithOverride} value={fixture.valid} onProbe={() => (rendered.default = true)} />,
+    );
+    expect(rendered.override).toBe(true);
+    expect(rendered.default).toBe(true);
+  });
+});
+```
+
+#### packages/react/src/testing/dataTableSuite.tsx
+
+New section appended after the existing per-type cell assertions — proves `field.cell`
+overrides reach `getCollectionColumnDefs`'s output without any `DataTable.tsx` change, since
+`fieldToCellComponent` (step 8's registry) resolves the override chain internally.
+
+```tsx
+it(`${fieldType}: a per-type admin.components.fields.${fieldType}.Cell override renders in the data table`, () => {
+  const OverrideCell = () => <span data-testid="override-cell">overridden</span>;
+  const configWithOverride = {
+    ...baseConfig,
+    admin: {
+      ...baseConfig.admin,
+      components: { fields: { [fieldType]: { Cell: { id: "test.cellOverride", component: OverrideCell } } } },
+    },
+  };
+  render(<VexConfigProvider config={configWithOverride}><DataTableHarness collection={collection} rows={[row]} /></VexConfigProvider>);
+  expect(screen.getByTestId("override-cell")).toBeInTheDocument();
+});
+```
+
 Verify: `pnpm --filter @vexcms/react test -- fields DataTable`
 
-### Step 16 — Dogfood in `apps/test` + plan bookkeeping [dev]
+### Step 18 — Dogfood in `apps/test` + plan bookkeeping [dev]
 
 - [ ] `apps/test/src/vexcms/blocks/CTA/config.ts` — `linkType` select + conditional `internalPage` relationship / `externalUrl` url pair
 - [ ] `apps/test/src/vexcms/blocks/CTA/index.tsx` — resolve the new action shape into an `href`
@@ -22269,7 +24256,7 @@ Verify: `pnpm --filter @vexcms/react test -- fields DataTable`
 - [ ] `.agent/docs/product/v0.1.0-launch-plan.md` — G re-scoped/in-progress; block items removed from H; non-goals updated
 - [ ] `.agent/docs/product/roadmap.md` — drop the `json`/`email`/`textarea`/`tabs` deferral
 
-Why: proves every new path (steps 1–15) end-to-end against the developer's running
+Why: proves every new path (steps 1–17) end-to-end against the developer's running
 deployment (P-024: attach, never start) and leaves the launch-plan/roadmap docs
 honest about G's re-scope.
 
@@ -22652,7 +24639,7 @@ pnpm --filter test vex:generate
 This runs `vex dev --once` (`apps/test/package.json#scripts.vex:generate`), regenerating
 the Convex schema and `vex.types.ts` for `pages` (new `email`/`textarea`/`json` fields,
 `tabs`/`row`/`collapsible` layout, `linkType`/`internalPage`/`externalUrl` on the CTA
-block) and for every other collection affected by steps 1–15 (`updatedAt` as `date()`,
+block) and for every other collection affected by steps 1–17 (`updatedAt` as `date()`,
 the `FieldLimit` tuple shape, relationship's unchanged `Id<…>[]` storage).
 
 #### Browser smoke checklist
@@ -22676,32 +24663,32 @@ collection's edit view unless noted.
 5. **Step 5 (dates)** — open any existing page, confirm the sidebar shows a read-only
    "Updated At" with date **and** time, plus a separate read-only "Created at" from
    `DocumentTimestamps`.
-6. **Step 6/9 (layout)** — confirm the edit view renders "Content" / "SEO" / "Advanced"
+6. **Step 6/11 (layout)** — confirm the edit view renders "Content" / "SEO" / "Advanced"
    tabs with the URL reflecting `?tab=` on the top-level group; switch tabs and confirm
    state persists on reload; confirm Meta Title / Meta Description render side-by-side at
    roughly 60/40 width in the sidebar and stack below the `sm` breakpoint (narrow the
    browser); expand/collapse "Legacy Test Fields".
-7. **Step 7/10 (conditions)** — in a CTA block action, toggle Link Type: selecting
+7. **Step 9/12 (conditions)** — in a CTA block action, toggle Link Type: selecting
    "External URL" shows only External URL; selecting "Internal Page" shows only Internal
    Page and hides External URL without losing the other field's typed value; submit with
    an empty required field under the hidden branch and confirm no validation error blocks
    save.
-8. **Step 8 (masks)** — type into Contact Phone, confirm it masks as `(999) 999-9999`
+8. **Step 10 (masks)** — type into Contact Phone, confirm it masks as `(999) 999-9999`
    while typing; add a `number` field value elsewhere (or use an existing number field)
    and confirm it now masks as `999-999-9999` via the project-wide default from
    `fields.inputMasks.number`, while still storing/submitting a plain number.
-9. **Step 11 (search/upload)** — open the OG Image or Test Image upload picker, type a
+9. **Step 13 (search/upload)** — open the OG Image or Test Image upload picker, type a
    search query, confirm results page via "Load more" and the MIME filter matches
    `accept: "image/*"`.
-10. **Step 12 (relationship)** — on the CTA action's Internal Page relationship (visible
+10. **Step 14 (relationship)** — on the CTA action's Internal Page relationship (visible
     with Link Type = Internal Page), open the picker; confirm Select/Create tabs, that a
     created page is auto-selected, and the Themes relationship on the page itself shows
     consistent empty/filled states.
-11. **Step 13/14 (blocks)** — on the page's `blocks` field, duplicate a block, insert
+11. **Step 15/16 (blocks)** — on the page's `blocks` field, duplicate a block, insert
     above/below, move up/down, collapse/expand all, then copy a block and paste it above
     in a different block field or a different document tab; confirm pasted ids are fresh
     and unknown keys are dropped if pasting into a different block type.
-12. **Step 15 (polish)** — confirm Contact Phone's character counter (if `max` set)
+12. **Step 17 (polish)** — confirm Contact Phone's character counter (if `max` set)
     matches `max`; confirm any `number` field shows `step`/min/max HTML attributes via
     browser devtools; confirm a `url` field (e.g. External URL) shows an open-link button;
     confirm the `linkType` select's `admin.display`/`admin.searchable` (if configured)
@@ -22805,6 +24792,106 @@ Anchored edit replacing the "Deferred out of 0.1.0" line:
 Deferred out of 0.1.0 with reasons: PDF block · block group categorization.
 ```
 
+#### apps/test/src/vex.config.ts
+
+New section after the `editor` key — a root-level per-type `Input` override demonstrating
+S1/S7/S8: a thin wrapper around the built-in `text` input that uppercases its own
+`placeholder`, composed via `renderDefault` so the real built-in still renders everything
+else unchanged.
+
+```ts
+import { UppercasePlaceholderTextInput } from "./vexcms/admin/UppercasePlaceholderTextInput";
+
+// …inside defineConfig({ … })
+admin: {
+  components: {
+    fields: {
+      text: {
+        Input: { id: "acme.text.uppercasePlaceholder", component: UppercasePlaceholderTextInput },
+      },
+    },
+  },
+},
+```
+
+```tsx
+// apps/test/src/vexcms/admin/UppercasePlaceholderTextInput.tsx
+"use client";
+
+import type { TextField, VexResourceSlug } from "@vexcms/core";
+import type { ReactHKT } from "@vexcms/react";
+import type { SlotOverrideProps } from "@vexcms/react";
+import type { InputComponentProps } from "@vexcms/core";
+
+export function UppercasePlaceholderTextInput(
+  props: SlotOverrideProps<ReactHKT, InputComponentProps<{}, TextField<VexResourceSlug>>>,
+) {
+  const { renderDefault, ...rest } = props;
+  const RenderDefault = renderDefault;
+  return (
+    <RenderDefault
+      {...rest}
+      fieldDef={{
+        ...rest.fieldDef,
+        admin: { ...rest.fieldDef.admin, placeholder: rest.fieldDef.admin.placeholder?.toUpperCase() },
+      }}
+    />
+  );
+}
+```
+
+Dogfooded against `pages.ts`'s existing `text()` fields — no field opts in individually; the
+root per-type override applies to every `text` field project-wide, proving S1's "root level"
+composes with step 11's renderer without a single field author having to know it exists.
+
+#### apps/test/src/vexcms/collections/pages.ts
+
+One field (picked during implementation from the fields step 18 already adds — e.g. the masked
+phone field) gains:
+
+```ts
+admin: {
+  components: {
+    Input: {
+      id: "acme.pages.phone.wrapInput",
+      component: PhoneInputWithHint, // new, apps/test-local component — wraps renderDefault, adds a static hint line below
+    },
+    beforeInput: [
+      { id: "acme.pages.phone.beforeHint", component: PhoneBeforeInputHint, order: 0 },
+    ],
+  },
+},
+```
+
+Proves the per-FIELD chain (not just the per-type chain above) composes through the same
+`resolveFieldInputComponent` call, and that `field.beforeInput` renders without the built-in
+Input needing any change.
+
+#### apps/test/src/vexcms/blocks/CTA/config.ts
+
+```ts
+admin: {
+  components: {
+    blocks: {
+      itemActions: [{ id: BUILTIN_CONTRIBUTION_IDS.block.duplicate, hidden: true }],
+    },
+  },
+},
+```
+
+Hides the built-in "Duplicate" block action for every `blocks()` field project-wide (S4/S9:
+hiding is `{ id, hidden: true }` naming the built-in, never a silent id collision) — verified in
+the browser smoke checklist below by confirming the CTA block's actions menu has no Duplicate
+item while every other block type (Testimonial) keeps it.
+
+#### Plugin-system stem bookkeeping
+
+Not a file this spec touches (`stem.md` is explicitly out of scope — see Out of Scope). Record
+in the Step 18 browser smoke checklist, and in the commit-phase session log, that G's slot
+groundwork (steps 7, 8, and the folds into 11/15/16/17) is done, so a future `dev-spec` session
+on `.agent/docs/specs/2026-10-21-plugin-system/stem.md` can update its "G placement" line
+without re-deriving this spec's design.
+
 Verify: pnpm --filter test typecheck && pnpm --filter www typecheck; browser smoke on the running admin of every changed input
 
 ## Verification
@@ -22818,6 +24905,6 @@ pnpm --filter test typecheck
 pnpm --filter www typecheck
 ```
 
-Then the Step 16 browser smoke checklist against the developer's running `apps/test` admin
+Then the Step 18 browser smoke checklist against the developer's running `apps/test` admin
 (P-024 — attach, never start a dev server). The spec is done when all four commands are green
 and every checklist item is recorded as passing.

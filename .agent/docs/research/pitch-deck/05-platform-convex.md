@@ -52,7 +52,7 @@ putting on the traction slide.
 | Convex builds its own CMS | No public plan found. Convex's stated strategy pushes vertical products to third-party Components. A Convex-built CMS would compete with its own marketplace, and it is a ~30–43-person company focused on infrastructure (`sources/convex-ecosystem.md` §1, §6) |
 | Convex raises prices or shuts down | The backend is open source and self-hostable today, and each release becomes Apache-2.0 after 2 years. The CEO has publicly addressed both fears ([Convex, 2025-11-12](https://news.convex.dev/convex-raises-24m/)). The Apr 2026 pricing update *lowered* egress prices |
 | Convex gets acquired | This is also an upside scenario: VexCMS would be the CMS for the acquirer's backend (compare Payload→Figma) |
-| The market is capped by Convex's size | Today, yes, and the SOM is sized that way. The core is designed to be backend-agnostic: a SpacetimeDB port was assessed and judged feasible with a core split (`.agent/docs/research/spacetimedb-vs-convex-port-feasibility.md:7-17`). Present this as an option for later, not a plan |
+| The market is capped by Convex's size | Today, yes, and the SOM is sized that way. Core's access rules already compile from a backend-neutral constraint tree. A Convex → `@vexcms/convex` split plus a Supabase adapter is assessed as feasible but large (~4–8 weeks for the split, ~10–16 weeks for a Supabase MVP; `../db-adapter-feasibility.md` §4). Pitch it as "Convex-first, adapter-ready", not as shipped support |
 | Convex Components marketplace leads to many competing CMSs | Being early and complete is the defence. The only CMS-like component today is a hobby blog (~539 weekly downloads) |
 
 ## Growth trajectory (for the "ride the platform" slide)

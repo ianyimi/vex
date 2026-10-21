@@ -43,8 +43,9 @@ Analyst estimates for "headless CMS software" vary by more than 10×
 | **SOM (beachhead)** | Convex paying teams buying a Pro, Agency, or Enterprise licence | ~$0.53–2.2M ARR at today's Convex size; five-year scenarios $0.46M / $1.45M / $3.52M `[ASSUMPTION: 73% in market × 5–10% paid × $1.46–3.03k blended]` | `04-business-model.md` §5 |
 
 Expansion levers for the "Vision" slide: the SOM pool grows with Convex itself (12× YoY
-downloads), with agencies selling VexCMS to clients, and with any future backend
-adapters (the core is framework-agnostic by design; `.agent/docs/product/mission.md:9-12`).
+downloads) and with agencies selling VexCMS to clients. A later database-adapter layer, with
+Supabase first, raises the addressable customer pool ~10×; model it as 2–5× realistic ARR, not
+10×, because conversion falls off Convex (`../db-adapter-feasibility.md` §6).
 
 ## Developer-population context (for the bottom-up check)
 

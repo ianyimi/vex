@@ -116,6 +116,9 @@ Payload is free and MIT-licensed on exactly those databases.
 2. **A neutral filter form in the public API.** Accept a `where`/constraint-builder form on
    `find`/`count`, compiled through the existing IR, and keep `withIndex` as the Convex-specific
    escape hatch. Access rules already record an IR, so only the *authoring* surface changes.
+   **Specced 2026-10-21 as launch-plan B3** (`../specs/2026-10-21-backend-neutral-query-args/`):
+   `filter` → `where` on `find`/`search`, `withIndex.range` retyped with the Vex builder (call
+   syntax unchanged), `VexError`, ADR-015.
 3. **Namespace Convex-only exports** under `@vexcms/core/convex` (the subpath already exists)
    or a future `@vexcms/convex`. Keep `ctx`-taking functions, triggers, and `vexConvexApi` out of
    the neutral entry points, so the later move is a re-export, not a user migration.

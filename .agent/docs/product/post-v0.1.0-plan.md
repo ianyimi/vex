@@ -33,6 +33,7 @@
 | 11 | **Licence enforcement never breaks a running deployment** (2026-10-17): checked at package install (private registry token) and at build (`vex dev` / `vex deploy`, signed offline key); grace periods are dates signed into the key | ENT-0 licence design |
 | 12 | **Paid tiers ship in price order: Pro → Agency → Enterprise** (2026-10-17) | Supersedes "SSO + audit first": co-editing (ENT-3) is now the first paid build |
 | 13 | **Enterprise cannot ship without its paperwork** (2026-10-17) — MSA, SLA, trust pack, invoicing are a spec of their own (ENT-P) | ENT-P gates the Enterprise tier |
+| 14 | **Plugin system first** (2026-10-21) — Track PL leads the post-0.1.0 order; admin slots are built into launch specs G / H / I | MW-4 and AD-7 fold into PL; first-party adapters and paid tiers ship as plugins |
 
 ### Why the form builder is not first
 
@@ -52,18 +53,22 @@
 
 | Order | Track | Gate it clears | Status |
 |---|---|---|---|
-| 1 | **MW** — maprios www migration | A real Payload → Vex migration, written up as a case study | ☐ |
-| 2 | **AD** — Brownfield adoption | An existing Convex app can adopt Vex table by table without rewriting | ☐ |
-| 3 | **ENT-0** — Paid foundation | Licence, boundary, private registry, signed keys, build-time check | ☐ |
-| 4 | **Pro** — ENT-3 co-editing, visual editor, basic A/B testing | First sellable tier | ☐ |
-| 5 | **Agency** — white-label, client-project licence terms, licence handoff | Second tier | ☐ |
-| 6 | **ENT-P** — Procurement & compliance readiness | Enterprise is buyable: MSA with capped indemnity, support SLA, trust/security-questionnaire pack, invoicing (PO, net terms, tax forms) | ☐ |
-| 7 | **Enterprise** — ENT-1 SSO, SCIM, ENT-2 audit log, approval workflows, branching | Third tier; cannot ship before ENT-P | ☐ |
+| 1 | **PL** — Plugin system + admin extension points | Third parties (incl. Convex component authors) extend Vex without forking; slots pre-built in G / H / I | ☐ |
+| 2 | **MW** — maprios www migration | A real Payload → Vex migration, written up as a case study | ☐ |
+| 3 | **AD** — Brownfield adoption | An existing Convex app can adopt Vex table by table without rewriting | ☐ |
+| 4 | **ENT-0** — Paid foundation | Licence, boundary, private registry, signed keys, build-time check | ☐ |
+| 5 | **Pro** — ENT-3 co-editing, visual editor, basic A/B testing | First sellable tier | ☐ |
+| 6 | **Agency** — white-label, client-project licence terms, licence handoff | Second tier | ☐ |
+| 7 | **ENT-P** — Procurement & compliance readiness | Enterprise is buyable: MSA with capped indemnity, support SLA, trust/security-questionnaire pack, invoicing (PO, net terms, tax forms) | ☐ |
+| 8 | **Enterprise** — ENT-1 SSO, SCIM, ENT-2 audit log, approval workflows, branching | Third tier; cannot ship before ENT-P | ☐ |
 | — | **FR** — Free features | Interleave as demand appears; none gates the tracks above | ☐ |
 
 **Sequencing principle (inherited from the launch plan):** each item consumes what earlier
 items built; nothing ships inert code whose only justification is a later item.
 
+- PL first: every later track adds admin UI or config; building it on extension points
+  means each one is also a worked example for plugin authors, and the paid tiers attach as
+  plugins instead of private paths.
 - MW before AD: MW is greenfield, so it exercises the 0.1.0 surface plus small additions;
   AD changes how Vex relates to tables it did not create, which is a larger design.
 - AD before ENT: an enterprise on Convex already has an app. Without AD there is nobody to
@@ -73,6 +78,25 @@ items built; nothing ships inert code whose only justification is a later item.
 
 **Inherited from 0.1.0:** MW depends on launch spec G for `admin.width` (maprios uses 3
 `row` layouts), the media-picker MIME filter (the PDF block), and `admin.condition`.
+
+---
+
+## Track PL — Plugin system and admin extension points
+
+**Spec stem:** `.agent/docs/specs/2026-10-21-plugin-system/stem.md` — goal, decisions so far,
+the pre-0.1.0 groundwork in G / H / I, and the full list of questions the implementation
+spec must answer. **Research:** `.agent/docs/research/plugin-system-design.md` (industry
+survey: Payload, Better Auth, Sanity, Strapi, Backstage, Fastify, Vite).
+
+- **Shape:** `definePlugin({ id, requires, client, server })` with typed contributions to
+  any part of the config (collections, fields, hooks, access resources, routes, slots, server
+  functions, CLI hooks), semantic slot IDs, a `renderDefault` chain for overrides, declared
+  dependencies, and inter-plugin services.
+- **Convex components:** external collections backed by a component's API — the same
+  data-provider seam as Track DB.
+- **Dogfood:** `@vexcms/better-auth`, `@vexcms/file-storage-convex`,
+  `@vexcms/richtext-plate`, then the paid tiers, all ship as plugins.
+- **Absorbs** MW-4 (per-field component slot) and AD-7 (custom actions / views / filters).
 
 ---
 
@@ -169,7 +193,7 @@ Seeding with images requires creating a media document from bytes or a URL serve
 (store → `createMediaDocument`), without the admin upload flow. `apps/www`'s seed has no
 media for this reason. Consumed by MW-2.
 
-### MW-4 — Per-field custom component slot ☐
+### MW-4 — Per-field custom component slot → moved to Track PL
 
 Only `relationship.admin.components.preview` exists
 (`packages/core/src/fields/relationship/types.ts:34`). A general `admin.components` slot
@@ -242,7 +266,7 @@ tables in an 886-line `convex/schema.ts`; the `@convex-dev/workflow` component; 
 | AD-4 | **Read-only collections and fields** in the admin, distinct from RBAC denial | Append-only `events`; frozen blobs must never be edited |
 | AD-5 | **Writes outside Vex** — an exported wrapper hand-written mutations opt into so Vex hooks, validation, and revalidation fire; a doctor-style check listing tables written by unwrapped code | Hooks only fire through the Vex API today (launch plan F, "coverage hole") |
 | AD-6 | **Auth bridge** — reuse the app's existing `createAuth()` instead of a second Better Auth instance; support org membership via a join table | [INFERENCE] `orgCollectionSlug` assumes a direct org reference; maprios uses `organizationMembers` — verify |
-| AD-7 | **Admin escape hatches** — custom document/row actions calling existing mutations (e.g. cancel a run), custom views, index-backed filters on large operational tables | The admin becomes the app's back office, not just a content editor |
+| AD-7 | **Admin escape hatches** — moved to Track PL (slots for document/row actions, custom views, list filters); AD consumes them for back-office tables | The admin becomes the app's back office, not just a content editor |
 | AD-8 | **Data migrations for live tables** — config changes on adopted tables produce migrations, built on Convex's migrations component rather than reviving the un-exported `diffSchema` stubs (launch plan B1) | Adopted tables already hold production data |
 
 **Not in this track — multi-component workspaces** (`roadmap.md` Milestone 3,
@@ -370,6 +394,8 @@ server API) and query grammar (`withIndex`).
   neutral storage kinds on fields (`ADMIN_FIELDS` still carries Convex validator strings), a
   neutral `where` filter beside `withIndex`, and versions/drafts written against a narrow
   port instead of `ctx.db` (7 files). Only the `@vexcms/core/convex` subpath exists.
+  **2026-10-21:** the `where` item is specced as launch-plan B3
+  (`specs/2026-10-21-backend-neutral-query-args`).
 
 ## Track FR — Free features (interleave)
 

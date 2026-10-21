@@ -5,10 +5,10 @@
 > is what you follow to ship. This file holds milestone framing and the
 > post-launch vision.
 >
-> **After 0.1.0, follow `post-v0.1.0-plan.md`** — tracks MW (maprios www), AD (brownfield
-> adoption), ENT-0 (paid foundation), Pro → Agency → ENT-P (procurement readiness) →
-> Enterprise, FR (free features), DB (backend adapters, unscheduled). Decided 2026-10-16/17;
-> summarised under **After 0.1.0** below.
+> **After 0.1.0, follow `post-v0.1.0-plan.md`** — tracks PL (plugin system), MW (maprios
+> www), AD (brownfield adoption), ENT-0 (paid foundation), Pro → Agency → ENT-P (procurement
+> readiness) → Enterprise, FR (free features), DB (backend adapters, unscheduled). Decided
+> 2026-10-16/17/21; summarised under **After 0.1.0** below.
 
 ## Milestone 1 — v0.1.0 launch track
 
@@ -70,13 +70,14 @@ the leading candidate).
 
 | Order | Track | Gate |
 |---|---|---|
-| 1 | **MW** — maprios www migration | Payload → VexCMS on its own Convex deployment; init/seed hook, block groups, per-field component slot, public-form hardening |
-| 2 | **AD** — Brownfield adoption | An existing Convex app adopts Vex table by table: adopt existing tables, schema introspection, raw-validator field, auth bridge, live-data migrations |
-| 3 | **ENT-0** — Paid foundation | Open-core ADR, private package registry, signed offline licence keys checked at build time |
-| 4 | **Pro** | Co-editing (cursors, per-field indicators, conflict resolution, collaborative rich text), visual editor, basic A/B testing |
-| 5 | **Agency** | Pro + client-project licence coverage, white-label admin, licence handoff |
-| 6 | **ENT-P** — Procurement readiness | MSA with capped indemnity, support SLA, security-questionnaire pack, invoicing on terms |
-| 7 | **Enterprise** | SSO/SCIM, audit log, approval workflows, branching, git mirror, full A/B + personalization |
+| 1 | **PL** — Plugin system + admin extension points | `definePlugin` with typed contributions to any part of the config, semantic admin slots (pre-built in G / H / I), dependencies, Convex-component plugins via external collections; first-party adapters and paid tiers ship as plugins (`specs/2026-10-21-plugin-system/stem.md`) |
+| 2 | **MW** — maprios www migration | Payload → VexCMS on its own Convex deployment; init/seed hook, block groups, public-form hardening |
+| 3 | **AD** — Brownfield adoption | An existing Convex app adopts Vex table by table: adopt existing tables, schema introspection, raw-validator field, auth bridge, live-data migrations |
+| 4 | **ENT-0** — Paid foundation | Open-core ADR, private package registry, signed offline licence keys checked at build time |
+| 5 | **Pro** | Co-editing (cursors, per-field indicators, conflict resolution, collaborative rich text), visual editor, basic A/B testing |
+| 6 | **Agency** | Pro + client-project licence coverage, white-label admin, licence handoff |
+| 7 | **ENT-P** — Procurement readiness | MSA with capped indemnity, support SLA, security-questionnaire pack, invoicing on terms |
+| 8 | **Enterprise** | SSO/SCIM, audit log, approval workflows, branching, git mirror, full A/B + personalization |
 | — | **FR** — Free features | Interleaved: localization, presence + facepile, scheduling, form builder, webhooks, S3/R2, image transforms, API keys / team management, MCP server, TanStack Start, `tabs` / `ui` |
 | — | **DB** — Backend adapters | Unscheduled; after Enterprise. Split Convex out of core; Supabase first (`research/db-adapter-feasibility.md`) |
 

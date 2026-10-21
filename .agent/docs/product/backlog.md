@@ -820,3 +820,71 @@ an upstream change. Developer asked to keep it on record to revisit.
 **Detail.** Re-measure with an esbuild metafile build of `apps/test/convex/*.ts`
 using the conditions/options in `convex/dist/cjs/bundler/debugBundle.js:73-90`,
 then reverse-walk importers of the module family in question.
+
+---
+
+## Database adapters (`@vexcms/convex` split, then Supabase/Postgres)
+
+**What.** Move every Convex-specific piece of `@vexcms/core` (the `api/*` query and write
+paths, `versions/*` writes, media queries, `convex-helpers` triggers, `v.*` schema codegen)
+behind a database-adapter interface, ship it as `@vexcms/convex`, and later add
+`@vexcms/postgres` (Drizzle) + `@vexcms/supabase`, with MongoDB last. Non-Convex adapters
+expose fewer guarantees (live queries, catch-all after-hooks, migration-free schema).
+
+**Why.** Today the market is capped at the Convex ecosystem (~10k paying teams). Supabase
+alone has ~100k customers and recovers most Convex features (Realtime, Storage, `pg_cron`).
+It also answers the "platform risk" investor objection.
+
+**Measured lift.** ~52% of core LOC (58 of 199 non-test files) imports Convex. The public API
+also exposes Convex's execution model (`ctx`-taking server API). The access layer already
+compiles a backend-neutral constraint tree (`access/compileConstraints.ts`), which is the
+template for other compilers. Estimate: 4–8 weeks for the split with no behaviour change,
+plus 10–16 weeks for a Supabase MVP (feasibility doc §4).
+
+**What blocks it.** Nothing technical. Two prerequisites keep the split non-breaking:
+launch-plan item **B3** (spec `.agent/docs/specs/2026-10-21-backend-neutral-query-args/`, before
+0.1.0), which removes Convex builder types from the public query and access APIs; and the
+adapter-readiness items (spec stem `.agent/docs/specs/2026-10-21-adapter-readiness/stem.md`,
+before Track PL ships): neutral field storage kinds, `vex` in hook props, a serializable
+`where`, and one data seam shared with Convex-component collections.
+
+**Why deferred / when.** Scheduled as Track DB in `post-v0.1.0-plan.md`: after the Enterprise
+tier, Supabase as the second backend, and community adapters only after two first-party ones.
+
+**Detail.** `.agent/docs/research/db-adapter-feasibility.md` (coupling inventory, parity
+matrix, phase estimates, market math).
+
+---
+
+## Custom server components in admin slots
+
+**What.** Let admin slot contributions be React Server Components declared in
+`vex.config.server.ts`, rendered by `@vexcms/next` and handed to the client views by
+contribution ID — for custom UI that must fetch data or use secrets on the server.
+
+**Why.** Some integrations need server-only work at render time (server-side SDKs,
+RSC-only libraries). Payload supports server components in custom admin components;
+plugin authors coming from Payload will expect it.
+
+**Lift.** Unassessed; the path is clear. `NextAdminPage` (`packages/next/src/NextAdminPage.tsx`)
+is already an async server component that receives the server config and prefetches Convex
+data with the request token, so it can render server contributions for the current route and
+pass the output into the client views' slot outlets (G steps 7–8).
+
+**Blockers / limits.**
+- Only page-level slots make sense (edit header / before-fields, list before-table, dashboard,
+  custom routes). Per-field, per-row, per-block and modal slots stay client-only — N rows would
+  mean N server renders.
+- Output renders per request / navigation: it cannot react to unsaved form edits or live
+  Convex updates without a refresh.
+- Framework-specific: the TanStack Start adapter would need its own equivalent.
+- Most Convex data needs are already met by reactive client queries, or by actions for
+  secrets.
+
+**Why deferred.** Decision S14 in `.agent/docs/specs/2026-10-21-plugin-system/stem.md`:
+0.1.0 slots are client-only to avoid a second, untested render path in H / I. Adding server
+contributions later is additive (a new server-config key), so waiting costs nothing.
+Revisit with Track PL.
+
+**Detail.** Stem decision S14; `.agent/docs/research/plugin-system-design.md` (Payload's
+import map exists because its config lives on the server).
