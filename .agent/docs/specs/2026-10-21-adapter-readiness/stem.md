@@ -64,25 +64,13 @@ default, most plugin hooks are portable as written.
 inside a hook re-enters the write pipeline and its hooks), or stay read-only like `validate()`.
 Recursion and transaction-limit rules belong to plugin stem questions 13–14.
 
-### 3. Serializable `where` (the filter tree as data)
+### 3. Serializable `where` — moved into B3 ✅ (specced)
 
-**Today, after B3.** `where` is a callback. The recorded output is a plain-data tree
-(`AccessFilterConstraint`: `compare` / `and` / `or` / `not`, `access/constraintTypes.ts`).
-Client wrappers (`@vexcms/react/client` `find`) accept no filter at all.
-
-**Why before PL.** Launch spec I's `list.filters` slot and saved views, plugin-contributed
-list filters (plugin stem S-table), and the client `find` all need a filter that crosses the
-network and can be stored. If each invents its own shape, adapters later have to support
-several.
-
-**Shape.** Publish the tree as a public type (for example `VexWhereNode<S>`). Accept
-`where: VexWhere<S> | VexWhereNode<S>` on the server API (additive union), accept only the
-node form on the client and in the generated Convex functions' argument validators, and store
-saved views as nodes. One predicate format for queries, access rules, saved views, plugin
-filters, the Convex-component data provider (plugin stem question 16), and future adapters.
-
-**Timing note.** Spec I runs before 0.1.0. If I builds filters or saved views, it should
-adopt this item's shape then. Otherwise this stays post-0.1.0.
+Built before 0.1.0 by `specs/2026-10-21-backend-neutral-query-args` steps 6–7: `VexWhereNode`,
+`validateWhereNode` (size-capped), `whereToNode`, `where` on the client `find` / `search` and on
+the generated Convex functions, and a guard so a `where` cannot probe a field that
+field-level RBAC hides. Still open here: field paths into `array` / `group` values and
+`in` / `contains` operators (question 3 below), which list filters may need.
 
 ### 4. One data seam for Convex-component collections and database adapters
 

@@ -397,6 +397,37 @@ server API) and query grammar (`withIndex`).
   **2026-10-21:** the `where` item is specced as launch-plan B3
   (`specs/2026-10-21-backend-neutral-query-args`).
 
+## Cross-feature seams — pre-0.1.0 vs deferred (decided 2026-10-21)
+
+Rule: change an existing shape **before** 0.1.0 only when changing it later would break
+users or need a data migration. Anything purely additive waits for the feature that needs it.
+
+**Built into pre-0.1.0 specs:**
+
+| Seam | Where | Why it can't wait |
+|---|---|---|
+| Admin slots (S1–S14) | G steps 7–8, 11, 15–18; H; I | Retrofitting slots into rebuilt views is a second rewrite |
+| `adminHref` link builder | G step 17 | ~16 hand-built cell links; route renames and plugin pages need one place |
+| Stored `id` on object-array items | G steps ≤15 | Adding later needs a backfill migration of live data |
+| Plain (serialisable) `where` | B3 | Saved views and URL filters store it; the format must exist before I |
+| Localization storage model | B2 ADR (before G step 9) | The storage shape is the one irreversible part |
+| Router through the framework adapter | H | A Next-only guard would block the TanStack Start adapter |
+| `/admin/collections/<slug>` routes | H | URL change; cheapest before users bookmark |
+| Per-collection data source hooks | I | Plugin collections, adapters and adopted tables plug in here |
+| Saved-view scope + plain filters | I | Stored rows; changing shape later means migrating them |
+| Status enum instead of literals | I | Approval stages and branches add states |
+| Plate 53.x | D step 6 | Before users store content edited under 52 |
+
+**Deferred to the feature that needs them (additive, no breaking change):**
+
+| Seam | Deferred to | Note |
+|---|---|---|
+| `actor` + `context` on hook props and the write API | ENT-2 audit log (first consumer); also approvals, scheduling, seeding (MW-2), webhooks, plugins | Optional fields on `BaseHookProps` and on `create` / `update` args. Reaching `afterChange` / `afterDelete` (convex-helpers triggers) goes through the ctx that `createVexMutations` already wraps — an internal change; users' `createVexMutations({ config, mutation, internalMutation })` wiring stays as is |
+| Document session context (`useVexDocument` carrying loaded `updatedAt`, read keys, actor) | ENT-3 co-editing / stale-save guard; branching; localization switcher | H ships `useVexDocument` (S5); fields are added when a consumer exists |
+| New read keys: `branch`, `variant`, `asOf` (and `locale`, ADR-016) | Branching, A/B testing, scheduling, localization | **Decided 2026-10-22:** independent top-level keys beside `drafts`, never a grouped `perspective` object; any combination valid; populated relationships inherit every read key. Additive |
+| Collection `dbName` separate from slug | Track AD | 12 `ctx.db.query(slug)` sites; route through one helper when AD lands |
+| Action-side server API | MW-2 init hook | Keep B3's server API shapes independent of query vs mutation ctx |
+
 ## Track FR — Free features (interleave)
 
 Ordered by expected demand. None gates the tracks above.

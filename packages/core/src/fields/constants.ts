@@ -14,66 +14,77 @@ export const ADMIN_FIELDS = {
     interfaceType: "string",
     validator: "v.string()",
     defaultValue: "",
+    kind: "data",
   },
   email: {
     type: "email",
     interfaceType: "string",
     validator: "v.string()",
     defaultValue: "",
+    kind: "data",
   },
   textarea: {
     type: "textarea",
     interfaceType: "string",
     validator: "v.string()",
     defaultValue: "",
+    kind: "data",
   },
   url: {
     type: "url",
     interfaceType: "string",
     validator: "v.string()",
     defaultValue: "",
+    kind: "data",
   },
   color: {
     type: "color",
     interfaceType: "string",
     validator: "v.string()",
     defaultValue: "",
+    kind: "data",
   },
   number: {
     type: "number",
     interfaceType: "number",
     validator: "v.number()",
     defaultValue: 0,
+    kind: "data",
   },
   checkbox: {
     type: "checkbox",
     interfaceType: "boolean",
     validator: "v.boolean()",
     defaultValue: false,
+    kind: "data",
   },
   date: {
     type: "date",
     interfaceType: "number",
     validator: "v.number()",
     defaultValue: undefined,
+    kind: "data",
   },
   select: {
     type: "select",
     interfaceType: "string[]",
     validator: "v.array(\nv.string()\n)",
     defaultValue: [] as string[],
+    kind: "data",
   },
   relationship: {
     type: "relationship",
     interfaceType: "Id<CollectionSlug>[]",
     validator: "v.array(\nv.string()\n)",
     defaultValue: [] as string[],
+    kind: "data",
   },
   array: {
     type: "array",
     interfaceType: "unknown[]",
     validator: "v.array(\nv.any()\n)",
     defaultValue: [],
+    kind: "data",
   },
   group: {
     type: "group",
@@ -81,30 +92,35 @@ export const ADMIN_FIELDS = {
     validator: "v.object({})",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultValue: {} as Record<string, any>,
+    kind: "data",
   },
   blocks: {
     type: "blocks",
     interfaceType: "Record<string, any>[]", // placeholder - blocks() overridses per instance
     validator: "v.array(v.any())", // placeholder - blocksFieldToValidator builds dynamically
     defaultValue: [],
+    kind: "data",
   },
   upload: {
     type: "upload",
     interfaceType: "Id<MediaCollectionSlug>[]",
     validator: "v.array(\nv.string()\n)",
     defaultValue: undefined,
+    kind: "data",
   },
   richtext: {
     type: "richtext",
     interfaceType: "RichTextDocument",
     validator: "v.array(\nv.any()\n)",
     defaultValue: [],
+    kind: "data",
   },
   json: {
     type: "json",
     interfaceType: "unknown",
     validator: "v.any()",
     defaultValue: undefined,
+    kind: "data",
   },
 } as const;
 /** Union of all supported field type name strings (e.g. `"text"` | `"number"` | `"checkbox"` | ...). */

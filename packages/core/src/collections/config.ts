@@ -255,7 +255,7 @@ export function defineCollection<
           ...input.admin?.table?.bulkActions,
         },
         defaultSort: {
-          field: "_createdAt",
+          field: "_creationTime",
           order: "desc",
           ...input.admin?.table?.defaultSort,
         },

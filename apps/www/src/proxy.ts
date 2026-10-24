@@ -4,13 +4,21 @@ import {
   LIVE_PREVIEW_COOKIE_MAX_AGE_SECONDS,
   LIVE_PREVIEW_QUERY_PARAM,
 } from "@vexcms/core";
+import { getSessionCookie } from "better-auth/cookies";
 import { fetchQuery } from "convex/nextjs";
-import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 
+import { AUTH_COOKIE_PREFIX } from "~/db/constants";
+
+/**
+ * Both names Better Auth may give this app's session cookie: `__Secure-` over
+ * https, bare over http. Derived from `AUTH_COOKIE_PREFIX` so a different
+ * Better Auth app's cookie on the same host (e.g. another `localhost` port) is
+ * never read — or deleted — as ours.
+ */
 const SESSION_COOKIES = {
-  https: "__Secure-better-auth.session_token",
-  http: "better-auth.session_token",
+  https: `__Secure-${AUTH_COOKIE_PREFIX}.session_token`,
+  http: `${AUTH_COOKIE_PREFIX}.session_token`,
 } as const;
 
 /**
@@ -53,17 +61,9 @@ export async function proxy(request: NextRequest) {
   return grantPreviewIfRequested(request);
 }
 
-/** Session gate for the admin panel — fails closed, per the docstring above. */
-async function guardAdminRequest(request: NextRequest) {
-  const sessionStatus = await resolveSessionStatus();
-
-  if (sessionStatus === "verification-failed") {
-    return redirectToUnauthorized(request);
-  }
-  if (sessionStatus === "unauthenticated") {
-    return redirectToSignIn(request);
-  }
-  return NextResponse.next();
+/** Extract the raw token — better-auth stores "<raw_token>.<hmac_signature>" */
+function extractToken(cookieValue: string) {
+  return cookieValue.includes(".") ? cookieValue.split(".")[0] : cookieValue;
 }
 
 /**
@@ -82,7 +82,7 @@ async function grantPreviewIfRequested(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const sessionStatus = await resolveSessionStatus();
+  const sessionStatus = await resolveSessionStatus(request);
   if (sessionStatus !== "authenticated") {
     return NextResponse.next();
   }
@@ -99,30 +99,17 @@ async function grantPreviewIfRequested(request: NextRequest) {
   return response;
 }
 
-/** Reads and verifies the Better Auth session cookie — shared by both branches above. */
-async function resolveSessionStatus(): Promise<
-  "authenticated" | "unauthenticated" | "verification-failed"
-> {
-  const cookieStore = await cookies();
-  const sessionToken =
-    cookieStore.get(SESSION_COOKIES.https)?.value ?? cookieStore.get(SESSION_COOKIES.http)?.value;
-  if (!sessionToken) return "unauthenticated";
+/** Session gate for the admin panel — fails closed, per the docstring above. */
+async function guardAdminRequest(request: NextRequest) {
+  const sessionStatus = await resolveSessionStatus(request);
 
-  try {
-    const session = await fetchQuery(api.auth.sessions.getSessionWithUser, {
-      sessionToken: extractToken(sessionToken),
-    });
-    return session?.user ? "authenticated" : "unauthenticated";
-  } catch {
-    // Fail closed for the admin branch; grantPreviewIfRequested treats this as
-    // "no preview" rather than an error.
-    return "verification-failed";
+  if (sessionStatus === "verification-failed") {
+    return redirectToUnauthorized(request);
   }
-}
-
-/** Extract the raw token — better-auth stores "<raw_token>.<hmac_signature>" */
-function extractToken(cookieValue: string) {
-  return cookieValue.includes(".") ? cookieValue.split(".")[0] : cookieValue;
+  if (sessionStatus === "unauthenticated") {
+    return redirectToSignIn(request);
+  }
+  return NextResponse.next();
 }
 
 /**
@@ -138,10 +125,12 @@ function redirectToSignIn(request: NextRequest) {
   signInUrl.searchParams.set("redirectTo", request.nextUrl.pathname + request.nextUrl.search);
 
   const response = NextResponse.redirect(signInUrl);
-  for (const cookie of Object.values(SESSION_COOKIES)) {
-    // Clear the stale cookie so the presence-check never lies again
-    response.cookies.delete(cookie);
-  }
+  // Clear the stale cookie so the presence-check never lies again. The
+  // `__Secure-` name must be expired with `secure: true` — browsers reject any
+  // `Set-Cookie` for a `__Secure-` name that lacks it, so a bare delete is a
+  // silent no-op.
+  response.cookies.delete({ name: SESSION_COOKIES.https, path: "/", secure: true });
+  response.cookies.delete({ name: SESSION_COOKIES.http, path: "/" });
   return response;
 }
 
@@ -159,6 +148,26 @@ function redirectToSignIn(request: NextRequest) {
  */
 function redirectToUnauthorized(request: NextRequest) {
   return NextResponse.redirect(new URL("/unauthorized", request.url));
+}
+
+/** Reads and verifies the Better Auth session cookie — shared by both branches above. */
+async function resolveSessionStatus(
+  request: NextRequest,
+): Promise<"authenticated" | "unauthenticated" | "verification-failed"> {
+  // Better Auth's own reader (AP-022): checks the `__Secure-` name, then the bare one.
+  const sessionToken = getSessionCookie(request, { cookiePrefix: AUTH_COOKIE_PREFIX });
+  if (!sessionToken) {return "unauthenticated";}
+
+  try {
+    const session = await fetchQuery(api.auth.sessions.getSessionWithUser, {
+      sessionToken: extractToken(sessionToken),
+    });
+    return session?.user ? "authenticated" : "unauthenticated";
+  } catch {
+    // Fail closed for the admin branch; grantPreviewIfRequested treats this as
+    // "no preview" rather than an error.
+    return "verification-failed";
+  }
 }
 
 export const config = {

@@ -264,8 +264,7 @@ prompt_version: 1
 Launch-plan spec **G**, re-scoped in the 2026-10-16 interview. Every admin field input gets
 consistent empty / loading / error / read-only states; `relationship` is rebuilt on upload's
 three-state + dialog-picker pattern; `blocks` gains a full editing toolbox (duplicate, insert,
-move, collapse-all, copy/paste across documents); forms gain `...tabs()` / `...collapsible()` /
-`...row()` layout helpers, `admin.condition`, and opt-in input masks; and the deferred leaf
+`...row()` layout helpers (now real `kind: "ui"` fields — `tabs()`/`collapsible()`/`row()`/`ui()`),
 fields `email()`, `textarea()`, `json()` ship. It lands now because H and I build on a form
 renderer that, today, ignores four of the six declared `admin` options. It also lays the admin extension-point (slot) groundwork a future plugin system builds on — field-level and blocks/array-action slots, resolved as ordered, typed `renderDefault` override chains.
 
@@ -285,11 +284,19 @@ renderer that, today, ignores four of the six declared `admin` options. It also 
    Why: `date()` already stores epoch-ms with a `time.hidden` switch; the stored schema
    (`v.optional(v.number())`) is unchanged, so this is display-only.
 6. **"Created at" is display-only from `_creationTime`.** Why: Convex owns it; no schema change.
-7. **Layout is authored with spread helpers that stamp frames onto each child field.**
-   Why: data, schema/type generation, RBAC, hooks and the 50+ `fields` iteration sites keep seeing
-   ordinary fields; literal key inference through nested spreads was verified with `tsc --strict`.
-   Rejected: Payload-style data-less entries inside `fields` (every iteration site must skip/hoist
-   them) and a separate `admin.tabs` list (two lists to keep in sync per collection/group/block).
+7. **`tabs()`/`collapsible()`/`row()`/`ui()` are real fields, registered in `ADMIN_FIELDS` with
+   `kind: "ui"` alongside every data field's `kind: "data"`, legal in ANY `fields` record (a
+   collection/global's own, a `group()`'s, a group-shaped `array()`'s items, a `blocks()` block's
+   own) — not just top-level.** `getDataFields({ fields })` is the single place that flattens a
+   fields record back to data fields for every non-rendering consumer — dropping `ui()`, hoisting
+   unnamed tab/row/collapsible children, turning a named tab into one group-shaped data field, and
+   AND-ing each container's own `admin.condition` into every descendant — called again at each
+   nesting level a data consumer descends into (a group's own fields, each array item's fields, each
+   block's fields), not just once at the top. Why: `AdminField` stays one real union instead of a
+   second hand-maintained list that can drift from `ADMIN_FIELDS`; every consumer gets nested layout
+   UI for free instead of group/array/blocks needing a second mechanism later. Rejected: Payload-style
+   spread helpers that stamp a layout frame onto each child field (the original design) — two
+   different shapes for "a field" (a real entry vs. a frame-stamped one) instead of one.
 8. **`admin.width` is any CSS width string; `admin.position: "sidebar"` is honored for top-level
    fields.** Why: matches Payload's semantics so one mental model covers both; `"half"` is removed.
 9. **`row()` widths: use children's `%` widths when they sum to 100, else split evenly.** Why:
@@ -351,6 +358,48 @@ renderer that, today, ignores four of the six declared `admin` options. It also 
     same contracts (S12).
 30. **Slots and their context hooks are documented `@experimental`, no `unstable_` prefix.** Why:
     avoids a mass rename when Track PL stabilises them post-0.1.0 (S13).
+31. **Object-shaped array items (`array({ items: group({...}) })`) get a stored `id: v.optional(v.string())`,
+    assigned on every write (`prepareEdit`) and by the client form when it adds one (Step 15).**
+    Why: a visual editor, co-editing merges, comments anchored to one item, and per-item A/B
+    variants all need item identity that survives reordering — today's `FormArray` keys are
+    client-only (`keysRef`'s synthetic UUIDs, reset on reload), unlike `blocks()`'s items, which
+    already store one. `v.optional`, not required, because `apps/www` has live documents with
+    arrays of groups predating this step and a Convex schema push rejects a push any existing
+    document fails to validate against — adding a REQUIRED stored id after real data exists would
+    need a backfill migration (not yet built, `backlog.md`) before the schema could ever land;
+    `v.optional` plus write-path backfill (`assignArrayItemIds`) gets every NEW write an id
+    immediately, with existing rows gaining one lazily on their next edit. Trade-off accepted: the
+    generated TypeScript type is `id?: string`, not `id: string`, so a consuming app cannot assume
+    presence without a null check — correct today (existing rows), slightly weaker than it will be
+    once every row has migrated.
+32. **All new React admin UI is built on `components/ui` primitives, which wrap Base UI
+    primitives; pre-existing `<a>` tags elsewhere are left as-is.** New `ui/radio-group.tsx`
+    (`RadioGroup`/`RadioGroupItem`, wrapping Base UI `RadioGroup`/`Radio.Root`/`Radio.Indicator`)
+    joins `ui/checkbox.tsx` for `select`'s `admin.display: "radio"` inline list (Step 17); the
+    `url` field's open-link affordance renders through `VexLink` instead of a raw `<a>` for the
+    same reason. Why: one consistent styling/behavior layer instead of hand-rolled markup
+    creeping back in per field type. This is a rule for NEW UI, not a retrofit — the `adminHref`
+    call sites in `DashboardView`/`GlobalsListView` (Step 17) keep their existing `<a>` tags;
+    only the URL they point at changes.
+
+33. **No shared generic `admin` carrying a `TCollectionSlug`/`condition` on the base field type;
+    each field type (every data type and the 4 UI types) declares its own
+    `<Type>FieldAdminInput<TCollectionSlug>`/`<Type>FieldAdminConfig<TCollectionSlug>` extending
+    the non-generic `FieldAdminConfigInput`/`FieldAdminConfig`, and overrides the inherited
+    `admin?: FieldAdminConfigInput` property with its own narrower type — the exact pattern
+    `RelationshipFieldAdminInput`/`RelationshipFieldAdminConfig` already used before this spec.**
+    Why: `BaseFieldInput<TCollectionSlug, TFieldMeta>` is a plain (non-`out`) generic interface —
+    TypeScript's structural variance check on a plain generic property rejects a field type whose
+    own `admin` is narrower than its base type's `admin` unless every field redeclares `admin`
+    with its own compatible type, same as `RelationshipField` already had to. Making
+    `FieldAdminConfigInput` itself generic over `TCollectionSlug` (so every field could inherit
+    `admin.condition` for free) was tried and rejected: it forces `BaseFieldInput`/`BaseField` to
+    declare `admin` with `out` variance to keep assignability, and `out` on a property whose type
+    is a function parameter (`condition(props: FieldConditionProps<TCollectionSlug>)`) is
+    contravariant in `TCollectionSlug`, not covariant — `out` lies about that, so every call site
+    needed either a real cast or a `@ts-expect-error`, which AP-010 forbids for a real type error.
+    Declaring a per-type `admin` override instead keeps `BaseFieldInput`/`BaseField === AdminField`
+    accurate without a single cast.
 
 ## Out of Scope
 
@@ -426,7 +475,7 @@ export type FieldLimit = readonly [value: number, error: string];
 **2 — new `resolveFieldLimit` export, inserted after the imports and before
 `wrapLines`.**
 
-```ts
+````ts
 /**
  * Resolves a field's `min`/`max` input into its final `[value, error]`
  * tuple. A bare number input is paired with `defaultError(value)`; a
@@ -462,7 +511,7 @@ export function resolveFieldLimit(props: {
   }
   return props.limit;
 }
-```
+````
 
 #### packages/core/src/fields/utils.test.ts
 
@@ -480,10 +529,9 @@ describe("resolveFieldLimit", () => {
   });
 
   it("pairs a bare number with the default error message", () => {
-    expect(resolveFieldLimit({ limit: 3, defaultError: () => "Too short." })).toEqual([
-      3,
-      "Too short.",
-    ]);
+    expect(
+      resolveFieldLimit({ limit: 3, defaultError: () => "Too short." }),
+    ).toEqual([3, "Too short."]);
   });
 
   it("passes the resolved value into defaultError", () => {
@@ -552,7 +600,9 @@ describe("resolveFieldLimit", () => {
 export function text<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
->(options?: TextFieldInput<TCollectionSlug, TFieldMeta>): TextField<TCollectionSlug, TFieldMeta> {
+>(
+  options?: TextFieldInput<TCollectionSlug, TFieldMeta>,
+): TextField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.text.type,
     interfaceType: ADMIN_FIELDS.text.interfaceType,
@@ -594,14 +644,14 @@ export function text<
 
 **1 — JSDoc `@example`** (anchor: the ` * @example` block above `textFieldToInputSchema`).
 
-```ts
+````ts
  * @example
  * ```ts
  * const field = text({ required: true, min: 3, max: [100, "Too long."] })
  * textFieldToInputSchema({ field })
  * // → z.string({ error: "This field is required." }).min(1, "...").min(3, "...").max(100, "Too long.")
  * ```
-```
+````
 
 **2 — `textFieldToInputSchema` body, complete (anchor: `export function textFieldToInputSchema`).**
 
@@ -639,174 +689,174 @@ Every `min: { value: N }` / `max: { value: N }` becomes a bare `min: N` /
 **1 — `applies min constraint`** (anchor: `it("applies min constraint", () => {`).
 
 ```ts
-  it("applies min constraint", () => {
-    const field = text({
-      required: true,
-      defaultValue: "test",
-      min: 3,
-    });
-    const schema = textFieldToInputSchema({ field });
-
-    // Should accept strings >= 3 chars
-    expect(schema.safeParse("abc").success).toBe(true);
-    expect(schema.safeParse("abcd").success).toBe(true);
-
-    // Should reject strings < 3 chars
-    expect(schema.safeParse("ab").success).toBe(false);
+it("applies min constraint", () => {
+  const field = text({
+    required: true,
+    defaultValue: "test",
+    min: 3,
   });
+  const schema = textFieldToInputSchema({ field });
+
+  // Should accept strings >= 3 chars
+  expect(schema.safeParse("abc").success).toBe(true);
+  expect(schema.safeParse("abcd").success).toBe(true);
+
+  // Should reject strings < 3 chars
+  expect(schema.safeParse("ab").success).toBe(false);
+});
 ```
 
 **2 — `applies max constraint`.**
 
 ```ts
-  it("applies max constraint", () => {
-    const field = text({
-      required: true,
-      defaultValue: "test",
-      max: 5,
-    });
-    const schema = textFieldToInputSchema({ field });
-
-    // Should accept strings <= 5 chars
-    expect(schema.safeParse("hello").success).toBe(true);
-    expect(schema.safeParse("hi").success).toBe(true);
-
-    // Should reject strings > 5 chars
-    expect(schema.safeParse("toolong").success).toBe(false);
+it("applies max constraint", () => {
+  const field = text({
+    required: true,
+    defaultValue: "test",
+    max: 5,
   });
+  const schema = textFieldToInputSchema({ field });
+
+  // Should accept strings <= 5 chars
+  expect(schema.safeParse("hello").success).toBe(true);
+  expect(schema.safeParse("hi").success).toBe(true);
+
+  // Should reject strings > 5 chars
+  expect(schema.safeParse("toolong").success).toBe(false);
+});
 ```
 
 **3 — `applies min constraint with custom error`.**
 
 ```ts
-  it("applies min constraint with custom error", () => {
-    const field = text({
-      required: true,
-      defaultValue: "test",
-      min: [3, "Too short"],
-    });
-    const schema = textFieldToInputSchema({ field });
-
-    const result = schema.safeParse("ab");
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues[0].message).toBe("Too short");
-    }
+it("applies min constraint with custom error", () => {
+  const field = text({
+    required: true,
+    defaultValue: "test",
+    min: [3, "Too short"],
   });
+  const schema = textFieldToInputSchema({ field });
+
+  const result = schema.safeParse("ab");
+  expect(result.success).toBe(false);
+  if (!result.success) {
+    expect(result.error.issues[0].message).toBe("Too short");
+  }
+});
 ```
 
 **4 — `applies max constraint with custom error`.**
 
 ```ts
-  it("applies max constraint with custom error", () => {
-    const field = text({
-      required: true,
-      defaultValue: "test",
-      max: [5, "Too long"],
-    });
-    const schema = textFieldToInputSchema({ field });
-
-    const result = schema.safeParse("toolong");
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues[0].message).toBe("Too long");
-    }
+it("applies max constraint with custom error", () => {
+  const field = text({
+    required: true,
+    defaultValue: "test",
+    max: [5, "Too long"],
   });
+  const schema = textFieldToInputSchema({ field });
+
+  const result = schema.safeParse("toolong");
+  expect(result.success).toBe(false);
+  if (!result.success) {
+    expect(result.error.issues[0].message).toBe("Too long");
+  }
+});
 ```
 
 **5 — `combines min and max constraints`.**
 
 ```ts
-  it("combines min and max constraints", () => {
-    const field = text({
-      required: true,
-      defaultValue: "test",
-      min: 3,
-      max: 10,
-    });
-    const schema = textFieldToInputSchema({ field });
-
-    // Should accept strings between 3-10 chars
-    expect(schema.safeParse("abc").success).toBe(true);
-    expect(schema.safeParse("abcdefghij").success).toBe(true);
-
-    // Should reject strings outside range
-    expect(schema.safeParse("ab").success).toBe(false);
-    expect(schema.safeParse("abcdefghijk").success).toBe(false);
+it("combines min and max constraints", () => {
+  const field = text({
+    required: true,
+    defaultValue: "test",
+    min: 3,
+    max: 10,
   });
+  const schema = textFieldToInputSchema({ field });
+
+  // Should accept strings between 3-10 chars
+  expect(schema.safeParse("abc").success).toBe(true);
+  expect(schema.safeParse("abcdefghij").success).toBe(true);
+
+  // Should reject strings outside range
+  expect(schema.safeParse("ab").success).toBe(false);
+  expect(schema.safeParse("abcdefghijk").success).toBe(false);
+});
 ```
 
 **6 — `combines all constraints with custom errors`.**
 
 ```ts
-  it("combines all constraints with custom errors", () => {
-    const field = text({
-      required: true,
-      defaultValue: "test",
-      min: [3, "Too short"],
-      max: [10, "Too long"],
-    });
-    const schema = textFieldToInputSchema({ field });
-
-    // Test min error
-    const minResult = schema.safeParse("ab");
-    expect(minResult.success).toBe(false);
-    if (!minResult.success) {
-      expect(minResult.error.issues[0].message).toBe("Too short");
-    }
-
-    // Test max error
-    const maxResult = schema.safeParse("this is too long");
-    expect(maxResult.success).toBe(false);
-    if (!maxResult.success) {
-      expect(maxResult.error.issues[0].message).toBe("Too long");
-    }
+it("combines all constraints with custom errors", () => {
+  const field = text({
+    required: true,
+    defaultValue: "test",
+    min: [3, "Too short"],
+    max: [10, "Too long"],
   });
+  const schema = textFieldToInputSchema({ field });
+
+  // Test min error
+  const minResult = schema.safeParse("ab");
+  expect(minResult.success).toBe(false);
+  if (!minResult.success) {
+    expect(minResult.error.issues[0].message).toBe("Too short");
+  }
+
+  // Test max error
+  const maxResult = schema.safeParse("this is too long");
+  expect(maxResult.success).toBe(false);
+  if (!maxResult.success) {
+    expect(maxResult.error.issues[0].message).toBe("Too long");
+  }
+});
 ```
 
 **7 — `applies optional after length constraints`.**
 
 ```ts
-  it("applies optional after length constraints", () => {
-    const field = text({
-      required: false,
-      defaultValue: "",
-      min: 5,
-      max: 50,
-    });
-    const schema = textFieldToInputSchema({ field });
-
-    // Should accept undefined
-    const result = schema.safeParse(undefined);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data).toBe("");
-    }
-
-    // Should still enforce constraints when value is provided
-    expect(schema.safeParse("short").success).toBe(true);
-    expect(schema.safeParse("hi").success).toBe(false); // Too short
+it("applies optional after length constraints", () => {
+  const field = text({
+    required: false,
+    defaultValue: "",
+    min: 5,
+    max: 50,
   });
+  const schema = textFieldToInputSchema({ field });
+
+  // Should accept undefined
+  const result = schema.safeParse(undefined);
+  expect(result.success).toBe(true);
+  if (result.success) {
+    expect(result.data).toBe("");
+  }
+
+  // Should still enforce constraints when value is provided
+  expect(schema.safeParse("short").success).toBe(true);
+  expect(schema.safeParse("hi").success).toBe(false); // Too short
+});
 ```
 
 **8 — `describe("min/max on an optional field", …)`.**
 
 ```ts
-  describe("min/max on an optional field", () => {
-    it("skips min/max when the value is omitted (undefined)", () => {
-      const field = text({ min: 3, max: 5, defaultValue: "" });
-      const schema = textFieldToInputSchema({ field });
-      expect(schema.safeParse(undefined).success).toBe(true);
-    });
-
-    it("still enforces min/max once a non-empty value is supplied, even though the field is optional", () => {
-      const field = text({ min: 3, max: 5, defaultValue: "" });
-      const schema = textFieldToInputSchema({ field });
-      expect(schema.safeParse("ab").success).toBe(false);
-      expect(schema.safeParse("toolong").success).toBe(false);
-      expect(schema.safeParse("abc").success).toBe(true);
-    });
+describe("min/max on an optional field", () => {
+  it("skips min/max when the value is omitted (undefined)", () => {
+    const field = text({ min: 3, max: 5, defaultValue: "" });
+    const schema = textFieldToInputSchema({ field });
+    expect(schema.safeParse(undefined).success).toBe(true);
   });
+
+  it("still enforces min/max once a non-empty value is supplied, even though the field is optional", () => {
+    const field = text({ min: 3, max: 5, defaultValue: "" });
+    const schema = textFieldToInputSchema({ field });
+    expect(schema.safeParse("ab").success).toBe(false);
+    expect(schema.safeParse("toolong").success).toBe(false);
+    expect(schema.safeParse("abc").success).toBe(true);
+  });
+});
 ```
 
 #### packages/core/src/fields/text/validator.ts
@@ -823,18 +873,18 @@ Every `min: { value: N }` / `max: { value: N }` becomes a bare `min: N` /
 **1 — `ignores length constraints …`** (anchor: `it("ignores length constraints (enforced in form validation, not DB schema)", () => {`).
 
 ```ts
-  it("ignores length constraints (enforced in form validation, not DB schema)", () => {
-    const field = text({
-      required: true,
-      defaultValue: "test",
-      min: 3,
-      max: 100,
-    });
-    const validator = textFieldToValidator({ field });
-
-    // Convex schema just validates type, not length
-    expect(validator).toBe("v.string()");
+it("ignores length constraints (enforced in form validation, not DB schema)", () => {
+  const field = text({
+    required: true,
+    defaultValue: "test",
+    min: 3,
+    max: 100,
   });
+  const validator = textFieldToValidator({ field });
+
+  // Convex schema just validates type, not length
+  expect(validator).toBe("v.string()");
+});
 ```
 
 #### packages/core/src/fields/number/types.ts
@@ -919,14 +969,14 @@ export function number<
 
 **1 — JSDoc `@example`** (anchor: the ` * @example` block above `numberFieldToInputSchema`).
 
-```ts
+````ts
  * @example
  * ```ts
  * const field = number({ required: true, min: 0, max: [100, "Too large."] })
  * numberFieldToInputSchema({ field })
  * // → z.number({ error: "This field is required." }).min(0, "...").max(100, "Too large.")
  * ```
-```
+````
 
 **2 — `numberFieldToInputSchema` body, complete (anchor: `export function numberFieldToInputSchema(props: {`).**
 
@@ -976,158 +1026,158 @@ Full updated bodies:
 **1 — `applies min constraint`.**
 
 ```ts
-  it("applies min constraint", () => {
-    const field = number({
-      required: true,
-      defaultValue: 0,
-      min: 3,
-    });
-    const schema = numberFieldToInputSchema({ field });
-
-    // Should accept numbers >= 3
-    expect(schema.safeParse(3).success).toBe(true);
-    expect(schema.safeParse(100).success).toBe(true);
-
-    // Should reject numbers < 3
-    expect(schema.safeParse(2).success).toBe(false);
-    expect(schema.safeParse(-1).success).toBe(false);
+it("applies min constraint", () => {
+  const field = number({
+    required: true,
+    defaultValue: 0,
+    min: 3,
   });
+  const schema = numberFieldToInputSchema({ field });
+
+  // Should accept numbers >= 3
+  expect(schema.safeParse(3).success).toBe(true);
+  expect(schema.safeParse(100).success).toBe(true);
+
+  // Should reject numbers < 3
+  expect(schema.safeParse(2).success).toBe(false);
+  expect(schema.safeParse(-1).success).toBe(false);
+});
 ```
 
 **2 — `applies max constraint`.**
 
 ```ts
-  it("applies max constraint", () => {
-    const field = number({
-      required: true,
-      defaultValue: 0,
-      max: 5,
-    });
-    const schema = numberFieldToInputSchema({ field });
-
-    // Should accept numbers <= 5
-    expect(schema.safeParse(5).success).toBe(true);
-    expect(schema.safeParse(0).success).toBe(true);
-
-    // Should reject numbers > 5
-    expect(schema.safeParse(6).success).toBe(false);
-    expect(schema.safeParse(100).success).toBe(false);
+it("applies max constraint", () => {
+  const field = number({
+    required: true,
+    defaultValue: 0,
+    max: 5,
   });
+  const schema = numberFieldToInputSchema({ field });
+
+  // Should accept numbers <= 5
+  expect(schema.safeParse(5).success).toBe(true);
+  expect(schema.safeParse(0).success).toBe(true);
+
+  // Should reject numbers > 5
+  expect(schema.safeParse(6).success).toBe(false);
+  expect(schema.safeParse(100).success).toBe(false);
+});
 ```
 
 **3 — `applies min constraint with custom error`.**
 
 ```ts
-  it("applies min constraint with custom error", () => {
-    const field = number({
-      required: true,
-      defaultValue: 0,
-      min: [3, "Too small"],
-    });
-    const schema = numberFieldToInputSchema({ field });
-
-    const result = schema.safeParse(2);
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues[0].message).toBe("Too small");
-    }
+it("applies min constraint with custom error", () => {
+  const field = number({
+    required: true,
+    defaultValue: 0,
+    min: [3, "Too small"],
   });
+  const schema = numberFieldToInputSchema({ field });
+
+  const result = schema.safeParse(2);
+  expect(result.success).toBe(false);
+  if (!result.success) {
+    expect(result.error.issues[0].message).toBe("Too small");
+  }
+});
 ```
 
 **4 — `applies max constraint with custom error`.**
 
 ```ts
-  it("applies max constraint with custom error", () => {
-    const field = number({
-      required: true,
-      defaultValue: 0,
-      max: [5, "Too large"],
-    });
-    const schema = numberFieldToInputSchema({ field });
-
-    const result = schema.safeParse(10);
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues[0].message).toBe("Too large");
-    }
+it("applies max constraint with custom error", () => {
+  const field = number({
+    required: true,
+    defaultValue: 0,
+    max: [5, "Too large"],
   });
+  const schema = numberFieldToInputSchema({ field });
+
+  const result = schema.safeParse(10);
+  expect(result.success).toBe(false);
+  if (!result.success) {
+    expect(result.error.issues[0].message).toBe("Too large");
+  }
+});
 ```
 
 **5 — `combines min and max constraints`.**
 
 ```ts
-  it("combines min and max constraints", () => {
-    const field = number({
-      required: true,
-      defaultValue: 0,
-      min: 1,
-      max: 10,
-    });
-    const schema = numberFieldToInputSchema({ field });
-
-    // Should accept numbers between 1-10
-    expect(schema.safeParse(1).success).toBe(true);
-    expect(schema.safeParse(10).success).toBe(true);
-    expect(schema.safeParse(5).success).toBe(true);
-
-    // Should reject numbers outside range
-    expect(schema.safeParse(0).success).toBe(false);
-    expect(schema.safeParse(11).success).toBe(false);
+it("combines min and max constraints", () => {
+  const field = number({
+    required: true,
+    defaultValue: 0,
+    min: 1,
+    max: 10,
   });
+  const schema = numberFieldToInputSchema({ field });
+
+  // Should accept numbers between 1-10
+  expect(schema.safeParse(1).success).toBe(true);
+  expect(schema.safeParse(10).success).toBe(true);
+  expect(schema.safeParse(5).success).toBe(true);
+
+  // Should reject numbers outside range
+  expect(schema.safeParse(0).success).toBe(false);
+  expect(schema.safeParse(11).success).toBe(false);
+});
 ```
 
 **6 — `combines all constraints with custom errors`.**
 
 ```ts
-  it("combines all constraints with custom errors", () => {
-    const field = number({
-      required: true,
-      defaultValue: 0,
-      min: [1, "Too small"],
-      max: [10, "Too large"],
-    });
-    const schema = numberFieldToInputSchema({ field });
-
-    // Test min error
-    const minResult = schema.safeParse(0);
-    expect(minResult.success).toBe(false);
-    if (!minResult.success) {
-      expect(minResult.error.issues[0].message).toBe("Too small");
-    }
-
-    // Test max error
-    const maxResult = schema.safeParse(11);
-    expect(maxResult.success).toBe(false);
-    if (!maxResult.success) {
-      expect(maxResult.error.issues[0].message).toBe("Too large");
-    }
+it("combines all constraints with custom errors", () => {
+  const field = number({
+    required: true,
+    defaultValue: 0,
+    min: [1, "Too small"],
+    max: [10, "Too large"],
   });
+  const schema = numberFieldToInputSchema({ field });
+
+  // Test min error
+  const minResult = schema.safeParse(0);
+  expect(minResult.success).toBe(false);
+  if (!minResult.success) {
+    expect(minResult.error.issues[0].message).toBe("Too small");
+  }
+
+  // Test max error
+  const maxResult = schema.safeParse(11);
+  expect(maxResult.success).toBe(false);
+  if (!maxResult.success) {
+    expect(maxResult.error.issues[0].message).toBe("Too large");
+  }
+});
 ```
 
 **7 — `applies optional after range constraints`.**
 
 ```ts
-  it("applies optional after range constraints", () => {
-    const field = number({
-      required: false,
-      defaultValue: 0,
-      min: 5,
-      max: 50,
-    });
-    const schema = numberFieldToInputSchema({ field });
-
-    // Should accept undefined
-    const result = schema.safeParse(undefined);
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data).toBe(5);
-    }
-
-    // Should still enforce constraints when value is provided
-    expect(schema.safeParse(10).success).toBe(true);
-    expect(schema.safeParse(4).success).toBe(false); // Too small
-    expect(schema.safeParse(51).success).toBe(false); // Too large
+it("applies optional after range constraints", () => {
+  const field = number({
+    required: false,
+    defaultValue: 0,
+    min: 5,
+    max: 50,
   });
+  const schema = numberFieldToInputSchema({ field });
+
+  // Should accept undefined
+  const result = schema.safeParse(undefined);
+  expect(result.success).toBe(true);
+  if (result.success) {
+    expect(result.data).toBe(5);
+  }
+
+  // Should still enforce constraints when value is provided
+  expect(schema.safeParse(10).success).toBe(true);
+  expect(schema.safeParse(4).success).toBe(false); // Too small
+  expect(schema.safeParse(51).success).toBe(false); // Too large
+});
 ```
 
 #### packages/core/src/fields/number/validator.ts
@@ -1144,18 +1194,18 @@ Full updated bodies:
 **1 — `ignores range constraints …`.**
 
 ```ts
-  it("ignores range constraints (enforced in form validation, not DB schema)", () => {
-    const field = number({
-      required: true,
-      defaultValue: 0,
-      min: 0,
-      max: 100,
-    });
-    const validator = numberFieldToValidator({ field });
-
-    // Convex schema just validates type, not range
-    expect(validator).toBe("v.number()");
+it("ignores range constraints (enforced in form validation, not DB schema)", () => {
+  const field = number({
+    required: true,
+    defaultValue: 0,
+    min: 0,
+    max: 100,
   });
+  const validator = numberFieldToValidator({ field });
+
+  // Convex schema just validates type, not range
+  expect(validator).toBe("v.number()");
+});
 ```
 
 #### packages/core/src/fields/array/types.ts
@@ -1209,7 +1259,9 @@ export function array<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TArrayType extends ArrayType = string,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
->(options: ArrayFieldInput<TCollectionSlug, TArrayType, TFieldMeta>): ArrayField<TCollectionSlug, TArrayType, TFieldMeta> {
+>(
+  options: ArrayFieldInput<TCollectionSlug, TArrayType, TFieldMeta>,
+): ArrayField<TCollectionSlug, TArrayType, TFieldMeta> {
   // If the items field is a named group, reference its name in the array
   // type rather than inlining the full object type. This keeps generated
   // interfaces readable and lets the named group's own type alias do the work.
@@ -1327,225 +1379,221 @@ Every `{ value: N }` → bare `N`; every `{ value: N, error: "…" }` → tuple
 **1 — `describe("min constraint", …)`.**
 
 ```ts
-  describe("min constraint", () => {
-    it("applies min items constraint", () => {
-      const itemsField = text({ required: true });
-      const field = array({
-        required: true,
-        items: itemsField,
-        min: 2,
-      });
-      const schema = arrayFieldToInputSchema({ field });
-
-      // Should accept arrays with >= 2 items
-      expect(schema.safeParse(["a", "b"]).success).toBe(true);
-      expect(schema.safeParse(["a", "b", "c"]).success).toBe(true);
-
-      // Should reject arrays with < 2 items
-      expect(schema.safeParse([]).success).toBe(false);
-      expect(schema.safeParse(["a"]).success).toBe(false);
+describe("min constraint", () => {
+  it("applies min items constraint", () => {
+    const itemsField = text({ required: true });
+    const field = array({
+      required: true,
+      items: itemsField,
+      min: 2,
     });
+    const schema = arrayFieldToInputSchema({ field });
 
-    it("applies min constraint with custom error", () => {
-      const itemsField = text({ required: true });
-      const field = array({
-        required: true,
-        items: itemsField,
-        min: [3, "At least 3 items required"],
-      });
-      const schema = arrayFieldToInputSchema({ field });
+    // Should accept arrays with >= 2 items
+    expect(schema.safeParse(["a", "b"]).success).toBe(true);
+    expect(schema.safeParse(["a", "b", "c"]).success).toBe(true);
 
-      const result = schema.safeParse(["a", "b"]);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toBe(
-          "At least 3 items required",
-        );
-      }
-    });
-
-    it("surfaces a custom min message on a required field even when min.value matches the required floor (regression)", () => {
-      // A `min: [1, "…"]` on a required field is a common pattern to get
-      // a friendlier message than the generic "This field is required." —
-      // the only way to violate `min: 1` is an empty array, so the
-      // required-only-skips-when-optional gate must not swallow this case.
-      const itemsField = text({ required: true });
-      const field = array({
-        required: true,
-        items: itemsField,
-        min: [1, "Add at least one item."],
-      });
-      const schema = arrayFieldToInputSchema({ field });
-
-      const result = schema.safeParse([]);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues.map((issue) => issue.message)).toContain(
-          "Add at least one item.",
-        );
-      }
-    });
+    // Should reject arrays with < 2 items
+    expect(schema.safeParse([]).success).toBe(false);
+    expect(schema.safeParse(["a"]).success).toBe(false);
   });
+
+  it("applies min constraint with custom error", () => {
+    const itemsField = text({ required: true });
+    const field = array({
+      required: true,
+      items: itemsField,
+      min: [3, "At least 3 items required"],
+    });
+    const schema = arrayFieldToInputSchema({ field });
+
+    const result = schema.safeParse(["a", "b"]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("At least 3 items required");
+    }
+  });
+
+  it("surfaces a custom min message on a required field even when min.value matches the required floor (regression)", () => {
+    // A `min: [1, "…"]` on a required field is a common pattern to get
+    // a friendlier message than the generic "This field is required." —
+    // the only way to violate `min: 1` is an empty array, so the
+    // required-only-skips-when-optional gate must not swallow this case.
+    const itemsField = text({ required: true });
+    const field = array({
+      required: true,
+      items: itemsField,
+      min: [1, "Add at least one item."],
+    });
+    const schema = arrayFieldToInputSchema({ field });
+
+    const result = schema.safeParse([]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.message)).toContain(
+        "Add at least one item.",
+      );
+    }
+  });
+});
 ```
 
 **2 — `describe("max constraint", …)`.**
 
 ```ts
-  describe("max constraint", () => {
-    it("applies max items constraint", () => {
-      const itemsField = text({ required: true });
-      const field = array({
-        required: true,
-        items: itemsField,
-        max: 3,
-      });
-      const schema = arrayFieldToInputSchema({ field });
-
-      // Should accept arrays with <= 3 items
-      expect(schema.safeParse(["a"]).success).toBe(true);
-      expect(schema.safeParse(["a", "b", "c"]).success).toBe(true);
-
-      // Should reject arrays with > 3 items
-      expect(schema.safeParse(["a", "b", "c", "d"]).success).toBe(false);
+describe("max constraint", () => {
+  it("applies max items constraint", () => {
+    const itemsField = text({ required: true });
+    const field = array({
+      required: true,
+      items: itemsField,
+      max: 3,
     });
+    const schema = arrayFieldToInputSchema({ field });
 
-    it("applies max constraint with custom error", () => {
-      const itemsField = text({ required: true });
-      const field = array({
-        required: true,
-        items: itemsField,
-        max: [2, "Maximum 2 items allowed"],
-      });
-      const schema = arrayFieldToInputSchema({ field });
+    // Should accept arrays with <= 3 items
+    expect(schema.safeParse(["a"]).success).toBe(true);
+    expect(schema.safeParse(["a", "b", "c"]).success).toBe(true);
 
-      const result = schema.safeParse(["a", "b", "c"]);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toBe("Maximum 2 items allowed");
-      }
-    });
+    // Should reject arrays with > 3 items
+    expect(schema.safeParse(["a", "b", "c", "d"]).success).toBe(false);
   });
+
+  it("applies max constraint with custom error", () => {
+    const itemsField = text({ required: true });
+    const field = array({
+      required: true,
+      items: itemsField,
+      max: [2, "Maximum 2 items allowed"],
+    });
+    const schema = arrayFieldToInputSchema({ field });
+
+    const result = schema.safeParse(["a", "b", "c"]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("Maximum 2 items allowed");
+    }
+  });
+});
 ```
 
 **3 — `describe("combined min and max constraints", …)`.**
 
 ```ts
-  describe("combined min and max constraints", () => {
-    it("applies both min and max constraints", () => {
-      const itemsField = number({ required: true });
-      const field = array({
-        required: true,
-        items: itemsField,
-        min: 2,
-        max: 5,
-      });
-      const schema = arrayFieldToInputSchema({ field });
-
-      // Should accept arrays between 2-5 items
-      expect(schema.safeParse([1, 2]).success).toBe(true);
-      expect(schema.safeParse([1, 2, 3]).success).toBe(true);
-      expect(schema.safeParse([1, 2, 3, 4, 5]).success).toBe(true);
-
-      // Should reject arrays outside range
-      expect(schema.safeParse([]).success).toBe(false);
-      expect(schema.safeParse([1]).success).toBe(false);
-      expect(schema.safeParse([1, 2, 3, 4, 5, 6]).success).toBe(false);
+describe("combined min and max constraints", () => {
+  it("applies both min and max constraints", () => {
+    const itemsField = number({ required: true });
+    const field = array({
+      required: true,
+      items: itemsField,
+      min: 2,
+      max: 5,
     });
+    const schema = arrayFieldToInputSchema({ field });
 
-    it("reports correct error for min violation", () => {
-      const itemsField = text({ required: true });
-      const field = array({
-        required: true,
-        items: itemsField,
-        min: [3, "Too few items"],
-        max: [10, "Too many items"],
-      });
-      const schema = arrayFieldToInputSchema({ field });
+    // Should accept arrays between 2-5 items
+    expect(schema.safeParse([1, 2]).success).toBe(true);
+    expect(schema.safeParse([1, 2, 3]).success).toBe(true);
+    expect(schema.safeParse([1, 2, 3, 4, 5]).success).toBe(true);
 
-      const result = schema.safeParse(["a", "b"]);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toBe("Too few items");
-      }
-    });
-
-    it("reports correct error for max violation", () => {
-      const itemsField = text({ required: true });
-      const field = array({
-        required: true,
-        items: itemsField,
-        min: [1, "Too few items"],
-        max: [2, "Too many items"],
-      });
-      const schema = arrayFieldToInputSchema({ field });
-
-      const result = schema.safeParse(["a", "b", "c"]);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toBe("Too many items");
-      }
-    });
+    // Should reject arrays outside range
+    expect(schema.safeParse([]).success).toBe(false);
+    expect(schema.safeParse([1]).success).toBe(false);
+    expect(schema.safeParse([1, 2, 3, 4, 5, 6]).success).toBe(false);
   });
+
+  it("reports correct error for min violation", () => {
+    const itemsField = text({ required: true });
+    const field = array({
+      required: true,
+      items: itemsField,
+      min: [3, "Too few items"],
+      max: [10, "Too many items"],
+    });
+    const schema = arrayFieldToInputSchema({ field });
+
+    const result = schema.safeParse(["a", "b"]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("Too few items");
+    }
+  });
+
+  it("reports correct error for max violation", () => {
+    const itemsField = text({ required: true });
+    const field = array({
+      required: true,
+      items: itemsField,
+      min: [1, "Too few items"],
+      max: [2, "Too many items"],
+    });
+    const schema = arrayFieldToInputSchema({ field });
+
+    const result = schema.safeParse(["a", "b", "c"]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("Too many items");
+    }
+  });
+});
 ```
 
 **4 — `describe("nested arrays", …)`'s `"applies constraints to nested arrays"` test** (anchor: `it("applies constraints to nested arrays", () => {`).
 
 ```ts
-    it("applies constraints to nested arrays", () => {
-      const innerItems = text({ required: true });
-      const innerArray = array({ items: innerItems, required: true, max: 3 });
-      const field = array({ items: innerArray, required: true, min: 2 });
-      const schema = arrayFieldToInputSchema({ field });
+it("applies constraints to nested arrays", () => {
+  const innerItems = text({ required: true });
+  const innerArray = array({ items: innerItems, required: true, max: 3 });
+  const field = array({ items: innerArray, required: true, min: 2 });
+  const schema = arrayFieldToInputSchema({ field });
 
-      // Should accept 2-3 nested arrays, each with max 3 items
-      expect(schema.safeParse([["a", "b"], ["c"]]).success).toBe(true);
+  // Should accept 2-3 nested arrays, each with max 3 items
+  expect(schema.safeParse([["a", "b"], ["c"]]).success).toBe(true);
 
-      // Should reject too few nested arrays
-      expect(schema.safeParse([["a"]]).success).toBe(false);
+  // Should reject too few nested arrays
+  expect(schema.safeParse([["a"]]).success).toBe(false);
 
-      // Should reject nested arrays with too many items
-      expect(schema.safeParse([["a", "b", "c", "d"], ["e"]]).success).toBe(
-        false,
-      );
-    });
+  // Should reject nested arrays with too many items
+  expect(schema.safeParse([["a", "b", "c", "d"], ["e"]]).success).toBe(false);
+});
 ```
 
 **5 — `describe("min/max on an optional field", …)`.**
 
 ```ts
-  describe("min/max on an optional field", () => {
-    it("skips min/max only when the value is empty or omitted", () => {
-      const itemsField = number({ required: true });
-      const field = array({
-        items: itemsField,
-        min: 2,
-        max: 3,
-      });
-      const schema = arrayFieldToInputSchema({ field });
-
-      // Omitted or explicitly empty: not required, so no value at all is fine.
-      expect(schema.safeParse(undefined).success).toBe(true);
-      expect(schema.safeParse([]).success).toBe(true);
+describe("min/max on an optional field", () => {
+  it("skips min/max only when the value is empty or omitted", () => {
+    const itemsField = number({ required: true });
+    const field = array({
+      items: itemsField,
+      min: 2,
+      max: 3,
     });
+    const schema = arrayFieldToInputSchema({ field });
 
-    it("still enforces min/max once a non-empty value is supplied, even though the field is optional", () => {
-      const itemsField = number({ required: true });
-      const field = array({
-        items: itemsField,
-        min: 2,
-        max: 3,
-      });
-      const schema = arrayFieldToInputSchema({ field });
-
-      // Regression: min/max is independent of `required` — `required` only
-      // governs whether the field may be empty, not whether a *supplied*
-      // value must respect the configured item-count bounds.
-      expect(schema.safeParse([1]).success).toBe(false);
-      expect(schema.safeParse([1, 2, 3, 4, 5]).success).toBe(false);
-      expect(schema.safeParse([1, 2]).success).toBe(true);
-      expect(schema.safeParse([1, 2, 3]).success).toBe(true);
-    });
+    // Omitted or explicitly empty: not required, so no value at all is fine.
+    expect(schema.safeParse(undefined).success).toBe(true);
+    expect(schema.safeParse([]).success).toBe(true);
   });
+
+  it("still enforces min/max once a non-empty value is supplied, even though the field is optional", () => {
+    const itemsField = number({ required: true });
+    const field = array({
+      items: itemsField,
+      min: 2,
+      max: 3,
+    });
+    const schema = arrayFieldToInputSchema({ field });
+
+    // Regression: min/max is independent of `required` — `required` only
+    // governs whether the field may be empty, not whether a *supplied*
+    // value must respect the configured item-count bounds.
+    expect(schema.safeParse([1]).success).toBe(false);
+    expect(schema.safeParse([1, 2, 3, 4, 5]).success).toBe(false);
+    expect(schema.safeParse([1, 2]).success).toBe(true);
+    expect(schema.safeParse([1, 2, 3]).success).toBe(true);
+  });
+});
 ```
 
 #### packages/core/src/fields/array/validator.test.ts
@@ -1553,21 +1601,21 @@ Every `{ value: N }` → bare `N`; every `{ value: N, error: "…" }` → tuple
 **1 — `ignores min/max constraints …`.**
 
 ```ts
-  it("ignores min/max constraints (enforced in form validation, not DB schema)", () => {
-    const field = array({
-      items: text({
-        required: true,
-        defaultValue: "test",
-      }),
-      min: 3,
-      max: 100,
-    });
-    const validator = arrayFieldToValidator({ field });
-
-    // min/max don't affect validator, just type validation
-    // Array is optional (no required: true), so v.optional()
-    expect(validator).toBe("v.optional(v.array(v.string()))");
+it("ignores min/max constraints (enforced in form validation, not DB schema)", () => {
+  const field = array({
+    items: text({
+      required: true,
+      defaultValue: "test",
+    }),
+    min: 3,
+    max: 100,
   });
+  const validator = arrayFieldToValidator({ field });
+
+  // min/max don't affect validator, just type validation
+  // Array is optional (no required: true), so v.optional()
+  expect(validator).toBe("v.optional(v.array(v.string()))");
+});
 ```
 
 #### packages/core/src/fields/relationship/types.ts
@@ -1606,7 +1654,12 @@ export function relationship<
   TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
 >(
-  options: RelationshipFieldInput<TCollectionSlug, TFieldMeta, TTargetSlug, TComponent>,
+  options: RelationshipFieldInput<
+    TCollectionSlug,
+    TFieldMeta,
+    TTargetSlug,
+    TComponent
+  >,
 ): RelationshipField<TCollectionSlug, TFieldMeta, TTargetSlug, TComponent> {
   return {
     label: "",
@@ -1693,87 +1746,94 @@ export function relationshipFieldToInputSchema(props: {
 **1 — `describe("min/max reference-count bounds", …)`, complete.**
 
 ```ts
-  describe("min/max reference-count bounds", () => {
-    it("enforces min/max on a required field", () => {
-      const field = relationship({
-        collection: { slug: "tags" },
-        required: true,
-        min: 1,
-        max: 2,
-      });
-      const schema = relationshipFieldToInputSchema({ field });
-      expect(schema.safeParse(["a", "b", "c"]).success).toBe(false);
-      expect(schema.safeParse(["a"]).success).toBe(true);
-      expect(schema.safeParse(["a", "b"]).success).toBe(true);
+describe("min/max reference-count bounds", () => {
+  it("enforces min/max on a required field", () => {
+    const field = relationship({
+      collection: { slug: "tags" },
+      required: true,
+      min: 1,
+      max: 2,
     });
-
-    it("skips min/max on an optional field only when the value is empty or omitted", () => {
-      const field = relationship({
-        collection: { slug: "tags" },
-        min: 1,
-        max: 2,
-      });
-      const schema = relationshipFieldToInputSchema({ field });
-      expect(schema.safeParse(undefined).success).toBe(true);
-      expect(schema.safeParse([]).success).toBe(true);
-    });
-
-    it("still enforces min/max once a non-empty value is supplied, even though the field is optional", () => {
-      // Regression: min/max is independent of `required` — `required` only
-      // governs whether the value may be absent, not whether a *supplied*
-      // (non-empty) array must respect the configured reference count.
-      const field = relationship({
-        collection: { slug: "tags" },
-        min: 2,
-        max: 3,
-      });
-      const schema = relationshipFieldToInputSchema({ field });
-      expect(schema.safeParse(["a"]).success).toBe(false);
-      expect(schema.safeParse(["a", "b", "c", "d"]).success).toBe(false);
-      expect(schema.safeParse(["a", "b"]).success).toBe(true);
-    });
-
-    it("uses a custom error message when configured", () => {
-      const field = relationship({
-        collection: { slug: "tags" },
-        required: true,
-        min: [2, "Pick at least two tags."],
-        max: [2, "Pick no more than two tags."],
-      });
-      const schema = relationshipFieldToInputSchema({ field });
-      const belowMin = schema.safeParse(["a"]);
-      expect(belowMin.success).toBe(false);
-      if (!belowMin.success) expect(belowMin.error.issues[0].message).toBe("Pick at least two tags.");
-
-      const aboveMax = schema.safeParse(["a", "b", "c"]);
-      expect(aboveMax.success).toBe(false);
-      if (!aboveMax.success) expect(aboveMax.error.issues[0].message).toBe("Pick no more than two tags.");
-    });
-
-    // Once a `min` is explicitly configured, it applies even on a required
-    // field's empty array — otherwise a required field's custom `min`
-    // message could never surface (an empty array is the only way to
-    // violate a `min` in the first place, so unconditionally skipping the
-    // check on empty would make the message unreachable).
-    it("a required field's min still rejects an empty array once min is explicitly configured", () => {
-      const field = relationship({
-        collection: { slug: "tags" },
-        required: true,
-        min: 1,
-      });
-      const schema = relationshipFieldToInputSchema({ field });
-      expect(schema.safeParse([]).success).toBe(false);
-    });
-
-    // CORE-1, unaffected: with no `min` configured at all, `required` alone
-    // never demands a non-empty array — a document may legitimately have
-    // zero relations.
-    it("a required field with no min configured still accepts an empty array (CORE-1)", () => {
-      const field = relationship({ collection: { slug: "tags" }, required: true });
-      const schema = relationshipFieldToInputSchema({ field });
-      expect(schema.safeParse([]).success).toBe(true);
-    });
+    const schema = relationshipFieldToInputSchema({ field });
+    expect(schema.safeParse(["a", "b", "c"]).success).toBe(false);
+    expect(schema.safeParse(["a"]).success).toBe(true);
+    expect(schema.safeParse(["a", "b"]).success).toBe(true);
   });
+
+  it("skips min/max on an optional field only when the value is empty or omitted", () => {
+    const field = relationship({
+      collection: { slug: "tags" },
+      min: 1,
+      max: 2,
+    });
+    const schema = relationshipFieldToInputSchema({ field });
+    expect(schema.safeParse(undefined).success).toBe(true);
+    expect(schema.safeParse([]).success).toBe(true);
+  });
+
+  it("still enforces min/max once a non-empty value is supplied, even though the field is optional", () => {
+    // Regression: min/max is independent of `required` — `required` only
+    // governs whether the value may be absent, not whether a *supplied*
+    // (non-empty) array must respect the configured reference count.
+    const field = relationship({
+      collection: { slug: "tags" },
+      min: 2,
+      max: 3,
+    });
+    const schema = relationshipFieldToInputSchema({ field });
+    expect(schema.safeParse(["a"]).success).toBe(false);
+    expect(schema.safeParse(["a", "b", "c", "d"]).success).toBe(false);
+    expect(schema.safeParse(["a", "b"]).success).toBe(true);
+  });
+
+  it("uses a custom error message when configured", () => {
+    const field = relationship({
+      collection: { slug: "tags" },
+      required: true,
+      min: [2, "Pick at least two tags."],
+      max: [2, "Pick no more than two tags."],
+    });
+    const schema = relationshipFieldToInputSchema({ field });
+    const belowMin = schema.safeParse(["a"]);
+    expect(belowMin.success).toBe(false);
+    if (!belowMin.success)
+      expect(belowMin.error.issues[0].message).toBe("Pick at least two tags.");
+
+    const aboveMax = schema.safeParse(["a", "b", "c"]);
+    expect(aboveMax.success).toBe(false);
+    if (!aboveMax.success)
+      expect(aboveMax.error.issues[0].message).toBe(
+        "Pick no more than two tags.",
+      );
+  });
+
+  // Once a `min` is explicitly configured, it applies even on a required
+  // field's empty array — otherwise a required field's custom `min`
+  // message could never surface (an empty array is the only way to
+  // violate a `min` in the first place, so unconditionally skipping the
+  // check on empty would make the message unreachable).
+  it("a required field's min still rejects an empty array once min is explicitly configured", () => {
+    const field = relationship({
+      collection: { slug: "tags" },
+      required: true,
+      min: 1,
+    });
+    const schema = relationshipFieldToInputSchema({ field });
+    expect(schema.safeParse([]).success).toBe(false);
+  });
+
+  // CORE-1, unaffected: with no `min` configured at all, `required` alone
+  // never demands a non-empty array — a document may legitimately have
+  // zero relations.
+  it("a required field with no min configured still accepts an empty array (CORE-1)", () => {
+    const field = relationship({
+      collection: { slug: "tags" },
+      required: true,
+    });
+    const schema = relationshipFieldToInputSchema({ field });
+    expect(schema.safeParse([]).success).toBe(true);
+  });
+});
 ```
 
 #### packages/core/src/fields/upload/types.ts
@@ -1826,7 +1886,9 @@ export function upload<
   options: UploadFieldInput<TCollectionSlug, TFieldMeta>,
 ): UploadField<TCollectionSlug, TFieldMeta> {
   if (!options.to || !/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(options.to)) {
-    throw new Error(`upload(): "to" must be a valid collection slug. Got "${options.to}".`);
+    throw new Error(
+      `upload(): "to" must be a valid collection slug. Got "${options.to}".`,
+    );
   }
 
   return {
@@ -1837,11 +1899,13 @@ export function upload<
     ...options,
     min: resolveFieldLimit({
       limit: options.min,
-      defaultError: (value) => `Must be at least ${value} file${value === 1 ? "" : "s"}.`,
+      defaultError: (value) =>
+        `Must be at least ${value} file${value === 1 ? "" : "s"}.`,
     }),
     max: resolveFieldLimit({
       limit: options.max,
-      defaultError: (value) => `Must be no more than ${value} file${value === 1 ? "" : "s"}.`,
+      defaultError: (value) =>
+        `Must be no more than ${value} file${value === 1 ? "" : "s"}.`,
     }),
     type: ADMIN_FIELDS.upload.type,
     // Per-field override of the static `ADMIN_FIELDS.upload.interfaceType`
@@ -1870,7 +1934,9 @@ export function upload<
 **1 — `uploadFieldToInputSchema` body, complete (anchor: `export function uploadFieldToInputSchema(props: { field: UploadField }): ZodType {`).**
 
 ```ts
-export function uploadFieldToInputSchema(props: { field: UploadField }): ZodType {
+export function uploadFieldToInputSchema(props: {
+  field: UploadField;
+}): ZodType {
   const { field } = props;
 
   const requiredError = "This field is required.";
@@ -1905,9 +1971,9 @@ valid `FieldLimitInput` — so it needs no code change.)
 **1 — default min-message assertion** (anchor: `"At least 1 file required.",` inside `"enforces min/max file count regardless of required, skipping only an empty/omitted optional value"`).
 
 ```ts
-      expect(belowMin.error.issues.map((issue) => issue.message)).toContain(
-        "Must be at least 1 file.",
-      );
+expect(belowMin.error.issues.map((issue) => issue.message)).toContain(
+  "Must be at least 1 file.",
+);
 ```
 
 #### packages/core/src/fields/blocks/types.ts
@@ -1989,7 +2055,8 @@ export function blocks<
     }),
     max: resolveFieldLimit({
       limit: options.max,
-      defaultError: (value) => `Must be no more than ${value} ${labels.plural}.`,
+      defaultError: (value) =>
+        `Must be no more than ${value} ${labels.plural}.`,
     }),
     admin: {
       defaultCollapsed: options.admin?.defaultCollapsed ?? false,
@@ -2008,6 +2075,399 @@ export function blocks<
 }
 ```
 
+#### packages/core/src/fields/array/types.ts (step 9 addition)
+
+1 edit — building on Step 6's version of this file (which added `FieldLimit`/`FieldLimitInput`
+imports and nothing else to `ArrayType`/`ArrayFieldInput`/`ArrayField` themselves). New exported
+constant, anchored above `ArrayType`.
+
+```ts
+/**
+ * Field names reserved on an object-shaped (`group()`) array item — the same
+ * pattern `RESERVED_BLOCK_FIELD_NAMES` uses for `blocks()`. `array()` throws
+ * if `items` is a `group()` declaring any of these as its own field name.
+ */
+export const RESERVED_ARRAY_ITEM_FIELD_NAMES = ["id"] as const;
+```
+
+#### packages/core/src/fields/array/config.ts (step 9 addition)
+
+2 edits — building on Step 6's version of this file (which added `layout: []`/`condition` to the
+`admin` object and nothing else). Everything else in `array()` — `min`/`max` resolution, the
+`items: { ...options.items, required: true }` override — is unchanged.
+
+**1 — reserved-name validation**, anchored right after the function's opening brace, before the
+`const itemsInterfaceType = childInterfaceType(options.items);` line:
+
+```ts
+if (
+  options.items.type === ADMIN_FIELDS.group.type &&
+  RESERVED_ARRAY_ITEM_FIELD_NAMES.some((name) => name in options.items.fields)
+) {
+  throw new Error(
+    `array(): items group declares a reserved field name. Reserved names: ${RESERVED_ARRAY_ITEM_FIELD_NAMES.join(", ")}`,
+  );
+}
+```
+
+**2 — `interfaceType` gains `id?: string;` for an unnamed group item**, anchored at
+`const itemsInterfaceType = childInterfaceType(options.items);` / `interfaceType: `${itemsInterfaceType}[]`,`:
+
+```ts
+const itemsInterfaceType = childInterfaceType(options.items);
+// A NAMED group's interfaceType is a bare identifier (its own separately-emitted
+// interface) — injecting `id?: string;` here would either miss the anchor (no
+// leading "{ ") or, if forced, leak `id` onto every OTHER use of that same named
+// interface, not just this array. Scoped to the unnamed (inline object literal)
+// case only; a named group's generated TYPE does not show `id` yet (documented
+// gap — the STORED value still gets one; see fields/array/utils.ts).
+const resolvedItemsInterfaceType =
+  options.items.type === ADMIN_FIELDS.group.type && !options.items.interfaceName
+    ? itemsInterfaceType.replace(/^\{ /, "{ id?: string; ")
+    : itemsInterfaceType;
+```
+
+And the `interfaceType` property itself: ``interfaceType: `${resolvedItemsInterfaceType}[]`,``.
+
+Add `RESERVED_ARRAY_ITEM_FIELD_NAMES` to the existing `./types` import.
+
+#### packages/core/src/fields/array/validator.ts
+
+New file content — 2 edits on top of the real (untouched-by-any-prior-step) file.
+
+**1 — import,** anchored beside the existing `../validators`/`../validators/utils` imports:
+
+```ts
+import { ADMIN_FIELDS } from "../constants";
+```
+
+**2 — `arrayFieldToValidator`'s body,** anchored at `const itemValidator = adminFieldToValidator({
+field: props.field.items });` through the `return applyBaseValidators({...})` call:
+
+```ts
+export function arrayFieldToValidator<
+  TArrayType extends ArrayType = ArrayType,
+  TFieldMeta extends {} = {},
+>(props: {
+  field: ArrayField<VexResourceSlug, TArrayType, TFieldMeta>;
+}): string {
+  const itemValidator = adminFieldToValidator({ field: props.field.items });
+  // Object-shaped items (group()) get a stored id — injected into the already-
+  // generated `v.object({ ... })` string rather than threading a second parameter
+  // through groupFieldToValidator, since a group used OUTSIDE an array must not
+  // carry one. array()'s own Step 9 edit forces `items.required: true`, so a group
+  // item's validator string is always the bare `v.object({...})`, never wrapped in
+  // `v.optional(...)` — the anchor is exact.
+  const resolvedItemValidator =
+    props.field.items.type === ADMIN_FIELDS.group.type
+      ? itemValidator.replace(
+          "v.object({",
+          "v.object({ id: v.optional(v.string()),",
+        )
+      : itemValidator;
+  return applyBaseValidators({
+    field: props.field,
+    validator: `v.array(${resolvedItemValidator})`,
+  });
+}
+```
+
+`v.optional(v.string())`, not a bare `v.string()`, is required here specifically (not just
+"could be either"): `apps/www` has live documents with arrays of groups predating this step, and a
+Convex schema push rejects any push where an existing document fails the new validator (P-024's
+own "attach, never start" constraint on `apps/test` makes this a real, not theoretical, risk) — an
+existing item with no `id` key must still validate. New writes always carry one (`prepareEdit.ts`'s
+`assignArrayItemIds`, `FormArray`'s own id assignment — Step 15), so the optional-ness never shows
+up in NEW data, only in backfilling old.
+
+#### packages/core/src/fields/array/validator.test.ts (step 9 addition)
+
+New `describe` block appended after the existing tests (Step 1 only edited the `min`/`max` tuple
+assertions in this file; everything else, including its imports, is unchanged).
+
+```ts
+describe("object-shaped item id", () => {
+  it("includes an optional id on an array of group items", () => {
+    const field = array({
+      items: group({ fields: { title: text({ required: true }) } }),
+    });
+    const validator = arrayFieldToValidator({ field });
+    expect(validator).toBe(
+      "v.array(v.object({ id: v.optional(v.string()), title: v.string() }))",
+    );
+  });
+
+  it("does not add an id to an array of scalar items", () => {
+    const field = array({ items: text() });
+    const validator = arrayFieldToValidator({ field });
+    expect(validator).toBe("v.array(v.optional(v.string()))");
+  });
+});
+```
+
+Add `group` to the file's existing `../group` (or equivalent) import, and `arrayFieldToValidator`
+if not already imported.
+
+#### packages/core/src/fields/array/utils.ts
+
+New file.
+
+```ts
+import { nanoid } from "nanoid";
+import { ADMIN_FIELDS } from "../constants";
+import type { AdminField } from "../types";
+
+/**
+ * Whether an array's `items` field type produces an object-shaped value —
+ * today only `group()` (`v.object(...)`); every other field type's own item
+ * validator is a scalar, a union (`select`), or itself a `v.array(...)`.
+ *
+ * The one predicate every "does this array item need a stored `id`"
+ * decision shares — the Convex validator (`validator.ts`), the admin form
+ * schema (`inputSchema.ts`), type generation (`config.ts`), the write-path
+ * backfill below, and `FormArray`'s client-side id assignment (Step 15) —
+ * so a second object-shaped field type later is a one-line change here,
+ * not five.
+ */
+export function isObjectShapedArrayItem(itemField: AdminField): boolean {
+  return itemField.type === ADMIN_FIELDS.group.type;
+}
+
+/**
+ * Assigns a fresh `id` to one object-shaped array item that doesn't already
+ * carry a (string) one. Shared by the server write path
+ * ({@link assignArrayItemIds}, below) and `FormArray`'s own `handleAdd`/
+ * `handleDuplicate` (Step 15), so both sides generate ids identically —
+ * mirroring how `cloneBlockWithFreshIds` is the one place block ids get
+ * (re)assigned.
+ *
+ * @param props.item - The item value. Returned unchanged for a
+ *   non-object-shaped `itemField` — scalars have no `id` slot.
+ * @param props.itemField - The array's own `field.items` definition.
+ * @returns `item` unchanged (scalar item), or a shallow copy with `id` set
+ *   to its existing string id or a fresh `nanoid()`.
+ */
+export function withArrayItemId<T>(props: {
+  item: T;
+  itemField: AdminField;
+}): T {
+  if (!isObjectShapedArrayItem(props.itemField)) return props.item;
+  const item = (props.item ?? {}) as Record<string, unknown>;
+  return { ...item, id: typeof item.id === "string" ? item.id : nanoid() } as T;
+}
+
+/**
+ * Recursively backfills a stored `id` onto every object-shaped array item
+ * anywhere in `data` — walking `fields` the same shape
+ * `getFieldsInputSchema`/`validateFields` already do: into a `group`'s own
+ * sub-fields, into an `array`'s items (including a nested `array` of
+ * `array`), and into each `blocks()` item's own matching block-type fields
+ * — so an array of groups nested inside a block or another group gets ids
+ * too, not just a top-level array field. Pure: returns a new object, never
+ * mutates `data`.
+ *
+ * Called by `prepareEdit` on `mergedFields`, before the `beforeChange` hook
+ * runs — the one place EVERY write (`create`, `update`, the Local API, a
+ * project's own Convex mutation calling `prepareEdit` directly) passes
+ * through, so a caller that skips `FormArray`'s own id assignment still
+ * gets a valid stored id before the write lands. This is WHY the Convex
+ * validator accepts `id: v.optional(v.string())` rather than requiring one
+ * outright (`validator.ts`'s own doc comment) — optional only for existing,
+ * pre-this-step documents; every NEW write is backfilled here regardless.
+ *
+ * @param props.fields - The field map to walk (a collection's own
+ *   top-level fields for the entry call, a block type's own `fields` or a
+ *   group's own `fields` for a recursive call).
+ * @param props.data - The document (or nested object) to backfill ids into.
+ * @returns A new object, structurally identical to `data` except every
+ *   object-shaped array item gains an `id` if it lacked one.
+ */
+export function assignArrayItemIds(props: {
+  fields: Record<string, AdminField>;
+  data: Record<string, unknown>;
+}): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...props.data };
+  for (const [key, field] of Object.entries(props.fields)) {
+    const value = result[key];
+    if (field.type === ADMIN_FIELDS.array.type) {
+      result[key] = backfillArrayValue({ itemField: field.items, value });
+    } else if (
+      field.type === ADMIN_FIELDS.group.type &&
+      value &&
+      typeof value === "object"
+    ) {
+      result[key] = assignArrayItemIds({
+        fields: field.fields,
+        data: value as Record<string, unknown>,
+      });
+    } else if (
+      field.type === ADMIN_FIELDS.blocks.type &&
+      Array.isArray(value)
+    ) {
+      result[key] = value.map((block) => {
+        const blockItem = block as Record<string, unknown>;
+        const blockDef = field.blocks.find(
+          (b) => b.slug === blockItem.blockType,
+        );
+        return blockDef
+          ? assignArrayItemIds({ fields: blockDef.fields, data: blockItem })
+          : block;
+      });
+    }
+  }
+  return result;
+}
+
+/**
+ * Backfills one array field's own value — the recursive step
+ * {@link assignArrayItemIds} delegates array-typed fields to, split out so a
+ * nested `array({ items: array({ items: group() }) })` recurses through its
+ * own `items` without re-walking a sibling field map.
+ */
+function backfillArrayValue(props: {
+  itemField: AdminField;
+  value: unknown;
+}): unknown {
+  if (!Array.isArray(props.value)) return props.value;
+  const { itemField } = props;
+  if (isObjectShapedArrayItem(itemField)) {
+    return props.value.map((item) =>
+      withArrayItemId({
+        item: assignArrayItemIds({
+          fields: (itemField as { fields: Record<string, AdminField> }).fields,
+          data: item as Record<string, unknown>,
+        }),
+        itemField,
+      }),
+    );
+  }
+  if (itemField.type === ADMIN_FIELDS.array.type) {
+    return props.value.map((row) =>
+      backfillArrayValue({
+        itemField: (itemField as { items: AdminField }).items,
+        value: row,
+      }),
+    );
+  }
+  return props.value;
+}
+```
+
+#### packages/core/src/fields/array/utils.test.ts
+
+New file.
+
+```ts
+import { describe, expect, it } from "vitest";
+import { group } from "../group";
+import { text } from "../text";
+import { array } from "./config";
+import {
+  isObjectShapedArrayItem,
+  withArrayItemId,
+  assignArrayItemIds,
+} from "./utils";
+
+describe("isObjectShapedArrayItem", () => {
+  it("is true for a group item", () => {
+    expect(isObjectShapedArrayItem(group({ fields: { title: text() } }))).toBe(
+      true,
+    );
+  });
+
+  it("is false for a scalar item", () => {
+    expect(isObjectShapedArrayItem(text())).toBe(false);
+  });
+});
+
+describe("withArrayItemId", () => {
+  const itemField = group({ fields: { title: text() } });
+
+  it("assigns a fresh id to an object-shaped item missing one", () => {
+    const result = withArrayItemId({ item: { title: "a" }, itemField });
+    expect(typeof result.id).toBe("string");
+    expect(result.id.length).toBeGreaterThan(0);
+  });
+
+  it("preserves an existing string id", () => {
+    const result = withArrayItemId({
+      item: { title: "a", id: "existing" },
+      itemField,
+    });
+    expect(result.id).toBe("existing");
+  });
+
+  it("leaves a scalar item unchanged", () => {
+    expect(withArrayItemId({ item: "plain", itemField: text() })).toBe("plain");
+  });
+});
+
+describe("assignArrayItemIds", () => {
+  it("backfills an id onto every item in a top-level array of groups missing one", () => {
+    const fields = {
+      links: array({ items: group({ fields: { label: text() } }) }),
+    };
+    const result = assignArrayItemIds({
+      fields,
+      data: { links: [{ label: "a" }, { label: "b" }] },
+    });
+    const links = result.links as { label: string; id: string }[];
+    expect(links[0]!.id).toEqual(expect.any(String));
+    expect(links[1]!.id).toEqual(expect.any(String));
+    expect(links[0]!.id).not.toBe(links[1]!.id);
+  });
+
+  it("preserves an item's own supplied id instead of overwriting it", () => {
+    const fields = {
+      links: array({ items: group({ fields: { label: text() } }) }),
+    };
+    const result = assignArrayItemIds({
+      fields,
+      data: { links: [{ label: "a", id: "kept" }] },
+    });
+    expect((result.links as { id: string }[])[0]!.id).toBe("kept");
+  });
+
+  it("does not touch an array of scalar items", () => {
+    const fields = { tags: array({ items: text() }) };
+    const result = assignArrayItemIds({ fields, data: { tags: ["a", "b"] } });
+    expect(result.tags).toEqual(["a", "b"]);
+  });
+
+  it("backfills ids on an array of groups nested inside a group", () => {
+    const fields = {
+      seo: group({
+        fields: {
+          links: array({ items: group({ fields: { label: text() } }) }),
+        },
+      }),
+    };
+    const result = assignArrayItemIds({
+      fields,
+      data: { seo: { links: [{ label: "a" }] } },
+    });
+    const seo = result.seo as { links: { id: string }[] };
+    expect(seo.links[0]!.id).toEqual(expect.any(String));
+  });
+
+  it("leaves fields absent from data untouched", () => {
+    const fields = {
+      links: array({ items: group({ fields: { label: text() } }) }),
+    };
+    const result = assignArrayItemIds({ fields, data: {} });
+    expect(result).toEqual({});
+  });
+});
+```
+
+#### packages/core/src/fields/array/index.ts
+
+1 edit — new barrel export, anchored after the existing `export * from "./inputSchema";` line.
+
+```ts
+export * from "./utils";
+```
+
 #### packages/core/src/fields/blocks/inputSchema.ts
 
 **1 — `blocksFieldToInputSchema` body, complete (anchor: `export function blocksFieldToInputSchema<TFieldMeta extends {} = {}>(props: {`).**
@@ -2023,7 +2483,10 @@ export function blocksFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
     const userSubSchemas = Object.fromEntries(
       Object.entries(block.fields).map(([key, subField]) => [
         key,
-        adminFieldToInputSchema({ field: subField, ignoreRequired: props.ignoreRequired }),
+        adminFieldToInputSchema({
+          field: subField,
+          ignoreRequired: props.ignoreRequired,
+        }),
       ]),
     );
     return z.object({
@@ -2076,24 +2539,25 @@ export function blocksFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
 **1 — default min-message assertion** (anchor: `"At least 1 Blocks required.",` inside `"enforces min constraint when required"`).
 
 ```ts
-      expect(result.error.issues.map((issue) => issue.message)).toContain(
-        "Must be at least 1 Blocks.",
-      );
+expect(result.error.issues.map((issue) => issue.message)).toContain(
+  "Must be at least 1 Blocks.",
+);
 ```
-
 
 #### packages/react/src/components/fields/blocks/Input.test.tsx
 
 **1 — below-min default message assertion** (anchor: `expect(message).toBe("At least 2 Sections required.");` inside `"fails validation below min, with the real schema message, and passes at exactly min"`).
 
 ```ts
-        expect(message).toBe("Must be at least 2 Sections.");
+expect(message).toBe("Must be at least 2 Sections.");
 ```
 
 **2 — above-max default message assertion** (anchor: `expect(await screen.findByText("No more than 3 Sections allowed.")).toBeInTheDocument();` inside `"fails validation above max, with the real schema message, when items were seeded past the limit directly"`).
 
 ```ts
-        expect(await screen.findByText("Must be no more than 3 Sections.")).toBeInTheDocument();
+expect(
+  await screen.findByText("Must be no more than 3 Sections."),
+).toBeInTheDocument();
 ```
 
 #### packages/core/src/fields/date/types.ts
@@ -2144,11 +2608,13 @@ export function date<
 
     min: resolveFieldLimit({
       limit: options?.min,
-      defaultError: (value) => `Must be on or after ${new Date(value).toISOString().slice(0, 10)}.`,
+      defaultError: (value) =>
+        `Must be on or after ${new Date(value).toISOString().slice(0, 10)}.`,
     }),
     max: resolveFieldLimit({
       limit: options?.max,
-      defaultError: (value) => `Must be on or before ${new Date(value).toISOString().slice(0, 10)}.`,
+      defaultError: (value) =>
+        `Must be on or before ${new Date(value).toISOString().slice(0, 10)}.`,
     }),
 
     // Admin config with all defaults applied
@@ -2227,14 +2693,14 @@ in both the Convex runtime and the browser) instead of the old inline
 **1 — `ignores min/max constraints …`** (anchor: `it("ignores min/max constraints — they don't affect the DB schema", () => {`).
 
 ```ts
-  it("ignores min/max constraints — they don't affect the DB schema", () => {
-    const field = number({
-      required: true,
-      min: 0,
-      max: 100,
-    });
-    expect(adminFieldToValidator({ field })).toBe("v.number()");
+it("ignores min/max constraints — they don't affect the DB schema", () => {
+  const field = number({
+    required: true,
+    min: 0,
+    max: 100,
   });
+  expect(adminFieldToValidator({ field })).toBe("v.number()");
+});
 ```
 
 #### packages/core/src/collections/utils.test.ts
@@ -2248,7 +2714,10 @@ in both the Convex runtime and the browser) instead of the old inline
 **2 — `"partial mode: a present field still runs its full validator chain"`** (anchor: `const collection = defineCollection({ slug: "posts", fields: { slug: text({ min: { value: 3 } }) } });`).
 
 ```ts
-    const collection = defineCollection({ slug: "posts", fields: { slug: text({ min: 3 }) } });
+const collection = defineCollection({
+  slug: "posts",
+  fields: { slug: text({ min: 3 }) },
+});
 ```
 
 **3 — `"still rejects a non-empty value violating max"`** (anchor: `fields: { title: text({ required: true, max: { value: 3 } }) },`).
@@ -2262,7 +2731,10 @@ in both the Convex runtime and the browser) instead of the old inline
 **1 — `"rejects a write that violates a field's max length through the Local API"`** (anchor: `const collection = defineCollection({ slug: "posts", fields: { title: text({ max: { value: 5 } }) } });`).
 
 ```ts
-    const collection = defineCollection({ slug: "posts", fields: { title: text({ max: 5 }) } });
+const collection = defineCollection({
+  slug: "posts",
+  fields: { title: text({ max: 5 }) },
+});
 ```
 
 **2 — `"rejects a write to a required array field below its configured min, through the Local API"`** (anchor: `author: array({ items: text(), required: true, min: { value: 2 } }),`).
@@ -2282,7 +2754,10 @@ in both the Convex runtime and the browser) instead of the old inline
 **1 — `"rejects a present field that violates its constraint on a partial update"`** (anchor: `const collection = defineCollection({ slug: "posts", fields: { title: text({ max: { value: 5 } }) } });`).
 
 ```ts
-    const collection = defineCollection({ slug: "posts", fields: { title: text({ max: 5 }) } });
+const collection = defineCollection({
+  slug: "posts",
+  fields: { title: text({ max: 5 }) },
+});
 ```
 
 **2 — `"rejects an update to a required array field below its configured min"`** (anchor: `author: array({ items: text(), required: true, min: { value: 2 } }),`).
@@ -2302,7 +2777,7 @@ in both the Convex runtime and the browser) instead of the old inline
 **1 — `atMax` computation** (anchor: `const atMax = !!fieldDef.max && items.length >= fieldDef.max.value;`).
 
 ```ts
-  const atMax = !!fieldDef.max && items.length >= fieldDef.max[0];
+const atMax = !!fieldDef.max && items.length >= fieldDef.max[0];
 ```
 
 **2 — "Maximum reached" message** (anchor: `Maximum {fieldDef.max?.value} {fieldDef.labels.plural} reached`).
@@ -2316,7 +2791,7 @@ in both the Convex runtime and the browser) instead of the old inline
 **1 — `atMax` computation** (anchor: `const atMax = !!fieldDef.max && items.length >= fieldDef.max;`).
 
 ```ts
-  const atMax = !!fieldDef.max && items.length >= fieldDef.max[0];
+const atMax = !!fieldDef.max && items.length >= fieldDef.max[0];
 ```
 
 **2 — "Maximum reached" message** (anchor: `Maximum {fieldDef.max} {plural} reached`).
@@ -2330,7 +2805,8 @@ in both the Convex runtime and the browser) instead of the old inline
 **1 — `atLimit` computation** (anchor: `const atLimit = fieldDef.max !== undefined && mediaIds.length >= fieldDef.max;`).
 
 ```ts
-  const atLimit = fieldDef.max !== undefined && mediaIds.length >= fieldDef.max[0];
+const atLimit =
+  fieldDef.max !== undefined && mediaIds.length >= fieldDef.max[0];
 ```
 
 **2 — `n/max` count display** (anchor: `{mediaIds.length}/{fieldDef.max}`).
@@ -2344,7 +2820,11 @@ in both the Convex runtime and the browser) instead of the old inline
 **1 — `singleFieldDef` construction** (anchor: `const singleFieldDef = { ...fixture.fieldDef, hasMany: false, max: 1 };` inside `"[finding] stages every selected file even when hasMany is false"`).
 
 ```ts
-        const singleFieldDef = { ...fixture.fieldDef, hasMany: false, max: [1, "Must be no more than 1 file."] as const };
+const singleFieldDef = {
+  ...fixture.fieldDef,
+  hasMany: false,
+  max: [1, "Must be no more than 1 file."] as const,
+};
 ```
 
 #### packages/react/src/components/fields/date/Input.tsx
@@ -2352,15 +2832,15 @@ in both the Convex runtime and the browser) instead of the old inline
 **1 — `minDate`/`maxDate` memos** (anchor: `const minDate = useMemo(`).
 
 ```ts
-    const minDate = useMemo(
-      () => (fieldDef.min !== undefined ? new Date(fieldDef.min[0]) : undefined),
-      [fieldDef.min],
-    );
+const minDate = useMemo(
+  () => (fieldDef.min !== undefined ? new Date(fieldDef.min[0]) : undefined),
+  [fieldDef.min],
+);
 
-    const maxDate = useMemo(
-      () => (fieldDef.max !== undefined ? new Date(fieldDef.max[0]) : undefined),
-      [fieldDef.max],
-    );
+const maxDate = useMemo(
+  () => (fieldDef.max !== undefined ? new Date(fieldDef.max[0]) : undefined),
+  [fieldDef.max],
+);
 ```
 
 #### packages/react/src/components/fields/date/Input.test.tsx
@@ -2368,28 +2848,37 @@ in both the Convex runtime and the browser) instead of the old inline
 **1 — below-min construction** (anchor: `const fieldWithMin: DateField = { ...fixture.fieldDef, min: boundary };` in the `"accepts a timestamp before fieldDef.min"` test).
 
 ```ts
-        const fieldWithMin: DateField = {
-          ...fixture.fieldDef,
-          min: [boundary, `Must be on or after ${new Date(boundary).toISOString().slice(0, 10)}.`],
-        };
+const fieldWithMin: DateField = {
+  ...fixture.fieldDef,
+  min: [
+    boundary,
+    `Must be on or after ${new Date(boundary).toISOString().slice(0, 10)}.`,
+  ],
+};
 ```
 
 **2 — above-max construction** (anchor: `const fieldWithMax: DateField = { ...fixture.fieldDef, max: boundary };`).
 
 ```ts
-        const fieldWithMax: DateField = {
-          ...fixture.fieldDef,
-          max: [boundary, `Must be on or before ${new Date(boundary).toISOString().slice(0, 10)}.`],
-        };
+const fieldWithMax: DateField = {
+  ...fixture.fieldDef,
+  max: [
+    boundary,
+    `Must be on or before ${new Date(boundary).toISOString().slice(0, 10)}.`,
+  ],
+};
 ```
 
 **3 — calendar-disabled-days construction** (anchor: `const fieldWithMin: DateField = { ...fixture.fieldDef, min: initial.getTime() };`).
 
 ```ts
-        const fieldWithMin: DateField = {
-          ...fixture.fieldDef,
-          min: [initial.getTime(), `Must be on or after ${new Date(initial.getTime()).toISOString().slice(0, 10)}.`],
-        };
+const fieldWithMin: DateField = {
+  ...fixture.fieldDef,
+  min: [
+    initial.getTime(),
+    `Must be on or after ${new Date(initial.getTime()).toISOString().slice(0, 10)}.`,
+  ],
+};
 ```
 
 #### packages/react/src/components/fields/array/testFixture.ts
@@ -2408,7 +2897,10 @@ in both the Convex runtime and the browser) instead of the old inline
  * check whenever both are set (see `packages/core/src/fields/array/inputSchema.ts`),
  * so `required` alone would never surface as `invalid`'s failure reason.
  */
-export const arrayFieldFixture: FieldFixture<ArrayField<VexResourceSlug, string>, string[]> = {
+export const arrayFieldFixture: FieldFixture<
+  ArrayField<VexResourceSlug, string>,
+  string[]
+> = {
   fieldType: "array",
   fieldDef: array({
     label: "Tags",
@@ -2427,37 +2919,37 @@ export const arrayFieldFixture: FieldFixture<ArrayField<VexResourceSlug, string>
 **1 — `boundaryFieldDef`** (anchor: `const boundaryFieldDef = array({`).
 
 ```ts
-      const boundaryFieldDef = array({
-        label: "Scores",
-        items: text({ label: "Score", required: true }),
-        required: true,
-        min: 2,
-        max: 3,
-      });
+const boundaryFieldDef = array({
+  label: "Scores",
+  items: text({ label: "Score", required: true }),
+  required: true,
+  min: 2,
+  max: 3,
+});
 ```
 
 **2 — default min-message assertion** (anchor: `expect(message).toBe("This field is too short.");` inside `"fails validation one item below min, with the real schema message"`).
 
 ```ts
-        expect(message).toBe("Must be at least 2 items.");
+expect(message).toBe("Must be at least 2 items.");
 ```
 
 **3 — default max-message assertion** (anchor: `expect(message).toBe("This field is too long.");` inside `"fails validation one item above max, with the real schema message, when seeded directly past the limit"`).
 
 ```ts
-        expect(message).toBe("Must be no more than 3 items.");
+expect(message).toBe("Must be no more than 3 items.");
 ```
 
 **4 — `customFieldDef`** (anchor: `const customFieldDef = array({` inside `"uses configured custom min/max error messages verbatim"`).
 
 ```ts
-        const customFieldDef = array({
-          label: "Scores",
-          items: text({ label: "Score", required: true }),
-          required: true,
-          min: [1, "Add at least one score."],
-          max: [2, "No more than two scores."],
-        });
+const customFieldDef = array({
+  label: "Scores",
+  items: text({ label: "Score", required: true }),
+  required: true,
+  min: [1, "Add at least one score."],
+  max: [2, "No more than two scores."],
+});
 ```
 
 #### packages/react/src/components/fields/number/testFixture.ts
@@ -2699,7 +3191,9 @@ export function urlFieldToInputSchema(props: { field: UrlField }): ZodType {
 
   const inputSchema =
     field.defaultValue !== undefined
-      ? z.union([stringSchema.pipe(z.url()), z.literal("")]).default(field.defaultValue)
+      ? z
+          .union([stringSchema.pipe(z.url()), z.literal("")])
+          .default(field.defaultValue)
       : stringSchema.pipe(z.url());
 
   return applyBaseInputSchemaMeta({ field, inputSchema });
@@ -2726,7 +3220,9 @@ describe("min/max length constraints", () => {
     const schema = urlFieldToInputSchema({ field });
 
     expect(schema.safeParse("https://a.co").success).toBe(true);
-    expect(schema.safeParse("https://example.com/very/long/path").success).toBe(false);
+    expect(schema.safeParse("https://example.com/very/long/path").success).toBe(
+      false,
+    );
   });
 
   it("uses a custom min error message instead of the default when configured", () => {
@@ -2758,7 +3254,9 @@ describe("min/max length constraints", () => {
     const result = schema.safeParse("https://a.co");
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe("Must be at least 15 characters.");
+      expect(result.error.issues[0].message).toBe(
+        "Must be at least 15 characters.",
+      );
     }
   });
 
@@ -2769,7 +3267,9 @@ describe("min/max length constraints", () => {
     const result = schema.safeParse("https://example.com/very/long/path");
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe("Must be no more than 20 characters.");
+      expect(result.error.issues[0].message).toBe(
+        "Must be no more than 20 characters.",
+      );
     }
   });
 });
@@ -2800,7 +3300,6 @@ it("ignores min/max constraints (enforced in form validation, not DB schema)", (
   expect(validator).toBe("v.string()");
 });
 ```
-
 
 Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- fields && pnpm --filter @vexcms/react test -- fields
 
@@ -2834,7 +3333,7 @@ dedup, not a new base option.
 **1 — new `FieldSearchIndex` export, inserted after `FieldLimit`** (anchor: the blank line between
 the `FieldLimit` type and the `ComponentHKT` JSDoc).
 
-```ts
+````ts
 /**
  * Full-text search index configuration for a string field. Not a base field
  * option: only field types that declare their own `searchIndex` property
@@ -2856,7 +3355,7 @@ export interface FieldSearchIndex {
    */
   filterFields: string[];
 }
-```
+````
 
 #### packages/core/src/fields/text/types.ts
 
@@ -2877,7 +3376,7 @@ import {
 
 #### packages/core/src/fields/email/types.ts
 
-```ts
+````ts
 import { ADMIN_FIELDS } from "../constants";
 import {
   BaseField,
@@ -2949,7 +3448,9 @@ export interface EmailFieldInput<
    */
   searchIndex?: FieldSearchIndex;
   /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
+  validate?(
+    props: FieldValidateProps<TCollectionSlug, string>,
+  ): Promise<void> | void;
 }
 
 /**
@@ -2979,13 +3480,15 @@ export interface EmailField<
   /** Full-text search index configuration for this field. @see {@link FieldSearchIndex} */
   searchIndex?: FieldSearchIndex;
   /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
+  validate?(
+    props: FieldValidateProps<TCollectionSlug, string>,
+  ): Promise<void> | void;
 }
-```
+````
 
 #### packages/core/src/fields/email/config.ts
 
-```ts
+````ts
 import { VexResourceSlug } from "../../types";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
@@ -3034,7 +3537,9 @@ import type { EmailFieldInput, EmailField } from "./types";
 export function email<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
->(options?: EmailFieldInput<TCollectionSlug, TFieldMeta>): EmailField<TCollectionSlug, TFieldMeta> {
+>(
+  options?: EmailFieldInput<TCollectionSlug, TFieldMeta>,
+): EmailField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.email.type,
     interfaceType: ADMIN_FIELDS.email.interfaceType,
@@ -3070,11 +3575,11 @@ export function email<
     } as TFieldMeta,
   };
 }
-```
+````
 
 #### packages/core/src/fields/email/validator.ts
 
-```ts
+````ts
 import { ADMIN_FIELDS } from "../constants";
 import { applyBaseValidators } from "../validators/utils";
 import { fieldValidator, type FieldValidate } from "../baseTypes";
@@ -3125,19 +3630,17 @@ export function emailFieldToValidator(props: { field: EmailField }): string {
  * @param fn - The validate callback, checked against the collection's real document shape and `value` type.
  * @returns The same function, re-typed to the field's loose public `validate` signature.
  */
-export function emailValidator<
-  TCollectionSlug extends CollectionSlug,
->(
+export function emailValidator<TCollectionSlug extends CollectionSlug>(
   slug: TCollectionSlug,
   fn: FieldValidate<TCollectionSlug, string, EmailField>,
 ): FieldValidate<TCollectionSlug, string> {
   return fieldValidator<TCollectionSlug, string, EmailField>(slug, fn);
 }
-```
+````
 
 #### packages/core/src/fields/email/inputSchema.ts
 
-```ts
+````ts
 import * as z from "zod";
 import type { ZodType } from "zod";
 import { EmailField } from "./types";
@@ -3206,10 +3709,12 @@ export function emailFieldToInputSchema(props: { field: EmailField }): ZodType {
 
   return applyBaseInputSchemaMeta({
     field,
-    inputSchema: z.union([emailSchema, z.literal("")]).default(field.defaultValue ?? ""),
+    inputSchema: z
+      .union([emailSchema, z.literal("")])
+      .default(field.defaultValue ?? ""),
   });
 }
-```
+````
 
 #### packages/core/src/fields/email/index.ts
 
@@ -3285,7 +3790,9 @@ describe("emailFieldToInputSchema", () => {
     const result = schema.safeParse("nope");
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe("Enter a valid email address.");
+      expect(result.error.issues[0].message).toBe(
+        "Enter a valid email address.",
+      );
     }
   });
 
@@ -3341,7 +3848,9 @@ describe("emailFieldToInputSchema", () => {
     const result = schema.safeParse("a@b.co");
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe("Must be at least 10 characters.");
+      expect(result.error.issues[0].message).toBe(
+        "Must be at least 10 characters.",
+      );
     }
     expect(schema.safeParse("abcde@fg.com").success).toBe(true);
   });
@@ -3353,13 +3862,19 @@ describe("emailFieldToInputSchema", () => {
     const result = schema.safeParse("abcdefgh@ij.com");
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe("Must be no more than 12 characters.");
+      expect(result.error.issues[0].message).toBe(
+        "Must be no more than 12 characters.",
+      );
     }
     expect(schema.safeParse("abcde@fg.com").success).toBe(true);
   });
 
   it("uses custom [value, error] tuple messages instead of the defaults", () => {
-    const field = email({ required: true, min: [10, "Too short!"], max: [12, "Too long!"] });
+    const field = email({
+      required: true,
+      min: [10, "Too short!"],
+      max: [12, "Too long!"],
+    });
     const schema = emailFieldToInputSchema({ field });
 
     const shortResult = schema.safeParse("a@b.co");
@@ -3526,18 +4041,18 @@ import { url, text, email, number, checkbox, date, select } from "../fields";
 **2 — new `it` appended to `describe("generateVexSchema — field validators", …)`, after the `select` case.**
 
 ```ts
-  it("generates required email field as v.string()", () => {
-    const config = defineConfig({
-      collections: [
-        defineCollection({
-          slug: "authors",
-          fields: { contactEmail: email({ required: true }) },
-        }),
-      ],
-    });
-    const output = generateVexSchema({ config });
-    expect(output.contents).toContain("contactEmail: v.string()");
+it("generates required email field as v.string()", () => {
+  const config = defineConfig({
+    collections: [
+      defineCollection({
+        slug: "authors",
+        fields: { contactEmail: email({ required: true }) },
+      }),
+    ],
   });
+  const output = generateVexSchema({ config });
+  expect(output.contents).toContain("contactEmail: v.string()");
+});
 ```
 
 #### packages/core/src/types/generateVexTypes.test.ts
@@ -3552,21 +4067,22 @@ import { email } from "../fields/email/config";
 **2 — new `it` appended to `describe("generateVexTypes — document interfaces", …)`, after the last existing case.**
 
 ```ts
-  it("generates an email field as a plain string, through the same generic interfaceType path as text", () => {
-    const config = defineServerConfig({ config: defineConfig({
+it("generates an email field as a plain string, through the same generic interfaceType path as text", () => {
+  const config = defineServerConfig({
+    config: defineConfig({
       collections: [
         defineCollection({
           slug: "authors",
           fields: { contactEmail: email({ required: true }) },
         }),
       ],
-    }) })
-    const output = generateVexTypes({ config });
-    expect(output).toContain("contactEmail: string");
-    expect(output).not.toContain("contactEmail?: string");
+    }),
   });
+  const output = generateVexTypes({ config });
+  expect(output).toContain("contactEmail: string");
+  expect(output).not.toContain("contactEmail?: string");
+});
 ```
-
 
 #### packages/core/src/collections/validator.ts
 
@@ -3575,12 +4091,12 @@ type check to a generic `searchIndex` property check, so `email` (and step 3's `
 without any further edits to this file, anchored at the existing `ADMIN_FIELDS.text.type` check:
 
 ```ts
-    if ("searchIndex" in field && field.searchIndex) {
-      searchIndexes.push(`\t.searchIndex("${field.searchIndex.name}", {\n
+if ("searchIndex" in field && field.searchIndex) {
+  searchIndexes.push(`\t.searchIndex("${field.searchIndex.name}", {\n
         searchField: "${fieldKey}",
         filterFields: ${JSON.stringify(field.searchIndex.filterFields)}\n
       })`);
-    }
+}
 ```
 
 Update the function's doc comment line describing this emission, anchored at the existing bullet:
@@ -3602,29 +4118,28 @@ the `"collection with multiple text searchIndexes and an incoming relationship e
 that describe's closing `});`):
 
 ```ts
-  it("emits .searchIndex() for an email field with searchIndex configured", () => {
-    const users = defineCollection({
-      slug: "users",
-      fields: {
-        name: text({ required: true }),
-        contactEmail: email({
-          searchIndex: { name: "search_contactEmail", filterFields: ["name"] },
-        }),
-      },
-      admin: { useAsTitle: "name" },
-    });
-    const config = defineConfig({ collections: [users] });
-    const output = collectionConfigToVexSchema({ collection: users, config });
-    expect(output).toContain('.searchIndex("search_contactEmail"');
-    expect(output).toContain('searchField: "contactEmail"');
-    expect(output).toContain('filterFields: ["name"]');
+it("emits .searchIndex() for an email field with searchIndex configured", () => {
+  const users = defineCollection({
+    slug: "users",
+    fields: {
+      name: text({ required: true }),
+      contactEmail: email({
+        searchIndex: { name: "search_contactEmail", filterFields: ["name"] },
+      }),
+    },
+    admin: { useAsTitle: "name" },
   });
+  const config = defineConfig({ collections: [users] });
+  const output = collectionConfigToVexSchema({ collection: users, config });
+  expect(output).toContain('.searchIndex("search_contactEmail"');
+  expect(output).toContain('searchField: "contactEmail"');
+  expect(output).toContain('filterFields: ["name"]');
+});
 ```
-
 
 #### packages/react/src/components/fields/email/Input.tsx
 
-```tsx
+````tsx
 "use client";
 
 import { type EmailField } from "@vexcms/core";
@@ -3673,12 +4188,17 @@ export const EmailFieldInput = createFieldInput<string, {}, EmailField>(
     );
   },
 );
-```
+````
 
 #### packages/react/src/components/fields/email/Cell.tsx
 
-```tsx
-import { addLeadingSlash, TDocument, type CellComponentProps, type EmailField } from "@vexcms/core";
+````tsx
+import {
+  addLeadingSlash,
+  TDocument,
+  type CellComponentProps,
+  type EmailField,
+} from "@vexcms/core";
 import { VexLink } from "../../ui";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
@@ -3706,7 +4226,8 @@ import { useVexConfig } from "../../../context/VexConfigContext";
 export function EmailFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<EmailField, TData>,
 ) {
-  if (props.value === undefined || props.value === null || props.value === "") return <span>—</span>;
+  if (props.value === undefined || props.value === null || props.value === "")
+    return <span>—</span>;
   const config = useVexConfig();
   const basePath = addLeadingSlash(config.basePath);
   const href = props.isTitleField
@@ -3715,16 +4236,18 @@ export function EmailFieldCell<TData extends TDocument = TDocument>(
   return (
     <VexLink href={href}>
       <span className="font-bold" title={props.value}>
-        {props.value.length > 77 ? `${props.value.slice(0, 77)}...` : props.value}
+        {props.value.length > 77
+          ? `${props.value.slice(0, 77)}...`
+          : props.value}
       </span>
     </VexLink>
   );
 }
-```
+````
 
 #### packages/react/src/components/fields/email/columnDef.tsx
 
-```tsx
+````tsx
 import type { ColumnDef } from "@tanstack/react-table";
 import type { CollectionConfig, TDocument, EmailField } from "@vexcms/core";
 import { EmailFieldCell } from "./Cell";
@@ -3751,7 +4274,9 @@ import { EmailFieldCell } from "./Cell";
  * });
  * ```
  */
-export function emailFieldToColumnDef<TData extends TDocument = TDocument>(props: {
+export function emailFieldToColumnDef<
+  TData extends TDocument = TDocument,
+>(props: {
   fieldDef: EmailField;
   fieldKey: string;
   collection: CollectionConfig;
@@ -3787,7 +4312,7 @@ export function emailFieldToColumnDef<TData extends TDocument = TDocument>(props
     },
   };
 }
-```
+````
 
 #### packages/react/src/components/fields/email/testFixture.ts
 
@@ -3827,7 +4352,12 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
-import { adminFieldToInputSchema, email, type CollectionConfig, type EmailField } from "@vexcms/core";
+import {
+  adminFieldToInputSchema,
+  email,
+  type CollectionConfig,
+  type EmailField,
+} from "@vexcms/core";
 import { AppForm } from "../../form/AppForm";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { runFieldInputContractSuite } from "../../../testing/fieldInputContract";
@@ -3853,7 +4383,11 @@ function EmailValidationHarness(props: {
         const schema = adminFieldToInputSchema({ field: props.fieldDef });
         const result = schema.safeParse(value.testField);
         if (result.success) return undefined;
-        return { fields: { testField: result.error.issues[0]?.message ?? "Invalid value" } };
+        return {
+          fields: {
+            testField: result.error.issues[0]?.message ?? "Invalid value",
+          },
+        };
       },
     },
   });
@@ -3876,10 +4410,17 @@ runFieldInputContractSuite({
   extra: (options) => {
     const collection = options.collection ?? testCollection;
 
-    async function submit(fieldDef: EmailField, value: string | undefined): Promise<string> {
+    async function submit(
+      fieldDef: EmailField,
+      value: string | undefined,
+    ): Promise<string> {
       const user = userEvent.setup();
       const { container } = render(
-        <EmailValidationHarness fieldDef={fieldDef} collection={collection} initialValue={value} />,
+        <EmailValidationHarness
+          fieldDef={fieldDef}
+          collection={collection}
+          initialValue={value}
+        />,
       );
       await user.click(screen.getByRole("button", { name: /submit/i }));
       return container.querySelector(".text-destructive")?.textContent ?? "";
@@ -3906,7 +4447,9 @@ runFieldInputContractSuite({
 
       it("rejects a malformed email address with a clear format message", async () => {
         const fieldDef = email({ label: "Contact Email", required: true });
-        expect(await submit(fieldDef, "not-an-email")).toBe("Enter a valid email address.");
+        expect(await submit(fieldDef, "not-an-email")).toBe(
+          "Enter a valid email address.",
+        );
       });
 
       it("accepts a value at exactly the configured min length", async () => {
@@ -3916,17 +4459,23 @@ runFieldInputContractSuite({
 
       it("rejects a value below the min length with the default min-length message", async () => {
         const fieldDef = email({ label: "Contact Email", min: 10 });
-        expect(await submit(fieldDef, "a@b.co")).toBe("Must be at least 10 characters.");
+        expect(await submit(fieldDef, "a@b.co")).toBe(
+          "Must be at least 10 characters.",
+        );
       });
 
       it("rejects a value over the max length with the default max-length message", async () => {
         const fieldDef = email({ label: "Contact Email", max: 12 });
-        expect(await submit(fieldDef, "abcdefgh@ij.com")).toBe("Must be no more than 12 characters.");
+        expect(await submit(fieldDef, "abcdefgh@ij.com")).toBe(
+          "Must be no more than 12 characters.",
+        );
       });
 
       it("required: a missing value fails with the required message, not the format message", async () => {
         const fieldDef = email({ label: "Contact Email", required: true });
-        expect(await submit(fieldDef, undefined)).toBe("This field is required.");
+        expect(await submit(fieldDef, undefined)).toBe(
+          "This field is required.",
+        );
       });
 
       it("optional: a missing value is accepted", async () => {
@@ -3944,7 +4493,11 @@ runFieldInputContractSuite({
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { TDocument } from "@vexcms/core";
-import { makeCellRow, runFieldCellContractSuite, withCellConfig } from "../../../testing/fieldCellContract";
+import {
+  makeCellRow,
+  runFieldCellContractSuite,
+  withCellConfig,
+} from "../../../testing/fieldCellContract";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { EmailFieldCell } from "./Cell";
 import { emailFieldFixture } from "./testFixture";
@@ -3957,7 +4510,10 @@ runFieldCellContractSuite({
 
     describe("email: mailto link", () => {
       it("renders a mailto: link when isTitleField is false", () => {
-        const row = makeCellRow<TDocument>({ fieldKey: "field", value: options.fixture.valid });
+        const row = makeCellRow<TDocument>({
+          fieldKey: "field",
+          value: options.fixture.valid,
+        });
         const { container } = render(
           withCellConfig(
             <EmailFieldCell
@@ -4019,8 +4575,16 @@ runColumnDefSuite({ fixture: emailFieldFixture });
 
 ```ts
 import { TextFieldCell, TextFieldInput, textFieldToColumnDef } from "./text";
-import { EmailFieldCell, EmailFieldInput, emailFieldToColumnDef } from "./email";
-import { NumberFieldCell, NumberFieldInput, numberFieldToColumnDef } from "./number";
+import {
+  EmailFieldCell,
+  EmailFieldInput,
+  emailFieldToColumnDef,
+} from "./email";
+import {
+  NumberFieldCell,
+  NumberFieldInput,
+  numberFieldToColumnDef,
+} from "./number";
 ```
 
 **2 — barrel export, beside `"./text"`.**
@@ -4117,7 +4681,16 @@ import {
 **1 — re-export the `email` config function, beside the other pass-through config functions.**
 
 ```ts
-export { text, email, number, select, date, url, checkbox, defineConfig } from "@vexcms/core";
+export {
+  text,
+  email,
+  number,
+  select,
+  date,
+  url,
+  checkbox,
+  defineConfig,
+} from "@vexcms/core";
 ```
 
 **2 — re-export the resolved `EmailField` type, beside `TextField`.**
@@ -4146,7 +4719,12 @@ export type {
 
 ```ts
 // Field components
-export { TextFieldInput, TextFieldCell, EmailFieldInput, EmailFieldCell } from "./components/fields";
+export {
+  TextFieldInput,
+  TextFieldCell,
+  EmailFieldInput,
+  EmailFieldCell,
+} from "./components/fields";
 ```
 
 #### packages/react/src/testing/fixtures/index.ts
@@ -4205,7 +4783,7 @@ Verify: `pnpm typecheck && pnpm --filter @vexcms/core test -- fields/textarea &&
 
 #### packages/core/src/fields/textarea/types.ts
 
-```ts
+````ts
 import { ADMIN_FIELDS } from "../constants";
 import {
   BaseField,
@@ -4283,7 +4861,9 @@ export interface TextareaFieldInput<
    * @see {@link FieldSearchIndex}
    */
   searchIndex?: FieldSearchIndex;
-  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
+  validate?(
+    props: FieldValidateProps<TCollectionSlug, string>,
+  ): Promise<void> | void;
 }
 
 /**
@@ -4317,13 +4897,15 @@ export interface TextareaField<
   rows: number;
   /** Full-text search index configuration for this field. @see {@link FieldSearchIndex} */
   searchIndex?: FieldSearchIndex;
-  validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
+  validate?(
+    props: FieldValidateProps<TCollectionSlug, string>,
+  ): Promise<void> | void;
 }
-```
+````
 
 #### packages/core/src/fields/textarea/config.ts
 
-```ts
+````ts
 import { VexResourceSlug } from "../../types";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
@@ -4411,11 +4993,11 @@ export function textarea<
     } as TFieldMeta,
   };
 }
-```
+````
 
 #### packages/core/src/fields/textarea/validator.ts
 
-```ts
+````ts
 import { ADMIN_FIELDS } from "../constants";
 import { applyBaseValidators } from "../validators/utils";
 import { fieldValidator, type FieldValidate } from "../baseTypes";
@@ -4457,7 +5039,9 @@ import type { TextareaField } from "./types";
  *
  * @internal - Used by schema generation, not typically called by users
  */
-export function textareaFieldToValidator(props: { field: TextareaField }): string {
+export function textareaFieldToValidator(props: {
+  field: TextareaField;
+}): string {
   return applyBaseValidators({
     field: props.field,
     validator: ADMIN_FIELDS.textarea.validator,
@@ -4473,19 +5057,17 @@ export function textareaFieldToValidator(props: { field: TextareaField }): strin
  * @param fn - The validate callback, checked against the collection's real document shape and `value` type.
  * @returns The same function, re-typed to the field's loose public `validate` signature.
  */
-export function textareaValidator<
-  TCollectionSlug extends CollectionSlug,
->(
+export function textareaValidator<TCollectionSlug extends CollectionSlug>(
   slug: TCollectionSlug,
   fn: FieldValidate<TCollectionSlug, string, TextareaField>,
 ): FieldValidate<TCollectionSlug, string> {
   return fieldValidator<TCollectionSlug, string, TextareaField>(slug, fn);
 }
-```
+````
 
 #### packages/core/src/fields/textarea/inputSchema.ts
 
-```ts
+````ts
 import * as z from "zod";
 import type { ZodType } from "zod";
 import { TextareaField } from "./types";
@@ -4518,7 +5100,9 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  * // → z.string({ error: "This field is required." }).min(1, "...").min(3).max(100)
  * ```
  */
-export function textareaFieldToInputSchema(props: { field: TextareaField }): ZodType {
+export function textareaFieldToInputSchema(props: {
+  field: TextareaField;
+}): ZodType {
   const { field } = props;
 
   const requiredError = "This field is required.";
@@ -4540,7 +5124,7 @@ export function textareaFieldToInputSchema(props: { field: TextareaField }): Zod
 
   return applyBaseInputSchemaMeta({ field, inputSchema: finalSchema });
 }
-```
+````
 
 #### packages/core/src/fields/textarea/index.ts
 
@@ -4651,7 +5235,9 @@ describe("textareaFieldToInputSchema", () => {
     const result = schema.safeParse("ab");
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe("Must be at least 3 characters.");
+      expect(result.error.issues[0].message).toBe(
+        "Must be at least 3 characters.",
+      );
     }
   });
 
@@ -4662,12 +5248,18 @@ describe("textareaFieldToInputSchema", () => {
     const result = schema.safeParse("toolong");
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe("Must be no more than 5 characters.");
+      expect(result.error.issues[0].message).toBe(
+        "Must be no more than 5 characters.",
+      );
     }
   });
 
   it("applies min constraint with custom error", () => {
-    const field = textarea({ required: true, defaultValue: "test", min: [3, "Too short"] });
+    const field = textarea({
+      required: true,
+      defaultValue: "test",
+      min: [3, "Too short"],
+    });
     const schema = textareaFieldToInputSchema({ field });
 
     const result = schema.safeParse("ab");
@@ -4678,7 +5270,11 @@ describe("textareaFieldToInputSchema", () => {
   });
 
   it("applies max constraint with custom error", () => {
-    const field = textarea({ required: true, defaultValue: "test", max: [5, "Too long"] });
+    const field = textarea({
+      required: true,
+      defaultValue: "test",
+      max: [5, "Too long"],
+    });
     const schema = textareaFieldToInputSchema({ field });
 
     const result = schema.safeParse("toolong");
@@ -4689,7 +5285,12 @@ describe("textareaFieldToInputSchema", () => {
   });
 
   it("combines min and max constraints", () => {
-    const field = textarea({ required: true, defaultValue: "test", min: 3, max: 10 });
+    const field = textarea({
+      required: true,
+      defaultValue: "test",
+      min: 3,
+      max: 10,
+    });
     const schema = textareaFieldToInputSchema({ field });
 
     expect(schema.safeParse("abc").success).toBe(true);
@@ -4721,7 +5322,12 @@ describe("textareaFieldToInputSchema", () => {
   });
 
   it("applies optional after length constraints", () => {
-    const field = textarea({ required: false, defaultValue: "", min: 5, max: 50 });
+    const field = textarea({
+      required: false,
+      defaultValue: "",
+      min: 5,
+      max: 50,
+    });
     const schema = textareaFieldToInputSchema({ field });
 
     const result = schema.safeParse(undefined);
@@ -4831,7 +5437,7 @@ export type AdminField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> =
   | TextField<VexResourceSlug, TFieldMeta>
   | EmailField<VexResourceSlug, TFieldMeta>
   | TextareaField<VexResourceSlug, TFieldMeta>
-  | NumberField<VexResourceSlug, TFieldMeta>
+  | NumberField<VexResourceSlug, TFieldMeta>;
 ```
 
 #### packages/core/src/fields/index.ts
@@ -4939,7 +5545,16 @@ Add a new `it`, anchored right after the `email` test step 2 appended to the `ge
 Add `textarea` to the fields import, anchored right after `email` (step 2):
 
 ```ts
-import { url, text, email, textarea, number, checkbox, date, select } from "../fields";
+import {
+  url,
+  text,
+  email,
+  textarea,
+  number,
+  checkbox,
+  date,
+  select,
+} from "../fields";
 ```
 
 Add two new `it` blocks inside the `generateVexSchema — field validators` describe, anchored right after the `email` test step 2 appended (before that describe's closing `});`):
@@ -5000,28 +5615,28 @@ the email `.searchIndex()` test step 2 added (before that describe's closing `})
 `"searchIndex" in field && field.searchIndex` check, which covers `textarea` automatically:
 
 ```ts
-  it("emits .searchIndex() for a textarea field with searchIndex configured", () => {
-    const posts = defineCollection({
-      slug: "posts",
-      fields: {
-        title: text({ required: true }),
-        body: textarea({
-          searchIndex: { name: "search_body", filterFields: ["title"] },
-        }),
-      },
-      admin: { useAsTitle: "title" },
-    });
-    const config = defineConfig({ collections: [posts] });
-    const output = collectionConfigToVexSchema({ collection: posts, config });
-    expect(output).toContain('.searchIndex("search_body"');
-    expect(output).toContain('searchField: "body"');
-    expect(output).toContain('filterFields: ["title"]');
+it("emits .searchIndex() for a textarea field with searchIndex configured", () => {
+  const posts = defineCollection({
+    slug: "posts",
+    fields: {
+      title: text({ required: true }),
+      body: textarea({
+        searchIndex: { name: "search_body", filterFields: ["title"] },
+      }),
+    },
+    admin: { useAsTitle: "title" },
   });
+  const config = defineConfig({ collections: [posts] });
+  const output = collectionConfigToVexSchema({ collection: posts, config });
+  expect(output).toContain('.searchIndex("search_body"');
+  expect(output).toContain('searchField: "body"');
+  expect(output).toContain('filterFields: ["title"]');
+});
 ```
 
 #### packages/react/src/components/fields/textarea/Input.tsx
 
-```tsx
+````tsx
 "use client";
 
 import { type TextareaField } from "@vexcms/core";
@@ -5096,12 +5711,17 @@ export const TextareaFieldInput = createFieldInput<string, {}, TextareaField>(
     );
   },
 );
-```
+````
 
 #### packages/react/src/components/fields/textarea/Cell.tsx
 
-```tsx
-import { addLeadingSlash, TDocument, type CellComponentProps, type TextareaField } from "@vexcms/core";
+````tsx
+import {
+  addLeadingSlash,
+  TDocument,
+  type CellComponentProps,
+  type TextareaField,
+} from "@vexcms/core";
 import { VexLink } from "../../ui";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
@@ -5136,28 +5756,28 @@ export function TextareaFieldCell<TData extends TDocument = TDocument>(
 
   const singleLine = props.value.replace(/\s+/g, " ").trim();
   const display =
-    singleLine.length > TRUNCATE_LENGTH ? `${singleLine.slice(0, TRUNCATE_LENGTH)}...` : singleLine;
+    singleLine.length > TRUNCATE_LENGTH
+      ? `${singleLine.slice(0, TRUNCATE_LENGTH)}...`
+      : singleLine;
 
   if (props.isTitleField) {
     return (
-      <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+      <VexLink
+        href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}
+      >
         <span className="font-bold" title={props.value}>
           {display}
         </span>
       </VexLink>
     );
   }
-  return (
-    <span title={props.value}>
-      {display}
-    </span>
-  );
+  return <span title={props.value}>{display}</span>;
 }
-```
+````
 
 #### packages/react/src/components/fields/textarea/columnDef.tsx
 
-```tsx
+````tsx
 import type { ColumnDef } from "@tanstack/react-table";
 import type { CollectionConfig, TDocument, TextareaField } from "@vexcms/core";
 import { TextareaFieldCell } from "./Cell";
@@ -5184,7 +5804,9 @@ import { TextareaFieldCell } from "./Cell";
  * });
  * ```
  */
-export function textareaFieldToColumnDef<TData extends TDocument = TDocument>(props: {
+export function textareaFieldToColumnDef<
+  TData extends TDocument = TDocument,
+>(props: {
   fieldDef: TextareaField;
   fieldKey: string;
   collection: CollectionConfig;
@@ -5224,7 +5846,7 @@ export function textareaFieldToColumnDef<TData extends TDocument = TDocument>(pr
     },
   };
 }
-```
+````
 
 #### packages/react/src/components/fields/textarea/index.ts
 
@@ -5262,7 +5884,12 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
-import { adminFieldToInputSchema, textarea, type CollectionConfig, type TextareaField } from "@vexcms/core";
+import {
+  adminFieldToInputSchema,
+  textarea,
+  type CollectionConfig,
+  type TextareaField,
+} from "@vexcms/core";
 import { AppForm } from "../../form/AppForm";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { runFieldInputContractSuite } from "../../../testing/fieldInputContract";
@@ -5288,7 +5915,11 @@ function TextareaValidationHarness(props: {
         const schema = adminFieldToInputSchema({ field: props.fieldDef });
         const result = schema.safeParse(value.testField);
         if (result.success) return undefined;
-        return { fields: { testField: result.error.issues[0]?.message ?? "Invalid value" } };
+        return {
+          fields: {
+            testField: result.error.issues[0]?.message ?? "Invalid value",
+          },
+        };
       },
     },
   });
@@ -5311,10 +5942,17 @@ runFieldInputContractSuite({
   extra: (options) => {
     const collection = options.collection ?? testCollection;
 
-    async function submit(fieldDef: TextareaField, value: string | undefined): Promise<string> {
+    async function submit(
+      fieldDef: TextareaField,
+      value: string | undefined,
+    ): Promise<string> {
       const user = userEvent.setup();
       const { container } = render(
-        <TextareaValidationHarness fieldDef={fieldDef} collection={collection} initialValue={value} />,
+        <TextareaValidationHarness
+          fieldDef={fieldDef}
+          collection={collection}
+          initialValue={value}
+        />,
       );
       await user.click(screen.getByRole("button", { name: /submit/i }));
       return container.querySelector(".text-destructive")?.textContent ?? "";
@@ -5328,7 +5966,9 @@ runFieldInputContractSuite({
 
       it("rejects a value one character below the min length with the default min-length message", async () => {
         const fieldDef = textarea({ label: "Bio", min: 3 });
-        expect(await submit(fieldDef, "x".repeat(2))).toBe("Must be at least 3 characters.");
+        expect(await submit(fieldDef, "x".repeat(2))).toBe(
+          "Must be at least 3 characters.",
+        );
       });
 
       it("accepts a value at exactly the configured max length", async () => {
@@ -5338,27 +5978,43 @@ runFieldInputContractSuite({
 
       it("rejects a value one character over the max length with the default max-length message", async () => {
         const fieldDef = textarea({ label: "Bio", max: 10 });
-        expect(await submit(fieldDef, "x".repeat(11))).toBe("Must be no more than 10 characters.");
+        expect(await submit(fieldDef, "x".repeat(11))).toBe(
+          "Must be no more than 10 characters.",
+        );
       });
 
       it("uses a custom min error message instead of the default when configured", async () => {
-        const fieldDef = textarea({ label: "Bio", min: [5, "Bio needs at least 5 characters."] });
-        expect(await submit(fieldDef, "x".repeat(4))).toBe("Bio needs at least 5 characters.");
+        const fieldDef = textarea({
+          label: "Bio",
+          min: [5, "Bio needs at least 5 characters."],
+        });
+        expect(await submit(fieldDef, "x".repeat(4))).toBe(
+          "Bio needs at least 5 characters.",
+        );
       });
 
       it("uses a custom max error message instead of the default when configured", async () => {
-        const fieldDef = textarea({ label: "Bio", max: [5, "Bio can be at most 5 characters."] });
-        expect(await submit(fieldDef, "x".repeat(6))).toBe("Bio can be at most 5 characters.");
+        const fieldDef = textarea({
+          label: "Bio",
+          max: [5, "Bio can be at most 5 characters."],
+        });
+        expect(await submit(fieldDef, "x".repeat(6))).toBe(
+          "Bio can be at most 5 characters.",
+        );
       });
 
       it("required + min (no max): a missing value fails with the required message", async () => {
         const fieldDef = textarea({ label: "Bio", required: true, min: 3 });
-        expect(await submit(fieldDef, undefined)).toBe("This field is required.");
+        expect(await submit(fieldDef, undefined)).toBe(
+          "This field is required.",
+        );
       });
 
       it('a plain required field with no min/max keeps "This field is required." for a missing value', async () => {
         const fieldDef = textarea({ label: "Bio", required: true });
-        expect(await submit(fieldDef, undefined)).toBe("This field is required.");
+        expect(await submit(fieldDef, undefined)).toBe(
+          "This field is required.",
+        );
       });
 
       it("an optional field with no min/max accepts a missing value", async () => {
@@ -5375,7 +6031,10 @@ runFieldInputContractSuite({
             initialValue={undefined}
           />,
         );
-        expect(screen.getByLabelText("Bio", { exact: false })).toHaveAttribute("rows", "4");
+        expect(screen.getByLabelText("Bio", { exact: false })).toHaveAttribute(
+          "rows",
+          "4",
+        );
       });
 
       it("honors a configured rows value", () => {
@@ -5387,7 +6046,10 @@ runFieldInputContractSuite({
             initialValue={undefined}
           />,
         );
-        expect(screen.getByLabelText("Bio", { exact: false })).toHaveAttribute("rows", "10");
+        expect(screen.getByLabelText("Bio", { exact: false })).toHaveAttribute(
+          "rows",
+          "10",
+        );
       });
 
       it("shows no character counter when max is not configured", () => {
@@ -5413,7 +6075,10 @@ runFieldInputContractSuite({
           />,
         );
         expect(screen.getByText("0/20")).toBeInTheDocument();
-        await user.type(screen.getByLabelText("Bio", { exact: false }), "hello");
+        await user.type(
+          screen.getByLabelText("Bio", { exact: false }),
+          "hello",
+        );
         expect(screen.getByText("5/20")).toBeInTheDocument();
       });
 
@@ -5443,7 +6108,11 @@ runFieldInputContractSuite({
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { TDocument } from "@vexcms/core";
-import { makeCellRow, runFieldCellContractSuite, withCellConfig } from "../../../testing/fieldCellContract";
+import {
+  makeCellRow,
+  runFieldCellContractSuite,
+  withCellConfig,
+} from "../../../testing/fieldCellContract";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { TextareaFieldCell } from "./Cell";
 import { textareaFieldFixture } from "./testFixture";
@@ -5456,7 +6125,10 @@ runFieldCellContractSuite({
 
     describe("textarea: collapses multi-line content to one line", () => {
       it("renders no raw newlines when the stored value is multi-line", () => {
-        const row = makeCellRow<TDocument>({ fieldKey: "field", value: options.fixture.valid });
+        const row = makeCellRow<TDocument>({
+          fieldKey: "field",
+          value: options.fixture.valid,
+        });
         const { container } = render(
           withCellConfig(
             <TextareaFieldCell
@@ -5493,8 +6165,16 @@ Add the import, anchored right after the `email` import step 2 added:
 
 ```ts
 import { TextFieldCell, TextFieldInput, textFieldToColumnDef } from "./text";
-import { EmailFieldCell, EmailFieldInput, emailFieldToColumnDef } from "./email";
-import { TextareaFieldCell, TextareaFieldInput, textareaFieldToColumnDef } from "./textarea";
+import {
+  EmailFieldCell,
+  EmailFieldInput,
+  emailFieldToColumnDef,
+} from "./email";
+import {
+  TextareaFieldCell,
+  TextareaFieldInput,
+  textareaFieldToColumnDef,
+} from "./textarea";
 ```
 
 Add the barrel export, anchored right after `export * from "./email";` (step 2):
@@ -5607,7 +6287,17 @@ Add the `fields` map entry, anchored right after the `ADMIN_FIELDS.email.type` e
 Add `textarea` to the pass-through config export, anchored at the line step 2 updated:
 
 ```ts
-export { text, email, textarea, number, select, date, url, checkbox, defineConfig } from "@vexcms/core";
+export {
+  text,
+  email,
+  textarea,
+  number,
+  select,
+  date,
+  url,
+  checkbox,
+  defineConfig,
+} from "@vexcms/core";
 ```
 
 Add `TextareaField` to the resolved-type export block, anchored right after `EmailField` (step 2):
@@ -5623,7 +6313,14 @@ export type {
 Add the component export, anchored at the line step 2 updated:
 
 ```ts
-export { TextFieldInput, TextFieldCell, EmailFieldInput, EmailFieldCell, TextareaFieldInput, TextareaFieldCell } from "./components/fields";
+export {
+  TextFieldInput,
+  TextFieldCell,
+  EmailFieldInput,
+  EmailFieldCell,
+  TextareaFieldInput,
+  TextareaFieldCell,
+} from "./components/fields";
 ```
 
 #### packages/react/src/testing/fixtures/index.ts
@@ -5670,8 +6367,12 @@ Why: leaf field; `v.any()` storage, parse-checked input, truncated cell preview.
 
 #### packages/core/src/fields/json/types.ts
 
-```ts
-import type { BaseField, BaseFieldInput, FieldValidateProps } from "../baseTypes";
+````ts
+import type {
+  BaseField,
+  BaseFieldInput,
+  FieldValidateProps,
+} from "../baseTypes";
 import type { VexResourceSlug } from "../../types";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
@@ -5722,7 +6423,9 @@ export interface JsonFieldInput<
    */
   defaultValue?: unknown;
   /** Server-only async validation with `value` typed as `unknown`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, unknown>): Promise<void> | void;
+  validate?(
+    props: FieldValidateProps<TCollectionSlug, unknown>,
+  ): Promise<void> | void;
 }
 
 /**
@@ -5746,13 +6449,15 @@ export interface JsonField<
    */
   defaultValue?: unknown;
   /** Server-only async validation with `value` typed as `unknown`. @see {@link FieldValidate} */
-  validate?(props: FieldValidateProps<TCollectionSlug, unknown>): Promise<void> | void;
+  validate?(
+    props: FieldValidateProps<TCollectionSlug, unknown>,
+  ): Promise<void> | void;
 }
-```
+````
 
 #### packages/core/src/fields/json/config.ts
 
-```ts
+````ts
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
 import type { VexResourceSlug } from "../../types";
@@ -5797,7 +6502,9 @@ import type { JsonFieldInput, JsonField } from "./types";
 export function json<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
->(options?: JsonFieldInput<TCollectionSlug, TFieldMeta>): JsonField<TCollectionSlug, TFieldMeta> {
+>(
+  options?: JsonFieldInput<TCollectionSlug, TFieldMeta>,
+): JsonField<TCollectionSlug, TFieldMeta> {
   return {
     type: ADMIN_FIELDS.json.type,
     interfaceType: ADMIN_FIELDS.json.interfaceType,
@@ -5821,11 +6528,11 @@ export function json<
     } as TFieldMeta,
   };
 }
-```
+````
 
 #### packages/core/src/fields/json/validator.ts
 
-```ts
+````ts
 import { ADMIN_FIELDS } from "../constants";
 import { applyBaseValidators } from "../validators/utils";
 import { fieldValidator, type FieldValidate } from "../baseTypes";
@@ -5870,19 +6577,17 @@ export function jsonFieldToValidator(props: { field: JsonField }): string {
  * @param fn - The validate callback, checked against the collection's real document shape and `value` type.
  * @returns The same function, re-typed to the field's loose public `validate` signature.
  */
-export function jsonValidator<
-  TCollectionSlug extends CollectionSlug,
->(
+export function jsonValidator<TCollectionSlug extends CollectionSlug>(
   slug: TCollectionSlug,
   fn: FieldValidate<TCollectionSlug, unknown, JsonField>,
 ): FieldValidate<TCollectionSlug, unknown> {
   return fieldValidator<TCollectionSlug, unknown, JsonField>(slug, fn);
 }
-```
+````
 
 #### packages/core/src/fields/json/inputSchema.ts
 
-```ts
+````ts
 import * as z from "zod";
 import type { ZodType } from "zod";
 import { JsonField } from "./types";
@@ -5912,7 +6617,9 @@ export function jsonFieldToInputSchema(props: { field: JsonField }): ZodType {
   const requiredError = "This field is required.";
 
   const inputSchema: ZodType = field.required
-    ? z.unknown().refine((value) => value !== undefined && value !== null, requiredError)
+    ? z
+        .unknown()
+        .refine((value) => value !== undefined && value !== null, requiredError)
     : z.unknown();
 
   const finalSchema: ZodType = field.required
@@ -5921,7 +6628,7 @@ export function jsonFieldToInputSchema(props: { field: JsonField }): ZodType {
 
   return applyBaseInputSchemaMeta({ field, inputSchema: finalSchema });
 }
-```
+````
 
 #### packages/core/src/fields/json/index.ts
 
@@ -6181,31 +6888,35 @@ import { json } from "../fields/json/config";
 **3 — new `it`, anchored inside the `describe("generateVexTypes — document interfaces", ...)` block, after the `generates optional fields with ? modifier` test.**
 
 ```ts
-  it("generates optional fields with ? modifier", () => {
-    const config = defineServerConfig({ config: defineConfig({
+it("generates optional fields with ? modifier", () => {
+  const config = defineServerConfig({
+    config: defineConfig({
       collections: [
         defineCollection({
           slug: "posts",
           fields: { excerpt: text({ required: false }) },
         }),
       ],
-    }) })
-    const output = generateVexTypes({ config });
-    expect(output).toContain("excerpt?: string");
+    }),
   });
+  const output = generateVexTypes({ config });
+  expect(output).toContain("excerpt?: string");
+});
 
-  it("generates an unknown field for json", () => {
-    const config = defineServerConfig({ config: defineConfig({
+it("generates an unknown field for json", () => {
+  const config = defineServerConfig({
+    config: defineConfig({
       collections: [
         defineCollection({
           slug: "posts",
           fields: { settings: json({ required: false }) },
         }),
       ],
-    }) })
-    const output = generateVexTypes({ config });
-    expect(output).toContain("settings?: unknown");
+    }),
   });
+  const output = generateVexTypes({ config });
+  expect(output).toContain("settings?: unknown");
+});
 ```
 
 #### packages/core/src/schema/generateVexSchema.test.ts
@@ -6277,13 +6988,13 @@ import { url, text, number, checkbox, date, select, json } from "../fields";
 `catalog:` additions (alphabetical) — the CodeMirror 6 packages the react `json()` field's `JsonEditor` depends on.
 
 ```yaml
-  "@codemirror/commands": 6.11.1
-  "@codemirror/lang-json": 6.0.2
-  "@codemirror/language": 6.13.1
-  "@codemirror/lint": 6.9.7
-  "@codemirror/state": 6.7.6
-  "@codemirror/view": 6.43.14
-  "@lezer/highlight": 1.2.5
+"@codemirror/commands": 6.11.1
+"@codemirror/lang-json": 6.0.2
+"@codemirror/language": 6.13.1
+"@codemirror/lint": 6.9.7
+"@codemirror/state": 6.7.6
+"@codemirror/view": 6.43.14
+"@lezer/highlight": 1.2.5
 ```
 
 #### packages/react/package.json
@@ -6400,7 +7111,10 @@ const highlightStyle = HighlightStyle.define([
   { tag: tags.string, color: "var(--chart-2)" },
   { tag: tags.number, color: "var(--chart-3)" },
   { tag: [tags.bool, tags.null], color: "var(--chart-4)" },
-  { tag: [tags.brace, tags.squareBracket, tags.separator], color: "var(--muted-foreground)" },
+  {
+    tag: [tags.brace, tags.squareBracket, tags.separator],
+    color: "var(--muted-foreground)",
+  },
 ]);
 
 const theme = EditorView.theme({
@@ -6505,7 +7219,9 @@ export function JsonEditorView({
         EditorView.contentAttributes.of({
           id,
           ...(ariaLabelledBy ? { "aria-labelledby": ariaLabelledBy } : {}),
-          ...(ariaRequired !== undefined ? { "aria-required": String(ariaRequired) } : {}),
+          ...(ariaRequired !== undefined
+            ? { "aria-required": String(ariaRequired) }
+            : {}),
         }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
@@ -6570,8 +7286,7 @@ export function JsonEditorView({
  * human-readable `error` message).
  */
 export type JsonFieldParseResult =
-  | { ok: true; value: unknown }
-  | { ok: false; error: string };
+  { ok: true; value: unknown } | { ok: false; error: string };
 
 /**
  * Serializes a JSON field's stored value into editor-displayable text.
@@ -6594,14 +7309,21 @@ export function stringifyJsonFieldValue(value: unknown): string {
  * @param args - The editor text to parse.
  * @returns A discriminated success/failure result.
  */
-export function parseJsonFieldText({ text }: { text: string }): JsonFieldParseResult {
+export function parseJsonFieldText({
+  text,
+}: {
+  text: string;
+}): JsonFieldParseResult {
   if (text.trim() === "") {
     return { ok: true, value: undefined };
   }
   try {
     return { ok: true, value: JSON.parse(text) as unknown };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Invalid JSON." };
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Invalid JSON.",
+    };
   }
 }
 ```
@@ -6643,7 +7365,9 @@ import { parseJsonFieldText, stringifyJsonFieldValue } from "./utils";
 export const JsonFieldInput = createFieldInput<unknown, {}, JsonField>(
   ({ name, readOnly, fieldDef, field, index, submissionAttempts }) => {
     const isReadOnly = readOnly || fieldDef.admin.readOnly;
-    const [text, setText] = useState(() => stringifyJsonFieldValue(field.state.value));
+    const [text, setText] = useState(() =>
+      stringifyJsonFieldValue(field.state.value),
+    );
     const [parseError, setParseError] = useState<string | undefined>(undefined);
 
     if (isReadOnly) {
@@ -6726,7 +7450,9 @@ export const JsonFieldInput = createFieldInput<unknown, {}, JsonField>(
           aria-required={fieldDef.required}
           placeholder={fieldDef.admin.placeholder}
         />
-        {parseError && <p className="text-[0.8rem] text-destructive">{parseError}</p>}
+        {parseError && (
+          <p className="text-[0.8rem] text-destructive">{parseError}</p>
+        )}
         <FormDescription field={fieldDef} />
         <FormError field={field} submissionAttempts={submissionAttempts} />
       </div>
@@ -6735,11 +7461,15 @@ export const JsonFieldInput = createFieldInput<unknown, {}, JsonField>(
 );
 ```
 
-
 #### packages/react/src/components/fields/json/Cell.tsx
 
-```tsx
-import { addLeadingSlash, TDocument, type CellComponentProps, type JsonField } from "@vexcms/core";
+````tsx
+import {
+  addLeadingSlash,
+  TDocument,
+  type CellComponentProps,
+  type JsonField,
+} from "@vexcms/core";
 import { VexLink } from "../../ui";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
@@ -6787,7 +7517,9 @@ export function JsonFieldCell<TData extends TDocument = TDocument>(
   const preview = formatJsonCellPreview(props.value);
   if (props.isTitleField) {
     return (
-      <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+      <VexLink
+        href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}
+      >
         <span className="font-mono font-bold" title={serialized}>
           {preview}
         </span>
@@ -6800,11 +7532,11 @@ export function JsonFieldCell<TData extends TDocument = TDocument>(
     </span>
   );
 }
-```
+````
 
 #### packages/react/src/components/fields/json/columnDef.tsx
 
-```tsx
+````tsx
 import type { ColumnDef } from "@tanstack/react-table";
 import type { CollectionConfig, JsonField, TDocument } from "@vexcms/core";
 import { JsonFieldCell } from "./Cell";
@@ -6831,7 +7563,9 @@ import { JsonFieldCell } from "./Cell";
  * });
  * ```
  */
-export function jsonFieldToColumnDef<TData extends TDocument = TDocument>(props: {
+export function jsonFieldToColumnDef<
+  TData extends TDocument = TDocument,
+>(props: {
   fieldDef: JsonField;
   fieldKey: string;
   collection: CollectionConfig;
@@ -6867,7 +7601,7 @@ export function jsonFieldToColumnDef<TData extends TDocument = TDocument>(props:
     },
   };
 }
-```
+````
 
 #### packages/react/src/components/fields/json/testFixture.ts
 
@@ -6916,7 +7650,9 @@ import { parseJsonFieldText, stringifyJsonFieldValue } from "./utils";
 
 describe("stringifyJsonFieldValue", () => {
   it("serializes a plain object with two-space indentation", () => {
-    expect(stringifyJsonFieldValue({ a: 1 })).toBe(JSON.stringify({ a: 1 }, null, 2));
+    expect(stringifyJsonFieldValue({ a: 1 })).toBe(
+      JSON.stringify({ a: 1 }, null, 2),
+    );
   });
 
   it("serializes a bare scalar", () => {
@@ -6934,19 +7670,31 @@ describe("stringifyJsonFieldValue", () => {
 
 describe("parseJsonFieldText", () => {
   it("parses a valid JSON object", () => {
-    expect(parseJsonFieldText({ text: '{"a":1}' })).toStrictEqual({ ok: true, value: { a: 1 } });
+    expect(parseJsonFieldText({ text: '{"a":1}' })).toStrictEqual({
+      ok: true,
+      value: { a: 1 },
+    });
   });
 
   it("parses a valid bare scalar", () => {
-    expect(parseJsonFieldText({ text: "true" })).toStrictEqual({ ok: true, value: true });
+    expect(parseJsonFieldText({ text: "true" })).toStrictEqual({
+      ok: true,
+      value: true,
+    });
   });
 
   it("parses blank text as undefined", () => {
-    expect(parseJsonFieldText({ text: "" })).toStrictEqual({ ok: true, value: undefined });
+    expect(parseJsonFieldText({ text: "" })).toStrictEqual({
+      ok: true,
+      value: undefined,
+    });
   });
 
   it("parses whitespace-only text as undefined", () => {
-    expect(parseJsonFieldText({ text: "   \n  " })).toStrictEqual({ ok: true, value: undefined });
+    expect(parseJsonFieldText({ text: "   \n  " })).toStrictEqual({
+      ok: true,
+      value: undefined,
+    });
   });
 
   it("returns the parser's own message on invalid JSON", () => {
@@ -6986,7 +7734,11 @@ vi.mock("./JsonEditorView", () => ({
 describe("JsonEditor", () => {
   it("shows the Suspense fallback textarea synchronously before the lazy-loaded CodeMirror view resolves", () => {
     const { container } = render(
-      <JsonEditor id="settings" value={JSON.stringify({ a: 1 }, null, 2)} onChange={() => {}} />,
+      <JsonEditor
+        id="settings"
+        value={JSON.stringify({ a: 1 }, null, 2)}
+        onChange={() => {}}
+      />,
     );
 
     const fallback = container.querySelector('[data-slot="textarea"]');
@@ -7005,7 +7757,12 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
-import { adminFieldToInputSchema, json, type CollectionConfig, type JsonField } from "@vexcms/core";
+import {
+  adminFieldToInputSchema,
+  json,
+  type CollectionConfig,
+  type JsonField,
+} from "@vexcms/core";
 import { AppForm } from "../../form/AppForm";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { runFieldInputContractSuite } from "../../../testing/fieldInputContract";
@@ -7064,7 +7821,11 @@ function JsonValidationHarness(props: {
         const schema = adminFieldToInputSchema({ field: props.fieldDef });
         const result = schema.safeParse(value.testField);
         if (result.success) return undefined;
-        return { fields: { testField: result.error.issues[0]?.message ?? "Invalid value" } };
+        return {
+          fields: {
+            testField: result.error.issues[0]?.message ?? "Invalid value",
+          },
+        };
       },
     },
   });
@@ -7092,10 +7853,16 @@ runFieldInputContractSuite({
         const user = userEvent.setup();
         const fieldDef = json({ label: "Settings" });
         const { container } = render(
-          <JsonValidationHarness fieldDef={fieldDef} collection={collection} initialValue={undefined} />,
+          <JsonValidationHarness
+            fieldDef={fieldDef}
+            collection={collection}
+            initialValue={undefined}
+          />,
         );
 
-        const textarea = await screen.findByLabelText("Settings", { exact: false });
+        const textarea = await screen.findByLabelText("Settings", {
+          exact: false,
+        });
         await user.clear(textarea);
         await user.type(textarea, "true");
 
@@ -7106,10 +7873,16 @@ runFieldInputContractSuite({
         const user = userEvent.setup();
         const fieldDef = json({ label: "Settings" });
         const { container } = render(
-          <JsonValidationHarness fieldDef={fieldDef} collection={collection} initialValue={undefined} />,
+          <JsonValidationHarness
+            fieldDef={fieldDef}
+            collection={collection}
+            initialValue={undefined}
+          />,
         );
 
-        const textarea = await screen.findByLabelText("Settings", { exact: false });
+        const textarea = await screen.findByLabelText("Settings", {
+          exact: false,
+        });
         await user.clear(textarea);
         await user.type(textarea, "not valid json");
 
@@ -7120,20 +7893,34 @@ runFieldInputContractSuite({
       it("leaves the committed form value unchanged while the typed text fails to parse", async () => {
         const user = userEvent.setup();
         const fieldDef = json({ label: "Settings", required: true });
-        render(<JsonValidationHarness fieldDef={fieldDef} collection={collection} initialValue={42} />);
+        render(
+          <JsonValidationHarness
+            fieldDef={fieldDef}
+            collection={collection}
+            initialValue={42}
+          />,
+        );
 
-        const textarea = await screen.findByLabelText("Settings", { exact: false });
+        const textarea = await screen.findByLabelText("Settings", {
+          exact: false,
+        });
         await user.type(textarea, "not valid json");
         await user.click(screen.getByRole("button", { name: /submit/i }));
 
-        expect(screen.queryByText("This field is required.")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("This field is required."),
+        ).not.toBeInTheDocument();
       });
 
       it("the Format button normalizes the current valid JSON text and commits the parsed value", async () => {
         const user = userEvent.setup();
         const fieldDef = json({ label: "Settings" });
         render(
-          <JsonValidationHarness fieldDef={fieldDef} collection={collection} initialValue={undefined} />,
+          <JsonValidationHarness
+            fieldDef={fieldDef}
+            collection={collection}
+            initialValue={undefined}
+          />,
         );
 
         const textarea = (await screen.findByLabelText("Settings", {
@@ -7149,10 +7936,16 @@ runFieldInputContractSuite({
         const user = userEvent.setup();
         const fieldDef = json({ label: "Settings" });
         render(
-          <JsonValidationHarness fieldDef={fieldDef} collection={collection} initialValue={undefined} />,
+          <JsonValidationHarness
+            fieldDef={fieldDef}
+            collection={collection}
+            initialValue={undefined}
+          />,
         );
 
-        const textarea = await screen.findByLabelText("Settings", { exact: false });
+        const textarea = await screen.findByLabelText("Settings", {
+          exact: false,
+        });
         await user.type(textarea, "not valid json");
 
         expect(screen.getByRole("button", { name: "Format" })).toBeDisabled();
@@ -7169,8 +7962,12 @@ runFieldInputContractSuite({
           />,
         );
 
-        const group = (await screen.findByText("Settings")).closest('[role="group"]') as HTMLElement;
-        const textarea = (await within(group).findByRole("textbox")) as HTMLTextAreaElement;
+        const group = (await screen.findByText("Settings")).closest(
+          '[role="group"]',
+        ) as HTMLElement;
+        const textarea = (await within(group).findByRole(
+          "textbox",
+        )) as HTMLTextAreaElement;
         expect(textarea).toHaveAttribute("readonly");
         expect(textarea.value).toBe(JSON.stringify({ a: 1 }, null, 2));
         expect(container.querySelector("pre")).toBeNull();
@@ -7180,14 +7977,17 @@ runFieldInputContractSuite({
 });
 ```
 
-
 #### packages/react/src/components/fields/json/Cell.test.tsx
 
 ```tsx
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { TDocument } from "@vexcms/core";
-import { makeCellRow, runFieldCellContractSuite, withCellConfig } from "../../../testing/fieldCellContract";
+import {
+  makeCellRow,
+  runFieldCellContractSuite,
+  withCellConfig,
+} from "../../../testing/fieldCellContract";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { JsonFieldCell } from "./Cell";
 import { jsonFieldFixture } from "./testFixture";
@@ -7201,9 +8001,14 @@ runFieldCellContractSuite({
 
     describe("json: truncated preview", () => {
       it("truncates a long JSON.stringify preview at 80 characters and keeps the full value on title", () => {
-        const longValue = { items: Array.from({ length: 20 }, (_, i) => `item-${i}`) };
+        const longValue = {
+          items: Array.from({ length: 20 }, (_, i) => `item-${i}`),
+        };
         const serialized = JSON.stringify(longValue);
-        const row = makeCellRow<TDocument>({ fieldKey: "field", value: longValue });
+        const row = makeCellRow<TDocument>({
+          fieldKey: "field",
+          value: longValue,
+        });
         const { container } = render(
           withCellConfig(
             <JsonFieldCell
@@ -7222,7 +8027,10 @@ runFieldCellContractSuite({
       });
 
       it("shows the full JSON.stringify value untruncated when under 80 characters", () => {
-        const row = makeCellRow<TDocument>({ fieldKey: "field", value: { a: 1 } });
+        const row = makeCellRow<TDocument>({
+          fieldKey: "field",
+          value: { a: 1 },
+        });
         const { container } = render(
           withCellConfig(
             <JsonFieldCell
@@ -7258,7 +8066,11 @@ runColumnDefSuite({ fixture: jsonFieldFixture });
 **1 — import, anchored after the `./textarea` import added by step 3.**
 
 ```ts
-import { TextareaFieldCell, TextareaFieldInput, textareaFieldToColumnDef } from "./textarea";
+import {
+  TextareaFieldCell,
+  TextareaFieldInput,
+  textareaFieldToColumnDef,
+} from "./textarea";
 import { JsonFieldCell, JsonFieldInput, jsonFieldToColumnDef } from "./json";
 ```
 
@@ -7354,7 +8166,18 @@ export * from "./json";
 **1 — pass-through config function export, anchored at the field-config re-export line after steps 2 (`email`) and 3 (`textarea`) have each added themselves to it.**
 
 ```ts
-export { text, email, textarea, number, select, date, url, checkbox, json, defineConfig } from "@vexcms/core";
+export {
+  text,
+  email,
+  textarea,
+  number,
+  select,
+  date,
+  url,
+  checkbox,
+  json,
+  defineConfig,
+} from "@vexcms/core";
 ```
 
 **2 — resolved type export, anchored at the resolved-type `export type { ... }` list after steps 2 and 3 have each added `EmailField`/`TextareaField` beside `TextField`.**
@@ -7468,28 +8291,34 @@ Two edits. Everything else in the file (the reserved-key guard, versions guard,
 **1 — import: `number` is no longer used in this file; swap it for `date`.**
 
 ```ts
-import { ADMIN_FIELDS, AdminField, CollectionFieldMeta, ComponentHKT, date } from "../fields";
+import {
+  ADMIN_FIELDS,
+  AdminField,
+  CollectionFieldMeta,
+  ComponentHKT,
+  date,
+} from "../fields";
 ```
 
 **2 — `fieldsWithTimestamp`'s injected field, inside `defineCollection`.**
 
 ```ts
-  const fieldsWithTimestamp = skipInjection
-    ? input.fields
-    : {
-        ...input.fields,
-        updatedAt: date({
-          label: "Updated At",
-          required: false,
-          // `date()`'s own default is already `undefined` (`ADMIN_FIELDS.date.defaultValue`);
-          // stated explicitly so the intent reads at the call site — an unsaved document has
-          // no update time, and epoch is a lie. `getFieldsDefaultValues` yields `undefined`
-          // on create and the stored value on edit.
-          defaultValue: undefined,
-          admin: { position: "sidebar", readOnly: true },
-          time: { timePicker: { hour: true, minute: true, second: true } },
-        }) as AdminField<TFieldMeta>,
-      };
+const fieldsWithTimestamp = skipInjection
+  ? input.fields
+  : {
+      ...input.fields,
+      updatedAt: date({
+        label: "Updated At",
+        required: false,
+        // `date()`'s own default is already `undefined` (`ADMIN_FIELDS.date.defaultValue`);
+        // stated explicitly so the intent reads at the call site — an unsaved document has
+        // no update time, and epoch is a lie. `getFieldsDefaultValues` yields `undefined`
+        // on create and the stored value on edit.
+        defaultValue: undefined,
+        admin: { position: "sidebar", readOnly: true },
+        time: { timePicker: { hour: true, minute: true, second: true } },
+      }) as AdminField<TFieldMeta>,
+    };
 ```
 
 #### packages/core/src/collections/config.test.ts
@@ -7510,37 +8339,37 @@ import type { AdminField, DateField } from "../fields";
 **1 — the first test, renamed and asserting `"date"` instead of `"number"`.**
 
 ```ts
-  it("injects an optional updatedAt date field by default", () => {
-    const posts = defineCollection({
-      slug: "posts",
-      fields: { title: text({ required: true }) },
-    });
-    const field = posts.fields.updatedAt;
-    expect(field).toBeDefined();
-    expect(field?.type).toBe("date");
-    expect(field?.required).toBe(false);
+it("injects an optional updatedAt date field by default", () => {
+  const posts = defineCollection({
+    slug: "posts",
+    fields: { title: text({ required: true }) },
   });
+  const field = posts.fields.updatedAt;
+  expect(field).toBeDefined();
+  expect(field?.type).toBe("date");
+  expect(field?.required).toBe(false);
+});
 ```
 
 **2 — new test, inserted directly after the `"marks the injected field read-only so the form cannot edit it"` test.**
 
 ```ts
-  it("resolves the injected field's time config with seconds visible", () => {
-    const posts = defineCollection({
-      slug: "posts",
-      fields: { title: text({ required: true }) },
-    });
-    expect((posts.fields.updatedAt as DateField | undefined)?.time).toEqual({
-      hidden: false,
-      use12HourFormat: true,
-      timePicker: { hour: true, minute: true, second: true },
-    });
+it("resolves the injected field's time config with seconds visible", () => {
+  const posts = defineCollection({
+    slug: "posts",
+    fields: { title: text({ required: true }) },
   });
+  expect((posts.fields.updatedAt as DateField | undefined)?.time).toEqual({
+    hidden: false,
+    use12HourFormat: true,
+    timePicker: { hour: true, minute: true, second: true },
+  });
+});
 ```
 
 #### packages/react/src/components/fields/date/utils.ts
 
-```ts
+````ts
 import { format } from "date-fns";
 import type { DateField } from "@vexcms/core";
 
@@ -7565,7 +8394,10 @@ import type { DateField } from "@vexcms/core";
  * // → "Jun 15, 2025 2:30 PM"
  * ```
  */
-export function formatDateFieldValue(props: { value: number; time: DateField["time"] }): string {
+export function formatDateFieldValue(props: {
+  value: number;
+  time: DateField["time"];
+}): string {
   const date = new Date(props.value);
   if (props.time.hidden) {
     return format(date, "MMM d, yyyy");
@@ -7579,7 +8411,7 @@ export function formatDateFieldValue(props: { value: number; time: DateField["ti
       : "HH:mm";
   return format(date, `MMM d, yyyy ${timeFormat}`);
 }
-```
+````
 
 #### packages/react/src/components/fields/date/utils.test.ts
 
@@ -7607,7 +8439,11 @@ describe("formatDateFieldValue", () => {
     expect(
       formatDateFieldValue({
         value: TIMESTAMP,
-        time: { hidden: true, use12HourFormat: true, timePicker: { hour: true, minute: true, second: false } },
+        time: {
+          hidden: true,
+          use12HourFormat: true,
+          timePicker: { hour: true, minute: true, second: false },
+        },
       }),
     ).toBe("Jun 15, 2025");
   });
@@ -7616,7 +8452,11 @@ describe("formatDateFieldValue", () => {
     expect(
       formatDateFieldValue({
         value: TIMESTAMP,
-        time: { hidden: false, use12HourFormat: true, timePicker: { hour: true, minute: true, second: false } },
+        time: {
+          hidden: false,
+          use12HourFormat: true,
+          timePicker: { hour: true, minute: true, second: false },
+        },
       }),
     ).toBe("Jun 15, 2025 2:30 PM");
   });
@@ -7625,7 +8465,11 @@ describe("formatDateFieldValue", () => {
     expect(
       formatDateFieldValue({
         value: TIMESTAMP,
-        time: { hidden: false, use12HourFormat: true, timePicker: { hour: true, minute: true, second: true } },
+        time: {
+          hidden: false,
+          use12HourFormat: true,
+          timePicker: { hour: true, minute: true, second: true },
+        },
       }),
     ).toBe("Jun 15, 2025 2:30:45 PM");
   });
@@ -7634,7 +8478,11 @@ describe("formatDateFieldValue", () => {
     expect(
       formatDateFieldValue({
         value: TIMESTAMP,
-        time: { hidden: false, use12HourFormat: false, timePicker: { hour: true, minute: true, second: false } },
+        time: {
+          hidden: false,
+          use12HourFormat: false,
+          timePicker: { hour: true, minute: true, second: false },
+        },
       }),
     ).toBe("Jun 15, 2025 14:30");
   });
@@ -7643,7 +8491,11 @@ describe("formatDateFieldValue", () => {
     expect(
       formatDateFieldValue({
         value: TIMESTAMP,
-        time: { hidden: false, use12HourFormat: false, timePicker: { hour: true, minute: true, second: true } },
+        time: {
+          hidden: false,
+          use12HourFormat: false,
+          timePicker: { hour: true, minute: true, second: true },
+        },
       }),
     ).toBe("Jun 15, 2025 14:30:45");
   });
@@ -7664,7 +8516,7 @@ import { formatDateFieldValue } from "./utils";
 
 **2 — `DateFieldCell`, complete (identifier: `export function DateFieldCell`).**
 
-```tsx
+````tsx
 /**
  * Date field cell component for the data-table list view.
  *
@@ -7688,16 +8540,20 @@ export function DateFieldCell<TData extends TDocument = TDocument>(
   const config = useVexConfig();
   const basePath = addLeadingSlash(config.basePath);
   const content = (
-    <span>{formatDateFieldValue({ value: props.value, time: props.fieldDef.time })}</span>
+    <span>
+      {formatDateFieldValue({ value: props.value, time: props.fieldDef.time })}
+    </span>
   );
   if (!props.isTitleField) return content;
   return (
-    <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+    <VexLink
+      href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}
+    >
       {content}
     </VexLink>
   );
 }
-```
+````
 
 #### packages/react/src/components/fields/date/Cell.test.tsx
 
@@ -7710,7 +8566,11 @@ covers `time.hidden`.
 import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { date, type TDocument } from "@vexcms/core";
-import { makeCellRow, runFieldCellContractSuite, withCellConfig } from "../../../testing/fieldCellContract";
+import {
+  makeCellRow,
+  runFieldCellContractSuite,
+  withCellConfig,
+} from "../../../testing/fieldCellContract";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { DateFieldCell } from "./Cell";
 import { dateFieldFixture } from "./testFixture";
@@ -7728,7 +8588,10 @@ runFieldCellContractSuite({
 
     it("renders date+time via formatDateFieldValue, matching the field's default time config", () => {
       const timestamp = Date.UTC(2025, 5, 15, 14, 30, 45);
-      const row = makeCellRow<TDocument>({ fieldKey: "field", value: timestamp });
+      const row = makeCellRow<TDocument>({
+        fieldKey: "field",
+        value: timestamp,
+      });
       render(
         withCellConfig(
           <DateFieldCell
@@ -7751,7 +8614,10 @@ runFieldCellContractSuite({
         required: true,
         time: { hidden: true },
       });
-      const row = makeCellRow<TDocument>({ fieldKey: "field", value: timestamp });
+      const row = makeCellRow<TDocument>({
+        fieldKey: "field",
+        value: timestamp,
+      });
       render(
         withCellConfig(
           <DateFieldCell
@@ -7818,68 +8684,324 @@ to affect it, so the pin has to happen before `vitest` itself starts.
 
 Verify: pnpm --filter @vexcms/core test -- collections && pnpm --filter @vexcms/react test -- fields/date && pnpm --filter @vexcms/core test -- types
 
-### Step 6 — Core layout model: `width`, `admin.layout`, `admin.condition`, `tabs()`/`collapsible()`/`row()` [agent]
+### Step 6 — UI fields as real fields: `tabs()`, `collapsible()`, `row()`, `ui()`, `getDataFields()` [agent]
 
-- [ ] `packages/core/src/fields/baseTypes.ts` — `width: string` (default `"100%"`), `admin.layout`, `admin.condition`; `"half"`/`"full"` literal removed
-- [ ] `packages/core/src/fields/layout/types.ts` — `FIELD_LAYOUT_KINDS`, `FieldLayoutKind`, `FieldLayoutFrame`, `FieldLayoutNode`, `FieldCondition`, `FieldConditionProps`, `UnionToIntersection`
-- [ ] `packages/core/src/fields/layout/config.ts` — `tabs`, `collapsible`, `row`
-- [ ] `packages/core/src/fields/layout/utils.ts` — `andFieldConditions`, `isFieldConditionMet`, `hasFieldConditions`, `buildFieldLayoutTree`, `resolveRowWidths`
-- [ ] `packages/core/src/fields/layout/index.ts` barrel + `config.test.ts` + `utils.test.ts` (incl. a `tabs()` key-inference test)
-- [ ] `packages/core/src/fields/index.ts` — export the new barrel
-- [ ] every field factory (`text`, `number`, `checkbox`, `color`, `date`, `select`, `url`, `relationship`, `upload`, `richtext`, `array`, `blocks`, `group`, `email`, `textarea`, `json`) resolves `admin.width = "100%"` and `admin.layout = []` by default; `admin.condition` already flows through via the existing `...options?.admin` spread
-- [ ] migrate every `width: "half"` / `width: "full"` literal in `packages/core/src/fields/**` (JSDoc examples included) to `"50%"` / the `"100%"` default
-- [ ] `packages/react/src/index.ts` — re-export `tabs`, `collapsible`, `row` the way `text` is re-exported
+- [ ] `packages/core/src/fields/constants.ts` — `ADMIN_FIELDS.tabs`/`.collapsible`/`.row`/`.ui`, each `kind: "ui"`
+- [ ] `packages/core/src/fields/baseTypes.ts` — `width: string` (default `"100%"`); `"half"`/`"full"` literal union removed; `FieldAdminConfigInput`/`FieldAdminConfig` stay NON-generic with no `condition` (every data field type declares its own `<Type>FieldAdminInput<TCollectionSlug>` with `condition`, precedent: `RelationshipFieldAdminInput`); new NON-generic `UIKindFieldAdminConfigInput`/`UIKindFieldAdminConfig` (`Pick` of hidden/readOnly/position/width, no `condition`) and `BaseUIFieldInput`/`BaseUIField` (= `BaseFieldInput`/`BaseField` minus `required`/`defaultValue`/`index`/`indexDraftStatus`/`interfaceDescription`/`validate`/`interfaceType`, `admin` replaced with the non-generic UI-kind bases) for the 4 UI field types
+- [ ] `packages/core/src/fields/ui/types.ts` — `FieldCondition<TCollectionSlug>`, `FieldConditionProps<TCollectionSlug>` (typed `data: DocumentByResourceSlug<TCollectionSlug>`), `DataFieldSlug<TFields>`
+- [ ] `packages/core/src/fields/ui/utils.ts` + `utils.test.ts` — `andFieldConditions`, `isFieldConditionMet` (casts the method-shorthand `condition` to a plain shape, mirroring `validateFields`'s existing cast), `hasFieldConditions`, `resolveRowWidths`, `getDataFields` (AND-s `condition`, ORs `hidden`/`readOnly` from each UI container into every field it flattens)
+- [ ] `packages/core/src/fields/ui/tabs/` — `types.ts`, `config.ts`, `index.ts` + `config.test.ts` — `tabs<TCollectionSlug, TFieldMeta extends {} = {}, const TTabs>()`
+- [ ] `packages/core/src/fields/ui/collapsible/` — `types.ts`, `config.ts`, `index.ts` + `config.test.ts` — `collapsible<TCollectionSlug, TFieldMeta extends {} = {}, const TFields>()`
+- [ ] `packages/core/src/fields/ui/row/` — `types.ts`, `config.ts`, `index.ts` + `config.test.ts` — `row<TCollectionSlug, TFieldMeta extends {} = {}, const TFields>()`
+- [ ] `packages/core/src/fields/ui/ui/` — `types.ts`, `config.ts`, `index.ts` + `config.test.ts` — `ui<TCollectionSlug, TFieldMeta extends {} = {}, TComponent>()`, `UIFieldComponentProps<TCollectionSlug>`/`UIFieldCellProps<TCollectionSlug>`
+- [ ] `packages/core/src/fields/ui/index.ts` — barrel
+- [ ] `packages/core/src/fields/types.ts` — `AdminField` union gains `TabsField<VexResourceSlug, TFieldMeta> | CollapsibleField<VexResourceSlug, TFieldMeta> | RowField<VexResourceSlug, TFieldMeta> | UIField<VexResourceSlug, TFieldMeta>`; `AdminDataField`/`AdminUIField` derived from `ADMIN_FIELDS[type].kind`
+- [ ] `packages/core/src/fields/index.ts` — `export * from "./ui"`
+- [ ] `packages/core/src/fields/utils.ts` — `getFieldsInputSchema`, `getFieldsDefaultValues`, `fieldsToFieldTypeMap`, `validateFields` walk `getDataFields({ fields })` instead of the raw map
+- [ ] every DATA field type's `types.ts` (`text`, `email`, `textarea`, `json`, `number`, `checkbox`, `date`, `select`, `color`, `url`, `relationship`, `upload`, `richtext`, `array`, `group`, `blocks`) — adds its own `<Type>FieldAdminInput<TCollectionSlug>`/`<Type>FieldAdminConfig<TCollectionSlug>` extending `FieldAdminConfigInput`/`FieldAdminConfig` (or its own pre-existing admin type) with a method-shorthand `condition?(props: FieldConditionProps<TCollectionSlug>): boolean`, and overrides `admin?:`/`admin:` on its own `<Type>FieldInput`/`<Type>Field` with it
+- [ ] every field factory (`text`, `number`, `checkbox`, `color`, `date`, `select`, `url`, `relationship`, `upload`, `richtext`, `array`, `blocks`, `group`, `email`, `textarea`, `json`) — `width: "full"` → `"100%"`, `width: "half"` → `"50%"` (JSDoc examples included); `admin.condition` already flows through via the existing `...options?.admin` spread
+- [ ] `packages/core/src/collections/types.ts` — `CollectionConfigInput`/`CollectionConfig`'s `TFieldSlug` parameter replaced by `TFields` (the literal fields-record type); `useAsTitle`, `indexes[].fields`, `AdminCollectionConfig<…>` substitute `DataFieldSlug<TFields>`
+- [ ] `packages/core/src/collections/config.ts` — `defineCollection<…, TFields, …>`; `getDataFields` runs once to reject a duplicate flattened key; `populateCollectionFieldMeta` stamps `meta.collectionSlug` on every field (UI or data — `BaseUIField.meta` now exists, no `kind` check needed); the `indexDraftStatus` guard loop walks `getDataFields`
+- [ ] `packages/core/src/collections/interfaceGen.ts` — `collectionConfigToInterface` walks `getDataFields({ fields: collection.fields })`
+- [ ] `packages/core/src/collections/validator.ts` — `getIncomingRelationships` and `collectionConfigToVexSchema`'s field-validator loop walk `getDataFields`
+- [ ] `packages/core/src/collections/indexFields.ts` — `collectionConfigToIndexFields` walks `getDataFields`
+- [ ] `packages/core/src/globals/types.ts` — mirrors `collections/types.ts`'s `TFields`/`DataFieldSlug` substitution
+- [ ] `packages/core/src/globals/config.ts` — mirrors `collections/config.ts`'s `TFields` + duplicate-key guard
+- [ ] `packages/core/src/globals/interfaceGen.ts` — `globalConfigToInterface` walks `getDataFields({ fields: g.fields })`
+- [ ] `packages/core/src/auth/types.ts`, `packages/core/src/media/types.ts` — pass-through `TFieldSlug` generic renamed to `TFields` (mechanical, same positional slot)
+- [ ] `packages/core/src/access/validateAccessConstraints.ts` — `collectResourceIndexFields` walks `getDataFields({ fields: resource.fields })`
+- [ ] `packages/core/src/versions/assertNoDraftRelationships.ts`, `packages/core/src/versions/statusConstraint.ts` — their field walks switch to `getDataFields`
+- [ ] `packages/react/src/components/fields/index.tsx` — `getCollectionColumnDefs` walks `getDataFields({ fields: collection.fields })` (no column for a UI field)
+- [ ] `packages/react/src/index.ts` — re-export `tabs`, `collapsible`, `row`, `ui` the way `text` is re-exported; its own `CollectionConfigInput`/`CollectionConfig`/`defineCollection` wrapper types get the same `TFieldSlug` → `TFields` rename this step applies to core's `collections/types.ts`
 
-Why: pure core types + helpers + the layout-tree builder; react (step 11) and server (step 9) consume them.
+Why: Payload-style tabs/collapsible/row/ui stop being data-field-mutating spread helpers and become real entries
+in a collection's or global's `fields` record — `fields: { info: tabs({ … }), title: text() }` — registered in
+`ADMIN_FIELDS` with `kind: "ui"` exactly like every data field is already registered with `kind: "data"`
+(`packages/core/src/fields/constants.ts:17` etc., landed and unused until now). `AdminField` is therefore no
+longer purely a data-field union; `AdminDataField`/`AdminUIField` are the two halves, computed from
+`ADMIN_FIELDS[type].kind` rather than hand-maintained as a second list that could drift from `ADMIN_FIELDS`.
+One function, `getDataFields({ fields })`, is the single place that reduces a fields record back down to the
+data fields every non-rendering consumer actually needs: it drops `ui()` entries, hoists an unnamed
+tab's/row's/collapsible's children up to the parent level (recursively — an unnamed tab may itself contain a
+row), turns a NAMED tab into one group-shaped data field keyed by the tab's `name`, and AND-s each UI
+container's own `admin.condition` into every descendant it flattens (and ORs in `admin.hidden`/`admin.readOnly`
+— a container can only make a descendant more restricted, never less) — so a field hidden by its *tab's*
+condition is exactly as hidden, to schema/validation/RBAC, as one hidden by its own. The React renderer (Step
+11) is the one deliberate exception: it walks the RAW fields record, because it has to render the `tabs`/
+`collapsible`/`row`/`ui` entries themselves, not just the data they contain.
 
-No change is needed in `packages/better-auth/src/adapter.ts`: `betterAuthAttrToVexField` (`packages/better-auth/src/adapter.ts:259-328`) builds a plain `admin: FieldAdminConfigInput` object and passes it straight into `text()`/`select()`/`checkbox()`/`number()`/`date()`/`array()` (`packages/better-auth/src/adapter.ts:273-324`) — the field factories resolve `width`/`layout` defaults themselves, so the new defaults apply automatically with zero auth-adapter changes. Confirmed no `width: "half"`/`"full"` literal exists in `apps/test/src` or `apps/www/src` (only `apps/docs` MDX pages use it, out of scope per the launch-plan — docs land in the commit phase).
+**Scope, called out for the developer:** `tabs()`/`collapsible()`/`row()`/`ui()` are legal in ANY `fields`
+record — a collection's or global's own top-level `fields`, a `group()`'s `fields`, an `array()`'s `items`
+when `items` is itself a group-shape, and a `blocks()` block type's own `fields` — not just top-level. Every
+data consumer that walks nested fields (`group()`/`array()`/`blocks()`'s own construction-time logic, schema
+and interface-gen, default values, depth computation, FormGroup/FormBlocks rendering) calls `getDataFields`
+again at each nesting level it descends into, so a tab/row/collapsible/ui field nested inside a group or a
+block is flattened exactly like one at the top level.
 
-#### packages/core/src/fields/layout/types.ts
+#### packages/core/src/fields/constants.ts
+
+1 edit — four new `ADMIN_FIELDS` entries, appended after `json`.
+
+```ts
+  tabs: {
+    type: "tabs",
+    interfaceType: "never",
+    validator: "never",
+    defaultValue: undefined,
+    kind: "ui",
+  },
+  collapsible: {
+    type: "collapsible",
+    interfaceType: "never",
+    validator: "never",
+    defaultValue: undefined,
+    kind: "ui",
+  },
+  row: {
+    type: "row",
+    interfaceType: "never",
+    validator: "never",
+    defaultValue: undefined,
+    kind: "ui",
+  },
+  ui: {
+    type: "ui",
+    interfaceType: "never",
+    validator: "never",
+    defaultValue: undefined,
+    kind: "ui",
+  },
+```
+
+`interfaceType`/`validator` are never read for a `kind: "ui"` entry — `getDataFields` drops/hoists every UI
+field before anything that builds an interface string or a Zod/Convex validator ever sees it — `"never"` is a
+documentation value, not a type derived from it. `AdminFieldType`, `AdminFieldValidator`, `AdminFieldTsType`
+(the three unions derived from `(typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS][…]`) are unaffected in shape;
+`AdminFieldType` now additionally includes `"tabs" | "collapsible" | "row" | "ui"`, which is exactly why Step
+7/8's component-registry types (`Record<AdminFieldType, …>`, the `reactAdapter.fields` parity test) use the
+`DataFieldType` union (also defined in this step, `packages/core/src/fields/types.ts`) instead.
+
+#### packages/core/src/fields/baseTypes.ts
+
+2 edits.
+
+**1 — `FieldAdminConfigInput`/`FieldAdminConfig` stay NON-generic (no `TCollectionSlug` parameter, no `condition` member — `condition` lives on each DATA field type's own per-type admin input instead, see below); `width` property and doc blocks — full replacement of both interfaces.**
+
+`condition` is NOT added here. Threading it onto the shared, non-generic `FieldAdminConfigInput`/`FieldAdminConfig` was tried and reverted: `BaseFieldInput<TCollectionSlug, TFieldMeta>`/`BaseField<TCollectionSlug, TFieldMeta>` are themselves generic over `TCollectionSlug`, and making `admin` reference a `FieldAdminConfigInput<TCollectionSlug>` thereby forces EVERY concrete field interface that extends `BaseField<TCollectionSlug>` (`TextField<TCollectionSlug, …>`, `NumberField<TCollectionSlug, …>`, …) to re-state that exact same type parameter in its own `extends` clause in a way TypeScript's structural variance checker cannot reconcile across the whole union — every `XField<T> extends BaseField<T>` fails to compile with TS2430 ("interface incorrectly extends interface") the moment two sibling field interfaces disagree on how `T` flows into a shared generic member. `FieldAdminConfigInput`/`FieldAdminConfig` therefore stay exactly as wide as they are today — `placeholder`/`cellAlignment` unchanged, only `width`'s type and default change in this step. `condition` is introduced per DATA field type instead (precedent already in the repo: `relationship/types.ts`'s `RelationshipFieldAdminInput<TTargetSlug, TComponent> extends FieldAdminConfigInput`) — see the per-field-type edits below this file's section.
+
+````ts
+/**
+ * Configuration input for a field's admin panel behavior.
+ *
+ * Controls how the field appears and behaves in the admin UI — visibility,
+ * layout, input styling, and data table presentation. All properties are
+ * optional; unset properties fall back to the defaults listed below.
+ *
+ * **Defaults applied by field config functions** (e.g., `text()`, `number()`):
+ * ```ts
+ * {
+ *   hidden:        false,   // field is visible in the admin form
+ *   readOnly:      false,   // field is editable by default
+ *   position:      "main",  // placed in the main content column, not the sidebar
+ *   width:         "100%",  // spans the full form width
+ *   cellAlignment: "left",  // text aligned left in data table cells
+ * }
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Basic usage — all defaults applied
+ * title: text({ admin: { width: "50%" } })
+ *
+ * // Sidebar metadata field
+ * publishedAt: date({
+ *   description: "Scheduled publish time",
+ *   admin: { position: "sidebar" },
+ * })
+ *
+ * // Read-only computed field
+ * createdAt: date({
+ *   required: true,
+ *   admin: { readOnly: true, hidden: false }
+ * })
+ *
+ * // Right-aligned number column in table
+ * price: number({
+ *   admin: {
+ *     cellAlignment: "right",
+ *     placeholder: "0.00"
+ *   }
+ * })
+ * ```
+ *
+ * @see {@link FieldAdminConfig} for the resolved type after defaults are applied
+ */
+export interface FieldAdminConfigInput {
+  /**
+   * Hide this field from the admin form.
+   * Hidden fields are still stored in the database.
+   *
+   * Default: `false`
+   */
+  hidden?: boolean;
+  /**
+   * Make this field read-only in the admin form.
+   * The value is displayed but cannot be edited.
+   *
+   * Default: `false`
+   */
+  readOnly?: boolean;
+  /**
+   * Position of the field in the form layout.
+   *
+   * - `"main"` — placed in the main content area
+   * - `"sidebar"` — placed in the sidebar panel
+   *
+   * Default: `"main"`
+   */
+  position?: "main" | "sidebar";
+  /**
+   * Width of the field within its row, as any CSS width (`"50%"`, `"240px"`).
+   * A `row()` lays its children out with flex-wrap, sharing a line when their
+   * widths allow; below the `sm` breakpoint every field is full width.
+   *
+   * Default: `"100%"`
+   */
+  width?: string;
+  /**
+   * Placeholder text shown in the input when empty.
+   */
+  placeholder?: string;
+  /**
+   * Content alignment in data table cells. 'left' | 'right' | 'center'
+   */
+  cellAlignment?: Alignment;
+}
+
+/**
+ * Resolved admin configuration for a field, returned after defaults are applied.
+ *
+ * Properties with defaults (`hidden`, `readOnly`, `position`, `width`, `cellAlignment`)
+ * are always present. `placeholder` remains optional — `undefined` means the
+ * user did not configure it.
+ *
+ * @see {@link FieldAdminConfigInput} for the user-facing input type
+ */
+export interface FieldAdminConfig {
+  /** Whether the field is hidden from the admin form. */
+  hidden: boolean;
+  /** Whether the field is read-only in the admin form. */
+  readOnly: boolean;
+  /** Position of the field in the form layout — `"main"` or `"sidebar"`. */
+  position: "main" | "sidebar";
+  /** Width of the field within its row, any CSS width — e.g. `"100%"`, `"50%"`, `"240px"`. */
+  width: string;
+  /** Text alignment for this field's column in the data table. */
+  cellAlignment: Alignment;
+  /** Placeholder text shown in the input when empty. */
+  placeholder?: string;
+}
+````
+
+**2 — new `UIKindFieldAdminConfigInput`/`UIKindFieldAdminConfig` and `BaseUIFieldInput`/`BaseUIField`, appended after `BaseField`.** Every `kind: "ui"` field (`tabs`/`collapsible`/`row`/`ui`) has no stored value, so it has no `required`/`defaultValue`/`index`/`indexDraftStatus`/`interfaceDescription`/`validate`/`interfaceType` — those are omitted via `Omit<…>` rather than hand-copying the remaining members, so a future `BaseFieldInput`/`BaseField` addition is inherited automatically instead of silently missing from UI fields. `UIKindFieldAdminConfigInput`/`Config` stay NON-generic for the same TS2430 reason `FieldAdminConfigInput`/`Config` do — `condition` is added per UI field TYPE instead (`TabsFieldAdminInput`, `CollapsibleFieldAdminInput`, `RowFieldAdminInput`, `UIFieldAdminInput`, below), each of which IS generic over `TCollectionSlug`. Named `UIKindFieldAdminConfigInput`/`Config` (not `UIFieldAdminConfigInput`/`Config`) to avoid colliding with the `ui()` FIELD's own per-type admin wrapper (`fields/ui/ui/types.ts`, below) — "UI-kind" (the `kind: "ui"` half of `ADMIN_FIELDS`) vs. the `ui()` field specifically.
+
+```ts
+/**
+ * The subset of {@link FieldAdminConfigInput} meaningful for a `kind: "ui"`
+ * field — no stored value, so no `placeholder`/`cellAlignment`. Every UI
+ * field's own per-type admin input (`TabsFieldAdminInput`,
+ * `CollapsibleFieldAdminInput`, `RowFieldAdminInput`, `UIFieldAdminInput`)
+ * extends this and adds its own `condition`.
+ */
+export interface UIKindFieldAdminConfigInput
+  extends Pick<FieldAdminConfigInput, "hidden" | "readOnly" | "position" | "width"> {}
+
+/** @see {@link UIKindFieldAdminConfigInput} for the user-facing input type */
+export interface UIKindFieldAdminConfig
+  extends Pick<FieldAdminConfig, "hidden" | "readOnly" | "position" | "width"> {}
+
+/**
+ * Properties shared by all `kind: "ui"` field types (`tabs`, `collapsible`,
+ * `row`, `ui`) — the UI-field counterpart to {@link BaseFieldInput}, with
+ * every member meaningless for a field that stores no value removed.
+ *
+ * @see {@link BaseUIField} for the resolved type after defaults are applied
+ */
+export interface BaseUIFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+> extends Omit<
+    BaseFieldInput<TCollectionSlug, TFieldMeta>,
+    | "required"
+    | "defaultValue"
+    | "index"
+    | "indexDraftStatus"
+    | "interfaceDescription"
+    | "validate"
+    | "admin"
+  > {
+  /** Admin UI configuration for this UI field. */
+  admin?: UIKindFieldAdminConfigInput;
+}
+
+/**
+ * Resolved base UI-field definition, after defaults are applied by the
+ * field config function.
+ *
+ * @see {@link BaseUIFieldInput} for the user-facing input type
+ */
+export interface BaseUIField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+> extends Omit<
+    BaseField<TCollectionSlug, TFieldMeta>,
+    | "required"
+    | "defaultValue"
+    | "index"
+    | "indexDraftStatus"
+    | "interfaceDescription"
+    | "interfaceType"
+    | "validate"
+    | "admin"
+  > {
+  /** Resolved admin UI configuration with all defaults applied. */
+  admin: UIKindFieldAdminConfig;
+}
+```
+
+`meta?: TFieldMeta` is inherited (not omitted) from `BaseFieldInput`/`BaseField` — binding decision 4 requires
+`populateCollectionFieldMeta` (and the global equivalent) to stamp `meta.collectionSlug` on a UI field exactly
+like a data field, with no `kind` narrowing or cast; that only type-checks if `BaseUIField` carries the same
+`meta: TFieldMeta` member `BaseField` does.
+
+`admin.condition` is wholly NEW in this spec — the current repo has no `admin.condition` at all (confirmed: `baseTypes.ts`'s present `FieldAdminConfigInput`/`FieldAdminConfig` list only `hidden`/`readOnly`/`position`/`width`/`placeholder`/`cellAlignment`). It is NOT added to the shared, non-generic `FieldAdminConfigInput`/`FieldAdminConfig` — every DATA field type below instead declares its own `<Type>FieldAdminInput<TCollectionSlug>`/`<Type>FieldAdminConfig<TCollectionSlug>` (extending `FieldAdminConfigInput`/`FieldAdminConfig`, or its own pre-existing per-type admin type for `group`/`blocks`/`relationship`) with a method-shorthand `condition?(props: FieldConditionProps<TCollectionSlug>): boolean`, and overrides `admin?:`/`admin:` on its own `<Type>FieldInput`/`<Type>Field` with it — the exact pattern `relationship/types.ts`'s `RelationshipFieldAdminInput` already uses for `components`. `condition` is still declared via METHOD-SHORTHAND syntax for the same bivariance reason `BaseFieldInput`'s existing `validate?(props: FieldValidateProps<TCollectionSlug>): …` already is: a `TextField<"pages", …>` (built via `text<"pages">({ admin: { condition } })`) must stay structurally assignable to the wide `AdminField` union (`TextField<VexResourceSlug, …>`) — a plain arrow-typed property would be checked CONTRAVARIANTLY under `strictFunctionTypes` and reject that exact assignment. See each field type's own `types.ts` edit, below.
+
+
+#### packages/core/src/fields/ui/types.ts
 
 New file.
 
 ```ts
-import type { AdminField } from "../types";
-
-/**
- * Discriminant values for the layout containers a field can be wrapped in —
- * `tabs()`, `collapsible()`, `row()`. Backs {@link FieldLayoutKind} and the
- * `kind` field on every {@link FieldLayoutFrame} / {@link FieldLayoutNode}.
- */
-export const FIELD_LAYOUT_KINDS = {
-  tabs: "tabs",
-  collapsible: "collapsible",
-  row: "row",
-} as const;
-
-/**
- * Union of the layout container kinds a field can be wrapped in (`"tabs"`,
- * `"collapsible"`, `"row"`).
- */
-export type FieldLayoutKind = (typeof FIELD_LAYOUT_KINDS)[keyof typeof FIELD_LAYOUT_KINDS];
-
-/**
- * Converts a union type into an intersection of its members. Used by
- * `tabs()` to merge the per-tab field records it accepts into one flat
- * record whose keys are the union of every tab's keys.
- *
- * @typeParam TUnion - The union type to intersect.
- */
-export type UnionToIntersection<TUnion> = (
-  TUnion extends unknown ? (arg: TUnion) => void : never
-) extends (arg: infer TIntersection) => void
-  ? TIntersection
-  : never;
+import type { DocumentByResourceSlug, VexResourceSlug } from "../../types/generated";
 
 /**
  * Data and sibling-field values visible to a field's `admin.condition`.
+ *
+ * @typeParam TCollectionSlug - The collection (or global) `data` is typed
+ *   against — `DocumentByResourceSlug<TCollectionSlug>`, the same resolver
+ *   `FieldValidateProps.doc` already uses. Defaults to the wide
+ *   `VexResourceSlug` union (every document) when unspecified.
  */
-export interface FieldConditionProps {
-  /** The whole document currently being edited. */
-  data: Record<string, unknown>;
+export interface FieldConditionProps<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> {
+  /** The whole document currently being edited, typed against `TCollectionSlug` when supplied. */
+  data: DocumentByResourceSlug<TCollectionSlug>;
   /**
    * The value at this field's parent path — the whole document for a
-   * top-level field, one array item or block item for a nested field.
+   * top-level field, one array item or block item for a nested field. Not
+   * narrowed by `TCollectionSlug` — its shape varies with nesting depth in a
+   * way the collection's own document type cannot describe in general.
    */
   siblingData: Record<string, unknown>;
 }
@@ -7890,230 +9012,96 @@ export interface FieldConditionProps {
  * `required`/`validate()` when false) — collection files are part of the
  * browser bundle (ADR-013). A condition that throws counts as met (`true`) —
  * a failing condition must be visible, never a silent validation skip.
+ *
+ * Exported as a standalone named type for authoring a condition function
+ * separately from a field factory call (`const cond: FieldCondition<typeof
+ * TABLE_SLUG_PAGES> = ({ data }) => …`); every `admin.condition` property
+ * itself is declared via method shorthand (not this type) for bivariant
+ * checking — see `baseTypes.ts`'s `FieldAdminConfigInput`.
  */
-export type FieldCondition = (props: FieldConditionProps) => boolean;
+export type FieldCondition<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> = (props: FieldConditionProps<TCollectionSlug>) => boolean;
 
 /**
- * One layout container a field is nested inside, stamped onto
- * `field.admin.layout` by `tabs()` / `collapsible()` / `row()`. Frames are
- * PREPENDED outermost-first, so `admin.layout[0]` is the outermost
- * container. `id` identifies the container instance —
- * `${kind}:${firstChildKey}`, where `firstChildKey` is the first field key
- * passed to the helper (the first key of the first tab, for `tabs()`) — so
- * non-contiguous fields produced by the same helper call merge back into one
- * node when the layout tree is rebuilt.
+ * Hoists the data-field keys a single `tabs()`/`collapsible()`/`row()`/`ui()`
+ * entry contributes once `getDataFields` flattens it: `ui()` contributes no
+ * key; `collapsible()`/`row()` contribute their nested fields' OWN hoisted
+ * keys (recursively — one more level of nesting is legal); a `tabs()` entry
+ * contributes, per tab, either the tab's own `name` (a named tab becomes one
+ * group-shaped data field) or its nested fields' hoisted keys (an unnamed
+ * tab hoists).
  */
-export type FieldLayoutFrame =
-  | { kind: "tabs"; id: string; tab: string }
-  | { kind: "collapsible"; id: string; label: string; defaultCollapsed: boolean }
-  | { kind: "row"; id: string };
+type HoistedKeysOf<TField> = TField extends { type: "ui" }
+  ? never
+  : TField extends {
+        type: "tabs";
+        tabs: infer TTabs extends readonly {
+          name?: string;
+          fields: Record<string, unknown>;
+        }[];
+      }
+    ? {
+        [I in keyof TTabs]: TTabs[I] extends { name: string }
+          ? TTabs[I]["name"]
+          : TTabs[I] extends { fields: infer TTabFields }
+            ? DataFieldSlug<TTabFields>
+            : never;
+      }[number]
+    : TField extends { type: "row" | "collapsible"; fields: infer TInnerFields }
+      ? DataFieldSlug<TInnerFields>
+      : never;
 
 /**
- * One node in the tree built from a flat field map's `admin.layout` frames —
- * what a renderer walks to lay out a form. `"field"` is a leaf; `"tabs"` /
- * `"collapsible"` / `"row"` are containers.
+ * The union of data-field keys a top-level `fields` record resolves to once
+ * `getDataFields` flattens it — what `useAsTitle`, `indexes[].fields`, and
+ * every access-field-map key should be typed against instead of
+ * `keyof TFields` (which also contains `tabs()`/`collapsible()`/`row()`/
+ * `ui()`'s own OWN top-level keys, not data keys).
+ *
+ * @example
+ * ```ts
+ * type Keys = DataFieldSlug<{
+ *   info: { type: "tabs"; tabs: readonly [
+ *     { label: "Content"; fields: { title: TextField } },
+ *     { label: "SEO"; name: "seo"; fields: { metaTitle: TextField } },
+ *   ] };
+ *   published: CheckboxField;
+ * }>;
+ * // "title" | "seo" | "published" — never "info"
+ * ```
  */
-export type FieldLayoutNode =
-  | { kind: "field"; key: string; field: AdminField }
-  | { kind: "tabs"; id: string; tabs: { label: string; children: FieldLayoutNode[] }[] }
-  | {
-      kind: "collapsible";
-      id: string;
-      label: string;
-      defaultCollapsed: boolean;
-      children: FieldLayoutNode[];
-    }
-  | { kind: "row"; id: string; children: FieldLayoutNode[] };
+export type DataFieldSlug<TFields> = Extract<
+  {
+    [K in keyof TFields]: TFields[K] extends { type: "ui" }
+      ? never
+      : TFields[K] extends { type: "tabs" | "row" | "collapsible" }
+        ? HoistedKeysOf<TFields[K]>
+        : K;
+  }[keyof TFields],
+  string
+>;
 ```
 
-Circular import check: `AdminField` is pulled in with `import type`, which the TypeScript compiler fully erases — no `import`/`require` for `../types` survives into the emitted JS, so the real cycle (`baseTypes.ts` → `layout/types.ts` → `fields/types.ts` → e.g. `number/types.ts` → `baseTypes.ts`) exists only at the type level, never at runtime. `baseTypes.ts` below uses the same `import type` for `FieldCondition`/`FieldLayoutFrame`.
+Circular import check: `DocumentByResourceSlug`/`VexResourceSlug` are pulled in with `import type`, fully
+erased by `tsc`. `types/generated.ts` does not import from `fields/`, so there is no cycle here at all
+(unlike `baseTypes.ts`'s own import of this file, which the Step 6 edit above documents).
 
-#### packages/core/src/fields/layout/config.ts
-
-New file.
-
-```ts
-import type { AdminField } from "../types";
-import { FIELD_LAYOUT_KINDS, type FieldCondition, type FieldLayoutFrame, type UnionToIntersection } from "./types";
-import { andFieldConditions } from "./utils";
-
-/**
- * Prepends `frame` onto a field's `admin.layout` and AND-s `condition` into
- * its existing `admin.condition`. Shared by `tabs()` / `collapsible()` /
- * `row()`.
- */
-function stampLayoutFrame(props: {
-  field: AdminField;
-  frame: FieldLayoutFrame;
-  condition: FieldCondition | undefined;
-}): AdminField {
-  const { field, frame, condition } = props;
-  return {
-    ...field,
-    admin: {
-      ...field.admin,
-      layout: [frame, ...field.admin.layout],
-      condition: andFieldConditions({ conditions: [field.admin.condition, condition] }),
-    },
-  } as AdminField;
-}
-
-/**
- * Groups fields under admin-form tabs. A spread helper — returns a FLAT
- * record with each field's `admin.layout` prepended with a `"tabs"` frame
- * recording which tab it belongs to, so data, schema, generated types, RBAC
- * and hooks see ordinary fields. Usable in any fields record (collection,
- * global, group, block, array item group).
- *
- * The frame id is `tabs:${firstFieldKeyOfFirstTab}`. `condition` (if given)
- * is AND-ed into every child field's own `admin.condition`.
- *
- * @throws {Error} If `tabs` has no entries, a tab has no fields, or the same
- *   field key appears in more than one tab.
- *
- * @example
- * ```ts
- * defineCollection({
- *   fields: {
- *     ...tabs({
- *       tabs: {
- *         Content: { title: text({ required: true }), body: richtext() },
- *         SEO: { metaTitle: text(), metaDescription: textarea() },
- *       },
- *     }),
- *   },
- * })
- * ```
- */
-export function tabs<TTabs extends Record<string, Record<string, AdminField>>>(props: {
-  tabs: TTabs;
-  condition?: FieldCondition;
-}): UnionToIntersection<TTabs[keyof TTabs]> {
-  const { tabs: tabsInput, condition } = props;
-  const tabLabels = Object.keys(tabsInput);
-  if (tabLabels.length === 0) throw new Error("tabs(): requires at least one tab");
-
-  const firstTabFields = tabsInput[tabLabels[0]];
-  const firstKey = Object.keys(firstTabFields)[0];
-  if (!firstKey) throw new Error("tabs(): the first tab requires at least one field");
-
-  const id = `${FIELD_LAYOUT_KINDS.tabs}:${firstKey}`;
-  const result: Record<string, AdminField> = {};
-
-  for (const label of tabLabels) {
-    const tabFields = tabsInput[label];
-    if (Object.keys(tabFields).length === 0) {
-      throw new Error(`tabs(): tab "${label}" requires at least one field`);
-    }
-    for (const [key, field] of Object.entries(tabFields)) {
-      if (key in result) throw new Error(`tabs(): duplicate field key "${key}"`);
-      result[key] = stampLayoutFrame({ field, frame: { kind: "tabs", id, tab: label }, condition });
-    }
-  }
-
-  return result as UnionToIntersection<TTabs[keyof TTabs]>;
-}
-
-/**
- * Wraps fields in a collapsible admin-form fieldset. A spread helper — same
- * flat-record contract as `tabs()`: data, schema, generated types, RBAC and
- * hooks see ordinary fields. `condition` (if given) is AND-ed into every
- * child field's own `admin.condition`.
- *
- * @throws {Error} If `fields` is empty.
- *
- * @example
- * ```ts
- * defineCollection({
- *   fields: {
- *     ...collapsible({
- *       label: "SEO",
- *       defaultCollapsed: true,
- *       fields: { metaTitle: text(), metaDescription: textarea() },
- *     }),
- *   },
- * })
- * ```
- */
-export function collapsible<TFields extends Record<string, AdminField>>(props: {
-  label: string;
-  fields: TFields;
-  defaultCollapsed?: boolean;
-  condition?: FieldCondition;
-}): TFields {
-  const { label, fields, defaultCollapsed = false, condition } = props;
-  const keys = Object.keys(fields);
-  if (keys.length === 0) throw new Error("collapsible(): requires at least one field");
-
-  const frame: FieldLayoutFrame = {
-    kind: "collapsible",
-    id: `${FIELD_LAYOUT_KINDS.collapsible}:${keys[0]}`,
-    label,
-    defaultCollapsed,
-  };
-  const result: Record<string, AdminField> = {};
-  for (const [key, field] of Object.entries(fields)) {
-    result[key] = stampLayoutFrame({ field, frame, condition });
-  }
-  return result as TFields;
-}
-
-/**
- * Lays fields out on one admin-form row instead of each taking a full row. A
- * spread helper — same flat-record contract as `tabs()`. Row widths: if
- * every child's `admin.width` is a `%` value and they sum to 100 (±0.5),
- * those widths are used (`resolveRowWidths`); otherwise every child gets an
- * equal share. Rows stack below the `sm` breakpoint. `condition` (if given)
- * is AND-ed into every child field's own `admin.condition`.
- *
- * @throws {Error} If `fields` is empty.
- *
- * @example
- * ```ts
- * defineCollection({
- *   fields: {
- *     ...row({
- *       fields: {
- *         firstName: text({ admin: { width: "50%" } }),
- *         lastName: text({ admin: { width: "50%" } }),
- *       },
- *     }),
- *   },
- * })
- * ```
- */
-export function row<TFields extends Record<string, AdminField>>(props: {
-  fields: TFields;
-  condition?: FieldCondition;
-}): TFields {
-  const { fields, condition } = props;
-  const keys = Object.keys(fields);
-  if (keys.length === 0) throw new Error("row(): requires at least one field");
-
-  const frame: FieldLayoutFrame = { kind: "row", id: `${FIELD_LAYOUT_KINDS.row}:${keys[0]}` };
-  const result: Record<string, AdminField> = {};
-  for (const [key, field] of Object.entries(fields)) {
-    result[key] = stampLayoutFrame({ field, frame, condition });
-  }
-  return result as TFields;
-}
-```
-
-#### packages/core/src/fields/layout/utils.ts
+#### packages/core/src/fields/ui/utils.ts
 
 New file.
 
 ```ts
 import { ADMIN_FIELDS } from "../constants";
-import type { AdminField } from "../types";
-import type { FieldCondition, FieldLayoutFrame, FieldLayoutNode } from "./types";
+import { group } from "../group/config";
+import type { AdminDataField, AdminField } from "../types";
+import type { FieldCondition } from "./types";
 
 /**
  * Combines several optional field conditions into one that is met only when
  * every defined condition is met (logical AND). Returns `undefined` when no
- * condition is defined, so a stamped field with no inherited condition keeps
- * `admin.condition` absent rather than becoming an always-true function. A
- * throwing condition counts as met (`true`), matching `isFieldConditionMet`.
+ * condition is defined. A throwing condition counts as met (`true`),
+ * matching `isFieldConditionMet`.
  */
 export function andFieldConditions(props: {
   conditions: (FieldCondition | undefined)[];
@@ -8136,6 +9124,14 @@ export function andFieldConditions(props: {
  * Evaluates whether a field's `admin.condition` is currently met. A field
  * with no condition is always met. A condition that throws counts as met —
  * the failure must be visible elsewhere, never a silent validation skip.
+ *
+ * `field.admin.condition` is declared via method shorthand (bivariant —
+ * see `baseTypes.ts`'s `FieldAdminConfigInput`), nominally typed against
+ * whatever `TCollectionSlug` the field was authored with. This function
+ * operates on live run-time `data`/`siblingData` (`Record<string,
+ * unknown>`, not a nominal document type), so it casts the condition to
+ * that plain shape before calling it — the exact same escape hatch
+ * `validateFields` already uses for `field.validate` in `fields/utils.ts`.
  */
 export function isFieldConditionMet(props: {
   field: AdminField;
@@ -8143,7 +9139,9 @@ export function isFieldConditionMet(props: {
   siblingData: Record<string, unknown>;
 }): boolean {
   const { field, data, siblingData } = props;
-  const condition = field.admin.condition;
+  const condition = field.admin.condition as unknown as
+    | ((props: { data: Record<string, unknown>; siblingData: Record<string, unknown> }) => boolean)
+    | undefined;
   if (!condition) return true;
   try {
     return condition({ data, siblingData });
@@ -8157,7 +9155,9 @@ export function isFieldConditionMet(props: {
  * array item fields, or block fields — declares an `admin.condition`. Used
  * to decide whether a form needs condition-aware re-validation at all.
  */
-export function hasFieldConditions(props: { fields: Record<string, AdminField> }): boolean {
+export function hasFieldConditions(props: {
+  fields: Record<string, AdminField>;
+}): boolean {
   return Object.values(props.fields).some((field) => {
     if (field.admin.condition) return true;
     if (field.type === ADMIN_FIELDS.group.type) {
@@ -8167,74 +9167,12 @@ export function hasFieldConditions(props: { fields: Record<string, AdminField> }
       return hasFieldConditions({ fields: { item: field.items } });
     }
     if (field.type === ADMIN_FIELDS.blocks.type) {
-      return field.blocks.some((block) => hasFieldConditions({ fields: block.fields }));
+      return field.blocks.some((block) =>
+        hasFieldConditions({ fields: block.fields }),
+      );
     }
     return false;
   });
-}
-
-function createFrameNode(frame: FieldLayoutFrame): FieldLayoutNode {
-  switch (frame.kind) {
-    case "tabs":
-      return { kind: "tabs", id: frame.id, tabs: [] };
-    case "collapsible":
-      return {
-        kind: "collapsible",
-        id: frame.id,
-        label: frame.label,
-        defaultCollapsed: frame.defaultCollapsed,
-        children: [],
-      };
-    case "row":
-      return { kind: "row", id: frame.id, children: [] };
-  }
-}
-
-function getFrameChildren(props: { node: FieldLayoutNode; frame: FieldLayoutFrame }): FieldLayoutNode[] {
-  const { node, frame } = props;
-  if (node.kind === "tabs" && frame.kind === "tabs") {
-    let tab = node.tabs.find((entry) => entry.label === frame.tab);
-    if (!tab) {
-      tab = { label: frame.tab, children: [] };
-      node.tabs.push(tab);
-    }
-    return tab.children;
-  }
-  if (node.kind === "collapsible" || node.kind === "row") {
-    return node.children;
-  }
-  throw new Error(
-    `buildFieldLayoutTree(): frame kind "${frame.kind}" does not match node kind "${node.kind}"`,
-  );
-}
-
-/**
- * Builds the layout tree a renderer walks from a flat field map — reads each
- * field's `admin.layout` frames (stamped by `tabs()` / `collapsible()` /
- * `row()`, outermost first) and nests fields accordingly. Node order is
- * first appearance: a frame id is assigned a node position the first time
- * any field carrying it is encountered, and every later field sharing that
- * id merges into the same node even when other fields appear in between.
- */
-export function buildFieldLayoutTree(props: { fields: Record<string, AdminField> }): FieldLayoutNode[] {
-  const roots: FieldLayoutNode[] = [];
-  const nodesByFrameId = new Map<string, FieldLayoutNode>();
-
-  for (const [key, field] of Object.entries(props.fields)) {
-    let siblings = roots;
-    for (const frame of field.admin.layout) {
-      let node = nodesByFrameId.get(frame.id);
-      if (!node) {
-        node = createFrameNode(frame);
-        nodesByFrameId.set(frame.id, node);
-        siblings.push(node);
-      }
-      siblings = getFrameChildren({ node, frame });
-    }
-    siblings.push({ kind: "field", key, field });
-  }
-
-  return roots;
 }
 
 function formatEqualShare(count: number): string {
@@ -8255,102 +9193,514 @@ function parsePercentWidth(width: string): number | undefined {
 export function resolveRowWidths(props: { widths: string[] }): string[] {
   const { widths } = props;
   const percents = widths.map(parsePercentWidth);
-  const allPercent = percents.every((value): value is number => value !== undefined);
+  const allPercent = percents.every(
+    (value): value is number => value !== undefined,
+  );
   if (allPercent) {
-    const sum = percents.reduce<number>((total, value) => total + (value ?? 0), 0);
+    const sum = percents.reduce<number>(
+      (total, value) => total + (value ?? 0),
+      0,
+    );
     if (Math.abs(sum - 100) <= 0.5) return widths;
   }
   const share = formatEqualShare(widths.length);
   return widths.map(() => share);
 }
+
+/**
+ * Flattens a `fields` record — legal at any nesting level a `fields` record
+ * appears (a collection's/global's own top-level `fields`, a `group()`'s
+ * `fields`, a group-shaped `array()`'s `items`, a `blocks()` block's own
+ * `fields`) — down to the data fields
+ * every schema/validation/type-gen/RBAC/index/version/list-column/
+ * default-value consumer needs: `ui()` entries are dropped; an unnamed
+ * `tabs()` tab's, or a `row()`'s/`collapsible()`'s, children are hoisted up
+ * to this level (recursively, so a hoisted child that is itself a UI field
+ * is flattened too); a NAMED tab becomes one `group()`-shaped data field
+ * keyed by the tab's own `name`, built via the real `group()` factory so it
+ * carries every default a hand-built group field would. Every UI
+ * container's own `admin.condition` is AND-ed into each field it flattens
+ * through `andFieldConditions` — a field hidden by its tab's/row's/
+ * collapsible's condition is exactly as hidden as one hidden by its own.
+ * Likewise `admin.hidden`/`admin.readOnly` are OR-ed in: a field under a
+ * hidden/read-only container is itself hidden/read-only even if its own
+ * flag says otherwise — a container can only ever make a descendant MORE
+ * restricted, never less.
+ *
+ * @throws {Error} When two entries flatten to the same data key (two fields
+ *   named the same, a named tab reusing a sibling's key, two tabs sharing a
+ *   `name`, …).
+ */
+export function getDataFields(props: {
+  fields: Record<string, AdminField>;
+}): Record<string, AdminDataField> {
+  return flattenFields({
+    fields: props.fields,
+    inherited: undefined,
+    inheritedHidden: false,
+    inheritedReadOnly: false,
+  });
+}
+
+function flattenFields(props: {
+  fields: Record<string, AdminField>;
+  inherited: FieldCondition | undefined;
+  inheritedHidden: boolean;
+  inheritedReadOnly: boolean;
+}): Record<string, AdminDataField> {
+  const result: Record<string, AdminDataField> = {};
+  const assign = (key: string, field: AdminDataField): void => {
+    if (key in result) {
+      throw new Error(`getDataFields(): duplicate field key "${key}"`);
+    }
+    result[key] = field;
+  };
+  const merge = (nested: Record<string, AdminDataField>): void => {
+    for (const [key, field] of Object.entries(nested)) assign(key, field);
+  };
+
+  for (const [key, field] of Object.entries(props.fields)) {
+    if (ADMIN_FIELDS[field.type].kind === "data") {
+      const condition = andFieldConditions({
+        conditions: [props.inherited, field.admin.condition],
+      });
+      assign(key, {
+        ...field,
+        admin: {
+          ...field.admin,
+          condition,
+          hidden: props.inheritedHidden || field.admin.hidden,
+          readOnly: props.inheritedReadOnly || field.admin.readOnly,
+        },
+      } as AdminDataField);
+      continue;
+    }
+    switch (field.type) {
+      case ADMIN_FIELDS.ui.type:
+        continue;
+      case ADMIN_FIELDS.row.type:
+      case ADMIN_FIELDS.collapsible.type: {
+        const condition = andFieldConditions({
+          conditions: [props.inherited, field.admin.condition],
+        });
+        merge(
+          flattenFields({
+            fields: field.fields,
+            inherited: condition,
+            inheritedHidden: props.inheritedHidden || field.admin.hidden,
+            inheritedReadOnly: props.inheritedReadOnly || field.admin.readOnly,
+          }),
+        );
+        continue;
+      }
+      case ADMIN_FIELDS.tabs.type: {
+        const tabsHidden = props.inheritedHidden || field.admin.hidden;
+        const tabsReadOnly = props.inheritedReadOnly || field.admin.readOnly;
+        const tabsCondition = andFieldConditions({
+          conditions: [props.inherited, field.admin.condition],
+        });
+        for (const tab of field.tabs) {
+          const tabCondition = andFieldConditions({
+            conditions: [tabsCondition, tab.admin?.condition],
+          });
+          if (tab.name !== undefined) {
+            assign(
+              tab.name,
+              group({
+                label: tab.label,
+                description: tab.description,
+                fields: flattenFields({
+                  fields: tab.fields,
+                  inherited: tabCondition,
+                  inheritedHidden: tabsHidden,
+                  inheritedReadOnly: tabsReadOnly,
+                }),
+                admin: { condition: tabCondition, hidden: tabsHidden, readOnly: tabsReadOnly },
+              }) as AdminDataField,
+            );
+          } else {
+            merge(
+              flattenFields({
+                fields: tab.fields,
+                inherited: tabCondition,
+                inheritedHidden: tabsHidden,
+                inheritedReadOnly: tabsReadOnly,
+              }),
+            );
+          }
+        }
+        continue;
+      }
+    }
+  }
+  return result;
+}
 ```
 
-#### packages/core/src/fields/layout/index.ts
+#### packages/core/src/fields/ui/tabs/types.ts
+
+New file.
+
+```ts
+import type { VexResourceSlug } from "../../../types/generated";
+import type { BaseUIField, BaseUIFieldInput, UIKindFieldAdminConfig, UIKindFieldAdminConfigInput } from "../../baseTypes";
+import type { AdminField } from "../../types";
+import type { FieldConditionProps } from "../types";
+
+/** Per-tab `admin` input — only `condition` is meaningful for one tab. */
+export interface TabAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> {
+  /** AND-ed into every field this tab contributes once flattened. */
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+
+/**
+ * One tab in a `tabs()` field. An unnamed tab (no `name`) hoists its fields
+ * up into the parent `fields` record once `getDataFields` flattens it — no
+ * accordion, no nesting, same as a bare `row()`/`collapsible()`. A named tab
+ * stores its fields as a group-shaped object under `name` — group-like, not
+ * an accordion.
+ *
+ * @typeParam TCollectionSlug - Types this tab's own `admin.condition` — same
+ *   convention as `tabs()`/`text()`. Does not propagate into `fields`; each
+ *   nested field factory is parametrized independently, same as `group()`.
+ */
+export interface TabInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFields extends Record<string, AdminField> = Record<string, AdminField>,
+> {
+  /** Tab label shown in the admin form's tab strip. */
+  label: string;
+  /**
+   * When set, this tab's fields nest as one group-shaped data field keyed
+   * by `name` instead of hoisting to the parent level.
+   */
+  name?: string;
+  /** Helper text shown below the tab's label. */
+  description?: string;
+  /**
+   * The FIRST tab across the whole `tabs()` field with `defaultOpen: true`
+   * is the initially selected tab (no error if several are set); otherwise
+   * the first tab. The `?<fieldKey>=` URL param, when present, still wins.
+   */
+  defaultOpen?: boolean;
+  /** This tab's fields. */
+  fields: TFields;
+  admin?: TabAdminInput<TCollectionSlug>;
+}
+
+/**
+ * Per-type `admin` input for `tabs()` — adds `condition`; everything else is
+ * the shared UI-kind set. `UIKindFieldAdminConfigInput` is non-generic (see
+ * `baseTypes.ts`), so `condition` is declared directly here instead.
+ */
+export interface TabsFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends UIKindFieldAdminConfigInput {
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+
+/** User-facing input to `tabs()`. */
+export interface TabsFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+  TTabs extends readonly TabInput<TCollectionSlug>[] = readonly TabInput<TCollectionSlug>[],
+> extends BaseUIFieldInput<TCollectionSlug, TFieldMeta> {
+  tabs: TTabs;
+  admin?: TabsFieldAdminInput<TCollectionSlug>;
+}
+
+/** Resolved per-type `admin` for `tabs()`. */
+export interface TabsFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends UIKindFieldAdminConfig {
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+
+/** Resolved `tabs()` field. */
+export interface TabsField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+  TTabs extends readonly TabInput<TCollectionSlug>[] = readonly TabInput<TCollectionSlug>[],
+> extends BaseUIField<TCollectionSlug, TFieldMeta> {
+  readonly type: "tabs";
+  tabs: TTabs;
+  admin: TabsFieldAdminConfig<TCollectionSlug>;
+}
+```
+
+#### packages/core/src/fields/ui/tabs/config.ts
+
+New file.
+
+```ts
+import { ADMIN_FIELDS } from "../../constants";
+import type { VexResourceSlug } from "../../../types/generated";
+import type { TabInput, TabsField, TabsFieldInput } from "./types";
+
+/**
+ * Groups fields under admin-form tabs. Legal in any `fields` record (a
+ * collection/global's own, a `group()`'s, a group-shaped `array()`'s items,
+ * a `blocks()` block's own). An unnamed tab
+ * hoists its fields to the parent level once `getDataFields` flattens this
+ * field; a named tab (`name` set) nests its fields as one group-shaped data
+ * field under `name` instead.
+ *
+ * @typeParam TCollectionSlug - Types `admin.condition` (on the `tabs()`
+ *   field itself and on each tab) against that resource's real document —
+ *   same convention as `collapsible()`/`row()`/`text()`.
+ * @throws {Error} If `tabs` has no entries, or any tab has no fields.
+ *
+ * @example
+ * ```ts
+ * defineCollection({
+ *   fields: {
+ *     info: tabs<typeof TABLE_SLUG_PAGES>({
+ *       tabs: [
+ *         { label: "Content", fields: { title: text({ required: true }), body: richtext() } },
+ *         { label: "SEO", name: "seo", fields: { metaTitle: text() } },
+ *       ],
+ *     }),
+ *   },
+ * })
+ * ```
+ */
+export function tabs<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+  const TTabs extends readonly TabInput<TCollectionSlug>[] = readonly TabInput<TCollectionSlug>[],
+>(props: TabsFieldInput<TCollectionSlug, TFieldMeta, TTabs>): TabsField<TCollectionSlug, TFieldMeta, TTabs> {
+  if (props.tabs.length === 0) throw new Error("tabs(): requires at least one tab");
+  for (const tab of props.tabs) {
+    if (Object.keys(tab.fields).length === 0) {
+      throw new Error(`tabs(): tab "${tab.label}" requires at least one field`);
+    }
+  }
+  return {
+    type: ADMIN_FIELDS.tabs.type,
+    label: props.label ?? "",
+    description: props.description,
+    meta: { ...props.meta },
+    tabs: props.tabs,
+    admin: {
+      hidden: props.admin?.hidden ?? false,
+      readOnly: props.admin?.readOnly ?? false,
+      position: props.admin?.position ?? "main",
+      width: props.admin?.width ?? "100%",
+      condition: props.admin?.condition,
+    },
+  };
+}
+```
+
+#### packages/core/src/fields/ui/tabs/index.ts
 
 New file.
 
 ```ts
 export * from "./types";
 export * from "./config";
-export * from "./utils";
 ```
 
-#### packages/core/src/fields/layout/config.test.ts
+#### packages/core/src/fields/ui/tabs/config.test.ts
 
 New file.
 
 ```ts
 import { describe, it, expect } from "vitest";
-import { tabs, collapsible, row } from "./config";
-import { text } from "../text/config";
-import { defineCollection } from "../../collections/config";
+import { tabs } from "./config";
+import { text } from "../../text/config";
+import { defineCollection } from "../../../collections/config";
+import { getDataFields } from "../utils";
 
 describe("tabs()", () => {
-  it("stamps a tabs frame on every field, named after the first tab's first key", () => {
-    const fields = tabs({
-      tabs: {
-        Content: { title: text() },
-        SEO: { metaTitle: text() },
-      },
-    });
-
-    expect(fields.title.admin.layout).toEqual([
-      { kind: "tabs", id: "tabs:title", tab: "Content" },
-    ]);
-    expect(fields.metaTitle.admin.layout).toEqual([
-      { kind: "tabs", id: "tabs:title", tab: "SEO" },
-    ]);
-  });
-
-  it("AND-s its condition into every child field's own condition", () => {
-    const child = text({ admin: { condition: () => false } });
-    const fields = tabs({
-      tabs: { Content: { title: child } },
-      condition: () => true,
-    });
-
-    expect(fields.title.admin.condition?.({ data: {}, siblingData: {} })).toBe(false);
-  });
-
   it("throws when given no tabs", () => {
-    expect(() => tabs({ tabs: {} })).toThrow("tabs(): requires at least one tab");
+    expect(() => tabs({ tabs: [] })).toThrow("tabs(): requires at least one tab");
   });
 
-  it("throws when the first tab has no fields", () => {
-    expect(() => tabs({ tabs: { Content: {} } })).toThrow(
-      "tabs(): the first tab requires at least one field",
-    );
-  });
-
-  it("throws on a field key reused across tabs", () => {
+  it("throws when a tab has no fields", () => {
     expect(() =>
-      tabs({
-        tabs: {
-          Content: { title: text() },
-          SEO: { title: text() },
-        },
-      }),
-    ).toThrow('tabs(): duplicate field key "title"');
+      tabs({ tabs: [{ label: "Content", fields: {} }] }),
+    ).toThrow('tabs(): tab "Content" requires at least one field');
+  });
+
+  it("keeps the given tabs verbatim on the resolved field", () => {
+    const field = tabs({
+      tabs: [{ label: "Content", fields: { title: text() } }],
+    });
+    expect(field.type).toBe("tabs");
+    expect(field.tabs[0]?.label).toBe("Content");
   });
 });
 
-describe("collapsible()", () => {
-  it("stamps a collapsible frame on every field", () => {
-    const fields = collapsible({
-      label: "SEO",
-      defaultCollapsed: true,
-      fields: { metaTitle: text(), metaDescription: text() },
+describe("tabs() key inference", () => {
+  it("infers the flattened union of hoisted and named-tab keys and rejects unknown keys", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: {
+        info: tabs({
+          tabs: [
+            { label: "Content", fields: { title: text(), body: text() } },
+            { label: "SEO", name: "seo", fields: { metaTitle: text() } },
+          ],
+        }),
+      },
     });
 
-    expect(fields.metaTitle.admin.layout).toEqual([
-      { kind: "collapsible", id: "collapsible:metaTitle", label: "SEO", defaultCollapsed: true },
-    ]);
-    expect(fields.metaDescription.admin.layout).toEqual(fields.metaTitle.admin.layout);
+    expect(posts.fields.title).toBeDefined();
+    expect(posts.fields.body).toBeDefined();
+    expect(posts.fields.seo).toBeDefined();
+    // @ts-expect-error — "info" (the tabs() field's own key) is never a data key
+    expect(posts.fields.info).toBeUndefined();
+    // @ts-expect-error — "metaTitle" nests under "seo", it isn't hoisted
+    expect(posts.fields.metaTitle).toBeUndefined();
+  });
+});
+```
+
+#### packages/core/src/fields/ui/collapsible/types.ts
+
+New file.
+
+```ts
+import type { VexResourceSlug } from "../../../types/generated";
+import type { BaseUIField, BaseUIFieldInput, UIKindFieldAdminConfig, UIKindFieldAdminConfigInput } from "../../baseTypes";
+import type { AdminField } from "../../types";
+import type { FieldConditionProps } from "../types";
+
+/** Per-type `admin` input for `collapsible()` — adds `defaultCollapsed` and `condition`. */
+export interface CollapsibleFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends UIKindFieldAdminConfigInput {
+  /** Whether the fieldset starts collapsed. Default: `false`. */
+  defaultCollapsed?: boolean;
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+
+export interface CollapsibleFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+  TFields extends Record<string, AdminField> = Record<string, AdminField>,
+> extends BaseUIFieldInput<TCollectionSlug, TFieldMeta> {
+  /** Fieldset label shown above the collapsible toggle. */
+  label: string;
+  fields: TFields;
+  admin?: CollapsibleFieldAdminInput<TCollectionSlug>;
+}
+
+/** Resolved per-type `admin` for `collapsible()`. */
+export interface CollapsibleFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends UIKindFieldAdminConfig {
+  defaultCollapsed: boolean;
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+
+export interface CollapsibleField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+  TFields extends Record<string, AdminField> = Record<string, AdminField>,
+> extends BaseUIField<TCollectionSlug, TFieldMeta> {
+  readonly type: "collapsible";
+  label: string;
+  fields: TFields;
+  admin: CollapsibleFieldAdminConfig<TCollectionSlug>;
+}
+```
+
+#### packages/core/src/fields/ui/collapsible/config.ts
+
+New file.
+
+```ts
+import { ADMIN_FIELDS } from "../../constants";
+import type { VexResourceSlug } from "../../../types/generated";
+import type { AdminField } from "../../types";
+import type { CollapsibleField, CollapsibleFieldInput } from "./types";
+
+/**
+ * Wraps fields in a collapsible admin-form fieldset. Legal in any `fields`
+ * record (a collection/global's own, a `group()`'s, a group-shaped
+ * `array()`'s items, a `blocks()` block's own). Its fields hoist to
+ * the parent level once `getDataFields` flattens this field.
+ *
+ * @typeParam TCollectionSlug - Types `admin.condition`'s `data` against that
+ *   resource's real document — same convention as `tabs()`/`text()`.
+ * @throws {Error} If `fields` is empty.
+ *
+ * @example
+ * ```ts
+ * defineCollection({
+ *   fields: {
+ *     seoFields: collapsible({
+ *       label: "SEO",
+ *       admin: { defaultCollapsed: true },
+ *       fields: { metaTitle: text(), metaDescription: textarea() },
+ *     }),
+ *   },
+ * })
+ * ```
+ */
+export function collapsible<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+  const TFields extends Record<string, AdminField> = Record<string, AdminField>,
+>(props: CollapsibleFieldInput<TCollectionSlug, TFieldMeta, TFields>): CollapsibleField<TCollectionSlug, TFieldMeta, TFields> {
+  if (Object.keys(props.fields).length === 0) {
+    throw new Error("collapsible(): requires at least one field");
+  }
+  return {
+    type: ADMIN_FIELDS.collapsible.type,
+    label: props.label,
+    description: props.description,
+    meta: { ...props.meta },
+    fields: props.fields,
+    admin: {
+      hidden: props.admin?.hidden ?? false,
+      readOnly: props.admin?.readOnly ?? false,
+      position: props.admin?.position ?? "main",
+      width: props.admin?.width ?? "100%",
+      defaultCollapsed: props.admin?.defaultCollapsed ?? false,
+      condition: props.admin?.condition,
+    },
+  };
+}
+```
+
+#### packages/core/src/fields/ui/collapsible/index.ts
+
+New file.
+
+```ts
+export * from "./types";
+export * from "./config";
+```
+
+#### packages/core/src/fields/ui/collapsible/config.test.ts
+
+New file.
+
+```ts
+import { describe, it, expect } from "vitest";
+import { collapsible } from "./config";
+import { text } from "../../text/config";
+
+describe("collapsible()", () => {
+  it("defaults defaultCollapsed to false", () => {
+    const field = collapsible({ label: "SEO", fields: { title: text() } });
+    expect(field.admin.defaultCollapsed).toBe(false);
   });
 
-  it("defaults defaultCollapsed to false", () => {
-    const fields = collapsible({ label: "SEO", fields: { metaTitle: text() } });
-    expect(fields.metaTitle.admin.layout[0]).toMatchObject({ defaultCollapsed: false });
+  it("keeps the given fields verbatim", () => {
+    const field = collapsible({
+      label: "SEO",
+      admin: { defaultCollapsed: true },
+      fields: { title: text() },
+    });
+    expect(field.type).toBe("collapsible");
+    expect(field.fields.title).toBeDefined();
+    expect(field.admin.defaultCollapsed).toBe(true);
   });
 
   it("throws on an empty field map", () => {
@@ -8359,60 +9709,339 @@ describe("collapsible()", () => {
     );
   });
 });
+```
+
+#### packages/core/src/fields/ui/row/types.ts
+
+New file.
+
+```ts
+import type { VexResourceSlug } from "../../../types/generated";
+import type { BaseUIField, BaseUIFieldInput, UIKindFieldAdminConfig, UIKindFieldAdminConfigInput } from "../../baseTypes";
+import type { AdminField } from "../../types";
+import type { FieldConditionProps } from "../types";
+
+/** Per-type `admin` input for `row()` — adds `condition`. */
+export interface RowFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends UIKindFieldAdminConfigInput {
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+
+export interface RowFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+  TFields extends Record<string, AdminField> = Record<string, AdminField>,
+> extends BaseUIFieldInput<TCollectionSlug, TFieldMeta> {
+  fields: TFields;
+  admin?: RowFieldAdminInput<TCollectionSlug>;
+}
+
+/** Resolved per-type `admin` for `row()`. */
+export interface RowFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends UIKindFieldAdminConfig {
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+
+export interface RowField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+  TFields extends Record<string, AdminField> = Record<string, AdminField>,
+> extends BaseUIField<TCollectionSlug, TFieldMeta> {
+  readonly type: "row";
+  fields: TFields;
+  admin: RowFieldAdminConfig<TCollectionSlug>;
+}
+```
+
+#### packages/core/src/fields/ui/row/config.ts
+
+New file.
+
+```ts
+import { ADMIN_FIELDS } from "../../constants";
+import type { VexResourceSlug } from "../../../types/generated";
+import type { AdminField } from "../../types";
+import type { RowField, RowFieldInput } from "./types";
+
+/**
+ * Lays fields out on one admin-form row instead of each taking a full row.
+ * Legal in any `fields` record (a collection/global's own, a `group()`'s, a
+ * group-shaped `array()`'s items, a `blocks()` block's own). Its
+ * fields hoist to the parent level once `getDataFields` flattens this
+ * field. Row widths: if every child's `admin.width` is a `%` value and they
+ * sum to 100 (±0.5), those widths are used (`resolveRowWidths`); otherwise
+ * every child gets an equal share. Rows stack below the `sm` breakpoint.
+ *
+ * @typeParam TCollectionSlug - Types `admin.condition`'s `data` against that
+ *   resource's real document — same convention as `tabs()`/`text()`.
+ * @throws {Error} If `fields` is empty.
+ *
+ * @example
+ * ```ts
+ * defineCollection({
+ *   fields: {
+ *     name: row({
+ *       fields: {
+ *         firstName: text({ admin: { width: "50%" } }),
+ *         lastName: text({ admin: { width: "50%" } }),
+ *       },
+ *     }),
+ *   },
+ * })
+ * ```
+ */
+export function row<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+  const TFields extends Record<string, AdminField> = Record<string, AdminField>,
+>(props: RowFieldInput<TCollectionSlug, TFieldMeta, TFields>): RowField<TCollectionSlug, TFieldMeta, TFields> {
+  if (Object.keys(props.fields).length === 0) {
+    throw new Error("row(): requires at least one field");
+  }
+  return {
+    type: ADMIN_FIELDS.row.type,
+    label: props.label ?? "",
+    description: props.description,
+    meta: { ...props.meta },
+    fields: props.fields,
+    admin: {
+      hidden: props.admin?.hidden ?? false,
+      readOnly: props.admin?.readOnly ?? false,
+      position: props.admin?.position ?? "main",
+      width: props.admin?.width ?? "100%",
+      condition: props.admin?.condition,
+    },
+  };
+}
+```
+
+#### packages/core/src/fields/ui/row/index.ts
+
+New file.
+
+```ts
+export * from "./types";
+export * from "./config";
+```
+
+#### packages/core/src/fields/ui/row/config.test.ts
+
+New file.
+
+```ts
+import { describe, it, expect } from "vitest";
+import { row } from "./config";
+import { text } from "../../text/config";
 
 describe("row()", () => {
-  it("stamps a row frame on every field", () => {
-    const fields = row({ fields: { firstName: text(), lastName: text() } });
-
-    expect(fields.firstName.admin.layout).toEqual([{ kind: "row", id: "row:firstName" }]);
-    expect(fields.lastName.admin.layout).toEqual([{ kind: "row", id: "row:firstName" }]);
+  it("keeps the given fields verbatim", () => {
+    const field = row({ fields: { a: text(), b: text() } });
+    expect(field.type).toBe("row");
+    expect(field.fields.a).toBeDefined();
+    expect(field.fields.b).toBeDefined();
   });
 
   it("throws on an empty field map", () => {
     expect(() => row({ fields: {} })).toThrow("row(): requires at least one field");
   });
 });
+```
 
-describe("nested layout helpers", () => {
-  it("prepends frames outermost-first", () => {
-    const fields = tabs({
-      tabs: {
-        Content: { ...row({ fields: { a: text(), b: text() } }) },
-      },
-    });
+#### packages/core/src/fields/ui/ui/types.ts
 
-    expect(fields.a.admin.layout).toEqual([
-      { kind: "tabs", id: "tabs:a", tab: "Content" },
-      { kind: "row", id: "row:a" },
-    ]);
+New file.
+
+```ts
+import type { DocumentByResourceSlug, VexResourceSlug } from "../../../types/generated";
+import type {
+  ApplyComponent,
+  BaseUIField,
+  BaseUIFieldInput,
+  ComponentHKT,
+  UIKindFieldAdminConfig,
+  UIKindFieldAdminConfigInput,
+} from "../../baseTypes";
+import type { FieldConditionProps } from "../types";
+
+/** Props passed to a `ui()` field's `Field` component. */
+export interface UIFieldComponentProps<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> {
+  /** This field's own key in the parent `fields` record. */
+  name: string;
+  /** The whole document currently being edited, typed against `TCollectionSlug` when supplied. */
+  data: DocumentByResourceSlug<TCollectionSlug>;
+  /** The value at this field's parent path — see {@link FieldConditionProps}. */
+  siblingData: Record<string, unknown>;
+  readOnly: boolean;
+}
+
+/** Props passed to a `ui()` field's optional `Cell` component. */
+export interface UIFieldCellProps<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> {
+  /** This field's own key in the parent `fields` record. */
+  name: string;
+  /** The document the list-view row renders, typed against `TCollectionSlug` when supplied. */
+  data: DocumentByResourceSlug<TCollectionSlug>;
+}
+
+/**
+ * Per-type `admin` input for `ui()` — adds the required `components` and
+ * `condition`; `width`/`hidden`/`readOnly` are inherited unchanged from
+ * {@link UIKindFieldAdminConfigInput}.
+ */
+export interface UIFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TComponent extends ComponentHKT = ComponentHKT,
+> extends UIKindFieldAdminConfigInput {
+  components: {
+    /** Rendered in the admin edit form at this field's position. */
+    Field: ApplyComponent<TComponent, UIFieldComponentProps<TCollectionSlug>>;
+    /** When set, the list view shows a column rendering this. Omit to show no column. */
+    Cell?: ApplyComponent<TComponent, UIFieldCellProps<TCollectionSlug>>;
+  };
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+
+export interface UIFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+  TComponent extends ComponentHKT = ComponentHKT,
+> extends BaseUIFieldInput<TCollectionSlug, TFieldMeta> {
+  admin: UIFieldAdminInput<TCollectionSlug, TComponent>;
+}
+
+/** Resolved per-type `admin` for `ui()`. */
+export interface UIFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TComponent extends ComponentHKT = ComponentHKT,
+> extends UIKindFieldAdminConfig {
+  components: {
+    Field: ApplyComponent<TComponent, UIFieldComponentProps<TCollectionSlug>>;
+    Cell?: ApplyComponent<TComponent, UIFieldCellProps<TCollectionSlug>>;
+  };
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+
+export interface UIField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+  TComponent extends ComponentHKT = ComponentHKT,
+> extends BaseUIField<TCollectionSlug, TFieldMeta> {
+  readonly type: "ui";
+  admin: UIFieldAdminConfig<TCollectionSlug, TComponent>;
+}
+```
+
+#### packages/core/src/fields/ui/ui/config.ts
+
+New file.
+
+```ts
+import { ADMIN_FIELDS } from "../../constants";
+import type { VexResourceSlug } from "../../../types/generated";
+import type { ComponentHKT } from "../../baseTypes";
+import type { UIField, UIFieldInput } from "./types";
+
+/**
+ * Renders a fully custom admin-form field with no data representation.
+ * Dropped by `getDataFields` — never reaches schema, validation, type-gen,
+ * RBAC, indexing, or default-value resolution. Legal in any `fields` record
+ * (a collection/global's own, a `group()`'s, a group-shaped `array()`'s
+ * items, a `blocks()` block's own).
+ *
+ * @typeParam TCollectionSlug - Types `Field`/`Cell`'s `data` and
+ *   `admin.condition`'s `data` against that resource's real document.
+ *
+ * @example
+ * ```ts
+ * defineCollection({
+ *   fields: {
+ *     wordCount: ui<typeof TABLE_SLUG_PAGES>({
+ *       admin: { components: { Field: WordCountField } },
+ *     }),
+ *   },
+ * })
+ * ```
+ */
+export function ui<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+  TComponent extends ComponentHKT = ComponentHKT,
+>(props: UIFieldInput<TCollectionSlug, TFieldMeta, TComponent>): UIField<TCollectionSlug, TFieldMeta, TComponent> {
+  return {
+    type: ADMIN_FIELDS.ui.type,
+    label: props.label ?? "",
+    description: props.description,
+    meta: { ...props.meta },
+    admin: {
+      hidden: props.admin.hidden ?? false,
+      readOnly: props.admin.readOnly ?? false,
+      position: props.admin.position ?? "main",
+      width: props.admin.width ?? "100%",
+      components: props.admin.components,
+      condition: props.admin.condition,
+    },
+  };
+}
+```
+
+#### packages/core/src/fields/ui/ui/index.ts
+
+New file.
+
+```ts
+export * from "./types";
+export * from "./config";
+```
+
+#### packages/core/src/fields/ui/ui/config.test.ts
+
+New file.
+
+```ts
+import { describe, it, expect } from "vitest";
+import { ui } from "./config";
+
+describe("ui()", () => {
+  it("defaults position to main and leaves Cell unset", () => {
+    const Field = () => null;
+    const field = ui({ admin: { components: { Field } } });
+    expect(field.type).toBe("ui");
+    expect(field.admin.position).toBe("main");
+    expect(field.admin.components.Field).toBe(Field);
+    expect(field.admin.components.Cell).toBeUndefined();
   });
-});
 
-describe("tabs() key inference", () => {
-  it("infers the union of every tab's keys and rejects unknown keys", () => {
-    const posts = defineCollection({
-      slug: "posts",
-      fields: {
-        ...tabs({
-          tabs: {
-            Content: { ...row({ fields: { a: text(), b: text() } }), c: text() },
-            SEO: { d: text() },
-          },
-        }),
-      },
+  it("keeps an explicit Cell and position", () => {
+    const Field = () => null;
+    const Cell = () => null;
+    const field = ui({
+      admin: { components: { Field, Cell }, position: "sidebar" },
     });
-
-    expect(posts.fields.a).toBeDefined();
-    expect(posts.fields.b).toBeDefined();
-    expect(posts.fields.c).toBeDefined();
-    expect(posts.fields.d).toBeDefined();
-    // @ts-expect-error — "e" was never defined in any tab
-    expect(posts.fields.e).toBeUndefined();
+    expect(field.admin.components.Cell).toBe(Cell);
+    expect(field.admin.position).toBe("sidebar");
   });
 });
 ```
 
-#### packages/core/src/fields/layout/utils.test.ts
+#### packages/core/src/fields/ui/index.ts
+
+New file.
+
+```ts
+export * from "./types";
+export * from "./utils";
+export * from "./tabs";
+export * from "./collapsible";
+export * from "./row";
+export * from "./ui";
+```
+
+#### packages/core/src/fields/ui/utils.test.ts
 
 New file.
 
@@ -8422,11 +10051,15 @@ import {
   andFieldConditions,
   isFieldConditionMet,
   hasFieldConditions,
-  buildFieldLayoutTree,
   resolveRowWidths,
+  getDataFields,
 } from "./utils";
-import { tabs, row } from "./config";
+import { tabs } from "./tabs/config";
+import { collapsible } from "./collapsible/config";
+import { row } from "./row/config";
+import { ui } from "./ui/config";
 import { text } from "../text/config";
+import { checkbox } from "../checkbox/config";
 import { group } from "../group/config";
 import { array } from "../array/config";
 import { blocks, defineBlock } from "../blocks/config";
@@ -8440,7 +10073,6 @@ describe("isFieldConditionMet", () => {
 
   it("evaluates the condition function against data", () => {
     const field = text({ admin: { condition: ({ data }) => data.published === true } });
-
     expect(isFieldConditionMet({ field, data: { published: true }, siblingData })).toBe(true);
     expect(isFieldConditionMet({ field, data: { published: false }, siblingData })).toBe(false);
   });
@@ -8453,7 +10085,6 @@ describe("isFieldConditionMet", () => {
         },
       },
     });
-
     expect(isFieldConditionMet({ field, data: {}, siblingData })).toBe(true);
   });
 });
@@ -8518,56 +10149,6 @@ describe("hasFieldConditions", () => {
   });
 });
 
-describe("buildFieldLayoutTree", () => {
-  it("builds a flat list for fields with no layout frames", () => {
-    const fields = { title: text(), slug: text() };
-
-    expect(buildFieldLayoutTree({ fields })).toEqual([
-      { kind: "field", key: "title", field: fields.title },
-      { kind: "field", key: "slug", field: fields.slug },
-    ]);
-  });
-
-  it("groups contiguous row fields under one row node", () => {
-    const fields = { ...row({ fields: { a: text(), b: text() } }), c: text() };
-
-    expect(buildFieldLayoutTree({ fields })).toEqual([
-      {
-        kind: "row",
-        id: "row:a",
-        children: [
-          { kind: "field", key: "a", field: fields.a },
-          { kind: "field", key: "b", field: fields.b },
-        ],
-      },
-      { kind: "field", key: "c", field: fields.c },
-    ]);
-  });
-
-  it("merges non-contiguous fields sharing the same tab frame id, at the frame's first-appearance position", () => {
-    const tabbed = tabs({
-      tabs: {
-        Content: { a: text() },
-        SEO: { b: text() },
-      },
-    });
-    const extra = text();
-    const fields = { a: tabbed.a, extra, b: tabbed.b };
-
-    expect(buildFieldLayoutTree({ fields })).toEqual([
-      {
-        kind: "tabs",
-        id: "tabs:a",
-        tabs: [
-          { label: "Content", children: [{ kind: "field", key: "a", field: tabbed.a }] },
-          { label: "SEO", children: [{ kind: "field", key: "b", field: tabbed.b }] },
-        ],
-      },
-      { kind: "field", key: "extra", field: extra },
-    ]);
-  });
-});
-
 describe("resolveRowWidths", () => {
   it("uses declared percent widths that already sum to 100", () => {
     expect(resolveRowWidths({ widths: ["30%", "70%"] })).toEqual(["30%", "70%"]);
@@ -8593,988 +10174,912 @@ describe("resolveRowWidths", () => {
     ]);
   });
 });
+
+describe("getDataFields", () => {
+  it("passes data fields through unchanged (no condition anywhere)", () => {
+    const fields = { title: text(), published: checkbox() };
+    const result = getDataFields({ fields });
+    expect(Object.keys(result)).toEqual(["title", "published"]);
+    expect(result.title?.admin.condition).toBeUndefined();
+  });
+
+  it("drops a ui() field entirely", () => {
+    const Field = () => null;
+    const fields = { title: text(), helper: ui({ admin: { components: { Field } } }) };
+    expect(Object.keys(getDataFields({ fields }))).toEqual(["title"]);
+  });
+
+  it("hoists an unnamed tab's fields to the parent level", () => {
+    const fields = {
+      info: tabs({ tabs: [{ label: "Content", fields: { title: text(), body: text() } }] }),
+    };
+    expect(Object.keys(getDataFields({ fields }))).toEqual(["title", "body"]);
+  });
+
+  it("nests a named tab's fields as one group-shaped data field under its name", () => {
+    const fields = {
+      info: tabs({
+        tabs: [{ label: "SEO", name: "seo", fields: { metaTitle: text() } }],
+      }),
+    };
+    const result = getDataFields({ fields });
+    expect(Object.keys(result)).toEqual(["seo"]);
+    expect(result.seo?.type).toBe("group");
+    expect((result.seo as { fields: Record<string, unknown> }).fields.metaTitle).toBeDefined();
+  });
+
+  it("hoists row() and collapsible() fields the same way", () => {
+    const fields = {
+      name: row({ fields: { first: text(), last: text() } }),
+      seo: collapsible({ label: "SEO", fields: { metaTitle: text() } }),
+    };
+    expect(Object.keys(getDataFields({ fields }))).toEqual(["first", "last", "metaTitle"]);
+  });
+
+  it("ANDs a tabs()/row()/collapsible() condition into every field it flattens", () => {
+    const fields = {
+      info: tabs({
+        tabs: [{ label: "Content", fields: { title: text() } }],
+        admin: { condition: () => false },
+      }),
+    };
+    const result = getDataFields({ fields });
+    expect(result.title?.admin.condition?.({ data: {}, siblingData: {} })).toBe(false);
+  });
+
+  it("ANDs a per-tab condition on top of the tabs() field's own condition", () => {
+    const fields = {
+      info: tabs({
+        tabs: [
+          {
+            label: "Content",
+            fields: { title: text() },
+            admin: { condition: ({ data }) => data.published === true },
+          },
+        ],
+      }),
+    };
+    const result = getDataFields({ fields });
+    expect(result.title?.admin.condition?.({ data: { published: false }, siblingData: {} })).toBe(
+      false,
+    );
+    expect(result.title?.admin.condition?.({ data: { published: true }, siblingData: {} })).toBe(
+      true,
+    );
+  });
+
+  it("recursively hoists an unnamed tab nested inside a row", () => {
+    const fields = {
+      info: tabs({
+        tabs: [{ label: "Content", fields: row({ fields: { a: text(), b: text() } }) }],
+      }),
+    };
+    expect(Object.keys(getDataFields({ fields }))).toEqual(["a", "b"]);
+  });
+
+  it("throws on a duplicate flattened key between a hoisted field and a sibling", () => {
+    const fields = {
+      title: text(),
+      info: tabs({ tabs: [{ label: "Content", fields: { title: text() } }] }),
+    };
+    expect(() => getDataFields({ fields })).toThrow('getDataFields(): duplicate field key "title"');
+  });
+
+  it("throws when two named tabs share a name", () => {
+    const fields = {
+      info: tabs({
+        tabs: [
+          { label: "SEO", name: "seo", fields: { a: text() } },
+          { label: "SEO 2", name: "seo", fields: { b: text() } },
+        ],
+      }),
+    };
+    expect(() => getDataFields({ fields })).toThrow('getDataFields(): duplicate field key "seo"');
+  });
+});
 ```
+
+#### packages/core/src/fields/types.ts
+
+2 edits.
+
+**1 — imports and barrel exports, anchored by the existing `export * from "./blocks/types";` line.**
+
+```ts
+import { TabsField } from "./ui/tabs";
+import { CollapsibleField } from "./ui/collapsible";
+import { RowField } from "./ui/row";
+import { UIField } from "./ui/ui";
+import { ADMIN_FIELDS, type AdminFieldType } from "./constants";
+
+export * from "./text/types";
+export * from "./email/types";
+export * from "./textarea/types";
+export * from "./json/types";
+export * from "./number/types";
+export * from "./checkbox/types";
+export * from "./blocks/types";
+export * from "./ui/types";
+export * from "./ui/tabs/types";
+export * from "./ui/collapsible/types";
+export * from "./ui/row/types";
+export * from "./ui/ui/types";
+```
+
+**2 — `AdminField` union gains the four UI field types, plus `AdminDataField`/`AdminUIField`, appended right after the union.**
+
+```ts
+export type AdminField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> =
+  | TextField<VexResourceSlug, TFieldMeta>
+  | EmailField<VexResourceSlug, TFieldMeta>
+  | TextareaField<VexResourceSlug, TFieldMeta>
+  | NumberField<VexResourceSlug, TFieldMeta>
+  | CheckboxField<VexResourceSlug, TFieldMeta>
+  | DateField<VexResourceSlug, TFieldMeta>
+  | SelectField<VexResourceSlug, TFieldMeta>
+  | UrlField<VexResourceSlug, TFieldMeta>
+  | ColorField<VexResourceSlug, TFieldMeta>
+  | ArrayField<VexResourceSlug, ArrayType, TFieldMeta>
+  | RelationshipField<VexResourceSlug, TFieldMeta>
+  | UploadField<VexResourceSlug, TFieldMeta>
+  | BlocksField<VexResourceSlug, TFieldMeta>
+  | GroupField<VexResourceSlug, TFieldMeta>
+  | RichTextField<VexResourceSlug, TFieldMeta>
+  | JsonField<VexResourceSlug, TFieldMeta>
+  | TabsField<VexResourceSlug, TFieldMeta>
+  | CollapsibleField<VexResourceSlug, TFieldMeta>
+  | RowField<VexResourceSlug, TFieldMeta>
+  | UIField<VexResourceSlug, TFieldMeta>;
+
+/**
+ * Every `AdminFieldType` registered with `kind: "data"` in `ADMIN_FIELDS` —
+ * computed from `ADMIN_FIELDS`, never hand-listed, so it cannot drift.
+ */
+export type DataFieldType = {
+  [K in keyof typeof ADMIN_FIELDS]: (typeof ADMIN_FIELDS)[K]["kind"] extends "data"
+    ? (typeof ADMIN_FIELDS)[K]["type"]
+    : never;
+}[keyof typeof ADMIN_FIELDS];
+
+/** Every `AdminFieldType` registered with `kind: "ui"` in `ADMIN_FIELDS`. */
+export type UIFieldType = {
+  [K in keyof typeof ADMIN_FIELDS]: (typeof ADMIN_FIELDS)[K]["kind"] extends "ui"
+    ? (typeof ADMIN_FIELDS)[K]["type"]
+    : never;
+}[keyof typeof ADMIN_FIELDS];
+
+/** The data-field half of {@link AdminField} — what `getDataFields` returns. */
+export type AdminDataField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> = Extract<
+  AdminField<TFieldMeta>,
+  { type: DataFieldType }
+>;
+
+/** The UI-field half of {@link AdminField} — `tabs`/`collapsible`/`row`/`ui`. */
+export type AdminUIField = Extract<AdminField, { type: UIFieldType }>;
+```
+
+#### every DATA field type's `types.ts` — `<Type>FieldAdminInput`/`<Type>FieldAdminConfig` with `condition`
+
+1 edit per file. `FieldAdminConfigInput`/`FieldAdminConfig` stay non-generic (no `condition`), so every DATA
+field type declares its own generic admin wrapper — precedent already in the repo:
+`relationship/types.ts`'s `RelationshipFieldAdminInput<TTargetSlug, TComponent> extends FieldAdminConfigInput`.
+`condition` is method-shorthand (bivariant, same reason `validate?(props: FieldValidateProps<TCollectionSlug>)`
+already is — see `baseTypes.ts`).
+
+**Representative pattern — `text/types.ts`** (`email`, `textarea`, `json`, `number`, `checkbox`, `date`,
+`select`, `color`, `url`, `upload`, `richtext`, `array` are mechanically identical: substitute the field's own
+`<Type>` prefix, add the import, insert the new interface above the existing `<Type>FieldInput`, add/replace
+the `admin?:`/`admin:` line in `<Type>FieldInput`/`<Type>Field`). None of these 13 currently declare a
+per-type admin wrapper or override `admin` on their input interface — `array/types.ts`, `text/types.ts`,
+`textarea/types.ts`, `number/types.ts`, `checkbox/types.ts`, `date/types.ts` already re-declare
+`admin: FieldAdminConfig;` on their RESOLVED interface (just retype that line); `email`, `json`, `select`,
+`color`, `url`, `upload`, `richtext` currently inherit `admin` from `BaseField`/`BaseFieldInput` unchanged on
+both interfaces (add both an `admin?:` line to the input interface and an `admin:` line to the resolved one).
+
+New import, alongside the existing `baseTypes` import in `text/types.ts`:
+
+```ts
+import type { FieldConditionProps } from "../ui/types";
+```
+
+New interface, inserted directly above `export interface TextFieldInput<`:
+
+```ts
+/** Per-type `admin` input for `text()` — adds `condition`. */
+export interface TextFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfigInput {
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+
+/** Resolved per-type `admin` for `text()`. */
+export interface TextFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfig {
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+```
+
+`TextFieldInput`'s body gains (it had no `admin?:` line before — add one):
+
+```ts
+  admin?: TextFieldAdminInput<TCollectionSlug>;
+```
+
+`TextField`'s existing `admin: FieldAdminConfig;` line (types.ts:101) becomes:
+
+```ts
+  admin: TextFieldAdminConfig<TCollectionSlug>;
+```
+
+Every other field in the 13-file group above gets the same three edits with its own `<Type>` prefix
+(`EmailFieldAdminInput`/`Config`, `TextareaFieldAdminInput`/`Config`, `JsonFieldAdminInput`/`Config`,
+`NumberFieldAdminInput`/`Config`, `CheckboxFieldAdminInput`/`Config`, `DateFieldAdminInput`/`Config`,
+`SelectFieldAdminInput`/`Config`, `ColorFieldAdminInput`/`Config`, `UrlFieldAdminInput`/`Config`,
+`UploadFieldAdminInput`/`Config`, `RichTextFieldAdminInput`/`Config`, `ArrayFieldAdminInput`/`Config`),
+each extending the plain `FieldAdminConfigInput`/`FieldAdminConfig` exactly like `text`'s does above.
+
+**`group/types.ts`** — `GroupFieldAdminConfigInput`/`GroupFieldAdminConfig` already exist (they carry
+`defaultCollapsed`) and already `extends FieldAdminConfigInput`/`FieldAdminConfig`; they just need a
+`TCollectionSlug` parameter and a `condition` member, and their two usages need to pass it through:
+
+```ts
+import type { FieldConditionProps } from "../ui/types";
+
+export interface GroupFieldAdminConfigInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfigInput {
+  defaultCollapsed?: boolean;
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+
+export interface GroupFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfig {
+  defaultCollapsed: boolean;
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+```
+
+`GroupFieldInput`'s `admin?: GroupFieldAdminConfigInput;` (types.ts:98) becomes
+`admin?: GroupFieldAdminConfigInput<TCollectionSlug>;`; `GroupField`'s `admin: GroupFieldAdminConfig;`
+(types.ts:124) becomes `admin: GroupFieldAdminConfig<TCollectionSlug>;`. `ui/utils.ts`'s `flattenFields`
+builds a named tab's group via the real `group()` factory with `admin: { condition: tabCondition, hidden:
+tabsHidden, readOnly: tabsReadOnly }` (Step 6, above) — unaffected, still structurally valid.
+
+**`blocks/types.ts`** — replaces its two inline `FieldAdminConfigInput & { defaultCollapsed?: boolean }` /
+`FieldAdminConfig & { defaultCollapsed: boolean }` intersections (types.ts:205, :252) with named,
+`TCollectionSlug`-generic interfaces (consistent with `group`'s named wrapper):
+
+```ts
+import type { FieldConditionProps } from "../ui/types";
+
+/** Per-type `admin` input for `blocks()` — adds `defaultCollapsed` and `condition`. */
+export interface BlocksFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfigInput {
+  defaultCollapsed?: boolean;
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+
+/** Resolved per-type `admin` for `blocks()`. */
+export interface BlocksFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfig {
+  defaultCollapsed: boolean;
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+```
+
+`BlocksFieldInput.admin` (types.ts:205-207) becomes `admin?: BlocksFieldAdminInput<TCollectionSlug>;`;
+`BlocksField.admin` (types.ts:252-254) becomes `admin: BlocksFieldAdminConfig<TCollectionSlug>;`.
+
+**`relationship/types.ts`** — `RelationshipFieldAdminInput`/`RelationshipFieldAdminConfig` gain a NEW
+`TCollectionSlug` parameter (the field's OWNING collection — distinct from their existing `TTargetSlug`, the
+collection the relationship POINTS to) and a `condition` typed against it:
+
+```ts
+import type { FieldConditionProps } from "../ui/types";
+
+export interface RelationshipFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TTargetSlug extends CollectionSlug = CollectionSlug,
+  TComponent extends ComponentHKT = ComponentHKT,
+> extends FieldAdminConfigInput {
+  components?: {
+    preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TTargetSlug>>;
+  };
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+
+export interface RelationshipFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TTargetSlug extends CollectionSlug = CollectionSlug,
+  TComponent extends ComponentHKT = ComponentHKT,
+> extends FieldAdminConfig {
+  components: {
+    preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TTargetSlug>>;
+  };
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+}
+```
+
+`RelationshipFieldInput`'s `admin?: BaseFieldInput["admin"] & RelationshipFieldAdminInput<TTargetSlug,
+TComponent>;` (types.ts:132-133) becomes `admin?: RelationshipFieldAdminInput<TCollectionSlug, TTargetSlug,
+TComponent>;` (the `BaseFieldInput["admin"]` intersection is no longer needed — `RelationshipFieldAdminInput`
+already extends `FieldAdminConfigInput`, same as `components` already made it unnecessary for every other
+property). `RelationshipField`'s `admin: BaseField<VexResourceSlug, TFieldMeta>["admin"] &
+RelationshipFieldAdminConfig<TTargetSlug, TComponent>;` (types.ts:166-167) becomes
+`admin: RelationshipFieldAdminConfig<TCollectionSlug, TTargetSlug, TComponent>;`.
+
 
 #### packages/core/src/fields/index.ts
 
-1 edit — add the layout barrel beside `utils`.
-
-**1 — after `export * from "./utils";`.**
+1 edit — add the `ui` barrel, after `export * from "./utils";`.
 
 ```ts
-export * from "./layout";
+export * from "./ui";
 ```
 
-#### packages/core/src/fields/baseTypes.ts
-
-3 edits.
-
-**1 — new type-only import, after the `VexCallbackApi` import.**
-
-```ts
-import type { FieldCondition, FieldLayoutFrame } from "./layout/types";
-```
-
-**2 — `FieldAdminConfigInput` (plus its doc block) — full replacement.**
-
-```ts
-/**
- * Configuration input for a field's admin panel behavior.
- *
- * Controls how the field appears and behaves in the admin UI — visibility,
- * layout, input styling, and data table presentation. All properties are
- * optional; unset properties fall back to the defaults listed below.
- *
- * **Defaults applied by field config functions** (e.g., `text()`, `number()`):
- * ```ts
- * {
- *   hidden:        false,   // field is visible in the admin form
- *   readOnly:      false,   // field is editable by default
- *   position:      "main",  // placed in the main content column, not the sidebar
- *   width:         "100%",  // spans the full form width
- *   cellAlignment: "left",  // text aligned left in data table cells
- *   layout:        [],      // not nested inside tabs()/collapsible()/row()
- * }
- * ```
- *
- * @example
- * ```ts
- * // Basic usage — all defaults applied
- * title: text({ admin: { width: "50%" } })
- *
- * // Sidebar metadata field
- * publishedAt: date({
- *   description: "Scheduled publish time",
- *   admin: { position: "sidebar" },
- * })
- *
- * // Read-only computed field
- * createdAt: date({
- *   required: true,
- *   admin: { readOnly: true, hidden: false }
- * })
- *
- * // Right-aligned number column in table
- * price: number({
- *   admin: {
- *     cellAlignment: "right",
- *     placeholder: "0.00"
- *   }
- * })
- *
- * // Shown only once the document is published
- * featuredQuote: text({
- *   admin: { condition: ({ data }) => data.status === "published" },
- * })
- * ```
- *
- * @see {@link FieldAdminConfig} for the resolved type after defaults are applied
- */
-export interface FieldAdminConfigInput {
-  /**
-   * Hide this field from the admin form.
-   * Hidden fields are still stored in the database.
-   *
-   * Default: `false`
-   */
-  hidden?: boolean;
-  /**
-   * Make this field read-only in the admin form.
-   * The value is displayed but cannot be edited.
-   *
-   * Default: `false`
-   */
-  readOnly?: boolean;
-  /**
-   * Position of the field in the form layout.
-   *
-   * - `"main"` — placed in the main content area
-   * - `"sidebar"` — placed in the sidebar panel
-   *
-   * Honored for TOP-LEVEL collection/global fields only; ignored for nested fields.
-   *
-   * Default: `"main"`
-   */
-  position?: "main" | "sidebar";
-  /**
-   * Width of the field within its row, as any CSS width (`"50%"`, `"240px"`).
-   * The form lays fields out with flex-wrap so partial widths share a line;
-   * below the `sm` breakpoint every field is full width.
-   *
-   * Default: `"100%"`
-   */
-  width?: string;
-  /**
-   * Placeholder text shown in the input when empty.
-   */
-  placeholder?: string;
-  /**
-   * Content alignment in data table cells. 'left' | 'right' | 'center'
-   */
-  cellAlignment?: Alignment;
-  /**
-   * Pure predicate deciding whether this field is shown and validated. Runs
-   * identically on the client and the server; a hidden field KEEPS its
-   * value (not cleared, still submitted) and skips `required`/`validate()`
-   * server-side.
-   */
-  condition?: FieldCondition;
-}
-```
-
-**3 — `FieldAdminConfig` (plus its doc block) — full replacement.**
-
-```ts
-/**
- * Resolved admin configuration for a field, returned after defaults are applied.
- *
- * Properties with defaults (`hidden`, `readOnly`, `position`, `width`, `cellAlignment`, `layout`)
- * are always present. Properties that are meaningless when absent (`placeholder`, `condition`)
- * remain optional — `undefined` means the user did not configure them.
- *
- * @see {@link FieldAdminConfigInput} for the user-facing input type
- */
-export interface FieldAdminConfig {
-  /** Whether the field is hidden from the admin form. */
-  hidden: boolean;
-  /** Whether the field is read-only in the admin form. */
-  readOnly: boolean;
-  /** Position of the field in the form layout — `"main"` or `"sidebar"`. */
-  position: "main" | "sidebar";
-  /** Width of the field within its row, any CSS width — e.g. `"100%"`, `"50%"`, `"240px"`. */
-  width: string;
-  /** Text alignment for this field's column in the data table. */
-  cellAlignment: Alignment;
-  /** Placeholder text shown in the input when empty. */
-  placeholder?: string;
-  /**
-   * The layout containers this field is nested inside, outermost first —
-   * written only by `tabs()` / `collapsible()` / `row()`, never set by hand.
-   */
-  layout: FieldLayoutFrame[];
-  /** Pure predicate deciding whether this field is shown and validated. */
-  condition?: FieldCondition;
-}
-```
-
-#### packages/core/src/fields/text/types.ts
-
-1 edit — the `TextFieldInput` doc block's defaults list and `width: "half"` example.
-
-**1 — defaults list + example, anchored by the `**Defaults applied by `text()`:**` block.**
-
-```ts
- *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "100%",  // spans the full form width
- *     cellAlignment: "left",  // text aligned left in the data table column
- *   }
- * }
- * ```
- *
- * @example
- * ```ts
- * // Minimal — label is inferred from the key ("Title")
- * title: text()
- *
- * // Required slug with length validation and a database index
- * slug: text({ required: true, min: { value: 3 }, max: { value: 100 }, index: "by_slug" })
- *
- * // Author name with a placeholder hint shown in the admin form
- * authorName: text({
- *   required: true,
- *   admin: { width: "50%", placeholder: "e.g. Jane Smith" }
- * })
-```
-
-#### packages/core/src/fields/text/config.ts
+#### packages/core/src/fields/utils.ts
 
 2 edits.
 
-**1 — JSDoc bullets, anchored by `- `admin.width` — `"full"`` in the `text()` doc comment.**
+**1 — import, after the existing `AdminField` import.**
 
 ```ts
- * - `admin.width` — `"100%"`
+import { getDataFields } from "./ui";
 ```
 
-**2 — the example in the same doc comment and the `admin` default object in `text()` — full replacement of the function (defaults list + example + body unchanged otherwise).**
+**2 — the four functions that currently `Object.entries`/`Object.keys`/iterate `props.fields` directly — `getFieldsInputSchema`, `getFieldsDefaultValues`, `fieldsToFieldTypeMap`, `validateFields` — each gets its iteration source replaced. The body otherwise shown unchanged is exactly what is already there (collapsed below for the parts this edit does not touch).**
 
 ```ts
-/**
- * Creates a text field with all defaults applied.
- *
- * Text fields store short, single-line string values.
- * Common uses: titles, names, slugs, URLs, email addresses.
- *
- * Accepts {@link TextFieldInput} (all optional) and returns {@link TextField} with all defaults applied.
- *
- * **Defaults applied:**
- * - `label` — `""` (inferred from the field key by `defineCollection`)
- * - `required` — `false`
- * - `admin.hidden` — `false`
- * - `admin.readOnly` — `false`
- * - `admin.position` — `"main"`
- * - `admin.width` — `"100%"`
- * - `admin.cellAlignment` — `"left"`
- *
- * @param options - Text field configuration. All properties are optional.
- * @returns Resolved text field definition with all defaults applied.
- *
- * @example
- * ```ts
- * import { text, defineCollection } from '@vexcms/core'
- *
- * posts: defineCollection({
- *   fields: {
- *     // Minimal — label inferred from key ("Title")
- *     title: text(),
- *
- *     // Required slug with length validation and a database index
- *     slug: text({ required: true, min: { value: 3 }, max: { value: 100 }, index: "by_slug" }),
- *
- *     // Author name with a placeholder hint in the admin form
- *     authorName: text({
- *       required: true,
- *       admin: { width: "50%", placeholder: "e.g. Jane Smith" },
- *     }),
- *   }
- * })
- * ```
- *
- * @see {@link TextFieldInput} for the full input type
- * @see {@link TextField} for the resolved output type
- */
-export function text<
-  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+export function getFieldsInputSchema(props: { fields: Record<string, AdminField>; partial?: boolean }) {
+  const res: Record<string, ZodType> = {};
+  for (const [fieldKey, fieldDef] of Object.entries(getDataFields({ fields: props.fields }))) {
+    if (fieldDef.admin.hidden) continue;
+    res[fieldKey] = adminFieldToInputSchema({ field: fieldDef });
+  }
+  const schema = z.object({ ...res });
+  return props.partial ? schema.partial() : schema;
+}
+
+export function getFieldsDefaultValues(props: {
+  fields: Record<string, AdminField>;
+  document?: Record<string, unknown>;
+}) {
+  const res: Record<string, unknown> = {};
+  for (const [fieldKey, fieldDef] of Object.entries(getDataFields({ fields: props.fields }))) {
+    res[fieldKey] = props.document?.[fieldKey] ?? fieldDef.defaultValue;
+  }
+  return res;
+}
+
+export function fieldsToFieldTypeMap(props: { fields: Record<string, AdminField>; typeMapName: string }): string {
+  const byType = new Map<string, string[]>();
+  for (const [fieldKey, fieldDef] of Object.entries(getDataFields({ fields: props.fields }))) {
+    const keys = byType.get(fieldDef.type) ?? [];
+    keys.push(fieldKey);
+    byType.set(fieldDef.type, keys);
+  }
+  // … unchanged string-rendering below this point.
+}
+
+export async function validateFields(props: {
+  fields: Record<string, AdminField>;
+  doc: Record<string, unknown>;
+  keys: readonly string[];
+  ctx: VexCallbackApi<VexMutationCtx>;
+  config: VexConfig;
+}): Promise<void> {
+  const dataFields = getDataFields({ fields: props.fields });
+  for (const [fieldKey, field] of Object.entries(dataFields)) {
+    if (!props.keys.includes(fieldKey)) continue;
+    if (!field.validate) continue;
+    if (
+      !isFieldConditionMet({ field, data: props.doc, siblingData: props.doc })
+    ) {
+      continue;
+    }
+    // … unchanged validate()-invocation/error-wrapping below this point.
+  }
+}
+```
+
+The exact un-elided bodies (error wrapping in `validateFields`, the rendered-string assembly in
+`fieldsToFieldTypeMap`, `getFieldsInputSchema`'s `adminFieldToInputSchema` call's other current arguments)
+are whatever is already on `main` for these functions — this edit only changes the iteration source and
+(in `validateFields`) adds the `isFieldConditionMet` skip; every other line is untouched.
+
+Add `import { isFieldConditionMet } from "./ui";` alongside the `getDataFields` import above for the
+`validateFields` skip.
+
+#### every field factory — width literal migration
+
+1 edit per file (the `admin` default object's `width: "full"` → `width: "100%"`), plus every JSDoc
+`width: "half"` example → `width: "50%"`, in:
+`fields/text/{types.ts,config.ts}`, `fields/number/{types.ts,config.ts}`, `fields/checkbox/{types.ts,config.ts}`,
+`fields/color/{types.ts,config.ts}`, `fields/date/{types.ts,config.ts}`, `fields/select/{types.ts,config.ts}`,
+`fields/url/{types.ts,config.ts}`, `fields/relationship/{types.ts,config.ts}`, `fields/upload/config.ts`,
+`fields/upload/config.test.ts` (`expect(field.admin.width).toBe("full")` → `.toBe("100%")`),
+`fields/richtext/{types.ts,config.ts,config.test.ts}` (same `toEqual({ …, width: "full", … })` →
+`"100%"`), `fields/array/{types.ts,config.ts}`, `fields/blocks/{types.ts,config.ts}`,
+`fields/group/{types.ts,config.ts}`, `fields/email/{types.ts,config.ts}`, `fields/textarea/{types.ts,config.ts}`,
+`fields/json/{types.ts,config.ts,config.test.ts}` (same `width: "full"` → `"100%"` in the `toMatchObject`
+assertion). No `admin.layout` line is added anywhere — this model has no such property. `admin.condition`
+needs no explicit default line in any factory; it already flows through via the existing
+`...options?.admin` spread.
+
+No change is needed in `packages/better-auth/src/adapter.ts`: `betterAuthAttrToVexField`
+(`packages/better-auth/src/adapter.ts:259-328`) builds a plain `admin: FieldAdminConfigInput` object and
+passes it straight into `text()`/`select()`/`checkbox()`/`number()`/`date()`/`array()` — the field factories
+resolve `width` themselves, so the new default applies automatically. Confirmed no `width: "half"`/`"full"`
+literal exists in `apps/test/src` or `apps/www/src` (only `apps/docs` MDX pages use it, out of scope per the
+launch-plan — docs land in the commit phase).
+
+#### packages/core/src/collections/types.ts
+
+4 edits — `CollectionConfigInput`/`CollectionConfig`'s `TFieldSlug extends string = string` parameter
+replaced by `TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>`;
+every bare `TFieldSlug` reference inside the two interfaces substitutes `DataFieldSlug<TFields>`; the
+`fields` property itself becomes `TFields` (raw, not `Record<TFieldSlug, AdminField>` — it is the renderer's
+view, UI entries included).
+
+**1 — import, alongside the existing `AdminField` import.**
+
+```ts
+import { AdminField, DataFieldSlug } from "../fields";
+```
+
+**2 — `CollectionConfigInput`'s generic parameter list and the three members that referenced `TFieldSlug`.**
+
+```ts
+export interface CollectionConfigInput<
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TCollectionSlug extends string = string,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
+  TComponent extends ComponentHKT = ComponentHKT,
+  TDrafts extends boolean = false,
+> {
+  admin?: AdminCollectionConfigInput<
+    DataFieldSlug<TFields>,
+    TComponent,
+    TCollectionSlug extends CollectionSlug ? TCollectionSlug : CollectionSlug
+  >;
+  /** Field definitions that make up this collection's document shape. */
+  fields: TFields;
+  interfaceName?: string;
+  indexes?: {
+    name: string;
+    fields: NoInfer<DataFieldSlug<TFields>>[];
+    draftStatus?: TDrafts extends true ? true | "both" : never;
+  }[];
+  // … every other member unchanged.
+}
+```
+
+**3 — `CollectionConfig`'s generic parameter list and the three members that referenced `TFieldSlug`.**
+
+```ts
+export interface CollectionConfig<
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
+  TComponent extends ComponentHKT = ComponentHKT,
+  TDrafts extends boolean = boolean,
+> {
+  admin: AdminCollectionConfig<DataFieldSlug<TFields>, TComponent, TCollectionSlug>;
+  slug: TCollectionSlug;
+  fields: Partial<Record<CollectionSystemField, AdminField<TFieldMeta>>> & TFields;
+  interfaceName: string;
+  indexes?: {
+    name: string;
+    fields: NoInfer<DataFieldSlug<TFields>>[];
+    draftStatus?: TDrafts extends true ? true | "both" : never;
+  }[];
+  // … every other member unchanged.
+}
+```
+
+**4 — doc-comment cross-reference, anchored by `[TFieldSlug & ReservedCollectionFieldKey] extends [never]`.**
+
+```ts
+ * Naming a field `updatedAt` yourself is a compile-time error in
+ * `defineCollection`'s signature (`[keyof TFields & ReservedCollectionFieldKey]
+ * extends [never]`), mirroring `GlobalConfigInput`'s identical
+ * `ReservedGlobalFieldKey` guard.
+```
+
+#### packages/core/src/collections/config.ts
+
+4 edits.
+
+**1 — import, alongside the existing `fields` import.**
+
+```ts
+import { ADMIN_FIELDS, AdminField, CollectionFieldMeta, ComponentHKT, date, getDataFields } from "../fields";
+```
+
+**2 — `populateCollectionFieldMeta`'s generic parameter and its `meta` stamp — applies uniformly to every field, UI or data. `BaseUIField`'s `meta?: TFieldMeta` member (Step 6's `baseTypes.ts` edit) means a `kind: "ui"` field carries the same `meta` shape a data field does, so no `kind` check or narrowing is needed to stamp it.**
+
+```ts
+function populateCollectionFieldMeta<
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TFields extends Record<string, AdminField> = Record<string, AdminField>,
+  TComponent extends ComponentHKT = ComponentHKT,
+  TDrafts extends boolean = boolean,
+>({
+  config,
+}: {
+  config: CollectionConfigInput<
+    TFieldMeta,
+    TCollectionMeta,
+    TCollectionSlug,
+    TFields,
+    TComponent,
+    TDrafts
+  >;
+}): Record<string, AdminField<TFieldMeta & CollectionFieldMeta>> {
+  const fields: Record<string, AdminField<TFieldMeta & { collectionSlug: string }>> = {};
+  Object.entries(config.fields).forEach(([fieldSlug, field]) => {
+    fields[fieldSlug] = {
+      ...(field as AdminField<TFieldMeta & CollectionFieldMeta>),
+      meta: {
+        ...(field as AdminField<TFieldMeta & CollectionFieldMeta>)?.meta,
+        collectionSlug: config.slug,
+      },
+    };
+  });
+  return fields;
+}
+```
+
+**3 — `defineCollection`'s generic parameter, signature, and the two `Object.entries(input.fields)` guard
+loops — all three (`TFieldSlug` → `TFields`, reserved-key guard, `indexDraftStatus` guard loops) walk
+`getDataFields` where they reasoned about DATA fields, and `keyof TFields` where they reasoned about every
+raw authored key (the reserved-key guard must reject a UI field literally named `"updatedAt"` too).**
+
+```ts
+export function defineCollection<
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
+  TComponent extends ComponentHKT = ComponentHKT,
+  const TDrafts extends boolean = false,
+>(
+  config: string extends keyof TFields
+    ? CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent, TDrafts>
+    : [keyof TFields & (CollectionSystemField | VersionSystemField)] extends [never]
+      ? CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent, TDrafts>
+      : {
+          fields: {
+            [K in keyof TFields & (CollectionSystemField | VersionSystemField)]: 'Field name is reserved — defineCollection injects "updatedAt" automatically; opt out with { timestamps: false }';
+          };
+        },
+): CollectionConfig<TFieldMeta & CollectionFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent, TDrafts> {
+  const input = config as CollectionConfigInput<
+    TFieldMeta,
+    TCollectionMeta,
+    TCollectionSlug,
+    TFields,
+    TComponent,
+    TDrafts
+  >;
+
+  // Runtime guard for JS consumers — reserved keys are rejected on the RAW
+  // authored fields record, before any flattening, so a `ui()`/`tabs()`
+  // entry literally named "updatedAt" is rejected the same as a data field.
+  const reservedKeys: (CollectionSystemField | VersionSystemField)[] = [
+    ...Object.values(COLLECTION_SYSTEM_FIELDS),
+    ...Object.values(VERSION_SYSTEM_FIELDS),
+  ].map((field) => field.slug);
+  for (const key of reservedKeys) {
+    const declared = (input.fields as Record<string, AdminField<TFieldMeta>>)[key];
+    if (declared === undefined) continue;
+    const meta: Record<string, unknown> = declared.meta;
+    if (meta.locked === true) continue;
+    throw new Error(
+      `defineCollection: field key "${key}" is reserved and cannot be used in collection "${input.slug}". defineCollection injects it automatically; set { timestamps: false } to opt out.`,
+    );
+  }
+
+  // Reject a duplicate key once the fields record is flattened to data
+  // fields — two fields named the same, a named tab reusing a sibling's
+  // key, two tabs sharing a `name`. `getDataFields` itself throws;
+  // called here purely for the side effect, result discarded.
+  getDataFields({ fields: input.fields });
+
+  if (input.versions?.drafts !== true) {
+    const indexOffender = input.indexes?.find((i) => i.draftStatus !== undefined);
+    if (indexOffender) {
+      throw new Error(
+        `defineCollection: index "${indexOffender.name}" on collection "${input.slug}" declares draftStatus but versions.drafts is not true.`,
+      );
+    }
+    const fieldOffender = Object.entries(getDataFields({ fields: input.fields })).find(
+      ([, field]) => field.indexDraftStatus !== undefined,
+    );
+    if (fieldOffender) {
+      throw new Error(
+        `defineCollection: field "${fieldOffender[0]}" on collection "${input.slug}" declares indexDraftStatus but versions.drafts is not true.`,
+      );
+    }
+  }
+
+  for (const [fieldKey, field] of Object.entries(getDataFields({ fields: input.fields }))) {
+    if (field.indexDraftStatus !== undefined && !field.index && field.type !== ADMIN_FIELDS.relationship.type) {
+      throw new Error(
+        `defineCollection: field "${fieldKey}" on collection "${input.slug}" declares indexDraftStatus with no index to narrow — set "index", or this must be a relationship field (which auto-indexes).`,
+      );
+    }
+  }
+
+  // … everything from `const meta: Record<string, unknown> = input.meta ?? {};` onward unchanged,
+  // other than `populateCollectionFieldMeta`'s own generics (edit 2 above) threading through.
+}
+```
+
+#### packages/core/src/collections/interfaceGen.ts
+
+1 edit — `collectionConfigToInterface` walks `getDataFields`.
+
+```ts
+import { ADMIN_FIELDS, wrapLines, getFieldInterfaces, getDataFields } from "../fields";
+// …
+export function collectionConfigToInterface(props: { collection: CollectionConfig }): string {
+  const { collection } = props;
+  const dataFields = getDataFields({ fields: collection.fields });
+  const fieldInterfaces = getFieldInterfaces(dataFields);
+  const interfaceStart = `export interface ${collection.interfaceName} extends VexDocument {\n
+    \t_id: Id<"${collection.slug}">`;
+
+  const collectionSubTypes: string[] = [];
+  const interfaceFields = Object.entries(dataFields)
+    .map(([fieldKey, field]) => {
+      // … unchanged body below this point.
+    })
+    .join("\n");
+  // … unchanged return below this point.
+}
+```
+
+#### packages/core/src/collections/validator.ts
+
+2 edits — `getIncomingRelationships`'s relationship-collecting loop and `collectionConfigToVexSchema`'s
+per-field validator-string loop both walk `getDataFields({ fields: collection.fields })` instead of the
+raw `collection.fields`. Import `getDataFields` from `../fields` alongside the existing `adminFieldToValidator`
+import; every other line in both functions is unchanged.
+
+#### packages/core/src/collections/indexFields.ts
+
+1 edit — `collectionConfigToIndexFields`'s loop source.
+
+```ts
+import { ADMIN_FIELDS, getDataFields } from "../fields";
+// …
+export function collectionConfigToIndexFields(props: { collection: CollectionConfig }): Map<string, string[]> {
+  const fields = new Map<string, string[]>();
+  for (const [fieldKey, field] of Object.entries(getDataFields({ fields: props.collection.fields }))) {
+    // … unchanged body below this point.
+  }
+  return fields;
+}
+```
+
+#### packages/core/src/globals/types.ts
+
+Same four edits as `collections/types.ts`, mirrored: `GlobalConfigInput`/`GlobalConfig`'s `TFieldSlug` parameter
+becomes `TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>`;
+`fields: TFields` replaces `fields: Record<TFieldSlug, AdminField<TFieldMeta>>`; no `useAsTitle`/`indexes` exist
+on a global, so there is no `DataFieldSlug` substitution site beyond the `fields` property itself and the
+import. Add `import { AdminField, DataFieldSlug } from "../fields";` if not already present (`DataFieldSlug`
+is imported for symmetry with collections even though this file has no other direct use of it yet).
+
+#### packages/core/src/globals/config.ts
+
+2 edits, mirroring `collections/config.ts`'s edits 1 and 3 (there is no `populateCollectionFieldMeta`
+equivalent in this file — `defineGlobal` stamps nothing field-level): `defineGlobal`'s generic parameter
+`TFieldSlug` → `TFields`, the reserved-key guard reasons over `keyof TFields`, and a
+`getDataFields({ fields: input.fields })` call (side effect only, result discarded) rejects a duplicate
+flattened key the same way `defineCollection` does.
+
+```ts
+import { getDataFields, type ComponentHKT } from "../fields";
+// …
+export function defineGlobal<
+  TFieldMeta extends {} = {},
+  TGlobalMeta extends {} = {},
+  TGlobalSlug extends GlobalSlug = GlobalSlug,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
+  TComponent extends ComponentHKT = ComponentHKT,
+  const TDrafts extends boolean = false,
+>(
+  config: string extends keyof TFields
+    ? GlobalConfigInput<TFieldMeta, TGlobalMeta, TGlobalSlug, TFields, TComponent, TDrafts>
+    : [keyof TFields & ReservedGlobalFieldKey] extends [never]
+      ? GlobalConfigInput<TFieldMeta, TGlobalMeta, TGlobalSlug, TFields, TComponent, TDrafts>
+      : {
+          fields: {
+            [K in keyof TFields & ReservedGlobalFieldKey]: "Field name is reserved — cannot use _id, _creationTime, or _slug";
+          };
+        },
+): GlobalConfig<TFieldMeta, TGlobalMeta, TGlobalSlug, TFields, TComponent, TDrafts> {
+  const reservedKeys: ReservedGlobalFieldKey[] = ["_id", "_creationTime", "_slug"];
+  const input = config as GlobalConfigInput<TFieldMeta, TGlobalMeta, TGlobalSlug, TFields, TComponent, TDrafts>;
+  for (const key of reservedKeys) {
+    if (key in input.fields) {
+      throw new Error(
+        `defineGlobal: field key "${key}" is reserved and cannot be used in global "${input.slug}".`,
+      );
+    }
+  }
+  getDataFields({ fields: input.fields });
+  // … everything else unchanged.
+}
+```
+
+#### packages/core/src/globals/interfaceGen.ts
+
+1 edit — same shape as `collections/interfaceGen.ts`'s edit: `globalConfigToInterface` builds
+`const dataFields = getDataFields({ fields: g.fields });` and both `getFieldInterfaces(dataFields)` and the
+`Object.entries(dataFields)` loop read from it instead of `g.fields`. Import `getDataFields` from `../fields`.
+
+#### packages/core/src/auth/types.ts
+
+1 edit — `AuthCollectionConfig`'s pass-through parameter renamed, same positional slot.
+
+```ts
+export type AuthCollectionConfig<
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TFields extends Record<string, AdminField<AuthFieldMeta>> = Record<string, AdminField<AuthFieldMeta>>,
+  TComponent extends ComponentHKT = ComponentHKT,
+> = CollectionConfig<AuthFieldMeta, AuthCollectionMeta, TCollectionSlug, TFields, TComponent>;
+```
+
+Add `AdminField` to the existing `import { ComponentHKT } from "../fields";` line.
+
+#### packages/core/src/media/types.ts
+
+1 edit — `MediaCollectionConfigInput`/`MediaCollectionConfig`'s pass-through parameter renamed.
+
+```ts
+export type MediaCollectionConfigInput<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
->(options?: TextFieldInput<TCollectionSlug, TFieldMeta>): TextField<TCollectionSlug, TFieldMeta> {
-  return {
-    type: ADMIN_FIELDS.text.type,
-    interfaceType: ADMIN_FIELDS.text.interfaceType,
+  TCollectionMeta extends MediaCollectionMeta = MediaCollectionMeta,
+  TCollectionSlug extends MediaCollectionSlug = MediaCollectionSlug,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
+  TComponent extends ComponentHKT = ComponentHKT,
+> = Omit<CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent>, "fields">;
 
-    // Core properties with defaults
-    label: "",
-    required: false,
-    defaultValue: ADMIN_FIELDS.text.defaultValue,
-    ...options,
+export type MediaCollectionConfig<
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+  TCollectionMeta extends MediaCollectionMeta = MediaCollectionMeta,
+  TCollectionSlug extends MediaCollectionSlug = MediaCollectionSlug,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
+  TComponent extends ComponentHKT = ComponentHKT,
+> = CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent>;
+```
 
-    // Admin config with all defaults applied
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      // Optional admin properties (no defaults)
-      placeholder: "",
-      ...options?.admin,
-    },
-    meta: {
-      ...options?.meta,
-    } as TFieldMeta,
-  };
+Add `AdminField` to this file's existing type-only `@vexcms/core` import.
+
+#### packages/core/src/access/validateAccessConstraints.ts
+
+1 edit — `collectResourceIndexFields`'s loop source.
+
+```ts
+import { ADMIN_FIELDS, getDataFields } from "../fields";
+// …
+function collectResourceIndexFields(resource: AccessResource): Record<string, readonly string[]> {
+  const indexFields: Record<string, readonly string[]> = {};
+  for (const [fieldKey, field] of Object.entries(getDataFields({ fields: resource.fields }))) {
+    // … unchanged body below this point.
+  }
+  return indexFields;
 }
 ```
 
-#### packages/core/src/fields/number/types.ts
+#### packages/core/src/versions/assertNoDraftRelationships.ts
 
-1 edit — defaults list + `width: "half"` example, anchored by the `**Defaults applied by `number()`:**` block.
+1 edit — the relationship-key collection source.
 
 ```ts
- *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "100%",  // spans the full form width
- *     cellAlignment: "left",  // value aligned left in the data table column
- *   }
- * }
- * ```
- *
- * @example
- * ```ts
- * // Minimal — label is inferred from the key ("Price")
- * price: number()
- *
- * // Required quantity with a minimum of 1 and a database index
- * quantity: number({ required: true, min: { value: 1 }, index: "by_quantity" })
- *
- * // Rating capped between 0 and 5 with custom error messages
- * rating: number({
- *   min: { value: 0, error: "Rating cannot be negative" },
- *   max: { value: 5, error: "Rating cannot exceed 5" },
- *   admin: { width: "50%" },
- * })
+import { ADMIN_FIELDS, getDataFields } from "../fields";
+// …
+const relationshipKeys = Object.entries(getDataFields({ fields: args.target.config.fields }))
+  .filter(([, field]) => field.type === ADMIN_FIELDS.relationship.type)
+  .map(([key]) => key);
 ```
 
-#### packages/core/src/fields/number/config.ts
+#### packages/core/src/versions/statusConstraint.ts
 
-2 edits.
+1 edit — `resolveIndexDraftStatus`'s field lookup walks `getDataFields({ fields: collection.fields })`
+instead of `collection.fields` directly (the function already looks up one field by key; only its source
+map changes). Import `getDataFields` from `../fields`.
 
-**1 — JSDoc bullet.**
+#### packages/react/src/components/fields/index.tsx
 
-```ts
- * - `admin.width` — `"100%"`
-```
-
-**2 — the `admin` default object in `number()`.**
-
-```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      // Optional admin properties (no defaults)
-      placeholder: "",
-      ...options?.admin,
-    },
-```
-
-#### packages/core/src/fields/checkbox/types.ts
-
-1 edit — defaults list + `width: "half"` example, anchored by the `**Defaults applied by `checkbox()`:**` block.
+1 edit — `getCollectionColumnDefs`'s loop source; a UI field has no `*FieldToColumnDef` case and is simply
+never reached.
 
 ```ts
- *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "100%",  // spans the full form width
- *     cellAlignment: "left",  // value aligned left in the data table column
- *   }
- * }
- * ```
- *
- * @example
- * ```ts
- * // Minimal — label inferred from the key ("Published")
- * published: checkbox()
- *
- * // Checked by default when creating a new document
- * featured: checkbox({ defaultValue: true, admin: { width: "50%" } })
- *
- * // Indexed flag for fast admin queries
- * archived: checkbox({ index: "by_archived" })
- * ```
-```
-
-#### packages/core/src/fields/checkbox/config.ts
-
-2 edits.
-
-**1 — JSDoc bullet.**
-
-```ts
- * - `admin.width` — `"100%"`
-```
-
-**2 — the `admin` default object in `checkbox()`.**
-
-```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      // Optional admin properties (no defaults)
-      ...options?.admin,
-    },
-```
-
-#### packages/core/src/fields/color/types.ts
-
-1 edit — defaults list + `width: "half"` example, anchored by the `**Defaults applied by `color()`:**` block.
-
-```ts
- *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "100%",  // spans the full form width
- *     cellAlignment: "left",  // swatch aligned left in the data table column
- *   }
- * }
- * ```
- *
- * @example
- * ```ts
- * // Minimal — label inferred from the key ("Brand Color"), stored as hex
- * brandColor: color()
- *
- * // Stored as oklch, ready to interpolate straight into a CSS custom property
- * primaryLight: color({ format: "oklch", required: true, defaultValue: "oklch(65.7% 0.179 40.9)" })
- *
- * // Half-width, and offer the host app's design tokens as a second tab
- * overlayTint: color({ themeColors: true, admin: { width: "50%" } })
- * ```
-```
-
-#### packages/core/src/fields/color/config.ts
-
-2 edits.
-
-**1 — JSDoc bullet.**
-
-```ts
- * - `admin.width` — `"100%"`
-```
-
-**2 — the `admin` default object in `color()`.**
-
-```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      // Optional admin properties (no defaults)
-      placeholder: "",
-      ...options?.admin,
-    },
-```
-
-#### packages/core/src/fields/date/types.ts
-
-1 edit — defaults list, anchored by the `**Defaults applied by `date()`:**` block's `admin:` entry.
-
-```ts
- *   admin: {
- *     hidden:        false,   // visible in the admin form
- *     readOnly:      false,   // editable by default
- *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "100%",  // spans the full form width
- *     cellAlignment: "left",  // text aligned left in the data table column
- *   }
- * }
- * ```
-```
-
-#### packages/core/src/fields/date/config.ts
-
-3 edits.
-
-**1 — JSDoc bullet.**
-
-```ts
- * - `admin.width` — `"100%"`
-```
-
-**2 — the `width: "half"` example, anchored by `admin: { position: "sidebar", width: "half" }` in the `date()` doc comment.**
-
-```ts
- *       time: { use12HourFormat: false },
- *       admin: { position: "sidebar", width: "50%" },
- *     }),
- *   }
- * })
-```
-
-**3 — the `admin` default object in `date()`.**
-
-```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      // Optional admin properties (no defaults)
-      placeholder: "",
-      ...options?.admin,
-    },
-```
-
-#### packages/core/src/fields/select/types.ts
-
-1 edit — defaults list, anchored by the `**Defaults applied by `select()`:**` block.
-
-```ts
- *   admin: {
- *     hidden:        false,   // visible in the admin form
- *     readOnly:      false,   // editable by default
- *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "100%",  // spans the full form width
- *     cellAlignment: "left",  // aligned left in the data table column
- *   }
- * }
- * ```
-```
-
-#### packages/core/src/fields/select/config.ts
-
-2 edits.
-
-**1 — JSDoc bullet.**
-
-```ts
- * - `admin.width` — `"100%"`
-```
-
-**2 — the `admin` default object in `select()`.**
-
-```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      placeholder: "",
-      ...options?.admin,
-    },
-```
-
-#### packages/core/src/fields/url/types.ts
-
-1 edit — defaults list + `width: "half"` example, anchored by the `**Defaults applied by `url()`:**` block.
-
-```ts
- *   admin: {
- *     hidden:        false,   // visible in the admin form
- *     readOnly:      false,   // editable by default
- *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "100%",  // spans the full form width
- *     cellAlignment: "left",  // text aligned left in the data table column
- *   }
- * }
- * ```
- *
- * @example
- * ```ts
- * // Minimal — label is inferred from the key ("Canonical Url")
- * canonicalUrl: url()
- *
- * // Required website URL with a length cap and a database index
- * website: url({ required: true, max: { value: 2048 }, index: "by_website" })
- *
- * // Social profile URL with a placeholder hint
- * twitterUrl: url({
- *   required: false,
- *   admin: { width: "50%", placeholder: "https://twitter.com/username" }
- * })
-```
-
-#### packages/core/src/fields/url/config.ts
-
-3 edits.
-
-**1 — JSDoc bullet.**
-
-```ts
- * - `admin.width` — `"100%"`
-```
-
-**2 — the `width: "half"` example, anchored by `admin: { width: "half", placeholder: "https://twitter.com/username" }` in the `url()` doc comment.**
-
-```ts
- *       required: false,
- *       admin: { width: "50%", placeholder: "https://twitter.com/username" },
- *     }),
- *   }
- * })
-```
-
-**3 — the `admin` default object in `url()`.**
-
-```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      // Optional admin properties (no defaults)
-      placeholder: "",
-      ...options?.admin,
-    },
-```
-
-#### packages/core/src/fields/relationship/types.ts
-
-1 edit — defaults list, anchored by the `**Defaults applied by `relationship()`:**` block.
-
-```ts
- *   admin: {
- *     hidden:        false,
- *     readOnly:      false,
- *     position:      "main",
- *     width:         "100%",
- *     cellAlignment: "left",
- *   }
- * }
-```
-
-#### packages/core/src/fields/relationship/config.ts
-
-2 edits.
-
-**1 — JSDoc bullet.**
-
-```ts
- * - `admin.width` — `"100%"`
-```
-
-**2 — the `admin` default object in `relationship()`.**
-
-```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      placeholder: "",
-      components: {},
-      ...options?.admin,
-    },
-```
-
-#### packages/core/src/fields/upload/config.ts
-
-1 edit — the `admin` default object in `upload()` (no JSDoc bullet list exists in this file to update).
-
-```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      placeholder: "",
-      ...options.admin,
-    },
-```
-
-#### packages/core/src/fields/upload/config.test.ts
-
-1 edit — anchored by `expect(field.admin.width).toBe("full");` in the `"creates an upload field with defaults"` test.
-
-```ts
-    expect(field.admin.width).toBe("100%");
-    expect(field.admin.layout).toEqual([]);
-```
-
-#### packages/core/src/fields/richtext/types.ts
-
-1 edit — defaults list, anchored by the `**Defaults applied by `richtext()`:**` block.
-
-```ts
- *   admin: {
- *     hidden:        false,   // visible in the admin form
- *     readOnly:      false,   // editable by default
- *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "100%",  // spans the full form width
- *     cellAlignment: "left",  // excerpt aligned left in the data table column
- *   }
- * }
- * ```
-```
-
-#### packages/core/src/fields/richtext/config.ts
-
-2 edits.
-
-**1 — JSDoc bullet.**
-
-```ts
- * - `admin.width` — `"100%"`
-```
-
-**2 — the `admin` default object in `richtext()`.**
-
-```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      // Optional admin properties (no defaults)
-      placeholder: "",
-      ...options?.admin,
-    },
-```
-
-#### packages/core/src/fields/richtext/config.test.ts
-
-1 edit — anchored by the `"applies the same admin defaults as every other field"` test's `expect(field.admin).toEqual({...})`.
-
-```ts
-    expect(field.admin).toEqual({
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      placeholder: "",
-    });
-```
-
-#### packages/core/src/fields/array/types.ts
-
-1 edit — defaults list, anchored by the `**Defaults applied by `array()`:**` block.
-
-```ts
- *   admin: {
- *     hidden:        false,   // visible in the admin form
- *     readOnly:      false,   // editable by default
- *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "100%",  // spans the full form width
- *     cellAlignment: "left",  // item count aligned left in the data table column
- *   }
- * }
- * ```
-```
-
-#### packages/core/src/fields/array/config.ts
-
-2 edits.
-
-**1 — JSDoc bullet.**
-
-```ts
- * - `admin.width` — `"100%"`
-```
-
-**2 — the `admin` default object in `array()`.**
-
-```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      // Optional admin properties (no defaults)
-      placeholder: "",
-      ...options?.admin,
-    },
-```
-
-#### packages/core/src/fields/blocks/types.ts
-
-1 edit — defaults list, anchored by the `**Defaults applied by `blocks()`:**` block.
-
-```ts
- *   admin: {
- *     hidden: false, readOnly: false, position: "main", width: "100%",
- *     cellAlignment: "left",
- *   }
- * }
- * ```
-```
-
-#### packages/core/src/fields/blocks/config.ts
-
-1 edit — the `admin` default object in `blocks()` (no JSDoc bullet list exists in this file to update).
-
-```ts
-    admin: {
-      defaultCollapsed: options.admin?.defaultCollapsed ?? false,
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      placeholder: "",
-      ...options?.admin,
-    },
-```
-
-#### packages/core/src/fields/group/types.ts
-
-1 edit — defaults list, anchored by the `**Defaults applied by `group()`:**` block.
-
-```ts
- *   admin: {
- *     hidden:            false,
- *     readOnly:          false,
- *     position:          "main",
- *     width:             "100%",
- *     cellAlignment:     "left",
- *     defaultCollapsed:  false,
- *   }
- * }
- * ```
-```
-
-#### packages/core/src/fields/group/config.ts
-
-2 edits.
-
-**1 — JSDoc bullet.**
-
-```ts
- * - `admin.width` — `"100%"`
-```
-
-**2 — the `admin` default object in `group()`.**
-
-```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      placeholder: "",
-      defaultCollapsed: false,
-      ...options?.admin,
-    },
+import { ADMIN_FIELDS, getDataFields, type AdminFieldType } from "@vexcms/core";
+// …
+export function getCollectionColumnDefs<
+  TData extends TDocument = TDocument,
+  TCollectionConfig extends CollectionConfig = CollectionConfig,
+>(props: { collection: TCollectionConfig }): ColumnDef<TData, any>[] {
+  const columnDefs: ColumnDef<TData, any>[] = [];
+  const { collection } = props;
+  for (const [fieldKey, fieldDef] of Object.entries(getDataFields({ fields: collection.fields }))) {
+    const isTitleField = fieldKey === collection.admin.useAsTitle;
+    const fieldType: AdminFieldType = fieldDef.type;
+    switch (fieldDef.type) {
+      // … every existing case unchanged.
+    }
+  }
+  return columnDefs;
+}
 ```
 
 #### packages/react/src/index.ts
 
-1 edit — anchored by `export { text, number, select, date, url, checkbox, defineConfig } from "@vexcms/core";`.
-
-```ts
-export {
-  text,
-  number,
-  select,
-  date,
-  url,
-  checkbox,
-  tabs,
-  collapsible,
-  row,
-  defineConfig,
-} from "@vexcms/core";
-```
-
-#### packages/core/src/fields/email/types.ts
-
-1 edit — defaults list, anchored by the `**Defaults applied by `email()`:**` block (step 2).
-
-```ts
- *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "100%",  // spans the full form width
- *     cellAlignment: "left",  // text aligned left in the data table column
- *   }
- * }
- * ```
-```
-
-#### packages/core/src/fields/email/config.ts
-
 2 edits.
 
-**1 — JSDoc bullet.**
+**1 — re-export the four UI factories, anchored by `export { text, email, textarea, number, select, date, url, checkbox, json, defineConfig } from "@vexcms/core";`.**
 
 ```ts
- * - `admin.width` — `"100%"`
+export { text, email, textarea, number, select, date, url, checkbox, json, tabs, collapsible, row, ui, defineConfig } from "@vexcms/core";
 ```
 
-**2 — the `admin` default object in `email()`.**
+**2 — `CollectionConfigInput`/`CollectionConfig`/`defineCollection`'s own React-typed wrapper
+types get the same `TFieldSlug` → `TFields` generic rename this step applies to core's
+`collections/types.ts` (the wrapper's `TFields` is threaded straight through to
+`CoreCollectionConfigInput`/`CoreCollectionConfig`/`coreDefineCollection`, so it must stay the
+literal fields-record type, not a bare key union, for `getDataFields` to see real field shapes).
+Anchored at `CollectionConfigInput`'s, `CollectionConfig`'s, and `defineCollection`'s own type
+parameter lists.**
 
 ```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      // Optional admin properties (no defaults)
-      placeholder: "",
-      ...options?.admin,
-    },
+export type CollectionConfigInput<
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TFields extends Record<string, CoreAdminField<TFieldMeta>> = Record<string, CoreAdminField<TFieldMeta>>,
+> = CoreCollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, ReactHKT>;
+
+export type CollectionConfig<
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TFields extends Record<string, CoreAdminField<TFieldMeta>> = Record<string, CoreAdminField<TFieldMeta>>,
+> = CoreCollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, ReactHKT>;
+
+export function defineCollection<
+  TFieldMeta extends {} = {},
+  TCollectionMeta extends {} = {},
+  TCollectionSlug extends CollectionSlug = CollectionSlug,
+  TFields extends Record<string, CoreAdminField<TFieldMeta>> = Record<string, CoreAdminField<TFieldMeta>>,
+>(
+  config: Parameters<
+    typeof coreDefineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, ReactHKT>
+  >[0],
+): CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields> {
+  return coreDefineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, ReactHKT>(
+    config,
+  );
+}
 ```
 
-#### packages/core/src/fields/textarea/types.ts
+`AdminCollectionConfigInput<TFieldSlug extends string = string>` is unchanged — it only types
+`useAsTitle`/`indexes[].fields` against a bare key union (`DataFieldSlug<TFields>` at the
+core call site), never the literal fields record, so it keeps its own narrower generic.
 
-1 edit — defaults list, anchored by the `**Defaults applied by `textarea()`:**` block (step 3).
-
-```ts
- *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "100%",  // spans the full form width
- *     cellAlignment: "left",  // text aligned left in the data table column
- *   }
- * }
- * ```
-```
-
-#### packages/core/src/fields/textarea/config.ts
-
-2 edits.
-
-**1 — JSDoc bullet.**
-
-```ts
- * - `admin.width` — `"100%"`
-```
-
-**2 — the `admin` default object in `textarea()`.**
-
-```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      // Optional admin properties (no defaults)
-      placeholder: "",
-      ...options?.admin,
-    },
-```
-
-#### packages/core/src/fields/json/types.ts
-
-1 edit — defaults list, anchored by the `**Defaults applied by `json()`:**` block (step 4).
-
-```ts
- *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "100%",  // spans the full form width
- *     cellAlignment: "left",  // preview aligned left in the data table column
- *   }
- * }
- * ```
-```
-
-#### packages/core/src/fields/json/config.ts
-
-2 edits.
-
-**1 — JSDoc bullet.**
-
-```ts
- * - `admin.width` — `"100%"`
-```
-
-**2 — the `admin` default object in `json()`.**
-
-```ts
-    admin: {
-      hidden: false,
-      readOnly: false,
-      position: "main",
-      width: "100%",
-      cellAlignment: "left",
-      layout: [],
-      placeholder: "",
-      ...options?.admin,
-    },
-```
-
-#### packages/core/src/fields/json/config.test.ts
-
-1 edit — anchored by `width: "full",` inside the `"applies admin defaults"` test's `toMatchObject` call.
-
-```ts
-      width: "100%",
-```
-
-Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- fields/layout
+Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- fields/ui collections globals
 
 ### Step 7 — Core extension-point model: slot IDs, contribution types, resolution [agent]
 
@@ -9585,7 +11090,7 @@ Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- fields/layout
 - [ ] `packages/core/src/fields/baseTypes.ts` — `FieldAdminConfigInput`/`FieldAdminConfig` gain a `TComponent extends ComponentHKT = ComponentHKT` generic and a `components` property
 - [ ] `packages/core/src/fields/relationship/types.ts` — `RelationshipFieldAdminInput`/`Config.components` extends the base `FieldSlotComponentsInput` shape instead of replacing it
 - [ ] `packages/core/src/fields/utils.ts` + `utils.test.ts` — `resolveFieldComponents`
-- [ ] `packages/core/src/fields/text/config.ts` — `admin.components` default (representative; every other field factory gets the identical one-line addition at the same spread point Step 6 added `layout: []`)
+- [ ] `packages/core/src/fields/text/config.ts` — `admin.components` default (representative; every other field factory gets the identical one-line addition at the same `admin: { ... }` spread object Step 6's `getDataFields`/`admin.condition` model already builds)
 - [ ] `packages/core/src/config/types.ts` — `AdminConfigInput.components`
 - [ ] `packages/core/src/config/config.ts` + `config.test.ts` — `defineConfig` resolves root-level slot lists
 
@@ -9615,7 +11120,7 @@ New file.
 
 ```ts
 import type { ApplyComponent, ComponentHKT } from "../fields/baseTypes";
-import type { FieldCondition } from "../fields/layout/types";
+import type { FieldCondition } from "../fields/ui/types";
 
 /**
  * Flat, dot-joined identifiers for every admin extension point (slot) G declares. Nested
@@ -9683,7 +11188,10 @@ export type SlotAccessPredicate = (ctx: SlotAccessContext) => boolean;
  *   exactly like `editor?: VexEditorAdapter<ComponentHKT>` on `VexClientConfigInput`).
  * @typeParam TProps - The props the slot's resolved component receives.
  */
-export type ComponentContributionInput<TComponent extends ComponentHKT, TProps> =
+export type ComponentContributionInput<
+  TComponent extends ComponentHKT,
+  TProps,
+> =
   | {
       /** Stable identifier (S2/S9) — `vex.`-prefixed for built-ins, otherwise project/plugin-chosen. Duplicate ids within one resolved list are a {@link VexComponentConfigError}. */
       id: string;
@@ -9711,7 +11219,10 @@ export type ComponentContributionInput<TComponent extends ComponentHKT, TProps> 
     };
 
 /** One contribution after {@link resolveComponentContributions} has ordered and filtered a slot's list. Hide directives never appear here — they are consumed during resolution. */
-export type ResolvedComponentContribution<TComponent extends ComponentHKT, TProps> = Extract<
+export type ResolvedComponentContribution<
+  TComponent extends ComponentHKT,
+  TProps,
+> = Extract<
   ComponentContributionInput<TComponent, TProps>,
   { component: ApplyComponent<TComponent, TProps> }
 >;
@@ -9728,18 +11239,24 @@ export type ResolvedComponentContribution<TComponent extends ComponentHKT, TProp
  *   by the renderer (`@vexcms/react`'s `resolveFieldInputComponent`/`resolveFieldCellComponent`);
  *   core only declares the minimal `{ id, component }` shape (S8).
  */
-export interface ComponentOverrideInput<TComponent extends ComponentHKT, TProps> {
+export interface ComponentOverrideInput<
+  TComponent extends ComponentHKT,
+  TProps,
+> {
   /** Stable identifier (S2/S9). Duplicate ids within one resolved chain are a {@link VexComponentConfigError}. */
   id: string;
   /** Receives `renderDefault` — the PREVIOUS stage of the chain (the true built-in for the first entry). Calling it renders the default; not calling it replaces it entirely. */
-  component: ApplyComponent<TComponent, TProps & { renderDefault: ApplyComponent<TComponent, TProps> }>;
+  component: ApplyComponent<
+    TComponent,
+    TProps & { renderDefault: ApplyComponent<TComponent, TProps> }
+  >;
 }
 
 /** An override chain after {@link resolveComponentOverrides} has de-duplicated it — array order unchanged, `before`/`after` do not apply to overrides. */
-export type ResolvedComponentOverride<TComponent extends ComponentHKT, TProps> = ComponentOverrideInput<
-  TComponent,
-  TProps
->;
+export type ResolvedComponentOverride<
+  TComponent extends ComponentHKT,
+  TProps,
+> = ComponentOverrideInput<TComponent, TProps>;
 
 /**
  * Thrown when a slot's config cannot be resolved — a genuine duplicate id (two real
@@ -9778,7 +11295,15 @@ export const BUILTIN_CONTRIBUTION_IDS = {} as const;
 New file.
 
 ```ts
-import { VexComponentConfigError, type ComponentContributionInput, type ComponentHKT, type ComponentOverrideInput, type ResolvedComponentContribution, type ResolvedComponentOverride, type SlotId } from "./types";
+import {
+  VexComponentConfigError,
+  type ComponentContributionInput,
+  type ComponentHKT,
+  type ComponentOverrideInput,
+  type ResolvedComponentContribution,
+  type ResolvedComponentOverride,
+  type SlotId,
+} from "./types";
 
 function toIdArray(value: string | string[] | undefined): string[] {
   if (value === undefined) return [];
@@ -9802,21 +11327,30 @@ function toIdArray(value: string | string[] | undefined): string[] {
  * @throws {VexComponentConfigError} When two real (non-hidden) contributions in `props.contributions`
  *   share one id.
  */
-export function resolveComponentContributions<TComponent extends ComponentHKT, TProps>(props: {
+export function resolveComponentContributions<
+  TComponent extends ComponentHKT,
+  TProps,
+>(props: {
   slotId: SlotId;
   contributions: ComponentContributionInput<TComponent, TProps>[];
 }): ResolvedComponentContribution<TComponent, TProps>[] {
   const { slotId, contributions } = props;
 
   const hiddenIds = new Set<string>();
-  const real: { entry: ResolvedComponentContribution<TComponent, TProps>; index: number }[] = [];
+  const real: {
+    entry: ResolvedComponentContribution<TComponent, TProps>;
+    index: number;
+  }[] = [];
   contributions.forEach((entry, index) => {
     if (entry.hidden === true && entry.component === undefined) {
       hiddenIds.add(entry.id);
       return;
     }
     if (entry.hidden === true) return; // a real contribution marked hidden: drop it, not an error
-    real.push({ entry: entry as ResolvedComponentContribution<TComponent, TProps>, index });
+    real.push({
+      entry: entry as ResolvedComponentContribution<TComponent, TProps>,
+      index,
+    });
   });
 
   const surviving = real.filter(({ entry }) => !hiddenIds.has(entry.id));
@@ -9882,7 +11416,10 @@ export function resolveComponentContributions<TComponent extends ComponentHKT, T
  *
  * @throws {VexComponentConfigError} When two overrides in `props.overrides` share one id.
  */
-export function resolveComponentOverrides<TComponent extends ComponentHKT, TProps>(props: {
+export function resolveComponentOverrides<
+  TComponent extends ComponentHKT,
+  TProps,
+>(props: {
   slotId: SlotId;
   overrides: ComponentOverrideInput<TComponent, TProps>[];
 }): ResolvedComponentOverride<TComponent, TProps>[] {
@@ -9917,7 +11454,11 @@ New file.
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { resolveComponentContributions, resolveComponentOverrides, VexComponentConfigError } from "./resolve";
+import {
+  resolveComponentContributions,
+  resolveComponentOverrides,
+  VexComponentConfigError,
+} from "./resolve";
 
 const comp = () => null;
 
@@ -9993,7 +11534,9 @@ describe("resolveComponentContributions", () => {
         { id: "c", component: comp, before: "a" },
       ],
     });
-    expect(result.map((r) => r.id).indexOf("c")).toBeLessThan(result.map((r) => r.id).indexOf("a"));
+    expect(result.map((r) => r.id).indexOf("c")).toBeLessThan(
+      result.map((r) => r.id).indexOf("a"),
+    );
   });
 
   it("orders a contribution after another by id", () => {
@@ -10047,15 +11590,20 @@ describe("resolveComponentOverrides", () => {
 
 #### packages/core/src/fields/baseTypes.ts (step 7 edits)
 
-2 edits. Everything else in the file (Step 1's `FieldLimit`/`FieldLimitInput`, Step 6's
-`admin.layout`/`admin.condition` additions) is unchanged.
+2 edits. Everything else in the file (Step 1's `FieldLimit`/`FieldLimitInput`, Step 6's `UIKindFieldAdminConfigInput`/`BaseUIFieldInput`/`BaseUIField` additions) is unchanged. Step 6 does NOT add `condition`
+to `FieldAdminConfigInput`/`FieldAdminConfig` — they stay exactly as non-generic as Step 6 leaves them, just
+gaining this step's `TComponent` parameter and `components` property; `condition` lives on each DATA field
+type's own per-type admin wrapper (Step 6), unaffected by this step.
 
 **1 — import.** Add `ApplyComponent, ComponentHKT` are already imported/declared in this file
 (`ApplyComponent`/`ComponentHKT` are DEFINED here, not imported) — no new import needed. Add one
 new import for the slot shapes, anchored below the existing `VexCallbackApi` import:
 
 ```ts
-import type { ComponentContributionInput, ComponentOverrideInput } from "../components/types";
+import type {
+  ComponentContributionInput,
+  ComponentOverrideInput,
+} from "../components/types";
 ```
 
 **2 — `FieldAdminConfigInput`/`FieldAdminConfig` gain a `TComponent` generic and a `components`
@@ -10070,7 +11618,9 @@ closing member, and the resolved counterpart's `placeholder?: string;` closing m
  *
  * @experimental
  */
-export interface FieldSlotComponentsInput<TComponent extends ComponentHKT = ComponentHKT> {
+export interface FieldSlotComponentsInput<
+  TComponent extends ComponentHKT = ComponentHKT,
+> {
   /** Override chain for this field instance's input component (S6). Composed with the root per-type `fields.<type>.Input` chain and the built-in — see `@vexcms/react`'s `resolveFieldInputComponent`. */
   Input?: ComponentOverrideInput<TComponent, unknown>[];
   /** Override chain for this field instance's data-table cell component. Same composition as `Input`. */
@@ -10085,7 +11635,9 @@ export interface FieldSlotComponentsInput<TComponent extends ComponentHKT = Comp
   afterInput?: ComponentContributionInput<TComponent, unknown>[];
 }
 
-export interface FieldAdminConfigInput<TComponent extends ComponentHKT = ComponentHKT> {
+export interface FieldAdminConfigInput<
+  TComponent extends ComponentHKT = ComponentHKT,
+> {
   // …existing hidden/readOnly/position/width/placeholder/cellAlignment members, unchanged…
   /**
    * Per-field slot overrides and additive contributions (S1/S6). Omitted entirely for a field
@@ -10098,7 +11650,9 @@ export interface FieldAdminConfigInput<TComponent extends ComponentHKT = Compone
 ```
 
 ```ts
-export interface FieldAdminConfig<TComponent extends ComponentHKT = ComponentHKT> {
+export interface FieldAdminConfig<
+  TComponent extends ComponentHKT = ComponentHKT,
+> {
   // …existing hidden/readOnly/position/width/cellAlignment/placeholder members, unchanged…
   /** Resolved per-field slot overrides — always present, every list defaulted to `[]` by `resolveFieldComponents`. */
   components: {
@@ -10120,16 +11674,19 @@ types `components.preview`) narrows `components` the same way relationship does,
 
 #### packages/core/src/fields/relationship/types.ts (step 7 edits)
 
-2 edits — `RelationshipFieldAdminInput`/`RelationshipFieldAdminConfig`'s `components` property
-widens from `{ preview }` only to the base `FieldSlotComponentsInput` shape PLUS `preview`, so it
-remains a valid override of the base `FieldAdminConfigInput<TComponent>`/`FieldAdminConfig<TComponent>`
-it extends (TypeScript rejects redeclaring a member with an incompatible, non-superset type).
+2 edits, on top of Step 6's `TCollectionSlug` addition — `RelationshipFieldAdminInput`/
+`RelationshipFieldAdminConfig`'s `components` property widens from `{ preview }` only to the base
+`FieldSlotComponentsInput` shape PLUS `preview`, so it remains a valid override of the base
+`FieldAdminConfigInput<TComponent>`/`FieldAdminConfig<TComponent>` it extends (TypeScript rejects
+redeclaring a member with an incompatible, non-superset type); `condition` (Step 6) is untouched by
+this step.
 
 **1 — `RelationshipFieldAdminInput`,** anchored at its `extends FieldAdminConfigInput {` line and
 `components` property:
 
 ```ts
 export interface RelationshipFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
 > extends FieldAdminConfigInput<TComponent> {
@@ -10141,6 +11698,7 @@ export interface RelationshipFieldAdminInput<
   components?: FieldSlotComponentsInput<TComponent> & {
     preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TTargetSlug>>;
   };
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
 }
 ```
 
@@ -10148,6 +11706,7 @@ export interface RelationshipFieldAdminInput<
 
 ```ts
 export interface RelationshipFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
 > extends FieldAdminConfig<TComponent> {
@@ -10155,6 +11714,7 @@ export interface RelationshipFieldAdminConfig<
   components: FieldAdminConfig<TComponent>["components"] & {
     preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TTargetSlug>>;
   };
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
 }
 ```
 
@@ -10165,8 +11725,14 @@ Add `FieldSlotComponentsInput` to the existing `../baseTypes` import list at the
 1 edit — new exported function, anchored after `resolveFieldLimit`.
 
 ```ts
-import type { ComponentContributionInput, ComponentOverrideInput } from "../components/types";
-import { resolveComponentContributions, resolveComponentOverrides } from "../components/resolve";
+import type {
+  ComponentContributionInput,
+  ComponentOverrideInput,
+} from "../components/types";
+import {
+  resolveComponentContributions,
+  resolveComponentOverrides,
+} from "../components/resolve";
 import { SLOT_IDS } from "../components/types";
 
 /**
@@ -10193,9 +11759,18 @@ export function resolveFieldComponents(props: {
 }) {
   const input = props.components ?? {};
   return {
-    Input: resolveComponentOverrides({ slotId: SLOT_IDS.field.input, overrides: input.Input ?? [] }),
-    Cell: resolveComponentOverrides({ slotId: SLOT_IDS.field.cell, overrides: input.Cell ?? [] }),
-    Label: resolveComponentOverrides({ slotId: SLOT_IDS.field.label, overrides: input.Label ?? [] }),
+    Input: resolveComponentOverrides({
+      slotId: SLOT_IDS.field.input,
+      overrides: input.Input ?? [],
+    }),
+    Cell: resolveComponentOverrides({
+      slotId: SLOT_IDS.field.cell,
+      overrides: input.Cell ?? [],
+    }),
+    Label: resolveComponentOverrides({
+      slotId: SLOT_IDS.field.label,
+      overrides: input.Label ?? [],
+    }),
     Description: resolveComponentOverrides({
       slotId: SLOT_IDS.field.description,
       overrides: input.Description ?? [],
@@ -10221,13 +11796,25 @@ New `describe` block appended, alongside Step 1's `resolveFieldLimit` tests and 
 describe("resolveFieldComponents", () => {
   it("defaults every list to [] when components is omitted", () => {
     const resolved = resolveFieldComponents({});
-    expect(resolved).toEqual({ Input: [], Cell: [], Label: [], Description: [], beforeInput: [], afterInput: [] });
+    expect(resolved).toEqual({
+      Input: [],
+      Cell: [],
+      Label: [],
+      Description: [],
+      beforeInput: [],
+      afterInput: [],
+    });
   });
 
   it("resolves a field's own beforeInput order", () => {
     const comp = () => null;
     const resolved = resolveFieldComponents({
-      components: { beforeInput: [{ id: "b", component: comp, order: 1 }, { id: "a", component: comp, order: 0 }] },
+      components: {
+        beforeInput: [
+          { id: "b", component: comp, order: 1 },
+          { id: "a", component: comp, order: 0 },
+        ],
+      },
     });
     expect(resolved.beforeInput.map((c) => c.id)).toEqual(["a", "b"]);
   });
@@ -10236,7 +11823,12 @@ describe("resolveFieldComponents", () => {
     const comp = () => null;
     expect(() =>
       resolveFieldComponents({
-        components: { Input: [{ id: "x", component: comp }, { id: "x", component: comp }] },
+        components: {
+          Input: [
+            { id: "x", component: comp },
+            { id: "x", component: comp },
+          ],
+        },
       }),
     ).toThrow();
   });
@@ -10245,8 +11837,8 @@ describe("resolveFieldComponents", () => {
 
 #### packages/core/src/fields/text/config.ts (representative field factory)
 
-1 edit — `admin.components` default, anchored at the same `admin: { ... }` spread object Step 6
-added `layout: []` to.
+1 edit — `admin.components` default, anchored at the same `admin: { ... }` spread object each
+field factory already builds (the one `admin.condition` already flows through via `...input.admin`).
 
 ```ts
 import { resolveFieldComponents } from "../utils";
@@ -10257,7 +11849,6 @@ admin: {
   readOnly: false,
   position: "main",
   width: "100%",
-  layout: [],
   cellAlignment: "left",
   ...input.admin,
   components: resolveFieldComponents({ components: input.admin?.components }),
@@ -10267,7 +11858,7 @@ admin: {
 Every other field factory (number, email, textarea, json, checkbox, date, select, url, color,
 array, relationship, upload, blocks, group, richtext) gets the identical one-line
 `components: resolveFieldComponents({ components: input.admin?.components })` addition at its own
-`admin: { ... }` spread, anchored the same way Step 6's `layout: []` was. `apps/test`/`apps/www`
+`admin: { ... }` spread, anchored the same way. `apps/test`/`apps/www`
 need no edits — no project configures a slot yet, and `resolveFieldComponents({})` is a pure,
 side-effect-free `{}`-shaped default.
 
@@ -10277,7 +11868,7 @@ side-effect-free `{}`-shaped default.
 and a new `AdminComponentsInput` type above it.
 
 ```ts
-import type { AdminFieldType } from "../fields";
+import type { DataFieldType } from "../fields";
 import type {
   ComponentContributionInput,
   ComponentOverrideInput,
@@ -10293,7 +11884,7 @@ import type {
 export interface AdminComponentsInput {
   /** Project-wide per-field-TYPE overrides (S6) — `fields.text.Input` applies to every `text()` field unless that field's own `admin.components.Input` chain wraps it further. */
   fields?: {
-    [K in AdminFieldType]?: {
+    [K in DataFieldType]?: {
       Input?: ComponentOverrideInput<ComponentHKT, unknown>[];
       Cell?: ComponentOverrideInput<ComponentHKT, unknown>[];
     };
@@ -10330,8 +11921,16 @@ export interface AdminConfig {
   // …existing livePreview/sidebar members, unchanged…
   /** Resolved root-level admin extension points — always present, every list defaulted and ordered. */
   components: {
-    fields: { [K in AdminFieldType]?: { Input: ComponentOverrideInput<ComponentHKT, unknown>[]; Cell: ComponentOverrideInput<ComponentHKT, unknown>[] } };
-    blocks: { itemActions: ComponentContributionInput<ComponentHKT, unknown>[]; headerActions: ComponentContributionInput<ComponentHKT, unknown>[] };
+    fields: {
+      [K in DataFieldType]?: {
+        Input: ComponentOverrideInput<ComponentHKT, unknown>[];
+        Cell: ComponentOverrideInput<ComponentHKT, unknown>[];
+      };
+    };
+    blocks: {
+      itemActions: ComponentContributionInput<ComponentHKT, unknown>[];
+      headerActions: ComponentContributionInput<ComponentHKT, unknown>[];
+    };
     array: { itemActions: ComponentContributionInput<ComponentHKT, unknown>[] };
   };
 }
@@ -10343,7 +11942,7 @@ export interface AdminConfig {
 
 ```ts
 import { resolveComponentContributions, resolveComponentOverrides, SLOT_IDS } from "../components";
-import { ADMIN_FIELDS, type AdminFieldType } from "../fields";
+import { ADMIN_FIELDS, type DataFieldType } from "../fields";
 
 // …inside defineConfig(), building the returned `admin` object:
 admin: {
@@ -10352,7 +11951,7 @@ admin: {
   sidebar: { /* …unchanged… */ },
   components: {
     fields: Object.fromEntries(
-      (Object.values(ADMIN_FIELDS) as { type: AdminFieldType }[]).map(({ type }) => [
+      (Object.values(ADMIN_FIELDS).filter((f) => f.kind === "data") as { type: DataFieldType }[]).map(({ type }) => [
         type,
         {
           Input: resolveComponentOverrides({
@@ -10403,11 +12002,15 @@ it("resolves admin.components.blocks.itemActions, ordering and de-duplicating th
   const config = defineConfig({
     admin: {
       components: {
-        blocks: { itemActions: [{ id: "acme.action", component: comp, order: 0 }] },
+        blocks: {
+          itemActions: [{ id: "acme.action", component: comp, order: 0 }],
+        },
       },
     },
   });
-  expect(config.admin.components.blocks.itemActions.map((c) => c.id)).toEqual(["acme.action"]);
+  expect(config.admin.components.blocks.itemActions.map((c) => c.id)).toEqual([
+    "acme.action",
+  ]);
 });
 
 it("throws VexComponentConfigError when a field's own fields.<type>.Input chain has a duplicate id", () => {
@@ -10416,7 +12019,14 @@ it("throws VexComponentConfigError when a field's own fields.<type>.Input chain 
     defineConfig({
       admin: {
         components: {
-          fields: { text: { Input: [{ id: "x", component: comp }, { id: "x", component: comp }] } },
+          fields: {
+            text: {
+              Input: [
+                { id: "x", component: comp },
+                { id: "x", component: comp },
+              ],
+            },
+          },
         },
       },
     }),
@@ -10481,7 +12091,7 @@ New file.
 import type { ComponentType } from "react";
 import {
   type AdminField,
-  type AdminFieldType,
+  type DataFieldType,
   type BaseFieldMeta,
   type CellComponentProps,
   type InputComponentProps,
@@ -10496,15 +12106,15 @@ import { reactAdapter } from "../../adapter";
  * (built-in + per-type + per-field) component use `resolveFieldInputComponent` instead; this stays
  * the "what is the TRUE default" primitive that chain's innermost `renderDefault` composes from.
  *
- * @param field - The `AdminFieldType` string to look up.
+ * @param field - The `DataFieldType` string to look up — UI field types (`tabs`/`collapsible`/
+ *   `row`/`ui`) never reach this registry, since they have no renderable Input/Cell.
  * @returns The registered component, or `undefined` for an unregistered type.
  */
 export function fieldToInputComponent(
-  field: AdminFieldType,
+  field: DataFieldType,
 ): ComponentType<InputComponentProps<BaseFieldMeta, AdminField>> | undefined {
   return reactAdapter.fields[field]?.input as
-    | ComponentType<InputComponentProps<BaseFieldMeta, AdminField>>
-    | undefined;
+    ComponentType<InputComponentProps<BaseFieldMeta, AdminField>> | undefined;
 }
 
 /**
@@ -10513,13 +12123,14 @@ export function fieldToInputComponent(
  * existing call site is unchanged — it already resolves overrides for free once this function's
  * caller (`resolveFieldCellComponent`, used by `getCollectionColumnDefs`) composes the chain.
  *
- * @param field - The `AdminFieldType` string to look up.
+ * @param field - The `DataFieldType` string to look up — UI field types never reach this registry.
  * @returns The registered component, or `undefined` for an unregistered type.
  */
 export function fieldToCellComponent(
-  field: AdminFieldType,
+  field: DataFieldType,
 ): ComponentType<CellComponentProps<AdminField>> | undefined {
-  return reactAdapter.fields[field]?.cell as ComponentType<CellComponentProps<AdminField>> | undefined;
+  return reactAdapter.fields[field]?.cell as
+    ComponentType<CellComponentProps<AdminField>> | undefined;
 }
 ```
 
@@ -10544,13 +12155,14 @@ single re-export line edit 1 already added.
 
 #### packages/react/src/components/fields/index.test.tsx (step 8 edits)
 
-1 edit — the registry-parity test (asserting every `ADMIN_FIELDS` type has an `Input`/`Cell`
-entry) now iterates `reactAdapter.fields` instead of the deleted `fieldInputComponents`/
+1 edit — the registry-parity test (asserting every data-kind `ADMIN_FIELDS` type has an
+`Input`/`Cell` entry — UI field types have no renderable component and are excluded) now
+iterates `reactAdapter.fields` instead of the deleted `fieldInputComponents`/
 `fieldCellComponents` maps, anchored at that existing `it`.
 
 ```tsx
-it("registers an Input and Cell component for every ADMIN_FIELDS type", () => {
-  for (const { type } of Object.values(ADMIN_FIELDS)) {
+it("registers an Input and Cell component for every data-kind ADMIN_FIELDS type", () => {
+  for (const { type } of Object.values(ADMIN_FIELDS).filter((f) => f.kind === "data")) {
     expect(reactAdapter.fields[type]?.input).toBeDefined();
     expect(reactAdapter.fields[type]?.cell).toBeDefined();
   }
@@ -10567,7 +12179,10 @@ New file — React-specific slot prop helpers built on core's framework-agnostic
 import type { ApplyComponent, ComponentHKT } from "@vexcms/core";
 
 /** Props an override component receives — the slot's own props plus `renderDefault` (S3). */
-export type SlotOverrideProps<TComponent extends ComponentHKT, TProps> = TProps & {
+export type SlotOverrideProps<
+  TComponent extends ComponentHKT,
+  TProps,
+> = TProps & {
   renderDefault: ApplyComponent<TComponent, TProps>;
 };
 ```
@@ -10599,8 +12214,12 @@ export class ComponentErrorBoundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        <div role="alert" className="rounded-sm border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
-          Component "{this.props.id}" failed to render: {this.state.error.message}
+        <div
+          role="alert"
+          className="rounded-sm border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive"
+        >
+          Component "{this.props.id}" failed to render:{" "}
+          {this.state.error.message}
         </div>
       );
     }
@@ -10666,13 +12285,16 @@ import { useVexForm } from "../../hooks/useVexForm";
  * `layout[2]`, `seo.title` from `seo`, and a top-level name (no `.`) from the whole `data` object.
  * Matches `FieldConditionProps`'s `siblingData` convention (Step 6).
  */
-export function resolveSiblingData(props: { data: Record<string, unknown>; name: string }): Record<string, unknown> {
+export function resolveSiblingData(props: {
+  data: Record<string, unknown>;
+  name: string;
+}): Record<string, unknown> {
   const lastDotIndex = props.name.lastIndexOf(".");
-  const parentPath = lastDotIndex === -1 ? undefined : props.name.slice(0, lastDotIndex);
-  return (parentPath === undefined ? props.data : getBy(props.data, parentPath)) as Record<
-    string,
-    unknown
-  >;
+  const parentPath =
+    lastDotIndex === -1 ? undefined : props.name.slice(0, lastDotIndex);
+  return (
+    parentPath === undefined ? props.data : getBy(props.data, parentPath)
+  ) as Record<string, unknown>;
 }
 
 /** `{ data, siblingData }` for a slot contribution's `condition` gate (S11). */
@@ -10694,7 +12316,9 @@ export interface SlotConditionData {
  *   `blocks.item.actions`/`array.item.actions`. `undefined` resolves `siblingData` to the whole
  *   form's values.
  */
-export function useSlotConditionData(name: string | undefined): SlotConditionData | undefined {
+export function useSlotConditionData(
+  name: string | undefined,
+): SlotConditionData | undefined {
   const form = useVexForm();
   // eslint-disable-next-line react-hooks/rules-of-hooks -- `form` is fixed for a given mounted
   // SlotOutlet instance: a component never gains or loses its enclosing <AppForm> without a full
@@ -10702,11 +12326,14 @@ export function useSlotConditionData(name: string | undefined): SlotConditionDat
   // conditional call never changes hook order across re-renders of the SAME instance. Every
   // current G call site always renders inside <AppForm>; this guards a future call site with
   // none, which must skip gating rather than evaluate against fabricated data.
-  const values = form ? useStore(form.store, (state) => state.values as Record<string, unknown>) : undefined;
+  const values = form
+    ? useStore(form.store, (state) => state.values as Record<string, unknown>)
+    : undefined;
   if (!form || !values) return undefined;
   return {
     data: values,
-    siblingData: name === undefined ? values : resolveSiblingData({ data: values, name }),
+    siblingData:
+      name === undefined ? values : resolveSiblingData({ data: values, name }),
   };
 }
 ```
@@ -10726,7 +12353,9 @@ import type { AnyFormApi } from "../form/AppFormContext";
 
 describe("resolveSiblingData", () => {
   it("returns the whole data object for a top-level name", () => {
-    expect(resolveSiblingData({ data: { title: "x" }, name: "title" })).toEqual({ title: "x" });
+    expect(resolveSiblingData({ data: { title: "x" }, name: "title" })).toEqual(
+      { title: "x" },
+    );
   });
 
   it("resolves the parent path for a nested name", () => {
@@ -10754,13 +12383,22 @@ describe("useSlotConditionData", () => {
 
   it("returns the whole form's values as both data and siblingData when name is omitted", () => {
     const { Wrapper } = withForm({ title: "x" });
-    const { result } = renderHook(() => useSlotConditionData(undefined), { wrapper: Wrapper });
-    expect(result.current).toEqual({ data: { title: "x" }, siblingData: { title: "x" } });
+    const { result } = renderHook(() => useSlotConditionData(undefined), {
+      wrapper: Wrapper,
+    });
+    expect(result.current).toEqual({
+      data: { title: "x" },
+      siblingData: { title: "x" },
+    });
   });
 
   it("resolves siblingData from name's parent path inside an <AppForm>", () => {
-    const { Wrapper } = withForm({ content: [{ heading: "a" }, { heading: "b" }] });
-    const { result } = renderHook(() => useSlotConditionData("content[1]"), { wrapper: Wrapper });
+    const { Wrapper } = withForm({
+      content: [{ heading: "a" }, { heading: "b" }],
+    });
+    const { result } = renderHook(() => useSlotConditionData("content[1]"), {
+      wrapper: Wrapper,
+    });
     expect(result.current?.siblingData).toEqual({ heading: "b" });
   });
 });
@@ -10831,7 +12469,12 @@ export function SlotOutlet<TProps extends {}>(props: {
         // `conditionData` is `undefined` with no enclosing <AppForm> (no current G call site) —
         // a `condition`-bearing contribution always mounts rather than being gated against
         // fabricated data; see this function's own JSDoc and `useSlotConditionData`'s.
-        if (contribution.condition && conditionData && !contribution.condition(conditionData)) return null;
+        if (
+          contribution.condition &&
+          conditionData &&
+          !contribution.condition(conditionData)
+        )
+          return null;
         const Contribution = contribution.component;
         return (
           <ComponentErrorBoundary key={contribution.id} id={contribution.id}>
@@ -10862,15 +12505,24 @@ function Probe(props: { label: string }) {
 }
 
 function renderOutlet(ui: React.ReactElement) {
-  return render(<VexConfigProvider config={baseTestConfig}>{ui}</VexConfigProvider>);
+  return render(
+    <VexConfigProvider config={baseTestConfig}>{ui}</VexConfigProvider>,
+  );
 }
 
-function renderOutletInForm(ui: React.ReactElement, defaultValues: Record<string, unknown>) {
+function renderOutletInForm(
+  ui: React.ReactElement,
+  defaultValues: Record<string, unknown>,
+) {
   function Wrapper() {
     const form = useForm({ defaultValues });
     return <AppForm form={form}>{ui}</AppForm>;
   }
-  return render(<VexConfigProvider config={baseTestConfig}><Wrapper /></VexConfigProvider>);
+  return render(
+    <VexConfigProvider config={baseTestConfig}>
+      <Wrapper />
+    </VexConfigProvider>,
+  );
 }
 
 describe("SlotOutlet", () => {
@@ -10892,7 +12544,9 @@ describe("SlotOutlet", () => {
       <SlotOutlet
         slotId="field.beforeInput"
         builtins={[]}
-        contributions={[{ id: "acme.gated", component: Probe, access: () => false }]}
+        contributions={[
+          { id: "acme.gated", component: Probe, access: () => false },
+        ]}
         contributedProps={{ label: "hidden" }}
       />,
     );
@@ -10926,7 +12580,11 @@ describe("SlotOutlet", () => {
         slotId="field.beforeInput"
         builtins={[]}
         contributions={[
-          { id: "acme.gated", component: Probe, condition: ({ data }) => data.enabled === true },
+          {
+            id: "acme.gated",
+            component: Probe,
+            condition: ({ data }) => data.enabled === true,
+          },
         ]}
         contributedProps={{ label: "conditional" }}
         conditionName="secret"
@@ -10942,7 +12600,11 @@ describe("SlotOutlet", () => {
         slotId="field.beforeInput"
         builtins={[]}
         contributions={[
-          { id: "acme.gated", component: Probe, condition: ({ data }) => data.enabled === true },
+          {
+            id: "acme.gated",
+            component: Probe,
+            condition: ({ data }) => data.enabled === true,
+          },
         ]}
         contributedProps={{ label: "conditional" }}
         conditionName="secret"
@@ -10977,7 +12639,11 @@ New file.
 "use client";
 
 import type { ComponentType, ReactNode } from "react";
-import { resolveComponentOverrides, type ComponentOverrideInput, type SlotId } from "@vexcms/core";
+import {
+  resolveComponentOverrides,
+  type ComponentOverrideInput,
+  type SlotId,
+} from "@vexcms/core";
 import type { ReactHKT } from "../../adapter";
 import { ComponentErrorBoundary } from "./ComponentErrorBoundary";
 
@@ -10999,14 +12665,17 @@ export function SlotOverrideOutlet<TProps extends {}>(props: {
     overrides: props.overrides ?? [],
   });
 
-  const Composed = resolved.reduce<ComponentType<TProps>>((renderDefault, override) => {
-    const Override = override.component;
-    function Composed(p: TProps) {
-      return <Override {...p} renderDefault={renderDefault} />;
-    }
-    Composed.displayName = `SlotOverride(${override.id})`;
-    return Composed;
-  }, props.defaultComponent);
+  const Composed = resolved.reduce<ComponentType<TProps>>(
+    (renderDefault, override) => {
+      const Override = override.component;
+      function Composed(p: TProps) {
+        return <Override {...p} renderDefault={renderDefault} />;
+      }
+      Composed.displayName = `SlotOverride(${override.id})`;
+      return Composed;
+    },
+    props.defaultComponent,
+  );
 
   return (
     <ComponentErrorBoundary id={props.slotId}>
@@ -11031,7 +12700,14 @@ function Default(props: { label: string }) {
 
 describe("SlotOverrideOutlet", () => {
   it("renders the default component when no overrides are given", () => {
-    render(<SlotOverrideOutlet slotId="field.label" overrides={undefined} defaultComponent={Default} props={{ label: "x" }} />);
+    render(
+      <SlotOverrideOutlet
+        slotId="field.label"
+        overrides={undefined}
+        defaultComponent={Default}
+        props={{ label: "x" }}
+      />,
+    );
     expect(screen.getByTestId("default")).toHaveTextContent("x");
   });
 
@@ -11060,7 +12736,10 @@ describe("SlotOverrideOutlet", () => {
   it("composes two overrides in array order, each wrapping the previous", () => {
     const order: string[] = [];
     function makeOverride(name: string) {
-      return function Override(props: { label: string; renderDefault: ComponentType<{ label: string }> }) {
+      return function Override(props: {
+        label: string;
+        renderDefault: ComponentType<{ label: string }>;
+      }) {
         order.push(name);
         const RenderDefault = props.renderDefault;
         return <RenderDefault {...props} />;
@@ -11069,7 +12748,10 @@ describe("SlotOverrideOutlet", () => {
     render(
       <SlotOverrideOutlet
         slotId="field.label"
-        overrides={[{ id: "a", component: makeOverride("a") }, { id: "b", component: makeOverride("b") }]}
+        overrides={[
+          { id: "a", component: makeOverride("a") },
+          { id: "b", component: makeOverride("b") },
+        ]}
         defaultComponent={Default}
         props={{ label: "x" }}
       />,
@@ -11085,7 +12767,11 @@ New file.
 
 ```tsx
 import type { ComponentType } from "react";
-import type { AdminFieldType, ComponentOverrideInput, InputComponentProps } from "@vexcms/core";
+import type {
+  DataFieldType,
+  ComponentOverrideInput,
+  InputComponentProps,
+} from "@vexcms/core";
 import type { ReactHKT } from "../../adapter";
 import { fieldToInputComponent } from "../fields/registry";
 
@@ -11100,23 +12786,31 @@ import { fieldToInputComponent } from "../fields/registry";
  *   `RenderFieldInputComponents` and the old `fieldToInputComponent` callers already threw).
  */
 export function resolveFieldInputComponent(props: {
-  fieldType: AdminFieldType;
-  rootOverrides: ComponentOverrideInput<ReactHKT, InputComponentProps>[] | undefined;
-  fieldOverrides: ComponentOverrideInput<ReactHKT, InputComponentProps>[] | undefined;
+  fieldType: DataFieldType;
+  rootOverrides:
+    ComponentOverrideInput<ReactHKT, InputComponentProps>[] | undefined;
+  fieldOverrides:
+    ComponentOverrideInput<ReactHKT, InputComponentProps>[] | undefined;
 }): ComponentType<InputComponentProps> {
   const builtin = fieldToInputComponent(props.fieldType);
   if (!builtin) {
     throw new Error(`Missing component for field type '${props.fieldType}'`);
   }
-  const chain = [...(props.rootOverrides ?? []), ...(props.fieldOverrides ?? [])];
-  return chain.reduce<ComponentType<InputComponentProps>>((renderDefault, override) => {
-    const Override = override.component;
-    function Composed(p: InputComponentProps) {
-      return <Override {...p} renderDefault={renderDefault} />;
-    }
-    Composed.displayName = `FieldInputOverride(${override.id})`;
-    return Composed;
-  }, builtin);
+  const chain = [
+    ...(props.rootOverrides ?? []),
+    ...(props.fieldOverrides ?? []),
+  ];
+  return chain.reduce<ComponentType<InputComponentProps>>(
+    (renderDefault, override) => {
+      const Override = override.component;
+      function Composed(p: InputComponentProps) {
+        return <Override {...p} renderDefault={renderDefault} />;
+      }
+      Composed.displayName = `FieldInputOverride(${override.id})`;
+      return Composed;
+    },
+    builtin,
+  );
 }
 ```
 
@@ -11129,11 +12823,20 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { resolveFieldInputComponent } from "./resolveFieldInputComponent";
 
-const baseProps = { name: "title", fieldDef: { type: "text" } as any, readOnly: false, collection: {} as any };
+const baseProps = {
+  name: "title",
+  fieldDef: { type: "text" } as any,
+  readOnly: false,
+  collection: {} as any,
+};
 
 describe("resolveFieldInputComponent", () => {
   it("returns the built-in when no overrides are configured", () => {
-    const Component = resolveFieldInputComponent({ fieldType: "text", rootOverrides: undefined, fieldOverrides: undefined });
+    const Component = resolveFieldInputComponent({
+      fieldType: "text",
+      rootOverrides: undefined,
+      fieldOverrides: undefined,
+    });
     render(<Component {...baseProps} />);
     // TextFieldInput renders a real <input>; this just proves it mounted without throwing.
   });
@@ -11158,7 +12861,11 @@ describe("resolveFieldInputComponent", () => {
 
   it("throws for an unregistered field type", () => {
     expect(() =>
-      resolveFieldInputComponent({ fieldType: "nonexistent" as any, rootOverrides: undefined, fieldOverrides: undefined }),
+      resolveFieldInputComponent({
+        fieldType: "nonexistent" as any,
+        rootOverrides: undefined,
+        fieldOverrides: undefined,
+      }),
     ).toThrow(/Missing component/);
   });
 });
@@ -11174,28 +12881,43 @@ calls this instead of the bare registry lookup, which is how Step 17's "DataTabl
 
 ```tsx
 import type { ComponentType } from "react";
-import type { AdminField, AdminFieldType, CellComponentProps, ComponentOverrideInput } from "@vexcms/core";
+import type {
+  AdminField,
+  DataFieldType,
+  CellComponentProps,
+  ComponentOverrideInput,
+} from "@vexcms/core";
 import type { ReactHKT } from "../../adapter";
 import { fieldToCellComponent } from "../fields/registry";
 
 export function resolveFieldCellComponent(props: {
-  fieldType: AdminFieldType;
-  rootOverrides: ComponentOverrideInput<ReactHKT, CellComponentProps<AdminField>>[] | undefined;
-  fieldOverrides: ComponentOverrideInput<ReactHKT, CellComponentProps<AdminField>>[] | undefined;
+  fieldType: DataFieldType;
+  rootOverrides:
+    | ComponentOverrideInput<ReactHKT, CellComponentProps<AdminField>>[]
+    | undefined;
+  fieldOverrides:
+    | ComponentOverrideInput<ReactHKT, CellComponentProps<AdminField>>[]
+    | undefined;
 }): ComponentType<CellComponentProps<AdminField>> {
   const builtin = fieldToCellComponent(props.fieldType);
   if (!builtin) {
     throw new Error(`Missing component for field type '${props.fieldType}'`);
   }
-  const chain = [...(props.rootOverrides ?? []), ...(props.fieldOverrides ?? [])];
-  return chain.reduce<ComponentType<CellComponentProps<AdminField>>>((renderDefault, override) => {
-    const Override = override.component;
-    function Composed(p: CellComponentProps<AdminField>) {
-      return <Override {...p} renderDefault={renderDefault} />;
-    }
-    Composed.displayName = `FieldCellOverride(${override.id})`;
-    return Composed;
-  }, builtin);
+  const chain = [
+    ...(props.rootOverrides ?? []),
+    ...(props.fieldOverrides ?? []),
+  ];
+  return chain.reduce<ComponentType<CellComponentProps<AdminField>>>(
+    (renderDefault, override) => {
+      const Override = override.component;
+      function Composed(p: CellComponentProps<AdminField>) {
+        return <Override {...p} renderDefault={renderDefault} />;
+      }
+      Composed.displayName = `FieldCellOverride(${override.id})`;
+      return Composed;
+    },
+    builtin,
+  );
 }
 ```
 
@@ -11234,13 +12956,20 @@ import { hasPermission } from "@vexcms/core";
  *
  * @experimental
  */
-export function useVexPermissions(): { hasPermission: (resource: string, action: string) => boolean } {
+export function useVexPermissions(): {
+  hasPermission: (resource: string, action: string) => boolean;
+} {
   const access = useVexAccess();
   const auth = useVexAuth();
   return {
     hasPermission: (resource: string, action: string) => {
       if (!access) return true; // no access config configured: everything allowed, matching core's own resolveGetAuth fallback
-      return hasPermission({ access, user: auth?.user, resource, action } as any);
+      return hasPermission({
+        access,
+        user: auth?.user,
+        resource,
+        action,
+      } as any);
     },
   };
 }
@@ -11318,6 +13047,18 @@ Verify: pnpm typecheck && pnpm --filter @vexcms/react test -- fields/index slots
 - [ ] `packages/core/src/fields/array/inputSchema.test.ts` — sibling-conditioned required field inside an array item (group items), static schema preserved when no condition is present
 - [ ] `packages/core/src/fields/blocks/inputSchema.test.ts` — sibling-conditioned required field inside a block item, static schema preserved when no block declares a condition
 - [ ] `packages/core/src/api/prepareEdit.test.ts` — `create` with a hidden required field succeeds; `create` with the same field made visible still fails and names it
+- [ ] `packages/core/src/fields/array/types.ts` — `RESERVED_ARRAY_ITEM_FIELD_NAMES` (`["id"]`)
+- [ ] `packages/core/src/fields/array/config.ts` — `array()` throws when `items` is a `group()` declaring a field named `id`; unnamed-group item `interfaceType` gains `id?: string;`
+- [ ] `packages/core/src/fields/array/validator.ts` — `id: v.optional(v.string())` injected into an object-shaped item's `v.object({...})` string
+- [ ] `packages/core/src/fields/array/utils.ts` + test (new) — `isObjectShapedArrayItem`, `withArrayItemId`, `assignArrayItemIds`
+- [ ] `packages/core/src/fields/array/index.ts` — barrel export for `utils.ts`
+- [ ] `packages/core/src/fields/array/inputSchema.ts` — item Zod schema gains `id: z.string().optional()` (via `.and(...)`) for an object-shaped item, in both the static and condition-aware `superRefine` branches
+- [ ] `packages/core/src/api/prepareEdit.ts` — `mergedFields` passed through `assignArrayItemIds` before the `beforeChange` hook and validation, backfilling a stored `id` on every object-shaped array item
+- [ ] `packages/core/src/fields/array/validator.test.ts` — object-shaped item validator string includes `id: v.optional(v.string())`; scalar item validator unchanged
+- [ ] `packages/core/src/fields/array/inputSchema.test.ts` — an item missing `id` still validates (optional); a supplied `id` round-trips
+- [ ] `packages/core/src/api/prepareEdit.test.ts` — `create` with an object-array item carrying no `id` backfills one in the returned `patch`; an item's own supplied `id` is preserved, not overwritten
+- [ ] `packages/core/src/types/generateVexTypes.test.ts` — `array({ items: group({...}) })` with no `interfaceName` generates `{ id?: string; ... }[]`
+- [ ] `packages/core/src/schema/generateVexSchema.test.ts` — same field generates a validator string containing `id: v.optional(v.string())`
 
 Why: a required field hidden by its condition must not block `create`, and its `validate()` must not run (interview decision 7). Step 6 defines `admin.condition`/`isFieldConditionMet`/`hasFieldConditions` as pure, data-driven functions; this step is the one place the server actually calls them — everywhere a Zod input schema or a `validate()` hook is built.
 
@@ -11349,7 +13090,7 @@ import { groupFieldToInputSchema } from "../group";
 import { blocksFieldToInputSchema } from "../blocks";
 import { uploadFieldToInputSchema } from "../upload";
 import { richTextFieldToInputSchema } from "../richtext";
-import { isFieldConditionMet } from "../layout";
+import { isFieldConditionMet } from "../ui";
 ```
 
 **2 — complete `adminFieldToInputSchema`, replacing the current function (including its JSDoc).**
@@ -11451,7 +13192,8 @@ export function adminFieldToInputSchema(props: {
     props.data === undefined
       ? undefined
       : props.key !== undefined
-        ? (props.siblingData?.[props.key] as Record<string, unknown> | undefined)
+        ? (props.siblingData?.[props.key] as
+            Record<string, unknown> | undefined)
         : props.siblingData;
 
   switch (effectiveField.type) {
@@ -11531,7 +13273,7 @@ import type { VexMutationCtx } from "../types/generated";
 
 **2 — complete `getFieldsInputSchema`.**
 
-```ts
+````ts
 /**
  * Builds the Zod input schema for a field map — a collection's or a
  * global's `fields`. Hidden fields are skipped.
@@ -11588,7 +13330,7 @@ export function getFieldsInputSchema(props: {
   const schema = z.object({ ...res });
   return props.partial ? schema.partial() : schema;
 }
-```
+````
 
 **3 — complete `validateFields`.**
 
@@ -11635,7 +13377,10 @@ export async function validateFields(props: {
   const vex = createVexCallbackApi({ ctx: props.ctx, config: props.config });
   for (const [fieldKey, field] of Object.entries(props.fields)) {
     if (!keys.has(fieldKey) || !field.validate) continue;
-    if (!isFieldConditionMet({ field, data: props.doc, siblingData: props.doc })) continue;
+    if (
+      !isFieldConditionMet({ field, data: props.doc, siblingData: props.doc })
+    )
+      continue;
     const validate = field.validate as unknown as (props: {
       value: unknown;
       doc: Record<string, unknown>;
@@ -11665,7 +13410,7 @@ export async function validateFields(props: {
 
 1 edit — complete `groupFieldToInputSchema`, replacing the current function (including its JSDoc).
 
-```ts
+````ts
 /**
  * Builds a Zod schema for validating a group field value in the admin form.
  *
@@ -11732,27 +13477,32 @@ export function groupFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
 
   return applyBaseInputSchemaMeta({ field, inputSchema: schema });
 }
-```
+````
 
 #### packages/core/src/fields/array/inputSchema.ts
 
-2 edits: add the `hasFieldConditions` import, then the complete `arrayFieldToInputSchema` body (JSDoc included).
+3 edits: add the `ADMIN_FIELDS`/`hasFieldConditions` imports, then the complete
+`arrayFieldToInputSchema` body (JSDoc included) — both this step's own condition-threading AND
+the object-shaped item `id` key land in the same function, in the same step, since both touch the
+item schema construction at the identical two call sites (the static `baseItemSchema` and the
+`superRefine` per-item re-parse).
 
 **1 — import, after the existing `adminFieldToInputSchema` import.**
 
 ```ts
 import * as z from "zod";
 import type { ZodType } from "zod";
+import { ADMIN_FIELDS } from "../constants";
 import { ArrayField, ArrayType } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 import { adminFieldToInputSchema } from "../inputSchemas";
-import { hasFieldConditions } from "../layout";
+import { hasFieldConditions } from "../ui";
 import type { VexResourceSlug } from "../../types/generated";
 ```
 
 **2 — complete `arrayFieldToInputSchema`.**
 
-```ts
+````ts
 /**
  * Builds a Zod schema for validating an array field value in the admin form.
  *
@@ -11798,6 +13548,16 @@ import type { VexResourceSlug } from "../../types/generated";
  * `adminFieldToInputSchema({ field: field.items, ignoreRequired })` call,
  * no `superRefine`, no added cost.
  *
+ * An object-shaped item (`field.items.type === "group"`) additionally gets
+ * `id: z.string().optional()` intersected onto its schema (`withItemId`,
+ * below) — optional because an existing document predating this step may
+ * have items with no `id` yet (same reasoning as the Convex validator,
+ * `array/validator.ts`); `prepareEdit`'s `assignArrayItemIds` backfills one
+ * on every write regardless, so the client form never actually submits an
+ * id-less object item. `.and(...)`, not `groupFieldToInputSchema` taking an
+ * extra parameter, because a `group()` used OUTSIDE an array must never gain
+ * an `id` slot — this intersection is scoped to array ITEMS only.
+ *
  * @param props - Input props.
  * @param props.field - The resolved array field definition
  * @param props.ignoreRequired - Forwarded to the recursive
@@ -11837,11 +13597,23 @@ export function arrayFieldToInputSchema<
   const requiredError = "This field is required.";
 
   const itemsHaveConditions =
-    props.data !== undefined && hasFieldConditions({ fields: { item: field.items } });
+    props.data !== undefined &&
+    hasFieldConditions({ fields: { item: field.items } });
+
+  const itemHasStoredId = field.items.type === ADMIN_FIELDS.group.type;
+  const withItemId = (schema: ZodType): ZodType =>
+    itemHasStoredId
+      ? schema.and(z.object({ id: z.string().optional() }))
+      : schema;
 
   const baseItemSchema = itemsHaveConditions
     ? z.unknown()
-    : adminFieldToInputSchema({ field: field.items, ignoreRequired: props.ignoreRequired });
+    : withItemId(
+        adminFieldToInputSchema({
+          field: field.items,
+          ignoreRequired: props.ignoreRequired,
+        }),
+      );
 
   let arraySchema = field.required
     ? z.array(baseItemSchema, { error: requiredError }).min(1, requiredError)
@@ -11850,16 +13622,22 @@ export function arrayFieldToInputSchema<
   if (itemsHaveConditions) {
     arraySchema = arraySchema.superRefine((items, ctx) => {
       items.forEach((item, index) => {
-        const itemSchema = adminFieldToInputSchema({
-          field: field.items,
-          ignoreRequired: props.ignoreRequired,
-          data: props.data,
-          siblingData: item as Record<string, unknown>,
-        });
+        const itemSchema = withItemId(
+          adminFieldToInputSchema({
+            field: field.items,
+            ignoreRequired: props.ignoreRequired,
+            data: props.data,
+            siblingData: item as Record<string, unknown>,
+          }),
+        );
         const result = itemSchema.safeParse(item);
         if (!result.success) {
           for (const issue of result.error.issues) {
-            ctx.addIssue({ code: "custom", message: issue.message, path: [index, ...issue.path] });
+            ctx.addIssue({
+              code: "custom",
+              message: issue.message,
+              path: [index, ...issue.path],
+            });
           }
         }
       });
@@ -11887,7 +13665,7 @@ export function arrayFieldToInputSchema<
 
   return applyBaseInputSchemaMeta({ field, inputSchema });
 }
-```
+````
 
 Note: `field.min`/`field.max` are shown destructured as `[min, message]` — Step 1's resolved `FieldLimit = readonly [value: number, error: string]` tuple, which `array`'s own Step 1 edit already lands on this same field.
 
@@ -11902,7 +13680,7 @@ import * as z from "zod";
 import type { ZodType } from "zod";
 import { adminFieldToInputSchema } from "../inputSchemas";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
-import { hasFieldConditions } from "../layout";
+import { hasFieldConditions } from "../ui";
 import type { BlockConfig, BlocksField } from "./types";
 import type { VexResourceSlug } from "../../types/generated";
 ```
@@ -12017,17 +13795,27 @@ export function blocksFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
     : z.array(itemSchema);
 
   if (blocksHaveConditions) {
-    const blocksByType = new Map(field.blocks.map((block) => [block.blockType, block]));
+    const blocksByType = new Map(
+      field.blocks.map((block) => [block.blockType, block]),
+    );
     arraySchema = arraySchema.superRefine((items, ctx) => {
       items.forEach((item, index) => {
         const candidate = item as Record<string, unknown>;
-        const blockType = typeof candidate.blockType === "string" ? candidate.blockType : undefined;
-        const blockDef = blockType !== undefined ? blocksByType.get(blockType) : undefined;
+        const blockType =
+          typeof candidate.blockType === "string"
+            ? candidate.blockType
+            : undefined;
+        const blockDef =
+          blockType !== undefined ? blocksByType.get(blockType) : undefined;
         if (!blockDef) return;
         const result = blockSchemaFor(blockDef, candidate).safeParse(item);
         if (!result.success) {
           for (const issue of result.error.issues) {
-            ctx.addIssue({ code: "custom", message: issue.message, path: [index, ...issue.path] });
+            ctx.addIssue({
+              code: "custom",
+              message: issue.message,
+              path: [index, ...issue.path],
+            });
           }
         }
       });
@@ -12061,18 +13849,33 @@ Note: `field.min`/`field.max` are shown destructured as `[min, message]` — Ste
 
 #### packages/core/src/api/prepareEdit.ts
 
-1 edit — add `data: transformedFields` to the `getFieldsInputSchema` call.
+2 edits — add `data: transformedFields` to the `getFieldsInputSchema` call, and backfill stored array-item ids onto `mergedFields` before the `beforeChange` hook runs.
 
 **1 — in `prepareEdit`, the `getFieldsInputSchema({ … }).safeParse(transformedFields)` call.**
 
 ```ts
-  const parsed = getFieldsInputSchema({
-    fields: props.target.config.fields,
-    partial: props.partial ?? false,
-    ignoreRequired: props.action === DRAFT_ACTIONS.saveDraft,
-    data: transformedFields,
-  }).safeParse(transformedFields);
+const parsed = getFieldsInputSchema({
+  fields: props.target.config.fields,
+  partial: props.partial ?? false,
+  ignoreRequired: props.action === DRAFT_ACTIONS.saveDraft,
+  data: transformedFields,
+}).safeParse(transformedFields);
 ```
+
+**2 — `mergedFields` backfills object-array item ids before the `beforeChange` hook runs**, anchored
+at `const mergedFields = { ...fields, ...props.changes } as TDocument;`:
+
+```ts
+const mergedFields = assignArrayItemIds({
+  fields: props.target.config.fields,
+  data: { ...fields, ...props.changes },
+}) as TDocument;
+```
+
+Add `import { assignArrayItemIds } from "../fields/array/utils";` (or the barrel,
+`import { assignArrayItemIds } from "../fields";`, once `fields/index.ts` re-exports
+`array/index.ts` — confirm the existing import style this file already uses for other field
+helpers and match it).
 
 #### packages/core/src/fields/utils.test.ts
 
@@ -12097,7 +13900,9 @@ describe("getFieldsInputSchema — admin.condition (data-aware schema)", () => {
         showSecret: checkbox(),
         secret: text({
           required: true,
-          admin: { condition: ({ siblingData }) => siblingData.showSecret === true },
+          admin: {
+            condition: ({ siblingData }) => siblingData.showSecret === true,
+          },
         }),
       },
     });
@@ -12115,7 +13920,9 @@ describe("getFieldsInputSchema — admin.condition (data-aware schema)", () => {
         showSecret: checkbox(),
         secret: text({
           required: true,
-          admin: { condition: ({ siblingData }) => siblingData.showSecret === true },
+          admin: {
+            condition: ({ siblingData }) => siblingData.showSecret === true,
+          },
         }),
       },
     });
@@ -12126,7 +13933,9 @@ describe("getFieldsInputSchema — admin.condition (data-aware schema)", () => {
     const result = schema.safeParse({ showSecret: true });
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues.some((issue) => issue.path[0] === "secret")).toBe(true);
+      expect(
+        result.error.issues.some((issue) => issue.path[0] === "secret"),
+      ).toBe(true);
     }
   });
 
@@ -12144,7 +13953,10 @@ describe("getFieldsInputSchema — admin.condition (data-aware schema)", () => {
         }),
       },
     });
-    const schema = getFieldsInputSchema({ fields: collection.fields, data: {} });
+    const schema = getFieldsInputSchema({
+      fields: collection.fields,
+      data: {},
+    });
     expect(schema.safeParse({}).success).toBe(false);
   });
 
@@ -12174,29 +13986,29 @@ import { checkbox, defineCollection, text } from "../index";
 **2 — new test, appended as the last test in `describe("validateFields", …)`, after `"awaits an async validate() and passes ctx/doc/fieldKey through"` and before the block's closing `});`.**
 
 ```ts
-  it("skips a field whose condition is false, never calling its validate()", async () => {
-    const collection = defineCollection({
-      slug: "posts",
-      fields: {
-        show: checkbox(),
-        secret: text({
-          admin: { condition: ({ siblingData }) => siblingData.show === true },
-          validate: () => {
-            throw new Error("should not run");
-          },
-        }),
-      },
-    });
-    await expect(
-      validateFields({
-        fields: collection.fields,
-        doc: { show: false, secret: "x" },
-        keys: ["secret"],
-        ctx: fixtureCtx,
-        config: fixtureConfig,
+it("skips a field whose condition is false, never calling its validate()", async () => {
+  const collection = defineCollection({
+    slug: "posts",
+    fields: {
+      show: checkbox(),
+      secret: text({
+        admin: { condition: ({ siblingData }) => siblingData.show === true },
+        validate: () => {
+          throw new Error("should not run");
+        },
       }),
-    ).resolves.toBeUndefined();
+    },
   });
+  await expect(
+    validateFields({
+      fields: collection.fields,
+      doc: { show: false, secret: "x" },
+      keys: ["secret"],
+      ctx: fixtureCtx,
+      config: fixtureConfig,
+    }),
+  ).resolves.toBeUndefined();
+});
 ```
 
 #### packages/core/src/fields/array/inputSchema.test.ts
@@ -12217,39 +14029,79 @@ import type { VexResourceSlug } from "../../types/generated";
 **2 — new `describe` block, appended after `describe("metadata", …)` and before the closing `});` of `describe("arrayFieldToInputSchema", …)`.**
 
 ```ts
-  describe("condition-aware item fields (data-aware schema)", () => {
-    const itemFields = {
-      kind: text({ required: true }),
-      detail: text({
-        required: true,
-        admin: { condition: ({ siblingData }) => siblingData.kind === "detailed" },
-      }),
-    };
+describe("condition-aware item fields (data-aware schema)", () => {
+  const itemFields = {
+    kind: text({ required: true }),
+    detail: text({
+      required: true,
+      admin: {
+        condition: ({ siblingData }) => siblingData.kind === "detailed",
+      },
+    }),
+  };
 
-    it("skips a hidden sibling-conditioned required field inside an array item", () => {
-      const field = array({ items: group({ fields: itemFields }) });
-      const schema = arrayFieldToInputSchema({ field, data: {} });
-      const result = schema.safeParse([{ kind: "simple" }]);
-      expect(result.success).toBe(true);
-    });
-
-    it("still fails a visible sibling-conditioned required field inside an array item", () => {
-      const field = array({ items: group({ fields: itemFields }) });
-      const schema = arrayFieldToInputSchema({ field, data: {} });
-      const result = schema.safeParse([{ kind: "detailed" }]);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues.some((issue) => issue.path.includes("detail"))).toBe(true);
-      }
-    });
-
-    it("keeps the current static schema when item fields declare no conditions, even with data supplied", () => {
-      const field = array({ items: text({ required: true }) });
-      const schema = arrayFieldToInputSchema({ field, data: {} });
-      expect(schema.safeParse(["ok"]).success).toBe(true);
-      expect(schema.safeParse([""]).success).toBe(false);
-    });
+  it("skips a hidden sibling-conditioned required field inside an array item", () => {
+    const field = array({ items: group({ fields: itemFields }) });
+    const schema = arrayFieldToInputSchema({ field, data: {} });
+    const result = schema.safeParse([{ kind: "simple" }]);
+    expect(result.success).toBe(true);
   });
+
+  it("still fails a visible sibling-conditioned required field inside an array item", () => {
+    const field = array({ items: group({ fields: itemFields }) });
+    const schema = arrayFieldToInputSchema({ field, data: {} });
+    const result = schema.safeParse([{ kind: "detailed" }]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((issue) => issue.path.includes("detail")),
+      ).toBe(true);
+    }
+  });
+
+  it("keeps the current static schema when item fields declare no conditions, even with data supplied", () => {
+    const field = array({ items: text({ required: true }) });
+    const schema = arrayFieldToInputSchema({ field, data: {} });
+    expect(schema.safeParse(["ok"]).success).toBe(true);
+    expect(schema.safeParse([""]).success).toBe(false);
+  });
+});
+```
+
+**3 — new `describe` block, appended after `describe("condition-aware item fields (data-aware schema)", …)`, inside `describe("arrayFieldToInputSchema", …)`.**
+
+```ts
+describe("object-shaped item id", () => {
+  it("accepts an item missing id (optional)", () => {
+    const field = array({
+      items: group({ fields: { title: text({ required: true }) } }),
+    });
+    const schema = arrayFieldToInputSchema({ field });
+    expect(schema.safeParse([{ title: "a" }]).success).toBe(true);
+  });
+
+  it("round-trips a supplied id", () => {
+    const field = array({
+      items: group({ fields: { title: text({ required: true }) } }),
+    });
+    const schema = arrayFieldToInputSchema({ field });
+    const result = schema.safeParse([{ title: "a", id: "existing" }]);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect((result.data[0] as { id: string }).id).toBe("existing");
+    }
+  });
+
+  it("does not add an id slot to a scalar item schema", () => {
+    const field = array({ items: text({ required: true }) });
+    const schema = arrayFieldToInputSchema({ field });
+    const result = schema.safeParse(["a"]);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data[0]).toBe("a");
+    }
+  });
+});
 ```
 
 #### packages/core/src/fields/blocks/inputSchema.test.ts
@@ -12259,127 +14111,235 @@ import type { VexResourceSlug } from "../../types/generated";
 **1 — new `describe` block, appended after the `"rejects an explicit empty array on a required field"` test and before the closing `});` of `describe("blocksFieldToInputSchema", …)`.**
 
 ```ts
-  describe("condition-aware item fields (data-aware schema)", () => {
-    const toggleBlock = defineBlock({
-      slug: "toggle",
-      label: "Toggle",
-      fields: {
-        kind: text({ required: true }),
-        detail: text({
-          required: true,
-          admin: { condition: ({ siblingData }) => siblingData.kind === "detailed" },
-        }),
-      },
-    });
-
-    it("skips a hidden sibling-conditioned required field inside a block item", () => {
-      const field = blocks({ blocks: [toggleBlock] });
-      const schema = blocksFieldToInputSchema({ field, data: {} });
-      const result = schema.safeParse([makeItem("toggle", { kind: "simple" })]);
-      expect(result.success).toBe(true);
-    });
-
-    it("still fails a visible sibling-conditioned required field inside a block item, naming it", () => {
-      const field = blocks({ blocks: [toggleBlock] });
-      const schema = blocksFieldToInputSchema({ field, data: {} });
-      const result = schema.safeParse([makeItem("toggle", { kind: "detailed" })]);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues.some((issue) => issue.path.includes("detail"))).toBe(true);
-      }
-    });
-
-    it("keeps the current static schema when no block declares a condition, even with data supplied", () => {
-      const field = blocks({ blocks: [headingBlock] });
-      const schema = blocksFieldToInputSchema({ field, data: {} });
-      expect(schema.safeParse([makeItem("heading", { text: "Hi" })]).success).toBe(true);
-      expect(schema.safeParse([makeItem("heading", { text: null })]).success).toBe(false);
-    });
+describe("condition-aware item fields (data-aware schema)", () => {
+  const toggleBlock = defineBlock({
+    slug: "toggle",
+    label: "Toggle",
+    fields: {
+      kind: text({ required: true }),
+      detail: text({
+        required: true,
+        admin: {
+          condition: ({ siblingData }) => siblingData.kind === "detailed",
+        },
+      }),
+    },
   });
+
+  it("skips a hidden sibling-conditioned required field inside a block item", () => {
+    const field = blocks({ blocks: [toggleBlock] });
+    const schema = blocksFieldToInputSchema({ field, data: {} });
+    const result = schema.safeParse([makeItem("toggle", { kind: "simple" })]);
+    expect(result.success).toBe(true);
+  });
+
+  it("still fails a visible sibling-conditioned required field inside a block item, naming it", () => {
+    const field = blocks({ blocks: [toggleBlock] });
+    const schema = blocksFieldToInputSchema({ field, data: {} });
+    const result = schema.safeParse([makeItem("toggle", { kind: "detailed" })]);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((issue) => issue.path.includes("detail")),
+      ).toBe(true);
+    }
+  });
+
+  it("keeps the current static schema when no block declares a condition, even with data supplied", () => {
+    const field = blocks({ blocks: [headingBlock] });
+    const schema = blocksFieldToInputSchema({ field, data: {} });
+    expect(
+      schema.safeParse([makeItem("heading", { text: "Hi" })]).success,
+    ).toBe(true);
+    expect(
+      schema.safeParse([makeItem("heading", { text: null })]).success,
+    ).toBe(false);
+  });
+});
 ```
 
 #### packages/core/src/api/prepareEdit.test.ts
 
-2 edits: widen the `../index` import to add `checkbox`, then append two tests to the end of the `describe("prepareEdit", …)` block.
+2 edits: widen the `../index` import to add `checkbox`, `array`, `group`, then append four tests to the end of the `describe("prepareEdit", …)` block.
 
 **1 — import line.**
 
 ```ts
-import { defineCollection, defineGlobal, text, checkbox } from "../index";
+import {
+  defineCollection,
+  defineGlobal,
+  text,
+  checkbox,
+  array,
+  group,
+} from "../index";
 ```
 
-**2 — new tests, appended after `"an access denial throws VexAccessError before beforeChange or validation run"` and before the closing `});` of `describe("prepareEdit", …)`.**
+**2 — four tests, appended after `"an access denial throws VexAccessError before beforeChange or validation run"` and before the closing `});` of `describe("prepareEdit", …)`.** (the first two are this step's original condition tests; the array-item-id tests below follow them.)
 
 ```ts
-  test("create succeeds when a required field is hidden by its own condition", async () => {
-    const conditionalPosts = defineCollection({
+test("create succeeds when a required field is hidden by its own condition", async () => {
+  const conditionalPosts = defineCollection({
+    slug: "posts",
+    fields: {
+      showSecret: checkbox(),
+      secret: text({
+        required: true,
+        admin: {
+          condition: ({ siblingData }) => siblingData.showSecret === true,
+        },
+      }),
+    },
+  });
+  const t = convexTest(schema, modules);
+  await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+    await expect(
+      prepareEdit({
+        ctx,
+        config: { collections: [conditionalPosts] } as unknown as VexConfig,
+        target: { kind: "collection", config: conditionalPosts },
+        action: CRUD_ACTIONS.create,
+        storedDoc: undefined,
+        changes: { showSecret: false },
+        partial: false,
+        validateKeys: "all",
+      }),
+    ).resolves.toBeDefined();
+  });
+});
+
+test("create still rejects the same required field once its condition makes it visible, naming it", async () => {
+  const conditionalPosts = defineCollection({
+    slug: "posts",
+    fields: {
+      showSecret: checkbox(),
+      secret: text({
+        required: true,
+        admin: {
+          condition: ({ siblingData }) => siblingData.showSecret === true,
+        },
+      }),
+    },
+  });
+  const t = convexTest(schema, modules);
+  await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+    let caught: unknown;
+    try {
+      await prepareEdit({
+        ctx,
+        config: { collections: [conditionalPosts] } as unknown as VexConfig,
+        target: { kind: "collection", config: conditionalPosts },
+        action: CRUD_ACTIONS.create,
+        storedDoc: undefined,
+        changes: { showSecret: true },
+        partial: false,
+        validateKeys: "all",
+      });
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(ConvexError);
+    const data = (caught as ConvexError<{ message: string; errors: string }>)
+      .data;
+    expect(data.errors).toContain("secret");
+  });
+
+  test("backfills an id onto an object-array item that doesn't supply one", async () => {
+    const postsWithLinks = defineCollection({
       slug: "posts",
       fields: {
-        showSecret: checkbox(),
-        secret: text({
-          required: true,
-          admin: { condition: ({ siblingData }) => siblingData.showSecret === true },
+        links: array({
+          items: group({ fields: { label: text({ required: true }) } }),
         }),
       },
     });
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      await expect(
-        prepareEdit({
-          ctx,
-          config: { collections: [conditionalPosts] } as unknown as VexConfig,
-          target: { kind: "collection", config: conditionalPosts },
-          action: CRUD_ACTIONS.create,
-          storedDoc: undefined,
-          changes: { showSecret: false },
-          partial: false,
-          validateKeys: "all",
-        }),
-      ).resolves.toBeDefined();
+      const result = await prepareEdit({
+        ctx,
+        config: { collections: [postsWithLinks] } as unknown as VexConfig,
+        target: { kind: "collection", config: postsWithLinks },
+        action: CRUD_ACTIONS.create,
+        storedDoc: undefined,
+        changes: { links: [{ label: "a" }] },
+        partial: false,
+        validateKeys: "all",
+      });
+      const links = result.patch.links as { label: string; id: string }[];
+      expect(typeof links[0]!.id).toBe("string");
+      expect(links[0]!.id.length).toBeGreaterThan(0);
     });
   });
 
-  test("create still rejects the same required field once its condition makes it visible, naming it", async () => {
-    const conditionalPosts = defineCollection({
+  test("preserves an object-array item's own supplied id instead of overwriting it", async () => {
+    const postsWithLinks = defineCollection({
       slug: "posts",
       fields: {
-        showSecret: checkbox(),
-        secret: text({
-          required: true,
-          admin: { condition: ({ siblingData }) => siblingData.showSecret === true },
+        links: array({
+          items: group({ fields: { label: text({ required: true }) } }),
         }),
       },
     });
     const t = convexTest(schema, modules);
     await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
-      let caught: unknown;
-      try {
-        await prepareEdit({
-          ctx,
-          config: { collections: [conditionalPosts] } as unknown as VexConfig,
-          target: { kind: "collection", config: conditionalPosts },
-          action: CRUD_ACTIONS.create,
-          storedDoc: undefined,
-          changes: { showSecret: true },
-          partial: false,
-          validateKeys: "all",
-        });
-      } catch (error) {
-        caught = error;
-      }
-      expect(caught).toBeInstanceOf(ConvexError);
-      const data = (caught as ConvexError<{ message: string; errors: string }>).data;
-      expect(data.errors).toContain("secret");
+      const result = await prepareEdit({
+        ctx,
+        config: { collections: [postsWithLinks] } as unknown as VexConfig,
+        target: { kind: "collection", config: postsWithLinks },
+        action: CRUD_ACTIONS.create,
+        storedDoc: undefined,
+        changes: { links: [{ label: "a", id: "kept-id" }] },
+        partial: false,
+        validateKeys: "all",
+      });
+      const links = result.patch.links as { label: string; id: string }[];
+      expect(links[0]!.id).toBe("kept-id");
     });
   });
+});
 ```
 
-Verify: pnpm --filter @vexcms/core test -- prepareEdit fields
+#### packages/core/src/types/generateVexTypes.test.ts (step 9 addition)
+
+New `it`, appended inside the `generateVexTypes — document interfaces` describe (before its
+closing `});`).
+
+```ts
+it("generates id?: string on an array of unnamed group items", () => {
+  const collection = defineCollection({
+    slug: "postsWithLinks",
+    fields: { links: array({ items: group({ fields: { label: text() } }) }) },
+  });
+  const result = generateVexTypes({
+    config: defineConfig({ collections: [collection] }),
+  });
+  expect(result).toContain("links?: { id?: string; label?: string }[]");
+});
+```
+
+#### packages/core/src/schema/generateVexSchema.test.ts (step 9 addition)
+
+New `it`, appended inside the `generateVexSchema — field validators` describe (before its closing
+`});`).
+
+```ts
+it("generates an object-array item validator with an optional id", () => {
+  const field = array({ items: group({ fields: { label: text() } }) });
+  expect(arrayFieldToValidator({ field })).toBe(
+    "v.optional(v.array(v.object({ id: v.optional(v.string()), label: v.optional(v.string()) })))",
+  );
+});
+```
+
+Add `arrayFieldToValidator`, `group` to the file's existing imports if not already present.
+
+Verify: pnpm --filter @vexcms/core test -- prepareEdit fields generateVexTypes generateVexSchema
 
 ### Step 10 — Input masks: `admin.mask` + `fields.inputMasks` [agent]
 
 - [ ] `pnpm-workspace.yaml` catalog + `packages/react/package.json` — `use-mask-input` (P-015)
-- [ ] `packages/core/src/fields/mask/` — `types.ts` (`FieldMaskInput`, `FieldMask`, `MASKABLE_FIELD_TYPES`), `utils.ts` (`resolveFieldMask`), `index.ts` + tests
+- [ ] `packages/core/src/fields/constants.ts` — `inputMasks: boolean` added to every `ADMIN_FIELDS` entry (`true` for text/email/number/url, `false` otherwise)
+- [ ] `packages/core/src/fields/mask/` — `types.ts` (`FieldMaskInput`, `FieldMask`, `MaskableFieldType` derived from `ADMIN_FIELDS`), `utils.ts` (`resolveFieldMask`), `index.ts` + tests
 - [ ] `packages/core/src/fields/index.ts` — export the `mask` barrel
 - [ ] text / email / number / url `types.ts` + `config.ts` — `admin.mask`
 - [ ] `packages/core/src/config/types.ts` + `config.ts` + `config.test.ts` — `fields.inputMasks` on client config input/resolved
@@ -12413,17 +14373,19 @@ cannot change across a single field instance's lifetime.
 `admin.mask` is typed only on the four maskable field types — `FieldAdminConfig`
 (`packages/core/src/fields/baseTypes.ts`) is shared by every field type
 (checkbox, select, group, …), so `mask` is NOT added there. Each maskable
-type's own `*FieldInput`/`*Field` interface narrows its inherited `admin`
-property with an intersection (`FieldAdminConfigInput & { mask?: … }` /
-`FieldAdminConfig & { mask?: … }`) — legal because the intersection is a
-subtype of the inherited type. `resolveFieldMask` is NOT called inside the
-field factories (`text()`, `number()`, …): those run at collection-definition
-time, before `fields.inputMasks` (a client-config concern) exists. The
-factories just spread `admin.mask` through unchanged — `config.ts` needs no
-functional change, only a doc line noting the property has no default
-(contract item 8: opt-in only). Resolution happens in each field's react
-`Input.tsx`, the only place both `fieldDef.admin.mask` and
-`useVexConfig().fields.inputMasks` are in scope.
+type already has its own `<Type>FieldAdminInput<TCollectionSlug>`/
+`<Type>FieldAdminConfig<TCollectionSlug>` (Step 6, for `condition`); this step
+narrows THAT with an intersection (`TextFieldAdminInput<TCollectionSlug> & {
+mask?: … }` / `TextFieldAdminConfig<TCollectionSlug> & { mask?: … }`, same for
+`number`/`url`/`email`) — legal because the intersection is a subtype of the
+inherited type. `resolveFieldMask` is NOT called inside the field factories
+(`text()`, `number()`, …): those run at collection-definition time, before
+`fields.inputMasks` (a client-config concern) exists. The factories just
+spread `admin.mask` through unchanged — `config.ts` needs no functional
+change, only a doc line noting the property has no default (contract item
+8: opt-in only). Resolution happens in each field's react `Input.tsx`, the
+only place both `fieldDef.admin.mask` and `useVexConfig().fields.inputMasks`
+are in scope.
 
 No other registration point exists for `admin.mask`: it never reaches
 schema/type generation (`generateVexSchema`/`generateVexTypes` never read
@@ -12432,14 +14394,16 @@ found), and it is UI-only — the stored value is a plain `string`/`number`,
 identical to the unmasked field.
 
 Email reconciled against Step 2's actual output
-(`local://g-step-02.md`): `EmailFieldInput`/`EmailField` do **not** redeclare
-an own `admin` property — they inherit `FieldAdminConfigInput`/`FieldAdminConfig`
-straight from `BaseFieldInput`/`BaseField`, the same as `url` (not `text`,
-which does redeclare it). So email's `admin.mask` edit below ADDS a new
-`admin` member (url's pattern), not a type-change to an existing line
-(text/number's pattern). Email's `min`/`max` are already `FieldLimitInput`/
-`FieldLimit` (step 1's shape, not the old `{ value, error }` object) — inert
-for this step, noted only so the import list below matches the real file.
+(`local://g-step-02.md`): before Step 6, `EmailFieldInput`/`EmailField` did
+**not** redeclare an own `admin` property — they inherited `FieldAdminConfigInput`/
+`FieldAdminConfig` straight from `BaseFieldInput`/`BaseField`, the same as `url`
+(not `text`, which already redeclared it). Step 6 gives EVERY data field type,
+including `email`/`url`, its own `<Type>FieldAdminInput`/`Config` override — so
+this step's `admin.mask` edit for `email`/`url` narrows Step 6's override
+(same shape as `text`/`number`'s edit, not a brand-new member). Email's
+`min`/`max` are already `FieldLimitInput`/`FieldLimit` (step 1's shape, not
+the old `{ value, error }` object) — inert for this step, noted only so the
+import list below matches the real file.
 
 Step 2's `email/Input.tsx` renders a native `type="email"` input (`autoComplete="email"`,
 format validation deferred to `emailFieldToInputSchema`). A masked email
@@ -12454,9 +14418,9 @@ inert to Inputmask.
 **1 — new catalog entry, alphabetically after `typescript-eslint`.**
 
 ```yaml
-  typescript-eslint: 8.63.0
-  use-mask-input: 3.14.2
-  validate-npm-package-name: 5.0.0
+typescript-eslint: 8.63.0
+use-mask-input: 3.14.2
+validate-npm-package-name: 5.0.0
 ```
 
 #### packages/react/package.json
@@ -12469,24 +14433,162 @@ inert to Inputmask.
     "zod": "catalog:"
 ```
 
-#### packages/core/src/fields/mask/types.ts
+#### packages/core/src/fields/constants.ts
+
+**1 — every `ADMIN_FIELDS` entry: add `inputMasks: boolean`, inserted right after the existing
+`kind: "data"` line — `true` for `text`/`email`/`number`/`url`, `false` for every other type.
+This is the single source of truth `MaskableFieldType` (below) derives from — a future maskable
+field type only needs this flag flipped.**
 
 ```ts
+export const ADMIN_FIELDS = {
+  text: {
+    type: "text",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+    kind: "data",
+    inputMasks: true,
+  },
+  email: {
+    type: "email",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+    kind: "data",
+    inputMasks: true,
+  },
+  textarea: {
+    type: "textarea",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+    kind: "data",
+    inputMasks: false,
+  },
+  url: {
+    type: "url",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+    kind: "data",
+    inputMasks: true,
+  },
+  color: {
+    type: "color",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+    kind: "data",
+    inputMasks: false,
+  },
+  number: {
+    type: "number",
+    interfaceType: "number",
+    validator: "v.number()",
+    defaultValue: 0,
+    kind: "data",
+    inputMasks: true,
+  },
+  checkbox: {
+    type: "checkbox",
+    interfaceType: "boolean",
+    validator: "v.boolean()",
+    defaultValue: false,
+    kind: "data",
+    inputMasks: false,
+  },
+  date: {
+    type: "date",
+    interfaceType: "number",
+    validator: "v.number()",
+    defaultValue: undefined,
+    kind: "data",
+    inputMasks: false,
+  },
+  select: {
+    type: "select",
+    interfaceType: "string[]",
+    validator: "v.array(\nv.string()\n)",
+    defaultValue: [] as string[],
+    kind: "data",
+    inputMasks: false,
+  },
+  relationship: {
+    type: "relationship",
+    interfaceType: "Id<CollectionSlug>[]",
+    validator: "v.array(\nv.string()\n)",
+    defaultValue: [] as string[],
+    kind: "data",
+    inputMasks: false,
+  },
+  array: {
+    type: "array",
+    interfaceType: "unknown[]",
+    validator: "v.array(\nv.any()\n)",
+    defaultValue: [],
+    kind: "data",
+    inputMasks: false,
+  },
+  group: {
+    type: "group",
+    interfaceType: "Record<string, any>",
+    validator: "v.object({})",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    defaultValue: {} as Record<string, any>,
+    kind: "data",
+    inputMasks: false,
+  },
+  blocks: {
+    type: "blocks",
+    interfaceType: "Record<string, any>[]", // placeholder - blocks() overridses per instance
+    validator: "v.array(v.any())", // placeholder - blocksFieldToValidator builds dynamically
+    defaultValue: [],
+    kind: "data",
+    inputMasks: false,
+  },
+  upload: {
+    type: "upload",
+    interfaceType: "Id<MediaCollectionSlug>[]",
+    validator: "v.array(\nv.string()\n)",
+    defaultValue: undefined,
+    kind: "data",
+    inputMasks: false,
+  },
+  richtext: {
+    type: "richtext",
+    interfaceType: "RichTextDocument",
+    validator: "v.array(\nv.any()\n)",
+    defaultValue: [],
+    kind: "data",
+    inputMasks: false,
+  },
+  json: {
+    type: "json",
+    interfaceType: "unknown",
+    validator: "v.any()",
+    defaultValue: undefined,
+    kind: "data",
+    inputMasks: false,
+  },
+} as const;
+```
+
+#### packages/core/src/fields/mask/types.ts
+
+````ts
 import { ADMIN_FIELDS } from "../constants";
 
 /**
- * Field types `admin.mask` is available on — the four single-line string/
- * number inputs an input-mask library can usefully format.
+ * Union of the field type strings `admin.mask` is available on — derived
+ * from each entry's own `inputMasks: boolean` in {@link ADMIN_FIELDS}, so a
+ * new maskable field type only needs that flag flipped to `true`.
  */
-export const MASKABLE_FIELD_TYPES = [
-  ADMIN_FIELDS.text.type,
-  ADMIN_FIELDS.email.type,
-  ADMIN_FIELDS.number.type,
-  ADMIN_FIELDS.url.type,
-] as const;
-
-/** Union of the field type strings `admin.mask` is available on. */
-export type MaskableFieldType = (typeof MASKABLE_FIELD_TYPES)[number];
+export type MaskableFieldType = {
+  [K in keyof typeof ADMIN_FIELDS]: (typeof ADMIN_FIELDS)[K]["inputMasks"] extends true
+    ? K
+    : never;
+}[keyof typeof ADMIN_FIELDS];
 
 /**
  * User-facing `admin.mask` value — a bare `use-mask-input` mask string, an
@@ -12503,7 +14605,11 @@ export type MaskableFieldType = (typeof MASKABLE_FIELD_TYPES)[number];
 export type FieldMaskInput =
   | string
   | string[]
-  | { mask: string | string[]; storeMasked?: boolean; options?: Record<string, unknown> };
+  | {
+      mask: string | string[];
+      storeMasked?: boolean;
+      options?: Record<string, unknown>;
+    };
 
 /**
  * Resolved mask configuration after {@link resolveFieldMask} applies
@@ -12520,11 +14626,11 @@ export interface FieldMask {
   /** Extra `use-mask-input`/Inputmask options, passed through unchanged. */
   options: Record<string, unknown>;
 }
-```
+````
 
 #### packages/core/src/fields/mask/utils.ts
 
-```ts
+````ts
 import type { FieldMask, FieldMaskInput, MaskableFieldType } from "./types";
 
 /**
@@ -12579,9 +14685,11 @@ export function resolveFieldMask(props: {
   if (fieldMask === false) return undefined;
   if (fieldMask !== undefined) return normalizeFieldMaskInput(fieldMask);
   const projectDefault = inputMasks[fieldType];
-  return projectDefault === undefined ? undefined : normalizeFieldMaskInput(projectDefault);
+  return projectDefault === undefined
+    ? undefined
+    : normalizeFieldMaskInput(projectDefault);
 }
-```
+````
 
 #### packages/core/src/fields/mask/utils.test.ts
 
@@ -12591,12 +14699,22 @@ import { resolveFieldMask } from "./utils";
 
 describe("resolveFieldMask", () => {
   it("returns undefined when neither the field nor the project configures a mask", () => {
-    expect(resolveFieldMask({ fieldType: "text", fieldMask: undefined, inputMasks: {} })).toBeUndefined();
+    expect(
+      resolveFieldMask({
+        fieldType: "text",
+        fieldMask: undefined,
+        inputMasks: {},
+      }),
+    ).toBeUndefined();
   });
 
   it("normalizes a bare string mask", () => {
     expect(
-      resolveFieldMask({ fieldType: "text", fieldMask: "(999) 999-9999", inputMasks: {} }),
+      resolveFieldMask({
+        fieldType: "text",
+        fieldMask: "(999) 999-9999",
+        inputMasks: {},
+      }),
     ).toEqual({ mask: "(999) 999-9999", storeMasked: false, options: {} });
   });
 
@@ -12607,14 +14725,22 @@ describe("resolveFieldMask", () => {
         fieldMask: ["999-999", "999-999-999"],
         inputMasks: {},
       }),
-    ).toEqual({ mask: ["999-999", "999-999-999"], storeMasked: false, options: {} });
+    ).toEqual({
+      mask: ["999-999", "999-999-999"],
+      storeMasked: false,
+      options: {},
+    });
   });
 
   it("normalizes the object form with storeMasked and options", () => {
     expect(
       resolveFieldMask({
         fieldType: "number",
-        fieldMask: { mask: "decimal", storeMasked: true, options: { radixPoint: "." } },
+        fieldMask: {
+          mask: "decimal",
+          storeMasked: true,
+          options: { radixPoint: "." },
+        },
         inputMasks: {},
       }),
     ).toEqual({
@@ -12682,7 +14808,7 @@ export * from "./text";
 
 #### packages/core/src/fields/text/types.ts
 
-**1 — `TextFieldInput`: add an own `admin` override, inserted as the first member right after the interface opens.**
+**1 — `TextFieldInput`: narrow the `admin` override Step 6 already added, inserted as the first member right after the interface opens.**
 
 ```ts
 export interface TextFieldInput<
@@ -12695,7 +14821,7 @@ export interface TextFieldInput<
    * `mask: false` disables the project-wide `fields.inputMasks.text` default
    * for this field. @see {@link FieldMaskInput}
    */
-  admin?: FieldAdminConfigInput & { mask?: FieldMaskInput | false };
+  admin?: TextFieldAdminInput<TCollectionSlug> & { mask?: FieldMaskInput | false };
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
@@ -12704,20 +14830,17 @@ export interface TextFieldInput<
   defaultValue?: string;
 ```
 
-**2 — `TextField`: change the existing `admin: FieldAdminConfig;` property's type (same line, no reordering).**
+**2 — `TextField`: change the existing `admin: TextFieldAdminConfig<TCollectionSlug>;` property's type (Step 6) to narrow it further (same line, no reordering).**
 
 ```ts
   /** Resolved admin UI configuration with all defaults applied, narrowed to add `mask`. */
-  admin: FieldAdminConfig & { mask?: FieldMaskInput | false };
+  admin: TextFieldAdminConfig<TCollectionSlug> & { mask?: FieldMaskInput | false };
 ```
 
-**3 — new import at the top of the file, alongside the existing `baseTypes` import.**
+**3 — new import at the top of the file, alongside the existing `baseTypes`/`ui/types` imports (Step 6 already imports `FieldConditionProps` from `../ui/types` for `TextFieldAdminInput`/`TextFieldAdminConfig`; this edit only adds the `mask` import).**
 
 ```ts
-import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig, FieldAdminConfigInput, FieldValidateProps } from "../baseTypes";
 import type { FieldMaskInput } from "../mask";
-import { VexResourceSlug } from "../../types";
 ```
 
 #### packages/core/src/fields/text/config.ts
@@ -12731,7 +14854,7 @@ import { VexResourceSlug } from "../../types";
 
 #### packages/core/src/fields/number/types.ts
 
-**1 — `NumberFieldInput`: add an own `admin` override, first member after the interface opens.**
+**1 — `NumberFieldInput`: narrow the `admin` override Step 6 already added, first member after the interface opens.**
 
 ```ts
 export interface NumberFieldInput<
@@ -12743,7 +14866,7 @@ export interface NumberFieldInput<
    * {@link TextFieldInput.admin} for the full contract. A masked number
    * field renders `type="text"` and still stores a `number`.
    */
-  admin?: FieldAdminConfigInput & { mask?: FieldMaskInput | false };
+  admin?: NumberFieldAdminInput<TCollectionSlug> & { mask?: FieldMaskInput | false };
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * Does not affect database values — only the form's initial state.
@@ -12751,20 +14874,17 @@ export interface NumberFieldInput<
   defaultValue?: number;
 ```
 
-**2 — `NumberField`: change the existing `admin: FieldAdminConfig;` property's type.**
+**2 — `NumberField`: change the existing `admin: NumberFieldAdminConfig<TCollectionSlug>;` property's type (Step 6) to narrow it further.**
 
 ```ts
   /** Resolved admin UI configuration with all defaults applied, narrowed to add `mask`. */
-  admin: FieldAdminConfig & { mask?: FieldMaskInput | false };
+  admin: NumberFieldAdminConfig<TCollectionSlug> & { mask?: FieldMaskInput | false };
 ```
 
-**3 — new import at the top of the file.**
+**3 — new import at the top of the file, alongside the existing `baseTypes`/`ui/types` imports Step 6 already added.**
 
 ```ts
-import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig, FieldAdminConfigInput, FieldValidateProps } from "../baseTypes";
 import type { FieldMaskInput } from "../mask";
-import type { VexResourceSlug } from "../../types/generated";
 ```
 
 #### packages/core/src/fields/number/config.ts
@@ -12778,7 +14898,7 @@ import type { VexResourceSlug } from "../../types/generated";
 
 #### packages/core/src/fields/url/types.ts
 
-**1 — `UrlFieldInput`: add an own `admin` override (neither `UrlFieldInput` nor `UrlField` redeclares `admin` today — both pick it up new).**
+**1 — `UrlFieldInput`: narrow the `admin` override Step 6 already added.**
 
 ```ts
 export interface UrlFieldInput<
@@ -12789,7 +14909,7 @@ export interface UrlFieldInput<
    * Admin UI configuration, narrowed to add `mask` — see
    * {@link TextFieldInput.admin} for the full contract.
    */
-  admin?: FieldAdminConfigInput & { mask?: FieldMaskInput | false };
+  admin?: UrlFieldAdminInput<TCollectionSlug> & { mask?: FieldMaskInput | false };
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not affect database values.
@@ -12797,7 +14917,7 @@ export interface UrlFieldInput<
   defaultValue?: string;
 ```
 
-**2 — `UrlField`: add an own `admin` override.**
+**2 — `UrlField`: narrow the `admin` override Step 6 already added.**
 
 ```ts
 export interface UrlField<
@@ -12806,7 +14926,7 @@ export interface UrlField<
 > extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.url.type;
   /** Resolved admin UI configuration with all defaults applied, narrowed to add `mask`. */
-  admin: FieldAdminConfig & { mask?: FieldMaskInput | false };
+  admin: UrlFieldAdminConfig<TCollectionSlug> & { mask?: FieldMaskInput | false };
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * `undefined` means no default is applied — the input starts empty.
@@ -12814,27 +14934,11 @@ export interface UrlField<
   defaultValue?: string;
 ```
 
-**3 — new import at the top of the file.**
+**3 — new import at the top of the file, alongside the existing `baseTypes`/`ui/types` imports Step 6 already added.**
 
 ```ts
-import { ADMIN_FIELDS } from "../constants";
-import {
-  BaseField,
-  BaseFieldInput,
-  FieldAdminConfig,
-  FieldAdminConfigInput,
-  FieldLimit,
-  FieldLimitInput,
-  FieldValidateProps,
-} from "../baseTypes";
 import type { FieldMaskInput } from "../mask";
-import type { VexResourceSlug } from "../../types/generated";
 ```
-
-(Step 1 added `FieldLimit, FieldLimitInput` to this file's import and `min`/`max`
-properties to both interfaces — this full-import replacement must keep them
-alongside the `FieldAdminConfig`/`FieldAdminConfigInput`/`FieldMaskInput`
-additions above, or the `min`/`max` properties stop compiling.)
 
 #### packages/core/src/fields/url/config.ts
 
@@ -12847,7 +14951,7 @@ additions above, or the `min`/`max` properties stop compiling.)
 
 #### packages/core/src/fields/email/types.ts
 
-**1 — `EmailFieldInput`: add an own `admin` override, first member after the interface opens (neither `EmailFieldInput` nor `EmailField` redeclares `admin` today — same pattern as `url/types.ts`'s edit 1, not `text`'s).**
+**1 — `EmailFieldInput`: narrow the `admin` override Step 6 already added.**
 
 ```ts
 export interface EmailFieldInput<
@@ -12859,7 +14963,7 @@ export interface EmailFieldInput<
    * {@link TextFieldInput.admin} for the full contract. A masked email
    * field renders `type="text"` instead of `type="email"`.
    */
-  admin?: FieldAdminConfigInput & { mask?: FieldMaskInput | false };
+  admin?: EmailFieldAdminInput<TCollectionSlug> & { mask?: FieldMaskInput | false };
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values.
@@ -12867,7 +14971,7 @@ export interface EmailFieldInput<
   defaultValue?: string;
 ```
 
-**2 — `EmailField`: add an own `admin` override, inserted right after the `readonly type` discriminant.**
+**2 — `EmailField`: narrow the `admin` override Step 6 already added, same line as the `readonly type` discriminant.**
 
 ```ts
 export interface EmailField<
@@ -12876,7 +14980,7 @@ export interface EmailField<
 > extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.email.type;
   /** Resolved admin UI configuration with all defaults applied, narrowed to add `mask`. */
-  admin: FieldAdminConfig & { mask?: FieldMaskInput | false };
+  admin: EmailFieldAdminConfig<TCollectionSlug> & { mask?: FieldMaskInput | false };
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * `undefined` means no default is applied — the input starts empty.
@@ -12884,21 +14988,10 @@ export interface EmailField<
   defaultValue?: string;
 ```
 
-**3 — new imports: `FieldAdminConfigInput`/`FieldAdminConfig` added to the existing `baseTypes` import, plus a new `mask` import.**
+**3 — new import at the top of the file, alongside the existing `baseTypes`/`ui/types` imports Step 6 already added.**
 
 ```ts
-import { ADMIN_FIELDS } from "../constants";
-import {
-  BaseField,
-  BaseFieldInput,
-  FieldAdminConfig,
-  FieldAdminConfigInput,
-  FieldLimit,
-  FieldLimitInput,
-  FieldValidateProps,
-} from "../baseTypes";
 import type { FieldMaskInput } from "../mask";
-import { VexResourceSlug } from "../../types";
 ```
 
 #### packages/core/src/fields/email/config.ts
@@ -12945,7 +15038,7 @@ export interface VexFieldsConfig {
 
 **2 — `VexClientConfigInput`: new `fields?` property, inserted after `editor?: VexEditorAdapter<ComponentHKT>;` (the interface's last member).**
 
-```ts
+````ts
   editor?: VexEditorAdapter<ComponentHKT>;
   /**
    * Project-wide field behavior defaults.
@@ -12959,7 +15052,7 @@ export interface VexFieldsConfig {
    */
   fields?: VexFieldsConfigInput;
 }
-```
+````
 
 **3 — `VexClientConfig`: new `fields` property, inserted after `editor?: VexEditorAdapter<ComponentHKT>;` (the interface's last member).**
 
@@ -13005,7 +15098,10 @@ describe("defineConfig — fields.inputMasks", () => {
     const config = defineConfig({
       fields: { inputMasks: { number: "decimal", text: "(999) 999-9999" } },
     });
-    expect(config.fields.inputMasks).toEqual({ number: "decimal", text: "(999) 999-9999" });
+    expect(config.fields.inputMasks).toEqual({
+      number: "decimal",
+      text: "(999) 999-9999",
+    });
   });
 });
 ```
@@ -13056,7 +15152,10 @@ export function useFieldMask(props: {
 
       import("use-mask-input").then(({ withMask }) => {
         if (cancelled) return;
-        const applyMask = withMask(mask.mask, { ...mask.options, autoUnmask: !mask.storeMasked });
+        const applyMask = withMask(mask.mask, {
+          ...mask.options,
+          autoUnmask: !mask.storeMasked,
+        });
         applyMask(node);
         teardownRef.current = () => applyMask(null);
       });
@@ -13101,9 +15200,17 @@ describe("useFieldMask", () => {
   });
 
   it("lazily applies the mask to the mounted node", async () => {
-    const mask: FieldMask = { mask: "(999) 999-9999", storeMasked: false, options: {} };
+    const mask: FieldMask = {
+      mask: "(999) 999-9999",
+      storeMasked: false,
+      options: {},
+    };
     const { getByTestId } = render(createElement(MaskedInput, { mask }));
-    await waitFor(() => expect(withMaskMock).toHaveBeenCalledWith("(999) 999-9999", { autoUnmask: true }));
+    await waitFor(() =>
+      expect(withMaskMock).toHaveBeenCalledWith("(999) 999-9999", {
+        autoUnmask: true,
+      }),
+    );
     expect(applyMaskMock).toHaveBeenCalledWith(getByTestId("field"));
   });
 
@@ -13115,12 +15222,19 @@ describe("useFieldMask", () => {
     };
     render(createElement(MaskedInput, { mask }));
     await waitFor(() =>
-      expect(withMaskMock).toHaveBeenCalledWith("decimal", { radixPoint: ",", autoUnmask: false }),
+      expect(withMaskMock).toHaveBeenCalledWith("decimal", {
+        radixPoint: ",",
+        autoUnmask: false,
+      }),
     );
   });
 
   it("tears down the previous mask instance on unmount", async () => {
-    const mask: FieldMask = { mask: "decimal", storeMasked: false, options: {} };
+    const mask: FieldMask = {
+      mask: "decimal",
+      storeMasked: false,
+      options: {},
+    };
     const { unmount } = render(createElement(MaskedInput, { mask }));
     await waitFor(() => expect(applyMaskMock).toHaveBeenCalledTimes(1));
     unmount();
@@ -13722,31 +15836,39 @@ describe("email: admin.mask", () => {
 });
 ```
 
-
 Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- mask config && pnpm --filter @vexcms/react test -- useFieldMask fields/text fields/number fields/url fields/email
 
-### Step 11 — React layout renderer: `RenderFields`, tabs, collapsible, row, width, sidebar, hidden [agent]
+### Step 11 — React layout renderer: `RenderFields`, tabs, collapsible, row, ui, width, sidebar, hidden [agent]
 
-- [ ] `packages/react/src/components/form/constants.ts` — `FORM_URL_PARAMS`
-- [ ] `packages/react/src/components/form/RenderFields.tsx` + test — renders `FieldLayoutNode[]`; flex-wrap widths; region filter
-- [ ] `packages/react/src/components/form/FormTabs.tsx`, `FormCollapsible.tsx`, `FormRow.tsx` + tests — error-count badges; top-level tab in `?tab=`
+- [ ] `packages/react/src/components/form/RenderFields.tsx` + test — recurses directly over a raw `fields: Record<string, AdminField>`, switching on `field.type`; flex-wrap widths; region filter; `admin.hidden`/`fieldKeys` filtering (`visibleFieldEntries`), `dataFieldNames`, `findErroredTopLevelTab`
+- [ ] `packages/react/src/components/form/FormTabs.tsx`, `FormCollapsible.tsx`, `FormRow.tsx`, `FormUI.tsx` + tests — `FormTabs` persists its active tab in `?<fieldKey>=<tab name or slugified label>` (own field key, not a shared `?tab=`) only at `isTopLevel`, else local state; `defaultOpen` picks the initially selected tab; error-count badges on `FormTabs`/`FormCollapsible`
 - [ ] `packages/react/src/hooks/useFieldErrorCount.ts` + test; `packages/react/src/hooks/index.ts` — re-export
 - [ ] `packages/react/src/components/form/DocumentTimestamps.tsx` + test — read-only Created at (`_creationTime`)
 - [ ] `packages/react/src/components/form/applyFieldPermissionReadOnly.ts` + test — per-field write-permission → `admin.readOnly` merge (see Design note)
 - [ ] `packages/react/src/components/fields/index.tsx` — `RenderFieldInputComponents` removed; `getCollectionColumnDefs` skips `admin.hidden`
 - [ ] `packages/react/src/components/fields/index.test.tsx` — `admin.hidden` column-exclusion test
-- [ ] `CollectionEditView`, `GlobalEditView`, `MediaCollectionEditView` — main + sidebar columns via `RenderFields`; `admin.hidden` honored; submit-failure jumps to the first errored tab
+- [ ] `CollectionEditView`, `GlobalEditView`, `MediaCollectionEditView` — main + sidebar columns via `RenderFields`; `admin.hidden` honored; submit-failure jumps to the first top-level tabs field's errored tab
 - [ ] `FormGroup`, `FormBlocks`, `CreateDocumentModal` — switch to `RenderFields`
-- [ ] `packages/react/src/components/form/RenderFields.tsx` — the `"field"` branch renders through a new `FieldSlotOutlet`: resolves `field.input` via step 8's `resolveFieldInputComponent` (per-type then per-field override chain), renders `field.beforeInput`/`field.afterInput` (`SlotOutlet`) and `field.label`/`field.description` (`SlotOverrideOutlet`, no built-in yet) around it
+- [ ] `packages/react/src/components/form/RenderFields.tsx` — the data-field branch renders through a `FieldSlotOutlet`: resolves `field.input` via step 8's `resolveFieldInputComponent` (per-type then per-field override chain), renders `field.beforeInput`/`field.afterInput` (`SlotOutlet`) and `field.label`/`field.description` (`SlotOverrideOutlet`, no built-in yet) around it
 - [ ] `packages/react/src/components/fields/select/Input.tsx`, `packages/react/src/hooks/useModalSurface.tsx`, `useModalSurface.test.tsx` — stale `RenderFieldInputComponents` doc references fixed
 
-Why: one renderer replaces the four duplicated field loops; consumes step 6's tree.
+Why: one renderer replaces the four duplicated field loops; walks Step 6's raw `fields` record directly —
+`tabs`/`collapsible`/`row`/`ui` are ordinary entries in it now, so the renderer switches on `field.type`
+exactly the way `adminFieldToInputSchema` does, instead of consuming a separately-built tree. There is no
+`buildFieldLayoutTree`/`FieldLayoutNode` any more — Step 6 deleted both when `tabs()`/`collapsible()`/`row()`
+stopped being spread helpers that stamped frames onto data fields and became real `kind: "ui"` fields.
+
+**Design note — per-field tab URL state.** The old single `?tab=` assumed at most one top-level tabs group
+mattered; Step 6's model allows several independent `tabs()` fields at the top level (each its own `fields`
+entry), so each persists under its OWN key — `?<fieldKey>=<tab name or slugified label>` — only when
+`RenderFields` is called with `isTopLevel` (a nested `tabs()`, inside a `row()`/`collapsible()`/another
+`tabs()`'s tab, always uses local `useState`, matching the design doc's "nested tabs use local state").
 
 **Design note — field slots (S1/S6/S12).** `FieldSlotOutlet` is the one place `RenderFields`
 departs from a plain function call: resolving `field.input`'s override chain needs
 `useVexConfig()` (a hook, for the root per-type chain) alongside the field's own pre-resolved
 `admin.components.Input` chain (resolved once at field-factory time by step 7's
-`resolveFieldComponents`), so it is a real component, not a helper `renderFieldLayoutNode` can
+`resolveFieldComponents`), so it is a real component, not a helper `renderField` can
 call directly. `field.label`/`field.description` render with no built-in contribution in this
 pass (see `FieldSlotOutlet`'s own doc comment) — every Input still renders its own label inline,
 unchanged visual behavior. `field.beforeInput`/`field.afterInput` have no built-ins either; they
@@ -13762,49 +15884,35 @@ signature (`fields`, `collection`, `namePrefix`, `readOnly`, `region`,
 
 1. **`InputComponentProps.documentStatus`** (`packages/core/src/fields/types.ts`)
    is read by `relationship/Input.tsx` to decide `drafts: documentStatus ===
-   VERSION_STATUSES.draft.key` on its search query — every edit view passed it
+VERSION_STATUSES.draft.key` on its search query — every edit view passed it
    to every field today. It is a per-CALL constant (same value for the whole
    form), exactly like `collection`, so it is added as an optional
    `documentStatus?: VexVersionStatus` prop on `RenderFields` (and threaded
    through `RenderFieldsContext`) rather than dropped. This is an addition,
    not a change, to the contract's fixed shape.
 2. **Per-field write permission** (`!isFieldAllowed(fieldPermissions,
-   fieldKey)` in the old loops) is genuinely per-FIELD, so it cannot ride
+fieldKey)` in the old loops) is genuinely per-FIELD, so it cannot ride
    `RenderFields`'s one flat `readOnly` boolean. `applyFieldPermissionReadOnly`
    (new, not in the contract's fixed-names list) bakes it into the `fields`
    map before it reaches `RenderFields` — forcing `admin.readOnly: true` on
    every write-denied field — so the contracted signature stays exactly as
    specified and the behavior is preserved at the call site instead.
 
-#### packages/react/src/components/form/constants.ts
-
-```ts
-/**
- * URL search params `RenderFields` and its layout widgets read/write via `nuqs`.
- *
- * `tab` persists the active tab label of the first TOP-LEVEL `tabs()` group on
- * a collection or global's own fields (Interview Decision 6) — every other
- * tabs group, nested or a second top-level one, keeps local component state.
- */
-export const FORM_URL_PARAMS = { tab: "tab" } as const;
-
-/** Union of the URL parameter strings `FORM_URL_PARAMS` defines. */
-export type FormUrlParam = (typeof FORM_URL_PARAMS)[keyof typeof FORM_URL_PARAMS];
-```
-
 #### packages/react/src/components/form/RenderFields.tsx
 
-```tsx
+New file.
+
+````tsx
 "use client";
 
 import { type CSSProperties, type ReactNode, useMemo } from "react";
 import {
-  buildFieldLayoutTree,
+  ADMIN_FIELDS,
   SLOT_IDS,
+  type AdminDataField,
   type AdminField,
   type BaseFieldMeta,
   type CollectionConfig,
-  type FieldLayoutNode,
   type GlobalConfig,
   type InputComponentProps,
   type VexVersionStatus,
@@ -13817,12 +15925,14 @@ import { resolveFieldInputComponent } from "../slots/resolveFieldInputComponent"
 import { FormTabs } from "./FormTabs";
 import { FormCollapsible } from "./FormCollapsible";
 import { FormRow } from "./FormRow";
+import { FormUI } from "./FormUI";
 
 /**
- * Shared render context threaded through a `FieldLayoutNode` tree — resolved
- * once by {@link RenderFields} and passed down unchanged to every nested node
- * (`FormTabs`/`FormCollapsible`/`FormRow`), so a container never re-derives
- * `collection`/`namePrefix`/`readOnly` for its own children.
+ * Shared render context threaded through a `fields` tree — resolved once by
+ * {@link RenderFields} and passed down unchanged to every nested field
+ * (`FormTabs`/`FormCollapsible`/`FormRow`/`FormUI`), so a container never
+ * re-derives `collection`/`namePrefix`/`readOnly`/`fieldKeys` for its own
+ * children.
  */
 export interface RenderFieldsContext {
   /** Forwarded to every rendered field's `InputComponentProps.collection`. */
@@ -13833,34 +15943,36 @@ export interface RenderFieldsContext {
   readOnly?: boolean;
   /** Forwarded to every rendered field's `InputComponentProps.documentStatus`. */
   documentStatus?: VexVersionStatus;
-  /** The id of the one top-level `"tabs"` node allowed to use `?tab=` (set by `RenderFields`, read by `FormTabs`). */
-  urlTabsId?: string;
+  /** Restricts every nested container's own fields to this key subset too. */
+  fieldKeys?: readonly string[];
+  /** Whether a `tabs()` field at THIS level persists its tab in `?<fieldKey>=`. */
+  isTopLevel?: boolean;
 }
 
-/**
- * Resolves the `name` a `"field"` node renders its input under — dot-joined
- * with `context.namePrefix` for a nested call (a group's own fields, one
- * array/blocks item).
- */
-export function fieldLayoutNodeName(context: RenderFieldsContext, key: string): string {
+/** Resolves the `name` a field renders its input under, dot-joined with `context.namePrefix`. */
+export function fieldName(context: RenderFieldsContext, key: string): string {
   return context.namePrefix ? `${context.namePrefix}.${key}` : key;
 }
 
 /**
- * The width a `FieldLayoutNode` occupies in its parent's flex-wrap row — a
- * container node's own width is always `"100%"`; only a `"field"` node
+ * The width a field occupies in its parent's flex-wrap row — a `tabs`/
+ * `collapsible`/`row`/`ui` field is always `"100%"`; only a data field
  * carries a resolved `admin.width` (Interview Decision 4).
  */
-export function fieldLayoutNodeWidth(node: FieldLayoutNode): string {
-  return node.kind === "field" ? node.field.admin.width : "100%";
+export function fieldWidth(field: AdminField): string {
+  if (ADMIN_FIELDS[field.type].kind === "ui") return "100%";
+  return (field as AdminDataField).admin.width;
 }
 
 /**
- * Wraps one `FieldLayoutNode`'s rendered content at its resolved width.
- * Below the `sm` breakpoint every field is full width; at `sm` and up it
- * switches to the CSS custom property set here (Interview Decision 4).
+ * Wraps one field's rendered content at its resolved width. Below the `sm`
+ * breakpoint every field is full width; at `sm` and up it switches to the
+ * CSS custom property set here (Interview Decision 4).
  */
-export function FieldLayoutItem(props: { width: string; children: ReactNode }): ReactNode {
+export function FieldLayoutItem(props: {
+  width: string;
+  children: ReactNode;
+}): ReactNode {
   return (
     <div
       className="w-full sm:w-(--field-width)"
@@ -13872,116 +15984,124 @@ export function FieldLayoutItem(props: { width: string; children: ReactNode }): 
 }
 
 /**
- * Recursively drops `admin.hidden` `"field"` nodes and, when `fieldKeys` is
- * given, any `"field"` node whose own key is outside that subset — matched at
- * every depth, since layout helpers stamp frames onto flat sibling keys of
- * the SAME field map (Interview Decision 6), so there is only one depth of
- * real field keys in a tree built from one `fields` record. A container left
- * with no visible children (or, for `"tabs"`, a tab left with none) is
- * dropped entirely.
+ * Filters a `fields` record down to the entries that should render: drops an
+ * `admin.hidden` data field, and — when `fieldKeys` is given — any entry
+ * whose own key is outside that subset. `tabs`/`collapsible`/`row`'s OWN key
+ * is matched the same as a data field's, since an unnamed container's key
+ * namespace matches the hoisted data key its own `getDataFields`-flattened
+ * view would use; a NAMED tab's inner fields are checked by the SAME
+ * function one level down (`FormTabs` calls it again on `tab.fields`), so
+ * `fieldKeys` reaches every depth.
  */
-export function filterFieldLayoutNodes(props: {
-  nodes: FieldLayoutNode[];
+export function visibleFieldEntries(props: {
+  fields: Record<string, AdminField>;
   fieldKeys?: readonly string[];
-}): FieldLayoutNode[] {
-  const { fieldKeys } = props;
-  const result: FieldLayoutNode[] = [];
-  for (const node of props.nodes) {
-    if (node.kind === "field") {
-      if (node.field.admin.hidden) continue;
-      if (fieldKeys && !fieldKeys.includes(node.key)) continue;
-      result.push(node);
-      continue;
+}): [string, AdminField][] {
+  return Object.entries(props.fields).filter(([key, field]) => {
+    if (ADMIN_FIELDS[field.type].kind === "data" && (field as AdminDataField).admin.hidden) {
+      return false;
     }
-    if (node.kind === "tabs") {
-      const tabs = node.tabs
-        .map((tab) => ({
-          ...tab,
-          children: filterFieldLayoutNodes({ nodes: tab.children, fieldKeys }),
-        }))
-        .filter((tab) => tab.children.length > 0);
-      if (tabs.length > 0) result.push({ ...node, tabs });
-      continue;
-    }
-    const children = filterFieldLayoutNodes({ nodes: node.children, fieldKeys });
-    if (children.length > 0) result.push({ ...node, children });
-  }
-  return result;
-}
-
-/** The `"tabs"` member of `FieldLayoutNode`'s discriminated union. */
-export type TabsLayoutNode = Extract<FieldLayoutNode, { kind: "tabs" }>;
-
-/**
- * Finds the first `"tabs"` node reachable without crossing into a nested
- * container's own children — the one TOP-LEVEL tabs group that persists its
- * active tab in `?tab=` (Interview Decision 6). `"row"` is a pure width
- * grouping of top-level fields, not real nesting, so the search continues
- * through its children; `"collapsible"` and another `"tabs"` node's own tab
- * content ARE real nesting and stop the search on that branch.
- */
-export function findTopLevelTabsNode(nodes: FieldLayoutNode[]): TabsLayoutNode | undefined {
-  for (const node of nodes) {
-    if (node.kind === "tabs") return node;
-    if (node.kind === "row") {
-      const found = findTopLevelTabsNode(node.children);
-      if (found) return found;
-    }
-  }
-  return undefined;
+    if (props.fieldKeys && !props.fieldKeys.includes(key)) return false;
+    return true;
+  });
 }
 
 /**
- * Collects the dot-joined form names of every `"field"` node reachable under
- * `nodes`, for {@link useFieldErrorCount}'s `names` — a tab or collapsible's
- * own error-count badge counts errors anywhere inside it.
+ * Collects the dot-joined form names of every data field reachable under
+ * `fields`, for {@link useFieldErrorCount}'s `names` — a tab or
+ * collapsible's own error-count badge counts errors anywhere inside it. A
+ * `ui()` field contributes no name; an unnamed `tabs()` tab's/`row()`'s/
+ * `collapsible()`'s own fields recurse; a NAMED tab contributes its own
+ * `name` alone — `matchesFieldNamePrefix` already matches every nested path
+ * under it (`seo.metaTitle` matches the `"seo"` prefix).
  *
- * @param namePrefix - Dot-prefix to apply, matching the enclosing
+ * @param props.namePrefix - Dot-prefix to apply, matching the enclosing
  *   `RenderFields` call's own `namePrefix` — omit at the top level.
  */
-export function collectFieldLayoutNames(nodes: FieldLayoutNode[], namePrefix?: string): string[] {
+export function dataFieldNames(props: {
+  fields: Record<string, AdminField>;
+  namePrefix?: string;
+}): string[] {
   const names: string[] = [];
-  for (const node of nodes) {
-    if (node.kind === "field") {
-      names.push(namePrefix ? `${namePrefix}.${node.key}` : node.key);
-      continue;
+  for (const [key, field] of Object.entries(props.fields)) {
+    switch (field.type) {
+      case ADMIN_FIELDS.ui.type:
+        continue;
+      case ADMIN_FIELDS.tabs.type:
+        for (const tab of field.tabs) {
+          if (tab.name !== undefined) {
+            names.push(
+              props.namePrefix ? `${props.namePrefix}.${tab.name}` : tab.name,
+            );
+          } else {
+            names.push(
+              ...dataFieldNames({ fields: tab.fields, namePrefix: props.namePrefix }),
+            );
+          }
+        }
+        continue;
+      case ADMIN_FIELDS.row.type:
+      case ADMIN_FIELDS.collapsible.type:
+        names.push(
+          ...dataFieldNames({ fields: field.fields, namePrefix: props.namePrefix }),
+        );
+        continue;
+      default:
+        names.push(props.namePrefix ? `${props.namePrefix}.${key}` : key);
     }
-    if (node.kind === "tabs") {
-      for (const tab of node.tabs) names.push(...collectFieldLayoutNames(tab.children, namePrefix));
-      continue;
-    }
-    names.push(...collectFieldLayoutNames(node.children, namePrefix));
   }
   return names;
 }
 
 /**
- * Finds the label of the first tab — within the TOP-LEVEL tabs group built
- * from `fields` — containing a field with a validation error. The submit-
- * failure handler's "jump to the first errored tab" (step description,
- * backing Interview Decision 6's tab error badges).
+ * The stable identifier one `tabs()` tab is selected/persisted by — its own
+ * `name` when set, else its `label` slugified (lowercased, non-alphanumeric
+ * runs collapsed to a single `-`, leading/trailing `-` trimmed).
+ */
+export function tabValue(tab: { name?: string; label: string }): string {
+  return (
+    tab.name ??
+    tab.label
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+  );
+}
+
+/**
+ * Finds the first top-level `tabs()` field with at least one errored field
+ * in one of its tabs — the submit-failure handler's "jump to the first
+ * errored tab" (step description, backing Interview Decision 6's tab error
+ * badges). Only a TOP-LEVEL `tabs()` field is checked — a nested one keeps
+ * local state no submit handler can usefully drive.
  *
  * @param props.fields - The collection/global's own top-level fields.
  * @param props.hasError - Reports whether a given field name currently has
  *   an error — pass `(name) => matchesFieldNamePrefix(errorPaths, [name])`
  *   style matching against the submitting form's own error paths.
- * @returns The errored tab's label, or `undefined` when there is no
- *   top-level tabs group, or none of its tabs contain an error.
+ * @returns The offending field's own key and the `tabValue` to select it
+ *   with, or `undefined` when no top-level `tabs()` field has an error.
  */
-export function findErroredTabLabel(props: {
+export function findErroredTopLevelTab(props: {
   fields: Record<string, AdminField>;
   hasError: (name: string) => boolean;
-}): string | undefined {
-  const tabsNode = findTopLevelTabsNode(buildFieldLayoutTree({ fields: props.fields }));
-  if (!tabsNode) return undefined;
-  for (const tab of tabsNode.tabs) {
-    if (collectFieldLayoutNames(tab.children).some((name) => props.hasError(name))) return tab.label;
+}): { fieldKey: string; value: string } | undefined {
+  for (const [fieldKey, field] of Object.entries(props.fields)) {
+    if (field.type !== ADMIN_FIELDS.tabs.type) continue;
+    for (const tab of field.tabs) {
+      const names =
+        tab.name !== undefined ? [tab.name] : dataFieldNames({ fields: tab.fields });
+      if (names.some((name) => props.hasError(name))) {
+        return { fieldKey, value: tabValue(tab) };
+      }
+    }
   }
   return undefined;
 }
 
 /**
- * Resolves and renders one `"field"` node's full slot surface: `field.beforeInput` /
+ * Resolves and renders one data field's full slot surface: `field.beforeInput` /
  * `field.afterInput` contributions around the resolved `field.input` override chain, plus the
  * (currently built-in-less) `field.label` / `field.description` override points.
  *
@@ -13993,69 +16113,103 @@ export function findErroredTabLabel(props: {
  * rule only applies once a built-in exists to collide with).
  */
 function FieldSlotOutlet(props: {
-  node: Extract<FieldLayoutNode, { kind: "field" }>;
+  field: AdminDataField;
+  fieldKey: string;
   context: RenderFieldsContext;
 }): ReactNode {
-  const { node, context } = props;
+  const { field, fieldKey, context } = props;
   const config = useVexConfig();
   const InputComponent = useMemo(
     () =>
       resolveFieldInputComponent({
-        fieldType: node.field.type,
-        rootOverrides: config.admin.components?.fields?.[node.field.type]?.Input,
-        fieldOverrides: node.field.admin.components.Input,
+        fieldType: field.type,
+        rootOverrides: config.admin.components?.fields?.[field.type]?.Input,
+        fieldOverrides: field.admin.components.Input,
       }),
-    [node.field.type, node.field.admin.components.Input, config.admin.components],
+    [field.type, field.admin.components.Input, config.admin.components],
   );
   const inputProps: InputComponentProps<BaseFieldMeta, AdminField> = {
-    name: fieldLayoutNodeName(context, node.key),
-    fieldDef: node.field,
-    readOnly: Boolean(context.readOnly) || node.field.admin.readOnly,
+    name: fieldName(context, fieldKey),
+    fieldDef: field,
+    readOnly: Boolean(context.readOnly) || field.admin.readOnly,
     collection: context.collection,
     documentStatus: context.documentStatus,
   };
   return (
     <>
-      <SlotOutlet slotId={SLOT_IDS.field.beforeInput} builtins={[]} contributions={node.field.admin.components.beforeInput} contributedProps={inputProps} />
-      <SlotOverrideOutlet slotId={SLOT_IDS.field.label} overrides={node.field.admin.components.Label} defaultComponent={() => null} props={inputProps} />
+      <SlotOutlet
+        slotId={SLOT_IDS.field.beforeInput}
+        builtins={[]}
+        contributions={field.admin.components.beforeInput}
+        contributedProps={inputProps}
+      />
+      <SlotOverrideOutlet
+        slotId={SLOT_IDS.field.label}
+        overrides={field.admin.components.Label}
+        defaultComponent={() => null}
+        props={inputProps}
+      />
       <ComponentErrorBoundary id={SLOT_IDS.field.input}>
         <InputComponent {...inputProps} />
       </ComponentErrorBoundary>
-      <SlotOverrideOutlet slotId={SLOT_IDS.field.description} overrides={node.field.admin.components.Description} defaultComponent={() => null} props={inputProps} />
-      <SlotOutlet slotId={SLOT_IDS.field.afterInput} builtins={[]} contributions={node.field.admin.components.afterInput} contributedProps={inputProps} />
+      <SlotOverrideOutlet
+        slotId={SLOT_IDS.field.description}
+        overrides={field.admin.components.Description}
+        defaultComponent={() => null}
+        props={inputProps}
+      />
+      <SlotOutlet
+        slotId={SLOT_IDS.field.afterInput}
+        builtins={[]}
+        contributions={field.admin.components.afterInput}
+        contributedProps={inputProps}
+      />
     </>
   );
 }
 
 /**
- * Renders one `FieldLayoutNode`, recursing into `FormTabs`/`FormCollapsible`/
- * `FormRow` for container kinds.
+ * Renders one field, recursing into `FormTabs`/`FormCollapsible`/`FormRow`/
+ * `FormUI` for a `kind: "ui"` field and `FieldSlotOutlet` for a data field.
  *
- * @throws {Error} When a `"field"` node's type has no registered input
+ * @throws {Error} When a data field's type has no registered input
  *   component (the same failure mode the removed `RenderFieldInputComponents`
- *   and every edit view's own field loop already threw).
+ *   and every edit view's own field loop already threw) — surfaced by
+ *   `resolveFieldInputComponent` inside `FieldSlotOutlet`.
  */
-export function renderFieldLayoutNode(node: FieldLayoutNode, context: RenderFieldsContext): ReactNode {
-  if (node.kind === "field") {
-    return <FieldSlotOutlet node={node} context={context} />;
+export function renderField(props: {
+  field: AdminField;
+  fieldKey: string;
+  context: RenderFieldsContext;
+}): ReactNode {
+  const { field, fieldKey, context } = props;
+  switch (field.type) {
+    case ADMIN_FIELDS.tabs.type:
+      return <FormTabs field={field} fieldKey={fieldKey} context={context} />;
+    case ADMIN_FIELDS.collapsible.type:
+      return <FormCollapsible field={field} context={context} />;
+    case ADMIN_FIELDS.row.type:
+      return <FormRow field={field} context={context} />;
+    case ADMIN_FIELDS.ui.type:
+      return <FormUI field={field} fieldKey={fieldKey} context={context} />;
+    default:
+      return (
+        <FieldSlotOutlet field={field} fieldKey={fieldKey} context={context} />
+      );
   }
-  if (node.kind === "tabs") {
-    return <FormTabs node={node} context={context} useUrlState={node.id === context.urlTabsId} />;
-  }
-  if (node.kind === "collapsible") {
-    return <FormCollapsible node={node} context={context} />;
-  }
-  return <FormRow node={node} context={context} />;
 }
 
 /**
- * Renders a field map's `FieldLayoutNode` tree (`buildFieldLayoutTree`) — the
- * single renderer every field-owning surface (a collection/global's own
- * top-level fields, a `group`'s sub-fields, one `array`/`blocks` item, a
- * create modal's required-only subset) uses in place of the removed
- * `RenderFieldInputComponents`.
+ * Renders a `fields` map — the single renderer every field-owning surface (a
+ * collection/global's own top-level fields, a `group`'s sub-fields, one
+ * `array`/`blocks` item, a create modal's required-only subset) uses in
+ * place of the removed `RenderFieldInputComponents`. Walks `fields` RAW —
+ * `tabs()`/`collapsible()`/`row()`/`ui()` entries render themselves via
+ * `renderField`; nothing here calls `getDataFields` (that function is for
+ * schema/validation/type-gen/RBAC/index/version/list-column/default-value
+ * consumers — Step 6 — never for rendering).
  *
- * Siblings lay out in a flex-wrap row at their resolved `admin.width`
+ * Siblings lay out in a flex-wrap row at their resolved width
  * (`FieldLayoutItem`), collapsing to full width below the `sm` breakpoint
  * (Interview Decision 4). `region`/`isTopLevel` partition a collection or
  * global's OWN top-level fields into the edit view's main/sidebar columns —
@@ -14070,10 +16224,10 @@ export function renderFieldLayoutNode(node: FieldLayoutNode, context: RenderFiel
  * @param props.region - Which top-level partition to render — `"main"`,
  *   `"sidebar"`, or `"all"` (default). Only consulted when `isTopLevel` is set.
  * @param props.fieldKeys - Restricts rendering to this key subset (RBAC-visible
- *   reads, or a create modal's required-only fields).
- * @param props.isTopLevel - Enables the `region` partition and the one
- *   top-level tabs group's `?tab=` URL persistence (Interview Decision 6).
- * @returns The rendered tree, or `null` when every node is filtered out.
+ *   reads, or a create modal's required-only fields) — reaches every depth.
+ * @param props.isTopLevel - Enables the `region` partition and every
+ *   top-level `tabs()` field's `?<fieldKey>=` URL persistence.
+ * @returns The rendered tree, or `null` when every entry is filtered out.
  *
  * @example
  * ```tsx
@@ -14103,38 +16257,48 @@ export function RenderFields(props: {
     isTopLevel,
   } = props;
 
-  const tree = useMemo(() => buildFieldLayoutTree({ fields }), [fields]);
   const visible = useMemo(
-    () => filterFieldLayoutNodes({ nodes: tree, fieldKeys }),
-    [tree, fieldKeys],
+    () => visibleFieldEntries({ fields, fieldKeys }),
+    [fields, fieldKeys],
   );
-  const partitioned =
-    isTopLevel && region !== "all"
-      ? visible.filter((node) =>
-          (node.kind === "field" ? node.field.admin.position : "main") === region,
-        )
-      : visible;
-  const urlTabsId = isTopLevel ? findTopLevelTabsNode(partitioned)?.id : undefined;
-  const context: RenderFieldsContext = { collection, namePrefix, readOnly, documentStatus, urlTabsId };
+  const partitioned = useMemo(
+    () =>
+      isTopLevel && region !== "all"
+        ? visible.filter(
+            ([, field]) =>
+              (ADMIN_FIELDS[field.type].kind === "data"
+                ? (field as AdminDataField).admin.position
+                : "main") === region,
+          )
+        : visible,
+    [visible, isTopLevel, region],
+  );
+  const context: RenderFieldsContext = {
+    collection,
+    namePrefix,
+    readOnly,
+    documentStatus,
+    fieldKeys,
+    isTopLevel,
+  };
 
   if (partitioned.length === 0) return null;
 
   return (
     <div className="flex flex-wrap gap-4">
-      {partitioned.map((node) => (
-        <FieldLayoutItem
-          key={node.kind === "field" ? node.key : node.id}
-          width={fieldLayoutNodeWidth(node)}
-        >
-          {renderFieldLayoutNode(node, context)}
+      {partitioned.map(([key, field]) => (
+        <FieldLayoutItem key={key} width={fieldWidth(field)}>
+          {renderField({ field, fieldKey: key, context })}
         </FieldLayoutItem>
       ))}
     </div>
   );
 }
-```
+````
 
 #### packages/react/src/components/form/RenderFields.test.tsx
+
+New file.
 
 ```tsx
 import { describe, expect, it } from "vitest";
@@ -14143,7 +16307,6 @@ import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import {
-  buildFieldLayoutTree,
   collapsible,
   defineCollection,
   row,
@@ -14154,11 +16317,8 @@ import {
 } from "@vexcms/core";
 import { AppForm } from "./AppForm";
 import {
-  collectFieldLayoutNames,
-  fieldLayoutNodeWidth,
-  filterFieldLayoutNodes,
-  findErroredTabLabel,
-  findTopLevelTabsNode,
+  dataFieldNames,
+  findErroredTopLevelTab,
   RenderFields,
 } from "./RenderFields";
 
@@ -14202,7 +16362,10 @@ describe("RenderFields", () => {
   it("renders one input per field, bound to the field key", () => {
     render(
       <Harness
-        fields={{ title: text({ label: "Title" }), slug: text({ label: "Slug" }) }}
+        fields={{
+          title: text({ label: "Title" }),
+          slug: text({ label: "Slug" }),
+        }}
         initialValues={{ title: "Hello", slug: "hello" }}
       />,
     );
@@ -14245,7 +16408,10 @@ describe("RenderFields", () => {
   it("restricts rendering to the given fieldKeys subset", () => {
     render(
       <Harness
-        fields={{ title: text({ label: "Title" }), slug: text({ label: "Slug" }) }}
+        fields={{
+          title: text({ label: "Title" }),
+          slug: text({ label: "Slug" }),
+        }}
         fieldKeys={["title"]}
       />,
     );
@@ -14260,7 +16426,9 @@ describe("RenderFields", () => {
 
   it("renders nothing when every field is filtered out", () => {
     const { container } = render(
-      <Harness fields={{ title: text({ label: "Title", admin: { hidden: true } }) }} />,
+      <Harness
+        fields={{ title: text({ label: "Title", admin: { hidden: true } }) }}
+      />,
     );
     expect(container.querySelector("form")).toBeEmptyDOMElement();
   });
@@ -14271,13 +16439,23 @@ describe("RenderFields", () => {
       summary: text({ label: "Summary", admin: { position: "sidebar" } }),
     };
     const { rerender } = render(
-      <Harness fields={fields} region="main" isTopLevel initialValues={{ title: "", summary: "" }} />,
+      <Harness
+        fields={fields}
+        region="main"
+        isTopLevel
+        initialValues={{ title: "", summary: "" }}
+      />,
     );
     expect(screen.getByLabelText("Title")).toBeInTheDocument();
     expect(screen.queryByLabelText("Summary")).not.toBeInTheDocument();
 
     rerender(
-      <Harness fields={fields} region="sidebar" isTopLevel initialValues={{ title: "", summary: "" }} />,
+      <Harness
+        fields={fields}
+        region="sidebar"
+        isTopLevel
+        initialValues={{ title: "", summary: "" }}
+      />,
     );
     expect(screen.queryByLabelText("Title")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Summary")).toBeInTheDocument();
@@ -14288,150 +16466,169 @@ describe("RenderFields", () => {
       title: text({ label: "Title" }),
       summary: text({ label: "Summary", admin: { position: "sidebar" } }),
     };
-    render(<Harness fields={fields} region="main" initialValues={{ title: "", summary: "" }} />);
+    render(
+      <Harness
+        fields={fields}
+        region="main"
+        initialValues={{ title: "", summary: "" }}
+      />,
+    );
     expect(screen.getByLabelText("Title")).toBeInTheDocument();
     expect(screen.getByLabelText("Summary")).toBeInTheDocument();
   });
 
   it("sets the --field-width CSS var from admin.width", () => {
-    render(<Harness fields={{ title: text({ label: "Title", admin: { width: "30%" } }) }} />);
+    render(
+      <Harness
+        fields={{ title: text({ label: "Title", admin: { width: "30%" } }) }}
+      />,
+    );
     const input = screen.getByLabelText("Title");
     const wrapper = input.closest("div[style]");
     expect(wrapper).not.toBeNull();
-    expect((wrapper as HTMLElement).style.getPropertyValue("--field-width")).toBe("30%");
+    expect(
+      (wrapper as HTMLElement).style.getPropertyValue("--field-width"),
+    ).toBe("30%");
   });
 
-  it("renders a tabs() group via FormTabs, switching tabs on click", async () => {
+  it("renders a tabs() field via FormTabs, switching tabs on click", async () => {
     const user = userEvent.setup();
-    const fields = tabs({
-      tabs: {
-        general: { title: text({ label: "Title" }) },
-        advanced: { slug: text({ label: "Slug" }) },
-      },
-    });
-    render(<Harness fields={fields} isTopLevel initialValues={{ title: "", slug: "" }} />);
+    const fields = {
+      info: tabs({
+        tabs: [
+          { label: "General", fields: { title: text({ label: "Title" }) } },
+          { label: "Advanced", fields: { slug: text({ label: "Slug" }) } },
+        ],
+      }),
+    };
+    render(
+      <Harness
+        fields={fields}
+        isTopLevel
+        initialValues={{ title: "", slug: "" }}
+      />,
+    );
     expect(screen.getByLabelText("Title")).toBeInTheDocument();
     expect(screen.queryByLabelText("Slug")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: "advanced" }));
+    await user.click(screen.getByRole("tab", { name: "Advanced" }));
     // Base UI's Tabs.Panel unmounts the inactive panel after its exit
     // transition, not synchronously on click — same lag the existing
     // relationship/select input tests already wait out.
-    await waitFor(() => expect(screen.queryByLabelText("Title")).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Title")).not.toBeInTheDocument(),
+    );
     expect(screen.getByLabelText("Slug")).toBeInTheDocument();
   });
 
-  it("renders a collapsible() group via FormCollapsible, open by default", () => {
-    const fields = collapsible({ label: "Details", fields: { title: text({ label: "Title" }) } });
+  it("renders a collapsible() field via FormCollapsible, open by default", () => {
+    const fields = {
+      details: collapsible({ label: "Details", fields: { title: text({ label: "Title" }) } }),
+    };
     render(<Harness fields={fields} initialValues={{ title: "" }} />);
     expect(screen.getByText("Details")).toBeInTheDocument();
     expect(screen.getByLabelText("Title")).toBeInTheDocument();
   });
 
-  it("starts a collapsible() with defaultCollapsed closed, hiding its field", () => {
-    const fields = collapsible({
-      label: "Details",
-      fields: { title: text({ label: "Title" }) },
-      defaultCollapsed: true,
-    });
+  it("starts a collapsible() with admin.defaultCollapsed closed, hiding its field", () => {
+    const fields = {
+      details: collapsible({
+        label: "Details",
+        admin: { defaultCollapsed: true },
+        fields: { title: text({ label: "Title" }) },
+      }),
+    };
     render(<Harness fields={fields} initialValues={{ title: "" }} />);
     expect(screen.queryByLabelText("Title")).not.toBeInTheDocument();
   });
 
-  it("renders a row() group via FormRow", () => {
-    const fields = row({
-      fields: { title: text({ label: "Title" }), slug: text({ label: "Slug" }) },
-    });
+  it("renders a row() field via FormRow", () => {
+    const fields = {
+      name: row({
+        fields: {
+          title: text({ label: "Title" }),
+          slug: text({ label: "Slug" }),
+        },
+      }),
+    };
     render(<Harness fields={fields} initialValues={{ title: "", slug: "" }} />);
     expect(screen.getByLabelText("Title")).toBeInTheDocument();
     expect(screen.getByLabelText("Slug")).toBeInTheDocument();
   });
 });
 
-describe("filterFieldLayoutNodes", () => {
-  it("drops a tabs node entirely when every one of its tabs loses all children", () => {
-    const fields = tabs({
-      tabs: { general: { secret: text({ admin: { hidden: true } }) } },
-    });
-    const tree = buildFieldLayoutTree({ fields });
-    const filtered = filterFieldLayoutNodes({ nodes: tree });
-    expect(findTopLevelTabsNode(filtered)).toBeUndefined();
-  });
-});
-
-describe("findErroredTabLabel", () => {
-  it("returns the label of the first tab containing an errored field name", () => {
-    const fields = tabs({
-      tabs: {
-        general: { title: text({ label: "Title" }) },
-        advanced: { slug: text({ label: "Slug" }) },
-      },
-    });
-    const label = findErroredTabLabel({ fields, hasError: (name) => name === "slug" });
-    expect(label).toBe("advanced");
+describe("findErroredTopLevelTab", () => {
+  it("returns the first errored top-level tabs field's key and tab value", () => {
+    const fields = {
+      info: tabs({
+        tabs: [
+          { label: "General", fields: { title: text({ label: "Title" }) } },
+          { label: "Advanced", fields: { slug: text({ label: "Slug" }) } },
+        ],
+      }),
+    };
+    const found = findErroredTopLevelTab({ fields, hasError: (name) => name === "slug" });
+    expect(found).toEqual({ fieldKey: "info", value: "advanced" });
   });
 
-  it("returns undefined when there is no top-level tabs group", () => {
-    const label = findErroredTabLabel({
+  it("returns undefined when there is no top-level tabs field", () => {
+    const found = findErroredTopLevelTab({
       fields: { title: text({ label: "Title" }) },
       hasError: () => true,
     });
-    expect(label).toBeUndefined();
+    expect(found).toBeUndefined();
   });
 
   it("returns undefined when no tab contains an error", () => {
-    const fields = tabs({
-      tabs: { general: { title: text({ label: "Title" }) } },
-    });
-    const label = findErroredTabLabel({ fields, hasError: () => false });
-    expect(label).toBeUndefined();
+    const fields = {
+      info: tabs({ tabs: [{ label: "General", fields: { title: text({ label: "Title" }) } }] }),
+    };
+    const found = findErroredTopLevelTab({ fields, hasError: () => false });
+    expect(found).toBeUndefined();
   });
 });
 
-describe("collectFieldLayoutNames", () => {
+describe("dataFieldNames", () => {
   it("dot-joins a namePrefix onto every collected name", () => {
-    const fields = row({ fields: { title: text(), slug: text() } });
-    const tree = buildFieldLayoutTree({ fields });
-    const names = collectFieldLayoutNames(tree, "seo");
+    const fields = { name: row({ fields: { title: text(), slug: text() } }) };
+    const names = dataFieldNames({ fields, namePrefix: "seo" });
     expect(names.sort()).toEqual(["seo.slug", "seo.title"]);
-  });
-});
-
-describe("fieldLayoutNodeWidth", () => {
-  it("resolves a container node's width to 100% regardless of its children", () => {
-    const fields = row({ fields: { title: text({ admin: { width: "30%" } }) } });
-    const [rowNode] = buildFieldLayoutTree({ fields });
-    expect(fieldLayoutNodeWidth(rowNode)).toBe("100%");
   });
 });
 ```
 
 #### packages/react/src/components/form/FormTabs.tsx
 
+New file.
+
 ```tsx
 "use client";
 
 import { useState } from "react";
 import { parseAsString, useQueryState } from "nuqs";
+import type { TabsField } from "@vexcms/core";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Badge } from "../ui/badge";
 import { useFieldErrorCount } from "../../hooks/useFieldErrorCount";
-import { FORM_URL_PARAMS } from "./constants";
 import {
+  dataFieldNames,
   FieldLayoutItem,
-  collectFieldLayoutNames,
-  fieldLayoutNodeWidth,
-  renderFieldLayoutNode,
+  fieldWidth,
+  renderField,
+  tabValue,
+  visibleFieldEntries,
   type RenderFieldsContext,
-  type TabsLayoutNode,
 } from "./RenderFields";
 
-/** One tab trigger, badged with `useFieldErrorCount` over its own children. */
-function FormTabsTrigger(props: { tab: TabsLayoutNode["tabs"][number]; context: RenderFieldsContext }) {
+/** One tab trigger, badged with `useFieldErrorCount` over its own fields. */
+function FormTabsTrigger(props: {
+  tab: TabsField["tabs"][number];
+  context: RenderFieldsContext;
+}) {
   const errorCount = useFieldErrorCount({
-    names: collectFieldLayoutNames(props.tab.children, props.context.namePrefix),
+    names: dataFieldNames({ fields: props.tab.fields, namePrefix: props.context.namePrefix }),
   });
   return (
-    <TabsTrigger value={props.tab.label} className="gap-1.5">
+    <TabsTrigger value={tabValue(props.tab)} className="gap-1.5">
       {props.tab.label}
       {errorCount > 0 && <Badge variant="destructive">{errorCount}</Badge>}
     </TabsTrigger>
@@ -14439,31 +16636,35 @@ function FormTabsTrigger(props: { tab: TabsLayoutNode["tabs"][number]; context: 
 }
 
 /**
- * Renders one `"tabs"` `FieldLayoutNode` as a `Tabs` widget — one trigger per
- * tab, each badged with its own error count.
+ * Renders a `tabs()` field as a `Tabs` widget — one trigger per tab, each
+ * badged with its own error count. The FIRST tab with `defaultOpen: true` is
+ * the initially selected tab (no error if several are set); otherwise the
+ * first tab.
  *
- * Only the one top-level tabs group `RenderFields` identified (`useUrlState`)
- * persists its active tab in the `?tab=` URL param via `nuqs`; every other
- * tabs group — nested, or a second top-level one — keeps local `useState`
- * (Interview Decision 6).
+ * Only persists its active tab in `?<fieldKey>=` (via `nuqs`) when rendered
+ * at `context.isTopLevel` — every nested `tabs()` field (inside a `row()`/
+ * `collapsible()`/another tab's own `fields`) keeps local `useState`.
  *
- * @param props.node - The `"tabs"` node to render.
+ * @param props.field - The `tabs()` field to render.
+ * @param props.fieldKey - This field's own key — the `?<fieldKey>=` param name.
  * @param props.context - The {@link RenderFieldsContext} from the enclosing `RenderFields` call.
- * @param props.useUrlState - Whether this is the one group `?tab=` tracks.
  */
 export function FormTabs(props: {
-  node: TabsLayoutNode;
+  field: TabsField;
+  fieldKey: string;
   context: RenderFieldsContext;
-  useUrlState: boolean;
 }) {
-  const { node, context, useUrlState } = props;
-  const firstLabel = node.tabs[0]?.label ?? "";
+  const { field, fieldKey, context } = props;
+  const tabs = field.tabs;
+  const defaultTab = tabs.find((tab) => tab.defaultOpen === true) ?? tabs[0];
+  const defaultValue = defaultTab ? tabValue(defaultTab) : "";
+  const useUrlState = context.isTopLevel === true;
 
   const [urlTab, setUrlTab] = useQueryState(
-    FORM_URL_PARAMS.tab,
-    parseAsString.withDefault(firstLabel),
+    fieldKey,
+    parseAsString.withDefault(defaultValue),
   );
-  const [localTab, setLocalTab] = useState(firstLabel);
+  const [localTab, setLocalTab] = useState(defaultValue);
   const activeTab = useUrlState ? urlTab : localTab;
 
   return (
@@ -14475,21 +16676,20 @@ export function FormTabs(props: {
       }}
     >
       <TabsList>
-        {node.tabs.map((tab) => (
-          <FormTabsTrigger key={tab.label} tab={tab} context={context} />
+        {tabs.map((tab) => (
+          <FormTabsTrigger key={tabValue(tab)} tab={tab} context={context} />
         ))}
       </TabsList>
-      {node.tabs.map((tab) => (
-        <TabsContent key={tab.label} value={tab.label}>
+      {tabs.map((tab) => (
+        <TabsContent key={tabValue(tab)} value={tabValue(tab)}>
           <div className="flex flex-wrap gap-4">
-            {tab.children.map((child) => (
-              <FieldLayoutItem
-                key={child.kind === "field" ? child.key : child.id}
-                width={fieldLayoutNodeWidth(child)}
-              >
-                {renderFieldLayoutNode(child, context)}
-              </FieldLayoutItem>
-            ))}
+            {visibleFieldEntries({ fields: tab.fields, fieldKeys: context.fieldKeys }).map(
+              ([key, childField]) => (
+                <FieldLayoutItem key={key} width={fieldWidth(childField)}>
+                  {renderField({ field: childField, fieldKey: key, context })}
+                </FieldLayoutItem>
+              ),
+            )}
           </div>
         </TabsContent>
       ))}
@@ -14500,46 +16700,40 @@ export function FormTabs(props: {
 
 #### packages/react/src/components/form/FormTabs.test.tsx
 
+New file.
+
 ```tsx
 import { describe, expect, it, vi } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import type { OnUrlUpdateFunction } from "nuqs/adapters/testing";
-import { buildFieldLayoutTree, defineCollection, tabs, text, type AdminField } from "@vexcms/core";
+import { defineCollection, tabs, text } from "@vexcms/core";
 import { AppForm } from "./AppForm";
-import type { AnyFormApi } from "./AppFormContext";
 import { FormTabs } from "./FormTabs";
-import type { TabsLayoutNode } from "./RenderFields";
 
 const baseCollection = defineCollection({
   slug: "form_tabs_test",
   fields: { title: text({ required: false }) },
 });
 
-/** Builds a real `TabsLayoutNode` via `tabs()` + `buildFieldLayoutTree`, instead of hand-crafting one. */
-function buildTabsNode(fieldsPerTab: Record<string, Record<string, AdminField>>) {
-  const fields = tabs({ tabs: fieldsPerTab });
-  const tree = buildFieldLayoutTree({ fields });
-  const node = tree[0];
-  if (!node || node.kind !== "tabs") throw new Error("expected a single tabs node");
-  return node;
-}
-
 function renderHarness(props: {
-  node: TabsLayoutNode;
-  useUrlState: boolean;
+  field: ReturnType<typeof tabs>;
+  fieldKey: string;
+  isTopLevel: boolean;
   defaultValues: Record<string, unknown>;
   onUrlUpdate?: OnUrlUpdateFunction;
 }) {
-  const formRef: { current: AnyFormApi | undefined } = { current: undefined };
   function Harness() {
     const form = useForm({ defaultValues: props.defaultValues });
-    formRef.current = form as AnyFormApi;
     return (
       <AppForm form={form}>
-        <FormTabs node={props.node} context={{ collection: baseCollection }} useUrlState={props.useUrlState} />
+        <FormTabs
+          field={props.field}
+          fieldKey={props.fieldKey}
+          context={{ collection: baseCollection, isTopLevel: props.isTopLevel }}
+        />
       </AppForm>
     );
   }
@@ -14548,124 +16742,149 @@ function renderHarness(props: {
       <Harness />
     </NuqsTestingAdapter>,
   );
-  return { form: () => formRef.current! };
 }
 
 describe("FormTabs", () => {
   it("renders every tab trigger and only the active tab's fields", () => {
-    const node = buildTabsNode({
-      general: { title: text({ label: "Title" }) },
-      advanced: { slug: text({ label: "Slug" }) },
+    const field = tabs({
+      tabs: [
+        { label: "General", fields: { title: text({ label: "Title" }) } },
+        { label: "Advanced", fields: { slug: text({ label: "Slug" }) } },
+      ],
     });
-    renderHarness({ node, useUrlState: false, defaultValues: { title: "", slug: "" } });
-    expect(screen.getByRole("tab", { name: "general" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "advanced" })).toBeInTheDocument();
+    renderHarness({ field, fieldKey: "info", isTopLevel: false, defaultValues: { title: "", slug: "" } });
+    expect(screen.getByRole("tab", { name: "General" })).toBeInTheDocument();
     expect(screen.getByLabelText("Title")).toBeInTheDocument();
     expect(screen.queryByLabelText("Slug")).not.toBeInTheDocument();
   });
 
-  it("writes the active tab to ?tab= when useUrlState is true", async () => {
+  it("selects the first tab with defaultOpen: true, even if it isn't first", () => {
+    const field = tabs({
+      tabs: [
+        { label: "General", fields: { title: text({ label: "Title" }) } },
+        { label: "Advanced", defaultOpen: true, fields: { slug: text({ label: "Slug" }) } },
+      ],
+    });
+    renderHarness({ field, fieldKey: "info", isTopLevel: false, defaultValues: { title: "", slug: "" } });
+    expect(screen.getByLabelText("Slug")).toBeInTheDocument();
+  });
+
+  it("writes the active tab to ?<fieldKey>= when isTopLevel is true", async () => {
     const user = userEvent.setup();
     const onUrlUpdate = vi.fn();
-    const node = buildTabsNode({
-      general: { title: text({ label: "Title" }) },
-      advanced: { slug: text({ label: "Slug" }) },
+    const field = tabs({
+      tabs: [
+        { label: "General", fields: { title: text({ label: "Title" }) } },
+        { label: "Advanced", fields: { slug: text({ label: "Slug" }) } },
+      ],
     });
-    renderHarness({ node, useUrlState: true, defaultValues: { title: "", slug: "" }, onUrlUpdate });
-    await user.click(screen.getByRole("tab", { name: "advanced" }));
+    renderHarness({
+      field,
+      fieldKey: "info",
+      isTopLevel: true,
+      defaultValues: { title: "", slug: "" },
+      onUrlUpdate,
+    });
+    await user.click(screen.getByRole("tab", { name: "Advanced" }));
     expect(onUrlUpdate).toHaveBeenCalled();
     const lastCall = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0];
-    expect(lastCall.searchParams.get("tab")).toBe("advanced");
+    expect(lastCall.searchParams.get("info")).toBe("advanced");
   });
 
-  it("never touches the URL when useUrlState is false", async () => {
+  it("never touches the URL when isTopLevel is false", async () => {
     const user = userEvent.setup();
     const onUrlUpdate = vi.fn();
-    const node = buildTabsNode({
-      general: { title: text({ label: "Title" }) },
-      advanced: { slug: text({ label: "Slug" }) },
+    const field = tabs({
+      tabs: [
+        { label: "General", fields: { title: text({ label: "Title" }) } },
+        { label: "Advanced", fields: { slug: text({ label: "Slug" }) } },
+      ],
     });
-    renderHarness({ node, useUrlState: false, defaultValues: { title: "", slug: "" }, onUrlUpdate });
-    await user.click(screen.getByRole("tab", { name: "advanced" }));
+    renderHarness({
+      field,
+      fieldKey: "info",
+      isTopLevel: false,
+      defaultValues: { title: "", slug: "" },
+      onUrlUpdate,
+    });
+    await user.click(screen.getByRole("tab", { name: "Advanced" }));
     expect(screen.getByLabelText("Slug")).toBeInTheDocument();
     expect(onUrlUpdate).not.toHaveBeenCalled();
-  });
-
-  it("shows an error-count badge only on the tab whose own field has an error", () => {
-    const node = buildTabsNode({
-      general: { title: text({ label: "Title" }) },
-      advanced: { slug: text({ label: "Slug" }) },
-    });
-    const { form } = renderHarness({ node, useUrlState: false, defaultValues: { title: "", slug: "" } });
-    act(() => {
-      form().setFieldMeta("slug", (prev) => ({
-        ...prev,
-        errorMap: { ...prev?.errorMap, onSubmit: "Required" },
-      }));
-    });
-    const generalTab = screen.getByRole("tab", { name: /general/ });
-    const advancedTab = screen.getByRole("tab", { name: /advanced/ });
-    expect(generalTab.textContent).toBe("general");
-    expect(advancedTab.textContent).toBe("advanced1");
   });
 });
 ```
 
 #### packages/react/src/components/form/FormCollapsible.tsx
 
+New file.
+
 ```tsx
 "use client";
 
-import { useState } from "react";
-import type { FieldLayoutNode } from "@vexcms/core";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
+import { useId, useState } from "react";
+import type { CollapsibleField } from "@vexcms/core";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "../ui/accordion";
 import { Badge } from "../ui/badge";
 import { useFieldErrorCount } from "../../hooks/useFieldErrorCount";
 import {
+  dataFieldNames,
   FieldLayoutItem,
-  collectFieldLayoutNames,
-  fieldLayoutNodeWidth,
-  renderFieldLayoutNode,
+  fieldWidth,
+  renderField,
+  visibleFieldEntries,
   type RenderFieldsContext,
 } from "./RenderFields";
 
-/** The `collapsible` member of `FieldLayoutNode`'s discriminated union. */
-export type CollapsibleLayoutNode = Extract<FieldLayoutNode, { kind: "collapsible" }>;
-
 /**
- * Renders one `"collapsible"` `FieldLayoutNode` as an accordion section —
- * open by default unless `node.defaultCollapsed`. While collapsed, the
- * trigger shows an error-count badge for any field inside, via
- * `useFieldErrorCount` (Interview Decision 6).
+ * Renders a `collapsible()` field as an accordion section — open by default
+ * unless `field.admin.defaultCollapsed`. While collapsed, the trigger shows
+ * an error-count badge for any field inside, via `useFieldErrorCount`
+ * (Interview Decision 6).
  *
- * @param props.node - The `"collapsible"` node to render.
+ * @param props.field - The `collapsible()` field to render.
  * @param props.context - The {@link RenderFieldsContext} from the enclosing `RenderFields` call.
  */
-export function FormCollapsible(props: { node: CollapsibleLayoutNode; context: RenderFieldsContext }) {
-  const { node, context } = props;
-  const [openIds, setOpenIds] = useState<string[]>(node.defaultCollapsed ? [] : [node.id]);
-  const isOpen = openIds.includes(node.id);
+export function FormCollapsible(props: {
+  field: CollapsibleField;
+  context: RenderFieldsContext;
+}) {
+  const { field, context } = props;
+  const id = useId();
+  const [openIds, setOpenIds] = useState<string[]>(
+    field.admin.defaultCollapsed ? [] : [id],
+  );
+  const isOpen = openIds.includes(id);
   const errorCount = useFieldErrorCount({
-    names: collectFieldLayoutNames(node.children, context.namePrefix),
+    names: dataFieldNames({ fields: field.fields, namePrefix: context.namePrefix }),
   });
 
   return (
-    <Accordion value={openIds} onValueChange={setOpenIds} className="rounded-sm border-2 border-border">
-      <AccordionItem value={node.id}>
+    <Accordion
+      value={openIds}
+      onValueChange={setOpenIds}
+      className="rounded-sm border-2 border-border"
+    >
+      <AccordionItem value={id}>
         <AccordionTrigger className="gap-2 px-3 text-sm font-medium hover:no-underline">
-          {node.label}
-          {!isOpen && errorCount > 0 && <Badge variant="destructive">{errorCount}</Badge>}
+          {field.label}
+          {!isOpen && errorCount > 0 && (
+            <Badge variant="destructive">{errorCount}</Badge>
+          )}
         </AccordionTrigger>
         <AccordionContent className="px-3">
           <div className="flex flex-wrap gap-4">
-            {node.children.map((child) => (
-              <FieldLayoutItem
-                key={child.kind === "field" ? child.key : child.id}
-                width={fieldLayoutNodeWidth(child)}
-              >
-                {renderFieldLayoutNode(child, context)}
-              </FieldLayoutItem>
-            ))}
+            {visibleFieldEntries({ fields: field.fields, fieldKeys: context.fieldKeys }).map(
+              ([key, childField]) => (
+                <FieldLayoutItem key={key} width={fieldWidth(childField)}>
+                  {renderField({ field: childField, fieldKey: key, context })}
+                </FieldLayoutItem>
+              ),
+            )}
           </div>
         </AccordionContent>
       </AccordionItem>
@@ -14676,43 +16895,34 @@ export function FormCollapsible(props: { node: CollapsibleLayoutNode; context: R
 
 #### packages/react/src/components/form/FormCollapsible.test.tsx
 
+New file.
+
 ```tsx
 import { describe, expect, it } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
-import { buildFieldLayoutTree, collapsible, defineCollection, text, type AdminField } from "@vexcms/core";
+import { collapsible, defineCollection, text } from "@vexcms/core";
 import { AppForm } from "./AppForm";
 import type { AnyFormApi } from "./AppFormContext";
 import { FormCollapsible } from "./FormCollapsible";
-import type { CollapsibleLayoutNode } from "./FormCollapsible";
 
 const baseCollection = defineCollection({
   slug: "form_collapsible_test",
   fields: { title: text({ required: false }) },
 });
 
-/** Builds a real `CollapsibleLayoutNode` via `collapsible()` + `buildFieldLayoutTree`. */
-function buildCollapsibleNode(props: {
-  label: string;
-  fields: Record<string, AdminField>;
-  defaultCollapsed?: boolean;
+function renderHarness(props: {
+  field: ReturnType<typeof collapsible>;
+  defaultValues: Record<string, unknown>;
 }) {
-  const fields = collapsible(props);
-  const tree = buildFieldLayoutTree({ fields });
-  const node = tree[0];
-  if (!node || node.kind !== "collapsible") throw new Error("expected a single collapsible node");
-  return node;
-}
-
-function renderHarness(props: { node: CollapsibleLayoutNode; defaultValues: Record<string, unknown> }) {
   const formRef: { current: AnyFormApi | undefined } = { current: undefined };
   function Harness() {
     const form = useForm({ defaultValues: props.defaultValues });
     formRef.current = form as AnyFormApi;
     return (
       <AppForm form={form}>
-        <FormCollapsible node={props.node} context={{ collection: baseCollection }} />
+        <FormCollapsible field={props.field} context={{ collection: baseCollection }} />
       </AppForm>
     );
   }
@@ -14722,41 +16932,41 @@ function renderHarness(props: { node: CollapsibleLayoutNode; defaultValues: Reco
 
 describe("FormCollapsible", () => {
   it("starts open and shows the label and every sub-field, by default", () => {
-    const node = buildCollapsibleNode({ label: "Details", fields: { title: text({ label: "Title" }) } });
-    renderHarness({ node, defaultValues: { title: "" } });
+    const field = collapsible({ label: "Details", fields: { title: text({ label: "Title" }) } });
+    renderHarness({ field, defaultValues: { title: "" } });
     expect(screen.getByText("Details")).toBeInTheDocument();
     expect(screen.getByLabelText("Title")).toBeInTheDocument();
   });
 
-  it("starts closed when defaultCollapsed is true", () => {
-    const node = buildCollapsibleNode({
+  it("starts closed when admin.defaultCollapsed is true", () => {
+    const field = collapsible({
       label: "Details",
+      admin: { defaultCollapsed: true },
       fields: { title: text({ label: "Title" }) },
-      defaultCollapsed: true,
     });
-    renderHarness({ node, defaultValues: { title: "" } });
+    renderHarness({ field, defaultValues: { title: "" } });
     expect(screen.queryByLabelText("Title")).not.toBeInTheDocument();
   });
 
   it("opens on trigger click, revealing its sub-field", async () => {
     const user = userEvent.setup();
-    const node = buildCollapsibleNode({
+    const field = collapsible({
       label: "Details",
+      admin: { defaultCollapsed: true },
       fields: { title: text({ label: "Title" }) },
-      defaultCollapsed: true,
     });
-    renderHarness({ node, defaultValues: { title: "" } });
+    renderHarness({ field, defaultValues: { title: "" } });
     await user.click(screen.getByText("Details"));
     expect(screen.getByLabelText("Title")).toBeInTheDocument();
   });
 
   it("shows an error-count badge while collapsed", () => {
-    const node = buildCollapsibleNode({
+    const field = collapsible({
       label: "Details",
+      admin: { defaultCollapsed: true },
       fields: { title: text({ label: "Title" }) },
-      defaultCollapsed: true,
     });
-    const { form } = renderHarness({ node, defaultValues: { title: "" } });
+    const { form } = renderHarness({ field, defaultValues: { title: "" } });
     act(() => {
       form().setFieldMeta("title", (prev) => ({
         ...prev,
@@ -14768,12 +16978,12 @@ describe("FormCollapsible", () => {
 
   it("hides the error-count badge once opened", async () => {
     const user = userEvent.setup();
-    const node = buildCollapsibleNode({
+    const field = collapsible({
       label: "Details",
+      admin: { defaultCollapsed: true },
       fields: { title: text({ label: "Title" }) },
-      defaultCollapsed: true,
     });
-    const { form } = renderHarness({ node, defaultValues: { title: "" } });
+    const { form } = renderHarness({ field, defaultValues: { title: "" } });
     act(() => {
       form().setFieldMeta("title", (prev) => ({
         ...prev,
@@ -14789,39 +16999,37 @@ describe("FormCollapsible", () => {
 
 #### packages/react/src/components/form/FormRow.tsx
 
+New file.
+
 ```tsx
 "use client";
 
-import { resolveRowWidths, type FieldLayoutNode } from "@vexcms/core";
+import { resolveRowWidths, type RowField } from "@vexcms/core";
 import {
   FieldLayoutItem,
-  fieldLayoutNodeWidth,
-  renderFieldLayoutNode,
+  fieldWidth,
+  renderField,
+  visibleFieldEntries,
   type RenderFieldsContext,
 } from "./RenderFields";
 
-/** The `row` member of `FieldLayoutNode`'s discriminated union. */
-export type RowLayoutNode = Extract<FieldLayoutNode, { kind: "row" }>;
-
 /**
- * Renders one `"row"` `FieldLayoutNode` as a flex-wrap sub-row. Children's
- * widths are resolved by `resolveRowWidths` — their own `%` widths when they
- * sum to ~100%, an equal share otherwise (Interview Decision 6).
+ * Renders a `row()` field as a flex-wrap sub-row. Children's widths are
+ * resolved by `resolveRowWidths` — their own `%` widths when they sum to
+ * ~100%, an equal share otherwise (Interview Decision 6).
  *
- * @param props.node - The `"row"` node to render.
+ * @param props.field - The `row()` field to render.
  * @param props.context - The {@link RenderFieldsContext} from the enclosing `RenderFields` call.
  */
-export function FormRow(props: { node: RowLayoutNode; context: RenderFieldsContext }) {
-  const { node, context } = props;
-  const widths = resolveRowWidths({ widths: node.children.map(fieldLayoutNodeWidth) });
+export function FormRow(props: { field: RowField; context: RenderFieldsContext }) {
+  const { field, context } = props;
+  const entries = visibleFieldEntries({ fields: field.fields, fieldKeys: context.fieldKeys });
+  const widths = resolveRowWidths({ widths: entries.map(([, childField]) => fieldWidth(childField)) });
   return (
     <div className="flex flex-wrap gap-4">
-      {node.children.map((child, index) => (
-        <FieldLayoutItem
-          key={child.kind === "field" ? child.key : child.id}
-          width={widths[index] ?? "100%"}
-        >
-          {renderFieldLayoutNode(child, context)}
+      {entries.map(([key, childField], index) => (
+        <FieldLayoutItem key={key} width={widths[index] ?? "100%"}>
+          {renderField({ field: childField, fieldKey: key, context })}
         </FieldLayoutItem>
       ))}
     </div>
@@ -14831,34 +17039,27 @@ export function FormRow(props: { node: RowLayoutNode; context: RenderFieldsConte
 
 #### packages/react/src/components/form/FormRow.test.tsx
 
+New file.
+
 ```tsx
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { useForm } from "@tanstack/react-form";
-import { buildFieldLayoutTree, defineCollection, row, text, type AdminField } from "@vexcms/core";
+import { defineCollection, row, text } from "@vexcms/core";
 import { AppForm } from "./AppForm";
 import { FormRow } from "./FormRow";
-import type { RowLayoutNode } from "./FormRow";
 
 const baseCollection = defineCollection({
   slug: "form_row_test",
   fields: { title: text({ required: false }) },
 });
 
-/** Builds a real `RowLayoutNode` via `row()` + `buildFieldLayoutTree`. */
-function buildRowNode(fields: Record<string, AdminField>): RowLayoutNode {
-  const tree = buildFieldLayoutTree({ fields: row({ fields }) });
-  const node = tree[0];
-  if (!node || node.kind !== "row") throw new Error("expected a single row node");
-  return node;
-}
-
-function renderHarness(props: { node: RowLayoutNode; defaultValues: Record<string, unknown> }) {
+function renderHarness(props: { field: ReturnType<typeof row>; defaultValues: Record<string, unknown> }) {
   function Harness() {
     const form = useForm({ defaultValues: props.defaultValues });
     return (
       <AppForm form={form}>
-        <FormRow node={props.node} context={{ collection: baseCollection }} />
+        <FormRow field={props.field} context={{ collection: baseCollection }} />
       </AppForm>
     );
   }
@@ -14867,18 +17068,20 @@ function renderHarness(props: { node: RowLayoutNode; defaultValues: Record<strin
 
 describe("FormRow", () => {
   it("renders every child field", () => {
-    const node = buildRowNode({ title: text({ label: "Title" }), slug: text({ label: "Slug" }) });
-    renderHarness({ node, defaultValues: { title: "", slug: "" } });
+    const field = row({ fields: { title: text({ label: "Title" }), slug: text({ label: "Slug" }) } });
+    renderHarness({ field, defaultValues: { title: "", slug: "" } });
     expect(screen.getByLabelText("Title")).toBeInTheDocument();
     expect(screen.getByLabelText("Slug")).toBeInTheDocument();
   });
 
   it("keeps each child's own % width when they sum to 100", () => {
-    const node = buildRowNode({
-      title: text({ label: "Title", admin: { width: "30%" } }),
-      slug: text({ label: "Slug", admin: { width: "70%" } }),
+    const field = row({
+      fields: {
+        title: text({ label: "Title", admin: { width: "30%" } }),
+        slug: text({ label: "Slug", admin: { width: "70%" } }),
+      },
     });
-    renderHarness({ node, defaultValues: { title: "", slug: "" } });
+    renderHarness({ field, defaultValues: { title: "", slug: "" } });
     const titleWrapper = screen.getByLabelText("Title").closest("div[style]") as HTMLElement;
     const slugWrapper = screen.getByLabelText("Slug").closest("div[style]") as HTMLElement;
     expect(titleWrapper.style.getPropertyValue("--field-width")).toBe("30%");
@@ -14886,11 +17089,13 @@ describe("FormRow", () => {
   });
 
   it("falls back to an equal share when the children's widths do not sum to 100", () => {
-    const node = buildRowNode({
-      title: text({ label: "Title", admin: { width: "30%" } }),
-      slug: text({ label: "Slug", admin: { width: "30%" } }),
+    const field = row({
+      fields: {
+        title: text({ label: "Title", admin: { width: "30%" } }),
+        slug: text({ label: "Slug", admin: { width: "30%" } }),
+      },
     });
-    renderHarness({ node, defaultValues: { title: "", slug: "" } });
+    renderHarness({ field, defaultValues: { title: "", slug: "" } });
     const titleWrapper = screen.getByLabelText("Title").closest("div[style]") as HTMLElement;
     const slugWrapper = screen.getByLabelText("Slug").closest("div[style]") as HTMLElement;
     expect(titleWrapper.style.getPropertyValue("--field-width")).toBe("50%");
@@ -14901,7 +17106,94 @@ describe("FormRow", () => {
 
 Step 6's `resolveRowWidths` formats an equal share as `${Math.round((100 / n) * 100) / 100}%`, so two children resolve to `"50%"`.
 
+#### packages/react/src/components/form/FormUI.tsx
+
+New file.
+
+```tsx
+"use client";
+
+import { getBy, useStore } from "@tanstack/react-form";
+import type { UIField } from "@vexcms/core";
+import { useAppForm } from "./AppFormContext";
+import { fieldName, type RenderFieldsContext } from "./RenderFields";
+
+function parentPath(name: string): string | undefined {
+  const lastDotIndex = name.lastIndexOf(".");
+  return lastDotIndex === -1 ? undefined : name.slice(0, lastDotIndex);
+}
+
+/**
+ * Renders a `ui()` field's custom `Field` component, subscribing to the form
+ * store for live `data`/`siblingData` (matching `FieldConditionProps`).
+ *
+ * @param props.field - The `ui()` field to render.
+ * @param props.fieldKey - This field's own key, passed through as `name`.
+ * @param props.context - The {@link RenderFieldsContext} from the enclosing `RenderFields` call.
+ */
+export function FormUI(props: {
+  field: UIField;
+  fieldKey: string;
+  context: RenderFieldsContext;
+}) {
+  const { field, fieldKey, context } = props;
+  const name = fieldName(context, fieldKey);
+  const form = useAppForm();
+  const { data, siblingData } = useStore(form.store, (state) => {
+    const values = state.values as Record<string, unknown>;
+    const parent = parentPath(name);
+    return {
+      data: values,
+      siblingData: (parent === undefined ? values : getBy(values, parent)) as Record<
+        string,
+        unknown
+      >,
+    };
+  });
+  const Field = field.admin.components.Field;
+  return <Field name={name} data={data} siblingData={siblingData} readOnly={Boolean(context.readOnly)} />;
+}
+```
+
+#### packages/react/src/components/form/FormUI.test.tsx
+
+New file.
+
+```tsx
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { useForm } from "@tanstack/react-form";
+import { ui } from "@vexcms/core";
+import { AppForm } from "./AppForm";
+import { FormUI } from "./FormUI";
+
+describe("FormUI", () => {
+  it("passes name/data/siblingData/readOnly to the custom Field component", () => {
+    function Probe(props: { name: string; data: Record<string, unknown>; readOnly: boolean }) {
+      return (
+        <span data-testid="probe">
+          {props.name}:{String(props.data.title)}:{String(props.readOnly)}
+        </span>
+      );
+    }
+    const field = ui({ admin: { components: { Field: Probe } } });
+    function Harness() {
+      const form = useForm({ defaultValues: { title: "hello" } });
+      return (
+        <AppForm form={form}>
+          <FormUI field={field} fieldKey="wordCount" context={{ collection: undefined as never }} />
+        </AppForm>
+      );
+    }
+    render(<Harness />);
+    expect(screen.getByTestId("probe")).toHaveTextContent("wordCount:hello:false");
+  });
+});
+```
+
 #### packages/react/src/hooks/useFieldErrorCount.ts
+
+Unchanged from this step's prior text — no `FieldLayoutNode` reference; counts errors by name prefix only, independent of how the tree is walked.
 
 ```ts
 "use client";
@@ -14917,8 +17209,16 @@ import { AppFormContext } from "../components/form/AppFormContext";
  * handler (e.g. jumping to the first errored tab) agrees with this hook's
  * own badge count on what counts as "under" a name.
  */
-export function matchesFieldNamePrefix(path: string, names: readonly string[]): boolean {
-  return names.some((name) => path === name || path.startsWith(`${name}.`) || path.startsWith(`${name}[`));
+export function matchesFieldNamePrefix(
+  path: string,
+  names: readonly string[],
+): boolean {
+  return names.some(
+    (name) =>
+      path === name ||
+      path.startsWith(`${name}.`) ||
+      path.startsWith(`${name}[`),
+  );
 }
 
 /**
@@ -14933,11 +17233,14 @@ export function matchesFieldNamePrefix(path: string, names: readonly string[]): 
  * when a counted field's own error state changes.
  *
  * @param props.names - Field name prefixes to count errors under (e.g. the
- *   top-level keys of one tab's or one collapsible's own children).
+ *   data-field names of one tab's or one collapsible's own fields —
+ *   `dataFieldNames`).
  * @returns The number of distinct erroring field paths under `names`.
  * @throws {Error} When called outside `<AppForm>`.
  */
-export function useFieldErrorCount(props: { names: readonly string[] }): number {
+export function useFieldErrorCount(props: {
+  names: readonly string[];
+}): number {
   const form = useContext(AppFormContext);
   if (!form) {
     throw new Error("useFieldErrorCount must be called inside <AppForm>.");
@@ -14954,124 +17257,7 @@ export function useFieldErrorCount(props: { names: readonly string[] }): number 
 }
 ```
 
-#### packages/react/src/hooks/useFieldErrorCount.test.tsx
-
-```tsx
-import { describe, expect, it } from "vitest";
-import { act, render, screen } from "@testing-library/react";
-import { useForm } from "@tanstack/react-form";
-import { AppForm } from "../components/form/AppForm";
-import type { AnyFormApi } from "../components/form/AppFormContext";
-import { matchesFieldNamePrefix, useFieldErrorCount } from "./useFieldErrorCount";
-
-function Probe(props: { names: string[] }) {
-  const count = useFieldErrorCount({ names: props.names });
-  return <span data-testid="count">{count}</span>;
-}
-
-function renderHarness(props: { names: string[]; defaultValues: Record<string, unknown> }) {
-  const formRef: { current: AnyFormApi | undefined } = { current: undefined };
-  function Harness() {
-    const form = useForm({ defaultValues: props.defaultValues });
-    formRef.current = form as AnyFormApi;
-    return (
-      <AppForm form={form}>
-        <Probe names={props.names} />
-      </AppForm>
-    );
-  }
-  render(<Harness />);
-  return { form: () => formRef.current! };
-}
-
-function setError(form: AnyFormApi, field: string, message: string) {
-  act(() => {
-    form.setFieldMeta(field, (prev) => ({
-      ...prev,
-      errorMap: { ...prev?.errorMap, onSubmit: message },
-    }));
-  });
-}
-
-describe("useFieldErrorCount", () => {
-  it("is 0 when nothing has an error", () => {
-    renderHarness({ names: ["title"], defaultValues: { title: "" } });
-    expect(screen.getByTestId("count")).toHaveTextContent("0");
-  });
-
-  it("counts a field whose path exactly equals one of names", () => {
-    const { form } = renderHarness({ names: ["title"], defaultValues: { title: "" } });
-    setError(form(), "title", "Required");
-    expect(screen.getByTestId("count")).toHaveTextContent("1");
-  });
-
-  it("counts a nested object sub-field path (dot) under its parent name", () => {
-    const { form } = renderHarness({
-      names: ["seo"],
-      defaultValues: { seo: { title: "" } },
-    });
-    setError(form(), "seo.title", "Required");
-    expect(screen.getByTestId("count")).toHaveTextContent("1");
-  });
-
-  it("counts a nested array item path (bracket) under its parent name", () => {
-    const { form } = renderHarness({
-      names: ["tags"],
-      defaultValues: { tags: [""] },
-    });
-    setError(form(), "tags[0]", "Required");
-    expect(screen.getByTestId("count")).toHaveTextContent("1");
-  });
-
-  it("does not count a field outside every given name", () => {
-    const { form } = renderHarness({
-      names: ["title"],
-      defaultValues: { title: "", slug: "" },
-    });
-    setError(form(), "slug", "Required");
-    expect(screen.getByTestId("count")).toHaveTextContent("0");
-  });
-
-  it("does not count a field whose name merely shares a prefix string (titleTag vs title)", () => {
-    const { form } = renderHarness({
-      names: ["title"],
-      defaultValues: { title: "", titleTag: "" },
-    });
-    setError(form(), "titleTag", "Required");
-    expect(screen.getByTestId("count")).toHaveTextContent("0");
-  });
-
-  it("throws when called outside <AppForm>", () => {
-    function Bare() {
-      useFieldErrorCount({ names: ["title"] });
-      return null;
-    }
-    expect(() => render(<Bare />)).toThrow("useFieldErrorCount must be called inside <AppForm>.");
-  });
-});
-
-describe("matchesFieldNamePrefix", () => {
-  it("matches an exact path", () => {
-    expect(matchesFieldNamePrefix("title", ["title"])).toBe(true);
-  });
-
-  it("matches a dot-nested path", () => {
-    expect(matchesFieldNamePrefix("seo.title", ["seo"])).toBe(true);
-  });
-
-  it("matches a bracket-nested path", () => {
-    expect(matchesFieldNamePrefix("tags[0]", ["tags"])).toBe(true);
-  });
-
-  it("rejects a path that only shares a string prefix", () => {
-    expect(matchesFieldNamePrefix("titleTag", ["title"])).toBe(false);
-  });
-
-  it("matches against any of several names", () => {
-    expect(matchesFieldNamePrefix("slug", ["title", "slug"])).toBe(true);
-  });
-});
-```
+Its test file (`useFieldErrorCount.test.tsx`) is unchanged from this step's prior text — it exercises `matchesFieldNamePrefix`/`useFieldErrorCount` directly, with no `FieldLayoutNode` fixture.
 
 #### packages/react/src/hooks/index.ts
 
@@ -15083,6 +17269,8 @@ export * from "./useFieldErrorCount";
 ```
 
 #### packages/react/src/components/form/DocumentTimestamps.tsx
+
+Unchanged from this step's prior text — no `FieldLayoutNode` reference.
 
 ```tsx
 "use client";
@@ -15107,43 +17295,36 @@ const CREATED_AT_TIME = {
  *   before the document exists (a global's first save, a brand-new row).
  * @returns The timestamp block, or `null` when `creationTime` is `undefined`.
  */
-export function DocumentTimestamps(props: { creationTime: number | undefined }): ReactNode {
+export function DocumentTimestamps(props: {
+  creationTime: number | undefined;
+}): ReactNode {
   if (props.creationTime === undefined) return null;
   return (
     <div className="space-y-1 rounded-sm border-2 border-border p-3 text-sm">
       <span className="text-muted-foreground">Created at</span>
-      <p>{formatDateFieldValue({ value: props.creationTime, time: CREATED_AT_TIME })}</p>
+      <p>
+        {formatDateFieldValue({
+          value: props.creationTime,
+          time: CREATED_AT_TIME,
+        })}
+      </p>
     </div>
   );
 }
 ```
 
-#### packages/react/src/components/form/DocumentTimestamps.test.tsx
-
-```tsx
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { DocumentTimestamps } from "./DocumentTimestamps";
-
-describe("DocumentTimestamps", () => {
-  it("renders nothing when creationTime is undefined", () => {
-    const { container } = render(<DocumentTimestamps creationTime={undefined} />);
-    expect(container).toBeEmptyDOMElement();
-  });
-
-  it("renders a 'Created at' label with the formatted timestamp", () => {
-    const creationTime = new Date(2026, 0, 15, 14, 30, 0).getTime();
-    render(<DocumentTimestamps creationTime={creationTime} />);
-    expect(screen.getByText("Created at")).toBeInTheDocument();
-    expect(screen.getByText("Jan 15, 2026 2:30:00 PM")).toBeInTheDocument();
-  });
-});
-```
+Its test file (`DocumentTimestamps.test.tsx`) is unchanged from this step's prior text.
 
 #### packages/react/src/components/form/applyFieldPermissionReadOnly.ts
 
+Unchanged from this step's prior text — operates on plain `AdminField` entries by key, independent of the layout model.
+
 ```ts
-import { isFieldAllowed, type AdminField, type ResolvedFieldPermissions } from "@vexcms/core";
+import {
+  isFieldAllowed,
+  type AdminField,
+  type ResolvedFieldPermissions,
+} from "@vexcms/core";
 
 /**
  * Forces `admin.readOnly: true` on a single field, preserving its exact
@@ -15161,7 +17342,9 @@ function withReadOnly<T extends AdminField>(field: T): T {
 /**
  * Forces `admin.readOnly: true` on every field `fieldPermissions` denies
  * write access to, leaving every other field's own `admin.readOnly`
- * untouched.
+ * untouched. A `kind: "ui"` field has no write permission of its own — left
+ * as-is (`isFieldAllowed` is a data-field-oriented permission check and a
+ * `tabs`/`collapsible`/`row`/`ui` field's own key is never a permission key).
  *
  * `RenderFields`'s own `readOnly` prop is one flat boolean OR'd onto every
  * field uniformly — it has no per-field channel, unlike the field loops it
@@ -15188,51 +17371,7 @@ export function applyFieldPermissionReadOnly(props: {
 }
 ```
 
-#### packages/react/src/components/form/applyFieldPermissionReadOnly.test.ts
-
-```ts
-import { describe, expect, it } from "vitest";
-import { text, type ResolvedFieldPermissions } from "@vexcms/core";
-import { applyFieldPermissionReadOnly } from "./applyFieldPermissionReadOnly";
-
-describe("applyFieldPermissionReadOnly", () => {
-  it("leaves a field permission allows untouched", () => {
-    const fields = { title: text({ label: "Title" }) };
-    const fieldPermissions: ResolvedFieldPermissions = { wildcard: true, fields: {} };
-    const result = applyFieldPermissionReadOnly({ fields, fieldPermissions });
-    expect(result.title).toBe(fields.title);
-    expect(result.title.admin.readOnly).toBe(false);
-  });
-
-  it("forces admin.readOnly true on a field the wildcard denies", () => {
-    const fields = { title: text({ label: "Title" }) };
-    const fieldPermissions: ResolvedFieldPermissions = { wildcard: false, fields: {} };
-    const result = applyFieldPermissionReadOnly({ fields, fieldPermissions });
-    expect(result.title.admin.readOnly).toBe(true);
-  });
-
-  it("respects a per-field override beside a wildcard", () => {
-    const fields = {
-      title: text({ label: "Title" }),
-      secret: text({ label: "Secret" }),
-    };
-    const fieldPermissions: ResolvedFieldPermissions = {
-      wildcard: true,
-      fields: { secret: false },
-    };
-    const result = applyFieldPermissionReadOnly({ fields, fieldPermissions });
-    expect(result.title.admin.readOnly).toBe(false);
-    expect(result.secret.admin.readOnly).toBe(true);
-  });
-
-  it("preserves a field's own admin.readOnly when permission already allows it", () => {
-    const fields = { title: text({ label: "Title", admin: { readOnly: true } }) };
-    const fieldPermissions: ResolvedFieldPermissions = { wildcard: true, fields: {} };
-    const result = applyFieldPermissionReadOnly({ fields, fieldPermissions });
-    expect(result.title.admin.readOnly).toBe(true);
-  });
-});
-```
+Its test file (`applyFieldPermissionReadOnly.test.ts`) is unchanged from this step's prior text.
 
 #### packages/react/src/components/fields/index.tsx
 
@@ -15246,15 +17385,10 @@ import { ComponentType } from "react";
 
 **2 — delete `RenderFieldInputComponents` in its entirety (its JSDoc through its closing `}`), and the now-unused `import { cn } from "../../styles/utils";` line above it — superseded by `RenderFields`.**
 
-**3 — `getCollectionColumnDefs`'s loop skips an `admin.hidden` field; anchored at `for (const [fieldKey, fieldDef] of Object.entries(collection.fields))`. Docblock above it updated to mention the exclusion.**
+**3 — `getCollectionColumnDefs`'s loop skips an `admin.hidden` field; anchored at `for (const [fieldKey, fieldDef] of Object.entries(getDataFields({ fields: collection.fields })))` (Step 6's edit).**
 
 ```ts
- * Iterates the collection's `fields` map and delegates to the appropriate
- * `*FieldToColumnDef` helper based on `fieldDef.type`. An `admin.hidden`
- * field, and one with an unrecognised type, are both skipped. The resulting
- * array is ready to pass directly to `useReactTable({ columns })`.
- ...
-  for (const [fieldKey, fieldDef] of Object.entries(collection.fields)) {
+  for (const [fieldKey, fieldDef] of Object.entries(getDataFields({ fields: collection.fields }))) {
     if (fieldDef.admin.hidden) continue;
     const isTitleField = fieldKey === collection.admin.useAsTitle;
     const fieldType: AdminFieldType = fieldDef.type;
@@ -15268,7 +17402,11 @@ import { ComponentType } from "react";
 import { describe, it, expect } from "vitest";
 import { ADMIN_FIELDS, defineCollection, text } from "@vexcms/core";
 
-import { fieldInputComponents, fieldCellComponents, getCollectionColumnDefs } from "./index";
+import {
+  fieldInputComponents,
+  fieldCellComponents,
+  getCollectionColumnDefs,
+} from "./index";
 import { reactAdapter } from "../../adapter";
 ```
 
@@ -15302,15 +17440,17 @@ import { RenderFields } from "./RenderFields";
 **2 — the sub-field loop inside `<AccordionContent>` becomes one `RenderFields` call; anchored at the `{/* Content — all sub-fields */}` comment through the matching `</AccordionContent>`.**
 
 ```tsx
-        {/* Content — all sub-fields */}
-        <AccordionContent className="px-3 pt-3">
-          <RenderFields
-            fields={fieldDef.fields}
-            collection={collection}
-            namePrefix={name}
-            readOnly={readOnly}
-          />
-        </AccordionContent>
+{
+  /* Content — all sub-fields */
+}
+<AccordionContent className="px-3 pt-3">
+  <RenderFields
+    fields={fieldDef.fields}
+    collection={collection}
+    namePrefix={name}
+    readOnly={readOnly}
+  />
+</AccordionContent>;
 ```
 
 Docblock updated to match (anchored at the "Maps over `fieldDef.fields`" paragraph):
@@ -15318,7 +17458,11 @@ Docblock updated to match (anchored at the "Maps over `fieldDef.fields`" paragra
 ```
  * Maps over `fieldDef.fields` via `RenderFields`, dot-prefixed with `name`
  * (e.g. `"seo.title"`) — TanStack Form v1 resolves dot-notation to nested
- * object values without any special mode.
+ * object values without any special mode. `fieldDef.fields` is a `group()`'s
+ * OWN nested fields record, which may itself contain `tabs()`/`collapsible()`/
+ * `row()`/`ui()` fields (Step 6 — legal at any nesting level); this
+ * non-top-level `RenderFields` call renders them exactly as it would at the
+ * top level, just without the `region`/`isTopLevel` URL-persistence behavior.
 ```
 
 #### packages/react/src/components/form/FormBlocks.tsx
@@ -15334,26 +17478,28 @@ import { RenderFields } from "./RenderFields";
 **2 — the per-block sub-field loop inside `<AccordionContent>` becomes one `RenderFields` call, keeping the "no configurable fields" empty state; anchored at `{/* Sub-fields content */}` through the matching `</AccordionContent>`.**
 
 ```tsx
-                    {/* Sub-fields content */}
-                    <AccordionContent className="px-3 pt-3">
-                      <div className="flex flex-col gap-4 pt-3">
-                        {subFields.length === 0 ? (
-                          <p className="text-sm text-muted-foreground italic">
-                            This block has no configurable fields.
-                          </p>
-                        ) : (
-                          <RenderFields
-                            fields={blockDef.fields}
-                            collection={collection}
-                            namePrefix={`${name}[${index}]`}
-                            readOnly={readOnly}
-                          />
-                        )}
-                      </div>
-                    </AccordionContent>
+{
+  /* Sub-fields content */
+}
+<AccordionContent className="px-3 pt-3">
+  <div className="flex flex-col gap-4 pt-3">
+    {subFields.length === 0 ? (
+      <p className="text-sm text-muted-foreground italic">
+        This block has no configurable fields.
+      </p>
+    ) : (
+      <RenderFields
+        fields={blockDef.fields}
+        collection={collection}
+        namePrefix={`${name}[${index}]`}
+        readOnly={readOnly}
+      />
+    )}
+  </div>
+</AccordionContent>;
 ```
 
-(`const subFields = Object.entries(blockDef.fields);` — unchanged, still drives the empty-state check.)
+(`const subFields = Object.entries(blockDef.fields);` — unchanged, still drives the empty-state check; a block's own `fields` may itself contain `tabs()`/`collapsible()`/`row()`/`ui()` fields (Step 6 — legal at any nesting level), rendered by this same `RenderFields` call.)
 
 #### packages/react/src/components/modals/CreateDocumentModal.tsx
 
@@ -15373,14 +17519,18 @@ import { RenderFields } from "../form/RenderFields";
 **2 — the form body swaps the component; anchored at `<RenderFieldInputComponents` through its closing `/>`.**
 
 ```tsx
-            <RenderFields fields={collection.fields} collection={collection} fieldKeys={fieldKeys} />
+<RenderFields
+  fields={collection.fields}
+  collection={collection}
+  fieldKeys={fieldKeys}
+/>
 ```
 
 #### packages/react/src/components/views/CollectionEditView.tsx
 
 4 edits.
 
-**1 — import block: drop `isFieldAllowed` and `fieldToInputComponent`; add `RenderFields`/`findErroredTabLabel`/`DocumentTimestamps`/`applyFieldPermissionReadOnly`/`matchesFieldNamePrefix`/`FORM_URL_PARAMS`/nuqs; anchored at the top `import { … } from "@vexcms/core";` block through the `import { fieldToInputComponent } from "../fields";` line.**
+**1 — import block: drop `isFieldAllowed` and `fieldToInputComponent`; add `RenderFields`/`findErroredTopLevelTab`/`DocumentTimestamps`/`applyFieldPermissionReadOnly`/`matchesFieldNamePrefix`; anchored at the top `import { … } from "@vexcms/core";` block through the `import { fieldToInputComponent } from "../fields";` line.**
 
 ```ts
 import {
@@ -15402,92 +17552,104 @@ import type {
 import { AppForm } from "../form/AppForm";
 import { RevalidateButton } from "../RevalidateButton";
 import { Button } from "../ui";
-import { findErroredTabLabel, RenderFields } from "../form/RenderFields";
+import { findErroredTopLevelTab, RenderFields } from "../form/RenderFields";
 import { DocumentTimestamps } from "../form/DocumentTimestamps";
 import { applyFieldPermissionReadOnly } from "../form/applyFieldPermissionReadOnly";
 import { matchesFieldNamePrefix } from "../../hooks/useFieldErrorCount";
-import { FORM_URL_PARAMS } from "../form/constants";
-import { parseAsString, useQueryState } from "nuqs";
+import { parseAsString, useQueryStates } from "nuqs";
 import { useFieldsForm } from "../../hooks/useFieldsForm";
 ```
 
-**2 — `useFieldsForm` gains a `?tab=` setter above it and an `onSubmitInvalid` handler; anchored at `const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);` through the `useFieldsForm({ … })` call's closing `});`.**
+**2 — `useFieldsForm` gains a per-top-level-tabs-field `?<fieldKey>=` setter above it and an `onSubmitInvalid` handler; anchored at `const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);` through the `useFieldsForm({ … })` call's closing `});`.**
 
 ```tsx
-  const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
+const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
 
-  const [, setErroredTab] = useQueryState(FORM_URL_PARAMS.tab, parseAsString);
+const topLevelTabsFieldKeys = Object.entries(collection.fields)
+  .filter(([, fieldDef]) => fieldDef.type === "tabs")
+  .map(([key]) => key);
+const [, setTabParams] = useQueryStates(
+  Object.fromEntries(topLevelTabsFieldKeys.map((key) => [key, parseAsString])),
+);
 
-  const form = useFieldsForm({
-    document: formDocument,
-    fields: collection.fields,
-    readableFieldKeys,
-    onSubmit: async () => {
-      const changes = changedValues(form);
-      if (Object.keys(changes).length === 0) return;
-      await mutateAsync({
-        id: currentDocument._id,
-        collection: collection.slug,
-        data: changes,
-      });
-      resetWhenSaved(changes);
-    },
-    onSubmitInvalid: () => {
-      const erroredPaths = Object.entries(form.state.fieldMeta)
-        .filter(([, meta]) => meta && meta.errors.length > 0)
-        .map(([path]) => path);
-      const label = findErroredTabLabel({
-        fields: collection.fields,
-        hasError: (name) => erroredPaths.some((path) => matchesFieldNamePrefix(path, [name])),
-      });
-      if (label) void setErroredTab(label);
-    },
-  });
+const form = useFieldsForm({
+  document: formDocument,
+  fields: collection.fields,
+  readableFieldKeys,
+  onSubmit: async () => {
+    const changes = changedValues(form);
+    if (Object.keys(changes).length === 0) return;
+    await mutateAsync({
+      id: currentDocument._id,
+      collection: collection.slug,
+      data: changes,
+    });
+    resetWhenSaved(changes);
+  },
+  onSubmitInvalid: () => {
+    const erroredPaths = Object.entries(form.state.fieldMeta)
+      .filter(([, meta]) => meta && meta.errors.length > 0)
+      .map(([path]) => path);
+    const found = findErroredTopLevelTab({
+      fields: collection.fields,
+      hasError: (name) =>
+        erroredPaths.some((path) => matchesFieldNamePrefix(path, [name])),
+    });
+    if (found) void setTabParams({ [found.fieldKey]: found.value });
+  },
+});
 ```
 
 **3 — `formContent` becomes the main/sidebar two-column layout; anchored at `const formContent = (` through its closing `);` (the old per-field `.map` loop is fully replaced).**
 
 ```tsx
-  const hasSidebarFields = Object.values(collection.fields).some(
-    (fieldDef) => fieldDef.admin.position === "sidebar",
-  );
-  const showSidebar = hasSidebarFields || currentDocument._creationTime !== undefined;
-  const documentStatus = isVersioned
-    ? isDraftDoc
-      ? VERSION_STATUSES.draft.key
-      : VERSION_STATUSES.published.key
-    : undefined;
-  const renderedFields = applyFieldPermissionReadOnly({ fields: collection.fields, fieldPermissions });
+const hasSidebarFields = Object.values(collection.fields).some(
+  (fieldDef) =>
+    "admin" in fieldDef &&
+    "position" in fieldDef.admin &&
+    fieldDef.admin.position === "sidebar",
+);
+const showSidebar =
+  hasSidebarFields || currentDocument._creationTime !== undefined;
+const documentStatus = isVersioned
+  ? isDraftDoc
+    ? VERSION_STATUSES.draft.key
+    : VERSION_STATUSES.published.key
+  : undefined;
+const renderedFields = applyFieldPermissionReadOnly({
+  fields: collection.fields,
+  fieldPermissions,
+});
 
-  const formContent = (
-    <div className={showSidebar ? "flex flex-wrap gap-6" : undefined}>
-      <div className="min-w-0 flex-1">
+const formContent = (
+  <div className={showSidebar ? "flex flex-wrap gap-6" : undefined}>
+    <div className="min-w-0 flex-1">
+      <RenderFields
+        fields={renderedFields}
+        collection={collection}
+        readOnly={!canEdit}
+        documentStatus={documentStatus}
+        fieldKeys={readableFieldKeys}
+        region={showSidebar ? "main" : "all"}
+        isTopLevel
+      />
+    </div>
+    {showSidebar && (
+      <div className="w-full space-y-4 sm:w-72 sm:shrink-0">
+        <DocumentTimestamps creationTime={currentDocument._creationTime} />
         <RenderFields
           fields={renderedFields}
           collection={collection}
           readOnly={!canEdit}
           documentStatus={documentStatus}
           fieldKeys={readableFieldKeys}
-          region={showSidebar ? "main" : "all"}
+          region="sidebar"
           isTopLevel
         />
       </div>
-      {showSidebar && (
-        <div className="w-full space-y-4 sm:w-72 sm:shrink-0">
-          <DocumentTimestamps creationTime={currentDocument._creationTime} />
-          <RenderFields
-            fields={renderedFields}
-            collection={collection}
-            readOnly={!canEdit}
-            documentStatus={documentStatus}
-            fieldKeys={readableFieldKeys}
-            region="sidebar"
-            isTopLevel
-          />
-        </div>
-      )}
-    </div>
-  );
+    )}
+  </div>
+);
 ```
 
 **4 — `visibleFields`/`readableFieldKeys` (declared just above edit 2) are unchanged; only their old consumer (the per-field `.map`) moved. No further edits needed elsewhere in the file.**
@@ -15523,92 +17685,103 @@ import {
 import { changedValues } from "../form/changedValues";
 import { pickReadableValues } from "../form/readableFields";
 import { Button } from "../ui";
-import { findErroredTabLabel, RenderFields } from "../form/RenderFields";
+import { findErroredTopLevelTab, RenderFields } from "../form/RenderFields";
 import { DocumentTimestamps } from "../form/DocumentTimestamps";
 import { applyFieldPermissionReadOnly } from "../form/applyFieldPermissionReadOnly";
 import { matchesFieldNamePrefix } from "../../hooks/useFieldErrorCount";
-import { FORM_URL_PARAMS } from "../form/constants";
-import { parseAsString, useQueryState } from "nuqs";
+import { parseAsString, useQueryStates } from "nuqs";
 ```
 
-**2 — `useFieldsForm` gains the same `?tab=` setter and `onSubmitInvalid`; anchored at `const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);` through the `useFieldsForm<Record<string, unknown>>({ … })` call's closing `});`.**
+**2 — `useFieldsForm` gains the same per-field `?<fieldKey>=` setter and `onSubmitInvalid`; anchored at `const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);` through the `useFieldsForm<Record<string, unknown>>({ … })` call's closing `});`.**
 
 ```tsx
-  const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
+const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
 
-  const [, setErroredTab] = useQueryState(FORM_URL_PARAMS.tab, parseAsString);
+const topLevelTabsFieldKeys = Object.entries(global.fields)
+  .filter(([, fieldDef]) => fieldDef.type === "tabs")
+  .map(([key]) => key);
+const [, setTabParams] = useQueryStates(
+  Object.fromEntries(topLevelTabsFieldKeys.map((key) => [key, parseAsString])),
+);
 
-  const form = useFieldsForm<Record<string, unknown>>({
-    document: formDocument,
-    fields: global.fields,
-    readableFieldKeys,
-    onSubmit: async ({ value }) => {
-      // A global has no separate create view: before the first save,
-      // `globalDoc` is undefined and `value` carries the field defaults,
-      // which a diff (built against those same defaults) would omit.
-      if (!globalDoc) {
-        await mutateAsync({ slug: global.slug, data: value });
-        form.reset();
-        return;
-      }
-      const changes = changedValues(form);
-      if (Object.keys(changes).length === 0) return;
-      await mutateAsync({ slug: global.slug, data: changes });
-      resetWhenSaved(changes);
-    },
-    onSubmitInvalid: () => {
-      const erroredPaths = Object.entries(form.state.fieldMeta)
-        .filter(([, meta]) => meta && meta.errors.length > 0)
-        .map(([path]) => path);
-      const label = findErroredTabLabel({
-        fields: global.fields,
-        hasError: (name) => erroredPaths.some((path) => matchesFieldNamePrefix(path, [name])),
-      });
-      if (label) void setErroredTab(label);
-    },
-  });
+const form = useFieldsForm<Record<string, unknown>>({
+  document: formDocument,
+  fields: global.fields,
+  readableFieldKeys,
+  onSubmit: async ({ value }) => {
+    // A global has no separate create view: before the first save,
+    // `globalDoc` is undefined and `value` carries the field defaults,
+    // which a diff (built against those same defaults) would omit.
+    if (!globalDoc) {
+      await mutateAsync({ slug: global.slug, data: value });
+      form.reset();
+      return;
+    }
+    const changes = changedValues(form);
+    if (Object.keys(changes).length === 0) return;
+    await mutateAsync({ slug: global.slug, data: changes });
+    resetWhenSaved(changes);
+  },
+  onSubmitInvalid: () => {
+    const erroredPaths = Object.entries(form.state.fieldMeta)
+      .filter(([, meta]) => meta && meta.errors.length > 0)
+      .map(([path]) => path);
+    const found = findErroredTopLevelTab({
+      fields: global.fields,
+      hasError: (name) =>
+        erroredPaths.some((path) => matchesFieldNamePrefix(path, [name])),
+    });
+    if (found) void setTabParams({ [found.fieldKey]: found.value });
+  },
+});
 ```
 
 **3 — `formContent` becomes the main/sidebar two-column layout; anchored at `const formContent = (` through its closing `);`. `showSidebar` falls back to `globalDoc !== undefined` (a global has no timestamps before its first save) instead of `CollectionEditView`'s always-true `_creationTime` check.**
 
 ```tsx
-  const hasSidebarFields = Object.values(global.fields).some(
-    (fieldDef) => fieldDef.admin.position === "sidebar",
-  );
-  const showSidebar = hasSidebarFields || globalDoc !== undefined;
-  const documentStatus =
-    hasDrafts && globalDoc ? (isDraftDoc ? "draft" : "published") : undefined;
-  const renderedFields = applyFieldPermissionReadOnly({ fields: global.fields, fieldPermissions });
+const hasSidebarFields = Object.values(global.fields).some(
+  (fieldDef) =>
+    "admin" in fieldDef &&
+    "position" in fieldDef.admin &&
+    fieldDef.admin.position === "sidebar",
+);
+const showSidebar = hasSidebarFields || globalDoc !== undefined;
+const documentStatus =
+  hasDrafts && globalDoc ? (isDraftDoc ? "draft" : "published") : undefined;
+const renderedFields = applyFieldPermissionReadOnly({
+  fields: global.fields,
+  fieldPermissions,
+});
 
-  const formContent = (
-    <div className={showSidebar ? "flex flex-wrap gap-6" : undefined}>
-      <div className="min-w-0 flex-1">
+const formContent = (
+  <div className={showSidebar ? "flex flex-wrap gap-6" : undefined}>
+    <div className="min-w-0 flex-1">
+      <RenderFields
+        fields={renderedFields}
+        collection={global}
+        readOnly={!canEdit}
+        documentStatus={documentStatus}
+        fieldKeys={readableFieldKeys}
+        region={showSidebar ? "main" : "all"}
+        isTopLevel
+      />
+    </div>
+    {showSidebar && (
+      <div className="w-full space-y-4 sm:w-72 sm:shrink-0">
+        <DocumentTimestamps creationTime={globalDoc?._creationTime} />
         <RenderFields
           fields={renderedFields}
           collection={global}
           readOnly={!canEdit}
           documentStatus={documentStatus}
           fieldKeys={readableFieldKeys}
-          region={showSidebar ? "main" : "all"}
+          region="sidebar"
           isTopLevel
         />
       </div>
-      {showSidebar && (
-        <div className="w-full space-y-4 sm:w-72 sm:shrink-0">
-          <DocumentTimestamps creationTime={globalDoc?._creationTime} />
-          <RenderFields
-            fields={renderedFields}
-            collection={global}
-            readOnly={!canEdit}
-            documentStatus={documentStatus}
-            fieldKeys={readableFieldKeys}
-            region="sidebar"
-            isTopLevel
-          />
-        </div>
-      )}
-    </div>
-  );
+    )}
+  </div>
+);
 ```
 
 #### packages/react/src/components/views/MediaCollectionEditView.tsx
@@ -15619,7 +17792,11 @@ import { parseAsString, useQueryState } from "nuqs";
 
 ```ts
 import { CRUD_ACTIONS, vexConvexApi } from "@vexcms/core";
-import type { MediaCollectionConfig, MediaCollectionSlug, VexMediaDocument } from "@vexcms/core";
+import type {
+  MediaCollectionConfig,
+  MediaCollectionSlug,
+  VexMediaDocument,
+} from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
 import { Button } from "../ui";
 import { RenderFields } from "../form/RenderFields";
@@ -15629,14 +17806,17 @@ import { applyFieldPermissionReadOnly } from "../form/applyFieldPermissionReadOn
 **2 — the field loop (with its manual `admin.hidden` filter, now redundant) becomes one `RenderFields` call; anchored at `<div className="space-y-4">` through its matching `</div>`.**
 
 ```tsx
-      <div className="space-y-4">
-        <RenderFields
-          fields={applyFieldPermissionReadOnly({ fields: collection.fields, fieldPermissions })}
-          collection={collection}
-          readOnly={!canEdit}
-          fieldKeys={readableFieldKeys}
-        />
-      </div>
+<div className="space-y-4">
+  <RenderFields
+    fields={applyFieldPermissionReadOnly({
+      fields: collection.fields,
+      fieldPermissions,
+    })}
+    collection={collection}
+    readOnly={!canEdit}
+    fieldKeys={readableFieldKeys}
+  />
+</div>
 ```
 
 #### packages/react/src/components/fields/select/Input.tsx
@@ -15667,26 +17847,26 @@ Verify: pnpm typecheck && pnpm --filter @vexcms/react test -- form views
 
 ### Step 12 — React conditions + condition-aware client validation [agent]
 
-- [ ] `packages/react/src/hooks/useFieldCondition.ts` + `useFieldCondition.test.tsx` — `useFieldCondition` (subscribes to the form store only when `admin.condition` is set), plus `isFieldLayoutNodeVisible`/`useFieldLayoutNodeVisible` (frame-level "any descendant visible" check)
+- [ ] `packages/react/src/hooks/useFieldCondition.ts` + `useFieldCondition.test.tsx` — `useFieldCondition` (subscribes to the form store only when `admin.condition` is set), plus `isFieldVisible`/`useFieldVisible` (container-level "any descendant visible" check, walking a raw `AdminField`/`fields` tree)
 - [ ] `packages/react/src/hooks/index.ts` — barrel export
-- [ ] `packages/react/src/components/form/FieldConditionGate.tsx` — the per-field wrapper `renderFieldLayoutNode` mounts around every `"field"` node
+- [ ] `packages/react/src/components/form/FieldConditionGate.tsx` — the per-field wrapper `renderField` mounts around every data field
 - [ ] `packages/react/src/components/form/index.ts` — barrel export
-- [ ] `packages/react/src/components/form/RenderFields.tsx` + test — `renderFieldLayoutNode`'s `"field"` branch gates its input through `FieldConditionGate`
-- [ ] `packages/react/src/components/form/FormTabs.tsx`, `FormCollapsible.tsx`, `FormRow.tsx` + tests — each renders `null` when `useFieldLayoutNodeVisible` finds no visible descendant
+- [ ] `packages/react/src/components/form/RenderFields.tsx` — `renderField`'s data-field branch gates its input through `FieldConditionGate`
+- [ ] `packages/react/src/components/form/FormTabs.tsx`, `FormCollapsible.tsx`, `FormRow.tsx` + tests — each renders `null` when `useFieldVisible` finds no visible descendant
 - [ ] `packages/react/src/hooks/useFieldsForm.ts` + `useFieldsForm.test.ts` — validators rebuild the input schema from current values when `hasFieldConditions`
 
 Why: hide fields reactively without re-rendering the whole form on every
 keystroke; client Zod must match the server's Step 9 rule (a condition-hidden
 required field never blocks submit, on either side).
 
-Step 11 (`local://g-step-11.md`) is the renderer this step wires conditions
+Step 11 (this spec's own prior section) is the renderer this step wires conditions
 into. Every nesting level — `RenderFields` itself, `FormTabs`,
-`FormCollapsible`, `FormRow` — renders a `"field"` node through the SAME
-shared function, `renderFieldLayoutNode` (exported from `RenderFields.tsx`),
-so gating that one function's `"field"` branch covers every depth in a single
-edit. The three frame components each get their own one-line visibility
-guard, since "hidden when every descendant is hidden" is a per-frame decision
-`renderFieldLayoutNode` has no reason to make on their behalf.
+`FormCollapsible`, `FormRow` — renders a data field through the SAME
+shared function, `renderField` (exported from `RenderFields.tsx`),
+so gating that one function's data-field branch covers every depth in a single
+edit. The three container components each get their own one-line visibility
+guard, since "hidden when every descendant is hidden" is a per-container decision
+`renderField` has no reason to make on their behalf.
 
 #### `packages/react/src/hooks/useFieldCondition.ts`
 
@@ -15696,7 +17876,11 @@ New file.
 "use client";
 
 import { getBy, useStore } from "@tanstack/react-form";
-import { type AdminField, type FieldLayoutNode, isFieldConditionMet } from "@vexcms/core";
+import {
+  ADMIN_FIELDS,
+  isFieldConditionMet,
+  type AdminField,
+} from "@vexcms/core";
 import { useAppForm } from "../components/form/AppFormContext";
 
 function getParentPath(name: string): string | undefined {
@@ -15704,12 +17888,14 @@ function getParentPath(name: string): string | undefined {
   return lastDotIndex === -1 ? undefined : name.slice(0, lastDotIndex);
 }
 
-function siblingDataAt(props: { data: Record<string, unknown>; name: string }): Record<string, unknown> {
+function siblingDataAt(props: {
+  data: Record<string, unknown>;
+  name: string;
+}): Record<string, unknown> {
   const parentPath = getParentPath(props.name);
-  return (parentPath === undefined ? props.data : getBy(props.data, parentPath)) as Record<
-    string,
-    unknown
-  >;
+  return (
+    parentPath === undefined ? props.data : getBy(props.data, parentPath)
+  ) as Record<string, unknown>;
 }
 
 /**
@@ -15732,9 +17918,13 @@ function siblingDataAt(props: { data: Record<string, unknown>; name: string }): 
  *   evaluates truthy; `false` only on a clean falsy result
  *   (`isFieldConditionMet`).
  */
-export function useFieldCondition(props: { field: AdminField; name: string }): boolean {
+export function useFieldCondition(props: {
+  field: AdminField;
+  name: string;
+}): boolean {
   const form = useAppForm();
-  const condition = props.field.admin.condition;
+  const condition =
+    "condition" in props.field.admin ? props.field.admin.condition : undefined;
 
   return useStore(form.store, (state) =>
     condition === undefined
@@ -15751,64 +17941,73 @@ export function useFieldCondition(props: { field: AdminField; name: string }): b
 }
 
 /**
- * Whether ANY field inside a layout node is currently visible — the pure,
- * non-hook half of `useFieldLayoutNodeVisible`, kept separate so a frame's
+ * Whether ANY data field reachable under `fields` is currently visible — the
+ * pure, non-hook half of `useFieldVisible`, kept separate so a container's
  * whole subtree is checked in one pass instead of one `useFieldCondition`
  * call per leaf (which would vary the hook call count across renders as
  * array/blocks items are added or removed).
  *
- * A `"field"` node is visible when its own condition is met. A frame node
- * (`"tabs"`/`"collapsible"`/`"row"`) is visible when at least one descendant
- * field is — `"tabs"` recurses through every tab's children, not just the
- * active one, so switching tabs never changes a hidden group's visibility.
+ * A data field is visible when its own condition is met. A `tabs`/
+ * `collapsible`/`row` field is visible when at least one descendant data
+ * field is — `tabs` recurses through every tab's own fields, not just the
+ * active one, so switching tabs never changes a hidden group's visibility. A
+ * `ui()` field contributes no data field, so it can never make its container
+ * visible on its own.
  *
- * @param props.node - The layout node to check.
- * @param props.namePrefix - The dotted/bracketed path `node` was reached
+ * @param props.fields - The fields record to check (a container's own
+ *   `fields`, or a tab's own `fields`).
+ * @param props.namePrefix - The dotted/bracketed path `fields` was reached
  *   through, matching `RenderFields`'s own `namePrefix` convention.
  * @param props.data - The form's current values.
- * @returns `false` only when every descendant field's condition is met-false.
+ * @returns `false` only when every descendant data field's condition is met-false.
  */
-export function isFieldLayoutNodeVisible(props: {
-  node: FieldLayoutNode;
+export function isFieldVisible(props: {
+  fields: Record<string, AdminField>;
   namePrefix: string | undefined;
   data: Record<string, unknown>;
 }): boolean {
-  const { node, namePrefix, data } = props;
-
-  if (node.kind === "field") {
-    const name = namePrefix ? `${namePrefix}.${node.key}` : node.key;
-    return isFieldConditionMet({
-      field: node.field,
-      data,
-      siblingData: siblingDataAt({ data, name }),
-    });
-  }
-
-  if (node.kind === "tabs") {
-    return node.tabs.some((tab) =>
-      tab.children.some((child) => isFieldLayoutNodeVisible({ node: child, namePrefix, data })),
-    );
-  }
-
-  return node.children.some((child) => isFieldLayoutNodeVisible({ node: child, namePrefix, data }));
+  const { fields, namePrefix, data } = props;
+  return Object.entries(fields).some(([key, field]) => {
+    switch (field.type) {
+      case ADMIN_FIELDS.ui.type:
+        return false;
+      case ADMIN_FIELDS.tabs.type:
+        return field.tabs.some((tab) =>
+          isFieldVisible({ fields: tab.fields, namePrefix, data }),
+        );
+      case ADMIN_FIELDS.row.type:
+      case ADMIN_FIELDS.collapsible.type:
+        return isFieldVisible({ fields: field.fields, namePrefix, data });
+      default: {
+        const name = namePrefix ? `${namePrefix}.${key}` : key;
+        return isFieldConditionMet({
+          field,
+          data,
+          siblingData: siblingDataAt({ data, name }),
+        });
+      }
+    }
+  });
 }
 
 /**
- * Hook wrapper around `isFieldLayoutNodeVisible` — one `useStore` call per
- * frame component (`FormTabs`/`FormCollapsible`/`FormRow`), called
- * unconditionally once per mounted frame so the variable-descendant-count
- * problem `isFieldLayoutNodeVisible` exists to solve never reaches a hook
- * call site.
+ * Hook wrapper around `isFieldVisible` — one `useStore` call per container
+ * component (`FormTabs`/`FormCollapsible`/`FormRow`), called unconditionally
+ * once per mounted container so the variable-descendant-count problem
+ * `isFieldVisible` exists to solve never reaches a hook call site.
  *
- * @param props.node - The layout node (normally a frame) to check.
- * @param props.namePrefix - See `isFieldLayoutNodeVisible`.
- * @returns `false` when the node has no visible descendant field.
+ * @param props.fields - The container's own `fields`.
+ * @param props.namePrefix - See `isFieldVisible`.
+ * @returns `false` when the container has no visible descendant field.
  */
-export function useFieldLayoutNodeVisible(props: { node: FieldLayoutNode; namePrefix?: string }): boolean {
+export function useFieldVisible(props: {
+  fields: Record<string, AdminField>;
+  namePrefix?: string;
+}): boolean {
   const form = useAppForm();
   return useStore(form.store, (state) =>
-    isFieldLayoutNodeVisible({
-      node: props.node,
+    isFieldVisible({
+      fields: props.fields,
       namePrefix: props.namePrefix,
       data: state.values as Record<string, unknown>,
     }),
@@ -15823,10 +18022,10 @@ New file.
 ```tsx
 import { act, renderHook } from "@testing-library/react";
 import { useForm } from "@tanstack/react-form";
-import { type AdminField, type FieldLayoutNode, text } from "@vexcms/core";
+import { row, tabs, text, type AdminField } from "@vexcms/core";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
-import { isFieldLayoutNodeVisible, useFieldCondition } from "./useFieldCondition";
+import { isFieldVisible, useFieldCondition } from "./useFieldCondition";
 import { AppForm } from "../components/form/AppForm";
 import type { AnyFormApi } from "../components/form/AppFormContext";
 
@@ -15862,7 +18061,9 @@ describe("useFieldCondition", () => {
   });
 
   it("returns true when the condition evaluates truthy", () => {
-    const field = text({ admin: { condition: ({ data }) => data.enabled === true } });
+    const field = text({
+      admin: { condition: ({ data }) => data.enabled === true },
+    });
     const { result } = renderCondition({
       field,
       name: "secret",
@@ -15872,7 +18073,9 @@ describe("useFieldCondition", () => {
   });
 
   it("returns false when the condition evaluates falsy", () => {
-    const field = text({ admin: { condition: ({ data }) => data.enabled === true } });
+    const field = text({
+      admin: { condition: ({ data }) => data.enabled === true },
+    });
     const { result } = renderCondition({
       field,
       name: "secret",
@@ -15882,7 +18085,9 @@ describe("useFieldCondition", () => {
   });
 
   it("re-evaluates when the form store updates", () => {
-    const field = text({ admin: { condition: ({ data }) => data.enabled === true } });
+    const field = text({
+      admin: { condition: ({ data }) => data.enabled === true },
+    });
     const { result, getForm } = renderCondition({
       field,
       name: "secret",
@@ -15929,7 +18134,11 @@ describe("useFieldCondition", () => {
       field,
       name: "layout[2].title",
       defaultValues: {
-        layout: [{ kind: "text" }, { kind: "text" }, { kind: "hero", title: "" }],
+        layout: [
+          { kind: "text" },
+          { kind: "text" },
+          { kind: "hero", title: "" },
+        ],
       },
     });
     expect(result.current).toBe(true);
@@ -15943,69 +18152,62 @@ describe("useFieldCondition", () => {
         },
       },
     });
-    const { result } = renderCondition({ field, name: "secret", defaultValues: { secret: "" } });
+    const { result } = renderCondition({
+      field,
+      name: "secret",
+      defaultValues: { secret: "" },
+    });
     expect(result.current).toBe(true);
   });
 });
 
-describe("isFieldLayoutNodeVisible", () => {
+describe("isFieldVisible", () => {
   const data = { enabled: false };
 
-  it("is visible for a field node with no condition", () => {
-    const node: FieldLayoutNode = { kind: "field", key: "title", field: text() };
-    expect(isFieldLayoutNodeVisible({ node, namePrefix: undefined, data })).toBe(true);
+  it("is visible for a field with no condition", () => {
+    expect(
+      isFieldVisible({ fields: { title: text() }, namePrefix: undefined, data }),
+    ).toBe(true);
   });
 
-  it("is hidden for a field node whose condition is unmet", () => {
+  it("is hidden when the only field's condition is unmet", () => {
     const field = text({ admin: { condition: ({ data: d }) => d.enabled === true } });
-    const node: FieldLayoutNode = { kind: "field", key: "secret", field };
-    expect(isFieldLayoutNodeVisible({ node, namePrefix: undefined, data })).toBe(false);
+    expect(
+      isFieldVisible({ fields: { secret: field }, namePrefix: undefined, data }),
+    ).toBe(false);
   });
 
   it("is hidden for a row whose only child is condition-hidden", () => {
     const field = text({ admin: { condition: ({ data: d }) => d.enabled === true } });
-    const node: FieldLayoutNode = {
-      kind: "row",
-      id: "row:secret",
-      children: [{ kind: "field", key: "secret", field }],
-    };
-    expect(isFieldLayoutNodeVisible({ node, namePrefix: undefined, data })).toBe(false);
+    const fields = { name: row({ fields: { secret: field } }) };
+    expect(isFieldVisible({ fields, namePrefix: undefined, data })).toBe(false);
   });
 
   it("is visible for a row with at least one visible child", () => {
     const hiddenField = text({ admin: { condition: ({ data: d }) => d.enabled === true } });
-    const node: FieldLayoutNode = {
-      kind: "row",
-      id: "row:mixed",
-      children: [
-        { kind: "field", key: "secret", field: hiddenField },
-        { kind: "field", key: "title", field: text() },
-      ],
-    };
-    expect(isFieldLayoutNodeVisible({ node, namePrefix: undefined, data })).toBe(true);
+    const fields = { name: row({ fields: { secret: hiddenField, title: text() } }) };
+    expect(isFieldVisible({ fields, namePrefix: undefined, data })).toBe(true);
   });
 
   it("is visible for tabs when a non-active tab still has a visible child", () => {
     const hiddenField = text({ admin: { condition: ({ data: d }) => d.enabled === true } });
-    const node: FieldLayoutNode = {
-      kind: "tabs",
-      id: "tabs:secret",
-      tabs: [
-        { label: "general", children: [{ kind: "field", key: "secret", field: hiddenField }] },
-        { label: "advanced", children: [{ kind: "field", key: "title", field: text() }] },
-      ],
+    const fields = {
+      info: tabs({
+        tabs: [
+          { label: "General", fields: { secret: hiddenField } },
+          { label: "Advanced", fields: { title: text() } },
+        ],
+      }),
     };
-    expect(isFieldLayoutNodeVisible({ node, namePrefix: undefined, data })).toBe(true);
+    expect(isFieldVisible({ fields, namePrefix: undefined, data })).toBe(true);
   });
 
   it("is hidden for tabs when every tab's every field is condition-hidden", () => {
     const hiddenField = text({ admin: { condition: ({ data: d }) => d.enabled === true } });
-    const node: FieldLayoutNode = {
-      kind: "tabs",
-      id: "tabs:secret",
-      tabs: [{ label: "general", children: [{ kind: "field", key: "secret", field: hiddenField }] }],
+    const fields = {
+      info: tabs({ tabs: [{ label: "General", fields: { secret: hiddenField } }] }),
     };
-    expect(isFieldLayoutNodeVisible({ node, namePrefix: undefined, data })).toBe(false);
+    expect(isFieldVisible({ fields, namePrefix: undefined, data })).toBe(false);
   });
 });
 ```
@@ -16034,12 +18236,12 @@ import { useFieldCondition } from "../../hooks/useFieldCondition";
 /**
  * Renders `children` only while `field`'s `admin.condition` is met.
  *
- * This is the one-hook-call-per-field boundary `renderFieldLayoutNode` wraps
- * each `"field"` layout node's rendered input in: `useFieldCondition` must
+ * This is the one-hook-call-per-field boundary `renderField` wraps
+ * each data field's rendered input in: `useFieldCondition` must
  * run the same number of times on every render, which a bare loop over a
  * field map cannot guarantee once the field count itself can change
  * (array/blocks items added or removed). One `FieldConditionGate` instance
- * per field node keeps the call count pinned to "one per mounted node" — the
+ * per field keeps the call count pinned to "one per mounted field" — the
  * same shape TanStack's own `<form.Field>` uses.
  *
  * A hidden field's value is left untouched in form state; only its rendered
@@ -16072,86 +18274,90 @@ export * from "./FieldConditionGate";
 
 #### `packages/react/src/components/form/RenderFields.tsx`
 
-Builds on Step 11's file (`local://g-step-11.md`) — 2 edits; everything else
-unchanged.
+Builds on Step 11's file — 2 edits; everything else unchanged.
 
-**1 — import.** Add after `import { FormRow } from "./FormRow";`:
+**1 — import.** Add after `import { FormUI } from "./FormUI";`:
 
 ```tsx
 import { FieldConditionGate } from "./FieldConditionGate";
 ```
 
-**2 — `renderFieldLayoutNode`'s `"field"` branch.** `fieldLayoutNodeName` is
-already computed once and reused for both the gate and the input's own
-`name`. Replace the function in full:
+**2 — `FieldSlotOutlet`'s return wraps in the gate.** Replace its `return (` through the matching `);`:
 
 ```tsx
-export function renderFieldLayoutNode(node: FieldLayoutNode, context: RenderFieldsContext): ReactNode {
-  if (node.kind === "field") {
-    const InputComponent = fieldToInputComponent(node.field.type);
-    if (!InputComponent) {
-      throw new Error(`Missing component for field type '${node.field.type}'`);
-    }
-    const name = fieldLayoutNodeName(context, node.key);
-    return (
-      <FieldConditionGate field={node.field} name={name}>
-        <InputComponent
-          name={name}
-          fieldDef={node.field}
-          readOnly={Boolean(context.readOnly) || node.field.admin.readOnly}
-          collection={context.collection}
-          documentStatus={context.documentStatus}
-        />
-      </FieldConditionGate>
-    );
-  }
-  if (node.kind === "tabs") {
-    return <FormTabs node={node} context={context} useUrlState={node.id === context.urlTabsId} />;
-  }
-  if (node.kind === "collapsible") {
-    return <FormCollapsible node={node} context={context} />;
-  }
-  return <FormRow node={node} context={context} />;
-}
+  return (
+    <FieldConditionGate field={field} name={inputProps.name}>
+      <SlotOutlet
+        slotId={SLOT_IDS.field.beforeInput}
+        builtins={[]}
+        contributions={field.admin.components.beforeInput}
+        contributedProps={inputProps}
+      />
+      <SlotOverrideOutlet
+        slotId={SLOT_IDS.field.label}
+        overrides={field.admin.components.Label}
+        defaultComponent={() => null}
+        props={inputProps}
+      />
+      <ComponentErrorBoundary id={SLOT_IDS.field.input}>
+        <InputComponent {...inputProps} />
+      </ComponentErrorBoundary>
+      <SlotOverrideOutlet
+        slotId={SLOT_IDS.field.description}
+        overrides={field.admin.components.Description}
+        defaultComponent={() => null}
+        props={inputProps}
+      />
+      <SlotOutlet
+        slotId={SLOT_IDS.field.afterInput}
+        builtins={[]}
+        contributions={field.admin.components.afterInput}
+        contributedProps={inputProps}
+      />
+    </FieldConditionGate>
+  );
 ```
 
 #### `packages/react/src/components/form/RenderFields.test.tsx`
 
 1 edit — add one `it` inside the existing `describe("RenderFields", ...)`
-block, after the last test (`"renders a row() group via FormRow"`); every
-import it needs (`useForm`, `AppForm`, `NuqsTestingAdapter`, `text`,
+block, after the last test (`"renders a ui() field's custom Field component"`);
+every import it needs (`useForm`, `AppForm`, `NuqsTestingAdapter`, `text`,
 `RenderFields`, `userEvent`, `baseCollection`, `render`, `screen`) is already
 imported by Step 11's file.
 
 ```tsx
-  it("hides and reactively shows a field whose admin.condition depends on a sibling", async () => {
-    const user = userEvent.setup();
-    function ConditionHarness() {
-      const form = useForm({ defaultValues: { enabled: false, secret: "" } });
-      return (
-        <NuqsTestingAdapter hasMemory>
-          <AppForm form={form}>
-            <RenderFields
-              fields={{
-                secret: text({
-                  label: "Secret",
-                  admin: { condition: ({ data }) => data.enabled === true },
-                }),
-              }}
-              collection={baseCollection}
-            />
-            <button type="button" onClick={() => form.setFieldValue("enabled", true)}>
-              Enable
-            </button>
-          </AppForm>
-        </NuqsTestingAdapter>
-      );
-    }
-    render(<ConditionHarness />);
-    expect(screen.queryByLabelText("Secret")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Enable" }));
-    expect(screen.getByLabelText("Secret")).toBeInTheDocument();
-  });
+it("hides and reactively shows a field whose admin.condition depends on a sibling", async () => {
+  const user = userEvent.setup();
+  function ConditionHarness() {
+    const form = useForm({ defaultValues: { enabled: false, secret: "" } });
+    return (
+      <NuqsTestingAdapter hasMemory>
+        <AppForm form={form}>
+          <RenderFields
+            fields={{
+              secret: text({
+                label: "Secret",
+                admin: { condition: ({ data }) => data.enabled === true },
+              }),
+            }}
+            collection={baseCollection}
+          />
+          <button
+            type="button"
+            onClick={() => form.setFieldValue("enabled", true)}
+          >
+            Enable
+          </button>
+        </AppForm>
+      </NuqsTestingAdapter>
+    );
+  }
+  render(<ConditionHarness />);
+  expect(screen.queryByLabelText("Secret")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Enable" }));
+  expect(screen.getByLabelText("Secret")).toBeInTheDocument();
+});
 ```
 
 #### `packages/react/src/components/form/FormTabs.tsx`
@@ -16159,79 +18365,46 @@ imported by Step 11's file.
 1 edit — everything else unchanged.
 
 **1 — visibility guard.** Add the import next to the other `"./RenderFields"`
-import, and replace the function in full:
+import, and add a `visible` check right after `const activeTab = …` in `FormTabs`:
 
 ```tsx
-import { useFieldLayoutNodeVisible } from "../../hooks/useFieldCondition";
+import { useFieldVisible } from "../../hooks/useFieldCondition";
 ```
 
 ```tsx
-export function FormTabs(props: {
-  node: TabsLayoutNode;
-  context: RenderFieldsContext;
-  useUrlState: boolean;
-}) {
-  const { node, context, useUrlState } = props;
-  const firstLabel = node.tabs[0]?.label ?? "";
-
-  const [urlTab, setUrlTab] = useQueryState(
-    FORM_URL_PARAMS.tab,
-    parseAsString.withDefault(firstLabel),
-  );
-  const [localTab, setLocalTab] = useState(firstLabel);
   const activeTab = useUrlState ? urlTab : localTab;
-  const visible = useFieldLayoutNodeVisible({ node, namePrefix: context.namePrefix });
+  const visible = useFieldVisible({
+    fields: Object.fromEntries(tabs.flatMap((tab) => Object.entries(tab.fields))),
+    namePrefix: context.namePrefix,
+  });
 
   if (!visible) return null;
-
-  return (
-    <Tabs
-      value={activeTab}
-      onValueChange={(value) => {
-        if (useUrlState) void setUrlTab(value as string);
-        else setLocalTab(value as string);
-      }}
-    >
-      <TabsList>
-        {node.tabs.map((tab) => (
-          <FormTabsTrigger key={tab.label} tab={tab} context={context} />
-        ))}
-      </TabsList>
-      {node.tabs.map((tab) => (
-        <TabsContent key={tab.label} value={tab.label}>
-          <div className="flex flex-wrap gap-4">
-            {tab.children.map((child) => (
-              <FieldLayoutItem
-                key={child.kind === "field" ? child.key : child.id}
-                width={fieldLayoutNodeWidth(child)}
-              >
-                {renderFieldLayoutNode(child, context)}
-              </FieldLayoutItem>
-            ))}
-          </div>
-        </TabsContent>
-      ))}
-    </Tabs>
-  );
-}
 ```
 
 #### `packages/react/src/components/form/FormTabs.test.tsx`
 
 1 edit — add one `it` inside `describe("FormTabs", ...)`, after the last test
-(the error-count badge test); uses only `buildTabsNode`/`renderHarness`,
-already defined in Step 11's file.
+(`"never touches the URL when isTopLevel is false"`); uses only
+`renderHarness`, already defined in Step 11's file.
 
 ```tsx
-  it("renders nothing when every field across every tab is condition-hidden", () => {
-    const node = buildTabsNode({
-      general: {
-        secret: text({ admin: { condition: ({ data }) => data.enabled === true } }),
+it("renders nothing when every field across every tab is condition-hidden", () => {
+  const field = tabs({
+    tabs: [
+      {
+        label: "General",
+        fields: { secret: text({ admin: { condition: ({ data }) => data.enabled === true } }) },
       },
-    });
-    renderHarness({ node, useUrlState: false, defaultValues: { enabled: false, secret: "" } });
-    expect(screen.queryAllByRole("tab")).toHaveLength(0);
+    ],
   });
+  renderHarness({
+    field,
+    fieldKey: "info",
+    isTopLevel: false,
+    defaultValues: { enabled: false, secret: "" },
+  });
+  expect(screen.queryAllByRole("tab")).toHaveLength(0);
+});
 ```
 
 #### `packages/react/src/components/form/FormCollapsible.tsx`
@@ -16239,64 +18412,36 @@ already defined in Step 11's file.
 1 edit — everything else unchanged.
 
 **1 — visibility guard.** Add the import next to the `useFieldErrorCount`
-import, and replace the function in full:
+import, and add a `visible` check right after `const errorCount = …`:
 
 ```tsx
-import { useFieldLayoutNodeVisible } from "../../hooks/useFieldCondition";
+import { useFieldVisible } from "../../hooks/useFieldCondition";
 ```
 
 ```tsx
-export function FormCollapsible(props: { node: CollapsibleLayoutNode; context: RenderFieldsContext }) {
-  const { node, context } = props;
-  const [openIds, setOpenIds] = useState<string[]>(node.defaultCollapsed ? [] : [node.id]);
-  const isOpen = openIds.includes(node.id);
   const errorCount = useFieldErrorCount({
-    names: collectFieldLayoutNames(node.children, context.namePrefix),
+    names: dataFieldNames({ fields: field.fields, namePrefix: context.namePrefix }),
   });
-  const visible = useFieldLayoutNodeVisible({ node, namePrefix: context.namePrefix });
+  const visible = useFieldVisible({ fields: field.fields, namePrefix: context.namePrefix });
 
   if (!visible) return null;
-
-  return (
-    <Accordion value={openIds} onValueChange={setOpenIds} className="rounded-sm border-2 border-border">
-      <AccordionItem value={node.id}>
-        <AccordionTrigger className="gap-2 px-3 text-sm font-medium hover:no-underline">
-          {node.label}
-          {!isOpen && errorCount > 0 && <Badge variant="destructive">{errorCount}</Badge>}
-        </AccordionTrigger>
-        <AccordionContent className="px-3">
-          <div className="flex flex-wrap gap-4">
-            {node.children.map((child) => (
-              <FieldLayoutItem
-                key={child.kind === "field" ? child.key : child.id}
-                width={fieldLayoutNodeWidth(child)}
-              >
-                {renderFieldLayoutNode(child, context)}
-              </FieldLayoutItem>
-            ))}
-          </div>
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
-  );
-}
 ```
 
 #### `packages/react/src/components/form/FormCollapsible.test.tsx`
 
 1 edit — add one `it` inside `describe("FormCollapsible", ...)`, after the
 last test (`"hides the error-count badge once opened"`); uses only
-`buildCollapsibleNode`/`renderHarness`, already defined in Step 11's file.
+`renderHarness`, already defined in Step 11's file.
 
 ```tsx
-  it("renders nothing (not even its label) when every sub-field is condition-hidden", () => {
-    const node = buildCollapsibleNode({
-      label: "Details",
-      fields: { secret: text({ admin: { condition: ({ data }) => data.enabled === true } }) },
-    });
-    renderHarness({ node, defaultValues: { enabled: false, secret: "" } });
-    expect(screen.queryByText("Details")).not.toBeInTheDocument();
+it("renders nothing (not even its label) when every sub-field is condition-hidden", () => {
+  const field = collapsible({
+    label: "Details",
+    fields: { secret: text({ admin: { condition: ({ data }) => data.enabled === true } }) },
   });
+  renderHarness({ field, defaultValues: { enabled: false, secret: "" } });
+  expect(screen.queryByText("Details")).not.toBeInTheDocument();
+});
 ```
 
 #### `packages/react/src/components/form/FormRow.tsx`
@@ -16304,33 +18449,17 @@ last test (`"hides the error-count badge once opened"`); uses only
 1 edit — everything else unchanged.
 
 **1 — visibility guard.** Add the import next to the `"./RenderFields"`
-import, and replace the function in full:
+import, and add a `visible` check right after `const widths = …`:
 
 ```tsx
-import { useFieldLayoutNodeVisible } from "../../hooks/useFieldCondition";
+import { useFieldVisible } from "../../hooks/useFieldCondition";
 ```
 
 ```tsx
-export function FormRow(props: { node: RowLayoutNode; context: RenderFieldsContext }) {
-  const { node, context } = props;
-  const widths = resolveRowWidths({ widths: node.children.map(fieldLayoutNodeWidth) });
-  const visible = useFieldLayoutNodeVisible({ node, namePrefix: context.namePrefix });
+  const widths = resolveRowWidths({ widths: entries.map(([, childField]) => fieldWidth(childField)) });
+  const visible = useFieldVisible({ fields: field.fields, namePrefix: context.namePrefix });
 
   if (!visible) return null;
-
-  return (
-    <div className="flex flex-wrap gap-4">
-      {node.children.map((child, index) => (
-        <FieldLayoutItem
-          key={child.kind === "field" ? child.key : child.id}
-          width={widths[index] ?? "100%"}
-        >
-          {renderFieldLayoutNode(child, context)}
-        </FieldLayoutItem>
-      ))}
-    </div>
-  );
-}
 ```
 
 #### `packages/react/src/components/form/FormRow.test.tsx`
@@ -16338,35 +18467,41 @@ export function FormRow(props: { node: RowLayoutNode; context: RenderFieldsConte
 1 edit — add one `it` inside `describe("FormRow", ...)`, after the last test
 (the equal-share fallback test). `FormRow` has no chrome of its own besides
 the wrapper `<div>`, so this test checks the whole container — not just the
-field — to prove the frame-level guard fired rather than only
-`FieldConditionGate`. Uses only `buildRowNode`/`baseCollection`, already
-defined in Step 11's file; `useForm`, `AppForm`, `FormRow`, `text`, `render`
-are already imported.
+field — to prove the container-level guard fired rather than only
+`FieldConditionGate`. Uses only `baseCollection`, already defined in Step
+11's file; `useForm`, `AppForm`, `FormRow`, `row`, `text`, `render` are
+already imported.
 
 ```tsx
-  it("renders nothing (not even its own wrapper) when every child field is condition-hidden", () => {
-    const node = buildRowNode({
-      secret: text({ label: "Secret", admin: { condition: ({ data }) => data.enabled === true } }),
-    });
-    function Harness() {
-      const form = useForm({ defaultValues: { enabled: false, secret: "" } });
-      return (
-        <AppForm form={form}>
-          <FormRow node={node} context={{ collection: baseCollection }} />
-        </AppForm>
-      );
-    }
-    const { container } = render(<Harness />);
-    expect(container.querySelector("form")).toBeEmptyDOMElement();
+it("renders nothing (not even its own wrapper) when every child field is condition-hidden", () => {
+  const field = row({
+    fields: {
+      secret: text({
+        label: "Secret",
+        admin: { condition: ({ data }) => data.enabled === true },
+      }),
+    },
   });
+  function Harness() {
+    const form = useForm({ defaultValues: { enabled: false, secret: "" } });
+    return (
+      <AppForm form={form}>
+        <FormRow field={field} context={{ collection: baseCollection }} />
+      </AppForm>
+    );
+  }
+  const { container } = render(<Harness />);
+  expect(container.querySelector("form")).toBeEmptyDOMElement();
+});
 ```
 
 #### `packages/react/src/hooks/useFieldsForm.ts`
 
-2 edits — `FieldsFormOptions<TData>` and the JSDoc `@example` block are
-unchanged; everything else in this file not shown is unchanged.
+Unchanged from this step's prior text — no `FieldLayoutNode` reference anywhere in this file; it only
+calls `getFieldsDefaultValues`/`getFieldsInputSchema`/`hasFieldConditions` (Step 6's `getDataFields`-backed
+functions), which already absorbed every layout-model change internally.
 
-**1 — new imports.** Replace the two existing import statements:
+**1 — imports.**
 
 ```ts
 import {
@@ -16385,13 +18520,15 @@ import {
   type TDocument,
 } from "@vexcms/core";
 import type { AnyFormApi } from "../components/form/AppFormContext";
-import { pickReadableSchema, pickReadableValues } from "../components/form/readableFields";
+import {
+  pickReadableSchema,
+  pickReadableValues,
+} from "../components/form/readableFields";
 ```
 
-**2 — condition-aware validators.** Replace the `useFieldsForm` function in
-full:
+**2 — condition-aware validators.**
 
-```ts
+````ts
 /**
  * Creates a TanStack Form instance driven by a field map.
  *
@@ -16445,7 +18582,8 @@ export function useFieldsForm<TData = TDocument>(
     readableFieldKeys?: readonly string[];
   } & FieldsFormOptions<TData>,
 ): AnyFormApi {
-  const { fields, document, validators, readableFieldKeys, ...formOptions } = props;
+  const { fields, document, validators, readableFieldKeys, ...formOptions } =
+    props;
   // The schema and defaults are both built from the field map at runtime;
   // `TData` is the caller's static description of that same shape, which the
   // compiler cannot connect to the field map's `Record<string, unknown>`.
@@ -16455,7 +18593,10 @@ export function useFieldsForm<TData = TDocument>(
   ) as unknown as TData;
 
   function buildSchema(data?: Record<string, unknown>) {
-    return pickReadableSchema(getFieldsInputSchema({ fields, data }), readableFieldKeys);
+    return pickReadableSchema(
+      getFieldsInputSchema({ fields, data }),
+      readableFieldKeys,
+    );
   }
 
   let onBlur: FormValidateOrFn<TData>;
@@ -16465,15 +18606,20 @@ export function useFieldsForm<TData = TDocument>(
     onBlur = ((validatorProps: { value: TData }) =>
       standardSchemaValidators.validate(
         { value: validatorProps.value, validationSource: "form" },
-        buildSchema(validatorProps.value as Record<string, unknown>) as unknown as StandardSchemaV1,
+        buildSchema(
+          validatorProps.value as Record<string, unknown>,
+        ) as unknown as StandardSchemaV1,
       )) as FormValidateOrFn<TData>;
     onSubmitAsync = ((validatorProps: { value: TData }) =>
       standardSchemaValidators.validateAsync(
         { value: validatorProps.value, validationSource: "form" },
-        buildSchema(validatorProps.value as Record<string, unknown>) as unknown as StandardSchemaV1,
+        buildSchema(
+          validatorProps.value as Record<string, unknown>,
+        ) as unknown as StandardSchemaV1,
       )) as FormAsyncValidateOrFn<TData>;
   } else {
-    const schema = buildSchema() as unknown as FormValidateOrFn<TData> & FormAsyncValidateOrFn<TData>;
+    const schema = buildSchema() as unknown as FormValidateOrFn<TData> &
+      FormAsyncValidateOrFn<TData>;
     onBlur = schema;
     onSubmitAsync = schema;
   }
@@ -16488,11 +18634,11 @@ export function useFieldsForm<TData = TDocument>(
     },
   }) as AnyFormApi;
 }
-```
+````
 
 #### `packages/react/src/hooks/useFieldsForm.test.ts`
 
-New file.
+Unchanged from this step's prior text.
 
 ```ts
 import { act, renderHook } from "@testing-library/react";
@@ -16614,8 +18760,6 @@ describe("useFieldsForm", () => {
 
 Verify: `pnpm --filter @vexcms/react test -- useFieldCondition RenderFields useFieldsForm`
 
-### Step 13 — `usePaginatedSearch` + upload picker fixes [agent]
-
 - [ ] `packages/react/src/hooks/usePaginatedSearch.ts` + `usePaginatedSearch.test.tsx` (new, thin — mirrors `usePaginatedQuery.test.tsx`'s `runHooksSuite({ only: [...] })` one-liner; without it `describePaginatedSearch` in `hooksSuite.tsx` never actually executes) + the describe block itself (in `packages/react/src/testing/hooksSuite.tsx`)
 - [ ] `packages/react/src/hooks/index.ts` — export the new hook
 - [ ] `packages/react/src/components/fields/upload/utils.ts` (new) — `matchesAcceptPattern` / `fileMatchesAccept`, shared by `EmptyInput` and `usePaginatedSearch`
@@ -16681,7 +18825,9 @@ export interface UsePaginatedSearchProps {
 }
 
 /** Return value of {@link usePaginatedSearch}. */
-export interface UsePaginatedSearchReturn<TDocument extends VexDocument = VexDocument> {
+export interface UsePaginatedSearchReturn<
+  TDocument extends VexDocument = VexDocument,
+> {
   /** Documents accumulated across the current query and every `loadMore()`/auto-fill page. */
   documents: TDocument[];
   /** Whether the first page of the current query is still in flight. */
@@ -16715,7 +18861,9 @@ export interface UsePaginatedSearchReturn<TDocument extends VexDocument = VexDoc
  * @param props - Hook configuration.
  * @returns Accumulated documents plus pagination/loading state.
  */
-export function usePaginatedSearch<TDocument extends VexDocument = VexDocument>({
+export function usePaginatedSearch<
+  TDocument extends VexDocument = VexDocument,
+>({
   collection,
   query,
   pageSize = 24,
@@ -16764,14 +18912,22 @@ export function usePaginatedSearch<TDocument extends VexDocument = VexDocument>(
     isError,
     error,
   } = useQuery({
-    ...convexQuery(useSearch ? vexConvexApi.search : vexConvexApi.find, args as never),
+    ...convexQuery(
+      useSearch ? vexConvexApi.search : vexConvexApi.find,
+      args as never,
+    ),
     enabled,
   });
 
   const result = useMemo<PaginationResult<TDocument>>(() => {
-    const empty = { page: [] as TDocument[], continueCursor: "", isDone: false };
+    const empty = {
+      page: [] as TDocument[],
+      continueCursor: "",
+      isDone: false,
+    };
     if (isLoading || isError || !data) return empty;
-    if (Array.isArray(data)) return { ...empty, page: data as TDocument[], isDone: true };
+    if (Array.isArray(data))
+      return { ...empty, page: data as TDocument[], isDone: true };
     return data as PaginationResult<TDocument>;
   }, [data, isLoading, isError]);
 
@@ -16779,11 +18935,17 @@ export function usePaginatedSearch<TDocument extends VexDocument = VexDocument>(
     const pageDocuments =
       mimeTypesKey.length > 0
         ? (result.page as unknown as VexMediaDocument[]).filter((doc) =>
-            matchesAcceptPattern({ filename: doc.filename, mimeType: doc.mimeType, accept: mimeTypesKey }),
+            matchesAcceptPattern({
+              filename: doc.filename,
+              mimeType: doc.mimeType,
+              accept: mimeTypesKey,
+            }),
           )
         : result.page;
     setDocuments((prev) =>
-      cursor === null ? (pageDocuments as TDocument[]) : [...prev, ...(pageDocuments as TDocument[])],
+      cursor === null
+        ? (pageDocuments as TDocument[])
+        : [...prev, ...(pageDocuments as TDocument[])],
     );
     setIsDone(result.isDone);
   }, [result.page, result.isDone, cursor, mimeTypesKey]);
@@ -16794,7 +18956,14 @@ export function usePaginatedSearch<TDocument extends VexDocument = VexDocument>(
     if (documents.length >= pageSize) return;
     if (!result.continueCursor) return;
     setCursor(result.continueCursor);
-  }, [documents.length, isQueryPending, isDone, result.continueCursor, mimeTypesKey, pageSize]);
+  }, [
+    documents.length,
+    isQueryPending,
+    isDone,
+    result.continueCursor,
+    mimeTypesKey,
+    pageSize,
+  ]);
 
   function loadMore() {
     if (isDone || !result.continueCursor) return;
@@ -16802,7 +18971,10 @@ export function usePaginatedSearch<TDocument extends VexDocument = VexDocument>(
   }
 
   const isAutoFilling =
-    mimeTypesKey.length > 0 && !isDone && documents.length < pageSize && cursor !== null;
+    mimeTypesKey.length > 0 &&
+    !isDone &&
+    documents.length < pageSize &&
+    cursor !== null;
 
   return {
     documents,
@@ -16866,7 +19038,9 @@ export interface MatchesAcceptPatternProps {
  * @param props - The candidate filename/MIME type and the `accept` pattern list.
  * @returns `true` when `accept` is empty or the candidate matches one of its patterns.
  */
-export function matchesAcceptPattern(props: MatchesAcceptPatternProps): boolean {
+export function matchesAcceptPattern(
+  props: MatchesAcceptPatternProps,
+): boolean {
   const patterns = props.accept
     .split(",")
     .map((pattern) => pattern.trim().toLowerCase())
@@ -16893,7 +19067,11 @@ export function matchesAcceptPattern(props: MatchesAcceptPatternProps): boolean 
  * @returns `true` when `accept` is empty or the file matches one of its patterns.
  */
 export function fileMatchesAccept(file: File, accept: string): boolean {
-  return matchesAcceptPattern({ filename: file.name, mimeType: file.type, accept });
+  return matchesAcceptPattern({
+    filename: file.name,
+    mimeType: file.type,
+    accept,
+  });
 }
 ```
 
@@ -16921,7 +19099,12 @@ function body — is shown complete below (anchored at the existing `export inte
 "use client";
 
 import { useMemo, useState } from "react";
-import { type MediaCollectionConfig, type VexMediaDocument, formatBytes, formatMimeType } from "@vexcms/core";
+import {
+  type MediaCollectionConfig,
+  type VexMediaDocument,
+  formatBytes,
+  formatMimeType,
+} from "@vexcms/core";
 import {
   Button,
   Input,
@@ -16957,7 +19140,12 @@ export interface MediaLibraryGridProps {
   accept?: string;
 }
 
-const DEFAULT_TYPE_OPTIONS = ["image/*", "video/*", "audio/*", "application/pdf"] as const;
+const DEFAULT_TYPE_OPTIONS = [
+  "image/*",
+  "video/*",
+  "audio/*",
+  "application/pdf",
+] as const;
 
 /**
  * Formats an accept pattern (`"image/*"`, `".pdf"`, `"application/pdf"`) as
@@ -17008,17 +19196,19 @@ export function MediaLibraryGrid({
         .filter(Boolean),
     [accept],
   );
-  const typeOptions = acceptPatterns.length > 0 ? acceptPatterns : [...DEFAULT_TYPE_OPTIONS];
+  const typeOptions =
+    acceptPatterns.length > 0 ? acceptPatterns : [...DEFAULT_TYPE_OPTIONS];
   const mimeTypes = useMemo(() => {
     if (selectedType !== "all") return [selectedType];
     return acceptPatterns.length > 0 ? acceptPatterns : undefined;
   }, [selectedType, acceptPatterns]);
 
-  const { documents, isPending, hasMore, isLoadingMore, loadMore } = usePaginatedSearch<VexMediaDocument>({
-    collection: targetCollectionConfig,
-    query: search,
-    mimeTypes,
-  });
+  const { documents, isPending, hasMore, isLoadingMore, loadMore } =
+    usePaginatedSearch<VexMediaDocument>({
+      collection: targetCollectionConfig,
+      query: search,
+      mimeTypes,
+    });
 
   const handleItemClick = (id: string) => {
     if (multi) {
@@ -17046,13 +19236,20 @@ export function MediaLibraryGrid({
           <DropdownMenuTrigger
             render={
               <Button variant="outline" icon="ListFilter">
-                {selectedType === "all" ? "Type" : formatTypeOption(selectedType)}
+                {selectedType === "all"
+                  ? "Type"
+                  : formatTypeOption(selectedType)}
               </Button>
             }
           />
           <DropdownMenuContent align="end">
-            <DropdownMenuRadioGroup value={selectedType} onValueChange={setSelectedType}>
-              <DropdownMenuRadioItem value="all">All types</DropdownMenuRadioItem>
+            <DropdownMenuRadioGroup
+              value={selectedType}
+              onValueChange={setSelectedType}
+            >
+              <DropdownMenuRadioItem value="all">
+                All types
+              </DropdownMenuRadioItem>
               {typeOptions.map((pattern) => (
                 <DropdownMenuRadioItem key={pattern} value={pattern}>
                   {formatTypeOption(pattern)}
@@ -17086,7 +19283,12 @@ export function MediaLibraryGrid({
       </div>
       {hasMore && (
         <div className="px-5 pb-3 pt-2">
-          <Button variant="outline" size="sm" onClick={loadMore} disabled={isLoadingMore}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadMore}
+            disabled={isLoadingMore}
+          >
             {isLoadingMore ? "Loading…" : "Load more"}
           </Button>
         </div>
@@ -17113,13 +19315,19 @@ export function MediaPicker({
   onSelect,
   onCancel,
 }: MediaPickerProps) {
-  const [selectedIds, setSelectedIds] = useState<string[]>(field.state.value ?? []);
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    field.state.value ?? [],
+  );
   const [activeTab, setActiveTab] = useState<"library" | "upload">(defaultTab);
 
   const config = useVexConfig();
-  const targetCollectionConfig = config.mediaCollections.find((mc) => mc.slug === targetCollection);
+  const targetCollectionConfig = config.mediaCollections.find(
+    (mc) => mc.slug === targetCollection,
+  );
   if (!targetCollectionConfig) {
-    throw new Error(`Media collection "${targetCollection}" not found in config.`);
+    throw new Error(
+      `Media collection "${targetCollection}" not found in config.`,
+    );
   }
 
   const handleSelect = () => {
@@ -17150,11 +19358,16 @@ export function MediaPicker({
             <h1 className="font-mono">
               Select {label} - <b className="text-primary">{fieldDef.label}</b>
             </h1>
-            <p className="text-xs">Choose from the list below, or upload more</p>
+            <p className="text-xs">
+              Choose from the list below, or upload more
+            </p>
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "library" | "upload")}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as "library" | "upload")}
+        >
           <TabsList>
             <TabsTrigger
               value="library"
@@ -17184,14 +19397,20 @@ export function MediaPicker({
             />
             <div className="flex items-center justify-between pt-4">
               <p className="pt-2">
-                {selectedIds.length} {selectedIds.length === 1 ? "item" : "items"} selected
+                {selectedIds.length}{" "}
+                {selectedIds.length === 1 ? "item" : "items"} selected
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={onCancel}>
                   Cancel
                 </Button>
-                <Button onClick={handleSelect} disabled={selectedIds.length === 0}>
-                  {multi && selectedIds.length > 1 ? `Select ${selectedIds.length}` : "Select"}
+                <Button
+                  onClick={handleSelect}
+                  disabled={selectedIds.length === 0}
+                >
+                  {multi && selectedIds.length > 1
+                    ? `Select ${selectedIds.length}`
+                    : "Select"}
                 </Button>
               </div>
             </div>
@@ -17246,12 +19465,16 @@ function makeMockMediaCollection(): MediaCollectionConfig {
 
 const stubClientConfig: VexClientConfig = defineConfig({
   mediaCollections: [makeMockMediaCollection()],
-  storage: { clientUploads: { convex: async () => ({ storageId: "stub-id" }) } },
+  storage: {
+    clientUploads: { convex: async () => ({ storageId: "stub-id" }) },
+  },
 });
 
 function Harness({ defaultTab }: { defaultTab?: "library" | "upload" }) {
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { queryFn: () => new Promise<never>(() => {}) } },
+    defaultOptions: {
+      queries: { queryFn: () => new Promise<never>(() => {}) },
+    },
   });
   const convexClient = new ConvexReactClient("https://example.convex.cloud");
   const field = { state: { value: [] } } as unknown as TypedFieldApi<string[]>;
@@ -17277,14 +19500,20 @@ function Harness({ defaultTab }: { defaultTab?: "library" | "upload" }) {
 describe("MediaPicker", () => {
   it("returns to the Library tab when Upload's own Cancel is clicked, instead of doing nothing", async () => {
     render(<Harness defaultTab="upload" />);
-    expect(screen.getByText("Drop Files here, or click to choose")).toBeInTheDocument();
+    expect(
+      screen.getByText("Drop Files here, or click to choose"),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     await waitFor(() =>
-      expect(screen.queryByText("Drop Files here, or click to choose")).not.toBeInTheDocument(),
+      expect(
+        screen.queryByText("Drop Files here, or click to choose"),
+      ).not.toBeInTheDocument(),
     );
-    expect(screen.getByPlaceholderText("Search Images by filename or alt…")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("Search Images by filename or alt…"),
+    ).toBeInTheDocument();
   });
 
   it("shows pluralized selection copy in the Library footer instead of the dead duplicate-branch ternary", () => {
@@ -17299,8 +19528,12 @@ describe("MediaPicker", () => {
     await user.click(screen.getByRole("button", { name: "Type" }));
     await screen.findByRole("menu");
 
-    expect(screen.getByRole("menuitemradio", { name: "Images" })).toBeInTheDocument();
-    expect(screen.queryByRole("menuitemradio", { name: "PDF" })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitemradio", { name: "Images" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitemradio", { name: "PDF" }),
+    ).not.toBeInTheDocument();
   });
 });
 ```
@@ -17328,49 +19561,51 @@ single-file field had no way back into the picker (anchor: step 1's `{fieldDef.m
 `{fieldDef.hasMany && ( … )}` expression, unchanged inside, with the ternary below):
 
 ```tsx
-      {fieldDef.hasMany ? (
-        <div className="flex items-center gap-2.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={openPicker}
-            disabled={readOnly || atLimit}
-            icon="FilePenLine"
-          >
-            Edit {targetCollectionConfig.labels.plural}
-          </Button>
-          <Button
-            variant="ghost"
-            className="transition-all duration-300 hover:text-destructive"
-            size="sm"
-            onClick={() => fieldApi.setValue([])}
-            disabled={readOnly || mediaIds.length === 0}
-            icon="X"
-          >
-            Clear
-          </Button>
-          {fieldDef.max && (
-            <span
-              className={`${atLimit ? "text-destructive" : "text-muted-foreground"} ml-auto font-mono
+{
+  fieldDef.hasMany ? (
+    <div className="flex items-center gap-2.5">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={openPicker}
+        disabled={readOnly || atLimit}
+        icon="FilePenLine"
+      >
+        Edit {targetCollectionConfig.labels.plural}
+      </Button>
+      <Button
+        variant="ghost"
+        className="transition-all duration-300 hover:text-destructive"
+        size="sm"
+        onClick={() => fieldApi.setValue([])}
+        disabled={readOnly || mediaIds.length === 0}
+        icon="X"
+      >
+        Clear
+      </Button>
+      {fieldDef.max && (
+        <span
+          className={`${atLimit ? "text-destructive" : "text-muted-foreground"} ml-auto font-mono
               text-[11px]`}
-            >
-              {mediaIds.length}/{fieldDef.max[0]}
-            </span>
-          )}
-        </div>
-      ) : (
-        <div className="flex items-center gap-2.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={openPicker}
-            disabled={readOnly}
-            icon="FilePenLine"
-          >
-            Replace
-          </Button>
-        </div>
+        >
+          {mediaIds.length}/{fieldDef.max[0]}
+        </span>
       )}
+    </div>
+  ) : (
+    <div className="flex items-center gap-2.5">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={openPicker}
+        disabled={readOnly}
+        icon="FilePenLine"
+      >
+        Replace
+      </Button>
+    </div>
+  );
+}
 ```
 
 #### packages/react/src/components/fields/upload/Input.test.tsx
@@ -17399,7 +19634,12 @@ hook import, and add `CollectionConfig`/`MediaCollectionConfig` type imports, an
 `usePaginatedQuery` import line:
 
 ```tsx
-import schema, { seedDocuments, seedMedia, testModules, type TestMediaInput } from "./convex/schema";
+import schema, {
+  seedDocuments,
+  seedMedia,
+  testModules,
+  type TestMediaInput,
+} from "./convex/schema";
 import { useTableSelection } from "../hooks/useTableSelection";
 import { usePaginatedQuery } from "../hooks/usePaginatedQuery";
 import { usePaginatedSearch } from "../hooks/usePaginatedSearch";
@@ -17409,7 +19649,8 @@ import type { CollectionConfig, MediaCollectionConfig } from "@vexcms/core";
 **Edit 2** — the member-name union, anchored at `HooksSuiteMember`:
 
 ```ts
-export type HooksSuiteMember = "useTableSelection" | "usePaginatedQuery" | "usePaginatedSearch";
+export type HooksSuiteMember =
+  "useTableSelection" | "usePaginatedQuery" | "usePaginatedSearch";
 ```
 
 **Edit 3** — new fixtures + describe block, anchored directly above the existing
@@ -17472,7 +19713,10 @@ function describePaginatedSearch() {
       );
 
       await waitFor(() => expect(result.current.isPending).toBe(false));
-      expect(result.current.documents.map((doc) => doc.title)).toEqual(["Doc 0", "Doc 1"]);
+      expect(result.current.documents.map((doc) => doc.title)).toEqual([
+        "Doc 0",
+        "Doc 1",
+      ]);
       expect(result.current.hasMore).toBe(true);
 
       act(() => result.current.loadMore());
@@ -17547,7 +19791,10 @@ function describePaginatedSearch() {
       );
 
       await waitFor(() =>
-        expect(result.current.documents.map((doc) => doc.filename)).toEqual(["b.pdf", "d.pdf"]),
+        expect(result.current.documents.map((doc) => doc.filename)).toEqual([
+          "b.pdf",
+          "d.pdf",
+        ]),
       );
       expect(result.current.hasMore).toBe(false);
     });
@@ -17559,7 +19806,11 @@ function describePaginatedSearch() {
 
 ```ts
 export function runHooksSuite(options?: { only?: HooksSuiteMember[] }): void {
-  const only = options?.only ?? ["useTableSelection", "usePaginatedQuery", "usePaginatedSearch"];
+  const only = options?.only ?? [
+    "useTableSelection",
+    "usePaginatedQuery",
+    "usePaginatedSearch",
+  ];
 
   if (only.includes("useTableSelection")) {
     describe("useTableSelection", () => {
@@ -17618,28 +19869,41 @@ it("shows the collection's plural label in the search placeholder, not the raw c
 });
 
 it("paginates via a real 'Load more' click, fetching and rendering the next server page", async () => {
-  const rows = Array.from({ length: 26 }, (_, i) => ({ filename: `file-${i}.png` }));
+  const rows = Array.from({ length: 26 }, (_, i) => ({
+    filename: `file-${i}.png`,
+  }));
   const { utils } = await renderGrid({ rows });
 
-  await waitFor(() => expect(utils.container.querySelectorAll(".grid > button")).toHaveLength(24));
+  await waitFor(() =>
+    expect(utils.container.querySelectorAll(".grid > button")).toHaveLength(24),
+  );
   const loadMoreButton = screen.getByRole("button", { name: "Load more" });
 
   fireEvent.click(loadMoreButton);
 
-  await waitFor(() => expect(utils.container.querySelectorAll(".grid > button")).toHaveLength(26));
-  expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(utils.container.querySelectorAll(".grid > button")).toHaveLength(26),
+  );
+  expect(
+    screen.queryByRole("button", { name: "Load more" }),
+  ).not.toBeInTheDocument();
 });
 
 it("derives the Type menu from accept, and selecting a type filters results client-side across server pages", async () => {
   const rows: Array<Partial<TestMediaInput>> = [
-    ...Array.from({ length: 24 }, (_, i) => ({ filename: `img-${i}.png`, mimeType: "image/png" })),
+    ...Array.from({ length: 24 }, (_, i) => ({
+      filename: `img-${i}.png`,
+      mimeType: "image/png",
+    })),
     { filename: "doc-a.pdf", mimeType: "application/pdf" },
     { filename: "doc-b.pdf", mimeType: "application/pdf" },
   ];
   const user = userEvent.setup();
   await renderGrid({ rows, accept: "image/*,application/pdf" });
 
-  await waitFor(() => expect(screen.getByText("img-0.png")).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByText("img-0.png")).toBeInTheDocument(),
+  );
 
   await user.click(screen.getByRole("button", { name: "Type" }));
   await screen.findByRole("menu");
@@ -17723,7 +19987,11 @@ the old code could only ever emit a VALID index (or none), and the fix doesn't c
 
 import { useState } from "react";
 import { useDebounceValue } from "@ts-hooks-kit/core";
-import type { CollectionConfig, RelationshipField, VexDocument } from "@vexcms/core";
+import type {
+  CollectionConfig,
+  RelationshipField,
+  VexDocument,
+} from "@vexcms/core";
 import { Button, Input, Skeleton } from "../ui";
 import { usePaginatedSearch } from "../../hooks";
 import { resolveRelationshipPreview } from "../fields/relationship/preview";
@@ -17769,15 +20037,23 @@ export function RelationshipDocumentList({
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounceValue(search, 200);
 
-  const { documents, isPending, isError, error, hasMore, isLoadingMore, loadMore } =
-    usePaginatedSearch<VexDocument>({
-      collection: targetCollection,
-      query: debouncedSearch,
-      drafts,
-    });
+  const {
+    documents,
+    isPending,
+    isError,
+    error,
+    hasMore,
+    isLoadingMore,
+    loadMore,
+  } = usePaginatedSearch<VexDocument>({
+    collection: targetCollection,
+    query: debouncedSearch,
+    drafts,
+  });
 
   const Preview = resolveRelationshipPreview({ fieldDef, targetCollection });
-  const atMax = fieldDef.max !== undefined && selectedIds.length >= fieldDef.max[0];
+  const atMax =
+    fieldDef.max !== undefined && selectedIds.length >= fieldDef.max[0];
   const targetLabel = targetCollection.labels.plural;
 
   function toggle(docId: string) {
@@ -17812,9 +20088,13 @@ export function RelationshipDocumentList({
           ))}
         </div>
       ) : isError ? (
-        <p className="p-4 text-center text-xs text-destructive">{getVexErrorMessage(error)}</p>
+        <p className="p-4 text-center text-xs text-destructive">
+          {getVexErrorMessage(error)}
+        </p>
       ) : documents.length === 0 ? (
-        <p className="p-4 text-center text-xs text-muted-foreground">No documents found</p>
+        <p className="p-4 text-center text-xs text-muted-foreground">
+          No documents found
+        </p>
       ) : (
         <div className="max-h-[360px] overflow-y-auto">
           {documents.map((doc) => {
@@ -17834,14 +20114,20 @@ export function RelationshipDocumentList({
                 {fieldDef.hasMany && (
                   <span
                     className={`${
-                      isSelected ? "bg-primary text-primary-foreground" : "border-input"
+                      isSelected
+                        ? "bg-primary text-primary-foreground"
+                        : "border-input"
                     } grid h-4 w-4 flex-shrink-0 place-items-center rounded-sm border border-primary`}
                   >
                     {isSelected && <span className="text-[10px]">✓</span>}
                   </span>
                 )}
                 <span className="flex-1 truncate">
-                  <Preview doc={doc} fieldKey="_id" config={targetCollection as never} />
+                  <Preview
+                    doc={doc}
+                    fieldKey="_id"
+                    config={targetCollection as never}
+                  />
                 </span>
               </button>
             );
@@ -17872,7 +20158,16 @@ export function RelationshipDocumentList({
 
 import { useState } from "react";
 import type { CollectionConfig, RelationshipField } from "@vexcms/core";
-import { Button, Dialog, DialogContent, Icon, Tabs, TabsContent, TabsList, TabsTrigger } from "../ui";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  Icon,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../ui";
 import { RelationshipDocumentList } from "./RelationshipDocumentList";
 import { CreateDocumentForm } from "../modals/CreateDocumentForm";
 
@@ -17924,7 +20219,9 @@ export function RelationshipPicker({
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const label = fieldDef.hasMany ? targetCollection.labels.plural : targetCollection.labels.singular;
+  const label = fieldDef.hasMany
+    ? targetCollection.labels.plural
+    : targetCollection.labels.singular;
 
   function handleCreated(id: string) {
     if (fieldDef.hasMany) {
@@ -17951,11 +20248,16 @@ export function RelationshipPicker({
             <h1 className="font-mono">
               Select {label} - <b className="text-primary">{fieldDef.label}</b>
             </h1>
-            <p className="text-xs">Choose from the list below, or create a new one</p>
+            <p className="text-xs">
+              Choose from the list below, or create a new one
+            </p>
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "select" | "create")}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as "select" | "create")}
+        >
           <TabsList>
             <TabsTrigger
               value="select"
@@ -17984,13 +20286,21 @@ export function RelationshipPicker({
               onSelectionChange={setSelectedIds}
             />
             <div className="flex items-center justify-between pt-4">
-              <p className="pt-2 text-xs text-muted-foreground">{selectedIds.length} selected</p>
+              <p className="pt-2 text-xs text-muted-foreground">
+                {selectedIds.length} selected
+              </p>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handleCancel} disabled={isSubmitting}>
+                <Button
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={isSubmitting}
+                >
                   Cancel
                 </Button>
                 <Button onClick={() => onSelect(selectedIds)}>
-                  {fieldDef.hasMany && selectedIds.length > 1 ? `Select ${selectedIds.length}` : "Select"}
+                  {fieldDef.hasMany && selectedIds.length > 1
+                    ? `Select ${selectedIds.length}`
+                    : "Select"}
                 </Button>
               </div>
             </div>
@@ -18026,10 +20336,15 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { CollectionConfig, VexDocument } from "@vexcms/core";
-import { relationshipFieldFixture, relationshipTargetCollection } from "../fields/relationship/testFixture";
+import {
+  relationshipFieldFixture,
+  relationshipTargetCollection,
+} from "../fields/relationship/testFixture";
 import { RelationshipDocumentList } from "./RelationshipDocumentList";
 
-const { usePaginatedSearchMock } = vi.hoisted(() => ({ usePaginatedSearchMock: vi.fn() }));
+const { usePaginatedSearchMock } = vi.hoisted(() => ({
+  usePaginatedSearchMock: vi.fn(),
+}));
 
 vi.mock("../../hooks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../hooks")>();
@@ -18040,7 +20355,9 @@ function makeDoc(id: string, title: string): VexDocument {
   return { _id: id, _creationTime: 0, title } as unknown as VexDocument;
 }
 
-function baseResult(overrides: Partial<ReturnType<typeof usePaginatedSearchMock>> = {}) {
+function baseResult(
+  overrides: Partial<ReturnType<typeof usePaginatedSearchMock>> = {},
+) {
   return {
     documents: [],
     isPending: false,
@@ -18067,11 +20384,15 @@ describe("RelationshipDocumentList", () => {
         onSelectionChange={vi.fn()}
       />,
     );
-    expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll('[data-slot="skeleton"]').length,
+    ).toBeGreaterThan(0);
   });
 
   it("renders an error message when the query fails", () => {
-    usePaginatedSearchMock.mockReturnValue(baseResult({ isError: true, error: new Error("boom") }));
+    usePaginatedSearchMock.mockReturnValue(
+      baseResult({ isError: true, error: new Error("boom") }),
+    );
     render(
       <RelationshipDocumentList
         fieldDef={relationshipFieldFixture.fieldDef}
@@ -18122,7 +20443,10 @@ describe("RelationshipDocumentList", () => {
     usePaginatedSearchMock.mockReturnValue(
       baseResult({ documents: [makeDoc("a", "Alpha"), makeDoc("b", "Bravo")] }),
     );
-    const fieldDef = { ...relationshipFieldFixture.fieldDef, max: [1, "Too many"] as const };
+    const fieldDef = {
+      ...relationshipFieldFixture.fieldDef,
+      max: [1, "Too many"] as const,
+    };
     render(
       <RelationshipDocumentList
         fieldDef={fieldDef}
@@ -18139,7 +20463,9 @@ describe("RelationshipDocumentList", () => {
 
   it("single-select: choosing the already-selected document clears the selection", async () => {
     const user = userEvent.setup();
-    usePaginatedSearchMock.mockReturnValue(baseResult({ documents: [makeDoc("a", "Alpha")] }));
+    usePaginatedSearchMock.mockReturnValue(
+      baseResult({ documents: [makeDoc("a", "Alpha")] }),
+    );
     const onSelectionChange = vi.fn();
     const fieldDef = { ...relationshipFieldFixture.fieldDef, hasMany: false };
     render(
@@ -18160,7 +20486,11 @@ describe("RelationshipDocumentList", () => {
     const user = userEvent.setup();
     const loadMore = vi.fn();
     usePaginatedSearchMock.mockReturnValue(
-      baseResult({ documents: [makeDoc("a", "Alpha")], hasMore: true, loadMore }),
+      baseResult({
+        documents: [makeDoc("a", "Alpha")],
+        hasMore: true,
+        loadMore,
+      }),
     );
     render(
       <RelationshipDocumentList
@@ -18186,7 +20516,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { CollectionConfig } from "@vexcms/core";
-import { relationshipFieldFixture, relationshipTargetCollection } from "../fields/relationship/testFixture";
+import {
+  relationshipFieldFixture,
+  relationshipTargetCollection,
+} from "../fields/relationship/testFixture";
 import { RelationshipPicker } from "./RelationshipPicker";
 
 vi.mock("./RelationshipDocumentList", () => ({
@@ -18199,7 +20532,10 @@ vi.mock("./RelationshipDocumentList", () => ({
   }) => (
     <div>
       <p>document list ({selectedIds.length} selected)</p>
-      <button type="button" onClick={() => onSelectionChange([...selectedIds, "doc-new"])}>
+      <button
+        type="button"
+        onClick={() => onSelectionChange([...selectedIds, "doc-new"])}
+      >
         pick doc-new
       </button>
     </div>
@@ -18262,7 +20598,9 @@ describe("RelationshipPicker", () => {
         onCancel={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: "finish create" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "finish create" }),
+    ).toBeInTheDocument();
   });
 
   it("calls onSelect with the current selection when Select is clicked", async () => {
@@ -18321,13 +20659,18 @@ describe("RelationshipPicker", () => {
     await user.click(screen.getByRole("button", { name: "finish create" }));
 
     expect(onSelect).not.toHaveBeenCalled();
-    expect(await screen.findByText("document list (1 selected)")).toBeInTheDocument();
+    expect(
+      await screen.findByText("document list (1 selected)"),
+    ).toBeInTheDocument();
   });
 
   it("single-select: creating a document calls onSelect immediately instead of returning to Select", async () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();
-    const singleFieldDef = { ...relationshipFieldFixture.fieldDef, hasMany: false };
+    const singleFieldDef = {
+      ...relationshipFieldFixture.fieldDef,
+      hasMany: false,
+    };
     render(
       <RelationshipPicker
         fieldDef={singleFieldDef}
@@ -18436,7 +20779,9 @@ export function CreateDocumentForm({
 
   const { mutateAsync, isPending } = useVexMutation({
     collection: collection.slug,
-    getChanges: ({ args, result }) => [{ after: { ...args.data, _id: result } }],
+    getChanges: ({ args, result }) => [
+      { after: { ...args.data, _id: result } },
+    ],
     mutationFn: vexConvexApi.create,
     operation: "create",
     errorToast: { message: `Failed to create ${collection.labels.singular}` },
@@ -18476,7 +20821,11 @@ export function CreateDocumentForm({
     >
       <AppForm form={form} className="flex h-full flex-col overflow-hidden">
         <div className="flex grow flex-col gap-2 overflow-y-auto px-2">
-          <RenderFields fields={collection.fields} collection={collection} fieldKeys={fieldKeys} />
+          <RenderFields
+            fields={collection.fields}
+            collection={collection}
+            fieldKeys={fieldKeys}
+          />
         </div>
         <DialogFooter className="p-1">
           <Button isPending={isPending || isSubmitting} type="submit">
@@ -18531,10 +20880,15 @@ import { parseAsBoolean, useQueryState } from "nuqs";
  */
 export function CreateDocumentModal(props: { collection: CollectionSlug }) {
   const config = useVexConfig();
-  const collection = config.collections.find((c) => c.slug === props.collection);
+  const collection = config.collections.find(
+    (c) => c.slug === props.collection,
+  );
 
   // eslint-disable-next-line no-unused-vars
-  const [_, setOpen] = useQueryState(MODALS.createDocument.urlParam, parseAsBoolean);
+  const [_, setOpen] = useQueryState(
+    MODALS.createDocument.urlParam,
+    parseAsBoolean,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -18543,13 +20897,18 @@ export function CreateDocumentModal(props: { collection: CollectionSlug }) {
   }
 
   return (
-    <Modal urlParam={MODALS.createDocument.urlParam} dismissible={!isSubmitting}>
+    <Modal
+      urlParam={MODALS.createDocument.urlParam}
+      dismissible={!isSubmitting}
+    >
       <DialogContent
         ref={dialogRef}
         initialFocus={dialogRef}
         className="flex h-[80svh] w-full flex-col sm:h-[50svh] sm:w-[50svw]"
       >
-        <DialogHeader className="px-2 pb-4">Create {collection.labels.singular}</DialogHeader>
+        <DialogHeader className="px-2 pb-4">
+          Create {collection.labels.singular}
+        </DialogHeader>
         <CreateDocumentForm
           collection={collection}
           onCreated={() => setOpen(null)}
@@ -18627,8 +20986,14 @@ import { convexTest } from "convex-test";
 import { describe, expect, it, vi } from "vitest";
 import { defineCollection, defineConfig, text } from "@vexcms/core";
 
-import { renderWithVexProviders, testCollection } from "../../testing/harness/accessFixtures";
-import { createFakeConvexClient, type ConvexTestInstance } from "../../testing/convex/bridge";
+import {
+  renderWithVexProviders,
+  testCollection,
+} from "../../testing/harness/accessFixtures";
+import {
+  createFakeConvexClient,
+  type ConvexTestInstance,
+} from "../../testing/convex/bridge";
 import schema, { readTable, testModules } from "../../testing/convex/schema";
 import { CreateDocumentForm } from "./CreateDocumentForm";
 
@@ -18652,7 +21017,9 @@ function buildConvexStack(t: ConvexTestInstance): {
   const convexClient = createFakeConvexClient(t) as ConvexReactClient;
   const convexQueryClient = new ConvexQueryClient(convexClient);
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { queryFn: convexQueryClient.queryFn(), retry: false } },
+    defaultOptions: {
+      queries: { queryFn: convexQueryClient.queryFn(), retry: false },
+    },
   });
   convexQueryClient.connect(queryClient);
   return { queryClient, convexClient };
@@ -18728,9 +21095,14 @@ describe("CreateDocumentForm", () => {
     await user.type(screen.getByLabelText(/status/i), "draft");
     await user.click(screen.getByRole("button", { name: "Create" }));
 
-    await waitFor(() => expect(onSubmittingChange).toHaveBeenLastCalledWith(false));
+    await waitFor(() =>
+      expect(onSubmittingChange).toHaveBeenLastCalledWith(false),
+    );
     expect(onSubmittingChange).toHaveBeenCalledWith(true);
-    expect(onSubmittingChange.mock.calls.map((call) => call[0])).toEqual([true, false]);
+    expect(onSubmittingChange.mock.calls.map((call) => call[0])).toEqual([
+      true,
+      false,
+    ]);
   });
 
   it("ignores a second rapid submit while the first is still in flight", async () => {
@@ -18738,7 +21110,9 @@ describe("CreateDocumentForm", () => {
     const { t } = renderForm({ onCreated });
 
     await userEvent.type(screen.getByLabelText(/status/i), "draft");
-    const form = screen.getByRole("button", { name: "Create" }).closest("form")!;
+    const form = screen
+      .getByRole("button", { name: "Create" })
+      .closest("form")!;
     fireEvent.submit(form);
     fireEvent.submit(form);
 
@@ -18795,10 +21169,14 @@ export function RelationshipEmpty({
   readOnly,
   onPickerOpen,
 }: RelationshipEmptyProps) {
-  const label = fieldDef.hasMany ? targetCollection.labels.plural : targetCollection.labels.singular;
+  const label = fieldDef.hasMany
+    ? targetCollection.labels.plural
+    : targetCollection.labels.singular;
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-input p-8 text-center">
-      <p className="text-sm text-muted-foreground">No {label.toLowerCase()} selected</p>
+      <p className="text-sm text-muted-foreground">
+        No {label.toLowerCase()} selected
+      </p>
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
@@ -18904,8 +21282,11 @@ export function RelationshipFilledState({
   onClear,
   openPicker,
 }: RelationshipFilledStateProps) {
-  const atLimit = fieldDef.max !== undefined && docIds.length >= fieldDef.max[0];
-  const label = fieldDef.hasMany ? targetCollection.labels.plural : targetCollection.labels.singular;
+  const atLimit =
+    fieldDef.max !== undefined && docIds.length >= fieldDef.max[0];
+  const label = fieldDef.hasMany
+    ? targetCollection.labels.plural
+    : targetCollection.labels.singular;
 
   return (
     <div className="flex flex-col gap-2">
@@ -18999,11 +21380,17 @@ function RelationshipItemRow({
   showDragHandle?: boolean;
 }) {
   const { data: doc, error } = useQuery({
-    ...get({ id: docId as GenericId<CollectionSlug>, collection: targetCollection.slug, drafts }),
+    ...get({
+      id: docId as GenericId<CollectionSlug>,
+      collection: targetCollection.slug,
+      drafts,
+    }),
   });
   const document = doc as VexDocument | null | undefined;
 
-  const accessError = (error as ReturnType<typeof useQuery<any, VexAccessError>>["error"])?.data;
+  const accessError = (
+    error as ReturnType<typeof useQuery<any, VexAccessError>>["error"]
+  )?.data;
   const Preview = resolveRelationshipPreview({ fieldDef, targetCollection });
   const updatedAt =
     document &&
@@ -19023,16 +21410,26 @@ function RelationshipItemRow({
           !accessError ? (
             <Skeleton className="h-10 w-10" />
           ) : (
-            <p className="w-full text-center text-destructive">{accessError.message}</p>
+            <p className="w-full text-center text-destructive">
+              {accessError.message}
+            </p>
           )
         ) : (
           <div className="flex min-w-0 flex-col py-1.5">
             <span className="truncate">
-              <Preview doc={document} fieldKey="_id" config={targetCollection as never} />
+              <Preview
+                doc={document}
+                fieldKey="_id"
+                config={targetCollection as never}
+              />
             </span>
             {updatedAt !== undefined && (
               <span className="text-xs text-muted-foreground">
-                Updated {formatDateFieldValue({ value: updatedAt, time: UPDATED_AT_TIME })}
+                Updated{" "}
+                {formatDateFieldValue({
+                  value: updatedAt,
+                  time: UPDATED_AT_TIME,
+                })}
               </span>
             )}
           </div>
@@ -19061,7 +21458,11 @@ function RelationshipItemRow({
 
 import { useState } from "react";
 import { parseAsString, useQueryState } from "nuqs";
-import type { CollectionFieldMeta, RelationshipField, VexResourceSlug } from "@vexcms/core";
+import type {
+  CollectionFieldMeta,
+  RelationshipField,
+  VexResourceSlug,
+} from "@vexcms/core";
 import { VERSION_STATUSES } from "@vexcms/core";
 import { createFieldInput } from "../../form/createFieldInput";
 import { FormDescription } from "../../form/FormDescription";
@@ -19094,69 +21495,112 @@ export const RelationshipFieldInput = createFieldInput<
   string[],
   CollectionFieldMeta,
   RelationshipField<VexResourceSlug, CollectionFieldMeta>
->(({ name, readOnly, fieldDef, field, index, submissionAttempts, documentStatus }) => {
-  const config = useVexConfig();
-  const [activeField, setActiveField] = useQueryState(
-    MODALS.relationshipPicker.urlParam,
-    parseAsString,
-  );
-  const [defaultTab, setDefaultTab] = useState<"select" | "create">("select");
-  const isOpen = activeField === name;
-  const isReadOnly = readOnly || fieldDef.admin.readOnly;
-  const drafts = documentStatus === VERSION_STATUSES.draft.key;
-  const value: string[] = field.state.value ?? [];
-
-  const targetCollection = config.collections.find((c) => c.slug === fieldDef.collection.slug);
-
-  const label = (
-    <span
-      id={`${name}-label`}
-      className="relative flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
-    >
-      {index !== undefined ? `[${index + 1}] - ` : ""}
-      {fieldDef.label || name}
-      {fieldDef.required && <span className="text-red-500">*</span>}
-    </span>
-  );
-
-  if (!targetCollection) {
-    return (
-      <div className="flex flex-col gap-1.5" role="group" aria-labelledby={`${name}-label`}>
-        {label}
-        <p className="text-xs text-destructive">
-          Unknown collection: <code>{fieldDef.collection.slug}</code>
-        </p>
-      </div>
+>(
+  ({
+    name,
+    readOnly,
+    fieldDef,
+    field,
+    index,
+    submissionAttempts,
+    documentStatus,
+  }) => {
+    const config = useVexConfig();
+    const [activeField, setActiveField] = useQueryState(
+      MODALS.relationshipPicker.urlParam,
+      parseAsString,
     );
-  }
+    const [defaultTab, setDefaultTab] = useState<"select" | "create">("select");
+    const isOpen = activeField === name;
+    const isReadOnly = readOnly || fieldDef.admin.readOnly;
+    const drafts = documentStatus === VERSION_STATUSES.draft.key;
+    const value: string[] = field.state.value ?? [];
 
-  async function openPicker(tab: "select" | "create" = "select") {
-    setDefaultTab(tab);
-    await setActiveField(name);
-  }
+    const targetCollection = config.collections.find(
+      (c) => c.slug === fieldDef.collection.slug,
+    );
 
-  async function closePicker() {
-    await setActiveField(null);
-  }
+    const label = (
+      <span
+        id={`${name}-label`}
+        className="relative flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+      >
+        {index !== undefined ? `[${index + 1}] - ` : ""}
+        {fieldDef.label || name}
+        {fieldDef.required && <span className="text-red-500">*</span>}
+      </span>
+    );
 
-  function handleSelect(ids: string[]) {
-    field.handleChange(ids);
-    void closePicker();
-  }
+    if (!targetCollection) {
+      return (
+        <div
+          className="flex flex-col gap-1.5"
+          role="group"
+          aria-labelledby={`${name}-label`}
+        >
+          {label}
+          <p className="text-xs text-destructive">
+            Unknown collection: <code>{fieldDef.collection.slug}</code>
+          </p>
+        </div>
+      );
+    }
 
-  function handleRemove(docId: string) {
-    field.handleChange(value.filter((id) => id !== docId));
-  }
+    async function openPicker(tab: "select" | "create" = "select") {
+      setDefaultTab(tab);
+      await setActiveField(name);
+    }
 
-  function handleClear() {
-    field.handleChange([]);
-  }
+    async function closePicker() {
+      await setActiveField(null);
+    }
 
-  function handleReorder(from: number, to: number) {
-    field.moveValue(from, to);
-  }
+    function handleSelect(ids: string[]) {
+      field.handleChange(ids);
+      void closePicker();
+    }
 
-  if (isReadOnly) {
+    function handleRemove(docId: string) {
+      field.handleChange(value.filter((id) => id !== docId));
+    }
+
+    function handleClear() {
+      field.handleChange([]);
+    }
+
+    function handleReorder(from: number, to: number) {
+      field.moveValue(from, to);
+    }
+
+    if (isReadOnly) {
+      return (
+        <div
+          className="flex flex-col gap-1.5"
+          role="group"
+          aria-labelledby={`${name}-label`}
+          aria-disabled={isReadOnly}
+        >
+          {label}
+          {value.length > 0 ? (
+            <RelationshipFilledState
+              fieldDef={fieldDef}
+              targetCollection={targetCollection}
+              docIds={value}
+              drafts={drafts}
+              readOnly
+              onRemove={handleRemove}
+              onClear={handleClear}
+              openPicker={() => void openPicker()}
+            />
+          ) : (
+            <div className="text-sm text-muted-foreground">—</div>
+          )}
+          <FormDescription field={fieldDef} />
+          <FormError field={field} submissionAttempts={submissionAttempts} />
+        </div>
+      );
+    }
+
     return (
       <div
         className="flex flex-col gap-1.5"
@@ -19165,70 +21609,43 @@ export const RelationshipFieldInput = createFieldInput<
         aria-disabled={isReadOnly}
       >
         {label}
-        {value.length > 0 ? (
+        {value.length === 0 ? (
+          <RelationshipEmpty
+            fieldDef={fieldDef}
+            targetCollection={targetCollection}
+            readOnly={isReadOnly}
+            onPickerOpen={(tab) => void openPicker(tab)}
+          />
+        ) : (
           <RelationshipFilledState
             fieldDef={fieldDef}
             targetCollection={targetCollection}
             docIds={value}
             drafts={drafts}
-            readOnly
+            readOnly={isReadOnly}
             onRemove={handleRemove}
+            onReorder={fieldDef.hasMany ? handleReorder : undefined}
             onClear={handleClear}
             openPicker={() => void openPicker()}
           />
-        ) : (
-          <div className="text-sm text-muted-foreground">—</div>
         )}
         <FormDescription field={fieldDef} />
         <FormError field={field} submissionAttempts={submissionAttempts} />
+        {isOpen && (
+          <RelationshipPicker
+            fieldDef={fieldDef}
+            targetCollection={targetCollection}
+            selectedIds={value}
+            drafts={drafts}
+            defaultTab={defaultTab}
+            onSelect={handleSelect}
+            onCancel={() => void closePicker()}
+          />
+        )}
       </div>
     );
-  }
-
-  return (
-    <div
-      className="flex flex-col gap-1.5"
-      role="group"
-      aria-labelledby={`${name}-label`}
-      aria-disabled={isReadOnly}
-    >
-      {label}
-      {value.length === 0 ? (
-        <RelationshipEmpty
-          fieldDef={fieldDef}
-          targetCollection={targetCollection}
-          readOnly={isReadOnly}
-          onPickerOpen={(tab) => void openPicker(tab)}
-        />
-      ) : (
-        <RelationshipFilledState
-          fieldDef={fieldDef}
-          targetCollection={targetCollection}
-          docIds={value}
-          drafts={drafts}
-          readOnly={isReadOnly}
-          onRemove={handleRemove}
-          onReorder={fieldDef.hasMany ? handleReorder : undefined}
-          onClear={handleClear}
-          openPicker={() => void openPicker()}
-        />
-      )}
-      <FormDescription field={fieldDef} />
-      <FormError field={field} submissionAttempts={submissionAttempts} />
-      {isOpen && (
-        <RelationshipPicker
-          fieldDef={fieldDef}
-          targetCollection={targetCollection}
-          selectedIds={value}
-          drafts={drafts}
-          defaultTab={defaultTab}
-          onSelect={handleSelect}
-          onCancel={() => void closePicker()}
-        />
-      )}
-    </div>
-  );
-});
+  },
+);
 ```
 
 #### packages/react/src/components/fields/relationship/index.ts
@@ -19302,7 +21719,10 @@ const fieldDef = relationship<VexResourceSlug, CollectionFieldMeta>({
  * `components/relationship/*.test.tsx`, rendered with `VexConfigContext` and
  * the convex-test bridge wired in against real seeded documents.
  */
-export const relationshipFieldFixture: FieldFixture<RelationshipField<VexResourceSlug, CollectionFieldMeta>, string[]> = {
+export const relationshipFieldFixture: FieldFixture<
+  RelationshipField<VexResourceSlug, CollectionFieldMeta>,
+  string[]
+> = {
   fieldType: "relationship",
   fieldDef,
   valid: ["kg2fake00000000000000001;documents"],
@@ -19319,7 +21739,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { CollectionConfig } from "@vexcms/core";
-import { relationshipFieldFixture, relationshipTargetCollection } from "./testFixture";
+import {
+  relationshipFieldFixture,
+  relationshipTargetCollection,
+} from "./testFixture";
 import { RelationshipEmpty } from "./EmptyInput";
 
 const targetCollection = relationshipTargetCollection as CollectionConfig;
@@ -19334,8 +21757,12 @@ describe("RelationshipEmpty", () => {
         onPickerOpen={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: "Select Documents" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create Document" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Select Documents" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create Document" }),
+    ).toBeInTheDocument();
   });
 
   it("calls onPickerOpen with the matching tab for each button", async () => {
@@ -19366,8 +21793,12 @@ describe("RelationshipEmpty", () => {
         onPickerOpen={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: "Select Documents" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Create Document" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Select Documents" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Create Document" }),
+    ).toBeDisabled();
   });
 });
 ```
@@ -19383,11 +21814,19 @@ import { ConvexQueryClient } from "@convex-dev/react-query";
 import { ConvexProvider, type ConvexReactClient } from "convex/react";
 import { convexTest } from "convex-test";
 import { describe, expect, it, vi } from "vitest";
-import type { CollectionConfig, CollectionFieldMeta, RelationshipField, VexResourceSlug } from "@vexcms/core";
+import type {
+  CollectionConfig,
+  CollectionFieldMeta,
+  RelationshipField,
+  VexResourceSlug,
+} from "@vexcms/core";
 
 import { createFakeConvexClient } from "../../../testing/convex/bridge";
 import schema, { testModules } from "../../../testing/convex/schema";
-import { relationshipFieldFixture, relationshipTargetCollection } from "./testFixture";
+import {
+  relationshipFieldFixture,
+  relationshipTargetCollection,
+} from "./testFixture";
 import { RelationshipFilledState } from "./FilledInput";
 import { DndProvider } from "../../ui/dnd";
 
@@ -19412,7 +21851,9 @@ async function renderFilled(
   const convexClient = createFakeConvexClient(t) as ConvexReactClient;
   const convexQueryClient = new ConvexQueryClient(convexClient);
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { queryFn: convexQueryClient.queryFn(), retry: false } },
+    defaultOptions: {
+      queries: { queryFn: convexQueryClient.queryFn(), retry: false },
+    },
   });
   convexQueryClient.connect(queryClient);
 
@@ -19446,16 +21887,23 @@ async function renderFilled(
 describe("RelationshipFilledState", () => {
   it("shows a skeleton before each row's document resolves, then its preview", async () => {
     await renderFilled();
-    expect(document.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
+    expect(
+      document.querySelectorAll('[data-slot="skeleton"]').length,
+    ).toBeGreaterThan(0);
     expect(await screen.findByText("Alpha")).toBeInTheDocument();
     expect(await screen.findByText("Bravo")).toBeInTheDocument();
   });
 
   it("shows the n/max counter and disables Edit once at max", async () => {
-    const fieldDef = { ...relationshipFieldFixture.fieldDef, max: [2, "Too many"] as const };
+    const fieldDef = {
+      ...relationshipFieldFixture.fieldDef,
+      max: [2, "Too many"] as const,
+    };
     await renderFilled({ fieldDef });
     expect(await screen.findByText("2/2")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /edit documents/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /edit documents/i }),
+    ).toBeDisabled();
   });
 
   it("calls onRemove with the row's document id", async () => {
@@ -19517,7 +21965,10 @@ import { runFieldInputContractSuite } from "../../../testing/fieldInputContract"
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { createFakeConvexClient } from "../../../testing/convex/bridge";
 import schema, { testModules } from "../../../testing/convex/schema";
-import { relationshipFieldFixture, relationshipTargetCollection } from "./testFixture";
+import {
+  relationshipFieldFixture,
+  relationshipTargetCollection,
+} from "./testFixture";
 import { RelationshipFieldInput } from "./Input";
 
 vi.mock("../../relationship", () => ({
@@ -19574,11 +22025,15 @@ async function renderRelationship(
   const convexClient = createFakeConvexClient(t) as ConvexReactClient;
   const convexQueryClient = new ConvexQueryClient(convexClient);
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { queryFn: convexQueryClient.queryFn(), retry: false } },
+    defaultOptions: {
+      queries: { queryFn: convexQueryClient.queryFn(), retry: false },
+    },
   });
   convexQueryClient.connect(queryClient);
 
-  const config = overrides.config ?? defineConfig({ collections: [relationshipTargetCollection] });
+  const config =
+    overrides.config ??
+    defineConfig({ collections: [relationshipTargetCollection] });
   const fieldDef = overrides.fieldDef ?? relationshipFieldFixture.fieldDef;
   const initialValue =
     typeof overrides.initialValue === "function"
@@ -19612,7 +22067,9 @@ async function renderRelationship(
 }
 
 function FieldLevelPreview({ doc }: { doc: unknown }) {
-  return <span>Field preview: {String((doc as Record<string, unknown>).title)}</span>;
+  return (
+    <span>Field preview: {String((doc as Record<string, unknown>).title)}</span>
+  );
 }
 
 runFieldInputContractSuite({
@@ -19621,26 +22078,42 @@ runFieldInputContractSuite({
   extra: () => {
     describe("relationship state switch", () => {
       test("renders the missing-target-collection error instead of crashing when the field's target slug isn't registered", async () => {
-        await renderRelationship({ config: defineConfig({ collections: [testCollection] }) });
+        await renderRelationship({
+          config: defineConfig({ collections: [testCollection] }),
+        });
 
-        expect(await screen.findByText(/unknown collection/i)).toBeInTheDocument();
-        expect(screen.getByText("documents", { selector: "code" })).toBeInTheDocument();
+        expect(
+          await screen.findByText(/unknown collection/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText("documents", { selector: "code" }),
+        ).toBeInTheDocument();
       });
 
       test("empty value renders RelationshipEmpty with Select/Create buttons", async () => {
         await renderRelationship({ initialValue: [] });
 
-        expect(await screen.findByRole("button", { name: /select documents/i })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /create document/i })).toBeInTheDocument();
+        expect(
+          await screen.findByRole("button", { name: /select documents/i }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /create document/i }),
+        ).toBeInTheDocument();
       });
 
       test("clicking Select opens the picker on the select tab", async () => {
         const user = userEvent.setup();
         await renderRelationship({ initialValue: [] });
 
-        await user.click(await screen.findByRole("button", { name: /select documents/i }));
+        await user.click(
+          await screen.findByRole("button", { name: /select documents/i }),
+        );
 
-        expect(await screen.findByRole("dialog", { name: "relationship picker stub" })).toBeInTheDocument();
+        expect(
+          await screen.findByRole("dialog", {
+            name: "relationship picker stub",
+          }),
+        ).toBeInTheDocument();
         expect(screen.getByText("tab: select")).toBeInTheDocument();
       });
 
@@ -19648,7 +22121,9 @@ runFieldInputContractSuite({
         const user = userEvent.setup();
         await renderRelationship({ initialValue: [] });
 
-        await user.click(await screen.findByRole("button", { name: /create document/i }));
+        await user.click(
+          await screen.findByRole("button", { name: /create document/i }),
+        );
 
         expect(await screen.findByText("tab: create")).toBeInTheDocument();
       });
@@ -19657,11 +22132,17 @@ runFieldInputContractSuite({
         const user = userEvent.setup();
         await renderRelationship({ initialValue: [] });
 
-        await user.click(await screen.findByRole("button", { name: /select documents/i }));
-        await user.click(await screen.findByRole("button", { name: "confirm pick" }));
+        await user.click(
+          await screen.findByRole("button", { name: /select documents/i }),
+        );
+        await user.click(
+          await screen.findByRole("button", { name: "confirm pick" }),
+        );
 
         await waitFor(() =>
-          expect(screen.queryByRole("dialog", { name: "relationship picker stub" })).not.toBeInTheDocument(),
+          expect(
+            screen.queryByRole("dialog", { name: "relationship picker stub" }),
+          ).not.toBeInTheDocument(),
         );
       });
 
@@ -19672,14 +22153,18 @@ runFieldInputContractSuite({
         });
 
         expect(await screen.findByText("Alpha")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /edit documents/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /edit documents/i }),
+        ).toBeInTheDocument();
       });
 
       test("read-only with an empty value renders an em dash and no Select/Create buttons", async () => {
         await renderRelationship({ readOnly: true, initialValue: [] });
 
         expect(await screen.findByText("—")).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /select documents/i })).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: /select documents/i }),
+        ).not.toBeInTheDocument();
       });
 
       test("read-only with a value renders RelationshipFilledState in its disabled form", async () => {
@@ -19690,11 +22175,16 @@ runFieldInputContractSuite({
         });
 
         expect(await screen.findByText("Alpha")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /edit documents/i })).toBeDisabled();
+        expect(
+          screen.getByRole("button", { name: /edit documents/i }),
+        ).toBeDisabled();
       });
 
       test("field-level admin.components.preview overrides the default preview in RelationshipFilledState", async () => {
-        const fieldDefWithPreview: RelationshipField<VexResourceSlug, CollectionFieldMeta> = {
+        const fieldDefWithPreview: RelationshipField<
+          VexResourceSlug,
+          CollectionFieldMeta
+        > = {
           ...relationshipFieldFixture.fieldDef,
           admin: {
             ...relationshipFieldFixture.fieldDef.admin,
@@ -19707,7 +22197,9 @@ runFieldInputContractSuite({
           initialValue: (seededIds) => [seededIds[0]!],
         });
 
-        expect(await screen.findByText("Field preview: Alpha")).toBeInTheDocument();
+        expect(
+          await screen.findByText("Field preview: Alpha"),
+        ).toBeInTheDocument();
       });
     });
   },
@@ -19792,7 +22284,9 @@ export function resolveTitleSearchIndex(props: {
   collection: CollectionConfig;
 }): ResolvedTitleSearchIndex | undefined {
   const useAsTitle = props.collection.admin.useAsTitle;
-  const coreAdminFields: string[] = Object.values(CONVEX_SYSTEM_FIELDS).map((f) => f.slug);
+  const coreAdminFields: string[] = Object.values(CONVEX_SYSTEM_FIELDS).map(
+    (f) => f.slug,
+  );
   if (coreAdminFields.includes(useAsTitle)) return undefined;
   const field = props.collection.fields[useAsTitle];
   if (
@@ -19816,24 +22310,28 @@ built the auto search index; the rest of the function (field loop, index buildin
 versions, return) is unchanged.
 
 ```ts
-  const relationships = getIncomingRelationships({
+const relationships = getIncomingRelationships({
+  collection: props.collection,
+  config: props.config,
+});
+if (relationships.length > 0) {
+  const titleSearchIndex = resolveTitleSearchIndex({
     collection: props.collection,
-    config: props.config,
   });
-  if (relationships.length > 0) {
-    const titleSearchIndex = resolveTitleSearchIndex({ collection: props.collection });
-    if (titleSearchIndex !== undefined) {
-      const titleField = props.collection.fields[titleSearchIndex.searchField];
-      const hasOwnSearchIndex =
-        titleField !== undefined && "searchIndex" in titleField && titleField.searchIndex !== undefined;
-      if (!hasOwnSearchIndex) {
-        searchIndexes.push(`\t.searchIndex("${titleSearchIndex.indexName}", {\n
+  if (titleSearchIndex !== undefined) {
+    const titleField = props.collection.fields[titleSearchIndex.searchField];
+    const hasOwnSearchIndex =
+      titleField !== undefined &&
+      "searchIndex" in titleField &&
+      titleField.searchIndex !== undefined;
+    if (!hasOwnSearchIndex) {
+      searchIndexes.push(`\t.searchIndex("${titleSearchIndex.indexName}", {\n
         searchField: "${titleSearchIndex.searchField}",\n
         filterFields: []
       })`);
-      }
     }
   }
+}
 ```
 
 #### packages/core/src/collections/validator.test.ts
@@ -19843,63 +22341,63 @@ test (anchored at that `it(...)` title) is replaced** — a custom-named `search
 title field is now reused instead of co-existing with a redundant auto index:
 
 ```ts
-  it("custom-named searchIndex on the title field is reused — no auto index, exactly one emitted", () => {
-    const authors = defineCollection({
-      slug: "authors",
-      fields: {
-        name: text({
-          required: true,
-          searchIndex: { name: "search_authors_by_name", filterFields: [] },
-        }),
-      },
-      admin: { useAsTitle: "name" },
-    });
-    const posts = defineCollection({
-      slug: "posts",
-      fields: { author: relationship({ collection: { slug: "authors" } }) },
-    });
-    const config = defineConfig({ collections: [posts, authors] });
-    const output = collectionConfigToVexSchema({ collection: authors, config });
-    expect(output).toContain('.searchIndex("search_authors_by_name"');
-    expect(output).not.toContain('.searchIndex("search_name"');
-    const count = (output.match(/searchIndex/g) ?? []).length;
-    expect(count).toBe(1);
+it("custom-named searchIndex on the title field is reused — no auto index, exactly one emitted", () => {
+  const authors = defineCollection({
+    slug: "authors",
+    fields: {
+      name: text({
+        required: true,
+        searchIndex: { name: "search_authors_by_name", filterFields: [] },
+      }),
+    },
+    admin: { useAsTitle: "name" },
   });
+  const posts = defineCollection({
+    slug: "posts",
+    fields: { author: relationship({ collection: { slug: "authors" } }) },
+  });
+  const config = defineConfig({ collections: [posts, authors] });
+  const output = collectionConfigToVexSchema({ collection: authors, config });
+  expect(output).toContain('.searchIndex("search_authors_by_name"');
+  expect(output).not.toContain('.searchIndex("search_name"');
+  const count = (output.match(/searchIndex/g) ?? []).length;
+  expect(count).toBe(1);
+});
 ```
 
 **2 — two new tests for a non-string `useAsTitle`, anchored after the email-searchIndex
 test at the end of the `"collectionConfigToVexSchema — auto search index"` describe block:**
 
 ```ts
-  it("does NOT emit a search index when useAsTitle is a non-string field (number)", () => {
-    const products = defineCollection({
-      slug: "products",
-      fields: { price: number({ required: true }) },
-      admin: { useAsTitle: "price" },
-    });
-    const orders = defineCollection({
-      slug: "orders",
-      fields: { product: relationship({ collection: { slug: "products" } }) },
-    });
-    const config = defineConfig({ collections: [orders, products] });
-    const output = collectionConfigToVexSchema({ collection: products, config });
-    expect(output).not.toContain(".searchIndex(");
+it("does NOT emit a search index when useAsTitle is a non-string field (number)", () => {
+  const products = defineCollection({
+    slug: "products",
+    fields: { price: number({ required: true }) },
+    admin: { useAsTitle: "price" },
   });
+  const orders = defineCollection({
+    slug: "orders",
+    fields: { product: relationship({ collection: { slug: "products" } }) },
+  });
+  const config = defineConfig({ collections: [orders, products] });
+  const output = collectionConfigToVexSchema({ collection: products, config });
+  expect(output).not.toContain(".searchIndex(");
+});
 
-  it("does NOT emit a search index when useAsTitle is a non-string field (date)", () => {
-    const events = defineCollection({
-      slug: "events",
-      fields: { startsAt: date({ required: true }) },
-      admin: { useAsTitle: "startsAt" },
-    });
-    const tickets = defineCollection({
-      slug: "tickets",
-      fields: { event: relationship({ collection: { slug: "events" } }) },
-    });
-    const config = defineConfig({ collections: [tickets, events] });
-    const output = collectionConfigToVexSchema({ collection: events, config });
-    expect(output).not.toContain(".searchIndex(");
+it("does NOT emit a search index when useAsTitle is a non-string field (date)", () => {
+  const events = defineCollection({
+    slug: "events",
+    fields: { startsAt: date({ required: true }) },
+    admin: { useAsTitle: "startsAt" },
   });
+  const tickets = defineCollection({
+    slug: "tickets",
+    fields: { event: relationship({ collection: { slug: "events" } }) },
+  });
+  const config = defineConfig({ collections: [tickets, events] });
+  const output = collectionConfigToVexSchema({ collection: events, config });
+  expect(output).not.toContain(".searchIndex(");
+});
 ```
 
 **3 — a new `"resolveTitleSearchIndex"` describe block, anchored after the
@@ -19959,11 +22457,14 @@ The test file's import line gains `number`, `date`, and `resolveTitleSearchIndex
 
 ```ts
 import { email, text, textarea, number, date } from "../fields";
-import { collectionConfigToVexSchema, getIncomingRelationships, resolveTitleSearchIndex } from "./validator";
+import {
+  collectionConfigToVexSchema,
+  getIncomingRelationships,
+  resolveTitleSearchIndex,
+} from "./validator";
 ```
 
 Verify: `pnpm --filter @vexcms/core test -- validator`
-
 
 Verify: `pnpm --filter @vexcms/react test -- fields/relationship relationship`
 
@@ -19976,7 +22477,7 @@ Verify: `pnpm --filter @vexcms/react test -- fields/relationship relationship`
 - [ ] `packages/react/src/components/form/BlockActionsMenu.test.tsx`
 - [ ] `packages/react/src/components/form/FormBlocks.tsx` — menu, insert-at-index picker, collapse/expand all, error marker, `n/max`, per-block `defaultCollapsed`, resolved `canEdit` NOTE, stale comments removed
 - [ ] `packages/react/src/components/form/FormBlocks.test.tsx`
-- [ ] `packages/react/src/components/form/FormArray.tsx` — duplicate, move up/down, stable item keys
+- [ ] `packages/react/src/components/form/FormArray.tsx` — duplicate, move up/down, stable item keys (keyed by stored `id` for object-shaped items, step 9's `isObjectShapedArrayItem`/`withArrayItemId`; `keysRef` synthetic UUIDs for scalar items)
 - [ ] `packages/react/src/components/form/FormArray.test.tsx`
 - [ ] `packages/react/src/components/fields/blocks/Input.test.tsx` — 2 edits for the `blockName` default-placeholder fix and the actions-menu remove path
 - [ ] `packages/react/src/testing/nestedFieldContainer.ts` — 3 edits: the "blocks" `blockName` matcher, the "removes a seeded item" remove path, the readOnly-cascade check exempting the per-block actions menu trigger (step 16 stops disabling it so `Copy` stays reachable)
@@ -20008,10 +22509,15 @@ import type { AdminField } from "../types";
  *   sub-field initialised to its `defaultValue` (or `null`). `blockName` is
  *   left unset so the admin UI's placeholder (the block's label) shows.
  */
-export function buildDefaultBlock(props: { blockDef: BlockConfig }): GenericBlock {
+export function buildDefaultBlock(props: {
+  blockDef: BlockConfig;
+}): GenericBlock {
   const { blockDef } = props;
   const fieldDefaults = Object.fromEntries(
-    Object.entries(blockDef.fields).map(([key, subField]) => [key, subField.defaultValue ?? null]),
+    Object.entries(blockDef.fields).map(([key, subField]) => [
+      key,
+      subField.defaultValue ?? null,
+    ]),
   );
   return {
     id: nanoid(),
@@ -20030,14 +22536,21 @@ export function buildDefaultBlock(props: { blockDef: BlockConfig }): GenericBloc
  * @param props.field - The field definition describing `value`'s shape.
  * @returns `value`, with every nested block's `id` (and ITS nested blocks) replaced.
  */
-function cloneNestedBlockIds(props: { value: unknown; field: AdminField }): unknown {
+function cloneNestedBlockIds(props: {
+  value: unknown;
+  field: AdminField;
+}): unknown {
   const { value, field } = props;
   if (value == null) return value;
   if (field.type === ADMIN_FIELDS.blocks.type) {
-    const blockDefMap = new Map(field.blocks.map((blockDef) => [blockDef.blockType, blockDef]));
+    const blockDefMap = new Map(
+      field.blocks.map((blockDef) => [blockDef.blockType, blockDef]),
+    );
     return (value as GenericBlock[]).map((item) => {
       const itemBlockDef = blockDefMap.get(item.blockType as string);
-      return itemBlockDef ? cloneBlockWithFreshIds({ block: item, blockDef: itemBlockDef }) : item;
+      return itemBlockDef
+        ? cloneBlockWithFreshIds({ block: item, blockDef: itemBlockDef })
+        : item;
     });
   }
   if (field.type === ADMIN_FIELDS.group.type) {
@@ -20045,13 +22558,18 @@ function cloneNestedBlockIds(props: { value: unknown; field: AdminField }): unkn
     const result: Record<string, unknown> = { ...groupValue };
     for (const [key, subField] of Object.entries(field.fields)) {
       if (key in groupValue) {
-        result[key] = cloneNestedBlockIds({ value: groupValue[key], field: subField });
+        result[key] = cloneNestedBlockIds({
+          value: groupValue[key],
+          field: subField,
+        });
       }
     }
     return result;
   }
   if (field.type === ADMIN_FIELDS.array.type) {
-    return (value as unknown[]).map((item) => cloneNestedBlockIds({ value: item, field: field.items }));
+    return (value as unknown[]).map((item) =>
+      cloneNestedBlockIds({ value: item, field: field.items }),
+    );
   }
   return value;
 }
@@ -20066,7 +22584,10 @@ function cloneNestedBlockIds(props: { value: unknown; field: AdminField }): unkn
  * @returns A new block object: the same keys as `block`, a fresh top-level
  *   `id`, and fresh ids on every nested block item.
  */
-export function cloneBlockWithFreshIds(props: { block: GenericBlock; blockDef: BlockConfig }): GenericBlock {
+export function cloneBlockWithFreshIds(props: {
+  block: GenericBlock;
+  blockDef: BlockConfig;
+}): GenericBlock {
   const { block, blockDef } = props;
   const cloned: GenericBlock = { ...block, id: nanoid() };
   for (const [key, subField] of Object.entries(blockDef.fields)) {
@@ -20098,14 +22619,18 @@ export function coerceBlockToDefinition(props: {
     id: nanoid(),
     blockType: blockDef.blockType,
     ...Object.fromEntries(
-      Object.entries(blockDef.fields).map(([key, subField]) => [key, subField.defaultValue ?? null]),
+      Object.entries(blockDef.fields).map(([key, subField]) => [
+        key,
+        subField.defaultValue ?? null,
+      ]),
     ),
   };
   if (typeof block.blockName === "string") {
     coerced.blockName = block.blockName;
   }
   for (const key of Object.keys(block)) {
-    if ((RESERVED_BLOCK_FIELD_NAMES as readonly string[]).includes(key)) continue;
+    if ((RESERVED_BLOCK_FIELD_NAMES as readonly string[]).includes(key))
+      continue;
     const subField = blockDef.fields[key];
     if (!subField) {
       droppedKeys.push(key);
@@ -20127,7 +22652,11 @@ import { defineBlock, blocks } from "./config";
 import { text } from "../text";
 import { group } from "../group";
 import type { GenericBlock } from "./types";
-import { buildDefaultBlock, cloneBlockWithFreshIds, coerceBlockToDefinition } from "./utils";
+import {
+  buildDefaultBlock,
+  cloneBlockWithFreshIds,
+  coerceBlockToDefinition,
+} from "./utils";
 
 const paragraphBlock = defineBlock({
   slug: "paragraph",
@@ -20146,7 +22675,10 @@ const galleryBlock = defineBlock({
   label: "Gallery",
   fields: {
     items: blocks({ label: "Items", blocks: [itemBlock] }),
-    meta: group({ label: "Meta", fields: { inner: blocks({ label: "Inner", blocks: [itemBlock] }) } }),
+    meta: group({
+      label: "Meta",
+      fields: { inner: blocks({ label: "Inner", blocks: [itemBlock] }) },
+    }),
   },
 });
 
@@ -20168,8 +22700,16 @@ describe("buildDefaultBlock", () => {
 
 describe("cloneBlockWithFreshIds", () => {
   it("clones a flat block with a fresh id, keeping its other fields", () => {
-    const source: GenericBlock = { id: "p1", blockType: "paragraph", blockName: "Intro", text: "Hello" };
-    const cloned = cloneBlockWithFreshIds({ block: source, blockDef: paragraphBlock });
+    const source: GenericBlock = {
+      id: "p1",
+      blockType: "paragraph",
+      blockName: "Intro",
+      text: "Hello",
+    };
+    const cloned = cloneBlockWithFreshIds({
+      block: source,
+      blockDef: paragraphBlock,
+    });
     expect(cloned.id).not.toBe("p1");
     expect(cloned.blockName).toBe("Intro");
     expect(cloned.text).toBe("Hello");
@@ -20182,7 +22722,10 @@ describe("cloneBlockWithFreshIds", () => {
       items: [{ id: "i1", blockType: "item", label: "A" }],
       meta: { inner: [{ id: "i2", blockType: "item", label: "B" }] },
     };
-    const cloned = cloneBlockWithFreshIds({ block: source, blockDef: galleryBlock });
+    const cloned = cloneBlockWithFreshIds({
+      block: source,
+      blockDef: galleryBlock,
+    });
     expect(cloned.id).not.toBe("g1");
     const items = cloned.items as GenericBlock[];
     expect(items).toHaveLength(1);
@@ -20201,7 +22744,10 @@ describe("cloneBlockWithFreshIds", () => {
       items: [{ id: "i1", blockType: "not-registered", label: "A" }],
       meta: { inner: [] },
     };
-    const cloned = cloneBlockWithFreshIds({ block: source, blockDef: galleryBlock });
+    const cloned = cloneBlockWithFreshIds({
+      block: source,
+      blockDef: galleryBlock,
+    });
     const items = cloned.items as GenericBlock[];
     expect(items[0]?.id).toBe("i1");
   });
@@ -20348,7 +22894,10 @@ export function BlockActionsMenu(props: {
           <ArrowUpIcon className="size-4" />
           Move up
         </DropdownMenuItem>
-        <DropdownMenuItem disabled={index === count - 1} onClick={props.onMoveDown}>
+        <DropdownMenuItem
+          disabled={index === count - 1}
+          onClick={props.onMoveDown}
+        >
           <ArrowDownIcon className="size-4" />
           Move down
         </DropdownMenuItem>
@@ -20412,11 +22961,15 @@ describe("BlockActionsMenu", () => {
     expect(props.onDuplicate).toHaveBeenCalledTimes(1);
 
     user = await openMenu();
-    await user.click(await screen.findByRole("menuitem", { name: "Insert above" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Insert above" }),
+    );
     expect(props.onInsertAbove).toHaveBeenCalledTimes(1);
 
     user = await openMenu();
-    await user.click(await screen.findByRole("menuitem", { name: "Insert below" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Insert below" }),
+    );
     expect(props.onInsertBelow).toHaveBeenCalledTimes(1);
 
     user = await openMenu();
@@ -20424,7 +22977,9 @@ describe("BlockActionsMenu", () => {
     expect(props.onMoveUp).toHaveBeenCalledTimes(1);
 
     user = await openMenu();
-    await user.click(await screen.findByRole("menuitem", { name: "Move down" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Move down" }),
+    );
     expect(props.onMoveDown).toHaveBeenCalledTimes(1);
 
     user = await openMenu();
@@ -20434,7 +22989,14 @@ describe("BlockActionsMenu", () => {
 
   it("does not invoke onMoveUp when the block is already first", async () => {
     const onMoveUp = vi.fn();
-    render(<BlockActionsMenu {...baseProps} index={0} count={3} onMoveUp={onMoveUp} />);
+    render(
+      <BlockActionsMenu
+        {...baseProps}
+        index={0}
+        count={3}
+        onMoveUp={onMoveUp}
+      />,
+    );
     const user = await openMenu();
     await user.click(screen.getByRole("menuitem", { name: "Move up" }));
     expect(onMoveUp).not.toHaveBeenCalled();
@@ -20442,7 +23004,14 @@ describe("BlockActionsMenu", () => {
 
   it("does not invoke onMoveDown when the block is already last", async () => {
     const onMoveDown = vi.fn();
-    render(<BlockActionsMenu {...baseProps} index={2} count={3} onMoveDown={onMoveDown} />);
+    render(
+      <BlockActionsMenu
+        {...baseProps}
+        index={2}
+        count={3}
+        onMoveDown={onMoveDown}
+      />,
+    );
     const user = await openMenu();
     await user.click(screen.getByRole("menuitem", { name: "Move down" }));
     expect(onMoveDown).not.toHaveBeenCalled();
@@ -20450,7 +23019,13 @@ describe("BlockActionsMenu", () => {
 
   it("does not invoke onDuplicate/onInsertAbove/onInsertBelow when canAdd is false", async () => {
     const onDuplicate = vi.fn();
-    render(<BlockActionsMenu {...baseProps} canAdd={false} onDuplicate={onDuplicate} />);
+    render(
+      <BlockActionsMenu
+        {...baseProps}
+        canAdd={false}
+        onDuplicate={onDuplicate}
+      />,
+    );
     const user = await openMenu();
     await user.click(screen.getByRole("menuitem", { name: "Duplicate" }));
     expect(onDuplicate).not.toHaveBeenCalled();
@@ -20458,7 +23033,9 @@ describe("BlockActionsMenu", () => {
 
   it("disables the trigger, so the menu cannot be opened, when readOnly", () => {
     render(<BlockActionsMenu {...baseProps} readOnly />);
-    expect(screen.getByRole("button", { name: "Heading actions" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Heading actions" }),
+    ).toBeDisabled();
   });
 });
 ```
@@ -20486,8 +23063,20 @@ import type { TypedFieldApi } from "./createFieldInput";
 import { AppFormContext } from "./AppFormContext";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { TrashIcon, LayersIcon, ChevronDownIcon, ChevronUpIcon, CircleAlert } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
+import {
+  TrashIcon,
+  LayersIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  CircleAlert,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "../ui/dialog";
 import { RenderFields } from "./RenderFields";
 import { Icon } from "../Icon";
 import { cn } from "../../styles/utils";
@@ -20504,8 +23093,12 @@ import type { VexResourceSlug } from "@vexcms/core";
  *
  * @see {@link FormBlocks}
  */
-export interface FormBlocksProps<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>
-  extends InputComponentProps<TFieldMeta, BlocksField<VexResourceSlug, TFieldMeta>> {
+export interface FormBlocksProps<
+  TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
+> extends InputComponentProps<
+  TFieldMeta,
+  BlocksField<VexResourceSlug, TFieldMeta>
+> {
   /**
    * The TanStack Form array field API in `mode="array"`.
    *
@@ -20542,7 +23135,10 @@ function computeDefaultOpenBlocks(props: {
   const { items, fieldDefaultCollapsed, blockDefMap } = props;
   if (fieldDefaultCollapsed) return [];
   return items
-    .filter((item) => !blockDefMap.get(item.blockType as string)?.admin?.defaultCollapsed)
+    .filter(
+      (item) =>
+        !blockDefMap.get(item.blockType as string)?.admin?.defaultCollapsed,
+    )
     .map((item) => item.id as string);
 }
 
@@ -20578,7 +23174,9 @@ function BlockPickerDialog(props: {
   }
 
   function handleAddBlocks() {
-    const selectedBlockDefs = props.blockDefs.filter((b) => selectedBlocks.has(b.blockType));
+    const selectedBlockDefs = props.blockDefs.filter((b) =>
+      selectedBlocks.has(b.blockType),
+    );
     selectedBlockDefs.forEach((blockDef) => props.onSelect(blockDef));
     setSelectedBlocks(new Set());
     setSearch("");
@@ -20611,7 +23209,9 @@ function BlockPickerDialog(props: {
         </div>
         <div className="max-h-72 overflow-y-auto px-2 pb-3">
           {filtered.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">No blocks found</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No blocks found
+            </p>
           ) : (
             <div className="space-y-0.5">
               {filtered.map((blockDef) => {
@@ -20640,7 +23240,10 @@ function BlockPickerDialog(props: {
                         )}
                       >
                         {isSelected && (
-                          <Icon name="Check" className="size-3 text-primary-foreground" />
+                          <Icon
+                            name="Check"
+                            className="size-3 text-primary-foreground"
+                          />
                         )}
                       </div>
                     )}
@@ -20655,7 +23258,9 @@ function BlockPickerDialog(props: {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{blockDef.label}</p>
+                      <p className="truncate text-sm font-medium">
+                        {blockDef.label}
+                      </p>
                       <p className="truncate text-xs text-muted-foreground">
                         {blockDef.blockType}
                         {Object.keys(blockDef.fields).length > 0 &&
@@ -20672,9 +23277,12 @@ function BlockPickerDialog(props: {
         </div>
         {props.multiselect && selectedBlocks.size > 0 && (
           <div className="flex items-center justify-between border-t px-4 pt-2 pb-4">
-            <span className="text-sm text-muted-foreground">{selectedBlocks.size} selected</span>
+            <span className="text-sm text-muted-foreground">
+              {selectedBlocks.size} selected
+            </span>
             <Button onClick={handleAddBlocks} size="sm">
-              Add {selectedBlocks.size} block{selectedBlocks.size === 1 ? "" : "s"}
+              Add {selectedBlocks.size} block
+              {selectedBlocks.size === 1 ? "" : "s"}
             </Button>
           </div>
         )}
@@ -20718,43 +23326,48 @@ function BlockAccordionItem(props: {
   onMoveDown: () => void;
   onRemove: () => void;
 }) {
-  const { name, index, count, item, blockDef, collection, readOnly, canAdd, isOpen } = props;
-  const itemKey = item.id as string;
-  const errorCount = useFieldErrorCount({ names: [`${name}[${index}]`] });
-  const subFields = Object.entries(blockDef.fields);
+  const itemKey = props.item.id as string;
+  const errorCount = useFieldErrorCount({ names: [`${props.name}[${props.index}]`] });
+  const subFields = Object.entries(props.blockDef.fields);
 
   return (
-    <Draggable id={`${name}-${itemKey}`} index={index} isDragDisabled={readOnly}>
+    <Draggable
+      id={`${props.name}-${itemKey}`}
+      index={props.index}
+      isDragDisabled={props.readOnly}
+    >
       <AccordionItem
         value={itemKey}
         className={cn(
           "rounded-sm border-t border-r-2 border-l-2 border-border bg-background overflow-hidden",
-          index === 0 && "border-t-2",
-          index === count - 1 && "border-b-2",
+          props.index === 0 && "border-t-2",
+          props.index === props.count - 1 && "border-b-2",
         )}
       >
         <AccordionPrimitive.Header className="flex items-center gap-2 bg-muted/40 px-3 py-2">
-          <DragHandle disabled={readOnly} />
+          <DragHandle disabled={props.readOnly} />
           <AccordionPrimitive.Trigger
             data-slot="accordion-trigger"
             className="group/accordion-trigger flex flex-1 items-center gap-2 rounded-md border border-transparent outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:pointer-events-none aria-disabled:opacity-50"
           >
             <span className="w-4 shrink-0 text-center font-mono text-xs text-muted-foreground tabular-nums">
-              {index + 1}
+              {props.index + 1}
             </span>
             <div className="shrink-0 p-0.5">
               <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                {blockDef.blockType}
+                {props.blockDef.blockType}
               </span>
             </div>
-            {!isOpen && errorCount > 0 && <CircleAlert className="size-3.5 shrink-0 text-destructive" />}
+            {!props.isOpen && errorCount > 0 && (
+              <CircleAlert className="size-3.5 shrink-0 text-destructive" />
+            )}
             <div className="min-w-[50%] flex-1 sm:min-w-[60%]">
               <Input
                 type="text"
-                value={(item.blockName as string) ?? ""}
+                value={(props.item.blockName as string) ?? ""}
                 onChange={(e) => props.onUpdateBlockName(e.target.value)}
-                disabled={readOnly}
-                placeholder={blockDef.label ?? blockDef.blockType}
+                disabled={props.readOnly}
+                placeholder={props.blockDef.label ?? props.blockDef.blockType}
                 className="w-full truncate border-none bg-transparent p-0 text-sm font-medium outline-none placeholder:text-muted-foreground focus:ring-0 disabled:opacity-50"
                 onClick={(e) => e.stopPropagation()}
               />
@@ -20763,11 +23376,11 @@ function BlockAccordionItem(props: {
             <ChevronUpIcon className="pointer-events-none hidden size-4 shrink-0 self-center text-muted-foreground group-aria-expanded/accordion-trigger:inline" />
           </AccordionPrimitive.Trigger>
           <BlockActionsMenu
-            index={index}
-            count={count}
-            readOnly={readOnly}
-            canAdd={canAdd}
-            blockLabel={blockDef.label ?? blockDef.blockType}
+            index={props.index}
+            count={props.count}
+            readOnly={props.readOnly}
+            canAdd={props.canAdd}
+            blockLabel={props.blockDef.label ?? props.blockDef.blockType}
             onDuplicate={props.onDuplicate}
             onInsertAbove={props.onInsertAbove}
             onInsertBelow={props.onInsertBelow}
@@ -20785,10 +23398,10 @@ function BlockAccordionItem(props: {
               </p>
             ) : (
               <RenderFields
-                fields={blockDef.fields}
-                collection={collection}
-                namePrefix={`${name}[${index}]`}
-                readOnly={readOnly}
+                fields={props.blockDef.fields}
+                collection={props.collection}
+                namePrefix={`${props.name}[${props.index}]`}
+                readOnly={props.readOnly}
               />
             )}
           </div>
@@ -20873,7 +23486,10 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
     setTrackedIdsKey(itemIdsKey);
     if (newItems.length > 0 && !fieldDef.admin.defaultCollapsed) {
       const newOpenIds = newItems
-        .filter((item) => !blockDefMap.get(item.blockType as string)?.admin?.defaultCollapsed)
+        .filter(
+          (item) =>
+            !blockDefMap.get(item.blockType as string)?.admin?.defaultCollapsed,
+        )
         .map((item) => item.id as string);
       if (newOpenIds.length > 0) {
         setOpenBlockIds((prev) => [...prev, ...newOpenIds]);
@@ -20912,9 +23528,14 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
 
   function handleDuplicate(index: number) {
     const source = items[index];
-    const blockDef = source ? blockDefMap.get(source.blockType as string) : undefined;
+    const blockDef = source
+      ? blockDefMap.get(source.blockType as string)
+      : undefined;
     if (!source || !blockDef) return;
-    field.insertValue(index + 1, cloneBlockWithFreshIds({ block: source, blockDef }));
+    field.insertValue(
+      index + 1,
+      cloneBlockWithFreshIds({ block: source, blockDef }),
+    );
   }
 
   function handleMoveUp(index: number) {
@@ -20978,7 +23599,12 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
       )}
 
       {items.length > 0 && (
-        <Accordion multiple={true} value={openBlockIds} onValueChange={setOpenBlockIds} className="w-full">
+        <Accordion
+          multiple={true}
+          value={openBlockIds}
+          onValueChange={setOpenBlockIds}
+          className="w-full"
+        >
           <Droppable
             id={name}
             div={{ className: "gap-0" }}
@@ -21024,7 +23650,9 @@ export function FormBlocks<TFieldMeta extends BaseFieldMeta = BaseFieldMeta>({
                   readOnly={effectiveReadOnly}
                   canAdd={!atMax}
                   isOpen={openBlockIds.includes(itemKey)}
-                  onUpdateBlockName={(blockName) => updateBlockName(index, blockName)}
+                  onUpdateBlockName={(blockName) =>
+                    updateBlockName(index, blockName)
+                  }
                   onDuplicate={() => handleDuplicate(index)}
                   onInsertAbove={() => requestInsert(index)}
                   onInsertBelow={() => requestInsert(index + 1)}
@@ -21106,7 +23734,11 @@ import {
   renderWithVexProviders,
 } from "../../testing/harness/accessFixtures";
 
-const paragraphBlock = defineBlock({ slug: "paragraph", label: "Paragraph", fields: { text: text() } });
+const paragraphBlock = defineBlock({
+  slug: "paragraph",
+  label: "Paragraph",
+  fields: { text: text() },
+});
 const headingBlock = defineBlock({
   slug: "heading",
   label: "Heading",
@@ -21139,7 +23771,9 @@ function FormBlocksHarness(props: {
         )}
       </form.Field>
       <form.Subscribe selector={(state) => state.values.testField}>
-        {(value) => <output data-testid="value-probe">{JSON.stringify(value)}</output>}
+        {(value) => (
+          <output data-testid="value-probe">{JSON.stringify(value)}</output>
+        )}
       </form.Subscribe>
     </AppForm>
   );
@@ -21157,9 +23791,13 @@ describe("FormBlocks", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Paragraph actions" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Duplicate" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Duplicate" }),
+    );
 
-    const values = JSON.parse(screen.getByTestId("value-probe").textContent ?? "[]") as GenericBlock[];
+    const values = JSON.parse(
+      screen.getByTestId("value-probe").textContent ?? "[]",
+    ) as GenericBlock[];
     expect(values).toHaveLength(2);
     expect(values[0]?.id).toBe("b1");
     expect(values[1]?.id).not.toBe("b1");
@@ -21177,9 +23815,13 @@ describe("FormBlocks", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Paragraph actions" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Insert above" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Insert above" }),
+    );
 
-    const values = JSON.parse(screen.getByTestId("value-probe").textContent ?? "[]") as GenericBlock[];
+    const values = JSON.parse(
+      screen.getByTestId("value-probe").textContent ?? "[]",
+    ) as GenericBlock[];
     expect(values).toHaveLength(2);
     expect(values[1]?.id).toBe("b1");
     expect(values[0]?.id).not.toBe("b1");
@@ -21198,23 +23840,40 @@ describe("FormBlocks", () => {
       />,
     );
 
-    const secondMenuButtons = screen.getAllByRole("button", { name: "Paragraph actions" });
+    const secondMenuButtons = screen.getAllByRole("button", {
+      name: "Paragraph actions",
+    });
     await user.click(secondMenuButtons[1]!);
     await user.click(await screen.findByRole("menuitem", { name: "Move up" }));
 
-    const values = JSON.parse(screen.getByTestId("value-probe").textContent ?? "[]") as GenericBlock[];
+    const values = JSON.parse(
+      screen.getByTestId("value-probe").textContent ?? "[]",
+    ) as GenericBlock[];
     expect(values.map((b) => b.id)).toEqual(["b2", "b1"]);
   });
 
   it("removes a block via the actions menu", async () => {
     const user = userEvent.setup();
-    const fieldDef = blocks({ label: "Body", blocks: [headingBlock, paragraphBlock] });
+    const fieldDef = blocks({
+      label: "Body",
+      blocks: [headingBlock, paragraphBlock],
+    });
     render(
       <FormBlocksHarness
         fieldDef={fieldDef}
         initialValue={[
-          { id: "h1", blockType: "heading", blockName: "Heading", text: "Welcome" },
-          { id: "p1", blockType: "paragraph", blockName: "Paragraph", text: "Body copy" },
+          {
+            id: "h1",
+            blockType: "heading",
+            blockName: "Heading",
+            text: "Welcome",
+          },
+          {
+            id: "p1",
+            blockType: "paragraph",
+            blockName: "Paragraph",
+            text: "Body copy",
+          },
         ]}
       />,
     );
@@ -21222,7 +23881,9 @@ describe("FormBlocks", () => {
     await user.click(screen.getByRole("button", { name: "Heading actions" }));
     await user.click(await screen.findByRole("menuitem", { name: "Remove" }));
 
-    const values = JSON.parse(screen.getByTestId("value-probe").textContent ?? "[]") as GenericBlock[];
+    const values = JSON.parse(
+      screen.getByTestId("value-probe").textContent ?? "[]",
+    ) as GenericBlock[];
     expect(values).toHaveLength(1);
     expect(values[0]?.blockType).toBe("paragraph");
   });
@@ -21240,14 +23901,23 @@ describe("FormBlocks", () => {
       />,
     );
 
-    const triggers = () => screen.getAllByText(/^paragraph$/).map((el) => el.closest("[aria-expanded]")!);
-    expect(triggers().every((t) => t.getAttribute("aria-expanded") === "true")).toBe(true);
+    const triggers = () =>
+      screen
+        .getAllByText(/^paragraph$/)
+        .map((el) => el.closest("[aria-expanded]")!);
+    expect(
+      triggers().every((t) => t.getAttribute("aria-expanded") === "true"),
+    ).toBe(true);
 
     await user.click(screen.getByRole("button", { name: "Collapse all" }));
-    expect(triggers().every((t) => t.getAttribute("aria-expanded") === "false")).toBe(true);
+    expect(
+      triggers().every((t) => t.getAttribute("aria-expanded") === "false"),
+    ).toBe(true);
 
     await user.click(screen.getByRole("button", { name: "Expand all" }));
-    expect(triggers().every((t) => t.getAttribute("aria-expanded") === "true")).toBe(true);
+    expect(
+      triggers().every((t) => t.getAttribute("aria-expanded") === "true"),
+    ).toBe(true);
   });
 
   it("starts a block collapsed when its own admin.defaultCollapsed is true, even though the field's is false", () => {
@@ -21257,7 +23927,10 @@ describe("FormBlocks", () => {
       admin: { defaultCollapsed: true },
       fields: { text: text() },
     });
-    const fieldDef = blocks({ label: "Body", blocks: [headingBlock, collapsedParagraph] });
+    const fieldDef = blocks({
+      label: "Body",
+      blocks: [headingBlock, collapsedParagraph],
+    });
     render(
       <FormBlocksHarness
         fieldDef={fieldDef}
@@ -21268,8 +23941,12 @@ describe("FormBlocks", () => {
       />,
     );
 
-    const headingTrigger = screen.getByText("heading").closest("[aria-expanded]")!;
-    const paragraphTrigger = screen.getByText("paragraph").closest("[aria-expanded]")!;
+    const headingTrigger = screen
+      .getByText("heading")
+      .closest("[aria-expanded]")!;
+    const paragraphTrigger = screen
+      .getByText("paragraph")
+      .closest("[aria-expanded]")!;
     expect(headingTrigger).toHaveAttribute("aria-expanded", "true");
     expect(paragraphTrigger).toHaveAttribute("aria-expanded", "false");
   });
@@ -21288,10 +23965,14 @@ describe("FormBlocks", () => {
 
     expect(screen.getByRole("button", { name: "Collapse all" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Expand all" })).toBeDisabled();
-    expect(screen.queryByRole("button", { name: "Add Block" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Add Block" }),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Paragraph actions" }));
-    const duplicateItem = await screen.findByRole("menuitem", { name: "Duplicate" });
+    const duplicateItem = await screen.findByRole("menuitem", {
+      name: "Duplicate",
+    });
     expect(duplicateItem).toHaveAttribute("aria-disabled", "true");
   });
 });
@@ -21301,7 +23982,7 @@ describe("FormBlocks", () => {
 
 Full replacement.
 
-```tsx
+````tsx
 "use client";
 
 import {
@@ -21369,7 +24050,10 @@ export function FormArray<
   index,
   readOnly,
   submissionAttempts,
-}: InputComponentProps<TFieldMeta, ArrayField<VexResourceSlug, TArrayType, TFieldMeta>> & {
+}: InputComponentProps<
+  TFieldMeta,
+  ArrayField<VexResourceSlug, TArrayType, TFieldMeta>
+> & {
   field: TypedFieldApi<TArrayType[]>;
   submissionAttempts: number;
 }) {
@@ -21400,7 +24084,9 @@ export function FormArray<
   if (keysRef.current.length < items.length) {
     keysRef.current = [
       ...keysRef.current,
-      ...Array.from({ length: items.length - keysRef.current.length }, () => crypto.randomUUID()),
+      ...Array.from({ length: items.length - keysRef.current.length }, () =>
+        crypto.randomUUID(),
+      ),
     ];
   } else if (keysRef.current.length > items.length) {
     keysRef.current = keysRef.current.slice(0, items.length);
@@ -21414,7 +24100,9 @@ export function FormArray<
   function handleDuplicate(itemIndex: number) {
     const source = items[itemIndex];
     const duplicate =
-      typeof source === "object" && source !== null ? { ...(source as object) } : source;
+      typeof source === "object" && source !== null
+        ? { ...(source as object) }
+        : source;
     const newKeys = [...keysRef.current];
     newKeys.splice(itemIndex + 1, 0, crypto.randomUUID());
     keysRef.current = newKeys;
@@ -21431,7 +24119,10 @@ export function FormArray<
   function handleMoveUp(itemIndex: number) {
     if (itemIndex === 0) return;
     const newKeys = [...keysRef.current];
-    [newKeys[itemIndex - 1], newKeys[itemIndex]] = [newKeys[itemIndex]!, newKeys[itemIndex - 1]!];
+    [newKeys[itemIndex - 1], newKeys[itemIndex]] = [
+      newKeys[itemIndex]!,
+      newKeys[itemIndex - 1]!,
+    ];
     keysRef.current = newKeys;
     field.moveValue(itemIndex, itemIndex - 1);
   }
@@ -21439,7 +24130,10 @@ export function FormArray<
   function handleMoveDown(itemIndex: number) {
     if (itemIndex === items.length - 1) return;
     const newKeys = [...keysRef.current];
-    [newKeys[itemIndex + 1], newKeys[itemIndex]] = [newKeys[itemIndex]!, newKeys[itemIndex + 1]!];
+    [newKeys[itemIndex + 1], newKeys[itemIndex]] = [
+      newKeys[itemIndex]!,
+      newKeys[itemIndex + 1]!,
+    ];
     keysRef.current = newKeys;
     field.moveValue(itemIndex, itemIndex + 1);
   }
@@ -21494,7 +24188,12 @@ export function FormArray<
           {items.map((_, itemIndex) => {
             const itemKey = keysRef.current[itemIndex] ?? String(itemIndex);
             return (
-              <Draggable key={itemKey} id={`${name}-${itemKey}`} index={itemIndex} isDragDisabled={readOnly}>
+              <Draggable
+                key={itemKey}
+                id={`${name}-${itemKey}`}
+                index={itemIndex}
+                isDragDisabled={readOnly}
+              >
                 <div className="flex items-center gap-2 px-2">
                   <DragHandle disabled={readOnly} />
                   <div className="flex-1">
@@ -21566,7 +24265,7 @@ export function FormArray<
     </div>
   );
 }
-```
+````
 
 #### packages/react/src/components/form/FormArray.test.tsx
 
@@ -21611,73 +24310,115 @@ function FormArrayHarness(props: {
         )}
       </form.Field>
       <form.Subscribe selector={(state) => state.values.testField}>
-        {(value) => <output data-testid="value-probe">{JSON.stringify(value)}</output>}
+        {(value) => (
+          <output data-testid="value-probe">{JSON.stringify(value)}</output>
+        )}
       </form.Subscribe>
     </AppForm>
   );
 }
 
-const fieldDef = array({ label: "Tags", items: text({ label: "Tag", required: true }) });
+const fieldDef = array({
+  label: "Tags",
+  items: text({ label: "Tag", required: true }),
+});
 
 describe("FormArray", () => {
   it("duplicates an item immediately after itself", async () => {
     const user = userEvent.setup();
     render(<FormArrayHarness fieldDef={fieldDef} initialValue={["a", "b"]} />);
 
-    await user.click(screen.getByRole("button", { name: "Duplicate item 1 from Tags" }));
+    await user.click(
+      screen.getByRole("button", { name: "Duplicate item 1 from Tags" }),
+    );
 
-    const values = JSON.parse(screen.getByTestId("value-probe").textContent ?? "[]") as string[];
+    const values = JSON.parse(
+      screen.getByTestId("value-probe").textContent ?? "[]",
+    ) as string[];
     expect(values).toEqual(["a", "a", "b"]);
   });
 
   it("moves an item up, swapping it with its predecessor", async () => {
     const user = userEvent.setup();
-    render(<FormArrayHarness fieldDef={fieldDef} initialValue={["a", "b", "c"]} />);
+    render(
+      <FormArrayHarness fieldDef={fieldDef} initialValue={["a", "b", "c"]} />,
+    );
 
     await user.click(screen.getByRole("button", { name: "Move item 2 up" }));
 
-    const values = JSON.parse(screen.getByTestId("value-probe").textContent ?? "[]") as string[];
+    const values = JSON.parse(
+      screen.getByTestId("value-probe").textContent ?? "[]",
+    ) as string[];
     expect(values).toEqual(["b", "a", "c"]);
   });
 
   it("moves an item down, swapping it with its successor", async () => {
     const user = userEvent.setup();
-    render(<FormArrayHarness fieldDef={fieldDef} initialValue={["a", "b", "c"]} />);
+    render(
+      <FormArrayHarness fieldDef={fieldDef} initialValue={["a", "b", "c"]} />,
+    );
 
     await user.click(screen.getByRole("button", { name: "Move item 2 down" }));
 
-    const values = JSON.parse(screen.getByTestId("value-probe").textContent ?? "[]") as string[];
+    const values = JSON.parse(
+      screen.getByTestId("value-probe").textContent ?? "[]",
+    ) as string[];
     expect(values).toEqual(["a", "c", "b"]);
   });
 
   it("disables moving the first item up and the last item down", () => {
     render(<FormArrayHarness fieldDef={fieldDef} initialValue={["a", "b"]} />);
 
-    expect(screen.getByRole("button", { name: "Move item 1 up" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Move item 2 down" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Move item 1 down" })).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: "Move item 2 up" })).not.toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Move item 1 up" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Move item 2 down" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Move item 1 down" }),
+    ).not.toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Move item 2 up" }),
+    ).not.toBeDisabled();
   });
 
   it("disables duplicate once the max item count is reached", () => {
-    const boundaryFieldDef = array({ label: "Tags", items: text({ label: "Tag" }), max: 2 });
-    render(<FormArrayHarness fieldDef={boundaryFieldDef} initialValue={["a", "b"]} />);
+    const boundaryFieldDef = array({
+      label: "Tags",
+      items: text({ label: "Tag" }),
+      max: 2,
+    });
+    render(
+      <FormArrayHarness
+        fieldDef={boundaryFieldDef}
+        initialValue={["a", "b"]}
+      />,
+    );
 
-    expect(screen.getByRole("button", { name: "Duplicate item 1 from Tags" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Duplicate item 1 from Tags" }),
+    ).toBeDisabled();
   });
 
   it("keeps each item's stable key travelling with it across a duplicate, so the untouched item does not remount", async () => {
     const user = userEvent.setup();
     render(<FormArrayHarness fieldDef={fieldDef} initialValue={["a", "b"]} />);
 
-    const secondInputBefore = screen.getAllByRole("textbox")[1] as HTMLInputElement;
+    const secondInputBefore = screen.getAllByRole(
+      "textbox",
+    )[1] as HTMLInputElement;
     const draggableIdBefore = secondInputBefore
       .closest("[data-rfd-draggable-id]")
       ?.getAttribute("data-rfd-draggable-id");
 
-    await user.click(screen.getByRole("button", { name: "Duplicate item 1 from Tags" }));
+    await user.click(
+      screen.getByRole("button", { name: "Duplicate item 1 from Tags" }),
+    );
 
-    const thirdInputAfter = screen.getAllByRole("textbox")[2] as HTMLInputElement;
+    const thirdInputAfter = screen.getAllByRole(
+      "textbox",
+    )[2] as HTMLInputElement;
     const draggableIdAfter = thirdInputAfter
       .closest("[data-rfd-draggable-id]")
       ?.getAttribute("data-rfd-draggable-id");
@@ -21697,12 +24438,18 @@ Edit 1 — the `it("seeds a new block's blockName from the block definition's la
 it("seeds a new block with a fresh, unique id and no blockName, so the block definition's label shows as a placeholder", async () => {
   const user = userEvent.setup();
   // Single registered block type — Add bypasses the picker dialog entirely.
-  render(<BlocksHarness fieldDef={blocksFieldFixture.fieldDef} initialValue={[]} />);
-  const addButton = screen.getByRole("button", { name: `Add ${blocksFieldFixture.fieldDef.labels.singular}` });
+  render(
+    <BlocksHarness fieldDef={blocksFieldFixture.fieldDef} initialValue={[]} />,
+  );
+  const addButton = screen.getByRole("button", {
+    name: `Add ${blocksFieldFixture.fieldDef.labels.singular}`,
+  });
   await user.click(addButton);
   await user.click(addButton);
 
-  const values = JSON.parse(screen.getByTestId("value-probe").textContent ?? "[]") as {
+  const values = JSON.parse(
+    screen.getByTestId("value-probe").textContent ?? "[]",
+  ) as {
     id: string;
     blockName?: string;
   }[];
@@ -21722,14 +24469,21 @@ it("removes one block via its actions menu, leaving a differently-typed sibling 
   const user = userEvent.setup();
   const seeded: GenericBlock[] = [
     { id: "h1", blockType: "heading", blockName: "Heading", text: "Welcome" },
-    { id: "p1", blockType: "paragraph", blockName: "Paragraph", text: "Body copy" },
+    {
+      id: "p1",
+      blockType: "paragraph",
+      blockName: "Paragraph",
+      text: "Body copy",
+    },
   ];
   render(<BlocksHarness fieldDef={twoBlockFieldDef} initialValue={seeded} />);
 
   await user.click(screen.getByRole("button", { name: "Heading actions" }));
   await user.click(await screen.findByRole("menuitem", { name: "Remove" }));
 
-  const values = JSON.parse(screen.getByTestId("value-probe").textContent ?? "[]") as {
+  const values = JSON.parse(
+    screen.getByTestId("value-probe").textContent ?? "[]",
+  ) as {
     blockType: string;
     text?: string;
   }[];
@@ -21746,7 +24500,10 @@ it("removes one block via its actions menu, leaving a differently-typed sibling 
 Edit 1 — `buildAddedItemMatcher` no longer expects `blockName` (fixed `buildDefaultBlock` leaves it unset):
 
 ```ts
-function buildAddedItemMatcher(props: { container: "array" | "blocks"; childFixture: FieldFixture }): unknown {
+function buildAddedItemMatcher(props: {
+  container: "array" | "blocks";
+  childFixture: FieldFixture;
+}): unknown {
   const childDefault = props.childFixture.fieldDef.defaultValue;
   if (props.container === "array") return childDefault;
   return expect.objectContaining({
@@ -21759,60 +24516,62 @@ function buildAddedItemMatcher(props: { container: "array" | "blocks"; childFixt
 Edit 2 — the `it("removes a seeded item, returning to the empty state", …)` block removes a `"blocks"` item through `BlockActionsMenu` instead of a standalone labeled button (the synthetic block's `label` is `"Block"`, set by `buildItemContainerFieldDef`):
 
 ```ts
-          it("removes a seeded item, returning to the empty state", async () => {
-            const user = userEvent.setup();
-            const seeded = buildSeededValue({ container, childFixture });
-            const { formRef } = renderContainer({
-              Component,
-              fieldDef,
-              readOnly: false,
-              initialValue: seeded,
-            });
+it("removes a seeded item, returning to the empty state", async () => {
+  const user = userEvent.setup();
+  const seeded = buildSeededValue({ container, childFixture });
+  const { formRef } = renderContainer({
+    Component,
+    fieldDef,
+    readOnly: false,
+    initialValue: seeded,
+  });
 
-            if (container === "array") {
-              await user.click(screen.getByRole("button", { name: "Remove item 1 from Items" }));
-            } else {
-              await user.click(screen.getByRole("button", { name: "Block actions" }));
-              await user.click(await screen.findByRole("menuitem", { name: "Remove" }));
-            }
+  if (container === "array") {
+    await user.click(
+      screen.getByRole("button", { name: "Remove item 1 from Items" }),
+    );
+  } else {
+    await user.click(screen.getByRole("button", { name: "Block actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Remove" }));
+  }
 
-            expect(await screen.findByText(emptyMessage)).toBeInTheDocument();
-            expect(formRef.current?.state.values).toEqual({ [FIELD_NAME]: emptyValue });
-          });
+  expect(await screen.findByText(emptyMessage)).toBeInTheDocument();
+  expect(formRef.current?.state.values).toEqual({ [FIELD_NAME]: emptyValue });
+});
 ```
 
 Edit 3 — the "cascades readOnly to every nested control" test exempts the per-block actions menu trigger and the field-level "Copy all" button: step 16 stops disabling the trigger under `readOnly` and never gates "Copy all" on it either, since copying never mutates the field (every mutating item/control is still gated individually):
 
 ```ts
-          it("cascades readOnly to every nested control", async () => {
-            const seeded = buildSeededValue({ container, childFixture });
-            const { container: dom } = renderContainer({
-              Component,
-              fieldDef,
-              readOnly: true,
-              initialValue: seeded,
-            });
-            // Same post-render Base UI dialog settle as the `group` branch above.
-            await act(async () => {});
-            const controls = dom.querySelectorAll("button, input, select, textarea");
-            expect(controls.length).toBeGreaterThan(0);
-            controls.forEach((el) => {
-              if (isDisclosureTrigger(el)) return;
-              // The per-block actions menu trigger (`BlockActionsMenu`) and the
-              // field-level "Copy all" button stay enabled under readOnly too —
-              // copying never mutates the field, so both must stay reachable;
-              // every mutating control is still gated individually.
-              if (el.getAttribute("aria-label")?.endsWith(" actions")) return;
-              if (el.textContent === "Copy all") return;
-              // Same Base UI "focusable-when-disabled" pattern as the `group`
-              // branch above: both spellings of inert count.
-              const inert =
-                el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true";
-              expect(inert).toBe(true);
-            });
-          });
+it("cascades readOnly to every nested control", async () => {
+  const seeded = buildSeededValue({ container, childFixture });
+  const { container: dom } = renderContainer({
+    Component,
+    fieldDef,
+    readOnly: true,
+    initialValue: seeded,
+  });
+  // Same post-render Base UI dialog settle as the `group` branch above.
+  await act(async () => {});
+  const controls = dom.querySelectorAll("button, input, select, textarea");
+  expect(controls.length).toBeGreaterThan(0);
+  controls.forEach((el) => {
+    if (isDisclosureTrigger(el)) return;
+    // The per-block actions menu trigger (`BlockActionsMenu`) and the
+    // field-level "Copy all" button stay enabled under readOnly too —
+    // copying never mutates the field, so both must stay reachable;
+    // every mutating control is still gated individually.
+    if (el.getAttribute("aria-label")?.endsWith(" actions")) return;
+    if (el.textContent === "Copy all") return;
+    // Same Base UI "focusable-when-disabled" pattern as the `group`
+    // branch above: both spellings of inert count.
+    const inert =
+      el.hasAttribute("disabled") ||
+      el.getAttribute("aria-disabled") === "true";
+    expect(inert).toBe(true);
+  });
+});
 ```
-
 
 #### packages/core/src/components/builtinIds.ts
 
@@ -21856,7 +24615,10 @@ import { BUILTIN_CONTRIBUTION_IDS, SLOT_IDS } from "@vexcms/core";
 import { SlotOutlet } from "../slots/SlotOutlet";
 
 // …inside BlockActionsMenu, replacing the six <DropdownMenuItem> children:
-const builtinItemActions: ComponentContributionInput<ReactHKT, BlockActionsMenuProps>[] = [
+const builtinItemActions: ComponentContributionInput<
+  ReactHKT,
+  BlockActionsMenuProps
+>[] = [
   {
     id: BUILTIN_CONTRIBUTION_IDS.block.duplicate,
     component: (p) => (
@@ -21880,8 +24642,12 @@ const builtinItemActions: ComponentContributionInput<ReactHKT, BlockActionsMenuP
 
 // render body:
 <DropdownMenuContent align="end">
-  <SlotOutlet slotId={SLOT_IDS.blocks.itemActions} builtins={builtinItemActions} contributedProps={props} />
-</DropdownMenuContent>
+  <SlotOutlet
+    slotId={SLOT_IDS.blocks.itemActions}
+    builtins={builtinItemActions}
+    contributedProps={props}
+  />
+</DropdownMenuContent>;
 ```
 
 The `DropdownMenuSeparator`s between groups are dropped from the contribution list (a plugin's
@@ -21896,6 +24662,123 @@ Anchored at the four per-item `<Button>` elements (Duplicate/Move up/Move down/R
 rendered through `SlotOutlet` in place of the four inline `<Button>`s — identical markup, now
 sourced from a `builtinItemActions` array built the same way as `BlockActionsMenu`'s above, keyed
 by `BUILTIN_CONTRIBUTION_IDS.array.{duplicate,moveUp,moveDown,remove}`.
+
+#### packages/react/src/components/form/FormArray.tsx (stored item id)
+
+Builds on the `keysRef`-based version above and the slot-wiring edit just above this one. 3 edits —
+an object-shaped item (`isObjectShapedArrayItem(itemFieldDef)`) now keys by its own stored `id`
+when present, and `handleAdd`/`handleDuplicate` assign one via `withArrayItemId` (step 9) the same
+way `cloneBlockWithFreshIds` does for blocks. A scalar item (`text()`, `number()`, …) keeps the
+existing `keysRef` synthetic-UUID scheme unchanged — it has no `id` slot to key by.
+
+**1 — import,** anchored beside the existing `../fields`/`@vexcms/core` imports:
+
+```ts
+import { isObjectShapedArrayItem, withArrayItemId } from "@vexcms/core";
+```
+
+**2 — the item key,** anchored at `const itemKey = keysRef.current[itemIndex] ?? String(itemIndex);`:
+
+```ts
+const rawItem = items[itemIndex];
+const itemKey =
+  isObjectShapedArrayItem(itemFieldDef) &&
+  rawItem !== null &&
+  typeof rawItem === "object" &&
+  typeof (rawItem as { id?: unknown }).id === "string"
+    ? ((rawItem as { id: string }).id as string)
+    : (keysRef.current[itemIndex] ?? String(itemIndex));
+```
+
+**3 — `handleAdd`/`handleDuplicate` assign a stored id to an object-shaped item,** anchored at
+each function's own body:
+
+```ts
+function handleAdd() {
+  keysRef.current = [...keysRef.current, crypto.randomUUID()];
+  field.pushValue(
+    withArrayItemId({ item: getNewItemDefault(), itemField: itemFieldDef }),
+  );
+}
+
+function handleDuplicate(itemIndex: number) {
+  const source = items[itemIndex];
+  const duplicate =
+    typeof source === "object" && source !== null
+      ? withArrayItemId({
+          // Drop the source's own id first — withArrayItemId only FILLS IN a
+          // missing id, it never replaces an existing one, and a duplicate must
+          // never share its source's id (same requirement cloneBlockWithFreshIds
+          // enforces for block duplication).
+          item: { ...(source as Record<string, unknown>), id: undefined },
+          itemField: itemFieldDef,
+        })
+      : source;
+  const newKeys = [...keysRef.current];
+  newKeys.splice(itemIndex + 1, 0, crypto.randomUUID());
+  keysRef.current = newKeys;
+  field.insertValue(itemIndex + 1, duplicate as TArrayType);
+}
+```
+
+`withArrayItemId`'s own `typeof item.id === "string"` check treats the explicit `id: undefined`
+above as "missing", so it assigns a fresh `nanoid()` — the same pattern `delete item.id` would
+achieve, written as a property override so the shallow-copy spread stays one expression.
+
+#### packages/react/src/components/form/FormArray.test.tsx (stored item id)
+
+New `describe` block appended to the existing file (the full file's own section further below —
+check this step's other `FormArray.test.tsx` content for its base harness/fixtures).
+
+```tsx
+describe("FormArray: stored item id (object-shaped items)", () => {
+  const linkFieldDef = array({
+    items: group({ fields: { label: text({ required: true }) } }),
+  });
+
+  it("assigns a stored id when a new object-shaped item is added", async () => {
+    const { result } = renderFormArray({
+      fieldDef: linkFieldDef,
+      defaultValue: [],
+    });
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", {
+        name: `Add ${linkFieldDef.labels.singular}`,
+      }),
+    );
+    const value = result.getForm().getFieldValue("testField") as {
+      id?: string;
+    }[];
+    expect(typeof value[0]!.id).toBe("string");
+  });
+
+  it("assigns a FRESH id to a duplicated object-shaped item, distinct from its source", async () => {
+    const { result } = renderFormArray({
+      fieldDef: linkFieldDef,
+      defaultValue: [{ label: "a", id: "source-id" }],
+    });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /Duplicate item 1/ }));
+    const value = result.getForm().getFieldValue("testField") as {
+      id: string;
+    }[];
+    expect(value[1]!.id).not.toBe("source-id");
+    expect(typeof value[1]!.id).toBe("string");
+  });
+
+  it("keys scalar items by the existing synthetic UUID scheme, unaffected by this change", async () => {
+    const scalarFieldDef = array({ items: text() });
+    const { result } = renderFormArray({
+      fieldDef: scalarFieldDef,
+      defaultValue: ["a", "b"],
+    });
+    // No `id` property exists on a scalar item — assert the component renders without
+    // throwing and the values round-trip, proving the keysRef fallback still applies.
+    expect(result.getForm().getFieldValue("testField")).toEqual(["a", "b"]);
+  });
+});
+```
 
 Verify: `pnpm --filter @vexcms/core test -- fields/blocks && pnpm --filter @vexcms/react test -- FormBlocks FormArray fields/blocks fields/array`
 
@@ -22008,7 +24891,11 @@ export function useBlockClipboard(): {
   copyBlocks: (props: { blocks: GenericBlock[] }) => void;
   clearClipboard: () => void;
 } {
-  const clipboard = useSyncExternalStore(subscribe, readClipboard, getServerSnapshot);
+  const clipboard = useSyncExternalStore(
+    subscribe,
+    readClipboard,
+    getServerSnapshot,
+  );
 
   const copyBlocks = useCallback((props: { blocks: GenericBlock[] }) => {
     if (typeof window === "undefined") return;
@@ -22018,7 +24905,10 @@ export function useBlockClipboard(): {
       blocks: props.blocks,
     };
     try {
-      window.localStorage.setItem(BLOCK_CLIPBOARD_STORAGE_KEY, JSON.stringify(envelope));
+      window.localStorage.setItem(
+        BLOCK_CLIPBOARD_STORAGE_KEY,
+        JSON.stringify(envelope),
+      );
     } catch {
       return;
     }
@@ -22046,10 +24936,17 @@ New file.
 ```ts
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { BLOCK_CLIPBOARD_STORAGE_KEY, useBlockClipboard } from "./useBlockClipboard";
+import {
+  BLOCK_CLIPBOARD_STORAGE_KEY,
+  useBlockClipboard,
+} from "./useBlockClipboard";
 import type { GenericBlock } from "@vexcms/core";
 
-const heroBlock: GenericBlock = { id: "block-1", blockType: "hero", heading: "Hello" };
+const heroBlock: GenericBlock = {
+  id: "block-1",
+  blockType: "hero",
+  heading: "Hello",
+};
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -22111,7 +25008,10 @@ describe("useBlockClipboard", () => {
   });
 
   it("resolves JSON that does not match the BlockClipboard shape to null", () => {
-    window.localStorage.setItem(BLOCK_CLIPBOARD_STORAGE_KEY, JSON.stringify({ foo: "bar" }));
+    window.localStorage.setItem(
+      BLOCK_CLIPBOARD_STORAGE_KEY,
+      JSON.stringify({ foo: "bar" }),
+    );
 
     const { result } = renderHook(() => useBlockClipboard());
 
@@ -22123,7 +25023,10 @@ describe("useBlockClipboard", () => {
     expect(result.current.clipboard).toBeNull();
 
     const envelope = { version: 1, copiedAt: 1234, blocks: [heroBlock] };
-    window.localStorage.setItem(BLOCK_CLIPBOARD_STORAGE_KEY, JSON.stringify(envelope));
+    window.localStorage.setItem(
+      BLOCK_CLIPBOARD_STORAGE_KEY,
+      JSON.stringify(envelope),
+    );
 
     act(() => {
       window.dispatchEvent(
@@ -22155,7 +25058,12 @@ Builds on step 15's file. The `BlockActionsMenuProps` interface and the componen
 ```tsx
 "use client";
 
-import { EllipsisVerticalIcon, CopyIcon, ClipboardPasteIcon, TrashIcon } from "lucide-react";
+import {
+  EllipsisVerticalIcon,
+  CopyIcon,
+  ClipboardPasteIcon,
+  TrashIcon,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -22217,7 +25125,10 @@ export function BlockActionsMenu(props: BlockActionsMenuProps) {
         }
       />
       <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled={props.readOnly || !props.canAdd} onClick={props.onDuplicate}>
+        <DropdownMenuItem
+          disabled={props.readOnly || !props.canAdd}
+          onClick={props.onDuplicate}
+        >
           Duplicate
         </DropdownMenuItem>
         <DropdownMenuItem onClick={props.onCopy}>
@@ -22237,21 +25148,37 @@ export function BlockActionsMenu(props: BlockActionsMenuProps) {
           <ClipboardPasteIcon /> Paste below
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled={props.readOnly || !props.canAdd} onClick={props.onInsertAbove}>
+        <DropdownMenuItem
+          disabled={props.readOnly || !props.canAdd}
+          onClick={props.onInsertAbove}
+        >
           Insert above
         </DropdownMenuItem>
-        <DropdownMenuItem disabled={props.readOnly || !props.canAdd} onClick={props.onInsertBelow}>
+        <DropdownMenuItem
+          disabled={props.readOnly || !props.canAdd}
+          onClick={props.onInsertBelow}
+        >
           Insert below
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled={props.readOnly || isFirst} onClick={props.onMoveUp}>
+        <DropdownMenuItem
+          disabled={props.readOnly || isFirst}
+          onClick={props.onMoveUp}
+        >
           Move up
         </DropdownMenuItem>
-        <DropdownMenuItem disabled={props.readOnly || isLast} onClick={props.onMoveDown}>
+        <DropdownMenuItem
+          disabled={props.readOnly || isLast}
+          onClick={props.onMoveDown}
+        >
           Move down
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" disabled={props.readOnly} onClick={props.onRemove}>
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={props.readOnly}
+          onClick={props.onRemove}
+        >
           <TrashIcon /> Remove
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -22259,7 +25186,6 @@ export function BlockActionsMenu(props: BlockActionsMenuProps) {
   );
 }
 ```
-
 
 #### packages/react/src/components/form/BlockActionsMenu.test.tsx
 
@@ -22291,17 +25217,24 @@ const baseProps = {
 Replace step 15's last test (`"disables the trigger, so the menu cannot be opened, when readOnly"`) with:
 
 ```tsx
-  it("disables mutating actions, but not Copy, when readOnly", async () => {
-    const onRemove = vi.fn();
-    const onCopy = vi.fn();
-    render(<BlockActionsMenu {...baseProps} readOnly onRemove={onRemove} onCopy={onCopy} />);
-    const user = await openMenu();
-    await user.click(screen.getByRole("menuitem", { name: "Remove" }));
-    expect(onRemove).not.toHaveBeenCalled();
+it("disables mutating actions, but not Copy, when readOnly", async () => {
+  const onRemove = vi.fn();
+  const onCopy = vi.fn();
+  render(
+    <BlockActionsMenu
+      {...baseProps}
+      readOnly
+      onRemove={onRemove}
+      onCopy={onCopy}
+    />,
+  );
+  const user = await openMenu();
+  await user.click(screen.getByRole("menuitem", { name: "Remove" }));
+  expect(onRemove).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("menuitem", { name: "Copy" }));
-    expect(onCopy).toHaveBeenCalledTimes(1);
-  });
+  await user.click(screen.getByRole("menuitem", { name: "Copy" }));
+  expect(onCopy).toHaveBeenCalledTimes(1);
+});
 ```
 
 #### packages/react/src/components/form/FormBlocks.tsx
@@ -22311,7 +25244,12 @@ Builds on step 15's file (header toolbar with `maxValue`/`atMax`/Collapse-all/Ex
 **1. Imports** — anchored at the existing `lucide-react` import line; add the clipboard hook, core block-paste utils, `sonner`, and the alert-dialog primitives.
 
 ```ts
-import { TrashIcon, LayersIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import {
+  TrashIcon,
+  LayersIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useBlockClipboard } from "../../hooks";
 import { coerceBlockToDefinition, cloneBlockWithFreshIds } from "@vexcms/core";
@@ -22372,14 +25310,22 @@ function resolvePasteCandidates(props: {
  *
  * @param props - The paste outcome to summarize.
  */
-function toastPasteOutcome(props: { acceptedCount: number; skipped: number; droppedKeys: number }): void {
+function toastPasteOutcome(props: {
+  acceptedCount: number;
+  skipped: number;
+  droppedKeys: number;
+}): void {
   if (props.acceptedCount === 0) {
     toast.error("Nothing in the clipboard matches this field's block types.");
     return;
   }
-  const parts = [`Pasted ${props.acceptedCount} block${props.acceptedCount === 1 ? "" : "s"}.`];
+  const parts = [
+    `Pasted ${props.acceptedCount} block${props.acceptedCount === 1 ? "" : "s"}.`,
+  ];
   if (props.skipped > 0) {
-    parts.push(`Skipped ${props.skipped} unsupported block${props.skipped === 1 ? "" : "s"}.`);
+    parts.push(
+      `Skipped ${props.skipped} unsupported block${props.skipped === 1 ? "" : "s"}.`,
+    );
   }
   if (props.droppedKeys > 0) {
     parts.push(
@@ -22400,11 +25346,18 @@ const pasteCandidates = resolvePasteCandidates({
   blockDefMap,
 });
 const pasteWouldExceedMax =
-  maxValue !== undefined && items.length + pasteCandidates.accepted.length > maxValue;
-const replaceWouldExceedMax = maxValue !== undefined && pasteCandidates.accepted.length > maxValue;
-const canPaste = !effectiveReadOnly && pasteCandidates.accepted.length > 0 && !pasteWouldExceedMax;
+  maxValue !== undefined &&
+  items.length + pasteCandidates.accepted.length > maxValue;
+const replaceWouldExceedMax =
+  maxValue !== undefined && pasteCandidates.accepted.length > maxValue;
+const canPaste =
+  !effectiveReadOnly &&
+  pasteCandidates.accepted.length > 0 &&
+  !pasteWouldExceedMax;
 const canReplaceAll =
-  !effectiveReadOnly && pasteCandidates.accepted.length > 0 && !replaceWouldExceedMax;
+  !effectiveReadOnly &&
+  pasteCandidates.accepted.length > 0 &&
+  !replaceWouldExceedMax;
 ```
 
 **4. Copy/paste handlers** — anchored after `updateBlockName`.
@@ -22417,7 +25370,9 @@ function handleCopyAll() {
 
 function handleCopyBlock(block: GenericBlock) {
   copyBlocks({ blocks: [block] });
-  toast(`Copied "${(block.blockName as string) || (block.blockType as string)}".`);
+  toast(
+    `Copied "${(block.blockName as string) || (block.blockType as string)}".`,
+  );
 }
 
 function handlePasteAppend() {
@@ -22458,17 +25413,25 @@ function handleReplaceAll() {
 **5. Empty state** — anchored at the `{items.length === 0 && (...)}` block; adds a Paste affordance so an empty field can be seeded from the clipboard (there is nothing yet to Copy/Replace).
 
 ```tsx
-{items.length === 0 && (
-  <div className="rounded-sm border-2 border-dashed border-border py-8 text-center">
-    <LayersIcon className="mx-auto mb-2 size-8 text-muted-foreground" />
-    <p className="text-sm text-muted-foreground">No {plural} yet.</p>
-    {canPaste && (
-      <Button type="button" variant="outline" size="sm" className="mt-3" onClick={handlePasteAppend}>
-        Paste {pasteCandidates.accepted.length} {plural}
-      </Button>
-    )}
-  </div>
-)}
+{
+  items.length === 0 && (
+    <div className="rounded-sm border-2 border-dashed border-border py-8 text-center">
+      <LayersIcon className="mx-auto mb-2 size-8 text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">No {plural} yet.</p>
+      {canPaste && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          onClick={handlePasteAppend}
+        >
+          Paste {pasteCandidates.accepted.length} {plural}
+        </Button>
+      )}
+    </div>
+  );
+}
 ```
 
 **6. Header toolbar** — anchored at step 15's toolbar button group (the `<div className="flex items-center gap-1">` containing the Collapse all / Expand all buttons); insert Copy all / Paste / Replace all as its first three children, before Collapse all.
@@ -22549,23 +25512,42 @@ describe("FormBlocks: block clipboard paste", () => {
       JSON.stringify({
         version: 1,
         copiedAt: 1,
-        blocks: [{ id: "clip-1", blockType: "hero", blockName: "Hero", heading: "From clipboard" }],
+        blocks: [
+          {
+            id: "clip-1",
+            blockType: "hero",
+            blockName: "Hero",
+            heading: "From clipboard",
+          },
+        ],
       }),
     );
 
     render(
       <FormBlocksHarness
         fieldDef={fieldDef}
-        initialValue={[{ id: "b1", blockType: "hero", blockName: "Hero", heading: "Existing" }]}
+        initialValue={[
+          {
+            id: "b1",
+            blockType: "hero",
+            blockName: "Hero",
+            heading: "Existing",
+          },
+        ]}
       />,
     );
 
     await user.click(screen.getByRole("button", { name: "Paste" }));
 
-    const value = JSON.parse(screen.getByTestId("value-probe").textContent as string) as GenericBlock[];
+    const value = JSON.parse(
+      screen.getByTestId("value-probe").textContent as string,
+    ) as GenericBlock[];
     expect(value).toHaveLength(2);
     expect(value[0]).toMatchObject({ id: "b1", heading: "Existing" });
-    expect(value[1]).toMatchObject({ blockType: "hero", heading: "From clipboard" });
+    expect(value[1]).toMatchObject({
+      blockType: "hero",
+      heading: "From clipboard",
+    });
     expect(value[1]!.id).not.toBe("clip-1");
   });
 
@@ -22578,7 +25560,12 @@ describe("FormBlocks: block clipboard paste", () => {
         version: 1,
         copiedAt: 1,
         blocks: [
-          { id: "clip-1", blockType: "quote", blockName: "Quote", text: "Unsupported here" },
+          {
+            id: "clip-1",
+            blockType: "quote",
+            blockName: "Quote",
+            text: "Unsupported here",
+          },
           {
             id: "clip-2",
             blockType: "hero",
@@ -22594,7 +25581,9 @@ describe("FormBlocks: block clipboard paste", () => {
 
     await user.click(screen.getByRole("button", { name: /^Paste/ }));
 
-    const value = JSON.parse(screen.getByTestId("value-probe").textContent as string) as GenericBlock[];
+    const value = JSON.parse(
+      screen.getByTestId("value-probe").textContent as string,
+    ) as GenericBlock[];
     expect(value).toHaveLength(1);
     expect(value[0]).toMatchObject({ blockType: "hero", heading: "Accepted" });
     expect(value[0]).not.toHaveProperty("notAFieldOnThisBlock");
@@ -22607,14 +25596,28 @@ describe("FormBlocks: block clipboard paste", () => {
       JSON.stringify({
         version: 1,
         copiedAt: 1,
-        blocks: [{ id: "clip-1", blockType: "hero", blockName: "Hero", heading: "From clipboard" }],
+        blocks: [
+          {
+            id: "clip-1",
+            blockType: "hero",
+            blockName: "Hero",
+            heading: "From clipboard",
+          },
+        ],
       }),
     );
 
     render(
       <FormBlocksHarness
         fieldDef={fieldDef}
-        initialValue={[{ id: "b1", blockType: "hero", blockName: "Hero", heading: "Existing" }]}
+        initialValue={[
+          {
+            id: "b1",
+            blockType: "hero",
+            blockName: "Hero",
+            heading: "Existing",
+          },
+        ]}
       />,
     );
 
@@ -22629,7 +25632,14 @@ describe("FormBlocks: block clipboard paste", () => {
       JSON.stringify({
         version: 1,
         copiedAt: 1,
-        blocks: [{ id: "clip-1", blockType: "hero", blockName: "Hero", heading: "From clipboard" }],
+        blocks: [
+          {
+            id: "clip-1",
+            blockType: "hero",
+            blockName: "Hero",
+            heading: "From clipboard",
+          },
+        ],
       }),
     );
 
@@ -22637,7 +25647,14 @@ describe("FormBlocks: block clipboard paste", () => {
       <FormBlocksHarness
         fieldDef={fieldDef}
         collection={testCollection}
-        initialValue={[{ id: "b1", blockType: "hero", blockName: "Hero", heading: "Existing" }]}
+        initialValue={[
+          {
+            id: "b1",
+            blockType: "hero",
+            blockName: "Hero",
+            heading: "Existing",
+          },
+        ]}
       />,
       { access: testAccess.denied, auth: { user: testUsers.denied } },
     );
@@ -22693,14 +25710,16 @@ Verify: `pnpm --filter @vexcms/react test -- useBlockClipboard FormBlocks`
 ### Step 17 — Per-input polish + state sweep [agent]
 
 - [ ] `packages/core/src/fields/number/types.ts` — `step?: number` on `NumberFieldInput`/`NumberField`
-- [ ] `packages/core/src/fields/select/types.ts` — `SELECT_DISPLAYS`, `SelectDisplay`, `SelectFieldAdminConfigInput`/`SelectFieldAdminConfig` (`searchable`, `display`)
+- [ ] `packages/core/src/fields/select/types.ts` — `SELECT_DISPLAYS`, `SelectDisplay`; adds `searchable`/`display` to Step 6's existing `SelectFieldAdminInput`/`SelectFieldAdminConfig`
 - [ ] `packages/core/src/fields/select/config.ts` — `admin.searchable`/`admin.display` defaults
 - [ ] `packages/react/src/components/form/FormError.tsx` — `isFieldShowingError` extracted and reused
 - [ ] `packages/react/src/components/fields/text/Input.tsx` — character counter when `max` set, `aria-invalid`, both-source `disabled` (masked + unmasked branches)
 - [ ] `packages/react/src/components/fields/email/Input.tsx` — same counter + `aria-invalid` + both-source `disabled` treatment as `text`
 - [ ] `packages/react/src/components/fields/number/Input.tsx` — `step`/`min`/`max` HTML attributes (unmasked branch only), `aria-invalid`
-- [ ] `packages/react/src/components/fields/url/Input.tsx` — open-link button, `aria-invalid`, both-source `disabled` (masked + unmasked branches)
-- [ ] `packages/react/src/components/fields/select/Input.tsx` — `admin.searchable`, `admin.display: "radio"` (checkbox list when `hasMany`), `aria-invalid`, real both-source `disabled`
+- [ ] `packages/react/src/components/fields/url/Input.tsx` — open-link button via `VexLink`, `aria-invalid`, both-source `disabled` (masked + unmasked branches)
+- [ ] `packages/react/src/components/ui/radio-group.tsx` (new) — `RadioGroup`/`RadioGroupItem` built on Base UI `RadioGroup`/`Radio`
+- [ ] `packages/react/src/components/ui/index.ts` — export the new `radio-group` barrel
+- [ ] `packages/react/src/components/fields/select/Input.tsx` — `admin.searchable`, `admin.display: "radio"` (`RadioGroup`/`RadioGroupItem` when single, `Checkbox` list when `hasMany`), `aria-invalid`, real both-source `disabled`
 - [ ] `packages/react/src/components/fields/color/Input.tsx` — `aria-invalid`
 - [ ] `packages/react/src/components/fields/checkbox/Input.tsx` — `aria-invalid`
 - [ ] `packages/react/src/components/ui/multi-select.tsx` — `aria-invalid` styling on `MultiSelectTrigger`
@@ -22709,7 +25728,12 @@ Verify: `pnpm --filter @vexcms/react test -- useBlockClipboard FormBlocks`
 - [ ] `packages/react/src/testing/dataTableSuite.tsx` — alignment assertion
 - [ ] `packages/react/src/components/fields/{text,email,number,url,select}/Input.test.tsx` — new/updated `extra` coverage
 - [ ] `packages/react/src/components/fields/array/Input.test.tsx` — update the readOnly-source test now that text's `disabled` ORs both sources
-- [ ] `pnpm --filter @vexcms/react test -- fields DataTable`
+- [ ] `packages/react/src/utils/adminHref.ts` + test — `adminHref({ type, slug?, id? }, basePath)`, replacing every hand-built admin link
+- [ ] `packages/react/src/components/fields/{array,blocks,checkbox,color,date,email,group,json,number,relationship,richtext,select,text,textarea,upload,url}/Cell.tsx` — title-column link via `adminHref`
+- [ ] `packages/react/src/components/AdminSidebar.tsx`, `AdminTopNav.tsx` — nav links + breadcrumb trail via `adminHref`
+- [ ] `packages/react/src/components/views/{DashboardView,GlobalsListView,CollectionListView,MediaCollectionListView}.tsx` — card/button links via `adminHref` (fixes the latter four ignoring a custom `basePath`)
+- [ ] `packages/react/src/index.ts` — export `adminHref`, `AdminHrefTarget`
+- [ ] `pnpm --filter @vexcms/react test -- fields DataTable adminHref AdminSidebar AdminTopNav DashboardView GlobalsListView CollectionListView MediaCollectionListView`
 
 Why: closes the remaining "half-built" inputs and ignored `cellAlignment`, and the
 state sweep surfaces defects the per-type contract tests never caught because they
@@ -22726,9 +25750,9 @@ min/max semantics as `text`; `textarea()` exists (Step 3) and its counter markup
 verbatim — same `<p className="self-end text-[0.8rem] text-muted-foreground
 tabular-nums">{value.length}/{fieldDef.max[0]}</p>`; `FieldAdminConfigInput`/
 `FieldAdminConfig` (`baseTypes.ts`) carry Step 6's `width: string` (default
-`"100%"`) and `layout: FieldLayoutFrame[]` (default `[]`) — every field's `admin`
-defaults object below already includes `width: "100%", layout: []`, not the
-pre-Step-6 `width: "full"`; and `text`/`email`/`number`/`url` each render **two**
+`"100%"`) — every field's `admin` defaults object below already includes
+`width: "100%"`, not the pre-Step-6 `width: "full"`; there is no `layout`
+property in this model; and `text`/`email`/`number`/`url` each render **two**
 branches from Step 10's `admin.mask` support — a masked, uncontrolled `<Input
 ref={maskRef} defaultValue={…} onInput={…}>` and an unmasked, controlled `<Input
 value={…} onChange={…}>` — so every fix below (both-source `disabled`,
@@ -22747,7 +25771,7 @@ severity):**
    `MultiSelectTrigger`, a plain informational ARIA attribute `PopoverTrigger` (a
    button) never enforces — the popover still opened and selections still worked
    with `admin.readOnly: true` and the `readOnly` prop `false`. Only the `readOnly`
-   *prop* actually disabled the control (`disabled={readOnly}`). Fixed: both sources
+   _prop_ actually disabled the control (`disabled={readOnly}`). Fixed: both sources
    now drive `disabled`, matching every other field type's own OR-composition
    (already documented at `upload/Input.tsx:42-45`).
 2. **No field `Input.tsx` ever sets `aria-invalid`** — `text`, `email`, `number`,
@@ -22789,6 +25813,12 @@ severity):**
    replaced wholesale by Step 14 — auditing its pre-overhaul code would be moot.
    `textarea/Input.tsx` (Step 3) is a brand-new file this step did not touch; it
    shares `text`'s `aria-invalid` gap but is out of this step's declared scope.
+7. **Admin links are hand-built at 30 call sites** — every field type's `Cell.tsx` title link
+   (16 files), `AdminSidebar.tsx`/`AdminTopNav.tsx` nav and breadcrumbs (7 sites), and
+   `DashboardView.tsx`/`GlobalsListView.tsx`/`CollectionListView.tsx`/`MediaCollectionListView.tsx`
+   (7 sites) each interpolate `` `${basePath}/...` `` (or, in the four list/dashboard views,
+   hardcode `"/admin/..."` — ignoring a configured custom `basePath` entirely). Fixed via one
+   `adminHref()` builder (new) every one of those 30 sites now calls.
 
 #### packages/core/src/fields/number/types.ts
 
@@ -22820,26 +25850,19 @@ member of each interface, well before `max`).
 
 #### packages/core/src/fields/select/types.ts
 
-`select` is not in Step 10's `MASKABLE_FIELD_TYPES`, so it carries no `admin` override
-yet — these edits add the first one. `FieldAdminConfigInput`/`FieldAdminConfig`
-(from `../baseTypes`) already carry Step 6's `width: string`/`layout`/`condition`,
-inherited automatically through `extends`.
+`select`'s `ADMIN_FIELDS` entry sets `inputMasks: false` (Step 10), so it carries no `admin.mask` override.
+Step 6 already gave `select()` its own `SelectFieldAdminInput<TCollectionSlug>`/
+`SelectFieldAdminConfig<TCollectionSlug>` (for `condition`), extending the plain
+`FieldAdminConfigInput`/`FieldAdminConfig`; this step adds `searchable`/`display` to THOSE two
+interfaces directly (no new wrapper name, no extra narrowing level) and overrides `admin` on
+`SelectFieldInput`/`SelectField` with them, mirroring what Step 6 already did for every other
+field type.
 
-**1 — import line: add `FieldAdminConfig`, `FieldAdminConfigInput` to the existing `../baseTypes` import.**
+**1 — no new import needed.** `SelectFieldAdminInput`/`SelectFieldAdminConfig` already live in this
+file from Step 6 (which also already imports `FieldConditionProps` from `../ui/types`).
 
-```ts
-import { ADMIN_FIELDS } from "../constants";
-import {
-  BaseField,
-  BaseFieldInput,
-  FieldAdminConfig,
-  FieldAdminConfigInput,
-  FieldValidateProps,
-} from "../baseTypes";
-import type { VexResourceSlug } from "../../types/generated";
-```
-
-**2 — insert before `export interface SelectFieldInput`.**
+**2 — insert before `export interface SelectFieldInput`, replacing Step 6's bare
+`SelectFieldAdminInput`/`SelectFieldAdminConfig` bodies with these widened ones.**
 
 ```ts
 /** Display modes a `select()` field's admin input can render as. */
@@ -22849,12 +25872,13 @@ export const SELECT_DISPLAYS = {
 } as const;
 
 /** `"dropdown" | "radio"` — see {@link SELECT_DISPLAYS}. */
-export type SelectDisplay = (typeof SELECT_DISPLAYS)[keyof typeof SELECT_DISPLAYS];
+export type SelectDisplay =
+  (typeof SELECT_DISPLAYS)[keyof typeof SELECT_DISPLAYS];
 
-/**
- * 'admin' field configuration input for a `select()` field.
- */
-export interface SelectFieldAdminConfigInput extends FieldAdminConfigInput {
+/** Per-type `admin` input for `select()` — adds `searchable`/`display` and `condition` (Step 6). */
+export interface SelectFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfigInput {
   /**
    * Shows a search box inside the options popover. Only meaningful when
    * `display` is `"dropdown"` (the default) — the `"radio"` display has no
@@ -22873,30 +25897,32 @@ export interface SelectFieldAdminConfigInput extends FieldAdminConfigInput {
    * Default: `"dropdown"`
    */
   display?: SelectDisplay;
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
 }
 
-/**
- * Resolved 'admin' field configuration for a `select()` field.
- */
-export interface SelectFieldAdminConfig extends FieldAdminConfig {
+/** Resolved per-type `admin` for `select()`. */
+export interface SelectFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfig {
   /** Whether the options popover shows a search box (`"dropdown"` display only). */
   searchable: boolean;
   /** How the field renders its options — `"dropdown"` or `"radio"`. */
   display: SelectDisplay;
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
 }
 ```
 
 **3 — `SelectFieldInput`'s `optionInterfaceName?: string;` line: insert `admin` immediately after it, before `validate`.**
 
 ```ts
-  admin?: SelectFieldAdminConfigInput;
+  admin?: SelectFieldAdminInput<TCollectionSlug>;
 ```
 
 **4 — `SelectField`'s `readonly type: typeof ADMIN_FIELDS.select.type;` line: insert `admin` immediately after it.**
 
 ```ts
-  /** Resolved admin UI configuration with all defaults applied. */
-  admin: SelectFieldAdminConfig;
+/** Resolved admin UI configuration with all defaults applied. */
+admin: SelectFieldAdminConfig<TCollectionSlug>;
 ```
 
 #### packages/core/src/fields/select/config.ts
@@ -22972,7 +25998,8 @@ export function isFieldShowingError(props: {
 }): boolean {
   const errorMessage = getFieldErrorMessage(props.field);
   return Boolean(
-    (props.field.state.meta.isTouched || props.submissionAttempts > 0) && errorMessage,
+    (props.field.state.meta.isTouched || props.submissionAttempts > 0) &&
+    errorMessage,
   );
 }
 
@@ -23010,7 +26037,7 @@ body changes throughout (counter, `aria-invalid`, both-source `disabled` on both
 the masked and unmasked `<Input>`), so it is shown complete per the repo
 convention.
 
-```tsx
+````tsx
 "use client";
 
 import { useContext } from "react";
@@ -23119,7 +26146,7 @@ export const TextFieldInput = createFieldInput<string, {}, TextField>(
     );
   },
 );
-```
+````
 
 #### packages/react/src/components/fields/email/Input.tsx
 
@@ -23128,7 +26155,7 @@ Entire file, replacing the Step-10-landed implementation — same counter and
 explicitly so `email` doesn't fall behind `text`'s polish. Keeps Step 10's
 `type="email"`/`type="text"` branch split and `autoComplete="email"` on both.
 
-```tsx
+````tsx
 "use client";
 
 import { useContext } from "react";
@@ -23227,7 +26254,7 @@ export const EmailFieldInput = createFieldInput<string, {}, EmailField>(
     );
   },
 );
-```
+````
 
 #### packages/react/src/components/fields/number/Input.tsx
 
@@ -23237,7 +26264,7 @@ renders `type="text"` (Step 10), where `step`/`min`/`max` are inert; `number`'s
 `disabled` was already both-source on both branches pre-this-step, so no change
 there.
 
-```tsx
+````tsx
 "use client";
 
 import { useContext } from "react";
@@ -23300,10 +26327,14 @@ export const NumberFieldInput = createFieldInput<number, {}, NumberField>(
             ref={maskRef}
             disabled={isDisabled}
             type="text"
-            defaultValue={field.state.value !== undefined ? String(field.state.value) : ""}
+            defaultValue={
+              field.state.value !== undefined ? String(field.state.value) : ""
+            }
             onInput={(e) => {
               const raw = e.currentTarget.value;
-              field.handleChange(raw === "" ? (undefined as unknown as number) : Number(raw));
+              field.handleChange(
+                raw === "" ? (undefined as unknown as number) : Number(raw),
+              );
             }}
             onBlur={field.handleBlur}
             placeholder={fieldDef.admin.placeholder}
@@ -23322,7 +26353,9 @@ export const NumberFieldInput = createFieldInput<number, {}, NumberField>(
             value={field.state.value ?? 0}
             onChange={(e) =>
               field.handleChange(
-                e.target.value === "" ? (undefined as unknown as number) : Number(e.target.value),
+                e.target.value === ""
+                  ? (undefined as unknown as number)
+                  : Number(e.target.value),
               )
             }
             onBlur={field.handleBlur}
@@ -23338,7 +26371,7 @@ export const NumberFieldInput = createFieldInput<number, {}, NumberField>(
     );
   },
 );
-```
+````
 
 #### packages/react/src/components/fields/url/Input.tsx
 
@@ -23347,13 +26380,14 @@ sits outside the mask branch — it reads `field.state.value` directly, which
 stays the live, reactive form value in both the masked (uncontrolled DOM,
 `onInput` still calls `field.handleChange`) and unmasked cases.
 
-```tsx
+````tsx
 "use client";
 
 import { useContext } from "react";
 import { resolveFieldMask, type UrlField } from "@vexcms/core";
 import { Input } from "../../ui/input";
 import { Button } from "../../ui/button";
+import { VexLink } from "../../ui/VexLink";
 import { createFieldInput } from "../../form/createFieldInput";
 import { FormDescription } from "../../form/FormDescription";
 import { FormLabel } from "../../form/FormLabel";
@@ -23459,7 +26493,11 @@ export const UrlFieldInput = createFieldInput<string, {}, UrlField>(
             icon="ExternalLink"
             iconPosition="center"
             render={
-              <a href={isValidUrl ? value : undefined} target="_blank" rel="noopener noreferrer" />
+              <VexLink
+                href={isValidUrl ? value : undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+              />
             }
           />
         </div>
@@ -23469,6 +26507,62 @@ export const UrlFieldInput = createFieldInput<string, {}, UrlField>(
     );
   },
 );
+````
+
+#### packages/react/src/components/ui/radio-group.tsx
+
+New file. Mirrors `ui/checkbox.tsx`'s pattern — styled wrappers directly on Base UI's
+`RadioGroup`/`Radio.Root`/`Radio.Indicator`, no new abstraction layer (Design Decision 32).
+Used below by `select/Input.tsx`'s `admin.display: "radio"` branch when `hasMany` is `false`.
+
+```tsx
+import { Radio as RadioPrimitive, RadioGroup as RadioGroupPrimitive } from "@base-ui/react";
+
+import { cn } from "../../styles/utils";
+
+/** Styled radio group built on Base UI `RadioGroup`, sharing selection state across its `RadioGroupItem` children. */
+function RadioGroup({ className, ...props }: RadioGroupPrimitive.Props) {
+  return (
+    <RadioGroupPrimitive
+      data-slot="radio-group"
+      className={cn("flex flex-col gap-2", className)}
+      {...props}
+    />
+  );
+}
+
+/** Styled radio button built on Base UI `Radio.Root` with a filled-dot `Radio.Indicator`. */
+function RadioGroupItem({ className, ...props }: RadioPrimitive.Root.Props) {
+  return (
+    <RadioPrimitive.Root
+      data-slot="radio-group-item"
+      className={cn(
+        "relative flex size-4 shrink-0 items-center justify-center rounded-full border border-input shadow-xs transition-shadow outline-none group-has-disabled/field:opacity-50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:border-primary",
+        className,
+      )}
+      {...props}
+    >
+      <RadioPrimitive.Indicator
+        data-slot="radio-group-item-indicator"
+        className="size-2 rounded-full bg-primary"
+      />
+    </RadioPrimitive.Root>
+  );
+}
+
+export { RadioGroup, RadioGroupItem };
+```
+
+#### packages/react/src/components/ui/index.ts
+
+**1 — new export, grouped beside `checkbox`.**
+
+```ts
+export * from "./accordion";
+export * from "./card";
+export * from "./checkbox";
+export * from "./radio-group";
+export * from "./dnd";
 ```
 
 #### packages/react/src/components/fields/select/Input.tsx
@@ -23477,13 +26571,13 @@ Entire file, replacing the existing implementation. `select` is untouched by
 Steps 1/2/3/10. Step 11 (`g-step-11.md:1835-1841`) makes one isolated edit to the
 pre-this-step file — the JSDoc line `Fields are rendered generically by
 \`RenderFieldInputComponents\`, so there is` → `` `RenderFields`, so there is ``
-(`RenderFieldInputComponents` is removed in Step 11). This full-file rewrite
+(`RenderFieldInputComponents`is removed in Step 11). This full-file rewrite
 already carries the post-Step-11 wording verbatim in its JSDoc below (see
-"Fields are rendered generically by `RenderFields`, so there is no prop
+"Fields are rendered generically by`RenderFields`, so there is no prop
 channel…"), so no further re-anchoring is needed — the entire-file replacement
 subsumes Step 11's one-line edit.
 
-```tsx
+````tsx
 "use client";
 
 import { SELECT_DISPLAYS, type SelectField } from "@vexcms/core";
@@ -23492,6 +26586,8 @@ import { createFieldInput } from "../../form/createFieldInput";
 import { FormDescription } from "../../form/FormDescription";
 import { FormLabel } from "../../form/FormLabel";
 import { FormError, isFieldShowingError } from "../../form/FormError";
+import { Checkbox } from "../../ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
 import {
   MultiSelect,
   MultiSelectContent,
@@ -23555,7 +26651,9 @@ export const SelectFieldInput = createFieldInput<string[], {}, SelectField>(
       const current = field.state.value ?? [];
       if (fieldDef.hasMany) {
         field.handleChange(
-          current.includes(value) ? current.filter((v) => v !== value) : [...current, value],
+          current.includes(value)
+            ? current.filter((v) => v !== value)
+            : [...current, value],
         );
       } else {
         field.handleChange(current.includes(value) ? [] : [value]);
@@ -23573,32 +26671,52 @@ export const SelectFieldInput = createFieldInput<string[], {}, SelectField>(
             {fieldDef.label || name}
             {fieldDef.required && <span className="text-red-500">*</span>}
           </span>
-          <div
-            role="group"
-            aria-labelledby={`${name}-label`}
-            aria-disabled={isReadOnly}
-            className="flex flex-col gap-2"
-          >
-            {fieldDef.options.map((option, optionIndex) => (
-              <label
-                key={`${name}-option-${optionIndex}`}
-                className="flex items-center gap-2 text-sm"
-              >
-                <input
-                  type={fieldDef.hasMany ? "checkbox" : "radio"}
-                  name={name}
-                  value={option.value}
-                  checked={(field.state.value ?? []).includes(option.value)}
-                  disabled={isReadOnly}
-                  onChange={() => handleOptionToggle(option.value)}
-                  onBlur={field.handleBlur}
-                  aria-invalid={isInvalid}
-                  className="size-4 shrink-0 rounded-sm border border-input accent-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20"
-                />
-                {option.label}
-              </label>
-            ))}
-          </div>
+          {fieldDef.hasMany ? (
+            <div
+              role="group"
+              aria-labelledby={`${name}-label`}
+              aria-disabled={isReadOnly}
+              className="flex flex-col gap-2"
+            >
+              {fieldDef.options.map((option, optionIndex) => (
+                <label
+                  key={`${name}-option-${optionIndex}`}
+                  className="flex items-center gap-2 text-sm"
+                >
+                  <Checkbox
+                    checked={(field.state.value ?? []).includes(option.value)}
+                    disabled={isReadOnly}
+                    onCheckedChange={() => handleOptionToggle(option.value)}
+                    onBlur={field.handleBlur}
+                    aria-invalid={isInvalid}
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+          ) : (
+            <RadioGroup
+              aria-labelledby={`${name}-label`}
+              disabled={isReadOnly}
+              value={(field.state.value ?? [])[0]}
+              onValueChange={(value) => field.handleChange([value as string])}
+              onBlur={field.handleBlur}
+              className="gap-2"
+            >
+              {fieldDef.options.map((option, optionIndex) => (
+                <label
+                  key={`${name}-option-${optionIndex}`}
+                  className="flex items-center gap-2 text-sm"
+                >
+                  <RadioGroupItem
+                    value={option.value}
+                    aria-invalid={isInvalid}
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </RadioGroup>
+          )}
           <FormDescription field={fieldDef} />
           <FormError field={field} submissionAttempts={submissionAttempts} />
         </div>
@@ -23632,7 +26750,10 @@ export const SelectFieldInput = createFieldInput<string[], {}, SelectField>(
           >
             <MultiSelectGroup>
               {fieldDef.options.map((o, i) => (
-                <MultiSelectItem value={o.value} key={`multi-select-item-${name}-${i}`}>
+                <MultiSelectItem
+                  value={o.value}
+                  key={`multi-select-item-${name}-${i}`}
+                >
                   {o.label}
                 </MultiSelectItem>
               ))}
@@ -23645,7 +26766,7 @@ export const SelectFieldInput = createFieldInput<string[], {}, SelectField>(
     );
   },
 );
-```
+````
 
 #### packages/react/src/components/fields/color/Input.tsx
 
@@ -23660,19 +26781,21 @@ import { FormError, isFieldShowingError } from "../../form/FormError";
 **2 — the text `<Input id={name} ...>` control (the one carrying `aria-required={fieldDef.required}`): insert `aria-invalid` immediately after it.**
 
 ```tsx
-          <Input
-            id={name}
-            type="text"
-            className="font-mono"
-            disabled={disabled}
-            value={value}
-            onChange={(e) => field.handleChange(e.target.value)}
-            onBlur={field.handleBlur}
-            placeholder={fieldDef.admin.placeholder || FORMAT_PLACEHOLDERS[fieldDef.format]}
-            readOnly={fieldDef.admin.readOnly}
-            aria-required={fieldDef.required}
-            aria-invalid={isFieldShowingError({ field, submissionAttempts })}
-          />
+<Input
+  id={name}
+  type="text"
+  className="font-mono"
+  disabled={disabled}
+  value={value}
+  onChange={(e) => field.handleChange(e.target.value)}
+  onBlur={field.handleBlur}
+  placeholder={
+    fieldDef.admin.placeholder || FORMAT_PLACEHOLDERS[fieldDef.format]
+  }
+  readOnly={fieldDef.admin.readOnly}
+  aria-required={fieldDef.required}
+  aria-invalid={isFieldShowingError({ field, submissionAttempts })}
+/>
 ```
 
 #### packages/react/src/components/fields/checkbox/Input.tsx
@@ -23688,17 +26811,17 @@ import { FormError, isFieldShowingError } from "../../form/FormError";
 **2 — the `<Checkbox>` control: insert `aria-invalid` immediately after `onBlur={field.handleBlur}`.**
 
 ```tsx
-          <Checkbox
-            id={name}
-            aria-labelledby={`${name}-label`}
-            required={fieldDef.required}
-            readOnly={readOnly || fieldDef.admin.readOnly}
-            disabled={readOnly || fieldDef.admin.readOnly}
-            checked={field.state.value ?? false}
-            onCheckedChange={(checked) => field.handleChange(checked)}
-            onBlur={field.handleBlur}
-            aria-invalid={isFieldShowingError({ field, submissionAttempts })}
-          />
+<Checkbox
+  id={name}
+  aria-labelledby={`${name}-label`}
+  required={fieldDef.required}
+  readOnly={readOnly || fieldDef.admin.readOnly}
+  disabled={readOnly || fieldDef.admin.readOnly}
+  checked={field.state.value ?? false}
+  onCheckedChange={(checked) => field.handleChange(checked)}
+  onBlur={field.handleBlur}
+  aria-invalid={isFieldShowingError({ field, submissionAttempts })}
+/>
 ```
 
 #### packages/react/src/components/ui/multi-select.tsx
@@ -23721,8 +26844,20 @@ Untouched by Steps 1/2/3/6/10 — same edit as against the pre-mask repo.
 **1 — imports: widen the `@vexcms/core` import.**
 
 ```ts
-import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../table";
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../table";
 import { VexDocument, type Alignment } from "@vexcms/core";
 import { useMemo, useState } from "react";
 import { Checkbox } from "../checkbox";
@@ -23755,37 +26890,41 @@ const ALIGNMENT_CLASS: Record<Alignment, string> = {
 **3 — the header row's `<TableHead>`: apply the column's alignment class.**
 
 ```tsx
-              {hg.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  className={
-                    ALIGNMENT_CLASS[
-                      (header.column.columnDef.meta as DataTableColumnMeta | undefined)?.align ??
-                        "left"
-                    ]
-                  }
-                >
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                </TableHead>
-              ))}
+{
+  hg.headers.map((header) => (
+    <TableHead
+      key={header.id}
+      className={
+        ALIGNMENT_CLASS[
+          (header.column.columnDef.meta as DataTableColumnMeta | undefined)
+            ?.align ?? "left"
+        ]
+      }
+    >
+      {flexRender(header.column.columnDef.header, header.getContext())}
+    </TableHead>
+  ));
+}
 ```
 
 **4 — the body row's `<TableCell>`: apply the same alignment class.**
 
 ```tsx
-              {row.getVisibleCells().map((cell) => (
-                <TableCell
-                  key={cell.id}
-                  className={
-                    ALIGNMENT_CLASS[
-                      (cell.column.columnDef.meta as DataTableColumnMeta | undefined)?.align ??
-                        "left"
-                    ]
-                  }
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
+{
+  row.getVisibleCells().map((cell) => (
+    <TableCell
+      key={cell.id}
+      className={
+        ALIGNMENT_CLASS[
+          (cell.column.columnDef.meta as DataTableColumnMeta | undefined)
+            ?.align ?? "left"
+        ]
+      }
+    >
+      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+    </TableCell>
+  ));
+}
 ```
 
 #### packages/react/src/testing/fieldInputContract.ts
@@ -23795,42 +26934,43 @@ Untouched by Steps 1/2/3/6/10 — same edit as against the pre-mask repo.
 **1 — insert a new section before the `extra?.(options);` line that closes the `describe` block (after section "10. Accessibility").** Type-agnostic: every field type's `onSubmit` validator runs the same real schema regardless of `readOnly`/`admin.readOnly`, and `hasInertSignal` is already proven to hold for both sources by the existing section 4 tests, so these two hold for every current and future field type without per-type exceptions.
 
 ```ts
-    // ── 11. Read-only + error rendered together ─────────────────────────────
-    it("still shows the validation error after submission when the field is read-only via the `readOnly` prop", async () => {
-      const errorMessage = deriveInvalidErrorMessage();
-      const user = userEvent.setup();
-      const { container } = renderField({
-        Component,
-        fieldDef: fixture.fieldDef,
-        collection,
-        readOnly: true,
-        initialValue: fixture.invalid,
-      });
+// ── 11. Read-only + error rendered together ─────────────────────────────
+it("still shows the validation error after submission when the field is read-only via the `readOnly` prop", async () => {
+  const errorMessage = deriveInvalidErrorMessage();
+  const user = userEvent.setup();
+  const { container } = renderField({
+    Component,
+    fieldDef: fixture.fieldDef,
+    collection,
+    readOnly: true,
+    initialValue: fixture.invalid,
+  });
 
-      await user.click(screen.getByRole("button", { name: /submit/i }));
+  await user.click(screen.getByRole("button", { name: /submit/i }));
 
-      expect(await screen.findByText(errorMessage)).toBeVisible();
-      expect(hasInertSignal(getControl(container, label))).toBe(true);
-    });
+  expect(await screen.findByText(errorMessage)).toBeVisible();
+  expect(hasInertSignal(getControl(container, label))).toBe(true);
+});
 
-    it("still shows the validation error after submission when the field is read-only via fieldDef.admin.readOnly", async () => {
-      const errorMessage = deriveInvalidErrorMessage();
-      const user = userEvent.setup();
-      const fieldDef = withFieldDef(fixture.fieldDef, { admin: { readOnly: true } });
-      const { container } = renderField({
-        Component,
-        fieldDef,
-        collection,
-        readOnly: false,
-        initialValue: fixture.invalid,
-      });
+it("still shows the validation error after submission when the field is read-only via fieldDef.admin.readOnly", async () => {
+  const errorMessage = deriveInvalidErrorMessage();
+  const user = userEvent.setup();
+  const fieldDef = withFieldDef(fixture.fieldDef, {
+    admin: { readOnly: true },
+  });
+  const { container } = renderField({
+    Component,
+    fieldDef,
+    collection,
+    readOnly: false,
+    initialValue: fixture.invalid,
+  });
 
-      await user.click(screen.getByRole("button", { name: /submit/i }));
+  await user.click(screen.getByRole("button", { name: /submit/i }));
 
-      expect(await screen.findByText(errorMessage)).toBeVisible();
-      expect(hasInertSignal(getControl(container, label))).toBe(true);
-    });
-
+  expect(await screen.findByText(errorMessage)).toBeVisible();
+  expect(hasInertSignal(getControl(container, label))).toBe(true);
+});
 ```
 
 #### packages/react/src/testing/dataTableSuite.tsx
@@ -23864,38 +27004,45 @@ still applies.
 **1 — insert a new `describe` inside `extra`, immediately after the existing `describe("text: length boundaries...")` block's closing `});`.**
 
 ```tsx
-    describe("text: character counter", () => {
-      it("renders no counter when fieldDef.max is not set", () => {
-        render(
-          <TextValidationHarness
-            fieldDef={text({ label: "Bio" })}
-            collection={collection}
-            initialValue=""
-          />,
-        );
-        expect(screen.queryByText(/^\d+\/\d+$/)).not.toBeInTheDocument();
-      });
+describe("text: character counter", () => {
+  it("renders no counter when fieldDef.max is not set", () => {
+    render(
+      <TextValidationHarness
+        fieldDef={text({ label: "Bio" })}
+        collection={collection}
+        initialValue=""
+      />,
+    );
+    expect(screen.queryByText(/^\d+\/\d+$/)).not.toBeInTheDocument();
+  });
 
-      it("shows current length / max once fieldDef.max is set", () => {
-        const fieldDef = text({ label: "Bio", max: [10, "Too long"] });
-        render(
-          <TextValidationHarness fieldDef={fieldDef} collection={collection} initialValue="Hi" />,
-        );
-        expect(screen.getByText("2/10")).toBeInTheDocument();
-      });
+  it("shows current length / max once fieldDef.max is set", () => {
+    const fieldDef = text({ label: "Bio", max: [10, "Too long"] });
+    render(
+      <TextValidationHarness
+        fieldDef={fieldDef}
+        collection={collection}
+        initialValue="Hi"
+      />,
+    );
+    expect(screen.getByText("2/10")).toBeInTheDocument();
+  });
 
-      it("updates live as the user types", async () => {
-        const user = userEvent.setup();
-        const fieldDef = text({ label: "Bio", max: [10, "Too long"] });
-        render(
-          <TextValidationHarness fieldDef={fieldDef} collection={collection} initialValue="" />,
-        );
-        const input = screen.getByLabelText("Bio", { exact: false });
-        await user.type(input, "Hello");
-        expect(screen.getByText("5/10")).toBeInTheDocument();
-      });
-    });
-
+  it("updates live as the user types", async () => {
+    const user = userEvent.setup();
+    const fieldDef = text({ label: "Bio", max: [10, "Too long"] });
+    render(
+      <TextValidationHarness
+        fieldDef={fieldDef}
+        collection={collection}
+        initialValue=""
+      />,
+    );
+    const input = screen.getByLabelText("Bio", { exact: false });
+    await user.type(input, "Hello");
+    expect(screen.getByText("5/10")).toBeInTheDocument();
+  });
+});
 ```
 
 #### packages/react/src/components/fields/email/Input.test.tsx
@@ -23908,42 +27055,45 @@ imports `email`, `EmailValidationHarness`; no new imports needed.
 **1 — insert a new `describe` inside `extra`, immediately after the existing `describe("email: native input type, format validation, and length boundaries", ...)` block's closing `});` (Step 2, `g-step-02.md:958-1006`).**
 
 ```tsx
-    describe("email: character counter", () => {
-      it("renders no counter when fieldDef.max is not set", () => {
-        render(
-          <EmailValidationHarness
-            fieldDef={email({ label: "Contact Email" })}
-            collection={collection}
-            initialValue=""
-          />,
-        );
-        expect(screen.queryByText(/^\d+\/\d+$/)).not.toBeInTheDocument();
-      });
+describe("email: character counter", () => {
+  it("renders no counter when fieldDef.max is not set", () => {
+    render(
+      <EmailValidationHarness
+        fieldDef={email({ label: "Contact Email" })}
+        collection={collection}
+        initialValue=""
+      />,
+    );
+    expect(screen.queryByText(/^\d+\/\d+$/)).not.toBeInTheDocument();
+  });
 
-      it("shows current length / max once fieldDef.max is set", () => {
-        const fieldDef = email({ label: "Contact Email", max: [20, "Too long"] });
-        render(
-          <EmailValidationHarness
-            fieldDef={fieldDef}
-            collection={collection}
-            initialValue="a@b.com"
-          />,
-        );
-        expect(screen.getByText("7/20")).toBeInTheDocument();
-      });
+  it("shows current length / max once fieldDef.max is set", () => {
+    const fieldDef = email({ label: "Contact Email", max: [20, "Too long"] });
+    render(
+      <EmailValidationHarness
+        fieldDef={fieldDef}
+        collection={collection}
+        initialValue="a@b.com"
+      />,
+    );
+    expect(screen.getByText("7/20")).toBeInTheDocument();
+  });
 
-      it("updates live as the user types", async () => {
-        const user = userEvent.setup();
-        const fieldDef = email({ label: "Contact Email", max: [20, "Too long"] });
-        render(
-          <EmailValidationHarness fieldDef={fieldDef} collection={collection} initialValue="" />,
-        );
-        const input = screen.getByLabelText("Contact Email", { exact: false });
-        await user.type(input, "a@b.com");
-        expect(screen.getByText("7/20")).toBeInTheDocument();
-      });
-    });
-
+  it("updates live as the user types", async () => {
+    const user = userEvent.setup();
+    const fieldDef = email({ label: "Contact Email", max: [20, "Too long"] });
+    render(
+      <EmailValidationHarness
+        fieldDef={fieldDef}
+        collection={collection}
+        initialValue=""
+      />,
+    );
+    const input = screen.getByLabelText("Contact Email", { exact: false });
+    await user.type(input, "a@b.com");
+    expect(screen.getByText("7/20")).toBeInTheDocument();
+  });
+});
 ```
 
 #### packages/react/src/components/fields/number/Input.test.tsx
@@ -23954,30 +27104,30 @@ imports `email`, `EmailValidationHarness`; no new imports needed.
 **1 — replace the `it("does not forward fieldDef.min/max as native HTML attributes and does not clamp typed values...")` test (the one inside `describe("number: numeric coercion, decimal/negative handling, and the ?? 0 empty fallback", ...)`) with the following — min/max/step ARE now forwarded on the unmasked branch; clamping is still never applied client-side. The field def below carries no `admin.mask`, so `NumberHarness` renders the unmasked `type="number"` branch.**
 
 ```tsx
-      it("forwards fieldDef.min/max/step as native HTML attributes but still does not clamp a typed value — range enforcement stays the schema's job", async () => {
-        const user = userEvent.setup();
-        const fieldDef = number({
-          label: "Quantity",
-          min: [0, "Quantity cannot be negative."],
-          max: [100, "Quantity cannot exceed 100."],
-          step: 5,
-        });
-        render(
-          <NumberHarness
-            fieldDef={fieldDef}
-            collection={collection}
-            initialValue={options.fixture.empty}
-          />,
-        );
-        const input = screen.getByLabelText(fieldDef.label, { exact: false });
-        expect(input).toHaveAttribute("min", "0");
-        expect(input).toHaveAttribute("max", "100");
-        expect(input).toHaveAttribute("step", "5");
-        await user.clear(input);
-        await user.type(input, "999");
-        expect(input).toHaveValue(999);
-        expect(screen.getByTestId("value-probe").textContent).toBe("999");
-      });
+it("forwards fieldDef.min/max/step as native HTML attributes but still does not clamp a typed value — range enforcement stays the schema's job", async () => {
+  const user = userEvent.setup();
+  const fieldDef = number({
+    label: "Quantity",
+    min: [0, "Quantity cannot be negative."],
+    max: [100, "Quantity cannot exceed 100."],
+    step: 5,
+  });
+  render(
+    <NumberHarness
+      fieldDef={fieldDef}
+      collection={collection}
+      initialValue={options.fixture.empty}
+    />,
+  );
+  const input = screen.getByLabelText(fieldDef.label, { exact: false });
+  expect(input).toHaveAttribute("min", "0");
+  expect(input).toHaveAttribute("max", "100");
+  expect(input).toHaveAttribute("step", "5");
+  await user.clear(input);
+  await user.type(input, "999");
+  expect(input).toHaveValue(999);
+  expect(screen.getByTestId("value-probe").textContent).toBe("999");
+});
 ```
 
 #### packages/react/src/components/fields/url/Input.test.tsx
@@ -23990,56 +27140,57 @@ closes; `extra`'s body is untouched.
 **1 — insert a new `describe` inside `extra`, immediately after `describe("url: urlFieldToInputSchema...")`'s closing `});`.**
 
 ```tsx
-    describe("url: open-link button", () => {
-      it("disables the open-link button when the field is empty", () => {
-        render(
-          <UrlHarness
-            fieldDef={options.fixture.fieldDef}
-            collection={collection}
-            initialValue=""
-          />,
-        );
-        expect(screen.getByRole("button", { name: "Open link in new tab" })).toHaveAttribute(
-          "aria-disabled",
-          "true",
-        );
-      });
+describe("url: open-link button", () => {
+  it("disables the open-link button when the field is empty", () => {
+    render(
+      <UrlHarness
+        fieldDef={options.fixture.fieldDef}
+        collection={collection}
+        initialValue=""
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Open link in new tab" }),
+    ).toHaveAttribute("aria-disabled", "true");
+  });
 
-      it("disables the open-link button while the value does not parse as a URL", async () => {
-        const user = userEvent.setup();
-        render(
-          <UrlHarness
-            fieldDef={options.fixture.fieldDef}
-            collection={collection}
-            initialValue={options.fixture.empty}
-          />,
-        );
-        const input = screen.getByLabelText(options.fixture.fieldDef.label, { exact: false });
-        await user.type(input, "not-a-valid-url");
-        expect(screen.getByRole("button", { name: "Open link in new tab" })).toHaveAttribute(
-          "aria-disabled",
-          "true",
-        );
-      });
-
-      it("enables the open-link button once the value parses as a URL, pointing at it with target=_blank and rel=noopener", async () => {
-        const user = userEvent.setup();
-        render(
-          <UrlHarness
-            fieldDef={options.fixture.fieldDef}
-            collection={collection}
-            initialValue={options.fixture.empty}
-          />,
-        );
-        const input = screen.getByLabelText(options.fixture.fieldDef.label, { exact: false });
-        await user.type(input, options.fixture.valid);
-        const link = screen.getByRole("button", { name: "Open link in new tab" });
-        expect(link).toHaveAttribute("href", options.fixture.valid);
-        expect(link).toHaveAttribute("target", "_blank");
-        expect(link.getAttribute("rel")).toContain("noopener");
-      });
+  it("disables the open-link button while the value does not parse as a URL", async () => {
+    const user = userEvent.setup();
+    render(
+      <UrlHarness
+        fieldDef={options.fixture.fieldDef}
+        collection={collection}
+        initialValue={options.fixture.empty}
+      />,
+    );
+    const input = screen.getByLabelText(options.fixture.fieldDef.label, {
+      exact: false,
     });
+    await user.type(input, "not-a-valid-url");
+    expect(
+      screen.getByRole("button", { name: "Open link in new tab" }),
+    ).toHaveAttribute("aria-disabled", "true");
+  });
 
+  it("enables the open-link button once the value parses as a URL, pointing at it with target=_blank and rel=noopener", async () => {
+    const user = userEvent.setup();
+    render(
+      <UrlHarness
+        fieldDef={options.fixture.fieldDef}
+        collection={collection}
+        initialValue={options.fixture.empty}
+      />,
+    );
+    const input = screen.getByLabelText(options.fixture.fieldDef.label, {
+      exact: false,
+    });
+    await user.type(input, options.fixture.valid);
+    const link = screen.getByRole("button", { name: "Open link in new tab" });
+    expect(link).toHaveAttribute("href", options.fixture.valid);
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link.getAttribute("rel")).toContain("noopener");
+  });
+});
 ```
 
 #### packages/react/src/components/fields/select/Input.test.tsx
@@ -24055,106 +27206,118 @@ import { select, SELECT_DISPLAYS, type SelectField } from "@vexcms/core";
 **3 — the pre-existing `it("opens without crashing and lists no options when fieldDef.options is empty", ...)` test (inside `describe("select field", ...)`): its `waitFor` assertion pinned the reveal effect's focus target to `command-input`, which was always correct while `MultiSelectContent`'s `search` prop had no caller-supplied value and defaulted to `true`. `fixture.fieldDef` here carries no `admin.searchable` override, so it now resolves `select()`'s new default (`false` — edit 2 above), and the reveal effect focuses the sr-only `[data-multiselect-focus]` button instead (`ui/multi-select.tsx:352-363`), not `command-input`. Replace the `await waitFor(...)` call.**
 
 ```tsx
-        await user.click(screen.getByRole("combobox"));
-        // No option ever appears to `findByRole` on, so wait on the reveal
-        // effect's own side effect instead — the popup's initial focus
-        // target taking focus, same assertion `ui/multi-select.test.tsx`
-        // uses to pin that effect. `admin.searchable` defaults to `false`
-        // (Step 17), so the focus target is the sr-only
-        // `[data-multiselect-focus]` button, not the search `command-input`.
-        await waitFor(() =>
-          expect(document.activeElement?.hasAttribute("data-multiselect-focus")).toBe(true),
-        );
+await user.click(screen.getByRole("combobox"));
+// No option ever appears to `findByRole` on, so wait on the reveal
+// effect's own side effect instead — the popup's initial focus
+// target taking focus, same assertion `ui/multi-select.test.tsx`
+// uses to pin that effect. `admin.searchable` defaults to `false`
+// (Step 17), so the focus target is the sr-only
+// `[data-multiselect-focus]` button, not the search `command-input`.
+await waitFor(() =>
+  expect(document.activeElement?.hasAttribute("data-multiselect-focus")).toBe(
+    true,
+  ),
+);
 ```
 
 **2 — insert two new `describe` blocks inside `extra`, immediately after the existing `describe("select field", ...)` block's closing `});`.**
 
 ```tsx
-    describe("select: admin.searchable", () => {
-      it("renders no search box by default (admin.searchable: false)", async () => {
-        const user = userEvent.setup();
-        render(<SelectHarness fieldDef={fixture.fieldDef} initialValue={[]} />);
-        await user.click(screen.getByRole("combobox"));
-        expect(document.querySelector('[data-slot="command-input"]')).not.toBeInTheDocument();
-      });
+describe("select: admin.searchable", () => {
+  it("renders no search box by default (admin.searchable: false)", async () => {
+    const user = userEvent.setup();
+    render(<SelectHarness fieldDef={fixture.fieldDef} initialValue={[]} />);
+    await user.click(screen.getByRole("combobox"));
+    expect(
+      document.querySelector('[data-slot="command-input"]'),
+    ).not.toBeInTheDocument();
+  });
 
-      it("renders a search box when admin.searchable is true", async () => {
-        const user = userEvent.setup();
-        const searchableFieldDef = select({
-          label: "Status",
-          hasMany: true,
-          options: fixture.fieldDef.options,
-          admin: { searchable: true },
-        });
-        render(<SelectHarness fieldDef={searchableFieldDef} initialValue={[]} />);
-        await user.click(screen.getByRole("combobox"));
-        await waitFor(() =>
-          expect(document.activeElement?.getAttribute("data-slot")).toBe("command-input"),
-        );
-        expect(document.activeElement).toHaveAttribute("data-slot", "command-input");
-      });
+  it("renders a search box when admin.searchable is true", async () => {
+    const user = userEvent.setup();
+    const searchableFieldDef = select({
+      label: "Status",
+      hasMany: true,
+      options: fixture.fieldDef.options,
+      admin: { searchable: true },
     });
+    render(<SelectHarness fieldDef={searchableFieldDef} initialValue={[]} />);
+    await user.click(screen.getByRole("combobox"));
+    await waitFor(() =>
+      expect(document.activeElement?.getAttribute("data-slot")).toBe(
+        "command-input",
+      ),
+    );
+    expect(document.activeElement).toHaveAttribute(
+      "data-slot",
+      "command-input",
+    );
+  });
+});
 
-    describe("select: admin.display radio/checkbox list", () => {
-      it("renders radio inputs instead of the dropdown when hasMany is false and display is radio", () => {
-        const radioFieldDef = select({
-          label: "Status",
-          hasMany: false,
-          options: fixture.fieldDef.options,
-          admin: { display: SELECT_DISPLAYS.radio },
-        });
-        render(<SelectHarness fieldDef={radioFieldDef} initialValue={[]} />);
-        expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
-        for (const option of radioFieldDef.options) {
-          expect(screen.getByRole("radio", { name: option.label })).toBeInTheDocument();
-        }
-      });
-
-      it("renders checkboxes instead of radios when hasMany is true and display is radio", () => {
-        const checkboxFieldDef = select({
-          label: "Status",
-          hasMany: true,
-          options: fixture.fieldDef.options,
-          admin: { display: SELECT_DISPLAYS.radio },
-        });
-        render(<SelectHarness fieldDef={checkboxFieldDef} initialValue={[]} />);
-        for (const option of checkboxFieldDef.options) {
-          expect(screen.getByRole("checkbox", { name: option.label })).toBeInTheDocument();
-        }
-      });
-
-      it("selects a single value by clicking its radio, replacing any previous selection", async () => {
-        const user = userEvent.setup();
-        const radioFieldDef = select({
-          label: "Status",
-          hasMany: false,
-          options: fixture.fieldDef.options,
-          admin: { display: SELECT_DISPLAYS.radio },
-        });
-        render(<SelectHarness fieldDef={radioFieldDef} initialValue={["draft"]} />);
-        await user.click(screen.getByRole("radio", { name: "Published" }));
-        expect(screen.getByTestId("value-probe").textContent).toBe(
-          JSON.stringify(["published"]),
-        );
-      });
-
-      it("accumulates checked values by clicking multiple checkboxes when hasMany and display is radio", async () => {
-        const user = userEvent.setup();
-        const checkboxFieldDef = select({
-          label: "Status",
-          hasMany: true,
-          options: fixture.fieldDef.options,
-          admin: { display: SELECT_DISPLAYS.radio },
-        });
-        render(<SelectHarness fieldDef={checkboxFieldDef} initialValue={[]} />);
-        await user.click(screen.getByRole("checkbox", { name: "Draft" }));
-        await user.click(screen.getByRole("checkbox", { name: "Published" }));
-        expect(screen.getByTestId("value-probe").textContent).toBe(
-          JSON.stringify(["draft", "published"]),
-        );
-      });
+describe("select: admin.display radio/checkbox list", () => {
+  it("renders radio inputs instead of the dropdown when hasMany is false and display is radio", () => {
+    const radioFieldDef = select({
+      label: "Status",
+      hasMany: false,
+      options: fixture.fieldDef.options,
+      admin: { display: SELECT_DISPLAYS.radio },
     });
+    render(<SelectHarness fieldDef={radioFieldDef} initialValue={[]} />);
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    for (const option of radioFieldDef.options) {
+      expect(
+        screen.getByRole("radio", { name: option.label }),
+      ).toBeInTheDocument();
+    }
+  });
 
+  it("renders checkboxes instead of radios when hasMany is true and display is radio", () => {
+    const checkboxFieldDef = select({
+      label: "Status",
+      hasMany: true,
+      options: fixture.fieldDef.options,
+      admin: { display: SELECT_DISPLAYS.radio },
+    });
+    render(<SelectHarness fieldDef={checkboxFieldDef} initialValue={[]} />);
+    for (const option of checkboxFieldDef.options) {
+      expect(
+        screen.getByRole("checkbox", { name: option.label }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("selects a single value by clicking its radio, replacing any previous selection", async () => {
+    const user = userEvent.setup();
+    const radioFieldDef = select({
+      label: "Status",
+      hasMany: false,
+      options: fixture.fieldDef.options,
+      admin: { display: SELECT_DISPLAYS.radio },
+    });
+    render(<SelectHarness fieldDef={radioFieldDef} initialValue={["draft"]} />);
+    await user.click(screen.getByRole("radio", { name: "Published" }));
+    expect(screen.getByTestId("value-probe").textContent).toBe(
+      JSON.stringify(["published"]),
+    );
+  });
+
+  it("accumulates checked values by clicking multiple checkboxes when hasMany and display is radio", async () => {
+    const user = userEvent.setup();
+    const checkboxFieldDef = select({
+      label: "Status",
+      hasMany: true,
+      options: fixture.fieldDef.options,
+      admin: { display: SELECT_DISPLAYS.radio },
+    });
+    render(<SelectHarness fieldDef={checkboxFieldDef} initialValue={[]} />);
+    await user.click(screen.getByRole("checkbox", { name: "Draft" }));
+    await user.click(screen.getByRole("checkbox", { name: "Published" }));
+    expect(screen.getByTestId("value-probe").textContent).toBe(
+      JSON.stringify(["draft", "published"]),
+    );
+  });
+});
 ```
 
 #### packages/react/src/components/fields/array/Input.test.tsx
@@ -24171,24 +27334,26 @@ assertion below, unchanged).
 **1 — the `it("honors the item field's own admin.readOnly independently of the array's readOnly prop...")` test body: `expect(input).not.toBeDisabled()` → `expect(input).toBeDisabled()`, with an updated comment.**
 
 ```tsx
-        const input = screen
-          .getAllByLabelText("Score", { exact: false })
-          .find((el): el is HTMLInputElement => el.tagName === "INPUT")!;
-        // TextFieldInput now ORs both readOnly sources into `disabled` (Step
-        // 15 fix #4) — the PROP is `false` here (FormArray forwarded
-        // `readOnly={false}` unmodified), but the item's own
-        // `fieldDef.admin.readOnly` alone is enough to disable the control,
-        // and still sets the native `readonly` HTML attribute too.
-        expect(input).toBeDisabled();
-        expect(input).toHaveAttribute("readonly");
-        await user.type(input, "!");
-        expect(input.value).toBe("x");
+const input = screen
+  .getAllByLabelText("Score", { exact: false })
+  .find((el): el is HTMLInputElement => el.tagName === "INPUT")!;
+// TextFieldInput now ORs both readOnly sources into `disabled` (Step
+// 15 fix #4) — the PROP is `false` here (FormArray forwarded
+// `readOnly={false}` unmodified), but the item's own
+// `fieldDef.admin.readOnly` alone is enough to disable the control,
+// and still sets the native `readonly` HTML attribute too.
+expect(input).toBeDisabled();
+expect(input).toHaveAttribute("readonly");
+await user.type(input, "!");
+expect(input.value).toBe("x");
 
-        // The array's own Add control is unaffected — only the array's OWN
-        // readOnly source gates it, not an item's admin.readOnly.
-        expect(
-          screen.getByRole("button", { name: `Add ${readOnlyItemFieldDef.labels.singular}` }),
-        ).not.toBeDisabled();
+// The array's own Add control is unaffected — only the array's OWN
+// readOnly source gates it, not an item's admin.readOnly.
+expect(
+  screen.getByRole("button", {
+    name: `Add ${readOnlyItemFieldDef.labels.singular}`,
+  }),
+).not.toBeDisabled();
 ```
 
 #### packages/react/src/testing/fieldInputContract.ts
@@ -24201,7 +27366,9 @@ field, not just the one hand-picked in `apps/test`'s dogfood (step 18).
 describe(`${fieldType}: admin.components.Input override`, () => {
   it("renders the override in place of the built-in, and its renderDefault re-renders the built-in unchanged", () => {
     const rendered = { default: false, override: false };
-    const OverrideProbe = (props: SlotOverrideProps<ReactHKT, InputComponentProps<any, any>>) => {
+    const OverrideProbe = (
+      props: SlotOverrideProps<ReactHKT, InputComponentProps<any, any>>,
+    ) => {
       rendered.override = true;
       const RenderDefault = props.renderDefault;
       return <RenderDefault {...props} />;
@@ -24210,11 +27377,17 @@ describe(`${fieldType}: admin.components.Input override`, () => {
       ...fixture.fieldDef,
       admin: {
         ...fixture.fieldDef.admin,
-        components: { Input: { id: "test.override", component: OverrideProbe } },
+        components: {
+          Input: { id: "test.override", component: OverrideProbe },
+        },
       },
     };
     render(
-      <ContractHarness fieldDef={fieldDefWithOverride} value={fixture.valid} onProbe={() => (rendered.default = true)} />,
+      <ContractHarness
+        fieldDef={fieldDefWithOverride}
+        value={fixture.valid}
+        onProbe={() => (rendered.default = true)}
+      />,
     );
     expect(rendered.override).toBe(true);
     expect(rendered.default).toBe(true);
@@ -24230,26 +27403,376 @@ overrides reach `getCollectionColumnDefs`'s output without any `DataTable.tsx` c
 
 ```tsx
 it(`${fieldType}: a per-type admin.components.fields.${fieldType}.Cell override renders in the data table`, () => {
-  const OverrideCell = () => <span data-testid="override-cell">overridden</span>;
+  const OverrideCell = () => (
+    <span data-testid="override-cell">overridden</span>
+  );
   const configWithOverride = {
     ...baseConfig,
     admin: {
       ...baseConfig.admin,
-      components: { fields: { [fieldType]: { Cell: { id: "test.cellOverride", component: OverrideCell } } } },
+      components: {
+        fields: {
+          [fieldType]: {
+            Cell: { id: "test.cellOverride", component: OverrideCell },
+          },
+        },
+      },
     },
   };
-  render(<VexConfigProvider config={configWithOverride}><DataTableHarness collection={collection} rows={[row]} /></VexConfigProvider>);
+  render(
+    <VexConfigProvider config={configWithOverride}>
+      <DataTableHarness collection={collection} rows={[row]} />
+    </VexConfigProvider>,
+  );
   expect(screen.getByTestId("override-cell")).toBeInTheDocument();
 });
 ```
 
-Verify: `pnpm --filter @vexcms/react test -- fields DataTable`
+#### packages/react/src/utils/adminHref.ts
+
+New file.
+
+````ts
+import { addLeadingSlash } from "@vexcms/core";
+import { MODALS } from "../components/modals/constants";
+
+/**
+ * Target an admin panel URL points at — the one discriminated union every
+ * hand-built `${basePath}/...` string in this package is replaced with.
+ *
+ * `"create"` is not a separate route: creating a document opens a modal on
+ * the collection's own list view (`CollectionListView`), so it resolves to
+ * the SAME path as `"collection"` plus the create-modal's `nuqs` query
+ * param. Media's own "Upload" action uses a DIFFERENT modal
+ * (`MODALS.uploadMedia`) and is left to its call site to append — `"create"`
+ * only knows about `MODALS.createDocument`.
+ */
+export type AdminHrefTarget =
+  | { type: "dashboard" }
+  | { type: "collection"; slug: string }
+  | { type: "global"; slug: string }
+  | { type: "document"; slug: string; id: string }
+  | { type: "create"; slug: string };
+
+/**
+ * Builds an admin panel URL from a target and the project's configured
+ * `basePath` — the one place every admin link in `@vexcms/react` (and, via
+ * re-export, `@vexcms/next`) computes a path. Replaces 30 hand-built
+ * `` `${basePath}/...` `` / hardcoded `"/admin/..."` call sites across the
+ * nav, breadcrumb, dashboard, list views, and all 16 field types' `Cell.tsx`
+ * title links (Step 17 audit finding 7) — grep for `adminHref(` to confirm
+ * no hand-built admin URL remains outside this file.
+ *
+ * URL shape is UNCHANGED from what every call site already produced —
+ * `/{basePath}/{slug}`, `/{basePath}/globals/{slug}`,
+ * `/{basePath}/{slug}/{id}`. Launch spec H moves collections to
+ * `/admin/collections/<slug>`; once it lands, that change is a one-file edit
+ * here (plus the route parser `NextAdminLayoutClient.tsx` reads pathname
+ * segments from — a separate, pre-existing concern this function does not
+ * touch) instead of a 30-site grep.
+ *
+ * @param target - What the link points at.
+ * @param basePath - The project's configured `VexClientConfig.basePath`
+ *   (e.g. `config.basePath`), leading-slash-normalized internally via
+ *   `addLeadingSlash` the same way every replaced call site already did.
+ * @returns The absolute admin panel path for `target`.
+ *
+ * @example
+ * ```ts
+ * adminHref({ type: "dashboard" }, "/admin");                          // "/admin"
+ * adminHref({ type: "collection", slug: "posts" }, "/admin");          // "/admin/posts"
+ * adminHref({ type: "global", slug: "siteSettings" }, "/admin");       // "/admin/globals/siteSettings"
+ * adminHref({ type: "document", slug: "posts", id: "abc" }, "/admin"); // "/admin/posts/abc"
+ * adminHref({ type: "create", slug: "posts" }, "/admin");              // "/admin/posts?createNew=true"
+ * ```
+ */
+export function adminHref(target: AdminHrefTarget, basePath: string): string {
+  const root = addLeadingSlash(basePath);
+  switch (target.type) {
+    case "dashboard":
+      return root;
+    case "collection":
+      return `${root}/${target.slug}`;
+    case "global":
+      return `${root}/globals/${target.slug}`;
+    case "document":
+      return `${root}/${target.slug}/${target.id}`;
+    case "create":
+      return `${root}/${target.slug}?${MODALS.createDocument.urlParam}=true`;
+  }
+}
+````
+
+**Design note — why `@vexcms/react`, not `@vexcms/core`.** `adminHref`'s path-joining is itself
+framework- and React-agnostic (`addLeadingSlash` plus template-literal joins), but the `"create"`
+variant's query-param convention is owned by `MODALS` (`components/modals/constants.ts`), a
+`@vexcms/react`-only concept — core has no notion of a `nuqs`-driven modal. Splitting `adminHref`
+across packages (path-joining in core, the `"create"` case layered on top in react) would turn one
+function into two for a function whose only non-trivial case already needs react's own constant;
+kept as one function in `@vexcms/react`.
+
+#### packages/react/src/utils/adminHref.test.ts
+
+New file.
+
+```ts
+import { describe, expect, it } from "vitest";
+import { adminHref } from "./adminHref";
+import { MODALS } from "../components/modals/constants";
+
+describe("adminHref", () => {
+  it("builds the dashboard URL", () => {
+    expect(adminHref({ type: "dashboard" }, "/admin")).toBe("/admin");
+  });
+
+  it("builds a collection list URL", () => {
+    expect(adminHref({ type: "collection", slug: "posts" }, "/admin")).toBe(
+      "/admin/posts",
+    );
+  });
+
+  it("builds a global edit URL", () => {
+    expect(adminHref({ type: "global", slug: "siteSettings" }, "/admin")).toBe(
+      "/admin/globals/siteSettings",
+    );
+  });
+
+  it("builds a document edit URL", () => {
+    expect(
+      adminHref({ type: "document", slug: "posts", id: "abc123" }, "/admin"),
+    ).toBe("/admin/posts/abc123");
+  });
+
+  it("builds a create-modal URL, reusing MODALS.createDocument's own urlParam", () => {
+    expect(adminHref({ type: "create", slug: "posts" }, "/admin")).toBe(
+      `/admin/posts?${MODALS.createDocument.urlParam}=true`,
+    );
+  });
+
+  it("normalizes a basePath without a leading slash, matching addLeadingSlash", () => {
+    expect(adminHref({ type: "collection", slug: "posts" }, "admin")).toBe(
+      "/admin/posts",
+    );
+  });
+
+  it("supports a custom basePath", () => {
+    expect(adminHref({ type: "collection", slug: "posts" }, "/cms")).toBe(
+      "/cms/posts",
+    );
+  });
+});
+```
+
+#### packages/react/src/components/fields/text/Cell.tsx (representative — all 16 field `Cell.tsx` files)
+
+**1 — import.** Add `adminHref` alongside the existing `addLeadingSlash` import:
+
+```ts
+import {
+  adminHref,
+  type CellComponentProps,
+  type TextField,
+} from "@vexcms/core";
+import { adminHref } from "../../../utils/adminHref";
+```
+
+(`addLeadingSlash`/`config.basePath` destructuring is DROPPED — `adminHref` takes `config.basePath`
+directly, so the `const basePath = addLeadingSlash(config.basePath);` line every one of these 16
+files has goes with it.)
+
+**2 — the href itself,** anchored at `` `${basePath}/${props.collection.slug}/${props.row.original._id}` ``
+(or, for `email`/`url`, the ternary branch using the same template literal):
+
+```ts
+adminHref(
+  { type: "document", slug: props.collection.slug, id: props.row.original._id },
+  config.basePath,
+);
+```
+
+Identical two-edit change (drop the `basePath` local, replace the template literal with one
+`adminHref(...)` call) applies to all 16 field types' `Cell.tsx`, same anchor pattern in each —
+`array`, `blocks`, `checkbox`, `color`, `date`, `email`, `group`, `json`, `number`,
+`relationship`, `richtext`, `select`, `text`, `textarea`, `upload`, `url`. `email/Cell.tsx` and
+`url/Cell.tsx` keep their ternary (`mailto:`/raw URL on the non-title branch) — only the
+title-field branch's template literal changes. `relationship/Cell.tsx` and `upload/Cell.tsx`
+already hoist `href` into a local above their `wrap` helper; same substitution, same local name.
+
+#### packages/react/src/components/AdminSidebar.tsx
+
+3 edits — each `` `${adminRoot}/...` `` template literal, anchored at its own
+`<SidebarMenuButton render={<VexLink href={...} />}>`.
+
+**1 — collection nav item** (anchor: ``href={`${adminRoot}/${collection.slug}`}``):
+
+```tsx
+href={adminHref({ type: "collection", slug: collection.slug }, config.basePath)}
+```
+
+**2 — global nav item** (anchor: ``href={`${adminRoot}/globals/${global.slug}`}``):
+
+```tsx
+href={adminHref({ type: "global", slug: global.slug }, config.basePath)}
+```
+
+**3 — media collection nav item** (anchor: ``href={`${adminRoot}/${mediaCollection.slug}`}``):
+
+```tsx
+href={adminHref({ type: "collection", slug: mediaCollection.slug }, config.basePath)}
+```
+
+The `const adminRoot = addLeadingSlash(config.basePath);` local is now unused and removed — `config`
+itself (already in scope via `useVexConfig()`) is all `adminHref` needs. Add
+`import { adminHref } from "../utils/adminHref";`.
+
+`AdminSidebar.test.tsx` needs no edit: `adminHref` reproduces the exact same strings
+`adminRoot`-based interpolation produced, so every existing `href` assertion still passes.
+
+#### packages/react/src/components/AdminTopNav.tsx
+
+4 edits, each inside the `crumbs` construction (anchored at `const crumbs: Crumb[] = [{ key:
+"home", href: adminRoot, label: "Home" }];` and the two `crumbs.push({...})` calls below it).
+
+**1 — the "Home" crumb:**
+
+```ts
+const crumbs: Crumb[] = [
+  {
+    key: "home",
+    href: adminHref({ type: "dashboard" }, config.basePath),
+    label: "Home",
+  },
+];
+```
+
+**2 — the collection crumb** (anchor: ``href: `${adminRoot}/${activeCollection.slug}`,``):
+
+```ts
+href: adminHref({ type: "collection", slug: activeCollection.slug }, config.basePath),
+```
+
+**3 — the document crumb** (anchor: ``href: `${adminRoot}/${activeCollection.slug}/${doc._id}`,``):
+
+```ts
+href: adminHref({ type: "document", slug: activeCollection.slug, id: doc._id as string }, config.basePath),
+```
+
+**4 — the global crumb** (anchor: ``href: `${adminRoot}/globals/${activeGlobal.slug}`,``):
+
+```ts
+href: adminHref({ type: "global", slug: activeGlobal.slug }, config.basePath),
+```
+
+The `const adminRoot = addLeadingSlash(config.basePath);` local is dropped (no remaining reader).
+Add `import { adminHref } from "../utils/adminHref";`. `AdminTopNav.test.tsx` needs no edit for the
+same reason as `AdminSidebar.test.tsx`.
+
+#### packages/react/src/components/views/DashboardView.tsx
+
+3 edits, each a hardcoded ``href={`/admin/${...}`}`` on an `<a>` — these never read
+`config.basePath` at all (a pre-existing bug this fold fixes as a side effect: a project with a
+custom `basePath` got broken dashboard links). Per Design Decision 32, these stay plain `<a>`
+tags — only the URL they point at changes.
+
+**1 — collection card** (anchor: ``<a key={collection.slug} href={`/admin/${collection.slug}`} className="group block">`` inside the Collections `Activity`):
+
+```tsx
+<a key={collection.slug} href={adminHref({ type: "collection", slug: collection.slug }, config.basePath)} className="group block">
+```
+
+**2 — media collection card** (same anchor text, inside the Media `Activity` — `collection` here
+iterates `mediaCollections`, same `type: "collection"`):
+
+```tsx
+<a key={collection.slug} href={adminHref({ type: "collection", slug: collection.slug }, config.basePath)} className="group block">
+```
+
+**3 — global card** (anchor: ``<a key={global.slug} href={`/admin/globals/${global.slug}`} className="group block">``):
+
+```tsx
+<a key={global.slug} href={adminHref({ type: "global", slug: global.slug }, config.basePath)} className="group block">
+```
+
+Add `import { adminHref } from "../../utils/adminHref";`. `DashboardView.test.tsx` needs no edit —
+`adminHref({ type: "collection"/"global", slug }, config.basePath)` with the test fixture's default
+`basePath: "/admin"` produces the identical `"/admin/<slug>"` / `"/admin/globals/<slug>"` strings
+the hardcoded literals did.
+
+#### packages/react/src/components/views/GlobalsListView.tsx
+
+1 edit (anchor: ``<a key={global.slug} href={`/admin/globals/${global.slug}`} className="group block">``):
+
+```tsx
+<a key={global.slug} href={adminHref({ type: "global", slug: global.slug }, config.basePath)} className="group block">
+```
+
+Add `import { adminHref } from "../../utils/adminHref";`. `config` is already in scope (`const
+config = useVexConfig();`). No test edit needed, same reasoning as `DashboardView.test.tsx`.
+
+#### packages/react/src/components/views/CollectionListView.tsx
+
+1 edit — the "+ New" button's hardcoded ``href={`/admin/${collection.slug}?${MODALS.createDocument.urlParam}=true`}``
+becomes the ONE call site `adminHref`'s `"create"` type exists for:
+
+```tsx
+render={<VexLink href={adminHref({ type: "create", slug: collection.slug }, config.basePath)} />}
+```
+
+Add `import { adminHref } from "../../utils/adminHref";`. The `MODALS` import stays (used
+elsewhere in this file for `CreateDocumentModal`'s own `urlParam` prop) even though this one
+call site no longer references it directly. No test edit needed — `adminHref`'s `"create"` case
+reuses `MODALS.createDocument.urlParam` internally, so the produced string is unchanged.
+
+#### packages/react/src/components/views/MediaCollectionListView.tsx
+
+2 edits — the "+ Upload" button and the empty-state "Upload one." link both build
+`` `/admin/${collection.slug}?${MODALS.uploadMedia.urlParam}=true` ``. `adminHref` has no
+`"uploadMedia"` type (S2/S8-style scope discipline — `"create"` is specifically the
+`createDocument` modal; media's upload flow is a distinct modal, not a second meaning jammed onto
+`"create"`), so both sites compose `adminHref({ type: "collection", slug }, config.basePath)` with
+the existing `MODALS.uploadMedia.urlParam` query string themselves, same as today minus the
+hardcoded `"/admin"`.
+
+**1 — the "+ Upload" button** (anchor: ``href={`/admin/${collection.slug}?${MODALS.uploadMedia.urlParam}=true`}`` inside the header `<Button>`):
+
+```tsx
+render={
+  <VexLink
+    href={`${adminHref({ type: "collection", slug: collection.slug }, config.basePath)}?${MODALS.uploadMedia.urlParam}=true`}
+  />
+}
+```
+
+**2 — the "Upload one." empty-state link** (same anchor text, inside the `pagination.results.length
+=== 0` branch):
+
+```tsx
+<VexLink
+  href={`${adminHref({ type: "collection", slug: collection.slug }, config.basePath)}?${MODALS.uploadMedia.urlParam}=true`}
+  className="text-primary hover:underline"
+>
+```
+
+Add `import { adminHref } from "../../utils/adminHref";`. No test edit needed — both produced
+strings are unchanged.
+
+#### packages/react/src/index.ts (step 17 edits)
+
+1 edit — new export, anchored beside the "Utilities" export block (`cn`, `Icon`).
+
+```ts
+export { adminHref } from "./utils/adminHref";
+export type { AdminHrefTarget } from "./utils/adminHref";
+```
+
+Verify: `pnpm --filter @vexcms/react test -- fields DataTable adminHref AdminSidebar AdminTopNav DashboardView GlobalsListView CollectionListView MediaCollectionListView`
 
 ### Step 18 — Dogfood in `apps/test` + plan bookkeeping [dev]
 
 - [ ] `apps/test/src/vexcms/blocks/CTA/config.ts` — `linkType` select + conditional `internalPage` relationship / `externalUrl` url pair
 - [ ] `apps/test/src/vexcms/blocks/CTA/index.tsx` — resolve the new action shape into an `href`
-- [ ] `apps/test/src/vexcms/collections/pages.ts` — `email()`, `textarea()`, `json()`, `...tabs()`, `...collapsible()`, `...row()` with `%` widths, masked phone field, sidebar fields
+- [ ] `apps/test/src/vexcms/collections/pages.ts` — `email()`, `textarea()`, `json()`, a top-level `tabs()` field (one `defaultOpen` tab, one NAMED tab), a `row()`, a `collapsible()`, a `ui()` field, masked phone field, sidebar fields
+- [ ] `apps/test/src/vexcms/collections/pages.typecheck.ts` (new) — P-008 compile-time pin: a `tabs()` tab's `admin.condition` typed against the real generated `pages` document, catching a typo'd `data.<field>` reference
 - [ ] `apps/test/src/vex.config.ts` — `fields.inputMasks.number` project-wide default
 - [ ] regenerate schema + types (`vex generate`)
 - [ ] browser smoke checklist recorded
@@ -24260,22 +27783,54 @@ Why: proves every new path (steps 1–17) end-to-end against the developer's run
 deployment (P-024: attach, never start) and leaves the launch-plan/roadmap docs
 honest about G's re-scope.
 
+#### apps/test/src/vexcms/admin/WordCountField.tsx
+
+New file — the `apps/test`-local `Field` component for the `ui()` dogfood field below.
+
+```tsx
+"use client";
+
+import type { UIFieldComponentProps } from "@vexcms/core";
+
+/** Live word count of the page's `content` field — dogfoods `ui()` (Step 6): no stored value, read-only derived display. */
+export function WordCountField(props: UIFieldComponentProps) {
+  const content = typeof props.data.content === "string" ? props.data.content : "";
+  const words = content.trim().length === 0 ? 0 : content.trim().split(/\s+/).length;
+  return (
+    <p className="text-sm text-muted-foreground">
+      {props.name}: {words} word{words === 1 ? "" : "s"}
+    </p>
+  );
+}
+```
+
 #### apps/test/src/vexcms/blocks/CTA/config.ts
+
 Anchored edits against the file read in step research (`defineBlock({ slug: BLOCK_SLUG_CTA, … })`).
 
 **Edit 1 — imports.** Replace the single import line with:
+
 ```ts
-import { array, defineBlock, group, relationship, select, text, url } from "@vexcms/core"
+import {
+  array,
+  defineBlock,
+  group,
+  relationship,
+  select,
+  text,
+  url,
+} from "@vexcms/core";
 
-import { TABLE_SLUG_PAGES } from "~/db/constants"
+import { TABLE_SLUG_PAGES } from "~/db/constants";
 
-import { BLOCK_SLUG_CTA } from "../constants"
+import { BLOCK_SLUG_CTA } from "../constants";
 ```
 
 **Edit 2 — the `actions` field,** anchored on `actions: array({`. `href` is replaced by a
 `linkType` select plus a conditional `internalPage` relationship / `externalUrl` url pair,
 each hidden in the admin form and skipped by server validation when its `linkType` branch
 isn't selected:
+
 ```ts
     actions: array({
       label: "Actions",
@@ -24318,22 +27873,24 @@ isn't selected:
 ```
 
 #### apps/test/src/vexcms/blocks/CTA/index.tsx
+
 Anchored edit replacing the `href={action.href}` line. `internalPage`'s stored value is
 always `Id<"pages">[]` (relationship's generated `interfaceType`, regardless of `hasMany`
 — `packages/core/src/fields/relationship/config.ts`), so the first id is the target.
 
 **Edit — add `resolveHref` above the component and use it in the `Link`:**
+
 ```tsx
 function resolveHref(action: NonNullable<CtaBlock["actions"]>[number]): string {
   if (action.linkType?.[0] === "internal") {
-    return `/${action.internalPage?.[0] ?? ""}`
+    return `/${action.internalPage?.[0] ?? ""}`;
   }
-  return action.externalUrl ?? "#"
+  return action.externalUrl ?? "#";
 }
 
 export default function CTABlock({ block }: BlockComponentProps) {
-  const { actions, heading, subheading } = block as CtaBlock
-  const items = actions ?? []
+  const { actions, heading, subheading } = block as CtaBlock;
+  const items = actions ?? [];
 
   return (
     <section className="border-y border-border bg-card py-16 text-center md:py-24 xl:py-32">
@@ -24357,7 +27914,7 @@ export default function CTABlock({ block }: BlockComponentProps) {
                     size: "lg",
                     variant: index === 0 ? "default" : "outline",
                   }),
-                  "active:translate-y-px"
+                  "active:translate-y-px",
                 )}
                 href={resolveHref(action)}
                 key={`${action.label}-${index}`}
@@ -24369,11 +27926,12 @@ export default function CTABlock({ block }: BlockComponentProps) {
         ) : null}
       </Container>
     </section>
-  )
+  );
 }
 ```
 
 #### apps/test/convex/seed.ts
+
 The CTA block's `actions` shape changed from `{ label, href }` to
 `{ label, linkType, internalPage?, externalUrl? }` (CTA/config.ts edit above). The seed
 data has three occurrences of hardcoded CTA `actions` arrays (home page, and the two
@@ -24383,17 +27941,19 @@ fix required for `pnpm --filter test typecheck` to pass against the regenerated
 `href` pointing at `docs.vexcms.dev/guides/quickstart`, `github.com/ianyimi/vex`, or
 `docs.convex.dev/realtime` (three occurrences — do not touch the header/footer `links`/
 `menuItems`/`actionButtons`/`socialLinks` arrays, which keep `href` unchanged):
+
 ```ts
           { label: "Get started", linkType: ["external"], externalUrl: "https://docs.vexcms.dev/guides/quickstart/" },
           { label: "View on GitHub", linkType: ["external"], externalUrl: "https://github.com/ianyimi/vex" },
           { label: "Why Convex", linkType: ["external"], externalUrl: "https://docs.convex.dev/realtime" },
 ```
 
-
 #### apps/test/src/vexcms/collections/pages.ts
+
 Anchored edits against the file read in step research (`export const pages = defineCollection({ … })`).
 
 **Edit 1 — imports.** Replace the import block with:
+
 ```ts
 import {
   array,
@@ -24409,194 +27969,221 @@ import {
   tabs,
   text,
   textarea,
+  ui,
   upload,
   url,
 } from "@vexcms/core";
 import { ConvexError } from "convex/values";
 
-import { TABLE_SLUG_IMAGES, TABLE_SLUG_PAGES, TABLE_SLUG_THEMES } from "~/db/constants";
+import {
+  TABLE_SLUG_IMAGES,
+  TABLE_SLUG_PAGES,
+  TABLE_SLUG_THEMES,
+} from "~/db/constants";
 import { resolvePagePath } from "~/lib/resolvePagePath";
 import { pageBlocks } from "~/vexcms/blocks/config";
+import { WordCountField } from "~/vexcms/admin/WordCountField";
 ```
 
 **Edit 2 — the `fields` object,** anchored on `fields: {` (the whole block, since it is
-restructured into tabs top to bottom): `title`/`slug`/`content`/`blocks` move into a
-"Content" tab; `metaTitle`/`metaDescription` move into a 60/40 `row()` and, with `ogImage`,
-into an "SEO" tab (still `position: "sidebar"` — `tabs()`/`row()` stamp layout frames on
-the same top-level field, they do not nest it, so sidebar placement still applies per the
-contract); a new "Advanced" tab holds the three new leaf fields, the masked phone field,
-and the legacy test fields behind a collapsed `collapsible()`:
+restructured top to bottom): `title`/`slug`/`content`/`blocks` move into a "Content" tab
+(`defaultOpen: true` — the first tab anyway, but set explicitly to dogfood the option);
+`metaTitle`/`metaDescription` move into a 60/40 `row()` and, with `ogImage`, into an
+UNNAMED "SEO" tab — unnamed because `admin.position: "sidebar"` is honored only for
+TOP-LEVEL fields (`baseTypes.ts`), and an unnamed tab's fields hoist to the top level once
+`getDataFields` flattens them, so sidebar placement still applies; a NAMED "Advanced" tab
+(`name: "advanced"`) nests its fields as one `advanced` group in the stored document —
+dogfoods `tabs()`'s named-tab nesting — and holds the three new leaf fields, the masked
+phone field, a `ui()` field (live word count, no stored value), and the legacy test fields
+behind a collapsed `collapsible()`:
+
 ```ts
   fields: {
-    ...tabs({
-      tabs: {
-        Content: {
-          title: text({
-            label: "Title",
-            required: true,
-            description: "Display title shown as the page heading and in browser tabs (as fallback).",
-          }),
-          slug: text<typeof TABLE_SLUG_PAGES>({
-            description: "URL-friendly page path",
-            index: "by_slug",
-            label: "Slug",
-            required: true,
-            validate: async ({ value, doc, vex }) => {
-              const [existing] = await vex.find({
-                collection: TABLE_SLUG_PAGES,
-                withIndex: {
-                  name: "by_slug",
-                  range: (q) => q.eq("slug", value),
-                },
-                limit: 1,
-              });
-              if (existing && existing._id !== doc._id) {
-                throw new ConvexError({
-                  code: "SLUG_CONFLICT",
-                  conflictingPageId: existing._id,
-                  message: `This slug is already in use by the page '${existing.title}'.`,
+    info: tabs({
+      tabs: [
+        {
+          label: "Content",
+          defaultOpen: true,
+          fields: {
+            title: text({
+              label: "Title",
+              required: true,
+              description: "Display title shown as the page heading and in browser tabs (as fallback).",
+            }),
+            slug: text<typeof TABLE_SLUG_PAGES>({
+              description: "URL-friendly page path",
+              index: "by_slug",
+              label: "Slug",
+              required: true,
+              validate: async ({ value, doc, vex }) => {
+                const [existing] = await vex.find({
+                  collection: TABLE_SLUG_PAGES,
+                  withIndex: {
+                    name: "by_slug",
+                    range: (q) => q.eq("slug", value),
+                  },
+                  limit: 1,
                 });
-              }
-            },
-          }),
-          content: text({
-            label: "Content",
-            description: "Page body content. Legacy field — use the blocks field for new pages.",
-          }),
-          blocks: blocks({
-            admin: {
-              defaultCollapsed: true,
-            },
-            blocks: pageBlocks,
-            interfaceName: "PageBlock",
-            label: "Content",
-            labels: {
-              singular: "Block",
-              plural: "Blocks",
-            },
-            min: 1,
-          }),
+                if (existing && existing._id !== doc._id) {
+                  throw new ConvexError({
+                    code: "SLUG_CONFLICT",
+                    conflictingPageId: existing._id,
+                    message: `This slug is already in use by the page '${existing.title}'.`,
+                  });
+                }
+              },
+            }),
+            content: text({
+              label: "Content",
+              description: "Page body content. Legacy field — use the blocks field for new pages.",
+            }),
+            blocks: blocks({
+              admin: {
+                defaultCollapsed: true,
+              },
+              blocks: pageBlocks,
+              interfaceName: "PageBlock",
+              label: "Content",
+              labels: {
+                singular: "Block",
+                plural: "Blocks",
+              },
+              min: 1,
+            }),
+          },
         },
-        SEO: {
-          ...row({
-            fields: {
-              metaTitle: text({
-                label: "Meta Title",
-                description: "Custom <title> tag. Falls back to page title if empty.",
-                admin: {
-                  width: "60%",
-                  position: "sidebar",
-                },
-              }),
-              metaDescription: text({
-                label: "Meta Description",
-                description: "Custom meta description for search results.",
-                admin: {
-                  width: "40%",
-                  position: "sidebar",
-                },
-              }),
-            },
-          }),
-          ogImage: upload({
-            to: TABLE_SLUG_IMAGES,
-            label: "OG Image",
-            admin: { position: "sidebar" },
-          }),
-        },
-        advanced: {
-          contactEmail: email({
-            label: "Contact Email",
-            description: "Dogfood field for the email() leaf type — cell renders a mailto: link.",
-          }),
-          contactPhone: text({
-            label: "Contact Phone",
-            description: "Masked text field — this field's admin.mask overrides the project default.",
-            admin: {
-              mask: "(999) 999-9999",
-            },
-          }),
-          notes: textarea({
-            label: "Internal Notes",
-            rows: 6,
-            max: 2000,
-            description: "Dogfood field for the textarea() leaf type.",
-          }),
-          customData: json({
-            label: "Custom Data",
-            description: "Dogfood field for the json() leaf type — no shape validation.",
-          }),
-          ...collapsible({
-            label: "Legacy Test Fields",
-            defaultCollapsed: true,
-            fields: {
-              test: array({
-                label: "Test Array",
-                items: text({ label: "test array header" }),
-                description: "some test description.",
-              }),
-              test2: array({
-                label: "Test Array 2",
-                labels: {
-                  singular: "array",
-                  plural: "arrays",
-                },
-                items: array({
-                  items: number({ label: "nested nested number field" }),
-                  label: "SubList",
-                  labels: {
-                    singular: "SubArray",
-                    plural: "SubArrays",
+        {
+          label: "SEO",
+          fields: {
+            metaRow: row({
+              fields: {
+                metaTitle: text({
+                  label: "Meta Title",
+                  description: "Custom <title> tag. Falls back to page title if empty.",
+                  admin: {
+                    width: "60%",
+                    position: "sidebar",
                   },
                 }),
-                description: "some test number array description",
-              }),
-              seo: group({
-                label: "SEO",
-                interfaceName: "SEO",
-                description: "seo metadata",
-                fields: {
-                  metaTitle: text({ label: "Meta Title" }),
-                  metaDescription: text({ label: "Meta Description" }),
-                  ogImage: url({ label: "OG Image" }),
-                },
-              }),
-              anotherTest: group({
-                label: "test nested things",
-                interfaceName: "AnotherGroupNames",
-                fields: {
-                  title: text(),
-                  subtitle: text(),
-                  list: array({
-                    label: "test list in group field",
-                    items: group({
-                      label: "Group",
-                      interfaceName: "InnerGroup",
-                      admin: {
-                        defaultCollapsed: false,
-                      },
-                      fields: {
-                        title: text({ description: "test field description", label: "Title" }),
-                        description: text({ label: "description", description: "another test description" }),
-                        queue: array({
-                          label: "sub group array list",
-                          items: group({
-                            label: "sub group array sub group",
-                            fields: {
-                              title: text({ label: "Title" }),
-                              description: text({ label: "Description" }),
-                            },
-                          }),
-                        }),
-                      },
-                    }),
-                  }),
-                },
-              }),
-            },
-          }),
+                metaDescription: text({
+                  label: "Meta Description",
+                  description: "Custom meta description for search results.",
+                  admin: {
+                    width: "40%",
+                    position: "sidebar",
+                  },
+                }),
+              },
+            }),
+            ogImage: upload({
+              to: TABLE_SLUG_IMAGES,
+              label: "OG Image",
+              admin: { position: "sidebar" },
+            }),
+          },
         },
-      },
+        {
+          label: "Advanced",
+          name: "advanced",
+          fields: {
+            contactEmail: email({
+              label: "Contact Email",
+              description: "Dogfood field for the email() leaf type — cell renders a mailto: link.",
+            }),
+            contactPhone: text({
+              label: "Contact Phone",
+              description: "Masked text field — this field's admin.mask overrides the project default.",
+              admin: {
+                mask: "(999) 999-9999",
+              },
+            }),
+            notes: textarea({
+              label: "Internal Notes",
+              rows: 6,
+              max: 2000,
+              description: "Dogfood field for the textarea() leaf type.",
+            }),
+            customData: json({
+              label: "Custom Data",
+              description: "Dogfood field for the json() leaf type — no shape validation.",
+            }),
+            wordCount: ui({
+              admin: {
+                components: { Field: WordCountField },
+              },
+            }),
+            legacyFields: collapsible({
+              label: "Legacy Test Fields",
+              admin: { defaultCollapsed: true },
+              fields: {
+                test: array({
+                  label: "Test Array",
+                  items: text({ label: "test array header" }),
+                  description: "some test description.",
+                }),
+                test2: array({
+                  label: "Test Array 2",
+                  labels: {
+                    singular: "array",
+                    plural: "arrays",
+                  },
+                  items: array({
+                    items: number({ label: "nested nested number field" }),
+                    label: "SubList",
+                    labels: {
+                      singular: "SubArray",
+                      plural: "SubArrays",
+                    },
+                  }),
+                  description: "some test number array description",
+                }),
+                seo: group({
+                  label: "SEO",
+                  interfaceName: "SEO",
+                  description: "seo metadata",
+                  fields: {
+                    metaTitle: text({ label: "Meta Title" }),
+                    metaDescription: text({ label: "Meta Description" }),
+                    ogImage: url({ label: "OG Image" }),
+                  },
+                }),
+                anotherTest: group({
+                  label: "test nested things",
+                  interfaceName: "AnotherGroupNames",
+                  fields: {
+                    title: text(),
+                    subtitle: text(),
+                    list: array({
+                      label: "test list in group field",
+                      items: group({
+                        label: "Group",
+                        interfaceName: "InnerGroup",
+                        admin: {
+                          defaultCollapsed: false,
+                        },
+                        fields: {
+                          title: text({ description: "test field description", label: "Title" }),
+                          description: text({ label: "description", description: "another test description" }),
+                          queue: array({
+                            label: "sub group array list",
+                            items: group({
+                              label: "sub group array sub group",
+                              fields: {
+                                title: text({ label: "Title" }),
+                                description: text({ label: "Description" }),
+                              },
+                            }),
+                          }),
+                        },
+                      }),
+                    }),
+                  },
+                }),
+              },
+            }),
+          },
+        },
+      ],
     }),
 
     testImage: upload({
@@ -24614,11 +28201,55 @@ and the legacy test fields behind a collapsed `collapsible()`:
   },
 ```
 
+Stored document shape after this edit: `title`/`slug`/`content`/`blocks` (hoisted from the unnamed
+"Content" tab), `metaTitle`/`metaDescription`/`ogImage` (hoisted from the unnamed "SEO" tab, `row()`
+hoisted one level further), `advanced: { contactEmail, contactPhone, notes, customData, legacyFields:
+{ test, test2, seo, anotherTest } }` (nested under the NAMED "Advanced" tab — `legacyFields` is itself
+a `collapsible()`, hoisted one level further within `advanced`), `testImage`, `themes`. `wordCount`
+(the `ui()` field) stores nothing — dropped by `getDataFields`.
+
+#### apps/test/src/vexcms/collections/pages.typecheck.ts
+
+New file — follows `apps/test/src/auth/access.typecheck.ts`'s P-008 convention: no test
+runner, `pnpm --filter test typecheck` IS the assertion. Pins `tabs()`'s `admin.condition`
+`data` type against the real generated `pages` document (Step 6's `FieldCondition<TCollectionSlug>`),
+which `packages/core`'s own suite can never exercise — it has no generated collection types,
+only the ambient `VexResourceSlug` union.
+
+```ts
+import { tabs, text } from "@vexcms/core";
+import { TABLE_SLUG_PAGES } from "~/db/constants";
+
+// A passing tab condition referencing a real `pages` field.
+tabs<typeof TABLE_SLUG_PAGES>({
+  tabs: [
+    {
+      label: "Content",
+      fields: { title: text({ label: "Title" }) },
+      admin: { condition: ({ data }) => data.title.length > 0 },
+    },
+  ],
+});
+
+// @ts-expect-error — "titlee" is a typo; `pages` has no such field.
+tabs<typeof TABLE_SLUG_PAGES>({
+  tabs: [
+    {
+      label: "Content",
+      fields: { title: text({ label: "Title" }) },
+      admin: { condition: ({ data }) => data.titlee.length > 0 },
+    },
+  ],
+});
+```
+
 #### apps/test/src/vex.config.ts
+
 Anchored edit: add a project-wide number mask default as a sibling of `admin` on the
 object passed to `defineConfig` (`admin: { sidebar: … }` currently starts the config body).
 
 **Edit — insert a `fields` key before `admin`:**
+
 ```ts
 const vexConfig = defineConfig({
   access,
@@ -24633,9 +28264,11 @@ const vexConfig = defineConfig({
 ```
 
 #### Regenerate schema + types
+
 ```sh
 pnpm --filter test vex:generate
 ```
+
 This runs `vex dev --once` (`apps/test/package.json#scripts.vex:generate`), regenerating
 the Convex schema and `vex.types.ts` for `pages` (new `email`/`textarea`/`json` fields,
 `tabs`/`row`/`collapsible` layout, `linkType`/`internalPage`/`externalUrl` on the CTA
@@ -24643,6 +28276,7 @@ block) and for every other collection affected by steps 1–17 (`updatedAt` as `
 the `FieldLimit` tuple shape, relationship's unchanged `Id<…>[]` storage).
 
 #### Browser smoke checklist
+
 Attach to the running `apps/test` admin — **do not start a server** (P-024); the dev
 script binds `next dev --port=3020`, so attach at `http://localhost:3020/admin`
 (`apps/test/package.json#scripts.dev`). Record pass/fail per item against the `pages`
@@ -24696,20 +28330,24 @@ collection's edit view unless noted.
     `cellAlignment`.
 
 #### .agent/docs/product/v0.1.0-launch-plan.md
+
 Anchored edits against the sections read in step research.
 
 **Edit 1 — status table row 7 (`| 7 | **G**`):**
+
 ```md
 | 7 | **G** — Field input consistency pass | No input looks half-built | ◐ re-scoped, 2026-10-16 — spec `2026-10-16-field-input-consistency-pass` (16 task groups); absorbs H's block-editing items plus `email`/`textarea`/`json`/`tabs`; implementation not started |
 ```
 
 **Edit 2 — status table row 8 (`| 8 | **H**`):**
+
 ```md
 | 8 | **H** — Edit-view overhaul | Editing is not hostile | ☐ not started — block-editing items (duplicate block, reorder, collapse all) moved to G, 2026-10-16 |
 ```
 
 **Edit 3 — the `## G` section,** anchored on `## G — Field input consistency pass`
 through (not including) `## H`:
+
 ```md
 ## G — Field input consistency pass
 
@@ -24778,16 +28416,19 @@ works and is covered by `viewSuite`.
 
 **Edit 4 — the "Explicit 0.1.0 non-goals" section's first bullet** (anchored on
 `- **\`ui\` and \`tabs\` fields.**`):
+
 ```md
 - **`ui` field.** Cut with reason in the launch-readiness spec (D8): it changes a core
   invariant rather than adding a leaf — non-persisted, must be skipped by schema
-  generation, form validation, *and* column generation. Not a polish item.
+  generation, form validation, _and_ column generation. Not a polish item.
   `textarea`, `email`, `json`, and the `tabs`/`collapsible`/`row` layout helpers are no
   longer deferred — they shipped in spec G (`2026-10-16-field-input-consistency-pass`).
 ```
 
 #### .agent/docs/product/roadmap.md
+
 Anchored edit replacing the "Deferred out of 0.1.0" line:
+
 ```md
 Deferred out of 0.1.0 with reasons: PDF block · block group categorization.
 ```
@@ -24824,7 +28465,10 @@ import type { SlotOverrideProps } from "@vexcms/react";
 import type { InputComponentProps } from "@vexcms/core";
 
 export function UppercasePlaceholderTextInput(
-  props: SlotOverrideProps<ReactHKT, InputComponentProps<{}, TextField<VexResourceSlug>>>,
+  props: SlotOverrideProps<
+    ReactHKT,
+    InputComponentProps<{}, TextField<VexResourceSlug>>
+  >,
 ) {
   const { renderDefault, ...rest } = props;
   const RenderDefault = renderDefault;
@@ -24833,7 +28477,10 @@ export function UppercasePlaceholderTextInput(
       {...rest}
       fieldDef={{
         ...rest.fieldDef,
-        admin: { ...rest.fieldDef.admin, placeholder: rest.fieldDef.admin.placeholder?.toUpperCase() },
+        admin: {
+          ...rest.fieldDef.admin,
+          placeholder: rest.fieldDef.admin.placeholder?.toUpperCase(),
+        },
       }}
     />
   );

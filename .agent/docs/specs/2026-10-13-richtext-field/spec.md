@@ -30,6 +30,7 @@ touches:
   - "scripts/check-packed-manifests.mjs"
   - ".changeset/*.md"
   - ".agent/docs/product/v0.1.0-launch-plan.md"
+  - "pnpm-workspace.yaml"
 prompt_version: 1
 ---
 
@@ -2798,14 +2799,36 @@ activate. `useImageUpload` itself already degrades to `uploadFile: null` with no
 
 Verify: pnpm --filter @vexcms/react test -- fields/richtext && pnpm --filter @vexcms/richtext-plate typecheck
 
-### Step 6 — Dogfood in `apps/test` [dev]
+### Step 6 — Upgrade `platejs` / `@platejs/*` to 53.x [agent]
+
+> **Added 2026-10-21.** `@platejs/yjs` (collaborative rich text, Track PL / Pro co-editing)
+> declares `platejs: ">=53.0.0"`; the workspace catalog pins `platejs` 52.3.21 and the
+> `@platejs/*` packages at 52.3.x. Upgrading before 0.1.0 means no user has stored content
+> edited under 52 when the bump lands. The breaking-change list is filled in from the 53
+> changelog during this step; no code is prescribed until it is read.
+
+- [ ] `pnpm-workspace.yaml` — `platejs` and every `@platejs/*` catalog entry to the current
+      53.x release line (53.3.18 on 2026-10-21); all `@platejs/*` from one line
+- [ ] Plate 52 → 53 changelog / migration notes read; breaking changes affecting
+      `packages/richtext-plate` recorded here as a list (API, plugin keys, node types,
+      serialisation)
+- [ ] `packages/richtext-plate/src/**` — every type/API break fixed; no `@ts-nocheck`
+- [ ] stored-value compatibility test — a `RichTextDocument` fixture authored under 52 loads
+      in the editor and renders through `RichText` unchanged under 53
+- [ ] peer ranges in `packages/richtext-plate/package.json` and
+      `scripts/check-packed-manifests.mjs` updated if they pin 52
+
+Verify: `pnpm install && pnpm --filter @vexcms/richtext-plate typecheck && pnpm --filter
+@vexcms/richtext-plate build && pnpm --filter @vexcms/react test -- fields/richtext`
+
+### Step 7 — Dogfood in `apps/test` [dev]
 
 > **Spec note:** `apps/test/src/vexcms/collections/posts.ts` is a draft/publish
 > **test fixture** for the versioning-drafts spec — it has no public
 > front-end route today. `apps/test/src/app/(frontend)/(site)/[slug]/page.tsx`
 > only renders the `pages` collection (`RenderBlocks` over `blocks`); there is
 > no `apps/test/convex/posts.ts` and no `posts` page under `app/`. "front-end
-> post page renders `body` with `RichText`" (spec-tasks Step 6) therefore
+> post page renders `body` with `RichText`" (spec-tasks Step 7) therefore
 > cannot be a one-field edit to an existing route — it requires adding both
 > the Convex query and the route. Two ways to satisfy the step's real goal
 > (prove schema gen → type gen → admin form → cell → front-end render):
@@ -3027,7 +3050,7 @@ media collection), save a draft, then publish; visit
 `http://localhost:3020/posts/<slug>` and confirm the published body
 renders as formatted rich text (not raw JSON, not plain text).
 
-### Step 7 — Docs, README, packed-tarball probe, changeset [agent]
+### Step 8 — Docs, README, packed-tarball probe, changeset [agent]
 
 > **Spec note:** `scripts/verify-scaffold.mjs` scaffolds `create-vexcms`'s two
 > templates, and per Design Decision 9 dogfooding stays in `apps/test` only —

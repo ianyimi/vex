@@ -10,13 +10,19 @@ touches:
   - "apps/test/src/vexcms/blocks/CTA/index.tsx"
   - "apps/test/src/vexcms/blocks/Testimonial/config.ts"
   - "apps/test/src/vexcms/collections/pages.ts"
+  - "apps/test/src/vexcms/collections/pages.typecheck.ts"
+  - "packages/core/src/access/validateAccessConstraints.ts"
   - "packages/core/src/api/create/server.test.ts"
   - "packages/core/src/api/prepareEdit.test.ts"
   - "packages/core/src/api/prepareEdit.ts"
   - "packages/core/src/api/update/server.test.ts"
+  - "packages/core/src/auth/types.ts"
   - "packages/core/src/collections/config.test.ts"
   - "packages/core/src/collections/config.ts"
+  - "packages/core/src/collections/indexFields.ts"
   - "packages/core/src/collections/interfaceGen.test.ts"
+  - "packages/core/src/collections/interfaceGen.ts"
+  - "packages/core/src/collections/types.ts"
   - "packages/core/src/collections/utils.test.ts"
   - "packages/core/src/collections/validator.test.ts"
   - "packages/core/src/collections/validator.ts"
@@ -29,10 +35,14 @@ touches:
   - "packages/core/src/config/config.ts"
   - "packages/core/src/config/types.ts"
   - "packages/core/src/fields/array/config.ts"
+  - "packages/core/src/fields/array/index.ts"
   - "packages/core/src/fields/array/inputSchema.test.ts"
   - "packages/core/src/fields/array/inputSchema.ts"
   - "packages/core/src/fields/array/types.ts"
+  - "packages/core/src/fields/array/utils.test.ts"
+  - "packages/core/src/fields/array/utils.ts"
   - "packages/core/src/fields/array/validator.test.ts"
+  - "packages/core/src/fields/array/validator.ts"
   - "packages/core/src/fields/baseTypes.ts"
   - "packages/core/src/fields/blocks/config.ts"
   - "packages/core/src/fields/blocks/index.ts"
@@ -69,12 +79,26 @@ touches:
   - "packages/core/src/fields/json/types.ts"
   - "packages/core/src/fields/json/validator.test.ts"
   - "packages/core/src/fields/json/validator.ts"
-  - "packages/core/src/fields/layout/config.test.ts"
-  - "packages/core/src/fields/layout/config.ts"
-  - "packages/core/src/fields/layout/index.ts"
-  - "packages/core/src/fields/layout/types.ts"
-  - "packages/core/src/fields/layout/utils.test.ts"
-  - "packages/core/src/fields/layout/utils.ts"
+  - "packages/core/src/fields/ui/collapsible/config.test.ts"
+  - "packages/core/src/fields/ui/collapsible/config.ts"
+  - "packages/core/src/fields/ui/collapsible/index.ts"
+  - "packages/core/src/fields/ui/collapsible/types.ts"
+  - "packages/core/src/fields/ui/index.ts"
+  - "packages/core/src/fields/ui/row/config.test.ts"
+  - "packages/core/src/fields/ui/row/config.ts"
+  - "packages/core/src/fields/ui/row/index.ts"
+  - "packages/core/src/fields/ui/row/types.ts"
+  - "packages/core/src/fields/ui/tabs/config.test.ts"
+  - "packages/core/src/fields/ui/tabs/config.ts"
+  - "packages/core/src/fields/ui/tabs/index.ts"
+  - "packages/core/src/fields/ui/tabs/types.ts"
+  - "packages/core/src/fields/ui/types.ts"
+  - "packages/core/src/fields/ui/ui/config.test.ts"
+  - "packages/core/src/fields/ui/ui/config.ts"
+  - "packages/core/src/fields/ui/ui/index.ts"
+  - "packages/core/src/fields/ui/ui/types.ts"
+  - "packages/core/src/fields/ui/utils.test.ts"
+  - "packages/core/src/fields/ui/utils.ts"
   - "packages/core/src/fields/mask/index.ts"
   - "packages/core/src/fields/mask/types.ts"
   - "packages/core/src/fields/mask/utils.test.ts"
@@ -124,14 +148,26 @@ touches:
   - "packages/core/src/fields/validateFields.test.ts"
   - "packages/core/src/fields/validators/adminFieldToValidator.test.ts"
   - "packages/core/src/fields/validators/index.ts"
+  - "packages/core/src/globals/config.ts"
+  - "packages/core/src/globals/interfaceGen.ts"
+  - "packages/core/src/globals/types.ts"
+  - "packages/core/src/media/types.ts"
   - "packages/core/src/schema/generateVexSchema.test.ts"
   - "packages/core/src/types/generateVexTypes.test.ts"
+  - "packages/core/src/versions/assertNoDraftRelationships.ts"
+  - "packages/core/src/versions/statusConstraint.ts"
   - "packages/react/package.json"
   - "packages/react/src/adapter.ts"
+  - "packages/react/src/components/AdminSidebar.tsx"
+  - "packages/react/src/components/AdminTopNav.tsx"
+  - "packages/react/src/components/fields/array/Cell.tsx"
   - "packages/react/src/components/fields/array/Input.test.tsx"
   - "packages/react/src/components/fields/array/testFixture.ts"
+  - "packages/react/src/components/fields/blocks/Cell.tsx"
   - "packages/react/src/components/fields/blocks/Input.test.tsx"
+  - "packages/react/src/components/fields/checkbox/Cell.tsx"
   - "packages/react/src/components/fields/checkbox/Input.tsx"
+  - "packages/react/src/components/fields/color/Cell.tsx"
   - "packages/react/src/components/fields/color/Input.tsx"
   - "packages/react/src/components/fields/date/Cell.test.tsx"
   - "packages/react/src/components/fields/date/Cell.tsx"
@@ -148,6 +184,7 @@ touches:
   - "packages/react/src/components/fields/email/columnDef.tsx"
   - "packages/react/src/components/fields/email/index.ts"
   - "packages/react/src/components/fields/email/testFixture.ts"
+  - "packages/react/src/components/fields/group/Cell.tsx"
   - "packages/react/src/components/fields/index.test.tsx"
   - "packages/react/src/components/fields/index.tsx"
   - "packages/react/src/components/fields/json/Cell.test.tsx"
@@ -158,10 +195,12 @@ touches:
   - "packages/react/src/components/fields/json/columnDef.tsx"
   - "packages/react/src/components/fields/json/index.ts"
   - "packages/react/src/components/fields/json/testFixture.ts"
+  - "packages/react/src/components/fields/number/Cell.tsx"
   - "packages/react/src/components/fields/number/Input.test.tsx"
   - "packages/react/src/components/fields/number/Input.tsx"
   - "packages/react/src/components/fields/number/testFixture.ts"
   - "packages/react/src/components/fields/registry.ts"
+  - "packages/react/src/components/fields/relationship/Cell.tsx"
   - "packages/react/src/components/fields/relationship/EmptyInput.test.tsx"
   - "packages/react/src/components/fields/relationship/EmptyInput.tsx"
   - "packages/react/src/components/fields/relationship/FilledInput.test.tsx"
@@ -171,8 +210,11 @@ touches:
   - "packages/react/src/components/fields/relationship/index.ts"
   - "packages/react/src/components/fields/relationship/testFixture.ts"
   - "packages/react/src/components/fields/relationship/types.ts"
+  - "packages/react/src/components/fields/richtext/Cell.tsx"
+  - "packages/react/src/components/fields/select/Cell.tsx"
   - "packages/react/src/components/fields/select/Input.test.tsx"
   - "packages/react/src/components/fields/select/Input.tsx"
+  - "packages/react/src/components/fields/text/Cell.tsx"
   - "packages/react/src/components/fields/text/Input.test.tsx"
   - "packages/react/src/components/fields/text/Input.tsx"
   - "packages/react/src/components/fields/textarea/Cell.test.tsx"
@@ -183,10 +225,12 @@ touches:
   - "packages/react/src/components/fields/textarea/columnDef.tsx"
   - "packages/react/src/components/fields/textarea/index.ts"
   - "packages/react/src/components/fields/textarea/testFixture.ts"
+  - "packages/react/src/components/fields/upload/Cell.tsx"
   - "packages/react/src/components/fields/upload/EmptyInput.tsx"
   - "packages/react/src/components/fields/upload/FilledInput.tsx"
   - "packages/react/src/components/fields/upload/Input.test.tsx"
   - "packages/react/src/components/fields/upload/utils.ts"
+  - "packages/react/src/components/fields/url/Cell.tsx"
   - "packages/react/src/components/fields/url/Input.test.tsx"
   - "packages/react/src/components/fields/url/Input.tsx"
   - "packages/react/src/components/form/BlockActionsMenu.test.tsx"
@@ -206,6 +250,8 @@ touches:
   - "packages/react/src/components/form/FormRow.tsx"
   - "packages/react/src/components/form/FormTabs.test.tsx"
   - "packages/react/src/components/form/FormTabs.tsx"
+  - "packages/react/src/components/form/FormUI.test.tsx"
+  - "packages/react/src/components/form/FormUI.tsx"
   - "packages/react/src/components/form/RenderFields.test.tsx"
   - "packages/react/src/components/form/RenderFields.tsx"
   - "packages/react/src/components/form/applyFieldPermissionReadOnly.test.ts"
@@ -239,8 +285,12 @@ touches:
   - "packages/react/src/components/ui/data-table/DataTable.tsx"
   - "packages/react/src/components/ui/multi-select.tsx"
   - "packages/react/src/components/views/CollectionEditView.tsx"
+  - "packages/react/src/components/views/CollectionListView.tsx"
+  - "packages/react/src/components/views/DashboardView.tsx"
   - "packages/react/src/components/views/GlobalEditView.tsx"
+  - "packages/react/src/components/views/GlobalsListView.tsx"
   - "packages/react/src/components/views/MediaCollectionEditView.tsx"
+  - "packages/react/src/components/views/MediaCollectionListView.tsx"
   - "packages/react/src/hooks/index.ts"
   - "packages/react/src/hooks/useBlockClipboard.test.ts"
   - "packages/react/src/hooks/useBlockClipboard.ts"
@@ -268,6 +318,8 @@ touches:
   - "packages/react/src/testing/hooksSuite.tsx"
   - "packages/react/src/testing/mediaSuite.tsx"
   - "packages/react/src/testing/nestedFieldContainer.ts"
+  - "packages/react/src/utils/adminHref.test.ts"
+  - "packages/react/src/utils/adminHref.ts"
   - "pnpm-workspace.yaml"
 prompt_version: 1
 ---
@@ -325,13 +377,35 @@ Verify: pnpm --filter @vexcms/core test -- collections && pnpm --filter @vexcms/
 - [x] `packages/react/src/components/fields/date/utils.ts` + test — `formatDateFieldValue`
 - [x] `packages/react/src/components/fields/date/Cell.tsx` + test — date+time unless `time.hidden`
 
-## Step 6 — Core layout model: `width`, `admin.layout`, `admin.condition`, `tabs()`/`collapsible()`/`row()` [agent]
-Why: pure core types + helpers + the layout-tree builder; react (step 11) and server (step 9) consume them.
-Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- fields/layout
-- [ ] `packages/core/src/fields/baseTypes.ts` — `width: string` (default `"100%"`), `admin.layout`, `admin.condition`; `"half"` removed
-- [ ] `packages/core/src/fields/layout/` — `types.ts` (`FIELD_LAYOUT_KINDS`, `FieldLayoutFrame`, `FieldLayoutNode`, `FieldCondition`, `FieldConditionProps`), `config.ts` (`tabs`, `collapsible`, `row`), `utils.ts` (`buildFieldLayoutTree`, `isFieldConditionMet`, `hasFieldConditions`, `resolveRowWidths`), `index.ts` + tests incl. a key-inference type test
-- [ ] `packages/core/src/fields/index.ts` export; every factory resolves `admin.layout = []` and passes `condition` through
-- [ ] migrate every `width: "half"` in `apps/test` / `apps/www` to `"50%"`
+## Step 6 — UI fields as real fields: `tabs()`, `collapsible()`, `row()`, `ui()`, `getDataFields()` [agent]
+Why: tabs/collapsible/row/ui become `kind: "ui"` entries in a collection's/global's `fields` record, exactly
+like data fields are `kind: "data"` entries; `getDataFields({ fields })` is the single place every
+non-rendering consumer flattens them back down to data fields (drops `ui()`, hoists unnamed tab/row/collapsible
+children, turns a named tab into a group-shaped data field, AND-s `condition` and ORs `hidden`/`readOnly` into
+every field it flattens).
+Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- fields/ui collections globals
+- [ ] `packages/core/src/fields/constants.ts` — `ADMIN_FIELDS.tabs`/`.collapsible`/`.row`/`.ui`, each `kind: "ui"`
+- [ ] `packages/core/src/fields/baseTypes.ts` — `width: string` (default `"100%"`); `FieldAdminConfigInput`/`FieldAdminConfig` stay NON-generic, no `condition` (every data field type declares its own `<Type>FieldAdminInput<TCollectionSlug>` with method-shorthand `condition`, precedent: `RelationshipFieldAdminInput`); new NON-generic `UIKindFieldAdminConfigInput`/`UIKindFieldAdminConfig` and `BaseUIFieldInput`/`BaseUIField`
+- [ ] `packages/core/src/fields/ui/types.ts` — `FieldCondition`, `FieldConditionProps`, `DataFieldSlug<TFields>`
+- [ ] `packages/core/src/fields/ui/utils.ts` + `utils.test.ts` — `andFieldConditions`, `isFieldConditionMet`, `hasFieldConditions`, `resolveRowWidths`, `getDataFields` (condition AND, hidden/readOnly OR)
+- [ ] `packages/core/src/fields/ui/tabs/` — `types.ts` (`TabAdminInput<TCollectionSlug>`, `TabInput<TCollectionSlug>`, `TabsFieldAdminInput`/`Config`), `config.ts` (`tabs<TCollectionSlug, const TTabs>()`), `index.ts` + `config.test.ts`
+- [ ] `packages/core/src/fields/ui/collapsible/` — `types.ts` (`CollapsibleFieldAdminInput`/`Config` with `defaultCollapsed`), `config.ts` (`collapsible<TCollectionSlug, const TFields>()`), `index.ts` + `config.test.ts`
+- [ ] `packages/core/src/fields/ui/row/` — `types.ts` (`RowFieldAdminInput`/`Config`), `config.ts` (`row<TCollectionSlug, const TFields>()`), `index.ts` + `config.test.ts`
+- [ ] `packages/core/src/fields/ui/ui/` — `types.ts` (`UIFieldAdminInput`/`Config`, `UIFieldComponentProps`, `UIFieldCellProps`), `config.ts` (`ui<TCollectionSlug, TComponent>()`), `index.ts` + `config.test.ts`
+- [ ] `packages/core/src/fields/ui/index.ts` — barrel
+- [ ] `packages/core/src/fields/types.ts` — `AdminField` union gains `TabsField | CollapsibleField | RowField | UIField`; `AdminDataField`/`AdminUIField`/`DataFieldType`/`UIFieldType` derived from `ADMIN_FIELDS[type].kind`
+- [ ] `packages/core/src/fields/index.ts` — `export * from "./ui"`
+- [ ] `packages/core/src/fields/utils.ts` — `getFieldsInputSchema`, `getFieldsDefaultValues`, `fieldsToFieldTypeMap`, `validateFields` walk `getDataFields({ fields })`
+- [ ] every DATA field type's `types.ts` (`text`, `email`, `textarea`, `json`, `number`, `checkbox`, `date`, `select`, `color`, `url`, `relationship`, `upload`, `richtext`, `array`, `group`, `blocks`) — adds its own `<Type>FieldAdminInput<TCollectionSlug>`/`<Type>FieldAdminConfig<TCollectionSlug>` (or widens its pre-existing admin type) with `condition`, overrides `admin?:`/`admin:` on its own `<Type>FieldInput`/`<Type>Field`
+- [ ] every field factory — `width: "full"` → `"100%"`, `width: "half"` → `"50%"`
+- [ ] `packages/core/src/collections/types.ts` + `config.ts` — `TFieldSlug` → `TFields`; `DataFieldSlug<TFields>` for `useAsTitle`/`indexes[].fields`; `populateCollectionFieldMeta` stamps `meta.collectionSlug` on every field; duplicate-key guard via `getDataFields`
+- [ ] `packages/core/src/collections/interfaceGen.ts`, `validator.ts`, `indexFields.ts` — walk `getDataFields`
+- [ ] `packages/core/src/globals/types.ts` + `config.ts` + `interfaceGen.ts` — mirror collections' `TFields`/`DataFieldSlug`/`getDataFields` changes
+- [ ] `packages/core/src/auth/types.ts`, `packages/core/src/media/types.ts` — `TFieldSlug` → `TFields` rename
+- [ ] `packages/core/src/access/validateAccessConstraints.ts`, `packages/core/src/versions/assertNoDraftRelationships.ts`, `packages/core/src/versions/statusConstraint.ts` — walk `getDataFields`
+- [ ] `packages/react/src/components/fields/index.tsx` — `getCollectionColumnDefs` walks `getDataFields`
+- [ ] `packages/react/src/index.ts` — re-export `tabs`/`collapsible`/`row`/`ui`; `TFieldSlug` → `TFields` rename on wrapper types
+- [ ] `packages/file-storage-convex/src/mediaCollection.ts` — `TFieldSlug` → `TFields` rename
 
 ## Step 7 — Core extension-point model: slot IDs, contribution types, resolution [agent]
 Why: admin extension points (slots) are built into G now, not retrofitted post-0.1.0 (plugin-system stem, decisions S1-S14); G owns field-level slots and blocks/array action slots only.
@@ -340,7 +414,7 @@ Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- components fields c
 - [ ] `packages/core/src/components/builtinIds.ts` — `BUILTIN_CONTRIBUTION_IDS` (`vex.` prefix) for G's blocks/array action built-ins
 - [ ] `packages/core/src/components/resolve.ts` + test — `resolveComponentContributions` (hide-matching, duplicate-id error, order/before/after sort), `resolveComponentOverrides` (duplicate-id error, array order)
 - [ ] `packages/core/src/components/index.ts` — barrel
-- [ ] `packages/core/src/fields/baseTypes.ts` — `FieldAdminConfigInput`/`FieldAdminConfig` gain a `TComponent extends ComponentHKT = ComponentHKT` generic and a `components` slot (`Input`/`Cell`/`Label`/`Description` override chains, `beforeInput`/`afterInput` contribution lists) — every field type inherits it for free (none redeclare `admin`)
+- [ ] `packages/core/src/fields/baseTypes.ts` — `FieldAdminConfigInput`/`FieldAdminConfig` gain a `TComponent extends ComponentHKT = ComponentHKT` generic and a `components` slot (`Input`/`Cell`/`Label`/`Description` override chains, `beforeInput`/`afterInput` contribution lists) — inherited by default (`TComponent` defaults to `ComponentHKT`) via each field type's own Step 6 `<Type>FieldAdminInput`/`Config` wrapper, no per-type edit needed for `components` itself
 - [ ] `packages/core/src/fields/relationship/types.ts` — reconcile `RelationshipFieldAdminInput`/`Config.components` (today `{ preview }` only) to extend the base `FieldSlotComponentsInput` shape instead of replacing it
 - [ ] `packages/core/src/fields/utils.ts` — `resolveFieldComponents` helper, called by every field factory at the same spread point Step 6 added `layout: []`
 - [ ] `packages/core/src/config/types.ts` — `AdminConfigInput.components` (`fields.<type>.{Input,Cell}` override chains; `blocks.itemActions`/`blocks.headerActions`/`array.itemActions` contribution lists), type-erased to `ComponentHKT` like `editor`
@@ -367,17 +441,21 @@ Verify: pnpm typecheck && pnpm --filter @vexcms/react test -- fields/index slots
 
 ## Step 9 — Server-side condition enforcement [agent]
 Why: a required field hidden by its condition must not block `create`, and its `validate()` must not run.
-Verify: pnpm --filter @vexcms/core test -- prepareEdit fields
+Verify: pnpm --filter @vexcms/core test -- prepareEdit fields generateVexTypes generateVexSchema
 - [ ] `packages/core/src/fields/utils.ts` — `getFieldsInputSchema({ …, data })` skips condition-false fields (nested group/array/blocks via per-item `siblingData`); `validateFields` skips them
 - [ ] `packages/core/src/fields/{group,array,blocks}/inputSchema.ts` — thread `data`
 - [ ] `packages/core/src/api/prepareEdit.ts` — pass `transformedFields` as `data`
 - [ ] `prepareEdit.test.ts` + `utils.test.ts` — create with hidden required field succeeds; visible required field still fails; nested block sibling condition
+- [ ] `packages/core/src/fields/array/{types,config,validator,utils}.ts` + tests — stored `id: v.optional(v.string())` on object-shaped (`group()`) array items: reserved name, validator/inputSchema/type-gen injection, `isObjectShapedArrayItem`/`withArrayItemId`/`assignArrayItemIds`
+- [ ] `packages/core/src/api/prepareEdit.ts` + test — `mergedFields` backfilled via `assignArrayItemIds` before `beforeChange`/validation
+- [ ] `packages/core/src/types/generateVexTypes.test.ts`, `packages/core/src/schema/generateVexSchema.test.ts` — array-of-group id coverage
 
 ## Step 10 — Input masks: `admin.mask` + `fields.inputMasks` [agent]
 Why: opt-in masks with project-wide defaults; lazy-loaded so unmasked forms pay nothing.
 Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- mask config && pnpm --filter @vexcms/react test -- useFieldMask fields/text fields/number
 - [ ] `pnpm-workspace.yaml` catalog + `packages/react/package.json` — `use-mask-input` (P-015)
-- [ ] `packages/core/src/fields/mask/` — `types.ts` (`FieldMaskInput`, `FieldMask`, `MASKABLE_FIELD_TYPES`), `utils.ts` (`resolveFieldMask`), `index.ts` + tests
+- [ ] `packages/core/src/fields/constants.ts` — `inputMasks: boolean` added to every `ADMIN_FIELDS` entry (`true` for text/email/number/url, `false` otherwise)
+- [ ] `packages/core/src/fields/mask/` — `types.ts` (`FieldMaskInput`, `FieldMask`, `MaskableFieldType` derived from `ADMIN_FIELDS`), `utils.ts` (`resolveFieldMask`), `index.ts` + tests
 - [ ] text / email / number / url `types.ts` + `config.ts` — `admin.mask`
 - [ ] `packages/core/src/config/types.ts` + `config.ts` + test — `fields.inputMasks` on client config input/resolved
 - [ ] `packages/react/src/hooks/useFieldMask.ts` + test — lazy `import("use-mask-input")`, unmask/`storeMasked`
@@ -429,6 +507,7 @@ Verify: pnpm --filter @vexcms/core test -- fields/blocks && pnpm --filter @vexcm
 - [ ] `packages/core/src/components/builtinIds.ts` — block/array action ids consumed below (`vex.block.duplicate`, `vex.block.insertAbove`, `vex.block.insertBelow`, `vex.block.moveUp`, `vex.block.moveDown`, `vex.block.remove`, `vex.array.duplicate`, `vex.array.moveUp`, `vex.array.moveDown`, `vex.array.remove`)
 - [ ] `packages/react/src/components/form/BlockActionsMenu.tsx` — the six menu items become `ComponentContributionInput` built-ins rendered through `SlotOutlet` at `SLOT_IDS.blocks.itemActions`, gated against real `data`/`siblingData` via a new `itemPath` prop (`conditionName={props.itemPath}`), merged with `fieldDef.admin.components.beforeInput`-style per-field/root additions (step 7's config-level `blocks.itemActions` resolution)
 - [ ] `packages/react/src/components/form/FormArray.tsx` — the four per-item buttons (Duplicate/Move up/Move down/Remove) become built-ins at `SLOT_IDS.array.itemActions`, gated via `conditionName={\`${name}[${itemIndex}]\`}`, same `SlotOutlet` pattern
+- [ ] `packages/react/src/components/form/FormArray.tsx` — object-shaped items key by stored `id` when present (step 9's `isObjectShapedArrayItem`); `handleAdd`/`handleDuplicate` assign one via `withArrayItemId`, fresh on duplicate
 
 ## Step 16 — Block clipboard (copy/paste across fields, documents, collections) [agent]
 Why: localStorage admin clipboard; paste gated on `canEdit` and validated against the target block definition.
@@ -440,15 +519,21 @@ Verify: pnpm --filter @vexcms/react test -- useBlockClipboard FormBlocks
 
 ## Step 17 — Per-input polish + state sweep [agent]
 Why: closes the remaining "half-built" inputs and ignored `cellAlignment`.
-Verify: pnpm --filter @vexcms/react test -- fields DataTable
+Verify: pnpm --filter @vexcms/react test -- fields DataTable adminHref AdminSidebar AdminTopNav DashboardView GlobalsListView CollectionListView MediaCollectionListView
 - [ ] text — character counter when `max` set
 - [ ] number — `step` option (core + input), `min`/`max` HTML attributes
-- [ ] url — open-link button
-- [ ] select — `admin.searchable`, `admin.display: "radio"` (core + input)
+- [ ] url — open-link button via `VexLink`
+- [ ] select — `admin.searchable`, `admin.display: "radio"` (core + input; `RadioGroup`/`RadioGroupItem` + `Checkbox` primitives)
 - [ ] `DataTable.tsx` — apply column `align` (`cellAlignment`) to header + cells
 - [ ] every Input: empty / loading / error / read-only / focus-ring states consistent (contract test extended)
 - [ ] `packages/react/src/testing/fieldInputContract.ts` — new shared assertion: a per-field `admin.components.Input` override renders in place of the built-in, and its `renderDefault` prop re-renders the built-in unchanged
 - [ ] `packages/react/src/testing/dataTableSuite.tsx` — asserts a per-type `admin.components.fields.<type>.Cell` override renders in `getCollectionColumnDefs` output (no `DataTable.tsx` change needed — `fieldToCellComponent` already resolves overrides via step 8's registry)
+- [ ] `packages/react/src/components/ui/radio-group.tsx` (new) — `RadioGroup`/`RadioGroupItem` built on Base UI `RadioGroup`/`Radio`; exported from `ui/index.ts`
+- [ ] `packages/react/src/utils/adminHref.ts` + test — `adminHref({ type, slug?, id? }, basePath)`, replacing every hand-built admin link
+- [ ] `packages/react/src/components/fields/{array,blocks,checkbox,color,date,email,group,json,number,relationship,richtext,select,text,textarea,upload,url}/Cell.tsx` — title-column link via `adminHref`
+- [ ] `packages/react/src/components/AdminSidebar.tsx`, `AdminTopNav.tsx` — nav links + breadcrumb trail via `adminHref`
+- [ ] `packages/react/src/components/views/{DashboardView,GlobalsListView,CollectionListView,MediaCollectionListView}.tsx` — card/button links via `adminHref` (fixes the latter four ignoring a custom `basePath`)
+- [ ] `packages/react/src/index.ts` — export `adminHref`, `AdminHrefTarget`
 
 ## Step 18 — Dogfood in `apps/test` + plan bookkeeping [dev]
 Why: proves every new path end-to-end against the developer's running deployment (P-024: attach, never start).
