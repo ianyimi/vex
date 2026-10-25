@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { text, number } from "../index";
 import { array } from "./config";
+import { group } from "../group";
 import { arrayFieldToInputSchema } from "./inputSchema";
 import type { VexResourceSlug } from "../../types/generated";
 
@@ -89,7 +90,7 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        min: { value: 2 },
+        min: 2,
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -107,7 +108,7 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        min: { value: 3, error: "At least 3 items required" },
+        min: [3, "At least 3 items required"],
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -121,7 +122,7 @@ describe("arrayFieldToInputSchema", () => {
     });
 
     it("surfaces a custom min message on a required field even when min.value matches the required floor (regression)", () => {
-      // A `min: { value: 1 }` on a required field is a common pattern to get
+      // A `min: [1, "…"]` on a required field is a common pattern to get
       // a friendlier message than the generic "This field is required." —
       // the only way to violate `min: 1` is an empty array, so the
       // required-only-skips-when-optional gate must not swallow this case.
@@ -129,7 +130,7 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        min: { value: 1, error: "Add at least one item." },
+        min: [1, "Add at least one item."],
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -149,7 +150,7 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        max: { value: 3 },
+        max: 3,
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -166,7 +167,7 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        max: { value: 2, error: "Maximum 2 items allowed" },
+        max: [2, "Maximum 2 items allowed"],
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -184,8 +185,8 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        min: { value: 2 },
-        max: { value: 5 },
+        min: 2,
+        max: 5,
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -205,8 +206,8 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        min: { value: 3, error: "Too few items" },
-        max: { value: 10, error: "Too many items" },
+        min: [3, "Too few items"],
+        max: [10, "Too many items"],
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -222,8 +223,8 @@ describe("arrayFieldToInputSchema", () => {
       const field = array({
         required: true,
         items: itemsField,
-        min: { value: 1, error: "Too few items" },
-        max: { value: 2, error: "Too many items" },
+        min: [1, "Too few items"],
+        max: [2, "Too many items"],
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -258,8 +259,8 @@ describe("arrayFieldToInputSchema", () => {
 
     it("applies constraints to nested arrays", () => {
       const innerItems = text({ required: true });
-      const innerArray = array({ items: innerItems, required: true, max: { value: 3 } });
-      const field = array({ items: innerArray, required: true, min: { value: 2 } });
+      const innerArray = array({ items: innerItems, required: true, max: 3 });
+      const field = array({ items: innerArray, required: true, min: 2 });
       const schema = arrayFieldToInputSchema({ field });
 
       // Should accept 2-3 nested arrays, each with max 3 items
@@ -298,8 +299,8 @@ describe("arrayFieldToInputSchema", () => {
       const itemsField = number({ required: true });
       const field = array({
         items: itemsField,
-        min: { value: 2 },
-        max: { value: 3 },
+        min: 2,
+        max: 3,
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -312,8 +313,8 @@ describe("arrayFieldToInputSchema", () => {
       const itemsField = number({ required: true });
       const field = array({
         items: itemsField,
-        min: { value: 2 },
-        max: { value: 3 },
+        min: 2,
+        max: 3,
       });
       const schema = arrayFieldToInputSchema({ field });
 
@@ -340,6 +341,76 @@ describe("arrayFieldToInputSchema", () => {
 
       // Verify schema was created
       expect(schema.safeParse(["tag1", "tag2"]).success).toBe(true);
+    });
+  });
+
+  describe("condition-aware item fields (data-aware schema)", () => {
+    const itemFields = {
+      kind: text({ required: true }),
+      detail: text({
+        required: true,
+        admin: {
+          condition: ({ siblingData }) => siblingData.kind === "detailed",
+        },
+      }),
+    };
+
+    it("skips a hidden sibling-conditioned required field inside an array item", () => {
+      const field = array({ items: group({ fields: itemFields }) });
+      const schema = arrayFieldToInputSchema({ field, data: {} });
+      const result = schema.safeParse([{ kind: "simple" }]);
+      expect(result.success).toBe(true);
+    });
+
+    it("still fails a visible sibling-conditioned required field inside an array item", () => {
+      const field = array({ items: group({ fields: itemFields }) });
+      const schema = arrayFieldToInputSchema({ field, data: {} });
+      const result = schema.safeParse([{ kind: "detailed" }]);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path.includes("detail"))).toBe(true);
+      }
+    });
+
+    it("keeps the current static schema when item fields declare no conditions, even with data supplied", () => {
+      const field = array({ items: text({ required: true }) });
+      const schema = arrayFieldToInputSchema({ field, data: {} });
+      expect(schema.safeParse(["ok"]).success).toBe(true);
+      expect(schema.safeParse([""]).success).toBe(false);
+    });
+  });
+
+  describe("object-shaped item id", () => {
+    it("accepts an item missing id (optional)", () => {
+      const field = array({
+        items: group({ fields: { title: text({ required: true }) } }),
+      });
+      const schema = arrayFieldToInputSchema({ field });
+      expect(schema.safeParse([{ title: "a" }]).success).toBe(true);
+    });
+
+    it("round-trips a supplied id", () => {
+      const field = array({
+        items: group({ fields: { title: text({ required: true }) } }),
+      });
+      const schema = arrayFieldToInputSchema({ field });
+      const result = schema.safeParse([{ title: "a", id: "existing" }]);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const items = result.data as { id: string }[];
+        expect(items[0]!.id).toBe("existing");
+      }
+    });
+
+    it("does not add an id slot to a scalar item schema", () => {
+      const field = array({ items: text({ required: true }) });
+      const schema = arrayFieldToInputSchema({ field });
+      const result = schema.safeParse(["a"]);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const items = result.data as string[];
+        expect(items[0]).toBe("a");
+      }
     });
   });
 });

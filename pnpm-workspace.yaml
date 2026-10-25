@@ -7,6 +7,12 @@ catalog:
   "@base-ui/react": 1.2.0
   "@better-auth/api-key": 1.6.23
   "@changesets/cli": 2.30.0
+  "@codemirror/commands": 6.11.1
+  "@codemirror/lang-json": 6.0.2
+  "@codemirror/language": 6.13.1
+  "@codemirror/lint": 6.9.7
+  "@codemirror/state": 6.7.6
+  "@codemirror/view": 6.43.14
   "@convex-dev/better-auth": 0.11.5
   "@convex-dev/eslint-plugin": 1.2.2
   "@convex-dev/react-query": 0.1.0
@@ -16,6 +22,7 @@ catalog:
   "@eslint/js": 9.39.5
   "@hello-pangea/dnd": 18.0.1
   "@inquirer/prompts": 7.10.1
+  "@lezer/highlight": 1.2.5
   "@next/eslint-plugin-next": 15.5.20
   "@platejs/basic-nodes": 52.3.10
   "@platejs/code-block": 52.3.16
@@ -94,6 +101,7 @@ catalog:
   typedoc: 0.28.20
   typescript: 6.0.3
   typescript-eslint: 8.63.0
+  use-mask-input: 3.14.2
   validate-npm-package-name: 5.0.0
   vitest: 4.1.10
   # 0.1.0 (the `latest` dist-tag, published 2022) carries a known vulnerability

@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 import type { UrlFieldInput, UrlField } from "./types";
 
@@ -18,8 +19,9 @@ import type { UrlFieldInput, UrlField } from "./types";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
+ * - `admin.mask` — not set (opt-in; no project-wide default applies unless configured)
  *
  * @param options - URL field configuration. All properties are optional.
  * @returns Resolved URL field definition with all defaults applied.
@@ -34,12 +36,12 @@ import type { UrlFieldInput, UrlField } from "./types";
  *     canonicalUrl: url(),
  *
  *     // Required website URL with a length cap and database index
- *     website: url({ required: true, max: { value: 2048 }, index: "by_website" }),
+ *     website: url({ required: true, max: 2048, index: "by_website" }),
  *
  *     // Social profile URL with a placeholder hint
  *     twitterUrl: url({
  *       required: false,
- *       admin: { width: "half", placeholder: "https://twitter.com/username" },
+ *       admin: { width: "50%", placeholder: "https://twitter.com/username" },
  *     }),
  *   }
  * })
@@ -64,16 +66,26 @@ export function url<
     defaultValue: ADMIN_FIELDS.url.defaultValue,
     ...options,
 
+    min: resolveFieldLimit({
+      limit: options?.min,
+      defaultError: (value) => `Must be at least ${value} characters.`,
+    }),
+    max: resolveFieldLimit({
+      limit: options?.max,
+      defaultError: (value) => `Must be no more than ${value} characters.`,
+    }),
+
     // Admin config with all defaults applied
     admin: {
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       // Optional admin properties (no defaults)
       placeholder: "",
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options?.meta,

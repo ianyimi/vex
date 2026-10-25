@@ -12,7 +12,6 @@ export const logoCloudBlock = defineBlock({
     title: text({ label: "Title", description: "Optional heading, e.g. 'Trusted by'." }),
     logos: array({
       label: "Logos",
-      labels: { singular: "logo", plural: "logos" },
       items: group({
         label: "Logo",
         fields: {

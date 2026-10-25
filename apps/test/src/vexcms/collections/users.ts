@@ -16,9 +16,5 @@ export const users = defineCollection({
     name: text({ label: "Name", required: true }),
     // Add custom user fields here — the auth adapter already contributes
     // name/email/roles/etc. from Better Auth's schema.
-    newUserFieldTest: text({
-      description: "A new user test field.",
-      interfaceDescription: "something for the editor only",
-    }),
   },
 });

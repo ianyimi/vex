@@ -1,5 +1,6 @@
-import { addLeadingSlash, TDocument, type CellComponentProps, type TextField } from "@vexcms/core";
+import { TDocument, type CellComponentProps, type TextField } from "@vexcms/core";
 import { VexLink } from "../../ui";
+import { adminHref } from "../../../utils/adminHref";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
 /**
@@ -23,11 +24,15 @@ export function TextFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<TextField, TData>,
 ) {
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
   if (props.value === undefined || props.value === null) return <span>—</span>;
   if (props.isTitleField) {
     return (
-      <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+      <VexLink
+        href={adminHref(
+          { type: "document", slug: props.collection.slug, id: props.row.original._id },
+          config.basePath,
+        )}
+      >
         <span className="font-bold" title={props.value}>
           {props.value.length > 77 ? `${props.value.slice(0, 77)}...` : props.value}
         </span>

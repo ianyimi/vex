@@ -1,6 +1,6 @@
 {
   "name": "@vexcms/react",
-  "version": "0.1.0-alpha.26",
+  "version": "0.1.0-alpha.27",
   "description": "React admin components and hooks for VexCMS",
   "keywords": [
     "cms",
@@ -18,7 +18,10 @@
     "url": "git+https://github.com/ianyimi/vex.git",
     "directory": "packages/react"
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/chunk-*.js",
+    "./src/adapter.ts"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -50,13 +53,20 @@
     "dev": "tsup --watch src --no-clean",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
-    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
-    "coverage": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run --coverage",
-    "test:watch": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest"
+    "test": "TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+    "coverage": "TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run --coverage",
+    "test:watch": "TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
+    "@codemirror/commands": "catalog:",
+    "@codemirror/lang-json": "catalog:",
+    "@codemirror/language": "catalog:",
+    "@codemirror/lint": "catalog:",
+    "@codemirror/state": "catalog:",
+    "@codemirror/view": "catalog:",
     "@hello-pangea/dnd": "catalog:",
+    "@lezer/highlight": "catalog:",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-table": "catalog:",
     "@ts-hooks-kit/core": "catalog:",
@@ -73,6 +83,7 @@
     "react-resizable-panels": "catalog:",
     "sonner": "catalog:",
     "tailwind-merge": "catalog:",
+    "use-mask-input": "catalog:",
     "zod": "catalog:"
   },
   "peerDependencies": {

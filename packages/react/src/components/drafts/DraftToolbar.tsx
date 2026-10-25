@@ -4,6 +4,7 @@ import type { VexVersionStatus } from "@vexcms/core";
 import { Button } from "../ui";
 import { StatusBadge } from "./StatusBadge";
 import { type ComponentPropsWithRef } from "react";
+import { AnyFormApi } from "@tanstack/react-form";
 
 /** One toolbar button's wiring, supplied by the owning edit view. */
 export interface DraftToolbarAction {
@@ -17,6 +18,9 @@ export interface DraftToolbarAction {
 
 /** Props for {@link DraftToolbar}. */
 export interface DraftToolbarProps extends ComponentPropsWithRef<"div"> {
+  canEdit: boolean;
+  isDefaultValue: boolean;
+  form: AnyFormApi;
   /**
    * The loaded row's `vex_status`. `undefined` when nothing is stored yet
    * (a versioned global before its first save) — the badge is hidden then,
@@ -81,6 +85,17 @@ export function DraftToolbar(props: DraftToolbarProps) {
           Publish
         </Button>
       )}
+      <Button
+        type="button"
+        variant="outline"
+        className="transition-all duration-300"
+        disabled={!props.canEdit || props.isDefaultValue}
+        onClick={() => {
+          props.form.reset();
+        }}
+      >
+        Cancel
+      </Button>
       {props.unpublish && (
         <Button
           type="button"

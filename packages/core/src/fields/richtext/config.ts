@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 import type { RichTextFieldInput, RichTextField } from "./types";
 
@@ -22,7 +23,7 @@ import type { RichTextFieldInput, RichTextField } from "./types";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
  *
  * @param options - Richtext field configuration. All properties are optional.
@@ -67,11 +68,12 @@ export function richtext<
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       // Optional admin properties (no defaults)
       placeholder: "",
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options?.meta,

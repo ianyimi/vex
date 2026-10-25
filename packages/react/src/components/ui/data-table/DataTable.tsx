@@ -2,12 +2,29 @@
 
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../table";
-import { VexDocument } from "@vexcms/core";
+import { VexDocument, type Alignment } from "@vexcms/core";
 import { useMemo, useState } from "react";
 import { Checkbox } from "../checkbox";
 import { Button } from "../button";
 import { BulkDeleteModal } from "./DeleteManyModal";
 import { DataTableBulkActions } from "./DataTableBulkActions";
+
+/**
+ * `ColumnDef.meta`'s actual shape in this package — every `*FieldToColumnDef`
+ * factory (`components/fields/<type>/columnDef.tsx`) sets `label`/`align`/
+ * `isTitleField`, read back through this local type since the library's own
+ * `ColumnMeta` is an empty interface this package never augments.
+ */
+interface DataTableColumnMeta {
+  align?: Alignment;
+}
+
+/** Tailwind text-alignment class per {@link Alignment}, applied to both the header and data cells of a column. */
+const ALIGNMENT_CLASS: Record<Alignment, string> = {
+  left: "text-left",
+  right: "text-right",
+  center: "text-center",
+};
 
 /**
  * Props for DataTable component.
@@ -241,7 +258,15 @@ export function DataTable<TData extends VexDocument>({
           {table.getHeaderGroups().map((hg) => (
             <TableRow key={hg.id}>
               {hg.headers.map((header) => (
-                <TableHead key={header.id}>
+                <TableHead
+                  key={header.id}
+                  className={
+                    ALIGNMENT_CLASS[
+                      (header.column.columnDef.meta as DataTableColumnMeta | undefined)
+                        ?.align ?? "left"
+                    ]
+                  }
+                >
                   {flexRender(header.column.columnDef.header, header.getContext())}
                 </TableHead>
               ))}
@@ -252,7 +277,15 @@ export function DataTable<TData extends VexDocument>({
           {table.getRowModel().rows.map((row) => (
             <TableRow key={row.id}>
               {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
+                <TableCell
+                  key={cell.id}
+                  className={
+                    ALIGNMENT_CLASS[
+                      (cell.column.columnDef.meta as DataTableColumnMeta | undefined)
+                        ?.align ?? "left"
+                    ]
+                  }
+                >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
               ))}

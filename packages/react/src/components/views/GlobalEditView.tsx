@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
@@ -9,13 +9,13 @@ import {
   CRUD_ACTIONS,
   DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE,
   DRAFT_ACTIONS,
+  getDataFields,
   getFieldsDefaultValues,
   GlobalEditViewProps,
-  isFieldAllowed,
   resolveLivePreviewSettings,
   vexConvexApi,
 } from "@vexcms/core";
-import { AppForm } from "../form";
+import { AppForm } from "../form/AppForm";
 import {
   useAutosave,
   useFieldPermissions,
@@ -29,7 +29,10 @@ import {
 import { changedValues } from "../form/changedValues";
 import { pickReadableValues } from "../form/readableFields";
 import { Button } from "../ui";
-import { fieldToInputComponent } from "../fields";
+import { RenderFields } from "../form/RenderFields";
+import { FormCompactProvider } from "../form/FormCompactContext";
+import { DocumentTimestamps } from "../form/DocumentTimestamps";
+import { applyFieldPermissionReadOnly } from "../form/applyFieldPermissionReadOnly";
 import { useVexConfig } from "../../context/VexConfigContext";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../ui/resizable";
 import { useIsMobile } from "../../hooks/use-mobile";
@@ -94,7 +97,7 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     initialData: props.initialData,
   });
 
-  const hasDrafts = global.versions.drafts;
+  const isVersioned = global.versions.drafts;
 
   const [viewedVersion, setViewedVersion] = useState<ViewedVersion | null>(null);
   const [confirmingUnpublish, setConfirmingUnpublish] = useState(false);
@@ -108,7 +111,9 @@ export function GlobalEditView(props: GlobalEditViewProps) {
     .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0));
   const unpublishCurrent = publishedTimeline[0];
   const unpublishTarget = publishedTimeline[1];
-  const formDocument = viewedVersion ? { _id: globalDoc?._id, ...viewedVersion.snapshot } : globalDoc;
+  const formDocument = viewedVersion
+    ? { _id: globalDoc?._id, ...viewedVersion.snapshot }
+    : globalDoc;
   const restoredFrom = viewedVersion ? { restoredFrom: viewedVersion.version } : {};
 
   const { mutateAsync, isPending } = useVexMutation({
@@ -215,9 +220,10 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   const isDraftDoc =
     (globalDoc as { vex_status?: "draft" | "published" } | undefined)?.vex_status === "draft";
 
+  const dataFields = useMemo(() => getDataFields({ fields: global.fields }), [global.fields]);
   const visibleFields = useVisibleFields({
     resource: global.slug,
-    fields: global.fields,
+    fields: dataFields,
     data: globalDoc,
   });
   const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
@@ -253,12 +259,12 @@ export function GlobalEditView(props: GlobalEditViewProps) {
 
   const canEdit = usePermission({
     resource: global.slug,
-    action: hasDrafts ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update,
+    action: isVersioned ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update,
     data: globalDoc as {},
   });
   const fieldPermissions = useFieldPermissions({
     resource: global.slug,
-    action: hasDrafts ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update,
+    action: isVersioned ? DRAFT_ACTIONS.saveDraft : CRUD_ACTIONS.update,
     data: globalDoc,
   });
 
@@ -278,13 +284,13 @@ export function GlobalEditView(props: GlobalEditViewProps) {
       // Keystrokes typed during the save stay dirty for autosave's follow-up save.
       resetWhenSaved(changes);
     },
-    enabled: hasDrafts && global.versions.autosave.enabled && canEdit,
+    enabled: isVersioned && global.versions.autosave.enabled && canEdit,
   });
 
   const formValues = useStore(form.store, (state) => state.values);
   const { data: publishedRowWhileDraft } = useQuery({
     ...convexQuery(vexConvexApi.globals.get, { slug: global.slug }),
-    enabled: hasDrafts && isDraftDoc,
+    enabled: isVersioned && isDraftDoc,
   });
   const publishedGlobal = isDraftDoc ? publishedRowWhileDraft : globalDoc;
   const matchesPublished =
@@ -347,29 +353,47 @@ export function GlobalEditView(props: GlobalEditViewProps) {
   // the offset is carried across by hand.
   const formScroll = usePreservedScrollTop();
 
+  const hasSidebarFields = Object.values(global.fields).some(
+    (fieldDef) =>
+      "admin" in fieldDef &&
+      "position" in fieldDef.admin &&
+      fieldDef.admin.position === "sidebar",
+  );
+  const showSidebar = hasSidebarFields || globalDoc !== undefined;
+  const documentStatus =
+    isVersioned && globalDoc ? (isDraftDoc ? "draft" : "published") : undefined;
+  const renderedFields = applyFieldPermissionReadOnly({
+    fields: global.fields,
+    fieldPermissions,
+  });
+
   const formContent = (
-    <div className="space-y-4">
-      {visibleFields.map(([fieldKey, field]) => {
-        const InputComponent = fieldToInputComponent(field.type);
-        if (!InputComponent) {
-          // TODO: handle missing component error here
-          throw new Error(`Missing component for field type '${field.type}'`);
-        }
-        return (
-          <InputComponent
-            key={fieldKey}
-            name={fieldKey}
-            fieldDef={field}
-            readOnly={
-              !canEdit || field.admin.readOnly || !isFieldAllowed(fieldPermissions, fieldKey)
-            }
+    <div className={showSidebar ? "flex flex-col gap-6 @3xl/form:flex-row" : undefined}>
+      <div className="min-w-0 flex-1">
+        <RenderFields
+          fields={renderedFields}
+          collection={global}
+          readOnly={!canEdit}
+          documentStatus={documentStatus}
+          fieldKeys={readableFieldKeys}
+          region={showSidebar ? "main" : "all"}
+          isTopLevel
+        />
+      </div>
+      {showSidebar && (
+        <div className="vex-scroll-area w-full space-y-4 @3xl/form:sticky @3xl/form:top-0 @3xl/form:-m-1 @3xl/form:max-h-[100cqh] @3xl/form:w-72 @3xl/form:shrink-0 @3xl/form:self-start @3xl/form:overflow-y-auto @3xl/form:p-1">
+          <DocumentTimestamps creationTime={globalDoc?._creationTime} />
+          <RenderFields
+            fields={renderedFields}
             collection={global}
-            documentStatus={
-              hasDrafts && globalDoc ? (isDraftDoc ? "draft" : "published") : undefined
-            }
+            readOnly={!canEdit}
+            documentStatus={documentStatus}
+            fieldKeys={readableFieldKeys}
+            region="sidebar"
+            isTopLevel
           />
-        );
-      })}
+        </div>
+      )}
     </div>
   );
 
@@ -389,18 +413,11 @@ export function GlobalEditView(props: GlobalEditViewProps) {
           selector={(state) => state.isDefaultValue}
           children={(isDefaultValue) => (
             <div className="flex flex-wrap items-center gap-2">
-              {livePreview && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={previewPanel.toggle}
-                  icon={isSplit ? "Eye" : "EyeOff"}
-                >
-                  Preview
-                </Button>
-              )}
-              {hasDrafts ? (
+              {isVersioned ? (
                 <DraftToolbar
+                  form={form}
+                  canEdit={canEdit}
+                  isDefaultValue={isDefaultValue}
                   status={globalDoc ? (isDraftDoc ? "draft" : "published") : undefined}
                   saveDraft={{
                     onClick: handleSaveDraft,
@@ -429,6 +446,16 @@ export function GlobalEditView(props: GlobalEditViewProps) {
                       : undefined
                   }
                 >
+                  {livePreview && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={previewPanel.toggle}
+                      icon={isSplit ? "Eye" : "EyeOff"}
+                    >
+                      Preview
+                    </Button>
+                  )}
                   <VersionHistoryDropdown
                     target={{ global: global.slug }}
                     hasDraft={isDraftDoc}
@@ -436,32 +463,44 @@ export function GlobalEditView(props: GlobalEditViewProps) {
                     onViewVersion={setViewedVersion}
                     hasUnsavedChanges={!isDefaultValue}
                     activeVersion={
-                      (globalDoc as { vex_activeVersion?: number } | undefined)?.vex_activeVersion ??
-                      null
+                      (globalDoc as { vex_activeVersion?: number } | undefined)
+                        ?.vex_activeVersion ?? null
                     }
                   />
                 </DraftToolbar>
               ) : (
-                <Button
-                  type="submit"
-                  className="transition-all duration-300"
-                  isPending={isPending}
-                  disabled={isDefaultValue || !canEdit}
-                >
-                  Save
-                </Button>
+                <>
+                  {livePreview && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={previewPanel.toggle}
+                      icon={isSplit ? "Eye" : "EyeOff"}
+                    >
+                      Preview
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    className="transition-all duration-300"
+                    isPending={isPending}
+                    disabled={isDefaultValue || !canEdit}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="transition-all duration-300"
+                    disabled={isDefaultValue || !canEdit}
+                    onClick={() => {
+                      form.reset();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </>
               )}
-              <Button
-                type="button"
-                variant="outline"
-                className="transition-all duration-300"
-                disabled={isDefaultValue || !canEdit}
-                onClick={() => {
-                  form.reset();
-                }}
-              >
-                Cancel
-              </Button>
             </div>
           )}
         />
@@ -484,9 +523,9 @@ export function GlobalEditView(props: GlobalEditViewProps) {
               <div
                 ref={formScroll.ref}
                 onScroll={formScroll.onScroll}
-                className="vex-scroll-area h-full overflow-y-auto pt-4 pr-4 pb-6"
+                className="vex-scroll-area relative h-full overflow-y-auto pt-4 pr-4 pb-6 [container-type:size] [container-name:form]"
               >
-                {formContent}
+                <FormCompactProvider>{formContent}</FormCompactProvider>
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
@@ -509,9 +548,9 @@ export function GlobalEditView(props: GlobalEditViewProps) {
         <div
           ref={formScroll.ref}
           onScroll={formScroll.onScroll}
-          className="vex-scroll-area -mx-6 min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-6"
+          className="vex-scroll-area relative -mx-6 min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-6 [container-type:size] [container-name:form]"
         >
-          {formContent}
+          <FormCompactProvider>{formContent}</FormCompactProvider>
         </div>
       )}
       {previewIsActive && isMobile && (

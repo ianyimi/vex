@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { betterAuthAdapter } from "./adapter";
 import { admin } from "better-auth/plugins";
+import { getDataFields, type AdminDataField } from "@vexcms/core";
 
 describe("betterAuthAdapter", () => {
   it("returns correct adapter shape", () => {
@@ -81,18 +82,19 @@ describe("betterAuthAdapter", () => {
   it("maps required from attr.required", () => {
     const adapter = betterAuthAdapter();
     const user = adapter.collections.find((c) => c.slug === "user");
+    const fields = getDataFields({ fields: user?.fields ?? {} }) as Record<string, AdminDataField>;
     // required is always defined (boolean) after defaults are applied
-    expect(typeof user?.fields.email?.required).toBe("boolean");
-    expect(typeof user?.fields.name?.required).toBe("boolean");
+    expect(typeof fields.email?.required).toBe("boolean");
+    expect(typeof fields.name?.required).toBe("boolean");
   });
 
   it("maps defaultValue from attr.defaultValue", () => {
     const adapter = betterAuthAdapter();
     const user = adapter.collections.find((c) => c.slug === "user");
+    const fields = getDataFields({ fields: user?.fields ?? {} }) as Record<string, AdminDataField>;
     // emailVerified typically defaults to false in Better Auth
-    expect(user?.fields.emailVerified?.defaultValue).toBe(false);
+    expect(fields.emailVerified?.defaultValue).toBe(false);
   });
-
   it("hides sensitive fields", () => {
     const adapter = betterAuthAdapter({
       config: { plugins: [admin()] },
@@ -147,7 +149,8 @@ describe("betterAuthAdapter", () => {
       },
     });
     const user = adapter.collections.find((c) => c.slug === "user");
-    const bio = user?.fields.publicBio;
+    const fields = getDataFields({ fields: user?.fields ?? {} }) as Record<string, AdminDataField>;
+    const bio = fields.publicBio;
     expect(bio).toBeDefined();
     expect(bio?.type).toBe("text");
     expect(bio?.required).toBe(true);

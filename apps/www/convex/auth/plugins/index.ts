@@ -1,7 +1,6 @@
 import { apiKey } from "@better-auth/api-key"
 import { convex } from "@convex-dev/better-auth/plugins"
 import authConfig from "@convex/auth.config"
-import { nextCookies } from "better-auth/next-js"
 import { admin, anonymous } from "better-auth/plugins"
 
 import { USER_ROLES } from "~/db/constants"
@@ -23,6 +22,4 @@ export const createPlugins = () => [
   anonymous(),
   apiKey(),
   convex({ authConfig }),
-  // this plugin must be last, per the convex dev CLI's own warnings
-  nextCookies(),
 ]

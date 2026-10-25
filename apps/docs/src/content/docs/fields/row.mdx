@@ -1,0 +1,99 @@
+---
+title: row field
+description: Lays fields out side by side on one admin-form row — a UI-only layout field with no stored value of its own.
+---
+
+A `row()` field lays its fields out side by side on one admin-form row
+instead of each taking a full row. It is a UI-only field — it stores no
+value of its own; its fields hoist to the parent level once `getDataFields`
+flattens the field. Legal in any `fields` record: a collection/global's own,
+a `group()`'s, a group-shaped `array()`'s items, or a `blocks()` block's
+own.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Label for the field (not shown unless nested somewhere a label applies). |
+| `description` | `string` | — | Helper text for the field. |
+| `fields` | `Record<string, AdminField>` | — (required) | This row's fields. Throws if empty. |
+| `admin.hidden` | `boolean` | `false` | Hides the whole row (and every nested field) from the admin edit form. ORs into children. |
+| `admin.readOnly` | `boolean` | `false` | Renders every nested field as non-interactive. ORs into children. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout. |
+| `admin.width` | `string` (CSS width) | `"100%"` | Width of the whole row inside another `row()`. |
+| `admin.condition` | `({ data, siblingData }) => boolean` | — | Pure predicate deciding whether the field (and every nested field) is shown and validated. ANDs into children. |
+
+Each child field's own `admin.width` (a CSS width string, e.g. `"50%"`)
+determines its share of the row. If every child's `admin.width` is a `%`
+value and they sum to 100 (±0.5), those widths are used; otherwise every
+child gets an equal share. Rows stack into a single column when the form
+column is narrower than about 36rem (576px), e.g. with the live preview open.
+
+## Schema output
+
+`row()` is dropped by `getDataFields`: its `fields` hoist straight to the
+parent `fields` record, each ending up as its own top-level (or
+group-level) schema field exactly as if declared there directly — the row
+itself contributes nothing to the schema.
+
+```ts
+// name: row({ fields: {
+//   firstName: text({ admin: { width: "50%" } }),
+//   lastName: text({ admin: { width: "50%" } }),
+// } })
+
+firstName: v.optional(v.string()),
+lastName: v.optional(v.string()),
+```
+
+## Usage
+
+```ts
+import { defineCollection, row, text, checkbox } from "@vexcms/core";
+
+const people = defineCollection({
+  slug: "people",
+  fields: {
+    // Widths sum to 100 — each keeps its own width
+    name: row({
+      fields: {
+        firstName: text({ admin: { width: "50%" } }),
+        lastName: text({ admin: { width: "50%" } }),
+      },
+    }),
+
+    // Widths don't sum to 100 (30 + 30) — both fall back to an equal 50/50 share
+    fallbackRow: row({
+      fields: {
+        fallbackA: text({ admin: { width: "30%" } }),
+        fallbackB: text({ admin: { width: "30%" } }),
+      },
+    }),
+
+    showAdvanced: checkbox(),
+
+    // Gated by a sibling's value
+    conditionalRow: row({
+      fields: { conditionalNote: text() },
+      admin: {
+        condition: ({ data }) => data.showAdvanced === true,
+      },
+    }),
+
+    // admin.hidden propagates to its own field — legacyFlag never renders
+    // and is excluded from the list view
+    hiddenSection: row({
+      fields: { legacyFlag: checkbox() },
+      admin: { hidden: true },
+    }),
+  },
+});
+```
+
+## Admin UI
+
+Renders its fields side by side using each child's resolved `admin.width`.
+`admin.hidden`/`admin.readOnly` on the `row()` field OR into every nested
+field (hidden/read-only everywhere); `admin.condition` on the `row()` field
+ANDs into every nested field's own condition. A `row()` can nest inside a
+`tabs()` tab, a `collapsible()`, an array item, or a block's own fields.

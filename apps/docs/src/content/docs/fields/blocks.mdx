@@ -65,18 +65,17 @@ appear in the `fields` object: `blockType`, `blockName`, and `id`.
 | `interfaceName` | `string` | — | Optional TypeScript union alias name. When set, emits a named union type (e.g. `PageBlock[]`) instead of an inline union. |
 | `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
 | `defaultValue` | `Record<string, unknown>[]` | `[]` | Pre-filled array shown in the admin form when creating a new document. |
-| `min.value` | `number` | — | Minimum number of block items. Zod-enforced; does not affect the generated Convex schema. |
-| `min.error` | `string` | — | Error message shown when the array has fewer than `min.value` items. |
-| `max.value` | `number` | — | Maximum number of block items. When reached, the "Add" button is disabled in the admin UI. |
-| `max.error` | `string` | — | Error message shown when the array has more than `max.value` items. |
+| `min` | `number \| [number, string]` | — | Minimum number of block items. Bare number, or a `[value, customError]` tuple for a custom error message. Zod-enforced; does not affect the generated Convex schema. |
+| `max` | `number \| [number, string]` | — | Maximum number of block items. Bare number, or a `[value, customError]` tuple. When reached, the "Add" button is disabled in the admin UI. |
 | `labels.singular` | `string` | `"Block"` | Label for a single item in add/remove controls (e.g. "Add Section"). |
 | `labels.plural` | `string` | `"Blocks"` | Label shown in the field header and empty state. |
 | `description` | `string` | — | Helper text shown below the field input. |
 | `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
 | `admin.readOnly` | `boolean` | `false` | Renders add/remove controls as non-interactive. |
 | `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
-| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.width` | `string` | `"100%"` | CSS width of the field in the edit form (e.g. `"50%"`, `"240px"`). Meaningful as a child of `row()`; below a narrow form column every field renders full width regardless. |
 | `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Alignment of the block count in the list-view table cell. |
+| `admin.condition` | `(props: { data, siblingData }) => boolean` | — | Shows the field only while this returns `true`. A throwing condition counts as met. Hidden fields skip `required`/`validate` on the server too. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
 
 ## Schema output
 
@@ -140,8 +139,8 @@ const pages = defineCollection({
       label: "Page Sections",
       interfaceName: "PageSection",
       blocks: [headingBlock, paragraphBlock],
-      min: { value: 1, error: "At least one section is required." },
-      max: { value: 20 },
+      min: [1, "At least one section is required."],
+      max: 20,
       labels: { singular: "Section", plural: "Sections" },
     }),
 
@@ -173,6 +172,14 @@ are configured; a single block type skips the dialog and adds directly.
 The "Add [singular]" button is disabled when the `max` constraint is reached.
 Validation errors from `min`/`max` appear below the field after a submission
 attempt or when the form is touched.
+
+Header-level actions — Copy all, Paste, Replace all, Collapse all, Expand
+all — sit above the list once it holds at least one block. Each block item
+carries its own action menu: Duplicate, Move up/down, Insert above/below,
+Copy, Paste above/below, and Remove. A copied block (or the whole list via
+Copy all) goes onto a shared block clipboard that works across different
+blocks fields, documents, and collections — pasting coerces the clipboard
+data to the target block definition's fields and drops any unknown keys.
 
 ## TypeScript output
 

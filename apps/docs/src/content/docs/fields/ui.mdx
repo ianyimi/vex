@@ -1,0 +1,89 @@
+---
+title: ui field
+description: Renders a fully custom admin-form field with no data representation.
+---
+
+A `ui()` field renders a fully custom admin-form field component with no
+stored value. It is dropped by `getDataFields` — it never reaches schema,
+validation, type-gen, RBAC, indexing, or default-value resolution. Legal in
+any `fields` record: a collection/global's own, a `group()`'s, a
+group-shaped `array()`'s items, or a `blocks()` block's own.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Label for the field (not shown unless your `Field` component reads it). |
+| `description` | `string` | — | Helper text for the field. |
+| `admin.components.Field` | component | — (required) | Rendered in the admin edit form at this field's position. Receives `{ name, data, siblingData, readOnly }`. |
+| `admin.components.Cell` | component | — | When set, the list view shows a column rendering this. Omit to show no column. Receives `{ name, data }`. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Passed through as `readOnly` to the `Field` component; `ui()` does not itself enforce non-interactivity. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `string` (CSS width) | `"100%"` | Width of the field inside a `row()`. |
+| `admin.condition` | `({ data, siblingData }) => boolean` | — | Pure predicate deciding whether the field is shown. A throwing condition counts as met. |
+
+### Component props
+
+```ts
+// admin.components.Field
+interface UIFieldComponentProps<TCollectionSlug> {
+  name: string;                              // this field's own key
+  data: DocumentByResourceSlug<TCollectionSlug>; // the whole document being edited
+  siblingData: Record<string, unknown>;      // value at this field's parent path
+  readOnly: boolean;
+}
+
+// admin.components.Cell
+interface UIFieldCellProps<TCollectionSlug> {
+  name: string;
+  data: DocumentByResourceSlug<TCollectionSlug>; // the document the list-view row renders
+}
+```
+
+## Schema output
+
+`ui()` produces no schema field of any kind — `getDataFields` drops it
+entirely. There is no stored value, no default, no RBAC entry, and no
+generated TypeScript interface member for it.
+
+## Usage
+
+```tsx
+import { defineCollection, ui } from "@vexcms/core";
+import type { TABLE_SLUG_FIELDS } from "../generated";
+
+function WordCountField({ data }: { data: { body?: string } }) {
+  const count = (data.body ?? "").trim().split(/\s+/).filter(Boolean).length;
+  return <div>{count} words</div>;
+}
+
+function WordCountCell({ data }: { data: { body?: string } }) {
+  const count = (data.body ?? "").trim().split(/\s+/).filter(Boolean).length;
+  return <span>{count}w</span>;
+}
+
+const posts = defineCollection({
+  slug: "posts",
+  fields: {
+    wordCount: ui<typeof TABLE_SLUG_FIELDS>({
+      label: "Word Count",
+      admin: {
+        position: "sidebar",
+        components: { Field: WordCountField, Cell: WordCountCell },
+      },
+    }),
+  },
+});
+```
+
+## Admin UI
+
+The `Field` component renders at the field's position (`admin.position`
+places it in the main column or the sidebar) and receives the live
+`data`/`siblingData` as the form changes, plus `readOnly`. When
+`admin.components.Cell` is supplied, the list view shows an extra column
+rendering it for each row; omitting `Cell` shows no column for this field.
+Because `ui()` carries no data, it is excluded from every data-oriented
+admin concern (search, sort, filtering, RBAC) — it is purely a form/list
+presentation hook.

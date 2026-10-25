@@ -5,6 +5,7 @@ import { useForm } from "@tanstack/react-form";
 import {
   adminFieldToInputSchema,
   array,
+  arrayItemLabel,
   text,
   type ArrayField,
   type ArrayType,
@@ -74,8 +75,8 @@ runFieldInputContractSuite({
         label: "Scores",
         items: text({ label: "Score", required: true }),
         required: true,
-        min: { value: 2 },
-        max: { value: 3 },
+        min: 2,
+        max: 3,
       });
 
       it("passes validation at exactly the min item count", async () => {
@@ -92,7 +93,7 @@ runFieldInputContractSuite({
         const result = schema.safeParse(["a"]);
         expect(result.success).toBe(false);
         const message = !result.success ? result.error.issues[0]?.message : undefined;
-        expect(message).toBe("This field is too short.");
+        expect(message).toBe("Must be at least 2 items.");
 
         const user = userEvent.setup();
         render(<ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a"]} />);
@@ -114,7 +115,7 @@ runFieldInputContractSuite({
         const result = schema.safeParse(["a", "b", "c", "d"]);
         expect(result.success).toBe(false);
         const message = !result.success ? result.error.issues[0]?.message : undefined;
-        expect(message).toBe("This field is too long.");
+        expect(message).toBe("Must be no more than 3 items.");
 
         const user = userEvent.setup();
         render(<ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a", "b", "c", "d"]} />);
@@ -132,7 +133,7 @@ runFieldInputContractSuite({
         // here documents a real, currently-uncaught inconsistency between
         // the two containers, not a test bug (Change B).
         render(<ArrayHarness fieldDef={boundaryFieldDef} collection={collection} initialValue={["a", "b", "c"]} />);
-        expect(screen.getByRole("button", { name: `Add ${boundaryFieldDef.labels.singular}` })).toBeDisabled();
+        expect(screen.getByRole("button", { name: `Add ${arrayItemLabel(boundaryFieldDef)}` })).toBeDisabled();
       });
 
       it("uses configured custom min/max error messages verbatim", async () => {
@@ -140,8 +141,8 @@ runFieldInputContractSuite({
           label: "Scores",
           items: text({ label: "Score", required: true }),
           required: true,
-          min: { value: 1, error: "Add at least one score." },
-          max: { value: 2, error: "No more than two scores." },
+          min: [1, "Add at least one score."],
+          max: [2, "No more than two scores."],
         });
         const user = userEvent.setup();
 
@@ -198,12 +199,12 @@ runFieldInputContractSuite({
         const input = screen
           .getAllByLabelText("Score", { exact: false })
           .find((el): el is HTMLInputElement => el.tagName === "INPUT")!;
-        // TextFieldInput's own two independent readOnly sources: the PROP
-        // sets `disabled` (false here — FormArray forwarded `readOnly={false}`
-        // unmodified), the item's own `fieldDef.admin.readOnly` sets the
-        // native `readonly` HTML attribute — a real, DOM-visible difference
-        // documented in the shared checklist's item 4.
-        expect(input).not.toBeDisabled();
+        // TextFieldInput now ORs both readOnly sources into `disabled` (Step
+        // 15 fix #4) — the PROP is `false` here (FormArray forwarded
+        // `readOnly={false}` unmodified), but the item's own
+        // `fieldDef.admin.readOnly` alone is enough to disable the control,
+        // and still sets the native `readonly` HTML attribute too.
+        expect(input).toBeDisabled();
         expect(input).toHaveAttribute("readonly");
         await user.type(input, "!");
         expect(input.value).toBe("x");
@@ -211,7 +212,9 @@ runFieldInputContractSuite({
         // The array's own Add control is unaffected — only the array's OWN
         // readOnly source gates it, not an item's admin.readOnly.
         expect(
-          screen.getByRole("button", { name: `Add ${readOnlyItemFieldDef.labels.singular}` }),
+          screen.getByRole("button", {
+            name: `Add ${arrayItemLabel(readOnlyItemFieldDef)}`,
+          }),
         ).not.toBeDisabled();
       });
 

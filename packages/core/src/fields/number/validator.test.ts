@@ -21,8 +21,8 @@ describe("numberFieldToValidator", () => {
     const field = number({
       required: true,
       defaultValue: 0,
-      min: { value: 0 },
-      max: { value: 100 },
+      min: 0,
+      max: 100,
     });
     const validator = numberFieldToValidator({ field });
 

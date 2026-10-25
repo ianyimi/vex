@@ -5,8 +5,9 @@
 // string literal), but kept in step with the main barrel so source and bundle
 // resolution behave identically.
 
+import "../adapter";
 import type { ComponentType } from "react";
-import type { AdminField, AdminFieldType, CellComponentProps, CollectionConfig, TDocument, VexAccessConfig } from "@vexcms/core";
+import type { AdminDataField, DataFieldType, CellComponentProps, CollectionConfig, TDocument, VexAccessConfig } from "@vexcms/core";
 import { describe, expect, it } from "vitest";
 import { fieldToCellComponent, fieldToInputComponent } from "../components/fields";
 import { fieldFixtures } from "./fixtures";
@@ -27,9 +28,9 @@ import { runHooksSuite } from "./hooksSuite";
  * holding a primitive value — the only entries in `fieldFixtures` that also
  * need `runNestedFieldContainerSuite`, not just `runFieldInputContractSuite`.
  */
-const CONTAINER_FIELD_TYPES: ReadonlySet<AdminFieldType> = new Set(["array", "group", "blocks"]);
+const CONTAINER_FIELD_TYPES: ReadonlySet<DataFieldType> = new Set(["array", "group", "blocks"]);
 
-function isContainerFieldType(fieldType: AdminFieldType): fieldType is "array" | "group" | "blocks" {
+function isContainerFieldType(fieldType: DataFieldType): fieldType is "array" | "group" | "blocks" {
   return CONTAINER_FIELD_TYPES.has(fieldType);
 }
 
@@ -41,15 +42,15 @@ function isContainerFieldType(fieldType: AdminFieldType): fieldType is "array" |
  * 12 registered types as a nested child on every container would duplicate
  * coverage `runFieldInputContractSuite` already gives each type standalone.
  */
-const CONTAINER_CHILD_FIELD_TYPES: AdminFieldType[] = ["text", "select", "date", "upload", "array"];
+const CONTAINER_CHILD_FIELD_TYPES: DataFieldType[] = ["text", "select", "date", "upload", "array"];
 
 /**
- * The four field types whose Cell contract opts out of `runFieldCellContractSuite`'s
+ * The field types whose Cell contract opts out of `runFieldCellContractSuite`'s
  * default truncation assertion — a fixed-format date, a number, a boolean checkbox and a
- * `#rrggbb` color swatch never render an unbounded string. Mirrors each type's own
- * `Cell.test.tsx` call (Step 5).
+ * `#rrggbb` color swatch never render an unbounded string; richtext and json assert
+ * truncation in their own `Cell.test.tsx`. Mirrors each type's own `Cell.test.tsx` call.
  */
-const NO_TRUNCATION_FIELD_TYPES: ReadonlySet<AdminFieldType> = new Set([
+const NO_TRUNCATION_FIELD_TYPES: ReadonlySet<DataFieldType> = new Set([
   "date",
   "number",
   "checkbox",
@@ -58,6 +59,9 @@ const NO_TRUNCATION_FIELD_TYPES: ReadonlySet<AdminFieldType> = new Set([
   // richtext document already exceeds while its plain text stays short;
   // richtext/Cell.test.tsx asserts truncation with an explicit long document.
   "richtext",
+  // The json fixture's `valid` value is a number (see json/testFixture.ts), which the
+  // generic builder cannot grow; json/Cell.test.tsx asserts its 80-character cut directly.
+  "json",
 ]);
 
 /**
@@ -78,7 +82,7 @@ type FieldInputComponent<TField> = ComponentType<{
  * The cell component shape every real field cell satisfies — the `cells` loop's
  * counterpart to `FieldInputComponent` above.
  */
-type FieldCellComponent<TField extends AdminField> = ComponentType<CellComponentProps<TField, TDocument>>;
+type FieldCellComponent<TField extends AdminDataField> = ComponentType<CellComponentProps<TField, TDocument>>;
 
 /**
  * The named groups `runVexReactSuite`'s `sections` option selects between. Each name
@@ -202,7 +206,7 @@ export function runVexReactSuite(options?: {
   }
 
   if (runsCore("fields")) {
-    for (const fieldType of Object.keys(fieldFixtures) as AdminFieldType[]) {
+    for (const fieldType of Object.keys(fieldFixtures) as DataFieldType[]) {
       const fixture = fieldFixtures[fieldType];
       if (!fixture) continue;
       const InputComponent = fieldToInputComponent(fieldType);
@@ -228,7 +232,7 @@ export function runVexReactSuite(options?: {
   }
 
   if (runsCore("cells")) {
-    for (const fieldType of Object.keys(fieldFixtures) as AdminFieldType[]) {
+    for (const fieldType of Object.keys(fieldFixtures) as DataFieldType[]) {
       const fixture = fieldFixtures[fieldType];
       if (!fixture) continue;
       const CellComponent = fieldToCellComponent(fieldType);
@@ -247,7 +251,7 @@ export function runVexReactSuite(options?: {
   }
 
   if (runsCore("columnDefs")) {
-    for (const fieldType of Object.keys(fieldFixtures) as AdminFieldType[]) {
+    for (const fieldType of Object.keys(fieldFixtures) as DataFieldType[]) {
       const fixture = fieldFixtures[fieldType];
       if (!fixture) continue;
       runColumnDefSuite({ fixture });

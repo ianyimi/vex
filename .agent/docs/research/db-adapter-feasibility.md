@@ -116,6 +116,9 @@ Payload is free and MIT-licensed on exactly those databases.
 2. **A neutral filter form in the public API.** Accept a `where`/constraint-builder form on
    `find`/`count`, compiled through the existing IR, and keep `withIndex` as the Convex-specific
    escape hatch. Access rules already record an IR, so only the *authoring* surface changes.
+   **Specced 2026-10-21 as launch-plan B3** (`../specs/2026-10-21-backend-neutral-query-args/`):
+   `filter` → `where` on `find`/`search`, `withIndex.range` retyped with the Vex builder (call
+   syntax unchanged), `VexError`, ADR-015.
 3. **Namespace Convex-only exports** under `@vexcms/core/convex` (the subpath already exists)
    or a future `@vexcms/convex`. Keep `ctx`-taking functions, triggers, and `vexConvexApi` out of
    the neutral entry points, so the later move is a re-export, not a user migration.
@@ -125,14 +128,16 @@ Payload is free and MIT-licensed on exactly those databases.
 
 ## 6. Earnings upside
 
-Same bottom-up method as `pitch-deck/04-business-model.md` § 5: paying-customer pool × 73%
-headless-in-market × 5–10% conversion × $2–10k/yr enterprise licence.
+Bottom-up method (updated 2026-10-17 to the tiered pricing in `../product/post-v0.1.0-plan.md`
+decision 10): paying-customer pool × 73% headless-in-market × 5–10% paid conversion × $1.46–3.03k
+blended revenue per customer (Pro / Agency / Enterprise mix). Superseded figures priced every
+customer at $2–10k.
 
 | Platform pool | Paying customers / developers | Source | Illustrative ARR ceiling |
 |---|---|---|---|
-| Convex (today) | ~10k paying teams; ~500k devs | [Convex](https://news.convex.dev/enterprise-launch/), [Series B](https://www.prnewswire.com/news-releases/convex-raises-57m-series-b-led-by-insight-partners-to-scale-the-reliable-backend-for-the-ai-era-302841686.html) | $0.7M–$7.3M |
-| + Supabase | >100k customers; 4M+ devs (Oct 2025) | [BuiltInSF](https://www.builtinsf.com/articles/supabase-raises-100m-series-e-5b-valuation-20251007) | +$7.3M–$73M (≈10× the Convex pool) |
-| + generic Postgres / Mongo / SQLite | Payload's market: `payload` ~1M weekly npm downloads | `pitch-deck/sources/market-size.md` §4 | Large pool; conversion is the unknown |
+| Convex (today) | ~10k paying teams; ~500k devs | [Convex](https://news.convex.dev/enterprise-launch/), [Series B](https://www.prnewswire.com/news-releases/convex-raises-57m-series-b-led-by-insight-partners-to-scale-the-reliable-backend-for-the-ai-era-302841686.html) | $0.53M–$2.2M |
+| + Supabase | >100k customers; 4M+ devs (Oct 2025) | [BuiltInSF](https://www.builtinsf.com/articles/supabase-raises-100m-series-e-5b-valuation-20251007) | +$5.3M–$22M (≈10× the Convex pool) |
+| + generic Postgres / Mongo / SQLite | Payload's market: `payload` ~1M weekly npm downloads | npm API | Large pool; conversion is the unknown |
 
 Caveats that shrink the multiplier:
 - **Conversion falls off Convex.** The differentiation there is "the only real CMS for this
@@ -144,7 +149,7 @@ Caveats that shrink the multiplier:
   them on Postgres costs more to build.
 
 Why it still matters for the pitch, even before it's built:
-- **It removes the biggest investor objection** (platform risk, `pitch-deck/05-platform-convex.md`) and widens the plausible acquirer list (Supabase, database vendors) beyond Convex.
+- **It removes the biggest investor objection** (platform risk: VexCMS's market is capped by Convex's size) and widens the plausible acquirer list (Supabase, database vendors) beyond Convex.
 - Enterprise buyers of SSO, audit, and workflows mostly sit on Postgres. A Postgres-family adapter puts the paid packages in front of them.
 - A credible deck line: **"Convex-native today; adapter-ready core; Supabase next."** The
   multiplier is roughly **10× on addressable customers, with a materially lower win rate**.

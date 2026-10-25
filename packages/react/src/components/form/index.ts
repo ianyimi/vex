@@ -13,3 +13,4 @@ export * from "./FormDescription";
 export * from "./FormLabel";
 export * from "./FormError";
 export * from "./InputTag";
+export * from "./FieldConditionGate";

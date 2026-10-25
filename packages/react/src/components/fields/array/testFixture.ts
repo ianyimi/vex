@@ -8,7 +8,7 @@ import type { VexResourceSlug } from "@vexcms/core";
  * covered separately by `runNestedFieldContainerSuite`). `items` is a simple
  * `text()` sub-field so this fixture only exercises the array's own behavior.
  *
- * `min: { value: 1 }` makes an empty array fail validation — `array`'s
+ * `min: 1` makes an empty array fail validation — `array`'s
  * `arrayFieldToInputSchema` REPLACES the `required`-only check with the `min`
  * check whenever both are set (see `packages/core/src/fields/array/inputSchema.ts`),
  * so `required` alone would never surface as `invalid`'s failure reason.
@@ -19,7 +19,7 @@ export const arrayFieldFixture: FieldFixture<ArrayField<VexResourceSlug, string>
     label: "Tags",
     items: text({ label: "Tag", required: true }),
     required: true,
-    min: { value: 1 },
+    min: 1,
   }),
   valid: ["First tag", "Second tag"],
   invalid: [],

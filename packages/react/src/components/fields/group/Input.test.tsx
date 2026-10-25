@@ -4,17 +4,22 @@ import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
 import {
   adminFieldToInputSchema,
+  defineConfig,
   group,
   text,
+  type AdminDataField,
   type CollectionConfig,
   type GroupField,
 } from "@vexcms/core";
 import { AppForm } from "../../form/AppForm";
+import { VexConfigProvider } from "../../../context/VexConfigContext";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { runFieldInputContractSuite } from "../../../testing/fieldInputContract";
 import { runNestedFieldContainerSuite } from "../../../testing/nestedFieldContainer";
 import { groupFieldFixture } from "./testFixture";
 import { GroupFieldInput } from "./Input";
+
+const testConfig = defineConfig();
 
 /**
  * Mounts `GroupFieldInput` behind a real `useForm` + `<AppForm>`, exposing
@@ -46,18 +51,20 @@ function GroupHarness(props: {
     },
   });
   return (
-    <AppForm form={form}>
-      <GroupFieldInput
-        name="testField"
-        fieldDef={props.fieldDef}
-        collection={props.collection ?? testCollection}
-        readOnly={props.readOnly ?? false}
-      />
-      <button type="submit">Submit</button>
-      <form.Subscribe selector={(state) => state.values.testField}>
-        {(value) => <output data-testid="value-probe">{JSON.stringify(value)}</output>}
-      </form.Subscribe>
-    </AppForm>
+    <VexConfigProvider config={testConfig}>
+      <AppForm form={form}>
+        <GroupFieldInput
+          name="testField"
+          fieldDef={props.fieldDef}
+          collection={props.collection ?? testCollection}
+          readOnly={props.readOnly ?? false}
+        />
+        <button type="submit">Submit</button>
+        <form.Subscribe selector={(state) => state.values.testField}>
+          {(value) => <output data-testid="value-probe">{JSON.stringify(value)}</output>}
+        </form.Subscribe>
+      </AppForm>
+    </VexConfigProvider>
   );
 }
 
@@ -96,9 +103,7 @@ runFieldInputContractSuite({
           />,
         );
 
-        // Base UI's `AccordionContent` unmounts collapsed content entirely
-        // (no `keepMounted`), not just hides it — `queryByLabelText` (never
-        // throws on zero matches) is the correct query here.
+        // Collapsed, error-free content is unmounted, not just hidden.
         expect(screen.queryByLabelText("Title", { exact: false })).not.toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: /details/i }));
         expect(screen.getByLabelText("Title", { exact: false })).toBeVisible();
@@ -150,7 +155,9 @@ runFieldInputContractSuite({
             phone: text({ label: "Phone", required: false }),
           },
         });
-        const emailSchema = adminFieldToInputSchema({ field: contactFieldDef.fields.email! });
+        const emailSchema = adminFieldToInputSchema({
+          field: contactFieldDef.fields.email! as AdminDataField,
+        });
         const emailError = emailSchema.safeParse(undefined);
         expect(emailError.success).toBe(false);
         const emailMessage = !emailError.success ? emailError.error.issues[0]?.message : undefined;

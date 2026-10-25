@@ -13,9 +13,9 @@ import {
 import { type ColumnDef } from "@tanstack/react-table";
 import { RevalidateButton } from "../RevalidateButton";
 import { VexLink } from "../ui/VexLink";
-import { MODALS } from "../modals/constants";
 import { CreateDocumentModal } from "../modals";
 import { useVexConfig } from "../../context/VexConfigContext";
+import { adminHref } from "../../utils/adminHref";
 import { getCollectionColumnDefs } from "../fields";
 import { useFieldPermissions, usePaginatedQuery, usePermission, useVexMutation } from "../../hooks";
 import { useMemo } from "react";
@@ -223,7 +223,7 @@ export function CollectionListView<
             nativeButton={false}
             disabled={!canCreate}
             render={
-              <VexLink href={`/admin/${collection.slug}?${MODALS.createDocument.urlParam}=true`} />
+              <VexLink href={adminHref({ type: "create", slug: collection.slug }, config.basePath)} />
             }
           >
             + New {collection.labels.singular}

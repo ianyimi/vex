@@ -1,6 +1,6 @@
 import pluralize from "pluralize-esm";
 
-import { ADMIN_FIELDS, AdminField, CollectionFieldMeta, ComponentHKT, number } from "../fields";
+import { ADMIN_FIELDS, AdminField, CollectionFieldMeta, ComponentHKT, date, getDataFields } from "../fields";
 import { CollectionSlug } from "../types";
 import { toTitleCase } from "../utils";
 import { COLLECTION_SYSTEM_FIELDS, CollectionSystemField } from "./constants";
@@ -18,7 +18,7 @@ function populateCollectionFieldMeta<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
-  TFieldSlug extends string = string,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
   TComponent extends ComponentHKT = ComponentHKT,
   TDrafts extends boolean = boolean,
 >({
@@ -28,22 +28,17 @@ function populateCollectionFieldMeta<
     TFieldMeta,
     TCollectionMeta,
     TCollectionSlug,
-    TFieldSlug,
+    TFields,
     TComponent,
     TDrafts
   >;
-}): Record<TFieldSlug, AdminField<TFieldMeta & CollectionFieldMeta>> {
-  const fields: Record<
-    TFieldSlug,
-    AdminField<TFieldMeta & { collectionSlug: string }>
-  > = {} as Record<TFieldSlug, AdminField<TFieldMeta & CollectionFieldMeta>>;
-  Object.entries(config.fields).forEach((value) => {
-    const fieldSlug = value[0] as TFieldSlug;
-    const field = value[1] as AdminField<TFieldMeta & CollectionFieldMeta>;
+}): Record<string, AdminField<TFieldMeta & CollectionFieldMeta>> {
+  const fields: Record<string, AdminField<TFieldMeta & { collectionSlug: string }>> = {};
+  Object.entries(config.fields).forEach(([fieldSlug, field]) => {
     fields[fieldSlug] = {
-      ...field,
+      ...(field as AdminField<TFieldMeta & CollectionFieldMeta>),
       meta: {
-        ...field?.meta,
+        ...(field as AdminField<TFieldMeta & CollectionFieldMeta>)?.meta,
         collectionSlug: config.slug,
       },
     };
@@ -79,83 +74,63 @@ export function defineCollection<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
-  TFieldSlug extends string = string,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
   TComponent extends ComponentHKT = ComponentHKT,
   const TDrafts extends boolean = false,
 >(
-  // `string extends TFieldSlug` is the escape hatch for callers whose `fields`
+  // `string extends keyof TFields` is the escape hatch for callers whose `fields`
   // is a widened `Record<string, AdminField<...>>` rather than an object
   // literal — `packages/better-auth/src/adapter.ts` builds it in a loop. Without
   // it, `string & "updatedAt"` collapses to `"updatedAt"` (not `never`), so the
   // auth adapter's own call would hit the reserved-key branch and fail to compile.
-  config: string extends TFieldSlug
-    ? CollectionConfigInput<
-        TFieldMeta,
-        TCollectionMeta,
-        TCollectionSlug,
-        TFieldSlug,
-        TComponent,
-        TDrafts
-      >
-    : [TFieldSlug & (CollectionSystemField | VersionSystemField)] extends [never]
-      ? CollectionConfigInput<
-          TFieldMeta,
-          TCollectionMeta,
-          TCollectionSlug,
-          TFieldSlug,
-          TComponent,
-          TDrafts
-        >
+  config: string extends keyof TFields
+    ? CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent, TDrafts>
+    : [keyof TFields & (CollectionSystemField | VersionSystemField)] extends [never]
+      ? CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent, TDrafts>
       : {
           fields: {
-            [
-              K in TFieldSlug & (CollectionSystemField | VersionSystemField)
-            ]: 'Field name is reserved — defineCollection injects "updatedAt" automatically; opt out with { timestamps: false }';
+            [K in keyof TFields & (CollectionSystemField | VersionSystemField)]: 'Field name is reserved — defineCollection injects "updatedAt" automatically; opt out with { timestamps: false }';
           };
         },
-): CollectionConfig<
-  TFieldMeta & CollectionFieldMeta,
-  TCollectionMeta,
-  TCollectionSlug,
-  TFieldSlug,
-  TComponent,
-  TDrafts
-> {
+): CollectionConfig<TFieldMeta & CollectionFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent, TDrafts> {
   const input = config as CollectionConfigInput<
     TFieldMeta,
     TCollectionMeta,
     TCollectionSlug,
-    TFieldSlug,
+    TFields,
     TComponent,
     TDrafts
   >;
 
-  // Runtime guard for JS consumers — the compile-time branch above only
-  // protects TypeScript callers whose `fields` is an object literal with
-  // statically inferable literal keys. Mirrors `defineGlobal`'s guard.
-  //
-  // `meta.locked` is the discriminator, and it is load-bearing: an adapter may
-  // legitimately declare a reserved key because the external system it mirrors
-  // owns that column. `betterAuthAdapter` does exactly this — `updatedAt` is
-  // never in its `EDITABLE_FIELDS`, so it always arrives locked. A
-  // user-authored field is never locked, so it still throws.
+  // Runtime guard for JS consumers — reserved keys are rejected on the RAW
+  // authored fields record, before any flattening, so a `ui()`/`tabs()`
+  // entry literally named "updatedAt" is rejected the same as a data field.
+  // Mirrors `defineGlobal`'s guard. `meta.locked` is the discriminator, and
+  // it is load-bearing: an adapter may legitimately declare a reserved key
+  // because the external system it mirrors owns that column. `betterAuthAdapter`
+  // does exactly this — `updatedAt` is never in its `EDITABLE_FIELDS`, so it
+  // always arrives locked. A user-authored field of that name never reaches
+  // this branch; the guard above protects a literal config object, this
+  // protects a dynamically-assembled one.
   const reservedKeys: (CollectionSystemField | VersionSystemField)[] = [
     ...Object.values(COLLECTION_SYSTEM_FIELDS),
     ...Object.values(VERSION_SYSTEM_FIELDS),
   ].map((field) => field.slug);
   for (const key of reservedKeys) {
-    const declared = input.fields[key as TFieldSlug] as AdminField<TFieldMeta> | undefined;
-    if (declared === undefined) {
-      continue;
-    }
+    const declared = (input.fields as Record<string, AdminField<TFieldMeta>>)[key];
+    if (declared === undefined) continue;
     const meta: Record<string, unknown> = declared.meta;
-    if (meta.locked === true) {
-      continue;
-    }
+    if (meta.locked === true) continue;
     throw new Error(
       `defineCollection: field key "${key}" is reserved and cannot be used in collection "${input.slug}". defineCollection injects it automatically; set { timestamps: false } to opt out.`,
     );
   }
+
+  // Reject a duplicate key once the fields record is flattened to data
+  // fields — two fields named the same, a named tab reusing a sibling's
+  // key, two tabs sharing a `name`. `getDataFields` itself throws; called
+  // here purely for the side effect, result discarded.
+  getDataFields({ fields: input.fields });
 
   // Runtime guard: `draftStatus` (collection-level `indexes[]` and
   // field-level `indexDraftStatus`) requires `versions.drafts: true`. The
@@ -171,8 +146,8 @@ export function defineCollection<
         `defineCollection: index "${indexOffender.name}" on collection "${input.slug}" declares draftStatus but versions.drafts is not true.`,
       );
     }
-    const fieldOffender = Object.entries(input.fields).find(
-      ([, field]) => (field as AdminField).indexDraftStatus !== undefined,
+    const fieldOffender = Object.entries(getDataFields({ fields: input.fields })).find(
+      ([, field]) => field.indexDraftStatus !== undefined,
     );
     if (fieldOffender) {
       throw new Error(
@@ -185,9 +160,8 @@ export function defineCollection<
   // exist — either the field's own `index`, or a relationship field's auto
   // `by_<fieldKey>`. Catches a typo'd `indexDraftStatus` on a field with
   // neither, which would otherwise silently do nothing.
-  for (const [fieldKey, field] of Object.entries(input.fields)) {
-    const f = field as AdminField;
-    if (f.indexDraftStatus !== undefined && !f.index && f.type !== ADMIN_FIELDS.relationship.type) {
+  for (const [fieldKey, field] of Object.entries(getDataFields({ fields: input.fields }))) {
+    if (field.indexDraftStatus !== undefined && !field.index && field.type !== ADMIN_FIELDS.relationship.type) {
       throw new Error(
         `defineCollection: field "${fieldKey}" on collection "${input.slug}" declares indexDraftStatus with no index to narrow — set "index", or this must be a relationship field (which auto-indexes).`,
       );
@@ -218,14 +192,16 @@ export function defineCollection<
     ? input.fields
     : {
         ...input.fields,
-        updatedAt: number({
-          admin: { position: "sidebar", readOnly: true },
-          // `number()` defaults to `0`; an unsaved document has no update
-          // time, and epoch is a lie. `getFieldsDefaultValues` yields
-          // `undefined` on create and the stored value on edit.
-          defaultValue: undefined,
+        updatedAt: date({
           label: "Updated At",
           required: false,
+          // `date()`'s own default is already `undefined` (`ADMIN_FIELDS.date.defaultValue`);
+          // stated explicitly so the intent reads at the call site — an unsaved document has
+          // no update time, and epoch is a lie. `getFieldsDefaultValues` yields `undefined`
+          // on create and the stored value on edit.
+          defaultValue: undefined,
+          admin: { position: "sidebar", readOnly: true },
+          time: { timePicker: { hour: true, minute: true, second: true } },
         }) as AdminField<TFieldMeta>,
       };
 
@@ -237,7 +213,14 @@ export function defineCollection<
   return {
     interfaceName: slugToPascalCase({ slug: input.slug }) + "Document",
     ...input,
-    fields,
+    // `populateCollectionFieldMeta`'s return widens to `Record<string, AdminField<...>>`;
+    // `TFields` is the caller's literal fields-record type, structurally unrelated
+    // to that widened shape from TS's point of view even though the runtime value
+    // is exactly `TFields` plus the `collectionSlug` meta stamp.
+    fields: fields as unknown as Partial<
+      Record<CollectionSystemField, AdminField<TFieldMeta & CollectionFieldMeta>>
+    > &
+      TFields,
     hooks: (input.hooks ?? {}) as CollectionHooks<TCollectionSlug>,
     admin: {
       useAsTitle: "_id",
@@ -253,7 +236,7 @@ export function defineCollection<
           ...input.admin?.table?.bulkActions,
         },
         defaultSort: {
-          field: "_createdAt",
+          field: "_creationTime",
           order: "desc",
           ...input.admin?.table?.defaultSort,
         },

@@ -6,7 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { useVexMutation } from "../../hooks";
 import { vexConvexApi, formatBytes, formatMimeType } from "@vexcms/core";
-import type { MediaCollectionConfig, UploadField } from "@vexcms/core";
+import type { AdminDataField, MediaCollectionConfig, UploadField } from "@vexcms/core";
 import { Button, Icon, Input, Label } from "../ui";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { AppForm } from "../form/AppForm";
@@ -435,7 +435,7 @@ export function MediaUploadForm({
                       <div className="space-y-1.5">
                         <Label htmlFor={field.name} className="text-xs font-medium">
                           Filename{" "}
-                          {collectionConfig.fields.alt?.required && (
+                          {(collectionConfig.fields.alt as AdminDataField | undefined)?.required && (
                             <span className="text-destructive">*</span>
                           )}
                         </Label>

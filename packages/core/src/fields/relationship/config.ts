@@ -3,6 +3,7 @@ import type { RelationshipFieldInput, RelationshipField } from "./types";
 import type { CollectionSlug , VexResourceSlug } from "../../types/generated";
 import { ComponentHKT } from "../baseTypes";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 
 /**
  * Creates a relationship field with all defaults applied.
@@ -24,7 +25,7 @@ import { BaseFieldMeta } from "../types";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
  *
  * @typeParam TTargetSlug - Inferred from `options.collection`.
@@ -56,8 +57,14 @@ export function relationship<
     required: false,
     hasMany: false,
     ...options,
-    min: options.min,
-    max: options.max,
+    min: resolveFieldLimit({
+      limit: options.min,
+      defaultError: (value) => `Must be at least ${value} related items.`,
+    }),
+    max: resolveFieldLimit({
+      limit: options.max,
+      defaultError: (value) => `Must be no more than ${value} related items.`,
+    }),
     type: ADMIN_FIELDS.relationship.type,
     // Per-field override of the static `ADMIN_FIELDS.relationship.interfaceType`
     // (`Id<CollectionSlug>[]`): emitting the target slug as a literal is what
@@ -68,11 +75,11 @@ export function relationship<
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       placeholder: "",
-      components: {},
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options?.meta,

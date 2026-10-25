@@ -34,7 +34,7 @@ describe("textFieldToInputSchema", () => {
     const field = text({
       required: true,
       defaultValue: "test",
-      min: { value: 3 },
+      min: 3,
     });
     const schema = textFieldToInputSchema({ field });
 
@@ -50,7 +50,7 @@ describe("textFieldToInputSchema", () => {
     const field = text({
       required: true,
       defaultValue: "test",
-      max: { value: 5 },
+      max: 5,
     });
     const schema = textFieldToInputSchema({ field });
 
@@ -66,7 +66,7 @@ describe("textFieldToInputSchema", () => {
     const field = text({
       required: true,
       defaultValue: "test",
-      min: { value: 3, error: "Too short" },
+      min: [3, "Too short"],
     });
     const schema = textFieldToInputSchema({ field });
 
@@ -81,7 +81,7 @@ describe("textFieldToInputSchema", () => {
     const field = text({
       required: true,
       defaultValue: "test",
-      max: { value: 5, error: "Too long" },
+      max: [5, "Too long"],
     });
     const schema = textFieldToInputSchema({ field });
 
@@ -96,8 +96,8 @@ describe("textFieldToInputSchema", () => {
     const field = text({
       required: true,
       defaultValue: "test",
-      min: { value: 3 },
-      max: { value: 10 },
+      min: 3,
+      max: 10,
     });
     const schema = textFieldToInputSchema({ field });
 
@@ -114,8 +114,8 @@ describe("textFieldToInputSchema", () => {
     const field = text({
       required: true,
       defaultValue: "test",
-      min: { value: 3, error: "Too short" },
-      max: { value: 10, error: "Too long" },
+      min: [3, "Too short"],
+      max: [10, "Too long"],
     });
     const schema = textFieldToInputSchema({ field });
 
@@ -138,8 +138,8 @@ describe("textFieldToInputSchema", () => {
     const field = text({
       required: false,
       defaultValue: "",
-      min: { value: 5 },
-      max: { value: 50 },
+      min: 5,
+      max: 50,
     });
     const schema = textFieldToInputSchema({ field });
 
@@ -183,13 +183,13 @@ describe("textFieldToInputSchema", () => {
 
   describe("min/max on an optional field", () => {
     it("skips min/max when the value is omitted (undefined)", () => {
-      const field = text({ min: { value: 3 }, max: { value: 5 }, defaultValue: "" });
+      const field = text({ min: 3, max: 5, defaultValue: "" });
       const schema = textFieldToInputSchema({ field });
       expect(schema.safeParse(undefined).success).toBe(true);
     });
 
     it("still enforces min/max once a non-empty value is supplied, even though the field is optional", () => {
-      const field = text({ min: { value: 3 }, max: { value: 5 }, defaultValue: "" });
+      const field = text({ min: 3, max: 5, defaultValue: "" });
       const schema = textFieldToInputSchema({ field });
       expect(schema.safeParse("ab").success).toBe(false);
       expect(schema.safeParse("toolong").success).toBe(false);

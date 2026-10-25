@@ -1,38 +1,27 @@
-import {
-  InputComponentProps,
-  AdminField,
-  CollectionConfig,
-  CellComponentProps,
-  TDocument,
-  BaseFieldMeta,
-} from "@vexcms/core";
-import { ComponentPropsWithRef, ComponentType } from "react";
-import { TextFieldCell, TextFieldInput, textFieldToColumnDef } from "./text";
-import { NumberFieldCell, NumberFieldInput, numberFieldToColumnDef } from "./number";
-import { CheckboxFieldCell, CheckboxFieldInput, checkboxFieldToColumnDef } from "./checkbox";
-import { DateFieldCell, DateFieldInput, dateFieldToColumnDef } from "./date";
-import { ADMIN_FIELDS, type AdminFieldType } from "@vexcms/core";
-import { cn } from "../../styles/utils";
+import type { ComponentType } from "react";
+import { CollectionConfig, TDocument, getUIFieldsWithCell } from "@vexcms/core";
+import { textFieldToColumnDef } from "./text";
+import { emailFieldToColumnDef } from "./email";
+import { textareaFieldToColumnDef } from "./textarea";
+import { numberFieldToColumnDef } from "./number";
+import { checkboxFieldToColumnDef } from "./checkbox";
+import { dateFieldToColumnDef } from "./date";
+import { ADMIN_FIELDS, getDataFields, type AdminFieldType } from "@vexcms/core";
 import { ColumnDef } from "@tanstack/react-table";
-import { SelectFieldCell, SelectFieldInput, selectFieldToColumnDef } from "./select";
-import { UrlFieldCell, UrlFieldInput, urlFieldToColumnDef } from "./url";
-import { ColorFieldCell, ColorFieldInput, colorFieldToColumnDef } from "./color";
-import {
-  RelationshipFieldCell,
-  RelationshipFieldInput,
-  relationshipFieldToColumnDef,
-} from "./relationship";
-import { ArrayFieldCell, ArrayFieldInput, arrayFieldToColumnDef } from "./array";
-import { GroupFieldCell, GroupFieldInput, groupFieldToColumnDef } from "./group";
-import { BlocksFieldCell, BlocksFieldInput, blocksFieldToColumnDef } from "./blocks";
-import { UploadFieldInput, UploadFieldCell, uploadFieldToColumnDef } from "./upload";
-import {
-  RichTextFieldCell,
-  RichTextFieldInput,
-  richTextFieldToColumnDef,
-} from "./richtext";
+import { selectFieldToColumnDef } from "./select";
+import { urlFieldToColumnDef } from "./url";
+import { colorFieldToColumnDef } from "./color";
+import { relationshipFieldToColumnDef } from "./relationship";
+import { arrayFieldToColumnDef } from "./array";
+import { groupFieldToColumnDef } from "./group";
+import { blocksFieldToColumnDef } from "./blocks";
+import { uploadFieldToColumnDef } from "./upload";
+import { richTextFieldToColumnDef } from "./richtext";
+import { jsonFieldToColumnDef } from "./json";
 
 export * from "./text";
+export * from "./email";
+export * from "./textarea";
 export * from "./number";
 export * from "./checkbox";
 export * from "./date";
@@ -45,166 +34,10 @@ export * from "./relationship";
 export * from "./group";
 export * from "./blocks";
 export * from "./richtext";
+export * from "./json";
 
-/**
- * Maps every `AdminFieldType` string to its corresponding input component.
- *
- * Mirrors `reactAdapter.fields` — both must be kept in sync when a new
- * field type is added to `@vexcms/core`.
- */
-export const fieldInputComponents: Record<
-  AdminFieldType,
-  ComponentType<InputComponentProps<BaseFieldMeta, AdminField>>
-> = {
-  [ADMIN_FIELDS.text.type]: TextFieldInput as ComponentType<
-    InputComponentProps<BaseFieldMeta, AdminField>
-  >,
-  [ADMIN_FIELDS.number.type]: NumberFieldInput as ComponentType<
-    InputComponentProps<BaseFieldMeta, AdminField>
-  >,
-  [ADMIN_FIELDS.checkbox.type]: CheckboxFieldInput as ComponentType<
-    InputComponentProps<BaseFieldMeta, AdminField>
-  >,
-  [ADMIN_FIELDS.date.type]: DateFieldInput as ComponentType<
-    InputComponentProps<BaseFieldMeta, AdminField>
-  >,
-  [ADMIN_FIELDS.select.type]: SelectFieldInput as ComponentType<
-    InputComponentProps<BaseFieldMeta, AdminField>
-  >,
-  [ADMIN_FIELDS.url.type]: UrlFieldInput as ComponentType<
-    InputComponentProps<BaseFieldMeta, AdminField>
-  >,
-  [ADMIN_FIELDS.color.type]: ColorFieldInput as ComponentType<
-    InputComponentProps<BaseFieldMeta, AdminField>
-  >,
-  [ADMIN_FIELDS.relationship.type]: RelationshipFieldInput as ComponentType<
-    InputComponentProps<BaseFieldMeta, AdminField>
-  >,
-  [ADMIN_FIELDS.array.type]: ArrayFieldInput as ComponentType<
-    InputComponentProps<BaseFieldMeta, AdminField>
-  >,
-  [ADMIN_FIELDS.group.type]: GroupFieldInput as ComponentType<
-    InputComponentProps<BaseFieldMeta, AdminField>
-  >,
-  [ADMIN_FIELDS.blocks.type]: BlocksFieldInput as ComponentType<
-    InputComponentProps<BaseFieldMeta, AdminField>
-  >,
-  [ADMIN_FIELDS.upload.type]: UploadFieldInput as ComponentType<
-    InputComponentProps<BaseFieldMeta, AdminField>
-  >,
-  [ADMIN_FIELDS.richtext.type]: RichTextFieldInput as ComponentType<
-    InputComponentProps<BaseFieldMeta, AdminField>
-  >,
-};
-
-/**
- * Returns the input component registered for a given field type, or
- * `undefined` if none is registered.
- *
- * Used by `CollectionEditView` to render one input per field without
- * importing each component directly.
- *
- * @param field - The `AdminFieldType` string (e.g. `"text"`).
- * @returns The matching `ComponentType`, or `undefined` if the type is unknown.
- */
-export function fieldToInputComponent(field: AdminFieldType) {
-  return fieldInputComponents[field];
-}
-
-/**
- * Renders all field input components for a collection's fields.
- *
- * Iterates `collection.fields`, looks up the matching input component from
- * `fieldInputComponents`, and renders each one. Fields whose type has no
- * registered component are skipped. All remaining `div` props (e.g.
- * `className`) are forwarded to the wrapping `<div>`.
- *
- * Must be rendered inside `<AppForm>` — each input reads the TanStack Form
- * instance from `AppFormContext`.
- *
- * @param props - Component props.
- * @param props.collection - The `CollectionConfig` whose fields are rendered.
- * @param props.fieldKeys - Field keys to render; `undefined` renders every
- *   field in `collection.fields`. Pair with the same key list passed to
- *   `useFieldsForm`'s `readableFieldKeys` so a field kept out of the form
- *   schema/`defaultValues` is also kept out of the rendered inputs — an
- *   input mounted for a key absent from form state has no value to bind to.
- * @param props.className - Optional CSS class merged with the base `"relative"` class.
- * @returns A `<div>` containing one input component per rendered field.
- *
- * @example
- * ```tsx
- * <AppForm form={form}>
- *   <RenderFieldInputComponents collection={collection} className="flex flex-col gap-4" />
- * </AppForm>
- * ```
- */
-export function RenderFieldInputComponents(
-  props: { collection: CollectionConfig; fieldKeys?: readonly string[] } & ComponentPropsWithRef<"div">,
-) {
-  const { collection, fieldKeys, className, ...divProps } = props;
-  const entries = fieldKeys
-    ? Object.entries(collection.fields).filter(([fieldKey]) => fieldKeys.includes(fieldKey))
-    : Object.entries(collection.fields);
-  return (
-    <div className={cn("relative", className)} {...divProps}>
-      {entries.map(([fieldKey, field]) => {
-        const FieldInput = fieldInputComponents[field.type];
-        if (!FieldInput) return null;
-        return (
-          <FieldInput
-            key={fieldKey}
-            name={fieldKey}
-            fieldDef={field}
-            readOnly={field.admin.readOnly}
-            collection={collection}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * Maps every `AdminFieldType` string to its corresponding cell component.
- *
- * Mirrors `reactAdapter.fields` — both must be kept in sync when a new
- * field type is added to `@vexcms/core`.
- */
-export const fieldCellComponents: Record<
-  AdminFieldType,
-  ComponentType<CellComponentProps<AdminField>>
-> = {
-  [ADMIN_FIELDS.text.type]: TextFieldCell as ComponentType<CellComponentProps<AdminField>>,
-  [ADMIN_FIELDS.number.type]: NumberFieldCell as ComponentType<CellComponentProps<AdminField>>,
-  [ADMIN_FIELDS.checkbox.type]: CheckboxFieldCell as ComponentType<CellComponentProps<AdminField>>,
-  [ADMIN_FIELDS.date.type]: DateFieldCell as ComponentType<CellComponentProps<AdminField>>,
-  [ADMIN_FIELDS.select.type]: SelectFieldCell as ComponentType<CellComponentProps<AdminField>>,
-  [ADMIN_FIELDS.url.type]: UrlFieldCell as ComponentType<CellComponentProps<AdminField>>,
-  [ADMIN_FIELDS.color.type]: ColorFieldCell as ComponentType<CellComponentProps<AdminField>>,
-  [ADMIN_FIELDS.relationship.type]: RelationshipFieldCell as ComponentType<
-    CellComponentProps<AdminField>
-  >,
-  [ADMIN_FIELDS.array.type]: ArrayFieldCell as ComponentType<CellComponentProps<AdminField>>,
-  [ADMIN_FIELDS.group.type]: GroupFieldCell as ComponentType<CellComponentProps<AdminField>>,
-  [ADMIN_FIELDS.blocks.type]: BlocksFieldCell as ComponentType<CellComponentProps<AdminField>>,
-  [ADMIN_FIELDS.upload.type]: UploadFieldCell as ComponentType<CellComponentProps<AdminField>>,
-  [ADMIN_FIELDS.richtext.type]: RichTextFieldCell as ComponentType<CellComponentProps<AdminField>>,
-};
-
-/**
- * Returns the cell component registered for a given field type, or
- * `undefined` if none is registered.
- *
- * Used by `CollectionEditView` to render one input per field without
- * importing each component directly.
- *
- * @param field - The `AdminFieldType` string (e.g. `"text"`).
- * @returns The matching `ComponentType`, or `undefined` if the type is unknown.
- */
-export function fieldToCellComponent(field: AdminFieldType) {
-  return fieldCellComponents[field];
-}
+import { fieldToInputComponent, fieldToCellComponent } from "./registry";
+export { fieldToInputComponent, fieldToCellComponent };
 
 /**
  * Builds TanStack Table column definitions for every field in a collection.
@@ -234,13 +67,36 @@ export function getCollectionColumnDefs<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const columnDefs: ColumnDef<TData, any>[] = [];
   const { collection } = props;
-  for (const [fieldKey, fieldDef] of Object.entries(collection.fields)) {
+  for (const [fieldKey, fieldDef] of Object.entries(getDataFields({ fields: collection.fields }))) {
+    if (fieldDef.admin.hidden) continue;
     const isTitleField = fieldKey === collection.admin.useAsTitle;
     const fieldType: AdminFieldType = fieldDef.type;
     switch (fieldDef.type) {
       case ADMIN_FIELDS.text.type:
         columnDefs.push(
           textFieldToColumnDef<TData>({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
+      case ADMIN_FIELDS.email.type:
+        columnDefs.push(
+          emailFieldToColumnDef<TData>({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
+      case ADMIN_FIELDS.textarea.type:
+        columnDefs.push(
+          textareaFieldToColumnDef<TData>({
             fieldDef,
             fieldKey,
             isTitleField,
@@ -381,13 +237,51 @@ export function getCollectionColumnDefs<
         );
         break;
 
+      case ADMIN_FIELDS.json.type:
+        columnDefs.push(
+          jsonFieldToColumnDef<TData>({
+            fieldDef,
+            fieldKey,
+            isTitleField,
+            collection,
+          }),
+        );
+        break;
+
       default: {
         const unhandled: never = fieldDef;
         throw new Error(
           `unsupported column def field type: ${fieldType} — ${JSON.stringify(unhandled)}`,
         );
-      }
     }
+  }
+  }
+
+  // `ui()` fields are never in `getDataFields`'s output (it drops them — see
+  // its own doc comment) because they carry no stored value to validate/
+  // index/type-gen; the list view still wants a column for one when its
+  // `admin.components.Cell` is set (per `UIFieldCellProps`'s own contract:
+  // "the list view shows a column rendering this"), so this is a second,
+  // parallel pass over `collection.fields` via `getUIFieldsWithCell` instead
+  // of folding into the loop above.
+  for (const [fieldKey, uiField] of Object.entries(getUIFieldsWithCell({ fields: collection.fields }))) {
+    if (uiField.admin.hidden) continue;
+    if (!uiField.admin.components.Cell) continue;
+    // Same erased-type cast `FormUI.tsx` uses for `Field` — the HKT-applied
+    // `Cell` type has no concrete call signature until a framework adapter
+    // resolves it, but at this point it already has (this is the React
+    // adapter's own `getCollectionColumnDefs`).
+    const Cell = uiField.admin.components.Cell as ComponentType<{
+      name: string;
+      data: Record<string, unknown>;
+    }>;
+    columnDefs.push({
+      id: fieldKey,
+      header: uiField.label || fieldKey,
+      cell: ({ row }) => <Cell name={fieldKey} data={row.original as Record<string, unknown>} />,
+      enableSorting: false,
+      enableHiding: true,
+    });
   }
   return columnDefs;
 }

@@ -24,25 +24,23 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  * ```ts
  * const field = date({ required: true, min: 1700000000000 })
  * dateFieldToInputSchema({ field })
- * // → z.number({ error: "This field is required." }).min(1700000000000, ...)
+ * // → z.number({ error: "This field is required." }).min(1700000000000, "...")
  * ```
  */
 export function dateFieldToInputSchema(props: { field: DateField }): ZodType {
   const { field } = props;
 
   const requiredError = "This field is required.";
-  const minError = "Date must not be earlier than the minimum allowed date.";
-  const maxError = "Date must not be later than the maximum allowed date.";
 
   let inputSchema = field.required
     ? z.number({ error: requiredError })
     : z.number();
 
-  if (field.min !== undefined) {
-    inputSchema = inputSchema.min(field.min, minError);
+  if (field.min) {
+    inputSchema = inputSchema.min(field.min[0], field.min[1]);
   }
-  if (field.max !== undefined) {
-    inputSchema = inputSchema.max(field.max, maxError);
+  if (field.max) {
+    inputSchema = inputSchema.max(field.max[0], field.max[1]);
   }
 
   return applyBaseInputSchemaMeta({ field, inputSchema });

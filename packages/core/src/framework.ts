@@ -1,9 +1,10 @@
 import type {
-  AdminField,
+  AdminDataField,
   ApplyComponent,
   BaseFieldMeta,
   CellComponentProps,
   ComponentHKT,
+  DataFieldType,
   InputComponentProps,
 } from "./fields";
 import type { VexDocument } from "./api/convex";
@@ -30,12 +31,12 @@ export type FieldComponentMap<
   F extends ComponentHKT,
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 > = {
-  [K in AdminField["type"]]: {
+  [K in DataFieldType]: {
     input: ApplyComponent<
       F,
-      InputComponentProps<TFieldMeta, Extract<AdminField<TFieldMeta>, { type: K }>>
+      InputComponentProps<TFieldMeta, Extract<AdminDataField<TFieldMeta>, { type: K }>>
     >;
-    cell: ApplyComponent<F, CellComponentProps<Extract<AdminField<TFieldMeta>, { type: K }>>>;
+    cell: ApplyComponent<F, CellComponentProps<Extract<AdminDataField<TFieldMeta>, { type: K }>>>;
   };
 };
 

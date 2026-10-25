@@ -92,11 +92,14 @@ The docs site serves [llms.txt](https://llmstxt.org) indexes for AI coding agent
 
 ### Schema & Field System
 
-Define content types with a fully typed field system. Vex ships 12 field types:
+Define content types with a fully typed field system. Vex ships 16 field types:
 
 | Field          | Description                                          |
 | -------------- | ----------------------------------------------------- |
 | `text`         | Single-line string value                               |
+| `email`        | Email string with format validation                    |
+| `textarea`     | Multi-line string, with a character counter             |
+| `json`         | Arbitrary structured JSON, edited with CodeMirror       |
 | `number`       | Numeric value                                          |
 | `checkbox`     | Boolean toggle                                         |
 | `select`       | One or more values from a fixed option list            |
@@ -108,8 +111,13 @@ Define content types with a fully typed field system. Vex ships 12 field types:
 | `group`        | Named set of sub-fields stored as a nested object       |
 | `blocks`       | Ordered list of typed content blocks (flexible layout) |
 | `color`        | CSS colour string (hex/rgb/hsl/oklch) or theme-token reference |
+| `richtext`     | Rich text document edited with Plate.js (`@vexcms/richtext-plate`) |
 
-**Coming soon:** `richtext` (Plate.js), `json`, `email`, `textarea`, `tabs`, and `ui` (non-persisted display/action fields) — see the [roadmap](apps/docs/src/content/docs/roadmap.md).
+Plus `tabs`, `collapsible`, `row`, and `ui` — non-persisted layout fields that
+organize the edit form — and `admin.condition` on every field, data or layout,
+to show or hide it from `{ data, siblingData }`, enforced client- and
+server-side. **Coming soon:** a dedicated `/fields/richtext/` docs page — see
+the [roadmap](apps/docs/src/content/docs/roadmap.md).
 
 ```typescript
 import { defineCollection, text, select, relationship } from "@vexcms/core";
@@ -368,13 +376,13 @@ It includes a paginated data table per collection, Zod-validated edit forms gene
 ## Architecture
 
 ```
-@vexcms/core                 Schema definitions, fields, access control (RBAC), type/query generation — no Convex dep
+@vexcms/core                 Schema definitions, fields, access control (RBAC), versions, type/query generation, Convex server API (`convex` as a peer dependency)
 @vexcms/cli                  CLI: schema generation, type generation, file watching
 @vexcms/react                Shared admin UI components, hooks, and HKT-bound config re-exports
 @vexcms/next                 Next.js admin panel entry points (NextAdminPage, NextAdminLayout)
 @vexcms/better-auth           Better Auth adapter for Vex (schema extraction + Convex DB adapter)
 @vexcms/file-storage-convex  Convex file storage adapter and media collection factory
-@vexcms/richtext-plate       Plate.js rich text editor — built, not yet wired to a `richtext` field (roadmap)
+@vexcms/richtext-plate       Plate.js rich text editor and renderer for the `richtext` field
 create-vexcms                Project scaffolding CLI (`pnpm create vexcms`)
 ```
 
@@ -383,11 +391,15 @@ create-vexcms                Project scaffolding CLI (`pnpm create vexcms`)
 - **Database**: [Convex](https://convex.dev) — real-time serverless database
 - **Admin Panel**: [Next.js](https://nextjs.org) (App Router)
 - **Authentication**: [Better Auth](https://better-auth.com)
-- **Rich Text**: [Plate.js](https://platejs.org) (`@vexcms/richtext-plate` — editor built, `richtext` field on the roadmap)
+- **Rich Text**: [Plate.js](https://platejs.org) (`@vexcms/richtext-plate`)
 - **Form Validation**: [Zod](https://zod.dev) + [TanStack Form](https://tanstack.com/form)
 - **Data Table**: [TanStack Table](https://tanstack.com/table)
 - **UI Components**: [shadcn/ui](https://ui.shadcn.com)
 
 ## License
 
-Apache-2.0
+Apache-2.0. The core stays Apache-2.0: every field type, the admin panel, the CLI, RBAC,
+drafts, live preview, and hooks, plus localization and presence when they land. Paid
+add-ons (real-time co-editing, SSO, audit logs, approval workflows, environment branching)
+will ship later as separate, self-hosted packages under an annual licence; nothing free
+today becomes paid later.

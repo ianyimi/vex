@@ -1,7 +1,7 @@
 import { type GenericDocument } from "convex/server";
 import type { AccessConditionResult, AccessIndexConstraint } from "./constraintTypes";
 import { AccessResource, VexAccessConfig, VexAccessConfigError } from "./types";
-import { ADMIN_FIELDS } from "../fields";
+import { ADMIN_FIELDS, getDataFields } from "../fields";
 import { createAccessQueryBuilder, readAccessCondition } from "./createAccessQueryBuilder";
 
 /**
@@ -16,7 +16,7 @@ import { createAccessQueryBuilder, readAccessCondition } from "./createAccessQue
  */
 function collectResourceIndexFields(resource: AccessResource): Record<string, readonly string[]> {
   const indexFields: Record<string, readonly string[]> = {};
-  for (const [fieldKey, field] of Object.entries(resource.fields)) {
+  for (const [fieldKey, field] of Object.entries(getDataFields({ fields: resource.fields }))) {
     if (field.index) {
       indexFields[field.index] = [fieldKey];
     } else if (field.type === ADMIN_FIELDS.relationship.type) {

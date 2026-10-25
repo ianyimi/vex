@@ -2,6 +2,7 @@
 
 import { Card, CardDescription, CardHeader, CardTitle } from "../ui";
 import { useVexConfig } from "../../context/VexConfigContext";
+import { adminHref } from "../../utils/adminHref";
 
 /**
  * Landing page listing every configured global as a clickable card.
@@ -22,7 +23,7 @@ export function GlobalsListView() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {config.globals.map((global) => (
-          <a key={global.slug} href={`/admin/globals/${global.slug}`} className="group block">
+          <a key={global.slug} href={adminHref({ type: "global", slug: global.slug }, config.basePath)} className="group block">
             <Card className="cursor-pointer transition-shadow group-hover:shadow-md">
               <CardHeader>
                 <CardTitle>{global.label}</CardTitle>

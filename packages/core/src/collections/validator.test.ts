@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { defineCollection, defineConfig } from "../index";
 import { relationship } from "../fields/relationship/config";
-import { text } from "../fields";
-import { collectionConfigToVexSchema, getIncomingRelationships } from "./validator";
+import { email, text, textarea, number, date } from "../fields";
+import { collectionConfigToVexSchema, getIncomingRelationships, resolveTitleSearchIndex } from "./validator";
 
 // ─── getIncomingRelationships ─────────────────────────────────────────────────
 
@@ -287,8 +287,7 @@ describe("collectionConfigToVexSchema — auto search index", () => {
     expect(output).toContain("filterFields: []");
   });
 
-  it("emits manual searchIndex with a different name alongside auto search index", () => {
-    // manual name is different from search_<useAsTitle> — both should be emitted
+  it("custom-named searchIndex on the title field is reused — no auto index, exactly one emitted", () => {
     const authors = defineCollection({
       slug: "authors",
       fields: {
@@ -306,9 +305,9 @@ describe("collectionConfigToVexSchema — auto search index", () => {
     const config = defineConfig({ collections: [posts, authors] });
     const output = collectionConfigToVexSchema({ collection: authors, config });
     expect(output).toContain('.searchIndex("search_authors_by_name"');
-    expect(output).toContain('.searchIndex("search_name"');
+    expect(output).not.toContain('.searchIndex("search_name"');
     const count = (output.match(/searchIndex/g) ?? []).length;
-    expect(count).toBe(2);
+    expect(count).toBe(1);
   });
 
   it("does NOT emit auto search index when useAsTitle is _creationTime", () => {
@@ -369,6 +368,121 @@ describe("collectionConfigToVexSchema — auto search index", () => {
     expect(output).toContain('.searchIndex("search_bio"');
     const count = (output.match(/searchIndex/g) ?? []).length;
     expect(count).toBe(2); // not 3
+  });
+
+  it("emits .searchIndex() for a textarea field with searchIndex configured", () => {
+    const posts = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text({ required: true }),
+        body: textarea({
+          searchIndex: { name: "search_body", filterFields: ["title"] },
+        }),
+      },
+      admin: { useAsTitle: "title" },
+    });
+    const config = defineConfig({ collections: [posts] });
+    const output = collectionConfigToVexSchema({ collection: posts, config });
+    expect(output).toContain('.searchIndex("search_body"');
+    expect(output).toContain('searchField: "body"');
+    expect(output).toContain('filterFields: ["title"]');
+  });
+
+  it("emits .searchIndex() for an email field with searchIndex configured", () => {
+    const users = defineCollection({
+      slug: "users",
+      fields: {
+        name: text({ required: true }),
+        contactEmail: email({
+          searchIndex: { name: "search_contactEmail", filterFields: ["name"] },
+        }),
+      },
+      admin: { useAsTitle: "name" },
+    });
+    const config = defineConfig({ collections: [users] });
+    const output = collectionConfigToVexSchema({ collection: users, config });
+    expect(output).toContain('.searchIndex("search_contactEmail"');
+    expect(output).toContain('searchField: "contactEmail"');
+    expect(output).toContain('filterFields: ["name"]');
+  });
+  it("does NOT emit a search index when useAsTitle is a non-string field (number)", () => {
+    const products = defineCollection({
+      slug: "products",
+      fields: { price: number({ required: true }) },
+      admin: { useAsTitle: "price" },
+    });
+    const orders = defineCollection({
+      slug: "orders",
+      fields: { product: relationship({ collection: { slug: "products" } }) },
+    });
+    const config = defineConfig({ collections: [orders, products] });
+    const output = collectionConfigToVexSchema({ collection: products, config });
+    expect(output).not.toContain(".searchIndex(");
+  });
+
+  it("does NOT emit a search index when useAsTitle is a non-string field (date)", () => {
+    const events = defineCollection({
+      slug: "events",
+      fields: { startsAt: date({ required: true }) },
+      admin: { useAsTitle: "startsAt" },
+    });
+    const tickets = defineCollection({
+      slug: "tickets",
+      fields: { event: relationship({ collection: { slug: "events" } }) },
+    });
+    const config = defineConfig({ collections: [tickets, events] });
+    const output = collectionConfigToVexSchema({ collection: events, config });
+    expect(output).not.toContain(".searchIndex(");
+  });
+});
+
+// ─── resolveTitleSearchIndex ───────────────────────────────────────────────────
+
+describe("resolveTitleSearchIndex", () => {
+  it("returns the auto search_<useAsTitle> name when the title field has no own searchIndex", () => {
+    const authors = defineCollection({
+      slug: "authors",
+      fields: { name: text({ required: true }) },
+      admin: { useAsTitle: "name" },
+    });
+    expect(resolveTitleSearchIndex({ collection: authors })).toEqual({
+      indexName: "search_name",
+      searchField: "name",
+    });
+  });
+
+  it("returns the field's own searchIndex name when configured", () => {
+    const authors = defineCollection({
+      slug: "authors",
+      fields: {
+        name: text({
+          required: true,
+          searchIndex: { name: "search_authors_by_name", filterFields: [] },
+        }),
+      },
+      admin: { useAsTitle: "name" },
+    });
+    expect(resolveTitleSearchIndex({ collection: authors })).toEqual({
+      indexName: "search_authors_by_name",
+      searchField: "name",
+    });
+  });
+
+  it("returns undefined when useAsTitle is a Convex system field", () => {
+    const authors = defineCollection({
+      slug: "authors",
+      fields: { name: text({ required: true }) },
+    });
+    expect(resolveTitleSearchIndex({ collection: authors })).toBeUndefined();
+  });
+
+  it("returns undefined when useAsTitle is a non-searchable field type", () => {
+    const products = defineCollection({
+      slug: "products",
+      fields: { price: number({ required: true }) },
+      admin: { useAsTitle: "price" },
+    });
+    expect(resolveTitleSearchIndex({ collection: products })).toBeUndefined();
   });
 });
 

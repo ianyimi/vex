@@ -1,6 +1,7 @@
 import { adminFieldToValidator } from "../validators";
 import { applyBaseValidators } from "../validators/utils";
 import { fieldValidator, type FieldValidate } from "../baseTypes";
+import { ADMIN_FIELDS } from "../constants";
 import type { CollectionSlug } from "../../types/generated";
 import type { ArrayField, ArrayType } from "./types";
 import type { VexResourceSlug } from "../../types/generated";
@@ -35,9 +36,19 @@ export function arrayFieldToValidator<
   TFieldMeta extends {} = {},
 >(props: { field: ArrayField<VexResourceSlug, TArrayType, TFieldMeta> }): string {
   const itemValidator = adminFieldToValidator({ field: props.field.items });
+  // Object-shaped items (group()) get a stored id — injected into the already-
+  // generated `v.object({ ... })` string rather than threading a second parameter
+  // through groupFieldToValidator, since a group used OUTSIDE an array must not
+  // carry one. array()'s own Step 9 edit forces `items.required: true`, so a group
+  // item's validator string is always the bare `v.object({...})`, never wrapped in
+  // `v.optional(...)` — the anchor is exact.
+  const resolvedItemValidator =
+    props.field.items.type === ADMIN_FIELDS.group.type
+      ? itemValidator.replace("v.object({", "v.object({ id: v.optional(v.string()),")
+      : itemValidator;
   return applyBaseValidators({
     field: props.field,
-    validator: `v.array(${itemValidator})`,
+    validator: `v.array(${resolvedItemValidator})`,
   });
 }
 

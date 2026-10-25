@@ -21,32 +21,28 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  *
  * @example
  * ```ts
- * const field = text({ required: true, min: { value: 3 }, max: { value: 100 } })
+ * const field = text({ required: true, min: 3, max: [100, "Too long."] })
  * textFieldToInputSchema({ field })
- * // → z.string({ error: "This field is required." }).min(1, "...").min(3).max(100)
+ * // → z.string({ error: "This field is required." }).min(1, "...").min(3, "...").max(100, "Too long.")
  * ```
  */
 export function textFieldToInputSchema(props: { field: TextField }): ZodType {
-  const { field } = props;
-
-  const fieldMinError = field.min?.error ?? "This field is too short.";
-  const fieldMaxError = field.max?.error ?? "This field is too long.";
   const requiredError = "This field is required.";
 
-  let inputSchema = field.required
+  let inputSchema = props.field.required
     ? z.string({ error: requiredError }).min(1, requiredError)
     : z.string();
 
-  if (field.min) {
-    inputSchema = inputSchema.min(field.min.value, fieldMinError);
+  if (props.field.min) {
+    inputSchema = inputSchema.min(props.field.min[0], props.field.min[1]);
   }
-  if (field.max) {
-    inputSchema = inputSchema.max(field.max.value, fieldMaxError);
+  if (props.field.max) {
+    inputSchema = inputSchema.max(props.field.max[0], props.field.max[1]);
   }
 
-  const finalSchema: ZodType = field.required
+  const finalSchema: ZodType = props.field.required
     ? inputSchema
-    : inputSchema.default(field.defaultValue);
+    : inputSchema.default(props.field.defaultValue);
 
-  return applyBaseInputSchemaMeta({ field, inputSchema: finalSchema });
+  return applyBaseInputSchemaMeta({ field: props.field, inputSchema: finalSchema });
 }

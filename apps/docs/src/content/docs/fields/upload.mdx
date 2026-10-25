@@ -38,8 +38,9 @@ of storing raw string data.
 | `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
 | `admin.readOnly` | `boolean` | `false` | Renders the picker/dropzone as non-interactive — existing files are shown but cannot be added or removed. |
 | `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
-| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.width` | `string` | `"100%"` | CSS width of the field in the edit form (e.g. `"50%"`, `"240px"`). Meaningful as a child of `row()`; below a narrow form column every field renders full width regardless. |
 | `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Alignment used for this field's column in the list-view table. |
+| `admin.condition` | `(props: { data, siblingData }) => boolean` | — | Shows the field only while this returns `true`. A throwing condition counts as met. Hidden fields skip `required`/`validate` on the server too. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
 
 ## Schema output
 
@@ -153,12 +154,14 @@ against the client config's whole `mediaCollections` array, not tied to any one 
 ## Admin UI
 
 The upload field renders a two-part control. The **empty state** shows a
-dropzone ("Drop files here or click to browse") plus a "Browse `<plural>`"
+dropzone ("Drop files here or click to browse") plus a "Browse media library"
 button that opens a media-library picker modal scoped to the target
 collection; `accept` is applied to the file input. The **filled state** shows
 each attached file via a thumbnail preview with drag-to-reorder and per-file
-removal, plus a `count/max` indicator once `max` is set. `hasMany: false`
-allows only a single selection; `hasMany: true` allows selecting or uploading
-multiple files. In the list-view table, the cell shows the first file's
-thumbnail and filename with a `+N` badge when more than one file is attached;
-sorting is disabled since file references aren't meaningfully sortable.
+removal, plus a "Select `<plural>`" button (labeled with the target media
+collection's plural label) that reopens the picker, and a `count/max`
+indicator once `max` is set. `hasMany: false` allows only a single selection;
+`hasMany: true` allows selecting or uploading multiple files. In the
+list-view table, the cell shows the first file's thumbnail and filename with
+a `+N` badge when more than one file is attached; sorting is disabled since
+file references aren't meaningfully sortable.

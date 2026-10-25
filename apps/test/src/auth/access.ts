@@ -6,6 +6,7 @@ import {
   caseStudies,
   changelog,
   comments,
+  fields,
   footers,
   headers,
   images,
@@ -40,6 +41,7 @@ export const access = defineAccess({
     siteSettings,
     posts,
     announcement,
+    fields,
   ],
   customResources: {
     edit: {
@@ -55,6 +57,23 @@ export const access = defineAccess({
   permissions: {
     [USER_ROLES.admin]: {
       "*": true,
+    },
+
+    // ── Guest: anonymous demo session — same rules as apps/www's `user` role ─
+    [USER_ROLES.guest]: {
+      "*": false,
+      pages: { "*": false, read: true },
+      themes: { "*": false, read: true },
+      images: { "*": false, read: true },
+      siteSettings: {
+        "*": false,
+        read: () => ({ adminTheme: true, ogImage: true, name: true, description: true }),
+        update: () => ({ adminTheme: true }),
+      },
+      adminPanel: {
+        access: true,
+        impersonate: false,
+      },
     },
 
     // ── Editor: full editorial control, no ownership restriction ────────────

@@ -240,6 +240,23 @@ describe("defineConfig — editor", () => {
   });
 });
 
+describe("defineConfig — fields.inputMasks", () => {
+  it("defaults to an empty map when fields is omitted", () => {
+    const config = defineConfig();
+    expect(config.fields.inputMasks).toEqual({});
+  });
+
+  it("passes through configured project-wide masks unchanged", () => {
+    const config = defineConfig({
+      fields: { inputMasks: { number: "decimal", text: "(999) 999-9999" } },
+    });
+    expect(config.fields.inputMasks).toEqual({
+      number: "decimal",
+      text: "(999) 999-9999",
+    });
+  });
+});
+
 // ── Purity ──────────────────────────────────────────────────────────────────
 
 describe("defineConfig — purity", () => {

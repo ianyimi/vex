@@ -1,24 +1,17 @@
 ---
 title: Coming soon
-description: Field types on the near-term VexCMS roadmap — richtext, json, email, textarea, tabs, and ui.
+description: richtext ships in the alpha — its dedicated docs page is still being written.
 sidebar:
   badge:
     text: Soon
     variant: tip
 ---
 
-Six field types are next on the roadmap. None of them ship yet — this page
-exists so you know what's coming before you work around a gap.
-
-| Field | What it will do |
+| Field | Status |
 | --- | --- |
-| `richtext` | Rich text editing powered by [Plate.js](https://platejs.org) via `@vexcms/richtext-plate` |
-| `json` | Arbitrary structured JSON data |
-| `email` | Email string with format validation |
-| `textarea` | Multi-line text input |
-| `tabs` | Organizes sibling fields into a tabbed admin layout |
-| `ui` | Non-persisted display/action fields for custom admin components |
+| `richtext` | Ships in `0.1.0-alpha`, wired to the Plate.js editor and renderer from [`@vexcms/richtext-plate`](https://platejs.org), with inline images from the media library. A dedicated `/fields/richtext/` reference page is still to be written. |
 
-In the meantime: prose stores markdown in a [`text`](/fields/text/) field,
-and structured data composes from [`group`](/fields/group/) and
-[`array`](/fields/array/). Track progress on the [roadmap](/roadmap/).
+In the meantime, `richtext` behaves like every other field in `defineCollection`'s
+`fields` record — `label`, `required`, `defaultValue`, `admin.condition`, and the rest
+of the shared `admin` options all apply. Track the docs page on the
+[roadmap](/roadmap/).

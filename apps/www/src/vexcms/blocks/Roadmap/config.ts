@@ -40,9 +40,9 @@ export const roadmapBlock = defineBlock({
       }),
       defaultValue: [
         {
-          feature: "12 Field Types",
+          feature: "16 Field Types",
           description:
-            "text, url, color, number, checkbox, date, select, relationship, array, group, blocks, and upload — no richtext, json, or tabs yet.",
+            "text, url, color, number, checkbox, date, select, relationship, array, group, blocks, upload, richtext, json, email, and textarea.",
           status: "shipped",
         },
         {
@@ -105,15 +105,22 @@ export const roadmapBlock = defineBlock({
           status: "shipped",
         },
         {
-          feature: "Field Input Consistency Pass",
+          feature: "Conditional Fields, Tabs & Layout Fields",
           description:
-            "Touch-ups across field inputs — starting with the relationship field — for consistent interaction patterns in the admin panel.",
-          status: "in-progress",
+            "admin.condition shows or hides any field on the client and server. tabs, collapsible, row, and ui organize and extend the edit form.",
+          status: "shipped",
         },
         {
-          feature: "Richtext, JSON, Email & Textarea Fields",
-          description: "Plate.js-powered rich text, plus structured JSON, email, and multi-line text inputs.",
-          status: "planned",
+          feature: "Input Masks & Admin Extension Points",
+          description:
+            "admin.mask with project-wide defaults for text, email, number, and url. Experimental component overrides and action-menu contributions for custom admin UI.",
+          status: "shipped",
+        },
+        {
+          feature: "Field Input Consistency Pass",
+          description:
+            "Touch-ups across field inputs — relationship, upload, array, and blocks — for consistent interaction patterns in the admin panel.",
+          status: "in-progress",
         },
         {
           feature: "Team Management & API Keys",

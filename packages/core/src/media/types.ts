@@ -1,6 +1,6 @@
 import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
 import type { CollectionConfig, CollectionConfigInput } from "../collections";
-import type { BaseFieldMeta, ComponentHKT } from "../fields";
+import type { AdminField, BaseFieldMeta, ComponentHKT } from "../fields";
 import type { MediaCollectionSlug, StorageAdapterSlug } from "../types";
 
 /**
@@ -42,10 +42,10 @@ export type MediaCollectionConfigInput<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
   TCollectionMeta extends MediaCollectionMeta = MediaCollectionMeta,
   TCollectionSlug extends MediaCollectionSlug = MediaCollectionSlug,
-  TFieldSlug extends string = string,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
   TComponent extends ComponentHKT = ComponentHKT,
 > = Omit<
-  CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, TComponent>,
+  CollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent>,
   "fields"
 >;
 
@@ -64,9 +64,9 @@ export type MediaCollectionConfig<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
   TCollectionMeta extends MediaCollectionMeta = MediaCollectionMeta,
   TCollectionSlug extends MediaCollectionSlug = MediaCollectionSlug,
-  TFieldSlug extends string = string,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
   TComponent extends ComponentHKT = ComponentHKT,
-> = CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, TComponent>;
+> = CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent>;
 
 /**
  * Error thrown when storage configuration is invalid.

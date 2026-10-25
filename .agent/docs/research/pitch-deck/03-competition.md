@@ -32,10 +32,12 @@
 ## BaseHub feature matrix → VexCMS adoption plan
 
 The founder plans to adopt many BaseHub features (2026-10-12). VexCMS status below is
-**repo-verified**. The "Free / paid" column is a **[HYPOTHESIS]**. Decide it before shipping
-each feature, because the site promises "Nothing free today becomes paid later" (`seed.ts:989`).
+**repo-verified**. The tier column reflects **founder decisions of 2026-10-17** (Community ·
+Pro · Agency · Enterprise, `04-business-model.md` §4) where made; rows still marked
+[HYPOTHESIS] are undecided. Decide each before it ships, because the site promises "Nothing
+free today becomes paid later" (`apps/www/convex/seed.ts:995`).
 
-| BaseHub feature | VexCMS today | Convex building block | Suggested tier |
+| BaseHub feature | VexCMS today | Convex building block | Tier |
 |---|---|---|---|
 | Live data / `<Pump />` refresh | ✅ Every read is a Convex subscription (`seed.ts:828`) | native | Free (already) |
 | Draft mode / toolbar / preview | ✅ Live preview of unsaved state (ADR-012) | — | Free (already) |
@@ -43,18 +45,21 @@ each feature, because the site promises "Nothing free today becomes paid later" 
 | View-only role | ✅ RBAC + `anonRole` (stronger: field-level, compiled to indexes) | — | Free (already) |
 | Templates / starters | ✅ `create-vexcms` marketing-site + bare templates | — | Free; premium templates optional |
 | Media + asset explorer | ◐ Media library on Convex storage; no image transforms/CDN | file storage + actions | Free (self-hosted; the customer brings their own storage/CDN adapter) |
-| Draft / WIP staging (Hidden Blocks) | 🔄 Versioning & drafts in progress (spec `2026-09-20-versioning-drafts`) | — | Free (promised) |
-| History, diff, time-travel, restore | 🔄 Same spec; `vex_versions` stores whole-document snapshots, so diffs can be computed later (`backlog.md:614-618`) | — | Free history; compliance export → enterprise audit package |
-| **Branching / commits / merge** | 📋 Enterprise (`roadmap.md:92`); data model is ready, merge semantics not designed (`backlog.md:548-627`) | index on `(branch, documentId)` | **Paid**, the main moat |
-| Real-time multiplayer: presence, facepile, cursors, co-editing | 📋 Backlog. Presence ≈ the cost of one existing subscription; rich-text CRDT via Plate's `@platejs/yjs` + a custom Convex Yjs provider (`backlog.md:323-404`) | subscriptions; component for Yjs sync | Presence free (it is a core real-time story); paid tier optional for large-team co-editing |
+| Draft / WIP staging (Hidden Blocks) | ✅ Versioning & drafts shipped (`865f360`, 2026-10-13) | — | Community |
+| History, diff, time-travel, restore | ✅ Version history + restore shipped; `vex_versions` stores whole-document snapshots, so diffs can be computed later (`backlog.md:614-618`) | — | Community history; audit log with retention/export → Enterprise |
+| **Branching / commits / merge** | 📋 Data model is ready, merge semantics not designed (`backlog.md:548-627`) | index on `(branch, documentId)` | **Enterprise**, the main moat |
+| Real-time multiplayer: presence, facepile, cursors, co-editing | 📋 Backlog. Presence ≈ the cost of one existing subscription; rich-text CRDT via Plate's `@platejs/yjs` + a custom Convex Yjs provider (`backlog.md:323-404`) | subscriptions; component for Yjs sync | **Presence + facepile: Community. Per-field indicators, cursors, follow mode, co-editing, conflict resolution: Pro.** Note BaseHub ships multiplayer on every plan, including free |
+| Edit Mode / visual editing (click-to-edit on the live page) | ◐ Live preview streams admin → page; the page → admin click channel does not exist yet | `postMessage` channel from ADR-012 | **Pro** |
 | Search | ◐ Convex full-text index auto-generated per collection; list-view search UI is in progress (spec I) | full-text + vector search | Free |
-| Localization / variants | 🔄 Storage design in progress; feature listed as Future (`apps/docs/.../roadmap.md:39,66`) | — | Paid (already listed as an enterprise package) |
+| Localization / variants | 🔄 Storage design (B2 ADR) pulled into v0.1.0 | — | **Community** (code-first competitors ship it free) |
 | Analytics / event block | 🔭 Exploring: per-document and per-block metrics in the admin (`launch-readiness spec:1076-1090`) | tables, crons for rollups (in the customer's own deployment) | Free or enterprise licence — never metered |
 | Forms / submissions | 📋 Form builder planned | tables, actions (email via the customer's provider) | Free |
 | MCP server | ❌ (ships `llms.txt` only) | typed functions are easy to expose | Free (adoption driver for agents) |
 | AI chat / agents / autofill / translation | ❌ | actions + LLM APIs (customer's own API keys) | Free or enterprise licence (bring-your-own-key, no VexCMS-run service) |
 | Undo / redo | ❌ | — | Free |
-| Approval workflows | 📋 Enterprise | — | Paid (BaseHub has no discrete approval feature, so this differentiates) |
+| Approval workflows | 📋 Planned | — | **Enterprise** (BaseHub has no discrete approval feature, so this differentiates) |
+| A/B testing / personalization *(not a BaseHub feature)* | ❌ | variant overlay on the draft model; events + crons in the customer's deployment | **Basic A/B: Pro. Full A/B + personalization: Enterprise** |
+| SSO / SCIM *(not a BaseHub feature)* | ❌ | Better Auth SSO plugin; SCIM via HTTP actions | **Enterprise** |
 
 Legend: ✅ shipped · ◐ partial · 🔄 in progress · 📋 planned · 🔭 exploring · ❌ none.
 
@@ -98,9 +103,9 @@ admin views. Multiplayer co-editing (BaseHub, Sanity) is still on the backlog.
 | Row-level access rules applied inside the DB query | ✅ Convex `withIndex` | ✅ `Where` constraints (collection level) | ❌ not found | not verified | not verified | not verified |
 | No separate database to operate | ✅ (Convex) | ❌ | n/a (SaaS) | n/a (SaaS) | ❌ | ❌ |
 | Self-hostable, permissive OSS | ✅ Apache-2.0 | ✅ MIT | ❌ | ◐ Studio only | ✅ MIT core | ◐ source-available |
-| Content branching | 📋 paid | ❌ | ✅ | ◐ releases (Ent.) | ❌ | ❌ |
-| Drafts / versions | 🔄 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Rich text | 🔄 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Content branching | 📋 Enterprise | ❌ | ✅ | ◐ releases (Ent.) | ❌ | ❌ |
+| Drafts / versions | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Rich text | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Maturity (stars) | 8 | 45.2k | closed | 6.4k | 73.3k | 38.4k |
 
 Present this honestly. Investors will see the last three rows, so the story is

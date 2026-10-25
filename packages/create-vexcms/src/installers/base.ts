@@ -179,6 +179,19 @@ export abstract class VexFrameworkInstaller {
       const readme = await fs.readFile(readmePath, 'utf-8');
       await fs.writeFile(readmePath, readme.replace('{{PROJECT_NAME}}', name));
     }
+
+    // Better Auth cookie prefix, unique per project so two scaffolded apps on
+    // localhost (different ports, one cookie jar) cannot shadow each other's
+    // session. Cookie names allow only token characters; derive from the npm
+    // name with the scope and anything else stripped.
+    const constantsPath = path.join(this.targetPath, 'src', 'db', 'constants', 'auth.ts');
+    if (await fs.pathExists(constantsPath)) {
+      const prefix =
+        name.replace(/^@[^/]+\//, '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') ||
+        'vex';
+      const constants = await fs.readFile(constantsPath, 'utf-8');
+      await fs.writeFile(constantsPath, constants.replace('{{AUTH_COOKIE_PREFIX}}', prefix));
+    }
   }
 
   /**

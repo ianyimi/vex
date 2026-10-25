@@ -4,6 +4,10 @@ import { fieldFixtures } from "./index";
 
 describe("field fixture registry", () => {
   it("registers a fixture for every core field type", () => {
-    expect(Object.keys(fieldFixtures).sort()).toEqual(Object.keys(ADMIN_FIELDS).sort());
+    const dataFieldTypes = Object.entries(ADMIN_FIELDS)
+      .filter(([, def]) => def.kind === "data")
+      .map(([type]) => type)
+      .sort();
+    expect(Object.keys(fieldFixtures).sort()).toEqual(dataFieldTypes);
   });
 });

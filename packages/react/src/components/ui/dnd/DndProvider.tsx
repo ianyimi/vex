@@ -18,17 +18,11 @@ export interface DndContextValue {
   /** The droppableId that currently owns the active drag, or null when idle. */
   activeDroppableId: string | null;
   /**
-   * Stable UUID slots per droppable. Map<droppableId, UUID[]>.
-   * One UUID per array item slot. Shifted by moveItemStableKey on each drag to
-   * mirror TanStack Form's moveValue — so a UUID follows its item across reorders.
-   * Lives outside <DragDropContext key={dndKey}> and survives every remount.
-   */
-  itemStableKeysRef: RefObject<Map<string, (string | undefined)[]>>;
-  /**
    * Accordion open/closed state per stable key. Map<stableKey, boolean>.
-   * For array-item group fields: stableKey is the slot UUID from itemStableKeysRef.
-   * For top-level group fields: stableKey is the field name.
-   * Lives outside <DragDropContext key={dndKey}> and survives every remount.
+   * For a group inside an array item: the item's stored `id` plus the group's
+   * path below that item. Otherwise: the field name. Lives above every form
+   * scroller, so open state survives the edit view swapping scrollers when
+   * the live preview opens or closes.
    */
   accordionStateRef: RefObject<Map<string, boolean>>;
   /** Whether the DnD is mounted on the client (false on server). */
@@ -75,10 +69,8 @@ export function useDndRegistry() {
  */
 export function DndProvider({ children }: { children: ReactNode }) {
   const registry = useRef(new Map<string, (from: number, to: number) => void>());
-  const itemStableKeysRef = useRef(new Map<string, (string | undefined)[]>());
   const accordionStateRef = useRef(new Map<string, boolean>());
   const [activeDroppableId, setActiveDroppableId] = useState<string | null>(null);
-  const [dndKey, setDndKey] = useState(0);
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -94,20 +86,10 @@ export function DndProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // Mirrors TanStack Form's moveValue on the UUID slot array so stable keys
-  // travel with their items when a drag reorders them.
-  function moveItemStableKey(droppableId: string, from: number, to: number) {
-    const slots = itemStableKeysRef.current.get(droppableId);
-    if (!slots) return;
-    const [moved] = slots.splice(from, 1);
-    slots.splice(to, 0, moved);
-  }
-
   const contextValue = useMemo<DndContextValue>(
     () => ({
       register,
       activeDroppableId,
-      itemStableKeysRef,
       accordionStateRef,
       mounted,
     }),
@@ -117,7 +99,6 @@ export function DndProvider({ children }: { children: ReactNode }) {
   return (
     <DndContext.Provider value={contextValue}>
       <DragDropContext
-        key={dndKey}
         onDragStart={(result) => {
           document.body.style.overflowX = "hidden";
           setActiveDroppableId(result.source.droppableId);
@@ -127,13 +108,8 @@ export function DndProvider({ children }: { children: ReactNode }) {
           setActiveDroppableId(null);
           if (!result.destination) return;
           if (result.source.droppableId !== result.destination.droppableId) return;
-          const droppableId = result.source.droppableId;
-          const from = result.source.index;
-          const to = result.destination.index;
           const handler = registry.current.get(result.source.droppableId);
           handler?.(result.source.index, result.destination.index);
-          moveItemStableKey(droppableId, from, to);
-          setDndKey((k) => k + 1);
         }}
       >
         {children}

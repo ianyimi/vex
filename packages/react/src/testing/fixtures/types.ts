@@ -1,4 +1,4 @@
-import type { AdminField, AdminFieldType } from "@vexcms/core";
+import type { AdminDataField, DataFieldType } from "@vexcms/core";
 
 /**
  * The one shared shape every per-field-type fixture module exports and registers into
@@ -10,9 +10,9 @@ import type { AdminField, AdminFieldType } from "@vexcms/core";
  * `components/fields/<type>/testFixture.ts`, never in this directory: a field type owns
  * everything about itself in one folder, and `fixtures/index.ts` only aggregates.
  */
-export interface FieldFixture<TField extends AdminField = AdminField, TValue = unknown> {
+export interface FieldFixture<TField extends AdminDataField = AdminDataField, TValue = unknown> {
   /** The field's `type` discriminant, e.g. `"text"` — must match `fieldDef.type`. */
-  fieldType: AdminFieldType;
+  fieldType: DataFieldType;
   /** A representative field definition (as produced by the field's builder, e.g. `text()`). */
   fieldDef: TField;
   /** A value that should pass validation and render meaningfully. */

@@ -13,17 +13,19 @@ ratings, ages, counts, percentages, and any data that is naturally a number.
 | `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
 | `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
 | `defaultValue` | `number` | `0` | Pre-filled value shown in the admin form when creating a new document. |
-| `min` | `{ value: number, error?: string }` | — | Minimum allowed numeric value. |
-| `max` | `{ value: number, error?: string }` | — | Maximum allowed numeric value. |
+| `min` | `number \| [number, string]` | — | Minimum allowed numeric value. Bare number, or a `[value, customError]` tuple for a custom error message. |
+| `max` | `number \| [number, string]` | — | Maximum allowed numeric value. Bare number, or a `[value, customError]` tuple. |
 | `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
 | `description` | `string` | — | Helper text shown below the field input. |
 | `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
 | `admin.readOnly` | `boolean` | `false` | Renders the input as non-interactive. |
 | `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
-| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.width` | `string` | `"100%"` | CSS width of the field in the edit form (e.g. `"50%"`, `"240px"`). Meaningful as a child of `row()`; below a narrow form column every field renders full width regardless. |
 | `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
 | `admin.placeholder` | `string` | — | Placeholder text shown when the input is empty. |
 | `admin.description` | `string` | — | Helper text displayed below the field input. |
+| `admin.condition` | `(props: { data, siblingData }) => boolean` | — | Shows the field only while this returns `true`. A throwing condition counts as met. Hidden fields skip `required`/`validate` on the server too. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
+| `admin.mask` | `string \| string[] \| { mask, storeMasked?, options? } \| false` | — | An opt-in `use-mask-input` pattern, or `false` to opt out of a project-wide default set via `fields.inputMasks.number`. A masked number stores the raw numeric value, not the masked string. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
 
 ## Schema output
 
@@ -51,13 +53,13 @@ const products = defineCollection({
     price: number(),
 
     // Required quantity with a minimum of 1 and a database index
-    quantity: number({ required: true, min: { value: 1 }, index: "by_quantity" }),
+    quantity: number({ required: true, min: 1, index: "by_quantity" }),
 
     // Rating capped between 0 and 5 with custom error messages
     rating: number({
-      min: { value: 0, error: "Rating cannot be negative" },
-      max: { value: 5, error: "Rating cannot exceed 5" },
-      admin: { width: "half" },
+      min: [0, "Rating cannot be negative"],
+      max: [5, "Rating cannot exceed 5"],
+      admin: { width: "50%" },
     }),
 
     // Pre-filled default score

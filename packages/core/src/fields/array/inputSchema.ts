@@ -1,8 +1,10 @@
 import * as z from "zod";
 import type { ZodType } from "zod";
+import { ADMIN_FIELDS } from "../constants";
 import { ArrayField, ArrayType } from "./types";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
 import { adminFieldToInputSchema } from "../inputSchemas";
+import { hasFieldConditions } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 
 /**
@@ -30,12 +32,44 @@ import type { VexResourceSlug } from "../../types/generated";
  * "This field is required." would ever show. A non-empty array — required
  * or not — is always checked against a configured `min`/`max`.
  *
+ * When `props.data` is given AND `field.items` (or anything nested in it)
+ * declares a condition, each array ITEM needs its own `siblingData` —
+ * unlike a `group`'s sub-fields, items are positional, not keyed, so there
+ * is no single `data[key]` to compute up front at schema-build time
+ * (Step 9). The base/outer item schema is built loose (`z.unknown()`)
+ * instead of the real item schema — enforcing `required` up front there
+ * would reject a condition-hidden field before the real, condition-aware
+ * per-item re-parse ever runs — and a `superRefine` re-parses every actual
+ * item against a fresh
+ * `adminFieldToInputSchema({ field: field.items, data, siblingData: item })`
+ * — `item` IS the new `siblingData`, since an array item's resolved value
+ * has no extra key to index through, mirroring how `adminFieldToInputSchema`
+ * already treats a missing `key` for item dispatch. Issues from that
+ * re-parse are re-added through `ctx.addIssue` with the item's index
+ * prepended to the path, so a failure still names the right item/field for
+ * the admin form. Without conditions anywhere in `field.items`, the item
+ * schema stays exactly what it was — a single
+ * `adminFieldToInputSchema({ field: field.items, ignoreRequired })` call,
+ * no `superRefine`, no added cost.
+ *
+ * An object-shaped item (`field.items.type === "group"`) additionally gets
+ * `id: z.string().optional()` intersected onto its schema (`withItemId`,
+ * below) — optional because an existing document predating this step may
+ * have items with no `id` yet (same reasoning as the Convex validator,
+ * `array/validator.ts`); `prepareEdit`'s `assignArrayItemIds` backfills one
+ * on every write regardless, so the client form never actually submits an
+ * id-less object item. `.and(...)`, not `groupFieldToInputSchema` taking an
+ * extra parameter, because a `group()` used OUTSIDE an array must never gain
+ * an `id` slot — this intersection is scoped to array ITEMS only.
+ *
  * @param props - Input props.
  * @param props.field - The resolved array field definition
  * @param props.ignoreRequired - Forwarded to the recursive
  *   `adminFieldToInputSchema({ field: field.items })` call so a draft-lenient
  *   pass (`getFieldsInputSchema`'s `ignoreRequired`) reaches every item, not
  *   just this array's own `required` check.
+ * @param props.data - The full top-level document. Omitted skips condition
+ *   evaluation for this array's items entirely (today's behavior).
  * @returns A Zod array schema with item count constraints and optionality applied
  *
  * @example
@@ -48,7 +82,7 @@ import type { VexResourceSlug } from "../../types/generated";
  * @example
  * ```ts
  * // Optional field, min/max still enforced once a value is supplied
- * const field = array({ items: number(), min: { value: 2 }, max: { value: 5 } })
+ * const field = array({ items: number(), min: 2, max: 5 })
  * const schema = arrayFieldToInputSchema({ field })
  * schema.safeParse(undefined)   // → success: [] (skips min/max — empty)
  * schema.safeParse([1])         // → fails: below min
@@ -61,34 +95,65 @@ export function arrayFieldToInputSchema<
 >(props: {
   field: ArrayField<VexResourceSlug, TArrayType, TFieldMeta>;
   ignoreRequired?: boolean;
+  data?: Record<string, unknown>;
 }): ZodType {
   const { field } = props;
-
-  const fieldMinError = field.min?.error ?? "This field is too short.";
-  const fieldMaxError = field.max?.error ?? "This field is too long.";
   const requiredError = "This field is required.";
 
-  const itemsInputSchema = adminFieldToInputSchema({
-    field: field.items,
-    ignoreRequired: props.ignoreRequired,
-  });
+  const itemsHaveConditions =
+    props.data !== undefined && hasFieldConditions({ fields: { item: field.items } });
+
+  const itemHasStoredId = field.items.type === ADMIN_FIELDS.group.type;
+  const withItemId = (schema: ZodType): ZodType =>
+    itemHasStoredId ? schema.and(z.object({ id: z.string().optional() })) : schema;
+
+  const baseItemSchema = itemsHaveConditions
+    ? z.unknown()
+    : withItemId(
+        adminFieldToInputSchema({ field: field.items, ignoreRequired: props.ignoreRequired }),
+      );
 
   let arraySchema = field.required
-    ? z.array(itemsInputSchema, { error: requiredError }).min(1, requiredError)
-    : z.array(itemsInputSchema);
+    ? z.array(baseItemSchema, { error: requiredError }).min(1, requiredError)
+    : z.array(baseItemSchema);
+
+  if (itemsHaveConditions) {
+    arraySchema = arraySchema.superRefine((items, ctx) => {
+      items.forEach((item, index) => {
+        const itemSchema = withItemId(
+          adminFieldToInputSchema({
+            field: field.items,
+            ignoreRequired: props.ignoreRequired,
+            data: props.data,
+            siblingData: item as Record<string, unknown>,
+          }),
+        );
+        const result = itemSchema.safeParse(item);
+        if (!result.success) {
+          for (const issue of result.error.issues) {
+            ctx.addIssue({
+              code: "custom",
+              message: issue.message,
+              path: [index, ...issue.path],
+            });
+          }
+        }
+      });
+    });
+  }
 
   if (field.min) {
-    const min = field.min.value;
+    const [min, message] = field.min;
     arraySchema = arraySchema.refine(
       (value) => (!field.required && value.length === 0) || value.length >= min,
-      fieldMinError,
+      message,
     );
   }
   if (field.max) {
-    const max = field.max.value;
+    const [max, message] = field.max;
     arraySchema = arraySchema.refine(
       (value) => (!field.required && value.length === 0) || value.length <= max,
-      fieldMaxError,
+      message,
     );
   }
 

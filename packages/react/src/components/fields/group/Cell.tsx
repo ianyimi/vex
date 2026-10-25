@@ -1,6 +1,7 @@
 "use client";
 
-import { addLeadingSlash, type CellComponentProps, type GroupField, TDocument } from "@vexcms/core";
+import { type CellComponentProps, type GroupField, TDocument } from "@vexcms/core";
+import { adminHref } from "../../../utils/adminHref";
 import { VexLink } from "../../ui";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
@@ -29,7 +30,6 @@ export function GroupFieldCell<TData extends TDocument = TDocument>(
 ) {
   const value = props.value as Record<string, unknown> | null | undefined;
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
 
   if (value == null || typeof value !== "object") {
     return <span className="text-muted-foreground">—</span>;
@@ -44,7 +44,12 @@ export function GroupFieldCell<TData extends TDocument = TDocument>(
   );
   if (!props.isTitleField) return content;
   return (
-    <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+    <VexLink
+      href={adminHref(
+        { type: "document", slug: props.collection.slug, id: props.row.original._id },
+        config.basePath,
+      )}
+    >
       {content}
     </VexLink>
   );

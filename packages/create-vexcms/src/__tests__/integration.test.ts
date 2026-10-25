@@ -190,6 +190,10 @@ describe('template markers (Contract 4 — installer is the source of truth)', (
 
     const readme = fs.readFileSync(path.join(bareDir, 'README.md'), 'utf-8');
     expect(readme).not.toContain('{{OAUTH_SETUP_GUIDE}}');
+
+    // A leftover marker would make every Better Auth cookie name invalid.
+    const constants = fs.readFileSync(path.join(bareDir, 'src/db/constants/auth.ts'), 'utf-8');
+    expect(constants).toContain('export const AUTH_COOKIE_PREFIX = "bare-project"');
   });
 });
 

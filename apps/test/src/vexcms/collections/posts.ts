@@ -1,6 +1,6 @@
-import { defineCollection, relationship, richtext, text } from "@vexcms/core";
+import { defineCollection, relationship, richtext, text } from "@vexcms/core"
 
-import { TABLE_SLUG_ARTICLES, TABLE_SLUG_IMAGES, TABLE_SLUG_POSTS } from "~/db/constants";
+import { TABLE_SLUG_ARTICLES, TABLE_SLUG_FIELDS, TABLE_SLUG_IMAGES, TABLE_SLUG_POSTS } from "~/db/constants"
 
 /**
  * Draft/publish test surface for the versioning-drafts spec.
@@ -69,6 +69,14 @@ export const posts = defineCollection({
         slug: TABLE_SLUG_ARTICLES,
       },
       description: "Non-versioned target — never blocks a publish.",
+    }),
+    relatedField: relationship({
+      label: "Related Field Example",
+      collection: {
+        slug: TABLE_SLUG_FIELDS,
+      },
+      description:
+        "Relationship into the `fields` testing-ground collection — exercises the picker's search over `contactEmail`'s custom-named search index.",
     }),
   },
 });

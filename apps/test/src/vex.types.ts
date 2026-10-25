@@ -33,6 +33,7 @@ export type StatsBlock = {
   heading?: string
   subheading?: string
   items: {
+    id?: string
     /**
      * Free text, not a number — "0", "12" and "~30s" all render. Any unit belongs in
      * the string.
@@ -50,6 +51,7 @@ export type FeaturesBlock = {
   heading: string
   subheading?: string
   features: {
+    id?: string
     title: string
     description: string
     /**
@@ -66,6 +68,7 @@ export type CodeShowcaseBlock = {
   heading: string
   subheading?: string
   panes: {
+    id?: string
     /**
      * Shown uppercase in the chrome bar.
      */
@@ -90,6 +93,7 @@ export type SplitBlock = {
   heading: string
   body: string
   bullets?: {
+    id?: string
     /**
      * Lucide icon name
      */
@@ -111,6 +115,7 @@ export type HowItWorksBlock = {
   heading: string
   subheading?: string
   steps: {
+    id?: string
     /**
      * Lucide icon name
      */
@@ -127,6 +132,7 @@ export type RoadmapBlock = {
   heading: string
   subheading?: string
   items: {
+    id?: string
     feature: string
     description?: string
     status: ("shipped" | "in-progress" | "planned" | "exploring" | "future")[]
@@ -140,10 +146,7 @@ export type FaqBlock = {
   heading: string
   subheading?: string
   supportLink?: string
-  items: {
-    question: string
-    answer: string
-  }[]
+  items: { id?: string; question: string; answer: string }[]
 }
 
 export type CtaBlock = {
@@ -152,10 +155,7 @@ export type CtaBlock = {
   id: string
   heading: string
   subheading?: string
-  actions?: {
-    label: string
-    href: string
-  }[]
+  actions?: { id?: string; label: string; href: string }[]
 }
 
 export type FeatureBlock = {
@@ -186,11 +186,7 @@ export type LogoCloudBlock = {
   blockName?: string
   id: string
   title?: string
-  logos?: {
-    name: string
-    image: string
-    link?: string
-  }[]
+  logos?: { id?: string; name: string; image: string; link?: string }[]
 }
 
 export type PricingBlock = {
@@ -239,27 +235,6 @@ export type SEO = {
   ogImage?: string
 }
 
-export type InnerGroup = {
-  /**
-   * test field description
-   */
-  title?: string
-  /**
-   * another test description
-   */
-  description?: string
-  queue?: {
-    title?: string
-    description?: string
-  }[]
-}
-
-export type AnotherGroupNames = {
-  title?: string
-  subtitle?: string
-  list?: InnerGroup[]
-}
-
 export interface Page extends VexDocument {
   _id: Id<"pages">
   /**
@@ -275,7 +250,6 @@ export interface Page extends VexDocument {
    */
   content?: string
   blocks?: PageBlock[]
-  testImage?: Id<"images">[]
   /**
    * Custom <title> tag. Falls back to page title if empty.
    */
@@ -287,18 +261,9 @@ export interface Page extends VexDocument {
   ogImage?: Id<"images">[]
   themes?: Id<"themes">[]
   /**
-   * some test description.
-   */
-  test?: string[]
-  /**
-   * some test number array description
-   */
-  test2?: number[][]
-  /**
    * seo metadata
    */
   seo?: SEO
-  anotherTest?: AnotherGroupNames
   updatedAt?: number
 }
 
@@ -317,10 +282,6 @@ export interface UserDocument extends VexDocument {
   isAnonymous?: boolean
   userId?: string
   roles: string[]
-  /**
-   * something for the editor only
-   */
-  newUserFieldTest?: string
 }
 export type HeaderBlock = {
   blockType: "header"
@@ -329,11 +290,9 @@ export type HeaderBlock = {
   logoText?: string
   logoImage?: Id<"images">[]
   logoHref?: string
-  menuItems?: {
-    label: string
-    href: string
-  }[]
+  menuItems?: { id?: string; label: string; href: string }[]
   actionButtons?: {
+    id?: string
     label: string
     href: string
     variant?: ("default" | "outline" | "ghost")[]
@@ -353,11 +312,9 @@ export type FooterBlock = {
   logoText?: string
   logoImage?: Id<"images">[]
   copyright?: string
-  links?: {
-    label: string
-    href: string
-  }[]
+  links?: { id?: string; label: string; href: string }[]
   socialLinks?: {
+    id?: string
     platform: string
     href: string
     /**
@@ -660,6 +617,195 @@ export interface Post extends VexDocument {
    * Non-versioned target — never blocks a publish.
    */
   relatedArticle?: Id<"articles">[]
+  /**
+   * Relationship into the `fields` testing-ground collection — exercises the
+   * picker's search over `contactEmail`'s custom-named search index.
+   */
+  relatedField?: Id<"fields">[]
+  updatedAt?: number
+}
+export type FieldsExampleInfo = {
+  heading?: string
+  bullets?: string[]
+}
+
+export type StatGroupBlock = {
+  blockType: "stat_group"
+  blockName?: string
+  id: string
+  showHeading?: boolean
+  heading?: string
+  stats?: { id?: string; value?: string; caption?: string }[]
+}
+
+export type NestedStatGroupBlock = {
+  blockType: "nested_stat_group"
+  blockName?: string
+  id: string
+  heading?: string
+  stats?: { id?: string; value?: string; caption?: string }[]
+}
+
+export type ContainerBlock = {
+  blockType: "container"
+  blockName?: string
+  id: string
+  label?: string
+  note?: string
+  meta?: {
+    tag?: string
+  }
+  children?: NestedStatGroupBlock[]
+}
+
+export type CalloutBlock = {
+  blockType: "callout"
+  blockName?: string
+  id: string
+  body?: string
+  emphasis?: boolean
+}
+
+export type FieldsExampleBlock = StatGroupBlock | ContainerBlock | CalloutBlock
+
+export type FieldsExampleDisplaySettings = {
+  columns?: number
+  list?: {
+    spacing?: number
+  }
+  width?: number
+  height?: number
+}
+type FieldsExampleStatusOption = "draft" | "published"
+type FieldsExampleTagsOption = "news" | "tutorial" | "release"
+export interface FieldsExample extends VexDocument {
+  _id: Id<"fields">
+  /**
+   * Demonstrates email() with a custom searchIndex name.
+   */
+  contactEmail: string
+  /**
+   * Demonstrates textarea() with rows and a tuple max.
+   */
+  bio?: string
+  /**
+   * Demonstrates json() — an arbitrary settings blob.
+   */
+  settings?: unknown
+  /**
+   * Demonstrates text() with min and a tuple max.
+   */
+  title?: string
+  /**
+   * Demonstrates number() with tuple min/max.
+   */
+  rating?: number
+  /**
+   * Demonstrates checkbox().
+   */
+  isFeatured?: boolean
+  /**
+   * Demonstrates select() restricted to a single value.
+   */
+  status?: FieldsExampleStatusOption[]
+  /**
+   * Demonstrates select() with hasMany: true.
+   */
+  tags?: FieldsExampleTagsOption[]
+  /**
+   * Demonstrates color() pinned to the oklch format.
+   */
+  accentColor?: string
+  /**
+   * Demonstrates url().
+   */
+  website?: string
+  /**
+   * Demonstrates date() with the time picker hidden.
+   */
+  dueOn?: number
+  /**
+   * Demonstrates date() with a seconds-precision time picker.
+   */
+  eventAt?: number
+  /**
+   * Demonstrates relationship() restricted to a single document.
+   */
+  relatedUser?: Id<"user">[]
+  /**
+   * Demonstrates relationship() with hasMany: true.
+   */
+  relatedUsers?: Id<"user">[]
+  /**
+   * Demonstrates upload() restricted to a single file.
+   */
+  avatar?: Id<"images">[]
+  /**
+   * Demonstrates upload() with hasMany: true and an accept filter.
+   */
+  gallery?: Id<"images">[]
+  /**
+   * Demonstrates richtext().
+   */
+  body?: RichTextDocument
+  /**
+   * Demonstrates array() of a simple text field.
+   */
+  tagList?: string[]
+  /**
+   * Demonstrates array() of group() — array of groups.
+   */
+  gridItems?: { id?: string; heading?: string; subheading?: string }[]
+  /**
+   * Demonstrates group() containing an array() — group holding a list.
+   */
+  info?: FieldsExampleInfo
+  content?: FieldsExampleBlock[]
+  /**
+   * Toggles the Visibility tab inside layoutTabs and conditionalRow below —
+   * demonstrates a tabs()/row() admin.condition reading a top-level sibling.
+   */
+  showAdvanced?: boolean
+  displayName?: string
+  /**
+   * A named tab — stores metaTitle/metaDescription under one `seo` object.
+   */
+  seo?: {
+    metaTitle: string
+    metaDescription: string
+  }
+  advancedNote?: string
+  visibilityNote?: string
+  colLeft?: string
+  colRight?: string
+  asideNote?: string
+  innerFirst?: string
+  innerSecond?: string
+  altTitle?: string
+  altSummary?: string
+  archiveId?: string
+  legacyFlag?: boolean
+  priceLabel?: string
+  priceValue?: string
+  fallbackA?: string
+  fallbackB?: string
+  conditionalNote?: string
+  /**
+   * Demonstrates tabs() and row() nested inside a group().
+   */
+  displaySettings?: FieldsExampleDisplaySettings
+  /**
+   * Demonstrates array() of group() nesting a row() and a siblingData-conditioned
+   * collapsible().
+   */
+  sections?: {
+    id?: string
+    showDetails?: boolean
+    summary?: string
+    itemLeft?: string
+    itemRight?: string
+    body?: string
+  }[]
   updatedAt?: number
 }
 
@@ -796,10 +942,7 @@ export interface Image extends VexDocument {
 }
 
 export interface NavGlobal extends VexDocumentGlobal<"nav"> {
-  items?: {
-    title?: string
-    href?: string
-  }[]
+  items?: { id?: string; title?: string; href?: string }[]
 }
 
 export interface SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings"> {
@@ -863,6 +1006,7 @@ export type CollectionSlug =
   | "changelog"
   | "comments"
   | "posts"
+  | "fields"
   | "session"
   | "account"
   | "verification"
@@ -892,6 +1036,7 @@ export type DocumentBySlug = {
   changelog: ChangelogEntry
   comments: Comment
   posts: Post
+  fields: FieldsExample
   session: SessionDocument
   account: AccountDocument
   verification: VerificationDocument
@@ -924,6 +1069,7 @@ declare module "@vexcms/core" {
       | "changelog"
       | "comments"
       | "posts"
+      | "fields"
       | "session"
       | "account"
       | "verification"
@@ -949,6 +1095,7 @@ declare module "@vexcms/core" {
       changelog: ChangelogEntry
       comments: Comment
       posts: Post
+      fields: FieldsExample
       session: SessionDocument
       account: AccountDocument
       verification: VerificationDocument
@@ -970,14 +1117,13 @@ declare module "@vexcms/core" {
       pages: {
         text: "title" | "slug" | "content" | "metaTitle" | "metaDescription"
         blocks: "blocks"
-        upload: "testImage" | "ogImage"
+        upload: "ogImage"
         relationship: "themes"
-        array: "test" | "test2"
-        group: "seo" | "anotherTest"
-        number: "updatedAt"
+        group: "seo"
+        date: "updatedAt"
       }
       user: {
-        text: "name" | "email" | "image" | "role" | "banReason" | "userId" | "newUserFieldTest"
+        text: "name" | "email" | "image" | "role" | "banReason" | "userId"
         checkbox: "emailVerified" | "banned" | "isAnonymous"
         date: "createdAt" | "updatedAt" | "banExpires"
         array: "roles"
@@ -985,53 +1131,87 @@ declare module "@vexcms/core" {
       headers: {
         text: "name"
         blocks: "content"
-        number: "updatedAt"
+        date: "updatedAt"
       }
       footers: {
         text: "name"
         blocks: "content"
-        number: "updatedAt"
+        date: "updatedAt"
       }
       themes: {
         text: "name" | "fontFamily" | "radius"
         group: "light" | "dark"
-        number: "updatedAt"
+        date: "updatedAt"
       }
       articles: {
         text: "title" | "slug" | "excerpt" | "body"
-        date: "publishedAt"
+        date: "publishedAt" | "updatedAt"
         relationship: "authorId" | "coverImage"
         select: "status"
-        number: "readingMinutes" | "updatedAt"
+        number: "readingMinutes"
         checkbox: "featured"
       }
       case_studies: {
         text: "title" | "slug" | "excerpt" | "clientName" | "industry" | "outcomeSummary"
-        date: "publishedAt"
+        date: "publishedAt" | "updatedAt"
         relationship: "authorId"
         select: "status"
         url: "clientUrl"
-        number: "contractValue" | "updatedAt"
+        number: "contractValue"
       }
       changelog: {
         text: "title" | "slug" | "excerpt" | "version" | "notes"
-        date: "publishedAt"
+        date: "publishedAt" | "updatedAt"
         relationship: "authorId"
         select: "status" | "releaseType"
         checkbox: "breaking"
-        number: "updatedAt"
       }
       comments: {
         relationship: "authorId" | "article"
         text: "body"
         checkbox: "approved"
-        number: "updatedAt"
+        date: "updatedAt"
       }
       posts: {
         text: "title" | "slug"
         richtext: "body"
-        relationship: "relatedPost" | "relatedArticle"
-        number: "updatedAt"
+        relationship: "relatedPost" | "relatedArticle" | "relatedField"
+        date: "updatedAt"
+      }
+      fields: {
+        email: "contactEmail"
+        textarea: "bio"
+        json: "settings"
+        text:
+          | "title"
+          | "displayName"
+          | "advancedNote"
+          | "visibilityNote"
+          | "colLeft"
+          | "colRight"
+          | "asideNote"
+          | "innerFirst"
+          | "innerSecond"
+          | "altTitle"
+          | "altSummary"
+          | "archiveId"
+          | "priceLabel"
+          | "priceValue"
+          | "fallbackA"
+          | "fallbackB"
+          | "conditionalNote"
+        number: "rating"
+        checkbox: "isFeatured" | "showAdvanced" | "legacyFlag"
+        select: "status" | "tags"
+        color: "accentColor"
+        url: "website"
+        date: "dueOn" | "eventAt" | "updatedAt"
+        relationship: "relatedUser" | "relatedUsers"
+        upload: "avatar" | "gallery"
+        richtext: "body"
+        array: "tagList" | "gridItems" | "sections"
+        group: "info" | "seo" | "displaySettings"
+        blocks: "content"
       }
       session: {
         date: "expiresAt" | "createdAt" | "updatedAt"
@@ -1107,8 +1287,9 @@ declare module "@vexcms/core" {
       }
       images: {
         text: "filename" | "alt" | "mimeType" | "storageId" | "src"
-        number: "size" | "width" | "height" | "updatedAt"
+        number: "size" | "width" | "height"
         checkbox: "deleted"
+        date: "updatedAt"
       }
     }
     GlobalsFieldTypeMap: {
@@ -1153,6 +1334,11 @@ declare module "@vexcms/core" {
         by_slug: readonly ["slug"]
         by_relatedPost: readonly ["relatedPost"]
         by_relatedArticle: readonly ["relatedArticle"]
+        by_relatedField: readonly ["relatedField"]
+      }
+      fields: {
+        by_relatedUser: readonly ["relatedUser"]
+        by_relatedUsers: readonly ["relatedUsers"]
       }
       session: { by_token: readonly ["token"]; by_userId: readonly ["userId"] }
       account: { by_userId: readonly ["userId"] }

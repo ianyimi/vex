@@ -9,6 +9,10 @@ import {
   defineCollection,
 } from "../../index";
 import { adminFieldToInputSchema } from "./index";
+import { getDataFields } from "../utils";
+import { tabs } from "../ui/tabs/config";
+import { collapsible } from "../ui/collapsible/config";
+import { row } from "../ui/row/config";
 
 const SELECT_OPTIONS = [
   { label: "Draft", value: "draft" },
@@ -167,13 +171,13 @@ describe("adminFieldToInputSchema — comprehensive (all field types)", () => {
       },
     });
 
-    for (const [, field] of Object.entries(collection.fields)) {
+    for (const [, field] of Object.entries(getDataFields({ fields: collection.fields }))) {
       // Every field type must produce a valid schema without throwing
       expect(() => adminFieldToInputSchema({ field })).not.toThrow();
     }
 
     const schemas = Object.fromEntries(
-      Object.entries(collection.fields).map(([key, field]) => [
+      Object.entries(getDataFields({ fields: collection.fields })).map(([key, field]) => [
         key,
         adminFieldToInputSchema({ field }),
       ]),
@@ -204,5 +208,56 @@ describe("adminFieldToInputSchema — comprehensive (all field types)", () => {
     // tags: optional multi-select
     expect(schemas.tags.safeParse(["news", "tutorial"]).success).toBe(true);
     expect(schemas.tags.safeParse(undefined).success).toBe(true);
+  });
+});
+
+// ─── condition skip inside nested UI containers ────────────────────────────
+
+describe("adminFieldToInputSchema — condition skip through tabs()/collapsible()/row()", () => {
+  it("short-circuits to z.unknown().optional() for a field hoisted out of a condition-false collapsible()", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        details: collapsible({
+          label: "Details",
+          admin: { condition: () => false },
+          fields: { note: text({ required: true }) },
+        }),
+      },
+    });
+    const dataFields = getDataFields({ fields: collection.fields });
+    const schema = adminFieldToInputSchema({
+      field: dataFields.note!,
+      data: {},
+      siblingData: {},
+    });
+    expect(schema.safeParse(undefined).success).toBe(true);
+    expect(schema.safeParse("anything").success).toBe(true);
+  });
+
+  it("still validates (required rejects undefined) a field hoisted out of a condition-true row() nested inside a tabs() tab", () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        info: tabs({
+          tabs: [
+            {
+              label: "Content",
+              fields: {
+                layout: row({ fields: { title: text({ required: true }) } }),
+              },
+            },
+          ],
+        }),
+      },
+    });
+    const dataFields = getDataFields({ fields: collection.fields });
+    const schema = adminFieldToInputSchema({
+      field: dataFields.title!,
+      data: {},
+      siblingData: {},
+    });
+    expect(schema.safeParse(undefined).success).toBe(false);
+    expect(schema.safeParse("hello").success).toBe(true);
   });
 });

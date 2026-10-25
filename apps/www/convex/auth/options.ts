@@ -2,7 +2,7 @@ import type { BetterAuthOptions } from "better-auth"
 
 import { anonRoleDatabaseHook } from "@vexcms/better-auth"
 
-import { USER_ROLES } from "~/db/constants"
+import { AUTH_COOKIE_PREFIX, USER_ROLES } from "~/db/constants"
 
 import { createPlugins } from "./plugins"
 import { authSchema } from "./schema"
@@ -23,6 +23,9 @@ const { plugins: _pluginDescriptors, ...schemaOptions } = authSchema
  */
 export const authOptions: BetterAuthOptions = {
   ...schemaOptions,
+  // Unique per app so another Better Auth app on localhost cannot share or
+  // shadow this session cookie — see AUTH_COOKIE_PREFIX.
+  advanced: { cookiePrefix: AUTH_COOKIE_PREFIX },
   baseURL: process.env.SITE_URL,
   databaseHooks: {
     // Ties Better Auth's anonymous-plugin users to `access.anonRole` (see

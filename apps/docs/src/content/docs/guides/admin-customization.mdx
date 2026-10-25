@@ -1,0 +1,236 @@
+---
+title: Admin Customization
+description: "Experimental: override a field's rendered components and add actions to blocks/array items via admin.components."
+sidebar:
+  badge:
+    text: Experimental
+    variant: caution
+---
+
+:::caution[Experimental]
+Slot ids and the contribution model are documented `@experimental` — no
+`unstable_` prefix, but breaking changes are still possible before this
+stabilizes. There is no `definePlugin` yet; everything below is configured
+directly under `admin.components` in `defineConfig()` or a field's own
+`admin.components`.
+:::
+
+VexCMS's admin panel exposes a small set of **extension points (slots)** a
+project can hook into without forking a component: per-field/per-type
+component overrides, and additive action-menu contributions on `blocks()` and
+`array()` fields. The built-in UI (duplicate/move/remove buttons, block
+copy/paste, …) is itself registered through this same mechanism, with
+`vex.`-prefixed ids — there is no private rendering path reserved for
+VexCMS's own actions, so hiding a built-in and adding your own use identical
+config shapes.
+
+## Two kinds of slot
+
+- **Override chains** (`Input`, `Cell`, `Label`, `Description`) — exactly one
+  component renders. Each entry in the chain receives `renderDefault`, the
+  previous stage of the chain (the true built-in for the first entry); calling
+  it renders what came before, not calling it replaces it entirely.
+- **Additive contributions** (`beforeInput`, `afterInput`, `blocks.item.actions`,
+  `blocks.header.actions`, `array.item.actions`) — every contribution whose
+  `access`/`condition` gates pass renders, ordered by `order`/`before`/`after`.
+
+Both live at `admin.components` — on a field instance for that one field, or
+under `defineConfig()`'s root `admin.components` for every field of a given
+type / every blocks or array field project-wide.
+
+## Per-field overrides
+
+```tsx
+import { text } from "@vexcms/core"
+
+const slug = text({
+  label: "Slug",
+  admin: {
+    components: {
+      Input: [
+        {
+          id: "acme.slug-input",
+          component: (props) => (
+            <div className="relative">
+              {props.renderDefault(props)}
+              <CopyButton value={props.value} />
+            </div>
+          ),
+        },
+      ],
+      afterInput: [
+        {
+          id: "acme.slug-preview-link",
+          component: () => <SlugPreviewLink />,
+        },
+      ],
+    },
+  },
+})
+```
+
+`Input`/`Cell`/`Label`/`Description` are override chains; `beforeInput`/
+`afterInput` are additive contribution lists. No built-in contributes to
+`field.label` or `field.description` yet — every field's Input still renders
+its own label/description inline, so those two slots start empty for every
+field.
+
+## Project-wide overrides
+
+Set `admin.components.fields.<type>` in `defineConfig()` to override every
+field of one type — a field's own `admin.components.Input`/`Cell` chain wraps
+the project-wide chain, which wraps the true built-in:
+
+```ts
+import { defineConfig } from "@vexcms/core"
+
+export default defineConfig({
+  collections: [/* … */],
+  admin: {
+    components: {
+      fields: {
+        // Every text() field in the project renders through this chain
+        // first, unless that field's own admin.components.Input adds more.
+        text: {
+          Input: [{ id: "acme.text-input", component: AcmeTextInput }],
+        },
+      },
+      blocks: {
+        itemActions: [
+          { id: "acme.block.flag", component: FlagBlockAction },
+        ],
+        headerActions: [
+          { id: "acme.blocksHeader.exportAll", component: ExportAllAction },
+        ],
+      },
+      array: {
+        itemActions: [
+          { id: "acme.array.flag", component: FlagArrayItemAction },
+        ],
+      },
+    },
+  },
+})
+```
+
+Resolution order for a field's `Input` (same for `Cell`): the field's own
+`admin.components.Input` chain, composed outward from the project-wide
+`admin.components.fields.<type>.Input` chain, composed outward from the true
+built-in — so a field-level override's `renderDefault` reaches the
+project-wide override before the built-in, and the project-wide override's
+own `renderDefault` reaches the built-in directly.
+
+## Hiding a built-in action
+
+`blocks.item.actions`, `blocks.header.actions`, and `array.item.actions` are
+additive lists seeded with VexCMS's own built-ins, registered under stable
+`vex.`-prefixed ids from `BUILTIN_CONTRIBUTION_IDS`:
+
+```ts
+import { BUILTIN_CONTRIBUTION_IDS } from "@vexcms/core"
+
+const blocksField = blocks({
+  blocks: [heroBlock, calloutBlock],
+  admin: {
+    components: {
+      itemActions: [
+        // Hides the built-in "duplicate" action for this one blocks() field.
+        { id: BUILTIN_CONTRIBUTION_IDS.block.duplicate, hidden: true },
+        {
+          id: "acme.block.customAction",
+          component: CustomBlockAction,
+        },
+      ],
+    },
+  },
+})
+```
+
+A hide directive (`{ id, hidden: true }`) names an existing contribution
+(usually a built-in) in the same resolved list and removes it without
+deleting the entry that documents its `order`/`before`/`after` — never reuse
+an id for a different component.
+
+`BUILTIN_CONTRIBUTION_IDS` (`packages/core/src/components/builtinIds.ts`)
+covers:
+
+| Group | Ids |
+| --- | --- |
+| `block` | `duplicate`, `insertAbove`, `insertBelow`, `moveUp`, `moveDown`, `remove`, `copy`, `pasteAbove`, `pasteBelow` |
+| `blocksHeader` | `copyAll`, `pasteAppend`, `replaceAll` |
+| `array` | `duplicate`, `moveUp`, `moveDown`, `remove` |
+
+## Contribution entries
+
+An additive entry (`ComponentContributionInput`) is either a component
+contribution or a hide directive:
+
+```ts
+{
+  id: string              // stable, vex.-prefixed for built-ins
+  component: Component    // the contribution's component
+  order?: number          // sort key; ties broken by array position (default 0)
+  before?: string | string[] // id(s) this must render before
+  after?: string | string[]  // id(s) this must render after
+  hidden?: boolean         // omit from the resolved list without deleting the entry
+  access?: (ctx: { hasPermission: (resource: string, action: string) => boolean }) => boolean
+  condition?: (props: { data, siblingData }) => boolean // same signature as admin.condition
+}
+// or, to hide an existing entry:
+{ id: string; hidden: true }
+```
+
+`access` gates on RBAC and is checked first; `condition` is checked after and
+reuses `admin.condition`'s `(data, siblingData)` signature — for
+`blocks.item.actions`/`array.item.actions`, `siblingData` resolves to that
+one item's own fields, not the whole document. Each contribution renders
+inside its own error boundary, so one bad third-party component cannot take
+down the surrounding form.
+
+An override entry (`ComponentOverrideInput`) has no `order`/`before`/`after`/
+`access`/`condition` — chain order is array order, and the chain itself
+decides whether to render anything by calling or skipping `renderDefault`:
+
+```ts
+{
+  id: string
+  component: (props) => ReactNode  // props includes renderDefault
+}
+```
+
+## Slot ids
+
+Every slot has a stable, flat, dot-joined id exported from `@vexcms/core` as
+`SLOT_IDS` — useful for error messages and, later, plugin conflict reporting:
+
+```ts
+import { SLOT_IDS } from "@vexcms/core"
+
+SLOT_IDS.field.input        // "field.input"
+SLOT_IDS.field.cell         // "field.cell"
+SLOT_IDS.field.label        // "field.label"
+SLOT_IDS.field.description  // "field.description"
+SLOT_IDS.field.beforeInput  // "field.beforeInput"
+SLOT_IDS.field.afterInput   // "field.afterInput"
+SLOT_IDS.blocks.itemActions   // "blocks.item.actions"
+SLOT_IDS.blocks.headerActions // "blocks.header.actions"
+SLOT_IDS.array.itemActions    // "array.item.actions"
+```
+
+Nested `admin.components` keys map 1:1 onto these: `admin.components.beforeInput`
+on a field resolves `SLOT_IDS.field.beforeInput`; `admin.components.itemActions`
+on a `blocks()` field resolves `SLOT_IDS.blocks.itemActions`.
+
+## Rendering, in `@vexcms/react`
+
+Slots render through `SlotOutlet` (`packages/react/src/components/slots/SlotOutlet.tsx`),
+which merges a call site's built-in contributions with the project/field's own
+list, re-resolves order over the merged array (so a project's `before`/`after`
+can target a built-in id), evaluates `access`/`condition`, and wraps each
+surviving contribution in `ComponentErrorBoundary`. Override chains resolve
+through `resolveFieldInputComponent`/`resolveFieldCellComponent`
+(`packages/react/src/components/fields`), composing field → project-type →
+built-in into one `renderDefault` chain.
+
+A duplicate id within one resolved list — two real contributions sharing an
+id, not a hide directive naming one — throws `VexComponentConfigError`.

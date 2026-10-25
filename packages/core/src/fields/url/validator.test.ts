@@ -23,4 +23,15 @@ describe("urlFieldToValidator", () => {
 
     expect(validator).toBe("v.optional(v.string())");
   });
+
+  it("ignores min/max constraints (enforced in form validation, not DB schema)", () => {
+    const field = url({
+      required: true,
+      min: 10,
+      max: 2048,
+    });
+    const validator = urlFieldToValidator({ field });
+
+    expect(validator).toBe("v.string()");
+  });
 });

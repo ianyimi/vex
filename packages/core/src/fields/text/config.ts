@@ -1,6 +1,7 @@
 import { VexResourceSlug } from "../../types";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 import type { TextFieldInput, TextField } from "./types";
 
 /**
@@ -17,8 +18,9 @@ import type { TextFieldInput, TextField } from "./types";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
+ * - `admin.mask` — not set (opt-in; no project-wide default applies unless configured)
  *
  * @param options - Text field configuration. All properties are optional.
  * @returns Resolved text field definition with all defaults applied.
@@ -33,12 +35,12 @@ import type { TextFieldInput, TextField } from "./types";
  *     title: text(),
  *
  *     // Required slug with length validation and a database index
- *     slug: text({ required: true, min: { value: 3 }, max: { value: 100 }, index: "by_slug" }),
+ *     slug: text({ required: true, min: 3, max: 100, index: "by_slug" }),
  *
  *     // Author name with a placeholder hint in the admin form
  *     authorName: text({
  *       required: true,
- *       admin: { width: "half", placeholder: "e.g. Jane Smith" },
+ *       admin: { width: "50%", placeholder: "e.g. Jane Smith" },
  *     }),
  *   }
  * })
@@ -61,16 +63,26 @@ export function text<
     defaultValue: ADMIN_FIELDS.text.defaultValue,
     ...options,
 
+    min: resolveFieldLimit({
+      limit: options?.min,
+      defaultError: (value) => `Must be at least ${value} characters.`,
+    }),
+    max: resolveFieldLimit({
+      limit: options?.max,
+      defaultError: (value) => `Must be no more than ${value} characters.`,
+    }),
+
     // Admin config with all defaults applied
     admin: {
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       // Optional admin properties (no defaults)
       placeholder: "",
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options?.meta,

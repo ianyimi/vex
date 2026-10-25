@@ -20,23 +20,21 @@ rendered as sub-fields using the `items` field type's input component.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key when left empty. |
-| `labels.singular` | `string` | `"Item"` | Label for a single item in add/remove controls (e.g. "Add Tag"). |
-| `labels.plural` | `string` | `"Items"` | Label shown in the field header and empty state. |
+| `label` | `string` | `""` | Display label, used as the plural form in the field header and empty state. Inferred from the field key when left empty. |
+| `items.label` | `string` | `"Item"` | Singular label for a single item, used in add/remove controls (e.g. "Add Tag"). Set on the `items` field builder, not on `array()` itself. |
 | `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema. |
 | `defaultValue` | `TArrayType[]` | `[]` | Pre-filled array shown in the admin form when creating a new document. |
-| `items` | `AdminField` | — | **Required.** The field type used to validate each item in the array. Any VexCMS field builder (including nested `array()`). |
-| `min.value` | `number` | — | Minimum number of items allowed. |
-| `min.error` | `string` | `"This field is too short."` | Error message shown when the array has fewer than `min.value` items. |
-| `max.value` | `number` | — | Maximum number of items allowed. |
-| `max.error` | `string` | `"This field is too long."` | Error message shown when the array has more than `max.value` items. |
+| `items` | `AdminField` | — | **Required.** The field type used to validate each item in the array. Any VexCMS field builder (including nested `array()`). Object-shaped (`group()`) items get a framework-injected, stable `id` on each item. |
+| `min` | `number \| [number, string]` | — | Minimum number of items allowed. Bare number, or a `[value, customError]` tuple for a custom error message. |
+| `max` | `number \| [number, string]` | — | Maximum number of items allowed. Bare number, or a `[value, customError]` tuple. |
 | `description` | `string` | — | Helper text shown below the field input. |
 | `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
 | `admin.readOnly` | `boolean` | `false` | Renders add/remove controls as non-interactive. |
 | `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
-| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.width` | `string` | `"100%"` | CSS width of the field in the edit form (e.g. `"50%"`, `"240px"`). Meaningful as a child of `row()`; below a narrow form column every field renders full width regardless. |
 | `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Alignment of the item count in the list-view table cell. |
 | `admin.placeholder` | `string` | — | Placeholder shown in empty array state. |
+| `admin.condition` | `(props: { data, siblingData }) => boolean` | — | Shows the field only while this returns `true`. A throwing condition counts as met. Hidden fields skip `required`/`validate` on the server too. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
 
 ## Schema output
 
@@ -79,8 +77,8 @@ const posts = defineCollection({
     // Minimum 1, maximum 10 items
     highlights: array({
       items: text(),
-      min: { value: 1 },
-      max: { value: 10 },
+      min: 1,
+      max: 10,
     }),
 
     // Nested array — array of arrays of numbers (2D matrix)
@@ -88,11 +86,10 @@ const posts = defineCollection({
       items: array({ items: number() }),
     }),
 
-    // Custom labels
+    // Custom plural label; the items field's own label is the singular
     skills: array({
       label: "Skills",
-      labels: { singular: "Skill", plural: "Skills" },
-      items: text(),
+      items: text({ label: "Skill" }),
     }),
   },
 });
@@ -100,9 +97,14 @@ const posts = defineCollection({
 
 ## Admin UI
 
-The array field renders a dynamic list with an "Add [Singular]" button.
-Each item appears as a sub-field using the `items` field type's input component
-(e.g. a `text()` field renders as a text input, `number()` as a number input).
-A trash icon removes individual items. Controls are disabled when
-`admin.readOnly` is `true`. The list view table cell shows the item count
-(e.g. "3 items.").
+The array field renders a dynamic list with an "Add [Singular]" button below
+the items, where "Singular" comes from the `items` field's own `label`
+(defaults to "Item"; the array's own `label` is the plural form, defaulting
+to "Items"). Each item appears as a sub-field using the `items` field type's
+input component (e.g. a `text()` field renders as a text input, `number()` as
+a number input); object-shaped (`group()`) items get a stored `id`. Per-item
+actions — duplicate, move up/down, remove — render as inline icons on wide
+forms and collapse into a single ⋯ menu on narrow ones. The header carries
+"Collapse all" / "Expand all" toggles once there is more than one item.
+Controls are disabled when `admin.readOnly` is `true`. The list view table
+cell shows the item count (e.g. "3 items.").

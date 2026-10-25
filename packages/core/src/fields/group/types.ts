@@ -6,7 +6,9 @@ import { AdminField } from "../types";
 /**
  * 'admin' field configuration input for a `group()` field.
  */
-export interface GroupFieldAdminConfigInput extends FieldAdminConfigInput {
+export interface GroupFieldAdminConfigInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfigInput<TCollectionSlug> {
   /**
    * Whether the accordion fieldset starts COLLAPSED in the admin form.
    *
@@ -29,7 +31,9 @@ export interface GroupFieldAdminConfigInput extends FieldAdminConfigInput {
 /**
  * Resolved 'admin' field configuration for a `group()` field.
  */
-export interface GroupFieldAdminConfig extends FieldAdminConfig {
+export interface GroupFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfig<TCollectionSlug> {
   /**
    * Whether the accordion fieldset starts COLLAPSED in the admin form.
    *
@@ -57,7 +61,7 @@ export interface GroupFieldAdminConfig extends FieldAdminConfig {
  *     hidden:            false,
  *     readOnly:          false,
  *     position:          "main",
- *     width:             "full",
+ *     width: "100%",
  *     cellAlignment:     "left",
  *     defaultCollapsed:  false,
  *   }
@@ -95,7 +99,7 @@ export interface GroupFieldInput<
   /** Pre-filled value shown when creating a new document. Defaults to `{}`. */
   defaultValue?: Record<string, unknown>;
   interfaceName?: string;
-  admin?: GroupFieldAdminConfigInput;
+  admin?: GroupFieldAdminConfigInput<TCollectionSlug>;
   /** Server-only async validation with `value` typed as `Record<string, unknown>`. @see {@link FieldValidate} */
   validate?(props: FieldValidateProps<TCollectionSlug, Record<string, unknown>>): Promise<void> | void;
 }
@@ -121,7 +125,7 @@ export interface GroupField<
   /** Whether this field is required in the database schema. */
   required: boolean;
   /** Resolved admin UI configuration with all defaults applied. */
-  admin: GroupFieldAdminConfig;
+  admin: GroupFieldAdminConfig<TCollectionSlug>;
   /**
    * Sub-fields that form the object's shape.
    *

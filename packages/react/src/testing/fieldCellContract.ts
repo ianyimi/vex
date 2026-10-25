@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Row } from "@tanstack/react-table";
 import { afterEach, describe, expect, it } from "vitest";
 import { defineConfig } from "@vexcms/core";
-import type { AdminField, CellComponentProps, CollectionConfig, TDocument } from "@vexcms/core";
+import type { AdminDataField, CellComponentProps, CollectionConfig, TDocument } from "@vexcms/core";
 
 import { expectNoA11yViolations } from "./a11y";
 import { testCollection } from "./harness/accessFixtures";
@@ -34,7 +34,7 @@ export function withCellConfig(node: ReactNode): ReactNode {
 
 /** Options for {@link runFieldCellContractSuite}. */
 export interface FieldCellContractOptions<
-  TField extends AdminField = AdminField,
+  TField extends AdminDataField = AdminDataField,
   TValue = unknown,
 > {
   /** The field type's fixture — supplies `fieldDef` and a representative `valid` value. */
@@ -156,7 +156,7 @@ function buildOverLengthValue(valid: unknown, threshold: number): unknown {
  *
  * @param options - The field's fixture, component, and contract options.
  */
-export function runFieldCellContractSuite<TField extends AdminField, TValue>(
+export function runFieldCellContractSuite<TField extends AdminDataField, TValue>(
   options: FieldCellContractOptions<TField, TValue>,
 ): void {
   const { fixture, Component, extra } = options;

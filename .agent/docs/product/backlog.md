@@ -777,3 +777,151 @@ each is its own feature decision.
 **Why deferred.** Image support just shipped (spec 2026-10-13-richtext-field);
 developer explicitly keeps the popover image-only for now (Upload tab and
 library select restricted to `image/*`, tooltip "Insert image").
+
+---
+
+## Convex function bundle size (dead auth/admin code)
+
+**What.** Keep code that never runs in the Convex runtime out of the Convex
+function bundle. Measured 2026-10-16 with esbuild using Convex's own bundler
+settings (`conditions: ["convex","module"]`, splitting, minified syntax and
+identifiers) over `apps/test/convex/*.ts`. Three sources found:
+
+1. **Admin UI via the richtext editor — fixed.** `vex.config.ts` →
+   `plateEditor()` lazy-imported `PlateEditorField` → `@vexcms/react` + Plate +
+   Slate + lucide + Base UI. esbuild bundles lazy chunks even though they never
+   run. Fixed by a `"convex"` export condition on `@vexcms/richtext-plate`
+   (`src/server.ts`, inert adapter): 7,955 → 2,372 KB unminified.
+2. **`nextCookies()` — fixed in `apps/test` and `apps/www`; still in the
+   `base-nextjs` template.** Better Auth runs only in Convex here
+   (`convexBetterAuthNextJs` proxies), so both of the plugin's hooks fail on
+   `next/headers` and return. It pulled 36 Next server files: 2,211 → 2,059 KB
+   (−152 KB). The plugin has no schema, so removal doesn't affect auth tables.
+   Template: `packages/create-vexcms/templates/base-nextjs/convex/auth/plugins/index.ts`.
+3. **Kysely via the full `better-auth` entry — open.** ~391 KB. Vex passes an
+   adapter and never runs Better Auth migrations, so `better-auth/minimal`
+   (no Kysely: no direct DB connection, no `runMigrations()`) would be
+   functionally sufficient. But switching `createAuth` alone saves only ~11 KB:
+   `@better-auth/api-key` imports `BetterAuthError` from the root
+   `better-auth` entry, which keeps the full entry and Kysely in the bundle.
+
+**Why.** A smaller bundle means faster deploys and less code to load per
+function cold start [INFERENCE — cold-start effect not measured]. No
+correctness impact found for any item.
+
+**Lift.** Item 2's template: one line plus a template-sync run. Item 3: blocked
+upstream; revisit when `@better-auth/api-key` imports from a subpath, or if the
+API-key plugin is dropped (then switch `convex/auth/index.ts` to
+`better-auth/minimal` and re-measure).
+
+**Why deferred.** Items 1–2 are done in the apps; item 3's saving is gated on
+an upstream change. Developer asked to keep it on record to revisit.
+
+**Detail.** Re-measure with an esbuild metafile build of `apps/test/convex/*.ts`
+using the conditions/options in `convex/dist/cjs/bundler/debugBundle.js:73-90`,
+then reverse-walk importers of the module family in question.
+
+---
+
+## Database adapters (`@vexcms/convex` split, then Supabase/Postgres)
+
+**What.** Move every Convex-specific piece of `@vexcms/core` (the `api/*` query and write
+paths, `versions/*` writes, media queries, `convex-helpers` triggers, `v.*` schema codegen)
+behind a database-adapter interface, ship it as `@vexcms/convex`, and later add
+`@vexcms/postgres` (Drizzle) + `@vexcms/supabase`, with MongoDB last. Non-Convex adapters
+expose fewer guarantees (live queries, catch-all after-hooks, migration-free schema).
+
+**Why.** Today the market is capped at the Convex ecosystem (~10k paying teams). Supabase
+alone has ~100k customers and recovers most Convex features (Realtime, Storage, `pg_cron`).
+It also answers the "platform risk" investor objection.
+
+**Measured lift.** ~52% of core LOC (58 of 199 non-test files) imports Convex. The public API
+also exposes Convex's execution model (`ctx`-taking server API). The access layer already
+compiles a backend-neutral constraint tree (`access/compileConstraints.ts`), which is the
+template for other compilers. Estimate: 4–8 weeks for the split with no behaviour change,
+plus 10–16 weeks for a Supabase MVP (feasibility doc §4).
+
+**What blocks it.** Nothing technical. Two prerequisites keep the split non-breaking:
+launch-plan item **B3** (spec `.agent/docs/specs/2026-10-21-backend-neutral-query-args/`, before
+0.1.0), which removes Convex builder types from the public query and access APIs; and the
+adapter-readiness items (spec stem `.agent/docs/specs/2026-10-21-adapter-readiness/stem.md`,
+before Track PL ships): neutral field storage kinds, `vex` in hook props, a serializable
+`where`, and one data seam shared with Convex-component collections.
+
+**Why deferred / when.** Scheduled as Track DB in `post-v0.1.0-plan.md`: after the Enterprise
+tier, Supabase as the second backend, and community adapters only after two first-party ones.
+
+**Detail.** `.agent/docs/research/db-adapter-feasibility.md` (coupling inventory, parity
+matrix, phase estimates, market math).
+
+---
+
+## Custom server components in admin slots
+
+**What.** Let admin slot contributions be React Server Components declared in
+`vex.config.server.ts`, rendered by `@vexcms/next` and handed to the client views by
+contribution ID — for custom UI that must fetch data or use secrets on the server.
+
+**Why.** Some integrations need server-only work at render time (server-side SDKs,
+RSC-only libraries). Payload supports server components in custom admin components;
+plugin authors coming from Payload will expect it.
+
+**Lift.** Unassessed; the path is clear. `NextAdminPage` (`packages/next/src/NextAdminPage.tsx`)
+is already an async server component that receives the server config and prefetches Convex
+data with the request token, so it can render server contributions for the current route and
+pass the output into the client views' slot outlets (G steps 7–8).
+
+**Blockers / limits.**
+- Only page-level slots make sense (edit header / before-fields, list before-table, dashboard,
+  custom routes). Per-field, per-row, per-block and modal slots stay client-only — N rows would
+  mean N server renders.
+- Output renders per request / navigation: it cannot react to unsaved form edits or live
+  Convex updates without a refresh.
+- Framework-specific: the TanStack Start adapter would need its own equivalent.
+- Most Convex data needs are already met by reactive client queries, or by actions for
+  secrets.
+
+**Why deferred.** Decision S14 in `.agent/docs/specs/2026-10-21-plugin-system/stem.md`:
+0.1.0 slots are client-only to avoid a second, untested render path in H / I. Adding server
+contributions later is additive (a new server-config key), so waiting costs nothing.
+Revisit with Track PL.
+
+**Detail.** Stem decision S14; `.agent/docs/research/plugin-system-design.md` (Payload's
+import map exists because its config lives on the server).
+
+---
+
+## Config toggle: stop persisting array item / block ids
+
+**What.** A project-level setting (e.g. `fields.persistItemIds: false` in `vex.config.ts`,
+default `true`) that stops VexCMS storing the generated `id` on every object-shaped `array()`
+item and every `blocks()` item. Ids would be generated in the admin only, never saved.
+
+**Why.** Each id is ~21 chars (~30 bytes with its key) per array item / block, so storage
+grows with content. Some projects want the smallest documents and don't need item identity
+outside the editor.
+
+**Lift.** Medium. Audited 2026-10-24 (field-input-consistency-pass session):
+- Ids are written by `withArrayItemId` / `assignArrayItemIds` (`packages/core/src/fields/array/utils.ts`,
+  backfilled server-side in `api/prepareEdit.ts`) and by `buildDefaultBlock` / `cloneBlockWithFreshIds`
+  (`fields/blocks/utils.ts`); declared in `fields/array/validator.ts` (`id: v.optional`),
+  `fields/blocks/validator.ts` (`id: v.string()`) and the generated types (`array/config.ts`,
+  `blocks/config.ts`). With the toggle off, all of these skip the id.
+- Admin consumers move to a client-only key list per array/blocks path, held at form level (in
+  `AppForm`'s provider) and moved by add/duplicate/move/remove/drag: `FormArray` keys,
+  `FormGroup`'s `accordionStoreKey`, `FormBlocks`' `openBlockIds`. Scalar arrays already work this
+  way (`FormArray` `keysRef`). Keys never reach the DOM before DnD mounts, so SSR, hydration and
+  page refresh are unaffected.
+- Nothing server-side reads item ids (saves, live-field merge and versions treat the array as one
+  value).
+- A one-time migration strips ids when a project switches the toggle off (Convex rejects
+  undeclared keys once the schema stops declaring `id`).
+
+**Tradeoffs the user opts into.**
+- No stable item/block identity outside the admin: no `#block-…` anchors, cross-version item
+  tracking, comments or translation tooling keyed to a block.
+- `RenderBlocks` keys by index, so in live preview a reorder doesn't carry component state (an
+  open FAQ panel stays at its position). Published pages unaffected.
+
+**Why deferred.** Low priority; the storage saving is small, and ids stay the default because
+they enable those identity features. Revisit whenever document size becomes a user concern.

@@ -1,7 +1,9 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 import type { SelectFieldInput, SelectField } from "./types";
+import { SELECT_DISPLAYS } from "./types";
 
 /**
  * Creates a select field with all defaults applied.
@@ -21,7 +23,7 @@ import type { SelectFieldInput, SelectField } from "./types";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
  *
  * @param options - Select field configuration. All properties are optional.
@@ -77,10 +79,13 @@ export function select<
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       placeholder: "",
+      searchable: false,
+      display: SELECT_DISPLAYS.dropdown,
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options?.meta,

@@ -1,24 +1,20 @@
 import { api } from "@convex/_generated/api"
+import { getSessionCookie } from "better-auth/cookies"
 import { fetchQuery } from "convex/nextjs"
-import { cookies } from "next/headers"
+import { headers } from "next/headers"
 
-const SESSION_COOKIE = "better-auth.session_token"
+import { AUTH_COOKIE_PREFIX } from "~/db/constants"
 
 /**
  * Read the Better Auth session token from cookies.
  *
- * Better Auth prefixes its cookies with `__Secure-` whenever the resolved
- * `baseURL` is https. Locally over http the cookie is
- * `better-auth.session_token`; on a real domain it is
- * `__Secure-better-auth.session_token`. Reading only the bare name works in
- * development and silently returns `null` in production — no error, just an
- * anonymous caller. Check the prefixed name first, as Better Auth's own reader
- * does.
+ * Uses Better Auth's own reader with this app's `AUTH_COOKIE_PREFIX` rather
+ * than a literal cookie name (AP-022): it checks `__Secure-<prefix>.session_token`
+ * (https) then `<prefix>.session_token` (http), and the unique prefix keeps a
+ * different Better Auth app on the same host from being read as this one.
  */
 export async function getSessionToken() {
-  const cookieStore = await cookies()
-  const sessionTokenCookie =
-    cookieStore.get(`__Secure-${SESSION_COOKIE}`)?.value ?? cookieStore.get(SESSION_COOKIE)?.value
+  const sessionTokenCookie = getSessionCookie(await headers(), { cookiePrefix: AUTH_COOKIE_PREFIX })
 
   if (!sessionTokenCookie) return null
 

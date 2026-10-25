@@ -5,6 +5,7 @@ import type { BlockConfigInput, BlockConfig, BlocksFieldInput, BlocksField } fro
 import { RESERVED_BLOCK_FIELD_NAMES } from "./types";
 import { nanoid } from "nanoid";
 import { BaseFieldMeta } from "../types";
+import { getDataFields, resolveFieldLimit, resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 
 /**
@@ -128,17 +129,26 @@ export function blocks<
     labels: options.labels ?? { singular: "Block", plural: "Blocks" },
     blocks: options.blocks,
     interfaceName: options.interfaceName,
-    min: options.min,
-    max: options.max,
+    min: resolveFieldLimit({
+      limit: options.min,
+      defaultError: (value) =>
+        `Must be at least ${value} ${options.labels?.plural ?? "Blocks"}.`,
+    }),
+    max: resolveFieldLimit({
+      limit: options.max,
+      defaultError: (value) =>
+        `Must be no more than ${value} ${options.labels?.plural ?? "Blocks"}.`,
+    }),
     admin: {
       defaultCollapsed: options.admin?.defaultCollapsed ?? false,
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       placeholder: "",
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options.meta,
@@ -164,7 +174,7 @@ function buildBlockInterfaceType(props: {
   fields: BlockConfigInput["fields"];
 }): string {
   const frameworkKeys = `blockType: "${props.slug}"; blockName?: string; id: string`;
-  const userEntries = Object.entries(props.fields)
+  const userEntries = Object.entries(getDataFields({ fields: props.fields }))
     .map(([key, field]) => {
       return `${key}${field.required ? "" : "?"}: ${childInterfaceType(field)}`;
     })

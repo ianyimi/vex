@@ -5,13 +5,13 @@
 - Build the real www marketing site (spec 2026-09-01-www-content-spec; seed rewrite and both code-showcase pairings done — the three `/features` Split blocks remain)
 - 5. C — Versioning & drafts (spec 2026-08-23-versioning-drafts, 56 tasks, still `draft` — RE-SCOPE FIRST: it predates F and E). Calls F's write pipeline and reuses its lenient validation mode; must pass `changes` to `hasPermission` on draft writes; supplies the draft base layer E's overlay sits on (E needs no change — the overlay already applies to whatever document the consumer's query returned)
 - 6. D — Richtext field: wire the existing 3,219 lines in `richtext-plate`, add `richtext()` + the 2 missing core types, drop 4 `@ts-nocheck`
+- 7. G — Field input consistency pass: relationship field, loading states, media MIME filter, conditional fields
 
 ## Inbox
 ### v0.1.0 launch track — work in this order (`.agent/docs/product/v0.1.0-launch-plan.md`)
 ### Other
 - 1. A — Data-table integrity & dead config: unreachable bulk delete, bogus `_createdAt` default, `updatedAt` verification, wire `pageSize` options, delete the UI-dependent table config (sorting/columns move to I), README `convex env set` + false sortable/searchable claims, ratify `vex_` table convention
 - 2. B — Public API surface: un-export the 4 migrate stubs + gate `autoMigrate`; localization ADR (decision only, zero production diff)
-- 7. G — Field input consistency pass: relationship field, loading states, media MIME filter, conditional fields
 - 8. H — Edit-view overhaul: unsaved-changes nav guard, duplicate document, duplicate block
 - 9. I — List-view overhaul: search, sort, column visibility, page size, saved views — reintroduces the config A deleted alongside the controls that consume it
 - 10. J — Responsive / mobile UI pass — FINAL gate before tagging
@@ -22,6 +22,7 @@
 - Assessed-but-deferred features live in `.agent/docs/product/backlog.md`
 - Fix scripts/vercel-build-check.mjs: since / prerenders via a live vex.query, the placeholder NEXT_PUBLIC_CONVEX_URL makes the pristine build fail on every run (pre-existing at a180967). Pass through a real dev URL when present, or make HomePage degrade when Convex is unreachable
 - F follow-up — spec 2026-09-18-lifecycle-hooks-validation step 8: write `scripts/verify-hooks-wiring.mjs`, add a `createVexMutations` assertion to `scripts/verify-scaffold.mjs`, and write `apps/docs/src/content/docs/guides/lifecycle-hooks.mdx` (apps/test + base-nextjs template wiring, and the marketing-site slug validator, are done)
+- B3 — Backend-neutral query args (spec 2026-10-21-backend-neutral-query-args) — before 0.1.0 tag
 
 ## Recently Done
 - 4. E — Live preview — shipped `b5263dc`, 2026-09-20 (spec 2026-09-18-live-preview; ADR-012, with a dual `postMessage` + `BroadcastChannel` transport and a cookie-gated public route)

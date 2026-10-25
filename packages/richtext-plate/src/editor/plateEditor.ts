@@ -8,7 +8,8 @@ type FeatureInput =
   | VexEditorFeature[]
   | ((defaults: VexEditorFeature[]) => VexEditorFeature[]);
 
-interface PlateEditorOptions {
+/** Options accepted by {@link plateEditor} to configure the Plate editor. */
+export interface PlateEditorOptions {
   /**
    * Features to enable in the editor.
    *
@@ -56,10 +57,6 @@ function resolveFeatures(input?: FeatureInput): VexEditorFeature[] {
 export function plateEditor(options: PlateEditorOptions = {}): VexEditorAdapter {
   const features = resolveFeatures(options.features);
 
-  // Both components are lazy so `vex.config.ts` (bundled into every Convex
-  // function via the server config) never evaluates platejs at module load —
-  // platejs's jotai dependency reads `import.meta`, which the Convex runtime
-  // rejects. The chunks load only when the admin UI mounts a component.
   const LazyEditorField = React.lazy(() =>
     import("./PlateEditorField").then((mod) => ({
       default: mod.PlateEditorField,

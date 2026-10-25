@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 import type { DateFieldInput, DateField } from "./types";
 
@@ -22,7 +23,7 @@ import type { DateFieldInput, DateField } from "./types";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
  *
  * @param options - Date field configuration. All properties are optional.
@@ -47,7 +48,7 @@ import type { DateFieldInput, DateField } from "./types";
  *     appointmentAt: date({
  *       required: true,
  *       time: { use12HourFormat: false },
- *       admin: { position: "sidebar", width: "half" },
+ *       admin: { position: "sidebar", width: "50%" },
  *     }),
  *   }
  * })
@@ -72,16 +73,28 @@ export function date<
     defaultValue: ADMIN_FIELDS.date.defaultValue,
     ...options,
 
+    min: resolveFieldLimit({
+      limit: options?.min,
+      defaultError: (value) =>
+        `Must be on or after ${new Date(value).toISOString().slice(0, 10)}.`,
+    }),
+    max: resolveFieldLimit({
+      limit: options?.max,
+      defaultError: (value) =>
+        `Must be on or before ${new Date(value).toISOString().slice(0, 10)}.`,
+    }),
+
     // Admin config with all defaults applied
     admin: {
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       // Optional admin properties (no defaults)
       placeholder: "",
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
 
     time: {

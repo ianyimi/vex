@@ -5,6 +5,7 @@ import { Card, CardDescription, CardHeader, CardTitle, Icon } from "../ui";
 import { useVexAuth } from "../../context";
 import { useVexAccess } from "../../context";
 import { useVexConfig } from "../../context/VexConfigContext";
+import { adminHref } from "../../utils/adminHref";
 import { Activity } from "react";
 
 /**
@@ -69,7 +70,7 @@ export function DashboardView() {
         <h2 className="px-4 pb-2 text-center font-semibold">Collections</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {collections.map((collection) => (
-            <a key={collection.slug} href={`/admin/${collection.slug}`} className="group block">
+            <a key={collection.slug} href={adminHref({ type: "collection", slug: collection.slug }, config.basePath)} className="group block">
               <Card className="cursor-pointer transition-shadow group-hover:shadow-md">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-1">
@@ -91,7 +92,7 @@ export function DashboardView() {
         <h2 className="p-4 pb-2 text-center font-semibold">Media</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {mediaCollections.map((collection) => (
-            <a key={collection.slug} href={`/admin/${collection.slug}`} className="group block">
+            <a key={collection.slug} href={adminHref({ type: "collection", slug: collection.slug }, config.basePath)} className="group block">
               <Card className="cursor-pointer transition-shadow group-hover:shadow-md">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-1">
@@ -113,7 +114,7 @@ export function DashboardView() {
         <h2 className="p-4 pb-2 text-center font-semibold">Globals</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {config.globals.map((global) => (
-            <a key={global.slug} href={`/admin/globals/${global.slug}`} className="group block">
+            <a key={global.slug} href={adminHref({ type: "global", slug: global.slug }, config.basePath)} className="group block">
               <Card className="cursor-pointer transition-shadow group-hover:shadow-md">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-1">

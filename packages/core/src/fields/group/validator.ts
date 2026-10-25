@@ -1,4 +1,5 @@
 import { adminFieldToValidator } from "../validators";
+import { getDataFields } from "../utils";
 import { applyBaseValidators } from "../validators/utils";
 import { fieldValidator, type FieldValidate } from "../baseTypes";
 import type { CollectionSlug } from "../../types/generated";
@@ -46,7 +47,7 @@ export function groupFieldToValidator<TFieldMeta extends {} = {}>(props: {
 }): string {
   const { field } = props;
 
-  const subValidators = Object.entries(field.fields)
+  const subValidators = Object.entries(getDataFields({ fields: field.fields }))
     .map(
       ([key, subField]) =>
         `${key}: ${adminFieldToValidator({ field: subField })}`,

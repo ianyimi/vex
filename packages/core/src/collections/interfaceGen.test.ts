@@ -7,6 +7,7 @@ import { date } from "../fields/date/config";
 import { select } from "../fields/select/config";
 import { relationship } from "../fields/relationship/config";
 import { upload } from "../fields/upload/config";
+import { json } from "../fields/json/config";
 import { ADMIN_FIELDS } from "../fields/constants";
 import { collectionConfigToInterface } from "./interfaceGen";
 import { slugToPascalCase } from "./utils";
@@ -51,6 +52,10 @@ describe("ADMIN_FIELDS — interfaceType", () => {
 
   it("select maps to string[] (always array)", () => {
     expect(ADMIN_FIELDS.select.interfaceType).toBe("string[]");
+  });
+
+  it("json maps to unknown", () => {
+    expect(ADMIN_FIELDS.json.interfaceType).toBe("unknown");
   });
 });
 
@@ -155,6 +160,19 @@ describe("generateVexTypes — document interfaces", () => {
     }) })
     const output = generateVexTypes({ config });
     expect(output).toContain("excerpt?: string");
+  });
+
+  it("generates an unknown field for json", () => {
+    const config = defineServerConfig({ config: defineConfig({
+      collections: [
+        defineCollection({
+          slug: "posts",
+          fields: { settings: json({ required: false }) },
+        }),
+      ],
+    }) })
+    const output = generateVexTypes({ config });
+    expect(output).toContain("settings?: unknown");
   });
 
   it("generates all field types correctly in one collection", () => {

@@ -1,6 +1,35 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig, FieldValidateProps } from "../baseTypes";
+import {
+  BaseField,
+  BaseFieldInput,
+  FieldAdminConfig,
+  FieldAdminConfigInput,
+  FieldLimit,
+  FieldLimitInput,
+  FieldValidateProps,
+} from "../baseTypes";
 import type { VexResourceSlug } from "../../types/generated";
+import type { FieldMaskInput } from "../mask";
+
+/** Per-type `admin` input for `number()` — adds `mask`. */
+export interface NumberFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfigInput<TCollectionSlug> {
+  /**
+   * An opt-in input mask, or `false` to opt out of the project default — see
+   * {@link TextFieldAdminInput.mask} for the full contract. A masked number
+   * field renders `type="text"` and still stores a `number`.
+   */
+  mask?: FieldMaskInput | false;
+}
+
+/** Resolved per-type `admin` for `number()`. */
+export interface NumberFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfig<TCollectionSlug> {
+  /** The field's own mask, or `false` to opt out of the project default. @see {@link NumberFieldAdminInput.mask} */
+  mask?: FieldMaskInput | false;
+}
 
 /**
  * Configuration input for a `number()` field.
@@ -18,7 +47,7 @@ import type { VexResourceSlug } from "../../types/generated";
  *     hidden:        false,   // visible in the admin form
  *     readOnly:      false,   // editable by default
  *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "full",  // spans the full form width, not half
+ *     width: "100%",  // spans the full form width, not half
  *     cellAlignment: "left",  // value aligned left in the data table column
  *   }
  * }
@@ -30,13 +59,13 @@ import type { VexResourceSlug } from "../../types/generated";
  * price: number()
  *
  * // Required quantity with a minimum of 1 and a database index
- * quantity: number({ required: true, min: { value: 1 }, index: "by_quantity" })
+ * quantity: number({ required: true, min: 1, index: "by_quantity" })
  *
  * // Rating capped between 0 and 5 with custom error messages
  * rating: number({
- *   min: { value: 0, error: "Rating cannot be negative" },
- *   max: { value: 5, error: "Rating cannot exceed 5" },
- *   admin: { width: "half" },
+ *   min: [0, "Rating cannot be negative"],
+ *   max: [5, "Rating cannot exceed 5"],
+ *   admin: { width: "50%" },
  * })
  *
  * // Pre-filled default for a score field
@@ -51,25 +80,23 @@ export interface NumberFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
 > extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+  /** Admin UI configuration for this field. */
+  admin?: NumberFieldAdminInput<TCollectionSlug>;
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * Does not affect database values — only the form's initial state.
    */
   defaultValue?: number;
-  /** Minimum allowed numeric value config. */
-  min?: {
-    /** Minimum allowed numeric value. */
-    value: number;
-    /** Error message shown when the value is below the minimum. */
-    error?: string;
-  };
-  /** Maximum allowed numeric value config. */
-  max?: {
-    /** Maximum allowed numeric value. */
-    value: number;
-    /** Error message shown when the value exceeds the maximum. */
-    error?: string;
-  };
+  /** Minimum allowed numeric value. @see {@link FieldLimitInput} */
+  min?: FieldLimitInput;
+  /** Maximum allowed numeric value. @see {@link FieldLimitInput} */
+  max?: FieldLimitInput;
+  /**
+   * Step increment for the number input's native spinner/validation
+   * (the HTML `step` attribute). Purely a UI affordance — submitted values
+   * are never rounded or rejected against it.
+   */
+  step?: number;
   /** Server-only async validation with `value` typed as `number`. @see {@link FieldValidate} */
   validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<void> | void;
 }
@@ -90,23 +117,18 @@ export interface NumberField<
   /** Whether this field is required in the database schema. */
   required: boolean;
   /** Resolved admin UI configuration with all defaults applied. */
-  admin: FieldAdminConfig;
-  /** Pre-filled numeric value shown in the admin form when creating a new document. */
+  admin: NumberFieldAdminConfig<TCollectionSlug>;
   defaultValue: number;
-  /** Minimum allowed numeric value config. */
-  min?: {
-    /** Minimum allowed numeric value. */
-    value: number;
-    /** Error message shown when the value is below the minimum. */
-    error?: string;
-  };
-  /** Maximum allowed numeric value config. */
-  max?: {
-    /** Maximum allowed numeric value. */
-    value: number;
-    /** Error message shown when the value exceeds the maximum. */
-    error?: string;
-  };
+  /** Minimum allowed numeric value, with its resolved error message. @see {@link FieldLimit} */
+  min?: FieldLimit;
+  /** Maximum allowed numeric value, with its resolved error message. @see {@link FieldLimit} */
+  max?: FieldLimit;
+  /**
+   * Step increment for the number input's native spinner/validation
+   * (the HTML `step` attribute). Purely a UI affordance — submitted values
+   * are never rounded or rejected against it.
+   */
+  step?: number;
   /** Server-only async validation with `value` typed as `number`. @see {@link FieldValidate} */
   validate?(props: FieldValidateProps<TCollectionSlug, number>): Promise<void> | void;
 }

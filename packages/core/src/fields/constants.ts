@@ -14,54 +14,88 @@ export const ADMIN_FIELDS = {
     interfaceType: "string",
     validator: "v.string()",
     defaultValue: "",
+    kind: "data",
+    inputMasks: true,
+  },
+  email: {
+    type: "email",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+    kind: "data",
+    inputMasks: true,
+  },
+  textarea: {
+    type: "textarea",
+    interfaceType: "string",
+    validator: "v.string()",
+    defaultValue: "",
+    kind: "data",
+    inputMasks: false,
   },
   url: {
     type: "url",
     interfaceType: "string",
     validator: "v.string()",
     defaultValue: "",
+    kind: "data",
+    inputMasks: true,
   },
   color: {
     type: "color",
     interfaceType: "string",
     validator: "v.string()",
     defaultValue: "",
+    kind: "data",
+    inputMasks: false,
   },
   number: {
     type: "number",
     interfaceType: "number",
     validator: "v.number()",
     defaultValue: 0,
+    kind: "data",
+    inputMasks: true,
   },
   checkbox: {
     type: "checkbox",
     interfaceType: "boolean",
     validator: "v.boolean()",
     defaultValue: false,
+    kind: "data",
+    inputMasks: false,
   },
   date: {
     type: "date",
     interfaceType: "number",
     validator: "v.number()",
     defaultValue: undefined,
+    kind: "data",
+    inputMasks: false,
   },
   select: {
     type: "select",
     interfaceType: "string[]",
     validator: "v.array(\nv.string()\n)",
     defaultValue: [] as string[],
+    kind: "data",
+    inputMasks: false,
   },
   relationship: {
     type: "relationship",
     interfaceType: "Id<CollectionSlug>[]",
     validator: "v.array(\nv.string()\n)",
     defaultValue: [] as string[],
+    kind: "data",
+    inputMasks: false,
   },
   array: {
     type: "array",
     interfaceType: "unknown[]",
     validator: "v.array(\nv.any()\n)",
     defaultValue: [],
+    kind: "data",
+    inputMasks: false,
   },
   group: {
     type: "group",
@@ -69,24 +103,72 @@ export const ADMIN_FIELDS = {
     validator: "v.object({})",
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultValue: {} as Record<string, any>,
+    kind: "data",
+    inputMasks: false,
   },
   blocks: {
     type: "blocks",
     interfaceType: "Record<string, any>[]", // placeholder - blocks() overridses per instance
     validator: "v.array(v.any())", // placeholder - blocksFieldToValidator builds dynamically
     defaultValue: [],
+    kind: "data",
+    inputMasks: false,
   },
   upload: {
     type: "upload",
     interfaceType: "Id<MediaCollectionSlug>[]",
     validator: "v.array(\nv.string()\n)",
     defaultValue: undefined,
+    kind: "data",
+    inputMasks: false,
   },
   richtext: {
     type: "richtext",
     interfaceType: "RichTextDocument",
     validator: "v.array(\nv.any()\n)",
     defaultValue: [],
+    kind: "data",
+    inputMasks: false,
+  },
+  json: {
+    type: "json",
+    interfaceType: "unknown",
+    validator: "v.any()",
+    defaultValue: undefined,
+    kind: "data",
+    inputMasks: false,
+  },
+  tabs: {
+    type: "tabs",
+    interfaceType: "never",
+    validator: "never",
+    defaultValue: undefined,
+    kind: "ui",
+    inputMasks: false,
+  },
+  collapsible: {
+    type: "collapsible",
+    interfaceType: "never",
+    validator: "never",
+    defaultValue: undefined,
+    kind: "ui",
+    inputMasks: false,
+  },
+  row: {
+    type: "row",
+    interfaceType: "never",
+    validator: "never",
+    defaultValue: undefined,
+    kind: "ui",
+    inputMasks: false,
+  },
+  ui: {
+    type: "ui",
+    interfaceType: "never",
+    validator: "never",
+    defaultValue: undefined,
+    kind: "ui",
+    inputMasks: false,
   },
 } as const;
 /** Union of all supported field type name strings (e.g. `"text"` | `"number"` | `"checkbox"` | ...). */
@@ -98,6 +180,9 @@ export type AdminFieldTsType = (typeof ADMIN_FIELDS)[keyof typeof ADMIN_FIELDS][
 
 /** Literal type `"text"` — the discriminant value on {@link TextField}. */
 export type TextFieldType = typeof ADMIN_FIELDS.text.type;
+
+/** Literal type `"email"` — the discriminant value on {@link EmailField}. */
+export type EmailFieldType = typeof ADMIN_FIELDS.email.type;
 
 /** Literal type `"url"` — the discriminant value on {@link UrlField}. */
 export type UrlFieldType = typeof ADMIN_FIELDS.url.type;

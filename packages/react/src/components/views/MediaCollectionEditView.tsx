@@ -1,12 +1,18 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
-import { CRUD_ACTIONS, isFieldAllowed, vexConvexApi } from "@vexcms/core";
-import type { MediaCollectionConfig, MediaCollectionSlug, VexMediaDocument } from "@vexcms/core";
+import { CRUD_ACTIONS, getDataFields, vexConvexApi } from "@vexcms/core";
+import type {
+  MediaCollectionConfig,
+  MediaCollectionSlug,
+  VexMediaDocument,
+} from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
 import { Button } from "../ui";
-import { fieldToInputComponent } from "../fields";
+import { RenderFields } from "../form/RenderFields";
+import { applyFieldPermissionReadOnly } from "../form/applyFieldPermissionReadOnly";
 import {
   useFieldsForm,
   useFieldPermissions,
@@ -106,9 +112,13 @@ function MediaCollectionEditForm(props: {
     mutationFn: vexConvexApi.update,
     operation: "update",
   });
+  const dataFields = useMemo(
+    () => getDataFields({ fields: collection.fields }),
+    [collection.fields],
+  );
   const visibleFields = useVisibleFields({
     resource: collection.slug,
-    fields: collection.fields,
+    fields: dataFields,
     data: currentDocument,
   });
   const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
@@ -182,26 +192,15 @@ function MediaCollectionEditForm(props: {
         />
       </div>
       <div className="space-y-4">
-        {visibleFields
-          .filter(([_, fieldDef]) => !fieldDef.admin.hidden)
-          .map(([fieldKey, field]) => {
-            const InputComponent = fieldToInputComponent(field.type);
-            if (!InputComponent) {
-              // TODO: handle missing component error here
-              throw new Error(`Missing component for field type '${field.type}'`);
-            }
-            return (
-              <InputComponent
-                key={fieldKey}
-                name={fieldKey}
-                fieldDef={field}
-                readOnly={
-                  field.admin.readOnly || !canEdit || !isFieldAllowed(fieldPermissions, fieldKey)
-                }
-                collection={collection}
-              />
-            );
+        <RenderFields
+          fields={applyFieldPermissionReadOnly({
+            fields: collection.fields,
+            fieldPermissions,
           })}
+          collection={collection}
+          readOnly={!canEdit}
+          fieldKeys={readableFieldKeys}
+        />
       </div>
     </AppForm>
   );

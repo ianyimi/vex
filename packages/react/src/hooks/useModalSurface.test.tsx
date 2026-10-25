@@ -8,7 +8,7 @@ function Probe() {
 }
 
 /**
- * Fields are rendered generically by `RenderFieldInputComponents`, so a select
+ * Fields are rendered generically by `RenderFields`, so a select
  * buried in a generated form has no prop channel telling it whether it sits in
  * a dialog. This context is that channel, and it is what decides whether the
  * select's popover locks page scroll.

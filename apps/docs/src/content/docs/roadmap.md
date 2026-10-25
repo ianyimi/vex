@@ -9,7 +9,8 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · ⏳ Future · �
 
 ## Shipped
 
-- ✅ 12 field types — `text`, `number`, `checkbox`, `select`, `date`, `url`, `relationship`, `upload`, `array`, `group`, `blocks`, `color`
+- ✅ 16 field types — `text`, `number`, `checkbox`, `select`, `date`, `url`, `email`, `textarea`, `json`, `relationship`, `upload`, `array`, `group`, `blocks`, `color`, `richtext` (Plate.js via `@vexcms/richtext-plate`, with inline images from the media library)
+- ✅ Versioning & drafts — draft/publish workflow, autosave, version history, restore, and unpublish
 - ✅ Convex schema + type codegen
 - ✅ Real-time admin panel
 - ✅ DataTable with pagination and `totalDocs`
@@ -30,25 +31,26 @@ Status key: ✅ Shipped · 🔄 In progress · 📋 Planned · ⏳ Future · �
 - ✅ Lifecycle hooks — `beforeChange` / `beforeDelete` (inline, may reject a write) and `afterChange` / `afterDelete` (via `convex-helpers` triggers), wired by default in `create-vexcms`'s `base-nextjs` template and both hand-maintained apps
 - ✅ Custom `validate()` — async, server-side, database-aware (uniqueness checks and cross-document rules), enforced on every write. A dedicated `lifecycle-hooks` guide covering both of the above is still to write; see `@vexcms/core`'s README until then.
 - ✅ Live preview — the admin panel streams unsaved form state onto your real route, for collections and globals alike. Preview settings declare per collection/global or in one root `admin.livePreview` map; `url` takes a literal path, a `(doc) => string` resolver, or a `{ server }` resolver that reads the database. Origin-allowlisted and gated per request by a session-verified cookie
+- ✅ `email`, `textarea`, and `json` fields — `textarea` adds a character counter, `json` is a CodeMirror editor
+- ✅ `tabs`, `collapsible`, `row`, and `ui` layout fields — organize sibling fields into tabs, collapsible sections, and side-by-side rows, or drop in a non-persisted display/action component, all legal anywhere a `fields` record is
+- ✅ Conditional fields — `admin.condition({ data, siblingData }) => boolean` shows or hides any field (data or layout), enforced identically on the client and the server
+- ✅ Input masks — `admin.mask` on `text` / `email` / `number` / `url`, with project-wide defaults at `fields.inputMasks.<type>`
+- ✅ Block clipboard — copy/paste blocks across fields, documents, and collections from a localStorage clipboard validated against the target block definition
+- ✅ Admin extension points (experimental) — per-field and project-wide component overrides and additive action-menu contributions, documented in the [admin customization guide](/guides/admin-customization/)
 
 ## In progress
 
 These are the v0.1.0 launch track, in the order they ship.
 
 - 🔄 Data-table integrity pass — bulk actions and the per-collection `admin.table` options wired end to end
-- 🔄 Localization design — the storage model and versioning interaction decided before anyone has data to migrate
-- 🔄 Versioning & drafts
-- 🔄 `richtext` field — Plate.js editor via `@vexcms/richtext-plate`
+- 🔄 Localization design — the storage model and versioning interaction decided before anyone has data to migrate. Localization ships free in the core
 - 🔄 Field input consistency pass — relationship field and others get consistent interaction and loading patterns
-- 🔄 Conditional fields — `admin.condition` to show or hide a field based on sibling values
 - 🔄 Edit-view improvements — unsaved-changes guard, duplicate document, duplicate block
 - 🔄 List-view improvements — per-collection search, sorting, column visibility, page size, saved views
 - 🔄 Responsive pass across the admin panel, marketing template, and docs
 
 ## Planned
 
-- 📋 `json` / `email` / `textarea` fields
-- 📋 `tabs` and `ui` fields — a tabbed admin layout for long content models, and non-persisted display/action affordances between fields. Scheduled after the leaf fields above: `ui` is non-persisted, so schema generation, form validation, and column generation all have to skip it, and `tabs` hoists its child fields into the parent, so every tree walk has to flatten through it. Use `group` for nested structure until they land.
 - 📋 Form builder
 - 📋 Block group categorization
 - 📋 Content scheduling
@@ -56,20 +58,30 @@ These are the v0.1.0 launch track, in the order they ship.
 - 📋 Team management
 - 📋 TanStack Start adapter
 - 📋 S3 / R2 storage adapters
-- 📋 Concurrent-edit conflict resolution — per-field conflict affordance and optimistic-concurrency guard
+- 📋 Presence — avatars of everyone viewing a document, on every edit view
 
 ## Future
 
 Committed, but not yet scheduled — distinct from `Exploring`, which is still open research. These are the items the site's roadmap block marks `future`.
 
 - ⏳ Plugin system — custom field types
-- ⏳ Localization — field variants and locale-aware versioning, on top of the storage shape reserved during the v0.1.0 track
+- ⏳ Localization — field variants and locale-aware versioning, free in the core
 - ⏳ Auto-migration — schema diffing and field backfill on deploy
 
 ## Exploring
 
 - 🔭 Multi-component workspaces
 - 🔭 Analytics adapter — per-document and per-block metrics surfaced directly in the admin panel
+
+## Enterprise
+
+Paid add-ons, shipped as separate packages under a flat annual licence and running entirely in your own Convex deployment. The core stays Apache-2.0, and nothing free today moves behind the licence.
+
+- 🔭 Real-time collaboration — per-field editing indicators, live cursors, follow mode, collaborative rich-text editing, and concurrent-edit conflict resolution
+- 🔭 SAML / OIDC single sign-on
+- 🔭 Audit log with retention and export
+- 🔭 Approval workflows
+- 🔭 Content branching between environments
 
 ## Not planned
 

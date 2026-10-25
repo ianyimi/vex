@@ -27,9 +27,10 @@ for sub-structure inside `blocks()` block definitions and `array()` items.
 | `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
 | `admin.readOnly` | `boolean` | `false` | Renders every sub-field input as non-interactive. |
 | `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
-| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.width` | `string` | `"100%"` | CSS width of the field in the edit form (e.g. `"50%"`, `"240px"`). Meaningful as a child of `row()`; below a narrow form column every field renders full width regardless. |
 | `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Alignment used for this field's column in the list-view table. |
 | `admin.defaultCollapsed` | `boolean` | `false` | Whether the accordion fieldset starts collapsed in the admin form. Defaults to expanded; set `true` for secondary or rarely-edited groups (e.g. SEO metadata) to reduce visual noise on load. Mirrors `blocks()`' option of the same name, and Payload's. Replaces the former top-level `defaultOpen`, whose polarity was the inverse — `defaultOpen: false` is now `admin.defaultCollapsed: true`. |
+| `admin.condition` | `(props: { data, siblingData }) => boolean` | — | Shows the field only while this returns `true`. A throwing condition counts as met. Container conditions AND into children. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
 
 ## Schema output
 

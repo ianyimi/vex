@@ -23,7 +23,7 @@ import {
 // always import config functions from `@vexcms/react` (or `@vexcms/next`),
 // never from `@vexcms/core` directly. When any of these gains a component
 // slot, replace the pass-through with a typed wrapper like `relationship`.
-export { text, number, select, date, url, checkbox, defineConfig } from "@vexcms/core";
+export { text, email, textarea, number, select, date, url, checkbox, json, tabs, collapsible, row, ui, defineConfig } from "@vexcms/core";
 
 // Re-export the *resolved* field types users reference in their code.
 //
@@ -34,11 +34,14 @@ export { text, number, select, date, url, checkbox, defineConfig } from "@vexcms
 // `number()`, etc. — which infer their own input types automatically.
 export type {
   TextField,
+  EmailField,
+  TextareaField,
   NumberField,
   SelectField,
   DateField,
   UrlField,
   CheckboxField,
+  JsonField,
   AdminField,
   CollectionSlug,
   VexDocument,
@@ -56,6 +59,7 @@ import type {
   CollectionConfigInput as CoreCollectionConfigInput,
   CollectionConfig as CoreCollectionConfig,
   AdminCollectionConfigInput as CoreAdminCollectionConfigInput,
+  AdminField,
 } from "@vexcms/core";
 import type { ReactHKT } from "./adapter";
 import type { VexResourceSlug } from "@vexcms/core";
@@ -99,7 +103,21 @@ export { reactAdapter } from "./adapter";
 export type { ReactHKT, ReactAdapter } from "./adapter";
 
 // Field components
-export { TextFieldInput, TextFieldCell } from "./components/fields";
+export { TextFieldInput, TextFieldCell, EmailFieldInput, EmailFieldCell, TextareaFieldInput, TextareaFieldCell } from "./components/fields";
+export { JsonFieldInput, JsonFieldCell } from "./components/fields";
+
+// Admin extension points (slots) — experimental, S13
+export { SlotOutlet, SlotOverrideOutlet } from "./components/slots";
+export type { SlotOverrideProps } from "./components/slots";
+export { useVexPermissions, useVexForm } from "./hooks";
+export { SLOT_IDS, BUILTIN_CONTRIBUTION_IDS } from "@vexcms/core";
+export type {
+  ComponentContributionInput,
+  ComponentOverrideInput,
+  SlotId,
+  SlotAccessContext,
+  SlotAccessPredicate,
+} from "@vexcms/core";
 
 export {
   // Layout components
@@ -147,6 +165,8 @@ export {
 // Utilities
 export { cn } from "./styles/utils";
 export { Icon } from "./components/Icon";
+export { adminHref } from "./utils/adminHref";
+export type { AdminHrefTarget } from "./utils/adminHref";
 export type { IconProps, IconName } from "./components/Icon";
 export { RenderBlocks } from "./components/RenderBlocks";
 export type {
@@ -225,8 +245,8 @@ export type CollectionConfigInput<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
-  TFieldSlug extends CollectionSlug = CollectionSlug,
-> = CoreCollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, ReactHKT>;
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
+> = CoreCollectionConfigInput<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, ReactHKT>;
 
 /**
  * Resolved collection configuration with React-typed component slots.
@@ -238,8 +258,8 @@ export type CollectionConfig<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
-  TFieldSlug extends CollectionSlug = CollectionSlug,
-> = CoreCollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, ReactHKT>;
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
+> = CoreCollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, ReactHKT>;
 
 /**
  * Root editor adapter type with the React component slot bound.
@@ -292,13 +312,13 @@ export function defineCollection<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
-  TFieldSlug extends CollectionSlug = CollectionSlug,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
 >(
   config: Parameters<
-    typeof coreDefineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, ReactHKT>
+    typeof coreDefineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, ReactHKT>
   >[0],
-): CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug> {
-  return coreDefineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, ReactHKT>(
+): CollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields> {
+  return coreDefineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, ReactHKT>(
     config,
   );
 }

@@ -1,13 +1,27 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
-import { urlFieldToInputSchema, type CollectionConfig, type UrlField } from "@vexcms/core";
+import {
+  defineConfig,
+  url,
+  urlFieldToInputSchema,
+  type CollectionConfig,
+  type UrlField,
+} from "@vexcms/core";
 import { AppForm } from "../../form/AppForm";
+import { VexConfigContext } from "../../../context/VexConfigContext";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { runFieldInputContractSuite } from "../../../testing/fieldInputContract";
 import { urlFieldFixture } from "./testFixture";
 import { UrlFieldInput } from "./Input";
+
+const { withMaskMock } = vi.hoisted(() => {
+  const applyMaskMock = vi.fn();
+  return { withMaskMock: vi.fn(() => applyMaskMock) };
+});
+
+vi.mock("use-mask-input", () => ({ withMask: withMaskMock }));
 
 /** Mounts `UrlFieldInput` behind a real `useForm` + `<AppForm>`. */
 function UrlHarness(props: {
@@ -196,5 +210,102 @@ runFieldInputContractSuite({
         expect(screen.queryByText("Invalid URL")).not.toBeInTheDocument();
       });
     });
+
+    describe("url: open-link button", () => {
+      it("disables the open-link button when the field is empty", () => {
+        render(
+          <UrlHarness
+            fieldDef={options.fixture.fieldDef}
+            collection={collection}
+            initialValue=""
+          />,
+        );
+        expect(
+          screen.getByRole("button", { name: "Open link in new tab" }),
+        ).toHaveAttribute("aria-disabled", "true");
+      });
+
+      it("disables the open-link button while the value does not parse as a URL", async () => {
+        const user = userEvent.setup();
+        render(
+          <UrlHarness
+            fieldDef={options.fixture.fieldDef}
+            collection={collection}
+            initialValue={options.fixture.empty}
+          />,
+        );
+        const input = screen.getByLabelText(options.fixture.fieldDef.label, {
+          exact: false,
+        });
+        await user.type(input, "not-a-valid-url");
+        expect(
+          screen.getByRole("button", { name: "Open link in new tab" }),
+        ).toHaveAttribute("aria-disabled", "true");
+      });
+
+      it("enables the open-link button once the value parses as a URL, pointing at it with target=_blank and rel=noopener", async () => {
+        const user = userEvent.setup();
+        render(
+          <UrlHarness
+            fieldDef={options.fixture.fieldDef}
+            collection={collection}
+            initialValue={options.fixture.empty}
+          />,
+        );
+        const input = screen.getByLabelText(options.fixture.fieldDef.label, {
+          exact: false,
+        });
+        await user.type(input, options.fixture.valid);
+        const link = screen.getByRole("button", { name: "Open link in new tab" });
+        expect(link).toHaveAttribute("href", options.fixture.valid);
+        expect(link).toHaveAttribute("target", "_blank");
+        expect(link.getAttribute("rel")).toContain("noopener");
+      });
+    });
   },
+});
+
+describe("url: admin.mask", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function UrlMaskHarness(props: { fieldDef: UrlField }) {
+    const form = useForm({ defaultValues: { testField: "" } });
+    return (
+      <AppForm form={form}>
+        <UrlFieldInput name="testField" fieldDef={props.fieldDef} readOnly={false} collection={testCollection} />
+      </AppForm>
+    );
+  }
+
+  it("lazily applies the mask when admin.mask is set", async () => {
+    const fieldDef = url({ label: "Profile", admin: { mask: "url" } });
+    render(
+      <VexConfigContext.Provider value={defineConfig()}>
+        <UrlMaskHarness fieldDef={fieldDef} />
+      </VexConfigContext.Provider>,
+    );
+    await waitFor(() => expect(withMaskMock).toHaveBeenCalledWith("url", { autoUnmask: true }));
+  });
+
+  it("falls back to the project-wide default from fields.inputMasks.url", async () => {
+    const fieldDef = url({ label: "Profile" });
+    render(
+      <VexConfigContext.Provider value={defineConfig({ fields: { inputMasks: { url: "url" } } })}>
+        <UrlMaskHarness fieldDef={fieldDef} />
+      </VexConfigContext.Provider>,
+    );
+    await waitFor(() => expect(withMaskMock).toHaveBeenCalledWith("url", { autoUnmask: true }));
+  });
+
+  it("renders the ordinary controlled input when no mask resolves", () => {
+    const fieldDef = url({ label: "Website" });
+    render(
+      <VexConfigContext.Provider value={defineConfig()}>
+        <UrlMaskHarness fieldDef={fieldDef} />
+      </VexConfigContext.Provider>,
+    );
+    expect(withMaskMock).not.toHaveBeenCalled();
+  });
 });

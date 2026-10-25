@@ -10,8 +10,9 @@ import type { AnyFormApi } from "./AppFormContext";
  * prevent.
  *
  * Also checks any registered nested path beneath `key`, because a `group`
- * field's leaves register as `light.background` and the parent key carries
- * no meta of its own.
+ * field's leaves register as `light.background`, and an `array`/`blocks`
+ * item's as `sections[0].summary`, while the parent key carries no meta of
+ * its own for an in-place edit.
  *
  * @param form - The form instance.
  * @param key - Top-level field key.
@@ -21,9 +22,12 @@ export function isFieldKeyDirty(form: AnyFormApi, key: string): boolean {
   const fieldMeta = form.state.fieldMeta;
   if (fieldMeta[key]?.isDirty === true) return true;
 
-  const prefix = `${key}.`;
+  const groupPrefix = `${key}.`;
+  const itemPrefix = `${key}[`;
   return Object.keys(fieldMeta).some(
-    (metaKey) => metaKey.startsWith(prefix) && fieldMeta[metaKey]?.isDirty === true,
+    (metaKey) =>
+      (metaKey.startsWith(groupPrefix) || metaKey.startsWith(itemPrefix)) &&
+      fieldMeta[metaKey]?.isDirty === true,
   );
 }
 

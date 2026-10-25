@@ -55,12 +55,19 @@ export function MediaPicker({
   onSelect,
   onCancel,
 }: MediaPickerProps) {
-  const [selectedIds, setSelectedIds] = useState<string[]>(field.state.value ?? []);
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    field.state.value ?? [],
+  );
+  const [activeTab, setActiveTab] = useState<"library" | "upload">(defaultTab);
 
   const config = useVexConfig();
-  const targetCollectionConfig = config.mediaCollections.find((mc) => mc.slug === targetCollection);
+  const targetCollectionConfig = config.mediaCollections.find(
+    (mc) => mc.slug === targetCollection,
+  );
   if (!targetCollectionConfig) {
-    throw new Error(`Media collection "${targetCollection}" not found in config.`);
+    throw new Error(
+      `Media collection "${targetCollection}" not found in config.`,
+    );
   }
 
   const handleSelect = () => {
@@ -73,7 +80,9 @@ export function MediaPicker({
     setSelectedIds([]);
   }
 
-  function handleBackToLibrary() {}
+  function handleBackToLibrary() {
+    setActiveTab("library");
+  }
 
   const label = fieldDef.hasMany
     ? targetCollectionConfig.labels.plural
@@ -89,11 +98,16 @@ export function MediaPicker({
             <h1 className="font-mono">
               Select {label} - <b className="text-primary">{fieldDef.label}</b>
             </h1>
-            <p className="text-xs">Choose from the list below, or upload more</p>
+            <p className="text-xs">
+              Choose from the list below, or upload more
+            </p>
           </div>
         </div>
 
-        <Tabs defaultValue={defaultTab}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as "library" | "upload")}
+        >
           <TabsList>
             <TabsTrigger
               value="library"
@@ -119,17 +133,24 @@ export function MediaPicker({
               multi={multi}
               onSelect={setSelectedIds}
               selectedIds={selectedIds}
+              accept={fieldDef.accept}
             />
             <div className="flex items-center justify-between pt-4">
               <p className="pt-2">
-                {selectedIds.length} {multi || selectedIds.length === 0 ? "selected" : "selected"}
+                {selectedIds.length}{" "}
+                {selectedIds.length === 1 ? "item" : "items"} selected
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={onCancel}>
                   Cancel
                 </Button>
-                <Button onClick={handleSelect} disabled={selectedIds.length === 0}>
-                  {multi && selectedIds.length > 1 ? `Select ${selectedIds.length}` : "Select"}
+                <Button
+                  onClick={handleSelect}
+                  disabled={selectedIds.length === 0}
+                >
+                  {multi && selectedIds.length > 1
+                    ? `Select ${selectedIds.length}`
+                    : "Select"}
                 </Button>
               </div>
             </div>

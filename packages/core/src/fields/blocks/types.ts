@@ -1,5 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
-import type { BaseField, BaseFieldInput, FieldAdminConfig, FieldAdminConfigInput, FieldValidateProps } from "../baseTypes";
+import type { BaseField, BaseFieldInput, FieldAdminConfig, FieldAdminConfigInput, FieldLimit, FieldLimitInput, FieldValidateProps } from "../baseTypes";
 import type { AdminField } from "../types";
 import { IconName } from "../../utils";
 import type { VexResourceSlug } from "../../types/generated";
@@ -152,6 +152,20 @@ export interface BlockConfig<TBlockMeta extends {} = {}> {
   metadata?: TBlockMeta;
 }
 
+/** Per-type `admin` input for `blocks()` — adds `defaultCollapsed`. */
+export interface BlocksFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfigInput<TCollectionSlug> {
+  defaultCollapsed?: boolean;
+}
+
+/** Resolved per-type `admin` for `blocks()`. */
+export interface BlocksFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfig<TCollectionSlug> {
+  defaultCollapsed: boolean;
+}
+
 /**
  * Configuration input for a `blocks()` field.
  *
@@ -168,7 +182,7 @@ export interface BlockConfig<TBlockMeta extends {} = {}> {
  *   defaultValue: [],
  *   labels:       { singular: "block", plural: "blocks" },
  *   admin: {
- *     hidden: false, readOnly: false, position: "main", width: "full",
+ *     hidden: false, readOnly: false, position: "main", width: "100%",
  *     cellAlignment: "left",
  *   }
  * }
@@ -202,9 +216,7 @@ export interface BlocksFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
 > extends Omit<BaseFieldInput<TCollectionSlug, TFieldMeta>, "admin"> {
-  admin?: FieldAdminConfigInput & {
-    defaultCollapsed?: boolean;
-  };
+  admin?: BlocksFieldAdminInput<TCollectionSlug>;
   /** Block type definitions that are allowed in this field. */
   blocks: BlockConfig<TFieldMeta>[];
   /**
@@ -219,15 +231,17 @@ export interface BlocksFieldInput<
    *
    * Enforced by the Zod inputSchema (form validation), not the Convex schema.
    * Does not affect the generated `vex.schema.ts`.
+   * @see {@link FieldLimitInput}
    */
-  min?: number;
+  min?: FieldLimitInput;
   /**
    * Maximum number of block items.
    *
    * Enforced by the Zod inputSchema. When the max is reached, the "Add" button
    * is disabled in the admin UI.
+   * @see {@link FieldLimitInput}
    */
-  max?: number;
+  max?: FieldLimitInput;
   /** Singular/plural display labels used in the admin UI. Defaults to `{ singular: "block", plural: "blocks" }`. */
   labels?: { singular: string; plural: string };
   /** Pre-filled value when creating a new document. Defaults to `[]`. */
@@ -247,17 +261,15 @@ export interface BlocksField<
   TFieldMeta extends {} = {},
 > extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.blocks.type;
-  admin: FieldAdminConfig & {
-    defaultCollapsed: boolean;
-  };
+  admin: BlocksFieldAdminConfig<TCollectionSlug>;
   /** Block type definitions allowed in this field. */
   blocks: BlockConfig<TFieldMeta>[];
   /** Optional TypeScript union alias name. */
   interfaceName?: string;
-  /** Minimum number of block items (Zod-enforced). */
-  min?: number;
-  /** Maximum number of block items (Zod-enforced). */
-  max?: number;
+  /** Minimum number of block items, with its resolved error message (Zod-enforced). @see {@link FieldLimit} */
+  min?: FieldLimit;
+  /** Maximum number of block items, with its resolved error message (Zod-enforced). @see {@link FieldLimit} */
+  max?: FieldLimit;
   /** Singular/plural display labels for the admin UI. */
   labels: { singular: string; plural: string };
   /** Pre-filled value when creating a new document. */

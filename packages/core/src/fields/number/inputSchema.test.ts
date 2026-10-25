@@ -36,7 +36,7 @@ describe("numberFieldToInputSchema", () => {
     const field = number({
       required: true,
       defaultValue: 0,
-      min: { value: 3 },
+      min: 3,
     });
     const schema = numberFieldToInputSchema({ field });
 
@@ -53,7 +53,7 @@ describe("numberFieldToInputSchema", () => {
     const field = number({
       required: true,
       defaultValue: 0,
-      max: { value: 5 },
+      max: 5,
     });
     const schema = numberFieldToInputSchema({ field });
 
@@ -70,7 +70,7 @@ describe("numberFieldToInputSchema", () => {
     const field = number({
       required: true,
       defaultValue: 0,
-      min: { value: 3, error: "Too small" },
+      min: [3, "Too small"],
     });
     const schema = numberFieldToInputSchema({ field });
 
@@ -85,7 +85,7 @@ describe("numberFieldToInputSchema", () => {
     const field = number({
       required: true,
       defaultValue: 0,
-      max: { value: 5, error: "Too large" },
+      max: [5, "Too large"],
     });
     const schema = numberFieldToInputSchema({ field });
 
@@ -100,8 +100,8 @@ describe("numberFieldToInputSchema", () => {
     const field = number({
       required: true,
       defaultValue: 0,
-      min: { value: 1 },
-      max: { value: 10 },
+      min: 1,
+      max: 10,
     });
     const schema = numberFieldToInputSchema({ field });
 
@@ -119,8 +119,8 @@ describe("numberFieldToInputSchema", () => {
     const field = number({
       required: true,
       defaultValue: 0,
-      min: { value: 1, error: "Too small" },
-      max: { value: 10, error: "Too large" },
+      min: [1, "Too small"],
+      max: [10, "Too large"],
     });
     const schema = numberFieldToInputSchema({ field });
 
@@ -143,8 +143,8 @@ describe("numberFieldToInputSchema", () => {
     const field = number({
       required: false,
       defaultValue: 0,
-      min: { value: 5 },
-      max: { value: 50 },
+      min: 5,
+      max: 50,
     });
     const schema = numberFieldToInputSchema({ field });
 

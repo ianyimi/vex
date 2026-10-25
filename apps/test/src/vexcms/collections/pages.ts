@@ -1,9 +1,7 @@
 import {
-  array,
   blocks,
   defineCollection,
   group,
-  number,
   relationship,
   text,
   upload,
@@ -93,13 +91,6 @@ export const pages = defineCollection({
       min: 1,
     }),
 
-    testImage: upload({
-      to: TABLE_SLUG_IMAGES,
-      label: "Test Image",
-      hasMany: true,
-      accept: "image/*",
-    }),
-
     // ── SEO metadata (sidebar) ─────────────────────────────────────────────
     metaTitle: text({
       label: "Meta Title",
@@ -128,28 +119,6 @@ export const pages = defineCollection({
       },
     }),
 
-    // ── Test fields ────────────────────────────────────────────────────────
-    test: array({
-      label: "Test Array",
-      items: text({ label: "test array header" }),
-      description: "some test description.",
-    }),
-    test2: array({
-      label: "Test Array 2",
-      labels: {
-        singular: "array",
-        plural: "arrays",
-      },
-      items: array({
-        items: number({ label: "nested nested number field" }),
-        label: "SubList",
-        labels: {
-          singular: "SubArray",
-          plural: "SubArrays",
-        },
-      }),
-      description: "some test number array description",
-    }),
     seo: group({
       label: "SEO",
       interfaceName: "SEO",
@@ -158,38 +127,6 @@ export const pages = defineCollection({
         metaTitle: text({ label: "Meta Title" }),
         metaDescription: text({ label: "Meta Description" }),
         ogImage: url({ label: "OG Image" }),
-      },
-    }),
-    anotherTest: group({
-      label: "test nested things",
-      interfaceName: "AnotherGroupNames",
-      fields: {
-        title: text(),
-        subtitle: text(),
-        list: array({
-          label: "test list in group field",
-          items: group({
-            label: "Group",
-            interfaceName: "InnerGroup",
-            admin: {
-              defaultCollapsed: false,
-            },
-            fields: {
-              title: text({ description: "test field description", label: "Title" }),
-              description: text({ label: "description", description: "another test description" }),
-              queue: array({
-                label: "sub group array list",
-                items: group({
-                  label: "sub group array sub group",
-                  fields: {
-                    title: text({ label: "Title" }),
-                    description: text({ label: "Description" }),
-                  },
-                }),
-              }),
-            },
-          }),
-        }),
       },
     }),
   },

@@ -6,13 +6,15 @@ import {
   type LivePreviewBreakpoint,
   type LivePreviewUrl,
 } from "@vexcms/core";
-import { Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import type { AnyFormApi } from "../form/AppFormContext";
 import { useLivePreviewSync } from "../../hooks/useLivePreviewSync";
 import { Button, Icon, VexLink } from "../ui";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { cn } from "../../styles/utils";
 
 const BREAKPOINT_STORAGE_PREFIX = "vex-live-preview-breakpoint:";
+const FULL_WIDTH_LABEL = "Full width";
 
 /**
  * Resolves a stored breakpoint width back to one of the configured breakpoints.
@@ -279,7 +281,9 @@ export function LivePreviewPanel(props: {
   return (
     <div
       className={
-        props.isMobile ? "fixed inset-0 z-50 flex flex-col bg-background" : "flex h-full flex-col"
+        props.isMobile
+          ? "fixed inset-0 z-50 flex flex-col bg-background"
+          : "@container/preview flex h-full flex-col"
       }
     >
       <div className="flex items-center justify-between gap-4 px-3 py-2 border-b border-border">
@@ -306,30 +310,65 @@ export function LivePreviewPanel(props: {
           />
         )}
         {!props.isMobile && (
-          <div className="flex flex-wrap items-center gap-1 px-3">
-            {props.breakpoints.map((breakpoint) => {
-              const isActive = selectedBreakpoint?.width === breakpoint.width;
-              return (
-                <Button
-                  key={breakpoint.width}
-                  type="button"
-                  className={cn(
-                    "rounded border px-2 py-1 text-xs transition-colors",
-                    isActive
-                      ? "bg-primary border-primary text-primary-foreground"
-                      : "border-border bg-muted/40 text-muted-foreground hover:bg-accent hover:text-foreground",
-                  )}
-                  title={`${breakpoint.label} (${breakpoint.width}px)`}
-                  aria-pressed={isActive}
-                  aria-label={`${breakpoint.label} (${breakpoint.width}px)`}
-                  onClick={() => setSelectedBreakpoint(isActive ? null : breakpoint)}
-                  icon={breakpoint.icon}
-                >
-                  {breakpoint.label}
-                </Button>
-              );
-            })}
-          </div>
+          <>
+            <div className="hidden flex-wrap items-center gap-1 px-3 @2xl/preview:flex">
+              {props.breakpoints.map((breakpoint) => {
+                const isActive = selectedBreakpoint?.width === breakpoint.width;
+                return (
+                  <Button
+                    key={breakpoint.width}
+                    type="button"
+                    className={cn(
+                      "rounded border px-2 py-1 text-xs transition-colors",
+                      isActive
+                        ? "bg-primary border-primary text-primary-foreground"
+                        : "border-border bg-muted/40 text-muted-foreground hover:bg-accent hover:text-foreground",
+                    )}
+                    title={`${breakpoint.label} (${breakpoint.width}px)`}
+                    aria-pressed={isActive}
+                    aria-label={`${breakpoint.label} (${breakpoint.width}px)`}
+                    onClick={() => setSelectedBreakpoint(isActive ? null : breakpoint)}
+                    icon={breakpoint.icon}
+                  >
+                    {breakpoint.label}
+                  </Button>
+                );
+              })}
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    className="@2xl/preview:hidden"
+                    icon={selectedBreakpoint?.icon ?? "Monitor"}
+                    aria-label="Preview width"
+                  >
+                    {selectedBreakpoint?.label ?? FULL_WIDTH_LABEL}
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setSelectedBreakpoint(null)}>
+                  {FULL_WIDTH_LABEL}
+                  {selectedBreakpoint === null && <Check className="ml-auto size-4" />}
+                </DropdownMenuItem>
+                {props.breakpoints.map((breakpoint) => (
+                  <DropdownMenuItem
+                    key={breakpoint.width}
+                    onClick={() => setSelectedBreakpoint(breakpoint)}
+                  >
+                    {breakpoint.icon && <Icon name={breakpoint.icon} size={16} />}
+                    {breakpoint.label}
+                    <span className="text-muted-foreground">{breakpoint.width}px</span>
+                    {selectedBreakpoint?.width === breakpoint.width && <Check className="ml-auto size-4" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
         )}
       </div>
       <div

@@ -1,6 +1,8 @@
 import { ADMIN_FIELDS, type AdminFieldType } from "../constants";
-import { AdminField } from "../types";
+import { AdminDataField } from "../types";
 import { textFieldToValidator } from "../text";
+import { emailFieldToValidator } from "../email";
+import { textareaFieldToValidator } from "../textarea";
 import { numberFieldToValidator } from "../number";
 import { checkboxFieldToValidator } from "../checkbox";
 import { dateFieldToValidator } from "../date";
@@ -13,6 +15,7 @@ import { groupFieldToValidator } from "../group";
 import { blocksFieldToValidator } from "../blocks";
 import { uploadFieldToValidator } from "../upload";
 import { richTextFieldToValidator } from "../richtext";
+import { jsonFieldToValidator } from "../json";
 
 /**
  * Converts any field definition to its Convex schema validator string.
@@ -33,7 +36,7 @@ import { richTextFieldToValidator } from "../richtext";
  * @internal
  */
 export function adminFieldToValidator<TFieldMeta extends {} = {}>(props: {
-  field: AdminField<TFieldMeta>;
+  field: AdminDataField<TFieldMeta>;
 }) {
   // Captured before the switch narrows `props.field`: inside the default arm the
   // union is exhausted to `never`, and `never.type` is not a usable string.
@@ -42,6 +45,10 @@ export function adminFieldToValidator<TFieldMeta extends {} = {}>(props: {
   switch (props.field.type) {
     case ADMIN_FIELDS.text.type:
       return textFieldToValidator({ field: props.field });
+    case ADMIN_FIELDS.email.type:
+      return emailFieldToValidator({ field: props.field });
+    case ADMIN_FIELDS.textarea.type:
+      return textareaFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.number.type:
       return numberFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.checkbox.type:
@@ -66,6 +73,8 @@ export function adminFieldToValidator<TFieldMeta extends {} = {}>(props: {
       return uploadFieldToValidator({ field: props.field });
     case ADMIN_FIELDS.richtext.type:
       return richTextFieldToValidator({ field: props.field });
+    case ADMIN_FIELDS.json.type:
+      return jsonFieldToValidator({ field: props.field });
     default: {
       const unhandled: never = props.field;
       throw new Error(

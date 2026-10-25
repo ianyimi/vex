@@ -3,6 +3,7 @@ export * from "./caseStudies";
 export * from "./changelog";
 export * from "./comments";
 export * from "./editorialFields";
+export * from "./fields";
 export * from "./footers";
 export * from "./headers";
 export * from "./images";

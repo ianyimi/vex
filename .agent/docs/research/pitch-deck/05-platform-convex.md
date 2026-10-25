@@ -52,7 +52,7 @@ putting on the traction slide.
 | Convex builds its own CMS | No public plan found. Convex's stated strategy pushes vertical products to third-party Components. A Convex-built CMS would compete with its own marketplace, and it is a ~30–43-person company focused on infrastructure (`sources/convex-ecosystem.md` §1, §6) |
 | Convex raises prices or shuts down | The backend is open source and self-hostable today, and each release becomes Apache-2.0 after 2 years. The CEO has publicly addressed both fears ([Convex, 2025-11-12](https://news.convex.dev/convex-raises-24m/)). The Apr 2026 pricing update *lowered* egress prices |
 | Convex gets acquired | This is also an upside scenario: VexCMS would be the CMS for the acquirer's backend (compare Payload→Figma) |
-| The market is capped by Convex's size | Today, yes, and the SOM is sized that way. The core is designed to be backend-agnostic: a SpacetimeDB port was assessed and judged feasible with a core split (`.agent/docs/research/spacetimedb-vs-convex-port-feasibility.md:7-17`). Present this as an option for later, not a plan |
+| The market is capped by Convex's size | Today, yes, and the SOM is sized that way. Core's access rules already compile from a backend-neutral constraint tree. A Convex → `@vexcms/convex` split plus a Supabase adapter is assessed as feasible but large (~4–8 weeks for the split, ~10–16 weeks for a Supabase MVP; `../db-adapter-feasibility.md` §4). Pitch it as "Convex-first, adapter-ready", not as shipped support |
 | Convex Components marketplace leads to many competing CMSs | Being early and complete is the defence. The only CMS-like component today is a hobby blog (~539 weekly downloads) |
 
 ## Growth trajectory (for the "ride the platform" slide)
@@ -81,8 +81,10 @@ Monthly `convex` npm downloads ([npm range API](https://api.npmjs.org/downloads/
 - Flat 2×/yr → ~20k (Apr 2027), ~40k (Apr 2028).
 - Recent-download pace (≈3–5×/yr) → ~30–50k by Apr 2027.
 
-With the 04 § 5 conversion assumptions, the beachhead ceiling scales linearly:
-20k teams ≈ $1.5–15M ARR, 40k ≈ $3–29M.
+With the 04 § 5 tiered assumptions (73% in market × 5–10% paid × $1.46–3.03k blended per
+customer), the beachhead ceiling scales linearly: 10k teams ≈ $0.53–2.2M ARR, 20k ≈
+$1.1–4.4M, 40k ≈ $2.1–8.8M. (Superseded 2026-10-17: $1.5–15M / $3–29M, which priced every
+customer at $2–10k.)
 
 On the slide: show the historical chart with sources, and present the scenario table as
 "VexCMS's market grows with Convex" rather than as a Convex projection.

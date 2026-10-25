@@ -1,11 +1,19 @@
 import { api } from "@convex/_generated/api";
+import { getSessionCookie } from "better-auth/cookies";
 import { fetchQuery } from "convex/nextjs";
-import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 
+import { AUTH_COOKIE_PREFIX } from "~/db/constants";
+
+/**
+ * Both names Better Auth may give this app's session cookie: `__Secure-` over
+ * https, bare over http. Derived from `AUTH_COOKIE_PREFIX` so a different
+ * Better Auth app's cookie on the same host (e.g. another `localhost` port) is
+ * never read — or deleted — as ours.
+ */
 const SESSION_COOKIES = {
-  https: "__Secure-better-auth.session_token",
-  http: "better-auth.session_token",
+  https: `__Secure-${AUTH_COOKIE_PREFIX}.session_token`,
+  http: `${AUTH_COOKIE_PREFIX}.session_token`,
 } as const;
 
 /**
@@ -39,9 +47,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const cookieStore = await cookies();
-  const sessionToken =
-    cookieStore.get(SESSION_COOKIES.https)?.value ?? cookieStore.get(SESSION_COOKIES.http)?.value;
+  // Better Auth's own reader (AP-022): checks the `__Secure-` name, then the bare one.
+  const sessionToken = getSessionCookie(request, { cookiePrefix: AUTH_COOKIE_PREFIX });
   if (!sessionToken) {
     return redirectToSignIn(request);
   }
@@ -80,10 +87,12 @@ function redirectToSignIn(request: NextRequest) {
   signInUrl.searchParams.set("redirectTo", request.nextUrl.pathname + request.nextUrl.search);
 
   const response = NextResponse.redirect(signInUrl);
-  for (const cookie of Object.values(SESSION_COOKIES)) {
-    // Clear the stale cookie so the presence-check never lies again
-    response.cookies.delete(cookie);
-  }
+  // Clear the stale cookie so the presence-check never lies again. The
+  // `__Secure-` name must be expired with `secure: true` — browsers reject any
+  // `Set-Cookie` for a `__Secure-` name that lacks it, so a bare delete is a
+  // silent no-op.
+  response.cookies.delete({ name: SESSION_COOKIES.https, path: "/", secure: true });
+  response.cookies.delete({ name: SESSION_COOKIES.http, path: "/" });
   return response;
 }
 

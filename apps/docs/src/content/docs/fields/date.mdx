@@ -31,10 +31,11 @@ hour, minute, and second selectors.
 | `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
 | `admin.readOnly` | `boolean` | `false` | Renders the picker as non-interactive. |
 | `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
-| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.width` | `string` | `"100%"` | CSS width of the field in the edit form (e.g. `"50%"`, `"240px"`). Meaningful as a child of `row()`; below a narrow form column every field renders full width regardless. |
 | `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
 | `admin.placeholder` | `string` | — | Placeholder text shown when the input is empty. |
 | `admin.description` | `string` | — | Helper text displayed below the field input. |
+| `admin.condition` | `(props: { data, siblingData }) => boolean` | — | Shows the field only while this returns `true`. A throwing condition counts as met. Hidden fields skip `required`/`validate` on the server too. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
 
 ## Schema output
 
@@ -67,11 +68,10 @@ const events = defineCollection({
     // Date-only picker (hide the time UI entirely)
     expiresOn: date({ time: { hidden: true } }),
 
-    // Appointment in 24-hour format, shown in the sidebar
     appointmentAt: date({
       required: true,
       time: { use12HourFormat: false },
-      admin: { position: "sidebar", width: "half" },
+      admin: { position: "sidebar", width: "50%" },
     }),
   },
 });

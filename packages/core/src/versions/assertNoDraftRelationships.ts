@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
 
-import { ADMIN_FIELDS } from "../fields/constants";
+import { ADMIN_FIELDS, getDataFields } from "../fields";
 import type { CollectionOrGlobal } from "../types";
 
 /**
@@ -58,7 +58,7 @@ export interface AssertNoDraftRelationshipsArgs<DataModel extends GenericDataMod
 export async function assertNoDraftRelationships<
   DataModel extends GenericDataModel = GenericDataModel,
 >(args: AssertNoDraftRelationshipsArgs<DataModel>): Promise<void> {
-  const relationshipKeys = Object.entries(args.target.config.fields)
+  const relationshipKeys = Object.entries(getDataFields({ fields: args.target.config.fields }))
     .filter(([, field]) => field.type === ADMIN_FIELDS.relationship.type)
     .map(([key]) => key);
   if (relationshipKeys.length === 0) return;

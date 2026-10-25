@@ -83,4 +83,66 @@ describe("urlFieldToInputSchema", () => {
 
     expect(schema._def).toBeDefined();
   });
+
+  describe("min/max length constraints", () => {
+    it("applies min length constraint", () => {
+      const field = url({ required: true, min: 15 });
+      const schema = urlFieldToInputSchema({ field });
+
+      expect(schema.safeParse("https://example.com").success).toBe(true);
+      expect(schema.safeParse("https://a.co").success).toBe(false);
+    });
+
+    it("applies max length constraint", () => {
+      const field = url({ required: true, max: 20 });
+      const schema = urlFieldToInputSchema({ field });
+
+      expect(schema.safeParse("https://a.co").success).toBe(true);
+      expect(schema.safeParse("https://example.com/very/long/path").success).toBe(false);
+    });
+
+    it("uses a custom min error message instead of the default when configured", () => {
+      const field = url({ required: true, min: [15, "URL is too short."] });
+      const schema = urlFieldToInputSchema({ field });
+
+      const result = schema.safeParse("https://a.co");
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe("URL is too short.");
+      }
+    });
+
+    it("uses a custom max error message instead of the default when configured", () => {
+      const field = url({ required: true, max: [20, "URL is too long."] });
+      const schema = urlFieldToInputSchema({ field });
+
+      const result = schema.safeParse("https://example.com/very/long/path");
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe("URL is too long.");
+      }
+    });
+
+    it("uses the default min error message when no custom message is configured", () => {
+      const field = url({ required: true, min: 15 });
+      const schema = urlFieldToInputSchema({ field });
+
+      const result = schema.safeParse("https://a.co");
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe("Must be at least 15 characters.");
+      }
+    });
+
+    it("uses the default max error message when no custom message is configured", () => {
+      const field = url({ required: true, max: 20 });
+      const schema = urlFieldToInputSchema({ field });
+
+      const result = schema.safeParse("https://example.com/very/long/path");
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe("Must be no more than 20 characters.");
+      }
+    });
+  });
 });

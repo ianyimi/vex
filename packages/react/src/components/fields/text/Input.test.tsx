@@ -1,13 +1,27 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
-import { adminFieldToInputSchema, text, type CollectionConfig, type TextField } from "@vexcms/core";
+import {
+  adminFieldToInputSchema,
+  defineConfig,
+  text,
+  type CollectionConfig,
+  type TextField,
+} from "@vexcms/core";
 import { AppForm } from "../../form/AppForm";
+import { VexConfigContext } from "../../../context/VexConfigContext";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { runFieldInputContractSuite } from "../../../testing/fieldInputContract";
 import { textFieldFixture } from "./testFixture";
 import { TextFieldInput } from "./Input";
+
+const { withMaskMock } = vi.hoisted(() => {
+  const applyMaskMock = vi.fn();
+  return { withMaskMock: vi.fn(() => applyMaskMock) };
+});
+
+vi.mock("use-mask-input", () => ({ withMask: withMaskMock }));
 
 /**
  * Mounts `TextFieldInput` behind a real `useForm` + `<AppForm>`, wired with the
@@ -62,29 +76,29 @@ runFieldInputContractSuite({
 
     describe("text: length boundaries, the required-vs-min/max override trap, and no client-side truncation", () => {
       it("accepts a value at exactly the configured min length", async () => {
-        const fieldDef = text({ label: "Bio", min: { value: 3 } });
+        const fieldDef = text({ label: "Bio", min: 3 });
         expect(await submit(fieldDef, "x".repeat(3))).toBe("");
       });
 
       it("rejects a value one character below the min length with the default min-length message", async () => {
-        const fieldDef = text({ label: "Bio", min: { value: 3 } });
-        expect(await submit(fieldDef, "x".repeat(2))).toBe("This field is too short.");
+        const fieldDef = text({ label: "Bio", min: 3 });
+        expect(await submit(fieldDef, "x".repeat(2))).toBe("Must be at least 3 characters.");
       });
 
       it("accepts a value at exactly the configured max length", async () => {
-        const fieldDef = text({ label: "Bio", max: { value: 10 } });
+        const fieldDef = text({ label: "Bio", max: 10 });
         expect(await submit(fieldDef, "x".repeat(10))).toBe("");
       });
 
       it("rejects a value one character over the max length with the default max-length message", async () => {
-        const fieldDef = text({ label: "Bio", max: { value: 10 } });
-        expect(await submit(fieldDef, "x".repeat(11))).toBe("This field is too long.");
+        const fieldDef = text({ label: "Bio", max: 10 });
+        expect(await submit(fieldDef, "x".repeat(11))).toBe("Must be no more than 10 characters.");
       });
 
       it("uses a custom min.error message instead of the default when configured", async () => {
         const fieldDef = text({
           label: "Bio",
-          min: { value: 5, error: "Bio needs at least 5 characters." },
+          min: [5, "Bio needs at least 5 characters."],
         });
         expect(await submit(fieldDef, "x".repeat(4))).toBe("Bio needs at least 5 characters.");
       });
@@ -92,18 +106,18 @@ runFieldInputContractSuite({
       it("uses a custom max.error message instead of the default when configured", async () => {
         const fieldDef = text({
           label: "Bio",
-          max: { value: 5, error: "Bio can be at most 5 characters." },
+          max: [5, "Bio can be at most 5 characters."],
         });
         expect(await submit(fieldDef, "x".repeat(6))).toBe("Bio can be at most 5 characters.");
       });
 
       it("required + min (no max): a missing value fails with the required message — CORE-1 fixed: min/max compose onto the required branch instead of reassigning over it", async () => {
-        const fieldDef = text({ label: "Bio", required: true, min: { value: 3 } });
+        const fieldDef = text({ label: "Bio", required: true, min: 3 });
         expect(await submit(fieldDef, undefined)).toBe("This field is required.");
       });
 
       it("required + max only (no min): a missing value fails with the required message, not silently passing", async () => {
-        const fieldDef = text({ label: "Bio", required: true, max: { value: 10 } });
+        const fieldDef = text({ label: "Bio", required: true, max: 10 });
         expect(await submit(fieldDef, undefined)).toBe("This field is required.");
       });
 
@@ -111,8 +125,8 @@ runFieldInputContractSuite({
         const fieldDef = text({
           label: "Bio",
           required: true,
-          min: { value: 3 },
-          max: { value: 10 },
+          min: 3,
+          max: 10,
         });
         expect(await submit(fieldDef, undefined)).toBe("This field is required.");
       });
@@ -129,7 +143,7 @@ runFieldInputContractSuite({
 
       it("never client-side truncates or rejects a value past max — enforcement is deferred to the schema on submit", async () => {
         const user = userEvent.setup();
-        const fieldDef = text({ label: "Bio", max: { value: 5 } });
+        const fieldDef = text({ label: "Bio", max: 5 });
         render(
           <TextValidationHarness
             fieldDef={fieldDef}
@@ -143,5 +157,82 @@ runFieldInputContractSuite({
         expect(input).toHaveValue("way too long for max");
       });
     });
+
+    describe("text: character counter", () => {
+      it("renders no counter when fieldDef.max is not set", () => {
+        render(
+          <TextValidationHarness
+            fieldDef={text({ label: "Bio" })}
+            collection={collection}
+            initialValue=""
+          />,
+        );
+        expect(screen.queryByText(/^\d+\/\d+$/)).not.toBeInTheDocument();
+      });
+
+      it("shows current length / max once fieldDef.max is set", () => {
+        const fieldDef = text({ label: "Bio", max: [10, "Too long"] });
+        render(
+          <TextValidationHarness
+            fieldDef={fieldDef}
+            collection={collection}
+            initialValue="Hi"
+          />,
+        );
+        expect(screen.getByText("2/10")).toBeInTheDocument();
+      });
+
+      it("updates live as the user types", async () => {
+        const user = userEvent.setup();
+        const fieldDef = text({ label: "Bio", max: [10, "Too long"] });
+        render(
+          <TextValidationHarness
+            fieldDef={fieldDef}
+            collection={collection}
+            initialValue=""
+          />,
+        );
+        const input = screen.getByLabelText("Bio", { exact: false });
+        await user.type(input, "Hello");
+        expect(screen.getByText("5/10")).toBeInTheDocument();
+      });
+    });
   },
+});
+
+describe("text: admin.mask", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function TextMaskHarness(props: { fieldDef: TextField }) {
+    const form = useForm({ defaultValues: { testField: "" } });
+    return (
+      <AppForm form={form}>
+        <TextFieldInput name="testField" fieldDef={props.fieldDef} readOnly={false} collection={testCollection} />
+      </AppForm>
+    );
+  }
+
+  function renderMasked(fieldDef: TextField) {
+    return render(
+      <VexConfigContext.Provider value={defineConfig()}>
+        <TextMaskHarness fieldDef={fieldDef} />
+      </VexConfigContext.Provider>,
+    );
+  }
+
+  it("lazily applies the mask when admin.mask is set", async () => {
+    const fieldDef = text({ label: "Phone", admin: { mask: "(999) 999-9999" } });
+    renderMasked(fieldDef);
+    await waitFor(() =>
+      expect(withMaskMock).toHaveBeenCalledWith("(999) 999-9999", { autoUnmask: true }),
+    );
+  });
+
+  it("renders the ordinary controlled input when no mask resolves", () => {
+    const fieldDef = text({ label: "Title" });
+    renderMasked(fieldDef);
+    expect(withMaskMock).not.toHaveBeenCalled();
+  });
 });

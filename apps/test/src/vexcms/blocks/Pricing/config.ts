@@ -22,7 +22,6 @@ export const pricingBlock = defineBlock({
     description: text({ label: "Description" }),
     features: array({
       label: "Features",
-      labels: { singular: "feature", plural: "features" },
       items: text({ label: "Feature" }),
     }),
     ctaLabel: text({ label: "Button Label" }),

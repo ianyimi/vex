@@ -1,5 +1,5 @@
 import type { ZodType } from "zod";
-import type { AdminField } from "../types";
+import type { AdminDataField } from "../types";
 
 /**
  * Attaches field metadata and wraps in `.optional()` for non-required fields.
@@ -20,7 +20,7 @@ import type { AdminField } from "../types";
  * ```
  */
 export function applyBaseInputSchemaMeta(props: {
-  field: AdminField;
+  field: AdminDataField;
   inputSchema: ZodType;
 }): ZodType {
   const { field, inputSchema } = props;

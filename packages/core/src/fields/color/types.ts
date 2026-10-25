@@ -23,7 +23,7 @@ import type { ColorFormat } from "./formats";
  *     hidden:        false,   // visible in the admin form
  *     readOnly:      false,   // editable by default
  *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "full",  // spans the full form width, not half
+ *     width: "100%",  // spans the full form width, not half
  *     cellAlignment: "left",  // swatch aligned left in the data table column
  *   }
  * }
@@ -38,7 +38,7 @@ import type { ColorFormat } from "./formats";
  * primaryLight: color({ format: "oklch", required: true, defaultValue: "oklch(65.7% 0.179 40.9)" })
  *
  * // Half-width, and offer the host app's design tokens as a second tab
- * overlayTint: color({ themeColors: true, admin: { width: "half" } })
+ * overlayTint: color({ themeColors: true, admin: { width: "50%" } })
  * ```
  *
  * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`, `searchIndex`)

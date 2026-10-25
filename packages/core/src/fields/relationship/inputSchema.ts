@@ -42,7 +42,7 @@ import { ADMIN_FIELDS } from "../constants";
  * // → z.array(z.string(), { error: "This field is required." })
  *
  * // min/max — enforced on any supplied array, required or not
- * relationshipFieldToInputSchema({ field: relationship({ collection: { slug: "tags" }, min: { value: 1 }, max: { value: 3 } }) })
+ * relationshipFieldToInputSchema({ field: relationship({ collection: { slug: "tags" }, min: 1, max: 3 }) })
  * ```
  *
  * @internal
@@ -57,16 +57,14 @@ export function relationshipFieldToInputSchema(props: {
     : z.array(z.string());
 
   if (field.min) {
-    const min = field.min.value;
-    const message = field.min.error ?? "This field is too short.";
+    const [min, message] = field.min;
     inputSchema = inputSchema.refine(
       (value) => (!field.required && value.length === 0) || value.length >= min,
       message,
     );
   }
   if (field.max) {
-    const max = field.max.value;
-    const message = field.max.error ?? "This field is too long.";
+    const [max, message] = field.max;
     inputSchema = inputSchema.refine(
       (value) => (!field.required && value.length === 0) || value.length <= max,
       message,

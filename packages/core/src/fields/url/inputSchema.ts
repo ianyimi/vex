@@ -19,6 +19,10 @@ import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
  * Wraps in `.optional()` for non-required fields via
  * `applyBaseInputSchemaMeta`.
  *
+ * `field.min`/`field.max` (character-length constraints) are composed onto
+ * the same `z.string()` chain, before `.pipe(z.url())`, so a too-short or
+ * too-long value reports the length message rather than "Invalid URL".
+ *
  * *Pinned, unchanged behaviour* (verified before and after this fix):
  * `z.url()` trims whitespace, imposes no protocol restriction (`mailto:`/
  * `ftp://` pass), and requires an absolute URL.
@@ -42,20 +46,28 @@ export function urlFieldToInputSchema(props: { field: UrlField }): ZodType {
   const { field } = props;
   const requiredError = "This field is required.";
 
+  let stringSchema = field.required
+    ? z.string({ error: requiredError }).min(1, requiredError)
+    : z.string();
+
+  if (field.min) {
+    stringSchema = stringSchema.min(field.min[0], field.min[1]);
+  }
+  if (field.max) {
+    stringSchema = stringSchema.max(field.max[0], field.max[1]);
+  }
+
   if (field.required) {
     return applyBaseInputSchemaMeta({
       field,
-      inputSchema: z
-        .string({ error: requiredError })
-        .min(1, requiredError)
-        .pipe(z.url()),
+      inputSchema: stringSchema.pipe(z.url()),
     });
   }
 
   const inputSchema =
     field.defaultValue !== undefined
-      ? z.union([z.url(), z.literal("")]).default(field.defaultValue)
-      : z.url();
+      ? z.union([stringSchema.pipe(z.url()), z.literal("")]).default(field.defaultValue)
+      : stringSchema.pipe(z.url());
 
   return applyBaseInputSchemaMeta({ field, inputSchema });
 }

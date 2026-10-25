@@ -1,6 +1,7 @@
 export * from "./accordion";
 export * from "./card";
 export * from "./checkbox";
+export * from "./radio-group";
 export * from "./dnd";
 export * from "./badge";
 export * from "./dialog";

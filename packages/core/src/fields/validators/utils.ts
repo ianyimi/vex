@@ -1,4 +1,4 @@
-import { AdminField } from "../types";
+import { AdminDataField } from "../types";
 
 /**
  * Wraps a Convex validator string in `v.optional()` when the field is not required.
@@ -19,7 +19,7 @@ import { AdminField } from "../types";
  * ```
  */
 export function applyBaseValidators(props: {
-  field: AdminField;
+  field: AdminDataField;
   validator: string;
 }): string {
   if (props.field.required) {

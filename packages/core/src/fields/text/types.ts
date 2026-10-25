@@ -1,6 +1,36 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig, FieldValidateProps } from "../baseTypes";
+import {
+  BaseField,
+  BaseFieldInput,
+  FieldAdminConfig,
+  FieldAdminConfigInput,
+  FieldLimit,
+  FieldLimitInput,
+  FieldSearchIndex,
+  FieldValidateProps,
+} from "../baseTypes";
 import { VexResourceSlug } from "../../types";
+import type { FieldMaskInput } from "../mask";
+
+/** Per-type `admin` input for `text()` — adds `mask`. */
+export interface TextFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfigInput<TCollectionSlug> {
+  /**
+   * An opt-in `use-mask-input` pattern (string, array of alternatives, or
+   * `{ mask, storeMasked, options }`). `false` disables the project-wide
+   * `fields.inputMasks.text` default for this field. @see {@link FieldMaskInput}
+   */
+  mask?: FieldMaskInput | false;
+}
+
+/** Resolved per-type `admin` for `text()`. */
+export interface TextFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfig<TCollectionSlug> {
+  /** The field's own mask, or `false` to opt out of the project default. @see {@link TextFieldAdminInput.mask} */
+  mask?: FieldMaskInput | false;
+}
 
 /**
  * Configuration input for a `text()` field.
@@ -19,7 +49,7 @@ import { VexResourceSlug } from "../../types";
  *     hidden:        false,   // visible in the admin form
  *     readOnly:      false,   // editable by default
  *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "full",  // spans the full form width, not half
+ *     width:         "100%",  // spans the full form width, not half
  *     cellAlignment: "left",  // text aligned left in the data table column
  *   }
  * }
@@ -31,66 +61,43 @@ import { VexResourceSlug } from "../../types";
  * title: text()
  *
  * // Required slug with length validation and a database index
- * slug: text({ required: true, min: { value: 3 }, max: { value: 100 }, index: "by_slug" })
+ * slug: text({ required: true, min: 3, max: 100, index: "by_slug" })
  *
  * // Author name with a placeholder hint shown in the admin form
  * authorName: text({
  *   required: true,
- *   admin: { width: "half", placeholder: "e.g. Jane Smith" }
+ *   admin: { width: "50%", placeholder: "e.g. Jane Smith" }
  * })
  *
  * // Pre-filled default for a URL field
  * canonicalUrl: text({ defaultValue: "https://example.com" })
  * ```
  *
- * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`, `searchIndex`)
+ * @see {@link BaseFieldInput} for shared properties (`label`, `description`, `required`, `admin`, `index`)
  */
 export interface TextFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
 > extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+  /** Admin UI configuration for this field. */
+  admin?: TextFieldAdminInput<TCollectionSlug>;
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
    *
    */
   defaultValue?: string;
-  /** Minimum character length config. */
-  min?: {
-    /** Minimum character length value. */
-    value: number;
-    /** Minimum character length error message. */
-    error?: string;
-  };
-  /** Maximum character length config. */
-  max?: {
-    /** Maximum character length value. */
-    value: number;
-    /** Maximum character length error message. */
-    error?: string;
-  };
+  /** Minimum character length. @see {@link FieldLimitInput} */
+  min?: FieldLimitInput;
+  /** Maximum character length. @see {@link FieldLimitInput} */
+  max?: FieldLimitInput;
   /**
    * Create a full-text search index on this field.
    * The field this is defined on becomes the `searchField`.
    *
-   * @example
-   * ```ts
-   * title: {
-   *   type: "text",
-   *   searchIndex: { name: "search_title", filterFields: ["status", "author"] },
-   * }
-   * // Generates: .searchIndex("search_title", { searchField: "title", filterFields: ["status", "author"] })
-   * ```
+   * @see {@link FieldSearchIndex}
    */
-  searchIndex?: {
-    /** Search index name (must be unique within the collection). */
-    name: string;
-    /**
-     * Fields to filter search results by.
-     * String array — validated at runtime against collection field names.
-     */
-    filterFields: string[];
-  };
+  searchIndex?: FieldSearchIndex;
   /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
   validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
 }
@@ -115,30 +122,15 @@ export interface TextField<
   /** Whether this field is required in the database schema. */
   required: boolean;
   /** Resolved admin UI configuration with all defaults applied. */
-  admin: FieldAdminConfig;
+  admin: TextFieldAdminConfig<TCollectionSlug>;
   /** Pre-filled value shown in the admin form when creating a new field. */
   defaultValue: string;
-  /** Minimum allowed character length config. */
-  min?: {
-    /** Minimum allowed character length value. */
-    value: number;
-    /** Minimum allowed character length error message. */
-    error?: string;
-  };
-  /** Maximum allowed character length config. */
-  max?: {
-    /** Maximum allowed character length value. */
-    value: number;
-    /** Maximum allowed character length error message. */
-    error?: string;
-  };
-  /** Full-text search index configuration for this field. */
-  searchIndex?: {
-    /** Search index name — must be unique within the collection. */
-    name: string;
-    /** Fields to filter search results by. */
-    filterFields: string[];
-  };
+  /** Minimum character length, with its resolved error message. @see {@link FieldLimit} */
+  min?: FieldLimit;
+  /** Maximum character length, with its resolved error message. @see {@link FieldLimit} */
+  max?: FieldLimit;
+  /** Full-text search index configuration for this field. @see {@link FieldSearchIndex} */
+  searchIndex?: FieldSearchIndex;
   /** Server-only async validation with `value` typed as `string`. @see {@link FieldValidate} */
   validate?(props: FieldValidateProps<TCollectionSlug, string>): Promise<void> | void;
 }

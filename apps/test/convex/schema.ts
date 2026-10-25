@@ -25,9 +25,11 @@ import {
   comments,
   posts,
   vex_versions,
+  fields,
 } from "./vex.schema";
 
 export default defineSchema({
+  fields,
   posts,
   vex_versions,
   articles,

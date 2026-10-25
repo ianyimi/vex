@@ -85,8 +85,8 @@ describe("relationshipFieldToInputSchema", () => {
       const field = relationship({
         collection: { slug: "tags" },
         required: true,
-        min: { value: 1 },
-        max: { value: 2 },
+        min: 1,
+        max: 2,
       });
       const schema = relationshipFieldToInputSchema({ field });
       expect(schema.safeParse(["a", "b", "c"]).success).toBe(false);
@@ -97,8 +97,8 @@ describe("relationshipFieldToInputSchema", () => {
     it("skips min/max on an optional field only when the value is empty or omitted", () => {
       const field = relationship({
         collection: { slug: "tags" },
-        min: { value: 1 },
-        max: { value: 2 },
+        min: 1,
+        max: 2,
       });
       const schema = relationshipFieldToInputSchema({ field });
       expect(schema.safeParse(undefined).success).toBe(true);
@@ -111,8 +111,8 @@ describe("relationshipFieldToInputSchema", () => {
       // (non-empty) array must respect the configured reference count.
       const field = relationship({
         collection: { slug: "tags" },
-        min: { value: 2 },
-        max: { value: 3 },
+        min: 2,
+        max: 3,
       });
       const schema = relationshipFieldToInputSchema({ field });
       expect(schema.safeParse(["a"]).success).toBe(false);
@@ -124,17 +124,21 @@ describe("relationshipFieldToInputSchema", () => {
       const field = relationship({
         collection: { slug: "tags" },
         required: true,
-        min: { value: 2, error: "Pick at least two tags." },
-        max: { value: 2, error: "Pick no more than two tags." },
+        min: [2, "Pick at least two tags."],
+        max: [2, "Pick no more than two tags."],
       });
       const schema = relationshipFieldToInputSchema({ field });
       const belowMin = schema.safeParse(["a"]);
       expect(belowMin.success).toBe(false);
-      if (!belowMin.success) expect(belowMin.error.issues[0].message).toBe("Pick at least two tags.");
+      if (!belowMin.success)
+        expect(belowMin.error.issues[0].message).toBe("Pick at least two tags.");
 
       const aboveMax = schema.safeParse(["a", "b", "c"]);
       expect(aboveMax.success).toBe(false);
-      if (!aboveMax.success) expect(aboveMax.error.issues[0].message).toBe("Pick no more than two tags.");
+      if (!aboveMax.success)
+        expect(aboveMax.error.issues[0].message).toBe(
+          "Pick no more than two tags.",
+        );
     });
 
     // Once a `min` is explicitly configured, it applies even on a required
@@ -146,7 +150,7 @@ describe("relationshipFieldToInputSchema", () => {
       const field = relationship({
         collection: { slug: "tags" },
         required: true,
-        min: { value: 1 },
+        min: 1,
       });
       const schema = relationshipFieldToInputSchema({ field });
       expect(schema.safeParse([]).success).toBe(false);

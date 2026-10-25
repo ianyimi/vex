@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { array } from "./config";
 import { text } from "../text";
+import { group } from "../group";
 import { arrayFieldToValidator } from "./validator";
 
 describe("arrayFieldToValidator", () => {
@@ -34,8 +35,8 @@ describe("arrayFieldToValidator", () => {
         required: true,
         defaultValue: "test",
       }),
-      min: { value: 3 },
-      max: { value: 100 },
+      min: 3,
+      max: 100,
     });
     const validator = arrayFieldToValidator({ field });
 
@@ -54,6 +55,24 @@ describe("arrayFieldToValidator", () => {
     // Array is required, so no outer v.optional()
     // Items are required, so v.string()
     expect(validator).toBe("v.array(v.string())");
+  });
+
+  describe("object-shaped item id", () => {
+    it("includes an optional id on an array of group items", () => {
+      const field = array({
+        items: group({ fields: { title: text({ required: true }) } }),
+      });
+      const validator = arrayFieldToValidator({ field });
+      expect(validator).toBe(
+        "v.optional(v.array(v.object({ id: v.optional(v.string()), title: v.string() })))",
+      );
+    });
+
+    it("does not add an id to an array of scalar items", () => {
+      const field = array({ items: text() });
+      const validator = arrayFieldToValidator({ field });
+      expect(validator).toBe("v.optional(v.array(v.string()))");
+    });
   });
 });
 

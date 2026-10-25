@@ -7,6 +7,8 @@ import { internalCollections } from "../collections/internal";
 import { validateAndMergeStorageConfig, VexStorageConfigError } from "../media";
 import { diffAuthCollections } from "./diffAuthCollections";
 import { DEFAULT_LIVE_PREVIEW_BREAKPOINTS } from "../livePreview";
+import { resolveComponentContributions, resolveComponentOverrides, SLOT_IDS } from "../components";
+import { ADMIN_FIELDS, type DataFieldType } from "../fields";
 import {
   ClientUploadMap,
   VexClientConfig,
@@ -128,6 +130,39 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
         collapsible: "offcanvas",
         ...config?.admin?.sidebar,
       },
+      components: {
+        fields: Object.fromEntries(
+          (Object.values(ADMIN_FIELDS).filter((f) => f.kind === "data") as { type: DataFieldType }[]).map(({ type }) => [
+            type,
+            {
+              Input: resolveComponentOverrides({
+                slotId: SLOT_IDS.field.input,
+                overrides: config?.admin?.components?.fields?.[type]?.Input ?? [],
+              }),
+              Cell: resolveComponentOverrides({
+                slotId: SLOT_IDS.field.cell,
+                overrides: config?.admin?.components?.fields?.[type]?.Cell ?? [],
+              }),
+            },
+          ]),
+        ),
+        blocks: {
+          itemActions: resolveComponentContributions({
+            slotId: SLOT_IDS.blocks.itemActions,
+            contributions: config?.admin?.components?.blocks?.itemActions ?? [],
+          }),
+          headerActions: resolveComponentContributions({
+            slotId: SLOT_IDS.blocks.headerActions,
+            contributions: config?.admin?.components?.blocks?.headerActions ?? [],
+          }),
+        },
+        array: {
+          itemActions: resolveComponentContributions({
+            slotId: SLOT_IDS.array.itemActions,
+            contributions: config?.admin?.components?.array?.itemActions ?? [],
+          }),
+        },
+      },
     },
     storage: {
       clientUploads: (config?.storage?.clientUploads ?? {}) as ClientUploadMap,
@@ -141,6 +176,9 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
       ...config?.types,
     },
     routes: config?.routes,
+    fields: {
+      inputMasks: config?.fields?.inputMasks ?? {},
+    },
   };
 }
 

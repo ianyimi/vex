@@ -338,14 +338,17 @@ describe("getFieldsInputSchema", () => {
   it("partial mode: an absent required field passes", () => {
     const collection = defineCollection({
       slug: "posts",
-      fields: { title: text({ required: true }), slug: text({ min: { value: 3 } }) },
+      fields: { title: text({ required: true }), slug: text({ min: 3 }) },
     });
     const schema = getFieldsInputSchema({ fields: collection.fields, partial: true });
     expect(schema.safeParse({}).success).toBe(true);
   });
 
   it("partial mode: a present field still runs its full validator chain", () => {
-    const collection = defineCollection({ slug: "posts", fields: { slug: text({ min: { value: 3 } }) } });
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { slug: text({ min: 3 }) },
+    });
     const schema = getFieldsInputSchema({ fields: collection.fields, partial: true });
     expect(schema.safeParse({ slug: "ab" }).success).toBe(false);
     expect(schema.safeParse({ slug: "abc" }).success).toBe(true);
@@ -416,7 +419,7 @@ describe("getFieldsInputSchema — ignoreRequired (draft-lenient mode)", () => {
   it("still rejects a non-empty value violating max", () => {
     const collection = defineCollection({
       slug: "posts",
-      fields: { title: text({ required: true, max: { value: 3 } }) },
+      fields: { title: text({ required: true, max: 3 }) },
     });
     const schema = getFieldsInputSchema({ fields: collection.fields, ignoreRequired: true });
     expect(schema.safeParse({ title: "too long" }).success).toBe(false);

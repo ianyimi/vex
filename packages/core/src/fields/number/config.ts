@@ -1,4 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
+import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 import type { NumberFieldInput, NumberField } from "./types";
 
@@ -16,8 +17,9 @@ import type { NumberFieldInput, NumberField } from "./types";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
+ * - `admin.mask` — not set (opt-in; no project-wide default applies unless configured)
  *
  * @param options - Number field configuration. All properties are optional.
  * @returns Resolved number field definition with all defaults applied.
@@ -32,13 +34,13 @@ import type { NumberFieldInput, NumberField } from "./types";
  *     price: number(),
  *
  *     // Required quantity with a minimum of 1 and a database index
- *     quantity: number({ required: true, min: { value: 1 }, index: "by_quantity" }),
+ *     quantity: number({ required: true, min: 1, index: "by_quantity" }),
  *
  *     // Rating capped between 0 and 5
  *     rating: number({
- *       min: { value: 0, error: "Rating cannot be negative" },
- *       max: { value: 5, error: "Rating cannot exceed 5" },
- *       admin: { width: "half" },
+ *       min: [0, "Rating cannot be negative"],
+ *       max: [5, "Rating cannot exceed 5"],
+ *       admin: { width: "50%" },
  *     }),
  *   }
  * })
@@ -53,12 +55,18 @@ export function number<
 >(
   options?: NumberFieldInput<TCollectionSlug, TFieldMeta>,
 ): NumberField<TCollectionSlug, TFieldMeta> {
-  if (options?.min?.value && options?.max?.value) {
-    if (options.min.value >= options.max.value) {
-      // TODO. setup errors that throw in development upon invalid configuration
-      throw new Error(`Min value must be lower than the Max value`);
-    }
+  const min = resolveFieldLimit({
+    limit: options?.min,
+    defaultError: (value) => `Must be at least ${value}.`,
+  });
+  const max = resolveFieldLimit({
+    limit: options?.max,
+    defaultError: (value) => `Must be no more than ${value}.`,
+  });
+  if (min && max && min[0] >= max[0]) {
+    throw new Error(`Min value must be lower than the Max value`);
   }
+
   return {
     type: ADMIN_FIELDS.number.type,
     interfaceType: ADMIN_FIELDS.number.interfaceType,
@@ -68,17 +76,20 @@ export function number<
     required: false,
     defaultValue: ADMIN_FIELDS.number.defaultValue,
     ...options,
+    min,
+    max,
 
     // Admin config with all defaults applied
     admin: {
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       // Optional admin properties (no defaults)
       placeholder: "",
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options?.meta,

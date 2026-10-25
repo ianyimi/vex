@@ -1,13 +1,13 @@
 "use client";
 
 import {
-  addLeadingSlash,
   type CellComponentProps,
   type BlocksField,
   type GenericBlock,
   TDocument,
 } from "@vexcms/core";
 import { VexLink } from "../../ui";
+import { adminHref } from "../../../utils/adminHref";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
 /**
@@ -23,7 +23,6 @@ export function BlocksFieldCell<TData extends TDocument = TDocument>(
 ) {
   const value = props.value as GenericBlock[] | null | undefined;
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
 
   if (!value || !Array.isArray(value) || value.length === 0) {
     return <span className="text-muted-foreground">—</span>;
@@ -39,7 +38,12 @@ export function BlocksFieldCell<TData extends TDocument = TDocument>(
   );
   if (!props.isTitleField) return content;
   return (
-    <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+    <VexLink
+      href={adminHref(
+        { type: "document", slug: props.collection.slug, id: props.row.original._id },
+        config.basePath,
+      )}
+    >
       {content}
     </VexLink>
   );
