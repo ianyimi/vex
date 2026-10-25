@@ -1,12 +1,12 @@
 "use client";
 
 import {
-  addLeadingSlash,
   TDocument,
   type CellComponentProps,
   type DateField,
 } from "@vexcms/core";
 import { VexLink } from "../../ui";
+import { adminHref } from "../../../utils/adminHref";
 import { useVexConfig } from "../../../context/VexConfigContext";
 import { formatDateFieldValue } from "./utils";
 
@@ -31,13 +31,17 @@ export function DateFieldCell<TData extends TDocument = TDocument>(
 ) {
   if (props.value === undefined || props.value === null) return <span>—</span>;
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
   const content = (
     <span>{formatDateFieldValue({ value: props.value, time: props.fieldDef.time })}</span>
   );
   if (!props.isTitleField) return content;
   return (
-    <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+    <VexLink
+      href={adminHref(
+        { type: "document", slug: props.collection.slug, id: props.row.original._id },
+        config.basePath,
+      )}
+    >
       {content}
     </VexLink>
   );

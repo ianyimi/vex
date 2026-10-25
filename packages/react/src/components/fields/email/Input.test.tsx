@@ -1,13 +1,27 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
-import { adminFieldToInputSchema, email, type CollectionConfig, type EmailField } from "@vexcms/core";
+import {
+  adminFieldToInputSchema,
+  defineConfig,
+  email,
+  type CollectionConfig,
+  type EmailField,
+} from "@vexcms/core";
 import { AppForm } from "../../form/AppForm";
+import { VexConfigContext } from "../../../context/VexConfigContext";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { runFieldInputContractSuite } from "../../../testing/fieldInputContract";
 import { emailFieldFixture } from "./testFixture";
 import { EmailFieldInput } from "./Input";
+
+const { withMaskMock } = vi.hoisted(() => {
+  const applyMaskMock = vi.fn();
+  return { withMaskMock: vi.fn(() => applyMaskMock) };
+});
+
+vi.mock("use-mask-input", () => ({ withMask: withMaskMock }));
 
 /**
  * Mounts `EmailFieldInput` behind a real `useForm` + `<AppForm>`, wired with
@@ -109,5 +123,82 @@ runFieldInputContractSuite({
         expect(await submit(fieldDef, undefined)).toBe("");
       });
     });
+
+    describe("email: character counter", () => {
+      it("renders no counter when fieldDef.max is not set", () => {
+        render(
+          <EmailValidationHarness
+            fieldDef={email({ label: "Contact Email" })}
+            collection={collection}
+            initialValue=""
+          />,
+        );
+        expect(screen.queryByText(/^\d+\/\d+$/)).not.toBeInTheDocument();
+      });
+
+      it("shows current length / max once fieldDef.max is set", () => {
+        const fieldDef = email({ label: "Contact Email", max: [20, "Too long"] });
+        render(
+          <EmailValidationHarness
+            fieldDef={fieldDef}
+            collection={collection}
+            initialValue="a@b.com"
+          />,
+        );
+        expect(screen.getByText("7/20")).toBeInTheDocument();
+      });
+
+      it("updates live as the user types", async () => {
+        const user = userEvent.setup();
+        const fieldDef = email({ label: "Contact Email", max: [20, "Too long"] });
+        render(
+          <EmailValidationHarness
+            fieldDef={fieldDef}
+            collection={collection}
+            initialValue=""
+          />,
+        );
+        const input = screen.getByLabelText("Contact Email", { exact: false });
+        await user.type(input, "a@b.com");
+        expect(screen.getByText("7/20")).toBeInTheDocument();
+      });
+    });
   },
+});
+
+describe("email: admin.mask", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function EmailMaskHarness(props: { fieldDef: EmailField }) {
+    const form = useForm({ defaultValues: { testField: "" } });
+    return (
+      <AppForm form={form}>
+        <EmailFieldInput name="testField" fieldDef={props.fieldDef} readOnly={false} collection={testCollection} />
+      </AppForm>
+    );
+  }
+
+  it("renders type=text instead of type=email and lazily applies the mask when admin.mask is set", async () => {
+    const fieldDef = email({ label: "Contact Email", admin: { mask: "email" } });
+    const { container } = render(
+      <VexConfigContext.Provider value={defineConfig()}>
+        <EmailMaskHarness fieldDef={fieldDef} />
+      </VexConfigContext.Provider>,
+    );
+    await waitFor(() => expect(withMaskMock).toHaveBeenCalledWith("email", { autoUnmask: true }));
+    expect(container.querySelector("input")?.getAttribute("type")).toBe("text");
+  });
+
+  it("renders the ordinary controlled type=email input when no mask resolves", () => {
+    const fieldDef = email({ label: "Contact Email" });
+    const { container } = render(
+      <VexConfigContext.Provider value={defineConfig()}>
+        <EmailMaskHarness fieldDef={fieldDef} />
+      </VexConfigContext.Provider>,
+    );
+    expect(withMaskMock).not.toHaveBeenCalled();
+    expect(container.querySelector("input")?.getAttribute("type")).toBe("email");
+  });
 });

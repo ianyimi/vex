@@ -1,4 +1,4 @@
-import { AdminField } from "@vexcms/core";
+import { AdminDataField } from "@vexcms/core";
 import { Activity, ComponentPropsWithRef } from "react";
 import { cn } from "../../styles/utils";
 
@@ -20,11 +20,12 @@ export function FormDescription({
   className,
   ...pProps
 }: {
-  field: AdminField;
+  field: AdminDataField;
 } & ComponentPropsWithRef<"p">) {
   return (
     <Activity mode={field.description ? "visible" : "hidden"}>
       <p
+        data-slot="form-description"
         className={cn("text-[0.8rem] text-muted-foreground", className)}
         {...pProps}
       >

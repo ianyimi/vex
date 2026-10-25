@@ -33,7 +33,12 @@ export const pages = defineTable({
           heading: v.optional(v.string()),
           subheading: v.optional(v.string()),
           items: v.array(
-            v.object({ value: v.string(), label: v.string(), description: v.optional(v.string()) })
+            v.object({
+              id: v.optional(v.string()),
+              value: v.string(),
+              label: v.string(),
+              description: v.optional(v.string()),
+            })
           ),
         }),
         v.object({
@@ -43,7 +48,12 @@ export const pages = defineTable({
           heading: v.string(),
           subheading: v.optional(v.string()),
           features: v.array(
-            v.object({ title: v.string(), description: v.string(), icon: v.optional(v.string()) })
+            v.object({
+              id: v.optional(v.string()),
+              title: v.string(),
+              description: v.string(),
+              icon: v.optional(v.string()),
+            })
           ),
         }),
         v.object({
@@ -54,6 +64,7 @@ export const pages = defineTable({
           subheading: v.optional(v.string()),
           panes: v.array(
             v.object({
+              id: v.optional(v.string()),
               label: v.string(),
               filename: v.optional(v.string()),
               language: v.optional(
@@ -75,7 +86,13 @@ export const pages = defineTable({
           heading: v.string(),
           body: v.string(),
           bullets: v.optional(
-            v.array(v.object({ icon: v.optional(v.string()), text: v.string() }))
+            v.array(
+              v.object({
+                id: v.optional(v.string()),
+                icon: v.optional(v.string()),
+                text: v.string(),
+              })
+            )
           ),
           media: v.optional(
             v.array(v.union(v.literal("code"), v.literal("image"), v.literal("none")))
@@ -97,7 +114,12 @@ export const pages = defineTable({
           heading: v.string(),
           subheading: v.optional(v.string()),
           steps: v.array(
-            v.object({ icon: v.optional(v.string()), title: v.string(), description: v.string() })
+            v.object({
+              id: v.optional(v.string()),
+              icon: v.optional(v.string()),
+              title: v.string(),
+              description: v.string(),
+            })
           ),
         }),
         v.object({
@@ -108,6 +130,7 @@ export const pages = defineTable({
           subheading: v.optional(v.string()),
           items: v.array(
             v.object({
+              id: v.optional(v.string()),
               feature: v.string(),
               description: v.optional(v.string()),
               status: v.array(
@@ -129,7 +152,9 @@ export const pages = defineTable({
           heading: v.string(),
           subheading: v.optional(v.string()),
           supportLink: v.optional(v.string()),
-          items: v.array(v.object({ question: v.string(), answer: v.string() })),
+          items: v.array(
+            v.object({ id: v.optional(v.string()), question: v.string(), answer: v.string() })
+          ),
         }),
         v.object({
           blockType: v.literal("cta"),
@@ -137,7 +162,9 @@ export const pages = defineTable({
           id: v.string(),
           heading: v.string(),
           subheading: v.optional(v.string()),
-          actions: v.optional(v.array(v.object({ label: v.string(), href: v.string() }))),
+          actions: v.optional(
+            v.array(v.object({ id: v.optional(v.string()), label: v.string(), href: v.string() }))
+          ),
         }),
         v.object({
           blockType: v.literal("feature"),
@@ -166,7 +193,14 @@ export const pages = defineTable({
           id: v.string(),
           title: v.optional(v.string()),
           logos: v.optional(
-            v.array(v.object({ name: v.string(), image: v.string(), link: v.optional(v.string()) }))
+            v.array(
+              v.object({
+                id: v.optional(v.string()),
+                name: v.string(),
+                image: v.string(),
+                link: v.optional(v.string()),
+              })
+            )
           ),
         }),
         v.object({
@@ -252,10 +286,13 @@ export const headers = defineTable({
         logoText: v.optional(v.string()),
         logoImage: v.optional(v.array(v.id("images"))),
         logoHref: v.optional(v.string()),
-        menuItems: v.optional(v.array(v.object({ label: v.string(), href: v.string() }))),
+        menuItems: v.optional(
+          v.array(v.object({ id: v.optional(v.string()), label: v.string(), href: v.string() }))
+        ),
         actionButtons: v.optional(
           v.array(
             v.object({
+              id: v.optional(v.string()),
               label: v.string(),
               href: v.string(),
               variant: v.optional(
@@ -281,10 +318,17 @@ export const footers = defineTable({
         logoText: v.optional(v.string()),
         logoImage: v.optional(v.array(v.id("images"))),
         copyright: v.optional(v.string()),
-        links: v.optional(v.array(v.object({ label: v.string(), href: v.string() }))),
+        links: v.optional(
+          v.array(v.object({ id: v.optional(v.string()), label: v.string(), href: v.string() }))
+        ),
         socialLinks: v.optional(
           v.array(
-            v.object({ platform: v.string(), href: v.string(), icon: v.optional(v.string()) })
+            v.object({
+              id: v.optional(v.string()),
+              platform: v.string(),
+              href: v.string(),
+              icon: v.optional(v.string()),
+            })
           )
         ),
       })
@@ -502,7 +546,13 @@ export const fields = defineTable({
   body: v.optional(v.array(v.any())),
   tagList: v.optional(v.array(v.string())),
   gridItems: v.optional(
-    v.array(v.object({ heading: v.optional(v.string()), subheading: v.optional(v.string()) }))
+    v.array(
+      v.object({
+        id: v.optional(v.string()),
+        heading: v.optional(v.string()),
+        subheading: v.optional(v.string()),
+      })
+    )
   ),
   info: v.optional(
     v.object({ heading: v.optional(v.string()), bullets: v.optional(v.array(v.string())) })
@@ -514,9 +564,16 @@ export const fields = defineTable({
           blockType: v.literal("stat_group"),
           blockName: v.optional(v.string()),
           id: v.string(),
+          showHeading: v.optional(v.boolean()),
           heading: v.optional(v.string()),
           stats: v.optional(
-            v.array(v.object({ value: v.optional(v.string()), caption: v.optional(v.string()) }))
+            v.array(
+              v.object({
+                id: v.optional(v.string()),
+                value: v.optional(v.string()),
+                caption: v.optional(v.string()),
+              })
+            )
           ),
         }),
         v.object({
@@ -524,6 +581,8 @@ export const fields = defineTable({
           blockName: v.optional(v.string()),
           id: v.string(),
           label: v.optional(v.string()),
+          note: v.optional(v.string()),
+          meta: v.optional(v.object({ tag: v.optional(v.string()) })),
           children: v.optional(
             v.array(
               v.object({
@@ -533,14 +592,64 @@ export const fields = defineTable({
                 heading: v.optional(v.string()),
                 stats: v.optional(
                   v.array(
-                    v.object({ value: v.optional(v.string()), caption: v.optional(v.string()) })
+                    v.object({
+                      id: v.optional(v.string()),
+                      value: v.optional(v.string()),
+                      caption: v.optional(v.string()),
+                    })
                   )
                 ),
               })
             )
           ),
+        }),
+        v.object({
+          blockType: v.literal("callout"),
+          blockName: v.optional(v.string()),
+          id: v.string(),
+          body: v.optional(v.string()),
+          emphasis: v.optional(v.boolean()),
         })
       )
+    )
+  ),
+  showAdvanced: v.optional(v.boolean()),
+  displayName: v.optional(v.string()),
+  seo: v.optional(v.object({ metaTitle: v.string(), metaDescription: v.string() })),
+  advancedNote: v.optional(v.string()),
+  visibilityNote: v.optional(v.string()),
+  colLeft: v.optional(v.string()),
+  colRight: v.optional(v.string()),
+  asideNote: v.optional(v.string()),
+  innerFirst: v.optional(v.string()),
+  innerSecond: v.optional(v.string()),
+  altTitle: v.optional(v.string()),
+  altSummary: v.optional(v.string()),
+  archiveId: v.optional(v.string()),
+  legacyFlag: v.optional(v.boolean()),
+  priceLabel: v.optional(v.string()),
+  priceValue: v.optional(v.string()),
+  fallbackA: v.optional(v.string()),
+  fallbackB: v.optional(v.string()),
+  conditionalNote: v.optional(v.string()),
+  displaySettings: v.optional(
+    v.object({
+      columns: v.optional(v.number()),
+      list: v.optional(v.object({ spacing: v.optional(v.number()) })),
+      width: v.optional(v.number()),
+      height: v.optional(v.number()),
+    })
+  ),
+  sections: v.optional(
+    v.array(
+      v.object({
+        id: v.optional(v.string()),
+        showDetails: v.optional(v.boolean()),
+        summary: v.optional(v.string()),
+        itemLeft: v.optional(v.string()),
+        itemRight: v.optional(v.string()),
+        body: v.optional(v.string()),
+      })
     )
   ),
   updatedAt: v.optional(v.number()),

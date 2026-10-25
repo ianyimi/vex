@@ -1,0 +1,88 @@
+---
+title: email field
+description: Stores single-line email address strings, format-checked in the admin form and on every server write.
+---
+
+An `email()` field stores a single-line email address string. It mirrors
+`text()` almost exactly — same `min`/`max` length semantics — but additionally
+enforces email-format validation on the server, renders a native
+`type="email"` input (unless masked), and links its list-view cell as a
+`mailto:` address.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema and the form allows leaving it empty. |
+| `defaultValue` | `string` | `""` | Pre-filled value shown in the admin form when creating a new document. |
+| `min` | `number \| [value: number, error: string]` | — | Minimum character length, applied to the email string itself. Bare number uses a default message; the tuple form supplies a custom one. |
+| `max` | `number \| [value: number, error: string]` | — | Maximum character length, applied to the email string itself. |
+| `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
+| `searchIndex` | `{ name: string, filterFields: string[] }` | — | Full-text search index on this field. The field becomes the `searchField`. |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `validate` | `(props) => Promise<void> \| void` | — | Server-only async validation, receives the resolved `string` value. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders the input as non-interactive — value is visible but cannot be changed. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `string` (CSS width) | `"100%"` | Width of the field inside a `row()`, e.g. `"50%"` or `"240px"`. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
+| `admin.placeholder` | `string` | — | Placeholder text shown when the input is empty. |
+| `admin.description` | `string` | — | Helper text displayed below the field input. |
+| `admin.condition` | `({ data, siblingData }) => boolean` | — | Pure predicate deciding whether the field is shown and validated. A throwing condition counts as met. Hidden-by-condition values are kept, not cleared. |
+| `admin.mask` | `string \| string[] \| { mask, storeMasked?, options? } \| false` | — | Opt-in `use-mask-input` mask, or `false` to opt out of a project-wide `fields.inputMasks.email` default. A masked email field renders `type="text"` instead of `type="email"`. |
+
+## Schema output
+
+```ts
+// Optional (required: false — default)
+contactEmail: v.optional(v.string())
+
+// Required with length constraints
+workEmail: v.string()
+
+// With a database index
+workEmail: v.string(),
+.index("by_work_email", ["workEmail"])
+
+// With a search index
+email: v.string(),
+.searchIndex("search_fields_contactEmail", { searchField: "email", filterFields: [] })
+```
+
+## Usage
+
+```ts
+import { defineCollection, email } from "@vexcms/core";
+
+const contacts = defineCollection({
+  slug: "contacts",
+  fields: {
+    // Minimal — label inferred from key ("Contact Email")
+    contactEmail: email(),
+
+    // Required with a length cap and a database index
+    workEmail: email({ required: true, max: 254, index: "by_work_email" }),
+
+    // Custom length-error message via the [value, error] tuple
+    supportEmail: email({ min: [5, "That's too short to be an email."] }),
+
+    // Full-text searchable (partial matches, e.g. in a relationship picker)
+    searchableEmail: email({
+      searchIndex: { name: "search_fields_contactEmail", filterFields: [] },
+    }),
+  },
+});
+```
+
+## Admin UI
+
+The email field renders as a native `<input type="email">`. Browser built-in
+email validation is disabled (no constraint attributes beyond `type` are
+set) — format validation is enforced on submit by `emailFieldToInputSchema`,
+not by the browser. `placeholder` and `description` display inline, as with
+`text()`. In the list-view table, the value is shown as a clickable
+`mailto:` link instead of plain text, mirroring how a title field links to
+the document edit page. When `admin.mask` resolves (field-level or a
+project-wide `fields.inputMasks.email` default), the input switches to
+`type="text"` and renders uncontrolled, driven by `use-mask-input`.

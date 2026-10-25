@@ -1,7 +1,7 @@
 import { VexResourceSlug } from "../../types";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
-import { resolveFieldLimit } from "../utils";
+import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 import type { EmailFieldInput, EmailField } from "./types";
 
 /**
@@ -19,8 +19,9 @@ import type { EmailFieldInput, EmailField } from "./types";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
+ * - `admin.mask` — not set (opt-in; no project-wide default applies unless configured)
  *
  * @param options - Email field configuration. All properties are optional.
  * @returns Resolved email field definition with all defaults applied.
@@ -71,11 +72,12 @@ export function email<
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       // Optional admin properties (no defaults)
       placeholder: "",
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options?.meta,

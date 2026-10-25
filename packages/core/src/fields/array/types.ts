@@ -2,13 +2,19 @@ import { ADMIN_FIELDS } from "../constants";
 import {
   BaseField,
   BaseFieldInput,
-  FieldAdminConfig,
   FieldLimit,
   FieldLimitInput,
   FieldValidateProps,
 } from "../baseTypes";
-import { AdminField, BaseFieldMeta } from "../types";
+import { AdminDataField, BaseFieldMeta } from "../types";
 import type { VexResourceSlug } from "../../types/generated";
+
+/**
+ * Field names reserved on an object-shaped (`group()`) array item — the same
+ * pattern `RESERVED_BLOCK_FIELD_NAMES` uses for `blocks()`. `array()` throws
+ * if `items` is a `group()` declaring any of these as its own field name.
+ */
+export const RESERVED_ARRAY_ITEM_FIELD_NAMES = ["id"] as const;
 
 /**
  * Union of all types allowed as array item values.
@@ -32,14 +38,13 @@ export type ArrayType = string | number | boolean | object;
  * {
  *   type:            "array",
  *   label:           "",       // inferred from the field key by defineCollection
- *   labels:          { singular: "Item", plural: "Items" },
  *   required:        false,    // field is optional by default
  *   defaultValue:    [],       // empty array shown in admin form
  *   admin: {
  *     hidden:        false,   // visible in the admin form
  *     readOnly:      false,   // editable by default
  *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "full",  // spans the full form width, not half
+ *     width: "100%",  // spans the full form width, not half
  *     cellAlignment: "left",  // item count aligned left in the data table column
  *   }
  * }
@@ -72,17 +77,13 @@ export interface ArrayFieldInput<
   TArrayType extends ArrayType = string,
   TFieldMeta extends {} = {},
 > extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
-  labels?: {
-    singular: string;
-    plural: string;
-  };
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
    *
    */
   defaultValue?: TArrayType[];
-  items: AdminField;
+  items: AdminDataField;
   /** Minimum array length. @see {@link FieldLimitInput} */
   min?: FieldLimitInput;
   /** Maximum array length. @see {@link FieldLimitInput} */
@@ -109,17 +110,11 @@ export interface ArrayField<
   readonly type: typeof ADMIN_FIELDS.array.type;
   /** Display label shown in the admin form. Always set — inferred from the field key if not provided. */
   label: string;
-  labels: {
-    singular: string;
-    plural: string;
-  };
   /** Whether this field is required in the database schema. */
   required: boolean;
-  /** Resolved admin UI configuration with all defaults applied. */
-  admin: FieldAdminConfig;
   /** Pre-filled value shown in the admin form when creating a new field. */
   defaultValue: TArrayType[];
-  items: AdminField;
+  items: AdminDataField;
   /** Minimum allowed array length, with its resolved error message. @see {@link FieldLimit} */
   min?: FieldLimit;
   /** Maximum allowed array length, with its resolved error message. @see {@link FieldLimit} */

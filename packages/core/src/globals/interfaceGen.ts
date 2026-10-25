@@ -1,4 +1,4 @@
-import { ADMIN_FIELDS, wrapLines, getFieldInterfaces } from "../fields";
+import { ADMIN_FIELDS, wrapLines, getFieldInterfaces, getDataFields } from "../fields";
 import type { GlobalConfig } from "./types";
 
 /**
@@ -19,10 +19,11 @@ import type { GlobalConfig } from "./types";
  */
 export function globalConfigToInterface(props: { global: GlobalConfig }): string {
   const { global: g } = props;
-  const fieldInterfaces = getFieldInterfaces(g.fields);
+  const dataFields = getDataFields({ fields: g.fields });
+  const fieldInterfaces = getFieldInterfaces(dataFields);
   const interfaceStart = `export interface ${g.interfaceName} extends VexDocumentGlobal<"${g.slug}"> {`;
 
-  const interfaceFields = Object.entries(g.fields)
+  const interfaceFields = Object.entries(dataFields)
     .map(([fieldKey, field]) => {
       let fieldType = field.interfaceType;
       if (field.type === ADMIN_FIELDS.group.type && field.interfaceName) {

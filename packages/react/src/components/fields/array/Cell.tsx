@@ -1,11 +1,13 @@
 import {
-  addLeadingSlash,
   type CellComponentProps,
   type ArrayField,
   ArrayType,
+  arrayItemLabel,
+  arrayPluralLabel,
   TDocument,
 } from "@vexcms/core";
 import { VexLink } from "../../ui";
+import { adminHref } from "../../../utils/adminHref";
 import { useVexConfig } from "../../../context/VexConfigContext";
 import type { VexResourceSlug } from "@vexcms/core";
 
@@ -33,11 +35,10 @@ export function ArrayFieldCell<
 >(props: CellComponentProps<ArrayField<VexResourceSlug, TArrayType>, TData>) {
   if (props.value === undefined || props.value === null) return <span>—</span>;
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
+
   const itemCount = props.value.length;
   const isSingle = props.value.length === 1;
-  const labels = props.fieldDef.labels;
-  const label = labels ? (isSingle ? labels.singular : labels.plural) : isSingle ? "item" : "items";
+  const label = isSingle ? arrayItemLabel(props.fieldDef) : arrayPluralLabel(props.fieldDef);
   const summary = props.value
     .map((item) => (typeof item === "string" ? item : JSON.stringify(item)))
     .join(", ");
@@ -48,7 +49,12 @@ export function ArrayFieldCell<
   );
   if (!props.isTitleField) return content;
   return (
-    <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+    <VexLink
+      href={adminHref(
+        { type: "document", slug: props.collection.slug, id: props.row.original._id },
+        config.basePath,
+      )}
+    >
       {content}
     </VexLink>
   );

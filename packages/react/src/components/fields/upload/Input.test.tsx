@@ -268,11 +268,11 @@ runFieldInputContractSuite({
     });
 
     describe("upload field: filled-state file management", () => {
-      it("disables 'Edit …' once mediaIds.length reaches fieldDef.max, and shows the exact n/max count", () => {
+      it("disables 'Select …' once mediaIds.length reaches fieldDef.max, and shows the exact n/max count", () => {
         const belowLimit = render(
           <Harness fieldDef={fixture.fieldDef} readOnly={false} initialValue={fixture.valid} />,
         );
-        expect(belowLimit.getByRole("button", { name: "Edit Images" })).not.toBeDisabled();
+        expect(belowLimit.getByRole("button", { name: "Select Images" })).not.toBeDisabled();
         expect(belowLimit.getByText("2/3")).toBeInTheDocument();
 
         // See the cleanup() note above — same stale-DOM hazard across mounts.
@@ -285,8 +285,19 @@ runFieldInputContractSuite({
             initialValue={["images_1", "images_2", "images_3"]}
           />,
         );
-        expect(atLimit.getByRole("button", { name: "Edit Images" })).toBeDisabled();
+        expect(atLimit.getByRole("button", { name: "Select Images" })).toBeDisabled();
         expect(atLimit.getByText("3/3")).toBeInTheDocument();
+      });
+
+      it("opens the picker via the single-mode 'Replace' button when hasMany is false", () => {
+        const singleFieldDef = { ...fixture.fieldDef, hasMany: false };
+        render(<Harness fieldDef={singleFieldDef} readOnly={false} initialValue={["images_1"]} />);
+
+        expect(screen.queryByRole("button", { name: /Edit/ })).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+
+        expect(screen.getByRole("heading", { name: /Select Image/ })).toBeInTheDocument();
       });
 
       it("removes a single already-uploaded file via its row's Remove button, keeping the rest", () => {
@@ -359,7 +370,7 @@ runFieldInputContractSuite({
         await waitFor(() =>
           expect(screen.queryByRole("button", { name: "Create & select (1)" })).not.toBeInTheDocument(),
         );
-        expect(screen.getByRole("button", { name: "Edit Images" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Select Images" })).toBeInTheDocument();
 
         // TanStack Query v5's `Mutation.execute()` always invokes `mutationFn(variables,
         // mutationFnContext)` — a real `{ client, meta, mutationKey }` second argument

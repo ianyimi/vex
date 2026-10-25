@@ -1,0 +1,87 @@
+---
+title: collapsible field
+description: Wraps fields in a collapsible admin-form fieldset — a UI-only layout field with no stored value of its own.
+---
+
+A `collapsible()` field wraps fields in a collapsible admin-form fieldset. It
+is a UI-only field — it stores no value of its own; its fields hoist to the
+parent level once `getDataFields` flattens the field. Legal in any `fields`
+record: a collection/global's own, a `group()`'s, a group-shaped `array()`'s
+items, or a `blocks()` block's own.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | — (required) | Fieldset label shown above the collapsible toggle. |
+| `description` | `string` | — | Helper text for the field. |
+| `fields` | `Record<string, AdminField>` | — (required) | This fieldset's fields. Throws if empty. |
+| `admin.hidden` | `boolean` | `false` | Hides the whole fieldset (and every nested field) from the admin edit form. ORs into children. |
+| `admin.readOnly` | `boolean` | `false` | Renders every nested field as non-interactive. ORs into children. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout. |
+| `admin.width` | `string` (CSS width) | `"100%"` | Width of the whole fieldset inside a `row()`. |
+| `admin.defaultCollapsed` | `boolean` | `false` | Whether the fieldset starts collapsed. |
+| `admin.condition` | `({ data, siblingData }) => boolean` | — | Pure predicate deciding whether the field (and every nested field) is shown and validated. ANDs into children. |
+
+## Schema output
+
+`collapsible()` is dropped by `getDataFields`: its `fields` hoist straight to
+the parent `fields` record, each ending up as its own top-level (or
+group-level) schema field exactly as if declared there directly — the
+fieldset itself contributes nothing to the schema.
+
+```ts
+// seoFields: collapsible({ label: "SEO", fields: {
+//   metaTitle: text(),
+//   metaDescription: textarea(),
+// } })
+
+metaTitle: v.optional(v.string()),
+metaDescription: v.optional(v.string()),
+```
+
+## Usage
+
+```ts
+import { defineCollection, collapsible, text, textarea, checkbox } from "@vexcms/core";
+
+const pages = defineCollection({
+  slug: "pages",
+  fields: {
+    seoFields: collapsible({
+      label: "SEO",
+      admin: { defaultCollapsed: true },
+      fields: {
+        metaTitle: text(),
+        metaDescription: textarea(),
+      },
+    }),
+
+    // admin.readOnly propagates to its own field — archiveId renders disabled
+    readOnlySection: collapsible({
+      label: "Read-Only Section",
+      admin: { defaultCollapsed: true, readOnly: true },
+      fields: { archiveId: text() },
+    }),
+
+    // Gated by a sibling's own value via siblingData (e.g. inside an array item)
+    details: collapsible({
+      label: "Details",
+      admin: {
+        condition: ({ siblingData }) => siblingData.showDetails === true,
+      },
+      fields: { body: textarea() },
+    }),
+  },
+});
+```
+
+## Admin UI
+
+Renders a fieldset with a clickable `label` header toggling the collapsed
+state; `admin.defaultCollapsed` controls the initial state. `admin.hidden`/
+`admin.readOnly` on the `collapsible()` field OR into every nested field
+(hidden/read-only everywhere its fields render); `admin.condition` on the
+`collapsible()` field ANDs into every nested field's own condition. A
+`collapsible()` can nest inside a `tabs()` tab, a `row()`, an array item, or
+a block's own fields.

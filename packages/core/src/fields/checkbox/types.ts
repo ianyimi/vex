@@ -1,5 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldAdminConfig, FieldValidateProps } from "../baseTypes";
+import { BaseField, BaseFieldInput, FieldValidateProps } from "../baseTypes";
 import type { VexResourceSlug } from "../../types/generated";
 
 /**
@@ -20,7 +20,7 @@ import type { VexResourceSlug } from "../../types/generated";
  *     hidden:        false,   // visible in the admin form
  *     readOnly:      false,   // editable by default
  *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "full",  // spans the full form width, not half
+ *     width: "100%",  // spans the full form width, not half
  *     cellAlignment: "left",  // value aligned left in the data table column
  *   }
  * }
@@ -32,7 +32,7 @@ import type { VexResourceSlug } from "../../types/generated";
  * published: checkbox()
  *
  * // Checked by default when creating a new document
- * featured: checkbox({ defaultValue: true, admin: { width: "half" } })
+ * featured: checkbox({ defaultValue: true, admin: { width: "50%" } })
  *
  * // Indexed flag for fast admin queries
  * archived: checkbox({ index: "by_archived" })
@@ -70,8 +70,6 @@ export interface CheckboxField<
   label: string;
   /** Whether this field is required in the database schema. */
   required: boolean;
-  /** Resolved admin UI configuration with all defaults applied. */
-  admin: FieldAdminConfig;
   /** Pre-filled boolean value shown in the admin form when creating a new document. */
   defaultValue: boolean;
   /** Server-only async validation with `value` typed as `boolean`. @see {@link FieldValidate} */

@@ -26,6 +26,11 @@ export const MODALS = {
     urlParam: "editBlocks",
     label: "Edit",
   },
+  relationshipPicker: {
+    /** URL search param holding the name of the relationship field currently being edited. */
+    urlParam: "relationship",
+    label: "Select",
+  },
 } as const;
 
 /** Union of all URL parameter strings used to control admin modals. */

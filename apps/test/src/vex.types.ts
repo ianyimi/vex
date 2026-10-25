@@ -33,6 +33,7 @@ export type StatsBlock = {
   heading?: string
   subheading?: string
   items: {
+    id?: string
     /**
      * Free text, not a number — "0", "12" and "~30s" all render. Any unit belongs in
      * the string.
@@ -50,6 +51,7 @@ export type FeaturesBlock = {
   heading: string
   subheading?: string
   features: {
+    id?: string
     title: string
     description: string
     /**
@@ -66,6 +68,7 @@ export type CodeShowcaseBlock = {
   heading: string
   subheading?: string
   panes: {
+    id?: string
     /**
      * Shown uppercase in the chrome bar.
      */
@@ -90,6 +93,7 @@ export type SplitBlock = {
   heading: string
   body: string
   bullets?: {
+    id?: string
     /**
      * Lucide icon name
      */
@@ -111,6 +115,7 @@ export type HowItWorksBlock = {
   heading: string
   subheading?: string
   steps: {
+    id?: string
     /**
      * Lucide icon name
      */
@@ -127,6 +132,7 @@ export type RoadmapBlock = {
   heading: string
   subheading?: string
   items: {
+    id?: string
     feature: string
     description?: string
     status: ("shipped" | "in-progress" | "planned" | "exploring" | "future")[]
@@ -140,10 +146,7 @@ export type FaqBlock = {
   heading: string
   subheading?: string
   supportLink?: string
-  items: {
-    question: string
-    answer: string
-  }[]
+  items: { id?: string; question: string; answer: string }[]
 }
 
 export type CtaBlock = {
@@ -152,10 +155,7 @@ export type CtaBlock = {
   id: string
   heading: string
   subheading?: string
-  actions?: {
-    label: string
-    href: string
-  }[]
+  actions?: { id?: string; label: string; href: string }[]
 }
 
 export type FeatureBlock = {
@@ -186,11 +186,7 @@ export type LogoCloudBlock = {
   blockName?: string
   id: string
   title?: string
-  logos?: {
-    name: string
-    image: string
-    link?: string
-  }[]
+  logos?: { id?: string; name: string; image: string; link?: string }[]
 }
 
 export type PricingBlock = {
@@ -294,11 +290,9 @@ export type HeaderBlock = {
   logoText?: string
   logoImage?: Id<"images">[]
   logoHref?: string
-  menuItems?: {
-    label: string
-    href: string
-  }[]
+  menuItems?: { id?: string; label: string; href: string }[]
   actionButtons?: {
+    id?: string
     label: string
     href: string
     variant?: ("default" | "outline" | "ghost")[]
@@ -318,11 +312,9 @@ export type FooterBlock = {
   logoText?: string
   logoImage?: Id<"images">[]
   copyright?: string
-  links?: {
-    label: string
-    href: string
-  }[]
+  links?: { id?: string; label: string; href: string }[]
   socialLinks?: {
+    id?: string
     platform: string
     href: string
     /**
@@ -641,11 +633,9 @@ export type StatGroupBlock = {
   blockType: "stat_group"
   blockName?: string
   id: string
+  showHeading?: boolean
   heading?: string
-  stats?: {
-    value?: string
-    caption?: string
-  }[]
+  stats?: { id?: string; value?: string; caption?: string }[]
 }
 
 export type NestedStatGroupBlock = {
@@ -653,10 +643,7 @@ export type NestedStatGroupBlock = {
   blockName?: string
   id: string
   heading?: string
-  stats?: {
-    value?: string
-    caption?: string
-  }[]
+  stats?: { id?: string; value?: string; caption?: string }[]
 }
 
 export type ContainerBlock = {
@@ -664,10 +651,31 @@ export type ContainerBlock = {
   blockName?: string
   id: string
   label?: string
+  note?: string
+  meta?: {
+    tag?: string
+  }
   children?: NestedStatGroupBlock[]
 }
 
-export type FieldsExampleBlock = StatGroupBlock | ContainerBlock
+export type CalloutBlock = {
+  blockType: "callout"
+  blockName?: string
+  id: string
+  body?: string
+  emphasis?: boolean
+}
+
+export type FieldsExampleBlock = StatGroupBlock | ContainerBlock | CalloutBlock
+
+export type FieldsExampleDisplaySettings = {
+  columns?: number
+  list?: {
+    spacing?: number
+  }
+  width?: number
+  height?: number
+}
 type FieldsExampleStatusOption = "draft" | "published"
 type FieldsExampleTagsOption = "news" | "tutorial" | "release"
 export interface FieldsExample extends VexDocument {
@@ -747,15 +755,57 @@ export interface FieldsExample extends VexDocument {
   /**
    * Demonstrates array() of group() — array of groups.
    */
-  gridItems?: {
-    heading?: string
-    subheading?: string
-  }[]
+  gridItems?: { id?: string; heading?: string; subheading?: string }[]
   /**
    * Demonstrates group() containing an array() — group holding a list.
    */
   info?: FieldsExampleInfo
   content?: FieldsExampleBlock[]
+  /**
+   * Toggles the Visibility tab inside layoutTabs and conditionalRow below —
+   * demonstrates a tabs()/row() admin.condition reading a top-level sibling.
+   */
+  showAdvanced?: boolean
+  displayName?: string
+  /**
+   * A named tab — stores metaTitle/metaDescription under one `seo` object.
+   */
+  seo?: {
+    metaTitle: string
+    metaDescription: string
+  }
+  advancedNote?: string
+  visibilityNote?: string
+  colLeft?: string
+  colRight?: string
+  asideNote?: string
+  innerFirst?: string
+  innerSecond?: string
+  altTitle?: string
+  altSummary?: string
+  archiveId?: string
+  legacyFlag?: boolean
+  priceLabel?: string
+  priceValue?: string
+  fallbackA?: string
+  fallbackB?: string
+  conditionalNote?: string
+  /**
+   * Demonstrates tabs() and row() nested inside a group().
+   */
+  displaySettings?: FieldsExampleDisplaySettings
+  /**
+   * Demonstrates array() of group() nesting a row() and a siblingData-conditioned
+   * collapsible().
+   */
+  sections?: {
+    id?: string
+    showDetails?: boolean
+    summary?: string
+    itemLeft?: string
+    itemRight?: string
+    body?: string
+  }[]
   updatedAt?: number
 }
 
@@ -892,10 +942,7 @@ export interface Image extends VexDocument {
 }
 
 export interface NavGlobal extends VexDocumentGlobal<"nav"> {
-  items?: {
-    title?: string
-    href?: string
-  }[]
+  items?: { id?: string; title?: string; href?: string }[]
 }
 
 export interface SiteSettingsGlobal extends VexDocumentGlobal<"siteSettings"> {
@@ -1135,9 +1182,26 @@ declare module "@vexcms/core" {
         email: "contactEmail"
         textarea: "bio"
         json: "settings"
-        text: "title"
+        text:
+          | "title"
+          | "displayName"
+          | "advancedNote"
+          | "visibilityNote"
+          | "colLeft"
+          | "colRight"
+          | "asideNote"
+          | "innerFirst"
+          | "innerSecond"
+          | "altTitle"
+          | "altSummary"
+          | "archiveId"
+          | "priceLabel"
+          | "priceValue"
+          | "fallbackA"
+          | "fallbackB"
+          | "conditionalNote"
         number: "rating"
-        checkbox: "isFeatured"
+        checkbox: "isFeatured" | "showAdvanced" | "legacyFlag"
         select: "status" | "tags"
         color: "accentColor"
         url: "website"
@@ -1145,8 +1209,8 @@ declare module "@vexcms/core" {
         relationship: "relatedUser" | "relatedUsers"
         upload: "avatar" | "gallery"
         richtext: "body"
-        array: "tagList" | "gridItems"
-        group: "info"
+        array: "tagList" | "gridItems" | "sections"
+        group: "info" | "seo" | "displaySettings"
         blocks: "content"
       }
       session: {

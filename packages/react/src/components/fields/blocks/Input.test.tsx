@@ -7,6 +7,7 @@ import {
   adminFieldToInputSchema,
   blocks,
   defineBlock,
+  defineConfig,
   text,
   type BaseFieldMeta,
   type BlocksField,
@@ -15,11 +16,14 @@ import {
   type InputComponentProps,
 } from "@vexcms/core";
 import { AppForm } from "../../form/AppForm";
+import { VexConfigProvider } from "../../../context/VexConfigContext";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { runFieldInputContractSuite } from "../../../testing/fieldInputContract";
 import { runNestedFieldContainerSuite } from "../../../testing/nestedFieldContainer";
 import { BlocksFieldInput } from "./Input";
 import { blocksFieldFixture } from "./testFixture";
+
+const testConfig = defineConfig();
 
 /**
  * Wraps `BlocksFieldInput` with a nuqs testing adapter — the block editor's
@@ -68,18 +72,20 @@ function BlocksHarness(props: {
     },
   });
   return (
-    <AppForm form={form}>
-      <TestBlocksFieldInput
-        name="testField"
-        fieldDef={props.fieldDef}
-        collection={props.collection ?? testCollection}
-        readOnly={props.readOnly ?? false}
-      />
-      <button type="submit">Submit</button>
-      <form.Subscribe selector={(state) => state.values.testField}>
-        {(value) => <output data-testid="value-probe">{JSON.stringify(value)}</output>}
-      </form.Subscribe>
-    </AppForm>
+    <VexConfigProvider config={testConfig}>
+      <AppForm form={form}>
+        <TestBlocksFieldInput
+          name="testField"
+          fieldDef={props.fieldDef}
+          collection={props.collection ?? testCollection}
+          readOnly={props.readOnly ?? false}
+        />
+        <button type="submit">Submit</button>
+        <form.Subscribe selector={(state) => state.values.testField}>
+          {(value) => <output data-testid="value-probe">{JSON.stringify(value)}</output>}
+        </form.Subscribe>
+      </AppForm>
+    </VexConfigProvider>
   );
 }
 
@@ -182,7 +188,7 @@ runFieldInputContractSuite({
         expect(values.map((b) => b.blockType)).toEqual(["heading", "paragraph"]);
       });
 
-      it("seeds a new block's blockName from the block definition's label and gives it a fresh, unique id", async () => {
+      it("seeds a new block with a fresh, unique id and no blockName, so the block definition's label shows as a placeholder", async () => {
         const user = userEvent.setup();
         // Single registered block type — Add bypasses the picker dialog entirely.
         render(<BlocksHarness fieldDef={blocksFieldFixture.fieldDef} initialValue={[]} />);
@@ -195,10 +201,11 @@ runFieldInputContractSuite({
           blockName?: string;
         }[];
         expect(values).toHaveLength(2);
-        expect(values[0]?.blockName).toBe("Paragraph");
-        expect(values[1]?.blockName).toBe("Paragraph");
+        expect(values[0]?.blockName).toBeUndefined();
+        expect(values[1]?.blockName).toBeUndefined();
         expect(values[0]?.id).toEqual(expect.any(String));
         expect(values[0]?.id).not.toBe(values[1]?.id);
+        expect(screen.getAllByPlaceholderText("Paragraph")).toHaveLength(2);
       });
 
       it("edits a block's blockName in place without toggling the accordion, and leaves that block's own field values untouched", async () => {
@@ -210,10 +217,13 @@ runFieldInputContractSuite({
           <BlocksHarness fieldDef={blocksFieldFixture.fieldDef} initialValue={seeded} />,
         );
 
-        const trigger = container.querySelector("[aria-expanded]") as HTMLElement;
+        await waitFor(() =>
+          expect(container.querySelector("[data-rfd-draggable-id]")).not.toBeNull(),
+        );
+        const trigger = container.querySelector('[data-slot="accordion-trigger"]') as HTMLElement;
         // Starts open (`admin.defaultCollapsed` defaults to `false`) — collapse it first.
         await user.click(trigger);
-        expect(trigger).toHaveAttribute("aria-expanded", "false");
+        await waitFor(() => expect(trigger).toHaveAttribute("aria-expanded", "false"));
         expect(screen.queryByLabelText("Text")).not.toBeInTheDocument();
 
         const blockNameInput = screen.getByDisplayValue("Paragraph");
@@ -232,7 +242,7 @@ runFieldInputContractSuite({
         expect(values[0]?.text).toBe("Original body");
       });
 
-      it("removes one block by its own labeled button, leaving a differently-typed sibling block's field values untouched", async () => {
+      it("removes one block via its actions menu, leaving a differently-typed sibling block's field values untouched", async () => {
         const user = userEvent.setup();
         const seeded: GenericBlock[] = [
           { id: "h1", blockType: "heading", blockName: "Heading", text: "Welcome" },
@@ -240,7 +250,7 @@ runFieldInputContractSuite({
         ];
         render(<BlocksHarness fieldDef={twoBlockFieldDef} initialValue={seeded} />);
 
-        await user.click(screen.getByRole("button", { name: "Remove Heading block" }));
+        await user.click(screen.getByRole("button", { name: "Remove block 1" }));
 
         const values = JSON.parse(screen.getByTestId("value-probe").textContent ?? "[]") as {
           blockType: string;

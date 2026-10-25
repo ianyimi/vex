@@ -26,9 +26,10 @@ compile-time error.
 | `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
 | `admin.readOnly` | `boolean` | `false` | Renders the picker as non-interactive — value is visible but cannot be changed. |
 | `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
-| `admin.width` | `"full" \| "half"` | `"full"` | Grid width of the field in the edit form. |
+| `admin.width` | `string` | `"100%"` | CSS width of the field in the edit form (e.g. `"50%"`, `"240px"`). Meaningful as a child of `row()`; below a narrow form column every field renders full width regardless. |
 | `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
 | `admin.components.preview` | Component | — | Per-field override for the relationship preview renderer — the only supported location for a custom preview. |
+| `admin.condition` | `(props: { data, siblingData }) => boolean` | — | Shows the field only while this returns `true`. A throwing condition counts as met. Hidden fields skip `required`/`validate` on the server too. See the [Conditional fields & masks guide](/guides/conditional-fields-and-masks/). |
 
 ## Schema output
 
@@ -108,10 +109,13 @@ const posts = defineCollection({
 
 ## Admin UI
 
-The relationship field renders as a searchable combobox picker in the edit form.
-Typing into the picker searches the target collection's `useAsTitle` field via
-the auto-generated search index. When `hasMany: false`, selecting a result
-replaces the current value; when `hasMany: true`, results are added to the
-selection list and can be removed individually. In the list-view table, the cell
-renders each referenced document's preview component (or title field as a
-fallback).
+The relationship field renders as a searchable combobox picker in the edit form,
+with a button labeled "Select `<label>`" (the field's own label) that opens a
+picker dialog on its Select tab. Typing into the picker searches the target
+collection's `useAsTitle` field via the auto-generated search index. The
+picker finds existing relationships by field, so re-opening the picker on an
+already-filled field shows the current selection. When `hasMany: false`,
+selecting a result replaces the current value; when `hasMany: true`, results
+are added to the selection list and can be removed individually. In the
+list-view table, each referenced document row shows the target collection's
+`admin.icon` beside its preview component (or title field as a fallback).

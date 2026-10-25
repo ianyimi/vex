@@ -8,7 +8,7 @@ const ModalSurfaceContext = createContext(false);
  * Marks everything inside as living on a modal surface.
  *
  * Applied once by `Modal`, so any field rendered into a dialog inherits it.
- * Fields are rendered generically by `RenderFieldInputComponents`, which has
+ * Fields are rendered generically by `RenderFields`, which has
  * no per-field prop channel — context is the only way to tell a select deep in
  * a generated form that it is inside a dialog.
  *

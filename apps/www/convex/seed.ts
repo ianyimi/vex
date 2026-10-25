@@ -697,10 +697,10 @@ async function runSeed(ctx: MutationCtx, mode: SeedMode): Promise<SeedReport> {
               "Convex is the database. No connection string, no REST or GraphQL tier in between",
           },
           {
-            value: "12",
+            value: "16",
             label: "field types",
             description:
-              "text, url, number, checkbox, select, date, color, upload, relationship, group, array, blocks",
+              "text, url, number, checkbox, select, date, color, upload, relationship, group, array, blocks, richtext, email, textarea, json",
           },
           {
             value: "8",
@@ -982,7 +982,7 @@ export const featuredPosts = query({
           {
             question: "Is it production ready?",
             answer:
-              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation and live preview have landed; the big ones left are versioning and drafts, and the richtext field. The roadmap page has the full list.",
+              "Not yet. A handful of specs stand between the current alpha and the 0.1.0 tag, in a published order. Lifecycle hooks with server-side validation, live preview, versioning and drafts, and the richtext/json/email/textarea fields have all landed; the remaining big ones are the field input consistency pass and the edit/list-view overhauls. The roadmap page has the full list.",
           },
           {
             question: "Which frameworks does it support?",
@@ -1058,9 +1058,9 @@ export const featuredPosts = query({
           "Everything below is shipped in the published packages and running in this site's admin panel. Anything still in progress lives on the roadmap.",
         features: [
           {
-            title: "Twelve field types",
+            title: "Sixteen field types",
             description:
-              "text, url, number, checkbox, select, date, color, upload, relationship, group, array, and blocks. Richtext lands with 0.1.0. json, email, and textarea follow after.",
+              "text, url, number, checkbox, select, date, color, upload, relationship, group, array, blocks, richtext, email, textarea, and json — plus tabs, collapsible, row, and ui layout fields and admin.condition for conditional fields.",
             icon: "Type",
           },
           {
@@ -1498,8 +1498,26 @@ export const testimonials = defineTable({
           {
             feature: "JSON, Email & Textarea Fields",
             description:
-              "Pulled back into the 0.1.0 track: cheap leaf fields, landed before the field consistency pass so it covers them. ui and tabs are a separate question; both change core invariants.",
-            status: ["in-progress"],
+              "Cheap leaf fields: email() with format validation, textarea() with a character counter, and json() backed by a CodeMirror editor.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Conditional Fields, Tabs & Layout Fields",
+            description:
+              "admin.condition({ data, siblingData }) shows or hides any field, enforced identically on client and server. tabs, collapsible, row, and ui organize and extend the edit form, legal anywhere a fields record is.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Input Masks & Admin Extension Points",
+            description:
+              "admin.mask on text/email/number/url with project-wide fields.inputMasks defaults. Experimental per-field and project-wide component overrides, plus block/array action-menu contributions.",
+            status: ["shipped"],
+          },
+          {
+            feature: "Block Clipboard",
+            description:
+              "Copy and paste blocks across fields, documents, and collections from a localStorage clipboard, validated against the target block definition.",
+            status: ["shipped"],
           },
           {
             feature: "Content Scheduling",

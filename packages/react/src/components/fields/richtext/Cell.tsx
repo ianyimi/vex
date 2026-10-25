@@ -1,11 +1,11 @@
 import {
-  addLeadingSlash,
   richTextToPlainText,
   TDocument,
   type CellComponentProps,
   type RichTextField,
 } from "@vexcms/core";
 import { VexLink } from "../../ui";
+import { adminHref } from "../../../utils/adminHref";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
 /** Max characters shown in the cell's visible excerpt — matches `text/Cell.tsx`'s own cutoff. */
@@ -34,7 +34,6 @@ export function RichTextFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<RichTextField, TData>,
 ) {
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
   const fullText = props.value
     ? richTextToPlainText({ document: props.value })
     : "";
@@ -50,7 +49,10 @@ export function RichTextFieldCell<TData extends TDocument = TDocument>(
   if (!props.isTitleField) return content;
   return (
     <VexLink
-      href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}
+      href={adminHref(
+        { type: "document", slug: props.collection.slug, id: props.row.original._id },
+        config.basePath,
+      )}
     >
       {content}
     </VexLink>

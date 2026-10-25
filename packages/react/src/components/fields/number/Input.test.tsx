@@ -1,13 +1,27 @@
-import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
-import { numberFieldToInputSchema, type CollectionConfig, type NumberField } from "@vexcms/core";
+import {
+  defineConfig,
+  number,
+  numberFieldToInputSchema,
+  type CollectionConfig,
+  type NumberField,
+} from "@vexcms/core";
 import { AppForm } from "../../form/AppForm";
+import { VexConfigContext } from "../../../context/VexConfigContext";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { runFieldInputContractSuite } from "../../../testing/fieldInputContract";
 import { numberFieldFixture } from "./testFixture";
 import { NumberFieldInput } from "./Input";
+
+const { withMaskMock } = vi.hoisted(() => {
+  const applyMaskMock = vi.fn();
+  return { withMaskMock: vi.fn(() => applyMaskMock) };
+});
+
+vi.mock("use-mask-input", () => ({ withMask: withMaskMock }));
 
 /**
  * Mounts `NumberFieldInput` behind a real `useForm` + `<AppForm>`, exposing the
@@ -101,18 +115,25 @@ runFieldInputContractSuite({
         expect(screen.getByTestId("value-probe").textContent).toBe("42");
       });
 
-      it("does not forward fieldDef.min/max as native HTML attributes and does not clamp typed values — range enforcement is the schema's job, not the input's", async () => {
+      it("forwards fieldDef.min/max/step as native HTML attributes but still does not clamp a typed value — range enforcement stays the schema's job", async () => {
         const user = userEvent.setup();
+        const fieldDef = number({
+          label: "Quantity",
+          min: [0, "Quantity cannot be negative."],
+          max: [100, "Quantity cannot exceed 100."],
+          step: 5,
+        });
         render(
           <NumberHarness
-            fieldDef={options.fixture.fieldDef}
+            fieldDef={fieldDef}
             collection={collection}
             initialValue={options.fixture.empty}
           />,
         );
-        const input = screen.getByLabelText(options.fixture.fieldDef.label, { exact: false });
-        expect(input).not.toHaveAttribute("min");
-        expect(input).not.toHaveAttribute("max");
+        const input = screen.getByLabelText(fieldDef.label, { exact: false });
+        expect(input).toHaveAttribute("min", "0");
+        expect(input).toHaveAttribute("max", "100");
+        expect(input).toHaveAttribute("step", "5");
         await user.clear(input);
         await user.type(input, "999");
         expect(input).toHaveValue(999);
@@ -253,4 +274,55 @@ runFieldInputContractSuite({
       });
     });
   },
+});
+
+describe("number: admin.mask", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function NumberMaskHarness(props: { fieldDef: NumberField }) {
+    const form = useForm({ defaultValues: { testField: undefined as number | undefined } });
+    return (
+      <AppForm form={form}>
+        <NumberFieldInput
+          name="testField"
+          fieldDef={props.fieldDef}
+          readOnly={false}
+          collection={testCollection}
+        />
+      </AppForm>
+    );
+  }
+
+  function renderMasked(fieldDef: NumberField) {
+    return render(
+      <VexConfigContext.Provider value={defineConfig()}>
+        <NumberMaskHarness fieldDef={fieldDef} />
+      </VexConfigContext.Provider>,
+    );
+  }
+
+  it("renders type=text and lazily applies the mask when admin.mask is set", async () => {
+    const fieldDef = number({ label: "Amount", admin: { mask: "decimal" } });
+    const { container } = renderMasked(fieldDef);
+    await waitFor(() => expect(withMaskMock).toHaveBeenCalledWith("decimal", { autoUnmask: true }));
+    expect(container.querySelector("input")?.getAttribute("type")).toBe("text");
+  });
+
+  it("converts an empty masked input to undefined, not NaN", async () => {
+    const fieldDef = number({ label: "Amount", admin: { mask: "decimal" } });
+    const { container } = renderMasked(fieldDef);
+    await waitFor(() => expect(withMaskMock).toHaveBeenCalled());
+    const input = container.querySelector("input") as HTMLInputElement;
+    fireEvent.input(input, { target: { value: "" } });
+    expect(input.value).toBe("");
+  });
+
+  it("renders the ordinary controlled type=number input when no mask resolves", () => {
+    const fieldDef = number({ label: "Amount" });
+    const { container } = renderMasked(fieldDef);
+    expect(withMaskMock).not.toHaveBeenCalled();
+    expect(container.querySelector("input")?.getAttribute("type")).toBe("number");
+  });
 });

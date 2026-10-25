@@ -141,7 +141,7 @@ export interface GlobalConfigInput<
   TFieldMeta extends {} = {},
   TGlobalMeta extends {} = {},
   TGlobalSlug extends string = string,
-  TFieldSlug extends string = string,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
   TComponent extends ComponentHKT = ComponentHKT,
   TDrafts extends boolean = false,
 > {
@@ -162,7 +162,7 @@ export interface GlobalConfigInput<
    * `defineCollection` are valid. Field keys must not be `_id`,
    * `_creationTime`, or `_slug` (enforced at compile time by `defineGlobal`).
    */
-  fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
+  fields: TFields;
   /** Lifecycle hooks for this global. */
   hooks?: GlobalHooksInput<
     TGlobalSlug extends GlobalSlug ? TGlobalSlug : GlobalSlug
@@ -218,7 +218,7 @@ export interface GlobalConfig<
   TFieldMeta extends {} = {},
   TGlobalMeta extends {} = {},
   TGlobalSlug extends GlobalSlug = GlobalSlug,
-  TFieldSlug extends string = string,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
   TComponent extends ComponentHKT = ComponentHKT,
   TDrafts extends boolean = boolean,
 > {
@@ -227,7 +227,7 @@ export interface GlobalConfig<
   /** Human-readable label. */
   label: string;
   /** Resolved field definitions. */
-  fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
+  fields: TFields;
   /** Resolved lifecycle hooks. Always present; defaults to `{}`. */
   hooks: GlobalHooks<TGlobalSlug>;
   /** Resolved admin config. */

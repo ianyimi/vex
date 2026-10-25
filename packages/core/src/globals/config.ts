@@ -1,4 +1,4 @@
-import type { ComponentHKT } from "../fields";
+import { getDataFields, type AdminField, type ComponentHKT } from "../fields";
 import { slugToPascalCase } from "../collections/utils";
 import type {
   GlobalAdminConfig,
@@ -52,22 +52,20 @@ export function defineGlobal<
   TFieldMeta extends {} = {},
   TGlobalMeta extends {} = {},
   TGlobalSlug extends GlobalSlug = GlobalSlug,
-  TFieldSlug extends string = string,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
   TComponent extends ComponentHKT = ComponentHKT,
   const TDrafts extends boolean = false,
 >(
-  config: string extends TFieldSlug
-    ? GlobalConfigInput<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent, TDrafts>
-    : [TFieldSlug & ReservedGlobalFieldKey] extends [never]
-      ? GlobalConfigInput<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent, TDrafts>
+  config: string extends keyof TFields
+    ? GlobalConfigInput<TFieldMeta, TGlobalMeta, TGlobalSlug, TFields, TComponent, TDrafts>
+    : [keyof TFields & ReservedGlobalFieldKey] extends [never]
+      ? GlobalConfigInput<TFieldMeta, TGlobalMeta, TGlobalSlug, TFields, TComponent, TDrafts>
       : {
           fields: {
-            [
-              K in TFieldSlug & ReservedGlobalFieldKey
-            ]: "Field name is reserved — cannot use _id, _creationTime, or _slug";
+            [K in keyof TFields & ReservedGlobalFieldKey]: "Field name is reserved — cannot use _id, _creationTime, or _slug";
           };
         },
-): GlobalConfig<TFieldMeta, TGlobalMeta, TGlobalSlug, TFieldSlug, TComponent, TDrafts> {
+): GlobalConfig<TFieldMeta, TGlobalMeta, TGlobalSlug, TFields, TComponent, TDrafts> {
   // Runtime guard for JS consumers
   const reservedKeys: ReservedGlobalFieldKey[] = ["_id", "_creationTime", "_slug"];
   for (const key of reservedKeys) {
@@ -83,10 +81,15 @@ export function defineGlobal<
     TFieldMeta,
     TGlobalMeta,
     TGlobalSlug,
-    TFieldSlug,
+    TFields,
     TComponent,
     TDrafts
   >;
+
+  // Reject a duplicate key once the fields record is flattened to data
+  // fields — mirrors `defineCollection`'s guard. `getDataFields` itself
+  // throws; called here purely for the side effect, result discarded.
+  getDataFields({ fields: input.fields });
 
   return {
     ...input,

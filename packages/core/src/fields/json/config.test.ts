@@ -17,7 +17,7 @@ describe("json()", () => {
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
     });
   });

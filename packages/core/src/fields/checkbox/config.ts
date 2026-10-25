@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 import type { CheckboxFieldInput, CheckboxField } from "./types";
 
@@ -18,7 +19,7 @@ import type { CheckboxFieldInput, CheckboxField } from "./types";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
  *
  * @param options - Checkbox field configuration. All properties are optional.
@@ -34,7 +35,7 @@ import type { CheckboxFieldInput, CheckboxField } from "./types";
  *     published: checkbox(),
  *
  *     // Required field, checked by default when creating a new document
- *     featured: checkbox({ defaultValue: true, admin: { width: "half" } }),
+ *     featured: checkbox({ defaultValue: true, admin: { width: "50%" } }),
  *
  *     // Indexed flag for fast admin queries
  *     archived: checkbox({ index: "by_archived" }),
@@ -66,10 +67,11 @@ export function checkbox<
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       // Optional admin properties (no defaults)
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options?.meta,

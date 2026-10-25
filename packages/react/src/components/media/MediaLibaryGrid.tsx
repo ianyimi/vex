@@ -1,18 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import {
   type MediaCollectionConfig,
   type VexMediaDocument,
   formatBytes,
   formatMimeType,
-  vexConvexApi,
 } from "@vexcms/core";
-import { Button, Input, Icon } from "../ui";
+import {
+  Button,
+  Input,
+  Icon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "../ui";
 import { FilePreview } from "./FilePreview";
-import { useDebounceValue } from "@ts-hooks-kit/core";
-import { convexQuery } from "@convex-dev/react-query";
+import { usePaginatedSearch } from "../../hooks";
 import { cn } from "../../styles/utils";
 
 /**
@@ -27,55 +33,84 @@ export interface MediaLibraryGridProps {
   onSelect: (ids: string[]) => void;
   /** Currently selected media IDs (for checkmark display). */
   selectedIds?: string[];
+  /**
+   * The owning upload field's `accept` pattern list. Restricts both the
+   * grid's results and the Type filter menu's options; omit to browse every
+   * file in the collection and offer the generic Images/Videos/Audio/PDF
+   * categories instead.
+   */
+  accept?: string;
+}
+
+const DEFAULT_TYPE_OPTIONS = [
+  "image/*",
+  "video/*",
+  "audio/*",
+  "application/pdf",
+] as const;
+
+/**
+ * Formats an accept pattern (`"image/*"`, `".pdf"`, `"application/pdf"`) as
+ * a Type-menu label.
+ *
+ * @param pattern - One accept pattern.
+ * @returns A human-readable label for the Type filter menu.
+ */
+function formatTypeOption(pattern: string): string {
+  if (pattern === "audio/*") return "Audio";
+  if (pattern.endsWith("/*")) {
+    const category = pattern.slice(0, -2);
+    return `${category.charAt(0).toUpperCase()}${category.slice(1)}s`;
+  }
+  if (pattern.startsWith(".")) return pattern.toUpperCase();
+  return formatMimeType(pattern);
 }
 
 /**
- * Reusable grid component for media library tab.
+ * Reusable grid component for the media library tab.
  *
  * Shows thumbnails with filename + MIME/size metadata. Supports single/multi-select
- * with checkmarks, search bar (client-side filter), MIME type filter button (TODO), and pagination.
+ * with checkmarks, a debounced server-side search bar, a Type filter menu (client-side
+ * MIME match over the field's `accept` patterns, via `usePaginatedSearch`'s `mimeTypes`),
+ * and real cursor pagination with a working "Load more".
  *
  * Matches the `MediaPicker` / `MediaModalLibrary` design: search bar + Type filter button,
  * 4-column grid with tiles showing FilePreview + filename + metadata.
  *
  * @param props - Component props.
- * @returns The search bar, results grid with selection state, and a "Load more" button when there are more results.
+ * @returns The search bar + Type filter, results grid with selection state, and a "Load more" button when there are more results.
  */
 export function MediaLibraryGrid({
   targetCollectionConfig,
   multi,
   onSelect,
   selectedIds = [],
+  accept,
 }: MediaLibraryGridProps) {
   const [search, setSearch] = useState("");
-  const [debouncedSearch] = useDebounceValue(search, 200);
-  const [limit] = useState(24);
-  const [offset, setOffset] = useState(0);
+  const [selectedType, setSelectedType] = useState("all");
 
-  const { data: allItems = [], isPending: pendingAll } = useQuery({
-    ...convexQuery(vexConvexApi.find, { collection: targetCollectionConfig.slug, limit }),
-    enabled: debouncedSearch.length === 0,
-  });
-  const allMediaItems = allItems as VexMediaDocument[];
+  const acceptPatterns = useMemo(
+    () =>
+      (accept ?? "")
+        .split(",")
+        .map((pattern) => pattern.trim())
+        .filter(Boolean),
+    [accept],
+  );
+  const typeOptions =
+    acceptPatterns.length > 0 ? acceptPatterns : [...DEFAULT_TYPE_OPTIONS];
+  const mimeTypes = useMemo(() => {
+    if (selectedType !== "all") return [selectedType];
+    return acceptPatterns.length > 0 ? acceptPatterns : undefined;
+  }, [selectedType, acceptPatterns]);
 
-  const { data: searchItems = [], isPending: pendingSearch } = useQuery({
-    ...convexQuery(
-      vexConvexApi.search,
-      debouncedSearch.length < 1
-        ? "skip"
-        : {
-            collection: targetCollectionConfig.slug,
-            query: search,
-            searchField: targetCollectionConfig.admin.useAsTitle,
-            limit,
-            searchIndexName: `search_${targetCollectionConfig.admin.useAsTitle}`,
-          },
-    ),
-    enabled: debouncedSearch.length > 0,
-  });
-  const searchMediaItems = searchItems as VexMediaDocument[];
-
-  const displayedItems = debouncedSearch.length > 0 ? searchMediaItems : allMediaItems;
+  const { documents, isPending, hasMore, isLoadingMore, loadMore } =
+    usePaginatedSearch<VexMediaDocument>({
+      collection: targetCollectionConfig,
+      query: search,
+      mimeTypes,
+    });
 
   const handleItemClick = (id: string) => {
     if (multi) {
@@ -93,30 +128,51 @@ export function MediaLibraryGrid({
       <div className="flex items-center gap-2 pb-2">
         <Input
           className="vex-input sm"
-          placeholder={`Search ${targetCollectionConfig} by filename or alt…`}
+          placeholder={`Search ${targetCollectionConfig.labels.plural} by filename or alt…`}
           value={search}
-          isPending={search.length > 0 && pendingSearch}
+          isPending={search.length > 0 && isPending}
           iconLeft={{ name: "Search" }}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <Button variant="outline" icon="ListFilter">
-          Type
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="outline" icon="ListFilter">
+                {selectedType === "all"
+                  ? "Type"
+                  : formatTypeOption(selectedType)}
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end">
+            <DropdownMenuRadioGroup
+              value={selectedType}
+              onValueChange={setSelectedType}
+            >
+              <DropdownMenuRadioItem value="all">
+                All types
+              </DropdownMenuRadioItem>
+              {typeOptions.map((pattern) => (
+                <DropdownMenuRadioItem key={pattern} value={pattern}>
+                  {formatTypeOption(pattern)}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <div className="max-h-[60vh] overflow-y-auto overflow-x-hidden">
-        {displayedItems.length === 0 ? (
+        {documents.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
-            {search.length === 0 && pendingAll
+            {isPending
               ? "Loading..."
-              : search.length > 0 && pendingSearch
-                ? "Searching…"
-                : debouncedSearch
-                  ? "No media files match your search"
-                  : "No media files yet"}
+              : search.length > 0
+                ? "No media files match your search"
+                : "No media files yet"}
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-            {displayedItems.map((mediaDoc) => (
+            {documents.map((mediaDoc) => (
               <MediaDocumentPreview
                 key={mediaDoc._id}
                 mediaDoc={mediaDoc}
@@ -127,10 +183,15 @@ export function MediaLibraryGrid({
           </div>
         )}
       </div>
-      {displayedItems.length >= limit && (
+      {hasMore && (
         <div className="px-5 pb-3 pt-2">
-          <Button variant="outline" size="sm" onClick={() => setOffset(offset + limit)}>
-            Load more
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadMore}
+            disabled={isLoadingMore}
+          >
+            {isLoadingMore ? "Loading…" : "Load more"}
           </Button>
         </div>
       )}

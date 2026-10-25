@@ -1,6 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
-import { resolveFieldLimit } from "../utils";
+import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 import type { UrlFieldInput, UrlField } from "./types";
 
@@ -19,8 +19,9 @@ import type { UrlFieldInput, UrlField } from "./types";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
+ * - `admin.mask` — not set (opt-in; no project-wide default applies unless configured)
  *
  * @param options - URL field configuration. All properties are optional.
  * @returns Resolved URL field definition with all defaults applied.
@@ -40,7 +41,7 @@ import type { UrlFieldInput, UrlField } from "./types";
  *     // Social profile URL with a placeholder hint
  *     twitterUrl: url({
  *       required: false,
- *       admin: { width: "half", placeholder: "https://twitter.com/username" },
+ *       admin: { width: "50%", placeholder: "https://twitter.com/username" },
  *     }),
  *   }
  * })
@@ -79,11 +80,12 @@ export function url<
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       // Optional admin properties (no defaults)
       placeholder: "",
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options?.meta,

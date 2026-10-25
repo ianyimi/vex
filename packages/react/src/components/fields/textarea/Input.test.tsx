@@ -130,7 +130,7 @@ runFieldInputContractSuite({
         expect(screen.getByLabelText("Bio", { exact: false })).toHaveAttribute("rows", "10");
       });
 
-      it("shows no character counter when max is not configured", () => {
+      it("shows the bare character count, with no limit, when max is not configured", () => {
         const fieldDef = textarea({ label: "Bio" });
         render(
           <TextareaValidationHarness
@@ -139,6 +139,7 @@ runFieldInputContractSuite({
             initialValue="hello"
           />,
         );
+        expect(screen.getByText("5")).toBeInTheDocument();
         expect(screen.queryByText(/^\d+\/\d+$/)).toBeNull();
       });
 

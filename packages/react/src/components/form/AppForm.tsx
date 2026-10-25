@@ -1,9 +1,13 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
+import { useStore, FormAsyncValidateOrFn, FormValidateOrFn } from "@tanstack/react-form";
 import { AppFormContext, type AnyFormApi } from "./AppFormContext";
 import { DndProvider } from "../ui/dnd";
-import { FormAsyncValidateOrFn, FormValidateOrFn } from "@tanstack/react-form";
+import { ACCORDION_TRANSITION_MS } from "../ui/accordion";
+import { failedSubmitAttemptOf } from "../../hooks/useFieldErrorCount";
+import { cn } from "../../styles/utils";
+import { FormCompactContext, useMeasuredCompact } from "./FormCompactContext";
 
 /**
  * Provides a TanStack Form instance to all descendant field input components.
@@ -68,21 +72,91 @@ export function AppForm<
   children: ReactNode;
   className?: string;
 }) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const failedSubmitAttempt = useStore(props.form.store, failedSubmitAttemptOf);
+  const compact = useMeasuredCompact(formRef);
+  useEffect(() => {
+    if (failedSubmitAttempt === 0) return;
+    let cancelled = false;
+    let scrollTimer: number | undefined;
+    const validateTimer = window.setTimeout(async () => {
+      await props.form.validate("submit");
+      if (cancelled) return;
+      scrollTimer = window.setTimeout(() => {
+        if (!cancelled && formRef.current) focusFirstFieldError(formRef.current);
+      }, ACCORDION_TRANSITION_MS);
+    });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(validateTimer);
+      window.clearTimeout(scrollTimer);
+    };
+  }, [failedSubmitAttempt]);
+
   return (
     <AppFormContext.Provider value={props.form}>
-      <DndProvider>
-        <form
-          className={props.className}
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            props.form.handleSubmit();
-          }}
-        >
-          {props.children}
-        </form>
-      </DndProvider>
+      <FormCompactContext.Provider value={compact}>
+        <DndProvider>
+          <form
+            ref={formRef}
+            className={cn("@container/form", props.className)}
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              props.form.handleSubmit();
+            }}
+          >
+            {props.children}
+          </form>
+        </DndProvider>
+      </FormCompactContext.Provider>
     </AppFormContext.Provider>
   );
+}
+
+const FOCUSABLE_SELECTOR =
+  'input:not([type="hidden"]), textarea, select, [contenteditable="true"], button, [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Scrolls the first visible errored field to the center of its nearest
+ * scrolling ancestor and focuses its control. "First" is DOM order among
+ * `[data-field-invalid]` wrappers that are not inside a hidden panel; a
+ * wrapper is marked when it or anything under it has an error, so the
+ * innermost one (no marked descendant) is the field itself rather than its
+ * group or array.
+ *
+ * Not `scrollIntoView`: that scrolls every scrollable ancestor, and the admin
+ * shell's `main` sits around the form's own scroller with a few pixels of
+ * overflow — it would scroll `main` too and leave the page shifted past its
+ * bottom.
+ *
+ * @param root - The form's root element to search within.
+ */
+function focusFirstFieldError(root: HTMLElement): void {
+  const visible = [...root.querySelectorAll<HTMLElement>("[data-field-invalid]")].filter(
+    (element) => element.closest("[hidden]") === null,
+  );
+  const target = visible.find(
+    (element) => !visible.some((other) => other !== element && element.contains(other)),
+  );
+  if (!target) return;
+  const scroller = nearestScroller(target);
+  if (scroller) {
+    const scrollerRect = scroller.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const centerOffset = targetRect.top - scrollerRect.top - (scroller.clientHeight - targetRect.height) / 2;
+    scroller.scrollTo({ top: scroller.scrollTop + centerOffset, behavior: "smooth" });
+  }
+  target.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus({ preventScroll: true });
+}
+
+function nearestScroller(element: HTMLElement): HTMLElement | null {
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    const { overflowY } = getComputedStyle(parent);
+    if ((overflowY === "auto" || overflowY === "scroll") && parent.scrollHeight > parent.clientHeight) {
+      return parent;
+    }
+  }
+  return null;
 }

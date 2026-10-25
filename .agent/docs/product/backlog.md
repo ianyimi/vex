@@ -888,3 +888,40 @@ Revisit with Track PL.
 
 **Detail.** Stem decision S14; `.agent/docs/research/plugin-system-design.md` (Payload's
 import map exists because its config lives on the server).
+
+---
+
+## Config toggle: stop persisting array item / block ids
+
+**What.** A project-level setting (e.g. `fields.persistItemIds: false` in `vex.config.ts`,
+default `true`) that stops VexCMS storing the generated `id` on every object-shaped `array()`
+item and every `blocks()` item. Ids would be generated in the admin only, never saved.
+
+**Why.** Each id is ~21 chars (~30 bytes with its key) per array item / block, so storage
+grows with content. Some projects want the smallest documents and don't need item identity
+outside the editor.
+
+**Lift.** Medium. Audited 2026-10-24 (field-input-consistency-pass session):
+- Ids are written by `withArrayItemId` / `assignArrayItemIds` (`packages/core/src/fields/array/utils.ts`,
+  backfilled server-side in `api/prepareEdit.ts`) and by `buildDefaultBlock` / `cloneBlockWithFreshIds`
+  (`fields/blocks/utils.ts`); declared in `fields/array/validator.ts` (`id: v.optional`),
+  `fields/blocks/validator.ts` (`id: v.string()`) and the generated types (`array/config.ts`,
+  `blocks/config.ts`). With the toggle off, all of these skip the id.
+- Admin consumers move to a client-only key list per array/blocks path, held at form level (in
+  `AppForm`'s provider) and moved by add/duplicate/move/remove/drag: `FormArray` keys,
+  `FormGroup`'s `accordionStoreKey`, `FormBlocks`' `openBlockIds`. Scalar arrays already work this
+  way (`FormArray` `keysRef`). Keys never reach the DOM before DnD mounts, so SSR, hydration and
+  page refresh are unaffected.
+- Nothing server-side reads item ids (saves, live-field merge and versions treat the array as one
+  value).
+- A one-time migration strips ids when a project switches the toggle off (Convex rejects
+  undeclared keys once the schema stops declaring `id`).
+
+**Tradeoffs the user opts into.**
+- No stable item/block identity outside the admin: no `#block-…` anchors, cross-version item
+  tracking, comments or translation tooling keyed to a block.
+- `RenderBlocks` keys by index, so in live preview a reorder doesn't carry component state (an
+  open FAQ panel stays at its position). Published pages unaffected.
+
+**Why deferred.** Low priority; the storage saving is small, and ids stay the default because
+they enable those identity features. Revisit whenever document size becomes a user concern.

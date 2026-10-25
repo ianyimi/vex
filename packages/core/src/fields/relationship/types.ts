@@ -8,6 +8,7 @@ import {
   FieldAdminConfigInput,
   FieldLimit,
   FieldLimitInput,
+  FieldSlotComponentsInput,
   FieldValidateProps,
 } from "../baseTypes";
 import { CollectionSlug , VexResourceSlug } from "../../types/generated";
@@ -21,24 +22,22 @@ import { RelationshipPreviewProps } from "../../collections";
  * location for a relationship preview override (ARCH-1) — target collections
  * do not have their own `admin.components.preview`.
  *
- * @typeParam TCollectionSlug - The target collection slug, inferred from the field's `collection` option.
+ * @typeParam TCollectionSlug - The collection (or global) this field belongs to; types `condition`'s `data`.
+ * @typeParam TTargetSlug - The target collection slug, inferred from the field's `collection` option.
  * @see {@link RelationshipFieldAdminConfig} for the resolved type after defaults are applied
  * @see {@link FieldAdminConfigInput} for the base admin properties
  */
 export interface RelationshipFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
-> extends FieldAdminConfigInput {
+> extends FieldAdminConfigInput<TCollectionSlug, TComponent> {
   /**
-   * Custom component overrides specific to this relationship field instance.
-   * `preview` is currently the only supported override.
+   * Base per-field slot overrides (S6) PLUS `preview`, the relationship-only override —
+   * the only supported location for a custom preview (ARCH-1: target collections do not
+   * support their own `admin.components.preview`).
    */
-  components?: {
-    /**
-     * Per-field override for rendering this relationship's docs — the only
-     * supported location for a custom preview (ARCH-1: target collections do
-     * not support their own `admin.components.preview`).
-     */
+  components?: FieldSlotComponentsInput<TComponent> & {
     preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TTargetSlug>>;
   };
 }
@@ -46,23 +45,17 @@ export interface RelationshipFieldAdminInput<
 /**
  * Resolved admin configuration for a relationship field after defaults are applied.
  *
- * @typeParam TCollectionSlug - The target collection slug.
+ * @typeParam TCollectionSlug - The collection (or global) this field belongs to.
+ * @typeParam TTargetSlug - The target collection slug.
  * @see {@link RelationshipFieldAdminInput} for the user-facing input type
  */
 export interface RelationshipFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TTargetSlug extends CollectionSlug = CollectionSlug,
   TComponent extends ComponentHKT = ComponentHKT,
-> extends FieldAdminConfig {
-  /**
-   * Custom component overrides specific to this relationship field instance.
-   * `preview` is currently the only supported override.
-   */
-  components: {
-    /**
-     * Per-field override for rendering this relationship's docs — the only
-     * supported location for a custom preview (ARCH-1: target collections do
-     * not support their own `admin.components.preview`).
-     */
+> extends FieldAdminConfig<TCollectionSlug, TComponent> {
+  /** Base resolved slot overrides PLUS `preview`. */
+  components: FieldAdminConfig<TCollectionSlug, TComponent>["components"] & {
     preview?: ApplyComponent<TComponent, RelationshipPreviewProps<TTargetSlug>>;
   };
 }
@@ -87,7 +80,7 @@ export interface RelationshipFieldAdminConfig<
  *     hidden:        false,
  *     readOnly:      false,
  *     position:      "main",
- *     width:         "full",
+ *     width: "100%",
  *     cellAlignment: "left",
  *   }
  * }
@@ -129,8 +122,7 @@ export interface RelationshipFieldInput<
   min?: FieldLimitInput;
   /** Maximum number of related documents allowed. @see {@link FieldLimitInput} */
   max?: FieldLimitInput;
-  admin?: BaseFieldInput["admin"] &
-    RelationshipFieldAdminInput<TTargetSlug, TComponent>;
+  admin?: RelationshipFieldAdminInput<TCollectionSlug, TTargetSlug, TComponent>;
   /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
   validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
 }
@@ -163,8 +155,7 @@ export interface RelationshipField<
   min?: FieldLimit;
   /** Maximum number of related documents allowed, with its resolved error message. @see {@link FieldLimit} */
   max?: FieldLimit;
-  admin: BaseField<VexResourceSlug, TFieldMeta>["admin"] &
-    RelationshipFieldAdminConfig<TTargetSlug, TComponent>;
+  admin: RelationshipFieldAdminConfig<TCollectionSlug, TTargetSlug, TComponent>;
   /** Server-only async validation with `value` typed as `string[]`. @see {@link FieldValidate} */
   validate?(props: FieldValidateProps<TCollectionSlug, string[]>): Promise<void> | void;
 }

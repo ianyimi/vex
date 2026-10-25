@@ -1,10 +1,10 @@
 import {
-  addLeadingSlash,
   TDocument,
   type CellComponentProps,
   type NumberField,
 } from "@vexcms/core";
 import { VexLink } from "../../ui";
+import { adminHref } from "../../../utils/adminHref";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
 /**
@@ -27,11 +27,15 @@ export function NumberFieldCell<TData extends TDocument = TDocument>(
 ) {
   if (props.value === undefined || props.value === null) return <span>—</span>;
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
   const content = <span>{props.value}</span>;
   if (!props.isTitleField) return content;
   return (
-    <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+    <VexLink
+      href={adminHref(
+        { type: "document", slug: props.collection.slug, id: props.row.original._id },
+        config.basePath,
+      )}
+    >
       {content}
     </VexLink>
   );

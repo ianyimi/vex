@@ -92,11 +92,14 @@ The docs site serves [llms.txt](https://llmstxt.org) indexes for AI coding agent
 
 ### Schema & Field System
 
-Define content types with a fully typed field system. Vex ships 13 field types:
+Define content types with a fully typed field system. Vex ships 16 field types:
 
 | Field          | Description                                          |
 | -------------- | ----------------------------------------------------- |
 | `text`         | Single-line string value                               |
+| `email`        | Email string with format validation                    |
+| `textarea`     | Multi-line string, with a character counter             |
+| `json`         | Arbitrary structured JSON, edited with CodeMirror       |
 | `number`       | Numeric value                                          |
 | `checkbox`     | Boolean toggle                                         |
 | `select`       | One or more values from a fixed option list            |
@@ -110,7 +113,11 @@ Define content types with a fully typed field system. Vex ships 13 field types:
 | `color`        | CSS colour string (hex/rgb/hsl/oklch) or theme-token reference |
 | `richtext`     | Rich text document edited with Plate.js (`@vexcms/richtext-plate`) |
 
-**Coming soon:** `json`, `email`, `textarea` (on the v0.1.0 track), then `tabs` and `ui` (non-persisted display/action fields) — see the [roadmap](apps/docs/src/content/docs/roadmap.md).
+Plus `tabs`, `collapsible`, `row`, and `ui` — non-persisted layout fields that
+organize the edit form — and `admin.condition` on every field, data or layout,
+to show or hide it from `{ data, siblingData }`, enforced client- and
+server-side. **Coming soon:** a dedicated `/fields/richtext/` docs page — see
+the [roadmap](apps/docs/src/content/docs/roadmap.md).
 
 ```typescript
 import { defineCollection, text, select, relationship } from "@vexcms/core";

@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
+import { resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 import { COLOR_FORMATS } from "./formats";
 import type { ColorFieldInput, ColorField } from "./types";
@@ -22,7 +23,7 @@ import type { ColorFieldInput, ColorField } from "./types";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
  *
  * @param options - Colour field configuration. All properties are optional.
@@ -41,7 +42,7 @@ import type { ColorFieldInput, ColorField } from "./types";
  *     primaryLight: color({ format: "oklch", required: true }),
  *
  *     // Offer the host app's design tokens as a second picker tab
- *     overlayTint: color({ themeColors: true, admin: { width: "half" } }),
+ *     overlayTint: color({ themeColors: true, admin: { width: "50%" } }),
  *   }
  * })
  * ```
@@ -74,11 +75,12 @@ export function color<
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       // Optional admin properties (no defaults)
       placeholder: "",
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options?.meta,

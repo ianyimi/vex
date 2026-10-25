@@ -1,0 +1,198 @@
+---
+title: Conditional Fields & Input Masks
+description: Show or hide a field from sibling or document values with admin.condition, and format text/email/number/url inputs with admin.mask.
+---
+
+## Conditional fields
+
+Every field — data or layout — takes `admin.condition`, a pure predicate that
+decides whether the field is shown:
+
+```ts
+import { checkbox, text } from "@vexcms/core"
+
+const showAdvanced = checkbox({ label: "Show Advanced Options" })
+
+const advancedNote = text({
+  label: "Advanced Note",
+  admin: {
+    condition: ({ data }) => data.showAdvanced === true,
+  },
+})
+```
+
+`condition` receives `{ data, siblingData }`:
+
+- **`data`** — the whole document currently being edited, typed against the
+  field's own collection/global.
+- **`siblingData`** — the value at this field's PARENT path: the whole document
+  for a top-level field, or the enclosing group/array-item/tab's own fields
+  otherwise.
+
+A field nested inside a `group()`, an `array()` item, or a named `tabs()` tab
+reads its own siblings, not the top-level document, from `siblingData`:
+
+```ts
+import { array, checkbox, collapsible, group, text } from "@vexcms/core"
+
+const sections = array({
+  label: "Sections",
+  items: group({
+    fields: {
+      showDetails: checkbox({ label: "Show Details" }),
+      details: collapsible({
+        label: "Details",
+        admin: {
+          // siblingData here is THIS array item's own fields, not the
+          // top-level document.
+          condition: ({ siblingData }) =>
+            typeof siblingData === "object" &&
+            siblingData !== null &&
+            "showDetails" in siblingData &&
+            siblingData.showDetails === true,
+        },
+        fields: { note: text({ label: "Note" }) },
+      }),
+    },
+  }),
+})
+```
+
+### Runs on the client and the server
+
+The collection config is part of the browser bundle, so the same `condition`
+function serves both:
+
+- **Client** — the field's container unmounts while the condition is `false`;
+  toggling it back remounts the field with its previous value intact (hidden
+  values are kept, never cleared).
+- **Server** — a hidden-by-condition field skips its `required` check and its
+  `validate()` call. Without this, a `required` conditional field could make
+  `create` impossible when the condition that would reveal it starts `false`.
+
+**A condition that throws counts as met (`true`)** — a buggy predicate must
+fail visible (the field stays shown, errors loudly in the console) rather than
+silently disabling a `required` field's validation.
+
+### Containers AND/OR into their children
+
+`tabs()`, `collapsible()`, and `row()` are containers; each child field's
+*effective* condition is the field's own `condition` **AND-ed** with every
+enclosing container's `condition` — the server needs no knowledge of layout,
+since every field already carries its own, fully-resolved condition. A named
+tab's fields are gated by both the tab's own `condition` and the parent
+`tabs()` field's `condition`, if either is set.
+
+`admin.hidden` and `admin.readOnly` work the other way: a container's own
+`hidden`/`readOnly` **ORs** into every descendant — a field inside a
+`readOnly` container renders disabled even without its own `admin.readOnly`.
+
+```ts
+import { checkbox, row, text } from "@vexcms/core"
+
+const showAdvanced = checkbox({ label: "Show Advanced Options" })
+
+// conditionalRow and every field inside it are hidden unless showAdvanced is true.
+const conditionalRow = row({
+  fields: { conditionalNote: text({ label: "Conditional Note" }) },
+  admin: {
+    condition: ({ data }) =>
+      typeof data === "object" &&
+      data !== null &&
+      "showAdvanced" in data &&
+      data.showAdvanced === true,
+  },
+})
+```
+
+### Authoring a condition separately
+
+`admin.condition` is declared with method shorthand on the field's own type
+for bivariant checking, so a field authored for one collection stays
+assignable to the wider admin-panel unions. To write a condition as its own
+named value instead of inline, type it with the standalone `FieldCondition`
+type:
+
+```ts
+import type { FieldCondition } from "@vexcms/core"
+import { text } from "@vexcms/core"
+
+const showIfFeatured: FieldCondition<typeof TABLE_SLUG_POSTS> = ({ data }) =>
+  data.featured === true
+
+const featuredNote = text({
+  label: "Featured Note",
+  admin: { condition: showIfFeatured },
+})
+```
+
+## Input masks
+
+`admin.mask` formats what the user types in a `text`, `email`, `number`, or
+`url` field's input, backed by [`use-mask-input`](https://github.com/vireshvekariya/use-mask-input).
+It's opt-in and lazy-loaded — only a form that actually renders a masked input
+pays the (~29 KB gz) cost.
+
+```ts
+import { text } from "@vexcms/core"
+
+const phone = text({
+  label: "Phone",
+  admin: { mask: "(999) 999-9999" },
+})
+```
+
+`admin.mask` takes three shapes:
+
+```ts
+admin: { mask: "(999) 999-9999" }
+admin: { mask: ["999-999", "999-999-999"] } // whichever pattern fits what's typed
+admin: {
+  mask: {
+    mask: "decimal",
+    storeMasked: true,           // keep the mask's literal characters in storage
+    options: { radixPoint: "." }, // extra use-mask-input/Inputmask options
+  },
+}
+```
+
+**Stored values are unmasked by default.** A phone field masked as
+`(555) 123-4567` stores `5551234567` unless `storeMasked: true` — stored data
+stays format-independent, and reformatting the mask later doesn't touch
+existing rows.
+
+### Project-wide defaults
+
+Set a house style once at `fields.inputMasks.<type>` in `defineConfig()`, and
+every field of that type picks it up without repeating `admin.mask`:
+
+```ts
+import { defineConfig } from "@vexcms/core"
+
+export default defineConfig({
+  collections: [/* … */],
+  fields: {
+    inputMasks: {
+      // Every phone-shaped text field in the project gets this mask...
+      text: "(999) 999-9999",
+    },
+  },
+})
+```
+
+A field's own `admin.mask` always wins over the project default for that
+field. Set `admin.mask: false` to opt a single field out of the project-wide
+default entirely:
+
+```ts
+const freeformCode = text({
+  label: "Free-form Code",
+  admin: { mask: false },
+})
+```
+
+Resolution order, highest first:
+
+1. `admin.mask` on the field (a mask value, or `false` to opt out)
+2. `fields.inputMasks.<type>` in `defineConfig()`
+3. no mask

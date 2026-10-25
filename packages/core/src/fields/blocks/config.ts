@@ -5,7 +5,7 @@ import type { BlockConfigInput, BlockConfig, BlocksFieldInput, BlocksField } fro
 import { RESERVED_BLOCK_FIELD_NAMES } from "./types";
 import { nanoid } from "nanoid";
 import { BaseFieldMeta } from "../types";
-import { resolveFieldLimit } from "../utils";
+import { getDataFields, resolveFieldLimit, resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 
 /**
@@ -144,10 +144,11 @@ export function blocks<
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       placeholder: "",
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options.meta,
@@ -173,7 +174,7 @@ function buildBlockInterfaceType(props: {
   fields: BlockConfigInput["fields"];
 }): string {
   const frameworkKeys = `blockType: "${props.slug}"; blockName?: string; id: string`;
-  const userEntries = Object.entries(props.fields)
+  const userEntries = Object.entries(getDataFields({ fields: props.fields }))
     .map(([key, field]) => {
       return `${key}${field.required ? "" : "?"}: ${childInterfaceType(field)}`;
     })

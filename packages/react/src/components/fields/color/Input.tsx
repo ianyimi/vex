@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import { createFieldInput } from "../../form/createFieldInput";
 import { FormDescription } from "../../form/FormDescription";
 import { FormLabel } from "../../form/FormLabel";
-import { FormError } from "../../form/FormError";
+import { FormError, isFieldShowingError } from "../../form/FormError";
 import { readThemeColorTokens, type ThemeColorToken } from "./utils";
 
 /** Colour the picker opens on when the field holds no parseable value. */
@@ -194,6 +194,7 @@ export const ColorFieldInput = createFieldInput<string, {}, ColorField>(
             placeholder={fieldDef.admin.placeholder || FORMAT_PLACEHOLDERS[fieldDef.format]}
             readOnly={fieldDef.admin.readOnly}
             aria-required={fieldDef.required}
+            aria-invalid={isFieldShowingError({ field, submissionAttempts })}
           />
         </div>
         <FormDescription field={fieldDef} />

@@ -2,7 +2,8 @@ import * as z from "zod";
 import type { ZodType } from "zod";
 import { adminFieldToInputSchema } from "../inputSchemas";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
-import type { BlocksField } from "./types";
+import { getDataFields, hasFieldConditions } from "../utils";
+import type { BlockConfig, BlocksField } from "./types";
 import type { VexResourceSlug } from "../../types/generated";
 
 /**
@@ -26,6 +27,26 @@ import type { VexResourceSlug } from "../../types/generated";
  * supplied*. An empty array always skips both checks; a non-empty array —
  * required or not — is always checked against a configured `min`/`max`.
  *
+ * When `props.data` is given AND any block's own `fields` (recursively)
+ * declares an `admin.condition` (`hasFieldConditions`), each block item
+ * needs its own `siblingData` the same way an array item does (Step 9) —
+ * items are positional, so there is no single schema-build-time
+ * `data[key]`. `blockSchemaFor` (the per-block-type `z.object()` builder) is
+ * shared between the base pass and the per-item re-parse so block schemas
+ * aren't built twice in different shapes. The base/outer schema falls back
+ * to a loose `z.looseObject({ blockType: z.string(), id: z.string() })` per
+ * item instead of the real discriminated union — enforcing `required` up
+ * front there would reject a condition-hidden field before the real,
+ * condition-aware per-item re-parse ever runs. A `superRefine` then
+ * re-parses every actual item through its matching block's REAL schema
+ * (`blockSchemaFor(blockDef, item)`, with `item` itself as `siblingData` —
+ * a block item's own fields live directly on it, exactly like a `group`'s
+ * resolved value), re-adding any issues through `ctx.addIssue` with the
+ * item's index prepended to the path. Without conditions anywhere in any
+ * block's `fields`, the item schema stays exactly what it was — the
+ * discriminated union (or single block's object schema) built once, no
+ * `superRefine`, no added cost.
+ *
  * @param props - Input props.
  * @param props.field - The resolved blocks field definition.
  * @param props.ignoreRequired - Forwarded to every recursive
@@ -33,6 +54,8 @@ import type { VexResourceSlug } from "../../types/generated";
  *   sub-fields) so a draft-lenient pass (`getFieldsInputSchema`'s
  *   `ignoreRequired`) reaches every block field, not just this field's own
  *   `required` check.
+ * @param props.data - The full top-level document. Omitted skips condition
+ *   evaluation for every block's fields entirely (today's behavior).
  * @returns A Zod array schema with discriminated-union items.
  *
  * @internal — Used by admin form schema construction via `adminFieldToInputSchema`.
@@ -40,14 +63,24 @@ import type { VexResourceSlug } from "../../types/generated";
 export function blocksFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
   field: BlocksField<VexResourceSlug, TFieldMeta>;
   ignoreRequired?: boolean;
+  data?: Record<string, unknown>;
 }): ZodType {
   const { field } = props;
 
-  const blockSchemas = field.blocks.map((block) => {
+  const blockSchemaFor = (
+    block: BlockConfig<TFieldMeta>,
+    itemSiblingData?: Record<string, unknown>,
+  ) => {
     const userSubSchemas = Object.fromEntries(
-      Object.entries(block.fields).map(([key, subField]) => [
+      Object.entries(getDataFields({ fields: block.fields })).map(([key, subField]) => [
         key,
-        adminFieldToInputSchema({ field: subField, ignoreRequired: props.ignoreRequired }),
+        adminFieldToInputSchema({
+          field: subField,
+          ignoreRequired: props.ignoreRequired,
+          data: props.data,
+          siblingData: itemSiblingData,
+          key,
+        }),
       ]),
     );
     return z.object({
@@ -56,18 +89,50 @@ export function blocksFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
       id: z.string(),
       ...userSubSchemas,
     });
-  });
+  };
 
-  const itemSchema =
+  const blockSchemas = field.blocks.map((block) => blockSchemaFor(block));
+
+  const staticItemSchema =
     blockSchemas.length <= 1
       ? (blockSchemas[0] ?? z.object({ blockType: z.string(), id: z.string() }))
       : // @ts-expect-error mismatched zod types, works in practice
         z.discriminatedUnion("blockType", blockSchemas);
 
+  const blocksHaveConditions =
+    props.data !== undefined &&
+    field.blocks.some((block) => hasFieldConditions({ fields: block.fields }));
+
+  const itemSchema = blocksHaveConditions
+    ? z.looseObject({ blockType: z.string(), id: z.string() })
+    : staticItemSchema;
+
   const requiredError = "This field is required.";
   let arraySchema = field.required
     ? z.array(itemSchema, { error: requiredError }).min(1, requiredError)
     : z.array(itemSchema);
+
+  if (blocksHaveConditions) {
+    const blocksByType = new Map(field.blocks.map((block) => [block.blockType, block]));
+    arraySchema = arraySchema.superRefine((items, ctx) => {
+      items.forEach((item, index) => {
+        const candidate = item as Record<string, unknown>;
+        const blockType = typeof candidate.blockType === "string" ? candidate.blockType : undefined;
+        const blockDef = blockType !== undefined ? blocksByType.get(blockType) : undefined;
+        if (!blockDef) return;
+        const result = blockSchemaFor(blockDef, candidate).safeParse(item);
+        if (!result.success) {
+          for (const issue of result.error.issues) {
+            ctx.addIssue({
+              code: "custom",
+              message: issue.message,
+              path: [index, ...issue.path],
+            });
+          }
+        }
+      });
+    });
+  }
 
   if (field.min) {
     const [min, message] = field.min;

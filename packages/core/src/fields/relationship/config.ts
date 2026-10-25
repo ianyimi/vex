@@ -3,7 +3,7 @@ import type { RelationshipFieldInput, RelationshipField } from "./types";
 import type { CollectionSlug , VexResourceSlug } from "../../types/generated";
 import { ComponentHKT } from "../baseTypes";
 import { BaseFieldMeta } from "../types";
-import { resolveFieldLimit } from "../utils";
+import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 
 /**
  * Creates a relationship field with all defaults applied.
@@ -25,7 +25,7 @@ import { resolveFieldLimit } from "../utils";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
  *
  * @typeParam TTargetSlug - Inferred from `options.collection`.
@@ -75,11 +75,11 @@ export function relationship<
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       placeholder: "",
-      components: {},
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options?.meta,

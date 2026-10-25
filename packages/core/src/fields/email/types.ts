@@ -2,12 +2,35 @@ import { ADMIN_FIELDS } from "../constants";
 import {
   BaseField,
   BaseFieldInput,
+  FieldAdminConfig,
+  FieldAdminConfigInput,
   FieldLimit,
   FieldLimitInput,
   FieldSearchIndex,
   FieldValidateProps,
 } from "../baseTypes";
 import { VexResourceSlug } from "../../types";
+import type { FieldMaskInput } from "../mask";
+
+/** Per-type `admin` input for `email()` — adds `mask`. */
+export interface EmailFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfigInput<TCollectionSlug> {
+  /**
+   * An opt-in input mask, or `false` to opt out of the project default — see
+   * {@link TextFieldAdminInput.mask} for the full contract. A masked email
+   * field renders `type="text"` instead of `type="email"`.
+   */
+  mask?: FieldMaskInput | false;
+}
+
+/** Resolved per-type `admin` for `email()`. */
+export interface EmailFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfig<TCollectionSlug> {
+  /** The field's own mask, or `false` to opt out of the project default. @see {@link EmailFieldAdminInput.mask} */
+  mask?: FieldMaskInput | false;
+}
 
 /**
  * Configuration input for an `email()` field.
@@ -25,7 +48,7 @@ import { VexResourceSlug } from "../../types";
  *     hidden:        false,   // visible in the admin form
  *     readOnly:      false,   // editable by default
  *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "full",  // spans the full form width, not half
+ *     width: "100%",  // spans the full form width, not half
  *     cellAlignment: "left",  // text aligned left in the data table column
  *   }
  * }
@@ -52,6 +75,8 @@ export interface EmailFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
 > extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+  /** Admin UI configuration for this field. */
+  admin?: EmailFieldAdminInput<TCollectionSlug>;
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values.
@@ -87,6 +112,8 @@ export interface EmailField<
   TFieldMeta extends {} = {},
 > extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.email.type;
+  /** Resolved admin UI configuration with all defaults applied. */
+  admin: EmailFieldAdminConfig<TCollectionSlug>;
   /**
    * Pre-filled value shown in the admin form when creating a new document.
    * `undefined` means no default is applied — the input starts empty.

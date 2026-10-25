@@ -3,7 +3,7 @@ import { useForm } from "@tanstack/react-form";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it } from "vitest";
-import { select, type SelectField } from "@vexcms/core";
+import { select, SELECT_DISPLAYS, type SelectField } from "@vexcms/core";
 import { AppForm } from "../../form/AppForm";
 import { ModalSurfaceProvider } from "../../../hooks/useModalSurface";
 import { installDomPolyfills } from "../../../testing/setup";
@@ -86,10 +86,15 @@ runFieldInputContractSuite({
 
         await user.click(screen.getByRole("combobox"));
         // No option ever appears to `findByRole` on, so wait on the reveal
-        // effect's own side effect instead — the search input taking focus,
-        // same assertion `ui/multi-select.test.tsx` uses to pin that effect.
+        // effect's own side effect instead — the popup's initial focus
+        // target taking focus, same assertion `ui/multi-select.test.tsx`
+        // uses to pin that effect. `admin.searchable` defaults to `false`
+        // (Step 17), so the focus target is the sr-only
+        // `[data-multiselect-focus]` button, not the search `command-input`.
         await waitFor(() =>
-          expect(document.activeElement?.getAttribute("data-slot")).toBe("command-input"),
+          expect(document.activeElement?.hasAttribute("data-multiselect-focus")).toBe(
+            true,
+          ),
         );
 
         expect(screen.queryAllByRole("option")).toHaveLength(0);
@@ -308,6 +313,128 @@ runFieldInputContractSuite({
         // `selectedValues.size === 0` — it must disappear the moment a
         // value lands, not just avoid erroring while one is present.
         expect(screen.queryByText("Choose a status")).not.toBeInTheDocument();
+      });
+    });
+
+    describe("select: admin.searchable", () => {
+      it("renders no search box by default (admin.searchable: false)", async () => {
+        const user = userEvent.setup();
+        render(<SelectHarness fieldDef={fixture.fieldDef} initialValue={[]} />);
+        await user.click(screen.getByRole("combobox"));
+        expect(
+          document.querySelector('[data-slot="command-input"]'),
+        ).not.toBeInTheDocument();
+      });
+
+      it("renders a search box when admin.searchable is true", async () => {
+        const user = userEvent.setup();
+        const searchableFieldDef = select({
+          label: "Status",
+          hasMany: true,
+          options: fixture.fieldDef.options,
+          admin: { searchable: true },
+        });
+        render(<SelectHarness fieldDef={searchableFieldDef} initialValue={[]} />);
+        await user.click(screen.getByRole("combobox"));
+        await waitFor(() =>
+          expect(document.activeElement?.getAttribute("data-slot")).toBe(
+            "command-input",
+          ),
+        );
+        expect(document.activeElement).toHaveAttribute(
+          "data-slot",
+          "command-input",
+        );
+      });
+    });
+
+    describe("select: admin.display radio/checkbox list", () => {
+      it("renders radio inputs instead of the dropdown when hasMany is false and display is radio", () => {
+        const radioFieldDef = select({
+          label: "Status",
+          hasMany: false,
+          options: fixture.fieldDef.options,
+          admin: { display: SELECT_DISPLAYS.radio },
+        });
+        render(<SelectHarness fieldDef={radioFieldDef} initialValue={[]} />);
+        expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+        for (const option of radioFieldDef.options) {
+          expect(
+            screen.getByRole("radio", { name: option.label }),
+          ).toBeInTheDocument();
+        }
+      });
+
+      it("renders checkboxes instead of radios when hasMany is true and display is radio", () => {
+        const checkboxFieldDef = select({
+          label: "Status",
+          hasMany: true,
+          options: fixture.fieldDef.options,
+          admin: { display: SELECT_DISPLAYS.radio },
+        });
+        render(<SelectHarness fieldDef={checkboxFieldDef} initialValue={[]} />);
+        for (const option of checkboxFieldDef.options) {
+          expect(
+            screen.getByRole("checkbox", { name: option.label }),
+          ).toBeInTheDocument();
+        }
+      });
+
+      it("selects a single value by clicking its radio, replacing any previous selection", async () => {
+        const user = userEvent.setup();
+        const radioFieldDef = select({
+          label: "Status",
+          hasMany: false,
+          options: fixture.fieldDef.options,
+          admin: { display: SELECT_DISPLAYS.radio },
+        });
+        const { container } = render(
+          <SelectHarness fieldDef={radioFieldDef} initialValue={["draft"]} />,
+        );
+        // Base UI's visible `role="radio"` span handles clicks via a
+        // `PointerEvent` jsdom doesn't implement — same gap
+        // `dataTableSuite.tsx`'s checkbox-column test documents. Drive the
+        // interaction through the hidden native `<input type="radio">`
+        // instead.
+        const publishedIndex = radioFieldDef.options.findIndex(
+          (o) => o.label === "Published",
+        );
+        const hiddenInputs = container.querySelectorAll<HTMLInputElement>(
+          'input[type="radio"]',
+        );
+        await user.click(hiddenInputs[publishedIndex]!);
+        expect(screen.getByTestId("value-probe").textContent).toBe(
+          JSON.stringify(["published"]),
+        );
+      });
+
+      it("accumulates checked values by clicking multiple checkboxes when hasMany and display is radio", async () => {
+        const user = userEvent.setup();
+        const checkboxFieldDef = select({
+          label: "Status",
+          hasMany: true,
+          options: fixture.fieldDef.options,
+          admin: { display: SELECT_DISPLAYS.radio },
+        });
+        const { container } = render(
+          <SelectHarness fieldDef={checkboxFieldDef} initialValue={[]} />,
+        );
+        // Same jsdom `PointerEvent` gap as above — drive through the hidden
+        // native `<input type="checkbox">` elements.
+        const draftIndex = checkboxFieldDef.options.findIndex(
+          (o) => o.label === "Draft",
+        );
+        const publishedIndex = checkboxFieldDef.options.findIndex(
+          (o) => o.label === "Published",
+        );
+        const hiddenInputs = container.querySelectorAll<HTMLInputElement>(
+          'input[type="checkbox"]',
+        );
+        await user.click(hiddenInputs[draftIndex]!);
+        await user.click(hiddenInputs[publishedIndex]!);
+        expect(screen.getByTestId("value-probe").textContent).toBe(
+          JSON.stringify(["draft", "published"]),
+        );
       });
     });
   },

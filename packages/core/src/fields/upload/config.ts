@@ -1,6 +1,6 @@
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
-import { resolveFieldLimit } from "../utils";
+import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 import type { UploadFieldInput, UploadField } from "./types";
 
@@ -60,10 +60,11 @@ export function upload<
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       placeholder: "",
       ...options.admin,
+      components: resolveFieldComponents({ components: options.admin?.components }),
     },
     meta: {
       ...options.meta,

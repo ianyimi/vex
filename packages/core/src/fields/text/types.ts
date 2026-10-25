@@ -3,12 +3,34 @@ import {
   BaseField,
   BaseFieldInput,
   FieldAdminConfig,
+  FieldAdminConfigInput,
   FieldLimit,
   FieldLimitInput,
   FieldSearchIndex,
   FieldValidateProps,
 } from "../baseTypes";
 import { VexResourceSlug } from "../../types";
+import type { FieldMaskInput } from "../mask";
+
+/** Per-type `admin` input for `text()` — adds `mask`. */
+export interface TextFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfigInput<TCollectionSlug> {
+  /**
+   * An opt-in `use-mask-input` pattern (string, array of alternatives, or
+   * `{ mask, storeMasked, options }`). `false` disables the project-wide
+   * `fields.inputMasks.text` default for this field. @see {@link FieldMaskInput}
+   */
+  mask?: FieldMaskInput | false;
+}
+
+/** Resolved per-type `admin` for `text()`. */
+export interface TextFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfig<TCollectionSlug> {
+  /** The field's own mask, or `false` to opt out of the project default. @see {@link TextFieldAdminInput.mask} */
+  mask?: FieldMaskInput | false;
+}
 
 /**
  * Configuration input for a `text()` field.
@@ -27,7 +49,7 @@ import { VexResourceSlug } from "../../types";
  *     hidden:        false,   // visible in the admin form
  *     readOnly:      false,   // editable by default
  *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "full",  // spans the full form width, not half
+ *     width:         "100%",  // spans the full form width, not half
  *     cellAlignment: "left",  // text aligned left in the data table column
  *   }
  * }
@@ -44,7 +66,7 @@ import { VexResourceSlug } from "../../types";
  * // Author name with a placeholder hint shown in the admin form
  * authorName: text({
  *   required: true,
- *   admin: { width: "half", placeholder: "e.g. Jane Smith" }
+ *   admin: { width: "50%", placeholder: "e.g. Jane Smith" }
  * })
  *
  * // Pre-filled default for a URL field
@@ -57,6 +79,8 @@ export interface TextFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
 > extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+  /** Admin UI configuration for this field. */
+  admin?: TextFieldAdminInput<TCollectionSlug>;
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
@@ -98,7 +122,7 @@ export interface TextField<
   /** Whether this field is required in the database schema. */
   required: boolean;
   /** Resolved admin UI configuration with all defaults applied. */
-  admin: FieldAdminConfig;
+  admin: TextFieldAdminConfig<TCollectionSlug>;
   /** Pre-filled value shown in the admin form when creating a new field. */
   defaultValue: string;
   /** Minimum character length, with its resolved error message. @see {@link FieldLimit} */

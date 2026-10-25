@@ -62,6 +62,18 @@ export function runDataTableSuite(options?: DataTableSuiteOptions): void {
         }
       });
 
+      it("applies the column's meta.align to both the header cell and every row's data cell", () => {
+        const alignedColumns: ColumnDef<Row>[] = [
+          { accessorKey: "title", header: "Title", meta: { align: "right" } },
+        ];
+        render(<DataTable data={ROWS} columns={alignedColumns} />);
+
+        expect(screen.getByRole("columnheader", { name: "Title" })).toHaveClass("text-right");
+        for (const row of ROWS) {
+          expect(screen.getByRole("cell", { name: row.title })).toHaveClass("text-right");
+        }
+      });
+
       it("hides Load More when isDone, shows it and forwards clicks to onLoadMore otherwise", async () => {
         const user = userEvent.setup();
         const onLoadMore = vi.fn();

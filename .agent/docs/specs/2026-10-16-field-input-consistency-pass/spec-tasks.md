@@ -384,156 +384,156 @@ non-rendering consumer flattens them back down to data fields (drops `ui()`, hoi
 children, turns a named tab into a group-shaped data field, AND-s `condition` and ORs `hidden`/`readOnly` into
 every field it flattens).
 Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- fields/ui collections globals
-- [ ] `packages/core/src/fields/constants.ts` — `ADMIN_FIELDS.tabs`/`.collapsible`/`.row`/`.ui`, each `kind: "ui"`
-- [ ] `packages/core/src/fields/baseTypes.ts` — `width: string` (default `"100%"`); `FieldAdminConfigInput`/`FieldAdminConfig` stay NON-generic, no `condition` (every data field type declares its own `<Type>FieldAdminInput<TCollectionSlug>` with method-shorthand `condition`, precedent: `RelationshipFieldAdminInput`); new NON-generic `UIKindFieldAdminConfigInput`/`UIKindFieldAdminConfig` and `BaseUIFieldInput`/`BaseUIField`
-- [ ] `packages/core/src/fields/ui/types.ts` — `FieldCondition`, `FieldConditionProps`, `DataFieldSlug<TFields>`
-- [ ] `packages/core/src/fields/ui/utils.ts` + `utils.test.ts` — `andFieldConditions`, `isFieldConditionMet`, `hasFieldConditions`, `resolveRowWidths`, `getDataFields` (condition AND, hidden/readOnly OR)
-- [ ] `packages/core/src/fields/ui/tabs/` — `types.ts` (`TabAdminInput<TCollectionSlug>`, `TabInput<TCollectionSlug>`, `TabsFieldAdminInput`/`Config`), `config.ts` (`tabs<TCollectionSlug, const TTabs>()`), `index.ts` + `config.test.ts`
-- [ ] `packages/core/src/fields/ui/collapsible/` — `types.ts` (`CollapsibleFieldAdminInput`/`Config` with `defaultCollapsed`), `config.ts` (`collapsible<TCollectionSlug, const TFields>()`), `index.ts` + `config.test.ts`
-- [ ] `packages/core/src/fields/ui/row/` — `types.ts` (`RowFieldAdminInput`/`Config`), `config.ts` (`row<TCollectionSlug, const TFields>()`), `index.ts` + `config.test.ts`
-- [ ] `packages/core/src/fields/ui/ui/` — `types.ts` (`UIFieldAdminInput`/`Config`, `UIFieldComponentProps`, `UIFieldCellProps`), `config.ts` (`ui<TCollectionSlug, TComponent>()`), `index.ts` + `config.test.ts`
-- [ ] `packages/core/src/fields/ui/index.ts` — barrel
-- [ ] `packages/core/src/fields/types.ts` — `AdminField` union gains `TabsField | CollapsibleField | RowField | UIField`; `AdminDataField`/`AdminUIField`/`DataFieldType`/`UIFieldType` derived from `ADMIN_FIELDS[type].kind`
-- [ ] `packages/core/src/fields/index.ts` — `export * from "./ui"`
-- [ ] `packages/core/src/fields/utils.ts` — `getFieldsInputSchema`, `getFieldsDefaultValues`, `fieldsToFieldTypeMap`, `validateFields` walk `getDataFields({ fields })`
-- [ ] every DATA field type's `types.ts` (`text`, `email`, `textarea`, `json`, `number`, `checkbox`, `date`, `select`, `color`, `url`, `relationship`, `upload`, `richtext`, `array`, `group`, `blocks`) — adds its own `<Type>FieldAdminInput<TCollectionSlug>`/`<Type>FieldAdminConfig<TCollectionSlug>` (or widens its pre-existing admin type) with `condition`, overrides `admin?:`/`admin:` on its own `<Type>FieldInput`/`<Type>Field`
-- [ ] every field factory — `width: "full"` → `"100%"`, `width: "half"` → `"50%"`
-- [ ] `packages/core/src/collections/types.ts` + `config.ts` — `TFieldSlug` → `TFields`; `DataFieldSlug<TFields>` for `useAsTitle`/`indexes[].fields`; `populateCollectionFieldMeta` stamps `meta.collectionSlug` on every field; duplicate-key guard via `getDataFields`
-- [ ] `packages/core/src/collections/interfaceGen.ts`, `validator.ts`, `indexFields.ts` — walk `getDataFields`
-- [ ] `packages/core/src/globals/types.ts` + `config.ts` + `interfaceGen.ts` — mirror collections' `TFields`/`DataFieldSlug`/`getDataFields` changes
-- [ ] `packages/core/src/auth/types.ts`, `packages/core/src/media/types.ts` — `TFieldSlug` → `TFields` rename
-- [ ] `packages/core/src/access/validateAccessConstraints.ts`, `packages/core/src/versions/assertNoDraftRelationships.ts`, `packages/core/src/versions/statusConstraint.ts` — walk `getDataFields`
-- [ ] `packages/react/src/components/fields/index.tsx` — `getCollectionColumnDefs` walks `getDataFields`
-- [ ] `packages/react/src/index.ts` — re-export `tabs`/`collapsible`/`row`/`ui`; `TFieldSlug` → `TFields` rename on wrapper types
-- [ ] `packages/file-storage-convex/src/mediaCollection.ts` — `TFieldSlug` → `TFields` rename
+- [x] `packages/core/src/fields/constants.ts` — `ADMIN_FIELDS.tabs`/`.collapsible`/`.row`/`.ui`, each `kind: "ui"`
+- [x] `packages/core/src/fields/baseTypes.ts` — `width: string` (default `"100%"`); `FieldAdminConfigInput`/`FieldAdminConfig` stay NON-generic, no `condition` (every data field type declares its own `<Type>FieldAdminInput<TCollectionSlug>` with method-shorthand `condition`, precedent: `RelationshipFieldAdminInput`); new NON-generic `UIFieldAdminInput`/`UIFieldAdminConfig` and `BaseUIFieldInput`/`BaseUIField`
+- [x] `packages/core/src/fields/ui/types.ts` — `FieldCondition`, `FieldConditionProps`, `DataFieldSlug<TFields>`
+- [x] `packages/core/src/fields/ui/utils.ts` + `utils.test.ts` — `andFieldConditions`, `isFieldConditionMet`, `hasFieldConditions`, `resolveRowWidths`, `getDataFields` (condition AND, hidden/readOnly OR)
+- [x] `packages/core/src/fields/ui/tabs/` — `types.ts` (`TabAdminInput<TCollectionSlug>`, `TabInput<TCollectionSlug>`, `TabsFieldAdminInput`/`Config`), `config.ts` (`tabs<TCollectionSlug, const TTabs>()`), `index.ts` + `config.test.ts`
+- [x] `packages/core/src/fields/ui/collapsible/` — `types.ts` (`CollapsibleFieldAdminInput`/`Config` with `defaultCollapsed`), `config.ts` (`collapsible<TCollectionSlug, const TFields>()`), `index.ts` + `config.test.ts`
+- [x] `packages/core/src/fields/ui/row/` — `types.ts` (`RowFieldAdminInput`/`Config`), `config.ts` (`row<TCollectionSlug, const TFields>()`), `index.ts` + `config.test.ts`
+- [x] `packages/core/src/fields/ui/ui/` — `types.ts` (`UIFieldAdminInput`/`Config`, `UIFieldComponentProps`, `UIFieldCellProps`), `config.ts` (`ui<TCollectionSlug, TComponent>()`), `index.ts` + `config.test.ts`
+- [x] `packages/core/src/fields/ui/index.ts` — barrel
+- [x] `packages/core/src/fields/types.ts` — `AdminField` union gains `TabsField | CollapsibleField | RowField | UIField`; `AdminDataField`/`AdminUIField`/`DataFieldType`/`UIFieldType` derived from `ADMIN_FIELDS[type].kind`
+- [x] `packages/core/src/fields/index.ts` — `export * from "./ui"`
+- [x] `packages/core/src/fields/utils.ts` — `getFieldsInputSchema`, `getFieldsDefaultValues`, `fieldsToFieldTypeMap`, `validateFields` walk `getDataFields({ fields })`
+- [x] every DATA field type's `types.ts` (`text`, `email`, `textarea`, `json`, `number`, `checkbox`, `date`, `select`, `color`, `url`, `relationship`, `upload`, `richtext`, `array`, `group`, `blocks`) — adds its own `<Type>FieldAdminInput<TCollectionSlug>`/`<Type>FieldAdminConfig<TCollectionSlug>` (or widens its pre-existing admin type) with `condition`, overrides `admin?:`/`admin:` on its own `<Type>FieldInput`/`<Type>Field`
+- [x] every field factory — `width: "full"` → `"100%"`, `width: "half"` → `"50%"`
+- [x] `packages/core/src/collections/types.ts` + `config.ts` — `TFieldSlug` → `TFields`; `DataFieldSlug<TFields>` for `useAsTitle`/`indexes[].fields`; `populateCollectionFieldMeta` stamps `meta.collectionSlug` on every field; duplicate-key guard via `getDataFields`
+- [x] `packages/core/src/collections/interfaceGen.ts`, `validator.ts`, `indexFields.ts` — walk `getDataFields`
+- [x] `packages/core/src/globals/types.ts` + `config.ts` + `interfaceGen.ts` — mirror collections' `TFields`/`DataFieldSlug`/`getDataFields` changes
+- [x] `packages/core/src/auth/types.ts`, `packages/core/src/media/types.ts` — `TFieldSlug` → `TFields` rename
+- [x] `packages/core/src/access/validateAccessConstraints.ts`, `packages/core/src/versions/assertNoDraftRelationships.ts`, `packages/core/src/versions/statusConstraint.ts` — walk `getDataFields`
+- [x] `packages/react/src/components/fields/index.tsx` — `getCollectionColumnDefs` walks `getDataFields`
+- [x] `packages/react/src/index.ts` — re-export `tabs`/`collapsible`/`row`/`ui`; `TFieldSlug` → `TFields` rename on wrapper types
+- [x] `packages/file-storage-convex/src/mediaCollection.ts` — `TFieldSlug` → `TFields` rename
 
 ## Step 7 — Core extension-point model: slot IDs, contribution types, resolution [agent]
 Why: admin extension points (slots) are built into G now, not retrofitted post-0.1.0 (plugin-system stem, decisions S1-S14); G owns field-level slots and blocks/array action slots only.
 Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- components fields config
-- [ ] `packages/core/src/components/types.ts` — `SLOT_IDS`, `SlotId`, `ComponentContributionInput`/`ResolvedComponentContribution`, `ComponentOverrideInput`/`ResolvedComponentOverride`, `SlotAccessPredicate`/`SlotAccessContext`, `VexComponentConfigError`
-- [ ] `packages/core/src/components/builtinIds.ts` — `BUILTIN_CONTRIBUTION_IDS` (`vex.` prefix) for G's blocks/array action built-ins
-- [ ] `packages/core/src/components/resolve.ts` + test — `resolveComponentContributions` (hide-matching, duplicate-id error, order/before/after sort), `resolveComponentOverrides` (duplicate-id error, array order)
-- [ ] `packages/core/src/components/index.ts` — barrel
-- [ ] `packages/core/src/fields/baseTypes.ts` — `FieldAdminConfigInput`/`FieldAdminConfig` gain a `TComponent extends ComponentHKT = ComponentHKT` generic and a `components` slot (`Input`/`Cell`/`Label`/`Description` override chains, `beforeInput`/`afterInput` contribution lists) — inherited by default (`TComponent` defaults to `ComponentHKT`) via each field type's own Step 6 `<Type>FieldAdminInput`/`Config` wrapper, no per-type edit needed for `components` itself
-- [ ] `packages/core/src/fields/relationship/types.ts` — reconcile `RelationshipFieldAdminInput`/`Config.components` (today `{ preview }` only) to extend the base `FieldSlotComponentsInput` shape instead of replacing it
-- [ ] `packages/core/src/fields/utils.ts` — `resolveFieldComponents` helper, called by every field factory at the same spread point Step 6 added `layout: []`
-- [ ] `packages/core/src/config/types.ts` — `AdminConfigInput.components` (`fields.<type>.{Input,Cell}` override chains; `blocks.itemActions`/`blocks.headerActions`/`array.itemActions` contribution lists), type-erased to `ComponentHKT` like `editor`
-- [ ] `packages/core/src/config/config.ts` + test — `defineConfig` resolves root-level slot lists (merges `BUILTIN_CONTRIBUTION_IDS` defaults with user contributions via `resolveComponentContributions`/`resolveComponentOverrides`)
-- [ ] `packages/core/src/index.ts` — export the new `components` module
-- [ ] `packages/core/src/fields/text/config.ts` (representative) + every other field factory — `admin.components` default resolved; apps/test/www untouched (no project configures slots yet)
+- [x] `packages/core/src/components/types.ts` — `SLOT_IDS`, `SlotId`, `ComponentContributionInput`/`ResolvedComponentContribution`, `ComponentOverrideInput`/`ResolvedComponentOverride`, `SlotAccessPredicate`/`SlotAccessContext`, `VexComponentConfigError`
+- [x] `packages/core/src/components/builtinIds.ts` — `BUILTIN_CONTRIBUTION_IDS` (`vex.` prefix) for G's blocks/array action built-ins
+- [x] `packages/core/src/components/resolve.ts` + test — `resolveComponentContributions` (hide-matching, duplicate-id error, order/before/after sort), `resolveComponentOverrides` (duplicate-id error, array order)
+- [x] `packages/core/src/components/index.ts` — barrel
+- [x] `packages/core/src/fields/baseTypes.ts` — `FieldAdminConfigInput`/`FieldAdminConfig` gain a `TComponent extends ComponentHKT = ComponentHKT` generic and a `components` slot (`Input`/`Cell`/`Label`/`Description` override chains, `beforeInput`/`afterInput` contribution lists) — inherited by default (`TComponent` defaults to `ComponentHKT`) via each field type's own Step 6 `<Type>FieldAdminInput`/`Config` wrapper, no per-type edit needed for `components` itself
+- [x] `packages/core/src/fields/relationship/types.ts` — reconcile `RelationshipFieldAdminInput`/`Config.components` (today `{ preview }` only) to extend the base `FieldSlotComponentsInput` shape instead of replacing it
+- [x] `packages/core/src/fields/utils.ts` — `resolveFieldComponents` helper, called by every field factory at the same spread point Step 6 added `layout: []`
+- [x] `packages/core/src/config/types.ts` — `AdminConfigInput.components` (`fields.<type>.{Input,Cell}` override chains; `blocks.itemActions`/`blocks.headerActions`/`array.itemActions` contribution lists), type-erased to `ComponentHKT` like `editor`
+- [x] `packages/core/src/config/config.ts` + test — `defineConfig` resolves root-level slot lists (merges `BUILTIN_CONTRIBUTION_IDS` defaults with user contributions via `resolveComponentContributions`/`resolveComponentOverrides`)
+- [x] `packages/core/src/index.ts` — export the new `components` module
+- [x] `packages/core/src/fields/text/config.ts` (representative) + every other field factory — `admin.components` default resolved; apps/test/www untouched (no project configures slots yet)
 
 ## Step 8 — React slot primitives + single field registry [agent]
 Why: one registry (S6) replaces `fieldInputComponents`/`fieldCellComponents` duplicating `reactAdapter.fields`; the renderer composes override chains and gates `access`/`condition` (S3, S10, S11) before `RenderFields` (step 11) consumes it.
 Verify: pnpm typecheck && pnpm --filter @vexcms/react test -- fields/index slots
-- [ ] `packages/react/src/components/fields/registry.ts` (new) — `fieldToInputComponent`/`fieldToCellComponent` derived from `reactAdapter.fields`, replacing the two hand-written maps in `components/fields/index.tsx`
-- [ ] `packages/react/src/components/fields/index.tsx` — drop `fieldInputComponents`/`fieldCellComponents`, re-export from `registry.ts`; `getCollectionColumnDefs` unchanged call site now resolves `field.cell` overrides for free
-- [ ] `packages/react/src/components/fields/index.test.tsx` — registry-parity test (every `ADMIN_FIELDS` type has an entry) kept, now asserting against `reactAdapter.fields`
-- [ ] `packages/react/src/components/slots/ComponentErrorBoundary.tsx` + test — per-contribution boundary naming the id (S10)
-- [ ] `packages/react/src/components/slots/formData.ts` + test — `resolveSiblingData`, `useSlotConditionData` (live `data`/`siblingData` from the enclosing `<AppForm>`, built on `useVexForm`; moved here so Step 12 reuses it instead of re-declaring its own copy)
-- [ ] `packages/react/src/components/slots/SlotOutlet.tsx` + test — additive-slot renderer: gates `access`/`condition` against real form data via `useSlotConditionData` (never fabricated data), wraps each contribution
-- [ ] `packages/react/src/components/slots/SlotOverrideOutlet.tsx` + test — override-chain renderer (field.label/field.description/per-type/per-field Input/Cell)
-- [ ] `packages/react/src/components/slots/resolveFieldInputComponent.ts` + test — composes built-in → root per-type chain → per-field chain via `renderDefault`
-- [ ] `packages/react/src/components/slots/resolveFieldCellComponent.ts` + test — same composition for `field.cell`
-- [ ] `packages/react/src/hooks/useVexPermissions.ts` + test — S5 context hook (`hasPermission` bound to the current user) backing `SlotAccessContext`
-- [ ] `packages/react/src/hooks/useVexForm.ts` + test — S5 context hook exposing the TanStack `AppFormContext` form instance to slot contributions (data this step has; `useVexDocument`/`useVexCollection` deferred to H's edit-view context, which owns the live document query — noted in spec)
-- [ ] `packages/react/src/components/slots/index.ts` — barrel
-- [ ] `packages/react/src/index.ts` — export `SlotOutlet`, `SlotOverrideOutlet`, `useVexPermissions`, `useVexForm`, `SLOT_IDS`, `BUILTIN_CONTRIBUTION_IDS` (re-exported from core)
+- [x] `packages/react/src/components/fields/registry.ts` (new) — `fieldToInputComponent`/`fieldToCellComponent` derived from `reactAdapter.fields`, replacing the two hand-written maps in `components/fields/index.tsx`
+- [x] `packages/react/src/components/fields/index.tsx` — drop `fieldInputComponents`/`fieldCellComponents`, re-export from `registry.ts`; `getCollectionColumnDefs` unchanged call site now resolves `field.cell` overrides for free
+- [x] `packages/react/src/components/fields/index.test.tsx` — registry-parity test (every `ADMIN_FIELDS` type has an entry) kept, now asserting against `reactAdapter.fields`
+- [x] `packages/react/src/components/slots/ComponentErrorBoundary.tsx` + test — per-contribution boundary naming the id (S10)
+- [x] `packages/react/src/components/slots/formData.ts` + test — `resolveSiblingData`, `useSlotConditionData` (live `data`/`siblingData` from the enclosing `<AppForm>`, built on `useVexForm`; moved here so Step 12 reuses it instead of re-declaring its own copy)
+- [x] `packages/react/src/components/slots/SlotOutlet.tsx` + test — additive-slot renderer: gates `access`/`condition` against real form data via `useSlotConditionData` (never fabricated data), wraps each contribution
+- [x] `packages/react/src/components/slots/SlotOverrideOutlet.tsx` + test — override-chain renderer (field.label/field.description/per-type/per-field Input/Cell)
+- [x] `packages/react/src/components/slots/resolveFieldInputComponent.ts` + test — composes built-in → root per-type chain → per-field chain via `renderDefault`
+- [x] `packages/react/src/components/slots/resolveFieldCellComponent.ts` + test — same composition for `field.cell`
+- [x] `packages/react/src/hooks/useVexPermissions.ts` + test — S5 context hook (`hasPermission` bound to the current user) backing `SlotAccessContext`
+- [x] `packages/react/src/hooks/useVexForm.ts` + test — S5 context hook exposing the TanStack `AppFormContext` form instance to slot contributions (data this step has; `useVexDocument`/`useVexCollection` deferred to H's edit-view context, which owns the live document query — noted in spec)
+- [x] `packages/react/src/components/slots/index.ts` — barrel
+- [x] `packages/react/src/index.ts` — export `SlotOutlet`, `SlotOverrideOutlet`, `useVexPermissions`, `useVexForm`, `SLOT_IDS`, `BUILTIN_CONTRIBUTION_IDS` (re-exported from core)
 
 ## Step 9 — Server-side condition enforcement [agent]
 Why: a required field hidden by its condition must not block `create`, and its `validate()` must not run.
 Verify: pnpm --filter @vexcms/core test -- prepareEdit fields generateVexTypes generateVexSchema
-- [ ] `packages/core/src/fields/utils.ts` — `getFieldsInputSchema({ …, data })` skips condition-false fields (nested group/array/blocks via per-item `siblingData`); `validateFields` skips them
-- [ ] `packages/core/src/fields/{group,array,blocks}/inputSchema.ts` — thread `data`
-- [ ] `packages/core/src/api/prepareEdit.ts` — pass `transformedFields` as `data`
-- [ ] `prepareEdit.test.ts` + `utils.test.ts` — create with hidden required field succeeds; visible required field still fails; nested block sibling condition
-- [ ] `packages/core/src/fields/array/{types,config,validator,utils}.ts` + tests — stored `id: v.optional(v.string())` on object-shaped (`group()`) array items: reserved name, validator/inputSchema/type-gen injection, `isObjectShapedArrayItem`/`withArrayItemId`/`assignArrayItemIds`
-- [ ] `packages/core/src/api/prepareEdit.ts` + test — `mergedFields` backfilled via `assignArrayItemIds` before `beforeChange`/validation
-- [ ] `packages/core/src/types/generateVexTypes.test.ts`, `packages/core/src/schema/generateVexSchema.test.ts` — array-of-group id coverage
+- [x] `packages/core/src/fields/utils.ts` — `getFieldsInputSchema({ …, data })` skips condition-false fields (nested group/array/blocks via per-item `siblingData`); `validateFields` skips them
+- [x] `packages/core/src/fields/{group,array,blocks}/inputSchema.ts` — thread `data`
+- [x] `packages/core/src/api/prepareEdit.ts` — pass `transformedFields` as `data`
+- [x] `prepareEdit.test.ts` + `utils.test.ts` — create with hidden required field succeeds; visible required field still fails; nested block sibling condition
+- [x] `packages/core/src/fields/array/{types,config,validator,utils}.ts` + tests — stored `id: v.optional(v.string())` on object-shaped (`group()`) array items: reserved name, validator/inputSchema/type-gen injection, `isObjectShapedArrayItem`/`withArrayItemId`/`assignArrayItemIds`
+- [x] `packages/core/src/api/prepareEdit.ts` + test — `mergedFields` backfilled via `assignArrayItemIds` before `beforeChange`/validation
+- [x] `packages/core/src/types/generateVexTypes.test.ts`, `packages/core/src/schema/generateVexSchema.test.ts` — array-of-group id coverage
 
 ## Step 10 — Input masks: `admin.mask` + `fields.inputMasks` [agent]
 Why: opt-in masks with project-wide defaults; lazy-loaded so unmasked forms pay nothing.
 Verify: pnpm typecheck && pnpm --filter @vexcms/core test -- mask config && pnpm --filter @vexcms/react test -- useFieldMask fields/text fields/number
-- [ ] `pnpm-workspace.yaml` catalog + `packages/react/package.json` — `use-mask-input` (P-015)
-- [ ] `packages/core/src/fields/constants.ts` — `inputMasks: boolean` added to every `ADMIN_FIELDS` entry (`true` for text/email/number/url, `false` otherwise)
-- [ ] `packages/core/src/fields/mask/` — `types.ts` (`FieldMaskInput`, `FieldMask`, `MaskableFieldType` derived from `ADMIN_FIELDS`), `utils.ts` (`resolveFieldMask`), `index.ts` + tests
-- [ ] text / email / number / url `types.ts` + `config.ts` — `admin.mask`
-- [ ] `packages/core/src/config/types.ts` + `config.ts` + test — `fields.inputMasks` on client config input/resolved
-- [ ] `packages/react/src/hooks/useFieldMask.ts` + test — lazy `import("use-mask-input")`, unmask/`storeMasked`
-- [ ] text / email / number / url `Input.tsx` — apply mask (number renders `type="text"` when masked, stores a number)
+- [x] `pnpm-workspace.yaml` catalog + `packages/react/package.json` — `use-mask-input` (P-015)
+- [x] `packages/core/src/fields/constants.ts` — `inputMasks: boolean` added to every `ADMIN_FIELDS` entry (`true` for text/email/number/url, `false` otherwise)
+- [x] `packages/core/src/fields/mask/` — `types.ts` (`FieldMaskInput`, `FieldMask`, `MaskableFieldType` derived from `ADMIN_FIELDS`), `utils.ts` (`resolveFieldMask`), `index.ts` + tests
+- [x] text / email / number / url `types.ts` + `config.ts` — `admin.mask`
+- [x] `packages/core/src/config/types.ts` + `config.ts` + test — `fields.inputMasks` on client config input/resolved
+- [x] `packages/react/src/hooks/useFieldMask.ts` + test — lazy `import("use-mask-input")`, unmask/`storeMasked`
+- [x] text / email / number / url `Input.tsx` — apply mask (number renders `type="text"` when masked, stores a number)
 
 ## Step 11 — React layout renderer: `RenderFields`, tabs, collapsible, row, width, sidebar, hidden [agent]
 Why: one renderer replaces the four duplicated field loops; consumes step 6's tree.
 Verify: pnpm typecheck && pnpm --filter @vexcms/react test -- form views
-- [ ] `packages/react/src/components/form/RenderFields.tsx` + test — renders `FieldLayoutNode[]`; flex-wrap widths; region filter
-- [ ] `packages/react/src/components/form/FormTabs.tsx`, `FormCollapsible.tsx`, `FormRow.tsx` + tests — error-count badges; top-level tab in `?tab=`
-- [ ] `packages/react/src/hooks/useFieldErrorCount.ts` + test
-- [ ] `packages/react/src/components/form/DocumentTimestamps.tsx` — read-only Created at (`_creationTime`)
-- [ ] `CollectionEditView`, `GlobalEditView`, `MediaCollectionEditView` — main + sidebar columns via `RenderFields`; `admin.hidden` honored
-- [ ] `FormGroup`, `FormBlocks`, `CreateDocumentModal`, `fields/index.tsx` (`RenderFieldInputComponents` removed) — switch to `RenderFields`
-- [ ] `packages/react/src/components/modals/constants.ts` — `MODALS`-style `?tab=` param constant
-- [ ] `packages/react/src/components/form/RenderFields.tsx` — `"field"` nodes render through a new `FieldSlotOutlet` (`packages/react/src/components/slots/`): resolves `field.input` via `resolveFieldInputComponent` (step 8), renders `field.beforeInput`/`field.afterInput` contributions (gated against real `data`/`siblingData` via `conditionName={inputProps.name}`) and the (currently built-in-less) `field.label`/`field.description` override slots around it
+- [x] `packages/react/src/components/form/RenderFields.tsx` + test — renders `FieldLayoutNode[]`; flex-wrap widths; region filter
+- [x] `packages/react/src/components/form/FormTabs.tsx`, `FormCollapsible.tsx`, `FormRow.tsx` + tests — error-count badges; top-level tab in `?tab=`
+- [x] `packages/react/src/hooks/useFieldErrorCount.ts` + test
+- [x] `packages/react/src/components/form/DocumentTimestamps.tsx` — read-only Created at (`_creationTime`)
+- [x] `CollectionEditView`, `GlobalEditView`, `MediaCollectionEditView` — main + sidebar columns via `RenderFields`; `admin.hidden` honored
+- [x] `FormGroup`, `FormBlocks`, `CreateDocumentModal`, `fields/index.tsx` (`RenderFieldInputComponents` removed) — switch to `RenderFields`
+- [x] `packages/react/src/components/modals/constants.ts` — `MODALS`-style `?tab=` param constant
+- [x] `packages/react/src/components/form/RenderFields.tsx` — `"field"` nodes render through a new `FieldSlotOutlet` (`packages/react/src/components/slots/`): resolves `field.input` via `resolveFieldInputComponent` (step 8), renders `field.beforeInput`/`field.afterInput` contributions (gated against real `data`/`siblingData` via `conditionName={inputProps.name}`) and the (currently built-in-less) `field.label`/`field.description` override slots around it
 
 ## Step 12 — React conditions + condition-aware client validation [agent]
 Why: hide fields reactively without re-rendering the form; client Zod must match the server's step-9 rule.
 Verify: pnpm --filter @vexcms/react test -- useFieldCondition RenderFields useFieldsForm
-- [ ] `packages/react/src/hooks/useFieldCondition.ts` + test — subscribes only when `admin.condition` exists; imports `resolveSiblingData` from step 8's `components/slots/formData.ts` instead of re-declaring it
-- [ ] `RenderFields` — conditional fields; frames with no visible children hidden
-- [ ] `packages/react/src/hooks/useFieldsForm.ts` + test — validators rebuild schema from current values when `hasFieldConditions`
+- [x] `packages/react/src/hooks/useFieldCondition.ts` + test — subscribes only when `admin.condition` exists; imports `resolveSiblingData` from step 8's `components/slots/formData.ts` instead of re-declaring it
+- [x] `RenderFields` — conditional fields; frames with no visible children hidden
+- [x] `packages/react/src/hooks/useFieldsForm.ts` + test — validators rebuild schema from current values when `hasFieldConditions`
 
 ## Step 13 — `usePaginatedSearch` + upload picker fixes [agent]
 Why: shared search/pagination hook both pickers need; fixes dead "Load more", MIME filter TODO, broken placeholder, no-op handlers.
 Verify: pnpm --filter @vexcms/react test -- usePaginatedSearch media fields/upload
-- [ ] `packages/react/src/hooks/usePaginatedSearch.ts` + test
-- [ ] `packages/react/src/components/media/MediaLibaryGrid.tsx` — use hook; real pagination; MIME filter from `accept` + type menu; placeholder fix
-- [ ] `packages/react/src/components/media/MediaPicker.tsx` — selection footer copy, upload-tab back handler
-- [ ] `packages/react/src/components/fields/upload/FilledInput.tsx` — single-mode Replace; `n/max` counter via `FieldLimit`
+- [x] `packages/react/src/hooks/usePaginatedSearch.ts` + test
+- [x] `packages/react/src/components/media/MediaLibaryGrid.tsx` — use hook; real pagination; MIME filter from `accept` + type menu; placeholder fix
+- [x] `packages/react/src/components/media/MediaPicker.tsx` — selection footer copy, upload-tab back handler
+- [x] `packages/react/src/components/fields/upload/FilledInput.tsx` — single-mode Replace; `n/max` counter via `FieldLimit`
 
 ## Step 14 — Relationship field overhaul [agent]
 Why: the named offender; copied from upload's three-state pattern, not shared code.
 Verify: pnpm --filter @vexcms/react test -- fields/relationship relationship
-- [ ] `packages/react/src/components/relationship/` — `RelationshipPicker.tsx` (dialog: Select / Create tabs), `RelationshipDocumentList.tsx`, `RelationshipCreateForm.tsx`, `index.ts` + tests
-- [ ] `packages/react/src/components/fields/relationship/` — `Input.tsx` (state switch), `EmptyInput.tsx`, `FilledInput.tsx` (draggable rows, Clear, `n/max`), tests
-- [ ] `packages/react/src/components/modals/constants.ts` — relationship picker URL param
-- [ ] delete `packages/react/src/hooks/useRelationshipPickerOptions.ts` (+ barrel export, tests) — replaced by `usePaginatedSearch`
+- [x] `packages/react/src/components/relationship/` — `RelationshipPicker.tsx` (dialog: Select / Create tabs), `RelationshipDocumentList.tsx`, `RelationshipCreateForm.tsx`, `index.ts` + tests
+- [x] `packages/react/src/components/fields/relationship/` — `Input.tsx` (state switch), `EmptyInput.tsx`, `FilledInput.tsx` (draggable rows, Clear, `n/max`), tests
+- [x] `packages/react/src/components/modals/constants.ts` — relationship picker URL param
+- [x] delete `packages/react/src/hooks/useRelationshipPickerOptions.ts` (+ barrel export, tests) — replaced by `usePaginatedSearch`
 - [x] `packages/core/src/collections/validator.ts` + test — `resolveTitleSearchIndex` helper; the `useAsTitle` field's own `searchIndex` (any name) is reused instead of always auto-generating `search_<useAsTitle>`; non-searchable `useAsTitle` (system field or non-string field type) emits no search index and the picker falls back to `find()`
 
 ## Step 15 — Blocks + array editing actions [agent]
 Why: duplicate / insert above-below / move / collapse-expand all / error markers; per-block `defaultCollapsed` honored.
 Verify: pnpm --filter @vexcms/core test -- fields/blocks && pnpm --filter @vexcms/react test -- FormBlocks FormArray fields/blocks fields/array
-- [ ] `packages/core/src/fields/blocks/utils.ts` + test — `cloneBlockWithFreshIds`, `coerceBlockToDefinition`
-- [ ] `packages/react/src/components/form/BlockActionsMenu.tsx` + test
-- [ ] `packages/react/src/components/form/FormBlocks.tsx` + test — menu, insert-at-index picker, collapse/expand all, error marker, `n/max`, per-block `defaultCollapsed`; stale comments removed
-- [ ] `packages/react/src/components/form/FormArray.tsx` + test — duplicate, move up/down, stable item keys
-- [ ] `packages/core/src/components/builtinIds.ts` — block/array action ids consumed below (`vex.block.duplicate`, `vex.block.insertAbove`, `vex.block.insertBelow`, `vex.block.moveUp`, `vex.block.moveDown`, `vex.block.remove`, `vex.array.duplicate`, `vex.array.moveUp`, `vex.array.moveDown`, `vex.array.remove`)
-- [ ] `packages/react/src/components/form/BlockActionsMenu.tsx` — the six menu items become `ComponentContributionInput` built-ins rendered through `SlotOutlet` at `SLOT_IDS.blocks.itemActions`, gated against real `data`/`siblingData` via a new `itemPath` prop (`conditionName={props.itemPath}`), merged with `fieldDef.admin.components.beforeInput`-style per-field/root additions (step 7's config-level `blocks.itemActions` resolution)
-- [ ] `packages/react/src/components/form/FormArray.tsx` — the four per-item buttons (Duplicate/Move up/Move down/Remove) become built-ins at `SLOT_IDS.array.itemActions`, gated via `conditionName={\`${name}[${itemIndex}]\`}`, same `SlotOutlet` pattern
-- [ ] `packages/react/src/components/form/FormArray.tsx` — object-shaped items key by stored `id` when present (step 9's `isObjectShapedArrayItem`); `handleAdd`/`handleDuplicate` assign one via `withArrayItemId`, fresh on duplicate
+- [x] `packages/core/src/fields/blocks/utils.ts` + test — `cloneBlockWithFreshIds`, `coerceBlockToDefinition`
+- [x] `packages/react/src/components/form/BlockActionsMenu.tsx` + test
+- [x] `packages/react/src/components/form/FormBlocks.tsx` + test — menu, insert-at-index picker, collapse/expand all, error marker, `n/max`, per-block `defaultCollapsed`; stale comments removed
+- [x] `packages/react/src/components/form/FormArray.tsx` + test — duplicate, move up/down, stable item keys
+- [x] `packages/core/src/components/builtinIds.ts` — block/array action ids consumed below (`vex.block.duplicate`, `vex.block.insertAbove`, `vex.block.insertBelow`, `vex.block.moveUp`, `vex.block.moveDown`, `vex.block.remove`, `vex.array.duplicate`, `vex.array.moveUp`, `vex.array.moveDown`, `vex.array.remove`)
+- [x] `packages/react/src/components/form/BlockActionsMenu.tsx` — the six menu items become `ComponentContributionInput` built-ins rendered through `SlotOutlet` at `SLOT_IDS.blocks.itemActions`, gated against real `data`/`siblingData` via a new `itemPath` prop (`conditionName={props.itemPath}`), merged with `fieldDef.admin.components.beforeInput`-style per-field/root additions (step 7's config-level `blocks.itemActions` resolution)
+- [x] `packages/react/src/components/form/FormArray.tsx` — the four per-item buttons (Duplicate/Move up/Move down/Remove) become built-ins at `SLOT_IDS.array.itemActions`, gated via `conditionName={\`${name}[${itemIndex}]\`}`, same `SlotOutlet` pattern
+- [x] `packages/react/src/components/form/FormArray.tsx` — object-shaped items key by stored `id` when present (step 9's `isObjectShapedArrayItem`); `handleAdd`/`handleDuplicate` assign one via `withArrayItemId`, fresh on duplicate
 
 ## Step 16 — Block clipboard (copy/paste across fields, documents, collections) [agent]
 Why: localStorage admin clipboard; paste gated on `canEdit` and validated against the target block definition.
 Verify: pnpm --filter @vexcms/react test -- useBlockClipboard FormBlocks
-- [ ] `packages/react/src/hooks/useBlockClipboard.ts` + test — `vex:block-clipboard` envelope, cross-tab `storage` sync
-- [ ] `BlockActionsMenu` — Copy block / Paste above / Paste below
-- [ ] `FormBlocks` header — Copy all / Paste (append) / Replace all; disabled when not accepted, at max, or no `canEdit`
-- [ ] `BlockActionsMenu` / `FormBlocks` header — Copy/Paste/Replace-all join the same `blocks.item.actions`/`blocks.header.actions` contribution lists as step 15's built-ins (`vex.block.copy`, `vex.block.pasteAbove`, `vex.block.pasteBelow`, `vex.blocksHeader.copyAll`, `vex.blocksHeader.pasteAppend`, `vex.blocksHeader.replaceAll`)
+- [x] `packages/react/src/hooks/useBlockClipboard.ts` + test — `vex:block-clipboard` envelope, cross-tab `storage` sync
+- [x] `BlockActionsMenu` — Copy block / Paste above / Paste below
+- [x] `FormBlocks` header — Copy all / Paste (append) / Replace all; disabled when not accepted, at max, or no `canEdit`
+- [x] `BlockActionsMenu` / `FormBlocks` header — Copy/Paste/Replace-all join the same `blocks.item.actions`/`blocks.header.actions` contribution lists as step 15's built-ins (`vex.block.copy`, `vex.block.pasteAbove`, `vex.block.pasteBelow`, `vex.blocksHeader.copyAll`, `vex.blocksHeader.pasteAppend`, `vex.blocksHeader.replaceAll`)
 
 ## Step 17 — Per-input polish + state sweep [agent]
 Why: closes the remaining "half-built" inputs and ignored `cellAlignment`.
 Verify: pnpm --filter @vexcms/react test -- fields DataTable adminHref AdminSidebar AdminTopNav DashboardView GlobalsListView CollectionListView MediaCollectionListView
-- [ ] text — character counter when `max` set
-- [ ] number — `step` option (core + input), `min`/`max` HTML attributes
-- [ ] url — open-link button via `VexLink`
-- [ ] select — `admin.searchable`, `admin.display: "radio"` (core + input; `RadioGroup`/`RadioGroupItem` + `Checkbox` primitives)
-- [ ] `DataTable.tsx` — apply column `align` (`cellAlignment`) to header + cells
-- [ ] every Input: empty / loading / error / read-only / focus-ring states consistent (contract test extended)
-- [ ] `packages/react/src/testing/fieldInputContract.ts` — new shared assertion: a per-field `admin.components.Input` override renders in place of the built-in, and its `renderDefault` prop re-renders the built-in unchanged
-- [ ] `packages/react/src/testing/dataTableSuite.tsx` — asserts a per-type `admin.components.fields.<type>.Cell` override renders in `getCollectionColumnDefs` output (no `DataTable.tsx` change needed — `fieldToCellComponent` already resolves overrides via step 8's registry)
-- [ ] `packages/react/src/components/ui/radio-group.tsx` (new) — `RadioGroup`/`RadioGroupItem` built on Base UI `RadioGroup`/`Radio`; exported from `ui/index.ts`
-- [ ] `packages/react/src/utils/adminHref.ts` + test — `adminHref({ type, slug?, id? }, basePath)`, replacing every hand-built admin link
-- [ ] `packages/react/src/components/fields/{array,blocks,checkbox,color,date,email,group,json,number,relationship,richtext,select,text,textarea,upload,url}/Cell.tsx` — title-column link via `adminHref`
-- [ ] `packages/react/src/components/AdminSidebar.tsx`, `AdminTopNav.tsx` — nav links + breadcrumb trail via `adminHref`
-- [ ] `packages/react/src/components/views/{DashboardView,GlobalsListView,CollectionListView,MediaCollectionListView}.tsx` — card/button links via `adminHref` (fixes the latter four ignoring a custom `basePath`)
-- [ ] `packages/react/src/index.ts` — export `adminHref`, `AdminHrefTarget`
+- [x] text — character counter when `max` set
+- [x] number — `step` option (core + input), `min`/`max` HTML attributes
+- [x] url — open-link button via `VexLink`
+- [x] select — `admin.searchable`, `admin.display: "radio"` (core + input; `RadioGroup`/`RadioGroupItem` + `Checkbox` primitives)
+- [x] `DataTable.tsx` — apply column `align` (`cellAlignment`) to header + cells
+- [x] every Input: empty / loading / error / read-only / focus-ring states consistent (contract test extended)
+- [x] `packages/react/src/testing/fieldInputContract.ts` — new shared assertion: a per-field `admin.components.Input` override renders in place of the built-in, and its `renderDefault` prop re-renders the built-in unchanged
+- [x] `packages/react/src/testing/dataTableSuite.tsx` — asserts a per-type `admin.components.fields.<type>.Cell` override renders in `getCollectionColumnDefs` output (no `DataTable.tsx` change needed — `fieldToCellComponent` already resolves overrides via step 8's registry)
+- [x] `packages/react/src/components/ui/radio-group.tsx` (new) — `RadioGroup`/`RadioGroupItem` built on Base UI `RadioGroup`/`Radio`; exported from `ui/index.ts`
+- [x] `packages/react/src/utils/adminHref.ts` + test — `adminHref({ type, slug?, id? }, basePath)`, replacing every hand-built admin link
+- [x] `packages/react/src/components/fields/{array,blocks,checkbox,color,date,email,group,json,number,relationship,richtext,select,text,textarea,upload,url}/Cell.tsx` — title-column link via `adminHref`
+- [x] `packages/react/src/components/AdminSidebar.tsx`, `AdminTopNav.tsx` — nav links + breadcrumb trail via `adminHref`
+- [x] `packages/react/src/components/views/{DashboardView,GlobalsListView,CollectionListView,MediaCollectionListView}.tsx` — card/button links via `adminHref` (fixes the latter four ignoring a custom `basePath`)
+- [x] `packages/react/src/index.ts` — export `adminHref`, `AdminHrefTarget`
 
 ## Step 18 — Dogfood in `apps/test` + plan bookkeeping [dev]
 Why: proves every new path end-to-end against the developer's running deployment (P-024: attach, never start).

@@ -62,7 +62,7 @@ export type RichTextDocument = RichTextElement[];
  *     hidden:        false,   // visible in the admin form
  *     readOnly:      false,   // editable by default
  *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "full",  // spans the full form width, not half
+ *     width: "100%",  // spans the full form width, not half
  *     cellAlignment: "left",  // excerpt aligned left in the data table column
  *   }
  * }

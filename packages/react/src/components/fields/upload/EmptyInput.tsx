@@ -1,5 +1,6 @@
 import { Button } from "../../ui";
 import type { MediaCollectionConfig, UploadField } from "@vexcms/core";
+import { fileMatchesAccept } from "./utils";
 import { useCallback } from "react";
 
 /**
@@ -20,37 +21,6 @@ export interface UploadEmptyProps {
   readOnly?: boolean;
   /** Called when the dropzone input loses focus — wired to `field.handleBlur`. */
   onBlur?: () => void;
-}
-
-/**
- * Checks whether a file matches an HTML `accept` attribute pattern list —
- * mirrors the native `<input type="file" accept="...">` matching semantics
- * (comma-separated file extensions, MIME types, or `type/*` wildcards).
- *
- * @param file - The candidate file.
- * @param accept - The `accept` attribute value, e.g. `"image/*, .pdf"`.
- * @returns `true` when `accept` is empty or the file matches one of its patterns.
- */
-function fileMatchesAccept(file: File, accept: string): boolean {
-  const patterns = accept
-    .split(",")
-    .map((pattern) => pattern.trim().toLowerCase())
-    .filter(Boolean);
-  if (patterns.length === 0) return true;
-
-  const fileName = file.name.toLowerCase();
-  const mimeType = file.type.toLowerCase();
-  const mimeCategory = mimeType.split("/")[0];
-
-  return patterns.some((pattern) => {
-    if (pattern.startsWith(".")) {
-      return fileName.endsWith(pattern);
-    }
-    if (pattern.endsWith("/*")) {
-      return mimeCategory === pattern.slice(0, -2);
-    }
-    return mimeType === pattern;
-  });
 }
 
 /**
@@ -96,7 +66,7 @@ export function UploadEmpty({
   );
 
   return (
-    <div className="grid grid-cols-2">
+    <div className="grid grid-cols-1 gap-2 @lg/form:grid-cols-2 @lg/form:gap-0">
       <div
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
@@ -125,7 +95,7 @@ export function UploadEmpty({
         variant="ghost"
         size="sm"
         onClick={onPickerOpen}
-        className="self-center h-full"
+        className="h-full justify-self-start @lg/form:self-center @lg/form:justify-self-auto"
         icon="Folder"
         disabled={readOnly}
       >

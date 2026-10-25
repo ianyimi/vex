@@ -1,5 +1,5 @@
 import { ADMIN_FIELDS } from "../constants";
-import { resolveFieldLimit } from "../utils";
+import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 import type { VexResourceSlug } from "../../types/generated";
 import type { NumberFieldInput, NumberField } from "./types";
 
@@ -17,8 +17,9 @@ import type { NumberFieldInput, NumberField } from "./types";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
+ * - `admin.mask` — not set (opt-in; no project-wide default applies unless configured)
  *
  * @param options - Number field configuration. All properties are optional.
  * @returns Resolved number field definition with all defaults applied.
@@ -39,7 +40,7 @@ import type { NumberFieldInput, NumberField } from "./types";
  *     rating: number({
  *       min: [0, "Rating cannot be negative"],
  *       max: [5, "Rating cannot exceed 5"],
- *       admin: { width: "half" },
+ *       admin: { width: "50%" },
  *     }),
  *   }
  * })
@@ -83,11 +84,12 @@ export function number<
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       // Optional admin properties (no defaults)
       placeholder: "",
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options?.meta,

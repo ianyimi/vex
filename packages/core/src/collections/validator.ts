@@ -1,5 +1,6 @@
 import { ADMIN_FIELDS } from "../fields/constants";
 import { adminFieldToValidator } from "../fields/validators";
+import { getDataFields } from "../fields";
 import { CollectionConfig } from "./types";
 import type { VexClientConfig } from "../config";
 import { CONVEX_SYSTEM_FIELDS } from "./constants";
@@ -50,7 +51,7 @@ export function getIncomingRelationships(props: {
   // Skipping self-refs left the picker stuck on the loading state because
   // the picker query targeted an index that was never generated.
   for (const collection of props.config.collections) {
-    Object.entries(collection.fields)
+    Object.entries(getDataFields({ fields: collection.fields }))
 
       .filter(([_fieldKey, field]) => {
         if (field.type === ADMIN_FIELDS.relationship.type) {
@@ -176,7 +177,7 @@ export function collectionConfigToVexSchema(props: {
     }
   }
 
-  for (const [fieldKey, field] of Object.entries(props.collection.fields)) {
+  for (const [fieldKey, field] of Object.entries(getDataFields({ fields: props.collection.fields }))) {
     const validator = adminFieldToValidator({ field });
     fieldsBlock.push(`\t${fieldKey}: ${validator},`);
 

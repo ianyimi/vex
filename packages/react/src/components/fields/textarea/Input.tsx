@@ -14,10 +14,9 @@ import { FormError } from "../../form/FormError";
  * Must be rendered inside `<AppForm>`, or receive an explicit `field` prop
  * (`TypedFieldApi<string>`) from a `<form.Field>` render prop.
  *
- * Renders a `Textarea` sized by `fieldDef.rows`. When `fieldDef.max` is
- * configured, an `n/max` character counter is shown below the textarea,
- * right-aligned — the same markup `text/Input.tsx`'s counter (step 15)
- * reuses.
+ * Renders a `Textarea` sized by `fieldDef.rows`, with a right-aligned
+ * character counter below it: `n/max` when `fieldDef.max` is configured,
+ * otherwise the bare character count.
  *
  * The `name` prop is the field key from the collection config (e.g. `"bio"`).
  * It connects the input to the form field with that key in `form.defaultValues`.
@@ -59,13 +58,10 @@ export const TextareaFieldInput = createFieldInput<string, {}, TextareaField>(
           readOnly={fieldDef.admin.readOnly}
           aria-required={fieldDef.required}
         />
-        {fieldDef.max && (
-          <div className="flex justify-end">
-            <span className="text-[0.8rem] text-muted-foreground">
-              {value.length}/{fieldDef.max[0]}
-            </span>
-          </div>
-        )}
+        <p className="self-end text-[0.8rem] text-muted-foreground tabular-nums">
+          {value.length}
+          {fieldDef.max ? `/${fieldDef.max[0]}` : ""}
+        </p>
         <FormDescription field={fieldDef} />
         <FormError field={field} submissionAttempts={submissionAttempts} />
       </div>

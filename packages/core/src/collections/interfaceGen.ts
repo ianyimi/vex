@@ -1,4 +1,4 @@
-import { ADMIN_FIELDS, wrapLines, getFieldInterfaces } from "../fields";
+import { ADMIN_FIELDS, wrapLines, getFieldInterfaces, getDataFields } from "../fields";
 import { CollectionConfig } from "./types";
 import { slugToPascalCase } from "./utils";
 
@@ -30,12 +30,13 @@ import { slugToPascalCase } from "./utils";
  */
 export function collectionConfigToInterface(props: { collection: CollectionConfig }): string {
   const { collection } = props;
-  const fieldInterfaces = getFieldInterfaces(collection.fields);
+  const dataFields = getDataFields({ fields: collection.fields });
+  const fieldInterfaces = getFieldInterfaces(dataFields);
   const interfaceStart = `export interface ${collection.interfaceName} extends VexDocument {\n
     \t_id: Id<"${collection.slug}">`;
 
   const collectionSubTypes: string[] = [];
-  const interfaceFields = Object.entries(collection.fields)
+  const interfaceFields = Object.entries(dataFields)
     .map(([fieldKey, field]) => {
       let fieldType = field.interfaceType;
       if (field.type === ADMIN_FIELDS.select.type) {

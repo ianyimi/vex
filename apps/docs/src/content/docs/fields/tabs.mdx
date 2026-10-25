@@ -1,0 +1,133 @@
+---
+title: tabs field
+description: Groups fields under admin-form tabs — a UI-only layout field with no stored value of its own.
+---
+
+A `tabs()` field groups fields under tabs in the admin form. It is a
+UI-only field — it stores no value of its own. Legal in any `fields` record:
+a collection/global's own, a `group()`'s, a group-shaped `array()`'s items,
+or a `blocks()` block's own.
+
+Each tab is either **unnamed** or **named**:
+
+- An unnamed tab (no `name`) hoists its fields up to the parent level once
+  `getDataFields` flattens the field — no accordion, no nesting in the
+  stored data, same as a bare `row()`/`collapsible()`.
+- A named tab (`name` set) nests its fields as one group-shaped data field
+  keyed by `name` instead of hoisting — group-like, not an accordion.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Label for the field (not shown unless nested somewhere a label applies). |
+| `description` | `string` | — | Helper text for the field itself. |
+| `tabs` | `TabInput[]` | — (required) | The tabs. Throws if empty, or if any tab has no fields. |
+| `admin.hidden` | `boolean` | `false` | Hides the whole field (and every nested field) from the admin edit form. ORs into children. |
+| `admin.readOnly` | `boolean` | `false` | Renders every nested field as non-interactive. ORs into children. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout. |
+| `admin.width` | `string` (CSS width) | `"100%"` | Width of the whole tabs field inside a `row()`. |
+| `admin.condition` | `({ data, siblingData }) => boolean` | — | Pure predicate deciding whether the field (and every nested field) is shown and validated. ANDs into children. |
+
+### Tab options (`TabInput`)
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | — (required) | Tab label shown in the admin form's tab strip. |
+| `name` | `string` | — | When set, this tab's fields nest as one group-shaped data field keyed by `name` instead of hoisting to the parent level. |
+| `description` | `string` | — | Helper text shown below the tab's label. |
+| `defaultOpen` | `boolean` | — | The FIRST tab across the whole `tabs()` field with `defaultOpen: true` is the initially selected tab; otherwise the first tab. A `?<fieldKey>=` URL param, when present, still wins. |
+| `fields` | `Record<string, AdminField>` | — (required) | This tab's fields. |
+| `admin.condition` | `({ data, siblingData }) => boolean` | — | AND-ed into every field this tab contributes once flattened. |
+
+## Schema output
+
+`tabs()` is dropped by `getDataFields`: it contributes no field of its own to
+the schema. Instead:
+
+- An unnamed tab's fields hoist straight to the parent `fields` record —
+  each ends up as its own top-level (or group-level) schema field, exactly
+  as if it had been declared there directly.
+- A named tab's fields nest under one group-shaped data field keyed by
+  `name` — same schema shape a `group({ name, fields })` with those fields
+  would produce.
+
+```ts
+// info: tabs({ tabs: [
+//   { label: "Content", fields: { note: text() } },            // unnamed — hoists
+//   { label: "Meta", name: "meta", fields: { tag: text() } },  // named — nests
+// ] })
+
+note: v.optional(v.string()),
+meta: v.optional(v.object({ tag: v.optional(v.string()) })),
+```
+
+`getDataFields` throws if two entries flatten to the same data key — two
+fields named the same, a named tab reusing a sibling's key, or two tabs
+sharing a `name`.
+
+## Usage
+
+```ts
+import { defineCollection, tabs, row, collapsible, text, textarea, checkbox } from "@vexcms/core";
+
+const pages = defineCollection({
+  slug: "pages",
+  fields: {
+    showAdvanced: checkbox({ label: "Show Advanced" }),
+
+    layout: tabs({
+      label: "Layout",
+      tabs: [
+        // Unnamed — hoists its field to the top level
+        { label: "General", fields: { title: text({ required: true }) } },
+
+        // Named — nests as a group-shaped "seo" data field
+        {
+          label: "SEO",
+          name: "seo",
+          fields: {
+            metaTitle: text({ label: "Meta Title", required: true }),
+            metaDescription: textarea({ label: "Meta Description", rows: 3 }),
+          },
+        },
+
+        // Not the first tab, but opens first by default
+        { label: "Advanced", defaultOpen: true, fields: { internalId: text() } },
+
+        // Gated by a sibling checkbox
+        {
+          label: "Visibility",
+          admin: { condition: ({ data }) => data.showAdvanced === true },
+          fields: { hiddenNote: text() },
+        },
+
+        // Nests a row() and a collapsible() — composing layout fields inside a tab
+        {
+          label: "Composed",
+          fields: {
+            columns: row({
+              fields: {
+                colLeft: text({ admin: { width: "50%" } }),
+                colRight: text({ admin: { width: "50%" } }),
+              },
+            }),
+            aside: collapsible({ label: "Aside", fields: { asideNote: text() } }),
+          },
+        },
+      ],
+    }),
+  },
+});
+```
+
+## Admin UI
+
+Tabs render as a tab strip above the grouped fields. The top-level
+`tabs()` field's selected tab is reflected in a `?<fieldKey>=` URL param so
+it survives a refresh/share; a nested `tabs()` field (inside a group, array
+item, or block) keeps local component state instead, since it isn't
+addressable by a top-level URL param. `admin.hidden`/`admin.readOnly` on the
+`tabs()` field OR into every nested field (hidden/read-only everywhere);
+`admin.condition` on the `tabs()` field ANDs into every nested field's own
+condition. A per-tab `admin.condition` only affects that tab's own fields.

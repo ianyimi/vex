@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { AdminField, DateField } from "../fields";
+import type { AdminField, DateField, NumberField } from "../fields";
 import { defineCollection, number, text } from "../index";
 import { beforeChangeHook } from "./hooks";
 
@@ -10,7 +10,7 @@ describe("defineCollection — updatedAt injection", () => {
       slug: "posts",
       fields: { title: text({ required: true }) },
     });
-    const field = posts.fields.updatedAt;
+    const field = posts.fields.updatedAt as DateField | undefined;
     expect(field).toBeDefined();
     expect(field?.type).toBe("date");
     expect(field?.required).toBe(false);
@@ -224,11 +224,12 @@ describe("defineCollection — an already-declared updatedAt is left alone", () 
 
   it("preserves the declared field's own settings rather than replacing it", () => {
     const user = defineCollection({ slug: "user", fields: authFields });
+    const updatedAt = user.fields.updatedAt as NumberField | undefined;
     // Fields are cloned by meta stamping, so this asserts the surviving
     // contract rather than reference identity: `locked` is what keeps the
     // write paths from stamping over the auth adapter's value.
-    expect(user.fields.updatedAt?.meta).toMatchObject({ collectionSlug: "user", locked: true });
-    expect(user.fields.updatedAt?.defaultValue).toBe(lockedUpdatedAt.defaultValue);
+    expect(updatedAt?.meta).toMatchObject({ collectionSlug: "user", locked: true });
+    expect(updatedAt?.defaultValue).toBe(lockedUpdatedAt.defaultValue);
   });
 
   it("does not throw for the widened-Record caller shape", () => {

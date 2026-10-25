@@ -17,7 +17,7 @@ pnpm add @vexcms/react@alpha
 | `TextFieldInput` | `text` |
 | `TextFieldCell` | `text` |
 
-Input/cell components for the other field types (`url`, `number`, `checkbox`, `select`, `date`, `color`, `upload`, `relationship`, `group`, `array`, `blocks`) exist internally and power the built-in admin panel views (see below), but are not yet exported from the package root.
+Input/cell components for the other field types (`url`, `number`, `checkbox`, `select`, `date`, `color`, `email`, `textarea`, `json`, `upload`, `relationship`, `group`, `array`, `blocks`, `richtext`, `tabs`, `collapsible`, `row`, `ui`) exist internally and power the built-in admin panel views (see below), but are not yet exported from the package root.
 
 ## Admin Panel Views
 

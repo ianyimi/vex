@@ -25,9 +25,17 @@ describe("richtext", () => {
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       placeholder: "",
+      components: {
+        Input: [],
+        Cell: [],
+        Label: [],
+        Description: [],
+        beforeInput: [],
+        afterInput: [],
+      },
     });
   });
 

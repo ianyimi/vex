@@ -1,7 +1,7 @@
 import { childInterfaceType } from "../childInterfaceType";
 import { ADMIN_FIELDS } from "../constants";
 import { BaseFieldMeta } from "../types";
-import { adminFieldToJSDocComment } from "../utils";
+import { adminFieldToJSDocComment, getDataFields, resolveFieldComponents } from "../utils";
 import type { GroupFieldInput, GroupField } from "./types";
 import type { VexResourceSlug } from "../../types/generated";
 
@@ -20,7 +20,7 @@ import type { VexResourceSlug } from "../../types/generated";
  * - `admin.hidden` — `false`
  * - `admin.readOnly` — `false`
  * - `admin.position` — `"main"`
- * - `admin.width` — `"full"`
+ * - `admin.width` — `"100%"`
  * - `admin.cellAlignment` — `"left"`
  *
  * @param options - Group field configuration. `fields` is required; all other
@@ -73,11 +73,12 @@ export function group<
       hidden: false,
       readOnly: false,
       position: "main",
-      width: "full",
+      width: "100%",
       cellAlignment: "left",
       placeholder: "",
       defaultCollapsed: false,
       ...options?.admin,
+      components: resolveFieldComponents({ components: options?.admin?.components }),
     },
     meta: {
       ...options?.meta,
@@ -94,7 +95,7 @@ export function group<
  * @returns A TypeScript type string, e.g. `"{ title: string; description?: string }"`.
  */
 function buildInterfaceType(fields: GroupFieldInput["fields"]): string {
-  const entries = Object.entries(fields)
+  const entries = Object.entries(getDataFields({ fields }))
     .map(([key, field]) => {
       const jsdocComment = adminFieldToJSDocComment({ field });
       return `\n${jsdocComment}${key}${field.required ? "" : "?"}: ${childInterfaceType(field)}`;

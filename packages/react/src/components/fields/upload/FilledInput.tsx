@@ -15,7 +15,6 @@ import { get } from "../../../client";
 import { InputTag } from "../../form/InputTag";
 import { TypedFieldApi } from "../../form/createFieldInput";
 import { useVexConfig } from "../../../context";
-import { cn } from "../../../styles/utils";
 import { GenericId } from "convex/values";
 
 /**
@@ -64,8 +63,7 @@ export function UploadFilledState({
   onReorder,
   openPicker,
 }: UploadFilledStateProps) {
-  const atLimit =
-    fieldDef.max !== undefined && mediaIds.length >= fieldDef.max[0];
+  const atLimit = fieldDef.max !== undefined && mediaIds.length >= fieldDef.max[0];
 
   const config = useVexConfig();
   const targetCollectionConfig = config.mediaCollections.find((mc) => mc.slug === fieldDef.to);
@@ -76,7 +74,7 @@ export function UploadFilledState({
   return (
     <div className="flex flex-col gap-2">
       {fieldDef.hasMany && onReorder ? (
-        <Droppable id={`upload-${fieldDef.label}`} onReorder={onReorder}>
+        <Droppable id={`upload-${fieldApi.name}`} onReorder={onReorder}>
           {mediaIds.map((id, index) => (
             <Draggable key={id} id={id} index={index}>
               <UploadItemRow
@@ -103,7 +101,7 @@ export function UploadFilledState({
         </div>
       )}
 
-      {fieldDef.hasMany && (
+      {fieldDef.hasMany ? (
         <div className="flex items-center gap-2.5">
           <Button
             variant="outline"
@@ -112,7 +110,7 @@ export function UploadFilledState({
             disabled={readOnly || atLimit}
             icon="FilePenLine"
           >
-            Edit {targetCollectionConfig.labels.plural}
+            Select {targetCollectionConfig.labels.plural}
           </Button>
           <Button
             variant="ghost"
@@ -133,6 +131,18 @@ export function UploadFilledState({
             </span>
           )}
         </div>
+      ) : (
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openPicker}
+            disabled={readOnly}
+            icon="FilePenLine"
+          >
+            Replace
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -142,7 +152,7 @@ export function UploadFilledState({
  * Individual item row in upload field.
  *
  * @param props - Component props.
- * @returns The row's drag handle, thumbnail, filename/mime/size metadata (or
+ * @returns The row's drag handle (only when `showDragHandle`), thumbnail, filename/mime/size metadata (or
  *   skeletons while loading, or an access-error message), alt-text badge, and
  *   a remove button.
  */
@@ -170,12 +180,9 @@ function UploadItemRow({
 
   const accessError = (error as ReturnType<typeof useQuery<any, VexAccessError>>["error"])?.data;
   return (
-    <div className="flex items-center justify-between rounded border-2 border-border px-2">
-      <div className="flex w-full items-center gap-2 font-mono">
-        <DragHandle
-          className={cn(!showDragHandle && "opacity-0 pointer-events-none")}
-          disabled={readOnly || Boolean(accessError)}
-        />
+    <div className="flex items-center justify-between gap-2 rounded border-2 border-border px-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2 font-mono">
+        {showDragHandle && <DragHandle disabled={readOnly || Boolean(accessError)} />}
         {!mediaDoc ? (
           !accessError ? (
             <Skeleton className="h-12 w-12" />
@@ -193,22 +200,24 @@ function UploadItemRow({
             </div>
           ) : null
         ) : (
-          <div className="">
-            <div className="">{mediaDoc.filename}</div>
-            <div className="">
+          <div className="min-w-0">
+            <div className="truncate text-sm" title={mediaDoc.filename}>
+              {mediaDoc.filename}
+            </div>
+            <div className="truncate text-xs text-muted-foreground">
               {formatMimeType(mediaDoc.mimeType)} · {formatBytes(mediaDoc.size)}
             </div>
           </div>
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         {!mediaDoc ? (
           !accessError ? (
             <Skeleton className="h-8 w-[200px]" />
           ) : null
         ) : (
           mediaDoc.alt.length > 0 && (
-            <div className="flex max-w-[200px] min-w-0 items-center gap-2">
+            <div className="hidden max-w-[200px] min-w-0 items-center gap-2 @lg/form:flex">
               <InputTag>ALT</InputTag>
               <span className="flex-1 truncate text-xs">
                 {mediaDoc.alt || <em className="text-destructive">Missing</em>}
@@ -218,7 +227,7 @@ function UploadItemRow({
         )}
         <Button
           variant="ghost"
-          className="transition-colors duration-300 hover:text-destructive"
+          className="p-0 transition-colors duration-300 hover:text-destructive"
           type="button"
           title="Remove"
           onClick={onRemove}

@@ -1,10 +1,10 @@
 import {
-  addLeadingSlash,
   TDocument,
   type CellComponentProps,
   type SelectField,
 } from "@vexcms/core";
 import { Badge, VexLink } from "../../ui";
+import { adminHref } from "../../../utils/adminHref";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
 /**
@@ -28,7 +28,6 @@ export function SelectFieldCell<TData extends TDocument = TDocument>(
 ) {
   if (props.value === undefined || props.value === null) return <span>—</span>;
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
   const fields = props.value
     .map((v) => props.fieldDef.options.find((o) => o.value === v))
     .filter((option): option is SelectField["options"][number] => option != null);
@@ -42,7 +41,12 @@ export function SelectFieldCell<TData extends TDocument = TDocument>(
   );
   if (!props.isTitleField) return content;
   return (
-    <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+    <VexLink
+      href={adminHref(
+        { type: "document", slug: props.collection.slug, id: props.row.original._id },
+        config.basePath,
+      )}
+    >
       {content}
     </VexLink>
   );

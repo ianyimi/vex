@@ -1,4 +1,4 @@
-import { ADMIN_FIELDS } from "../fields";
+import { ADMIN_FIELDS, getDataFields } from "../fields";
 import { CollectionConfig } from "./types";
 
 /**
@@ -20,7 +20,7 @@ export function collectionConfigToIndexFields(props: {
   collection: CollectionConfig;
 }): Map<string, string[]> {
   const fields = new Map<string, string[]>();
-  for (const [fieldKey, field] of Object.entries(props.collection.fields)) {
+  for (const [fieldKey, field] of Object.entries(getDataFields({ fields: props.collection.fields }))) {
     let indexName: string;
     if (field.index) {
       indexName = field.index;

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import { act, fireEvent, screen, waitFor, type RenderResult } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConvexQueryClient } from "@convex-dev/react-query";
@@ -244,6 +245,7 @@ function describeMediaLibraryGrid(access: VexAccessConfig | undefined) {
       multi?: boolean;
       onSelect?: (ids: string[]) => void;
       selectedIds?: string[];
+      accept?: string;
     }): Promise<{ utils: RenderResult; ids: string[] }> {
       const t = convexTest(schema, testModules);
       const ids = await seedMedia(t as never, options.rows ?? []);
@@ -256,6 +258,7 @@ function describeMediaLibraryGrid(access: VexAccessConfig | undefined) {
               multi={options.multi ?? false}
               onSelect={options.onSelect ?? (() => {})}
               selectedIds={options.selectedIds}
+              accept={options.accept}
             />
           </QueryClientProvider>
         </ConvexProvider>,
@@ -329,6 +332,61 @@ function describeMediaLibraryGrid(access: VexAccessConfig | undefined) {
       // React text nodes are never parsed as markup — no extra <img> got
       // injected into the DOM from the markup-bearing filename.
       expect(utils.container.querySelectorAll("img")).toHaveLength(0);
+    });
+
+    it("shows the collection's plural label in the search placeholder, not the raw config object", async () => {
+      await renderGrid({ rows: [] });
+      expect(
+        screen.getByPlaceholderText("Search Images by filename or alt…"),
+      ).toBeInTheDocument();
+    });
+
+    it("paginates via a real 'Load more' click, fetching and rendering the next server page", async () => {
+      const rows = Array.from({ length: 26 }, (_, i) => ({
+        filename: `file-${i}.png`,
+      }));
+      const { utils } = await renderGrid({ rows });
+
+      await waitFor(() =>
+        expect(utils.container.querySelectorAll(".grid > button")).toHaveLength(24),
+      );
+      const loadMoreButton = screen.getByRole("button", { name: "Load more" });
+
+      fireEvent.click(loadMoreButton);
+
+      await waitFor(() =>
+        expect(utils.container.querySelectorAll(".grid > button")).toHaveLength(26),
+      );
+      expect(
+        screen.queryByRole("button", { name: "Load more" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("derives the Type menu from accept, and selecting a type filters results client-side across server pages", async () => {
+      const rows: Array<Partial<TestMediaInput>> = [
+        ...Array.from({ length: 24 }, (_, i) => ({
+          filename: `img-${i}.png`,
+          mimeType: "image/png",
+        })),
+        { filename: "doc-a.pdf", mimeType: "application/pdf" },
+        { filename: "doc-b.pdf", mimeType: "application/pdf" },
+      ];
+      const user = userEvent.setup();
+      await renderGrid({ rows, accept: "image/*,application/pdf" });
+
+      await waitFor(() =>
+        expect(screen.getByText("img-0.png")).toBeInTheDocument(),
+      );
+
+      await user.click(screen.getByRole("button", { name: "Type" }));
+      await screen.findByRole("menu");
+      await user.click(screen.getByRole("menuitemradio", { name: "PDF" }));
+
+      await waitFor(() =>
+        expect(screen.getByText("doc-a.pdf")).toBeInTheDocument(),
+      );
+      expect(screen.getByText("doc-b.pdf")).toBeInTheDocument();
+      expect(screen.queryByText("img-0.png")).not.toBeInTheDocument();
     });
 
     it("single-select mode replaces the selection with the clicked item's id", async () => {

@@ -15,6 +15,7 @@ export const ADMIN_FIELDS = {
     validator: "v.string()",
     defaultValue: "",
     kind: "data",
+    inputMasks: true,
   },
   email: {
     type: "email",
@@ -22,6 +23,7 @@ export const ADMIN_FIELDS = {
     validator: "v.string()",
     defaultValue: "",
     kind: "data",
+    inputMasks: true,
   },
   textarea: {
     type: "textarea",
@@ -29,6 +31,7 @@ export const ADMIN_FIELDS = {
     validator: "v.string()",
     defaultValue: "",
     kind: "data",
+    inputMasks: false,
   },
   url: {
     type: "url",
@@ -36,6 +39,7 @@ export const ADMIN_FIELDS = {
     validator: "v.string()",
     defaultValue: "",
     kind: "data",
+    inputMasks: true,
   },
   color: {
     type: "color",
@@ -43,6 +47,7 @@ export const ADMIN_FIELDS = {
     validator: "v.string()",
     defaultValue: "",
     kind: "data",
+    inputMasks: false,
   },
   number: {
     type: "number",
@@ -50,6 +55,7 @@ export const ADMIN_FIELDS = {
     validator: "v.number()",
     defaultValue: 0,
     kind: "data",
+    inputMasks: true,
   },
   checkbox: {
     type: "checkbox",
@@ -57,6 +63,7 @@ export const ADMIN_FIELDS = {
     validator: "v.boolean()",
     defaultValue: false,
     kind: "data",
+    inputMasks: false,
   },
   date: {
     type: "date",
@@ -64,6 +71,7 @@ export const ADMIN_FIELDS = {
     validator: "v.number()",
     defaultValue: undefined,
     kind: "data",
+    inputMasks: false,
   },
   select: {
     type: "select",
@@ -71,6 +79,7 @@ export const ADMIN_FIELDS = {
     validator: "v.array(\nv.string()\n)",
     defaultValue: [] as string[],
     kind: "data",
+    inputMasks: false,
   },
   relationship: {
     type: "relationship",
@@ -78,6 +87,7 @@ export const ADMIN_FIELDS = {
     validator: "v.array(\nv.string()\n)",
     defaultValue: [] as string[],
     kind: "data",
+    inputMasks: false,
   },
   array: {
     type: "array",
@@ -85,6 +95,7 @@ export const ADMIN_FIELDS = {
     validator: "v.array(\nv.any()\n)",
     defaultValue: [],
     kind: "data",
+    inputMasks: false,
   },
   group: {
     type: "group",
@@ -93,6 +104,7 @@ export const ADMIN_FIELDS = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     defaultValue: {} as Record<string, any>,
     kind: "data",
+    inputMasks: false,
   },
   blocks: {
     type: "blocks",
@@ -100,6 +112,7 @@ export const ADMIN_FIELDS = {
     validator: "v.array(v.any())", // placeholder - blocksFieldToValidator builds dynamically
     defaultValue: [],
     kind: "data",
+    inputMasks: false,
   },
   upload: {
     type: "upload",
@@ -107,6 +120,7 @@ export const ADMIN_FIELDS = {
     validator: "v.array(\nv.string()\n)",
     defaultValue: undefined,
     kind: "data",
+    inputMasks: false,
   },
   richtext: {
     type: "richtext",
@@ -114,6 +128,7 @@ export const ADMIN_FIELDS = {
     validator: "v.array(\nv.any()\n)",
     defaultValue: [],
     kind: "data",
+    inputMasks: false,
   },
   json: {
     type: "json",
@@ -121,6 +136,39 @@ export const ADMIN_FIELDS = {
     validator: "v.any()",
     defaultValue: undefined,
     kind: "data",
+    inputMasks: false,
+  },
+  tabs: {
+    type: "tabs",
+    interfaceType: "never",
+    validator: "never",
+    defaultValue: undefined,
+    kind: "ui",
+    inputMasks: false,
+  },
+  collapsible: {
+    type: "collapsible",
+    interfaceType: "never",
+    validator: "never",
+    defaultValue: undefined,
+    kind: "ui",
+    inputMasks: false,
+  },
+  row: {
+    type: "row",
+    interfaceType: "never",
+    validator: "never",
+    defaultValue: undefined,
+    kind: "ui",
+    inputMasks: false,
+  },
+  ui: {
+    type: "ui",
+    interfaceType: "never",
+    validator: "never",
+    defaultValue: undefined,
+    kind: "ui",
+    inputMasks: false,
   },
 } as const;
 /** Union of all supported field type name strings (e.g. `"text"` | `"number"` | `"checkbox"` | ...). */

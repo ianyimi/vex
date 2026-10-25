@@ -12,7 +12,7 @@ import type { VexResourceSlug } from "@vexcms/core";
 /**
  * Target collection for the relationship picker under test. Its slug
  * ("documents") and `admin.useAsTitle: "title"` match the `documents` table
- * and `search_title` index seeded by the Step 10 convex-test bridge
+ * and `search_title` index seeded by the convex-test bridge
  * (`testing/convex/schema.ts`). Labels are set explicitly rather than
  * relying on `defineCollection`'s auto-pluralization of an already-plural
  * slug.
@@ -22,24 +22,6 @@ export const relationshipTargetCollection = defineCollection({
   labels: { singular: "Document", plural: "Documents" },
   fields: { title: text({ required: true }) },
   admin: { useAsTitle: "title" },
-});
-
-/**
- * Second target collection, same underlying `documents` table, but with
- * `admin.useAsTitle: "_creationTime"` — a system field. Exercises
- * `useRelationshipPickerOptions`'s OTHER branch: `isSearchable` becomes
- * `false` (its check is `useAsTitle !== "_id" && useAsTitle !== "_creationTime"`),
- * so the picker calls `vexConvexApi.find` — which ignores the search text
- * entirely — instead of `vexConvexApi.search`. Used only by the
- * non-searchable-branch test in `Input.test.tsx`'s `extra`; the default
- * `relationshipFieldFixture`/`relationshipTargetCollection` above stay wired
- * to the searchable path.
- */
-export const relationshipTargetCollectionByCreationTime = defineCollection({
-  slug: "documents",
-  labels: { singular: "Document", plural: "Documents" },
-  fields: { title: text({ required: true }) },
-  admin: { useAsTitle: "_creationTime" },
 });
 
 /**
@@ -60,12 +42,15 @@ const fieldDef = relationship<VexResourceSlug, CollectionFieldMeta>({
  * assertions — `runFieldInputContractSuite`'s bare `<AppForm>` harness
  * doesn't wire `VexConfigContext`, so those generic states render
  * `RelationshipFieldInput`'s "Unknown collection" guard regardless of the
- * value. The real picker (debounced search, select/remove, single vs
- * `hasMany`) is covered by this field's `extra` in `Input.test.tsx`,
- * rendered with `VexConfigContext` and the Step 10 convex-test bridge wired
- * in against real seeded documents.
+ * value. The real empty/filled/picker surface is covered by this field's own
+ * `Input.test.tsx`/`EmptyInput.test.tsx`/`FilledInput.test.tsx` and
+ * `components/relationship/*.test.tsx`, rendered with `VexConfigContext` and
+ * the convex-test bridge wired in against real seeded documents.
  */
-export const relationshipFieldFixture: FieldFixture<RelationshipField<VexResourceSlug, CollectionFieldMeta>, string[]> = {
+export const relationshipFieldFixture: FieldFixture<
+  RelationshipField<VexResourceSlug, CollectionFieldMeta>,
+  string[]
+> = {
   fieldType: "relationship",
   fieldDef,
   valid: ["kg2fake00000000000000001;documents"],

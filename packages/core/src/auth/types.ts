@@ -1,5 +1,5 @@
 import { CollectionConfig } from "../collections";
-import { ComponentHKT } from "../fields";
+import { AdminField, ComponentHKT } from "../fields";
 import { CollectionSlug } from "../types";
 
 /**
@@ -44,15 +44,9 @@ export type AuthCollectionMeta = {
  */
 export type AuthCollectionConfig<
   TCollectionSlug extends CollectionSlug = CollectionSlug,
-  TFieldSlug extends string = string,
+  TFields extends Record<string, AdminField<AuthFieldMeta>> = Record<string, AdminField<AuthFieldMeta>>,
   TComponent extends ComponentHKT = ComponentHKT,
-> = CollectionConfig<
-  AuthFieldMeta,
-  AuthCollectionMeta,
-  TCollectionSlug,
-  TFieldSlug,
-  TComponent
->;
+> = CollectionConfig<AuthFieldMeta, AuthCollectionMeta, TCollectionSlug, TFields, TComponent>;
 
 /**
  * Auth adapter returned by an auth provider package (e.g. `@vexcms/better-auth`).

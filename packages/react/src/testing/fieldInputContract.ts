@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 import { useForm } from "@tanstack/react-form";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -15,13 +15,15 @@ import {
   defineCollection,
   defineConfig,
   text,
-  type AdminField,
+  type AdminDataField,
   type RichTextDocument,
   type VexEditorAdapter,
   type VexEditorComponentProps,
   type VexRenderComponentProps,
   type CollectionConfig,
   type VexClientConfig,
+  type InputComponentProps,
+  type ComponentOverrideInput,
 } from "@vexcms/core";
 import { defineMediaCollection } from "@vexcms/file-storage-convex/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -29,6 +31,7 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { VexConfigContext } from "../context/VexConfigContext";
 import { AppForm } from "../components/form/AppForm";
+import type { SlotOverrideProps } from "../components/slots";
 import type { ReactHKT } from "../adapter";
 
 /**
@@ -48,7 +51,7 @@ import type { FieldFixture } from "./fixtures/types";
 
 /** Options for {@link runFieldInputContractSuite}. */
 export interface FieldInputContractOptions<
-  TField extends AdminField = AdminField,
+  TField extends AdminDataField = AdminDataField,
   TValue = unknown,
 > {
   fixture: FieldFixture<TField, TValue>;
@@ -196,7 +199,7 @@ const FIELD_NAME = "testField";
  * @param overrides - Shallow overrides, deep-merged under `admin`.
  * @returns A new field definition with `overrides` applied.
  */
-function withFieldDef<TField extends AdminField>(
+function withFieldDef<TField extends AdminDataField>(
   fieldDef: TField,
   // Loose override keys on purpose: `Partial<TField>` cannot be satisfied by a
   // literal like `{ label: "" }` when `TField` is still generic (TS cannot prove
@@ -468,7 +471,7 @@ async function waitForStableRender(container: HTMLElement): Promise<void> {
  *
  * @returns Utilities for interacting with and asserting on the mounted field.
  */
-async function renderField<TField extends AdminField, TValue>(props: {
+async function renderField<TField extends AdminDataField, TValue>(props: {
   Component: FieldInputContractOptions<TField, TValue>["Component"];
   fieldDef: TField;
   collection: CollectionConfig;
@@ -566,7 +569,7 @@ async function renderField<TField extends AdminField, TValue>(props: {
  *
  * @param options - The field's fixture, component, and contract options.
  */
-export function runFieldInputContractSuite<TField extends AdminField, TValue>(
+export function runFieldInputContractSuite<TField extends AdminDataField, TValue>(
   options: FieldInputContractOptions<TField, TValue>,
 ): void {
   const { fixture, Component, extra } = options;
@@ -603,6 +606,133 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       );
     }
     return validation.error.issues[0]?.message ?? "Invalid value";
+  }
+
+  /**
+   * Narrows `value` to a resolved `admin.components.Input` chain entry —
+   * `id`/`component` are the only two fields every `ComponentOverrideInput`
+   * carries, so checking for both is sufficient to discriminate it from any
+   * other shape `value` might be.
+   *
+   * @param value - The value to narrow.
+   * @returns `true` if `value` has both an `id` and `component` field.
+   */
+  function isComponentOverride(
+    value: unknown,
+  ): value is ComponentOverrideInput<ReactHKT, InputComponentProps> {
+    return (
+      typeof value === "object" &&
+      value !== null &&
+      "id" in value &&
+      "component" in value
+    );
+  }
+
+  /**
+   * Reads `fieldDef.admin.components.Input` and normalizes it to a chain
+   * array. Normally already a resolved array (`resolveFieldComponents`), but
+   * this suite's own override-chain test assigns a single raw override
+   * object directly, bypassing field-factory resolution — accept either
+   * shape.
+   *
+   * @param fieldDef - The field definition to read `admin.components.Input` from.
+   * @returns The normalized override chain array.
+   */
+  function extractInputOverrides(
+    fieldDef: TField,
+  ): ComponentOverrideInput<ReactHKT, InputComponentProps>[] {
+    const input: unknown = fieldDef.admin?.components?.Input;
+    if (Array.isArray(input)) {
+      return input.filter(isComponentOverride);
+    }
+    return isComponentOverride(input) ? [input] : [];
+  }
+
+  /** The exact props shape every registered field type's built-in `Component` accepts — see {@link FieldInputContractOptions.Component}'s doc comment for why this is not `InputComponentProps`. */
+  type ContractComponentProps = {
+    name: string;
+    fieldDef: TField;
+    readOnly: boolean;
+    collection: CollectionConfig;
+    index?: number;
+  };
+
+  /**
+   * Mounts `fieldDef`'s resolved input directly — the built-in (`Component`)
+   * wrapped by its own `admin.components.Input` override chain, composed the
+   * same way `resolveFieldInputComponent` composes it in production — with no
+   * `useForm`/`renderField` wiring beyond what rendering requires. Proves the
+   * override chain (S3/S8) composes for every registered field type:
+   * `onProbe` fires only when the chain's innermost built-in actually
+   * renders, so an override whose `renderDefault` never calls through is
+   * caught.
+   *
+   * @returns The mounted test harness element.
+   */
+  function ContractHarness(props: {
+    fieldDef: TField;
+    value: TValue;
+    onProbe: () => void;
+  }) {
+    const [queryClient] = useState(
+      () =>
+        new QueryClient({
+          defaultOptions: {
+            queries: { retry: false, queryFn: () => new Promise<never>(() => {}) },
+          },
+        }),
+    );
+    const [convexClient] = useState(
+      () => new ConvexReactClient("https://example.convex.cloud"),
+    );
+    const f = useForm({ defaultValues: { [FIELD_NAME]: props.value } });
+
+    function ProbedBuiltin(p: ContractComponentProps) {
+      props.onProbe();
+      return createElement(Component, p);
+    }
+
+    const Resolved = extractInputOverrides(props.fieldDef).reduce<
+      ComponentType<ContractComponentProps>
+    >((renderDefault, override) => {
+      // `override.component` is typed against the production `InputComponentProps`
+      // shape (S3), which this suite's own narrower `ContractComponentProps`
+      // (see its doc comment) is not structurally assignable to — both describe
+      // the same runtime props, just via two different declared types across
+      // package boundaries, so the chain composes correctly at runtime.
+      const Override = override.component as unknown as ComponentType<
+        ContractComponentProps & { renderDefault: ComponentType<ContractComponentProps> }
+      >;
+      return (p: ContractComponentProps) =>
+        createElement(Override, { ...p, renderDefault });
+    }, ProbedBuiltin);
+
+    return createElement(
+      ConvexProvider,
+      { client: convexClient },
+      createElement(
+        QueryClientProvider,
+        { client: queryClient },
+        createElement(
+          NuqsTestingAdapter,
+          null,
+          createElement(
+            VexConfigContext.Provider,
+            { value: stubClientConfig },
+            createElement(
+              AppFormBoundary,
+              { form: f } as { form: unknown; children: ReactNode },
+              createElement(Resolved, {
+                name: FIELD_NAME,
+                fieldDef: props.fieldDef,
+                collection,
+                readOnly: false,
+              }),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   describe(`${fixture.fieldType} field input contract`, () => {
@@ -740,10 +870,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       // hidden rather than unmounting it, so `.not.toBeVisible()` is the correct
       // matcher — `.not.toBeInTheDocument()` would pass even if the hidden logic
       // were broken and always rendered the paragraph visible with empty text.
-      // `p.` qualifier is load-bearing: a bare `.text-muted-foreground` also matches
-      // icon/badge svgs inside some field types (measured on `select`'s remove badges),
-      // which made this assert against the wrong node entirely.
-      expect(container.querySelector("p.text-muted-foreground")).not.toBeVisible();
+      expect(container.querySelector('[data-slot="form-description"]')).not.toBeVisible();
     });
 
     // ── 3. Placeholder ──────────────────────────────────────────────────────
@@ -911,7 +1038,7 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
 
       const control = getControl(container, label);
       await setControlValue(user, control, fixture.valid);
-      expectControlValue(control, fixture.valid);
+      await waitFor(() => expectControlValue(control, fixture.valid));
     });
 
     it("passes the correctly-typed value (not stringified) to field.handleChange", async () => {
@@ -1011,6 +1138,75 @@ export function runFieldInputContractSuite<TField extends AdminField, TValue>(
       await user.click(screen.getByRole("button", { name: /submit/i }));
       await screen.findByText(deriveInvalidErrorMessage());
       await expectNoA11yViolations(container);
+    });
+
+    // ── 11. Read-only + error rendered together ─────────────────────────────
+    it("still shows the validation error after submission when the field is read-only via the `readOnly` prop", async () => {
+      const errorMessage = deriveInvalidErrorMessage();
+      const user = userEvent.setup();
+      const { container } = await renderField({
+        Component,
+        fieldDef: fixture.fieldDef,
+        collection,
+        readOnly: true,
+        initialValue: fixture.invalid,
+      });
+
+      await user.click(screen.getByRole("button", { name: /submit/i }));
+
+      expect(await screen.findByText(errorMessage)).toBeVisible();
+      expect(hasInertSignal(getControl(container, label))).toBe(true);
+    });
+
+    it("still shows the validation error after submission when the field is read-only via fieldDef.admin.readOnly", async () => {
+      const errorMessage = deriveInvalidErrorMessage();
+      const user = userEvent.setup();
+      const fieldDef = withFieldDef(fixture.fieldDef, {
+        admin: { readOnly: true },
+      });
+      const { container } = await renderField({
+        Component,
+        fieldDef,
+        collection,
+        readOnly: false,
+        initialValue: fixture.invalid,
+      });
+
+      await user.click(screen.getByRole("button", { name: /submit/i }));
+
+      expect(await screen.findByText(errorMessage)).toBeVisible();
+      expect(hasInertSignal(getControl(container, label))).toBe(true);
+    });
+
+    describe(`${fixture.fieldType}: admin.components.Input override`, () => {
+      it("renders the override in place of the built-in, and its renderDefault re-renders the built-in unchanged", () => {
+        const rendered = { default: false, override: false };
+        const OverrideProbe = (
+          props: SlotOverrideProps<ReactHKT, InputComponentProps>,
+        ) => {
+          rendered.override = true;
+          const RenderDefault = props.renderDefault;
+          return createElement(RenderDefault, props);
+        };
+        const fieldDefWithOverride = {
+          ...fixture.fieldDef,
+          admin: {
+            ...fixture.fieldDef.admin,
+            components: {
+              Input: { id: "test.override", component: OverrideProbe },
+            },
+          },
+        };
+        render(
+          createElement(ContractHarness, {
+            fieldDef: fieldDefWithOverride,
+            value: fixture.valid,
+            onProbe: () => (rendered.default = true),
+          }),
+        );
+        expect(rendered.override).toBe(true);
+        expect(rendered.default).toBe(true);
+      });
     });
 
     extra?.(options);

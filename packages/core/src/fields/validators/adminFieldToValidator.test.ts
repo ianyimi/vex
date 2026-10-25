@@ -9,6 +9,7 @@ import {
   defineCollection,
 } from "../../index";
 import { adminFieldToValidator } from "./index";
+import { getDataFields } from "../utils";
 
 const SELECT_OPTIONS = [
   { label: "Draft", value: "draft" },
@@ -144,7 +145,7 @@ describe("adminFieldToValidator — comprehensive (all field types)", () => {
     });
 
     const results: Record<string, string> = {};
-    for (const [key, field] of Object.entries(collection.fields)) {
+    for (const [key, field] of Object.entries(getDataFields({ fields: collection.fields }))) {
       results[key] = adminFieldToValidator({ field });
     }
 

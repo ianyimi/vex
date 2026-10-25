@@ -4,7 +4,8 @@ import { useEffect, useState, type RefAttributes } from "react";
 import { AdminLayoutProps } from "./AdminLayout";
 import { Icon, VexLink } from "./ui";
 import { ChevronLeft, ChevronRight, LucideProps } from "lucide-react";
-import { addLeadingSlash, IconName, vexConvexApi } from "@vexcms/core";
+import { IconName, vexConvexApi } from "@vexcms/core";
+import { adminHref } from "../utils/adminHref";
 import { useVexConfig } from "../context/VexConfigContext";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
@@ -62,7 +63,6 @@ export default function AdminTopNav(props: AdminLayoutProps) {
   });
 
   const isLeft = config.admin.sidebar.side === "left";
-  const adminRoot = addLeadingSlash(config.basePath);
   const allCollections = config.collections.concat(config.mediaCollections);
   const activeCollection = allCollections.find((c) => c.slug === props.activeSlug);
   const activeGlobal =
@@ -75,18 +75,23 @@ export default function AdminTopNav(props: AdminLayoutProps) {
   const doc = mounted ? currentDocument : undefined;
 
   type Crumb = { key: string; href: string; label: string; icon?: IconName };
-  const crumbs: Crumb[] = [{ key: "home", href: adminRoot, label: "Home" }];
+  const crumbs: Crumb[] = [
+    { key: "home", href: adminHref({ type: "dashboard" }, config.basePath), label: "Home" },
+  ];
   if (activeCollection) {
     crumbs.push({
       key: "collection",
-      href: `${adminRoot}/${activeCollection.slug}`,
+      href: adminHref({ type: "collection", slug: activeCollection.slug }, config.basePath),
       label: activeCollection.labels.plural,
       icon: activeCollection.admin.icon,
     });
     if (doc) {
       crumbs.push({
         key: "document",
-        href: `${adminRoot}/${activeCollection.slug}/${doc._id}`,
+        href: adminHref(
+          { type: "document", slug: activeCollection.slug, id: doc._id as string },
+          config.basePath,
+        ),
         label: doc[activeCollection.admin.useAsTitle] as string,
       });
     }
@@ -94,11 +99,15 @@ export default function AdminTopNav(props: AdminLayoutProps) {
     // Globals crumbs are fully config-driven: a global's `label` IS its page
     // title (spec 35, D16 — no useAsTitle), so no doc fetch and no `mounted`
     // guard are needed here.
-    crumbs.push({ key: "globals", href: `${adminRoot}/globals`, label: "Globals" });
+    crumbs.push({
+      key: "globals",
+      href: adminHref({ type: "collection", slug: "globals" }, config.basePath),
+      label: "Globals",
+    });
     if (activeGlobal) {
       crumbs.push({
         key: "global",
-        href: `${adminRoot}/globals/${activeGlobal.slug}`,
+        href: adminHref({ type: "global", slug: activeGlobal.slug }, config.basePath),
         label: activeGlobal.label,
       });
     }

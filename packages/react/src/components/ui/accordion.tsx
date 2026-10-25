@@ -2,7 +2,7 @@ import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 
 import { cn } from "../../styles/utils";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
-import { ReactNode } from "react";
+import { type ReactNode, type RefObject, useRef } from "react";
 
 function Accordion({ className, ...props }: AccordionPrimitive.Root.Props) {
   return (
@@ -24,42 +24,100 @@ function AccordionItem({ className, ...props }: AccordionPrimitive.Item.Props) {
   );
 }
 
+/**
+ * The expand/collapse chevron for a header whose controls sit between the
+ * trigger and the chevron. Rendered as siblings AFTER an
+ * `AccordionPrimitive.Trigger` carrying `peer/accordion-trigger`, it reads the
+ * trigger's `aria-expanded` through the peer and forwards clicks to it — a
+ * `<button>` cannot contain the controls, so the chevron lives outside it.
+ *
+ * @param props.triggerRef - The trigger this chevron opens and closes.
+ * @param props.className - Extra classes for both icons (spacing).
+ */
+function AccordionTriggerChevron(props: {
+  triggerRef: RefObject<HTMLButtonElement | null>;
+  className?: string;
+}) {
+  const iconClassName = cn(
+    "size-4 shrink-0 cursor-pointer self-center text-muted-foreground",
+    props.className,
+  );
+  return (
+    <>
+      <ChevronDownIcon
+        aria-hidden
+        className={cn(iconClassName, "peer-aria-expanded/accordion-trigger:hidden")}
+        onClick={() => props.triggerRef.current?.click()}
+      />
+      <ChevronUpIcon
+        aria-hidden
+        className={cn(iconClassName, "hidden peer-aria-expanded/accordion-trigger:inline")}
+        onClick={() => props.triggerRef.current?.click()}
+      />
+    </>
+  );
+}
+
+/**
+ * Accordion header with its trigger. `leading` renders before the trigger
+ * (a drag handle); `actions` render between the trigger and the chevron (via
+ * `AccordionTriggerChevron`); `postIconChildren` render after the chevron.
+ * All sit outside the trigger's native `<button>`, so nesting a `<Button>`
+ * never produces `<button> cannot be a descendant of <button>` hydration
+ * errors and clicking one never toggles the item.
+ */
 function AccordionTrigger({
   className,
   children,
+  leading,
+  actions,
   postIconChildren,
   ...props
-}: { postIconChildren?: ReactNode } & AccordionPrimitive.Trigger.Props) {
+}: {
+  leading?: ReactNode;
+  actions?: ReactNode;
+  postIconChildren?: ReactNode;
+} & AccordionPrimitive.Trigger.Props) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
   return (
     <AccordionPrimitive.Header className="flex items-center">
+      {leading !== undefined && <div className="flex shrink-0 items-center pl-3">{leading}</div>}
       <AccordionPrimitive.Trigger
+        ref={triggerRef}
         data-slot="accordion-trigger"
         className={cn(
-          "group/accordion-trigger relative flex flex-1 items-center justify-between rounded-md border border-transparent py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring aria-disabled:pointer-events-none aria-disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4 **:data-[slot=accordion-trigger-icon]:text-muted-foreground",
+          "peer/accordion-trigger group/accordion-trigger relative flex min-w-0 flex-1 items-center justify-between rounded-md border border-transparent py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring aria-disabled:pointer-events-none aria-disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4 **:data-[slot=accordion-trigger-icon]:text-muted-foreground",
           className,
         )}
         {...props}
       >
         {children}
-        <ChevronDownIcon
-          data-slot="accordion-trigger-icon"
-          className="pointer-events-none self-center shrink-0 group-aria-expanded/accordion-trigger:hidden"
-        />
-        <ChevronUpIcon
-          data-slot="accordion-trigger-icon"
-          className="pointer-events-none self-center hidden shrink-0 group-aria-expanded/accordion-trigger:inline"
-        />
+        {actions === undefined && (
+          <>
+            <ChevronDownIcon
+              data-slot="accordion-trigger-icon"
+              className="pointer-events-none self-center shrink-0 group-aria-expanded/accordion-trigger:hidden"
+            />
+            <ChevronUpIcon
+              data-slot="accordion-trigger-icon"
+              className="pointer-events-none self-center hidden shrink-0 group-aria-expanded/accordion-trigger:inline"
+            />
+          </>
+        )}
       </AccordionPrimitive.Trigger>
-      {/* Rendered as a Header sibling, NOT inside AccordionPrimitive.Trigger —
-          Trigger renders a native <button>, so nesting another interactive
-          element (e.g. a <Button>) inside it produces invalid
-          `<button> cannot be a descendant of <button>` HTML and hydration
-          errors. It also keeps the action clickable without needing
-          `e.stopPropagation()` to avoid toggling the accordion. */}
+      {actions !== undefined && (
+        <>
+          <div className="flex shrink-0 items-center gap-1">{actions}</div>
+          <AccordionTriggerChevron triggerRef={triggerRef} className="mx-3" />
+        </>
+      )}
       {postIconChildren}
     </AccordionPrimitive.Header>
   );
 }
+
+/** Duration of `AccordionContent`'s height transition — its `duration-200` class. */
+export const ACCORDION_TRANSITION_MS = 200;
 
 /**
  * The collapsible panel.
@@ -101,4 +159,4 @@ function AccordionContent({ className, children, ...props }: AccordionPrimitive.
   );
 }
 
-export { Accordion, AccordionItem, AccordionTrigger, AccordionContent };
+export { Accordion, AccordionItem, AccordionTrigger, AccordionTriggerChevron, AccordionContent };

@@ -19,6 +19,11 @@ import { UploadField } from "./upload";
 import { GlobalConfig } from "../globals";
 import type { VexResourceSlug } from "../types/generated";
 import { VexVersionStatus } from "../versions";
+import { TabsField } from "./ui/tabs";
+import { CollapsibleField } from "./ui/collapsible";
+import { RowField } from "./ui/row";
+import { UIField } from "./ui/ui";
+import { ADMIN_FIELDS } from "./constants";
 
 export * from "./text/types";
 export * from "./email/types";
@@ -27,6 +32,11 @@ export * from "./json/types";
 export * from "./number/types";
 export * from "./checkbox/types";
 export * from "./blocks/types";
+export * from "./ui/types";
+export * from "./ui/tabs/types";
+export * from "./ui/collapsible/types";
+export * from "./ui/row/types";
+export * from "./ui/ui/types";
 
 /**
  * BaseFieldMeta - empty object
@@ -84,7 +94,37 @@ export type AdminField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> =
   | BlocksField<VexResourceSlug, TFieldMeta>
   | GroupField<VexResourceSlug, TFieldMeta>
   | RichTextField<VexResourceSlug, TFieldMeta>
-  | JsonField<VexResourceSlug, TFieldMeta>;
+  | JsonField<VexResourceSlug, TFieldMeta>
+  | TabsField<VexResourceSlug, TFieldMeta>
+  | CollapsibleField<VexResourceSlug, TFieldMeta>
+  | RowField<VexResourceSlug, TFieldMeta>
+  | UIField<VexResourceSlug, TFieldMeta>;
+
+/**
+ * Every `AdminFieldType` registered with `kind: "data"` in `ADMIN_FIELDS` —
+ * computed from `ADMIN_FIELDS`, never hand-listed, so it cannot drift.
+ */
+export type DataFieldType = {
+  [K in keyof typeof ADMIN_FIELDS]: (typeof ADMIN_FIELDS)[K]["kind"] extends "data"
+    ? (typeof ADMIN_FIELDS)[K]["type"]
+    : never;
+}[keyof typeof ADMIN_FIELDS];
+
+/** Every `AdminFieldType` registered with `kind: "ui"` in `ADMIN_FIELDS`. */
+export type UIFieldType = {
+  [K in keyof typeof ADMIN_FIELDS]: (typeof ADMIN_FIELDS)[K]["kind"] extends "ui"
+    ? (typeof ADMIN_FIELDS)[K]["type"]
+    : never;
+}[keyof typeof ADMIN_FIELDS];
+
+/** The data-field half of {@link AdminField} — what `getDataFields` returns. */
+export type AdminDataField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> = Extract<
+  AdminField<TFieldMeta>,
+  { type: DataFieldType }
+>;
+
+/** The UI-field half of {@link AdminField} — `tabs`/`collapsible`/`row`/`ui`. */
+export type AdminUIField = Extract<AdminField, { type: UIFieldType }>;
 
 /**
  * Props passed to field input components rendered in the document edit form.
@@ -163,7 +203,7 @@ export interface CellRow<TData extends TDocument = TDocument> {
  * @see {@link FieldComponentMap} for how components are registered
  */
 export interface CellComponentProps<
-  TField extends AdminField = AdminField,
+  TField extends AdminDataField = AdminDataField,
   TData extends TDocument = TDocument,
   TCollectionConfig extends CollectionConfig = CollectionConfig,
 > {

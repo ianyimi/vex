@@ -1,5 +1,10 @@
 import type { DocumentByResourceSlug, VexMutationCtx, VexResourceSlug } from "../types/generated";
+import type { FieldConditionProps } from "./ui/types";
 import type { VexCallbackApi } from "../api/server";
+import type {
+  ComponentContributionInput,
+  ComponentOverrideInput,
+} from "../components/types";
 
 /**
  * Content alignment for data table cells.
@@ -214,7 +219,7 @@ export function fieldValidator<
  *   hidden:        false,   // field is visible in the admin form
  *   readOnly:      false,   // field is editable by default
  *   position:      "main",  // placed in the main content column, not the sidebar
- *   width:         "full",  // spans the full form width, not half
+ *   width: "100%",  // spans the full form width, not half
  *   cellAlignment: "left",  // text aligned left in data table cells
  * }
  * ```
@@ -222,7 +227,7 @@ export function fieldValidator<
  * @example
  * ```ts
  * // Basic usage — all defaults applied
- * title: text({ admin: { width: "half" } })
+ * title: text({ admin: { width: "50%" } })
  *
  * // Sidebar metadata field
  * publishedAt: date({
@@ -247,7 +252,51 @@ export function fieldValidator<
  *
  * @see {@link FieldAdminConfig} for the resolved type after defaults are applied
  */
-export interface FieldAdminConfigInput {
+/**
+ * Per-field override and additive contribution slots (S1/S6). Every field type inherits this —
+ * none redeclare their own `admin` property, so `text({ admin: { components: {...} } })` works
+ * identically for every field factory without per-type edits.
+ *
+ * Experimental: breaking changes are still possible before this stabilizes.
+ */
+export interface FieldSlotComponentsInput<
+  TComponent extends ComponentHKT = ComponentHKT,
+> {
+  /** Override chain for this field instance's input component (S6). Composed with the root per-type `fields.<type>.Input` chain and the built-in — see `@vexcms/react`'s `resolveFieldInputComponent`. */
+  Input?: ComponentOverrideInput<TComponent, unknown>[];
+  /** Override chain for this field instance's data-table cell component. Same composition as `Input`. */
+  Cell?: ComponentOverrideInput<TComponent, unknown>[];
+  /** Override chain for this field instance's label. No built-in to override yet (step 11's design note). */
+  Label?: ComponentOverrideInput<TComponent, unknown>[];
+  /** Override chain for this field instance's description. No built-in to override yet. */
+  Description?: ComponentOverrideInput<TComponent, unknown>[];
+  /** Additive contributions rendered before this field's resolved input. */
+  beforeInput?: ComponentContributionInput<TComponent, unknown>[];
+  /** Additive contributions rendered after this field's resolved input. */
+  afterInput?: ComponentContributionInput<TComponent, unknown>[];
+}
+
+/**
+ * Admin-panel configuration accepted on a field factory's `admin` option — visibility,
+ * conditional display, editability, layout position/width, placeholder, cell alignment,
+ * and per-field slot overrides, all optional and defaulted when resolved.
+ *
+ * @typeParam TCollectionSlug - The collection (or global) `condition`'s `data` is typed against.
+ * @typeParam TComponent - The framework component HKT the slot overrides are typed against.
+ */
+export interface FieldAdminConfigInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TComponent extends ComponentHKT = ComponentHKT,
+> {
+  /**
+   * Shows the field only while this returns `true`; a hidden field also skips
+   * `required` and `validate()`. A condition that throws counts as met.
+   *
+   * Declared with method syntax so the parameter is checked bivariantly: a
+   * field authored for one collection stays assignable to the generic field
+   * unions the admin views hold. To author a condition separately, type it as `FieldCondition`.
+   */
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
   /**
    * Hide this field from the admin form.
    * Hidden fields are still stored in the database.
@@ -272,14 +321,13 @@ export interface FieldAdminConfigInput {
    */
   position?: "main" | "sidebar";
   /**
-   * Width of the field within its row.
+   * Width of the field within its row, as any CSS width (`"50%"`, `"240px"`).
+   * A `row()` lays its children out with flex-wrap, sharing a line when their
+   * widths allow; below the `sm` breakpoint every field is full width.
    *
-   * - `"full"` — spans the full width
-   * - `"half"` — spans half the width (two fields per row)
-   *
-   * Default: `"full"`
+   * Default: `"100%"`
    */
-  width?: "full" | "half";
+  width?: string;
   /**
    * Placeholder text shown in the input when empty.
    */
@@ -288,30 +336,51 @@ export interface FieldAdminConfigInput {
    * Content alignment in data table cells. 'left' | 'right' | 'center'
    */
   cellAlignment?: Alignment;
+  /**
+   * Per-field slot overrides and additive contributions (S1/S6). Omitted entirely for a field
+   * with no customization — resolves to `{}` (every list empty).
+   *
+   * Experimental: breaking changes are still possible before this stabilizes.
+   */
+  components?: FieldSlotComponentsInput<TComponent>;
 }
 
 /**
  * Resolved admin configuration for a field, returned after defaults are applied.
  *
  * Properties with defaults (`hidden`, `readOnly`, `position`, `width`, `cellAlignment`)
- * are always present. Properties that are meaningless when absent (`placeholder`)
- * remain optional — `undefined` means the user did not configure them.
+ * are always present. Properties that are meaningless when absent (`placeholder`,
+ * `condition`) remain optional — `undefined` means the user did not configure them.
  *
  * @see {@link FieldAdminConfigInput} for the user-facing input type
  */
-export interface FieldAdminConfig {
+export interface FieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TComponent extends ComponentHKT = ComponentHKT,
+> {
+  /** Shows the field only while this returns `true`. @see {@link FieldAdminConfigInput.condition} */
+  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
   /** Whether the field is hidden from the admin form. */
   hidden: boolean;
   /** Whether the field is read-only in the admin form. */
   readOnly: boolean;
   /** Position of the field in the form layout — `"main"` or `"sidebar"`. */
   position: "main" | "sidebar";
-  /** Width of the field within its row — `"full"` or `"half"`. */
-  width: "full" | "half";
+  /** Width of the field within its row, any CSS width — e.g. `"100%"`, `"50%"`, `"240px"`. */
+  width: string;
   /** Text alignment for this field's column in the data table. */
   cellAlignment: Alignment;
   /** Placeholder text shown in the input when empty. */
   placeholder?: string;
+  /** Resolved per-field slot overrides — always present, every list defaulted to `[]` by `resolveFieldComponents`. */
+  components: {
+    Input: ComponentOverrideInput<TComponent, unknown>[];
+    Cell: ComponentOverrideInput<TComponent, unknown>[];
+    Label: ComponentOverrideInput<TComponent, unknown>[];
+    Description: ComponentOverrideInput<TComponent, unknown>[];
+    beforeInput: ComponentContributionInput<TComponent, unknown>[];
+    afterInput: ComponentContributionInput<TComponent, unknown>[];
+  };
 }
 
 /**
@@ -362,7 +431,7 @@ export interface BaseFieldInput<
    */
   defaultValue?: unknown;
   /** Admin UI configuration for this field. */
-  admin?: FieldAdminConfigInput;
+  admin?: FieldAdminConfigInput<TCollectionSlug>;
   /**
    * Create a database index on this field.
    * The string value becomes the index name in Convex.
@@ -416,7 +485,7 @@ export interface BaseField<
    */
   defaultValue?: unknown;
   /** Resolved admin UI configuration with all defaults applied. */
-  admin: FieldAdminConfig;
+  admin: FieldAdminConfig<TCollectionSlug>;
   /**
    * Semantic description of the field. Used in three places:
    * 1. Helper text rendered below the field input in the admin form UI.
@@ -450,4 +519,71 @@ export interface BaseField<
    * @see {@link FieldValidate}
    */
   validate?(props: FieldValidateProps<TCollectionSlug>): Promise<void> | void;
+}
+
+/**
+ * The subset of {@link FieldAdminConfigInput} meaningful for a `kind: "ui"`
+ * field — no stored value, so no `placeholder`/`cellAlignment`. `collapsible()`
+ * and `ui()` extend it with their own extra options; `row()` and `tabs()` use
+ * it as-is.
+ */
+export interface UIFieldAdminInput<TCollectionSlug extends VexResourceSlug = VexResourceSlug>
+  extends Pick<
+    FieldAdminConfigInput<TCollectionSlug>,
+    "condition" | "hidden" | "readOnly" | "position" | "width"
+  > {}
+
+/** Resolved counterpart of {@link UIFieldAdminInput} after defaults are applied. @see {@link UIFieldAdminInput} for the user-facing input type */
+export interface UIFieldAdminConfig<TCollectionSlug extends VexResourceSlug = VexResourceSlug>
+  extends Pick<
+    FieldAdminConfig<TCollectionSlug>,
+    "condition" | "hidden" | "readOnly" | "position" | "width"
+  > {}
+
+/**
+ * Properties shared by all `kind: "ui"` field types (`tabs`, `collapsible`,
+ * `row`, `ui`) — the UI-field counterpart to {@link BaseFieldInput}, with
+ * every member meaningless for a field that stores no value removed.
+ *
+ * @see {@link BaseUIField} for the resolved type after defaults are applied
+ */
+export interface BaseUIFieldInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+> extends Omit<
+    BaseFieldInput<TCollectionSlug, TFieldMeta>,
+    | "required"
+    | "defaultValue"
+    | "index"
+    | "indexDraftStatus"
+    | "interfaceDescription"
+    | "validate"
+    | "admin"
+  > {
+  /** Admin UI configuration for this UI field. */
+  admin?: UIFieldAdminInput<TCollectionSlug>;
+}
+
+/**
+ * Resolved base UI-field definition, after defaults are applied by the
+ * field config function.
+ *
+ * @see {@link BaseUIFieldInput} for the user-facing input type
+ */
+export interface BaseUIField<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+  TFieldMeta extends {} = {},
+> extends Omit<
+    BaseField<TCollectionSlug, TFieldMeta>,
+    | "required"
+    | "defaultValue"
+    | "index"
+    | "indexDraftStatus"
+    | "interfaceDescription"
+    | "interfaceType"
+    | "validate"
+    | "admin"
+  > {
+  /** Resolved admin UI configuration with all defaults applied. */
+  admin: UIFieldAdminConfig<TCollectionSlug>;
 }

@@ -382,24 +382,23 @@ renderer that, today, ignores four of the six declared `admin` options. It also 
     call sites in `DashboardView`/`GlobalsListView` (Step 17) keep their existing `<a>` tags;
     only the URL they point at changes.
 
-33. **No shared generic `admin` carrying a `TCollectionSlug`/`condition` on the base field type;
-    each field type (every data type and the 4 UI types) declares its own
-    `<Type>FieldAdminInput<TCollectionSlug>`/`<Type>FieldAdminConfig<TCollectionSlug>` extending
-    the non-generic `FieldAdminConfigInput`/`FieldAdminConfig`, and overrides the inherited
-    `admin?: FieldAdminConfigInput` property with its own narrower type — the exact pattern
-    `RelationshipFieldAdminInput`/`RelationshipFieldAdminConfig` already used before this spec.**
-    Why: `BaseFieldInput<TCollectionSlug, TFieldMeta>` is a plain (non-`out`) generic interface —
-    TypeScript's structural variance check on a plain generic property rejects a field type whose
-    own `admin` is narrower than its base type's `admin` unless every field redeclares `admin`
-    with its own compatible type, same as `RelationshipField` already had to. Making
-    `FieldAdminConfigInput` itself generic over `TCollectionSlug` (so every field could inherit
-    `admin.condition` for free) was tried and rejected: it forces `BaseFieldInput`/`BaseField` to
-    declare `admin` with `out` variance to keep assignability, and `out` on a property whose type
-    is a function parameter (`condition(props: FieldConditionProps<TCollectionSlug>)`) is
-    contravariant in `TCollectionSlug`, not covariant — `out` lies about that, so every call site
-    needed either a real cast or a `@ts-expect-error`, which AP-010 forbids for a real type error.
-    Declaring a per-type `admin` override instead keeps `BaseFieldInput`/`BaseField === AdminField`
-    accurate without a single cast.
+33. **`admin.condition` lives on the shared base: `FieldAdminConfigInput<TCollectionSlug,
+    TComponent>`/`FieldAdminConfig<TCollectionSlug, TComponent>` (slug first) declare it, and
+    `BaseFieldInput`/`BaseField`/`BaseUIFieldInput`/`BaseUIField` pass their own
+    `TCollectionSlug` into `admin`.** A field type declares its own
+    `<Type>FieldAdminInput`/`<Type>FieldAdminConfig` only when it adds options (`mask` on
+    text/email/number/url, `defaultCollapsed` on group/blocks/collapsible, `searchable`/`display`
+    on select, `components.preview` on relationship, `components` on `ui()`), and those extend
+    the base with the SAME slug (`extends FieldAdminConfigInput<TCollectionSlug>`); every other
+    field inherits `admin` unchanged. `condition` keeps method syntax, so a field authored for
+    one collection (`TextField<"pages">`) stays assignable to `BaseField`/`AdminField`.
+    Why: an earlier attempt made the base generic but left the per-type admin interfaces
+    extending it with the DEFAULT slug while redeclaring `condition` with their own `T` —
+    TS2430 on every one of them, because `FieldConditionProps<T>` (generic `T`) and
+    `FieldConditionProps<string>` are not provably related in either direction, so even
+    method bivariance cannot reconcile them. Passing the slug through removes every error with
+    no cast (verified: core/react/apps typecheck, and a probe assigning `TextField<"pages">` to
+    `BaseField`, `AdminField` and `AdminField[]` compiles).
 
 ## Out of Scope
 
@@ -2192,15 +2191,18 @@ describe("object-shaped item id", () => {
       items: group({ fields: { title: text({ required: true }) } }),
     });
     const validator = arrayFieldToValidator({ field });
+    // array()'s own `required` defaults to `false` — applyBaseValidators wraps
+    // the whole `v.array(...)` in an outer `v.optional(...)` (P-023: the
+    // earlier draft of this test omitted the outer wrap).
     expect(validator).toBe(
-      "v.array(v.object({ id: v.optional(v.string()), title: v.string() }))",
+      "v.optional(v.array(v.object({ id: v.optional(v.string()), title: v.string() })))",
     );
   });
 
   it("does not add an id to an array of scalar items", () => {
     const field = array({ items: text() });
     const validator = arrayFieldToValidator({ field });
-    expect(validator).toBe("v.array(v.optional(v.string()))");
+    expect(validator).toBe("v.optional(v.array(v.string()))");
   });
 });
 ```
@@ -8687,7 +8689,7 @@ Verify: pnpm --filter @vexcms/core test -- collections && pnpm --filter @vexcms/
 ### Step 6 — UI fields as real fields: `tabs()`, `collapsible()`, `row()`, `ui()`, `getDataFields()` [agent]
 
 - [ ] `packages/core/src/fields/constants.ts` — `ADMIN_FIELDS.tabs`/`.collapsible`/`.row`/`.ui`, each `kind: "ui"`
-- [ ] `packages/core/src/fields/baseTypes.ts` — `width: string` (default `"100%"`); `"half"`/`"full"` literal union removed; `FieldAdminConfigInput`/`FieldAdminConfig` stay NON-generic with no `condition` (every data field type declares its own `<Type>FieldAdminInput<TCollectionSlug>` with `condition`, precedent: `RelationshipFieldAdminInput`); new NON-generic `UIKindFieldAdminConfigInput`/`UIKindFieldAdminConfig` (`Pick` of hidden/readOnly/position/width, no `condition`) and `BaseUIFieldInput`/`BaseUIField` (= `BaseFieldInput`/`BaseField` minus `required`/`defaultValue`/`index`/`indexDraftStatus`/`interfaceDescription`/`validate`/`interfaceType`, `admin` replaced with the non-generic UI-kind bases) for the 4 UI field types
+- [ ] `packages/core/src/fields/baseTypes.ts` — `width: string` (default `"100%"`); `"half"`/`"full"` literal union removed; `FieldAdminConfigInput`/`FieldAdminConfig` stay NON-generic with no `condition` (every data field type declares its own `<Type>FieldAdminInput<TCollectionSlug>` with `condition`, precedent: `RelationshipFieldAdminInput`); new NON-generic `UIFieldAdminInput`/`UIFieldAdminConfig` (`Pick` of hidden/readOnly/position/width, no `condition`) and `BaseUIFieldInput`/`BaseUIField` (= `BaseFieldInput`/`BaseField` minus `required`/`defaultValue`/`index`/`indexDraftStatus`/`interfaceDescription`/`validate`/`interfaceType`, `admin` replaced with the non-generic UI-kind bases) for the 4 UI field types
 - [ ] `packages/core/src/fields/ui/types.ts` — `FieldCondition<TCollectionSlug>`, `FieldConditionProps<TCollectionSlug>` (typed `data: DocumentByResourceSlug<TCollectionSlug>`), `DataFieldSlug<TFields>`
 - [ ] `packages/core/src/fields/ui/utils.ts` + `utils.test.ts` — `andFieldConditions`, `isFieldConditionMet` (casts the method-shorthand `condition` to a plain shape, mirroring `validateFields`'s existing cast), `hasFieldConditions`, `resolveRowWidths`, `getDataFields` (AND-s `condition`, ORs `hidden`/`readOnly` from each UI container into every field it flattens)
 - [ ] `packages/core/src/fields/ui/tabs/` — `types.ts`, `config.ts`, `index.ts` + `config.test.ts` — `tabs<TCollectionSlug, TFieldMeta extends {} = {}, const TTabs>()`
@@ -8786,6 +8788,8 @@ documentation value, not a type derived from it. `AdminFieldType`, `AdminFieldVa
 2 edits.
 
 **1 — `FieldAdminConfigInput`/`FieldAdminConfig` stay NON-generic (no `TCollectionSlug` parameter, no `condition` member — `condition` lives on each DATA field type's own per-type admin input instead, see below); `width` property and doc blocks — full replacement of both interfaces.**
+
+> **Superseded while dogfooding (Step 18 note 25, Design Decision 33):** `condition` now lives on `FieldAdminConfigInput`/`FieldAdminConfig`, which are generic over `TCollectionSlug` (first) and `TComponent`. The rejection below came from per-type interfaces extending the base with the default slug, not from variance.
 
 `condition` is NOT added here. Threading it onto the shared, non-generic `FieldAdminConfigInput`/`FieldAdminConfig` was tried and reverted: `BaseFieldInput<TCollectionSlug, TFieldMeta>`/`BaseField<TCollectionSlug, TFieldMeta>` are themselves generic over `TCollectionSlug`, and making `admin` reference a `FieldAdminConfigInput<TCollectionSlug>` thereby forces EVERY concrete field interface that extends `BaseField<TCollectionSlug>` (`TextField<TCollectionSlug, …>`, `NumberField<TCollectionSlug, …>`, …) to re-state that exact same type parameter in its own `extends` clause in a way TypeScript's structural variance checker cannot reconcile across the whole union — every `XField<T> extends BaseField<T>` fails to compile with TS2430 ("interface incorrectly extends interface") the moment two sibling field interfaces disagree on how `T` flows into a shared generic member. `FieldAdminConfigInput`/`FieldAdminConfig` therefore stay exactly as wide as they are today — `placeholder`/`cellAlignment` unchanged, only `width`'s type and default change in this step. `condition` is introduced per DATA field type instead (precedent already in the repo: `relationship/types.ts`'s `RelationshipFieldAdminInput<TTargetSlug, TComponent> extends FieldAdminConfigInput`) — see the per-field-type edits below this file's section.
 
@@ -8903,21 +8907,21 @@ export interface FieldAdminConfig {
 }
 ````
 
-**2 — new `UIKindFieldAdminConfigInput`/`UIKindFieldAdminConfig` and `BaseUIFieldInput`/`BaseUIField`, appended after `BaseField`.** Every `kind: "ui"` field (`tabs`/`collapsible`/`row`/`ui`) has no stored value, so it has no `required`/`defaultValue`/`index`/`indexDraftStatus`/`interfaceDescription`/`validate`/`interfaceType` — those are omitted via `Omit<…>` rather than hand-copying the remaining members, so a future `BaseFieldInput`/`BaseField` addition is inherited automatically instead of silently missing from UI fields. `UIKindFieldAdminConfigInput`/`Config` stay NON-generic for the same TS2430 reason `FieldAdminConfigInput`/`Config` do — `condition` is added per UI field TYPE instead (`TabsFieldAdminInput`, `CollapsibleFieldAdminInput`, `RowFieldAdminInput`, `UIFieldAdminInput`, below), each of which IS generic over `TCollectionSlug`. Named `UIKindFieldAdminConfigInput`/`Config` (not `UIFieldAdminConfigInput`/`Config`) to avoid colliding with the `ui()` FIELD's own per-type admin wrapper (`fields/ui/ui/types.ts`, below) — "UI-kind" (the `kind: "ui"` half of `ADMIN_FIELDS`) vs. the `ui()` field specifically.
+**2 — new `UIFieldAdminInput`/`UIFieldAdminConfig` and `BaseUIFieldInput`/`BaseUIField`, appended after `BaseField`.** Every `kind: "ui"` field (`tabs`/`collapsible`/`row`/`ui`) has no stored value, so it has no `required`/`defaultValue`/`index`/`indexDraftStatus`/`interfaceDescription`/`validate`/`interfaceType` — those are omitted via `Omit<…>` rather than hand-copying the remaining members, so a future `BaseFieldInput`/`BaseField` addition is inherited automatically instead of silently missing from UI fields. `UIFieldAdminInput`/`UIFieldAdminConfig` stay NON-generic for the same TS2430 reason `FieldAdminConfigInput`/`FieldAdminConfig` do — `condition` is added per UI field TYPE instead (`TabsFieldAdminInput`, `CollapsibleFieldAdminInput`, `RowFieldAdminInput`, and `ui()`'s inline `admin` intersection, below), each generic over `TCollectionSlug`. `ui()` declares no named admin type of its own: its `UIFieldInput.admin`/`UIField.admin` are `UIFieldAdminInput & { components; condition? }` / `UIFieldAdminConfig & { … }` inline.
 
 ```ts
 /**
  * The subset of {@link FieldAdminConfigInput} meaningful for a `kind: "ui"`
  * field — no stored value, so no `placeholder`/`cellAlignment`. Every UI
  * field's own per-type admin input (`TabsFieldAdminInput`,
- * `CollapsibleFieldAdminInput`, `RowFieldAdminInput`, `UIFieldAdminInput`)
- * extends this and adds its own `condition`.
+ * `CollapsibleFieldAdminInput`, `RowFieldAdminInput`, and `ui()`'s inline
+ * admin intersection) extends this and adds its own `condition`.
  */
-export interface UIKindFieldAdminConfigInput
+export interface UIFieldAdminInput
   extends Pick<FieldAdminConfigInput, "hidden" | "readOnly" | "position" | "width"> {}
 
-/** @see {@link UIKindFieldAdminConfigInput} for the user-facing input type */
-export interface UIKindFieldAdminConfig
+/** @see {@link UIFieldAdminInput} for the user-facing input type */
+export interface UIFieldAdminConfig
   extends Pick<FieldAdminConfig, "hidden" | "readOnly" | "position" | "width"> {}
 
 /**
@@ -8941,7 +8945,7 @@ export interface BaseUIFieldInput<
     | "admin"
   > {
   /** Admin UI configuration for this UI field. */
-  admin?: UIKindFieldAdminConfigInput;
+  admin?: UIFieldAdminInput;
 }
 
 /**
@@ -8965,7 +8969,7 @@ export interface BaseUIField<
     | "admin"
   > {
   /** Resolved admin UI configuration with all defaults applied. */
-  admin: UIKindFieldAdminConfig;
+  admin: UIFieldAdminConfig;
 }
 ```
 
@@ -8975,6 +8979,8 @@ like a data field, with no `kind` narrowing or cast; that only type-checks if `B
 `meta: TFieldMeta` member `BaseField` does.
 
 `admin.condition` is wholly NEW in this spec — the current repo has no `admin.condition` at all (confirmed: `baseTypes.ts`'s present `FieldAdminConfigInput`/`FieldAdminConfig` list only `hidden`/`readOnly`/`position`/`width`/`placeholder`/`cellAlignment`). It is NOT added to the shared, non-generic `FieldAdminConfigInput`/`FieldAdminConfig` — every DATA field type below instead declares its own `<Type>FieldAdminInput<TCollectionSlug>`/`<Type>FieldAdminConfig<TCollectionSlug>` (extending `FieldAdminConfigInput`/`FieldAdminConfig`, or its own pre-existing per-type admin type for `group`/`blocks`/`relationship`) with a method-shorthand `condition?(props: FieldConditionProps<TCollectionSlug>): boolean`, and overrides `admin?:`/`admin:` on its own `<Type>FieldInput`/`<Type>Field` with it — the exact pattern `relationship/types.ts`'s `RelationshipFieldAdminInput` already uses for `components`. `condition` is still declared via METHOD-SHORTHAND syntax for the same bivariance reason `BaseFieldInput`'s existing `validate?(props: FieldValidateProps<TCollectionSlug>): …` already is: a `TextField<"pages", …>` (built via `text<"pages">({ admin: { condition } })`) must stay structurally assignable to the wide `AdminField` union (`TextField<VexResourceSlug, …>`) — a plain arrow-typed property would be checked CONTRAVARIANTLY under `strictFunctionTypes` and reject that exact assignment. See each field type's own `types.ts` edit, below.
+
+> **Superseded (Step 18 note 25):** the per-type `condition` declarations below were folded into the base admin types; per-type admin interfaces now exist only where a field adds options of its own.
 
 
 #### packages/core/src/fields/ui/types.ts
@@ -9262,15 +9268,15 @@ function flattenFields(props: {
   for (const [key, field] of Object.entries(props.fields)) {
     if (ADMIN_FIELDS[field.type].kind === "data") {
       const condition = andFieldConditions({
-        conditions: [props.inherited, field.admin.condition],
+        conditions: [props.inherited, field.admin?.condition],
       });
       assign(key, {
         ...field,
         admin: {
           ...field.admin,
           condition,
-          hidden: props.inheritedHidden || field.admin.hidden,
-          readOnly: props.inheritedReadOnly || field.admin.readOnly,
+          hidden: props.inheritedHidden || field.admin?.hidden,
+          readOnly: props.inheritedReadOnly || field.admin?.readOnly,
         },
       } as AdminDataField);
       continue;
@@ -9281,23 +9287,23 @@ function flattenFields(props: {
       case ADMIN_FIELDS.row.type:
       case ADMIN_FIELDS.collapsible.type: {
         const condition = andFieldConditions({
-          conditions: [props.inherited, field.admin.condition],
+          conditions: [props.inherited, field.admin?.condition],
         });
         merge(
           flattenFields({
             fields: field.fields,
             inherited: condition,
-            inheritedHidden: props.inheritedHidden || field.admin.hidden,
-            inheritedReadOnly: props.inheritedReadOnly || field.admin.readOnly,
+            inheritedHidden: props.inheritedHidden || field.admin?.hidden,
+            inheritedReadOnly: props.inheritedReadOnly || field.admin?.readOnly,
           }),
         );
         continue;
       }
       case ADMIN_FIELDS.tabs.type: {
-        const tabsHidden = props.inheritedHidden || field.admin.hidden;
-        const tabsReadOnly = props.inheritedReadOnly || field.admin.readOnly;
+        const tabsHidden = props.inheritedHidden || field.admin?.hidden;
+        const tabsReadOnly = props.inheritedReadOnly || field.admin?.readOnly;
         const tabsCondition = andFieldConditions({
-          conditions: [props.inherited, field.admin.condition],
+          conditions: [props.inherited, field.admin?.condition],
         });
         for (const tab of field.tabs) {
           const tabCondition = andFieldConditions({
@@ -9343,7 +9349,7 @@ New file.
 
 ```ts
 import type { VexResourceSlug } from "../../../types/generated";
-import type { BaseUIField, BaseUIFieldInput, UIKindFieldAdminConfig, UIKindFieldAdminConfigInput } from "../../baseTypes";
+import type { BaseUIField, BaseUIFieldInput, UIFieldAdminConfig, UIFieldAdminInput } from "../../baseTypes";
 import type { AdminField } from "../../types";
 import type { FieldConditionProps } from "../types";
 
@@ -9392,12 +9398,12 @@ export interface TabInput<
 
 /**
  * Per-type `admin` input for `tabs()` — adds `condition`; everything else is
- * the shared UI-kind set. `UIKindFieldAdminConfigInput` is non-generic (see
+ * the shared UI-kind set. `UIFieldAdminInput` is non-generic (see
  * `baseTypes.ts`), so `condition` is declared directly here instead.
  */
 export interface TabsFieldAdminInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
-> extends UIKindFieldAdminConfigInput {
+> extends UIFieldAdminInput {
   condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
 }
 
@@ -9414,7 +9420,7 @@ export interface TabsFieldInput<
 /** Resolved per-type `admin` for `tabs()`. */
 export interface TabsFieldAdminConfig<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
-> extends UIKindFieldAdminConfig {
+> extends UIFieldAdminConfig {
   condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
 }
 
@@ -9481,7 +9487,7 @@ export function tabs<
     type: ADMIN_FIELDS.tabs.type,
     label: props.label ?? "",
     description: props.description,
-    meta: { ...props.meta },
+    meta: { ...props.meta } as TFieldMeta,
     tabs: props.tabs,
     admin: {
       hidden: props.admin?.hidden ?? false,
@@ -9513,6 +9519,8 @@ import { tabs } from "./config";
 import { text } from "../../text/config";
 import { defineCollection } from "../../../collections/config";
 import { getDataFields } from "../utils";
+import type { AdminDataField } from "../../types";
+import type { DataFieldSlug } from "../types";
 
 describe("tabs()", () => {
   it("throws when given no tabs", () => {
@@ -9548,13 +9556,23 @@ describe("tabs() key inference", () => {
       },
     });
 
-    expect(posts.fields.title).toBeDefined();
-    expect(posts.fields.body).toBeDefined();
-    expect(posts.fields.seo).toBeDefined();
+    // `CollectionConfig.fields` stays the RAW `TFields` (UI entries
+    // included — see `collections/types.ts` below), so key inference is
+    // exercised against `getDataFields`'s flattened result, cast to its
+    // compile-time key set via `DataFieldSlug<typeof posts.fields>` — the
+    // runtime flattening and the type-level key computation are two
+    // independent mechanisms that happen to agree.
+    const dataFields = getDataFields({ fields: posts.fields }) as Record<
+      DataFieldSlug<typeof posts.fields>,
+      AdminDataField
+    >;
+    expect(dataFields.title).toBeDefined();
+    expect(dataFields.body).toBeDefined();
+    expect(dataFields.seo).toBeDefined();
     // @ts-expect-error — "info" (the tabs() field's own key) is never a data key
-    expect(posts.fields.info).toBeUndefined();
+    expect(dataFields.info).toBeUndefined();
     // @ts-expect-error — "metaTitle" nests under "seo", it isn't hoisted
-    expect(posts.fields.metaTitle).toBeUndefined();
+    expect(dataFields.metaTitle).toBeUndefined();
   });
 });
 ```
@@ -9565,14 +9583,14 @@ New file.
 
 ```ts
 import type { VexResourceSlug } from "../../../types/generated";
-import type { BaseUIField, BaseUIFieldInput, UIKindFieldAdminConfig, UIKindFieldAdminConfigInput } from "../../baseTypes";
+import type { BaseUIField, BaseUIFieldInput, UIFieldAdminConfig, UIFieldAdminInput } from "../../baseTypes";
 import type { AdminField } from "../../types";
 import type { FieldConditionProps } from "../types";
 
 /** Per-type `admin` input for `collapsible()` — adds `defaultCollapsed` and `condition`. */
 export interface CollapsibleFieldAdminInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
-> extends UIKindFieldAdminConfigInput {
+> extends UIFieldAdminInput {
   /** Whether the fieldset starts collapsed. Default: `false`. */
   defaultCollapsed?: boolean;
   condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
@@ -9592,7 +9610,7 @@ export interface CollapsibleFieldInput<
 /** Resolved per-type `admin` for `collapsible()`. */
 export interface CollapsibleFieldAdminConfig<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
-> extends UIKindFieldAdminConfig {
+> extends UIFieldAdminConfig {
   defaultCollapsed: boolean;
   condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
 }
@@ -9654,7 +9672,7 @@ export function collapsible<
     type: ADMIN_FIELDS.collapsible.type,
     label: props.label,
     description: props.description,
-    meta: { ...props.meta },
+    meta: { ...props.meta } as TFieldMeta,
     fields: props.fields,
     admin: {
       hidden: props.admin?.hidden ?? false,
@@ -9717,14 +9735,14 @@ New file.
 
 ```ts
 import type { VexResourceSlug } from "../../../types/generated";
-import type { BaseUIField, BaseUIFieldInput, UIKindFieldAdminConfig, UIKindFieldAdminConfigInput } from "../../baseTypes";
+import type { BaseUIField, BaseUIFieldInput, UIFieldAdminConfig, UIFieldAdminInput } from "../../baseTypes";
 import type { AdminField } from "../../types";
 import type { FieldConditionProps } from "../types";
 
 /** Per-type `admin` input for `row()` — adds `condition`. */
 export interface RowFieldAdminInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
-> extends UIKindFieldAdminConfigInput {
+> extends UIFieldAdminInput {
   condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
 }
 
@@ -9740,7 +9758,7 @@ export interface RowFieldInput<
 /** Resolved per-type `admin` for `row()`. */
 export interface RowFieldAdminConfig<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
-> extends UIKindFieldAdminConfig {
+> extends UIFieldAdminConfig {
   condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
 }
 
@@ -9804,7 +9822,7 @@ export function row<
     type: ADMIN_FIELDS.row.type,
     label: props.label ?? "",
     description: props.description,
-    meta: { ...props.meta },
+    meta: { ...props.meta } as TFieldMeta,
     fields: props.fields,
     admin: {
       hidden: props.admin?.hidden ?? false,
@@ -9860,8 +9878,8 @@ import type {
   BaseUIField,
   BaseUIFieldInput,
   ComponentHKT,
-  UIKindFieldAdminConfig,
-  UIKindFieldAdminConfigInput,
+  UIFieldAdminConfig,
+  UIFieldAdminInput,
 } from "../../baseTypes";
 import type { FieldConditionProps } from "../types";
 
@@ -9888,42 +9906,20 @@ export interface UIFieldCellProps<
   data: DocumentByResourceSlug<TCollectionSlug>;
 }
 
-/**
- * Per-type `admin` input for `ui()` — adds the required `components` and
- * `condition`; `width`/`hidden`/`readOnly` are inherited unchanged from
- * {@link UIKindFieldAdminConfigInput}.
- */
-export interface UIFieldAdminInput<
-  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
-  TComponent extends ComponentHKT = ComponentHKT,
-> extends UIKindFieldAdminConfigInput {
-  components: {
-    /** Rendered in the admin edit form at this field's position. */
-    Field: ApplyComponent<TComponent, UIFieldComponentProps<TCollectionSlug>>;
-    /** When set, the list view shows a column rendering this. Omit to show no column. */
-    Cell?: ApplyComponent<TComponent, UIFieldCellProps<TCollectionSlug>>;
-  };
-  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
-}
-
 export interface UIFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
   TComponent extends ComponentHKT = ComponentHKT,
 > extends BaseUIFieldInput<TCollectionSlug, TFieldMeta> {
-  admin: UIFieldAdminInput<TCollectionSlug, TComponent>;
-}
-
-/** Resolved per-type `admin` for `ui()`. */
-export interface UIFieldAdminConfig<
-  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
-  TComponent extends ComponentHKT = ComponentHKT,
-> extends UIKindFieldAdminConfig {
-  components: {
-    Field: ApplyComponent<TComponent, UIFieldComponentProps<TCollectionSlug>>;
-    Cell?: ApplyComponent<TComponent, UIFieldCellProps<TCollectionSlug>>;
+  admin: UIFieldAdminInput & {
+    components: {
+      /** Rendered in the admin edit form at this field's position. */
+      Field: ApplyComponent<TComponent, UIFieldComponentProps<TCollectionSlug>>;
+      /** When set, the list view shows a column rendering this. Omit to show no column. */
+      Cell?: ApplyComponent<TComponent, UIFieldCellProps<TCollectionSlug>>;
+    };
+    condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
   };
-  condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
 }
 
 export interface UIField<
@@ -9932,7 +9928,13 @@ export interface UIField<
   TComponent extends ComponentHKT = ComponentHKT,
 > extends BaseUIField<TCollectionSlug, TFieldMeta> {
   readonly type: "ui";
-  admin: UIFieldAdminConfig<TCollectionSlug, TComponent>;
+  admin: UIFieldAdminConfig & {
+    components: {
+      Field: ApplyComponent<TComponent, UIFieldComponentProps<TCollectionSlug>>;
+      Cell?: ApplyComponent<TComponent, UIFieldCellProps<TCollectionSlug>>;
+    };
+    condition?(props: FieldConditionProps<TCollectionSlug>): boolean;
+  };
 }
 ```
 
@@ -9976,7 +9978,7 @@ export function ui<
     type: ADMIN_FIELDS.ui.type,
     label: props.label ?? "",
     description: props.description,
-    meta: { ...props.meta },
+    meta: { ...props.meta } as TFieldMeta,
     admin: {
       hidden: props.admin.hidden ?? false,
       readOnly: props.admin.readOnly ?? false,
@@ -10072,7 +10074,7 @@ describe("isFieldConditionMet", () => {
   });
 
   it("evaluates the condition function against data", () => {
-    const field = text({ admin: { condition: ({ data }) => data.published === true } });
+    const field = text({ admin: { condition: ({ data }) => typeof data === "object" && data !== null && "published" in data && data.published === true } });
     expect(isFieldConditionMet({ field, data: { published: true }, siblingData })).toBe(true);
     expect(isFieldConditionMet({ field, data: { published: false }, siblingData })).toBe(false);
   });
@@ -10234,7 +10236,7 @@ describe("getDataFields", () => {
           {
             label: "Content",
             fields: { title: text() },
-            admin: { condition: ({ data }) => data.published === true },
+            admin: { condition: ({ data }) => typeof data === "object" && data !== null && "published" in data && data.published === true },
           },
         ],
       }),
@@ -10251,7 +10253,7 @@ describe("getDataFields", () => {
   it("recursively hoists an unnamed tab nested inside a row", () => {
     const fields = {
       info: tabs({
-        tabs: [{ label: "Content", fields: row({ fields: { a: text(), b: text() } }) }],
+        tabs: [{ label: "Content", fields: { row: row({ fields: { a: text(), b: text() } }) } }],
       }),
     };
     expect(Object.keys(getDataFields({ fields }))).toEqual(["a", "b"]);
@@ -10666,7 +10668,7 @@ export interface CollectionConfig<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
-  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
+  TFields extends Record<string, AdminField> = Record<string, AdminField>,
   TComponent extends ComponentHKT = ComponentHKT,
   TDrafts extends boolean = boolean,
 > {
@@ -10709,7 +10711,7 @@ function populateCollectionFieldMeta<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
-  TFields extends Record<string, AdminField> = Record<string, AdminField>,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
   TComponent extends ComponentHKT = ComponentHKT,
   TDrafts extends boolean = boolean,
 >({
@@ -10876,9 +10878,10 @@ export function collectionConfigToIndexFields(props: { collection: CollectionCon
 Same four edits as `collections/types.ts`, mirrored: `GlobalConfigInput`/`GlobalConfig`'s `TFieldSlug` parameter
 becomes `TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>`;
 `fields: TFields` replaces `fields: Record<TFieldSlug, AdminField<TFieldMeta>>`; no `useAsTitle`/`indexes` exist
-on a global, so there is no `DataFieldSlug` substitution site beyond the `fields` property itself and the
-import. Add `import { AdminField, DataFieldSlug } from "../fields";` if not already present (`DataFieldSlug`
-is imported for symmetry with collections even though this file has no other direct use of it yet).
+on a global, so there is no `DataFieldSlug` substitution site beyond the `fields` property itself.
+Add `import { AdminField } from "../fields";` alongside the existing `ApplyComponent`/`ComponentHKT`
+import — `DataFieldSlug` is NOT imported here: `tsconfig.json`'s `noUnusedLocals` rejects an
+import with no use site in this file (deviates from the "import for symmetry" note below).
 
 #### packages/core/src/globals/config.ts
 
@@ -11305,6 +11308,10 @@ import {
   type SlotId,
 } from "./types";
 
+// `resolve.test.ts` imports `VexComponentConfigError` from this module (not `./types`) to
+// assert thrown errors — re-export it so that import resolves (P-023 correction: the
+// as-specified `./resolve` had no export of the value it imports, only re-exported types).
+export { VexComponentConfigError };
 function toIdArray(value: string | string[] | undefined): string[] {
   if (value === undefined) return [];
   return Array.isArray(value) ? value : [value];
@@ -11590,7 +11597,7 @@ describe("resolveComponentOverrides", () => {
 
 #### packages/core/src/fields/baseTypes.ts (step 7 edits)
 
-2 edits. Everything else in the file (Step 1's `FieldLimit`/`FieldLimitInput`, Step 6's `UIKindFieldAdminConfigInput`/`BaseUIFieldInput`/`BaseUIField` additions) is unchanged. Step 6 does NOT add `condition`
+2 edits. Everything else in the file (Step 1's `FieldLimit`/`FieldLimitInput`, Step 6's `UIFieldAdminInput`/`BaseUIFieldInput`/`BaseUIField` additions) is unchanged. Step 6 does NOT add `condition`
 to `FieldAdminConfigInput`/`FieldAdminConfig` — they stay exactly as non-generic as Step 6 leaves them, just
 gaining this step's `TComponent` parameter and `components` property; `condition` lives on each DATA field
 type's own per-type admin wrapper (Step 6), unaffected by this step.
@@ -12082,6 +12089,50 @@ when H's land, same as `field.label`/`field.description` having no built-in yet.
 `SlotOutlet`'s own `condition` gate (`useSlotConditionData`, in `formData.ts`) is built on
 `useVexForm`, not a new hook — it reads the same form store this step's `useVexForm` already
 exposes, so it needs no document/collection identity to resolve real `data`/`siblingData`.
+
+**Implementation notes — corrections found building this step (P-023).** The code blocks below
+are the design; the following are the actual, minimal deviations required for the repo to
+typecheck/test green, applied here and in the real implementation:
+
+- `CellComponentProps`'s `TField` generic is constrained `extends AdminDataField`, not
+  `AdminField` — `registry.ts`'s `fieldToCellComponent` and `resolveFieldCellComponent.ts` type
+  against `CellComponentProps<AdminDataField>`, not `CellComponentProps<AdminField>` (the latter
+  does not typecheck against the real constraint).
+- `fields/index.tsx`'s edit 1 is an **import + local re-export**
+  (`import { fieldToInputComponent, fieldToCellComponent } from "./registry"; export { … };`),
+  not a bare `export { … } from "./registry"` — `RenderFieldInputComponents` in the same file
+  calls `fieldToInputComponent` locally (its own `fieldInputComponents[dataField.type]` lookup is
+  replaced with `fieldToInputComponent(dataField.type)`), and a bare re-export does not bind a
+  local name. The five existing call sites outside this file that already called the old loose
+  `fieldToInputComponent(field: AdminFieldType)` (`FormGroup.tsx`, `FormBlocks.tsx`,
+  `CollectionEditView.tsx`, `GlobalEditView.tsx`, `MediaCollectionEditView.tsx`) narrow their
+  already-untyped-to-`DataFieldType` field value with `const dataField = field as AdminDataField;`
+  before calling the new, strictly-`DataFieldType`-typed registry function — the same narrowing
+  the deleted map's `field as DataFieldType` cast used to do internally.
+- `resolveFieldInputComponent.ts`/`resolveFieldCellComponent.ts` contain JSX (`<Override {...p}
+  renderDefault={renderDefault} />`) and must be named `.tsx`, not `.ts`; same for
+  `slots/formData.test.ts`, which renders `<AppForm>` in its `withForm` helper — named
+  `formData.test.tsx`.
+- `formData.ts`'s `resolveSiblingData` additionally special-cases a `name` ending in `]` (one
+  block/array item's own path, e.g. `content[2]`, no trailing `.field` segment) — such a name is
+  not a field leaf with a parent to strip to, it already names the item itself, so it resolves
+  directly (`getBy(data, name)`) instead of one level up. Without this, `useSlotConditionData`
+  called with a block/array item's own path (exactly the `blocks.item.actions`/`array.item.actions`
+  use case this step's own JSDoc documents) returns the whole top-level form data as `siblingData`
+  instead of that item's own fields.
+- `SlotOutlet.tsx`'s `contribution.condition` is nominally typed against a resource-specific
+  document union (`FieldConditionProps`'s `TCollectionSlug`, only visible once a project's
+  `GeneratedVexTypes` registry is augmented — the react package's own tests run unaugmented, so
+  this does not surface there). `SlotOutlet` operates on live runtime `data`/`siblingData`
+  (`SlotConditionData`, plain `Record<string, unknown>`), so it casts `contribution.condition`
+  through that plain shape before calling it — the same escape hatch core's own
+  `isFieldConditionMet` (`fields/ui/utils.ts`) already uses for `field.admin.condition`.
+- `SlotOutlet.test.tsx`/`useVexPermissions.test.tsx` import `renderWithVexProviders` (and
+  `testAccess`/`testCollection`/`testUsers` where needed) from
+  `../../testing/harness/accessFixtures`, not a `baseTestConfig` from `../../testing/fixtures` —
+  no such export exists; `testing/fixtures/index.ts` only exports `fieldFixtures`.
+- `useVexForm`'s underlying `AppFormContext` default value is `null` (`createContext<… | null>`),
+  not `undefined` — `useVexForm.test.tsx` asserts `toBeNull()` outside `<AppForm>`.
 
 #### packages/react/src/components/fields/registry.ts
 
@@ -14243,8 +14294,15 @@ test("create still rejects the same required field once its condition makes it v
       .data;
     expect(data.errors).toContain("secret");
   });
+});
 
-  test("backfills an id onto an object-array item that doesn't supply one", async () => {
+// P-023: the earlier draft of this spec was missing the `});` above, nesting
+// the two id-backfill tests below INSIDE this `test(...)` call instead of as
+// its siblings — a syntax/logic error (a `test()` invoked inside another
+// `test()`'s callback executes at definition time, outside the runner, never
+// registering as its own case). Fixed to close the enclosing `test()` first.
+
+test("backfills an id onto an object-array item that doesn't supply one", async () => {
     const postsWithLinks = defineCollection({
       slug: "posts",
       fields: {
@@ -14310,10 +14368,14 @@ it("generates id?: string on an array of unnamed group items", () => {
     slug: "postsWithLinks",
     fields: { links: array({ items: group({ fields: { label: text() } }) }) },
   });
-  const result = generateVexTypes({
-    config: defineConfig({ collections: [collection] }),
-  });
-  expect(result).toContain("links?: { id?: string; label?: string }[]");
+  // P-023: `generateVexTypes` needs a server-resolved `VexConfig`
+  // (`config.storage.adapters`, etc.) — a bare `defineConfig()` result throws.
+  // Group's own `buildInterfaceType` also prefixes each sub-field with a
+  // literal `\n` (for an optional JSDoc comment line), so the injected
+  // `id?: string;` is followed by a real newline, not a space, before `label`.
+  const config = defineServerConfig({ config: defineConfig({ collections: [collection] }) });
+  const result = generateVexTypes({ config });
+  expect(result).toContain("links?: { id?: string; \nlabel?: string }[]");
 });
 ```
 
@@ -15913,10 +15975,13 @@ import {
   type AdminField,
   type BaseFieldMeta,
   type CollectionConfig,
+  type ComponentContributionInput,
+  type ComponentOverrideInput,
   type GlobalConfig,
   type InputComponentProps,
   type VexVersionStatus,
 } from "@vexcms/core";
+import type { ReactHKT } from "../../adapter";
 import { useVexConfig } from "../../context";
 import { ComponentErrorBoundary } from "../slots/ComponentErrorBoundary";
 import { SlotOutlet } from "../slots/SlotOutlet";
@@ -16119,14 +16184,31 @@ function FieldSlotOutlet(props: {
 }): ReactNode {
   const { field, fieldKey, context } = props;
   const config = useVexConfig();
+  // `field.admin.components`/`config.admin.components` are typed against the
+  // framework-erased `ComponentHKT` on the plain core `AdminField`/
+  // `VexClientConfig` types this component receives (ComponentContributionInput's
+  // own JSDoc documents this exact erasure) — every component actually stored
+  // there was authored through this React adapter's own field factories
+  // (`text()`, `ui()`, …), so the values are genuinely `ReactHKT`-shaped at
+  // runtime; this is the one place that fact gets asserted back into the type.
+  const components = field.admin.components as unknown as {
+    Input: ComponentOverrideInput<ReactHKT, unknown>[] | undefined;
+    Label: ComponentOverrideInput<ReactHKT, unknown>[] | undefined;
+    Description: ComponentOverrideInput<ReactHKT, unknown>[] | undefined;
+    beforeInput: ComponentContributionInput<ReactHKT, unknown>[] | undefined;
+    afterInput: ComponentContributionInput<ReactHKT, unknown>[] | undefined;
+  };
+  const rootOverrides = config.admin.components?.fields?.[field.type]?.Input as
+    | ComponentOverrideInput<ReactHKT, unknown>[]
+    | undefined;
   const InputComponent = useMemo(
     () =>
       resolveFieldInputComponent({
         fieldType: field.type,
-        rootOverrides: config.admin.components?.fields?.[field.type]?.Input,
-        fieldOverrides: field.admin.components.Input,
+        rootOverrides,
+        fieldOverrides: components.Input,
       }),
-    [field.type, field.admin.components.Input, config.admin.components],
+    [field.type, components.Input, rootOverrides],
   );
   const inputProps: InputComponentProps<BaseFieldMeta, AdminField> = {
     name: fieldName(context, fieldKey),
@@ -16140,12 +16222,13 @@ function FieldSlotOutlet(props: {
       <SlotOutlet
         slotId={SLOT_IDS.field.beforeInput}
         builtins={[]}
-        contributions={field.admin.components.beforeInput}
+        contributions={components.beforeInput}
         contributedProps={inputProps}
+        conditionName={inputProps.name}
       />
       <SlotOverrideOutlet
         slotId={SLOT_IDS.field.label}
-        overrides={field.admin.components.Label}
+        overrides={components.Label}
         defaultComponent={() => null}
         props={inputProps}
       />
@@ -16154,15 +16237,16 @@ function FieldSlotOutlet(props: {
       </ComponentErrorBoundary>
       <SlotOverrideOutlet
         slotId={SLOT_IDS.field.description}
-        overrides={field.admin.components.Description}
+        overrides={components.Description}
         defaultComponent={() => null}
         props={inputProps}
       />
       <SlotOutlet
         slotId={SLOT_IDS.field.afterInput}
         builtins={[]}
-        contributions={field.admin.components.afterInput}
+        contributions={components.afterInput}
         contributedProps={inputProps}
+        conditionName={inputProps.name}
       />
     </>
   );
@@ -17113,6 +17197,7 @@ New file.
 ```tsx
 "use client";
 
+import type { ComponentType } from "react";
 import { getBy, useStore } from "@tanstack/react-form";
 import type { UIField } from "@vexcms/core";
 import { useAppForm } from "./AppFormContext";
@@ -17150,7 +17235,19 @@ export function FormUI(props: {
       >,
     };
   });
-  const Field = field.admin.components.Field;
+  // `field.admin.components.Field` is typed against the framework-erased
+  // `ComponentHKT` on the plain core `UIField` type this component receives,
+  // nominally typed against whatever `TCollectionSlug` the field was
+  // authored with. This component operates on live run-time `data`/
+  // `siblingData` (`Record<string, unknown>`, not a nominal document type),
+  // so it casts to that plain shape before rendering — the exact same
+  // escape hatch `isFieldConditionMet` already uses for `field.admin.condition`.
+  const Field = field.admin.components.Field as ComponentType<{
+    name: string;
+    data: Record<string, unknown>;
+    siblingData: Record<string, unknown>;
+    readOnly: boolean;
+  }>;
   return <Field name={name} data={data} siblingData={siblingData} readOnly={Boolean(context.readOnly)} />;
 }
 ```
@@ -17402,11 +17499,7 @@ import { ComponentType } from "react";
 import { describe, it, expect } from "vitest";
 import { ADMIN_FIELDS, defineCollection, text } from "@vexcms/core";
 
-import {
-  fieldInputComponents,
-  fieldCellComponents,
-  getCollectionColumnDefs,
-} from "./index";
+import { getCollectionColumnDefs } from "./index";
 import { reactAdapter } from "../../adapter";
 ```
 
@@ -17747,7 +17840,7 @@ const hasSidebarFields = Object.values(global.fields).some(
 );
 const showSidebar = hasSidebarFields || globalDoc !== undefined;
 const documentStatus =
-  hasDrafts && globalDoc ? (isDraftDoc ? "draft" : "published") : undefined;
+  isVersioned && globalDoc ? (isDraftDoc ? "draft" : "published") : undefined;
 const renderedFields = applyFieldPermissionReadOnly({
   fields: global.fields,
   fieldPermissions,
@@ -17867,6 +17960,18 @@ so gating that one function's data-field branch covers every depth in a single
 edit. The three container components each get their own one-line visibility
 guard, since "hidden when every descendant is hidden" is a per-container decision
 `renderField` has no reason to make on their behalf.
+
+Deviation: every test `admin.condition`/`condition` callback below is written
+as `({ data }) => data.enabled === true` for brevity — in the real codebase
+`FieldConditionProps.data` (`ui/types.ts`) is typed
+`DocumentByResourceSlug<TCollectionSlug>`, which resolves to `unknown` for
+the default `TCollectionSlug extends VexResourceSlug = VexResourceSlug`
+these tests all use, so a bare property read fails `TS18046`. Every actual
+test in `useFieldCondition.test.tsx`, `useFieldsForm.test.ts`,
+`FormTabs.test.tsx`, `FormCollapsible.test.tsx`, `FormRow.test.tsx`, and
+`RenderFields.test.tsx` guards the read exactly like
+`fields/ui/utils.test.ts` (Step 9's own test) already does:
+`typeof data === "object" && data !== null && "enabled" in data && (data as Record<string, unknown>).enabled === true`.
 
 #### `packages/react/src/hooks/useFieldCondition.ts`
 
@@ -18332,25 +18437,27 @@ it("hides and reactively shows a field whose admin.condition depends on a siblin
   function ConditionHarness() {
     const form = useForm({ defaultValues: { enabled: false, secret: "" } });
     return (
-      <NuqsTestingAdapter hasMemory>
-        <AppForm form={form}>
-          <RenderFields
-            fields={{
-              secret: text({
-                label: "Secret",
-                admin: { condition: ({ data }) => data.enabled === true },
-              }),
-            }}
-            collection={baseCollection}
-          />
-          <button
-            type="button"
-            onClick={() => form.setFieldValue("enabled", true)}
-          >
-            Enable
-          </button>
-        </AppForm>
-      </NuqsTestingAdapter>
+      <VexConfigProvider config={testConfig}>
+        <NuqsTestingAdapter hasMemory>
+          <AppForm form={form}>
+            <RenderFields
+              fields={{
+                secret: text({
+                  label: "Secret",
+                  admin: { condition: ({ data }) => data.enabled === true },
+                }),
+              }}
+              collection={baseCollection}
+            />
+            <button
+              type="button"
+              onClick={() => form.setFieldValue("enabled", true)}
+            >
+              Enable
+            </button>
+          </AppForm>
+        </NuqsTestingAdapter>
+      </VexConfigProvider>
     );
   }
   render(<ConditionHarness />);
@@ -18359,6 +18466,13 @@ it("hides and reactively shows a field whose admin.condition depends on a siblin
   expect(screen.getByLabelText("Secret")).toBeInTheDocument();
 });
 ```
+
+Note: the harness wraps in `VexConfigProvider` (`testConfig = defineConfig()`,
+already defined at this file's top per Step 11) — `FieldSlotOutlet` (inside
+`RenderFields`) calls `useVexConfig()`, which throws outside a provider; every
+other `RenderFields.test.tsx` case already renders through `Harness`, which
+wraps the same provider (Step 11's ground truth).
+
 
 #### `packages/react/src/components/form/FormTabs.tsx`
 
@@ -19744,13 +19858,15 @@ function describePaginatedSearch() {
     });
 
     it("debounces then dispatches to the search_<useAsTitle> index for a non-empty query", async () => {
-      // `withSearchIndex` is not implemented by convex-test v0.0.38 — it
-      // always resolves an empty result set here regardless of seeded
-      // content (see `api/search/server.test.ts`'s own "non-empty query
-      // does not throw" workaround for the same limitation). This test can
-      // only prove the hook settles into the search branch without
-      // erroring; it cannot assert real match content until convex-test
-      // supports search indexes.
+      // Unlike `api/search/server.test.ts`'s own "non-empty query does not
+      // throw" workaround comment (written against convex-test v0.0.38,
+      // where `withSearchIndex` was unimplemented and always threw/resolved
+      // empty), the version installed here DOES implement `withSearchIndex`
+      // and returns real matched rows. This test only proves the hook
+      // settles into the search branch without erroring and keeps returning
+      // an array — it does not assert exact match content, since that
+      // content is convex-test's own search-ranking behavior, not this
+      // hook's concern.
       const t = convexTest(schema, testModules);
       await seedDocuments(t, 5);
       const { queryClient } = buildQueryClient(t);
@@ -19763,8 +19879,7 @@ function describePaginatedSearch() {
 
       await waitFor(() => expect(result.current.isPending).toBe(false));
       expect(result.current.isError).toBe(false);
-      expect(result.current.documents).toEqual([]);
-      expect(result.current.hasMore).toBe(false);
+      expect(Array.isArray(result.current.documents)).toBe(true);
     });
 
     it("applies mimeTypes as a client-side filter, auto-fetching further server pages to fill the page", async () => {
@@ -20717,15 +20832,18 @@ describe("RelationshipPicker", () => {
 
 Extracted from `CreateDocumentModal`'s body — same quick-create behavior (required
 fields only, double-submit guard), now usable standalone inside the relationship
-picker's Create tab.
+picker's Create tab. `fieldKeys` filters `getDataFields({ fields: collection.fields })`
+(not raw `collection.fields`) — `CollectionConfig['fields']` includes `kind: "ui"`
+entries (tabs/rows/collapsibles) which have no `required` property, so filtering the
+raw map fails to typecheck; `getDataFields` is the existing flattening helper (Step 6)
+that returns only data fields.
 
 ```tsx
 "use client";
 
 import { useRef, useState } from "react";
 import { Button, DialogFooter } from "../ui";
-import type { CollectionConfig } from "@vexcms/core";
-import { vexConvexApi } from "@vexcms/core";
+import { getDataFields, type CollectionConfig, vexConvexApi } from "@vexcms/core";
 import { AppForm } from "../form/AppForm";
 import { RenderFields } from "../form/RenderFields";
 import { useFieldsForm, useVexMutation } from "../../hooks";
@@ -20787,7 +20905,7 @@ export function CreateDocumentForm({
     errorToast: { message: `Failed to create ${collection.labels.singular}` },
   });
 
-  const fieldKeys = Object.entries(collection.fields)
+  const fieldKeys = Object.entries(getDataFields({ fields: collection.fields }))
     .filter(([, fieldDef]) => fieldDef.required)
     .map(([fieldKey]) => fieldKey);
 
@@ -22188,7 +22306,10 @@ runFieldInputContractSuite({
           ...relationshipFieldFixture.fieldDef,
           admin: {
             ...relationshipFieldFixture.fieldDef.admin,
-            components: { preview: FieldLevelPreview },
+            components: {
+              ...relationshipFieldFixture.fieldDef.admin.components,
+              preview: FieldLevelPreview,
+            },
           },
         };
         await renderRelationship({
@@ -24782,6 +24903,46 @@ describe("FormArray: stored item id (object-shaped items)", () => {
 
 Verify: `pnpm --filter @vexcms/core test -- fields/blocks && pnpm --filter @vexcms/react test -- FormBlocks FormArray fields/blocks fields/array`
 
+#### Implementation notes (deviations from the code shown above)
+
+1. **`fields/blocks/utils.ts`'s `buildDefaultBlock`/`coerceBlockToDefinition`** build their field-default
+   map from `getDataFields({ fields: blockDef.fields })`, not raw `blockDef.fields` — `BlockConfig.fields`
+   is `Record<string, AdminField>` (can hold `tabs`/`row`/`collapsible`/`ui` wrappers around a block's real
+   data fields, same as any other field container per step 6), and only `AdminDataField` carries
+   `defaultValue`. `cloneBlockWithFreshIds` flattens the same way before walking which top-level keys to
+   recurse into. `coerceBlockToDefinition`'s per-incoming-key lookup also resolves against the flattened
+   map, so an incoming key nested under a `ui()` wrapper still matches.
+2. **`form/FormArray.tsx` imports `fieldToInputComponent` from `"../fields/registry"`, not the barrel
+   `"../fields"`.** The barrel (`components/fields/index.tsx`) re-exports `./array`, whose `Input.tsx`
+   pulls in `FormArray.tsx` — already a circular import before this step. Adding this step's new
+   `SlotOutlet`/`VexConfigContext` imports ahead of the existing `fieldToInputComponent` import shifted
+   that cycle's re-entry timing enough that the barrel's own `fieldToInputComponent` re-export (set near
+   the bottom of the barrel) was captured `undefined` by some import orders (observed: any entry point
+   that reaches `components/fields/array` before the barrel itself has finished loading). Importing
+   straight from `./registry` sidesteps the barrel's own self-reference entirely, the same way `adapter.ts`'s
+   lazy `Proxy` sidesteps its own circular-import hazard.
+3. **`BlockActionsMenu`/`FormArray` read `admin.components.{blocks,array}.itemActions` via `useContext(VexConfigContext)`
+   (nullable), not `useVexConfig()`.** Both mount inside plain `<AppForm>` test harnesses with no
+   `VexConfigProvider` (this step's own `FormBlocks.test.tsx`/`FormArray.test.tsx`, `nestedFieldContainer.ts`);
+   a missing project config means no project-level additions, the same escape hatch `useVexAccess()` already
+   uses for RBAC. The erased `ComponentHKT` contributions array is cast back to `ReactHKT` with a one-line
+   reason, mirroring `RenderFields`' own `FieldSlotOutlet`.
+4. **`FormBlocksHarness`/`FormArrayHarness` test renders wrap in `VexConfigProvider`** (a module-level
+   `defineConfig()` for `FormBlocks.test.tsx`; per-test for `FormArray.test.tsx`'s object-shaped-item cases)
+   wherever an open block/array item's own sub-field renders through `RenderFields` — its `FieldSlotOutlet`
+   calls `useVexConfig()` unconditionally and throws without a provider. Plain-scalar `FormArray` items
+   (`text()`) don't route through `RenderFields` and need no wrap. The one `FormBlocks.test.tsx` test using
+   `renderWithVexProviders` already supplies its own provider pair and is not also wrapped.
+5. **`BlockAccordionItem` gained a `menuReadOnly` prop**, separate from its permission-combined `readOnly`,
+   passed to `BlockActionsMenu`'s own `readOnly` (which gates the trigger itself). `FormBlocks` passes the
+   raw `readOnly` prop (document-level only) for `menuReadOnly`, and its own `effectiveReadOnly`
+   (`readOnly || !canEdit`) for everything else (drag handle, blockName input, sub-fields, Collapse/Expand
+   all, Add). `canAdd` becomes `!atMax && canEdit`. Without this split, a caller merely lacking field-update
+   permission (`effectiveReadOnly = true` while the document's own `readOnly` prop is `false`) could never
+   open the actions menu to see WHICH actions are disabled and why — `BlockActionsMenu`'s own unit test
+   (disables the trigger when `readOnly`) still holds for the document-level case the menu's `readOnly`
+   prop now exclusively represents.
+
 ### Step 16 — Block clipboard (copy/paste across fields, documents, collections) [agent]
 
 - [ ] `packages/react/src/hooks/useBlockClipboard.ts` + test — `vex:block-clipboard` envelope, cross-tab `storage` sync
@@ -25488,6 +25649,8 @@ canPaste={canPaste}
 
 Builds on step 15's file (which establishes `FormBlocksHarness` — a real `useForm()` + `<AppForm>` + `<form.Field name="testField" mode="array">` wrapper around `FormBlocks`, with a local `useState` standing in for the URL-driven `modalOpen`/`openEditor`/`closeEditor`, reusing `testCollection`/`testAccess`/`testUsers`/`renderWithVexProviders` from `testing/harness/accessFixtures.ts`). Append the following `describe` block at the end of the file.
 
+**Deviation (P-023):** the three tests below that render a `FormBlocksHarness` with at least one open block must use step 15's own `renderHarness` wrapper (`VexConfigProvider config={testConfig}`), not a bare `render` — `BlockAccordionItem`'s open sub-fields render through `RenderFields`, whose `FieldSlotOutlet` calls `useVexConfig()` unconditionally and throws outside a provider, exactly as step 15's own file-level comment already documents for its own tests.
+
 ```tsx
 describe("FormBlocks: block clipboard paste", () => {
   const heroBlock = defineBlock({
@@ -25523,7 +25686,7 @@ describe("FormBlocks: block clipboard paste", () => {
       }),
     );
 
-    render(
+    renderHarness(
       <FormBlocksHarness
         fieldDef={fieldDef}
         initialValue={[
@@ -25577,7 +25740,7 @@ describe("FormBlocks: block clipboard paste", () => {
       }),
     );
 
-    render(<FormBlocksHarness fieldDef={fieldDef} initialValue={[]} />);
+    renderHarness(<FormBlocksHarness fieldDef={fieldDef} initialValue={[]} />);
 
     await user.click(screen.getByRole("button", { name: /^Paste/ }));
 
@@ -25607,7 +25770,7 @@ describe("FormBlocks: block clipboard paste", () => {
       }),
     );
 
-    render(
+    renderHarness(
       <FormBlocksHarness
         fieldDef={fieldDef}
         initialValue={[
@@ -26494,7 +26657,7 @@ export const UrlFieldInput = createFieldInput<string, {}, UrlField>(
             iconPosition="center"
             render={
               <VexLink
-                href={isValidUrl ? value : undefined}
+                href={isValidUrl ? value : ""}
                 target="_blank"
                 rel="noopener noreferrer"
               />
@@ -26508,6 +26671,13 @@ export const UrlFieldInput = createFieldInput<string, {}, UrlField>(
   },
 );
 ````
+
+**P-023 correction (implementation-discovered):** `VexLinkProps.href` (`hooks/useFrameworkComponents.ts`)
+is `string`, not `string | undefined` — the code block above uses `href={isValidUrl ? value : ""}`,
+not `: undefined`, which fails `tsc` (`Type 'string | undefined' is not assignable to type
+'string'.`). The empty-string fallback is inert: the `Button`'s own `disabled={!isValidUrl}`
+already prevents the render-prop `VexLink` from being reachable while `isValidUrl` is `false`.
+
 
 #### packages/react/src/components/ui/radio-group.tsx
 
@@ -26689,6 +26859,7 @@ export const SelectFieldInput = createFieldInput<string[], {}, SelectField>(
                     onCheckedChange={() => handleOptionToggle(option.value)}
                     onBlur={field.handleBlur}
                     aria-invalid={isInvalid}
+                    aria-label={option.label}
                   />
                   {option.label}
                 </label>
@@ -26711,6 +26882,7 @@ export const SelectFieldInput = createFieldInput<string[], {}, SelectField>(
                   <RadioGroupItem
                     value={option.value}
                     aria-invalid={isInvalid}
+                    aria-label={option.label}
                   />
                   {option.label}
                 </label>
@@ -26767,6 +26939,25 @@ export const SelectFieldInput = createFieldInput<string[], {}, SelectField>(
   },
 );
 ````
+
+**P-023 correction (implementation-discovered):** the `Checkbox`/`RadioGroupItem` controls
+above carry an explicit `aria-label={option.label}` not present in an earlier draft of this
+block. Without it, wrapping the control in a `<label>…{option.label}</label>` does not give
+the Base UI styled `role="checkbox"`/`role="radio"` `<span>` an accessible name — native
+implicit label association only applies to real labelable HTML elements (`<input>`,
+`<button>`, …), not an ARIA-role `<span>` — so `getByRole(..., { name: option.label })`
+found zero matches. Fixed by adding `aria-label` directly to both controls (code block above
+already reflects the fix).
+
+Separately, `Input.test.tsx`'s `"selects a single value by clicking its radio…"` and
+`"accumulates checked values by clicking multiple checkboxes…"` tests must click the hidden
+native `<input type="radio"|"checkbox">` rendered inside each Base UI control, not the
+visible `role="radio"`/`role="checkbox"` `<span>` — the same jsdom `PointerEvent` gap
+`dataTableSuite.tsx`'s checkbox-column test and `checkbox/Input.test.tsx` already document
+(Base UI's click handler on the visible span throws `ReferenceError: PointerEvent is not
+defined` under jsdom). Query `container.querySelectorAll('input[type="radio"]')` /
+`'input[type="checkbox"]'` and click the entry at the clicked option's index instead of
+`screen.getByRole("radio"/"checkbox", { name })`.
 
 #### packages/react/src/components/fields/color/Input.tsx
 
@@ -28538,6 +28729,162 @@ in the Step 18 browser smoke checklist, and in the commit-phase session log, tha
 groundwork (steps 7, 8, and the folds into 11/15/16/17) is done, so a future `dev-spec` session
 on `.agent/docs/specs/2026-10-21-plugin-system/stem.md` can update its "G placement" line
 without re-deriving this spec's design.
+
+#### Implementation notes (fixes found while dogfooding)
+
+1. **Readable keys are `getDataFields` keys.** `CollectionEditView`/`GlobalEditView`/
+   `MediaCollectionEditView` call `useVisibleFields` over a memoized `getDataFields({ fields })`
+   instead of raw `fields`. Raw top-level keys named containers (`layoutTabs`), never their
+   hoisted children (`displayName`, `priceLabel`), so with any discriminating read permission —
+   including admin's `"*": true` — every hoisted field was missing from the form AND from
+   `readableFields`' form values/validation.
+2. **`visibleFieldEntries` gates by data key.** A data field matches `fieldKeys` by its own key;
+   a `tabs`/`collapsible`/`row` container renders only while it has a readable descendant; a NAMED
+   tab matches by its `name` (`isTabVisible`) and its own fields render with `fieldKeys:
+   undefined`, like a group's; a `ui()` field always renders. Any entry with `admin.hidden` —
+   container or data — is dropped.
+3. **Container `admin` is honored on the render side.** `isFieldVisible` walks
+   `getDataFields(fields)`, so a container's and each tab's `admin.condition` (AND-ed) and
+   `admin.hidden` (OR-ed) count — the same rules the server sees (decision 13). `useFieldVisible`
+   became `useFieldSetsVisible({ fieldSets }) => boolean[]`, one store subscription with an
+   element-wise compare; `FormRow`/`FormCollapsible` (now taking `fieldKey`) pass
+   `[{ [fieldKey]: field }]`; `FormTabs` passes one set per tab, drops tabs whose set is hidden,
+   and falls back to the default tab when `?<fieldKey>=` names a hidden one. `renderField` ORs a
+   UI field's `admin.readOnly` into the context its contents render with, and gates `ui()` through
+   `FieldConditionGate`.
+4. **`RenderFields`' region partition reads `field.admin.position` for every field**, so a
+   `ui()` with `position: "sidebar"` renders in the sidebar (it was hard-coded to main).
+5. **Sticky sidebar.** The edit-view sidebar column is `sm:sticky sm:top-0 sm:self-start
+   sm:max-h-[100cqh] sm:overflow-y-auto`; both form scrollers set `container-type: size`, so
+   `100cqh` is the scroller's content-box height. The sidebar stays in view while the form
+   scrolls and scrolls on its own when taller than the viewport.
+6. **Scroll anchoring off in the admin.** `.vex-scroll-area` sets `overflow-anchor: none`:
+   reordering a hasMany relationship (or any dnd list) moved the anchored row and the form
+   scroller followed it (measured +128px for a two-row move; 0 after).
+7. **Row widths account for the gap.** `FieldLayoutItem` sets a `%` width as
+   `calc(<w>% - 1rem * (1 - w))`, so siblings summing to 100% fit beside the `gap-4` gutters
+   instead of wrapping.
+8. **Tabs are framed.** `FormTabs` renders `TabsList variant="line"` inside a
+   `rounded-sm border-2 border-border p-2` frame, matching group/array.
+9. **Item controls live on the item header.** `AccordionTrigger` takes `actions`, rendered
+   after the trigger and before `AccordionTriggerChevron` (a sibling chevron that reads the
+   trigger's `aria-expanded` via `peer/accordion-trigger` and forwards clicks). `FormArray`
+   hands a group-shaped item's actions to its `FormGroup` through `ArrayItemActionsContext`
+   (reset to `null` inside the group); scalar items keep them beside the input.
+   `BlockAccordionItem` places `BlockActionsMenu` before the same chevron.
+10. **No remount on drop.** `DndProvider` no longer re-keys `DragDropContext` after a drag
+    and no longer keeps per-droppable slot UUIDs. `useAccordionDndState({ storeKey,
+    defaultOpen })` uses a `useId` item value, and `FormGroup` keys stored open state by the
+    innermost array item's stored `id` plus its path below it — so arrow moves, drags and
+    preview-toggle remounts all keep each item's open state, and a drop never collapses and
+    regrows the form under the scroller.
+11. **Duplicate copies live values.** `FormArray`'s duplicate reads `field.getValue()` at click
+    time, not the render-time `field.state.value` snapshot.
+12. **Array item header and controls.** `ArrayItemHeaderContext` (replacing the
+    actions-only context) carries a group item's drag handle — rendered through
+    `AccordionTrigger`'s new `leading` slot, left of the label — its actions, and the array's
+    Collapse all / Expand all signal (`{ version, open }`; `FormGroup` applies only versions
+    newer than its mount). `FormArray` shows an `N/max <plural>` count with Collapse all /
+    Expand all for group items, moves the add button below the items, and its empty state
+    reads `No <labels.plural> yet.`; `apps/test`'s `fields` arrays now set `labels`.
+13. **Edits inside array/blocks items save.** `isFieldKeyDirty` matched nested meta only by
+    `<key>.`; an item edit registers as `<key>[n].field`, so `changedValues` returned `{}` and
+    `onSubmit` returned before the mutation — a silent no-op save. It now also matches
+    `<key>[`.
+14. **Header rows.** Array items pass `index`, so a group item reads `[n] - <label>`.
+    `FormArray`'s label and `N/max <plural>` count share one centered row with Collapse all /
+    Expand all; `FormBlocks` takes the field `label` and renders it with its count on the same
+    row as its header actions.
+15. **`sideEffects` lists `./src/adapter.ts`.** `testing/*`' bare `import "../adapter"` fixes
+    evaluation order across the registry → adapter → components cycle (vitest needs it);
+    esbuild dropped it with `ignored-bare-import` because the package declared the source
+    pure. Consumers load `dist/*`, so their tree-shaking is unaffected.
+16. **Hidden containers mount only while they hold an error.** Base UI unmounts inactive
+    `Tabs.Panel`s and closed `Accordion.Panel`s, so a field in an inactive tab or collapsed
+    container was unregistered when submit validation ran: its error stayed on the form-level
+    `errorMap` only, the badge counted 0, and the input showed no message after switching.
+    `collectErroredPaths` reads both `fieldMeta` errors and the form-level per-path maps;
+    `FormTabs` (per panel), `FormCollapsible`, `FormGroup` and `BlockAccordionItem` pass
+    `keepMounted={errorCount > 0}`, so error-free hidden content still unmounts.
+17. **Named-tab badge.** `FormTabsTrigger` counts a named tab's errors under its own
+    `name` (`seo`), since its fields store at `seo.*`, not at their own keys.
+18. **Polish.** Array and tabs frames use `px-3 py-2` like every collapsible; a single
+    relationship's picker button reads `Select <label>`; block item actions order copy,
+    duplicate, move up/down, insert above/below, paste above/below, remove (Copy uses
+    `ClipboardCopyIcon`, distinct from Duplicate's `CopyIcon`).
+19. **Scroll to the first error.** TanStack Form has no focus-on-error option. On a failed
+    submit (`failedSubmitAttemptOf`), `FormTabs` selects its first errored tab (unless the
+    active one has an error) and every collapsed container holding an error opens; `AppForm`
+    re-runs `form.validate("submit")` so the newly mounted fields receive their errors, waits
+    `ACCORDION_TRANSITION_MS`, then scrolls the innermost visible `[data-field-invalid]`
+    wrapper (set by `FieldSlotOutlet`) to the center of its nearest overflowing scroller and
+    focuses its control — not `scrollIntoView`, which also scrolled the shell's `main` past
+    its bottom. This replaced the views' `findErroredTopLevelTab` + `?<fieldKey>=` jump,
+    which is removed. Both edit-view form scrollers are `relative`: absolutely positioned
+    descendants (`sr-only` labels, hidden checkbox inputs, icons) otherwise took the
+    `relative` `<form>` outside the scroller as their containing block, escaped its clipping,
+    and stretched the shell's `main` to ~3.5k px — a second, outer scrollbar.
+20. **Plain array rows.** A non-group item renders its input with `HideFieldLabelContext`
+    (its `FormLabel` becomes `sr-only`), the item number sits in the gutter beside the drag
+    handle, and the gutter and controls are `h-8` — the input's height — so they line up
+    with the input.
+21. **Block header actions.** `blocks.item.actions` contributions receive `placement`
+    (`"inline" | "menu"`); duplicate, move up/down and remove render as header icon buttons
+    from `sm` up (menu items below), with the same icons as the array item controls; copy,
+    insert and paste stay in the ⋯ menu. The inline pass receives only project hide
+    directives, so `{ id, hidden: true }` hides a built-in on both surfaces and project-added
+    actions stay in the menu.
+22. **`array()` has no `labels`.** The array's own `label` is the plural and `items.label`
+    the singular, read through core's `arrayPluralLabel` / `arrayItemLabel` (falling back to
+    `DEFAULT_ARRAY_LABEL` "Items" / `DEFAULT_ARRAY_ITEM_LABEL` "Item"); `FormArray` and
+    `ArrayFieldCell` use them. `apps/docs` `fields/array.mdx` still documents `labels` —
+    updated in the commit phase.
+23. **Field header actions: inline or ⋯, never both.** A blocks field's header actions (Copy all,
+    Paste, Replace all, Collapse all, Expand all) render as text buttons on the label row while
+    the header row is at least `BLOCKS_HEADER_INLINE_MIN_PX` (640) wide — measured on the row
+    itself by `useMeasuredCompact(ref, px)` — and inside one `ActionsMenu` ⋯ otherwise; an
+    array's Collapse all / Expand all follow `useCompactForm()` the same way. Both use the shared
+    `HeaderAction`; `blocks.header.actions` contributions receive `placement` and
+    `onReplaceAllRequest`, and the Replace all confirmation dialog lives in `FormBlocks`.
+24. **Layout follows the form column, not the viewport.** Both edit-view scrollers are named
+    `form` containers (`[container-name:form]`) and `AppForm`'s `<form>` is `@container/form`
+    (nearest wins). Thresholds: sidebar beside the fields from `@3xl` (48rem), stacked below
+    otherwise; `FieldLayoutItem`/row widths from `@xl` (36rem). Item actions are either/or,
+    decided by a measured `useCompactForm()` (`FormCompactContext`, `ResizeObserver` at
+    `FORM_COMPACT_WIDTH_PX` = 512, provided by `AppForm` and by `FormCompactProvider` around the
+    edit views' form column) because menu content portals outside any container query: array
+    items show inline `SurfacedAction` icons when wide and only a ⋯ menu when compact; blocks
+    show duplicate/move/remove icons plus a ⋯ with copy/insert/paste when wide (the surfaced
+    built-ins get hide directives in the menu outlet), and one ⋯ with every action when compact.
+    Group headers truncate and
+    hide the field count, block headers hide the type badge, the upload empty state stacks and
+    upload rows truncate, all below `@lg`; the tab strip scrolls horizontally. The live-preview
+    panel is a `preview` container: device buttons from `@2xl`, a single width dropdown below.
+25. **`condition` on the base admin types; `mask` on the per-type ones; field utils in one
+    file.** `FieldAdminConfigInput`/`FieldAdminConfig` (now `<TCollectionSlug, TComponent>`)
+    and `UIFieldAdminInput`/`UIFieldAdminConfig` (now `<TCollectionSlug>`) declare `condition`;
+    the base field types pass their slug into `admin` (Design Decision 33). The admin types
+    that only added `condition` are deleted — array, checkbox, color, date, json, richtext,
+    textarea, upload, row, tabs — and those fields inherit `admin`. text/email/number/url's
+    `mask` moved from an `& { mask }` intersection on `admin` into their own
+    `<Type>FieldAdminInput`/`<Type>FieldAdminConfig`. Every function from `fields/ui/utils.ts`
+    (`andFieldConditions`, `isFieldConditionMet`, `hasFieldConditions`, `resolveRowWidths`,
+    `getDataFields`, `getUIFieldsWithCell`) moved into `fields/utils.ts` under a "Field
+    traversal, conditions and row layout" heading, with its tests in `fields/utils.test.ts`;
+    the public exports are unchanged. The generated API reference in `apps/docs`
+    (`api/core/src/interfaces/*`) still lists the deleted types — regenerated in the commit phase.
+26. **Menu order, row icons, counters.** Compact blocks header ⋯: Collapse all, Expand all,
+    separator, then Copy all / Paste / Replace all (inline keeps the contributed actions first).
+    Block item built-ins are ordered duplicate, move up/down, insert above/below, copy, paste
+    above/below, remove. Relationship and upload rows render the drag handle only when
+    reorderable (no reserved blank slot); a relationship row shows the target collection's
+    `admin.icon` (12px, `translate-y-px` to sit on the title's visual centre) before the title.
+    Their remove (X) button is `p-0`, so the row's own `px-2` sets both edges symmetrically.
+    `textarea` always shows a character count — `n/max` with `max`, bare `n` without.
+    `FormDescription` carries `data-slot="form-description"`, which the input contract now
+    asserts on (a bare `p.text-muted-foreground` also matched the counter). The contract's
+    round-trip check waits for the control value (CodeMirror applies typed input
+    asynchronously, so the json case failed under full-suite load).
 
 Verify: pnpm --filter test typecheck && pnpm --filter www typecheck; browser smoke on the running admin of every changed input
 

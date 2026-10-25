@@ -129,4 +129,44 @@ describe("blocksFieldToInputSchema", () => {
       expect(result.error.issues[0].message).toMatch(/required/i);
     }
   });
+
+  describe("condition-aware item fields (data-aware schema)", () => {
+    const toggleBlock = defineBlock({
+      slug: "toggle",
+      label: "Toggle",
+      fields: {
+        kind: text({ required: true }),
+        detail: text({
+          required: true,
+          admin: {
+            condition: ({ siblingData }) => siblingData.kind === "detailed",
+          },
+        }),
+      },
+    });
+
+    it("skips a hidden sibling-conditioned required field inside a block item", () => {
+      const field = blocks({ blocks: [toggleBlock] });
+      const schema = blocksFieldToInputSchema({ field, data: {} });
+      const result = schema.safeParse([makeItem("toggle", { kind: "simple" })]);
+      expect(result.success).toBe(true);
+    });
+
+    it("still fails a visible sibling-conditioned required field inside a block item, naming it", () => {
+      const field = blocks({ blocks: [toggleBlock] });
+      const schema = blocksFieldToInputSchema({ field, data: {} });
+      const result = schema.safeParse([makeItem("toggle", { kind: "detailed" })]);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path.includes("detail"))).toBe(true);
+      }
+    });
+
+    it("keeps the current static schema when no block declares a condition, even with data supplied", () => {
+      const field = blocks({ blocks: [headingBlock] });
+      const schema = blocksFieldToInputSchema({ field, data: {} });
+      expect(schema.safeParse([makeItem("heading", { text: "Hi" })]).success).toBe(true);
+      expect(schema.safeParse([makeItem("heading", { text: null })]).success).toBe(false);
+    });
+  });
 });

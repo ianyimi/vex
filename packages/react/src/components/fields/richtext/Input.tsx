@@ -6,6 +6,7 @@ import { useConvexMutation, convexQuery } from "@convex-dev/react-query";
 import { useDebounceValue } from "@ts-hooks-kit/core";
 import {
   vexConvexApi,
+  type AdminDataField,
   type RichTextDocument,
   type RichTextField,
   type VexEditorComponentProps,
@@ -214,7 +215,7 @@ export const RichTextFieldInput = createFieldInput<
         description={fieldDef.description}
         placeholder={fieldDef.admin.placeholder}
         mediaCollectionSlug={fieldDef.mediaCollectionSlug}
-        mediaAltRequired={targetCollectionConfig?.fields.alt?.required === true}
+        mediaAltRequired={(targetCollectionConfig?.fields.alt as AdminDataField | undefined)?.required === true}
         mediaResults={targetCollectionConfig ? mediaResults : undefined}
         mediaSearchTerm={targetCollectionConfig ? mediaSearchTerm : undefined}
         onMediaSearchChange={targetCollectionConfig ? setMediaSearchTerm : undefined}

@@ -7,8 +7,13 @@ import { GlobalConfig } from "../globals";
 import { VexAccessConfig } from "../access";
 import { VexRoutesConfig } from "../routes";
 import { LivePreviewConfig, LivePreviewConfigInput } from "../livePreview";
-import { ComponentHKT } from "../fields";
+import { ComponentHKT, DataFieldType } from "../fields";
+import type {
+  ComponentContributionInput,
+  ComponentOverrideInput,
+} from "../components/types";
 import { VexEditorAdapter } from "../editor";
+import type { FieldMaskInput, MaskableFieldType } from "../fields/mask";
 
 /**
  * User-facing configuration input for the VexCMS admin panel.
@@ -35,6 +40,36 @@ import { VexEditorAdapter } from "../editor";
  *
  * @see {@link AdminConfig} for the resolved type after defaults are applied
  * @see {@link defineConfig} for the config function
+ */
+/**
+ * Root-level admin extension points (S1) — type-erased to the base `ComponentHKT`, the same
+ * pattern `VexClientConfigInput.editor` already uses, since `defineConfig()` itself has no
+ * framework-typed wrapper (only `relationship()`/`defineCollection()` in `@vexcms/react` do).
+ *
+ * Experimental: breaking changes are still possible before this stabilizes.
+ */
+export interface AdminComponentsInput {
+  /** Project-wide per-field-TYPE overrides (S6) — `fields.text.Input` applies to every `text()` field unless that field's own `admin.components.Input` chain wraps it further. */
+  fields?: {
+    [K in DataFieldType]?: {
+      Input?: ComponentOverrideInput<ComponentHKT, unknown>[];
+      Cell?: ComponentOverrideInput<ComponentHKT, unknown>[];
+    };
+  };
+  /** `blocks()` field action-menu/header slot defaults, project-wide. */
+  blocks?: {
+    itemActions?: ComponentContributionInput<ComponentHKT, unknown>[];
+    headerActions?: ComponentContributionInput<ComponentHKT, unknown>[];
+  };
+  /** `array()` field item-action slot defaults, project-wide. */
+  array?: {
+    itemActions?: ComponentContributionInput<ComponentHKT, unknown>[];
+  };
+}
+
+/**
+ * Root-level admin panel input configuration accepted by `defineConfig()` — live preview,
+ * sidebar, and admin extension-point (`components`) settings before defaults are applied.
  */
 export interface AdminConfigInput {
   /**
@@ -76,6 +111,13 @@ export interface AdminConfigInput {
      */
     collapsible?: "offcanvas" | "none" | "icon";
   };
+  /**
+   * Root-level admin extension points (S1) — resolved once by `defineConfig()`, merging
+   * `BUILTIN_CONTRIBUTION_IDS` defaults with this project's own lists.
+   *
+   * Experimental: breaking changes are still possible before this stabilizes.
+   */
+  components?: AdminComponentsInput;
 }
 
 /**
@@ -95,6 +137,20 @@ export interface AdminConfig {
      * How the sidebar in the admin panel collapses
      */
     collapsible: "offcanvas" | "none" | "icon";
+  };
+  /** Resolved root-level admin extension points — always present, every list defaulted and ordered. */
+  components: {
+    fields: {
+      [K in DataFieldType]?: {
+        Input: ComponentOverrideInput<ComponentHKT, unknown>[];
+        Cell: ComponentOverrideInput<ComponentHKT, unknown>[];
+      };
+    };
+    blocks: {
+      itemActions: ComponentContributionInput<ComponentHKT, unknown>[];
+      headerActions: ComponentContributionInput<ComponentHKT, unknown>[];
+    };
+    array: { itemActions: ComponentContributionInput<ComponentHKT, unknown>[] };
   };
 }
 
@@ -199,6 +255,33 @@ export type ClientUploadMap = Record<
     [key: string]: unknown;
   }>
 >;
+
+/**
+ * Project-wide `admin.mask` defaults, keyed by maskable field type.
+ *
+ * A field's own `admin.mask` overrides its entry here entirely; `admin.mask:
+ * false` disables the default for that one field (contract item 8).
+ *
+ * @see {@link VexFieldsConfig} for the resolved type after defaults are applied
+ */
+export interface VexFieldsConfigInput {
+  /**
+   * Default `admin.mask` per maskable field type (`text`, `email`, `number`, `url`).
+   *
+   * Default: `{}` (no project-wide masks).
+   */
+  inputMasks?: Partial<Record<MaskableFieldType, FieldMaskInput>>;
+}
+
+/**
+ * Resolved field-wide configuration after `defineConfig()` applies defaults.
+ *
+ * @see {@link VexFieldsConfigInput} for the user-facing input type
+ */
+export interface VexFieldsConfig {
+  /** Resolved project-wide `admin.mask` defaults. Always present; defaults to `{}`. */
+  inputMasks: Partial<Record<MaskableFieldType, FieldMaskInput>>;
+}
 
 /**
  * User-facing, client-safe configuration input passed to `defineConfig()`.
@@ -344,6 +427,17 @@ export interface VexClientConfigInput {
    *   `ComponentHKT` erasure pattern on a per-field (rather than root) slot
    */
   editor?: VexEditorAdapter<ComponentHKT>;
+  /**
+   * Project-wide field behavior defaults.
+   *
+   * **Defaults applied by `defineConfig()`:**
+   * ```ts
+   * { inputMasks: {} }
+   * ```
+   *
+   * @see {@link VexFieldsConfigInput} for all available options
+   */
+  fields?: VexFieldsConfigInput;
 }
 
 /**
@@ -472,6 +566,8 @@ export interface VexClientConfig {
    * @see {@link VexEditorAdapter} for the adapter shape
    */
   editor?: VexEditorAdapter<ComponentHKT>;
+  /** Resolved project-wide field behavior defaults — always fully populated. */
+  fields: VexFieldsConfig;
 }
 
 /**

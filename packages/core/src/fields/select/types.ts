@@ -1,6 +1,50 @@
 import { ADMIN_FIELDS } from "../constants";
-import { BaseField, BaseFieldInput, FieldValidateProps } from "../baseTypes";
+import { BaseField, BaseFieldInput, FieldAdminConfig, FieldAdminConfigInput, FieldValidateProps } from "../baseTypes";
 import type { VexResourceSlug } from "../../types/generated";
+
+/** Display modes a `select()` field's admin input can render as. */
+export const SELECT_DISPLAYS = {
+  dropdown: "dropdown",
+  radio: "radio",
+} as const;
+
+/** `"dropdown" | "radio"` — see {@link SELECT_DISPLAYS}. */
+export type SelectDisplay =
+  (typeof SELECT_DISPLAYS)[keyof typeof SELECT_DISPLAYS];
+
+/** Per-type `admin` input for `select()` — adds `searchable`/`display`. */
+export interface SelectFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfigInput<TCollectionSlug> {
+  /**
+   * Shows a search box inside the options popover. Only meaningful when
+   * `display` is `"dropdown"` (the default) — the `"radio"` display has no
+   * popover to search.
+   *
+   * Default: `false`
+   */
+  searchable?: boolean;
+  /**
+   * How the field renders its options.
+   *
+   * - `"dropdown"` — a searchable-optional popover trigger (`MultiSelect`).
+   * - `"radio"` — an inline list with no popover: radio buttons when
+   *   `hasMany` is `false`, checkboxes when `hasMany` is `true`.
+   *
+   * Default: `"dropdown"`
+   */
+  display?: SelectDisplay;
+}
+
+/** Resolved per-type `admin` for `select()`. */
+export interface SelectFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfig<TCollectionSlug> {
+  /** Whether the options popover shows a search box (`"dropdown"` display only). */
+  searchable: boolean;
+  /** How the field renders its options — `"dropdown"` or `"radio"`. */
+  display: SelectDisplay;
+}
 
 /**
  * Configuration input for a `select()` field.
@@ -22,7 +66,7 @@ import type { VexResourceSlug } from "../../types/generated";
  *     hidden:        false,   // visible in the admin form
  *     readOnly:      false,   // editable by default
  *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "full",  // spans the full form width, not half
+ *     width: "100%",  // spans the full form width, not half
  *     cellAlignment: "left",  // aligned left in the data table column
  *   }
  * }
@@ -55,6 +99,8 @@ export interface SelectFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
 > extends BaseFieldInput<TCollectionSlug, TFieldMeta> {
+  /** Admin UI configuration for this field. */
+  admin?: SelectFieldAdminInput<TCollectionSlug>;
   /**
    * Pre-filled value shown in the admin form when creating a new field.
    * Does not apply to database values
@@ -86,6 +132,8 @@ export interface SelectField<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
 > extends BaseField<TCollectionSlug, TFieldMeta> {
+  /** Resolved admin UI configuration with all defaults applied. */
+  admin: SelectFieldAdminConfig<TCollectionSlug>;
   readonly type: typeof ADMIN_FIELDS.select.type;
   /** Pre-filled value shown in the admin form when creating a new field. */
   defaultValue: string[];

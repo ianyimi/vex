@@ -7,7 +7,7 @@ import * as _generatedApi from "./test/convex/_generated/api";
 import schema from "./test/convex/schema";
 import { CRUD_ACTIONS, VexAccessError } from "../access";
 import { defineAccess } from "../access/config";
-import { defineCollection, defineGlobal, text } from "../index";
+import { defineCollection, defineGlobal, text, checkbox, array, group } from "../index";
 import type { VexConfig } from "../config";
 import { prepareEdit } from "./prepareEdit";
 
@@ -247,6 +247,125 @@ describe("prepareEdit", () => {
       ).rejects.toThrow(VexAccessError);
     });
     expect(beforeChangeCalled).toBe(false);
+  });
+
+  test("create succeeds when a required field is hidden by its own condition", async () => {
+    const conditionalPosts = defineCollection({
+      slug: "posts",
+      fields: {
+        showSecret: checkbox(),
+        secret: text({
+          required: true,
+          admin: {
+            condition: ({ siblingData }) => siblingData.showSecret === true,
+          },
+        }),
+      },
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      await expect(
+        prepareEdit({
+          ctx,
+          config: { collections: [conditionalPosts] } as unknown as VexConfig,
+          target: { kind: "collection", config: conditionalPosts },
+          action: CRUD_ACTIONS.create,
+          storedDoc: undefined,
+          changes: { showSecret: false },
+          partial: false,
+          validateKeys: "all",
+        }),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  test("create still rejects the same required field once its condition makes it visible, naming it", async () => {
+    const conditionalPosts = defineCollection({
+      slug: "posts",
+      fields: {
+        showSecret: checkbox(),
+        secret: text({
+          required: true,
+          admin: {
+            condition: ({ siblingData }) => siblingData.showSecret === true,
+          },
+        }),
+      },
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      let caught: unknown;
+      try {
+        await prepareEdit({
+          ctx,
+          config: { collections: [conditionalPosts] } as unknown as VexConfig,
+          target: { kind: "collection", config: conditionalPosts },
+          action: CRUD_ACTIONS.create,
+          storedDoc: undefined,
+          changes: { showSecret: true },
+          partial: false,
+          validateKeys: "all",
+        });
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(ConvexError);
+      const data = (caught as ConvexError<{ message: string; errors: string }>).data;
+      expect(data.errors).toContain("secret");
+    });
+  });
+
+  test("backfills an id onto an object-array item that doesn't supply one", async () => {
+    const postsWithLinks = defineCollection({
+      slug: "posts",
+      fields: {
+        links: array({
+          items: group({ fields: { label: text({ required: true }) } }),
+        }),
+      },
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const result = await prepareEdit({
+        ctx,
+        config: { collections: [postsWithLinks] } as unknown as VexConfig,
+        target: { kind: "collection", config: postsWithLinks },
+        action: CRUD_ACTIONS.create,
+        storedDoc: undefined,
+        changes: { links: [{ label: "a" }] },
+        partial: false,
+        validateKeys: "all",
+      });
+      const links = result.patch.links as { label: string; id: string }[];
+      expect(typeof links[0]!.id).toBe("string");
+      expect(links[0]!.id.length).toBeGreaterThan(0);
+    });
+  });
+
+  test("preserves an object-array item's own supplied id instead of overwriting it", async () => {
+    const postsWithLinks = defineCollection({
+      slug: "posts",
+      fields: {
+        links: array({
+          items: group({ fields: { label: text({ required: true }) } }),
+        }),
+      },
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const result = await prepareEdit({
+        ctx,
+        config: { collections: [postsWithLinks] } as unknown as VexConfig,
+        target: { kind: "collection", config: postsWithLinks },
+        action: CRUD_ACTIONS.create,
+        storedDoc: undefined,
+        changes: { links: [{ label: "a", id: "kept-id" }] },
+        partial: false,
+        validateKeys: "all",
+      });
+      const links = result.patch.links as { label: string; id: string }[];
+      expect(links[0]!.id).toBe("kept-id");
+    });
   });
 });
 

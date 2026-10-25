@@ -4,7 +4,7 @@ import { type CheckboxField } from "@vexcms/core";
 import { createFieldInput } from "../../form/createFieldInput";
 import { FormLabel } from "../../form/FormLabel";
 import { FormDescription } from "../../form/FormDescription";
-import { FormError } from "../../form/FormError";
+import { FormError, isFieldShowingError } from "../../form/FormError";
 import { Checkbox } from "../../ui/checkbox";
 
 /**
@@ -51,6 +51,7 @@ export const CheckboxFieldInput = createFieldInput<boolean, {}, CheckboxField>(
             checked={field.state.value ?? false}
             onCheckedChange={(checked) => field.handleChange(checked)}
             onBlur={field.handleBlur}
+            aria-invalid={isFieldShowingError({ field, submissionAttempts })}
           />
           <FormLabel field={fieldDef} index={index} name={name} />
         </div>

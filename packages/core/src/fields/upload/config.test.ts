@@ -12,7 +12,7 @@ describe("upload()", () => {
     expect(field.admin.hidden).toBe(false);
     expect(field.admin.readOnly).toBe(false);
     expect(field.admin.position).toBe("main");
-    expect(field.admin.width).toBe("full");
+    expect(field.admin.width).toBe("100%");
   });
 
   it("applies custom options", () => {

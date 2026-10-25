@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import { describe, expect, it } from "vitest";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
-import { defineCollection, text } from "../index";
+import { checkbox, defineCollection, text } from "../index";
 import { validateFields } from "./utils";
 import type { VexConfig } from "../config";
 
@@ -84,5 +84,29 @@ describe("validateFields", () => {
     });
     await validateFields({ fields: collection.fields, doc: { slug: "ok", _id: "abc" }, keys: ["slug"], ctx: fixtureCtx, config: fixtureConfig });
     expect(seen).toMatchObject({ value: "ok", fieldKey: "slug", doc: { slug: "ok" } });
+  });
+
+  it("skips a field whose condition is false, never calling its validate()", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        show: checkbox(),
+        secret: text({
+          admin: { condition: ({ siblingData }) => siblingData.show === true },
+          validate: () => {
+            throw new Error("should not run");
+          },
+        }),
+      },
+    });
+    await expect(
+      validateFields({
+        fields: collection.fields,
+        doc: { show: false, secret: "x" },
+        keys: ["secret"],
+        ctx: fixtureCtx,
+        config: fixtureConfig,
+      }),
+    ).resolves.toBeUndefined();
   });
 });

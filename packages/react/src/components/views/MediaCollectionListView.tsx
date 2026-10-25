@@ -16,6 +16,7 @@ import { VexLink } from "../ui/VexLink";
 import { MODALS } from "../modals/constants";
 import { CreateMediaModal } from "../modals/CreateMediaModal";
 import { useVexConfig } from "../../context/VexConfigContext";
+import { adminHref } from "../../utils/adminHref";
 import { getCollectionColumnDefs } from "../fields";
 import { FilePreview } from "../media/FilePreview";
 import { useFieldPermissions, usePaginatedQuery, usePermission, useVexMutation } from "../../hooks";
@@ -165,7 +166,9 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
           nativeButton={false}
           disabled={!canCreate}
           render={
-            <VexLink href={`/admin/${collection.slug}?${MODALS.uploadMedia.urlParam}=true`} />
+            <VexLink
+              href={`${adminHref({ type: "collection", slug: collection.slug }, config.basePath)}?${MODALS.uploadMedia.urlParam}=true`}
+            />
           }
         >
           + Upload {collection.labels.singular}
@@ -176,7 +179,7 @@ export function MediaCollectionListView(props: MediaCollectionListViewProps) {
         <div className="text-muted-foreground rounded-md border py-12 text-center">
           No {collection.labels.plural.toLowerCase()} yet.{" "}
           <VexLink
-            href={`/admin/${collection.slug}?${MODALS.uploadMedia.urlParam}=true`}
+            href={`${adminHref({ type: "collection", slug: collection.slug }, config.basePath)}?${MODALS.uploadMedia.urlParam}=true`}
             className="text-primary hover:underline"
           >
             Upload one.

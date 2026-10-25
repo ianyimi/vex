@@ -1,10 +1,10 @@
 import {
-  addLeadingSlash,
   TDocument,
   type CellComponentProps,
   type ColorField,
 } from "@vexcms/core";
 import { VexLink } from "../../ui";
+import { adminHref } from "../../../utils/adminHref";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
 /**
@@ -30,7 +30,6 @@ export function ColorFieldCell<TData extends TDocument = TDocument>(
 ) {
   if (props.value === undefined || props.value === null || props.value === "") return <span>—</span>;
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
   const content = (
     <span className="flex items-center gap-2">
       <span
@@ -43,7 +42,12 @@ export function ColorFieldCell<TData extends TDocument = TDocument>(
   );
   if (!props.isTitleField) return content;
   return (
-    <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+    <VexLink
+      href={adminHref(
+        { type: "document", slug: props.collection.slug, id: props.row.original._id },
+        config.basePath,
+      )}
+    >
       {content}
     </VexLink>
   );

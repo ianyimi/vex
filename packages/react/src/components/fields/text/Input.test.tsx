@@ -1,13 +1,27 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
-import { adminFieldToInputSchema, text, type CollectionConfig, type TextField } from "@vexcms/core";
+import {
+  adminFieldToInputSchema,
+  defineConfig,
+  text,
+  type CollectionConfig,
+  type TextField,
+} from "@vexcms/core";
 import { AppForm } from "../../form/AppForm";
+import { VexConfigContext } from "../../../context/VexConfigContext";
 import { testCollection } from "../../../testing/harness/accessFixtures";
 import { runFieldInputContractSuite } from "../../../testing/fieldInputContract";
 import { textFieldFixture } from "./testFixture";
 import { TextFieldInput } from "./Input";
+
+const { withMaskMock } = vi.hoisted(() => {
+  const applyMaskMock = vi.fn();
+  return { withMaskMock: vi.fn(() => applyMaskMock) };
+});
+
+vi.mock("use-mask-input", () => ({ withMask: withMaskMock }));
 
 /**
  * Mounts `TextFieldInput` behind a real `useForm` + `<AppForm>`, wired with the
@@ -143,5 +157,82 @@ runFieldInputContractSuite({
         expect(input).toHaveValue("way too long for max");
       });
     });
+
+    describe("text: character counter", () => {
+      it("renders no counter when fieldDef.max is not set", () => {
+        render(
+          <TextValidationHarness
+            fieldDef={text({ label: "Bio" })}
+            collection={collection}
+            initialValue=""
+          />,
+        );
+        expect(screen.queryByText(/^\d+\/\d+$/)).not.toBeInTheDocument();
+      });
+
+      it("shows current length / max once fieldDef.max is set", () => {
+        const fieldDef = text({ label: "Bio", max: [10, "Too long"] });
+        render(
+          <TextValidationHarness
+            fieldDef={fieldDef}
+            collection={collection}
+            initialValue="Hi"
+          />,
+        );
+        expect(screen.getByText("2/10")).toBeInTheDocument();
+      });
+
+      it("updates live as the user types", async () => {
+        const user = userEvent.setup();
+        const fieldDef = text({ label: "Bio", max: [10, "Too long"] });
+        render(
+          <TextValidationHarness
+            fieldDef={fieldDef}
+            collection={collection}
+            initialValue=""
+          />,
+        );
+        const input = screen.getByLabelText("Bio", { exact: false });
+        await user.type(input, "Hello");
+        expect(screen.getByText("5/10")).toBeInTheDocument();
+      });
+    });
   },
+});
+
+describe("text: admin.mask", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function TextMaskHarness(props: { fieldDef: TextField }) {
+    const form = useForm({ defaultValues: { testField: "" } });
+    return (
+      <AppForm form={form}>
+        <TextFieldInput name="testField" fieldDef={props.fieldDef} readOnly={false} collection={testCollection} />
+      </AppForm>
+    );
+  }
+
+  function renderMasked(fieldDef: TextField) {
+    return render(
+      <VexConfigContext.Provider value={defineConfig()}>
+        <TextMaskHarness fieldDef={fieldDef} />
+      </VexConfigContext.Provider>,
+    );
+  }
+
+  it("lazily applies the mask when admin.mask is set", async () => {
+    const fieldDef = text({ label: "Phone", admin: { mask: "(999) 999-9999" } });
+    renderMasked(fieldDef);
+    await waitFor(() =>
+      expect(withMaskMock).toHaveBeenCalledWith("(999) 999-9999", { autoUnmask: true }),
+    );
+  });
+
+  it("renders the ordinary controlled input when no mask resolves", () => {
+    const fieldDef = text({ label: "Title" });
+    renderMasked(fieldDef);
+    expect(withMaskMock).not.toHaveBeenCalled();
+  });
 });

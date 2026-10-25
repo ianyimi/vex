@@ -45,15 +45,20 @@
 }
 
 /* ── Scroll areas ─────────────────────────────────────────────────────────
-   Applied to the admin shell's main content area and to the live-preview
-   split's form column. The track is transparent so the scrollbar reads as
-   part of the surface rather than a gutter, and the thumb is permanently
-   visible but semi-transparent — a scrollbar that only appears on hover
-   hides how much content is left, and an overlay scrollbar that reserves no
-   space shifts the layout when it appears.
+   Applied to the admin shell's main content area, the edit views' form
+   scrollers and the edit-view sidebar. The track is transparent so the
+   scrollbar reads as part of the surface rather than a gutter, and the thumb
+   is permanently visible but semi-transparent — a scrollbar that only
+   appears on hover hides how much content is left, and an overlay scrollbar
+   that reserves no space shifts the layout when it appears.
+
+   Scroll anchoring is off: reordering a relationship, upload, array or blocks
+   list moves the element the browser anchored to, and the scroller follows
+   it to its new position instead of staying put.
    ────────────────────────────────────────────────────────────────────────── */
 @layer components {
   .vex-scroll-area {
+    overflow-anchor: none;
     scrollbar-width: thin;
     scrollbar-color: color-mix(in oklch, var(--color-foreground) 25%, transparent) transparent;
   }

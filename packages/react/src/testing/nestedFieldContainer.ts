@@ -1,3 +1,4 @@
+import "../adapter";
 import { type ComponentType, type ReactNode, createElement, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { act, render, screen } from "@testing-library/react";
@@ -8,12 +9,14 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import {
   array,
+  arrayItemLabel,
+  arrayPluralLabel,
   blocks,
   defineBlock,
   defineConfig,
   group,
-  type AdminField,
-  type AdminFieldType,
+  type AdminDataField,
+  type DataFieldType,
   type CollectionConfig,
   type VexClientConfig,
 } from "@vexcms/core";
@@ -31,8 +34,8 @@ import type { FieldFixture } from "./fixtures/types";
 export interface NestedFieldContainerOptions {
   container: "array" | "group" | "blocks";
   Component: ComponentType<any>;
-  childFieldTypes: AdminFieldType[];
-  fixtures?: Partial<Record<AdminFieldType, FieldFixture>>;
+  childFieldTypes: DataFieldType[];
+  fixtures?: Partial<Record<DataFieldType, FieldFixture>>;
 }
 
 /** The `form.defaultValues` key every mounted container is registered under. */
@@ -79,10 +82,13 @@ const AppFormBoundary = AppForm as unknown as ComponentType<{
 function buildItemContainerFieldDef(props: {
   container: "array" | "blocks";
   childFixture: FieldFixture;
-}): { fieldDef: AdminField; labels: { singular: string; plural: string } } {
+}): { fieldDef: AdminDataField; labels: { singular: string; plural: string } } {
   if (props.container === "array") {
     const fieldDef = array({ label: "Items", items: props.childFixture.fieldDef });
-    return { fieldDef, labels: fieldDef.labels };
+    return {
+      fieldDef,
+      labels: { singular: arrayItemLabel(fieldDef), plural: arrayPluralLabel(fieldDef) },
+    };
   }
   const fieldDef = blocks({
     label: "Blocks",
@@ -103,7 +109,7 @@ function buildItemContainerFieldDef(props: {
  * @param childFixture - The fixture whose field definition becomes the group's sole sub-field.
  * @returns The wrapping group field definition.
  */
-function buildGroupFieldDef(childFixture: FieldFixture): AdminField {
+function buildGroupFieldDef(childFixture: FieldFixture): AdminDataField {
   return group({ label: "Group", fields: { [CHILD_KEY]: childFixture.fieldDef } });
 }
 
@@ -141,7 +147,6 @@ function buildAddedItemMatcher(props: { container: "array" | "blocks"; childFixt
   if (props.container === "array") return childDefault;
   return expect.objectContaining({
     blockType: BLOCK_SLUG,
-    blockName: "Block",
     [CHILD_KEY]: childDefault ?? null,
   });
 }
@@ -156,7 +161,7 @@ function buildAddedItemMatcher(props: { container: "array" | "blocks"; childFixt
  */
 function renderContainer(props: {
   Component: ComponentType<any>;
-  fieldDef: AdminField;
+  fieldDef: AdminDataField;
   readOnly: boolean;
   initialValue: unknown;
 }) {
@@ -217,21 +222,23 @@ function renderContainer(props: {
 }
 
 /**
- * True when `el` is a container's expand/collapse control rather than an
- * editing control.
+ * True when `el` is a navigation control rather than an editing control: a
+ * container's expand/collapse trigger, or a ⋯ actions-menu trigger (opening a
+ * menu edits nothing — its mutating items gate on `readOnly` themselves).
  *
  * Matches the design system's `data-slot="accordion-trigger"`, which both
- * implementations carry: `FormGroup` through the `AccordionTrigger` wrapper,
- * `FormBlocks` on the `AccordionPrimitive.Trigger` it renders directly.
+ * `FormGroup` (through the `AccordionTrigger` wrapper) and `FormBlocks` (on
+ * the `AccordionPrimitive.Trigger` it renders directly) carry, and Base UI's
+ * `aria-haspopup="menu"` on a menu trigger.
  *
  * NOT `aria-expanded` — a nested `select` renders a combobox that also reports
  * expansion, and that one IS an editing control which must stay disabled.
  *
  * @param el - A candidate control from the rendered container.
- * @returns `true` when the element toggles a disclosure panel.
+ * @returns `true` when the element toggles a disclosure panel or opens a menu.
  */
 function isDisclosureTrigger(el: Element): boolean {
-  return el.matches('[data-slot="accordion-trigger"]');
+  return el.matches('[data-slot="accordion-trigger"], [aria-haspopup="menu"]');
 }
 
 /**
@@ -267,7 +274,7 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
             fixture: childFixture,
             Component: ChildComponent as unknown as ComponentType<{
               name: string;
-              fieldDef: AdminField;
+              fieldDef: AdminDataField;
               readOnly: boolean;
               collection: CollectionConfig;
               index?: number;
@@ -341,7 +348,7 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
           });
         } else {
           const { fieldDef, labels } = buildItemContainerFieldDef({ container, childFixture });
-          const emptyMessage = container === "array" ? "No items yet." : `No ${labels.plural} yet.`;
+          const emptyMessage = `No ${labels.plural} yet.`;
           const emptyValue: unknown[] = [];
 
           it("starts empty and shows the empty-state message", () => {
@@ -381,11 +388,13 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
               initialValue: seeded,
             });
 
-            const removeButton =
-              container === "array"
-                ? screen.getByRole("button", { name: "Remove item 1 from Items" })
-                : screen.getByRole("button", { name: "Remove Block block" });
-            await user.click(removeButton);
+            if (container === "array") {
+              await user.click(
+                screen.getByRole("button", { name: "Remove item 1 from Items" }),
+              );
+            } else {
+              await user.click(screen.getByRole("button", { name: "Remove block 1" }));
+            }
 
             expect(await screen.findByText(emptyMessage)).toBeInTheDocument();
             expect(formRef.current?.state.values).toEqual({ [FIELD_NAME]: emptyValue });
@@ -417,6 +426,12 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
             expect(controls.length).toBeGreaterThan(0);
             controls.forEach((el) => {
               if (isDisclosureTrigger(el)) return;
+              // The per-block actions menu trigger (`BlockActionsMenu`) and the
+              // field-level "Copy all" button stay enabled under readOnly too —
+              // copying never mutates the field, so both must stay reachable;
+              // every mutating control is still gated individually.
+              if (el.getAttribute("aria-label")?.endsWith(" actions")) return;
+              if (el.textContent === "Copy all") return;
               // Same Base UI "focusable-when-disabled" pattern as the `group`
               // branch above: both spellings of inert count.
               const inert =

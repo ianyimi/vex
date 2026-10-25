@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useStore } from "@tanstack/react-form";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
@@ -9,8 +9,8 @@ import {
   CRUD_ACTIONS,
   DEFAULT_LIVE_PREVIEW_FORM_PANEL_SIZE,
   DRAFT_ACTIONS,
+  getDataFields,
   getFieldsDefaultValues,
-  isFieldAllowed,
   resolveLivePreviewSettings,
   VERSION_STATUSES,
   vexConvexApi,
@@ -24,7 +24,10 @@ import type {
 import { AppForm } from "../form/AppForm";
 import { RevalidateButton } from "../RevalidateButton";
 import { Button } from "../ui";
-import { fieldToInputComponent } from "../fields";
+import { RenderFields } from "../form/RenderFields";
+import { FormCompactProvider } from "../form/FormCompactContext";
+import { DocumentTimestamps } from "../form/DocumentTimestamps";
+import { applyFieldPermissionReadOnly } from "../form/applyFieldPermissionReadOnly";
 import { useFieldsForm } from "../../hooks/useFieldsForm";
 import {
   useAutosave,
@@ -328,9 +331,13 @@ function CollectionEditForm(
       toast.error("Save draft failed", { description: getVexErrorMessage(error) });
     }
   }
+  const dataFields = useMemo(
+    () => getDataFields({ fields: collection.fields }),
+    [collection.fields],
+  );
   const visibleFields = useVisibleFields({
     resource: collection.slug,
-    fields: collection.fields,
+    fields: dataFields,
     data: currentDocument,
   });
   const readableFieldKeys = visibleFields.map(([fieldKey]) => fieldKey);
@@ -460,33 +467,51 @@ function CollectionEditForm(
   const previewIsActive = Boolean(livePreview && previewPanel.isOpen && previewUrl);
   const breakpoints = livePreview?.breakpoints ?? config.admin.livePreview.breakpoints;
 
+  const hasSidebarFields = Object.values(collection.fields).some(
+    (fieldDef) =>
+      "admin" in fieldDef &&
+      "position" in fieldDef.admin &&
+      fieldDef.admin.position === "sidebar",
+  );
+  const showSidebar =
+    hasSidebarFields || currentDocument._creationTime !== undefined;
+  const documentStatus = isVersioned
+    ? isDraftDoc
+      ? VERSION_STATUSES.draft.key
+      : VERSION_STATUSES.published.key
+    : undefined;
+  const renderedFields = applyFieldPermissionReadOnly({
+    fields: collection.fields,
+    fieldPermissions,
+  });
+
   const formContent = (
-    <div className="space-y-4">
-      {visibleFields.map(([fieldKey, field]) => {
-        const InputComponent = fieldToInputComponent(field.type);
-        if (!InputComponent) {
-          // TODO: handle missing component error here
-          throw new Error(`Missing component for field type '${field.type}'`);
-        }
-        return (
-          <InputComponent
-            key={fieldKey}
-            name={fieldKey}
-            fieldDef={field}
-            readOnly={
-              !canEdit || field.admin.readOnly || !isFieldAllowed(fieldPermissions, fieldKey)
-            }
+    <div className={showSidebar ? "flex flex-col gap-6 @3xl/form:flex-row" : undefined}>
+      <div className="min-w-0 flex-1">
+        <RenderFields
+          fields={renderedFields}
+          collection={collection}
+          readOnly={!canEdit}
+          documentStatus={documentStatus}
+          fieldKeys={readableFieldKeys}
+          region={showSidebar ? "main" : "all"}
+          isTopLevel
+        />
+      </div>
+      {showSidebar && (
+        <div className="vex-scroll-area w-full space-y-4 @3xl/form:sticky @3xl/form:top-0 @3xl/form:-m-1 @3xl/form:max-h-[100cqh] @3xl/form:w-72 @3xl/form:shrink-0 @3xl/form:self-start @3xl/form:overflow-y-auto @3xl/form:p-1">
+          <DocumentTimestamps creationTime={currentDocument._creationTime} />
+          <RenderFields
+            fields={renderedFields}
             collection={collection}
-            documentStatus={
-              isVersioned
-                ? isDraftDoc
-                  ? VERSION_STATUSES.draft.key
-                  : VERSION_STATUSES.published.key
-                : undefined
-            }
+            readOnly={!canEdit}
+            documentStatus={documentStatus}
+            fieldKeys={readableFieldKeys}
+            region="sidebar"
+            isTopLevel
           />
-        );
-      })}
+        </div>
+      )}
     </div>
   );
 
@@ -628,9 +653,9 @@ function CollectionEditForm(
               <div
                 ref={formScroll.ref}
                 onScroll={formScroll.onScroll}
-                className="vex-scroll-area h-full overflow-y-auto pt-4 pr-4 pb-6"
+                className="vex-scroll-area relative h-full overflow-y-auto pt-4 pr-4 pb-6 [container-type:size] [container-name:form]"
               >
-                {formContent}
+                <FormCompactProvider>{formContent}</FormCompactProvider>
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
@@ -656,9 +681,9 @@ function CollectionEditForm(
         <div
           ref={formScroll.ref}
           onScroll={formScroll.onScroll}
-          className="vex-scroll-area -mx-6 min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-6"
+          className="vex-scroll-area relative -mx-6 min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-6 [container-type:size] [container-name:form]"
         >
-          {formContent}
+          <FormCompactProvider>{formContent}</FormCompactProvider>
         </div>
       )}
       {previewIsActive && isMobile && (

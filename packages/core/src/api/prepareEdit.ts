@@ -5,7 +5,7 @@ import type { VexConfig } from "../config";
 import type { AccessCallOptions, VexApiAuth } from "./types";
 import type { TDocument } from "./convex";
 import { CRUD_ACTIONS, DRAFT_ACTIONS, hasPermission } from "../access";
-import { getFieldsInputSchema, validateFields } from "../fields";
+import { assignArrayItemIds, getFieldsInputSchema, validateFields } from "../fields";
 import { deepEqual, resolveAccessCall, toVexMutationCtx } from "./utils";
 import { CollectionOrGlobal } from "../types";
 
@@ -117,7 +117,10 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
   }
 
   const { _id, _creationTime, ...fields } = props.storedDoc ?? {};
-  const mergedFields = { ...fields, ...props.changes } as TDocument;
+  const mergedFields = assignArrayItemIds({
+    fields: props.target.config.fields,
+    data: { ...fields, ...props.changes },
+  }) as TDocument;
 
   const operation = props.action === CRUD_ACTIONS.create ? "create" : "update";
   let transformedFields = mergedFields;
@@ -146,6 +149,7 @@ export async function prepareEdit<DataModel extends GenericDataModel>(
     fields: props.target.config.fields,
     partial: props.partial ?? false,
     ignoreRequired: props.action === DRAFT_ACTIONS.saveDraft,
+    data: transformedFields,
   }).safeParse(transformedFields);
   if (!parsed.success) {
     throw new ConvexError({ message: "Validation failed", errors: parsed.error.message });

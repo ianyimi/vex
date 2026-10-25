@@ -1,5 +1,6 @@
-import { addLeadingSlash, TDocument, type CellComponentProps, type EmailField } from "@vexcms/core";
+import { TDocument, type CellComponentProps, type EmailField } from "@vexcms/core";
 import { VexLink } from "../../ui";
+import { adminHref } from "../../../utils/adminHref";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
 /**
@@ -28,9 +29,11 @@ export function EmailFieldCell<TData extends TDocument = TDocument>(
 ) {
   if (props.value === undefined || props.value === null || props.value === "") return <span>—</span>;
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
   const href = props.isTitleField
-    ? `${basePath}/${props.collection.slug}/${props.row.original._id}`
+    ? adminHref(
+        { type: "document", slug: props.collection.slug, id: props.row.original._id },
+        config.basePath,
+      )
     : `mailto:${props.value}`;
   return (
     <VexLink href={href}>

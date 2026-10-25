@@ -2,7 +2,6 @@ import { ADMIN_FIELDS } from "../constants";
 import {
   BaseField,
   BaseFieldInput,
-  FieldAdminConfig,
   FieldLimit,
   FieldLimitInput,
   FieldSearchIndex,
@@ -29,7 +28,7 @@ import { VexResourceSlug } from "../../types";
  *     hidden:        false,   // visible in the admin form
  *     readOnly:      false,   // editable by default
  *     position:      "main",  // placed in the main content column, not the sidebar
- *     width:         "full",  // spans the full form width, not half
+ *     width: "100%",  // spans the full form width, not half
  *     cellAlignment: "left",  // text aligned left in the data table column
  *   }
  * }
@@ -98,8 +97,6 @@ export interface TextareaField<
   label: string;
   /** Whether this field is required in the database schema. */
   required: boolean;
-  /** Resolved admin UI configuration with all defaults applied. */
-  admin: FieldAdminConfig;
   /** Pre-filled value shown in the admin form when creating a new field. */
   defaultValue: string;
   /** Minimum allowed character length, resolved with a value-aware default error message. */

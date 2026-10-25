@@ -1,74 +1,90 @@
-import "@testing-library/jest-dom";
-
-import { render, screen, waitFor, within, fireEvent } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "@tanstack/react-form";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConvexQueryClient } from "@convex-dev/react-query";
-import type { ConvexReactClient } from "convex/react";
-import type { DataModelFromSchemaDefinition, GenericMutationCtx } from "convex/server";
-import type { GenericId } from "convex/values";
+import { ConvexProvider, type ConvexReactClient } from "convex/react";
 import { convexTest } from "convex-test";
-import { describe, test, expect } from "vitest";
+import { NuqsTestingAdapter } from "nuqs/adapters/testing";
+import { describe, expect, test, vi } from "vitest";
 import {
   defineConfig,
   type CollectionFieldMeta,
   type RelationshipField,
-  type RelationshipPreviewProps,
   type VexClientConfig,
+  type VexResourceSlug,
 } from "@vexcms/core";
 
 import { AppForm } from "../../form/AppForm";
 import { VexConfigContext } from "../../../context/VexConfigContext";
 import { runFieldInputContractSuite } from "../../../testing/fieldInputContract";
 import { testCollection } from "../../../testing/harness/accessFixtures";
+import { createFakeConvexClient } from "../../../testing/convex/bridge";
+import schema, { testModules } from "../../../testing/convex/schema";
 import {
   relationshipFieldFixture,
   relationshipTargetCollection,
-  relationshipTargetCollectionByCreationTime,
 } from "./testFixture";
-import { createFakeConvexClient } from "../../../testing/convex/bridge";
-import schema, { testModules } from "../../../testing/convex/schema";
 import { RelationshipFieldInput } from "./Input";
-import type { VexResourceSlug } from "@vexcms/core";
 
-type SchemaCtx = GenericMutationCtx<DataModelFromSchemaDefinition<typeof schema>>;
+vi.mock("../../relationship", () => ({
+  RelationshipPicker: ({
+    fieldDef,
+    defaultTab,
+    onSelect,
+    onCancel,
+  }: {
+    fieldDef: RelationshipField;
+    defaultTab?: "select" | "create";
+    onSelect: (ids: string[]) => void;
+    onCancel: () => void;
+  }) => (
+    <div role="dialog" aria-label="relationship picker stub">
+      <p>tab: {defaultTab ?? "select"}</p>
+      <button type="button" onClick={() => onSelect(["picked-id"])}>
+        confirm pick
+      </button>
+      <button type="button" onClick={onCancel}>
+        dismiss picker
+      </button>
+      <p>hasMany: {String(fieldDef.hasMany)}</p>
+    </div>
+  ),
+}));
 
 /**
- * Seeds `seedTitles` into a fresh convex-test instance (capturing their
- * real generated ids in insertion order — never hand-typed), optionally
- * mutates further via `afterSeed` (e.g. deleting a doc to produce a stale
- * reference), wires the fake convex client through a real
- * `ConvexQueryClient` + `QueryClient` (byte-for-byte the same wiring
- * `testing/convex/bridge.test.ts` proved in Step 10), and renders
- * `RelationshipFieldInput` inside the real `useForm`/`AppForm` harness plus
- * a `VexConfigContext` that registers `relationshipTargetCollection` by
- * default. Returns the `render()` result plus `queryClient` (to inspect
- * query-cache state directly — e.g. proving `enabled: open` gating) and
- * `seededIds`.
+ * Seeds `seedTitles` into a fresh convex-test instance, wires the fake convex
+ * client through a real `ConvexQueryClient` + `QueryClient`, and renders
+ * `RelationshipFieldInput` behind `AppForm` + `VexConfigContext` +
+ * `NuqsTestingAdapter` (the picker's open state is URL-driven, `RelationshipPicker`
+ * itself is mocked above so this file only exercises `Input.tsx`'s own
+ * empty/filled/read-only/draft-gate logic).
  */
 async function renderRelationship(
   overrides: {
     fieldDef?: RelationshipField<VexResourceSlug, CollectionFieldMeta>;
     config?: VexClientConfig;
     initialValue?: string[] | ((seededIds: string[]) => string[]);
+    readOnly?: boolean;
+    documentStatus?: "draft" | "published";
     seedTitles?: string[];
-    afterSeed?: (ctx: SchemaCtx, seededIds: string[]) => Promise<void>;
   } = {},
 ) {
   const t = convexTest(schema, testModules);
   const seededIds: string[] = [];
   await t.run(async (ctx) => {
-    for (const title of overrides.seedTitles ?? ["Alpha", "Bravo", "Charlie"]) {
+    for (const title of overrides.seedTitles ?? ["Alpha", "Bravo"]) {
       seededIds.push(await ctx.db.insert("documents", { title }));
     }
-    await overrides.afterSeed?.(ctx, seededIds);
   });
 
-  const fakeClient = createFakeConvexClient(t) as ConvexReactClient;
-  const convexQueryClient = new ConvexQueryClient(fakeClient);
+  const convexClient = createFakeConvexClient(t) as ConvexReactClient;
+  const convexQueryClient = new ConvexQueryClient(convexClient);
   const queryClient = new QueryClient({
-    defaultOptions: { queries: { queryFn: convexQueryClient.queryFn(), retry: false } },
+    defaultOptions: {
+      queries: { queryFn: convexQueryClient.queryFn(), retry: false },
+    },
   });
   convexQueryClient.connect(queryClient);
 
@@ -84,375 +100,166 @@ async function renderRelationship(
   function Harness() {
     const form = useForm({ defaultValues: { testField: initialValue } });
     return (
-      <QueryClientProvider client={queryClient}>
-        <VexConfigContext.Provider value={config}>
-          <AppForm form={form}>
-            <RelationshipFieldInput
-              name="testField"
-              fieldDef={fieldDef}
-              collection={testCollection}
-              readOnly={false}
-            />
-          </AppForm>
-        </VexConfigContext.Provider>
-      </QueryClientProvider>
+      <ConvexProvider client={convexClient}>
+        <QueryClientProvider client={queryClient}>
+          <NuqsTestingAdapter>
+            <VexConfigContext.Provider value={config}>
+              <AppForm form={form}>
+                <RelationshipFieldInput
+                  name="testField"
+                  fieldDef={fieldDef}
+                  collection={testCollection}
+                  readOnly={overrides.readOnly ?? false}
+                  documentStatus={overrides.documentStatus}
+                />
+              </AppForm>
+            </VexConfigContext.Provider>
+          </NuqsTestingAdapter>
+        </QueryClientProvider>
+      </ConvexProvider>
     );
   }
 
   return { ...render(<Harness />), queryClient, seededIds };
 }
 
-/** Scopes queries to the popover's list of candidate rows, disambiguating
- * them from the trigger button — which, in single-select mode, gets
- * re-labeled with the selected doc's own preview text once something is
- * chosen (`data-slot="popover-content"`, `ui/popover.tsx`). */
-const popoverContent = () =>
-  document.querySelector('[data-slot="popover-content"]') as HTMLElement;
-
-/**
- * Renders everything needed to diagnose a picker that never settled, for use
- * in a failure message.
- *
- * Exists because this one assertion has now failed twice on CI while passing
- * locally under every condition reproduced so far (settle latency, Node 22,
- * 200-way CPU oversubscription, slow typing that fires several debounced
- * queries, 80 in-process repetitions). Testing Library's own error names the
- * missing text but not WHY it is missing, and the three candidate causes are
- * distinguishable only from state it does not print:
- *
- * - search input empty → the typed text never reached the component
- * - list still showing "Loading…" → the picker query never settled
- * - list still showing the seeded rows + a cache entry in `status: "error"` →
- *   the query REJECTED, and `placeholderData: keepPreviousData` is holding the
- *   previous result set on screen indefinitely (`useRelationshipPickerOptions`
- *   returns `isError`, which `Input.tsx` currently ignores)
- *
- * @param queryClient - The harness's client, for the picker query's cache state.
- * @returns A multi-line description; cheap, and only ever built on failure.
- */
-function describePickerState(queryClient: QueryClient): string {
-  const input = screen.queryByPlaceholderText(/search document/i) as HTMLInputElement | null;
-  const entries = queryClient
-    .getQueryCache()
-    .getAll()
-    .map((q) => {
-      const data = q.state.data;
-      return [
-        `  key=${JSON.stringify(q.queryKey)}`,
-        `status=${q.state.status}`,
-        `fetchStatus=${q.state.fetchStatus}`,
-        `rows=${Array.isArray(data) ? data.length : typeof data}`,
-        `error=${q.state.error ? String(q.state.error) : "none"}`,
-      ].join(" ");
-    });
-  return [
-    `search input value: ${JSON.stringify(input?.value ?? null)}`,
-    `popover text: ${JSON.stringify(popoverContent()?.textContent ?? null)}`,
-    `query cache (${entries.length}):`,
-    ...entries,
-  ].join("\n");
-}
-
-function FieldLevelPreview({ doc }: RelationshipPreviewProps) {
-  return <span>Field preview: {String((doc as Record<string, unknown>).title)}</span>;
+function FieldLevelPreview({ doc }: { doc: unknown }) {
+  return (
+    <span>Field preview: {String((doc as Record<string, unknown>).title)}</span>
+  );
 }
 
 runFieldInputContractSuite({
   fixture: relationshipFieldFixture,
   Component: RelationshipFieldInput,
   extra: () => {
-    describe("relationship picker (Step 10 bridge)", () => {
-      describe("target collection resolution", () => {
-        test("renders the missing-target-collection error instead of crashing when the field's target slug isn't registered", async () => {
-          await renderRelationship({
-            config: defineConfig({ collections: [testCollection] }),
-          });
-
-          expect(await screen.findByText(/unknown collection/i)).toBeInTheDocument();
-          expect(screen.getByText("documents", { selector: "code" })).toBeInTheDocument();
-          expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    describe("relationship state switch", () => {
+      test("renders the missing-target-collection error instead of crashing when the field's target slug isn't registered", async () => {
+        await renderRelationship({
+          config: defineConfig({ collections: [testCollection] }),
         });
+
+        expect(
+          await screen.findByText(/unknown collection/i),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText("documents", { selector: "code" }),
+        ).toBeInTheDocument();
       });
 
-      describe("picker query (Decision 12)", () => {
-        test("the picker query is gated by `enabled: open` — it does not fetch until the popover opens", async () => {
-          const user = userEvent.setup();
-          const { queryClient } = await renderRelationship();
-          const searchQueries = () =>
-            queryClient.getQueryCache().findAll({ queryKey: ["convexQuery", "vex:search"] });
+      test("empty value renders RelationshipEmpty with Select/Create buttons", async () => {
+        await renderRelationship({ initialValue: [] });
 
-          expect(searchQueries()).toHaveLength(1);
-          expect(searchQueries()[0]?.state.fetchStatus).toBe("idle");
-          expect(searchQueries()[0]?.state.dataUpdatedAt).toBe(0);
+        expect(
+          await screen.findByRole("button", { name: /select documents/i }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /create document/i }),
+        ).toBeInTheDocument();
+      });
 
-          await user.click(screen.getByRole("combobox"));
+      test("clicking Select opens the picker on the select tab", async () => {
+        const user = userEvent.setup();
+        await renderRelationship({ initialValue: [] });
 
-          await waitFor(() => expect(searchQueries()[0]?.state.status).toBe("success"));
-          expect(searchQueries()[0]?.state.dataUpdatedAt).toBeGreaterThan(0);
-        });
+        await user.click(
+          await screen.findByRole("button", { name: /select documents/i }),
+        );
 
-        test("debounced search (200ms): narrowing to the typed query is deferred, not immediate, then settles on the match", async () => {
-          const user = userEvent.setup();
-          await renderRelationship();
+        expect(
+          await screen.findByRole("dialog", {
+            name: "relationship picker stub",
+          }),
+        ).toBeInTheDocument();
+        expect(screen.getByText("tab: select")).toBeInTheDocument();
+      });
 
-          await user.click(screen.getByRole("combobox"));
-          expect(await screen.findByText("Alpha")).toBeInTheDocument();
-          expect(screen.getByText("Bravo")).toBeInTheDocument();
-          expect(screen.getByText("Charlie")).toBeInTheDocument();
+      test("clicking Create opens the picker on the create tab", async () => {
+        const user = userEvent.setup();
+        await renderRelationship({ initialValue: [] });
 
-          const search = screen.getByPlaceholderText(/search document/i);
-          await user.type(search, "Bra");
+        await user.click(
+          await screen.findByRole("button", { name: /create document/i }),
+        );
 
-          // Immediately after typing — before the 200ms debounce has had a
-          // chance to fire — the pre-search result set is still on screen.
-          // This is the assertion that proves genuine deferral, not just
-          // eventual convergence.
-          expect(screen.getByText("Alpha")).toBeInTheDocument();
-          expect(screen.getByText("Charlie")).toBeInTheDocument();
+        expect(await screen.findByText("tab: create")).toBeInTheDocument();
+      });
 
-          // Same settle, same reason it must be one wait: the narrowed result
-          // set replaces the placeholder in a single commit. The explicit
-          // `timeout: 2000` this used to carry is now the suite-wide
-          // `asyncUtilTimeout` in `testing/setup.ts`.
-          await waitFor(() => {
-            expect(screen.getByText("Bravo")).toBeInTheDocument();
-            expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
-            expect(screen.queryByText("Charlie")).not.toBeInTheDocument();
-          });
-        });
+      test("picker confirm writes the selection and closes the dialog", async () => {
+        const user = userEvent.setup();
+        await renderRelationship({ initialValue: [] });
 
-        test("non-searchable branch: when the target collection's useAsTitle is a system field, the picker lists via find() and ignores the search text", async () => {
-          const user = userEvent.setup();
-          const { queryClient } = await renderRelationship({
-            config: defineConfig({ collections: [relationshipTargetCollectionByCreationTime] }),
-          });
+        await user.click(
+          await screen.findByRole("button", { name: /select documents/i }),
+        );
+        await user.click(
+          await screen.findByRole("button", { name: "confirm pick" }),
+        );
 
-          await user.click(screen.getByRole("combobox"));
-          // `getAllByRole("button")` also matches Base UI's `role="button"`
-          // focus-guard spans used for its focus trap — real interactive
-          // controls are the only actual `<button>` elements, so scope to
-          // those instead of the ambiguous accessible-role query.
-          await waitFor(() =>
-            expect(document.querySelectorAll("button")).toHaveLength(4),
-          ); // trigger + 3 rows
-
-          const search = screen.getByPlaceholderText(/search document/i);
-          await user.type(search, "zzz-no-match-for-anything");
-
-          expect(document.querySelectorAll("button")).toHaveLength(4); // unaffected by the typed text
+        await waitFor(() =>
           expect(
-            queryClient.getQueryCache().findAll({ queryKey: ["convexQuery", "vex:find"] }),
-          ).toHaveLength(1); // one stable cache entry — find()'s args never include `query`
-        });
-
-        test("renders a loading indicator while the picker query is pending, then the seeded documents once it resolves", async () => {
-          await renderRelationship();
-          const trigger = screen.getByRole("combobox");
-
-          // `fireEvent.click` (unlike `userEvent.click`) does not await anything
-          // beyond synchronous React updates, so the very next synchronous
-          // assertion runs before convex-test's promise chain has resolved:
-          // `isPending` is still true.
-          fireEvent.click(trigger);
-          expect(screen.getByText("Loading…")).toBeInTheDocument();
-          // The popover's content renders into a Base UI portal appended as a
-          // sibling of `render()`'s `container`, not inside it — query
-          // `document` rather than `container` to reach it.
-          const spinner = document.querySelector("svg.animate-spin");
-          expect(spinner).not.toHaveClass("invisible");
-
-          expect(await screen.findByText("Alpha")).toBeInTheDocument();
-          expect(document.querySelector("svg.animate-spin")).toHaveClass("invisible");
-        });
-
-        test("no documents match the search text renders 'No documents found' instead of an empty list", async () => {
-          const user = userEvent.setup();
-          const { queryClient } = await renderRelationship();
-
-          await user.click(screen.getByRole("combobox"));
-          expect(await screen.findByText("Alpha")).toBeInTheDocument();
-
-          const search = screen.getByPlaceholderText(/search document/i);
-          await user.type(search, "no-such-document-exists");
-
-          // One wait covering BOTH halves of the settle. The picker keeps the
-          // previous result set on screen while the new query is in flight
-          // (`placeholderData: keepPreviousData` in `useRelationshipPickerOptions`),
-          // so "Alpha" disappearing and "No documents found" appearing are the
-          // same commit — asserting the second one synchronously after awaiting
-          // the first passed only because that commit happened to land between
-          // them.
-          //
-          // Wrapped so a CI-only failure reports the picker's actual state
-          // instead of just the text it could not find — see
-          // {@link describePickerState}.
-          try {
-            await waitFor(() => {
-              expect(screen.getByText("No documents found")).toBeInTheDocument();
-              expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
-            });
-          } catch (cause) {
-            throw new Error(
-              `the picker never settled to its empty state.\n${describePickerState(queryClient)}`,
-              { cause },
-            );
-          }
-        });
+            screen.queryByRole("dialog", { name: "relationship picker stub" }),
+          ).not.toBeInTheDocument(),
+        );
       });
 
-      describe("selection state machine", () => {
-        test("hasMany: selecting a document adds a chip; selecting it again in the list toggles it off", async () => {
-          const user = userEvent.setup();
-          await renderRelationship({ seedTitles: ["Alpha", "Bravo"] });
-
-          await user.click(screen.getByRole("combobox"));
-          const row = await screen.findByRole("button", { name: /alpha/i });
-
-          await user.click(row);
-          await waitFor(() => expect(screen.getAllByText("Alpha")).toHaveLength(2));
-
-          await user.click(screen.getByRole("button", { name: /alpha/i }));
-          await waitFor(() => expect(screen.getAllByText("Alpha")).toHaveLength(1));
+      test("non-empty value renders RelationshipFilledState with the resolved preview and a Select button", async () => {
+        await renderRelationship({
+          seedTitles: ["Alpha"],
+          initialValue: (seededIds) => [seededIds[0]!],
         });
 
-        test("hasMany: the chip's own remove (×) button removes the selected document from the value", async () => {
-          const user = userEvent.setup();
-          const { container } = await renderRelationship({ seedTitles: ["Alpha", "Bravo"] });
-
-          await user.click(screen.getByRole("combobox"));
-          await user.click(await screen.findByRole("button", { name: /alpha/i }));
-          await waitFor(() => expect(screen.getAllByText("Alpha")).toHaveLength(2));
-
-          // The chip's × button is icon-only (lucide `X`, `aria-hidden`) with no
-          // accessible name of its own, so it's queried by its distinguishing
-          // class rather than role/name. Enabled while the field is editable,
-          // disabled only when `readOnly` or `fieldDef.admin.readOnly` is true —
-          // mirrors `handleRemove`'s own guard
-          // (`if (readOnly || fieldDef.admin.readOnly) return;`) exactly (UI-10).
-          const removeButton = container.querySelector<HTMLButtonElement>(
-            "button.hover\\:text-destructive",
-          );
-          expect(removeButton).not.toBeDisabled();
-          await user.click(removeButton!);
-          // Assert the CHIP is gone, not a global "Alpha" count. The × sits
-          // outside the popover, so clicking it also triggers Base UI's
-          // outside-press dismissal and the candidate list unmounts once its CSS
-          // exit animation finishes. A `getAllByText("Alpha")` count races that
-          // unmount — 1 while the list is still mounted, 0 after — and 0 makes
-          // `getAllByText` THROW ("Unable to find an element with the text:
-          // Alpha") rather than compare, so `waitFor` retries until it times out.
-          // That is how this passed locally and failed on slower CI runners. The
-          // chip renders from the field value, so no × means the document is no
-          // longer selected, which is what this test is about.
-          await waitFor(() =>
-            expect(container.querySelector("button.hover\\:text-destructive")).toBeNull(),
-          );
-        });
-
-        test("single-select: choosing a document sets the trigger preview and closes the popover", async () => {
-          const user = userEvent.setup();
-          const singleFieldDef: RelationshipField<VexResourceSlug, CollectionFieldMeta> = {
-            ...relationshipFieldFixture.fieldDef,
-            hasMany: false,
-          };
-          await renderRelationship({ fieldDef: singleFieldDef, seedTitles: ["Alpha", "Bravo"] });
-
-          const trigger = screen.getByRole("combobox");
-          await user.click(trigger);
-          await user.click(within(popoverContent()).getByRole("button", { name: "Alpha" }));
-
-          // Base UI's `Popover.Popup` unmounts only after its CSS exit
-          // animation completes (`data-closed:animate-out`, `popover.tsx`),
-          // so a synchronous assertion right after the click races the
-          // animation-driven unmount — a harness timing gap, not a
-          // component defect. `waitFor` lets it settle.
-          await waitFor(() => {
-            expect(screen.queryByPlaceholderText(/search document/i)).not.toBeInTheDocument();
-          });
-          expect(await within(trigger).findByText("Alpha")).toBeInTheDocument();
-        });
-
-        test("single-select: choosing a second document replaces the first rather than adding to it", async () => {
-          const user = userEvent.setup();
-          const singleFieldDef: RelationshipField<VexResourceSlug, CollectionFieldMeta> = {
-            ...relationshipFieldFixture.fieldDef,
-            hasMany: false,
-          };
-          await renderRelationship({ fieldDef: singleFieldDef, seedTitles: ["Alpha", "Bravo"] });
-
-          const trigger = screen.getByRole("combobox");
-          await user.click(trigger);
-          await user.click(within(popoverContent()).getByRole("button", { name: "Alpha" }));
-          await waitFor(() => expect(within(trigger).queryByText("Alpha")).toBeInTheDocument());
-
-          await user.click(trigger);
-          await user.click(within(popoverContent()).getByRole("button", { name: "Bravo" }));
-
-          expect(await within(trigger).findByText("Bravo")).toBeInTheDocument();
-          // Same Base UI exit-animation lag documented above.
-          await waitFor(() => {
-            expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
-          });
-        });
-
-        test("single-select: choosing the currently-selected document again clears the value", async () => {
-          const user = userEvent.setup();
-          const singleFieldDef: RelationshipField<VexResourceSlug, CollectionFieldMeta> = {
-            ...relationshipFieldFixture.fieldDef,
-            hasMany: false,
-          };
-          await renderRelationship({ fieldDef: singleFieldDef, seedTitles: ["Alpha", "Bravo"] });
-
-          const trigger = screen.getByRole("combobox");
-          await user.click(trigger);
-          await user.click(within(popoverContent()).getByRole("button", { name: "Alpha" }));
-          await waitFor(() => expect(within(trigger).queryByText("Alpha")).toBeInTheDocument());
-
-          await user.click(trigger);
-          await user.click(within(popoverContent()).getByRole("button", { name: "Alpha" }));
-
-          expect(await within(trigger).findByText(/select document/i)).toBeInTheDocument();
-          // Same Base UI exit-animation lag as above — the popover's row list
-          // (which also renders "Alpha" as a candidate's preview label) can
-          // still be mid-unmount right after the closing click.
-          await waitFor(() => {
-            expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
-          });
-        });
-
-        test("a selected id that no longer resolves (e.g. a deleted document) is silently dropped from the chip list", async () => {
-          await renderRelationship({
-            seedTitles: ["Ghost", "Alpha"],
-            afterSeed: async (ctx, ids) => {
-              await ctx.db.delete(ids[0] as GenericId<"documents">);
-            },
-            initialValue: (ids) => [ids[0], ids[1]],
-          });
-
-          await waitFor(() => expect(screen.getByText("Alpha")).toBeInTheDocument());
-          expect(screen.queryByText("Ghost")).not.toBeInTheDocument();
-        });
+        expect(await screen.findByText("Alpha")).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /select documents/i }),
+        ).toBeInTheDocument();
       });
 
-      describe("resolveRelationshipPreview (ARCH-1)", () => {
-        test("field-level admin.components.preview overrides the default text preview", async () => {
-          const user = userEvent.setup();
-          const fieldDefWithPreview: RelationshipField<VexResourceSlug, CollectionFieldMeta> = {
-            ...relationshipFieldFixture.fieldDef,
-            admin: {
-              ...relationshipFieldFixture.fieldDef.admin,
-              components: { preview: FieldLevelPreview },
-            },
-          };
-          await renderRelationship({
-            fieldDef: fieldDefWithPreview,
-            seedTitles: ["Alpha"],
-          });
+      test("read-only with an empty value renders an em dash and no Select/Create buttons", async () => {
+        await renderRelationship({ readOnly: true, initialValue: [] });
 
-          await user.click(screen.getByRole("combobox"));
-          expect(await screen.findByText("Field preview: Alpha")).toBeInTheDocument();
-          expect(screen.queryByText("Alpha")).not.toBeInTheDocument();
+        expect(await screen.findByText("—")).toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: /select documents/i }),
+        ).not.toBeInTheDocument();
+      });
+
+      test("read-only with a value renders RelationshipFilledState in its disabled form", async () => {
+        await renderRelationship({
+          readOnly: true,
+          seedTitles: ["Alpha"],
+          initialValue: (seededIds) => [seededIds[0]!],
         });
+
+        expect(await screen.findByText("Alpha")).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /select documents/i }),
+        ).toBeDisabled();
+      });
+
+      test("field-level admin.components.preview overrides the default preview in RelationshipFilledState", async () => {
+        const fieldDefWithPreview: RelationshipField<
+          VexResourceSlug,
+          CollectionFieldMeta
+        > = {
+          ...relationshipFieldFixture.fieldDef,
+          admin: {
+            ...relationshipFieldFixture.fieldDef.admin,
+            components: {
+              ...relationshipFieldFixture.fieldDef.admin.components,
+              preview: FieldLevelPreview,
+            },
+          },
+        };
+        await renderRelationship({
+          fieldDef: fieldDefWithPreview,
+          seedTitles: ["Alpha"],
+          initialValue: (seededIds) => [seededIds[0]!],
+        });
+
+        expect(
+          await screen.findByText("Field preview: Alpha"),
+        ).toBeInTheDocument();
       });
     });
   },

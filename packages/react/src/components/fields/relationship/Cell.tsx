@@ -3,11 +3,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import {
-  addLeadingSlash,
   type CellComponentProps,
   type RelationshipField,
   type TDocument,
 } from "@vexcms/core";
+import { adminHref } from "../../../utils/adminHref";
 import { useVexConfig } from "../../../context/VexConfigContext";
 import { VexLink } from "../../ui";
 import { resolveRelationshipPreview } from "./preview";
@@ -48,8 +48,10 @@ export function RelationshipFieldCell<TData extends TDocument = TDocument>(
 
   const { row, fieldDef, fieldKey } = props;
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
-  const href = `${basePath}/${props.collection.slug}/${props.row.original._id}`;
+  const href = adminHref(
+    { type: "document", slug: props.collection.slug, id: props.row.original._id },
+    config.basePath,
+  );
   const wrap = (content: ReactNode) =>
     props.isTitleField ? <VexLink href={href}>{content}</VexLink> : content;
 

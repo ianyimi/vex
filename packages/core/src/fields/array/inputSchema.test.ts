@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { text, number } from "../index";
 import { array } from "./config";
+import { group } from "../group";
 import { arrayFieldToInputSchema } from "./inputSchema";
 import type { VexResourceSlug } from "../../types/generated";
 
@@ -340,6 +341,76 @@ describe("arrayFieldToInputSchema", () => {
 
       // Verify schema was created
       expect(schema.safeParse(["tag1", "tag2"]).success).toBe(true);
+    });
+  });
+
+  describe("condition-aware item fields (data-aware schema)", () => {
+    const itemFields = {
+      kind: text({ required: true }),
+      detail: text({
+        required: true,
+        admin: {
+          condition: ({ siblingData }) => siblingData.kind === "detailed",
+        },
+      }),
+    };
+
+    it("skips a hidden sibling-conditioned required field inside an array item", () => {
+      const field = array({ items: group({ fields: itemFields }) });
+      const schema = arrayFieldToInputSchema({ field, data: {} });
+      const result = schema.safeParse([{ kind: "simple" }]);
+      expect(result.success).toBe(true);
+    });
+
+    it("still fails a visible sibling-conditioned required field inside an array item", () => {
+      const field = array({ items: group({ fields: itemFields }) });
+      const schema = arrayFieldToInputSchema({ field, data: {} });
+      const result = schema.safeParse([{ kind: "detailed" }]);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues.some((issue) => issue.path.includes("detail"))).toBe(true);
+      }
+    });
+
+    it("keeps the current static schema when item fields declare no conditions, even with data supplied", () => {
+      const field = array({ items: text({ required: true }) });
+      const schema = arrayFieldToInputSchema({ field, data: {} });
+      expect(schema.safeParse(["ok"]).success).toBe(true);
+      expect(schema.safeParse([""]).success).toBe(false);
+    });
+  });
+
+  describe("object-shaped item id", () => {
+    it("accepts an item missing id (optional)", () => {
+      const field = array({
+        items: group({ fields: { title: text({ required: true }) } }),
+      });
+      const schema = arrayFieldToInputSchema({ field });
+      expect(schema.safeParse([{ title: "a" }]).success).toBe(true);
+    });
+
+    it("round-trips a supplied id", () => {
+      const field = array({
+        items: group({ fields: { title: text({ required: true }) } }),
+      });
+      const schema = arrayFieldToInputSchema({ field });
+      const result = schema.safeParse([{ title: "a", id: "existing" }]);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const items = result.data as { id: string }[];
+        expect(items[0]!.id).toBe("existing");
+      }
+    });
+
+    it("does not add an id slot to a scalar item schema", () => {
+      const field = array({ items: text({ required: true }) });
+      const schema = arrayFieldToInputSchema({ field });
+      const result = schema.safeParse(["a"]);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const items = result.data as string[];
+        expect(items[0]).toBe("a");
+      }
     });
   });
 });

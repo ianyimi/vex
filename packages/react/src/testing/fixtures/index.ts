@@ -1,4 +1,4 @@
-import type { AdminFieldType } from "@vexcms/core";
+import type { DataFieldType } from "@vexcms/core";
 import type { FieldFixture } from "./types";
 import { textFieldFixture } from "../../components/fields/text/testFixture";
 import { emailFieldFixture } from "../../components/fields/email/testFixture";
@@ -31,7 +31,7 @@ import { richTextFieldFixture } from "../../components/fields/richtext/testFixtu
  * its keys match `ADMIN_FIELDS`'s, so a forgotten entry fails loudly instead of silently
  * skipping coverage.
  */
-export const fieldFixtures: Record<AdminFieldType, FieldFixture> = {
+export const fieldFixtures: Record<DataFieldType, FieldFixture> = {
   text: textFieldFixture,
   email: emailFieldFixture,
   textarea: textareaFieldFixture,

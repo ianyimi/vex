@@ -1,0 +1,80 @@
+---
+title: json field
+description: Stores arbitrary JSON-serializable values with no fixed shape — settings blobs, feature flags, raw API payloads.
+---
+
+A `json()` field stores arbitrary JSON-serializable values with no fixed
+shape. There is no shape/schema option on the field itself — shape checks go
+through the field's own server `validate()`. The admin form renders a
+CodeMirror-backed JSON editor with syntax highlighting and inline lint
+diagnostics.
+
+## Config options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `label` | `string` | `""` | Display label in the admin panel. Inferred from the field key by `defineCollection` when left empty. |
+| `required` | `boolean` | `false` | When `false`, the field is wrapped in `v.optional(…)` in the schema and the form allows leaving it empty. |
+| `defaultValue` | `unknown` | `undefined` | Pre-filled value shown in the admin form when creating a new document. Does not apply to database values. |
+| `index` | `string` | — | Convex index name (generates `.index(name, [fieldKey])`). |
+| `description` | `string` | — | Helper text shown below the field input. |
+| `validate` | `(props) => Promise<void> \| void` | — | Server-only async validation, receives the resolved value typed as `unknown`. |
+| `admin.hidden` | `boolean` | `false` | Hides the field from the admin edit form entirely. |
+| `admin.readOnly` | `boolean` | `false` | Renders the editor as non-interactive — value is visible but cannot be changed. |
+| `admin.position` | `"main" \| "sidebar"` | `"main"` | Column in the admin edit layout where this field appears. |
+| `admin.width` | `string` (CSS width) | `"100%"` | Width of the field inside a `row()`, e.g. `"50%"` or `"240px"`. |
+| `admin.cellAlignment` | `"left" \| "center" \| "right"` | `"left"` | Horizontal alignment of the value in the list-view table cell. |
+| `admin.placeholder` | `string` | — | Placeholder text shown when the editor is empty. |
+| `admin.description` | `string` | — | Helper text displayed below the field input. |
+| `admin.condition` | `({ data, siblingData }) => boolean` | — | Pure predicate deciding whether the field is shown and validated. A throwing condition counts as met. |
+
+## Schema output
+
+```ts
+// Optional (required: false — default)
+settings: v.optional(v.any())
+
+// Required
+theme: v.any()
+```
+
+Stored as `v.any()` — `json()` performs no shape validation against the
+database schema. Use the field's own `validate()` to enforce a shape at
+write time.
+
+## Usage
+
+```ts
+import { defineCollection, json } from "@vexcms/core";
+
+const siteSettings = defineCollection({
+  slug: "siteSettings",
+  fields: {
+    metadata: json({ label: "Raw Metadata" }),
+
+    // Required, with a seeded default shown in the admin form
+    theme: json({ required: true, defaultValue: { mode: "dark" } }),
+
+    // Server-side shape check
+    config: json({
+      validate: async ({ value }) => {
+        if (typeof value !== "object" || value === null) {
+          throw new Error("config must be an object");
+        }
+      },
+    }),
+  },
+});
+```
+
+## Admin UI
+
+The field renders a CodeMirror 6 JSON editor with syntax highlighting, line
+numbers, fold/lint gutters, and inline lint diagnostics. The CodeMirror
+view is code-split behind `React.lazy`/`Suspense` so `@codemirror/*` never
+lands in the main bundle — while the chunk loads, a plain `<Textarea>`
+renders in its place. Edits are parsed on change; an invalid document shows
+a local parse-error state without discarding the typed text, plus a Format
+button that re-serializes valid JSON. `admin.readOnly` renders a read-only
+`JsonEditor`. In the list-view table, the cell shows a truncated
+`JSON.stringify` preview.

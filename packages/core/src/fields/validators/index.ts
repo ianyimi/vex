@@ -1,5 +1,5 @@
 import { ADMIN_FIELDS, type AdminFieldType } from "../constants";
-import { AdminField } from "../types";
+import { AdminDataField } from "../types";
 import { textFieldToValidator } from "../text";
 import { emailFieldToValidator } from "../email";
 import { textareaFieldToValidator } from "../textarea";
@@ -36,7 +36,7 @@ import { jsonFieldToValidator } from "../json";
  * @internal
  */
 export function adminFieldToValidator<TFieldMeta extends {} = {}>(props: {
-  field: AdminField<TFieldMeta>;
+  field: AdminDataField<TFieldMeta>;
 }) {
   // Captured before the switch narrows `props.field`: inside the default arm the
   // union is exhausted to `never`, and `never.type` is not a usable string.

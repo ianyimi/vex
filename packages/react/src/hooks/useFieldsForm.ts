@@ -2,12 +2,15 @@ import {
   type FormAsyncValidateOrFn,
   type FormOptions,
   type FormValidateOrFn,
+  type StandardSchemaV1,
+  standardSchemaValidators,
   useForm,
 } from "@tanstack/react-form";
 import {
   type AdminField,
   getFieldsDefaultValues,
   getFieldsInputSchema,
+  hasFieldConditions,
   type TDocument,
 } from "@vexcms/core";
 import type { AnyFormApi } from "../components/form/AppFormContext";
@@ -76,24 +79,54 @@ export function useFieldsForm<TData = TDocument>(
     readableFieldKeys?: readonly string[];
   } & FieldsFormOptions<TData>,
 ): AnyFormApi {
-  const { fields, document, validators, readableFieldKeys, ...formOptions } = props;
+  const { fields, document, validators, readableFieldKeys, ...formOptions } =
+    props;
   // The schema and defaults are both built from the field map at runtime;
   // `TData` is the caller's static description of that same shape, which the
   // compiler cannot connect to the field map's `Record<string, unknown>`.
-  const schema = pickReadableSchema(
-    getFieldsInputSchema({ fields }),
-    readableFieldKeys,
-  ) as unknown as FormValidateOrFn<TData> & FormAsyncValidateOrFn<TData>;
   const defaultValues = pickReadableValues(
     getFieldsDefaultValues({ fields, document }),
     readableFieldKeys,
   ) as unknown as TData;
+
+  function buildSchema(data?: Record<string, unknown>) {
+    return pickReadableSchema(
+      getFieldsInputSchema({ fields, data }),
+      readableFieldKeys,
+    );
+  }
+
+  let onBlur: FormValidateOrFn<TData>;
+  let onSubmitAsync: FormAsyncValidateOrFn<TData>;
+
+  if (hasFieldConditions({ fields })) {
+    onBlur = ((validatorProps: { value: TData }) =>
+      standardSchemaValidators.validate(
+        { value: validatorProps.value, validationSource: "form" },
+        buildSchema(
+          validatorProps.value as Record<string, unknown>,
+        ) as unknown as StandardSchemaV1,
+      )) as FormValidateOrFn<TData>;
+    onSubmitAsync = ((validatorProps: { value: TData }) =>
+      standardSchemaValidators.validateAsync(
+        { value: validatorProps.value, validationSource: "form" },
+        buildSchema(
+          validatorProps.value as Record<string, unknown>,
+        ) as unknown as StandardSchemaV1,
+      )) as FormAsyncValidateOrFn<TData>;
+  } else {
+    const schema = buildSchema() as unknown as FormValidateOrFn<TData> &
+      FormAsyncValidateOrFn<TData>;
+    onBlur = schema;
+    onSubmitAsync = schema;
+  }
+
   return useForm({
     defaultValues,
     ...formOptions,
     validators: {
-      onSubmitAsync: schema,
-      onBlur: schema,
+      onSubmitAsync,
+      onBlur,
       ...validators,
     },
   }) as AnyFormApi;

@@ -1,5 +1,6 @@
-import { addLeadingSlash, TDocument, type CellComponentProps, type TextareaField } from "@vexcms/core";
+import { TDocument, type CellComponentProps, type TextareaField } from "@vexcms/core";
 import { VexLink } from "../../ui";
+import { adminHref } from "../../../utils/adminHref";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
 /** Truncation threshold — matches `text/Cell.tsx`'s own cutoff. */
@@ -28,7 +29,6 @@ export function TextareaFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<TextareaField, TData>,
 ) {
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
   if (props.value === undefined || props.value === null) return <span>—</span>;
 
   const singleLine = props.value.replace(/\s+/g, " ").trim();
@@ -37,7 +37,12 @@ export function TextareaFieldCell<TData extends TDocument = TDocument>(
 
   if (props.isTitleField) {
     return (
-      <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+      <VexLink
+        href={adminHref(
+          { type: "document", slug: props.collection.slug, id: props.row.original._id },
+          config.basePath,
+        )}
+      >
         <span className="font-bold" title={props.value}>
           {display}
         </span>

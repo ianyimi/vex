@@ -2,6 +2,7 @@ import * as z from "zod";
 import type { ZodType } from "zod";
 import { adminFieldToInputSchema } from "../inputSchemas";
 import { applyBaseInputSchemaMeta } from "../inputSchemas/utils";
+import { getDataFields } from "../utils";
 import type { GroupField } from "./types";
 import type { VexResourceSlug } from "../../types/generated";
 
@@ -25,6 +26,15 @@ import type { VexResourceSlug } from "../../types/generated";
  *   `adminFieldToInputSchema({ field: subField })` call so a draft-lenient
  *   pass (`getFieldsInputSchema`'s `ignoreRequired`) reaches every sub-field,
  *   not just this group's own `required` check.
+ * @param props.data - The full top-level document, forwarded unchanged to
+ *   every sub-field so each can evaluate its own `admin.condition` and, if
+ *   it is itself a container, continue threading `data` further down.
+ *   Omitted entirely skips condition evaluation (Step 9).
+ * @param props.siblingData - This group's OWN resolved value — the object
+ *   every one of its sub-fields sees as `siblingData` for its own condition
+ *   check, since they are each other's true siblings. Computed by whichever
+ *   call dispatched into this function (`adminFieldToInputSchema`, as
+ *   `siblingData[key]` where `key` is this group's own key).
  * @returns A Zod object schema with optionality applied.
  *
  * @example
@@ -39,13 +49,21 @@ import type { VexResourceSlug } from "../../types/generated";
 export function groupFieldToInputSchema<TFieldMeta extends {} = {}>(props: {
   field: GroupField<VexResourceSlug, TFieldMeta>;
   ignoreRequired?: boolean;
+  data?: Record<string, unknown>;
+  siblingData?: Record<string, unknown>;
 }): ZodType {
   const { field } = props;
 
   const subSchemas = Object.fromEntries(
-    Object.entries(field.fields).map(([key, subField]) => [
+    Object.entries(getDataFields({ fields: field.fields })).map(([key, subField]) => [
       key,
-      adminFieldToInputSchema({ field: subField, ignoreRequired: props.ignoreRequired }),
+      adminFieldToInputSchema({
+        field: subField,
+        ignoreRequired: props.ignoreRequired,
+        data: props.data,
+        siblingData: props.siblingData,
+        key,
+      }),
     ]),
   );
   const schema: ZodType = field.required

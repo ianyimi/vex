@@ -1,5 +1,5 @@
 import type { VexConfig } from "../config";
-import { ADMIN_FIELDS } from "../fields";
+import { ADMIN_FIELDS, getDataFields } from "../fields";
 import {
   accessConstraintsToFilter,
   type AccessFilterFn,
@@ -66,7 +66,7 @@ function resolveIndexDraftStatus(props: {
   const declaredIndex = collection.indexes?.find((i) => i.name === props.indexName);
   if (declaredIndex) return declaredIndex.draftStatus;
 
-  for (const [fieldKey, field] of Object.entries(collection.fields)) {
+  for (const [fieldKey, field] of Object.entries(getDataFields({ fields: collection.fields }))) {
     if (!field) continue;
     const fieldIndexName =
       field.index ?? (field.type === ADMIN_FIELDS.relationship.type ? `by_${fieldKey}` : undefined);

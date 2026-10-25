@@ -97,11 +97,14 @@ skips that check.
 
 ### Field Types
 
-12 built-in field types with full TypeScript inference:
+16 built-in field types with full TypeScript inference:
 
 | Field | Description |
 |-------|-------------|
-| `text` | String with optional min/max length; multiline for long prose |
+| `text` | String with optional min/max length (`number \| [number, string]`) |
+| `email` | Email string with format validation |
+| `textarea` | Multi-line string, with a character counter |
+| `json` | Arbitrary structured JSON, edited with a CodeMirror editor |
 | `url` | URL string |
 | `number` | Numeric with optional min/max/step |
 | `checkbox` | Boolean toggle |
@@ -113,10 +116,17 @@ skips that check.
 | `group` | Named group of nested fields, stored as an object |
 | `array` | Wraps any field type in an array |
 | `blocks` | Ordered array of block instances (discriminated union) |
+| `richtext` | Rich text document edited with Plate.js (`@vexcms/richtext-plate`) |
 
-There is no `richtext`, `json`, `email`, `textarea`, `tabs`, `ui` or `imageUrl`
-field. Those are roadmap items, not shipped API — long prose is a multiline
-`text` field today.
+Non-persisted layout fields — `tabs`, `collapsible`, `row`, `ui` — organize the
+edit form and are legal anywhere a `fields` record is (top-level, inside a
+`group`, a `blocks()` block, or a group-shaped `array()` item); `getDataFields()`
+flattens them away for every non-rendering consumer. Every field, data or
+layout, takes `admin.condition({ data, siblingData }) => boolean` to show or
+hide it, enforced on the client and the server alike.
+
+There is no `imageUrl` field — use `upload` with the media library, or a `url`
+field.
 
 ### Blocks System
 

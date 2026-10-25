@@ -50,19 +50,19 @@ export function defineMediaCollection<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
   TCollectionMeta extends MediaCollectionMeta = MediaCollectionMeta,
   TCollectionSlug extends MediaCollectionSlug = MediaCollectionSlug,
-  TFieldSlug extends string = string,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
   TComponent extends ComponentHKT = ComponentHKT,
 >(
   config: MediaCollectionConfigInput<
     TFieldMeta,
     TCollectionMeta,
     TCollectionSlug,
-    TFieldSlug,
+    TFields,
     TComponent
   > & {
     fields?: Record<MediaCollectionFieldName, AdminField<TFieldMeta>>;
   },
-): MediaCollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFieldSlug, TComponent> {
+): MediaCollectionConfig<TFieldMeta, TCollectionMeta, TCollectionSlug, TFields, TComponent> {
   const userFields = config.fields ?? {};
 
   // Typed as the INPUT `fields` shape, not `MediaCollectionConfig["fields"]`:
@@ -87,14 +87,21 @@ export function defineMediaCollection<
     ...userFields,
   };
 
-  // `TFieldSlug` is deliberately NOT forwarded here. `defineCollection`'s
+  // `TFields` is deliberately NOT forwarded here. `defineCollection`'s
   // parameter is a conditional type on it (the reserved-key guard), and a
   // conditional over an unresolved generic cannot be checked at this call
-  // site. `string` is the truthful argument anyway: `fields` above is a
-  // widened `Record<string, ...>`, exactly like the auth adapter's call. The
-  // outer signature keeps `TFieldSlug` because that describes the caller's own
-  // user fields, which is what the returned config must stay typed by.
-  const resolved = defineCollection<TFieldMeta, TCollectionMeta, TCollectionSlug, string, TComponent>({
+  // site. The widened `Record<string, AdminField<TFieldMeta>>` is the
+  // truthful argument anyway: `fields` above is exactly that shape, like the
+  // auth adapter's call. The outer signature keeps `TFields` because that
+  // describes the caller's own user fields, which is what the returned
+  // config must stay typed by.
+  const resolved = defineCollection<
+    TFieldMeta,
+    TCollectionMeta,
+    TCollectionSlug,
+    Record<string, AdminField<TFieldMeta>>,
+    TComponent
+  >({
     ...config,
     fields,
     meta: {
@@ -108,14 +115,15 @@ export function defineMediaCollection<
   });
 
   // Through `unknown`: `defineCollection` stamps `collectionSlug` into
-  // `TFieldMeta` and resolves `TFieldSlug` to `string`, so the two generic
-  // instantiations do not overlap structurally even though the runtime value
-  // is exactly what the declared return type describes.
+  // `TFieldMeta` and resolves `TFields` to a widened `Record<string, ...>`,
+  // so the two generic instantiations do not overlap structurally even
+  // though the runtime value is exactly what the declared return type
+  // describes.
   return resolved as unknown as MediaCollectionConfig<
     TFieldMeta,
     TCollectionMeta,
     TCollectionSlug,
-    TFieldSlug,
+    TFields,
     TComponent
   >;
 }

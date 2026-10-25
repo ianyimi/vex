@@ -1,5 +1,6 @@
-import { addLeadingSlash, TDocument, type CellComponentProps, type JsonField } from "@vexcms/core";
+import { TDocument, type CellComponentProps, type JsonField } from "@vexcms/core";
 import { VexLink } from "../../ui";
+import { adminHref } from "../../../utils/adminHref";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
 /** Cell preview truncation threshold, in characters of the serialized JSON. */
@@ -40,13 +41,17 @@ export function JsonFieldCell<TData extends TDocument = TDocument>(
   props: CellComponentProps<JsonField, TData>,
 ) {
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
   if (props.value === undefined || props.value === null) return <span>—</span>;
   const serialized = JSON.stringify(props.value);
   const preview = formatJsonCellPreview(props.value);
   if (props.isTitleField) {
     return (
-      <VexLink href={`${basePath}/${props.collection.slug}/${props.row.original._id}`}>
+      <VexLink
+        href={adminHref(
+          { type: "document", slug: props.collection.slug, id: props.row.original._id },
+          config.basePath,
+        )}
+      >
         <span className="font-mono font-bold" title={serialized}>
           {preview}
         </span>

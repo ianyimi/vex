@@ -1,6 +1,7 @@
 "use client";
 
-import { addLeadingSlash, CRUD_ACTIONS, PERMISSION_SCOPES } from "@vexcms/core";
+import { CRUD_ACTIONS, PERMISSION_SCOPES } from "@vexcms/core";
+import { adminHref } from "../utils/adminHref";
 import { useVexConfig } from "../context/VexConfigContext";
 import {
   Sidebar,
@@ -65,7 +66,6 @@ export interface AppSidebarProps {
  */
 export function AppSidebar(props: AppSidebarProps) {
   const config = useVexConfig();
-  const adminRoot = addLeadingSlash(config.basePath);
 
   // `scope: "any"` — the sidebar asks "may they read at least one document in
   // this collection?", so a per-document check resolves optimistically and the
@@ -112,7 +112,7 @@ export function AppSidebar(props: AppSidebarProps) {
                 {collections.map((collection) => (
                   <SidebarMenuItem key={collection.slug}>
                     <SidebarMenuButton
-                      render={<VexLink href={`${adminRoot}/${collection.slug}`} />}
+                      render={<VexLink href={adminHref({ type: "collection", slug: collection.slug }, config.basePath)} />}
                       isActive={props.activeSlug === collection.slug}
                     >
                       {collection.admin.icon && (
@@ -136,7 +136,7 @@ export function AppSidebar(props: AppSidebarProps) {
                 {globals.map((global) => (
                   <SidebarMenuItem key={global.slug}>
                     <SidebarMenuButton
-                      render={<VexLink href={`${adminRoot}/globals/${global.slug}`} />}
+                      render={<VexLink href={adminHref({ type: "global", slug: global.slug }, config.basePath)} />}
                       isActive={props.activeDocID === global.slug}
                     >
                       {global.admin.icon && (
@@ -160,7 +160,7 @@ export function AppSidebar(props: AppSidebarProps) {
                 {mediaCollections.map((mediaCollection) => (
                   <SidebarMenuItem key={mediaCollection.slug}>
                     <SidebarMenuButton
-                      render={<VexLink href={`${adminRoot}/${mediaCollection.slug}`} />}
+                      render={<VexLink href={adminHref({ type: "collection", slug: mediaCollection.slug }, config.basePath)} />}
                       isActive={props.activeSlug === mediaCollection.slug}
                     >
                       {mediaCollection.admin.icon && (

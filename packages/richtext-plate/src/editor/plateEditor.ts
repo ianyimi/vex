@@ -8,6 +8,7 @@ type FeatureInput =
   | VexEditorFeature[]
   | ((defaults: VexEditorFeature[]) => VexEditorFeature[]);
 
+/** Options accepted by {@link plateEditor} to configure the Plate editor. */
 export interface PlateEditorOptions {
   /**
    * Features to enable in the editor.

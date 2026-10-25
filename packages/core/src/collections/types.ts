@@ -1,4 +1,4 @@
-import { AdminField } from "../fields";
+import { AdminField, DataFieldSlug } from "../fields";
 import { ConvexSystemField, CollectionSystemField } from "./constants";
 import type { ComponentHKT } from "../fields";
 import type { CollectionSlug } from "../types/generated";
@@ -246,13 +246,13 @@ export interface CollectionConfigInput<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
   TCollectionSlug extends string = string,
-  TFieldSlug extends string = string,
+  TFields extends Record<string, AdminField<TFieldMeta>> = Record<string, AdminField<TFieldMeta>>,
   TComponent extends ComponentHKT = ComponentHKT,
   TDrafts extends boolean = false,
 > {
   /** Admin panel behaviour for this collection. All properties are optional. */
   admin?: AdminCollectionConfigInput<
-    TFieldSlug,
+    DataFieldSlug<TFields>,
     TComponent,
     TCollectionSlug extends CollectionSlug ? TCollectionSlug : CollectionSlug
   >;
@@ -269,13 +269,13 @@ export interface CollectionConfigInput<
     plural?: string;
   };
   /** Field definitions that make up this collection's document shape. */
-  fields: Record<TFieldSlug, AdminField<TFieldMeta>>;
+  fields: TFields;
   /** Override the PascalCase interface name used in generated TypeScript types. Inferred from `slug` by `defineCollection` if omitted. */
   interfaceName?: string;
   /** Index definitions that create indexes on this collection in Convex. */
   indexes?: {
     name: string;
-    fields: NoInfer<TFieldSlug>[];
+    fields: NoInfer<DataFieldSlug<TFields>>[];
     /**
      * Also narrow this index on `vex_status` for draft/publish status
      * composition (Step 13, `versions/statusConstraint.ts`). Only valid
@@ -310,7 +310,7 @@ export interface CollectionConfigInput<
    * append-only log, or a table whose shape is dictated by an external system.
    *
    * Naming a field `updatedAt` yourself is a compile-time error in
-   * `defineCollection`'s signature (`[TFieldSlug & ReservedCollectionFieldKey]
+   * `defineCollection`'s signature (`[keyof TFields & ReservedCollectionFieldKey]
    * extends [never]`), mirroring `GlobalConfigInput`'s identical
    * `ReservedGlobalFieldKey` guard.
    *
@@ -377,12 +377,12 @@ export interface CollectionConfig<
   TFieldMeta extends {} = {},
   TCollectionMeta extends {} = {},
   TCollectionSlug extends CollectionSlug = CollectionSlug,
-  TFieldSlug extends string = string,
+  TFields extends Record<string, AdminField> = Record<string, AdminField>,
   TComponent extends ComponentHKT = ComponentHKT,
   TDrafts extends boolean = boolean,
 > {
   /** Resolved admin panel configuration for this collection. */
-  admin: AdminCollectionConfig<TFieldSlug, TComponent, TCollectionSlug>;
+  admin: AdminCollectionConfig<DataFieldSlug<TFields>, TComponent, TCollectionSlug>;
   /** Convex table name for this collection. */
   slug: TCollectionSlug;
   /** Display names shown in the admin panel — always present after defaults are applied. */
@@ -400,14 +400,13 @@ export interface CollectionConfig<
    * opts out, so reading it must be null-checked — the same reason
    * `stampUpdatedAt` treats an absent entry as "do not stamp".
    */
-  fields: Partial<Record<CollectionSystemField, AdminField<TFieldMeta>>> &
-    Record<TFieldSlug, AdminField<TFieldMeta>>;
+  fields: Partial<Record<CollectionSystemField, AdminField<TFieldMeta>>> & TFields;
   /** PascalCase identifier derived from `slug`, used as the TypeScript interface name in generated types (e.g. `"posts"` → `"Posts"`). */
   interfaceName: string;
   /** Index definitions that create indexes on this collection in Convex. */
   indexes?: {
     name: string;
-    fields: NoInfer<TFieldSlug>[];
+    fields: NoInfer<DataFieldSlug<TFields>>[];
     draftStatus?: TDrafts extends true ? true | "both" : never;
   }[];
   meta: TCollectionMeta;

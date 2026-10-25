@@ -19,7 +19,8 @@
     "directory": "packages/react"
   },
   "sideEffects": [
-    "./dist/chunk-*.js"
+    "./dist/chunk-*.js",
+    "./src/adapter.ts"
   ],
   "type": "module",
   "exports": {
@@ -82,6 +83,7 @@
     "react-resizable-panels": "catalog:",
     "sonner": "catalog:",
     "tailwind-merge": "catalog:",
+    "use-mask-input": "catalog:",
     "zod": "catalog:"
   },
   "peerDependencies": {

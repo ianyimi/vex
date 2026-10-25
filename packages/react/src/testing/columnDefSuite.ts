@@ -1,7 +1,8 @@
 import type { ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 import type { CellContext, ColumnDefResolved } from "@tanstack/react-table";
-import { defineCollection, type AdminField, type CellComponentProps, type TDocument } from "@vexcms/core";
+import "../adapter";
+import { defineCollection, type AdminDataField, type CellComponentProps, type TDocument } from "@vexcms/core";
 
 import { fieldToCellComponent, getCollectionColumnDefs } from "../components/fields";
 import { makeCellRow } from "./fieldCellContract";
@@ -23,7 +24,7 @@ interface CellColumnMeta {
 const FIELD_KEY = "field";
 
 /** Options for {@link runColumnDefSuite}. */
-export interface ColumnDefSuiteOptions<TField extends AdminField = AdminField, TValue = unknown> {
+export interface ColumnDefSuiteOptions<TField extends AdminDataField = AdminDataField, TValue = unknown> {
   /** The field type's fixture — supplies `fieldDef`, `fieldType`, and a representative `valid` value. */
   fixture: FieldFixture<TField, TValue>;
 }
@@ -39,7 +40,7 @@ export interface ColumnDefSuiteOptions<TField extends AdminField = AdminField, T
  * @param props.asTitle - Whether `admin.useAsTitle` should point at the registered field.
  * @returns A `CollectionConfig` with exactly one field.
  */
-function buildTestCollection(props: { fieldType: string; fieldDef: AdminField; asTitle: boolean }) {
+function buildTestCollection(props: { fieldType: string; fieldDef: AdminDataField; asTitle: boolean }) {
   return defineCollection({
     slug: `columndef_${props.fieldType}`,
     fields: { [FIELD_KEY]: props.fieldDef },
@@ -58,7 +59,7 @@ function buildTestCollection(props: { fieldType: string; fieldDef: AdminField; a
  *
  * @param options - The field type's fixture.
  */
-export function runColumnDefSuite<TField extends AdminField, TValue>(
+export function runColumnDefSuite<TField extends AdminDataField, TValue>(
   options: ColumnDefSuiteOptions<TField, TValue>,
 ): void {
   const { fixture } = options;

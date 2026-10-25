@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  addLeadingSlash,
   CellComponentProps,
   CollectionConfig,
   CollectionSlug,
@@ -15,6 +14,7 @@ import { FilePreview } from "../../media/FilePreview";
 import { get } from "../../../client";
 import { GenericId } from "convex/values";
 import { VexLink } from "../../ui";
+import { adminHref } from "../../../utils/adminHref";
 import { useVexConfig } from "../../../context/VexConfigContext";
 
 /**
@@ -38,8 +38,10 @@ export function UploadFieldCell<TData extends TDocument = TDocument>(
 ) {
   const { value } = props;
   const config = useVexConfig();
-  const basePath = addLeadingSlash(config.basePath);
-  const href = `${basePath}/${props.collection.slug}/${props.row.original._id}`;
+  const href = adminHref(
+    { type: "document", slug: props.collection.slug, id: props.row.original._id },
+    config.basePath,
+  );
   const wrap = (content: ReactNode) =>
     props.isTitleField ? <VexLink href={href}>{content}</VexLink> : content;
 

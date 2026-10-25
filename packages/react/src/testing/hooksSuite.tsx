@@ -9,12 +9,22 @@ import type { ConvexReactClient } from "convex/react";
 import type { ReactNode } from "react";
 
 import { createFakeConvexClient } from "./convex/bridge";
-import schema, { seedDocuments, testModules } from "./convex/schema";
+import schema, {
+  seedDocuments,
+  seedMedia,
+  testModules,
+  type TestMediaInput,
+} from "./convex/schema";
 import { useTableSelection } from "../hooks/useTableSelection";
 import { usePaginatedQuery } from "../hooks/usePaginatedQuery";
+import { usePaginatedSearch } from "../hooks/usePaginatedSearch";
+import type { CollectionConfig, MediaCollectionConfig } from "@vexcms/core";
 
-/** Member names {@link runHooksSuite}'s `only` option accepts. */
-export type HooksSuiteMember = "useTableSelection" | "usePaginatedQuery";
+/** Which hook `runHooksSuite` is currently exercising, for per-member test labeling. */
+export type HooksSuiteMember =
+  | "useTableSelection"
+  | "usePaginatedQuery"
+  | "usePaginatedSearch";
 
 /**
  * `useTableSelection`'s `state.mode` and `state.selectedIds` alone determine
@@ -75,6 +85,151 @@ function makeWrapper(queryClient: QueryClient) {
 }
 
 /**
+ * A `CollectionConfig` fixture over this kit's own `documents` table
+ * (`search_title` index, `title` field) — `usePaginatedSearch`'s non-media
+ * describe block queries it directly, the same way `usePaginatedQuery`'s own
+ * tests do via the bare `"documents"` collection slug.
+ *
+ * @returns A `CollectionConfig` usable as `usePaginatedSearch`'s `collection` prop.
+ */
+function makeDocumentsCollection(): CollectionConfig {
+  return {
+    slug: "documents",
+    fields: {},
+    labels: { singular: "Document", plural: "Documents" },
+    admin: { useAsTitle: "title", components: {} },
+    meta: {},
+  } as unknown as CollectionConfig;
+}
+
+/**
+ * A `MediaCollectionConfig` fixture over this kit's own `media` table —
+ * `usePaginatedSearch`'s `mimeTypes` auto-fill test seeds mixed-type rows
+ * into it directly.
+ *
+ * @returns A `MediaCollectionConfig` usable as `usePaginatedSearch`'s `collection` prop.
+ */
+function makeImagesCollection(): MediaCollectionConfig {
+  return {
+    slug: "images",
+    fields: {},
+    labels: { singular: "Image", plural: "Images" },
+    admin: { useAsTitle: "filename", components: {} },
+    meta: { storageAdapter: "convex" },
+  } as unknown as MediaCollectionConfig;
+}
+
+/**
+ * Registers the `usePaginatedSearch` describe block, driven by real seeded
+ * rows through the convex-test bridge — same no-module-mock rationale as
+ * `usePaginatedQuery`'s own block above.
+ *
+ * @returns Nothing; registers `describe`/`it` blocks as a side effect.
+ */
+function describePaginatedSearch() {
+  describe("usePaginatedSearch", () => {
+    it("lists the first page via find for an empty query, and loadMore reveals further pages", async () => {
+      const t = convexTest(schema, testModules);
+      await seedDocuments(t, 5);
+      const { queryClient } = buildQueryClient(t);
+      const collection = makeDocumentsCollection();
+
+      const { result } = renderHook(
+        () => usePaginatedSearch({ collection, query: "", pageSize: 2 }),
+        { wrapper: makeWrapper(queryClient) },
+      );
+
+      await waitFor(() => expect(result.current.isPending).toBe(false));
+      expect(result.current.documents.map((doc) => doc.title)).toEqual([
+        "Doc 0",
+        "Doc 1",
+      ]);
+      expect(result.current.hasMore).toBe(true);
+
+      act(() => result.current.loadMore());
+      await waitFor(() =>
+        expect(result.current.documents.map((doc) => doc.title)).toEqual([
+          "Doc 0",
+          "Doc 1",
+          "Doc 2",
+          "Doc 3",
+        ]),
+      );
+      expect(result.current.hasMore).toBe(true);
+
+      act(() => result.current.loadMore());
+      await waitFor(() =>
+        expect(result.current.documents.map((doc) => doc.title)).toEqual([
+          "Doc 0",
+          "Doc 1",
+          "Doc 2",
+          "Doc 3",
+          "Doc 4",
+        ]),
+      );
+      expect(result.current.hasMore).toBe(false);
+    });
+
+    it("debounces then dispatches to the search_<useAsTitle> index for a non-empty query", async () => {
+      // Unlike `api/search/server.test.ts`'s own "non-empty query does not
+      // throw" workaround comment (written against convex-test v0.0.38,
+      // where `withSearchIndex` was unimplemented and always threw/resolved
+      // empty), the version installed here DOES implement `withSearchIndex`
+      // and returns real matched rows. This test only proves the hook
+      // settles into the search branch without erroring and keeps returning
+      // an array — it does not assert exact match content, since that
+      // content is convex-test's own search-ranking behavior, not this
+      // hook's concern.
+      const t = convexTest(schema, testModules);
+      await seedDocuments(t, 5);
+      const { queryClient } = buildQueryClient(t);
+      const collection = makeDocumentsCollection();
+
+      const { result } = renderHook(
+        () => usePaginatedSearch({ collection, query: "Doc 2" }),
+        { wrapper: makeWrapper(queryClient) },
+      );
+
+      await waitFor(() => expect(result.current.isPending).toBe(false));
+      expect(result.current.isError).toBe(false);
+      expect(Array.isArray(result.current.documents)).toBe(true);
+    });
+
+    it("applies mimeTypes as a client-side filter, auto-fetching further server pages to fill the page", async () => {
+      const t = convexTest(schema, testModules);
+      const rows: Array<Partial<TestMediaInput>> = [
+        { filename: "a.png", mimeType: "image/png" },
+        { filename: "b.pdf", mimeType: "application/pdf" },
+        { filename: "c.png", mimeType: "image/png" },
+        { filename: "d.pdf", mimeType: "application/pdf" },
+      ];
+      await seedMedia(t as never, rows);
+      const { queryClient } = buildQueryClient(t);
+      const collection = makeImagesCollection();
+
+      const { result } = renderHook(
+        () =>
+          usePaginatedSearch({
+            collection,
+            query: "",
+            pageSize: 2,
+            mimeTypes: ["application/pdf"],
+          }),
+        { wrapper: makeWrapper(queryClient) },
+      );
+
+      await waitFor(() =>
+        expect(result.current.documents.map((doc) => doc.filename)).toEqual([
+          "b.pdf",
+          "d.pdf",
+        ]),
+      );
+      expect(result.current.hasMore).toBe(false);
+    });
+  });
+}
+
+/**
  * Runs the shared contract for this package's two custom hooks —
  * `useTableSelection`'s selection-state machine and `usePaginatedQuery`'s
  * cursor-accumulating pagination over a real Convex backend. Neither member
@@ -84,7 +239,11 @@ function makeWrapper(queryClient: QueryClient) {
  * @param options - Which members to run; defaults to both.
  */
 export function runHooksSuite(options?: { only?: HooksSuiteMember[] }): void {
-  const only = options?.only ?? ["useTableSelection", "usePaginatedQuery"];
+  const only = options?.only ?? [
+    "useTableSelection",
+    "usePaginatedQuery",
+    "usePaginatedSearch",
+  ];
 
   if (only.includes("useTableSelection")) {
     describe("useTableSelection", () => {
@@ -726,4 +885,6 @@ export function runHooksSuite(options?: { only?: HooksSuiteMember[] }): void {
       });
     });
   }
+
+  if (only.includes("usePaginatedSearch")) describePaginatedSearch();
 }

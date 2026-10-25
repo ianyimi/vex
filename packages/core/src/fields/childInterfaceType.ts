@@ -1,5 +1,5 @@
 import { ADMIN_FIELDS } from "./constants";
-import type { AdminField } from "./types";
+import type { AdminDataField } from "./types";
 
 /**
  * Resolves the TypeScript type string for a field nested inside another field.
@@ -17,7 +17,7 @@ import type { AdminField } from "./types";
  * @param field - The nested field definition.
  * @returns The TypeScript type string to emit for this field.
  */
-export function childInterfaceType(field: AdminField): string {
+export function childInterfaceType(field: AdminDataField): string {
   if (field.type === ADMIN_FIELDS.select.type) {
     const options = (field as { options?: { value: string }[] }).options ?? [];
     // A `select` with no options configured has no union to emit; widening to

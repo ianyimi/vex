@@ -152,6 +152,20 @@ export interface BlockConfig<TBlockMeta extends {} = {}> {
   metadata?: TBlockMeta;
 }
 
+/** Per-type `admin` input for `blocks()` — adds `defaultCollapsed`. */
+export interface BlocksFieldAdminInput<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfigInput<TCollectionSlug> {
+  defaultCollapsed?: boolean;
+}
+
+/** Resolved per-type `admin` for `blocks()`. */
+export interface BlocksFieldAdminConfig<
+  TCollectionSlug extends VexResourceSlug = VexResourceSlug,
+> extends FieldAdminConfig<TCollectionSlug> {
+  defaultCollapsed: boolean;
+}
+
 /**
  * Configuration input for a `blocks()` field.
  *
@@ -168,7 +182,7 @@ export interface BlockConfig<TBlockMeta extends {} = {}> {
  *   defaultValue: [],
  *   labels:       { singular: "block", plural: "blocks" },
  *   admin: {
- *     hidden: false, readOnly: false, position: "main", width: "full",
+ *     hidden: false, readOnly: false, position: "main", width: "100%",
  *     cellAlignment: "left",
  *   }
  * }
@@ -202,9 +216,7 @@ export interface BlocksFieldInput<
   TCollectionSlug extends VexResourceSlug = VexResourceSlug,
   TFieldMeta extends {} = {},
 > extends Omit<BaseFieldInput<TCollectionSlug, TFieldMeta>, "admin"> {
-  admin?: FieldAdminConfigInput & {
-    defaultCollapsed?: boolean;
-  };
+  admin?: BlocksFieldAdminInput<TCollectionSlug>;
   /** Block type definitions that are allowed in this field. */
   blocks: BlockConfig<TFieldMeta>[];
   /**
@@ -249,9 +261,7 @@ export interface BlocksField<
   TFieldMeta extends {} = {},
 > extends BaseField<TCollectionSlug, TFieldMeta> {
   readonly type: typeof ADMIN_FIELDS.blocks.type;
-  admin: FieldAdminConfig & {
-    defaultCollapsed: boolean;
-  };
+  admin: BlocksFieldAdminConfig<TCollectionSlug>;
   /** Block type definitions allowed in this field. */
   blocks: BlockConfig<TFieldMeta>[];
   /** Optional TypeScript union alias name. */
