@@ -199,18 +199,45 @@ a context with a companion hook lives instead as one `hooks/useXxx.ts` file.
 
 #### react-feature-folders
 
-`packages/react/src/*` is grouped by domain at the top level
-(`collections/`, `globals/`, `versions/`, `media/`, `fields/`, `forms/`,
-`access/`, `auth/`, `config/`, `admin/`, `slots/`, `livePreview/`,
-`revalidate/`, `modals/`, `ui/`, `hooks/`, `utils/`), mirroring
-`core/src/`. Inside a feature folder every file is flat — the only
-subfolders are `api/` (`server.ts`/`client.ts` per operation) and, in
-`fields/`, one directory per field type. `adapter.ts`, `index.ts`, and
-`testing/` stay at the root; there is no `components/`, `context/`, `lib/`,
-or `styles/` directory.
+The top level of `packages/react/src/*` is a **closed** set of domain folders
+mirroring `core/src/`: `access/`, `admin/`, `auth/`, `client/`,
+`collections/`, `config/`, `documents/`, `fields/`, `forms/`, `globals/`,
+`hooks/`, `livePreview/`, `media/`, `modals/`, `revalidate/`, `slots/`,
+`testing/`, `ui/`, `utils/`, `versions/`, plus `adapter.ts` and `index.ts`.
+A new top-level folder is only for a new domain that `core/src/` also has.
+Never name one after a UI surface, view, or feature (`list/`, `edit/`,
+`data/`, `views/`, `filters/`, `actions/`).
 
-- **OK:** `collections/CollectionEditView.tsx`, `fields/text/Field.tsx`
-- **Not OK:** `components/views/CollectionEditView.tsx`, `hooks/usePermission.ts`
+Where code goes:
+
+- **One domain's view** → that domain folder, with a domain/view name prefix
+  (`collections/CollectionListToolbar.tsx`).
+- **Shared by several domains' views** → the existing domain that owns the
+  shared concept. For example, code shared by the collection and global edit
+  views goes in `documents/`. If no domain fits, ask.
+- **Hooks** → stay in their domain (`access/usePermission.ts`). `hooks/` holds
+  only generic hooks reused across domains (`usePaginatedQuery`, `useVexList`).
+- **Generic UI primitives** with no domain knowledge → `ui/`
+  (`ui/data-table/DataTableColumnsMenu.tsx`).
+
+Inside a domain folder, files stay flat. The only subfolders are `api/`
+(`server.ts`/`client.ts` per operation) and `fields/<type>/`. When a folder
+grows crowded, the developer splits it into the conventional `components/`,
+`hooks/`, `context/` subfolders; agents never split folders themselves or
+invent ad-hoc subfolders.
+
+- **OK:** `collections/CollectionListToolbar.tsx`, `hooks/useVexList.ts`, `ui/data-table/DataTableColumnsMenu.tsx`, `fields/text/Field.tsx`
+- **Not OK:** `list/ListToolbar.tsx`, `edit/SaveAction.tsx`, `data/useVexList.ts`, `collections/filters/FilterBuilder.tsx`, `hooks/usePermission.ts`
+
+#### core-domain-folders
+
+The top level of `packages/core/src/*` is a closed set of domain folders plus
+camelCase root modules. A sub-feature of an existing domain never gets its own
+folder. Saved views live in `collections/types.ts` and
+`collections/api/saveView/server.ts`, not in `views/`.
+
+- **OK:** `collections/resolveSort.ts`, `collections/api/saveView/server.ts`
+- **Not OK:** `views/types.ts`, `edit/duplicate.ts`
 
 ### Tests, scripts, docs (all packages)
 

@@ -6,18 +6,22 @@
 - 5. C — Versioning & drafts (spec 2026-08-23-versioning-drafts, 56 tasks, still `draft` — RE-SCOPE FIRST: it predates F and E). Calls F's write pipeline and reuses its lenient validation mode; must pass `changes` to `hasPermission` on draft writes; supplies the draft base layer E's overlay sits on (E needs no change — the overlay already applies to whatever document the consumer's query returned)
 - 6. D — Richtext field: wire the existing 3,219 lines in `richtext-plate`, add `richtext()` + the 2 missing core types, drop 4 `@ts-nocheck`
 - 7. G — Field input consistency pass: relationship field, loading states, media MIME filter, conditional fields
+- 8. H — Edit-view overhaul: unsaved-changes nav guard, duplicate document, duplicate block
+- 9. I — List-view overhaul: search, sort, column visibility, page size, saved views — reintroduces the config A deleted alongside the controls that consume it
+- Build-time telemetry (spec 2026-10-26-build-time-telemetry)
 
 ## Inbox
 ### v0.1.0 launch track — work in this order (`.agent/docs/product/v0.1.0-launch-plan.md`)
 ### Other
 - 1. A — Data-table integrity & dead config: unreachable bulk delete, bogus `_createdAt` default, `updatedAt` verification, wire `pageSize` options, delete the UI-dependent table config (sorting/columns move to I), README `convex env set` + false sortable/searchable claims, ratify `vex_` table convention
 - 2. B — Public API surface: un-export the 4 migrate stubs + gate `autoMigrate`; localization ADR (decision only, zero production diff)
-- 8. H — Edit-view overhaul: unsaved-changes nav guard, duplicate document, duplicate block
-- 9. I — List-view overhaul: search, sort, column visibility, page size, saved views — reintroduces the config A deleted alongside the controls that consume it
 - 10. J — Responsive / mobile UI pass — FINAL gate before tagging
 - Rename naming outliers: MediaLibaryGrid.tsx, use-mobile.ts, blocks/logo-cloud.ts
 - Access constraint builder (spec 2026-08-25-access-constraint-builder)
 - Upload GitHub social preview 1280x640 (deferred from WP-4 step 7; brief in github-page.md)
+- N — Update + test create-vexcms templates: sync `base-nextjs` from `apps/test` and `marketing-site` from `apps/www` (template-sync skill), scaffold from packed tarballs, manual run-through per template on a fresh Convex deployment, fix in template + source app (launch plan § N)
+- O — GitHub issue triage setup: Payload-derived label taxonomy in `.github/labels.yml` (`status:` / `area:` / `adapter:` / `type:` / `roadmap:`), issue forms + `config.yml`, CONTRIBUTING triage section, 10–20 ready issues filed (≥5 `good first issue`) (launch plan § O)
+- P — Launch analytics: confirm Vercel Web Analytics live on `apps/www`, add Speed Insights, add analytics to `apps/docs`, decide template default, privacy page (launch plan § P)
 - Release mechanics before tagging: `changeset pre exit` (15 queued changesets), publish via pnpm, `scripts/verify-scaffold.mjs` green
 - Assessed-but-deferred features live in `.agent/docs/product/backlog.md`
 - Fix scripts/vercel-build-check.mjs: since / prerenders via a live vex.query, the placeholder NEXT_PUBLIC_CONVEX_URL makes the pristine build fail on every run (pre-existing at a180967). Pass through a real dev URL when present, or make HomePage degrade when Convex is unreachable
