@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, useState } from "react";
+import { useState } from "react";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { useStore } from "@tanstack/react-form";
 import { parseAsString, useQueryState } from "nuqs";
@@ -12,7 +12,7 @@ import type {
 } from "@vexcms/core";
 import { VERSION_STATUSES } from "@vexcms/core";
 import { useFieldContext, useFormContext, isFieldShowingError } from "../../forms";
-import { FieldDescription, FieldError } from "../../ui/field";
+import { FieldError, FieldGroupBox } from "../../ui/field";
 import { useVexConfig } from "../../config/VexConfigContext";
 import { RelationshipPicker } from "./RelationshipPicker";
 import { MODALS } from "../../modals/constants";
@@ -133,13 +133,13 @@ function RelationshipFieldAdminInner(
 
   if (isReadOnly) {
     return (
-      <div
-        className="flex flex-col gap-1.5"
-        role="group"
-        aria-labelledby={`${props.name}-label`}
-        aria-disabled={isReadOnly}
+      <FieldGroupBox
+        labelId={`${props.name}-label`}
+        label={label}
+        description={props.fieldDef.description}
+        disabled={isReadOnly}
+        error={showError && <FieldError role="alert">{errorMessage}</FieldError>}
       >
-        {label}
         {value.length > 0 ? (
           <RelationshipFilledState
             fieldDef={props.fieldDef}
@@ -154,22 +154,18 @@ function RelationshipFieldAdminInner(
         ) : (
           <div className="text-sm text-muted-foreground">—</div>
         )}
-        <Activity mode={props.fieldDef.description ? "visible" : "hidden"}>
-          <FieldDescription data-slot="form-description">{props.fieldDef.description}</FieldDescription>
-        </Activity>
-        {showError && <FieldError role="alert">{errorMessage}</FieldError>}
-      </div>
+      </FieldGroupBox>
     );
   }
 
   return (
-    <div
-      className="flex flex-col gap-1.5"
-      role="group"
-      aria-labelledby={`${props.name}-label`}
-      aria-disabled={isReadOnly}
+    <FieldGroupBox
+      labelId={`${props.name}-label`}
+      label={label}
+      description={props.fieldDef.description}
+      disabled={isReadOnly}
+      error={showError && <FieldError role="alert">{errorMessage}</FieldError>}
     >
-      {label}
       {value.length === 0 ? (
         <RelationshipEmpty
           fieldDef={props.fieldDef}
@@ -190,10 +186,6 @@ function RelationshipFieldAdminInner(
           openPicker={() => void openPicker()}
         />
       )}
-      <Activity mode={props.fieldDef.description ? "visible" : "hidden"}>
-        <FieldDescription data-slot="form-description">{props.fieldDef.description}</FieldDescription>
-      </Activity>
-      {showError && <FieldError role="alert">{errorMessage}</FieldError>}
       {isOpen && (
         <RelationshipPicker
           fieldDef={props.fieldDef}
@@ -205,7 +197,7 @@ function RelationshipFieldAdminInner(
           onCancel={() => void closePicker()}
         />
       )}
-    </div>
+    </FieldGroupBox>
   );
 }
 

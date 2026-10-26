@@ -78,7 +78,7 @@ export type RenderControl<TValue = unknown> = (props: FieldControlProps<TValue>)
 export interface BaseFormFieldProps<TValue = unknown> {
   /** Rendered by `FormFieldLayout`; omit to render no label block (e.g. `CheckboxField`'s inline label). */
   label?: string;
-  /** Rendered by `FormFieldLayout` under the control, hidden when absent. */
+  /** Rendered by `FormFieldLayout` under the label, above the control; hidden when absent. */
   description?: string;
   /** Shows the `FormFieldLayout` required marker and sets `aria-required` on the default control. */
   required?: boolean;
@@ -90,7 +90,7 @@ export interface BaseFormFieldProps<TValue = unknown> {
   renderControl?: RenderControl<TValue>;
   /** Rendered by `FormFieldLayout` before the control. */
   before?: ReactNode;
-  /** Rendered by `FormFieldLayout` after the control, before the description/error. */
+  /** Rendered by `FormFieldLayout` after the control, above the error/counter footer row. */
   after?: ReactNode;
   /** Forwarded to `FormFieldLayout`'s outer element. */
   className?: string;

@@ -14,7 +14,7 @@ const { useAppForm } = createFormHook({
   formComponents: {},
 });
 
-function Harness(props: { initialValue: string[]; max?: number }) {
+function Harness(props: { initialValue: string[]; max?: number; description?: string }) {
   const form = useAppForm({ defaultValues: { tags: props.initialValue } });
   return (
     <DndProvider>
@@ -23,6 +23,7 @@ function Harness(props: { initialValue: string[]; max?: number }) {
         {(field) => (
           <field.ArrayField
             label="Tags"
+            description={props.description}
             itemLabel="Tag"
             pluralLabel="tags"
             max={props.max}
@@ -73,5 +74,14 @@ describe("ArrayField", () => {
     render(<Harness initialValue={["a", "b"]} max={2} />);
     expect(screen.getByRole("button", { name: "Add Tag" })).toBeDisabled();
     expect(screen.getByText("Maximum 2 tags reached")).toBeInTheDocument();
+  });
+
+  it("renders the header, then the description, then the items — the label-block order, not under the items", () => {
+    render(<Harness initialValue={["a"]} description="Helper text" />);
+    const label = screen.getByText("Tags").closest("span")!;
+    const description = screen.getByText("Helper text");
+    const firstItem = screen.getByLabelText(/Tag value/);
+    expect(label.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(description.compareDocumentPosition(firstItem) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

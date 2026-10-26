@@ -35,7 +35,7 @@ export function FormRow(props: {
   if (!visible) return null;
 
   return (
-    <div className="flex flex-wrap gap-4">
+    <div className="flex flex-wrap gap-x-4 gap-y-6">
       {entries.map(([key, childField], index) => (
         <FieldLayoutItem key={key} width={widths[index] ?? "100%"}>
           {renderField({ field: childField, fieldKey: key, context })}

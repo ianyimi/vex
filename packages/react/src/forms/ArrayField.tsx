@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Activity } from "react";
 import { useStore } from "@tanstack/react-form";
 import { ChevronsDownUpIcon, ChevronsUpDownIcon } from "lucide-react";
 import { useFieldContext, useFormContext } from "./formContext";
@@ -11,6 +12,7 @@ import { useCompactForm } from "./FormCompactContext";
 import { ActionsMenu, HeaderAction, type ActionPlacement } from "../ui/ActionsMenu";
 import { Droppable, Draggable, DragHandle } from "../ui/dnd";
 import { Button } from "../ui/button";
+import { FieldDescription } from "../ui/field";
 import type { BaseFormFieldProps } from "./types";
 
 /** Props for {@link ArrayField}. */
@@ -106,41 +108,47 @@ export function ArrayField<TItem>(props: ArrayFieldProps<TItem>): ReactNode {
   return (
     <FormFieldLayout
       id={field.name}
-      description={props.description}
       field={field}
       submissionAttempts={submissionAttempts}
       className={props.className}
     >
       <div className="flex flex-col gap-3 rounded-sm border-2 px-3 py-2">
-        <div className="flex min-h-8 items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <span
-              id={`${field.name}-label`}
-              className="relative flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
-            >
-              {props.index !== undefined ? `[${props.index + 1}] - ` : ""}
-              {label}
-              {props.required && <span className="text-red-500">*</span>}
-            </span>
-            {items.length > 0 && (
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {items.length}
-                {props.max !== undefined ? `/${props.max}` : ""} {props.pluralLabel}
+        <div className="flex flex-col gap-1">
+          <div className="flex min-h-8 items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                id={`${field.name}-label`}
+                className="relative flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
+              >
+                {props.index !== undefined ? `[${props.index + 1}] - ` : ""}
+                {label}
+                {props.required && <span className="text-red-500">*</span>}
               </span>
-            )}
+              {items.length > 0 && (
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {items.length}
+                  {props.max !== undefined ? `/${props.max}` : ""} {props.pluralLabel}
+                </span>
+              )}
+            </div>
+            {showHeaderActions &&
+              (compact ? (
+                <ActionsMenu label={`${label} actions`}>
+                  {props.headerActions}
+                  {props.itemsHaveOwnHeader && items.length > 0 && collapseExpandControls("menu")}
+                </ActionsMenu>
+              ) : (
+                <div className="flex shrink-0 items-center gap-1">
+                  {props.headerActions}
+                  {props.itemsHaveOwnHeader && items.length > 0 && collapseExpandControls("inline")}
+                </div>
+              ))}
           </div>
-          {showHeaderActions &&
-            (compact ? (
-              <ActionsMenu label={`${label} actions`}>
-                {props.headerActions}
-                {props.itemsHaveOwnHeader && items.length > 0 && collapseExpandControls("menu")}
-              </ActionsMenu>
-            ) : (
-              <div className="flex shrink-0 items-center gap-1">
-                {props.headerActions}
-                {props.itemsHaveOwnHeader && items.length > 0 && collapseExpandControls("inline")}
-              </div>
-            ))}
+          <Activity mode={props.description ? "visible" : "hidden"}>
+            <FieldDescription id={`${field.name}-description`} data-slot="form-description">
+              {props.description}
+            </FieldDescription>
+          </Activity>
         </div>
         {items.length > 0 ? (
           <Droppable id={field.name} onReorder={reorder}>

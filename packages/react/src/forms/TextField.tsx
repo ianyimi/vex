@@ -54,7 +54,7 @@ export function TextField(props: TextFieldProps): ReactNode {
   );
   const counter =
     props.maxLength !== undefined ? (
-      <p className="self-end text-[0.8rem] text-muted-foreground tabular-nums">
+      <p className="text-[0.8rem] text-muted-foreground tabular-nums">
         {value.length}/{props.maxLength}
       </p>
     ) : undefined;
@@ -68,7 +68,8 @@ export function TextField(props: TextFieldProps): ReactNode {
       field={field}
       submissionAttempts={submissionAttempts}
       before={props.before}
-      after={counter ?? props.after}
+      after={props.after}
+      counter={counter}
       className={props.className}
     >
       {control}

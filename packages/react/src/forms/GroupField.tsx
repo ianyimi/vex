@@ -93,7 +93,7 @@ export function GroupField(props: GroupFieldProps): ReactNode {
           leading={itemHeader?.dragHandle}
           actions={itemHeader?.actions}
         >
-          <div className="flex min-w-0 flex-col self-center">
+          <div className="flex min-w-0 flex-col gap-1 self-center">
             <span className="flex min-w-0 items-center gap-2">
               <span
                 id={`${field.name}-label`}

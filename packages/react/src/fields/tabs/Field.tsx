@@ -146,7 +146,7 @@ export function FormTabs(props: {
             : context;
         return (
           <TabsContent key={tabValue(tab)} value={tabValue(tab)} keepMounted={errorCountOf(tab) > 0}>
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-x-4 gap-y-6">
               {visibleFieldEntries({ fields: tab.fields, fieldKeys: tabContext.fieldKeys }).map(
                 ([key, childField]) => (
                   <FieldLayoutItem key={key} width={fieldWidth(childField)}>

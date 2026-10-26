@@ -1,7 +1,7 @@
 "use client";
 
 import { cva, type VariantProps } from "class-variance-authority";
-import { useMemo } from "react";
+import { Activity, useMemo } from "react";
 import type { ComponentProps, ReactNode } from "react";
 import { Label } from "./label";
 import { Separator } from "./separator";
@@ -54,7 +54,7 @@ export function FieldSet({ className, ...props }: ComponentProps<"fieldset">) {
   );
 }
 
-const fieldVariants = cva("data-[invalid=true]:text-destructive gap-3 group/field flex w-full", {
+const fieldVariants = cva("data-[invalid=true]:text-destructive gap-0 group/field flex w-full", {
   defaultVariants: {
     orientation: "vertical",
   },
@@ -69,7 +69,12 @@ const fieldVariants = cva("data-[invalid=true]:text-destructive gap-3 group/fiel
   },
 });
 
-/** One label/control/description/error group. `role="group"` so screen readers announce it as a unit. */
+/**
+ * One label/control/description/error group — label and description stack
+ * tight above the control (4px/8px, managed by {@link FormFieldLayout} via
+ * per-child margins, not a container `gap`); `role="group"` so screen
+ * readers announce it as a unit.
+ */
 export function Field({
   className,
   orientation = "vertical",
@@ -97,13 +102,12 @@ export function FieldContent({ className, ...props }: ComponentProps<"div">) {
   );
 }
 
-/** Helper text under a {@link Field}'s control. */
+/** A {@link Field}'s helper text — shown directly under its label, above its control. */
 export function FieldDescription({ className, ...props }: ComponentProps<"p">) {
   return (
     <p
       className={cn(
         "text-muted-foreground text-left text-[0.8rem] [[data-variant=legend]+&]:-mt-1.5 leading-normal font-normal group-has-[[data-orientation=horizontal]]/field:text-balance",
-        "last:mt-0 nth-last-2:-mt-1",
         "[&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4",
         className,
       )}
@@ -164,6 +168,52 @@ export function FieldLabel({ className, ...props }: ComponentProps<typeof Label>
       data-slot="field-label"
       {...props}
     />
+  );
+}
+
+/**
+ * The `role="group"` wrapper fields with no single focusable control to
+ * `<label htmlFor>` (relationship/upload/richtext) use instead of
+ * {@link FormFieldLayout} — same label → description → control → error
+ * order and spacing tokens (4px label-description, 8px description-control),
+ * built from per-child margins rather than a container `gap` so the hidden
+ * `<Activity>` description never adds space when absent.
+ *
+ * @param props.labelId - The id `aria-labelledby` points at; the caller's `label` must carry it.
+ * @param props.label - The field's own label markup (not a `<label>` — no single control to associate).
+ * @param props.description - Helper text rendered between the label and `children`.
+ * @param props.disabled - Forwarded to `aria-disabled`.
+ * @param props.error - The field's validation error, rendered after `children`.
+ * @param props.children - The control(s).
+ * @returns The labelled, grouped field body.
+ */
+export function FieldGroupBox(props: {
+  labelId: string;
+  label: ReactNode;
+  description?: string;
+  disabled?: boolean;
+  error?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}): ReactNode {
+  return (
+    <div
+      className={cn("flex flex-col", props.className)}
+      role="group"
+      aria-labelledby={props.labelId}
+      aria-disabled={props.disabled}
+    >
+      {props.label}
+      <Activity mode={props.description ? "visible" : "hidden"}>
+        <FieldDescription className="mt-1" data-slot="form-description">
+          {props.description}
+        </FieldDescription>
+      </Activity>
+      <div className="flex flex-col gap-1 mt-2">
+        {props.children}
+        {props.error}
+      </div>
+    </div>
   );
 }
 

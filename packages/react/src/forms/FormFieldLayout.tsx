@@ -81,28 +81,47 @@ export function fieldDescribedBy(props: {
 }
 
 /**
- * The layout every app form field renders its control inside: label with
- * required marker and `[n] -` index prefix, the control (`children`),
- * optional `before`/`after` nodes flanking it, description, and the
+ * The layout every app form field renders its control inside: label (with
+ * required marker and `[n] -` index prefix), description, the control
+ * (`children`), optional `before`/`after` nodes flanking it, and the
  * validation error — built on `components/ui/field.tsx`'s shadcn field
- * primitives.
+ * primitives. Order is label → description → control → `after` → the
+ * counter/error footer row; the description sits directly under the
+ * label, above the control, not below it.
+ *
+ * Spacing is margin-driven, not a single container `gap`: 4px label→
+ * description, 8px label-or-description→control, 4px control→`after`→
+ * the footer row — each applied only when its predecessor actually
+ * renders, so a `sr-only` label (`HideFieldLabelContext`) or a hidden
+ * (`<Activity mode="hidden">`) description never contributes a gap.
+ *
+ * `counter` and the validation error share one row directly under the
+ * control (4px below it): the error (when showing) takes the remaining
+ * width and wraps; `counter` stays right-aligned and never gets pushed
+ * away from the control by a wrapping error. When there is no error,
+ * `counter` still right-aligns alone in that row.
  *
  * @param props.id - The control's DOM id; the label's `htmlFor` target.
  * @param props.label - Label text. No label block renders when omitted.
+ * @param props.labelContent - Replaces the default label markup entirely
+ * (e.g. a label row with a trailing action button) while still occupying
+ * the label's position and spacing. Takes precedence over `label`.
  * @param props.required - Shows the `*` marker beside the label.
- * @param props.description - Helper text rendered under the control.
+ * @param props.description - Helper text rendered under the label, above the control.
  * @param props.index - Array-item position, rendered as `[n] -` before the label.
  * @param props.field - The field whose error state to render.
  * @param props.submissionAttempts - Drives {@link isFieldShowingError}'s timing.
  * @param props.before - Rendered immediately before `children`.
- * @param props.after - Rendered immediately after `children`.
+ * @param props.after - Rendered on its own line after the control, above the counter/error footer row.
+ * @param props.counter - Rendered in the footer row, right-aligned beside the validation error.
  * @param props.children - The control.
  * @param props.className - Additional classes on the outer `Field`.
- * @returns The field's label/control/description/error stack.
+ * @returns The field's label/description/control/error stack.
  */
 export function FormFieldLayout(props: {
   id: string;
   label?: string;
+  labelContent?: ReactNode;
   required?: boolean;
   description?: string;
   index?: number;
@@ -110,6 +129,7 @@ export function FormFieldLayout(props: {
   submissionAttempts: number;
   before?: ReactNode;
   after?: ReactNode;
+  counter?: ReactNode;
   children: ReactNode;
   className?: string;
 }): ReactNode {
@@ -121,33 +141,48 @@ export function FormFieldLayout(props: {
   const descriptionId = `${props.id}-description`;
   const errorId = `${props.id}-error`;
   const labelHidden = useContext(HideFieldLabelContext);
+  const hasLabel = props.labelContent !== undefined || props.label !== undefined;
+  const hasDescription = Boolean(props.description);
+
+  const labelNode =
+    props.labelContent ??
+    (props.label !== undefined && (
+      <FieldLabel
+        htmlFor={props.id}
+        id={`${props.id}-label`}
+        className={cn(labelHidden && "sr-only")}
+      >
+        {props.index !== undefined ? `[${props.index + 1}] - ` : ""}
+        {props.label}
+        {props.required && <span className="text-red-500">*</span>}
+      </FieldLabel>
+    ));
 
   return (
     <Field className={props.className} data-invalid={showError}>
-      {props.label !== undefined && (
-        <FieldLabel
-          htmlFor={props.id}
-          id={`${props.id}-label`}
-          className={cn(labelHidden && "sr-only")}
+      {hasLabel && labelNode}
+      <Activity mode={hasDescription ? "visible" : "hidden"}>
+        <FieldDescription
+          id={hasDescription ? descriptionId : undefined}
+          data-slot="form-description"
+          className={cn(hasLabel && !labelHidden && "mt-1")}
         >
-          {props.index !== undefined ? `[${props.index + 1}] - ` : ""}
-          {props.label}
-          {props.required && <span className="text-red-500">*</span>}
-        </FieldLabel>
-      )}
-      <FieldContent>
+          {props.description}
+        </FieldDescription>
+      </Activity>
+      <FieldContent className={cn((hasDescription || (hasLabel && !labelHidden)) && "mt-2")}>
         {props.before}
         {props.children}
         {props.after}
-        <Activity mode={props.description ? "visible" : "hidden"}>
-          <FieldDescription id={descriptionId} data-slot="form-description">
-            {props.description}
-          </FieldDescription>
-        </Activity>
-        {showError && (
-          <FieldError id={errorId} role="alert">
-            {errorMessage}
-          </FieldError>
+        {(showError || props.counter) && (
+          <div className="flex flex-wrap items-start gap-x-2 gap-y-1" data-slot="field-footer">
+            {showError && (
+              <FieldError id={errorId} role="alert" className="min-w-0 flex-1">
+                {errorMessage}
+              </FieldError>
+            )}
+            {props.counter && <span className="ml-auto shrink-0">{props.counter}</span>}
+          </div>
         )}
       </FieldContent>
     </Field>

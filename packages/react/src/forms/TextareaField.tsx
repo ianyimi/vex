@@ -54,7 +54,7 @@ export function TextareaField(props: TextareaFieldProps): ReactNode {
     />
   );
   const counter = (
-    <p className="self-end text-[0.8rem] text-muted-foreground tabular-nums">
+    <p className="text-[0.8rem] text-muted-foreground tabular-nums">
       {value.length}
       {props.maxLength ? `/${props.maxLength}` : ""}
     </p>
@@ -69,7 +69,7 @@ export function TextareaField(props: TextareaFieldProps): ReactNode {
       field={field}
       submissionAttempts={submissionAttempts}
       before={props.before}
-      after={counter}
+      counter={counter}
       className={props.className}
     >
       {control}

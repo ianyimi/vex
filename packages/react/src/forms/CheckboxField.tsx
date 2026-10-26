@@ -1,11 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Activity } from "react";
 import { useStore } from "@tanstack/react-form";
 import { useFieldContext, useFormContext } from "./formContext";
 import { FormFieldLayout, fieldDescribedBy, isFieldShowingError } from "./FormFieldLayout";
 import { cn } from "../utils/cn";
-import { FieldLabel } from "../ui/field";
+import { FieldDescription, FieldLabel } from "../ui/field";
 import { Checkbox } from "../ui/checkbox";
 import type { BaseFormFieldProps } from "./types";
 
@@ -15,7 +16,10 @@ export type CheckboxFieldProps = BaseFormFieldProps<boolean>;
 /**
  * A checkbox field bound to the nearest `<form.AppField name="...">`. Unlike
  * every other app-form leaf field, its label renders beside the control
- * rather than above it — `FormFieldLayout` is used for description/error only.
+ * rather than above it — `FormFieldLayout` is used for the error only; the
+ * description renders directly under the inline label text, indented
+ * (`pl-6`) to align with it rather than the checkbox box, the standard
+ * checkbox-with-hint pattern.
  *
  * @param props - See {@link CheckboxFieldProps} and {@link BaseFormFieldProps}.
  * @returns The checkbox + inline label row, description and error.
@@ -62,12 +66,18 @@ export function CheckboxField(props: CheckboxFieldProps): ReactNode {
       id={field.name}
       field={field}
       submissionAttempts={submissionAttempts}
-      description={props.description}
       className={cn("py-2", props.className)}
       before={
-        <div className="flex gap-2">
-          {control}
-          {inlineLabel}
+        <div className="flex flex-col gap-1">
+          <div className="flex gap-2">
+            {control}
+            {inlineLabel}
+          </div>
+          <Activity mode={props.description ? "visible" : "hidden"}>
+            <FieldDescription id={`${field.name}-description`} data-slot="form-description" className="pl-6">
+              {props.description}
+            </FieldDescription>
+          </Activity>
         </div>
       }
     >

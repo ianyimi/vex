@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { Activity, useEffect, useRef, useState } from "react";
 import { useStore } from "@tanstack/react-form";
 import {
   CheckIcon,
@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { DropdownMenuSeparator } from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
+import { FieldDescription } from "../ui/field";
 import type { BaseFormFieldProps } from "./types";
 import { cn } from "../utils/cn";
 
@@ -374,34 +375,41 @@ export function BlocksField<TBlock extends GenericBlockItem>(props: BlocksFieldP
   const headerActionsNode = props.headerActions?.({ pushMany, replaceAll });
 
   return (
-    <FormFieldLayout id={field.name} description={props.description} field={field} submissionAttempts={submissionAttempts} className={props.className}>
+    <FormFieldLayout id={field.name} field={field} submissionAttempts={submissionAttempts} className={props.className}>
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <span id={`${field.name}-label`} className="text-sm leading-none font-medium">
-              {props.index !== undefined ? `[${props.index + 1}] - ` : ""}
-              {label}
-              {props.required && <span className="text-red-500">*</span>}
-            </span>
-            {items.length > 0 && (
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {items.length}
-                {props.max !== undefined ? `/${props.max}` : ""} {itemLabelPlural}
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <span id={`${field.name}-label`} className="text-sm leading-none font-medium">
+                {props.index !== undefined ? `[${props.index + 1}] - ` : ""}
+                {label}
+                {props.required && <span className="text-red-500">*</span>}
               </span>
-            )}
-          </div>
-          {(headerActionsNode !== undefined || items.length > 0) && (
-            <div className="flex shrink-0 items-center gap-1">
-              {!compact && items.length > 0 && collapseExpandControls("inline")}
-              {(headerActionsNode !== undefined || compact) && (
-                <ActionsMenu label={`${label} actions`}>
-                  {compact && items.length > 0 && collapseExpandControls("menu")}
-                  {compact && items.length > 0 && headerActionsNode !== undefined && <DropdownMenuSeparator />}
-                  {headerActionsNode}
-                </ActionsMenu>
+              {items.length > 0 && (
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {items.length}
+                  {props.max !== undefined ? `/${props.max}` : ""} {itemLabelPlural}
+                </span>
               )}
             </div>
-          )}
+            {(headerActionsNode !== undefined || items.length > 0) && (
+              <div className="flex shrink-0 items-center gap-1">
+                {!compact && items.length > 0 && collapseExpandControls("inline")}
+                {(headerActionsNode !== undefined || compact) && (
+                  <ActionsMenu label={`${label} actions`}>
+                    {compact && items.length > 0 && collapseExpandControls("menu")}
+                    {compact && items.length > 0 && headerActionsNode !== undefined && <DropdownMenuSeparator />}
+                    {headerActionsNode}
+                  </ActionsMenu>
+                )}
+              </div>
+            )}
+          </div>
+          <Activity mode={props.description ? "visible" : "hidden"}>
+            <FieldDescription id={`${field.name}-description`} data-slot="form-description">
+              {props.description}
+            </FieldDescription>
+          </Activity>
         </div>
 
         {items.length === 0 && (

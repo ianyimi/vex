@@ -70,6 +70,17 @@ describe("FormFieldLayout", () => {
     expect(screen.getByText("Helper text")).toBeInTheDocument();
   });
 
+  it("renders label, description, then control in that DOM order — description above the control, not below it", () => {
+    render(<Harness initialValue="" label="Name" description="Helper text" />);
+    const group = screen.getByRole("group");
+    const label = screen.getByText("Name").closest("label")!;
+    const description = screen.getByText("Helper text");
+    const control = screen.getByRole("textbox");
+    expect(group).toContainElement(label);
+    expect(label.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(description.compareDocumentPosition(control) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("shows the error only after submissionAttempts > 0 with no prior touch", () => {
     render(<Harness initialValue="" validate={(v) => (v ? undefined : "Required")} submissionAttempts={1} />);
     expect(screen.getByText("Required")).toBeInTheDocument();

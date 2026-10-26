@@ -174,7 +174,7 @@ export function JsonField(props: JsonFieldProps): ReactNode {
       description={props.description}
       className={props.className}
       after={parseError ? <p className="text-[0.8rem] text-destructive">{parseError}</p> : undefined}
-      before={
+      labelContent={
         <div className="flex items-center justify-between gap-2">
           <FieldLabel htmlFor={field.name} id={`${field.name}-label`}>
             {props.index !== undefined ? `[${props.index + 1}] - ` : ""}

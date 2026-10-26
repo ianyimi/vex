@@ -2,13 +2,13 @@
 
 import { MODALS } from "../../modals";
 
-import { Activity, useState } from "react";
+import { useState } from "react";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { useStore } from "@tanstack/react-form";
 import { parseAsString, useQueryState } from "nuqs";
 import type { FieldComponentProps, UploadField } from "@vexcms/core";
 import { useFieldContext, useFormContext, isFieldShowingError } from "../../forms";
-import { FieldDescription, FieldError } from "../../ui/field";
+import { FieldError, FieldGroupBox } from "../../ui/field";
 import { MediaPicker } from "../../media";
 import { useVexConfig } from "../../config";
 import { AdminFieldBinding } from "../AdminFieldBinding";
@@ -123,13 +123,13 @@ function UploadFieldAdminInner(props: FieldComponentProps<{}, UploadField>) {
 
   if (isReadOnly) {
     return (
-      <div
-        className="flex flex-col gap-1.5"
-        role="group"
-        aria-labelledby={`${props.name}-label`}
-        aria-disabled={isReadOnly}
+      <FieldGroupBox
+        labelId={`${props.name}-label`}
+        label={label}
+        description={props.fieldDef.description}
+        disabled={isReadOnly}
+        error={showError && <FieldError role="alert">{errorMessage}</FieldError>}
       >
-        {label}
         {value.length > 0 ? (
           <UploadFilledState
             collection={props.collection}
@@ -143,23 +143,19 @@ function UploadFieldAdminInner(props: FieldComponentProps<{}, UploadField>) {
         ) : (
           <div className="text-sm text-muted-foreground">—</div>
         )}
-        <Activity mode={props.fieldDef.description ? "visible" : "hidden"}>
-          <FieldDescription data-slot="form-description">{props.fieldDef.description}</FieldDescription>
-        </Activity>
-        {showError && <FieldError role="alert">{errorMessage}</FieldError>}
-      </div>
+      </FieldGroupBox>
     );
   }
 
   if (value.length === 0) {
     return (
-      <div
-        className="flex flex-col gap-1.5"
-        role="group"
-        aria-labelledby={`${props.name}-label`}
-        aria-disabled={isReadOnly}
+      <FieldGroupBox
+        labelId={`${props.name}-label`}
+        label={label}
+        description={props.fieldDef.description}
+        disabled={isReadOnly}
+        error={showError && <FieldError role="alert">{errorMessage}</FieldError>}
       >
-        {label}
         <UploadEmpty
           name={props.name}
           readOnly={isReadOnly}
@@ -169,10 +165,6 @@ function UploadFieldAdminInner(props: FieldComponentProps<{}, UploadField>) {
           onFilesSelected={handleFilesSelected}
           onBlur={field.handleBlur}
         />
-        <Activity mode={props.fieldDef.description ? "visible" : "hidden"}>
-          <FieldDescription data-slot="form-description">{props.fieldDef.description}</FieldDescription>
-        </Activity>
-        {showError && <FieldError role="alert">{errorMessage}</FieldError>}
         {isOpen && (
           <MediaPicker
             field={field}
@@ -185,18 +177,18 @@ function UploadFieldAdminInner(props: FieldComponentProps<{}, UploadField>) {
             stagedFiles={stagedFiles}
           />
         )}
-      </div>
+      </FieldGroupBox>
     );
   }
 
   return (
-    <div
-      className="flex flex-col gap-1.5"
-      role="group"
-      aria-labelledby={`${props.name}-label`}
-      aria-disabled={isReadOnly}
+    <FieldGroupBox
+      labelId={`${props.name}-label`}
+      label={label}
+      description={props.fieldDef.description}
+      disabled={isReadOnly}
+      error={showError && <FieldError role="alert">{errorMessage}</FieldError>}
     >
-      {label}
       <UploadFilledState
         readOnly={isReadOnly}
         collection={props.collection}
@@ -207,10 +199,6 @@ function UploadFieldAdminInner(props: FieldComponentProps<{}, UploadField>) {
         onReorder={handleReorder}
         openPicker={openPicker}
       />
-      <Activity mode={props.fieldDef.description ? "visible" : "hidden"}>
-        <FieldDescription data-slot="form-description">{props.fieldDef.description}</FieldDescription>
-      </Activity>
-      {showError && <FieldError role="alert">{errorMessage}</FieldError>}
       {isOpen && (
         <MediaPicker
           field={field}
@@ -221,7 +209,7 @@ function UploadFieldAdminInner(props: FieldComponentProps<{}, UploadField>) {
           onCancel={closePicker}
         />
       )}
-    </div>
+    </FieldGroupBox>
   );
 }
 

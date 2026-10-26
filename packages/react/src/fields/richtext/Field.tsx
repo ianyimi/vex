@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, useState, type ComponentType } from "react";
+import { useState, type ComponentType } from "react";
 import type { AnyFieldApi } from "@tanstack/react-form";
 import { useStore } from "@tanstack/react-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +19,7 @@ import { useVexMutation } from "../../hooks";
 import { toast } from "sonner";
 import { getVexErrorMessage } from "../../utils/errors";
 import { useFieldContext, useFormContext, isFieldShowingError } from "../../forms";
-import { FieldDescription, FieldError } from "../../ui/field";
+import { FieldError, FieldGroupBox } from "../../ui/field";
 import { useVexConfig } from "../../config/VexConfigContext";
 import { AdminFieldBinding } from "../AdminFieldBinding";
 
@@ -185,12 +185,7 @@ function RichTextFieldAdminInner(props: FieldComponentProps<{}, RichTextField>) 
 
   if (!config.editor) {
     return (
-      <div
-        className="flex flex-col gap-1.5"
-        role="group"
-        aria-labelledby={`${props.name}-label`}
-      >
-        {label}
+      <FieldGroupBox labelId={`${props.name}-label`} label={label} description={props.fieldDef.description}>
         <div
           role="alert"
           className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
@@ -199,10 +194,7 @@ function RichTextFieldAdminInner(props: FieldComponentProps<{}, RichTextField>) 
           <code>editor: plateEditor()</code> (from{" "}
           <code>@vexcms/richtext-plate</code>) to your <code>vex.config.ts</code>.
         </div>
-        <Activity mode={props.fieldDef.description ? "visible" : "hidden"}>
-          <FieldDescription data-slot="form-description">{props.fieldDef.description}</FieldDescription>
-        </Activity>
-      </div>
+      </FieldGroupBox>
     );
   }
 
@@ -215,13 +207,13 @@ function RichTextFieldAdminInner(props: FieldComponentProps<{}, RichTextField>) 
   const errorMessage = getFieldErrorMessage(field);
 
   return (
-    <div
-      className="flex flex-col gap-1.5"
-      role="group"
-      aria-labelledby={`${props.name}-label`}
-      aria-disabled={isReadOnly}
+    <FieldGroupBox
+      labelId={`${props.name}-label`}
+      label={label}
+      description={props.fieldDef.description}
+      disabled={isReadOnly}
+      error={showError && <FieldError role="alert">{errorMessage}</FieldError>}
     >
-      {label}
       <EditorComponent
         value={field.state.value ?? props.fieldDef.defaultValue ?? []}
         onChange={(next) => field.handleChange(next)}
@@ -243,11 +235,7 @@ function RichTextFieldAdminInner(props: FieldComponentProps<{}, RichTextField>) 
         generateUploadUrl={targetCollectionConfig ? handleGenerateUploadUrl : undefined}
         createMediaDocument={targetCollectionConfig ? handleCreateMediaDocument : undefined}
       />
-      <Activity mode={props.fieldDef.description ? "visible" : "hidden"}>
-        <FieldDescription data-slot="form-description">{props.fieldDef.description}</FieldDescription>
-      </Activity>
-      {showError && <FieldError role="alert">{errorMessage}</FieldError>}
-    </div>
+    </FieldGroupBox>
   );
 }
 

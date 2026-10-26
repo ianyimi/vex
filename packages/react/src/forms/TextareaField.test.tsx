@@ -40,4 +40,33 @@ describe("TextareaField", () => {
     await user.type(screen.getByLabelText(/Bio/), "ab");
     expect(screen.getByText("2")).toBeInTheDocument();
   });
+
+
+  it("renders the error and the counter in the same footer row, counter right-aligned", async () => {
+    const user = userEvent.setup();
+    const { useAppForm: useErrorForm } = createFormHook({
+      fieldContext,
+      formContext,
+      fieldComponents: { TextareaField },
+      formComponents: {},
+    });
+    function ErrorHarness() {
+      const form = useErrorForm({ defaultValues: { bio: "" } });
+      return (
+        <form.AppForm>
+          <form.AppField name="bio" validators={{ onChange: () => "Required" }}>
+            {(field) => <field.TextareaField label="Bio" rows={3} maxLength={20} />}
+          </form.AppField>
+        </form.AppForm>
+      );
+    }
+    render(<ErrorHarness />);
+    await user.type(screen.getByLabelText(/Bio/), "x");
+    await user.tab();
+    const error = screen.getByRole("alert");
+    const counter = screen.getByText("1/20");
+    const footer = error.parentElement!;
+    expect(footer).toContainElement(counter);
+    expect(footer).toHaveAttribute("data-slot", "field-footer");
+  });
 });
