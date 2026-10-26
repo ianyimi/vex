@@ -1,6 +1,7 @@
 import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
 import type { CollectionConfig, CollectionConfigInput } from "../collections";
-import type { AdminField, BaseFieldMeta, ComponentHKT } from "../fields";
+import type { AdminField, BaseFieldMeta } from "../fields";
+import type { ComponentHKT } from "../components/types";
 import type { MediaCollectionSlug, StorageAdapterSlug } from "../types";
 
 /**

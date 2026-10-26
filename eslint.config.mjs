@@ -144,8 +144,8 @@ export default [
   {
     // Standard shadcn/base UI primitives — no JSDoc required
     files: [
-      "packages/react/src/components/ui/**/*.ts",
-      "packages/react/src/components/ui/**/*.tsx",
+      "packages/react/src/ui/**/*.ts",
+      "packages/react/src/ui/**/*.tsx",
     ],
     rules: {
       "jsdoc/require-jsdoc": "off",

@@ -57,7 +57,7 @@ export interface JsonFieldInput<
  * Resolved configuration for a `json()` field, after all defaults are applied.
  *
  * This is the type that framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<JsonField>` and `CellComponentProps<JsonField>`
+ * `fieldDef` in `FieldComponentProps<JsonField>` and `CellComponentProps<JsonField>`
  * is this type.
  *
  * @see {@link JsonFieldInput} for the user-facing input type

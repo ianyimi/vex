@@ -7,7 +7,7 @@ import type {
   VexWhereNodeOf,
 } from "./queryConstraintTypes";
 import { whereNodeToQueryFilterTree } from "./compileQueryConstraints";
-import { validateWhereNode } from "../api/queryArgs";
+import { validateWhereNode } from "../db/queryArgs";
 import { createQueryFilterConstraintBuilder } from "./createQueryFilterConstraintBuilder";
 import {
   createQueryIndexConstraintBuilder,

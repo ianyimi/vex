@@ -4,9 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { VexDocument } from "@vexcms/core";
 
-import { DataTable } from "../components/ui/data-table/DataTable";
-import { DataTableBulkActions } from "../components/ui/data-table/DataTableBulkActions";
-import { BulkDeleteModal, type BulkDeleteModalProps } from "../components/ui/data-table/DeleteManyModal";
+import { DataTable } from "../ui/data-table/DataTable";
+import { DataTableBulkActions } from "../ui/data-table/DataTableBulkActions";
+import { BulkDeleteModal, type BulkDeleteModalProps } from "../ui/data-table/DeleteManyModal";
 
 /** One member per `ui/data-table` file this suite covers. */
 export type DataTableSuiteMember =

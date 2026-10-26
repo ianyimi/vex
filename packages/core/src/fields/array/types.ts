@@ -97,7 +97,7 @@ export interface ArrayFieldInput<
  * Resolved configuration for an `array()` field, after all defaults are applied.
  *
  * This is the type that framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<ArrayField<ArrayType>>` and
+ * `fieldDef` in `FieldComponentProps<ArrayField<ArrayType>>` and
  * `CellComponentProps<ArrayField<ArrayType>>` is this type.
  *
  * @see {@link ArrayFieldInput} for the user-facing input type

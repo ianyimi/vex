@@ -4,7 +4,7 @@ import { defineAccess } from "./config";
 import { WILDCARD_KEY } from "./constants";
 import type { AccessDocFieldFor, AccessDocFor, ConstrainedPermissionCheck, VexAccessConfig } from "./types";
 import { VexAccessConfigError } from "./types";
-import type { MutationCallActionFor, QueryCallActionFor } from "../api/types";
+import type { MutationCallActionFor, QueryCallActionFor } from "../db/types";
 
 // Core tests run with an unaugmented GeneratedVexTypes registry, so callback
 // `data`/`user` params are the wide pre-generation fallback — the `typeof`/`in`

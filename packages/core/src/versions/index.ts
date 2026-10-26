@@ -6,3 +6,4 @@ export * from "./resolveVersionedTarget";
 export * from "./saveDraft";
 export * from "./statusQueryConstraint";
 export * from "./types";
+export type { VexVersionDocument } from "../documents/types";

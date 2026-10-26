@@ -12,7 +12,7 @@ import type {
   VexMediaDocument,
 } from "@vexcms/core";
 import { vexConvexApi, resolveTitleSearchIndex } from "@vexcms/core";
-import { matchesAcceptPattern } from "../components/fields/upload/utils";
+import { matchesAcceptPattern } from "../fields/upload/utils";
 
 /** Props for {@link usePaginatedSearch}. */
 export interface UsePaginatedSearchProps {

@@ -1,6 +1,7 @@
 import pluralize from "pluralize-esm";
 
-import { AdminField, CollectionFieldMeta, ComponentHKT, date, getDataFields } from "../fields";
+import { AdminField, CollectionFieldMeta, date, getDataFields } from "../fields";
+import { ComponentHKT } from "../components/types";
 import { CollectionSlug } from "../types";
 import { toTitleCase } from "../utils";
 import { COLLECTION_SYSTEM_FIELDS, CollectionSystemField } from "./constants";

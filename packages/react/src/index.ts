@@ -103,13 +103,14 @@ export { reactAdapter } from "./adapter";
 export type { ReactHKT, ReactAdapter } from "./adapter";
 
 // Field components
-export { TextFieldInput, TextFieldCell, EmailFieldInput, EmailFieldCell, TextareaFieldInput, TextareaFieldCell } from "./components/fields";
-export { JsonFieldInput, JsonFieldCell } from "./components/fields";
+export { TextFieldAdmin, TextFieldCell, EmailFieldAdmin, EmailFieldCell, TextareaFieldAdmin, TextareaFieldCell } from "./fields";
+export { JsonFieldAdmin, JsonFieldCell, UrlFieldAdmin, UrlFieldCell, NumberFieldAdmin, NumberFieldCell, CheckboxFieldAdmin, CheckboxFieldCell, SelectFieldAdmin, SelectFieldCell, DateFieldAdmin, DateFieldCell, ColorFieldAdmin, ColorFieldCell, ArrayFieldAdmin, ArrayFieldCell, BlocksFieldAdmin, BlocksFieldCell, GroupFieldAdmin, GroupFieldCell, RelationshipFieldAdmin, RelationshipFieldCell, UploadFieldAdmin, UploadFieldCell, RichTextFieldAdmin, RichTextFieldCell } from "./fields";
 
 // Admin extension points (slots) — experimental, S13
-export { SlotOutlet, SlotOverrideOutlet } from "./components/slots";
-export type { SlotOverrideProps } from "./components/slots";
-export { useVexPermissions, useVexForm } from "./hooks";
+export { SlotOutlet, SlotOverrideOutlet } from "./slots";
+export type { SlotOverrideProps } from "./slots";
+export { useVexPermissions } from "./access";
+export { useVexForm } from "./forms";
 export { SLOT_IDS, BUILTIN_CONTRIBUTION_IDS } from "@vexcms/core";
 export type {
   ComponentContributionInput,
@@ -119,27 +120,17 @@ export type {
   SlotAccessPredicate,
 } from "@vexcms/core";
 
-export {
-  // Layout components
-  AdminLayout,
-  AppSidebar,
-  // View components
-  DashboardView,
-  CollectionListView,
-  MediaCollectionListView,
-  MediaCollectionEditView,
-  CollectionEditView,
-  GlobalEditView,
-  GlobalsListView,
-  UnauthorizedView,
-} from "./components";
+// Form entry — re-exported from its own module so `@vexcms/react` users who
+// only need `useAppForm`/`AppForm` are not forced to a second import; the
+// app form's full surface is `@vexcms/react/form`.
+export { useAppForm, AppForm } from "./forms";
+export type { FieldControlProps, FieldComponentProps } from "@vexcms/core";
 
-export type {
-  AdminUser,
-  AdminLayoutProps,
-  AppSidebarProps,
-  UnauthorizedViewProps,
-} from "./components";
+export { AdminLayout, AppSidebar, DashboardView, UnauthorizedView } from "./admin";
+export type { AdminUser, AdminLayoutProps, AppSidebarProps, UnauthorizedViewProps } from "./admin";
+export { CollectionListView, CollectionEditView } from "./collections";
+export { MediaCollectionListView, MediaCollectionEditView } from "./media";
+export { GlobalEditView, GlobalsListView } from "./globals";
 
 // Context
 export {
@@ -148,59 +139,58 @@ export {
   useVexConfig,
   useVexAccess,
   useStorageAdapterMap,
-  useVexAuth,
-} from "./context";
+} from "./config";
+export { useVexAuth } from "./auth";
 
 // Hooks
+export { ModalSurfaceProvider, useModalSurface } from "./modals";
+export { useCanAccessAdminPanel } from "./access";
 export {
-  ModalSurfaceProvider,
-  useCanAccessAdminPanel,
-  useModalSurface,
   usePaginatedQuery,
   type UsePaginatedQueryProps,
   type UsePaginatedQueryReturn,
-  usePermission,
 } from "./hooks";
+export { usePermission } from "./access";
 
 // Utilities
-export { cn } from "./styles/utils";
-export { Icon } from "./components/Icon";
-export { adminHref } from "./utils/adminHref";
-export type { AdminHrefTarget } from "./utils/adminHref";
-export type { IconProps, IconName } from "./components/Icon";
-export { RenderBlocks } from "./components/RenderBlocks";
+export { cn } from "./utils/cn";
+export { Icon } from "./ui/Icon";
+export { adminHref } from "./admin/adminHref";
+export type { AdminHrefTarget } from "./admin/adminHref";
+export type { IconProps, IconName } from "./ui/Icon";
+export { RenderBlocks } from "./fields/blocks/RenderBlocks";
 export type {
   BlockComponentProps,
   BlockComponents,
   RenderableBlock,
   RenderBlocksProps,
-} from "./components/RenderBlocks";
+} from "./fields/blocks/RenderBlocks";
 
 // Live preview
 export {
   LivePreviewPanel,
   resolveLivePreviewUrl,
-} from "./components/livePreview/LivePreviewPanel";
-export type { LivePreviewFrameGeometry } from "./components/livePreview/LivePreviewPanel";
+} from "./livePreview/LivePreviewPanel";
+export type { LivePreviewFrameGeometry } from "./livePreview/LivePreviewPanel";
 export {
   LivePreviewProvider,
   useLivePreview,
   useLivePreviewDocumentQuery,
   useLivePreviewQuery,
-} from "./context/LivePreviewContext";
+} from "./livePreview/LivePreviewContext";
 export type {
   LivePreviewDocumentQueryResult,
   LivePreviewQueryResult,
-} from "./context/LivePreviewContext";
+} from "./livePreview/LivePreviewContext";
 export {
   useLivePreviewPanelMinSize,
   useLivePreviewPanelState,
-} from "./hooks/useLivePreviewPanelState";
-export { useLivePreviewServerUrl } from "./hooks/useLivePreviewServerUrl";
-export { useLivePreviewSync } from "./hooks/useLivePreviewSync";
+} from "./livePreview/useLivePreviewPanelState";
+export { useLivePreviewServerUrl } from "./livePreview/useLivePreviewServerUrl";
+export { useLivePreviewSync } from "./livePreview/useLivePreviewSync";
 
 // shadcn UI primitives
-export * from "./components/ui";
+export * from "./ui";
 
 /**
  * Relationship field input type with the React component slot bound.

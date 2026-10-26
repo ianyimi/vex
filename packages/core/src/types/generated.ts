@@ -1,6 +1,6 @@
 import type { GenericDataModel, GenericMutationCtx, GenericQueryCtx } from "convex/server";
 
-import { TDocument, VexDocument } from "../api/convex";
+import { TDocument, VexDocument } from "../documents/types";
 
 /**
  * Empty interface augmented by the generated `vex.types.ts` file.

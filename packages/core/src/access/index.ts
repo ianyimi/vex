@@ -10,3 +10,5 @@ export * from "./createQueryIndexConstraintBuilder";
 export * from "./createQueryFilterConstraintBuilder";
 export * from "./evaluateQueryConstraint";
 export * from "./buildChecks";
+export * from "./resolveAccessCall";
+export * from "./resolveReadCall";

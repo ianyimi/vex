@@ -112,7 +112,7 @@ export interface DateFieldInput<
  * Resolved configuration for a `date()` field, after all defaults are applied.
  *
  * This is the type that framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<DateField>` and `CellComponentProps<DateField>`
+ * `fieldDef` in `FieldComponentProps<DateField>` and `CellComponentProps<DateField>`
  * is this type.
  *
  * @see {@link DateFieldInput} for the user-facing input type

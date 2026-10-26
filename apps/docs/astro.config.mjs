@@ -84,6 +84,10 @@ export default defineConfig({
 					label: 'Fields',
 					autogenerate: { directory: 'fields' },
 				},
+				{
+					label: 'Development',
+					autogenerate: { directory: 'dev' },
+				},
 				typeDocSidebarGroup,
 			],
 		}),

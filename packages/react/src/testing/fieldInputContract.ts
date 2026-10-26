@@ -22,16 +22,16 @@ import {
   type VexRenderComponentProps,
   type CollectionConfig,
   type VexClientConfig,
-  type InputComponentProps,
+  type FieldComponentProps,
   type ComponentOverrideInput,
 } from "@vexcms/core";
 import { defineMediaCollection } from "@vexcms/file-storage-convex/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
-import { VexConfigContext } from "../context/VexConfigContext";
-import { AppForm } from "../components/form/AppForm";
-import type { SlotOverrideProps } from "../components/slots";
+import { VexConfigContext } from "../config/VexConfigContext";
+import { AppForm } from "../forms";
+import type { SlotOverrideProps } from "../slots";
 import type { ReactHKT } from "../adapter";
 
 /**
@@ -57,16 +57,17 @@ export interface FieldInputContractOptions<
   fixture: FieldFixture<TField, TValue>;
   /**
    * The field's input component. Typed by the props `renderField` actually
-   * passes rather than `InputComponentProps<BaseFieldMeta, TField>`: every real
-   * field input is built by `createFieldInput<TValue, {}, XField>`, so its props
-   * are `InputComponentProps<{}, XField>` and `{}` is not `BaseFieldMeta`. None
-   * of the props below depend on the meta parameter anyway — it only constrains
-   * `TField`, which this suite takes directly.
+   * passes rather than `FieldComponentProps<BaseFieldMeta, TField>`: every real
+   * field input is an admin `*FieldAdmin` component bound through
+   * `AdminFieldBinding`, so its props are `FieldComponentProps<{}, XField>`
+   * and `{}` is not `BaseFieldMeta`. None of the props below depend on the
+   * meta parameter anyway — it only constrains `TField`, which this suite
+   * takes directly.
    *
    * `field` is deliberately absent: this suite always mounts through the
    * `<AppForm>` context path, never the explicit-`field` escape hatch. Declaring
    * it as `field?: unknown` would also break assignability outright — props are
-   * contravariant, so a component requiring `TypedFieldApi<T>` cannot accept a
+   * contravariant, so a component requiring `AnyFieldApi` cannot accept a
    * caller promising to pass any `unknown`.
    */
   Component: ComponentType<{
@@ -239,13 +240,18 @@ function isPopoverTriggerControl(control: Element): boolean {
  * Whether `control` is a contenteditable control (CodeMirror's `json`
  * editor) — jsdom does not implement the `HTMLElement.isContentEditable`
  * getter (it is always `undefined`), so this reads the `contenteditable`
- * attribute directly instead of relying on the DOM property.
+ * attribute directly instead of relying on the DOM property. Checks for the
+ * attribute's PRESENCE, not specifically `"true"`: CodeMirror always sets it
+ * (via `EditorView.editable`), toggling it to `"false"` — never removing it
+ * — when the editor is read-only, so a readOnly json field's control still
+ * needs this generic-DOM-value path skipped in favor of `expectControlValue`'s
+ * `textContent` branch.
  *
  * @param control - The rendered control element to inspect.
- * @returns Whether `control` is editable via `contenteditable="true"`.
+ * @returns Whether `control` is a CodeMirror editable surface, editable or not.
  */
 function isContentEditableControl(control: Element): boolean {
-  return control.getAttribute("contenteditable") === "true";
+  return control.hasAttribute("contenteditable");
 }
 
 /**
@@ -619,7 +625,7 @@ export function runFieldInputContractSuite<TField extends AdminDataField, TValue
    */
   function isComponentOverride(
     value: unknown,
-  ): value is ComponentOverrideInput<ReactHKT, InputComponentProps> {
+  ): value is ComponentOverrideInput<ReactHKT, FieldComponentProps> {
     return (
       typeof value === "object" &&
       value !== null &&
@@ -640,7 +646,7 @@ export function runFieldInputContractSuite<TField extends AdminDataField, TValue
    */
   function extractInputOverrides(
     fieldDef: TField,
-  ): ComponentOverrideInput<ReactHKT, InputComponentProps>[] {
+  ): ComponentOverrideInput<ReactHKT, FieldComponentProps>[] {
     const input: unknown = fieldDef.admin?.components?.Input;
     if (Array.isArray(input)) {
       return input.filter(isComponentOverride);
@@ -648,7 +654,7 @@ export function runFieldInputContractSuite<TField extends AdminDataField, TValue
     return isComponentOverride(input) ? [input] : [];
   }
 
-  /** The exact props shape every registered field type's built-in `Component` accepts — see {@link FieldInputContractOptions.Component}'s doc comment for why this is not `InputComponentProps`. */
+  /** The exact props shape every registered field type's built-in `Component` accepts — see {@link FieldInputContractOptions.Component}'s doc comment for why this is not `FieldComponentProps`. */
   type ContractComponentProps = {
     name: string;
     fieldDef: TField;
@@ -695,7 +701,7 @@ export function runFieldInputContractSuite<TField extends AdminDataField, TValue
     const Resolved = extractInputOverrides(props.fieldDef).reduce<
       ComponentType<ContractComponentProps>
     >((renderDefault, override) => {
-      // `override.component` is typed against the production `InputComponentProps`
+      // `override.component` is typed against the production `FieldComponentProps`
       // shape (S3), which this suite's own narrower `ContractComponentProps`
       // (see its doc comment) is not structurally assignable to — both describe
       // the same runtime props, just via two different declared types across
@@ -1182,7 +1188,7 @@ export function runFieldInputContractSuite<TField extends AdminDataField, TValue
       it("renders the override in place of the built-in, and its renderDefault re-renders the built-in unchanged", () => {
         const rendered = { default: false, override: false };
         const OverrideProbe = (
-          props: SlotOverrideProps<ReactHKT, InputComponentProps>,
+          props: SlotOverrideProps<ReactHKT, FieldComponentProps>,
         ) => {
           rendered.override = true;
           const RenderDefault = props.renderDefault;

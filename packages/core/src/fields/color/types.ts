@@ -88,7 +88,7 @@ export interface ColorFieldInput<
  * Resolved configuration for a `color()` field, after all defaults are applied.
  *
  * This is the type framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<ColorField>` and
+ * `fieldDef` in `FieldComponentProps<ColorField>` and
  * `CellComponentProps<ColorField>` is this type.
  *
  * @see {@link ColorFieldInput} for the user-facing input type

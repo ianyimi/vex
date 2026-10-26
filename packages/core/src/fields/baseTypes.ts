@@ -1,9 +1,10 @@
 import type { CollectionsFieldTypeMap, DocumentByResourceSlug, GlobalsFieldTypeMap, VexMutationCtx, VexResourceSlug } from "../types/generated";
-import type { FieldConditionProps } from "./ui/types";
-import type { VexCallbackApi } from "../api/server";
+import type { FieldConditionProps } from "./conditions";
+import type { VexCallbackApi } from "../server";
 import type {
   ComponentContributionInput,
   ComponentOverrideInput,
+  ComponentHKT,
 } from "../components/types";
 
 /**
@@ -53,33 +54,6 @@ export interface FieldSearchIndex {
    */
   filterFields: string[];
 }
-
-/**
- * Higher-kinded type interface for framework-specific component constructors.
- *
- * Frameworks implement this to map a props type to their component type.
- *
- * @example
- * ```ts
- * interface ReactHKT extends ComponentHKT {
- *   component: React.ComponentType<this['_props']>;
- * }
- * ```
- */
-export interface ComponentHKT {
-  readonly _props: unknown;
-  readonly _extra: Record<string, unknown>;
-  readonly component: unknown;
-}
-
-/**
- * Applies a ComponentHKT to specific props, resolving to the framework's component type.
- */
-export type ApplyComponent<
-  F extends ComponentHKT,
-  P,
-  E extends Record<string, unknown> = Record<string, never>,
-> = (F & { readonly _props: P; readonly _extra: E })["component"];
 
 /**
  * Opaque runtime shape stored in the field config for a custom component.
@@ -264,6 +238,13 @@ export interface FieldSlotComponentsInput<
 > {
   /** Override chain for this field instance's input component (S6). Composed with the root per-type `fields.<type>.Input` chain and the built-in — see `@vexcms/react`'s `resolveFieldInputComponent`. */
   Input?: ComponentOverrideInput<TComponent, unknown>[];
+  /** Override chain for this field instance's WHOLE admin field — replaces label, control and
+   * error layout together (decision 5). Composed the same way as `Input`: built-in `Field.tsx` →
+   * root per-type `fields.<type>.Field` chain → this field instance's own chain, each override's
+   * `renderDefault` resolving to the previous stage. List fields (`array`/`blocks`) use this slot
+   * plus their own action slots (`array.item.actions`, `blocks.item.actions`,
+   * `blocks.header.actions`) — they have no single control an `Input` override could target. */
+  Field?: ComponentOverrideInput<TComponent, unknown>[];
   /** Override chain for this field instance's data-table cell component. Same composition as `Input`. */
   Cell?: ComponentOverrideInput<TComponent, unknown>[];
   /** Override chain for this field instance's label. No built-in to override yet (step 11's design note). */
@@ -375,6 +356,7 @@ export interface FieldAdminConfig<
   /** Resolved per-field slot overrides — always present, every list defaulted to `[]` by `resolveFieldComponents`. */
   components: {
     Input: ComponentOverrideInput<TComponent, unknown>[];
+    Field: ComponentOverrideInput<TComponent, unknown>[];
     Cell: ComponentOverrideInput<TComponent, unknown>[];
     Label: ComponentOverrideInput<TComponent, unknown>[];
     Description: ComponentOverrideInput<TComponent, unknown>[];

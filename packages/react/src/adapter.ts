@@ -8,42 +8,41 @@ import {
 import type { ComponentType } from "react";
 
 import {
-  TextFieldInput,
+  TextFieldAdmin,
   TextFieldCell,
-  EmailFieldInput,
+  EmailFieldAdmin,
   EmailFieldCell,
-  TextareaFieldInput,
+  TextareaFieldAdmin,
   TextareaFieldCell,
   NumberFieldCell,
-  NumberFieldInput,
-  CheckboxFieldInput,
+  NumberFieldAdmin,
+  CheckboxFieldAdmin,
   CheckboxFieldCell,
-  SelectFieldInput,
+  SelectFieldAdmin,
   SelectFieldCell,
-  UrlFieldInput,
+  UrlFieldAdmin,
   UrlFieldCell,
-  ColorFieldInput,
+  ColorFieldAdmin,
   ColorFieldCell,
-  CollectionEditView,
-  CollectionListView,
-  DashboardView,
-  RelationshipFieldInput,
+  RelationshipFieldAdmin,
   RelationshipFieldCell,
   DateFieldCell,
-  DateFieldInput,
+  DateFieldAdmin,
   ArrayFieldCell,
-  ArrayFieldInput,
+  ArrayFieldAdmin,
   GroupFieldCell,
-  GroupFieldInput,
-  BlocksFieldInput,
+  GroupFieldAdmin,
+  BlocksFieldAdmin,
   BlocksFieldCell,
-  UploadFieldInput,
+  UploadFieldAdmin,
   UploadFieldCell,
-  RichTextFieldInput,
+  RichTextFieldAdmin,
   RichTextFieldCell,
-  JsonFieldInput,
+  JsonFieldAdmin,
   JsonFieldCell,
-} from "./components";
+} from "./fields";
+import { CollectionEditView, CollectionListView } from "./collections";
+import { DashboardView } from "./admin";
 
 /**
  * HKT for React — maps any props type to `ComponentType<P>`.
@@ -70,7 +69,7 @@ export interface ReactHKT extends ComponentHKT {
  * here until a component is added for it.
  *
  * Built lazily behind a `Proxy`, not as a plain `const`: `./fields/registry.ts`
- * (via `slots/resolveFieldInputComponent.tsx` → `form/RenderFields.tsx` →
+ * (via `slots/resolveFieldComponent.tsx` → `fields/RenderFields.tsx` →
  * `form/FormGroup.tsx`/`form/FormBlocks.tsx`, step 11) is reachable from this
  * module's own `"./components"` import — a genuine circular dependency. A
  * plain `const` assignment leaves `reactAdapter` captured as `undefined` by
@@ -91,67 +90,67 @@ function buildReactAdapter(): FrameworkAdapterInput<ReactHKT> {
     version: "0.1.0-alpha.1",
     fields: {
       [ADMIN_FIELDS.text.type]: {
-        input: TextFieldInput,
+        field: TextFieldAdmin,
         cell: TextFieldCell,
       },
       [ADMIN_FIELDS.email.type]: {
-        input: EmailFieldInput,
+        field: EmailFieldAdmin,
         cell: EmailFieldCell,
       },
       [ADMIN_FIELDS.textarea.type]: {
-        input: TextareaFieldInput,
+        field: TextareaFieldAdmin,
         cell: TextareaFieldCell,
       },
       [ADMIN_FIELDS.number.type]: {
-        input: NumberFieldInput,
+        field: NumberFieldAdmin,
         cell: NumberFieldCell,
       },
       [ADMIN_FIELDS.checkbox.type]: {
-        input: CheckboxFieldInput,
+        field: CheckboxFieldAdmin,
         cell: CheckboxFieldCell,
       },
       [ADMIN_FIELDS.date.type]: {
-        input: DateFieldInput,
+        field: DateFieldAdmin,
         cell: DateFieldCell,
       },
       [ADMIN_FIELDS.select.type]: {
-        input: SelectFieldInput,
+        field: SelectFieldAdmin,
         cell: SelectFieldCell,
       },
       [ADMIN_FIELDS.url.type]: {
-        input: UrlFieldInput,
+        field: UrlFieldAdmin,
         cell: UrlFieldCell,
       },
       [ADMIN_FIELDS.color.type]: {
-        input: ColorFieldInput,
+        field: ColorFieldAdmin,
         cell: ColorFieldCell,
       },
       [ADMIN_FIELDS.relationship.type]: {
-        input: RelationshipFieldInput,
+        field: RelationshipFieldAdmin,
         cell: RelationshipFieldCell,
       },
       [ADMIN_FIELDS.array.type]: {
-        input: ArrayFieldInput,
+        field: ArrayFieldAdmin,
         cell: ArrayFieldCell,
       },
       [ADMIN_FIELDS.group.type]: {
-        input: GroupFieldInput,
+        field: GroupFieldAdmin,
         cell: GroupFieldCell,
       },
       [ADMIN_FIELDS.blocks.type]: {
-        input: BlocksFieldInput,
+        field: BlocksFieldAdmin,
         cell: BlocksFieldCell,
       },
       [ADMIN_FIELDS.upload.type]: {
-        input: UploadFieldInput,
+        field: UploadFieldAdmin,
         cell: UploadFieldCell,
       },
       [ADMIN_FIELDS.richtext.type]: {
-        input: RichTextFieldInput,
+        field: RichTextFieldAdmin,
         cell: RichTextFieldCell,
       },
       [ADMIN_FIELDS.json.type]: {
-        input: JsonFieldInput,
+        field: JsonFieldAdmin,
         cell: JsonFieldCell,
       },
     },

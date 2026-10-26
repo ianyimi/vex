@@ -5,8 +5,12 @@ export * from "./validators";
 export * from "./inputSchemas";
 export * from "./interfaceGen";
 export * from "./utils";
+export * from "./validate";
 export * from "./mask";
 export * from "./ui";
+export * from "./tabs";
+export * from "./collapsible";
+export * from "./row";
 
 export * from "./text";
 export * from "./email";

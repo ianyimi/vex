@@ -223,13 +223,14 @@ on a `blocks()` field resolves `SLOT_IDS.blocks.itemActions`.
 
 ## Rendering, in `@vexcms/react`
 
-Slots render through `SlotOutlet` (`packages/react/src/components/slots/SlotOutlet.tsx`),
+Slots render through `SlotOutlet` (`packages/react/src/slots/SlotOutlet.tsx`),
 which merges a call site's built-in contributions with the project/field's own
 list, re-resolves order over the merged array (so a project's `before`/`after`
 can target a built-in id), evaluates `access`/`condition`, and wraps each
 surviving contribution in `ComponentErrorBoundary`. Override chains resolve
-through `resolveFieldInputComponent`/`resolveFieldCellComponent`
-(`packages/react/src/components/fields`), composing field → project-type →
+through `resolveFieldComponent`/`resolveFieldCellComponent`
+(`packages/react/src/slots`), with `Input` overrides applied per field by
+`useFieldControlOverride` (`packages/react/src/fields`), composing field → project-type →
 built-in into one `renderDefault` chain.
 
 A duplicate id within one resolved list — two real contributions sharing an

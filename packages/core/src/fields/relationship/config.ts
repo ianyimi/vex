@@ -1,7 +1,7 @@
 import { ADMIN_FIELDS } from "../constants";
 import type { RelationshipFieldInput, RelationshipField } from "./types";
 import type { CollectionSlug , VexResourceSlug } from "../../types/generated";
-import { ComponentHKT } from "../baseTypes";
+import { ComponentHKT } from "../../components/types";
 import { BaseFieldMeta } from "../types";
 import { resolveFieldLimit, resolveFieldComponents } from "../utils";
 

@@ -88,7 +88,7 @@ export interface UrlFieldInput<
  * Resolved configuration for a `url()` field, after all defaults are applied.
  *
  * This is the type that framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<UrlField>` and `CellComponentProps<UrlField>`
+ * `fieldDef` in `FieldComponentProps<UrlField>` and `CellComponentProps<UrlField>`
  * is this type.
  *
  * @see {@link UrlFieldInput} for the user-facing input type

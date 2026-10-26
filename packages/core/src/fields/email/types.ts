@@ -102,7 +102,7 @@ export interface EmailFieldInput<
  * Resolved configuration for an `email()` field, after all defaults are applied.
  *
  * This is the type that framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<EmailField>` and `CellComponentProps<EmailField>`
+ * `fieldDef` in `FieldComponentProps<EmailField>` and `CellComponentProps<EmailField>`
  * is this type.
  *
  * @see {@link EmailFieldInput} for the user-facing input type

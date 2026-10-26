@@ -116,7 +116,7 @@ export interface RichTextFieldInput<
  * Resolved configuration for a `richtext()` field, after all defaults are applied.
  *
  * This is the type framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<RichTextField>` and
+ * `fieldDef` in `FieldComponentProps<RichTextField>` and
  * `CellComponentProps<RichTextField>` is this type.
  *
  * @see {@link RichTextFieldInput} for the user-facing input type

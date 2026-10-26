@@ -1,5 +1,31 @@
-import type { ApplyComponent, ComponentHKT } from "../fields/baseTypes";
-import type { FieldCondition } from "../fields/ui/types";
+import type { FieldCondition } from "../fields/conditions";
+
+/**
+ * Higher-kinded type interface for framework-specific component constructors.
+ *
+ * Frameworks implement this to map a props type to their component type.
+ *
+ * @example
+ * ```ts
+ * interface ReactHKT extends ComponentHKT {
+ *   component: React.ComponentType<this['_props']>;
+ * }
+ * ```
+ */
+export interface ComponentHKT {
+  readonly _props: unknown;
+  readonly _extra: Record<string, unknown>;
+  readonly component: unknown;
+}
+
+/**
+ * Applies a ComponentHKT to specific props, resolving to the framework's component type.
+ */
+export type ApplyComponent<
+  F extends ComponentHKT,
+  P,
+  E extends Record<string, unknown> = Record<string, never>,
+> = (F & { readonly _props: P; readonly _extra: E })["component"];
 
 /**
  * Flat, dot-joined identifiers for every admin extension point (slot) G declares. Nested
@@ -14,6 +40,9 @@ export const SLOT_IDS = {
   field: {
     /** Override chain for a field's input component. One per field instance AND one project-wide per field type — see {@link ComponentOverrideInput} composition in `@vexcms/react`. */
     input: "field.input",
+    /** Override chain for a field's WHOLE admin field (decision 5) — see
+     * `FieldSlotComponentsInput.Field`'s doc comment for composition. */
+    field: "field.field",
     /** Override chain for a field's data-table cell component. Same two-level composition as `input`. */
     cell: "field.cell",
     /** Override chain for a field's label. No built-in contribution yet (step 11's design note) — every Input still renders its own label inline. */
@@ -151,4 +180,4 @@ export class VexComponentConfigError extends Error {
   }
 }
 
-export type { ComponentHKT };
+

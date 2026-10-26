@@ -8,7 +8,7 @@ import type { AdminDataField, CellComponentProps, CollectionConfig, TDocument } 
 
 import { expectNoA11yViolations } from "./a11y";
 import { testCollection } from "./harness/accessFixtures";
-import { VexConfigProvider } from "../context/VexConfigContext";
+import { VexConfigProvider } from "../config/VexConfigContext";
 import type { FieldFixture } from "./fixtures/types";
 
 /**

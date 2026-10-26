@@ -21,10 +21,9 @@ import {
   type VexClientConfig,
 } from "@vexcms/core";
 import { defineMediaCollection } from "@vexcms/file-storage-convex/client";
-import type { AnyFormApi } from "../components/form/AppFormContext";
-import { AppForm } from "../components/form/AppForm";
-import { fieldToInputComponent } from "../components/fields";
-import { VexConfigContext } from "../context";
+import { AppForm, type AnyFormApi } from "../forms";
+import { fieldToFieldComponent } from "../fields";
+import { VexConfigContext } from "../config";
 import { runFieldInputContractSuite } from "./fieldInputContract";
 import { testCollection } from "./harness/accessFixtures";
 import { fieldFixtures } from "./fixtures";
@@ -261,13 +260,13 @@ export function runNestedFieldContainerSuite(options: NestedFieldContainerOption
       describe(`nesting a "${childType}" field`, () => {
         const isOrdinaryChild = childType !== "array" && childType !== "group" && childType !== "blocks";
         if (isOrdinaryChild) {
-          const ChildComponent = fieldToInputComponent(childType);
+          const ChildComponent = fieldToFieldComponent(childType);
           if (!ChildComponent) {
             throw new Error(`runNestedFieldContainerSuite: no input component registered for "${childType}".`);
           }
           // Delegates the leaf field's own label/readOnly/error-timing/value-roundtrip/a11y
           // contract to the shared factory — this suite only adds container-specific behavior.
-          // Boundary cast: `InputComponentProps.collection` is `CollectionConfig | GlobalConfig`,
+          // Boundary cast: `FieldComponentProps.collection` is `CollectionConfig | GlobalConfig`,
           // but comparing `ComponentType`s checks `defaultProps` covariantly, which rejects the
           // wider union against the contract's narrower `CollectionConfig`-only prop.
           runFieldInputContractSuite({

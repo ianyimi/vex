@@ -1,9 +1,7 @@
 import { ADMIN_FIELDS } from "../constants";
 import {
-  ApplyComponent,
   BaseField,
   BaseFieldInput,
-  ComponentHKT,
   FieldAdminConfig,
   FieldAdminConfigInput,
   FieldLimit,
@@ -11,6 +9,7 @@ import {
   FieldSlotComponentsInput,
   FieldValidateProps,
 } from "../baseTypes";
+import { ApplyComponent, ComponentHKT } from "../../components/types";
 import { CollectionSlug , VexResourceSlug } from "../../types/generated";
 import { RelationshipPreviewProps } from "../../collections";
 

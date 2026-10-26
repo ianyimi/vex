@@ -1,8 +1,8 @@
 import { AdminField, DataFieldSlug } from "../fields";
 import { ConvexSystemField, CollectionSystemField } from "./constants";
-import type { ComponentHKT } from "../fields";
+import type { ComponentHKT } from "../components/types";
 import type { CollectionSlug } from "../types/generated";
-import { TDocument } from "../api/convex";
+import { TDocument } from "../documents/types";
 import { IconName } from "../utils";
 import type { CollectionHooks, CollectionHooksInput } from "./hooks";
 import type { AdminLivePreviewConfig, AdminLivePreviewConfigInput } from "../livePreview";

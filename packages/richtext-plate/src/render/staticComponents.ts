@@ -14,7 +14,7 @@ import {
   TableElementStatic,
   TableRowElementStatic,
   TableCellElementStatic,
-} from "./components/elements";
+} from "./components/Elements";
 
 import {
   BoldLeafStatic,
@@ -22,7 +22,7 @@ import {
   UnderlineLeafStatic,
   StrikethroughLeafStatic,
   CodeLeafStatic,
-} from "./components/leaves";
+} from "./components/Leaves";
 
 let _components: Record<string, FC<any>> | null = null;
 

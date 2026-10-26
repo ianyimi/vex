@@ -3,7 +3,7 @@ import type { GenericId } from "convex/values";
 
 import type { CollectionSlug } from "../types/generated";
 import { VERSION_SYSTEM_FIELDS } from "./constants";
-import { VexVersionDocument } from "../api/convex";
+import { VexVersionDocument } from "../documents/types";
 
 /** One immutable history row as stored in `vex_versions`. */
 export interface VexVersion {

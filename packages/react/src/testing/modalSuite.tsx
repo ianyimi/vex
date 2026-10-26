@@ -12,12 +12,12 @@ import { defineCollection, defineConfig, text } from "@vexcms/core";
 import { renderWithVexProviders, testCollection } from "./harness/accessFixtures";
 import { createFakeConvexClient, type ConvexTestInstance } from "./convex/bridge";
 import schema, { readTable, testModules, type TestDoc } from "./convex/schema";
-import { Modal } from "../components/modals/BaseModal";
-import { CreateDocumentModal } from "../components/modals/CreateDocumentModal";
-import { CreateMediaModal } from "../components/modals/CreateMediaModal";
-import { MODALS } from "../components/modals/constants";
-import { DialogContent, DialogHeader } from "../components/ui";
-import { makeFile } from "../components/fields/upload/testFixture";
+import { Modal } from "../modals/BaseModal";
+import { CreateDocumentModal } from "../collections/CreateDocumentModal";
+import { CreateMediaModal } from "../media/CreateMediaModal";
+import { MODALS } from "../modals/constants";
+import { DialogContent, DialogHeader } from "../ui";
+import { makeFile } from "../fields/upload/testFixture";
 
 /** Member names {@link runModalSuite}'s `only` option accepts. */
 export type ModalSuiteMember = "BaseModal" | "CreateDocumentModal" | "CreateMediaModal";

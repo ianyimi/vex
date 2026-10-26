@@ -8,8 +8,8 @@ import type { HeroBlock } from "~/vex.types"
 
 import { Container } from "~/components/Container"
 import { InstallCommand } from "~/components/InstallCommand"
-import { AnimatedItem } from "~/components/motion-primitives/animated-group"
-import { TextEffect } from "~/components/motion-primitives/text-effect"
+import { AnimatedItem } from "~/components/motion-primitives/AnimatedGroup"
+import { TextEffect } from "~/components/motion-primitives/TextEffect"
 
 export { heroBlock } from "./config"
 

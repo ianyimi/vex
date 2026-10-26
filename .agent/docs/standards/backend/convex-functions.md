@@ -7,8 +7,11 @@ applies_to: ["packages/core/src/api/**", "apps/test/convex/**"]
   functions with validators and return registered query/mutation objects
   (`packages/core/src/api/server.ts:38-80` find/get/search; `:120-152` create/update/remove).
   Host apps call each factory once and re-export (`apps/test/convex/vex.ts:1-6`).
-- Factories are co-located with the server barrel in `src/api/server.ts` (the
-  `@vexcms/core/convex` export), not a separate factory file.
+- Factories are co-located with their domain's operations (`collections/api/collectionsApi.ts`,
+  `globals/api/globalsApi.ts`, `versions/api/versionsApi.ts`, `media/api/mediaApi.ts`), each
+  re-exported through `@vexcms/core/server` (`src/server.ts`). `vexConvexApi` — the typed
+  cross-domain `anyApi` references used by `@vexcms/react` — lives at `src/vexConvexApi.ts`,
+  named after its one export.
 - Naming: param is `collection: v.string()` (never `table`, never `slug`); mutation payload
   is `data: v.any()` (never `fields`); document params are `id`/`ids`.
 - `populate` and `depth` args are mutually exclusive and optional. Search queries take

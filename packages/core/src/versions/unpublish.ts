@@ -2,8 +2,8 @@ import { ConvexError } from "convex/values";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 
 import type { VexConfig } from "../config";
-import type { AccessCallOptions, VexApiAuth } from "../api/types";
-import { resolveAccessCall } from "../api/utils";
+import type { AccessCallOptions, VexApiAuth } from "../db/types";
+import { resolveAccessCall } from "../access/resolveAccessCall";
 import { DRAFT_ACTIONS, hasPermission } from "../access";
 import type { CollectionOrGlobal } from "../types/utils";
 import { VERSION_STATUSES } from "./constants";

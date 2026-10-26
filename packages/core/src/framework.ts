@@ -1,15 +1,14 @@
 import type {
   AdminDataField,
-  ApplyComponent,
   BaseFieldMeta,
   CellComponentProps,
-  ComponentHKT,
   DataFieldType,
-  InputComponentProps,
+  FieldComponentProps,
 } from "./fields";
-import type { VexDocument } from "./api/convex";
+import type { ApplyComponent, ComponentHKT } from "./components/types";
+import type { VexDocument } from "./documents/types";
 import { CollectionSlug, GlobalSlug, VexDocumentGlobal } from "./types/generated";
-import { PaginationResult } from "./api/types";
+import { PaginationResult } from "./db/types";
 
 /**
  * Maps every field type in the `AdminField` union to the framework's input component type
@@ -18,7 +17,7 @@ import { PaginationResult } from "./api/types";
  * Keyed by `AdminField['type']` — as new field types are added to the union, TypeScript
  * automatically requires a matching component slot in this map.
  *
- * Each slot resolves to `ApplyComponent<F, InputComponentProps<MatchingFieldDef>>`, which
+ * Each slot resolves to `ApplyComponent<F, FieldComponentProps<MatchingFieldDef>>`, which
  * means the component must accept the input props for that specific field type. This gives
  * the component full autocomplete for field-specific properties (e.g. `fieldDef.max`
  * on the text slot).
@@ -32,9 +31,12 @@ export type FieldComponentMap<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
 > = {
   [K in DataFieldType]: {
-    input: ApplyComponent<
+    field: ApplyComponent<
       F,
-      InputComponentProps<TFieldMeta, Extract<AdminDataField<TFieldMeta>, { type: K }>>
+      Omit<
+        FieldComponentProps<TFieldMeta, Extract<AdminDataField<TFieldMeta>, { type: K }>>,
+        "renderDefault"
+      >
     >;
     cell: ApplyComponent<F, CellComponentProps<Extract<AdminDataField<TFieldMeta>, { type: K }>>>;
   };
@@ -208,7 +210,7 @@ export type ViewComponentMap<F extends ComponentHKT> = {
  *   name: 'react',
  *   version: '0.1.0',
  *   fields: {
- *     text: TextInputComponent,  // must accept InputComponentProps<TextField>
+ *     text: TextFieldComponent,  // must accept FieldComponentProps<TextField>
  *   },
  *   cells: {
  *     text: TextCellComponent,   // must accept CellComponentProps<TextField>

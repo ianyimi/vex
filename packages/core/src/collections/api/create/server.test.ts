@@ -1,0 +1,688 @@
+import { convexTest } from "convex-test";
+import { ConvexError } from "convex/values";
+import type { GenericDataModel, GenericMutationCtx } from "convex/server";
+import { describe, expect, test } from "vitest";
+
+import * as _generatedApi from "../../../db/test/convex/_generated/api";
+import schema from "../../../db/test/convex/schema";
+import type { VexConfig } from "../../../config";
+import { create } from "./server";
+import { defineAccess } from "../../../access/config";
+import type { AdminField } from "../../../fields";
+import { array, checkbox, defineCollection, number, text } from "../../../index";
+import { VexAccessError, WILDCARD_KEY } from "../../../access";
+
+const postsResource = defineCollection({
+  slug: "posts",
+  fields: { title: text(), slug: text(), featured: checkbox() },
+});
+
+// Minimal resolved-config fixture: registers `posts` so the "collection must
+// be registered" check passes; carries no `required`/`min`/`max`/`validate`,
+// so it changes nothing about what these tests exercise.
+const fixtureConfig = { collections: [postsResource] } as unknown as VexConfig;
+
+const modules: Record<string, () => Promise<unknown>> = {
+  "./test/convex/_generated/api": () => Promise.resolve(_generatedApi),
+};
+
+describe("create (server)", () => {
+  test("inserts a document and returns its id", async () => {
+    const t = convexTest(schema, modules);
+    const id = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        data: { title: "Hello", slug: "hello" },
+      }),
+    );
+    expect(typeof id).toBe("string");
+    expect(id.length).toBeGreaterThan(0);
+  });
+
+  test("document is retrievable after create", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await create({
+        ctx,
+        config: fixtureConfig,
+        collection: "posts",
+        data: { title: "Hello", slug: "hello" },
+      });
+      const doc = await ctx.db.get(id as never);
+      expect(doc).toMatchObject({ title: "Hello", slug: "hello" });
+    });
+  });
+});
+
+// ── Access-enforcement fixture ─────────────────────────────────────────────
+
+describe("create (server) — access enforcement", () => {
+  test("denies a create when the action check is a static false", async () => {
+    const t = convexTest(schema, modules);
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["blocked"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          blocked: { posts: { create: false } },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({
+          ctx,
+          collection: "posts",
+          config,
+          auth: { user: { roles: ["blocked"] } },
+          data: { title: "Nope", slug: "nope" },
+        }),
+      ),
+    ).rejects.toThrow(VexAccessError);
+  });
+
+  test("denies via role-level wildcard false when the resource is undeclared for that role", async () => {
+    const t = convexTest(schema, modules);
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["noAccess"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        // `posts` is never mentioned for this role — resolution falls through to
+        // the role-level wildcard, never to `defaultPermissionMode`.
+        permissions: {
+          noAccess: { [WILDCARD_KEY]: false },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({
+          ctx,
+          collection: "posts",
+          config,
+          auth: { user: { roles: ["noAccess"] } },
+          data: { title: "Nope", slug: "nope" },
+        }),
+      ),
+    ).rejects.toThrow(VexAccessError);
+  });
+
+  test("an explicit create action overrides a denying subject-level wildcard", async () => {
+    const t = convexTest(schema, modules);
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          editor: { posts: { [WILDCARD_KEY]: false, create: true } },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    const id = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({
+        ctx,
+        collection: "posts",
+        config,
+        auth: { user: { roles: ["editor"] } },
+        data: { title: "Allowed", slug: "allowed" },
+      }),
+    );
+    expect(typeof id).toBe("string");
+  });
+
+  // A `withIndex`/`where` callback that never touches the builder or `data` short-
+  // circuits to a flat boolean, resolved before any document is needed — the only
+  // shape of access check that CAN work on `create` today (see the bug tests below
+  // for the shapes that cannot).
+  test("a withIndex/where callback short-circuiting to a boolean gates on the caller alone", async () => {
+    const t = convexTest(schema, modules);
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["contributor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          contributor: {
+            posts: {
+              create: {
+                where: (props) => {
+                  const user = props.user as { _id?: string };
+                  return user._id === "u1";
+                },
+              },
+            },
+          },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    const id = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({
+        ctx,
+        collection: "posts",
+        config,
+        auth: { user: { _id: "u1", roles: ["contributor"] } },
+        data: { title: "Mine", slug: "mine" },
+      }),
+    );
+    expect(typeof id).toBe("string");
+
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({
+          ctx,
+          collection: "posts",
+          config,
+          auth: { user: { _id: "u2", roles: ["contributor"] } },
+          data: { title: "Not mine", slug: "not-mine" },
+        }),
+      ),
+    ).rejects.toThrow(VexAccessError);
+  });
+
+  test("an organization-scoped rule denies a caller with no organization", async () => {
+    const t = convexTest(schema, modules);
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["member"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        orgCollectionSlug: "organizations",
+        userRolesField: "roles",
+        permissions: {
+          member: {
+            posts: {
+              create: (props) => {
+                if (!("organization" in props)) return false;
+                const organization = props.organization as { _id?: string } | undefined;
+                return organization?._id === "org1";
+              },
+            },
+          },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    const id = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({
+        ctx,
+        collection: "posts",
+        config,
+        auth: { user: { roles: ["member"] }, organization: { _id: "org1" } },
+        data: { title: "In org", slug: "in-org" },
+      }),
+    );
+    expect(typeof id).toBe("string");
+
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({
+          ctx,
+          collection: "posts",
+          config,
+          // No `organization` on the auth — the rule reads it and gets `undefined`.
+          auth: { user: { roles: ["member"] } },
+          data: { title: "No org", slug: "no-org" },
+        }),
+      ),
+    ).rejects.toThrow(VexAccessError);
+  });
+
+  test("an unauthenticated caller (no auth at all) fails closed", async () => {
+    const t = convexTest(schema, modules);
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["anyone"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          anyone: { posts: true },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({ ctx, collection: "posts", config, data: { title: "Nope", slug: "nope" } }),
+      ),
+    ).rejects.toThrow(VexAccessError);
+  });
+
+  test("a caller with `user: null` fails closed the same as no auth", async () => {
+    const t = convexTest(schema, modules);
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["anyone"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          anyone: { posts: true },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    await expect(
+      t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({
+          ctx,
+          collection: "posts",
+          config,
+          auth: { user: null },
+          data: { title: "Nope", slug: "nope" },
+        }),
+      ),
+    ).rejects.toThrow(VexAccessError);
+  });
+
+  test("create rejects a payload carrying a denied field", async () => {
+    const t = convexTest(schema, modules);
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          editor: { posts: { create: () => ({ "*": false, title: true }) } },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    let caught: unknown;
+    try {
+      await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({
+          ctx,
+          collection: "posts",
+          config,
+          auth: { user: { roles: ["editor"] } },
+          // `title` is permitted; `slug` is not — a create has no stored doc
+          // to diff against, so any denied key present is a violation.
+          data: { title: "New Post", slug: "denied-slug" },
+        }),
+      );
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(VexAccessError);
+    expect((caught as VexAccessError).field).toBe("slug");
+  });
+
+  test("create writes normally when the action declares no map (regression)", async () => {
+    const t = convexTest(schema, modules);
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          editor: { posts: { create: true } },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    const id = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({
+        ctx,
+        collection: "posts",
+        config,
+        auth: { user: { roles: ["editor"] } },
+        data: { title: "New Post", slug: "any-slug" },
+      }),
+    );
+    expect(typeof id).toBe("string");
+  });
+});
+
+// ── Regression pin (DD 44) ───────────────────────────────────────────────────
+// `create()` (./server.ts) never forwards the submitted payload to
+// `hasPermission` — no `data:` key is passed at all. A rule that reads `data`
+// is therefore always resolved via the no-document capability probe, and under
+// the default `scope: "all"` that always resolves to denied, regardless of
+// what the payload contains. This contradicts the documented contract: both
+// `access/types.test.ts` ("still accepts a bare callback on create") and
+// `.agent/docs/specs/2026-08-25-access-constraint-builder/spec.md` show
+// `create: ({ data }) => ... "authorId" in data` as a valid, intended rule
+// shape. These tests assert the DOCUMENTED behaviour and are expected to fail
+// until `create()` passes `data: args.data` to `hasPermission`.
+describe("create (server) — payload-dependent rules (documented contract, currently unreachable)", () => {
+  test("a callback reading `data` should be able to allow create based on the submitted payload", async () => {
+    const t = convexTest(schema, modules);
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["contributor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          contributor: {
+            posts: {
+              // Ownership-on-create: the payload names its own owner as the
+              // caller, mirroring the spec's own `"authorId" in data` example.
+              create: (props) => {
+                const data = props.data as { slug?: string } | undefined;
+                const user = props.user as { _id?: string };
+                return data?.slug === user._id;
+              },
+            },
+          },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    const id = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({
+        ctx,
+        collection: "posts",
+        config,
+        auth: { user: { _id: "u1", roles: ["contributor"] } },
+        // The payload satisfies the rule: slug === caller's id.
+        data: { title: "Mine", slug: "u1" },
+      }),
+    );
+    expect(typeof id).toBe("string");
+  });
+
+  test("a constraints check narrowing by payload content should be able to allow create", async () => {
+    const t = convexTest(schema, modules);
+    const config = {
+      ...fixtureConfig,
+      access: defineAccess({
+        roles: ["contributor"] as const,
+        resources: [postsResource],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: {
+          contributor: {
+            posts: {
+              create: { where: ({ q }) => q.eq("slug", "allowed-slug") },
+            },
+          },
+        },
+      }),
+    } as unknown as VexConfig;
+
+    const id = await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({
+        ctx,
+        collection: "posts",
+        config,
+        auth: { user: { roles: ["contributor"] } },
+        data: { title: "Allowed", slug: "allowed-slug" },
+      }),
+    );
+    expect(typeof id).toBe("string");
+  });
+});
+
+describe("create (server) — updatedAt stamp", () => {
+  const stampedConfig = {
+    collections: [
+      defineCollection({
+        slug: "posts",
+        fields: { title: text(), slug: text(), featured: checkbox() },
+      }),
+    ],
+  } as unknown as VexConfig;
+
+  test("stamps updatedAt on insert when the collection declares the field", async () => {
+    const t = convexTest(schema, modules);
+    const before = Date.now();
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await create({
+        collection: "posts",
+        config: stampedConfig,
+        ctx,
+        data: { slug: "hello", title: "Hello" },
+      });
+      const doc = await ctx.db.get(id as never);
+      expect(doc?.updatedAt).toBeGreaterThanOrEqual(before);
+    });
+  });
+
+  test("does not stamp a collection that opted out with timestamps: false", async () => {
+    const t = convexTest(schema, modules);
+    const optedOut = {
+      collections: [
+        defineCollection({
+          slug: "posts",
+          fields: { title: text(), slug: text() },
+          timestamps: false,
+        }),
+      ],
+    } as unknown as VexConfig;
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await create({
+        collection: "posts",
+        config: optedOut,
+        ctx,
+        data: { slug: "hello", title: "Hello" },
+      });
+      const doc = await ctx.db.get(id as never);
+      expect(doc?.updatedAt).toBeUndefined();
+    });
+  });
+
+  test("does not stamp over a locked updatedAt — the auth adapter owns that value", async () => {
+    const t = convexTest(schema, modules);
+    // Typed as a widened Record, exactly like `betterAuthAdapter` builds it —
+    // a field literal would (correctly) trip `defineCollection`'s
+    // compile-time reserved-key guard.
+    const authFields: Record<string, AdminField> = {
+      slug: text(),
+      title: text(),
+      updatedAt: number({ meta: { locked: true }, required: false }),
+    };
+    const authShaped = {
+      collections: [defineCollection({ slug: "posts", fields: authFields })],
+    } as unknown as VexConfig;
+    await t.run(async (ctx: GenericMutationCtx<GenericDataModel>) => {
+      const id = await create({
+        collection: "posts",
+        config: authShaped,
+        ctx,
+        data: { slug: "hello", title: "Hello" },
+      });
+      const doc = await ctx.db.get(id as never);
+      expect(doc?.updatedAt).toBeUndefined();
+    });
+  });
+});
+
+describe("create (server) — validation and hooks", () => {
+  test("throws when the collection is not registered in config", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({ ctx, config: { collections: [] } as unknown as VexConfig, collection: "posts", data: { title: "Hello" } }),
+      ),
+    ).rejects.toThrow(/No collection registered/);
+  });
+
+  test("rejects a write that violates a field's max length through the Local API", async () => {
+    const collection = defineCollection({ slug: "posts", fields: { title: text({ max: 5 }) } });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({ ctx, config, collection: "posts", data: { title: "way too long" } }),
+      ),
+    ).rejects.toThrow(ConvexError);
+  });
+
+  test("rejects a write to a required array field below its configured min, through the Local API", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text(),
+        slug: text(),
+        author: array({ items: text(), required: true, min: 2 }),
+      },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({
+          ctx,
+          config,
+          collection: "posts",
+          data: { title: "Hello", slug: "hello", author: ["one-author"] },
+        }),
+      ),
+    ).rejects.toThrow(ConvexError);
+  });
+
+  test("accepts a write that omits an optional array field below its own configured min count", async () => {
+    // Regression: `min`/`max` on array/blocks/upload fields used to be enforced
+    // unconditionally, so an optional field's own `[]` default always failed
+    // its own `min` the moment it was left untouched — enforcement is now
+    // gated on `required` (see `array/inputSchema.ts`).
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        title: text(),
+        slug: text(),
+        author: array({ items: text(), min: 2 }),
+      },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({ ctx, config, collection: "posts", data: { title: "Hello", slug: "hello" } }),
+    );
+    expect(typeof id).toBe("string");
+  });
+
+  test("beforeChange can derive a field the caller never sent", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text(), slug: text() },
+      hooks: { beforeChange: ({ doc }) => ({ ...doc, slug: String(doc.title).toLowerCase() }) },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({ ctx, config, collection: "posts", data: { title: "Hello" } }),
+    );
+    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    expect(doc).toMatchObject({ slug: "hello" });
+  });
+
+  test("a beforeChange-derived field is not denied by a field-map role that can only write the original field", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: { title: text(), slug: text() },
+      hooks: { beforeChange: ({ doc }) => ({ ...doc, slug: String(doc.title).toLowerCase() }) },
+    });
+    const config = {
+      collections: [collection],
+      access: defineAccess({
+        roles: ["editor"] as const,
+        resources: [collection],
+        userCollectionSlug: "users",
+        userRolesField: "roles",
+        permissions: { editor: { posts: { create: () => ({ title: true }) } } },
+      }),
+    } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+        create({ ctx, config, collection: "posts", auth: { user: { roles: ["editor"] } }, data: { title: "Hello" } }),
+      ),
+    ).resolves.toEqual(expect.any(String));
+  });
+
+  test("an async validate() rejects a duplicate via a ctx.db query", async () => {
+    const collection = defineCollection({
+      slug: "posts",
+      fields: {
+        slug: text({
+          validate: async ({ value, ctx }) => {
+            const existing = await ctx.db.query("posts").filter((q) => q.eq(q.field("slug"), value)).first();
+            if (existing) throw new Error("Slug must be unique.");
+          },
+        }),
+      },
+    });
+    const config = { collections: [collection] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    await t.run((ctx: GenericMutationCtx<GenericDataModel>) => create({ ctx, config, collection: "posts", data: { title: "Post", slug: "taken" } }));
+    await expect(
+      t.run((ctx: GenericMutationCtx<GenericDataModel>) => create({ ctx, config, collection: "posts", data: { title: "Post", slug: "taken" } })),
+    ).rejects.toThrow(ConvexError);
+  });
+});
+
+describe("create (server) — versioned collection", () => {
+  const versionedPosts = defineCollection({
+    slug: "posts",
+    fields: { title: text(), slug: text() },
+    versions: { drafts: true },
+  });
+  const versionedConfig = { collections: [versionedPosts] } as unknown as VexConfig;
+
+  test("defaults to a draft-only row: no vex_publishedId, no vex_publishedAt", async () => {
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({ ctx, config: versionedConfig, collection: "posts", data: { title: "Hello", slug: "hello" } }),
+    );
+    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    expect(doc?.vex_status).toBe("draft");
+    expect(doc?.vex_publishedId).toBeUndefined();
+    expect(doc?.vex_publishedAt).toBeUndefined();
+
+    const [version] = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.query("vex_versions").collect(),
+    );
+    expect(version?.status).toBe("draft");
+    expect(version?.documentId).toBe(id);
+  });
+
+  test("honors defaultStatus: 'published' — stamps vex_publishedAt and records a published history row", async () => {
+    const publishedPosts = defineCollection({
+      slug: "posts",
+      fields: { title: text(), slug: text() },
+      versions: { drafts: true, defaultStatus: "published" },
+    });
+    const config = { collections: [publishedPosts] } as unknown as VexConfig;
+    const t = convexTest(schema, modules);
+    const id = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      create({ ctx, config, collection: "posts", data: { title: "Hello", slug: "hello" } }),
+    );
+    const doc = await t.run((ctx: GenericMutationCtx<GenericDataModel>) => ctx.db.get(id as never));
+    expect(doc?.vex_status).toBe("published");
+    expect(doc?.vex_publishedAt).toBeTypeOf("number");
+
+    const [version] = await t.run((ctx: GenericMutationCtx<GenericDataModel>) =>
+      ctx.db.query("vex_versions").collect(),
+    );
+    expect(version?.status).toBe("published");
+    expect(version?.publishedAt).toBe(doc?.vex_publishedAt);
+  });
+});

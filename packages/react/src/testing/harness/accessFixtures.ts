@@ -10,8 +10,8 @@ import {
   type VexApiAuth,
   type VexClientConfig,
 } from "@vexcms/core";
-import { VexConfigProvider } from "../../context/VexConfigContext";
-import { VexAuthProvider } from "../../context/VexAuthContext";
+import { VexConfigProvider } from "../../config/VexConfigContext";
+import { VexAuthProvider } from "../../auth/VexAuthContext";
 
 /**
  * One collection, one shared `defineAccess` matrix, three roles — reused by every

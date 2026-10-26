@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
-import { usePermission } from "../../hooks/usePermission";
+import { usePermission } from "../../access/usePermission";
 import { renderWithVexProviders, testAccess, testCollection, testUsers } from "./accessFixtures";
 
 /** Renders a fixed `posts`/`read` check so each scenario below asserts one boolean. */

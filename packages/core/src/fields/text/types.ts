@@ -107,7 +107,7 @@ export interface TextFieldInput<
  * Resolved configuration for a `text()` field, after all defaults are applied.
  *
  * This is the type that framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<TextField>` and `CellComponentProps<TextField>`
+ * `fieldDef` in `FieldComponentProps<TextField>` and `CellComponentProps<TextField>`
  * is this type.
  *
  * @see {@link TextFieldInput} for the user-facing input type

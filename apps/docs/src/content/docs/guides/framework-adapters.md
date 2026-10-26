@@ -13,7 +13,7 @@ VexCMS separates its data model and admin logic from the UI layer via a framewor
 
 VexCMS uses a **Higher-Kinded Type (HKT)** pattern to describe framework components in a generic, type-safe way. The core idea:
 
-1. Each field type (`text`, `number`, etc.) defines `InputComponentProps<TField>` and `CellComponentProps<TField>` — the props each component must accept.
+1. Each field type (`text`, `number`, etc.) defines `FieldComponentProps<TField>` and `CellComponentProps<TField>` — the props each component must accept.
 2. Your framework defines an HKT that maps a props type to your framework's component type.
 3. `defineFrameworkAdapter` validates that you have implemented all required components with the right prop types.
 
@@ -42,56 +42,65 @@ interface ReactHKT extends ComponentHKT {
 }
 ```
 
-`this["_props"]` is a TypeScript polymorphic `this` type — it lets the HKT capture the concrete props type at the call site. When `defineFrameworkAdapter<ReactHKT>` resolves a slot for `InputComponentProps<TextField>`, it produces `ComponentType<InputComponentProps<TextField>>`.
+`this["_props"]` is a TypeScript polymorphic `this` type — it lets the HKT capture the concrete props type at the call site. When `defineFrameworkAdapter<ReactHKT>` resolves a slot for `FieldComponentProps<TextField>`, it produces `ComponentType<FieldComponentProps<TextField>>`.
 
 ---
 
-## Step 2 — Implement field input components
+## Step 2 — Implement field components
 
-Each field type needs an **input component** that renders in the document edit form.
+Each field type needs a **field component** that renders in the document edit form.
 
 The props interface your component must accept:
 
 ```ts
-interface InputComponentProps<TField extends AdminField = AdminField> {
+interface FieldComponentProps<TField extends AdminField = AdminField> {
   /** The field key name (e.g., "title") */
   name: string;
   /** The resolved field definition */
   fieldDef: TField;
   /** Whether the field is read-only from config or permissions */
   readOnly: boolean;
+  /** The config for the collection this field is attached to */
+  collection: CollectionConfig | GlobalConfig;
+  /** Renders the previous stage of the `Field` override chain */
+  renderDefault?: ComponentType<FieldComponentProps<TField>>;
 }
 ```
 
-**React — using `createFieldInput`:**
+**React — using `useFieldContext`:**
 
-`createFieldInput` is a React-specific factory that handles all TanStack Form wiring. Pass a render function that receives `InputComponentProps<TField> & { field: TypedFieldApi<TValue> }`:
+Every admin field component binds to its form field via `@vexcms/react/form`'s `useFieldContext()`, reached through `AdminFieldBinding` (which threads `name`/`field` down from the enclosing `<AppForm>`):
 
 ```tsx
-import { createFieldInput } from "@vexcms/react";
+import { AdminFieldBinding, type FieldComponentProps } from "@vexcms/react";
+import { useFieldContext } from "@vexcms/react/form";
 import type { TextField } from "@vexcms/core";
 
-export const TextFieldInput = createFieldInput<string, TextField>(
-  ({ name, fieldDef, readOnly, field }) => (
-    <div>
-      <label htmlFor={name}>{fieldDef.label || name}</label>
-      <input
-        id={name}
-        value={field.state.value ?? ""}
-        onChange={(e) => field.handleChange(e.target.value)}
-        onBlur={field.handleBlur}
-        placeholder={fieldDef.admin.placeholder}
-        readOnly={readOnly}
-      />
-      {field.state.meta.errors[0] && (
-        <p>{field.state.meta.errors[0]}</p>
-      )}
-    </div>
-  ),
-);
+function TextControl() {
+  const field = useFieldContext<string>();
+  return (
+    <input
+      id={field.name}
+      value={field.state.value ?? ""}
+      onChange={(e) => field.handleChange(e.target.value)}
+      onBlur={field.handleBlur}
+    />
+  );
+}
+
+export function TextFieldAdmin(props: FieldComponentProps<TextField>) {
+  return (
+    <AdminFieldBinding name={props.name}>
+      <div>
+        <label htmlFor={props.name}>{props.fieldDef.label || props.name}</label>
+        <TextControl />
+      </div>
+    </AdminFieldBinding>
+  );
+}
 ```
 
-The `field` parameter is a `TypedFieldApi<TValue>` — a TanStack Form `FieldApi` narrowed to the value type. `field.state.value`, `field.handleChange`, `field.handleBlur`, and `field.state.meta.errors` are all you need for standard form inputs.
+`AdminFieldBinding` opens the form's field for `props.name` and provides it through `fieldContext`, so any descendant reading `useFieldContext()` resolves the same `FieldApi` without prop threading.
 
 **For non-React frameworks:** You will need to build your own form-wiring equivalent. The contract is the same: render a UI element that reads and writes a value identified by `name` within a form.
 
@@ -178,7 +187,7 @@ export const myAdapter = defineFrameworkAdapter<MyFrameworkHKT>({
   fields: {
     // One entry per AdminField union member
     text: {
-      input: MyTextFieldInput,  // must accept InputComponentProps<TextField>
+      field: MyTextFieldAdmin, // must accept FieldComponentProps<TextField>
       cell: MyTextFieldCell,    // must accept CellComponentProps<TextField>
     },
   },

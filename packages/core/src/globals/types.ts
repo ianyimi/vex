@@ -1,4 +1,5 @@
-import type { ApplyComponent, ComponentHKT, AdminField } from "../fields";
+import type { AdminField } from "../fields";
+import type { ApplyComponent, ComponentHKT } from "../components/types";
 import type { GlobalSlug } from "../types/generated";
 import type { IconName } from "../utils";
 import type { AdminLivePreviewConfig, AdminLivePreviewConfigInput } from "../livePreview";

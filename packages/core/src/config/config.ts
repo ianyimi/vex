@@ -139,6 +139,10 @@ export function defineConfig(config?: VexClientConfigInput): VexClientConfig {
                 slotId: SLOT_IDS.field.input,
                 overrides: config?.admin?.components?.fields?.[type]?.Input ?? [],
               }),
+              Field: resolveComponentOverrides({
+                slotId: SLOT_IDS.field.field,
+                overrides: config?.admin?.components?.fields?.[type]?.Field ?? [],
+              }),
               Cell: resolveComponentOverrides({
                 slotId: SLOT_IDS.field.cell,
                 overrides: config?.admin?.components?.fields?.[type]?.Cell ?? [],

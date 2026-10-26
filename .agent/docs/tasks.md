@@ -45,3 +45,4 @@
 - **Discord show-and-tell readiness (spec 2026-09-13-discord-post-readiness)** — 8 steps: bulk-selection bar, un-export migrate stubs, admin mobile pass 375/390/768/1024, www mobile pass, mirror into create-vexcms templates, OG + social cards [dev], quickstart walk [dev], verification gate
 - Consume @vexcms/react from source in dev (removes the tsup watch loop; see backlog)
 - B3 — Backend-neutral query args (spec 2026-10-21-backend-neutral-query-args) — before 0.1.0 tag
+- K — codebase conventions refactor (spec 2026-10-25-codebase-conventions-refactor)

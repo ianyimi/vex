@@ -3,7 +3,7 @@ import type { QueryIndexConstraint } from "./queryConstraintTypes";
 import { AccessResource, VexAccessConfig, VexAccessConfigError } from "./types";
 import { resolveCollectionIndexes } from "../collections/resolveCollectionIndexes";
 import { evaluateQueryConstraint, type QueryConstraintOutcome } from "./evaluateQueryConstraint";
-import { validateWhereNode } from "../api/queryArgs";
+import { validateWhereNode } from "../db/queryArgs";
 import { VexError } from "../errors";
 import { getDataFields } from "../fields";
 

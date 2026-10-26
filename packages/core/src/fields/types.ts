@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { NumberField } from "./number";
 import { TextField } from "./text";
 import { EmailField } from "./email";
@@ -5,7 +6,7 @@ import { TextareaField } from "./textarea";
 import { JsonField } from "./json";
 import { CheckboxField } from "./checkbox";
 import { DateField } from "./date";
-import { TDocument } from "../api/convex";
+import { TDocument } from "../documents/types";
 import { CollectionConfig } from "../collections";
 import { SelectField } from "./select";
 import { UrlField } from "./url";
@@ -19,10 +20,10 @@ import { UploadField } from "./upload";
 import { GlobalConfig } from "../globals";
 import type { VexResourceSlug } from "../types/generated";
 import { VexVersionStatus } from "../versions";
-import { TabsField } from "./ui/tabs";
-import { CollapsibleField } from "./ui/collapsible";
-import { RowField } from "./ui/row";
-import { UIField } from "./ui/ui";
+import { TabsField } from "./tabs";
+import { CollapsibleField } from "./collapsible";
+import { RowField } from "./row";
+import { UIField } from "./ui";
 import { ADMIN_FIELDS } from "./constants";
 
 export * from "./text/types";
@@ -32,11 +33,11 @@ export * from "./json/types";
 export * from "./number/types";
 export * from "./checkbox/types";
 export * from "./blocks/types";
+export * from "./tabs/types";
+export * from "./collapsible/types";
+export * from "./row/types";
 export * from "./ui/types";
-export * from "./ui/tabs/types";
-export * from "./ui/collapsible/types";
-export * from "./ui/row/types";
-export * from "./ui/ui/types";
+export * from "./conditions";
 
 /**
  * BaseFieldMeta - empty object
@@ -127,35 +128,43 @@ export type AdminDataField<TFieldMeta extends BaseFieldMeta = BaseFieldMeta> = E
 export type AdminUIField = Extract<AdminField, { type: UIFieldType }>;
 
 /**
- * Props passed to field input components rendered in the document edit form.
+ * Props passed to an `admin.components.Input` override's replacement control —
+ * the raw control only, after the app form's `FormFieldLayout` has already
+ * resolved the label/description/error layout around it (decision 5). Narrower
+ * than {@link FieldComponentProps}: an Input override never needs `fieldDef`,
+ * `collection` or `documentStatus` — it receives exactly what a
+ * `@vexcms/react/form` field component's `renderControl` prop hands its
+ * control.
  *
- * Every input component registered in a framework adapter's `fields` map must
- * accept these props. The `TField` generic narrows `fieldDef` to the specific
- * field type (e.g. `TextField`) so type-specific properties are accessible
- * with autocomplete.
- *
- * In React, use `createFieldInput<TValue, TField>` to build components that
- * accept these props — it handles TanStack Form wiring automatically.
- *
- * @example
- * ```tsx
- * // React — using createFieldInput
- * export const TextFieldInput = createFieldInput<string, TextField>(
- *   ({ name, fieldDef, readOnly, field }) => (
- *     <input
- *       value={field.state.value ?? ""}
- *       onChange={(e) => field.handleChange(e.target.value)}
- *       readOnly={readOnly}
- *       placeholder={fieldDef.admin.placeholder}
- *     />
- *   ),
- * );
- * ```
- *
- * @see {@link CellComponentProps} for the data table equivalent
- * @see {@link FieldComponentMap} for how components are registered
+ * @see {@link FieldComponentProps} for the whole-field override's props
  */
-export interface InputComponentProps<
+export interface FieldControlProps<TValue = unknown> {
+  /** The control's DOM id — matches the layout's `<label htmlFor>`. */
+  id: string;
+  /** The control's current value. */
+  value: TValue;
+  /** Commits a new value to the form field. */
+  onChange: (value: TValue) => void;
+  /** Marks the form field as touched — wire to the control's native `onBlur`. */
+  onBlur: () => void;
+  /** Whether the control is non-editable. */
+  readOnly: boolean;
+  /** Whether the field is currently showing a validation error — sets `aria-invalid`. */
+  invalid: boolean;
+  /** The control's `aria-describedby` value — the admin app form's `FormFieldLayout`/`fieldDescribedBy`-equivalent description/error ids for this control's `id`; `undefined` when neither applies. */
+  describedBy: string | undefined;
+}
+
+/**
+ * Props passed to an `admin.components.Field` override's replacement — the
+ * same props the admin field's own `Field.tsx` receives (decision 5), plus
+ * `renderDefault` to fall back to the previous stage in the override chain
+ * (built-in → root per-type → this field instance), same composition as
+ * `admin.components.Input`.
+ *
+ * @typeParam TField - Narrows `fieldDef` to a specific field type.
+ */
+export interface FieldComponentProps<
   TFieldMeta extends BaseFieldMeta = BaseFieldMeta,
   TField extends AdminField<TFieldMeta> = AdminField<TFieldMeta>,
 > {
@@ -170,6 +179,8 @@ export interface InputComponentProps<
   collection: CollectionConfig | GlobalConfig;
   /** Necessary for Edit Views. What is the status of this document, 'draft' or 'published'? */
   documentStatus?: VexVersionStatus;
+  /** Renders the previous stage of the `Field` override chain. */
+  renderDefault?: ComponentType<FieldComponentProps<TFieldMeta, TField>>;
 }
 
 /**
@@ -199,7 +210,7 @@ export interface CellRow<TData extends TDocument = TDocument> {
  * }
  * ```
  *
- * @see {@link InputComponentProps} for the edit form equivalent
+ * @see {@link FieldComponentProps} for the edit form equivalent
  * @see {@link FieldComponentMap} for how components are registered
  */
 export interface CellComponentProps<

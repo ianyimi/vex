@@ -30,14 +30,9 @@
       "import": "./dist/index.js"
     },
     "./server": {
-      "source": "./src/api/server.ts",
-      "types": "./dist/api/server.d.ts",
-      "import": "./dist/api/server.js"
-    },
-    "./convex": {
-      "source": "./src/api/server.ts",
-      "types": "./dist/api/server.d.ts",
-      "import": "./dist/api/server.js"
+      "source": "./src/server.ts",
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
     },
     "./internal": {
       "source": "./src/internal.ts",

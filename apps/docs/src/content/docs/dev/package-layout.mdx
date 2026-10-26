@@ -1,0 +1,200 @@
+---
+title: Package Layout
+description: What's inside each VexCMS package's src/ — the domain-folder rule and each package's worked structure.
+---
+
+## The rule
+
+**Code is grouped by domain; a folder's filenames name roles, not domains.**
+A domain (`collections`, `fields/text`, `auth`) gets its own folder; inside
+that folder, every file is named for *what it does* (`config.ts`,
+`server.ts`, `Field.tsx`), never repeats the domain name, and never needs a
+sibling "shared"/"common"/"utils" folder for things that belong to exactly
+one domain.
+
+Worked example — `core/src/fields/<type>/` (every field type, same five
+files):
+
+```
+fields/text/
+  config.ts       # text() factory — applies defaults
+  types.ts        # TextFieldInput / TextField
+  validator.ts    # textFieldToValidator() — Convex v.* validator
+  inputSchema.ts  # textFieldToInputSchema() — Zod input schema
+  index.ts        # barrel: re-exports the four above
+```
+
+None of these files say "text" in their own name — the directory already
+says that. `config.ts` is a role ("the factory"), not `textConfig.ts`.
+
+## Core layout
+
+`packages/core/src/` is grouped by domain at the top level:
+
+```
+access/        # RBAC dispatchers — resolveAccessCall, resolveReadCall, query constraints
+auth/          # auth-adapter contract types
+collections/   # collection config + collections/api/<op>/server.ts + collectionsApi.ts
+components/    # the slot/override system's type-level contracts (ComponentHKT, ApplyComponent, overrides)
+config/        # defineConfig builders + VexConfig types
+db/            # the shared query/mutation pipeline — context, documents, triggers, populate, depth
+documents/     # shared document shapes (VexDocument, VexVersionDocument, VexMediaDocument)
+editor/        # richtext editor-adapter contract types
+fields/        # one folder per field type + shared constants/types/validators/inputSchemas
+globals/       # global config + globals/api/<op>/server.ts + globalsApi.ts + utils.ts
+hooks/         # framework hook type definitions
+livePreview/   # live-preview settings + livePreview/api/resolve/server.ts (URL resolution)
+media/         # storage-adapter contract + media/api/<op>/server.ts + mediaApi.ts
+revalidate/    # revalidation target resolution
+routes/        # route type definitions
+schema/        # Convex schema generation from config
+types/         # generated-type helpers (generateVexTypes.ts)
+utils/         # cross-domain pure helpers with no other home
+versions/      # draft/publish domain + versions/api/<op>/server.ts + versionsApi.ts
+framework.ts   # defineFrameworkAdapter / FieldComponentMap — the HKT adapter contract
+server.ts      # the ONE entry point: vexServerApi, createVexCallbackApi, resolveGetAuth
+vexConvexApi.ts
+index.ts
+```
+
+Every domain with a server API (`collections`, `globals`, `versions`,
+`media`) follows the same `api/<op>/server.ts` + `<domain>Api.ts` shape — see
+`api-operation-split` in [Naming Conventions](/dev/naming-conventions/).
+`db/` holds the shared pipeline every domain's `server.ts` calls into
+(`prepareEdit`, `populate`, `queryArgs`, `triggers`); it never imports a
+domain folder.
+
+**Documented exceptions to the domain → shared, never shared → domain,
+direction**: `access/` reads `collections`/`globals` for the resource shape
+it gates (`AccessResource`, `resolveCollectionIndexes`) — access control
+inherently needs to know about every resource it can act on. `db/triggers.ts`
+reads `globals/utils.ts`'s `flattenGlobalRow` for the same reason — the
+shared trigger pipeline needs one domain-specific flattening step. Both are
+sanctioned, not violations to fix.
+
+## React layout
+
+`packages/react/src/` mirrors core's domain folders at the top level — no
+`components/`, `context/`, `lib/`, or `styles/` directory:
+
+```
+access/        # usePermission, useVexPermissions, useFieldPermissions, useCanAccessAdminPanel
+admin/         # AdminLayout, AdminSidebar, AdminTopNav, DashboardView, UnauthorizedView
+auth/          # VexAuthContext
+client/        # the ./client entry — collections/globals/versions query+mutation factories
+collections/   # CollectionEditView, CollectionListView, CreateDocumentForm/Modal
+config/        # VexConfigContext, useFrameworkComponents
+fields/        # one folder per field type (admin half) + registry.ts + AdminFieldBinding.tsx
+forms/         # the exported app form — @vexcms/react/form
+globals/       # GlobalEditView, GlobalsListView
+hooks/         # cross-domain hooks — usePaginatedQuery, usePaginatedSearch, useTableSelection, useVexMutation, use-mobile
+livePreview/   # LivePreviewPanel + sync/state/URL hooks
+media/         # media library picker, upload, collection views
+modals/        # BaseModal, useModalSurface, shared modal chrome
+revalidate/    # RevalidateButton, useVexRevalidate
+slots/         # the override-chain resolvers (resolveFieldComponent, SlotOutlet)
+testing/       # the exported testing kit — @vexcms/react/testing
+ui/            # shadcn primitives (+ hand-written additions)
+utils/         # cn() and other cross-domain pure helpers
+versions/      # VersionHistoryDropdown, DraftToolbar, autosave hooks
+adapter.ts     # reactAdapter — registers every field's { field, cell } component pair
+index.ts
+```
+
+Inside a feature folder, every file is flat (`XxxView.tsx`, `useXxx.ts`,
+`XxxContext.ts`, `constants.ts`, `types.ts`, `index.ts`) — the only
+subfolders are `api/` (per-domain `<op>/client.ts`, mirroring core's
+`api/<op>/server.ts`) and, inside `fields/`, one directory per field type.
+
+**The exported app form vs. admin fields** — the single most important split
+in this package:
+
+- **`forms/`** (`@vexcms/react/form`) is the exported, framework-only form
+  layer. Its components (`TextField`, `ArrayField`, `FormFieldLayout`,
+  `useAppForm`, `AppForm`) read `useFieldContext()`/`useFormContext()` and
+  plain props only — never `fieldDef`, `VexConfigContext`, or permissions.
+  A project can build an entirely custom form on this layer with no admin
+  panel involved.
+- **`fields/<type>/Field.tsx`** is the admin half — `TextFieldAdmin`,
+  `SelectFieldAdmin`, etc. These read `fieldDef`, config, and permissions,
+  then render the matching `forms/` leaf component underneath via
+  `AdminFieldBinding`. The admin panel's collection/global edit views only
+  ever render `fields/<type>/Field.tsx` components, never `forms/` leaves
+  directly.
+
+See [Adding a Field Type](/dev/adding-a-field-type/) for exactly how a field
+type's core half and react half (both halves of this split) are wired
+together.
+
+## Other packages
+
+### `@vexcms/next`
+
+Not a domain package — a framework adapter. Its root holds the primary
+`Next*.tsx` components (`NextAdminPage`, `NextAdminLayout`,
+`NextAdminLayoutClient`) plus `index.ts`; capability folders (`cache/`,
+`seo/`, `testing/`) group by *what they do* (caching helpers, SEO helpers,
+test utilities) rather than mirroring core/react's domain structure, since
+an adapter has no domains of its own to mirror.
+
+### `@vexcms/cli`
+
+Layer-based, not domain-based — appropriate for a CLI tool with one concern
+(running `vex` commands against a project):
+
+```
+commands/   # dev.ts, deploy.ts, generate.ts — one file per subcommand, camelCase verbs
+lib/        # loadConfig, generateSchema, resolveConvexUrl, convexProcess, logger, …
+index.ts    # command dispatcher
+```
+`commands/` imports `lib/` directly; `lib/` never imports `commands/`.
+
+### `@vexcms/better-auth`
+
+Layer-based, split by execution environment:
+
+```
+index.ts            # server-only entry — betterAuthAdapter, authDbApi, createGetAuth
+client.ts            # client-safe entry — betterAuthCollections (no server imports)
+adapter.ts           # betterAuthAdapter() factory implementation
+collections.ts        # auth collection definitions (users, sessions, accounts, verifications)
+pluginSchemas.ts       # plugin schema descriptors (2FA, social login, passkeys, …)
+pluginSchemas.generated.ts
+convex/               # the Convex DB adapter (authDbApi, createBetterAuthAdapter, getAuth, utils)
+```
+`client.ts` and anything it imports (`collections.ts`) stay free of server
+imports — that's what makes the `./client` export bundle-safe.
+
+### `@vexcms/file-storage-convex`
+
+```
+index.ts        # full entry — convexFileStorage adapter + defineMediaCollection
+client.ts        # client-safe upload helpers only
+adapter/          # uploadFile.ts, methods.ts, index.ts — the storage adapter implementation
+mediaCollection.ts
+storage.ts
+```
+
+### `@vexcms/richtext-plate`
+
+Domain-based, split by where code runs:
+
+```
+editor/     # the interactive admin editor — PlateEditorField, plateEditor(), plugins/, features/, components/ (EditorElements.tsx, Toolbar.tsx)
+render/     # the server-safe static renderer — RichText, staticComponents.ts, components/ (Elements.tsx, Leaves.tsx)
+server.ts   # Convex bundler entry (the `convex` export condition on `.`)
+types.ts    # shared element type definitions
+index.ts    # public API — plateEditor, RichText, shared types
+```
+
+### `create-vexcms` + templates
+
+`create-vexcms` itself (`installers/`, `helpers/`, `utils/`) is a scaffolding
+tool with a `bin` entry, not a library — it has no `exports` map. Its
+`templates/base-nextjs` and `templates/marketing-site` are hand-maintained
+copies of `apps/test`'s and `apps/www`'s own source respectively (see
+`template-sync` in the agent skills), following the same host-app
+conventions documented in [Naming Conventions](/dev/naming-conventions/):
+`auth/` fixed roles, `vexcms/collections|blocks|globals/` domain grouping,
+`components/` (PascalCase, `ui/` kebab, `providers/` fixed roles), `lib/`
+camelCase, `context/` for `*Context.tsx`.

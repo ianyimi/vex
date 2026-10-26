@@ -16,27 +16,21 @@ import type { ConvexTestInstance } from "./convex/bridge";
 import { renderWithVexProviders, testCollection } from "./harness/accessFixtures";
 import { renderView, testClientConfig, wrapWithViewProviders } from "./harness/viewHarness";
 import { runRbacStateSuite } from "./rbacState";
-import { ThemeProvider } from "../components/ui/ThemeProvider";
-import { SidebarProvider } from "../components/ui/sidebar";
+import { ThemeProvider } from "../ui/ThemeProvider";
+import { SidebarProvider } from "../ui/sidebar";
 import {
   FrameworkComponentsContext,
   useFrameworkComponents,
   type FrameworkComponents,
   type VexLinkProps,
-} from "../hooks/useFrameworkComponents";
-import { AdminLayout } from "../components/AdminLayout";
-import { AppSidebar } from "../components/AdminSidebar";
-import AdminTopNav from "../components/AdminTopNav";
-import {
-  CollectionListView,
-  CollectionEditView,
-  GlobalEditView,
-  GlobalsListView,
-  DashboardView,
-  UnauthorizedView,
-  MediaCollectionListView,
-  MediaCollectionEditView,
-} from "../components/views";
+} from "../config/useFrameworkComponents";
+import { AdminLayout } from "../admin/AdminLayout";
+import { AppSidebar } from "../admin/AdminSidebar";
+import AdminTopNav from "../admin/AdminTopNav";
+import { CollectionListView, CollectionEditView } from "../collections";
+import { GlobalEditView, GlobalsListView } from "../globals";
+import { DashboardView, UnauthorizedView } from "../admin";
+import { MediaCollectionListView, MediaCollectionEditView } from "../media";
 
 /**
  * One entry per `runRbacStateSuite` default scenario name, resolved for a given

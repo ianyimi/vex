@@ -2,7 +2,7 @@
 
 import { cn } from "@vexcms/react"
 
-import { useCodeHighlight } from "~/components/CodeHighlightContext"
+import { useCodeHighlight } from "~/context/CodeHighlightContext"
 import { CopyButton } from "~/components/CopyButton"
 import { toCodeLanguage } from "~/lib/highlight"
 

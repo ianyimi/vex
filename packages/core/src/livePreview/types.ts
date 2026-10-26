@@ -1,4 +1,4 @@
-import type { VexDocument } from "../api/convex";
+import type { VexDocument } from "../documents/types";
 import type {
   CollectionSlug,
   DocumentByCollectionSlug,
@@ -7,7 +7,7 @@ import type {
 } from "../types/generated";
 import type { DocumentByGlobalSlug } from "../types/generated";
 import type { IconName } from "../utils";
-import type { VexCallbackApi } from "../api/server";
+import type { VexCallbackApi } from "../server";
 
 /**
  * Resolves a document to the single public URL its live preview should render.

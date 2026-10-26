@@ -2,10 +2,10 @@ import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { ConvexError } from "convex/values";
 
 import type { VexConfig } from "../config";
-import type { AccessCallOptions, VexApiAuth } from "../api/types";
+import type { AccessCallOptions, VexApiAuth } from "../db/types";
 import { DRAFT_ACTIONS } from "../access";
 import { valuesEqual } from "../utils/valuesEqual";
-import { prepareEdit } from "../api/prepareEdit";
+import { prepareEdit } from "../db/prepareEdit";
 import type { CollectionOrGlobal } from "../types/utils";
 import { VERSION_STATUSES } from "./constants";
 import { createVersion, getLatestVersion, getVersion, listVersions } from "./model";

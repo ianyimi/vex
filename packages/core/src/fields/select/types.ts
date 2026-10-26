@@ -123,7 +123,7 @@ export interface SelectFieldInput<
  * Resolved configuration for a `select()` field, after all defaults are applied.
  *
  * This is the type that framework adapters and field components receive —
- * `fieldDef` in `InputComponentProps<SelectField>` and `CellComponentProps<SelectField>`
+ * `fieldDef` in `FieldComponentProps<SelectField>` and `CellComponentProps<SelectField>`
  * is this type.
  *
  * @see {@link SelectFieldInput} for the user-facing input type

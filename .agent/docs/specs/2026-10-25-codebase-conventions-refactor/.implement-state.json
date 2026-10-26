@@ -1,0 +1,474 @@
+{
+  "version": 1,
+  "slug": "2026-10-25-codebase-conventions-refactor",
+  "updated": "2026-10-26T09:27:50.528Z",
+  "groups": {
+    "Step 0": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "packages/core build: CLI tsup v8.5.1",
+        "packages/core build: CLI Using tsup config: /Users/zaye/Documents/Projects/vex.git/dev/packages/core/tsup.config.ts",
+        "packages/core build: CLI Target: es2022",
+        "packages/core build: CLI Cleaning output folder",
+        "packages/core build: ESM Build start",
+        "packages/core build: ESM dist/internal.js           444.00 B",
+        "packages/core build: ESM dist/index.js              106.63 KB",
+        "packages/core build: ESM dist/api/server.js         979.00 B",
+        "packages/core build: ESM dist/chunk-DQQ2RTLI.js     172.85 KB",
+        "packages/core build: ESM dist/internal.js.map       3.36 KB",
+        "packages/core build: ESM dist/api/server.js.map     71.00 B",
+        "packages/core build: ESM dist/index.js.map          444.21 KB",
+        "packages/core build: ESM dist/chunk-DQQ2RTLI.js.map 740.70 KB",
+        "packages/core build: ESM ⚡️ Build success in 48ms",
+        "packages/core build: Done",
+        "packages/react build$ tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
+        "packages/react build: CLI Building entry: {\"index\":\"src/index.ts\",\"client/index\":\"src/client/index.ts\",\"testing/index\":\"src/testing/index.ts\"}",
+        "packages/react build: CLI Using tsconfig: tsconfig.json",
+        "packages/react build: CLI tsup v8.5.1",
+        "packages/react build: CLI Using tsup config: /Users/zaye/Documents/Projects/vex.git/dev/packages/react/tsup.config.ts",
+        "packages/react build: CLI Target: es2022",
+        "packages/react build: CLI Cleaning output folder",
+        "packages/react build: ESM Build start",
+        "packages/react build: ESM dist/JsonEditorView-3RQB7CUO.js     4.73 KB",
+        "packages/react build: ESM dist/index.js                       45.08 KB",
+        "packages/react build: ESM dist/chunk-WP5FGYC2.js              6.00 KB",
+        "packages/react build: ESM dist/client/index.js                497.00 B",
+        "packages/react build: ESM dist/chunk-XQVQPSMC.js              213.00 B",
+        "packages/react build: ESM dist/testing/index.js               197.18 KB",
+        "packages/react build: ESM dist/chunk-YLLTHZTO.js              507.02 KB",
+        "packages/react build: ESM dist/JsonEditorView-3RQB7CUO.js.map 8.68 KB",
+        "packages/react build: ESM dist/client/index.js.map            71.00 B",
+        "packages/react build: ESM dist/chunk-XQVQPSMC.js.map          865.00 B",
+        "packages/react build: ESM dist/chunk-WP5FGYC2.js.map          45.07 KB",
+        "packages/react build: ESM dist/index.js.map                   94.41 KB",
+        "packages/react build: ESM dist/testing/index.js.map           488.00 KB",
+        "packages/react build: ESM dist/chunk-YLLTHZTO.js.map          1.13 MB",
+        "packages/react build: ESM ⚡️ Build success in 98ms",
+        "packages/react build: Done",
+        "Export names match baseline."
+      ]
+    },
+    "Step 1": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/core@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/core@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        " Test Files  118 passed (118)",
+        "      Tests  1605 passed | 1 skipped (1606)",
+        "   Start at  20:23:26",
+        "   Duration  2.49s (transform 5.00s, setup 0ms, import 18.75s, tests 976ms, environment 3.34s)"
+      ]
+    },
+    "Step 10": {
+      "attempts": 4,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/react@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  152 passed (152)",
+        "      Tests  1925 passed | 1 skipped (1926)",
+        "   Start at  04:42:55",
+        "   Duration  57.50s (transform 9.17s, setup 23.43s, import 558.39s, tests 63.13s, environment 54.24s)"
+      ]
+    },
+    "Step 11": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/core@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/core@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        " Test Files  120 passed (120)",
+        "      Tests  1605 passed | 1 skipped (1606)",
+        "   Start at  21:46:02",
+        "   Duration  2.93s (transform 5.43s, setup 0ms, import 22.85s, tests 1.01s, environment 3.63s)"
+      ]
+    },
+    "Step 12": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/react@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/react@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  152 passed (152)",
+        "      Tests  1925 passed | 1 skipped (1926)",
+        "   Start at  05:57:35",
+        "   Duration  56.47s (transform 6.71s, setup 19.19s, import 571.53s, tests 54.26s, environment 46.83s)"
+      ]
+    },
+    "Step 13": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/react@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  152 passed (152)",
+        "      Tests  1924 passed | 1 skipped (1925)",
+        "   Start at  06:56:22",
+        "   Duration  59.86s (transform 10.20s, setup 21.67s, import 603.60s, tests 57.00s, environment 50.49s)"
+      ]
+    },
+    "Step 14": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "packages/core build: ESM Build start",
+        "packages/core build: ESM dist/server.js             978.00 B",
+        "packages/core build: ESM dist/internal.js           444.00 B",
+        "packages/core build: ESM dist/index.js              106.86 KB",
+        "packages/core build: ESM dist/server.js.map         71.00 B",
+        "packages/core build: ESM dist/chunk-MHNIVXHB.js     172.91 KB",
+        "packages/core build: ESM dist/internal.js.map       3.36 KB",
+        "packages/core build: ESM dist/index.js.map          436.73 KB",
+        "packages/core build: ESM dist/chunk-MHNIVXHB.js.map 728.04 KB",
+        "packages/core build: ESM ⚡️ Build success in 61ms",
+        "packages/core build: Done",
+        "packages/react build$ tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
+        "packages/react build: CLI Building entry: {\"index\":\"src/index.ts\",\"client/index\":\"src/client/index.ts\",\"form/index\":\"src/forms/index.ts\",\"testing/index\":\"src/testing/index.ts\"}",
+        "packages/react build: CLI Using tsconfig: tsconfig.json",
+        "packages/react build: CLI tsup v8.5.1",
+        "packages/react build: CLI Using tsup config: /Users/zaye/Documents/Projects/vex.git/dev/packages/react/tsup.config.ts",
+        "packages/react build: CLI Target: es2022",
+        "packages/react build: CLI Cleaning output folder",
+        "packages/react build: ESM Build start",
+        "packages/react build: ESM dist/index.js                       47.86 KB",
+        "packages/react build: ESM dist/chunk-T7UWZTUH.js              358.42 KB",
+        "packages/react build: ESM dist/JsonEditorView-3RQB7CUO.js     4.73 KB",
+        "packages/react build: ESM dist/chunk-XQVQPSMC.js              213.00 B",
+        "packages/react build: ESM dist/client/index.js                497.00 B",
+        "packages/react build: ESM dist/chunk-WP5FGYC2.js              6.00 KB",
+        "packages/react build: ESM dist/form/index.js                  1.11 KB",
+        "packages/react build: ESM dist/testing/index.js               197.38 KB",
+        "packages/react build: ESM dist/chunk-M67NWQRW.js              166.55 KB",
+        "packages/react build: ESM dist/JsonEditorView-3RQB7CUO.js.map 8.68 KB",
+        "packages/react build: ESM dist/form/index.js.map              71.00 B",
+        "packages/react build: ESM dist/chunk-XQVQPSMC.js.map          865.00 B",
+        "packages/react build: ESM dist/index.js.map                   99.75 KB",
+        "packages/react build: ESM dist/chunk-M67NWQRW.js.map          338.68 KB",
+        "packages/react build: ESM dist/chunk-WP5FGYC2.js.map          45.07 KB",
+        "packages/react build: ESM dist/client/index.js.map            71.00 B",
+        "packages/react build: ESM dist/chunk-T7UWZTUH.js.map          847.08 KB",
+        "packages/react build: ESM dist/testing/index.js.map           488.57 KB",
+        "packages/react build: ESM ⚡️ Build success in 79ms",
+        "packages/react build: Done",
+        "Export names match baseline."
+      ]
+    },
+    "Step 15": {
+      "attempts": 3,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/react@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/react@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  150 passed (150)",
+        "      Tests  1898 passed | 1 skipped (1899)",
+        "   Start at  07:22:53",
+        "   Duration  55.10s (transform 8.50s, setup 19.65s, import 560.37s, tests 49.56s, environment 46.91s)"
+      ]
+    },
+    "Step 16": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/react@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/react@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  150 passed (150)",
+        "      Tests  1898 passed | 1 skipped (1899)",
+        "   Start at  07:26:14",
+        "   Duration  54.81s (transform 8.14s, setup 19.06s, import 553.08s, tests 51.08s, environment 47.45s)"
+      ]
+    },
+    "Step 17": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/react@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/react@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  150 passed (150)",
+        "      Tests  1898 passed | 1 skipped (1899)",
+        "   Start at  07:31:50",
+        "   Duration  56.82s (transform 9.84s, setup 21.06s, import 575.93s, tests 53.23s, environment 49.87s)"
+      ]
+    },
+    "Step 18": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/react@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/react@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  150 passed (150)",
+        "      Tests  1898 passed | 1 skipped (1899)",
+        "   Start at  07:48:21",
+        "   Duration  55.10s (transform 8.94s, setup 19.98s, import 550.28s, tests 52.11s, environment 48.70s)"
+      ]
+    },
+    "Step 19": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": null,
+      "last_output_tail": []
+    },
+    "Step 2": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/core@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/core@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        " Test Files  119 passed (119)",
+        "      Tests  1605 passed | 1 skipped (1606)",
+        "   Start at  20:34:13",
+        "   Duration  2.38s (transform 4.69s, setup 0ms, import 17.48s, tests 936ms, environment 3.36s)"
+      ]
+    },
+    "Step 20": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": null,
+      "last_output_tail": []
+    },
+    "Step 21": {
+      "attempts": 2,
+      "last_result": "pass",
+      "last_exit_code": null,
+      "last_output_tail": []
+    },
+    "Step 22": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": null,
+      "last_output_tail": []
+    },
+    "Step 23": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": null,
+      "last_output_tail": []
+    },
+    "Step 24": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": null,
+      "last_output_tail": []
+    },
+    "Step 25": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": null,
+      "last_output_tail": []
+    },
+    "Step 26": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": null,
+      "last_output_tail": []
+    },
+    "Step 3": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/core@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/core@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        " Test Files  119 passed (119)",
+        "      Tests  1605 passed | 1 skipped (1606)",
+        "   Start at  20:39:51",
+        "   Duration  2.40s (transform 4.64s, setup 0ms, import 17.59s, tests 956ms, environment 3.42s)"
+      ]
+    },
+    "Step 4": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/core@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/core@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        " Test Files  119 passed (119)",
+        "      Tests  1605 passed | 1 skipped (1606)",
+        "   Start at  20:43:18",
+        "   Duration  2.39s (transform 4.83s, setup 0ms, import 17.50s, tests 903ms, environment 3.35s)"
+      ]
+    },
+    "Step 5": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/core@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/core@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        " Test Files  119 passed (119)",
+        "      Tests  1605 passed | 1 skipped (1606)",
+        "   Start at  20:47:35",
+        "   Duration  2.50s (transform 5.10s, setup 0ms, import 18.71s, tests 876ms, environment 3.41s)"
+      ]
+    },
+    "Step 6": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/core@0.1.0-alpha.27 typecheck /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> tsc --noEmit -p tsconfig.check.json",
+        "> @vexcms/core@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        "> vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/core",
+        " Test Files  120 passed (120)",
+        "      Tests  1605 passed | 1 skipped (1606)",
+        "   Start at  20:50:36",
+        "   Duration  2.37s (transform 4.65s, setup 0ms, import 17.40s, tests 892ms, environment 3.32s)"
+      ]
+    },
+    "Step 7": {
+      "attempts": 1,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "packages/core build: CLI tsup v8.5.1",
+        "packages/core build: CLI Using tsup config: /Users/zaye/Documents/Projects/vex.git/dev/packages/core/tsup.config.ts",
+        "packages/core build: CLI Target: es2022",
+        "packages/core build: CLI Cleaning output folder",
+        "packages/core build: ESM Build start",
+        "packages/core build: ESM dist/internal.js           444.00 B",
+        "packages/core build: ESM dist/server.js             978.00 B",
+        "packages/core build: ESM dist/index.js              106.67 KB",
+        "packages/core build: ESM dist/chunk-SMOKBCNH.js     172.62 KB",
+        "packages/core build: ESM dist/internal.js.map       3.36 KB",
+        "packages/core build: ESM dist/server.js.map         71.00 B",
+        "packages/core build: ESM dist/index.js.map          435.69 KB",
+        "packages/core build: ESM dist/chunk-SMOKBCNH.js.map 727.58 KB",
+        "packages/core build: ESM ⚡️ Build success in 111ms",
+        "packages/core build: Done",
+        "packages/react build$ tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
+        "packages/react build: CLI Building entry: {\"index\":\"src/index.ts\",\"client/index\":\"src/client/index.ts\",\"testing/index\":\"src/testing/index.ts\"}",
+        "packages/react build: CLI Using tsconfig: tsconfig.json",
+        "packages/react build: CLI tsup v8.5.1",
+        "packages/react build: CLI Using tsup config: /Users/zaye/Documents/Projects/vex.git/dev/packages/react/tsup.config.ts",
+        "packages/react build: CLI Target: es2022",
+        "packages/react build: CLI Cleaning output folder",
+        "packages/react build: ESM Build start",
+        "packages/react build: ESM dist/client/index.js                497.00 B",
+        "packages/react build: ESM dist/index.js                       45.08 KB",
+        "packages/react build: ESM dist/chunk-XQVQPSMC.js              213.00 B",
+        "packages/react build: ESM dist/testing/index.js               197.18 KB",
+        "packages/react build: ESM dist/chunk-WP5FGYC2.js              6.00 KB",
+        "packages/react build: ESM dist/JsonEditorView-3RQB7CUO.js     4.73 KB",
+        "packages/react build: ESM dist/chunk-YLLTHZTO.js              507.02 KB",
+        "packages/react build: ESM dist/client/index.js.map            71.00 B",
+        "packages/react build: ESM dist/index.js.map                   94.41 KB",
+        "packages/react build: ESM dist/chunk-XQVQPSMC.js.map          865.00 B",
+        "packages/react build: ESM dist/chunk-WP5FGYC2.js.map          45.07 KB",
+        "packages/react build: ESM dist/JsonEditorView-3RQB7CUO.js.map 8.68 KB",
+        "packages/react build: ESM dist/testing/index.js.map           488.00 KB",
+        "packages/react build: ESM dist/chunk-YLLTHZTO.js.map          1.13 MB",
+        "packages/react build: ESM ⚡️ Build success in 81ms",
+        "packages/react build: Done",
+        "Export names match baseline."
+      ]
+    },
+    "Step 8": {
+      "attempts": 4,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/react@0.1.0-alpha.27 build /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> tsup && tsc -p tsconfig.build.json --emitDeclarationOnly",
+        "CLI Building entry: {\"index\":\"src/index.ts\",\"client/index\":\"src/client/index.ts\",\"form/index\":\"src/forms/index.ts\",\"testing/index\":\"src/testing/index.ts\"}",
+        "CLI Using tsconfig: tsconfig.json",
+        "CLI tsup v8.5.1",
+        "CLI Using tsup config: /Users/zaye/Documents/Projects/vex.git/dev/packages/react/tsup.config.ts",
+        "CLI Target: es2022",
+        "CLI Cleaning output folder",
+        "ESM Build start",
+        "ESM dist/index.js                       45.44 KB",
+        "ESM dist/chunk-7PREZTTS.js              5.69 KB",
+        "ESM dist/form/index.js                  5.64 KB",
+        "ESM dist/client/index.js                497.00 B",
+        "ESM dist/chunk-WP5FGYC2.js              6.00 KB",
+        "ESM dist/JsonEditorView-3RQB7CUO.js     4.73 KB",
+        "ESM dist/chunk-XQVQPSMC.js              213.00 B",
+        "ESM dist/chunk-4GZIJWRH.js              9.05 KB",
+        "ESM dist/chunk-SHH2T6VD.js              498.23 KB",
+        "ESM dist/testing/index.js               197.21 KB",
+        "ESM dist/client/index.js.map            71.00 B",
+        "ESM dist/index.js.map                   94.43 KB",
+        "ESM dist/chunk-7PREZTTS.js.map          9.48 KB",
+        "ESM dist/form/index.js.map              16.40 KB",
+        "ESM dist/chunk-WP5FGYC2.js.map          45.07 KB",
+        "ESM dist/JsonEditorView-3RQB7CUO.js.map 8.68 KB",
+        "ESM dist/chunk-XQVQPSMC.js.map          865.00 B",
+        "ESM dist/chunk-4GZIJWRH.js.map          19.74 KB",
+        "ESM dist/chunk-SHH2T6VD.js.map          1.11 MB",
+        "ESM dist/testing/index.js.map           488.00 KB",
+        "ESM ⚡️ Build success in 67ms",
+        "> @vexcms/react@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  138 passed (138)",
+        "      Tests  1881 passed | 1 skipped (1882)",
+        "   Start at  04:08:25",
+        "   Duration  52.97s (transform 7.79s, setup 17.80s, import 522.52s, tests 58.55s, environment 44.61s)"
+      ]
+    },
+    "Step 9": {
+      "attempts": 7,
+      "last_result": "pass",
+      "last_exit_code": 0,
+      "last_output_tail": [
+        "> @vexcms/react@0.1.0-alpha.27 test /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        "> TZ=UTC NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+        " RUN  v4.1.10 /Users/zaye/Documents/Projects/vex.git/dev/packages/react",
+        " Test Files  148 passed (148)",
+        "      Tests  1907 passed | 1 skipped (1908)",
+        "   Start at  04:31:30",
+        "   Duration  51.60s (transform 8.47s, setup 19.23s, import 508.32s, tests 53.96s, environment 47.26s)"
+      ]
+    }
+  }
+}

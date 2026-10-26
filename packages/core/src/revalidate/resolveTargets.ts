@@ -1,6 +1,6 @@
 import type { CrudWriteAction } from "../access";
 import type { VexRouteMapper } from "../routes";
-import type { VexDocument } from "../api/convex";
+import type { VexDocument } from "../documents/types";
 import type { CollectionSlug } from "../types";
 import type {
   ResolveTargetsResult,

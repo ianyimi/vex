@@ -10,9 +10,9 @@ import {
 } from "../../index";
 import { adminFieldToInputSchema } from "./index";
 import { getDataFields } from "../utils";
-import { tabs } from "../ui/tabs/config";
-import { collapsible } from "../ui/collapsible/config";
-import { row } from "../ui/row/config";
+import { tabs } from "../tabs/config";
+import { collapsible } from "../collapsible/config";
+import { row } from "../row/config";
 
 const SELECT_OPTIONS = [
   { label: "Draft", value: "draft" },

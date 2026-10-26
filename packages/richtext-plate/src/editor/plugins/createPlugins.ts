@@ -27,7 +27,7 @@ import {
   TableElement,
   TableRowElement,
   TableCellElement,
-} from "../components/editorElements";
+} from "../components/EditorElements";
 
 /** Custom plugin for the image upload placeholder (void element). */
 const ImagePlaceholderPlugin = createSlatePlugin({

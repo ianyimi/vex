@@ -9,7 +9,7 @@ import "../adapter";
 import type { ComponentType } from "react";
 import type { AdminDataField, DataFieldType, CellComponentProps, CollectionConfig, TDocument, VexAccessConfig } from "@vexcms/core";
 import { describe, expect, it } from "vitest";
-import { fieldToCellComponent, fieldToInputComponent } from "../components/fields";
+import { fieldToCellComponent, fieldToFieldComponent } from "../fields";
 import { fieldFixtures } from "./fixtures";
 import type { FieldFixture } from "./fixtures/types";
 import { runFieldInputContractSuite } from "./fieldInputContract";
@@ -67,7 +67,7 @@ const NO_TRUNCATION_FIELD_TYPES: ReadonlySet<DataFieldType> = new Set([
 /**
  * The field input component shape every real field input satisfies (see
  * `FieldInputContractOptions.Component`'s doc comment for why this is not
- * `InputComponentProps<BaseFieldMeta, TField>`). Named here so
+ * `FieldComponentProps<BaseFieldMeta, TField>`). Named here so
  * `runVexReactSuite`'s `custom` option never resorts to `any`.
  */
 type FieldInputComponent<TField> = ComponentType<{
@@ -97,7 +97,7 @@ type FieldCellComponent<TField extends AdminDataField> = ComponentType<CellCompo
  * exactly once — no per-type loop — to a single exported suite covering their whole
  * category: `runShellSuite` (`AdminLayout`/`AdminSidebar`/`AdminTopNav`), `runViewSuite`
  * (all 8 admin views), `runDataTableSuite` (the `ui/data-table` files), `runModalSuite`
- * (the 3 modals), `runMediaSuite` (`FilePreview`/`MediaLibaryGrid`/`MediaUploadDropzone`)
+ * (the 3 modals), `runMediaSuite` (`FilePreview`/`MediaLibraryGrid`/`MediaUploadDropzone`)
  * and `runHooksSuite` (`useTableSelection`'s selection/exclusion semantics and
  * `usePaginatedQuery`'s load-more/`isDone` state derivation). `access` threads through to
  * every one of these that accepts it, so a consumer's own `VexAccessConfig` drives the real
@@ -148,7 +148,7 @@ const ALL_SECTIONS: readonly VexSuiteSection[] = [
  *   of the five single-call suites. See {@link VexSuiteSection} for what each name dispatches.
  * @param options.custom - Project-authored fixtures paired with their own
  *   `Component`. Unlike `fieldFixtures`' entries these are never looked up via
- *   `fieldToInputComponent` — a custom field type is never registered in
+ *   `fieldToFieldComponent` — a custom field type is never registered in
  *   core's registry — so each entry's own `Component` is used directly. Each
  *   runs through the same `runFieldInputContractSuite`. Always runs, regardless of
  *   `includeCore` or `sections`: a project's own field type has no `fieldFixtures` registry
@@ -209,10 +209,10 @@ export function runVexReactSuite(options?: {
     for (const fieldType of Object.keys(fieldFixtures) as DataFieldType[]) {
       const fixture = fieldFixtures[fieldType];
       if (!fixture) continue;
-      const InputComponent = fieldToInputComponent(fieldType);
+      const InputComponent = fieldToFieldComponent(fieldType);
       if (!InputComponent) continue;
-      // Boundary cast: `fieldToInputComponent` returns
-      // `ComponentType<InputComponentProps<BaseFieldMeta, AdminField>>`, whose
+      // Boundary cast: `fieldToFieldComponent` returns
+      // `ComponentType<FieldComponentProps<BaseFieldMeta, AdminField>>`, whose
       // `collection` prop is `CollectionConfig | GlobalConfig`. Comparing
       // `ComponentType`s checks `defaultProps` covariantly, which rejects that
       // wider union against `FieldInputComponent`'s narrower `CollectionConfig`-only

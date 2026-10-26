@@ -35,3 +35,5 @@ compact only via `harness pref compact`.
 - P-026 (2026-10-06) Implementation code carries no explanatory inline/block comments — no narration of what a line does, why a branch exists, or what edge case it handles. JSDoc/docstrings on exported functions/types stay (and must track real behavior: a doc comment claiming a throw message or precondition that implementation no longer has is a bug), but prose comments inside function bodies are not added, and existing ones are removed when the code they describe is touched in the same change.
 
 - P-027 (2026-10-07) Import Zod as `import * as z from "zod"` (plus `import type { … } from "zod"` for types) — never `import { z } from "zod"`. The named `z` binding is a namespace object bundlers cannot tree-shake, so it drags in all of Zod including every locale: measured on `@vexcms/core`, the full index went 90 KB → 46 KB gzipped and `adminFieldToInputSchema` alone 67 KB → 23 KB from this change only.
+
+- P-028 (2026-10-25) React field components (`components/fields/<type>/Field.tsx`) never destructure props — read `props.x` at the point of use, in the signature and the body, so the data's origin stays visible.

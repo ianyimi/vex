@@ -10,8 +10,8 @@ import {
 import type { DefaultFunctionArgs, FunctionReference } from "convex/server";
 import { type ExternalToast, toast } from "sonner";
 
-import { getVexErrorMessage } from "../lib/errors";
-import { useVexRevalidateConfig } from "../context/VexRevalidateContext";
+import { getVexErrorMessage } from "../utils/errors";
+import { useVexRevalidateConfig } from "../revalidate/VexRevalidateContext";
 
 /**
  * Props for {@link useVexMutation}.

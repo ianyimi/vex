@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import type { FindClientPaginatedArgs } from "../client";
-import { whereArg } from "../client/whereArg";
+import { whereArg } from "../collections/api/whereArg";
 import { vexConvexApi } from "@vexcms/core";
 import type { CollectionSlug, PaginationResult, VexDocument } from "@vexcms/core";
 
@@ -138,13 +138,10 @@ export function usePaginatedQuery<
   query,
   clientPageSize,
 }: UsePaginatedQueryProps<TDocument, TCollectionSlug>): UsePaginatedQueryReturn<TDocument> {
-  // Cursor state for pagination
   const [cursor, setCursor] = useState<string | null>(null);
 
-  // Accumulated results from all pages
   const [allResults, setAllResults] = useState<TDocument[]>(initialData?.page ?? []);
 
-  // Done state
   const [isDone, setIsDone] = useState(false);
 
   const [clientPageIndex, setClientPageIndex] = useState(0);
@@ -170,7 +167,6 @@ export function usePaginatedQuery<
     setClientPageIndex((prev) => prev + 1);
   }
 
-  // Fetch current page
   // This hook is generic over `TCollectionSlug` — the collection is only known
   // at runtime, so it queries the generic paginated endpoint rather than the
   // per-slug `find()` wrapper, which narrows only for a literal slug. The
@@ -188,7 +184,6 @@ export function usePaginatedQuery<
     ...(cursor === null && initialData ? { initialData } : {}),
   });
 
-  // Extract pagination result
   const result = useMemo<PaginationResult<TDocument>>(() => {
     // Empty placeholder for "no data yet". `continueCursor: ""` is a falsy
     // placeholder, never a real cursor: it is only read for truthiness in
@@ -214,14 +209,11 @@ export function usePaginatedQuery<
     paginatedQueryRes: result,
   });
 
-  // Accumulate results
   useEffect(() => {
     if (result.page) {
       if (cursor === null) {
-        // First page - replace all results
         setAllResults(result.page);
       } else {
-        // Subsequent pages - append
         setAllResults((prev) => [...prev, ...result.page]);
       }
 
@@ -238,104 +230,14 @@ export function usePaginatedQuery<
   };
 }
 
-// function usePaginatedQuery2<
-//   TDocument extends VexDocument = VexDocument,
-//   TCollectionSlug extends CollectionSlug = CollectionSlug,
-// >(props: {
-//   initialData: PaginationResult<TDocument>;
-//   /**
-//    * Query arguments for the 'find()' api function.
-//    *
-//    * @see FindClientArgs
-//    *
-//    * Count is fetched only on first page load. Returns `null` if
-//    * collection has >32k documents.
-//    */
-//   query: FindClientArgs<TCollectionSlug>;
-//   /**
-//    * Items to show per 'Load More'
-//    */
-//   clientPageSize?: number;
-// }): UsePaginatedQueryReturn<TDocument> {
-//   // Cursor state for pagination
-//   const [cursor, setCursor] = useState<string | null>(null);
-//
-//   // Accumulated documents from all pages
-//   const [documents, setDocuments] = useState<TDocument[]>(props.initialData?.page ?? []);
-//
-//   // Done state
-//   const [isDone, setIsDone] = useState(false);
-//   const [clientPageIndex, setClientPageIndex] = useState(0);
-//
-//   const startIndex = 0;
-//   const endIndex = (clientPageIndex + 1) * (props.clientPageSize ?? 0);
-//   const results = documents.slice(startIndex, props.clientPageSize ? endIndex : undefined);
-//   const needsServerFetch = props.clientPageSize ? true : endIndex >= documents.length && !isDone;
-//
-//   // Fetch current page
-//   const { data, isPending } = useQuery({
-//     ...find({
-//       ...props.query,
-//       paginationOpts: {
-//         numItems: 100,
-//         ...props.query.paginationOpts,
-//         cursor,
-//       },
-//     }),
-//     // Only use initialData on first load
-//     ...(cursor === null && props.initialData ? { initialData: props.initialData } : {}),
-//   });
-//
-//   function loadMore() {
-//     if (needsServerFetch && result.continueCursor) {
-//       setCursor(result.continueCursor);
-//     } else {
-//       setClientPageIndex((prev) => prev + 1);
-//     }
-//   }
-//
-//   // Extract pagination result
-//   const result = useMemo<PaginationResult<TDocument>>(() => {
-//     if (!data) return { page: [], continueCursor: null, isDone: true };
-//     if (Array.isArray(data)) return { page: data, continueCursor: null, isDone: true };
-//     return data;
-//   }, [data]);
-//
-//   // Accumulate results
-//   useEffect(() => {
-//     if (result.page) {
-//       if (cursor === null) {
-//         // First page - replace all results
-//         setDocuments(result.page);
-//       } else {
-//         // Subsequent pages - append
-//         setDocuments((prev) => [...prev, ...result.page]);
-//       }
-//
-//       setIsDone(result.isDone);
-//     }
-//   }, [result.page, result.isDone, cursor]);
-//
-//   return {
-//     isPending,
-//     isDone,
-//     totalDocs,
-//     results,
-//     loadMore,
-//   };
-// }
-
 function useTotalDocs<TDocument extends VexDocument = VexDocument>(props: {
   initialData?: PaginationResult<TDocument>;
   enabled?: boolean;
   paginatedQueryRes: PaginationResult<TDocument>;
 }) {
-  // Total count (extracted from first page)
   const [totalDocsCount, setTotalDocs] = useState<number | null | undefined>(
     props.initialData?.totalDocs,
   );
-  // Extract totalDocs from first paginated query response
-  // Only runs once when first page loads with totalDocs field
   useEffect(() => {
     if (
       props.enabled &&

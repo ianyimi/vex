@@ -1,21 +1,21 @@
 import type { DataFieldType } from "@vexcms/core";
 import type { FieldFixture } from "./types";
-import { textFieldFixture } from "../../components/fields/text/testFixture";
-import { emailFieldFixture } from "../../components/fields/email/testFixture";
-import { textareaFieldFixture } from "../../components/fields/textarea/testFixture";
-import { jsonFieldFixture } from "../../components/fields/json/testFixture";
-import { numberFieldFixture } from "../../components/fields/number/testFixture";
-import { checkboxFieldFixture } from "../../components/fields/checkbox/testFixture";
-import { urlFieldFixture } from "../../components/fields/url/testFixture";
-import { colorFieldFixture } from "../../components/fields/color/testFixture";
-import { selectFieldFixture } from "../../components/fields/select/testFixture";
-import { dateFieldFixture } from "../../components/fields/date/testFixture";
-import { uploadFieldFixture } from "../../components/fields/upload/testFixture";
-import { relationshipFieldFixture } from "../../components/fields/relationship/testFixture";
-import { arrayFieldFixture } from "../../components/fields/array/testFixture";
-import { groupFieldFixture } from "../../components/fields/group/testFixture";
-import { blocksFieldFixture } from "../../components/fields/blocks/testFixture";
-import { richTextFieldFixture } from "../../components/fields/richtext/testFixture";
+import { textFieldFixture } from "../../fields/text/testFixture";
+import { emailFieldFixture } from "../../fields/email/testFixture";
+import { textareaFieldFixture } from "../../fields/textarea/testFixture";
+import { jsonFieldFixture } from "../../fields/json/testFixture";
+import { numberFieldFixture } from "../../fields/number/testFixture";
+import { checkboxFieldFixture } from "../../fields/checkbox/testFixture";
+import { urlFieldFixture } from "../../fields/url/testFixture";
+import { colorFieldFixture } from "../../fields/color/testFixture";
+import { selectFieldFixture } from "../../fields/select/testFixture";
+import { dateFieldFixture } from "../../fields/date/testFixture";
+import { uploadFieldFixture } from "../../fields/upload/testFixture";
+import { relationshipFieldFixture } from "../../fields/relationship/testFixture";
+import { arrayFieldFixture } from "../../fields/array/testFixture";
+import { groupFieldFixture } from "../../fields/group/testFixture";
+import { blocksFieldFixture } from "../../fields/blocks/testFixture";
+import { richTextFieldFixture } from "../../fields/richtext/testFixture";
 // Each remaining per-type fixture is imported from that field type's OWN folder
 // as later steps add it.
 

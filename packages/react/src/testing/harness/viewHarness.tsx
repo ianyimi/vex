@@ -13,7 +13,7 @@ import {
   type VexClientConfig,
 } from "@vexcms/core";
 import { defineMediaCollection } from "@vexcms/file-storage-convex/client";
-import { useVexConfig, VexConfigProvider } from "../../context/VexConfigContext";
+import { useVexConfig, VexConfigProvider } from "../../config/VexConfigContext";
 import { createFakeConvexClient, type ConvexTestInstance } from "../convex/bridge";
 import { renderWithVexProviders, testCollection } from "./accessFixtures";
 

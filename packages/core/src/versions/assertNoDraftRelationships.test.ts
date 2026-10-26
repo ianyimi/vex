@@ -3,8 +3,8 @@ import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { ConvexError } from "convex/values";
 import { describe, expect, test } from "vitest";
 
-import * as _generatedApi from "../api/test/convex/_generated/api";
-import schema from "../api/test/convex/schema";
+import * as _generatedApi from "../db/test/convex/_generated/api";
+import schema from "../db/test/convex/schema";
 import { assertNoDraftRelationships } from "./assertNoDraftRelationships";
 import { defineCollection, defineGlobal, relationship, text } from "../index";
 
